@@ -9,6 +9,16 @@ import os
 import sys
 from pathlib import Path
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+from src.utils.paths import PROJECT_ROOT
+
+from ..artifacts.configuration import artifact_path_resolver
 from .configuration import (
     CampaignConfig,
     ControlConfig,
@@ -16,12 +26,24 @@ from .configuration import (
     file_sha256,
     load_config,
 )
+from .path_contracts import validate_command_paths, validate_initial_paths
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 
 def initialize(args: argparse.Namespace, campaign_dir: Path | None) -> int:
     from .campaign_state import initial_state
     from .common import atomic_write_json
 
+    for name, value in (('root', args.root), ('campaign', campaign_dir), ('project-root', args.project_root),
+                        ('python', args.python), ('codex-home', args.codex_home), ('ball-checkpoint', args.ball_checkpoint)):
+        if value is not None and not value.is_absolute():
+            raise ValueError(f'--{name} must be an explicit absolute path')
     annotation_root = args.root.resolve()
     if not (annotation_root / "_preparation").is_dir():
         raise ValueError(
@@ -42,13 +64,17 @@ def initialize(args: argparse.Namespace, campaign_dir: Path | None) -> int:
     codex_home = args.codex_home
     if codex_home is None and os.environ.get("CODEX_HOME"):
         codex_home = Path(os.environ["CODEX_HOME"])
+    if codex_home is None:
+        codex_home = Path.home() / '.codex'
+    if not codex_home.is_absolute():
+        raise ValueError('CODEX_HOME must be an absolute path')
     config = CampaignConfig(
         annotation_root=annotation_root,
         campaign_dir=directory,
         project_root=args.project_root.resolve(),
-        python_executable=args.python.absolute(),
+        python_executable=args.python,
         codex_binary=args.codex_binary,
-        codex_home=codex_home.resolve() if codex_home is not None else None,
+        codex_home=codex_home.resolve(),
         ball_checkpoint=checkpoint,
         ball_checkpoint_sha256=file_sha256(checkpoint)
         if checkpoint is not None
@@ -57,6 +83,7 @@ def initialize(args: argparse.Namespace, campaign_dir: Path | None) -> int:
     control = ControlConfig(
         model=args.model, effort=args.effort, max_parallel=args.parallel
     )
+    validate_initial_paths(config)
     with campaign_context(config):
         state = initial_state(list(control.targets))
         directory.mkdir(parents=True)
@@ -104,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
         "--root", type=Path, required=True, help="Prepared annotation output root"
     )
     init.add_argument(
-        "--project-root", type=Path, default=Path(__file__).resolve().parents[4]
+        "--project-root", type=Path, default=PROJECT_ROOT
     )
     init.add_argument("--python", type=Path, default=Path(sys.executable))
     init.add_argument("--codex-binary", default="codex")
@@ -180,7 +207,9 @@ def main(argv: list[str] | None = None) -> int:
                 help_result: int = module.main(args.arguments)
                 return help_result
             parser.error("--campaign is required for this command")
-        with campaign_context(load_config(args.campaign)):
+        checked = PATH_BOUNDARY.validate({"campaign": args.campaign}, resolver=artifact_path_resolver(args.campaign.resolve()))
+        with campaign_context(load_config(checked.declared("campaign").path)):
+            validate_command_paths()
             if args.command == "launch-worker":
                 from .launcher import supervise
 

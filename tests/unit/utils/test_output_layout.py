@@ -11,6 +11,7 @@ from unittest.mock import patch
 import pytest
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf.errors import InterpolationResolutionError
 
 import src.utils.hydra  # noqa: F401 -- registers the public YAML resolvers
 from src.utils.configuration.errors import PathContractError
@@ -149,6 +150,11 @@ def test_all_task_cli_output_contracts(
         overrides += ["workflow.video_id=smoke-video"]
     if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
         overrides += ["evaluation.checkpoint=smoke/model.ckpt"]
+    if boundary.module == "src.tasks.player_detection.scripts.export_checkpoint":
+        overrides += [
+            "export.lightning_checkpoint=smoke/model.ckpt",
+            "export.destination=player_detection/smoke.pth",
+        ]
     if boundary.module == "src.tasks.slcs.scripts.generate_dataset":
         overrides += ["data.dataset_root=smoke/clips"]
     cfg = _compose_boundary(boundary, overrides)
@@ -359,3 +365,33 @@ def test_mixed_training_snapshot_preserves_roots_identity_and_sources(
     replay, mixed = resolve_mixed_training_config(saved)
     assert replay.run.output_dir == cfg.run.output_dir
     assert mixed is not None
+
+
+def test_output_root_named_like_the_task_is_rejected_with_the_colliding_root(
+    tmp_path: Path,
+) -> None:
+    # Regression for queue job i931-v2-dataset-meiji-one-clip-20260927:
+    # paths.output_root=<report>/slcs made the precompute log directory
+    # <root>/slcs/precompute/... fail on the reserved basename 'slcs' with no
+    # hint that the override itself was the cause.
+    config_dir = str(PROJECT_ROOT / "src/tasks/slcs/configs")
+    with initialize_config_dir(version_base="1.3", config_dir=config_dir):
+        cfg = compose(
+            config_name="precompute_dino_tokens",
+            overrides=[f"paths.output_root={tmp_path / 'slcs'}"],
+            return_hydra_config=True,
+        )
+        with pytest.raises(
+            InterpolationResolutionError, match="configured output_root"
+        ) as error:
+            _ = cfg.hydra.run.dir
+    assert str(tmp_path / "slcs") in str(error.value)
+
+    with initialize_config_dir(version_base="1.3", config_dir=config_dir):
+        cfg = compose(
+            config_name="precompute_dino_tokens",
+            overrides=[f"paths.output_root={tmp_path / 'report'}"],
+            return_hydra_config=True,
+        )
+    log = Path(cfg.hydra.run.dir).relative_to(tmp_path / "report")
+    assert log.parts[:3] == ("slcs", "precompute", "precompute_dino_tokens")

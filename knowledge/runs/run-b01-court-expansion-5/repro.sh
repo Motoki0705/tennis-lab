@@ -11,5 +11,6 @@ echo "[repro] target commit: 96b98a17ee067d9956cafcfb65448d527910349b (branch co
 git checkout 96b98a17ee067d9956cafcfb65448d527910349b 2>/dev/null || echo "[repro] WARN: checkout 96b98a17ee067d9956cafcfb65448d527910349b failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+# #931: the original command read these files from outputs/ (since deleted); the bundle copies are used instead.
 # --- original training command ---
-CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. .venv/bin/python outputs/b01-court-expansion-5/render_check.py
+CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. .venv/bin/python "$SCRIPT_DIR/render_check.py"

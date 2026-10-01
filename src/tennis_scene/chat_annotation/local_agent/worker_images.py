@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import math
-from pathlib import Path
 from typing import Any
 
 import cv2
@@ -19,6 +18,7 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
 from .common import (
     iter_frames,
 )
+from .path_contracts import output_name, validate_command_paths
 from .worker_candidates import read_cache
 from .worker_context import Ctx, dump, parse_frames
 
@@ -248,7 +248,7 @@ def write_sheets(
     header_h = 18 * len(header) + 4
     rows_per = max(1, (MAX_SHEET_H - header_h + gap) // (th + gap))
     per_sheet = cols * rows_per
-    out_dir = ctx.work / "sheets"
+    out_dir = validate_command_paths(output=ctx.work / "sheets")['output']
     out_dir.mkdir(parents=True, exist_ok=True)
     paths: list[str] = []
     for page, begin in enumerate(range(0, len(tiles), per_sheet)):
@@ -289,7 +289,7 @@ def cmd_frames(ctx: Ctx, args: argparse.Namespace) -> int:
         if args.ruler:
             tile = ruler(tile, x1, y1, scale, args.ruler)
         tiles.append(labeled(tile, f"f{index}"))
-    name = args.name or f"frames_{start:04d}-{stop:04d}_s{args.step}"
+    name = output_name(args.name or f"frames_{start:04d}-{stop:04d}_s{args.step}")
     header = [
         f"{ctx.task['clip_id']} [{ctx.target}] frames {start}..{stop - 1} step {args.step} draw={args.draw}",
         f"crop origin=({x1},{y1}) size=({x2 - x1},{y2 - y1}) scale={scale:g}: original x = {x1} + u/{scale:g}, y = {y1} + v/{scale:g}"
@@ -329,12 +329,8 @@ def cmd_crops(ctx: Ctx, args: argparse.Namespace) -> int:
     wanted: dict[int, list[tuple[float, float, str]]] = {}
     blobs: dict[int, list[tuple[float, float]]] = {}
     start, stop = ctx.check_range(args.start, args.stop)
-    if args.points:
-        raw = (
-            loads_json(Path(args.points).read_text(encoding="utf-8"))
-            if Path(args.points).exists()
-            else loads_json(args.points)
-        )
+    if args.points or args.points_file is not None:
+        raw = loads_json(args.points_file.read_text(encoding='utf-8')) if args.points_file is not None else loads_json(args.points)
         items = raw.items() if isinstance(raw, dict) else [(p["frame"], p) for p in raw]
         for key, value in items:
             index = int(key)
@@ -394,7 +390,7 @@ def cmd_crops(ctx: Ctx, args: argparse.Namespace) -> int:
     if args.draw is None:
         args.draw = (
             "annotation"
-            if (args.source == "annotation" and not args.points)
+            if (args.source == "annotation" and not args.points and args.points_file is None)
             else "none"
         )
     drawer = Drawer(ctx, args.draw)
@@ -446,9 +442,9 @@ def cmd_crops(ctx: Ctx, args: argparse.Namespace) -> int:
                 tile = ruler(tile, x0, y0, scale, args.ruler)
             text = f"f{index} o=({x0},{y0})" + (f" {label}" if label else "")
             tiles.append(labeled(tile, text))
-    name = (
+    name = output_name(
         args.name
-        or f"crops_{args.source if not args.points else 'points'}_{indices[0]:04d}-{indices[-1]:04d}"
+        or f"crops_{args.source if not args.points and args.points_file is None else 'points'}_{indices[0]:04d}-{indices[-1]:04d}"
     )
     header = [
         f"{ctx.task['clip_id']} [{ctx.target}] crops {w}x{h} scale={scale:g} draw={args.draw}",

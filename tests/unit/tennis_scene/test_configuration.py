@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import math
+import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,7 +17,6 @@ from src.tennis_scene.configuration import (
     parse_visualize_tasks_config,
 )
 from src.utils.configuration import (
-    SemanticConfigurationError,
     UnknownConfigurationKeyError,
 )
 from src.utils.paths import PROJECT_ROOT
@@ -34,12 +33,18 @@ def _composed(config_name: str, overrides: list[str]) -> Iterator[DictConfig]:
 
 
 def _pipeline_config(root: Path, *overrides: str) -> DictConfig:
-    """Compose the shipped pipeline config with a temporary project root."""
+    """Compose the shipped pipeline config with a temporary project root.
+
+    The association config is project-owned and read while the runtime config
+    is built, so the temporary root receives the shipped copy.
+    """
+    association = "src/tasks/player_association/configs/association.yaml"
+    (root / association).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(PROJECT_ROOT / association, root / association)
     with _composed(
         "pipeline",
         [
             f"paths.project_root={root.resolve()}",
-            "court_reference.view_half_turns=[false,false,true]",
             *overrides,
         ],
     ) as config:
@@ -152,104 +157,45 @@ def test_clip_studio_rejects_invalid_port(tmp_path: Path, port: int) -> None:
         parse_clip_studio_config(OmegaConf.create(config))
 
 
-def test_player_motion_defaults_configure_automatic_alignment(
-    tmp_path: Path,
-) -> None:
+@pytest.mark.parametrize("override", [
+    "ball_detection.candidates.max_candidates=0",
+    "ball_detection.candidates.nms_kernel=4",
+    "ball_detection.candidates.patch_size=-1",
+])
+def test_invalid_ball_candidate_config_fails_before_inference(tmp_path: Path, override: str) -> None:
+    with pytest.raises(ValueError):
+        PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
+
+
+def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path))
-
-    assert runtime.player_motion.scale_mode == "fixed"
-    assert (
-        runtime.player_motion.smpl_joint_regressor
-        == runtime.gvhmr.bundled_assets.smpl_neutral_joint_regressor
-    )
-    similarity = runtime.player_motion.similarity
-    assert similarity.sigma_position == pytest.approx(0.5)
-    assert similarity.sigma_heading == pytest.approx(math.radians(30.0))
-    assert similarity.heading_weight == pytest.approx(1.0)
-    assert similarity.scale_prior == pytest.approx(1.0)
-    assert similarity.min_scale == pytest.approx(0.5)
-    assert similarity.max_scale == pytest.approx(2.0)
-    assert similarity.huber_delta == pytest.approx(1.0)
-    assert similarity.heading_resultant_threshold == pytest.approx(0.5)
-    assert similarity.max_nfev == 500
-    # The declared degree value is converted once; the scale mode is applied
-    # when the module builds its fit config.
-    assert similarity.fixed_scale is None
-    assert runtime.player_motion.fit_config().fixed_scale == 1.0
+    assert runtime.sampling_max_frames == 1024
+    assert runtime.camera_geometry.reference_camera is None
+    assert runtime.people.runtime.static_cam
+    assert runtime.enabled["player_reconstruction"] and "blcs_association" not in runtime.enabled
 
 
-def test_player_motion_accepts_free_scale(
-    tmp_path: Path,
-) -> None:
-    runtime = PipelineRuntimeConfig.from_config(
-        _pipeline_config(
-            tmp_path,
-            "player_motion.scale_mode=free",
-        )
-    )
-
-    assert runtime.player_motion.scale_mode == "free"
-    assert runtime.player_motion.fit_config().fixed_scale is None
-
-
-def test_player_motion_rejects_the_removed_source_choice(tmp_path: Path) -> None:
-    with pytest.raises(UnknownConfigurationKeyError, match="player_motion.source"):
-        PipelineRuntimeConfig.from_config(
-            _pipeline_config(tmp_path, "+player_motion.source=plcs")
-        )
-
-
-@pytest.mark.parametrize(
-    "override", ["player_motion.scale_mode=huge", "player_motion.scale_mode=Fixed"]
-)
-def test_player_motion_rejects_unknown_scale_modes(
-    tmp_path: Path, override: str
-) -> None:
-    with pytest.raises(SemanticConfigurationError, match="player_motion"):
+@pytest.mark.parametrize("override", ["+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])
+def test_automatic_pipeline_rejects_removed_manual_and_3d_settings(tmp_path: Path, override: str) -> None:
+    with pytest.raises(UnknownConfigurationKeyError):
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
 
 
-@pytest.mark.parametrize(
-    "override",
-    [
-        "player_motion.alignment.sigma_position_m=0.0",
-        "player_motion.alignment.sigma_position_m=-1.0",
-        "player_motion.alignment.sigma_heading_deg=0.0",
-        "player_motion.alignment.sigma_heading_deg=-30.0",
-        "player_motion.alignment.huber_delta=0.0",
-    ],
-)
-def test_player_motion_rejects_non_positive_sigmas(
-    tmp_path: Path, override: str
-) -> None:
-    with pytest.raises(SemanticConfigurationError, match="player_motion"):
+@pytest.mark.parametrize("override", ["frame_sampling.max_frames=0", "camera_geometry.side_max_cost=-1", "person_observations.sideline_margin_m=-1",
+                                      "person_observations.max_tracks_per_camera=0"])
+def test_automatic_pipeline_rejects_invalid_operating_thresholds(tmp_path: Path, override: str) -> None:
+    with pytest.raises(ValueError):
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
 
 
-def test_player_motion_rejects_inverted_scale_bounds(tmp_path: Path) -> None:
-    with pytest.raises(SemanticConfigurationError, match="min_scale"):
-        PipelineRuntimeConfig.from_config(
-            _pipeline_config(
-                tmp_path,
-                "player_motion.alignment.min_scale=3.0",
-                "player_motion.alignment.max_scale=2.0",
-            )
-        )
-
-
-def test_player_motion_rejects_an_unknown_alignment_key(tmp_path: Path) -> None:
-    with pytest.raises(UnknownConfigurationKeyError, match="alignment"):
-        PipelineRuntimeConfig.from_config(
-            _pipeline_config(tmp_path, "+player_motion.alignment.unexpected_value=1.0")
-        )
-
-
-def test_visualize_tasks_accepts_gvhmr_alignment_by_default(
+def test_visualize_tasks_defaults_to_automatic_reconstruction(
     tmp_path: Path,
 ) -> None:
     runtime = parse_visualize_tasks_config(_visualize_tasks_config(tmp_path))
 
-    assert "gvhmr_alignment" in runtime.tasks
+    assert "gvhmr_alignment" not in runtime.tasks
+    assert "player_reconstruction" in runtime.tasks
+    assert "ball_reconstruction" in runtime.tasks
 
 
 def test_visualize_tasks_accepts_gvhmr_alignment_on_its_own(

@@ -1,0 +1,34 @@
+{
+  "hp_metric": {
+    "count": 1,
+    "first_step": 0,
+    "last_step": 0,
+    "last_value": -1.0,
+    "first_time": "2026-09-28T10:29:42.108679",
+    "last_time": "2026-09-28T10:29:42.108679"
+  },
+  "lr-AdamW": {
+    "count": 38,
+    "first_step": 49,
+    "last_step": 1899,
+    "last_value": 1.974176848307252e-05,
+    "first_time": "2026-09-28T10:30:35.967660",
+    "last_time": "2026-09-28T10:54:05.401598"
+  },
+  "train/loss": {
+    "count": 38,
+    "first_step": 49,
+    "last_step": 1899,
+    "last_value": 0.0005668875528499484,
+    "first_time": "2026-09-28T10:30:36.756459",
+    "last_time": "2026-09-28T10:54:06.179941"
+  },
+  "epoch": {
+    "count": 38,
+    "first_step": 49,
+    "last_step": 1899,
+    "last_value": 0.0,
+    "first_time": "2026-09-28T10:30:36.756574",
+    "last_time": "2026-09-28T10:54:06.180035"
+  }
+}

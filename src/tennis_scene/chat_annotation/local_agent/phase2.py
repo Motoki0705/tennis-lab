@@ -21,10 +21,26 @@ import json
 from pathlib import Path
 from typing import Any
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 from .campaign_state import channel_map, locked_state, log_event, read_state
 from .common import load_annotation, load_manifest, manifest_index
 from .configuration import file_sha256, paths
+from .path_contracts import campaign_resolver, validate_command_paths
 from .qa import ball_metrics
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 
 def source_of(clip_id: str, campaign_clips: set[str]) -> str:
@@ -532,6 +548,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-runs", type=int, default=10000)
     p = sub.add_parser("triage")
     args = parser.parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    validate_command_paths()
     return {
         "rank": cmd_rank,
         "enqueue": cmd_enqueue,
@@ -539,7 +557,3 @@ def main(argv: list[str] | None = None) -> int:
         "disagreements": cmd_disagreements,
         "triage": cmd_triage,
     }[args.cmd](args)
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

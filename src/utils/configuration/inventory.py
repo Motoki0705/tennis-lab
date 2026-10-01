@@ -147,6 +147,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.convert_web_dataset": "ball.web_tool",
     "src.tasks.ball_detection.scripts.eval": "ball.eval",
     "src.tasks.ball_detection.scripts.evaluate_manifest": "ball.evaluate_manifest",
+    "src.tasks.ball_detection.scripts.generate_dataset": "ball_detection.generate_dataset",
     "src.tasks.ball_detection.scripts.preview_augmentation": "ball.preview",
     "src.tasks.ball_detection.scripts.preview_heatmaps": "ball.preview",
     "src.tasks.ball_detection.scripts.train": "ball.train",
@@ -166,6 +167,11 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.train": "court_detection.train",
     "src.tasks.court_detection.scripts.train_mixed": "court_detection.train_mixed",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
+    "src.tasks.player_detection.scripts.generate_dataset": "player_detection.generate_dataset",
+    "src.tasks.player_detection.scripts.train": "player_detection.train",
+    "src.tasks.player_detection.scripts.export_checkpoint": "player_detection.export_checkpoint",
+    "src.tasks.player_detection.scripts.evaluate": "player_detection.evaluate",
+    "src.tasks.player_detection.scripts.preview_dataset": "player_detection.preview_dataset",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "blcs.api_server",
     "src.tasks.blcs.scripts.generate_dataset": "blcs.generate_dataset",
     "src.tasks.blcs.scripts.generate_dataset_samples": "blcs.generate_dataset_samples",
@@ -219,6 +225,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.convert_web_dataset": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.eval": "src.tasks.ball_detection.configuration.validate_eval",
     "src.tasks.ball_detection.scripts.evaluate_manifest": "src.tasks.ball_detection.configuration.validate_manifest_boundary",
+    "src.tasks.ball_detection.scripts.generate_dataset": "src.tasks.ball_detection.generate_dataset.frame_store.config.validate_generate_boundary",
     "src.tasks.ball_detection.scripts.preview_augmentation": "src.tasks.ball_detection.configuration.validate_preview",
     "src.tasks.ball_detection.scripts.preview_heatmaps": "src.tasks.ball_detection.configuration.validate_preview",
     "src.tasks.ball_detection.scripts.train": "src.tasks.ball_detection.configuration.validate_training",
@@ -238,6 +245,11 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.configuration.validate_train_boundary",
     "src.tasks.court_detection.scripts.train_mixed": "src.tasks.court_detection.training.runner_mixed.validate_mixed_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
+    "src.tasks.player_detection.scripts.generate_dataset": "src.tasks.player_detection.configuration.validate_generate_boundary",
+    "src.tasks.player_detection.scripts.train": "src.tasks.player_detection.configuration.validate_train_boundary",
+    "src.tasks.player_detection.scripts.export_checkpoint": "src.tasks.player_detection.configuration.validate_export_boundary",
+    "src.tasks.player_detection.scripts.evaluate": "src.tasks.player_detection.configuration.validate_evaluate_boundary",
+    "src.tasks.player_detection.scripts.preview_dataset": "src.tasks.player_detection.configuration.validate_preview_boundary",
     "src.tasks.blcs.generate_dataset.api_server.__main__": "src.tasks.blcs.configuration.validate_api_boundary",
     "src.tasks.blcs.scripts.generate_dataset": "src.tasks.blcs.configuration.validate_generation_boundary",
     "src.tasks.blcs.scripts.generate_dataset_samples": "src.tasks.blcs.generate_dataset.samples.validate_dataset_samples_boundary",
@@ -303,11 +315,18 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     **{
+        f"src.tennis_scene.chat_annotation.local_agent.{name}": (
+            "tennis_scene.chat_annotation.local_agent",
+            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+        )
+        for name in ("__main__", "audit", "ct", "dispatcher", "efficiency", "intake", "phase2", "prefetch", "qa", "status")
+    },
+    **{
         f"src.tennis_scene.chat_annotation.scripts.{script}": (
             f"tennis_scene.chat_annotation.{script}",
             "src.utils.configuration.paths.NonHydraPathBoundary.validate",
         )
-        for script in ("serve_artifacts", "sync_done")
+        for script in ("serve_artifacts", "sync_done", "review_ui")
     },
     "src.tennis_scene.chat_annotation.scripts.annotate": (
         "tennis_scene.chat_annotation.tools",
@@ -380,6 +399,14 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "blcs.inference_ui",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.scripts.visualize_component_store": (
+        "tennis_scene.component_gallery",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.court_side.scripts.benchmark_synthetic": (
+        "court_side.benchmark_synthetic",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -412,6 +439,12 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    *(
+        _non_hydra_boundary(f"src.tennis_scene.chat_annotation.local_agent.{name}", "main",
+                            domain="tennis_scene", executable_module=name == "__main__")
+        for name in ("__main__", "audit", "ct", "dispatcher", "efficiency", "intake", "phase2", "prefetch", "qa", "status")
+    ),
+    _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.review_ui", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.serve_artifacts", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.sync_done", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.annotate", "main", domain="tennis_scene", executable_module=True),
@@ -500,6 +533,18 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         domain="blcs",
         executable_module=True,
     ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.visualize_component_store",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.court_side.scripts.benchmark_synthetic",
+        "main",
+        domain="court_side",
+        executable_module=True,
+    ),
     _runtime_boundary(
         "plcs",
         "src.tasks.plcs.scripts.extract_gvhmr_motions",
@@ -523,6 +568,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "ball_detection", "src.tasks.ball_detection.scripts.convert_web_dataset"
     ),
     _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.eval"),
+    _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.generate_dataset"),
     _runtime_boundary(
         "ball_detection", "src.tasks.ball_detection.scripts.evaluate_manifest"
     ),
@@ -587,6 +633,11 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "court_detection", "src.tasks.court_detection.scripts.train_mixed"
     ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),
+    _runtime_boundary("player_detection", "src.tasks.player_detection.scripts.generate_dataset"),
+    _runtime_boundary("player_detection", "src.tasks.player_detection.scripts.train"),
+    _runtime_boundary("player_detection", "src.tasks.player_detection.scripts.export_checkpoint"),
+    _runtime_boundary("player_detection", "src.tasks.player_detection.scripts.evaluate"),
+    _runtime_boundary("player_detection", "src.tasks.player_detection.scripts.preview_dataset"),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.analysis.analyze_angle_velocity"),
     _runtime_boundary(
         "plcs", "src.tasks.plcs.scripts.analysis.analyze_dataset_distribution"

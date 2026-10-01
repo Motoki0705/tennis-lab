@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -23,25 +24,32 @@ class CampaignConfig(BaseModel):
     project_root: Path
     python_executable: Path
     codex_binary: str = "codex"
-    codex_home: Path | None = None
+    codex_home: Path
     ball_checkpoint: Path | None = None
     ball_checkpoint_sha256: str | None = None
 
     @field_validator(
-        "annotation_root", "campaign_dir", "project_root", "python_executable"
+        "annotation_root", "campaign_dir", "project_root", "codex_home"
     )
     @classmethod
     def absolute_path(cls, value: Path) -> Path:
         if not value.is_absolute():
             raise ValueError("campaign paths must be absolute")
-        return value
+        return value.resolve()
 
-    @field_validator("ball_checkpoint", "codex_home")
+    @field_validator('python_executable')
+    @classmethod
+    def python_launcher(cls, value: Path) -> Path:
+        if not value.is_absolute() or not value.is_file() or not os.access(value, os.X_OK):
+            raise ValueError('python_executable must name an existing absolute executable')
+        return value.parent.resolve() / value.name
+
+    @field_validator("ball_checkpoint")
     @classmethod
     def optional_absolute_path(cls, value: Path | None) -> Path | None:
         if value is not None and not value.is_absolute():
             raise ValueError("optional paths must be absolute")
-        return value
+        return value.resolve() if value is not None else None
 
     @model_validator(mode="after")
     def disjoint_outputs(self) -> CampaignConfig:
@@ -101,7 +109,7 @@ class CampaignConfig(BaseModel):
 
 
 class AdaptiveConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
     enabled: bool = False
     min: int = Field(default=1, ge=1)
@@ -123,7 +131,7 @@ class AdaptiveConfig(BaseModel):
 
 
 class VariantConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
     weight: float = Field(default=1, gt=0)
     codex_config: list[str] = Field(default_factory=list)
 
@@ -139,7 +147,7 @@ class VariantConfig(BaseModel):
 
 
 class ControlConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
     mode: Literal["pilot", "run", "drain", "stop"] = "run"
     targets: list[Literal["ball"]] = Field(default_factory=lambda: ["ball"])
@@ -151,12 +159,13 @@ class ControlConfig(BaseModel):
     pilot_tasks: list[str] = Field(default_factory=list)
     adaptive: AdaptiveConfig = Field(default_factory=AdaptiveConfig)
     variants: dict[str, VariantConfig] = Field(
-        default_factory=lambda: {"base": VariantConfig()}
+        default_factory=lambda: {"base": VariantConfig()}, min_length=1,
     )
     max_launch_per_tick: int = Field(default=3, ge=1)
     quota_stop_percent: float | None = Field(default=None, gt=0, le=100)
     slow_seconds: float = Field(default=10800, gt=0)
     timeout_seconds: float = Field(default=21600, gt=0)
+    termination_grace_seconds: float = Field(default=5, gt=0)
 
     @field_validator("targets")
     @classmethod

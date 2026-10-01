@@ -801,6 +801,72 @@ def validate_augmentation(value: object) -> ConfigMapping:
     return augmentation
 
 
+STORE_DATA_KEYS = frozenset(
+    {"data_dir", "sources", "train_sampling", "train_stride", "eval_stride", "supervision"}
+)
+_STORE_SOURCES = frozenset({"tracknet", "meiji", "chat_annotation"})
+
+
+def _validate_store_fields(
+    data: ConfigMapping,
+    *,
+    path: str,
+    paths: BallRuntimePaths | None,
+    require_natural_sampling: bool,
+) -> None:
+    """Validate the ball frame store keys shared by ``store`` and staged ``sources.store``."""
+    typed(data, "data_dir", str, path=path)
+    sources = _validate_string_sequence(data["sources"], path=f"{path}.sources")
+    if not sources:
+        raise SemanticConfigurationError(f"{path}.sources must not be empty.")
+    unknown = sorted(set(sources) - _STORE_SOURCES)
+    if unknown or len(set(sources)) != len(sources):
+        raise SemanticConfigurationError(
+            f"{path}.sources must be distinct names from {sorted(_STORE_SOURCES)}; got {list(sources)}."
+        )
+    _positive(cast(int, typed(data, "train_stride", int, path=path)), path=f"{path}.train_stride")
+    eval_stride = typed(data, "eval_stride", (int, type(None)), path=path)
+    if eval_stride is not None:
+        _positive(cast(int, eval_stride), path=f"{path}.eval_stride")
+    supervision = exact_mapping(
+        data["supervision"], path=f"{path}.supervision", required={"positive", "absent", "ignore"}
+    )
+    for role in ("positive", "absent", "ignore"):
+        _validate_string_sequence(supervision[role], path=f"{path}.supervision.{role}")
+    from src.tasks.ball_detection.data.supervision import FrameSupervisionPolicy
+
+    try:
+        FrameSupervisionPolicy.from_mapping(cast(Mapping[str, Sequence[str]], supervision))
+    except ValueError as error:
+        raise SemanticConfigurationError(f"{path}.supervision: {error}") from error
+    sampling = data["train_sampling"]
+    if require_natural_sampling and sampling is not None:
+        raise SemanticConfigurationError(
+            f"{path}.train_sampling must be null: the staged sampler orders the windows."
+        )
+    if sampling is not None:
+        sampling_path = f"{path}.train_sampling"
+        sampling = exact_mapping(
+            sampling, path=sampling_path, required={"windows_per_epoch", "seed", "source_weights"}
+        )
+        _positive(
+            cast(int, typed(sampling, "windows_per_epoch", int, path=sampling_path)),
+            path=f"{sampling_path}.windows_per_epoch",
+        )
+        typed(sampling, "seed", int, path=sampling_path)
+        weights = as_mapping(sampling["source_weights"], path=f"{sampling_path}.source_weights")
+        if set(weights) != set(sources):
+            raise SemanticConfigurationError(
+                f"{sampling_path}.source_weights must name exactly {path}.sources "
+                f"({sorted(sources)}); got {sorted(weights)}."
+            )
+        for name in weights:
+            weight = _required_number(weights, name, path=f"{sampling_path}.source_weights")
+            _positive(weight, path=f"{sampling_path}.source_weights.{name}")
+    if paths is not None:
+        paths.data(cast(str, data["data_dir"]))
+
+
 def validate_data(
     config: object, *, paths: BallRuntimePaths | None = None
 ) -> ConfigMapping:
@@ -812,7 +878,6 @@ def validate_data(
     source = typed(data, "source", str, path="data")
     common = {
         "source",
-        "data_dir",
         "batch_size",
         "num_workers",
         "pin_memory",
@@ -822,20 +887,10 @@ def validate_data(
         "max_instances",
         "augmentation",
     }
-    if source in {"tracknet", "youtube"}:
-        required = common | {"split", "sample_stride"}
+    if source == "store":
+        required = common | STORE_DATA_KEYS
     elif source == "web":
-        required = common | {"sources", "sampling"}
-    elif source == "mixed_tracknet":
-        required = common | {
-            "split",
-            "sample_stride",
-            "synthetic",
-            "synthetic_per_batch",
-            "synthetic_batch_period",
-            "steps_per_epoch",
-            "sampling_seed",
-        }
+        required = common | {"data_dir", "sources", "sampling"}
     elif source == "staged":
         required = {
             "source",
@@ -881,18 +936,8 @@ def validate_data(
             cast(int, typed(data, "batch_size", int, path="data")),
             path="data.batch_size",
         )
-    if "split" in data:
-        split = exact_mapping(
-            data["split"],
-            path="data.split",
-            required={"root_role", "train_file", "val_file", "test_file"},
-        )
-        _validate_split_mapping(split, path="data.split", paths=paths)
-    if source in {"tracknet", "youtube"}:
-        _positive(
-            cast(int, typed(data, "sample_stride", int, path="data")),
-            path="data.sample_stride",
-        )
+    if source == "store":
+        _validate_store_fields(data, path="data", paths=paths, require_natural_sampling=False)
     if source == "web":
         sources = typed(data, "sources", (str, list, tuple), path="data")
         if isinstance(sources, (list, tuple)):
@@ -934,46 +979,6 @@ def validate_data(
         )
         if max_gap is not None:
             _positive(cast(int, max_gap), path="data.sampling.temporal.max_frame_gap")
-    if source == "mixed_tracknet":
-        for key in (
-            "sample_stride",
-            "synthetic_per_batch",
-            "synthetic_batch_period",
-            "steps_per_epoch",
-            "sampling_seed",
-        ):
-            value = cast(int, typed(data, key, int, path="data"))
-            _positive(
-                value,
-                path=f"data.{key}",
-                allow_zero=key == "synthetic_per_batch",
-            )
-        synthetic = exact_mapping(
-            data["synthetic"],
-            path="data.synthetic",
-            required={"data_dir", "split", "sample_stride"},
-        )
-        typed(synthetic, "data_dir", str, path="data.synthetic")
-        _positive(
-            cast(
-                int,
-                typed(synthetic, "sample_stride", int, path="data.synthetic"),
-            ),
-            path="data.synthetic.sample_stride",
-        )
-        synthetic_split = exact_mapping(
-            synthetic["split"],
-            path="data.synthetic.split",
-            required={"root_role", "train_file"},
-        )
-        _validate_split_mapping(
-            synthetic_split,
-            path="data.synthetic.split",
-            paths=paths,
-            file_keys=("train_file",),
-        )
-        if paths is not None:
-            paths.data(cast(str, synthetic["data_dir"]))
     if source == "staged":
         for key in (
             "t_max",
@@ -1007,37 +1012,17 @@ def validate_data(
             _positive(raw_t, path=f"data.batch_size_by_t.{raw_t}")
             _positive(raw_batch, path=f"data.batch_size_by_t.{raw_t}")
         sources = exact_mapping(
-            data["sources"], path="data.sources", required={"tracknet", "web"}
+            data["sources"], path="data.sources", required={"store", "web"}
         )
-        tracknet = exact_mapping(
-            sources["tracknet"],
-            path="data.sources.tracknet",
-            required={"enabled", "splits", "data_dir", "sample_stride", "split"},
+        store = exact_mapping(
+            sources["store"],
+            path="data.sources.store",
+            required={"enabled", "splits"} | STORE_DATA_KEYS,
         )
-        exact_mapping(
-            tracknet["split"],
-            path="data.sources.tracknet.split",
-            required={"root_role", "train_file", "val_file", "test_file"},
-        )
-        typed(tracknet, "enabled", bool, path="data.sources.tracknet")
-        typed(tracknet, "data_dir", str, path="data.sources.tracknet")
-        _required_sequence(
-            tracknet,
-            "splits",
-            path="data.sources.tracknet",
-            item_type=str,
-        )
-        _positive(
-            cast(
-                int,
-                typed(tracknet, "sample_stride", int, path="data.sources.tracknet"),
-            ),
-            path="data.sources.tracknet.sample_stride",
-        )
-        _validate_split_mapping(
-            as_mapping(tracknet["split"], path="data.sources.tracknet.split"),
-            path="data.sources.tracknet.split",
-            paths=paths,
+        typed(store, "enabled", bool, path="data.sources.store")
+        _required_sequence(store, "splits", path="data.sources.store", item_type=str)
+        _validate_store_fields(
+            store, path="data.sources.store", paths=paths, require_natural_sampling=True
         )
         web = exact_mapping(
             sources["web"],
@@ -1096,32 +1081,10 @@ def validate_data(
             path="data.sources.web.sampling.temporal",
         )
         if paths is not None:
-            paths.data(cast(str, tracknet["data_dir"]))
             paths.data(cast(str, web["data_dir"]))
     if paths is not None and "data_dir" in data:
         paths.data(cast(str, typed(data, "data_dir", str, path="data")))
     return data
-
-
-def _validate_split_mapping(
-    split: ConfigMapping,
-    *,
-    path: str,
-    paths: BallRuntimePaths | None,
-    file_keys: tuple[str, ...] = ("train_file", "val_file", "test_file"),
-) -> None:
-    root_role = cast(str, typed(split, "root_role", str, path=path))
-    if root_role not in {"project", "data"}:
-        raise SemanticConfigurationError(
-            f"{path}.root_role must be 'project' or 'data'."
-        )
-    for key in file_keys:
-        relative = cast(str, typed(split, key, str, path=path))
-        if paths is not None:
-            if root_role == "project":
-                paths.project(relative)
-            else:
-                paths.data(relative)
 
 
 def validate_training(config: DictConfig) -> None:
@@ -1494,7 +1457,8 @@ def validate_visualization(config: DictConfig) -> None:
         root["visualization"],
         path="visualization",
         required={
-            "clip_dir",
+            "store_dir",
+            "clip_id",
             "checkpoint",
             "save",
             "fps",
@@ -1510,7 +1474,7 @@ def validate_visualization(config: DictConfig) -> None:
             "gif",
         },
     )
-    for key in ("clip_dir", "checkpoint", "save"):
+    for key in ("store_dir", "clip_id", "checkpoint", "save"):
         typed(vis, key, str, path="visualization")
     fps = _required_number(vis, "fps", path="visualization")
     _positive(fps, path="visualization.fps")
@@ -1535,7 +1499,7 @@ def validate_visualization(config: DictConfig) -> None:
         allow_zero=True,
     )
     paths.output(cast(str, run["output_dir"]))
-    paths.data(cast(str, vis["clip_dir"]))
+    paths.data(cast(str, vis["store_dir"]))
     paths.checkpoint(cast(str, vis["checkpoint"]))
     paths.artifact(cast(str, vis["save"]))
 

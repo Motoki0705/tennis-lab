@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import torch
 from tqdm import tqdm
 
 from src.submodules.configuration import require_absolute_path
+from src.submodules.models._base.crops import iter_person_crops
 from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
@@ -26,6 +28,7 @@ class ImageFeatureRequest:
 
     video_path: str | Path
     bbx_xys: torch.Tensor
+    frame_indices: torch.Tensor | None = None
 
 
 @dataclass(frozen=True)
@@ -81,15 +84,18 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
     def _predict_impl(self, request: ImageFeatureRequest) -> ImageFeatureResult:
         if self._model is None:
             raise RuntimeError("HMR2 model did not load before prediction.")
-        imgs, _ = get_batch(str(request.video_path), request.bbx_xys, img_ds=0.5)
-
-        num_frames = imgs.shape[0]
+        batches: Iterator[tuple[torch.Tensor, torch.Tensor]]
+        if request.frame_indices is None:
+            imgs, _ = get_batch(str(request.video_path), request.bbx_xys, img_ds=0.5)
+            batches = ((imgs[j:j + self.batch_size], request.bbx_xys[j:j + self.batch_size]) for j in range(0, len(imgs), self.batch_size))
+        else:
+            batches = iter_person_crops(request.video_path, request.bbx_xys, request.frame_indices, batch_size=self.batch_size)
         features = []
-        for j in tqdm(range(0, num_frames, self.batch_size), desc="HMR2 features"):
-            imgs_batch = imgs[j : j + self.batch_size].to(self._device)
+        for images, _ in tqdm(batches, desc="HMR2 features"):
+            imgs_batch = images.to(self._device)
             feature = self._model({"img": imgs_batch})
             features.append(feature.detach().cpu())
 
         return ImageFeatureResult(
-            features=torch.cat(features, dim=0).float()
+            features=torch.cat(features, dim=0).float() if features else torch.empty(0, 1024)
         )  # (F, 1024)

@@ -53,7 +53,50 @@ class BallTrainingCall:
     target_heatmaps: Tensor
     coords: Tensor
     visibility: Tensor
+    supervised: Tensor
     original_size: Tensor
+
+
+@dataclass(frozen=True)
+class BallCandidateConfig:
+    """Threshold-free local-peak evidence; sizes are in native heatmap cells."""
+
+    max_candidates: int = 8
+    nms_kernel: int = 5
+    patch_size: int = 5
+
+    def __post_init__(self) -> None:
+        for name in ("max_candidates", "nms_kernel", "patch_size"):
+            value = getattr(self, name)
+            if type(value) is not int or value <= 0:
+                raise ValueError(f"{name} must be a positive integer.")
+        if self.nms_kernel % 2 == 0 or self.patch_size % 2 == 0:
+            raise ValueError("nms_kernel and patch_size must be odd.")
+
+
+DEFAULT_CANDIDATE_CONFIG = BallCandidateConfig()
+
+
+@dataclass(frozen=True)
+class BallCandidates:
+    """Unthresholded peaks, padded to K with explicit masks.
+
+    coords: (B,T,K,2), x/(W-1), y/(H-1), optionally subpixel refined.
+    scores: (B,T,K), native sigmoid cell values, not existence probabilities.
+    valid: (B,T,K), a contrastive local peak exists (not an observation gate).
+    cells: (B,T,K,2), integer x,y lattice centres before subpixel refinement.
+    patches: (B,T,K,P,P), native probability values around those centres.
+    patch_valid: (B,T,K,P,P), in-map cells of a valid candidate.
+    Invalid slots and out-of-map patch values are zero, never fabricated peaks.
+    """
+
+    coords: Tensor
+    scores: Tensor
+    valid: Tensor
+    cells: Tensor
+    patches: Tensor
+    patch_valid: Tensor
+    config: BallCandidateConfig
 
 
 @dataclass(frozen=True)
@@ -63,6 +106,7 @@ class BallPrediction:
     coords: Tensor
     confidence: Tensor
     heatmaps: Tensor
+    candidates: BallCandidates
 
 
 class BallHeatmapPredictor(Protocol):
@@ -84,6 +128,8 @@ class BallHeatmapPredictor(Protocol):
 
 
 __all__ = [
+    "BallCandidateConfig",
+    "BallCandidates",
     "BallHeatmapPredictor",
     "BallInputLayout",
     "BallInputMode",

@@ -1,0 +1,95 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790558974032900448_1609437_i934-mixed-ft-s42-r5-20260928 (commit=ae5f5baaa359 provider=codex session=01a0e592-3e39-74f1-816b-fffe8fead5fc)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+[ball init_weights] strictly loaded 242 tensors from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+[ball_detection] train windows: {"chat_annotation": {"clips": 113, "clips_shorter_than_window": 0, "frames": 63600, "supervised_frames": 54960, "windows": 58060, "windows_without_supervision": 4749}, "meiji": {"clips": 72, "clips_shorter_than_window": 0, "frames": 25905, "supervised_frames": 21871, "windows": 22929, "windows_without_supervision": 2472}, "tracknet": {"clips": 74, "clips_shorter_than_window": 0, "frames": 16118, "supervised_frames": 16042, "windows": 15594, "windows_without_supervision": 6}}
+[ball_detection] val windows: {"chat_annotation": {"clips": 25, "clips_shorter_than_window": 0, "frames": 11610, "supervised_frames": 10931, "windows": 1395, "windows_without_supervision": 35}, "meiji": {"clips": 36, "clips_shorter_than_window": 0, "frames": 26961, "supervised_frames": 23007, "windows": 3046, "windows_without_supervision": 308}, "tracknet": {"clips": 9, "clips_shorter_than_window": 0, "frames": 1573, "supervised_frames": 1568, "windows": 192, "windows_without_supervision": 0}}
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name          ┃ Type                   ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model         │ ConvNeXtUNet           │ 20.9 M │ train │     0 │
+│ 1 │ loss_fn       │ FocalBCEWithLogitsLoss │      0 │ train │     0 │
+│ 2 │ train_metrics │ BallDetectionMetrics   │      0 │ train │     0 │
+│ 3 │ val_metrics   │ BallDetectionMetrics   │      0 │ train │     0 │
+│ 4 │ test_metrics  │ BallDetectionMetrics   │      0 │ train │     0 │
+└───┴───────────────┴────────────────────────┴────────┴───────┴───────┘
+Trainable params: 20.9 M                                                        
+Non-trainable params: 0                                                         
+Total params: 20.9 M                                                            
+Total estimated model params size (MB): 83.428                                  
+Modules in train mode: 269                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 4. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 1. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+Error executing job with overrides: ['paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft', 'paths.data_root=/home/kamimura/projects/tennis-lab/data', 'paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt', 'paths.output_root=/home/kamimura/projects/tennis-lab/outputs', 'paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs', 'paths.cache_root=/home/kamimura/projects/tennis-lab/.cache', 'paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party', 'run.output_dir=ball_detection/train/i934_mixed_ft/s42-r5-20260928']
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/utils/hydra.py", line 115, in validated
+    return function(config)
+           ^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/ball_detection/scripts/train.py", line 31, in main
+    runner.run(cfg)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/base/training/runner.py", line 107, in run
+    trainer.fit(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 49, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1123, in _run_stage
+    self.fit_loop.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 217, in run
+    self.advance()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 469, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 154, in run
+    self.on_advance_end(data_fetcher)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 406, in on_advance_end
+    self.val_loop.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/utilities.py", line 179, in _decorator
+    return loop_run(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 153, in run
+    return self.on_run_end()
+           ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 296, in on_run_end
+    self._on_evaluation_epoch_end()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 378, in _on_evaluation_epoch_end
+    call._call_callback_hooks(trainer, hook_name)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 228, in _call_callback_hooks
+    fn(trainer, trainer.lightning_module, *args, **kwargs)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/base/training/qualitative_callback.py", line 146, in on_validation_epoch_end
+    pl_module.render_qualitative_samples(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/ball_detection/training/lightning_module.py", line 329, in render_qualitative_samples
+    render_kwargs = build_render_animation_inputs(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/ball_detection/visualization/adapters/render_inputs.py", line 136, in build_render_animation_inputs
+    mdd_frames_rgb = build_mdd_frames_from_images(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/ball_detection/visualization/adapters/render_inputs.py", line 48, in build_mdd_frames_from_images
+    features = model_io.mdd_features(images_btchw)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/ball_detection/model_io/adapters.py", line 495, in mdd_features
+    call = self.prepare_images(images, image_normalization=image_normalization)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/ball_detection/model_io/adapters.py", line 349, in prepare_images
+    IDENTITY_NORMALIZATION.validate_preprocessed_range(images)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/src/tasks/ball_detection/model_io/normalization.py", line 81, in validate_preprocessed_range
+    raise BallModelIOError("images values must be in [0, 1].")
+src.tasks.ball_detection.model_io.contracts.BallModelIOError: images values must be in [0, 1].
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+exit_code=1

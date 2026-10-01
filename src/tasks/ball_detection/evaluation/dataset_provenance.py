@@ -1,4 +1,4 @@
-"""Sequential source labels and split provenance for evaluation datasets."""
+"""Split provenance for evaluation datasets."""
 
 from __future__ import annotations
 
@@ -9,44 +9,11 @@ from typing import Any, cast
 
 from torch.utils.data import Dataset
 
+from src.tasks.ball_detection.data.store import INDEX_FILE, METADATA_FILE
+from src.tasks.ball_detection.data.store_dataset import BallStoreDataset
 from src.tasks.ball_detection.data.web_datamodule import WebBallDetectionDataset
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.io import load_json
-
-
-class SequentialSourceResolver:
-    """Recover source names for val/test loaders that use sequential sampling."""
-
-    def __init__(self, dataset: Dataset[Any], *, default_source: str) -> None:
-        self.dataset = dataset
-        self.default_source = default_source
-        self.cursor = 0
-
-    def next(self, batch_size: int) -> list[str]:
-        """Return source names for the next sequential batch."""
-        start = self.cursor
-        stop = start + batch_size
-        if stop > len(cast(Sized, self.dataset)):
-            raise RuntimeError(
-                "Evaluation dataloader yielded more samples than its dataset."
-            )
-        self.cursor = stop
-        if not isinstance(self.dataset, WebBallDetectionDataset):
-            return [self.default_source] * batch_size
-
-        sources: list[str] = []
-        for window in self.dataset.windows[start:stop]:
-            indices = tuple(int(frame_name) for frame_name in window.frame_names)
-            window_sources = {
-                self.dataset.store.source_name(index) for index in indices
-            }
-            if len(window_sources) != 1:
-                raise RuntimeError(
-                    "A web evaluation window spans multiple sources: "
-                    f"{sorted(window_sources)}."
-                )
-            sources.append(next(iter(window_sources)))
-        return sources
 
 
 def build_split_provenance(
@@ -73,23 +40,19 @@ def build_split_provenance(
             "manifest_sha256": sha256_file(manifest_path),
             "sample_count": len(dataset),
         }
-
-    split_key = f"{split}_file"
-    split_role = PathRole(str(data_config.split.root_role))
-    split_path = resolver.resolve(split_role, str(data_config.split[split_key]))
-    if not split_path.is_file():
-        raise FileNotFoundError(
-            f"Configured {split} split file not found: {split_path}"
-        )
-    return {
-        "source": source,
-        "schema": "tracknet_label_csv_v1",
-        "data_dir": str(data_dir),
-        "split": split,
-        "split_file": str(split_path),
-        "split_sha256": sha256_file(split_path),
-        "sample_count": len(cast(Sized, dataset)),
-    }
+    if isinstance(dataset, BallStoreDataset):
+        store = dataset.store
+        return {
+            "source": source,
+            "schema": str(store.metadata["schema_version"]),
+            "data_dir": str(store.directory),
+            "split": split,
+            "store_sources": sorted({dataset.source_of(index) for index in range(len(dataset))}),
+            "metadata_sha256": sha256_file(store.directory / METADATA_FILE),
+            "index_sha256": sha256_file(store.directory / INDEX_FILE),
+            "sample_count": len(cast(Sized, dataset)),
+        }
+    raise TypeError(f"No split provenance for dataset type {type(dataset).__name__}")
 
 
 def sha256_file(path: str | Path) -> str:
@@ -101,8 +64,4 @@ def sha256_file(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-__all__ = [
-    "SequentialSourceResolver",
-    "build_split_provenance",
-    "sha256_file",
-]
+__all__ = ["build_split_provenance", "sha256_file"]

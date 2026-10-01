@@ -40,8 +40,8 @@ destination = "data/smplh"
 writable = false
 
 [[inputs]]
-source = "ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt"
-destination = "ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt"
+source = "ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt"
+destination = "ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt"
 writable = false
 
 [[inputs]]

@@ -1,0 +1,61 @@
+{
+  "queue_job": "1790583830380544588_9731_i934-holdout-ft-e13-vs-mixed-e0-r7-20260928",
+  "queue_state": "done",
+  "inference_commit": "78ce7d9bd96104e424cd4983e7427a2b81912f9f",
+  "rescore_command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/bin/python",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/tests/benchmarks/ball_detection_holdout.py",
+    "--phase",
+    "summarize",
+    "--report",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/knowledge/runs/run-i934-meiji-holdout-e0-r7/holdout"
+  ],
+  "cuda_visible_devices": "",
+  "original_vs_cpu_byte_equal": {
+    "metrics.json": true,
+    "metrics.csv": true,
+    "comparison.md": true
+  },
+  "files": {
+    "comparison.md": {
+      "bytes": 5657,
+      "sha256": "8707da889b498515b7a907b058bbc089400baad9c5fc1f376b2866378478649b"
+    },
+    "ft_e13.npz": {
+      "bytes": 3139203,
+      "sha256": "c2e6e68681768ee87044ac0e23b1bdc93af989c426b67dcd38d6190e69d7110f"
+    },
+    "metrics.csv": {
+      "bytes": 6457,
+      "sha256": "1b1dcf56c65253692c75d8413c01706b0de79b490a19c6515ef2b11f4c1be6be"
+    },
+    "metrics.json": {
+      "bytes": 20997,
+      "sha256": "aa2ed4ab05fa04c31b3376ccf7f4819b60295f4a89daccc57125b0108c90094d"
+    },
+    "mixed_ft.npz": {
+      "bytes": 3419633,
+      "sha256": "e58e73eaa3e3a0e3bd77a3ae8b3d07995967ca0e04b1e7c6324e316cc158e240"
+    },
+    "predictions.json": {
+      "bytes": 228,
+      "sha256": "104fa89a1403161b17ca1c7aaa6f170d61a05f27d4257ac21f3f3ef85909d4da"
+    },
+    "protocol.json": {
+      "bytes": 61017,
+      "sha256": "389b773b2fa34ec34f9db3b4ce3c111fee7b1fa5bac6b6e11c680feec49bb509"
+    },
+    "references.npz": {
+      "bytes": 323293,
+      "sha256": "614a9322798306b7819fdaf8257daaaefa4b15df5a214da43aeeec083d421571"
+    }
+  },
+  "direct_array_checks": {
+    "unique_frames": 36006,
+    "contiguous_camera_clips": 63,
+    "models": {
+      "ft_e13": "overall/camera counts and error quantiles agree with direct NPZ arithmetic",
+      "mixed_ft": "overall/camera counts and error quantiles agree with direct NPZ arithmetic"
+    }
+  }
+}

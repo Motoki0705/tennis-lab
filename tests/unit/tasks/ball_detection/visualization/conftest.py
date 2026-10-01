@@ -1,7 +1,7 @@
 """Fixtures for the ball-detection review/inference backend unit tests.
 
 Everything here is synthetic and CPU-only: a minimal unified web store, a
-minimal TrackNet-style clip tree, and a tiny real convolution checkpoint.  The
+minimal ball frame store, and a tiny real convolution checkpoint.  The
 real curated checkpoint and real clips are exercised separately by
 ``local_data`` tests so the default suite stays fast.
 """
@@ -20,21 +20,11 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
+from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 WEB_SCHEMA = "web_ball_frames_v2"
 # A tiny spatial size keeps the real convolution model fast on CPU.
 TINY_IMAGE_SIZE = (64, 128)
-
-_ROW_FIELDS = (
-    "file name",
-    "instance id",
-    "visibility",
-    "x-coordinate",
-    "y-coordinate",
-    "ball state",
-    "role",
-)
-
 
 def _jpeg(rgb: np.ndarray) -> bytes:
     ok, buffer = cv2.imencode(".jpg", cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
@@ -49,25 +39,28 @@ def write_clip(
     rows: Sequence[dict[str, Any]],
     size: tuple[int, int] = (64, 48),
 ) -> Path:
-    """Write one ``Label.csv`` clip directory with numbered JPEG frames."""
-    clip_dir.mkdir(parents=True, exist_ok=True)
-    width, height = size
-    for offset in range(frames):
-        rgb: np.ndarray = np.zeros((height, width, 3), dtype=np.uint8)
-        rgb[..., 0] = (offset * 7) % 255
-        rgb[..., 1] = (offset * 13) % 255
-        (clip_dir / f"{offset:04d}.jpg").write_bytes(_jpeg(rgb))
-    lines = [",".join(_ROW_FIELDS)]
-    lines.extend(
-        ",".join(str(row.get(name, "")) for name in _ROW_FIELDS) for row in rows
-    )
-    (clip_dir / "Label.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return clip_dir
+    """Write a clip into a ball store; rows are synthetic fixture annotations."""
+    directory = clip_dir.parents[2]
+    clip_id = '/'.join(clip_dir.parts[-3:])
+    labels = []
+    for index in range(frames):
+        frame_rows = [row for row in rows if row['file name'] == f'{index:04d}.jpg']
+        instances = []
+        for row in frame_rows:
+            if float(row['visibility'] or 0) <= 0:
+                continue
+            instances.append(ball(
+                str(row.get('point_kind', 'observed')),
+                (float(row['x-coordinate']), float(row['y-coordinate'])),
+                str(row.get('instance id') or 'b001'),
+            ))
+        labels.append(frame(index, *instances, annotated=bool(frame_rows)))
+    return write_store_clip(directory, clip_id, labels, size=size)
 
 
 @pytest.fixture
 def make_clip_dataset() -> Callable[..., Path]:
-    """Return a factory writing one synthetic TrackNet-style source tree."""
+    """Return a factory writing one synthetic ball frame store."""
 
     def _factory(
         root: Path,

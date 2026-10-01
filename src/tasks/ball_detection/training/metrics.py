@@ -63,6 +63,7 @@ class BallDetectionMetrics(Metric):
         target_coords: Tensor,
         target_visibility: Tensor,
         original_size: Tensor,
+        supervised: Tensor,
     ) -> None:
         """Update frame-level metric state.
 
@@ -73,6 +74,8 @@ class BallDetectionMetrics(Metric):
             target_visibility: Target visibility flags, shape (B, T, K).
             original_size: Original frame size in ``(width, height)`` ordering,
                 shape (B, 2).
+            supervised: Boolean (B, T) mask; unsupervised frames are skipped
+                entirely (their predictions are neither TP nor FP).
         """
         if pred_heatmaps.ndim != 4:
             raise ValueError(
@@ -103,6 +106,11 @@ class BallDetectionMetrics(Metric):
                 "original_size must have shape (B, 2), "
                 f"got {tuple(original_size.shape)}."
             )
+        if supervised.dtype != torch.bool or supervised.shape != pred_heatmaps.shape[:2]:
+            raise ValueError(
+                "supervised must be a boolean (B, T) mask, "
+                f"got {supervised.dtype} {tuple(supervised.shape)}."
+            )
 
         pred_coords_normalized, _, pred_valid = heatmaps_to_peaks(
             pred_heatmaps,
@@ -118,6 +126,8 @@ class BallDetectionMetrics(Metric):
             width = max(float(original_size[batch_index, 0].item()) - 1.0, 0.0)
             height = max(float(original_size[batch_index, 1].item()) - 1.0, 0.0)
             for frame_index in range(pred_heatmaps.shape[1]):
+                if not bool(supervised[batch_index, frame_index]):
+                    continue
                 frame_predictions = pred_coords_normalized[
                     batch_index,
                     frame_index,

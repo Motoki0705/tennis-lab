@@ -3,10 +3,21 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 
 import cv2
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
+from .configuration import paths
+from .path_contracts import campaign_resolver, validate_command_paths
 from .worker_candidates import BallModel as BallModel
 from .worker_candidates import ball_identity as ball_identity
 from .worker_candidates import blob_center as blob_center
@@ -28,6 +39,13 @@ from .worker_images import cmd_crops as cmd_crops
 from .worker_images import cmd_frames as cmd_frames
 from .worker_session import cmd_context as cmd_context
 from .worker_session import cmd_finish as cmd_finish
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -92,10 +110,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--source", default="annotation", choices=["annotation", "cands-ball"]
     )
-    p.add_argument(
+    points = p.add_mutually_exclusive_group()
+    points.add_argument(
         "--points",
-        help="JSON file or inline JSON: {frame: [x,y]} or [{frame,x,y,label}]",
+        help="Inline JSON: {frame: [x,y]} or [{frame,x,y,label}]",
     )
+    points.add_argument('--points-file', type=Path, help='Absolute point JSON file inside the campaign')
     p.add_argument("--track")
     p.add_argument(
         "--top", type=int, default=1, help="candidates per frame for cands-ball"
@@ -159,6 +179,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--summary", required=True)
     args = parser.parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    args.attempt_dir = validate_command_paths(attempt=args.attempt_dir)['attempt']
+    if args.command == 'apply':
+        args.edits = str(validate_command_paths(edits=args.edits)['edits'])
+    if args.command in {'frames', 'crops'} and (
+        args.step < 1 or args.ruler < 0 or (args.cols is not None and args.cols < 1)
+        or (args.scale is not None and (not math.isfinite(args.scale) or args.scale <= 0))
+    ):
+        raise ValueError('Image step/columns/scale must be positive and ruler nonnegative')
+    if args.command == 'crops' and args.points_file is not None:
+        args.points_file = validate_command_paths(edits=args.points_file)['edits']
     cv2.setNumThreads(2)
     handler = {
         "info": cmd_info,
@@ -177,14 +208,11 @@ def main(argv: list[str] | None = None) -> int:
     }[args.command]
     try:
         ctx = Ctx(args.attempt_dir)
-        return handler(ctx, args)
+        result: int = handler(ctx, args)
+        return result
     except Exception as error:  # report compactly; the worker decides what to do
         message = str(error)
         if len(message) > 3000:
             message = message[:3000] + " ..."
         print(f"failed: {type(error).__name__}: {message}")
         return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

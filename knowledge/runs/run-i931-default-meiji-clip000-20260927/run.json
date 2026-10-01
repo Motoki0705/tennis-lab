@@ -1,0 +1,16 @@
+{
+  "run_id": "1790443438282726233_830645_i931-default-meiji-clip000-20260927",
+  "name": "i931-default-meiji-clip000-20260927",
+  "command": "bash tests/benchmarks/build_dino_extension.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/dino_extension && CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 PYTHONPATH=.:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/dino_extension/lib .venv/bin/python tests/benchmarks/component_pipeline.py --repo /home/kamimura/projects/tennis-lab --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927 --device cuda",
+  "provider": "claude",
+  "session": "abf284fe-984d-4b6c-afec-7375982b0bb0",
+  "issue": "931",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "4fdc4d42dd32486344ae5438f9e0517a05f173ec",
+  "branch": "campaign930/i931-4-imports",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i931-4-imports",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i931-4-imports",
+  "captured_at": "2026-09-27T02:23:59+09:00"
+}

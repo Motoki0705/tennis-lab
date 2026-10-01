@@ -8,32 +8,30 @@ from src.tasks.ball_detection.configuration import validate_data
 from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
 )
-from src.tasks.ball_detection.data.dataset import BallDetectionDataset
-from src.tasks.ball_detection.data.mixed_tracknet_datamodule import (
-    MixedTrackNetDataModule,
+from src.tasks.ball_detection.data.dataset import (
+    BallDetectionDataset,
+    WindowFrame,
+    WindowFrames,
 )
 from src.tasks.ball_detection.data.staged_datamodule import StagedBallDataModule
-from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
+from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
+from src.tasks.ball_detection.data.store_dataset import BallStoreDataset
 from src.tasks.ball_detection.data.types import (
     BallDetectionBatch,
     BallDetectionSample,
-    ClipWindow,
     FrameLabel,
 )
 from src.tasks.ball_detection.data.web_datamodule import (
     WebBallDataModule,
     WebBallDetectionDataset,
 )
-from src.tasks.ball_detection.data.youtube_datamodule import YouTubeDataModule
 
 
 def build_ball_detection_datamodule(config: Any) -> pl.LightningDataModule:
     """Build the configured dataset-specific DataModule."""
-    source = str(validate_data(config)["source"]).lower()
+    source = str(validate_data(config)["source"])
     datamodule_types: dict[str, type[pl.LightningDataModule]] = {
-        "tracknet": TrackNetDataModule,
-        "mixed_tracknet": MixedTrackNetDataModule,
-        "youtube": YouTubeDataModule,
+        "store": BallStoreDataModule,
         "web": WebBallDataModule,
         "staged": StagedBallDataModule,
     }
@@ -52,13 +50,13 @@ __all__ = [
     "BallDetectionBatch",
     "BallDetectionDataset",
     "BallDetectionSample",
-    "ClipWindow",
+    "BallStoreDataModule",
+    "BallStoreDataset",
     "FrameLabel",
-    "MixedTrackNetDataModule",
     "StagedBallDataModule",
-    "TrackNetDataModule",
     "WebBallDataModule",
     "WebBallDetectionDataset",
-    "YouTubeDataModule",
+    "WindowFrame",
+    "WindowFrames",
     "build_ball_detection_datamodule",
 ]

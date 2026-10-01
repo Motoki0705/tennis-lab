@@ -141,10 +141,14 @@ def parse_frames(spec: str, n: int) -> list[int]:
             continue
         if ":" in part:
             a, b = (int(v) for v in part.split(":"))
+            if not 0 <= a < b <= n:
+                raise ValueError(f'frame range must satisfy 0 <= start < stop <= {n}')
             frames.extend(range(a, b))
         else:
             frames.append(int(part))
     bad = [f for f in frames if not 0 <= f < n]
     if bad:
         raise ValueError(f"frames outside clip: {bad[:5]}")
+    if not frames:
+        raise ValueError('frame selection must not be empty')
     return sorted(set(frames))

@@ -14,12 +14,28 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 from ..artifacts.store import ArtifactStore
 from ..runtime.contracts import BallAnnotation
 from ..runtime.validation import validate_annotation
 from .campaign_state import locked_state, log_event, processed_path, read_state
 from .common import atomic_write_json, load_annotation, load_manifest, utc_now
 from .configuration import file_sha256, json_object, paths
+from .path_contracts import campaign_resolver, validate_command_paths
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 
 def final_attempt(task: dict[str, Any]) -> dict[str, Any]:
@@ -405,6 +421,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("list")
     p.add_argument("--status")
     args = parser.parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    validate_command_paths()
+    if args.command == 'replace':
+        args.comparison = validate_command_paths(comparison=args.comparison)['comparison']
     if args.command == "list":
         state = read_state()
         for task_id, task in state["tasks"].items():

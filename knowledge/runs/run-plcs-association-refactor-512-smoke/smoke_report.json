@@ -1,0 +1,39 @@
+{
+  "task": "plcs",
+  "elapsed_seconds": 661.0115084179997,
+  "peak_allocated_bytes": 5320590848,
+  "peak_reserved_bytes": 5842665472,
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/plcs/train/view_association_refactor/gpu_smoke_512_v1/logs/version_0/checkpoints/last.ckpt",
+  "compile": true,
+  "batch": 2,
+  "width": 512,
+  "stages": 12,
+  "heads": 8,
+  "output_shapes": {
+    "object_ids": [
+      1,
+      5,
+      512,
+      4
+    ],
+    "view_half_turns": [
+      1,
+      5
+    ],
+    "view_valid": [
+      1,
+      5
+    ],
+    "side_logits": [
+      1,
+      5
+    ],
+    "object_id_logits": [
+      1,
+      5,
+      512,
+      4,
+      11
+    ]
+  }
+}
