@@ -139,6 +139,15 @@ OOF評価NPZとは別に保存する。実測と採用判断はknowledgeに記�
 検証例は[unit](../../../tests/unit/tasks/ball_refiner/refiner_2d)と
 [integration](../../../tests/integration/tasks/ball_refiner/test_refiner_2d.py)を参照。
 
+## 点consumerの信頼度規則
+
+`refiner_2d/confidence.py` は最大weight成分の平均点と、全GMMの2次モーメントから
+90%以上を条件付きで含む保守的な楕円面積をsource px²で計算する（HDRではない）。
+存在確率と面積による規則は [固定設定](configs/confidence/meiji_val_r29.yaml)、
+Meiji valの選定方法・camera別保持率/誤差・多視点frame数・限界は
+[knowledge 000028](../../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md) が正本。
+clip_000を選定対象に含めず、実行時の再fitや教師参照はしない。
+
 ## 学習戦略（#935）
 
 文脈なし基準と較正・追加seedの方針は上記の採用設計に従う。

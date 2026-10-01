@@ -322,3 +322,5 @@ raw人物は全cameraで保持し、校正欠測clipも採点母数に含む。c
 `person_unseen_score.py --report <同出力先> --labels <clip IDからlabels.jsonへのJSON mapping>` で一回だけ実行する。
 raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を保存する。
 対象・指標・限界・凍結の根拠は[run16](../../knowledge/nodes/player_association/000006-run-i964-unseen-r16-20261001.md)を参照。
+
+- `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [refiner README](../../src/tasks/ball_refiner/README.md#点consumerの信頼度規則) を参照。
