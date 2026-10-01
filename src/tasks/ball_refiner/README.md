@@ -106,9 +106,9 @@ seed42に加えて43・44で再現性を確認し、再現しない条件も報�
 共分散だけを倍率で補正し、平均・混合重み・存在確率は固定する。clip単位の交差検証で
 HDR50/90/95のcoverage、位置NLL、面積を併記し、明示したhash付き較正artifactを保存する。
 #936へは補正後の全GMM残差bankを渡し、旧bank/合成dataは対照として保持する。
-pipelineの既定値は[専用recipeのB判定](../../tennis_scene/pipeline/README.md#e9anchored-seed42共分散補正の明示option)に従う。
+pipelineの既定値は[専用recipeのB判定](../../tennis_scene/pipeline/README.md#ボール経路の既定と明示option)に従う。
 [2026-10-01の判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で
-e9の既定化とrefiner後のconfidence選別を採用する方針へ更新した（実装は後続）。
+e9の既定化とrefiner後のconfidence選別を採用する方針へ更新した（標準sceneへの既定切替は実装済み）。
 #964完了前に文脈生成へ進める。現在の生成予算・未完事項は
 [knowledge 000027](../../../knowledge/nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)を参照。
 
@@ -186,7 +186,7 @@ Meijiはtrain video_002 / val video_000 / test video_001で、#934・#936と共�
 既に#934で見たtestの再利用であることも明示する。
 
 detectorは候補recallによるvalidation選択で混合FT epoch9に固定済み。
-ft-e13は歴史的対照と現行pipelineの既定に残す。checkpoint、前処理、動画/注釈hash、frame/PTS、sourceサイズ、
+ft-e13は歴史的対照として明示optionに残す。checkpoint、前処理、動画/注釈hash、frame/PTS、sourceサイズ、
 窓集約、候補設定をcache manifestへ保存する。検出証拠は
 [#934の契約](../ball_detection/README.md#検出証拠の出力契約)を使い、score閾値やtrajectory gateで捨てない。
 

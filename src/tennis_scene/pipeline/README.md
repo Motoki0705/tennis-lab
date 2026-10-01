@@ -29,7 +29,7 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 動画 → court_detection → court_calibration
 動画 → person_detection → person_tracking
 track＋court → player_selection → pose_estimation
-動画 → ball_detection
+動画 → ball_detection → ball_refiner_2d
 ball＋court → court_side（ballだけのhalf-turn仮説検定）
 選別group＋court＋side（＋動画のcrop） → player_association
 人物対応＋side＋2D観測 → camera_alignment
@@ -120,7 +120,7 @@ v1 artifactの自動補完は行わず、executeで再生成、loadはschema不�
 
 `ball_refiner_recipe.ball_refiner_definition`は各cameraの
 `ball_detection → ball_refiner_2d`だけを共通ComponentRunner/ClipStoreへ登録する。
-未較正の文脈なしpilotを明示的に試す入口で、標準sceneの既定値は変更しない。
+標準sceneも同じrecipeを使い、各cameraのball_detection直後に全GMMを保存する。
 文脈ありcheckpoint、確率的三角測量、3Dへの切替は後続の対象。
 推論bundleの作成・入力契約は[task README](../../tasks/ball_refiner/README.md#推論bundleの書き出し)を参照。
 
@@ -151,7 +151,7 @@ code・bundle・設定・source・依存artifactの不一致や配列のchecksum
   --device cuda --source execute --detector-batch-size 4 --refiner-batch-size 32
 ```
 
-### e9・anchored seed42・共分散補正の明示option
+### ボール経路の既定と明示option
 
 上のCLIに `--ball-path e9_anchored_s42_covariance --calibration-artifact <絶対path>/covariance-calibration-r23.json`
 を追加し、`--bundle`と`--detector-checkpoint`にも対応する資産を明示する。
@@ -166,12 +166,14 @@ manifestは重み・全入力設定・元checkpointを束縛し、倍率artifact
 平均・混合logit・存在logit・frame/PTS/採用窓は維持する。
 倍率、元checkpoint SHA256、artifact SHA256を保存し、load-onlyでは再補正しない。
 既存`bundle` optionは未較正schema v1を維持し、未知optionや暗黙の倍率1は許可しない。
-既定のscene detector（ft-e13）と現refinerの選択は変更していない。
-このoptionは評価用。元動画3cameraのexecute/fresh-loadは通過したが、
+標準sceneの既定は `ball_path=e9_anchored_s42_covariance`。旧ft-e13＋旧refinerは
+`ball_path=ft_e13` で明示する。checkpoint-root内の配布名は `configs/ball_path/` が正本。
+資産が無ければ停止し、旧重みを自動選択しない。動画は直接decodeし、JPEG化・再学習・倍率再fitはしない。
+元動画3cameraのexecute/fresh-loadは通過したが、
 [固定Bゲート](../../../knowledge/nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)の
 GT位置誤差p90が不合格だったため、run26時点では既定を維持した。
 [2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)は
-e9の既定化とrefiner後のconfidence選別を採用する方針だが、このheadではまだ実装していない。
+に従ってe9を既定化した。confidence規則・point consumer配線・安全benchは後続の検証項目。
 seedの事前判定FAILと、
 それを保持して再現は十分と扱う追加ユーザー判断も同記録から辿れる。
 

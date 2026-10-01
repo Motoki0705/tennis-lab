@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import fields
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 from src.tasks.ball_refiner.deployment import (
@@ -10,7 +10,7 @@ from src.tasks.ball_refiner.deployment import (
     DetectorRequirements,
     load_inference_bundle,
 )
-from src.tasks.ball_refiner.pipeline_options import select_ball_path
+from src.tasks.ball_refiner.pipeline_options import BALL_PATHS, select_ball_path
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionConfig,
@@ -31,6 +31,20 @@ from src.tennis_scene.pipeline.input_assembly.preprocessing import (
 )
 from src.tennis_scene.pipeline.runner import ComponentNode
 from src.utils.checksum import dual_sha256
+
+
+@dataclass(frozen=True)
+class BallRefinerRecipeConfig:
+    path: str
+    bundle: Path
+    calibration_artifact: Path | None
+    batch_size: int
+
+    def __post_init__(self) -> None:
+        if self.path not in BALL_PATHS or type(self.batch_size) is not int or self.batch_size < 1:
+            raise ValueError("Invalid ball refiner path/batch size")
+        if (self.path == "bundle") != (self.calibration_artifact is None):
+            raise ValueError("The named calibrated path requires its explicit calibration artifact")
 
 
 class RefinerEvidenceModule(BallDetectionModule):
@@ -67,8 +81,7 @@ def ball_refiner_definition(
 ) -> tuple[ComponentNode, ...]:
     """One independent detector -> refiner chain per camera, no 3D or point fallback.
 
-    This explicitly selected research recipe leaves the standard scene recipe's
-    deployment choice to the subsequent full evaluation and probabilistic 3D task.
+    Shared by the standard scene and the standalone distribution-only entrypoint.
     """
     if detector_config.device not in {"cpu", "cuda"}:
         raise ValueError("Refiner recipe requires an explicit cpu/cuda device")
