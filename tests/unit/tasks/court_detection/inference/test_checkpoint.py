@@ -30,7 +30,12 @@ from src.tasks.court_detection.inference.checkpoint import (
 from src.tasks.court_detection.model_io.contracts import CourtModelIOError
 from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+from src.utils.configuration import (
+    PathContractError,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 from tests.unit.tasks.court_detection.inference.test_pose_output_predictors import (
     _bundle,
 )
@@ -105,11 +110,32 @@ def test_legacy_saved_asset_layout_is_explicit_and_does_not_mutate_metadata(
     assert OmegaConf.to_container(OmegaConf.create(saved), resolve=True) == before
 
 
-def test_legacy_asset_layout_rejects_parent_traversal() -> None:
+@pytest.mark.parametrize('saved_path', [
+    'dinov3/checkpoints', 'dinov3/checkpoints/', 'dinov3/checkpoints/../unexpected.pth',
+    'dinov3/checkpoints/.', 'dinov3/checkpoints/..', 'dinov3/checkpoints/nested/model.pth',
+    'dinov3/checkpoints/model\\outside.pth', 'dinov3/checkpoints/ model.pth',
+    'dinov3/checkpoints/model.pth ', 'dinov3/checkpoints/model\x00.pth',
+])
+def test_legacy_asset_layout_requires_exactly_one_filename(saved_path: str) -> None:
     config = _compose('synthetic_court')
-    config.model.encoder.checkpoint_path = 'dinov3/checkpoints/../unexpected.pth'
+    config.model.encoder.checkpoint_path = saved_path
     with pytest.raises(CourtModelIOError, match='exactly one checkpoint'):
         CourtInferenceSpec.from_checkpoint_config(config, serialize_target_bundle(_bundle()))
+
+
+def test_migrated_asset_is_resolved_only_within_the_runtime_checkpoint_root(tmp_path: Path) -> None:
+    config = _compose('synthetic_court', f'paths.project_root={tmp_path}')
+    config.model.encoder.checkpoint_path = 'dinov3/checkpoints/model.pth'
+    checkpoint_root = tmp_path / 'ckpt'
+    checkpoint_root.mkdir()
+    foreign_root = tmp_path / 'foreign'
+    foreign_root.mkdir()
+    (foreign_root / 'model.pth').write_bytes(b'outside the declared checkpoint authority')
+    (checkpoint_root / 'dinov3').symlink_to(foreign_root, target_is_directory=True)
+    original = OmegaConf.to_container(config, resolve=True)
+    with pytest.raises(PathContractError, match='parent outside its root'):
+        CourtInferenceSpec.from_checkpoint_config(config, serialize_target_bundle(_bundle()))
+    assert OmegaConf.to_container(config, resolve=True) == original
 
 
 @pytest.mark.parametrize("change", ["none", "missing", "unexpected", "foreign_prefix"])
