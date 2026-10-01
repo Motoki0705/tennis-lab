@@ -357,7 +357,7 @@ class Review:
         details += [(f"{camera_id} excluded", reason) for camera_id, reason in value["calibration"]["excluded"].items()]
         return images, details
 
-    @renders("ball_detection", "ball_detections", 1)
+    @renders("ball_detection", "ball_detections", 2)
     def render_ball_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         position, kinds = _array(value["uv_px"]), _array(value["point_kind"])
         labels = ("absent", "observed", "interpolated", "occlusion estimate")
@@ -384,6 +384,15 @@ class Review:
         timeline = _save_plot(path, plot)
         details = [(labels[kind], str(_count(kinds == kind))) for kind in range(4)]
         details.append(("score semantics", str(value["score_semantics"])))
+        evidence = value["evidence"]
+        if evidence is None:
+            details.append(("detector evidence", "unavailable (annotation import or disabled detector)"))
+        else:
+            details.extend([
+                ("native heatmap shape", str(_array(evidence["heatmaps"]).shape)),
+                ("pre-gate candidates", str(_count(_array(evidence["candidate_valid"])))),
+                ("local patch shape", str(_array(evidence["patches"]).shape)),
+            ])
         return [image, timeline], details
 
     @renders("person_detection", "person_detections", 1)

@@ -43,6 +43,8 @@ def gather_balls(source: ClipSource, artifacts: Mapping[str, Any]) -> ObjectObse
     for camera_id, row in zip(source.camera_ids, rows, strict=True):
         if row.camera_id != camera_id or len(row.frame_indices) != source.num_frames:
             raise ValueError("Ball artifact camera/timeline mismatch")
+        if row.evidence is not None and row.evidence.source_size_wh != source.size:
+            raise ValueError("Ball evidence source image size mismatch")
     return ObjectObservations(source.camera_ids, source.size, source.fps,
         np.stack([r.uv_px for r in rows])[:, :, None, None],
         np.stack([r.confidence for r in rows])[:, :, None, None],

@@ -19,7 +19,7 @@ from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.utils.checksum import dual_sha256
 
 IMPORTER = "video_ball_annotation_v2"
-IMPORTER_VERSION = 1
+IMPORTER_VERSION = 2
 POINT_KINDS = {"unresolved": 0, "observed": 1, "interpolated": 2, "occlusion_estimated": 3}
 EXPECTED_VISIBILITY = {"unresolved": "unknown", "observed": "visible", "interpolated": "not_independently_visible",
                        "occlusion_estimated": "occluded"}
@@ -78,7 +78,7 @@ def convert_ball_annotation(path: Path, video: SourceVideo) -> tuple[BallDetecti
         uv[frame] = pixel
         confidence[frame] = float(kind == "observed")
     result = BallDetectionOutput(video.camera_id, np.arange(video.num_frames, dtype=np.int64),
-        uv, confidence, kinds == POINT_KINDS["observed"], kinds, "annotation_acceptance_not_probability")
+        uv, confidence, kinds == POINT_KINDS["observed"], kinds, "annotation_acceptance_not_probability", None)
     provenance = {"source_path": str(path.resolve()), "annotation_schema": annotation["schema_version"],
         "review": annotation.get("review"), "counts": dict(Counter(row["status"] for row in rows)),
         "observation_policy": "observed_only", "confidence_policy": "binary_acceptance_not_probability"}

@@ -74,6 +74,8 @@ def test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs(tmp_
     ball = store.load(imported["ball_detection/cam0"], ArtifactCodec(BallDetectionOutput))
     assert ball.point_kind[[3, 5]].tolist() == [2, 0] and not ball.observed[[3, 5]].any()
     assert ball.confidence.tolist() == ball.observed.astype(np.float32).tolist()
+    assert ball.evidence is None  # annotation acceptance is not detector evidence
+    assert imported["ball_detection/cam0"].version == 2
     np.testing.assert_allclose(ball.uv_px[3], balls[0].uv_px[3])
 
     provenance = store.descriptor(imported["ball_detection/cam0"])["provenance"]

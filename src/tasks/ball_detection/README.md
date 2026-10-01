@@ -18,6 +18,7 @@
 
 ### model_io/
 - **`contracts.py`**: RGB入力、model call、学習batch、typed predictionの契約。
+- **`candidates.py`**: 閾値0で局所peakを抽出し、native格子のpatchと境界maskを返す。採点用の閾値やtrajectory gateは適用しない。
 - **`adapters.py`**: 推論の生RGBはfloat32・有限値・`[0,1]`を検証し、checkpointの正規化後にRGB/MDD・layout変換を行う。学習・評価のdataset側で正規化済みの入力は宣言されたchannel範囲を検証してそのまま使い、二重に正規化しない。loss/output decodeも担当。DINOv3ではraw backbone応答の検証、patch token decode、RoPE周波数とattention maskの生成もこの境界で完了する。
 - **`factory.py`**: `model.name` (`stunet`/`conv_next_unet`/`dinov3_rope`) からmodel+adapterを一度だけ選択し、DINOv3 backboneのfrozen/trainable実行経路も構築時にbind。
 - **`evaluation.py`**: checkpointから検証済みpairを読み、評価loopへprobability heatmapを提供。
@@ -48,7 +49,7 @@
 
 ### inference/
 - **`checkpoint.py`**: predictor・レビューUI共通の推論専用loader。保存されたmodel設定・`model.`重みと入力正規化をstrict復元する。`data.augmentation.normalize_imagenet.enabled`は必須で、有効なら保存されたmean/stdも使う。学習専用オプションは要求・補完しない。
-- **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction(coords, confidence, heatmaps)` を返す。
+- **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction`（点・score・native heatmap・候補の局所特徴）を返す。
 
 ### evaluation/
 - **`contracts.py`**: 評価マニフェスト(`ball_detection_evaluation_manifest_v1`)の型付き契約。
@@ -91,6 +92,32 @@
 
 ### configs/
 - モデル/データ/損失・メトリクス/学習/staged学習フェーズ/評価マニフェスト/可視化ごとにHydra設定を分割。
+
+## 検出証拠の出力契約
+
+`BallPrediction` はCPU tensorで返す。従来の `coords` / `confidence` はnative heatmapの
+argmax（任意のsubpixel補正付き）、`heatmaps` はモデルの出力格子のsigmoid値
+`(B,T,H,W)` で、全格子をfloat32のまま保持する。scoreは未較正であり、球の存在確率ではない。
+
+`candidates: BallCandidates` は次を追加する。KとPは呼び出し側が渡す
+`BallCandidateConfig`、pipelineの既定値は
+[`ball_detection.candidates`](../../tennis_scene/configs/pipeline.yaml)を参照。
+
+| field | shape | 意味 |
+|---|---|---|
+| `coords` | B,T,K,2 | x/(W−1), y/(H−1)。argmaxと同じsubpixel補正 |
+| `scores` / `valid` | B,T,K | 格子のsigmoid値 / 局所peakが存在するmask |
+| `cells` | B,T,K,2 | 補正前の整数格子位置(x,y) |
+| `patches` / `patch_valid` | B,T,K,P,P | cells中心のnative heatmap値 / 実格子内mask |
+
+局所特徴は学習済みbackbone embeddingではなく、候補周辺のprobability patchである。
+共有 `heatmaps_to_peaks` のcontrastive NMSを閾値0で使い、score順で最大K候補を残す。
+弱いpeakも残り、平坦な複数画素のmapは `nms_kernel>1` なら候補0件になる。
+同score候補間の順位は意味を持たない。候補不足は0埋め＋`valid=false`、
+patchの画像外部分は0埋め＋`patch_valid=false` で区別する。
+patchをsubpixel座標へ再sampleしないため、中心値は常にscoreと一致する。
+元のdense heatmapも残るので、候補外の情報を使う処理や再抽出が可能。
+pipelineでの座標変換・保存・単一点の受理は[pipelineの契約](../../tennis_scene/pipeline/README.md#ball検出証拠)を参照。
 
 ## データセットレビュー / 推論UI
 

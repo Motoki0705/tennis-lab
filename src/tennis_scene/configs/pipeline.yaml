@@ -125,6 +125,10 @@ ball_detection:
   tail_policy: backfill
   overlap_aggregation: max_score
   pin_memory: true
+  candidates:
+    max_candidates: 8
+    nms_kernel: 5
+    patch_size: 5
   trajectory_gate:
     enabled: true
     max_residual_px: 60
