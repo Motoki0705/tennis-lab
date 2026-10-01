@@ -46,7 +46,7 @@ from src.tasks.court_detection.model_io.keypoint_decoder import (
     CourtKeypointDecoderConfig,
     decode_court_keypoint_logits,
 )
-from src.utils.configuration import PathResolver
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
@@ -95,6 +95,7 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
         *,
         device: str | torch.device,
         resolver: PathResolver | None = None,
+        checkpoint_role: PathRole = PathRole.CHECKPOINT,
         subpixel_refine: bool = True,
         peak_threshold: float = 0.05,
         nms_kernel: int = 7,
@@ -105,8 +106,14 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
     ) -> Self:
         validate_hybrid_inference_config(hybrid_config)
         if resolver is not None:
-            paths = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+            paths = cls._ensure_checkpoint(
+                checkpoint_path, resolver=resolver, role=checkpoint_role
+            )
         else:
+            if checkpoint_role != PathRole.CHECKPOINT:
+                raise CourtModelIOError(
+                    "Artifact checkpoint inputs require an explicit PathResolver"
+                )
             paths = (
                 [Path(checkpoint_path)]
                 if isinstance(checkpoint_path, (str, Path))
