@@ -1,0 +1,17 @@
+{
+  "source_commit": "1a506efbefd15ef329b399d5d834828dedb412e9",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "commands": {
+    "flow": "timeout --signal=TERM --kill-after=10s 600s env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.probe_conditioning_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936 --training-output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r16-combined512-physics10-s936-t128-20k --objective flow --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-condition-readout-r19-s936/flow",
+    "regression": "timeout --signal=TERM --kill-after=10s 600s env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.probe_conditioning_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936 --training-output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/h-dev/r16-combined512-physics10-s936-t128-20k --objective regression --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-condition-readout-r19-s936/regression"
+  },
+  "objective_invocations": {
+    "flow": 1,
+    "regression": 1
+  },
+  "gpu_jobs": 0,
+  "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+  "numpy": "2.3.5",
+  "torch": "2.13.0+cu130",
+  "audit_script_sha256": "f6f266c61214beda44983982a1b2da37cad6e7d687a9a20eb7db01bfc82c95da"
+}
