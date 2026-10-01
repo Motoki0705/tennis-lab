@@ -51,6 +51,25 @@ def test_raw_inference_and_dataset_preprocessed_training_have_same_model_input(
     if mode == "mdd":
         features = adapter.mdd_features(raw, image_normalization=normalization)
         torch.testing.assert_close(features, expected if layout == "bcthw" else expected.permute(0, 2, 1, 3, 4))
+        preprocessed_features = adapter.mdd_features(
+            prepared, image_normalization=normalization, preprocessed=True,
+        )
+        torch.testing.assert_close(preprocessed_features, features, rtol=0, atol=0)
+
+
+def test_mdd_raw_boundary_rejects_normalized_input_without_explicit_declaration() -> None:
+    normalization = BallImageNormalization(True, (0.5, 0.5, 0.5), (0.25, 0.25, 0.25))
+    prepared = normalization.apply(torch.zeros(1, 2, 3, 2, 2))
+    with pytest.raises(BallModelIOError, match=r"\[0, 1\]"):
+        _rgb_adapter().mdd_features(prepared, image_normalization=normalization)
+
+
+def test_mdd_preprocessed_boundary_rejects_out_of_range_images() -> None:
+    with pytest.raises(BallModelIOError, match="normalization bounds"):
+        _rgb_adapter().mdd_features(
+            torch.full((1, 2, 3, 2, 2), 8.0),
+            image_normalization=BallImageNormalization(True), preprocessed=True,
+        )
 
 
 def test_raw_boundary_still_rejects_already_normalized_rgb() -> None:

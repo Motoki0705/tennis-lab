@@ -2,6 +2,47 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+## Meiji ball holdout
+
+`ball_detection_holdout.py` はball frame storeのMeiji test全体で、ft-e13と
+混合FTのvalidation選択checkpointを同じ条件で比較する。checkpointの選択は学習側で済ませる。
+既定のtestはvideo_001、63 camera-clip / 36,006 frameで、数が違う入力は停止する。
+モデル・入力サイズ・保存された正規化の一致、train/valへのvideo漏れ、全frameの一意性を検証する。
+
+- 元storeのJPEGをcheckpoint入力サイズへINTER_LINEARでresizeし、公開predictorが一度だけ正規化する。
+  stride 4 / tail backfill / max-score集約（同点は後窓）、subpixel有効。
+  短いclipの末尾反復も出力は元frameだけ。候補もargmaxと同じ窓から採る。
+  座標はnormalized×(stored W−1,H−1)÷store scaleで元動画画素へ戻す。
+- 主指標はobserved注釈に対するscore >= 0.5 / 20 source pxのrecall。
+  欠損数、大誤検出数、受理した全予測のp95、低scoreも含むargmax p95を併記する。
+  未解決/未レビューは負例にしない。point_kind別の推定位置とvisibility行は参考値で、
+  visibility行は位置のある推定ラベルも含む。top-K recallは閾値なしの候補上限を示す。
+- `--poses` は#933の保存済みstore root。media hash・camera・frame数・fps・解像度と
+  descriptor/配列のchecksumを検証してCOCO17手首だけ読む。conf >= 0.5の手首と
+  注釈球の最短距離 <= 100 source pxをnear_wrist、超過をflightのproxyとする。
+  pose/有効手首/球位置の欠落はunknown。poseが存在する部分集合への選択バイアスと
+  coverageは`protocol.json`に残す。閾値はCLIで明示変更できる。
+- trajectory gateは使わない。storeの720p JPEG経由でもあるため、#932のraw動画＋gateと
+  絶対値を直接同一視しない。poseは層別だけに使い、検出器の入力はRGBのまま。
+
+```bash
+PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
+    --store <元repo>/data/ball_detection/ball-mix-v1 \
+    --poses <元repo>/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores \
+    --baseline <ft-e13 checkpoint> --treatment <validation選択checkpoint> \
+    --report <新規出力先> --phase preflight --device cpu
+```
+
+同じ入力引数で`--phase infer --device cuda`を共有training queueから実行する
+（preflightと推論は別の新規出力先を指定）。raw argmax・score・候補・窓の出自と
+参照座標/手首距離を圧縮NPZへ保存し、`metrics.json` / `metrics.csv` / `comparison.md`を作る。
+全frameの完了前には最終比較を出さない。GPUや元データがなくても
+`--phase summarize --report <推論出力先>`だけでchecksum/順序を検証して再集計できる。
+条件変更の再集計は出力directoryを複製して`protocol.json`の`metrics`を明示変更する。
+元のrunは保持し、変更した条件は別の比較として記録する。
+
+## Pipeline診断
+
 - `ball_detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
   実clip検証。既定pipelineのball nodeだけを全cameraで実行し、native heatmap・候補・patchを
   `--report/store` に保存する。checksum/型/shapeを検証してdiskからload-onlyで再開し、
