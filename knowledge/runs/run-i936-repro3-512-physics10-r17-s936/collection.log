@@ -1,0 +1,18 @@
+lifecycle ['[worker] 2026-10-01T08:38:38+09:00 running: 1790810853371946846_2694673_i936-repro3-512-physics10-r17-s936-20261001.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790810853371946846_2694673_i936-repro3-512-physics10-r17-s936-20261001.log)', '[worker] 2026-10-01T09:45:48+09:00 done: 1790810853371946846_2694673_i936-repro3-512-physics10-r17-s936-20261001.job resource=all slot=all']
+{
+  "state": "done",
+  "resources": {
+    "elapsed_seconds": 4228.259868761059,
+    "peak_allocated_bytes": 422902272,
+    "peak_reserved_bytes": 471859200,
+    "peak_device_used_bytes": 1772683264,
+    "minimum_available_host_bytes": 15310815232,
+    "driver_measurement": "total-minus-free sampled each update and val rally; includes other usage; not a continuous driver peak"
+  },
+  "output_bytes_actual": 45998108,
+  "all_metrics_match": true,
+  "run12_baselines_match": true,
+  "frames": 6383
+}
+{'flow_20000_mean': {'mixture_mean': False, 'mixture_mean_rts': False, 'regression_20000_mean': False}, 'flow_20000_samples': {'mixture_mean': False, 'mixture_mean_rts': False, 'regression_20000_mean': False}, 'regression_20000_mean': {'mixture_mean': False, 'mixture_mean_rts': False}}
+{'flow_20000_mean': ['rmse_m_overall', 'rmse_m_event_pm5', 'camera_1_rmse', 'camera_2_rmse', 'camera_3_rmse', 'acceleration_all_p95', 'acceleration_free_flight_p95', 'jerk_all_p95', 'jerk_free_flight_p95', 'reprojection_mean', 'reprojection_p50', 'acceleration_inside_free_p95', 'jerk_inside_free_p95'], 'flow_20000_samples': ['rmse_m_overall', 'rmse_m_event_pm5', 'camera_1_rmse', 'camera_2_rmse', 'camera_3_rmse', 'acceleration_all_p95', 'acceleration_free_flight_p95', 'jerk_all_p95', 'jerk_free_flight_p95', 'reprojection_mean', 'reprojection_p50', 'acceleration_inside_free_p95', 'jerk_inside_free_p95'], 'regression_20000_mean': ['camera_2_rmse', 'camera_3_rmse', 'acceleration_all_p95', 'acceleration_free_flight_p95', 'jerk_all_p95', 'jerk_free_flight_p95', 'reprojection_mean', 'reprojection_p50', 'reprojection_p95', 'acceleration_inside_free_p95', 'jerk_inside_free_p95']}
