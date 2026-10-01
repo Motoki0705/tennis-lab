@@ -9,6 +9,48 @@ MP4と、Chatへ貼り付ける短いリクエスト本文を作る。対象は�
 
 ## 実行
 
+### Web UI — 未確認動画の整理と品質確認
+
+```bash
+.venv/bin/python -m src.tennis_scene.chat_annotation.scripts.review_ui \
+  --root /absolute/path/to/outputs/chat_annotation --port 8769
+```
+
+`http://127.0.0.1:8769` を開く。ローカル専用の読み取り専用UIで、既存の注釈・
+manifest・campaign状態を変更せず、workerやheartbeatも起動しない。
+専用worktreeから実行するときも `--root` には元repoの出力ディレクトリを指定する。
+
+- `_preparation` のmanifestを母集団にし、`videos` と `done` の両方を一覧に含める。
+  「JSONなし」「未確認あり」「全確認済み・未解決」「completed」「検証エラー」を分ける。
+  初期表示は委託・確認が必要な動画。検索、ソース絞り込み、未確認数・未解決数による並べ替えを使える。
+- 「作業進捗」は採用済みJSONを優先し、採用済みがない対象だけ、親の検証記録とハッシュを
+  確認した最新campaign下書きを表示する。採用済みのみへの切替、過去の下書き・未採用ZIPの
+  明示選択も可能。無効な採用版や最新下書きを、別版へ静かに置き換えない。
+  未整理・競合する提出物は注意表示し、自動採用しない。「再集計」でディスク上の変更を反映する。
+- 動画ごとの確認率、未確認の半開区間、notes/未解決座標、確認済みの対象なし、
+  補間・画面外・推定bbox・遮蔽・画面切れをJSONから集計する。
+  これらは記録の指標であり、意味上の正解率ではない。タイムラインをクリックすると該当フレームへ移動し、
+  原動画と選択JSONの動的overlayを見比べられる。評価値やコメントを保存する機能は持たない。
+- 動的overlayはCPUで**メモリ上にMP4を生成**し、ディスクに動画やキャッシュを作らない。
+  配信は `Cache-Control: no-store`、一度に1件・最大128MiB。
+  ブラウザのBlob URLは元動画への切替、詳細を閉じる、画面遷移時に解放する。
+  エラー・中断・サーバ終了時も生成用バッファを解放する。元の解像度と全PTS/durationを保持し、
+  80pxの凡例欄を付ける。動画のハッシュと実タイムラインは生成時に照合する。
+- 委託候補を選び、元動画・選択JSONを個別ダウンロードする。
+  依頼文には各ファイルの出典、ハッシュ、対象、未確認範囲、保持するレビュー数と
+  `project_kits/*/REQUEST.txt` を含める。対象ごとに別の依頼文と対象一覧を生成し、ボール・選手の指示を混在させない。
+  依頼文コピー・TXT・対象一覧JSONを提供し、外部への自動送信はしない。
+  最大20クリップを選択できるが、委託先のコンテキストに合わせて小さく分ける。
+
+クリップ統計の分母は参考区間を含む**全表示フレーム**であり、ソース動画全体を網羅した割合ではない。
+録画の選択coverageと文脈重複については下記「分割・再実行」を参照。
+実装は `web/`、CLIは `scripts/review_ui.py`。
+テストは `tests/unit/tennis_scene/chat_annotation/test_web.py` と
+`tests/e2e/tennis_scene/chat_annotation_browser.mjs`。後者は `ANNOTATION_REVIEW_URL` と
+`PLAYWRIGHT_MODULE`（Playwrightのindex.mjs絶対パス）を指定して実行する。
+
+### 注釈用動画の準備
+
 repo/worktreeのrootから:
 
 ```bash
