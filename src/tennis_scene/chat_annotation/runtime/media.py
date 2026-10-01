@@ -6,6 +6,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
+from typing import BinaryIO
 
 import av
 import cv2
@@ -18,7 +19,7 @@ HDR_TRANSFER_CHARACTERISTICS = {16: "PQ", 18: "HLG"}
 COLOR_ATTRIBUTES = ("colorspace", "color_range", "color_primaries", "color_trc")
 
 
-def _reject_hdr(color_trc: int, path: Path) -> None:
+def _reject_hdr(color_trc: int, path: Path | str) -> None:
     transfer = HDR_TRANSFER_CHARACTERISTICS.get(color_trc)
     if transfer is not None:
         raise ValueError(
@@ -119,7 +120,7 @@ def decode_range(
 
 
 def encode_video(
-    path: Path,
+    path: Path | BinaryIO,
     *,
     width: int,
     height: int,
@@ -131,9 +132,11 @@ def encode_video(
 ) -> None:
     """Encode without a CFR resampler; explicitly preserve each display duration."""
     durations: dict[Fraction, Fraction] = {}
-    with av.open(
-        str(path), "w", format="mp4", options={"movflags": "+faststart"}
-    ) as output:
+    # A seekable memory buffer needs no faststart pass: the UI receives the
+    # complete MP4 before playback. FFmpeg faststart reopens filesystem paths.
+    destination = str(path) if isinstance(path, Path) else path
+    options = {"movflags": "+faststart"} if isinstance(path, Path) else {}
+    with av.open(destination, "w", format="mp4", options=options) as output:
         stream = output.add_stream("libx264", rate=rate)
         stream.width, stream.height = width, height
         stream.pix_fmt = "yuv420p"
@@ -156,7 +159,7 @@ def encode_video(
 
         first = True
         for frame, pts, duration in frames:
-            _reject_hdr(frame.color_trc, path)
+            _reject_hdr(frame.color_trc, path if isinstance(path, Path) else "memory output")
             if first:
                 for attribute in COLOR_ATTRIBUTES:
                     setattr(
