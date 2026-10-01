@@ -308,3 +308,5 @@ raw人物は全cameraで保持し、校正欠測clipも採点母数に含む。c
 `person_unseen_score.py --report <同出力先> --labels <clip IDからlabels.jsonへのJSON mapping>` で一回だけ実行する。
 raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を保存する。
 対象・指標・限界・凍結の根拠は[run16](../../knowledge/nodes/player_association/000006-run-i964-unseen-r16-20261001.md)を参照。
+
+`person_unseen_labels.py --phase views --report <未見出力> --output <新規dir>`はraw artifactと元映像だけからblindラベル用cropを作る。`details`は`--requests <JSON>`のtrack/frame範囲を拡大し、`labels`はoutput内のclip別review.yamlを既存schemaへ変換する。ラベルを確定・push後にのみ既存の一回scorerを使う。

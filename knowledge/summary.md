@@ -1,4 +1,4 @@
-<!-- knowledge-review: bf9f0b95ccefd9da432b0c3ab4a78b2c587625f8fc598ce56a4455ec8297738c on 2026-10-01 -->
+<!-- knowledge-review: f5bfdbb4cc54944025311c4b28420f73cfcc997f97eee5d6545cbc27eeda05b1 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -360,3 +360,5 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
+
+人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)で推論完了・blind部分参照ラベル作成へ進んだ。欠測sideによる1clip停止を保持する。採点前のため採否や既定の判断は変更しない。
