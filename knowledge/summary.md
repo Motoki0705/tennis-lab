@@ -1,7 +1,7 @@
-<!-- knowledge-review: 008fc54df904ed1cf864e75e03d099eb4827e4c0faf292abc557e5b99107e589 on 2026-10-01 -->
+<!-- knowledge-review: 8199fd663ab7bbcc4b177edef65bf20301dbb4e3496c07952b1e67f660839b15 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマーク・実clip判定・component化したqualification、#933 外観backbone比較と幾何＋外観の人物対応の評価を反映）
+更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -142,7 +142,19 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
 単一点が非観測でも検出証拠を保持できる。これは精度比較ではなく、deploy選択は変更しない。
-次は3 source混合FTとvideo単位holdoutの層別評価で、前処理・保存契約と検出精度を分けて検証する。
+保存契約の検証と、以下のvideo単位holdoutによる検出精度評価を区別する。
+
+[混合FTの初回](nodes/ball_detection/000020-run-i934-mixed-ft-s42-r5.md)は最初のvalidation後、
+MDD描画へ正規化済み入力の宣言を渡していなかったため停止した。checkpointとvalidation指標は未保存で、
+描画経路修正後の[同条件再実行](nodes/ball_detection/000021-run-i934-mixed-ft-s42-r6.md)は12 epochを完走した。
+混合validation F1はepoch 0が最大で、そのcheckpointをholdout比較用に固定した。
+後続epochでF1が改善せず、loss低下だけを追加学習の根拠にはできない。
+[選択epoch 0のMeiji holdout比較](nodes/ball_detection/000022-run-i934-meiji-holdout-e0-r7.md)では、
+observed 28,806 frameのrecallが44.49%から68.00%へ、閾値なしtop-K recallが71.59%から85.11%へ改善した。
+一方、採用検出のp95は346.08から386.30 source pxへ悪化し、cam2では低scoreも含むraw p95も悪化した。
+欠損低減と誤検出抑制は両立しておらず、2026-09-28時点のdeployはft-e13を維持する。
+AI補助注釈・単一video/seed、手首距離既知36.90%という制約があり、3D品質や他sourceの忘却は未検証。
+次はvalidationでのscore較正とcam2の誤検出診断、他sourceの固定split評価、#935での候補選択を検証する。
 
 現行deployはfine-tuning版を維持します。[`run-i618-convnext-v2-scratch`](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md) はTrackNet test F1 `0.7692`、距離 `2.01 px`でoffline評価では上ですが、実clip coverageが`92.0% → 91.1%`へ下がり、`179.9 px`のteleportを1件発生させました。したがって、単一のF1最高値より実動画上の安定性を優先しています。
 

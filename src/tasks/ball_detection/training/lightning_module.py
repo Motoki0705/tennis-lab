@@ -315,7 +315,6 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
         device = next(self.parameters()).device
 
-        normalize_cfg = dict(self.config.data.augmentation.normalize_imagenet)
         peak_threshold = float(self.config.metrics.peak_threshold)
 
         for batch_idx, batch in enumerate(batches):
@@ -330,7 +329,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 images_btchw=images.cpu(),
                 pred_heatmaps_bthw=pred_heatmaps,
                 peak_threshold=peak_threshold,
-                normalize_cfg=normalize_cfg,
+                image_normalization=self.image_normalization,
                 model_io=self.model_io,
                 sample_idx=0,
                 clip_label=f"val epoch={epoch} batch={batch_idx}",
