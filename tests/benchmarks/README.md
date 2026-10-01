@@ -326,3 +326,11 @@ raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を
 - `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [refiner README](../../src/tasks/ball_refiner/README.md#点consumerの信頼度規則) を参照。
 
 - `court_side_confidence.py`: #932の元held-out全28条件の集計を再現し、固定confidenceの連続blockを追加した対比較をCPUで実行。元/filteredの全仮説を保存。実refinerとの誤差相関は再現していない。結果と限界は [安全bench](../../knowledge/nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md) を参照。
+
+## Meiji contextと相関court_side安全bench
+
+`ball_refiner_meiji_context.sh` は [Meiji cache入口](../../src/tasks/ball_refiner/README.md#meijiの凍結人物経路による文脈cache)を
+固定plan・共有GPU queue・資源guard・12時間上限で実行する。引数はscriptのusageを参照。
+`court_side_correlated.py` は実測GMM残差とconfidenceを同一rowで移植した28条件を比較する。
+`court_side_wrong_cases.py` はrun29の3誤判定のcamera/点/支持frameを元RNGから再現する。
+方法と判定規則は[run30事前登録](../../knowledge/runs/run-i935-correlated-safety-r30-20261001/protocol.md)が正本。
