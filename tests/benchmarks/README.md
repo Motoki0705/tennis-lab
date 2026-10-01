@@ -310,3 +310,5 @@ raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を
 対象・指標・限界・凍結の根拠は[run16](../../knowledge/nodes/player_association/000006-run-i964-unseen-r16-20261001.md)を参照。
 
 `person_unseen_labels.py --phase views --report <未見出力> --output <新規dir>`はraw artifactと元映像だけからblindラベル用cropを作る。`details`は`--requests <JSON>`のtrack/frame範囲を拡大し、`labels`はoutput内のclip別review.yamlを既存schemaへ変換する。ラベルを確定・push後にのみ既存の一回scorerを使う。
+
+`person_unseen_review_video.py --report <採点済み未見出力>`はsingle score receiptのラベルhashを検証し、保存raw box/IDとラベルを全長3cameraで比較する。IDの表示名は採点済み対応表を使い、camera間で異なる置換を拒否する。box単位の4色と曖昧色を表示し、再推論・再採点はしない。

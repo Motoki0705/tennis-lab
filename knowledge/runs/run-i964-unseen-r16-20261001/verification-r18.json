@@ -1,0 +1,15 @@
+{
+  "new_tests_passed": 4,
+  "pytest_workers": 4,
+  "ruff": "passed",
+  "mypy": "passed",
+  "scoring_runs": 1,
+  "scoring_crashes": 0,
+  "inference_reruns": 0,
+  "gpu_jobs": 0,
+  "label_test_initial_failure": "fixture missing brace; collection only; fixed",
+  "video_test_initial_failure": "fixture aliased label and prediction arrays; fixed with copy",
+  "validator_requested": 0,
+  "validator_attempts": 0,
+  "validator_completed": 0
+}

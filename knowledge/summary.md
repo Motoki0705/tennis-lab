@@ -1,4 +1,4 @@
-<!-- knowledge-review: f5bfdbb4cc54944025311c4b28420f73cfcc997f97eee5d6545cbc27eeda05b1 on 2026-10-01 -->
+<!-- knowledge-review: c91daca526e3d220ddfe5a8a2fdebdd91b915c3e5312c5bfdef79176adbef605 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -361,4 +361,4 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
 
-人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)で推論完了・blind部分参照ラベル作成へ進んだ。欠測sideによる1clip停止を保持する。採点前のため採否や既定の判断は変更しない。
+人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価を完了し、clip_000全pipeline検証だけ#935 stackに残す。
