@@ -1,0 +1,33 @@
+{
+  "format_version": 1,
+  "kind": "dino_v3_patch_tokens",
+  "created_at": "2026-09-27T02:48:40.363687+00:00",
+  "generator": {
+    "script": "src/tasks/slcs/scripts/precompute_dino_tokens.py",
+    "backbone": "dinov3_vitb16",
+    "checkpoint_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c"
+  },
+  "spec": {
+    "backbone": "dinov3_vitb16",
+    "patch_size": 16,
+    "image_height": 256,
+    "image_width": 448,
+    "embed_dim": 768,
+    "frame_stride": 10
+  },
+  "cameras": {
+    "cam0": {
+      "file": "cam0.npz",
+      "num_samples": 102
+    },
+    "cam1": {
+      "file": "cam1.npz",
+      "num_samples": 102
+    },
+    "cam2": {
+      "file": "cam2.npz",
+      "num_samples": 102
+    }
+  },
+  "input_manifest_digest": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+}

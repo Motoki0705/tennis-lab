@@ -1,0 +1,50 @@
+{
+  "root": "/home/kamimura/projects/tennis-lab/data/plcs/tracked_person_reid_v1",
+  "scene_count": 1000,
+  "splits": {
+    "train": {
+      "count": 800,
+      "sha256": "a7889a9c48c6867c1bbac9b8fe3e0fd27ea0c23e8315ca41a785f90458e44c41"
+    },
+    "val": {
+      "count": 100,
+      "sha256": "8bc2b42e72aa34fff7dc6a300536ef215c4a1556510bbcb132eb8e7d5e72fe11"
+    },
+    "test": {
+      "count": 100,
+      "sha256": "89cd5848503dfff609c684ee862f992258cb7c3d66310f8c33139a21a6a1d154"
+    }
+  },
+  "camera_track_counts": {
+    "1": 1040,
+    "0": 5,
+    "4": 987,
+    "3": 1001,
+    "2": 967
+  },
+  "source_frames_min": 203,
+  "source_frames_max": 6086,
+  "errors": [],
+  "lifecycle": {
+    "lifecycle_contract": "full_source_birth_balanced_v1",
+    "scene_count": 1000,
+    "source_count": 2486,
+    "occupancy_seconds": [
+      0.0,
+      3599.1833333333348,
+      2489.0499999999984,
+      1383.6166666666668,
+      300.69166666666666
+    ],
+    "positive_occupancy_fractions": [
+      0.4630638840791034,
+      0.3202363019389837,
+      0.17801341260098316,
+      0.03868640138092966
+    ],
+    "uniform_tolerance": 0.05,
+    "uniform_required": false,
+    "max_uniform_deviation": 0.21306388407910343
+  },
+  "note": "All 1000 scenes finished generation; revalidated with explicit fixed-track occupancy policy after old uniform-occupancy audit rejected the distribution."
+}
