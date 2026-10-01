@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / ".agents/skills/knowledge-control/scripts"))
 check_run: Any = importlib.import_module("kg_repro_paths").check_run
@@ -54,6 +56,40 @@ def test_references_at_a_commit_missing_from_the_clone_are_unverifiable(tmp_path
     bundle.mkdir(parents=True)
     (bundle / "repro.sh").write_text(f"git checkout {'a' * 40}\n# --- original training command ---\n.venv/bin/python -m pkg.mod\n")
     assert [f.status for f in check_run(tmp_path, bundle / "repro.sh")] == ["unverifiable"]
+
+
+@pytest.mark.parametrize("pinned_at_commit", [False, True])
+def test_external_test_runner_requires_a_lock_at_the_recorded_commit(
+    tmp_path: Path, pinned_at_commit: bool
+) -> None:
+    git(tmp_path, "init", "-q")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_example.py").write_text("")
+    lock = (
+        'version = 1\n[[package]]\nname = "pytest"\nversion = "9.1.1"\n'
+        'source = { registry = "https://pypi.org/simple" }\n'
+    )
+    if pinned_at_commit:
+        (tmp_path / "uv.lock").write_text(lock)
+    git(tmp_path, "add", ".")
+    git(tmp_path, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+    commit = git(tmp_path, "rev-parse", "HEAD")
+    # A present-day lock cannot repair the environment of an older recorded run.
+    (tmp_path / "uv.lock").write_text(lock)
+    bundle = tmp_path / "knowledge/runs/run-cli"
+    bundle.mkdir(parents=True)
+    (bundle / "repro.sh").write_text(
+        f"git checkout {commit}\n# --- original training command ---\n"
+        ".venv/bin/python -m pytest tests/test_example.py tests/missing.py\n"
+        ".venv/bin/python -m unknown_tool\n"
+    )
+    status = {f.reference: f.status for f in check_run(tmp_path, bundle / "repro.sh")}
+    assert status == {
+        "pytest": "ok" if pinned_at_commit else "missing",
+        "tests/test_example.py": "ok",
+        "tests/missing.py": "missing",
+        "unknown_tool": "missing",
+    }
 
 
 def test_the_repository_bundles_reference_only_reproducible_scripts() -> None:

@@ -10,8 +10,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from src.submodules.models import PersonDetectionResult, ViTPosePose2D
-from src.tasks.person_tracking.all_person import AllPersonAssociator
+from src.submodules.models import ViTPosePose2D
 from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.person_tracking.features import FeatureExtractor, UnpromptedEncoder
 from src.tasks.person_tracking.sequence import (
@@ -43,7 +42,7 @@ class PersonTrackingOutput:
     observed: NDArray[np.bool_]
     source_track_ids: tuple[tuple[int, ...], ...]
     tracklet_links: tuple[TrackletLink, ...]
-    evidence: TrackEvidence | None = None  # None only for the explicit motion baseline
+    evidence: TrackEvidence | None = None  # None for disabled or imported tracks
     reconstruction: ReconstructedTracks | None = None
     offline_link_candidates: tuple[dict[str, Any], ...] = ()
 
@@ -81,9 +80,9 @@ class PersonTrackingModule:
                  aflink_checkpoint: Path | None = None, enabled: bool = True) -> None:
         self.config, self.people, self.encoder = config, people, encoder
         self.aflink_checkpoint, self.enabled = aflink_checkpoint, enabled
-        if enabled and config.method != 'all_person_botsort' and (people is None or encoder is None):
+        if enabled and (people is None or encoder is None):
             raise ValueError('Feature tracking requires explicit pose assets and CLIP encoder')
-        if enabled and config.offline and aflink_checkpoint is None:
+        if enabled and aflink_checkpoint is None:
             raise ValueError('AFLink/GSI tracking requires an explicit checkpoint')
 
     def process(self, inputs: PersonTrackingInput) -> PersonTrackingOutput:
@@ -93,34 +92,15 @@ class PersonTrackingModule:
         if not self.enabled:
             return PersonTrackingOutput(video.camera_id, np.empty(0, np.int64),
                 np.zeros((0, video.num_frames, 4), np.float32), np.zeros((0, video.num_frames), bool), (), ())
-        if self.config.method != 'all_person_botsort':
-            return self._features(inputs)
-        tracker = AllPersonAssociator()
-        history = []
-        for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames):
-            start, end = detections.frame_offsets[packet.index:packet.index + 2]
-            detection = PersonDetectionResult(detections.boxes_xyxy[start:end], detections.confidence[start:end])
-            ids, rows = tracker.update(detection, packet.frame)
-            history.append((ids, detection.boxes_xyxy[rows]))
-        if len(history) != video.num_frames:
-            raise ValueError("Tracking did not decode the complete source timeline")
-        ids = np.unique(np.concatenate([item[0] for item in history]))
-        boxes: NDArray[np.float32] = np.zeros((len(ids), video.num_frames, 4), np.float32)
-        observed: NDArray[np.bool_] = np.zeros((len(ids), video.num_frames), bool)
-        for frame, (frame_ids, frame_boxes) in enumerate(history):
-            rows = np.asarray(np.searchsorted(ids, frame_ids), dtype=np.int64)
-            boxes[rows, frame] = frame_boxes
-            observed[rows, frame] = True
-        return PersonTrackingOutput(video.camera_id, ids, boxes, observed,
-                                    tuple((int(i),) for i in ids), ())
+        return self._features(inputs)
 
     def _features(self, inputs: PersonTrackingInput) -> PersonTrackingOutput:
         video, detections = inputs.video, inputs.detections
         if detections.source_rows is None:
             raise ValueError('Feature tracking requires person_detections v2 source rows; regenerate the artifact')
-        assert self.people is not None and self.encoder is not None
+        assert self.people is not None and self.encoder is not None and self.aflink_checkpoint is not None
         people = self.people
-        af = AFLink(self.aflink_checkpoint) if self.config.offline and self.aflink_checkpoint is not None else None
+        af = AFLink(self.aflink_checkpoint)
         pose = ViTPosePose2D(people.vitpose_checkpoint, device=people.runtime.device,
             flip_test=people.runtime.vitpose.flip_test, batch_size=people.runtime.vitpose.batch_size,
             head_config=people.runtime.vitpose.head, precision='float32')
