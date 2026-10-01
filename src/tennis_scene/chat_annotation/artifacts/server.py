@@ -10,7 +10,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel, ConfigDict
 
@@ -89,15 +89,9 @@ def download_zip(url: str) -> bytes:
     return bytes(data)
 
 
-def create_server(root: Path, host: str = "127.0.0.1", port: int = 8000) -> FastMCP:
+def create_server(root: Path) -> MCPServer:
     store = ArtifactStore(root)
-    server = FastMCP(
-        "artifact-mcp-server",
-        host=host,
-        port=port,
-        stateless_http=True,
-        json_response=True,
-    )
+    server = MCPServer("artifact-mcp-server")
 
     def save_artifact(file: OpenAIFile, filename: str) -> dict[str, Any]:
         """Submit a ZIP containing only annotation JSON files to raw storage.
@@ -123,19 +117,19 @@ def create_server(root: Path, host: str = "127.0.0.1", port: int = 8000) -> Fast
     server.add_tool(
         save_artifact,
         annotations=ToolAnnotations(
-            readOnlyHint=False,
-            destructiveHint=False,
-            idempotentHint=True,
-            openWorldHint=True,
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=True,
+            open_world_hint=True,
         ),
         meta={"openai/fileParams": ["file"]},
     )
     server.add_tool(
         list_artifacts,
-        annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+        annotations=ToolAnnotations(read_only_hint=True, open_world_hint=False),
     )
     server.add_tool(
         read_artifact,
-        annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
+        annotations=ToolAnnotations(read_only_hint=True, open_world_hint=False),
     )
     return server

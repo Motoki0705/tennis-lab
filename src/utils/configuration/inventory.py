@@ -329,7 +329,7 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
             f"tennis_scene.chat_annotation.{script}",
             "src.utils.configuration.paths.NonHydraPathBoundary.validate",
         )
-        for script in ("serve_artifacts", "sync_done")
+        for script in ("serve_artifacts", "sync_done", "review_ui")
     },
     "src.tennis_scene.chat_annotation.scripts.annotate": (
         "tennis_scene.chat_annotation.tools",
@@ -445,6 +445,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.generate_evidence", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.audit_data", "main", domain="ball_refiner", executable_module=True),
+    _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.review_ui", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.serve_artifacts", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.sync_done", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.annotate", "main", domain="tennis_scene", executable_module=True),

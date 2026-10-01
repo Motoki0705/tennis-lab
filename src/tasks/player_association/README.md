@@ -78,6 +78,12 @@ clip ごとの選定理由と人物の説明は review YAML の `selection`・`p
 
 既定は [association_i964_r14_lovo_a.yaml](configs/association_i964_r14_lovo_a.yaml)（2026-10-01のユーザー判断）。
 pipelineと引数省略の `load_association_config` は同じ候補Aを読む。
-旧尺度は `player_association.config=src/tasks/player_association/configs/association.yaml` を明示して選べる。
+標準pipelineはこの採用設定だけを読む。旧尺度は比較APIの
+`load_association_config(LEGACY_CONFIG, players_per_side=...)`または既存benchmarkで明示する。
+他encoderとgeometry-onlyも比較APIで使用できる。A/B/Cは閾値候補であり、同じsolverを共有する。
 欠損時は停止し、旧設定へ戻さない。
 LOVO採否・devで旧/新IDが一致した結果と限界は [run14の証拠](../../../knowledge/nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)を参照。
+
+重みは `encoder_weights()` を正本として `ckpt/player_association/`、DINOv3は `ckpt/dinov3/` から読む。
+`third_party/dinov3/` にはsource codeを置く。CLIPはtracking・選手選別・associationで同じ重みを使い、
+別rootや旧配置のweightへ暗黙に戻らない。

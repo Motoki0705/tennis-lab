@@ -45,7 +45,7 @@ def test_shared_default_retains_original_rows_poses_and_synthetic_mask(tmp_path:
 def test_missing_aflink_and_invalid_timeline_do_not_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(ValueError, match='AFLink must'):
         track_sequence([two_people(0)], fps=30., config=TrackingConfig(), aflink=None)
-    with pytest.raises(ValueError, match='Unknown tracking'):
+    with pytest.raises(ValueError, match='Production tracking requires'):
         TrackingConfig(method='typo')
     with pytest.raises(ValueError, match='contiguous'):
         track_sequence([two_people(1)], fps=30., config=TrackingConfig(), aflink=no_links(monkeypatch))

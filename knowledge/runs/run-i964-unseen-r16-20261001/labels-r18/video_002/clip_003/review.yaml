@@ -1,0 +1,53 @@
+observe_run: outputs/person_tracking/evaluate/i964-unseen-r16-20261001
+reviewer: Codex visual review, run 18; no second human annotator
+blind_to_association: true
+clips:
+  video_002/clip_003:
+    selection: 事前予約済みの全長clip。全raw trackをsource RGBと照合。人物対応・選別結果を未参照。
+    people:
+      A:
+        role: player
+        description: 青緑シャツ・黒短パンの主コート選手。video_000/002はcam0/1手前、video_001はcam2手前。
+      B:
+        role: player
+        description: 明るい髪・灰色シャツ・黒短パンの主コート選手。Aの対戦相手。
+      X1:
+        role: non_player
+        description: 隣コートの青緑シャツ・白スカート・黒レギンス、結んだ髪の人物。
+      X2:
+        role: non_player
+        description: 隣コートの白帽子・白/黒の上衣・黒七分丈パンツの人物。
+      X3:
+        role: non_player
+        description: 隣コートの暗色上衣・暗色ボトムの人物。video_002では黄色いラケット。
+      F:
+        role: non_player
+        description: cam2の遠側フェンス上の静止した白い点と縦の構造物の誤検出。実在人物ではない。
+    tracks:
+      cam0:
+        1: A
+        2: B
+        3: X3
+        4: X1
+        5: X2
+        7: X3
+        13: B
+      cam1:
+        1: A
+        2: X2
+        3: B
+        5: B
+        10: B
+      cam2:
+        1: B
+        2: A
+        3: X3
+        7: X1
+        14: X3
+        17: X3
+        18: X2
+        24: F
+        30: F
+        31: X1
+        32: X2
+        39: F
