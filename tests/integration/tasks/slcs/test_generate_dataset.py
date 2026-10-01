@@ -171,7 +171,8 @@ def test_incomplete_scene_fails_before_feature_work(tmp_path: Path, fault: str) 
     if fault == "missing_marker":
         marker.unlink()
     elif fault == "missing_ball":
-        scene_path = annotation / "scene.npz"
+        # Rewriting the immutable export breaks the checksum recorded in scene.json.
+        scene_path = annotation / json.loads(marker.read_text())["scene_result"]
         with np.load(scene_path) as scene:
             arrays = {key: scene[key] for key in scene.files if key != "ball_3d"}
         np.savez_compressed(scene_path, **arrays)
@@ -179,7 +180,8 @@ def test_incomplete_scene_fails_before_feature_work(tmp_path: Path, fault: str) 
         data = json.loads(marker.read_text())
         data["arrays"]["ball_uv"]["shape"] = [99, 99, 2]
         marker.write_text(json.dumps(data))
-    with pytest.raises(DatasetManifestError):
+    expected = ValueError if fault == "missing_ball" else DatasetManifestError
+    with pytest.raises(expected, match="checksum" if fault == "missing_ball" else None):
         prepare_dataset(_runtime(tmp_path), encoder_factory=_no_encoder)
     assert not (index.root / "splits.json").exists()
 

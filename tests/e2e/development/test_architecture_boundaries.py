@@ -97,6 +97,13 @@ COURT_INFERENCE_REMOVED_MODULES = (
     "src.tasks.court_detection.inference.semantic_lines",
 )
 TENNIS_SCENE_REMOVED_MODULES = (
+    "src.tennis_scene.pipeline.components.blcs",
+    "src.tennis_scene.pipeline.components.plcs",
+    "src.tennis_scene.pipeline.components.player_association",
+    "src.tennis_scene.pipeline.dependency_graph",
+    "src.tennis_scene.pipeline.observations",
+    "src.tennis_scene.pipeline.utilts",
+    "src.tennis_scene.pipeline.utilts.court_reference",
     "src.tennis_scene.clip_studio.migration",
     "src.tennis_scene.dataset_pipeline",
     "src.tennis_scene.dataset_pipeline.assemble",
