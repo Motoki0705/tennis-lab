@@ -7,8 +7,9 @@ shapes and targets.
 
 ## Version selection
 
-The public Hydra selector is `court_keypoints=physical_v1|camera_view_v2`.
-`physical_v1` remains the default. The selector resolves to exact semantic and
+Standalone BLCS/PLCS generation, training, and inference accept only
+`court_keypoints=physical_v1`. The shared camera-view representation below is
+retained for other consumers such as the tennis-scene camera-geometry pipeline. The selector resolves to exact semantic and
 model-target IDs; IDs are never inferred from a 20- or 14-point shape.
 
 | Selector | Semantic contract ID | Model target-frame ID |
@@ -121,15 +122,12 @@ small human-inspection surface beside it:
 ```
 
 `src.tasks.{plcs,blcs}.scripts.generate_dataset_samples` are the canonical
-entry points. Their default configs cover the four physical-v1 production
-layouts plus `multi_object_camera_view_v2`. Each dataset contributes one scene
+entry points. Their configs cover only each task's physical-v1 `single_object` dataset. Each dataset contributes one scene
 from every cell of a 3×3 stratification rather than the first N scene IDs.
 
 - PLCS single: motion category × within-category frame-count tercile.
 - BLCS single: deuce/ad/behind-baseline first-hit region × within-region
   frame-count tercile.
-- PLCS/BLCS multi: track-count tercile × within-band total-active-frame
-  tercile.
 
 Visibility and a task-owned auxiliary statistic are offset quantile tie-breaks,
 and the rendered camera itself is selected at a low/mid/high visibility rank.
@@ -138,45 +136,6 @@ playback FPS is bounded while approximately preserving source duration.
 `manifest.json` records every threshold, stratum population, scene metric,
 camera choice, and exact source-frame index. Missing strata, malformed timing,
 and invisible-only camera sets are errors rather than fallback selections.
-
-## Reference-camera track-query model contract
-
-CourtKP and track-query RoPE are independently versioned. Only these exact
-combinations are valid:
-
-| Model contract | Court / target contract | Spatial coordinates | Forward |
-|---|---|---|---|
-| `time_camera_role_v1` | `physical_courtkp20_v1` / `physical_court_v1` | query `(t,0,0)`, object `(t,v+1,1)` | the original five tensors |
-| `time_camera_reference_selector_v1` | `camera_view_courtkp20_rzpi_v1` / `reference_camera_court_rzpi_v1` | query `(t,0,0)`; reference objects `(t,v+1,0)`; other objects `(t,v+1,1)` | the same five tensors plus required `reference_view_index: int64[B]` |
-
-The v2 selector is clip-level and is repeated over every time and object token;
-it does not depend on visibility. Query-first flattening, time order, local
-camera coordinate `v+1`, and the compressed spatial width are unchanged.
-`rope_dim` must be even and at least 6 so the generic round-robin allocator
-assigns a pair to time, camera, and selector.
-
-Each v2 sample carries one typed selection with canonical string IDs,
-`reference_view_index`, `view_camera_ids`, `reference_camera_id`,
-`reference_from_physical`, and its transpose `physical_from_reference`.
-Integer IDs are collision-free ranks in the complete lexicographically ordered
-scene ID table; `-1` is reserved only for padded `view_camera_ids`. Missing,
-unknown, mixed, out-of-range, padded, or identity/index-inconsistent records are
-errors. Checkpoints persist Court, target-frame, RoPE, and selector markers as
-independent fields and require the canonical
-`fixed_query_track_compressed_v1` architecture marker. Metadata-free and
-pre-promotion checkpoints are rejected. Matching tensor shapes never authorize
-a semantic or architecture migration.
-
-Training chooses the reference from the selected valid views using the
-caller-owned seeded worker RNG after subset selection; the candidate IDs are
-sorted before the draw, so view permutation does not change the random choice.
-Validation and test use the stable `data.evaluation_reference_camera_id`.
-Direct inference and prediction visualization require an explicit stable
-`reference_camera_id`; multi-view code never defaults to local index zero or a
-sorted/first camera. The selected ID, local index, complete ID table,
-forward/inverse transforms, target-frame marker, RoPE marker, and selector mode
-are serialized with predictions so downstream consumers can restore physical
-court coordinates exactly.
 
 ## Explicit camera candidate sets
 
@@ -206,36 +165,3 @@ in one split; realized scene counts approximate the requested 80/10/10 ratio.
 .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
 .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
 ```
-
-## Full-source multi-object lifetimes
-
-PLCS consumes every frame of each selected ACCAD/COCO-17 source; BLCS consumes
-all output frames of each generated rally. Every track has `source_start=0`,
-`source_end=source_length`, and `death=birth+source_length`. The earliest birth
-is 0 and the scene ends at the last death. There is no fixed 1024-frame cutoff,
-random source subclip, or `min_active_frames`. Existing Dataset windowing,
-augmentation and inference behavior are unchanged.
-
-Workers generate complete sources and project them through static cameras.
-The coordinator consumes results in scene-ID order and optimizes births against
-its accumulated **seconds** at positive occupancy counts 1..4. It moves every
-source's 3D arrays, 2D observations, masks and rally event timestamps together,
-without recomputing or altering source values. The plan depends on run seed,
-scene ID and source lengths, not worker completion order. Each generation call
-owns one ledger (a dataset or a training chunk); there is no mutable worker ledger.
-The public BLCS `generate_sequence()` API uses the same birth rebalancer and
-a sequence-owned ledger, including synthetic production generation.
-
-Presence and visibility remain separate. Birth at t=0 need not imply visible
-observations. Zero-occupancy time is reported separately and does not receive a
-1..4 quota. The default source count is 4..10, concurrency at most 4. Minimum
-scene length only protects existing loader constraints; it never truncates a
-source. The PLCS default reuse gap is 64 native frames (allowing local tracker
-retirement after ACCAD resampling); BLCS uses 8 frames. These control births,
-not the source-defined death times.
-
-The CLI writes `lifecycle_audit.json`, checks complete intervals, first birth,
-scene end and concurrency, and reports occupancy in seconds. Production-sized
-runs (at least 100 scenes) fail if any positive occupancy fraction differs from
-uniform by more than 0.05. Smaller smoke datasets report the same measurements
-without treating finite-sample variation as a publication failure.

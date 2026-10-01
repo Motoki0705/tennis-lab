@@ -1,6 +1,6 @@
 # Canonical scene dataset pipeline
 
-This package owns the tennis-lab side of the video-to-dataset workflow. One
+This package owns the tennis-lab video-to-Court-Detection-dataset workflow. One
 video and one `scene_id` resolve to one mutable workspace. NHT remains an
 independent command that owns reconstruction and rendering; tennis-lab consumes
 only its public standard scene export and render files.
@@ -41,7 +41,7 @@ The scene-pipeline production entrypoint is:
 ```
 
 Hydra composition starts at `configs/run_scene_pipeline.yaml`. The typed path
-roots, requested dataset targets, start/terminal stages, camera profile, NHT
+roots, requested dataset targets, start/terminal stages, NHT
 commands, alignment gates, and domain policies are all explicit config authority.
 To rerun a valid downstream suffix, set `request.from_stage`, for example:
 
@@ -52,7 +52,7 @@ To rerun a valid downstream suffix, set `request.from_stage`, for example:
 
 An alignment rerun may change `alignment`, `dataset`, and `request.targets`,
 because alignment and all dataset/report descendants are invalidated. Retained
-upstream authority (including roots, camera, profile, pipeline, and existing NHT
+upstream authority (including roots, profile, pipeline, and existing NHT
 values) must still match. Legacy NHT configuration may add only the nonempty
 `training_python_path` and `trainer_path` runtime paths; replacing existing values
 or adding other NHT options is rejected before any publication is invalidated.
@@ -78,10 +78,7 @@ records `pending`, `running`, `completed`, `failed`, `invalidated`, and `skipped
 state for this typed DAG:
 
 ```text
-ingest → reconstruction → alignment
-                              ├─ court_dataset ─┐
-                              ├─ blcs_dataset  ─┼─ report
-                              └─ plcs_dataset  ─┘
+ingest → reconstruction → alignment → court_dataset → report
 ```
 
 Each stage has one handler and one owner directory. A rerun validates the
@@ -152,156 +149,23 @@ is the validation authority for the PNG diagnostics.
 shared scale and court count on the projected heatmap, with human confirmation
 as the final authority for downstream datasets.
 
-## Dataset domains
+## Court detection dataset
 
-The canonical dataset package owns config-driven camera rigs, balanced target-court
-assignment, and exact cross-chunk timeline continuity. Task packages provide only
-their public domain source contracts.
+This system generates only Court Detection datasets. The versioned contract,
+labels and storage layout are documented in [dataset/court/README.md](dataset/court/README.md).
+BLCS/PLCS RGB generation, dynamic foreground composition and their configuration
+selectors have been removed. `request.targets=[court]` is the only dataset target.
 
-- [Court Detection dataset v1/v2/v3 contract](dataset/court/README.md).
-- BLCS preserves every source physics frame across multi-object planning,
-  config-owned cameras, balanced court assignment, contiguous chunks, labels,
-  final assembly, and diagnostics. The default ball remains the deterministic
-  asset-local metric Gaussian surface and uses the public composed NHT boundary.
-  `dataset.blcs.assets.rendering=mesh` instead requires an explicit data-root-relative
-  `.glb` path. The GLB loader rejects unsupported/ambiguous sources, samples its
-  sRGB base-color material into an explicit `glb_base_color_lambertian_v1`
-  appearance (normal/metallic maps do not silently change this contract),
-  applies glTF linear `baseColorFactor` and `COLOR_0` semantics, then recenters
-  the geometry and scales its outer radius to
-  `dataset.blcs.assets.settings.radius_m`. Mesh mode asks ordinary public
-  `nht-render` for the existing 3DGS RGB/metric depth once per generated camera,
-  ray-rasterizes the moving triangles with camera-axis metric depth, and performs
-  mesh/mesh plus mesh/3DGS z-buffering before publishing the same compact RGB,
-  alpha, depth, positive instance-ID, semantic-array, and metadata outputs. It
-  never substitutes the Gaussian asset, a 2D disc, or a projected-radius
-  primitive when the configured GLB is missing or invalid.
-  `assets.mesh.maximum_file_bytes`, `maximum_source_vertices`, and
-  `maximum_source_faces` bound the source before geometry arrays are allocated;
-  `maximum_faces` separately bounds the simplified runtime mesh. All four limits
-  are persisted in each plan's mesh provenance.
+## Visualization and publication
 
-For the local tennis-ball asset, generate only the BLCS suffix with:
-
-```bash
-.venv/bin/python -m src.synthetic_data_generation.scripts.run_scene_pipeline \
-  request.from_stage=blcs_dataset request.targets='[blcs]' \
-  dataset.blcs.assets.rendering=mesh \
-  'dataset.blcs.assets.mesh.path=synthetic_data_generation/assets/blcs/tennis ball 3d model.glb'
-```
-- PLCS loads complete ACCAD motion clips, applies SMPL-H and per-frame Gaussian
-  LBS, rejects rigid-only motion, composes the full multi-object global timeline,
-  and publishes motion/camera/court diagnostics.
-
-The canonical package contains no alternate generic path pipeline, legacy
-artifact reader/writer, compatibility conversion, dual-write, fixed-pose
-production path, selected captured-camera path, or identity/hash gate.
-
-## Visualize a generated dataset
-
-The production visualizer reads only the published current-schema owner under
-`<scene-root>/datasets/{court,blcs,plcs}`. It validates the current schema and
-the selected view's exact canonical inventory, reconstructs compact BLCS/PLCS
-RGB views from their NHT background and foreground-delta stores, streams frames
-into H.264, and writes a deterministic JSON sidecar beside the MP4. Existing
-output files are never overwritten.
-
-Canonical frames with odd dimensions are preserved and padded by one black pixel
-on the right and/or bottom for H.264 `yuv420p`; the source dimensions and exact
-padding are recorded in the sidecar.
-
-Court visualization follows the versioned Court dataset contract linked above:
-
-```bash
-.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
-  visualization.domain=court \
-  visualization.dataset_root=scenes/<scene_id>/datasets/court \
-  visualization.trajectory_id=<trajectory_id> \
-  visualization.output_video=previews/court-orbit.mp4
-```
-
-BLCS and PLCS selection is one explicit logical scene and generated camera.
-For BLCS the logical scene ID is the canonical trajectory ID. BLCS overlays
-stable ball identity, presence, renderer observation, and a short trajectory;
-PLCS overlays CourtKP20 context plus projected COCO17 skeletons, stable person
-identity, physical presence, and renderer-visible pixel state.
-
-```bash
-.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
-  visualization.domain=blcs \
-  visualization.dataset_root=scenes/<scene_id>/datasets/blcs \
-  visualization.logical_scene_id=<trajectory_id> \
-  visualization.camera_id=<camera_id> \
-  visualization.output_video=previews/blcs-view.mp4
-
-.venv/bin/python -m src.synthetic_data_generation.scripts.visualize_dataset \
-  visualization.domain=plcs \
-  visualization.dataset_root=synthetic_data_generation/scenes/B00/datasets/plcs \
-  visualization.logical_scene_id=B00 \
-  visualization.camera_id=court-001-corner-near-left \
-  visualization.output_video=previews/plcs-view.mp4
-```
-
-`visualization.fps`, `crf`, and BLCS `history_frames` are explicit Hydra
-settings. Dataset and video paths are resolved strictly beneath `roots.data_root`
-and `roots.output_root`, respectively. IDs are never guessed, camera views are
-never substituted, frame gaps/reordering fail closed, and no compatibility-schema
-fallback exists.
-
-## Generate publication PNG/GIF bundles
-
-`generate_publication_visualizations` is the single publication composition
-root. It validates the current alignment, reconstruction export, and all three
-dataset owners before rendering. Its request names every dataset trajectory or
-logical scene, the GIF camera, the complete BLCS/PLCS/captured camera orders,
-strictly increasing endpoint-inclusive frame indices, media dimensions, GIF
-timing, drawing settings, and per-file/total byte limits. It never selects the
-first or sorted camera and never publishes a subset after a failure.
-
-Use the validated IDs and last frame indices reported by the regenerated scene
-owners:
-
-```bash
-.venv/bin/python -m src.synthetic_data_generation.scripts.generate_publication_visualizations \
-  publication.scene_id=<scene_id> \
-  publication.court.trajectory_id=<court-trajectory-id> \
-  publication.court.frame_indices='[0,<court-last-index>]' \
-  publication.blcs.logical_scene_id=<blcs-logical-scene-id> \
-  publication.blcs.camera_id=<blcs-gif-camera-id> \
-  publication.blcs.frame_indices='[0,<blcs-last-index>]' \
-  publication.blcs.camera_ids='[<complete-owner-order>]' \
-  publication.plcs.logical_scene_id=<plcs-logical-scene-id> \
-  publication.plcs.camera_id=<plcs-gif-camera-id> \
-  publication.plcs.frame_indices='[0,<plcs-last-index>]' \
-  publication.plcs.camera_ids='[<complete-owner-order>]' \
-  publication.captured.camera_ids='[<complete-export-order>]'
-```
-
-By default, the fresh output directory is
-`data/synthetic_data_generation/scenes/<scene_id>/publication/`. It contains
-three annotated dataset GIFs, the persisted
-four-phase alignment progression GIF, a metric ground-plane heatmap/evidence/
-court overlay, captured/BLCS/PLCS camera-frustum figures, their shared-axis
-comparison, a fixed six-panel overview, and `manifest.json`. The authoritative
-`validate_publication_bundle(..., expected_request=request)` API reopens every
-media frame and reloads the request's validated source owners before accepting
-provenance. It rejects extra or missing files, altered bytes, foreign sources,
-schema/order/count disagreement, incomplete camera inventories, changed GIF
-timing, and self-consistent manifest tampering. The separately named
-`validate_publication_bundle_structure_only()` API checks bundle-local structure
-and digests only; it cannot authenticate source provenance.
-
-Alignment agreement metrics use the persisted metric UV plane. The mean and
-median court-line probability sample each accepted court segment at 64 inclusive
-points on the weighted probability raster; coverage is the fraction at or above
-0.5. Projected-evidence mean and q95 distances are Euclidean metre distances to
-the nearest accepted court segment. The ground-plane binding metric is the
-maximum absolute signed metre distance of accepted court points from that plane.
-Camera coverage records the exact camera count, adjacent metric trajectory length,
-maximum adjacent displacement, and metric centre bounds. These definitions and
-their schema versions are retained in the manifest together with source owners,
-IDs, mappings, coordinate declarations, resolved semantic config, and bounded
-asset policy.
+`src.synthetic_data_generation.scripts.visualize_dataset` renders the selected
+Court trajectory. `generate_publication_visualizations` publishes one validated
+Court bundle: `dataset-court.gif`, `alignment-progression.gif`,
+`alignment-heatmap-court.png`, `captured-camera-trajectory.png`,
+`publication-overview.png`, and `manifest.json`.
+The publication request, manifest and bundle schemas are version 2. The request
+specifies Court trajectory/frame indices, captured camera IDs and drawing settings.
+The overview contains Court, alignment and captured-camera panels.
 
 ## Court LINE推論の共有
 

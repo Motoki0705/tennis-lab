@@ -22,7 +22,7 @@ def test_structure_only_validator_accepts_complete_fixture(
     manifest = validate_publication_bundle_structure_only(valid_publication_bundle)
 
     assert manifest.scene_id == "scene-0"
-    assert len(manifest.artifacts) == 10
+    assert len(manifest.artifacts) == 5
 
 
 @pytest.mark.parametrize("mutation", ["missing", "extra"])
@@ -95,34 +95,6 @@ def test_publication_matrix_validation_accepts_canonical_valid_numeric_drift() -
     )
 
     np.testing.assert_array_equal(validated, matrix)
-
-
-def test_manifest_comparison_recomputes_identical_drift_as_six_of_six() -> None:
-    angle = 1.1884684684684685
-    forward = np.asarray(
-        (0.6 * np.sin(angle), 0.8 * np.sin(angle), np.cos(angle)),
-        dtype=np.float64,
-    )
-    right = np.cross(np.asarray((0.0, 1.0, 0.0)), forward)
-    right = right / np.linalg.norm(right)
-    down = np.cross(forward, right)
-    matrix = np.eye(4, dtype=np.float64)
-    matrix[:3, :3] = np.column_stack((right, down, forward * (1.0 + 5.0e-8)))
-    RigidTransform.from_matrix(matrix)
-    matrices = np.stack([matrix.copy() for _ in range(6)])
-    matrices[:, 0, 3] = np.arange(6, dtype=np.float64)
-
-    metrics = bundle_module._camera_comparison_metrics_from_poses(
-        camera_ids=tuple(f"camera-{index}" for index in range(6)),
-        blcs_matrices=matrices,
-        plcs_matrices=matrices.copy(),
-        centre_tolerance_metres=1.0e-6,
-        forward_angle_tolerance_degrees=1.0e-6,
-    )
-
-    assert metrics["coincident_camera_count"] == 6
-    assert metrics["coincident_camera_fraction"] == 1.0
-    assert metrics["maximum_forward_angle_difference_degrees"] == 0.0
 
 
 @pytest.mark.parametrize(

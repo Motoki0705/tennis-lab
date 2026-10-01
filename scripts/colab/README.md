@@ -251,10 +251,8 @@ publishされます。後続jobへ渡すときはartifactをdownload・展開し
 | `court_detection_materialize_targets` | CPU | `src.tasks.court_detection.scripts.materialize_targets` / SEG・LINE target生成 |
 | `blcs_generate_dataset` | CPU | `src.tasks.blcs.scripts.generate_dataset` / single-object dataset生成 |
 | `blcs` | GPU | `src.tasks.blcs.scripts.train` / standard学習 |
-| `blcs_tracking` | GPU | `src.tasks.blcs.scripts.train --config-name train_tracking` / tracking-query学習 |
 | `plcs_generate_dataset` | CPU | `src.tasks.plcs.scripts.generate_dataset` / single-object dataset生成 |
 | `plcs` | GPU | `src.tasks.plcs.scripts.train` / standard学習 |
-| `plcs_tracking` | GPU | `src.tasks.plcs.scripts.train --config-name train_tracking` / tracking-query学習 |
 | `slcs_make_splits` | CPU | `src.tasks.slcs.scripts.make_splits` / recording単位split生成 |
 | `slcs_precompute_dino_tokens` | GPU | `src.tasks.slcs.scripts.precompute_dino_tokens` / DINOv3 token生成 |
 | `slcs` | GPU | `src.tasks.slcs.scripts.train` / temporal scene-localization学習 |

@@ -8,21 +8,13 @@ import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.base.configuration import as_config_mapping
 from src.tasks.base.generate_dataset.parallel_runner import (
     run_parallel_scene_generation,
-)
-from src.tasks.base.generate_dataset.timeline_composer import (
-    TimelineComposer,
-    TimelineConfig,
-)
-from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
-    MultiPersonSceneGenerator,
 )
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData, SceneGenerator
 
-_WORKER_SCENE_GENERATOR: SceneGenerator | MultiPersonSceneGenerator | None = None
+_WORKER_SCENE_GENERATOR: SceneGenerator | None = None
 
 
 def build_scene_generator(
@@ -46,27 +38,14 @@ def build_scene_generator(
 def _get_worker_scene_generator(
     config_dict: dict[str, Any],
     device: str,
-) -> SceneGenerator | MultiPersonSceneGenerator:
+) -> SceneGenerator:
     global _WORKER_SCENE_GENERATOR
     if _WORKER_SCENE_GENERATOR is None:
         cfg = OmegaConf.create(config_dict)
         if not isinstance(cfg, DictConfig):
             raise TypeError("PLCS worker config must resolve to a DictConfig.")
         base = build_scene_generator(cfg, device)
-        generation = cfg.generation
-        if str(generation.mode) == "multi_object":
-            timeline_raw = OmegaConf.to_container(generation.timeline, resolve=True)
-            if not isinstance(timeline_raw, dict):
-                raise TypeError("generation.timeline must resolve to a mapping.")
-            _WORKER_SCENE_GENERATOR = MultiPersonSceneGenerator(
-                base,
-                timeline=TimelineConfig.from_mapping(
-                    as_config_mapping(timeline_raw, path="generation.timeline")
-                ),
-                rng=random.Random(random.getrandbits(64)),
-            )
-        else:
-            _WORKER_SCENE_GENERATOR = base
+        _WORKER_SCENE_GENERATOR = base
     return _WORKER_SCENE_GENERATOR
 
 
@@ -88,8 +67,6 @@ def _generate_scene_task(
     random.seed(scene_seed)
     np.random.seed(scene_seed)
     torch.manual_seed(scene_seed)
-    if isinstance(scene_generator, MultiPersonSceneGenerator):
-        scene_generator.composer.rng.seed(scene_seed)
     return scene_generator.generate_scene(scene_id=f"scene_{scene_index:06d}")
 
 
@@ -124,16 +101,4 @@ def generate_parallel_scenes(
         chunksize=1,
     )
 
-    if str(config.generation.mode) != "multi_object":
-        yield from results
-        return
-    from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
-        rebalance_scene_births,
-    )
-
-    composer = TimelineComposer(
-        TimelineConfig.from_mapping(dict(config.generation.timeline))
-    )
-    for scene_index, scene in enumerate(results, start=start_index):
-        composer.rng.seed(int(config.run.seed) + scene_index)
-        yield rebalance_scene_births(scene, composer)
+    yield from results

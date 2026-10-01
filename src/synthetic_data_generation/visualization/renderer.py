@@ -15,20 +15,14 @@ from numpy.typing import NDArray
 
 from src.synthetic_data_generation.visualization.contracts import (
     VISUALIZATION_METADATA_SCHEMA,
-    DatasetVisualizationDomain,
     DatasetVisualizationRequest,
     DatasetVisualizationResult,
 )
 from src.synthetic_data_generation.visualization.overlays import (
-    new_ball_history,
-    render_blcs_overlay,
     render_court_overlay,
-    render_plcs_overlay,
 )
 from src.synthetic_data_generation.visualization.sources import (
-    BLCSVisualizationSource,
     CourtVisualizationSource,
-    PLCSVisualizationSource,
 )
 from src.utils.video.writer import VideoWriter
 
@@ -40,91 +34,26 @@ def visualize_dataset(
     if not isinstance(request, DatasetVisualizationRequest):
         raise TypeError("visualize_dataset requires DatasetVisualizationRequest.")
     frame_order: tuple[Mapping[str, object], ...]
-    if request.domain is DatasetVisualizationDomain.COURT:
-        assert request.trajectory_id is not None
-        source = CourtVisualizationSource(
-            request.dataset_root,
-            trajectory_id=request.trajectory_id,
-        )
-        dataset_schema = source.dataset_schema
-        dataset_scene_id = source.dataset_scene_id
-        source_width, source_height = source.width, source.height
+    assert request.trajectory_id is not None
+    source = CourtVisualizationSource(
+        request.dataset_root,
+        trajectory_id=request.trajectory_id,
+    )
+    dataset_schema = source.dataset_schema
+    dataset_scene_id = source.dataset_scene_id
+    source_width, source_height = source.width, source.height
 
-        frame_iterator = (
-            render_court_overlay(frame, trajectory_id=request.trajectory_id)
-            for frame in source.frames()
-        )
-        frame_order = source.frame_order
-        selection: dict[str, object] = {
-            "trajectory_id": request.trajectory_id,
-            "logical_scene_id": None,
-            "camera_id": None,
-        }
-        source_fps: float | None = None
-    elif request.domain is DatasetVisualizationDomain.BLCS:
-        assert request.logical_scene_id is not None
-        assert request.camera_id is not None
-        blcs_source = BLCSVisualizationSource(
-            request.dataset_root,
-            logical_scene_id=request.logical_scene_id,
-            camera_id=request.camera_id,
-        )
-        dataset_schema = blcs_source.dataset_schema
-        dataset_scene_id = blcs_source.dataset_scene_id
-        source_width, source_height = blcs_source.width, blcs_source.height
-        history = new_ball_history(
-            blcs_source.object_ids,
-            history_frames=request.history_frames,
-        )
-
-        frame_iterator = (
-            render_blcs_overlay(
-                frame,
-                logical_scene_id=request.logical_scene_id,
-                camera_id=request.camera_id,
-                object_ids=blcs_source.object_ids,
-                court_kp=blcs_source.court_kp,
-                court_vis=blcs_source.court_vis,
-                history=history,
-                history_frames=request.history_frames,
-            )
-            for frame in blcs_source.frames()
-        )
-        frame_order = blcs_source.frame_order
-        selection = {
-            "trajectory_id": None,
-            "logical_scene_id": request.logical_scene_id,
-            "camera_id": request.camera_id,
-        }
-        source_fps = blcs_source.source_fps
-    else:
-        assert request.logical_scene_id is not None
-        assert request.camera_id is not None
-        plcs_source = PLCSVisualizationSource(
-            request.dataset_root,
-            logical_scene_id=request.logical_scene_id,
-            camera_id=request.camera_id,
-        )
-        dataset_schema = plcs_source.dataset_schema
-        dataset_scene_id = plcs_source.dataset_scene_id
-        source_width, source_height = plcs_source.width, plcs_source.height
-
-        frame_iterator = (
-            render_plcs_overlay(
-                frame,
-                logical_scene_id=request.logical_scene_id,
-                camera_id=request.camera_id,
-                object_ids=plcs_source.object_ids,
-            )
-            for frame in plcs_source.frames()
-        )
-        frame_order = plcs_source.frame_order
-        selection = {
-            "trajectory_id": None,
-            "logical_scene_id": request.logical_scene_id,
-            "camera_id": request.camera_id,
-        }
-        source_fps = None
+    frame_iterator = (
+        render_court_overlay(frame, trajectory_id=request.trajectory_id)
+        for frame in source.frames()
+    )
+    frame_order = source.frame_order
+    selection: dict[str, object] = {
+        "trajectory_id": request.trajectory_id,
+        "logical_scene_id": None,
+        "camera_id": None,
+    }
+    source_fps: float | None = None
     width = source_width + source_width % 2
     height = source_height + source_height % 2
     right_padding = width - source_width
