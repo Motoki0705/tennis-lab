@@ -643,7 +643,7 @@ def validate_model(
         )
         if paths is not None:
             paths.external_asset(repository_path)
-            paths.external_asset(checkpoint_path)
+            paths.checkpoint(checkpoint_path)
     return model
 
 

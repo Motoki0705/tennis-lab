@@ -108,7 +108,7 @@ def test_context_roundtrip_preserves_raw_peaks_pts_and_source_pixel_mapping(evid
         torch.from_numpy(pose.uv)[None], torch.from_numpy(pose.confidence)[None], torch.from_numpy(pose.valid)[None],
         torch.from_numpy(court.uv)[None], torch.from_numpy(court.confidence)[None], torch.from_numpy(court.valid)[None],
     )
-    values = dict(OmegaConf.load(Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"))
+    values = dict(OmegaConf.load(Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/comparison/absolute.yaml"))
     values.update(hidden_dim=16, attention_heads=2, dropout=0.0)
     pair = build_ball_refiner_2d(Refiner2DConfig(**values))
     loss = refiner_2d_nll(pair.run(batch), project_store_targets(evidence.store, clip).target(0, clip.frame_count)).loss

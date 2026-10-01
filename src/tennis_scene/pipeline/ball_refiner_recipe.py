@@ -1,4 +1,4 @@
-"""Opt-in detector-only distribution recipe using the shared component store."""
+"""Shared detector-only distribution recipe for the standard scene and comparisons."""
 
 from __future__ import annotations
 

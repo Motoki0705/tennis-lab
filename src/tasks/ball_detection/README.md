@@ -95,6 +95,7 @@
 
 ### configs/
 - モデル/データ/損失・メトリクス/学習/staged学習フェーズ/評価マニフェスト/可視化ごとにHydra設定を分割。
+- DINOv3の`backbone.repository_path`はEXTERNAL_ASSET、`backbone.checkpoint_path`はCHECKPOINT rootから解決する。配布ファイル名は[モデル設定](configs/model/dinov3_rope.yaml)を参照。
 
 ## 検出証拠の出力契約
 

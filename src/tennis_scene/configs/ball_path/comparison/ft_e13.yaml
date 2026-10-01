@@ -1,4 +1,5 @@
 # @package _global_
+# Historical comparison; the standard scene uses the calibrated e9 path.
 ball_detection:
   checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
 ball_refiner:

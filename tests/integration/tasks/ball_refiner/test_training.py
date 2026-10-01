@@ -15,6 +15,10 @@ from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
 from src.tasks.ball_refiner.data.evidence_cache import generate_evidence_cache
 from src.tasks.ball_refiner.refiner_2d import build_ball_refiner_2d
+from src.tasks.ball_refiner.refiner_2d.config import (
+    CandidateAnchoredConfig,
+    Refiner2DConfig,
+)
 from src.tasks.ball_refiner.training.configuration import PilotConfig
 from src.tasks.ball_refiner.training.evaluation import (
     metric_rows,
@@ -61,9 +65,9 @@ def pilot_inputs(tmp_path_factory):
     torch.set_num_threads(previous)
 
 
-def config_for(root, output):
+def config_for(root, output, *, model="refiner_2d"):
     with initialize_config_dir(config_dir=str(CONFIG), version_base=None):
-        cfg = compose(config_name="train")
+        cfg = compose(config_name="train", overrides=[f"model={model}"])
     cfg.paths.data_root = cfg.paths.cache_root = str(root)
     cfg.paths.output_root = str(output.parent)
     cfg.data.store, cfg.data.evidence = "store", "evidence"
@@ -179,9 +183,29 @@ def test_default_output_identity_composes_without_inputs_and_runtime_rejects_mis
             f"paths.output_root={tmp_path / 'runs'}",
         ])
     runtime = PilotConfig.from_config(cfg)
+    assert isinstance(runtime.model, CandidateAnchoredConfig)
+    assert runtime.model.mean_parameterization == "candidate_residual_v1"
+    assert runtime.model.components == 4 and runtime.model.anchored_components == 3
+    assert runtime.model.max_offset_uv == .02
+    assert runtime.model.use_detector and not runtime.model.use_pose and not runtime.model.use_court
+    assert runtime.training.epochs == 48 and runtime.training.max_steps == 12000
+    assert runtime.training.epochs * runtime.training.steps_per_epoch == runtime.training.max_steps
+    assert runtime.evidence.name == "detector-mixed-e9-trainval-r17-20260930"
     assert runtime.output.relative_to(tmp_path / "runs").parts[:3] == ("ball_refiner", "train", "detector_only")
     assert len(runtime.output.relative_to(tmp_path / "runs").parts) == 4
     assert PilotConfig.from_config(cfg).output == runtime.output
     with pytest.raises(FileNotFoundError, match="Store and evidence"):
         run_training(cfg)
     assert not runtime.output.exists()
+
+
+def test_absolute_comparison_is_explicit_and_historical_pilot_keeps_its_budget():
+    with initialize_config_dir(config_dir=str(CONFIG), version_base=None):
+        current = PilotConfig.from_config(compose(config_name="train", overrides=["model=comparison/absolute"]))
+        historical = PilotConfig.from_config(compose(config_name="comparison/ft_e13"))
+    assert type(current.model) is Refiner2DConfig
+    assert current.training.max_steps == 12000
+    assert current.evidence.name == "detector-mixed-e9-trainval-r17-20260930"
+    assert historical.model == current.model
+    assert historical.training.epochs == 12 and historical.training.max_steps == 3000
+    assert historical.evidence.name == "detector-ft-e13-trainval-r3-20260928"
