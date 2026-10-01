@@ -201,6 +201,10 @@ def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None
     assert isinstance(runtime.model, CourtModelConfig)
     assert runtime.model.name == "court_hierarchical"
     assert runtime.model.encoder.name == "dinov3"
+    assert runtime.model.encoder.checkpoint_path == (
+        runtime.shared.resolver.roots.checkpoint_root / "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )
+    assert runtime.model.encoder.repository_path == runtime.shared.resolver.roots.external_asset_root / "dinov3"
     assert runtime.model.decoder.name == "dpt"
     assert runtime.model.decoder.size == "large"
     assert runtime.model.decoder.channels == 512
