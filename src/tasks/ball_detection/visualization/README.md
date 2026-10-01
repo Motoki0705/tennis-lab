@@ -12,7 +12,7 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
   --port 8776
 ```
 
-[閲覧UIを開く](http://127.0.0.1:8776)。左でTrackNet・YouTube・Web static/temporalからクリップまたは画像を選びます。checkpoint・GPUは不要です。
+[閲覧UIを開く](http://127.0.0.1:8776)。左でBall storeのversion・Web static/temporalからクリップまたは画像を選びます。checkpoint・GPUは不要です。
 
 ## 推論
 
@@ -38,10 +38,10 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 ## パスと注意点
 
-- `--data-root`は**`data`**です。実体は`data/tennis/tracknet`、`data/tennis/youtube/frames`、`data/tennis/web/unified`です。
+- `--data-root`は**`data`**です。実体は`data/ball_detection/<version>`、`data/tennis/web/unified`です。
 - Web unifiedが未配置なら理由付きで無効になります。このUIで変換は行いません。
 - temporalの窓長はモデル・クリップ長に制約されます。staticは同じ画像の正規反復入力を1フレームの結果へ集約します。
-- 未注釈フレームは採点対象外です。一致検出がない平均距離はN/Aで、誤差0ではありません。
+- 未レビュー・未確定・推定ラベルのフレームは採点対象外です。一致検出がない平均距離はN/Aで、誤差0ではありません。
 - 別の保存先を使う場合は各root引数を実際の絶対パスに置き換えます。
 - ポートが使用中なら`--port`を空き番号へ変更し、その番号のURLを開きます。終了はCtrl+Cです。
 

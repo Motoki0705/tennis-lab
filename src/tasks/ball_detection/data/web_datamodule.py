@@ -14,10 +14,8 @@ inputs.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-import cv2
 import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
@@ -32,20 +30,20 @@ from src.tasks.ball_detection.data.components.web.data_access_layer.web_store im
     SPLIT_CODES,
     WebFrameStore,
 )
-from src.tasks.ball_detection.data.dataset import BallDetectionDataset
-from src.tasks.ball_detection.data.types import ClipWindow
+from src.tasks.ball_detection.data.dataset import (
+    BallDetectionDataset,
+    WindowFrame,
+    WindowFrames,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
-_WEB_CLIP_DIR = Path("__web__")
-
-
 class WebBallDetectionDataset(BallDetectionDataset):
     """Static or temporal windows backed by a :class:`WebFrameStore`.
 
-    Reuses the heatmap / coordinate / augmentation pipeline of
-    :class:`BallDetectionDataset` and only changes where pixels come from.
+    The web store holds only positives and explicit negatives, so every frame
+    is supervised. Distractor instances are not targets.
     """
 
     def __init__(
@@ -56,44 +54,52 @@ class WebBallDetectionDataset(BallDetectionDataset):
         config: DictConfig,
         augmentation: BallDetectionAugmentation | None = None,
     ) -> None:
+        super().__init__(config=config, augmentation=augmentation)
         self.store = store
-        windows: list[ClipWindow] = []
+        windows: list[tuple[int, ...]] = []
         for raw_window in sample_windows:
             indices = tuple(int(value) for value in raw_window)
-            if not indices:
-                raise ValueError("Web sample windows must not be empty.")
-            original_sizes = {store.original_size(index) for index in indices}
-            if len(original_sizes) != 1:
+            if len(indices) < self.num_frames:
+                raise ValueError(
+                    f"Web window {indices} is shorter than model.num_frames={self.num_frames}."
+                )
+            sizes = {store.original_size(index) for index in indices}
+            if len(sizes) != 1:
                 raise ValueError(
                     "All frames in a web temporal window must share one size: "
-                    f"indices={indices}, sizes={sorted(original_sizes)}."
+                    f"indices={indices}, sizes={sorted(sizes)}."
                 )
-            frame_names = tuple(str(index) for index in indices)
-            windows.append(
-                ClipWindow(
-                    clip_dir=_WEB_CLIP_DIR,
-                    frame_names=frame_names,
-                    labels={
-                        frame_name: store.labels(index)
-                        for frame_name, index in zip(
-                            frame_names,
-                            indices,
-                            strict=True,
-                        )
-                    },
-                    original_size=next(iter(original_sizes)),
-                    start_index=0,
-                )
-            )
-        super().__init__(windows=windows, config=config, augmentation=augmentation)
+            sources = {store.source_name(index) for index in indices}
+            if len(sources) != 1:
+                raise ValueError(f"A web window spans multiple sources: {sorted(sources)}.")
+            windows.append(indices)
+        if not windows:
+            raise RuntimeError("No web ball detection windows were provided.")
+        self.windows = tuple(windows)
 
-    def _load_frame(self, path: Path) -> np.ndarray:
-        image_h, image_w = self.image_size
-        image = self.store.decode_bgr(int(path.name))
-        image = cv2.resize(image, (image_w, image_h))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        normalized: np.ndarray = image.astype(np.float32) / 255.0
-        return normalized
+    def __len__(self) -> int:
+        return len(self.windows)
+
+    def read_window(self, index: int, num_frames: int) -> WindowFrames:
+        indices = self.windows[index][:num_frames]
+        frames = tuple(
+            WindowFrame(
+                image_bgr=self.store.decode_bgr(frame),
+                points=tuple(
+                    (label.x, label.y)
+                    for label in self.store.labels(frame)
+                    if label.visibility > 0 and label.role != "distractor"
+                ),
+                supervised=True,
+            )
+            for frame in indices
+        )
+        return WindowFrames(
+            frames=frames,
+            original_size=self.store.original_size(indices[0]),
+            window_id=f"web:{','.join(str(frame) for frame in indices)}",
+            source=self.store.source_name(indices[0]),
+        )
 
 
 class WebBallDataModule(pl.LightningDataModule):

@@ -1,4 +1,4 @@
-# Staged mixed TrackNet+Web datamodule with a variable-T training schedule.
+# Staged mixed ball-store + Web datamodule with a variable-T training schedule.
 # Phases override t_max, sources.web.enabled, and the epoch count.
 defaults:
   - augmentation: default
@@ -30,16 +30,20 @@ sigma_ratio: 0.012
 max_instances: 16
 
 sources:
-  tracknet:
+  store:
     enabled: true
     splits: [train, val, test]
-    data_dir: tennis/tracknet
-    sample_stride: 4
-    split:
-      root_role: project
-      train_file: src/tasks/ball_detection/configs/data/splits/train.txt
-      val_file: src/tasks/ball_detection/configs/data/splits/val.txt
-      test_file: src/tasks/ball_detection/configs/data/splits/test.txt
+    data_dir: ${tennis_dataset:ball_detection,ball-mix-v1}
+    sources: [tracknet]
+    # The staged sampler draws every train window once per epoch.
+    train_sampling: null
+    train_stride: 4
+    # = data.val_num_frames: val/test read the first val_num_frames of each window.
+    eval_stride: 1
+    supervision:
+      positive: [observed]
+      absent: [out_of_frame]
+      ignore: [interpolated, occlusion_estimated, unresolved]
   web:
     enabled: false
     splits: [train, val, test]

@@ -60,8 +60,6 @@ def _build(
             torch.zeros(h, w, 3, dtype=torch.uint8) for _ in range(num_frames)
         ),
         model_images=torch.rand(num_frames, 3, h, w),
-        gt_coords_px=torch.zeros(num_frames, 2),
-        gt_visibility=torch.zeros(num_frames, dtype=torch.bool),
     )
     return cast(
         list[NDArray[np.uint8]],

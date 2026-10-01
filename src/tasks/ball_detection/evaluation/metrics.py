@@ -15,6 +15,7 @@ from src.utils.data.heatmaps import heatmaps_to_peaks
 @dataclass
 class _FrameCounts:
     total: int = 0
+    unsupervised: int = 0
     negative: int = 0
     negative_false_positive: int = 0
 
@@ -24,6 +25,7 @@ class _FrameCounts:
         )
         return {
             "frames": self.total,
+            "unsupervised_excluded_frames": self.unsupervised,
             "negative_frames": self.negative,
             "negative_false_positive_frames": self.negative_false_positive,
             "negative_frame_fpr": negative_fpr,
@@ -47,6 +49,7 @@ class StratifiedBallMetrics:
         target_coords: Tensor,
         target_visibility: Tensor,
         original_size: Tensor,
+        supervised: Tensor,
         *,
         sources: list[str],
     ) -> None:
@@ -62,11 +65,13 @@ class StratifiedBallMetrics:
             target_coords,
             target_visibility,
             original_size,
+            supervised,
         )
         self._update_counts(
             self._overall_counts,
             pred_heatmaps,
             target_visibility,
+            supervised,
         )
 
         for source in sorted(set(sources)):
@@ -84,12 +89,14 @@ class StratifiedBallMetrics:
                 target_coords.index_select(0, indices),
                 target_visibility.index_select(0, indices),
                 original_size.index_select(0, indices),
+                supervised.index_select(0, indices),
             )
             counts = self._source_counts.setdefault(source, _FrameCounts())
             self._update_counts(
                 counts,
                 pred_heatmaps.index_select(0, indices),
                 target_visibility.index_select(0, indices),
+                supervised.index_select(0, indices),
             )
 
     def compute(self) -> dict[str, object]:
@@ -126,6 +133,7 @@ class StratifiedBallMetrics:
         counts: _FrameCounts,
         pred_heatmaps: Tensor,
         target_visibility: Tensor,
+        supervised: Tensor,
     ) -> None:
         _, _, pred_valid = heatmaps_to_peaks(
             pred_heatmaps,
@@ -134,9 +142,10 @@ class StratifiedBallMetrics:
             max_peaks=self.spec.max_predictions_per_frame,
         )
         target_present = (target_visibility > 0.5).any(dim=-1)
-        negative = ~target_present
+        negative = supervised & ~target_present
         pred_present = pred_valid.any(dim=-1)
-        counts.total += int(target_present.numel())
+        counts.total += int(supervised.sum().item())
+        counts.unsupervised += int((~supervised).sum().item())
         counts.negative += int(negative.sum().item())
         counts.negative_false_positive += int((negative & pred_present).sum().item())
 

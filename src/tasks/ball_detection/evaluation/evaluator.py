@@ -26,13 +26,12 @@ from src.tasks.ball_detection.evaluation.contracts import (
     ModelSpec,
 )
 from src.tasks.ball_detection.evaluation.dataset_provenance import (
-    SequentialSourceResolver,
     build_split_provenance,
     sha256_file,
 )
 from src.tasks.ball_detection.evaluation.metrics import StratifiedBallMetrics
 from src.tasks.ball_detection.model_io.contracts import BallHeatmapPredictor
-from src.tasks.ball_detection.model_io.evaluation import LightningBallHeatmapPredictor
+from src.tasks.ball_detection.model_io.evaluation import CheckpointBallHeatmapPredictor
 
 
 class JobEvaluator(Protocol):
@@ -58,7 +57,7 @@ class DefaultJobEvaluator:
         self._checkpoint_configs: dict[Path, DictConfig] = {}
         self._checkpoint_hashes: dict[Path, str] = {}
         self._adapter_key: tuple[Path, bool, bool] | None = None
-        self._adapter: LightningBallHeatmapPredictor | None = None
+        self._adapter: CheckpointBallHeatmapPredictor | None = None
 
     def evaluate(
         self,
@@ -124,13 +123,13 @@ class DefaultJobEvaluator:
     def _prediction_adapter(
         self,
         model: ModelSpec,
-    ) -> LightningBallHeatmapPredictor:
+    ) -> CheckpointBallHeatmapPredictor:
         key = (model.checkpoint, model.strict, model.weights_only)
         if self._adapter is None or self._adapter_key != key:
             self._adapter = None
             if self.device.type == "cuda":
                 torch.cuda.empty_cache()
-            self._adapter = LightningBallHeatmapPredictor.load(
+            self._adapter = CheckpointBallHeatmapPredictor.load(
                 model.checkpoint,
                 device=self.device,
                 strict=model.strict,
@@ -170,10 +169,6 @@ def evaluate_dataloader(
 ) -> dict[str, Any]:
     """Evaluate one sequential dataloader with metrics and inference timing."""
     dataset = dataloader.dataset
-    source_resolver = SequentialSourceResolver(
-        dataset,
-        default_source=str(data_config.source),
-    )
     metrics = StratifiedBallMetrics(manifest.metrics)
     timings: list[float] = []
     processed_frames = 0
@@ -212,13 +207,17 @@ def evaluate_dataloader(
                 adapter.device,
                 non_blocking=True,
             )
-            sources = source_resolver.next(pred_heatmaps.shape[0])
+            supervised = _tensor(batch, "supervised").to(
+                adapter.device,
+                non_blocking=True,
+            )
             metrics.update(
                 pred_heatmaps,
                 target_coords,
                 target_visibility,
                 original_size,
-                sources=sources,
+                supervised,
+                sources=_sources(batch, pred_heatmaps.shape[0]),
             )
             processed_frames += int(pred_heatmaps.shape[0] * pred_heatmaps.shape[1])
             processed_batches += 1
@@ -264,6 +263,13 @@ def _predict_batch(
         ),
     )
     return prediction
+
+
+def _sources(batch: dict[str, Any], batch_size: int) -> list[str]:
+    sources = batch.get("source")
+    if not isinstance(sources, list) or len(sources) != batch_size:
+        raise TypeError("Evaluation batch field 'source' must list one name per window.")
+    return [str(source) for source in sources]
 
 
 def _tensor(batch: dict[str, Any], key: str) -> Tensor:

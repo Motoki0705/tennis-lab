@@ -1,14 +1,16 @@
-"""Window-to-sample dataset for supervised ball detection."""
+"""Window-to-sample conversion shared by every supervised ball dataset."""
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from pathlib import Path
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
 import torch
+from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
 from src.tasks.ball_detection.configuration import validate_data
@@ -16,23 +18,52 @@ from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
     make_sample_rng,
 )
-from src.tasks.ball_detection.data.types import BallDetectionSample, ClipWindow
+from src.tasks.ball_detection.data.types import BallDetectionSample
 from src.utils.data.heatmaps import generate_gaussian_heatmaps
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class BallDetectionDataset(Dataset[BallDetectionSample]):
-    """Convert source-agnostic temporal windows into model-ready samples.
+@dataclass(frozen=True, slots=True)
+class WindowFrame:
+    """One decoded frame of a window and its training target.
 
-    Dataset-specific discovery and annotation parsing belong to DataModules.
+    ``points`` are the positive balls in original-image pixels. When
+    ``supervised`` is False the frame contributes to neither the loss nor the
+    metrics, and ``points`` must be empty.
+    """
+
+    image_bgr: NDArray[np.uint8]
+    points: tuple[tuple[float, float], ...]
+    supervised: bool
+
+    def __post_init__(self) -> None:
+        if not self.supervised and self.points:
+            raise ValueError("An unsupervised frame cannot carry positive balls")
+
+
+@dataclass(frozen=True, slots=True)
+class WindowFrames:
+    """The first ``num_frames`` frames of one window, read by a source dataset."""
+
+    frames: tuple[WindowFrame, ...]
+    original_size: tuple[int, int]
+    window_id: str
+    source: str
+
+
+class BallDetectionDataset(Dataset[BallDetectionSample], ABC):
+    """Turn source windows into model-ready samples.
+
+    Subclasses own window discovery and label semantics and implement
+    :meth:`read_window`; this class owns resizing, augmentation, heatmap
+    targets and the sample contract.
     """
 
     def __init__(
         self,
         *,
-        windows: Sequence[ClipWindow],
         config: DictConfig,
         augmentation: BallDetectionAugmentation | None = None,
     ) -> None:
@@ -41,17 +72,9 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         self.augmentation = augmentation
 
         data_cfg = validate_data(config)
-        model_cfg = config.model
-
-        self.num_frames = int(model_cfg.num_frames)
-        self.image_size = self._parse_size(
-            data_cfg["image_size"],
-            name="data.image_size",
-        )
-        self.heatmap_size = self._parse_size(
-            data_cfg["heatmap_size"],
-            name="data.heatmap_size",
-        )
+        self.num_frames = int(config.model.num_frames)
+        self.image_size = self._parse_size(data_cfg["image_size"], name="data.image_size")
+        self.heatmap_size = self._parse_size(data_cfg["heatmap_size"], name="data.heatmap_size")
         self.sigma_ratio = float(data_cfg["sigma_ratio"])
         self.max_instances = int(data_cfg["max_instances"])
 
@@ -62,20 +85,12 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         if self.max_instances <= 0:
             raise ValueError("data.max_instances must be positive.")
 
-        self.windows = tuple(windows)
-        if not self.windows:
-            raise RuntimeError("No supervised ball detection windows were provided.")
-        for window in self.windows:
-            if window.start_index < 0:
-                raise ValueError("ClipWindow.start_index must be non-negative.")
-            if window.start_index + self.num_frames > len(window.frame_names):
-                raise ValueError(
-                    "ClipWindow does not contain enough frames for "
-                    f"model.num_frames={self.num_frames}: {window.clip_dir}"
-                )
+    @abstractmethod
+    def __len__(self) -> int: ...
 
-    def __len__(self) -> int:
-        return len(self.windows)
+    @abstractmethod
+    def read_window(self, index: int, num_frames: int) -> WindowFrames:
+        """Read the first ``num_frames`` frames of window ``index``."""
 
     def __getitem__(self, index: int | tuple[int, int]) -> BallDetectionSample:
         """Build one sample.
@@ -94,11 +109,15 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
                 f"requested num_frames={num_frames} must be in "
                 f"[1, {self.num_frames}] (the built window length)."
             )
-        return self._make_sample(window_index, num_frames)
+        window = self.read_window(window_index, num_frames)
+        if len(window.frames) != num_frames:
+            raise RuntimeError(
+                f"{type(self).__name__}.read_window returned {len(window.frames)} "
+                f"frames for num_frames={num_frames}"
+            )
+        return self._make_sample(window, window_index)
 
-    def _make_sample(self, window_index: int, num_frames: int) -> BallDetectionSample:
-        window = self.windows[window_index]
-        index = window_index
+    def _make_sample(self, window: WindowFrames, window_index: int) -> BallDetectionSample:
         image_h, image_w = self.image_size
         heatmap_h, heatmap_w = self.heatmap_size
         original_w, original_h = window.original_size
@@ -106,69 +125,44 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         frames_hwc: list[np.ndarray] = []
         coords_image: list[list[tuple[float, float]]] = []
         visibility: list[list[float]] = []
-
-        for offset in range(num_frames):
-            frame_name = window.frame_names[window.start_index + offset]
-            frame_path = window.clip_dir / frame_name
-            frames_hwc.append(self._load_frame(frame_path))
-
-            labels = [
-                label
-                for label in window.labels.get(frame_name, ())
-                if label.role != "distractor"
-            ]
-            if len(labels) > self.max_instances:
+        for frame in window.frames:
+            if frame.image_bgr.shape[:2] != (original_h, original_w):
                 raise ValueError(
-                    f"{window.clip_dir} frame={frame_name} has "
-                    f"{len(labels)} trainable instances, exceeding "
-                    f"data.max_instances={self.max_instances}."
+                    f"{window.window_id}: frame of shape {frame.image_bgr.shape} "
+                    f"differs from the window size {window.original_size}"
                 )
-            frame_coords: list[tuple[float, float]] = []
-            frame_visibility: list[float] = []
-            for label in labels:
-                if label.visibility > 0:
-                    frame_coords.append(
-                        (
-                            label.x * image_w / max(original_w, 1),
-                            label.y * image_h / max(original_h, 1),
-                        )
-                    )
-                    frame_visibility.append(1.0)
-                else:
-                    frame_coords.append((0.0, 0.0))
-                    frame_visibility.append(0.0)
-            coords_image.append(frame_coords)
-            visibility.append(frame_visibility)
+            if len(frame.points) > self.max_instances:
+                raise ValueError(
+                    f"{window.window_id} has {len(frame.points)} positive balls in "
+                    f"one frame, exceeding data.max_instances={self.max_instances}."
+                )
+            frames_hwc.append(self._to_model_rgb(frame.image_bgr))
+            coords_image.append(
+                [(x * image_w / original_w, y * image_h / original_h) for x, y in frame.points]
+            )
+            visibility.append([1.0] * len(frame.points))
 
         if self.augmentation is not None:
             frames_hwc, coords_image, visibility = self.augmentation.forward(
                 frames_hwc,
                 coords_image,
                 visibility,
-                rng=make_sample_rng(index),
+                rng=make_sample_rng(window_index),
             )
 
         image_tensors: list[np.ndarray] = []
         heatmaps: list[np.ndarray] = []
         coords_original: list[list[tuple[float, float]]] = []
         visibility_padded: list[list[float]] = []
-        for frame, frame_coords, frame_visibility in zip(
-            frames_hwc,
-            coords_image,
-            visibility,
-            strict=True,
+        for frame_hwc, frame_coords, frame_visibility in zip(
+            frames_hwc, coords_image, visibility, strict=True
         ):
-            image_tensors.append(np.transpose(frame, (2, 0, 1)))
-            normalized_centers = [
-                self._to_normalized_xy(
-                    x_img=x_img,
-                    y_img=y_img,
-                    width=image_w,
-                    height=image_h,
-                )
-                for x_img, y_img in frame_coords
-            ]
-            if normalized_centers:
+            image_tensors.append(np.transpose(frame_hwc, (2, 0, 1)))
+            if frame_coords:
+                normalized_centers = [
+                    self._to_normalized_xy(x_img=x, y_img=y, width=image_w, height=image_h)
+                    for x, y in frame_coords
+                ]
                 instance_heatmaps = generate_gaussian_heatmaps(
                     size_hw=self.heatmap_size,
                     centers_xy=torch.tensor(normalized_centers, dtype=torch.float32),
@@ -180,46 +174,29 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
                 heatmaps.append(np.zeros(self.heatmap_size, dtype=np.float32))
 
             original_points = [
-                (
-                    x_img * original_w / max(image_w, 1),
-                    y_img * original_h / max(image_h, 1),
-                )
-                if vis > 0
-                else (0.0, 0.0)
-                for (x_img, y_img), vis in zip(
-                    frame_coords,
-                    frame_visibility,
-                    strict=True,
-                )
+                (x * original_w / image_w, y * original_h / image_h) if vis > 0 else (0.0, 0.0)
+                for (x, y), vis in zip(frame_coords, frame_visibility, strict=True)
             ]
-            padded_points = original_points + [(0.0, 0.0)] * (
-                self.max_instances - len(original_points)
-            )
-            frame_visibility_padded = frame_visibility + [0.0] * (
-                self.max_instances - len(frame_visibility)
-            )
-            coords_original.append(padded_points)
-            visibility_padded.append(frame_visibility_padded)
+            padding = self.max_instances - len(original_points)
+            coords_original.append(original_points + [(0.0, 0.0)] * padding)
+            visibility_padded.append(list(frame_visibility) + [0.0] * padding)
 
         sample: BallDetectionSample = {
             "images": torch.from_numpy(np.stack(image_tensors)).to(torch.float32),
             "heatmaps": torch.from_numpy(np.stack(heatmaps)).to(torch.float32),
             "coords": torch.tensor(coords_original, dtype=torch.float32),
             "visibility": torch.tensor(visibility_padded, dtype=torch.float32),
-            "original_size": torch.tensor(
-                [original_w, original_h], dtype=torch.float32
-            ),
+            "supervised": torch.tensor([frame.supervised for frame in window.frames], dtype=torch.bool),
+            "original_size": torch.tensor([original_w, original_h], dtype=torch.float32),
             "heatmap_size": torch.tensor([heatmap_w, heatmap_h], dtype=torch.float32),
-            "window_id": f"{window.clip_dir.parent.name}/{window.clip_dir.name}:{window.start_index}",
+            "window_id": window.window_id,
+            "source": window.source,
         }
         return sample
 
-    def _load_frame(self, path: Path) -> np.ndarray:
+    def _to_model_rgb(self, image_bgr: NDArray[np.uint8]) -> np.ndarray:
         image_h, image_w = self.image_size
-        image: np.ndarray | None = cv2.imread(str(path))
-        if image is None:
-            raise RuntimeError(f"Failed to read frame: {path}")
-        resized: np.ndarray = cv2.resize(image, (image_w, image_h))
+        resized: np.ndarray = cv2.resize(image_bgr, (image_w, image_h))
         rgb: np.ndarray = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
         normalized: np.ndarray = rgb.astype(np.float32) / 255.0
         return normalized
@@ -238,10 +215,9 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
 
     @staticmethod
     def _parse_size(value: Any, *, name: str) -> tuple[int, int]:
-        if (
-            isinstance(value, (str, bytes))
-            or not isinstance(value, Sequence)
-            or len(value) != 2
-        ):
+        if isinstance(value, (str, bytes)) or not isinstance(value, Sequence) or len(value) != 2:
             raise ValueError(f"{name} must be a list or tuple with length 2.")
         return int(value[0]), int(value[1])
+
+
+__all__ = ["BallDetectionDataset", "WindowFrame", "WindowFrames"]

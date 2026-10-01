@@ -1,6 +1,6 @@
 """Shared visualization helpers for Hydra-driven dataset preview scripts.
 
-These parse the common ``cfg.preview`` / ``cfg.data.split`` config conventions
+These parse the common ``cfg.preview`` config conventions
 used by the per-task ``preview_heatmaps`` / ``preview_augmentation`` scripts.
 They depend only on the OmegaConf config shape, not on any task's domain types,
 so the ball- and court-detection scripts share a single implementation.
@@ -19,7 +19,6 @@ __all__ = [
     "draw_normalized_point",
     "enable_all_augmentation_blocks",
     "resolve_sample_indices",
-    "resolve_split_file",
 ]
 
 
@@ -40,18 +39,6 @@ def enable_all_augmentation_blocks(augmentation_cfg: DictConfig) -> dict[str, An
         if isinstance(block, dict) and "enabled" in block:
             block["enabled"] = True
     return cast("dict[str, Any]", container)
-
-
-def resolve_split_file(cfg: DictConfig, split_name: str) -> str:
-    """Return the split-file path for ``split_name`` from ``cfg.data.split``."""
-    split_cfg = cfg.data.split
-    key = f"{split_name}_file"
-    if key not in split_cfg:
-        available = ", ".join(sorted(split_cfg.keys()))
-        raise ValueError(
-            f"Unknown preview.split={split_name!r}. Available: {available}"
-        )
-    return str(split_cfg[key])
 
 
 def resolve_sample_indices(

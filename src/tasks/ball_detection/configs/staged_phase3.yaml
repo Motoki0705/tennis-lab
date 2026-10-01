@@ -9,7 +9,7 @@ data:
   t_max: 8
   t1_prob: 0.5
   sources:
-    tracknet:
+    store:
       enabled: true
     web:
       enabled: false
