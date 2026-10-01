@@ -46,7 +46,6 @@ from src.synthetic_data_generation.dataset.runtime import (
 )
 from src.synthetic_data_generation.rendering.nht import NHTRenderArrays
 from src.synthetic_data_generation.scene_contract import RigidTransform, SceneCamera
-from src.utils.data.float32_store import SUFFIX, read_float32
 
 
 def test_performance_evidence_round_trips_measured_court_budget() -> None:
@@ -257,13 +256,12 @@ def test_performance_evidence_counts_pre_render_rejection_without_array_scan() -
     assert evidence.metrics.complete_array_scans == 2
 
 
-def test_staged_evaluation_preserves_rgb_alpha_and_converts_depth_once(
+def test_staged_evaluation_keeps_jpeg_and_discards_renderer_rasters(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rendered = _rendered(tmp_path)
     rgb_before = np.load(rendered.rgb_path, allow_pickle=False)
-    alpha_before = np.load(rendered.alpha_path, allow_pickle=False)
     np.save(
         rendered.depth_path,
         np.full((3, 4, 1), 4.0, dtype=np.float32),
@@ -297,18 +295,10 @@ def test_staged_evaluation_preserves_rgb_alpha_and_converts_depth_once(
     assert result.accepted
     assert calls == 1
     assert result.complete_array_scan_count == 1
-    np.testing.assert_array_equal(
-        read_float32(rendered.rgb_path.with_suffix(SUFFIX)),
-        rgb_before,
-    )
-    np.testing.assert_array_equal(
-        read_float32(rendered.alpha_path.with_suffix(SUFFIX)),
-        alpha_before,
-    )
-    np.testing.assert_allclose(
-        read_float32(rendered.depth_path.with_suffix(SUFFIX)),
-        2.0,
-    )
+    with Image.open(rendered.source_directory / "rgb.jpg") as image:
+        restored = np.asarray(image.convert("RGB"))
+    assert np.abs(restored.astype(float) - np.round(rgb_before * 255.0)).mean() < 3.0
+    assert set(path.name for path in rendered.source_directory.iterdir()) == {"rgb.jpg"}
 
     assert not any(path.exists() for path in (rendered.rgb_path, rendered.alpha_path, rendered.depth_path))
 

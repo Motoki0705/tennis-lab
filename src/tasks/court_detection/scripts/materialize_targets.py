@@ -44,6 +44,8 @@ register_boundary_validator(_BOUNDARY, _validate_boundary)
 def main(config: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Materialize dense heads selected by data.processing.targets."""
     runtime = CourtTrainingConfig.from_config(config)
+    if runtime.data.processing.derived_target_root is None:
+        raise ValueError("Court training generates targets online. For a standalone raster audit, explicitly set data.processing.derived_target_root to an output directory.")
     store = CourtDerivedTargetStore(runtime.data.processing.derived_target_root)
     line_schema = next(
         (

@@ -248,7 +248,7 @@ publishされます。後続jobへ渡すときはartifactをdownload・展開し
 | `ball_detection_staged` | GPU | `src.tasks.ball_detection.scripts.train_staged` / default TrackNet-only staged phase学習 |
 | `court_detection` | GPU | `src.tasks.court_detection.scripts.train` / synthetic Court KP学習 |
 | `court_detection_mixed` | GPU | `src.tasks.court_detection.scripts.train_mixed` / synthetic + real mixed学習 |
-| `court_detection_materialize_targets` | CPU | `src.tasks.court_detection.scripts.materialize_targets` / SEG・LINE target生成 |
+| `court_detection_materialize_targets` | CPU | `src.tasks.court_detection.scripts.materialize_targets` / 任意のraster audit export |
 | `blcs_generate_dataset` | CPU | `src.tasks.blcs.scripts.generate_dataset` / single-object dataset生成 |
 | `blcs` | GPU | `src.tasks.blcs.scripts.train` / standard学習 |
 | `blcs_tracking` | GPU | `src.tasks.blcs.scripts.train --config-name train_tracking` / tracking-query学習 |
@@ -282,8 +282,8 @@ job名に対応する `data/{blcs,plcs}/...` または `data/tennis_scene_datase
 
 生成物を次段へ渡す場合もrun artifactを検証してcanonical Drive pathへpromoteします。
 代表的な依存は `blcs_generate_dataset` → `blcs`、`plcs_generate_dataset` → `plcs`、
-`court_detection_materialize_targets` → `court_detection_mixed` です。mixed学習はpromote
-済みの `data/court_detection/derived_targets/` を必須inputとしてstageします。
+Courtのmixed学習はpromote済みのJPEG/KP storeを直接stageします。
+`court_detection_materialize_targets`は任意のraster audit用exportで、学習の前提ではありません。
 
 ## job TOMLを追加する
 

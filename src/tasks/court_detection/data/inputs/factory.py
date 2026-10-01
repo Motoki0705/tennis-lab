@@ -26,8 +26,10 @@ from src.tasks.court_detection.target_schemas import (
 
 def _validate_external_store(
     config: CourtSourceConfig,
-    store: CourtDerivedTargetStore,
+    store: CourtDerivedTargetStore | None,
 ) -> None:
+    if store is None:
+        return
     source_root = (
         config.root
         if isinstance(config, TennisCourtDetectorSourceConfig)
@@ -43,7 +45,7 @@ def _validate_external_store(
 
 def _build_tennis(
     config: CourtSourceConfig,
-    store: CourtDerivedTargetStore,
+    store: CourtDerivedTargetStore | None,
     line_target_schema: str,
 ) -> CourtInput:
     return TennisCourtDetectorInput(
@@ -55,7 +57,7 @@ def _build_tennis(
 
 def _build_synthetic(
     config: CourtSourceConfig,
-    store: CourtDerivedTargetStore,
+    store: CourtDerivedTargetStore | None,
     line_target_schema: str,
 ) -> CourtInput:
     return SyntheticCourtInput(
@@ -67,7 +69,7 @@ def _build_synthetic(
 
 _BUILDERS: dict[
     str,
-    Callable[[CourtSourceConfig, CourtDerivedTargetStore, str], CourtInput],
+    Callable[[CourtSourceConfig, CourtDerivedTargetStore | None, str], CourtInput],
 ] = {
     "tennis_court_detector": _build_tennis,
     "synthetic_court": _build_synthetic,
@@ -77,11 +79,12 @@ _BUILDERS: dict[
 def build_court_input(
     config: CourtSourceConfig,
     *,
-    target_store: CourtDerivedTargetStore,
+    target_store: CourtDerivedTargetStore | None,
     line_target_schema: str = LINE_TARGET_SCHEMA,
 ) -> CourtInput:
     """Resolve the explicit source discriminator exactly once."""
-    _validate_external_store(config, target_store)
+    if target_store is not None:
+        _validate_external_store(config, target_store)
     line_target_definition(line_target_schema)
     try:
         builder = _BUILDERS[config.kind]

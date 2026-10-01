@@ -37,13 +37,8 @@ destination = "data/synthetic_data_generation/scenes"
 writable = false
 
 [[inputs]]
-source = "data/court"
-destination = "data/court"
-writable = false
-
-[[inputs]]
-source = "data/court_detection/derived_targets"
-destination = "data/court_detection/derived_targets"
+source = "data/court_detection/tennis_court_detector-v1"
+destination = "data/court_detection/tennis_court_detector-v1"
 writable = false
 
 [[inputs]]

@@ -11,7 +11,7 @@ the review UI sees exactly the payload the training pipeline consumes.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -25,6 +25,7 @@ from PIL import Image
 from src.synthetic_data_generation.dataset.court.components.labels import (
     SEMANTIC_CLASS_NAMES,
 )
+from src.synthetic_data_generation.dataset.court.sample_store import read_court_manifest
 from src.synthetic_data_generation.dataset.court.schema import (
     court_schema_from_dataset_schema,
 )
@@ -73,7 +74,6 @@ _TENNIS_SOURCE_PRESET: Path = (
     / "tennis_court_detector.yaml"
 )
 _SYNTHETIC_SOURCE_RELATIVE = Path("synthetic_data_generation") / "scenes"
-_DERIVED_TARGET_RELATIVE = Path("court_detection") / "derived_targets"
 _SCENE_SEPARATOR = "::"
 
 # The dense schemas the review UI can render.  These are the current single
@@ -140,17 +140,20 @@ def build_path_resolver(
     *,
     project_root: Path,
     data_root: Path,
-    checkpoint_root: Path,
-    output_root: Path,
 ) -> PathResolver:
-    """Build the canonical role resolver for out-of-Hydra callers."""
+    """Resolve dataset inputs independently of task-specific checkpoint scans.
+
+    The UI's checkpoint search directories are not global runtime path roots.
+    In particular, a scan directory named court_detection must not reserve the
+    same name inside the unrelated data role.
+    """
     roots = RuntimePathRoots.from_mapping(
         {
             "project_root": str(project_root),
             "data_root": str(data_root),
-            "checkpoint_root": str(checkpoint_root),
+            "checkpoint_root": "ckpt",
             "artifact_root": "assets",
-            "output_root": str(output_root),
+            "output_root": "outputs",
             "cache_root": ".cache",
             "external_asset_root": "third_party",
         },
@@ -254,19 +257,13 @@ class CourtDatasetCatalog:
         self.data_root = data_root.resolve(strict=False)
         self.checkpoint_root = checkpoint_root.resolve(strict=False)
         self.output_root = output_root.resolve(strict=False)
-        self.derived_target_root = (
-            derived_target_root.resolve(strict=False)
-            if derived_target_root is not None
-            else (self.data_root / _DERIVED_TARGET_RELATIVE)
-        )
-        self.target_store = CourtDerivedTargetStore(self.derived_target_root)
+        self.derived_target_root = derived_target_root
+        self.target_store = None if derived_target_root is None else CourtDerivedTargetStore(derived_target_root)
         self.resolver = build_path_resolver(
             project_root=self.project_root,
             data_root=self.data_root,
-            checkpoint_root=self.checkpoint_root,
-            output_root=self.output_root,
         )
-        self._tennis_root = self.data_root / "court"
+        self._tennis_root = self.data_root / "court_detection" / "tennis_court_detector-v1"
         self._synthetic_workspace = self.data_root / _SYNTHETIC_SOURCE_RELATIVE
         self._entries: tuple[CourtDatasetEntry, ...] | None = None
         self._scan_signature: tuple[tuple[str, int], ...] | None = None
@@ -406,8 +403,8 @@ class CourtDatasetCatalog:
         for path in (
             self.data_root,
             self._tennis_root,
-            self._tennis_root / "data_train.json",
-            self._tennis_root / "data_val.json",
+            self._tennis_root / "dataset.json",
+            self._tennis_root / "index.npz",
             self._synthetic_workspace,
         ):
             signature.append((str(path), _stat_stamp(path)))
@@ -416,6 +413,8 @@ class CourtDatasetCatalog:
                 manifest = scene_dir / "datasets" / "court" / "dataset.json"
                 signature.append((str(scene_dir), _stat_stamp(scene_dir)))
                 signature.append((str(manifest), _stat_stamp(manifest)))
+                index = manifest.parent / "samples/index.npz"
+                signature.append((str(index), _stat_stamp(index)))
         return tuple(signature)
 
     def _cache_key(self, entry: CourtDatasetEntry) -> str:
@@ -509,7 +508,7 @@ class CourtDatasetCatalog:
             raise ValueError(
                 f"Synthetic Court dataset.json は mapping である必要があります: {manifest_path}"
             )
-        return cast("Mapping[str, object]", parsed)
+        return read_court_manifest(manifest_path.parent)
 
     def _discover(self) -> list[CourtDatasetEntry]:
         entries: list[CourtDatasetEntry] = []
@@ -519,7 +518,7 @@ class CourtDatasetCatalog:
 
     def _discover_tennis(self) -> list[CourtDatasetEntry]:
         reason: str | None = None
-        if not (self._tennis_root / "data_train.json").is_file():
+        if not (self._tennis_root / "dataset.json").is_file():
             reason = (
                 f"TennisCourtDetector の annotation がありません: {self._tennis_root}"
             )
@@ -537,7 +536,7 @@ class CourtDatasetCatalog:
                 label=f"TennisCourtDetector {split}",
                 path=self._tennis_root,
                 source_kind="tennis_court_detector",
-                split=cast("CourtSourceSplit", split),
+                split=split,
                 scene_id=None,
                 published_schema="tennis_court_detector_annotations_v1",
                 available=reason is None and split in counts,
@@ -557,45 +556,8 @@ class CourtDatasetCatalog:
         return entries
 
     def _tennis_split_counts(self) -> dict[str, int]:
-        """Count the exact retained annotation records without opening images.
-
-        The heavy ``records()`` build re-opens every image to hash its geometry,
-        which is far too slow for a catalog request, so the count is derived from
-        the same preset (including its quarantined sample IDs) and the annotation
-        lengths.  ``tests/unit/tasks/court_detection/visualization/review``
-        asserts this equals ``len(records())`` on the real dataset.
-        """
-        preset = tennis_source_preset_path()
-        document = OmegaConf.to_container(OmegaConf.load(preset), resolve=False)
-        if not isinstance(document, Mapping):
-            raise ValueError(
-                "TennisCourtDetector source preset は mapping である必要があります。"
-            )
-        excluded = document.get("excluded_sample_ids", ())
-        if not isinstance(excluded, Sequence) or isinstance(excluded, (str, bytes)):
-            raise ValueError(
-                "TennisCourtDetector excluded_sample_ids は list である必要があります。"
-            )
-        excluded_ids = {str(value) for value in excluded}
-        counts: dict[str, int] = {}
-        for split, source_split in (("train", "train"), ("val", "val")):
-            annotation_path = self._tennis_root / f"data_{source_split}.json"
-            if not annotation_path.is_file():
-                continue
-            parsed = _cached_json(
-                str(annotation_path), *_stamped_size_mtime(annotation_path)
-            )
-            if not isinstance(parsed, list):
-                raise ValueError(
-                    f"TennisCourtDetector {annotation_path.name} は list である必要があります。"
-                )
-            counts[split] = sum(
-                1
-                for entry in parsed
-                if isinstance(entry, Mapping)
-                and cast(str, entry.get("id")) not in excluded_ids
-            )
-        return counts
+        layer = self._build_tennis_input()
+        return {split: len(layer.records(split)) for split in layer.available_splits}
 
     def _discover_synthetic(self) -> list[CourtDatasetEntry]:
         if not self._synthetic_workspace.is_dir():
@@ -644,7 +606,7 @@ class CourtDatasetCatalog:
                         label=f"Synthetic {scene_id} {split}",
                         path=court_dir,
                         source_kind="synthetic_court",
-                        split=cast("CourtSourceSplit", split),
+                        split=split,
                         scene_id=scene_id,
                         published_schema=published,
                         available=available,
@@ -753,20 +715,15 @@ def load_ground_truth_masks(
     input_spec: CourtInputSpec,
     raw: CourtRawSample,
 ) -> tuple[GroundTruthMasks, list[str]]:
-    """Decode each dense layer through its canonical target builder.
-
-    A layer whose derived target is missing, stale, or provenance-mismatched is
-    reported as an explicit warning for that layer only; the keypoint and RGB
-    review stays available and no substitute mask is ever produced.
-    """
+    """Generate each dense GT layer from the same sparse geometry as training."""
     loaded: dict[str, np.ndarray | None] = {
         "seg": None,
         "line": None,
         "semantic_line": None,
     }
     warnings: list[str] = []
-    for kind in ("seg", "line", "semantic_line"):
-        dense_kind = cast("CourtDenseTargetKind", kind)
+    for dense_kind in DENSE_TARGET_SCHEMAS:
+        kind = dense_kind
         builder = build_target_builder(
             CourtTargetConfig(
                 kind=dense_kind,

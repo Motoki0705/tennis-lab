@@ -1,6 +1,6 @@
 schema_version = 1
 name = "court_detection_materialize_targets"
-description = "Materialize synthetic Court Detection segmentation and line targets."
+description = "Export optional Court raster audit images; training generates targets online."
 accelerator = "cpu"
 timeout_seconds = 43200
 setup = ["base"]
@@ -12,14 +12,14 @@ protected_override_keys = [
   "data.source.workspace_root",
   "data.processing.derived_target_root",
 ]
-outputs = ["data/court_detection/derived_targets"]
+outputs = ["data/court_detection/target_audit"]
 
 [command]
 module = "src.tasks.court_detection.scripts.materialize_targets"
 args = [
   "data/source=synthetic_court",
   "data/processing=seg_line",
-  "data.processing.derived_target_root=court_detection/derived_targets",
+  "data.processing.derived_target_root=court_detection/target_audit",
 ]
 
 [[inputs]]
