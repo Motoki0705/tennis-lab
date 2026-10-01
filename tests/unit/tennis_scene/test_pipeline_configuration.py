@@ -142,3 +142,25 @@ def test_default_coco_source_and_explicit_finetuned_comparison() -> None:
     assert runtime.people.runtime.dino_detector.confidence == .30
     assert runtime.people.runtime.dino_detector.short_side == 800
     assert runtime.people.runtime.dino_detector.max_long_side == 1333
+
+
+def test_named_ball_paths_are_explicit_and_preserve_person_defaults() -> None:
+    current = _runtime([])
+    assert current.ball_refiner.path == "e9_anchored_s42_covariance"
+    assert current.ball_detection.checkpoint.name == "i935-mixed-ft-s42-epoch09.ckpt"
+    assert current.ball_detection.overlap_aggregation == "nearest_window_centre_then_earlier_start"
+    assert current.ball_refiner.calibration_artifact is not None
+    assert current.component_sources["ball_refiner_2d"] == "execute"
+    legacy = _runtime(["ball_path=ft_e13"])
+    assert legacy.ball_refiner.path == "bundle"
+    assert legacy.ball_refiner.calibration_artifact is None
+    assert legacy.ball_detection.checkpoint.name == "run-i618-convnext-v2-ft-epoch13.ckpt"
+    assert legacy.ball_refiner.bundle.name == "i935-detector-only-ft-e13-r7-20260928"
+    assert legacy.people == current.people and legacy.tracking == current.tracking
+    assert legacy.court_side == current.court_side
+
+
+@pytest.mark.parametrize("override", ["ball_refiner.path=typo", "ball_refiner.batch_size=0", "ball_refiner.calibration_artifact=null"])
+def test_invalid_refiner_recipe_is_rejected(override: str) -> None:
+    with pytest.raises(ValueError):
+        _runtime([override])

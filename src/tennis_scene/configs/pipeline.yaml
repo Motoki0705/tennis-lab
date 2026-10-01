@@ -3,6 +3,7 @@
 defaults:
 - paths: default
 - _self_
+- ball_path: e9_anchored_s42_covariance
 video_paths:
 - samples/cam0.mp4
 - samples/cam1.mp4
@@ -22,6 +23,7 @@ execution:
   player_selection: execute
   pose_estimation: execute
   ball_detection: execute
+  ball_refiner_2d: execute
   player_association: execute
   court_side: execute
   camera_alignment: execute
@@ -117,7 +119,6 @@ person_observations:
   max_tracks_per_camera: 6
 ball_detection:
   enabled: true
-  checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   batch_size: 4
   image_size: [288, 512]
   # Ball's model-I/O adapter owns model preprocessing and requires RGB [0, 1].
@@ -129,7 +130,7 @@ ball_detection:
   prefetch_batches: 2
   window_stride: 4
   tail_policy: backfill
-  overlap_aggregation: max_score
+  overlap_aggregation: nearest_window_centre_then_earlier_start
   pin_memory: true
   candidates:
     max_candidates: 8

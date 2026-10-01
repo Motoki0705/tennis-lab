@@ -384,3 +384,26 @@ def test_no_implicit_calibration_or_unknown_ball_path(exported, calibrated_optio
         select_ball_path("bundle", bundle, path)
     with pytest.raises(ValueError, match="Unknown ball path"):
         select_ball_path("typo", bundle, path)
+
+
+def test_standard_scene_uses_the_same_pinned_recipe(exported, calibrated_option, tmp_path, monkeypatch):
+    from src.tennis_scene.pipeline import definition
+    from src.tennis_scene.pipeline.ball_refiner_recipe import BallRefinerRecipeConfig
+    from tests.unit.tennis_scene.pipeline.test_auto_pipeline import runtime
+
+    root, pilot, bundle = exported
+    source = ClipSource("sample", (_video(tmp_path / "standard.mp4"),))
+    cfg = replace(runtime(tmp_path), ball_detection=_detector(root, pilot, bundle),
+                  ball_refiner=BallRefinerRecipeConfig("e9_anchored_s42_covariance", bundle.directory,
+                                                       calibrated_option[0], 2))
+    monkeypatch.setattr(definition, "file_identity", lambda path: {"test_asset": str(path)})
+    nodes = definition.standard_definition(cfg, source, code_identity="standard-test")
+    runner = ComponentRunner(nodes, ClipStore(tmp_path / "standard-store", json_value(source)))
+    named = {node.name: node for node in nodes}
+    assert runner.order.index("ball_detection/cam0") < runner.order.index("ball_refiner_2d/cam0")
+    assert named["ball_refiner_2d/cam0"].io.version == 2
+    assert named["ball_refiner_2d/cam0"].bindings == {"detections": "ball_detection/cam0"}
+    assert named["ball_refiner_2d/cam0"].settings["covariance_calibration"]["artifact_sha256"] == calibrated_option[1].calibration_sha256
+    load = replace(cfg, component_sources={**cfg.component_sources, "ball_refiner_2d": "load"})
+    assert next(n for n in definition.standard_definition(load, source, code_identity="standard-test")
+                if n.name == "ball_refiner_2d/cam0").source == "load"

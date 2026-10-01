@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from functools import lru_cache, partial
 from typing import TYPE_CHECKING, Any
 
@@ -11,7 +12,7 @@ from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
 from src.tennis_scene.pipeline.artifacts import json_value
-from src.tennis_scene.pipeline.components.ball_detection import BallDetectionModule
+from src.tennis_scene.pipeline.ball_refiner_recipe import ball_refiner_definition
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementModule
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionModule,
@@ -42,7 +43,6 @@ from src.tennis_scene.pipeline.input_assembly.body import (
     GVHMRInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
-    BallDetectionInputAssembler,
     CourtCalibrationInputAssembler,
     CourtDetectionInputAssembler,
     PersonDetectionInputAssembler,
@@ -132,9 +132,15 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     for camera in ids:
         add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
             lambda: {"config": cfg.processing_settings["court_kp"], "checkpoint": file_identity(cfg.court_kp.checkpoint)}, camera=camera)
-        add(f"ball_detection/{camera}", BallDetectionModule(cfg.ball_detection, enabled=cfg.enabled["ball_detection"]), BallDetectionInputAssembler(), {},
-            lambda: {"config": cfg.processing_settings["ball_detection"],
-                     "assets": asset_identities(cfg.enabled["ball_detection"], {"checkpoint": cfg.ball_detection.checkpoint})}, camera=camera)
+    ball_nodes = ball_refiner_definition(
+        source, detector_config=cfg.ball_detection, bundle_directory=cfg.ball_refiner.bundle,
+        batch_size=cfg.ball_refiner.batch_size, code_identity=code_identity, execution_source=cfg.cache_source,
+        ball_path=cfg.ball_refiner.path, calibration_artifact=cfg.ball_refiner.calibration_artifact,
+    )
+    for node in ball_nodes:
+        component = overrides.get(node.name, node.component)
+        mode = "load" if cfg.cache_source == "load" else cfg.component_sources[node.io.name]
+        nodes.append(replace(node, component=component, io=component.io, source=mode))
     add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins), CourtCalibrationInputAssembler(),
         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
     for camera in ids:
@@ -208,7 +214,11 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     people, body = cfg.enabled["person_observations"], cfg.enabled["gvhmr"]
     return {
         "court": cfg.court_kp.checkpoint,
-        **({"ball": cfg.ball_detection.checkpoint} if cfg.enabled["ball_detection"] else {}),
+        "ball": cfg.ball_detection.checkpoint,
+        "ball_refiner_manifest": cfg.ball_refiner.bundle / "manifest.json",
+        "ball_refiner_weights": cfg.ball_refiner.bundle / "weights.pt",
+        **({"ball_refiner_calibration": cfg.ball_refiner.calibration_artifact}
+           if cfg.ball_refiner.calibration_artifact is not None else {}),
         **({"detector": cfg.people.detector_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **({"tracking_encoder": cfg.tracking_encoder_weights} if people and cfg.tracking.method != 'all_person_botsort' else {}),

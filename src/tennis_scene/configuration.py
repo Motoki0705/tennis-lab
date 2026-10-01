@@ -28,6 +28,7 @@ from src.tasks.player_association.appearance.encoders import encoder_weights
 from src.tasks.player_association.association.associate import AssociationConfig
 from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
+from src.tennis_scene.pipeline.ball_refiner_recipe import BallRefinerRecipeConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
 from src.tennis_scene.pipeline.components.court_kp import (
@@ -203,6 +204,10 @@ _BALL_SCHEMA = StrictConfigSchema(
         "candidates": ConfigField.mapping(_BALL_CANDIDATE_SCHEMA),
     },
 )
+_BALL_REFINER_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_refiner", fields={
+    "path": ConfigField.of(str), "bundle": ConfigField.of(str),
+    "calibration_artifact": ConfigField.of(str, type(None)), "batch_size": ConfigField.of(int),
+})
 _FLAG_SCHEMA = StrictConfigSchema(name="tennis_scene.stage", fields={"enabled": ConfigField.of(bool)})
 _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observations", fields={
     "enabled": ConfigField.of(bool), "visibility_threshold": ConfigField.of(float, int),
@@ -246,6 +251,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
+    "ball_refiner": ConfigField.mapping(_BALL_REFINER_SCHEMA),
     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_association": ConfigField.mapping(_PLAYER_ASSOCIATION_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
@@ -267,6 +273,7 @@ class PipelineRuntimeConfig:
     court_kp: CourtKPConfig
     people: PeopleModelConfig
     ball_detection: BallDetectionConfig
+    ball_refiner: BallRefinerRecipeConfig
     sampling_max_frames: int
     camera_geometry: CameraGeometryConfig
     court_side: CourtSideConfig
@@ -346,6 +353,14 @@ class PipelineRuntimeConfig:
                                            external_root=roots.external_asset_root)
         aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))
         ball_config = build_ball_detection_config(_mapping(value["ball_detection"], name="ball_detection"), resolver, device=device)
+        refiner = _mapping(value["ball_refiner"], name="ball_refiner")
+        calibration = cast(str | None, refiner["calibration_artifact"])
+        ball_refiner = BallRefinerRecipeConfig(
+            path=cast(str, refiner["path"]),
+            bundle=resolver.resolve(PathRole.CHECKPOINT, cast(str, refiner["bundle"])),
+            calibration_artifact=None if calibration is None else resolver.resolve(PathRole.CHECKPOINT, calibration),
+            batch_size=cast(int, refiner["batch_size"]),
+        )
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
@@ -386,7 +401,7 @@ class PipelineRuntimeConfig:
         if any(mode not in {"execute", "load"} for mode in component_sources.values()):
             raise SemanticConfigurationError("Component execution modes must be execute/load")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
-        return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
+        return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config, ball_refiner,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']))
