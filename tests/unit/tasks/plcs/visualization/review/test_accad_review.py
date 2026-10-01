@@ -27,7 +27,7 @@ from src.utils.schema.player import (
 )
 
 _ACCAD_ROOT = "/home/kamimura/projects/tennis-lab/data/ACCAD"
-_SMPLH_ROOT = "/home/kamimura/projects/tennis-lab/data/smplh"
+_SMPLH_ROOT = "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplh"
 _ACCAD_CLIP = "Male1Walking_c3d/Walk B10 - Walk turn left 45_poses.npz"
 
 

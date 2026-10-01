@@ -50,7 +50,7 @@ from src.tasks.plcs.generate_dataset.sampling.motion_source import (
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _ACCAD_ROOT = _PROJECT_ROOT / "data" / "ACCAD"
 _ACCAD = _ACCAD_ROOT / "Male1Running_c3d" / "Run C25 - quick side step right_poses.npz"
-_SMPLH = _PROJECT_ROOT / "data" / "smplh"
+_SMPLH = _PROJECT_ROOT / "ckpt/body_models/smplh"
 
 
 class _RealSupportEvidenceEvaluator:
