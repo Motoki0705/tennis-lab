@@ -11,6 +11,7 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
+from src.tasks.ball_detection.data.store import INDEX_FILE, METADATA_FILE
 from src.tasks.ball_detection.evaluation.configuration import load_data_config
 from src.tasks.ball_detection.evaluation.contracts import (
     DatasetSpec,
@@ -187,17 +188,17 @@ class EvaluationPipeline:
         data_dir = self.manifest.resolver.resolve(
             PathRole.DATA, str(data_config.data_dir)
         )
+        # The split assignment lives in these files, so they fingerprint the split.
         if source == "web":
-            split_artifact = data_dir / "manifest.json"
+            split_artifacts = [data_dir / "manifest.json"]
+        elif source == "store":
+            split_artifacts = [data_dir / METADATA_FILE, data_dir / INDEX_FILE]
         else:
-            split_role = PathRole(str(data_config.split.root_role))
-            split_artifact = self.manifest.resolver.resolve(
-                split_role, str(data_config.split[f"{split}_file"])
-            )
+            raise ValueError(f"No split fingerprint for data.source={source!r}.")
         fingerprint = {
             "spec": asdict(dataset),
             "resolved_config": resolved_config,
-            "split_artifact": _file_identity(split_artifact),
+            "split_artifacts": [_file_identity(path) for path in split_artifacts],
         }
         self._dataset_fingerprints[key] = fingerprint
         return fingerprint

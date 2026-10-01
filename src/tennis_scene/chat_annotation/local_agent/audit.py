@@ -27,8 +27,25 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 from .campaign_state import channel_map, processed_path, read_state
 from .common import iter_frames, load_manifest, locate_video
+from .configuration import paths
+from .path_contracts import campaign_resolver, validate_command_paths
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 QUOTA = {
     "visible": 72,
@@ -42,7 +59,8 @@ CROP, ZOOM, THUMB_W = 112, 2, 224
 
 
 def final_annotation(task: dict[str, Any]) -> Path:
-    return processed_path(task["target"], task["clip_id"])
+    result: Path = processed_path(task["target"], task["clip_id"])
+    return result
 
 
 def predicted(
@@ -342,8 +360,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("score")
     p.add_argument("dir")
     args = parser.parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    if args.cmd == 'sample':
+        args.out = str(validate_command_paths(output=args.out)['output'])
+    else:
+        args.dir = str(validate_command_paths(input_directory=args.dir)['input_directory'])
     return {"sample": cmd_sample, "score": cmd_score}[args.cmd](args)
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

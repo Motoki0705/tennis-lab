@@ -130,7 +130,7 @@ def test_describe_config_carries_architecture_contract() -> None:
     assert info.minimum_window == 2
     assert info.maximum_window == 8
     assert info.image_size_hw == (288, 512)
-    payload = info.to_dict(compatible_datasets=["tracknet"])
+    payload = info.to_dict(compatible_datasets=["store/test-v1"])
     assert payload["settings"] == {"count": 8, "threshold": DEFAULT_PEAK_THRESHOLD}
     assert payload["window"] == {"min": 2, "max": 8}
 

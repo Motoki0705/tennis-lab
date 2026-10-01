@@ -11,7 +11,12 @@ from torch import Tensor
 
 from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
 from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
-from src.tasks.ball_detection.model_io.contracts import BallModelIOError, BallPrediction
+from src.tasks.ball_detection.model_io.contracts import (
+    DEFAULT_CANDIDATE_CONFIG,
+    BallCandidateConfig,
+    BallModelIOError,
+    BallPrediction,
+)
 from src.tasks.ball_detection.model_io.normalization import (
     IDENTITY_NORMALIZATION,
     BallImageNormalization,
@@ -90,6 +95,8 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
     def predict(
         self,
         images: Tensor,
+        *,
+        candidate_config: BallCandidateConfig = DEFAULT_CANDIDATE_CONFIG,
     ) -> BallPrediction:
         """Run inference on a batch of frame sequences.
 
@@ -98,7 +105,8 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
                 ``[0, 1]``. Already resized and scaled from raw RGB values.
                 The checkpoint's saved normalization is applied internally.
         Returns:
-            Typed coordinates, confidence, and probability heatmaps on CPU.
+            Typed coordinates, confidence, dense probability heatmaps and
+            unthresholded local candidate evidence on CPU.
         """
         if not isinstance(images, Tensor):
             raise BallModelIOError("Ball detector input must be a Tensor.")
@@ -111,6 +119,7 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
                 logits,
                 call,
                 subpixel_refine=self.subpixel_refine,
+                candidate_config=candidate_config,
             )
 
     @property

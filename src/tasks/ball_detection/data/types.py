@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TypedDict
 
 from torch import Tensor
@@ -21,17 +20,6 @@ class FrameLabel:
     state: str = "visible"
 
 
-@dataclass(frozen=True)
-class ClipWindow:
-    """One fixed-length temporal window consumed by the dataset."""
-
-    clip_dir: Path
-    frame_names: tuple[str, ...]
-    labels: dict[str, tuple[FrameLabel, ...]]
-    original_size: tuple[int, int]
-    start_index: int
-
-
 class BallDetectionSample(TypedDict):
     """One supervised ball detection sample.
 
@@ -41,20 +29,25 @@ class BallDetectionSample(TypedDict):
         coords: Padded ball coordinates in original image pixel space with
             shape ``(T, K, 2)`` and ``(x, y)`` ordering.
         visibility: Padded instance visibility mask with shape ``(T, K)``.
+        supervised: Boolean ``(T,)`` mask of the frames whose heatmap target
+            is trusted. Loss and metrics ignore the other frames entirely.
         original_size: Original frame size with shape ``(2,)`` in
             ``(width, height)`` ordering.
         heatmap_size: Heatmap size with shape ``(2,)`` in
             ``(width, height)`` ordering.
-        window_id: Stable TrackNet window identifier for persisted predictions.
+        window_id: Stable window identifier for persisted predictions.
+        source: Name of the data source the window came from.
     """
 
     images: Tensor
     heatmaps: Tensor
     coords: Tensor
     visibility: Tensor
+    supervised: Tensor
     original_size: Tensor
     heatmap_size: Tensor
     window_id: str
+    source: str
 
 
 class BallDetectionBatch(TypedDict):
@@ -66,25 +59,28 @@ class BallDetectionBatch(TypedDict):
         coords: Padded ball coordinates in original image pixel space with
             shape ``(B, T, K, 2)`` and ``(x, y)`` ordering.
         visibility: Padded instance visibility mask with shape ``(B, T, K)``.
+        supervised: Boolean ``(B, T)`` supervised-frame mask.
         original_size: Original frame sizes with shape ``(B, 2)`` in
             ``(width, height)`` ordering.
         heatmap_size: Heatmap sizes with shape ``(B, 2)`` in
             ``(width, height)`` ordering.
-        window_id: Stable TrackNet window identifiers for persisted predictions.
+        window_id: Stable window identifiers for persisted predictions.
+        source: Data source name of every window.
     """
 
     images: Tensor
     heatmaps: Tensor
     coords: Tensor
     visibility: Tensor
+    supervised: Tensor
     original_size: Tensor
     heatmap_size: Tensor
     window_id: list[str]
+    source: list[str]
 
 
 __all__ = [
     "BallDetectionBatch",
     "BallDetectionSample",
-    "ClipWindow",
     "FrameLabel",
 ]

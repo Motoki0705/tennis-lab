@@ -20,7 +20,6 @@ from .service import (
     DetectionService,
     WindowMode,
     WindowPlan,
-    dataset_ids,
 )
 
 __all__ = [
@@ -34,7 +33,6 @@ __all__ = [
     "Raster",
     "WindowMode",
     "WindowPlan",
-    "dataset_ids",
     "decode_frame_peaks",
     "load_ball_model",
     "peaks_to_points",

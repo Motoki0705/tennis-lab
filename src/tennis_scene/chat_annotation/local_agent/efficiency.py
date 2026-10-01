@@ -10,21 +10,33 @@ from __future__ import annotations
 import argparse
 import collections
 import json
-import os
 import statistics as st
 from datetime import datetime
 from pathlib import Path
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 from .common import load_annotation, load_manifest
 from .configuration import paths
+from .path_contracts import campaign_resolver, validate_command_paths
 from .qa import ball_metrics
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 
 def sessions_directory() -> Path:
-    return (
-        paths().codex_home
-        or Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex")))
-    ) / "sessions"
+    return paths().codex_home / "sessions"
 
 
 def sessions_by_cwd(cache: dict[str, str]) -> dict[str, list[Path]]:
@@ -99,6 +111,8 @@ def scan(path: Path) -> dict[str, float]:
 
 def main(argv: list[str] | None = None) -> int:
     argparse.ArgumentParser(description=__doc__).parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    validate_command_paths()
     state = json.loads(
         (paths().campaign_dir / "state.json").read_text(encoding="utf-8")
     )
@@ -198,8 +212,6 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
 
 
 def version_labels() -> dict[str, str]:

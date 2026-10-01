@@ -45,6 +45,8 @@ jobs:
             args+=(--base-ref "$BASE_REF")
           fi
           .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py "${args[@]}"
+      - name: Check that repro.sh files reference only reproducible scripts
+        run: .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
       - name: Test storage, registration and documented skill workflows
         run: .venv/bin/python -m pytest --confcutdir=tests/e2e/skills -o addopts='' tests/e2e/skills/test_knowledge*.py
   knowledge-webui:

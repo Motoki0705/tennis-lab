@@ -27,9 +27,24 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
     ClipManifest,
 )
 from src.tennis_scene.chat_annotation.runtime.validation import validate_annotation
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 
 from .common import iter_frames, load_annotation, load_manifest, locate_video
 from .configuration import paths
+from .path_contracts import campaign_resolver, validate_command_paths
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 STATUS_BGR = {
     "visible": (0, 255, 255),
@@ -281,10 +296,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--scale", type=float, default=0.5)
     args = parser.parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    validate_command_paths()
     if args.command == "task":
         annotation_path, manifest_path = task_paths(args.task_id)
     else:
-        annotation_path, manifest_path = args.annotation, args.manifest
+        checked = validate_command_paths(annotation=args.annotation, manifest=args.manifest)
+        annotation_path, manifest_path = checked['annotation'], checked['manifest']
+    if args.command == 'video':
+        args.out = validate_command_paths(output=args.out)['output']
     manifest = load_manifest(manifest_path)
     annotation = load_annotation(annotation_path)
     if not isinstance(annotation, BallAnnotation):
@@ -325,7 +345,3 @@ def main(argv: list[str] | None = None) -> int:
             metrics["video"] = str(out)
     print(json.dumps(metrics, ensure_ascii=False, indent=1))
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

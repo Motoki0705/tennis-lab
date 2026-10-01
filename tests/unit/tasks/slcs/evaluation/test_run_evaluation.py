@@ -389,7 +389,7 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
     for mode in conditions:
         folder = out / "val" / mode
         metrics = json.loads((folder / "metrics.json").read_text())
-        assert metrics["num_windows"] == 2
+        assert metrics["num_windows"] == 4  # two videos x two cameras
         assert metrics["context"]["input_mode"] == mode
         saved_config = OmegaConf.load(folder / "evaluation_config.yaml")
         assert saved_config.evaluate.input_mode == mode
@@ -421,12 +421,14 @@ def test_paired_cpu_run_exports_mixed_fps_and_defaults_to_val(
             for row in motion["rows"]:
                 if row["group_type"] != "video":
                     continue
-                index = arrays["video_ids"].tolist().index(row["video_id"])
-                keep = arrays["ball_mask"][index, 1:] & arrays["ball_mask"][index, :-1]
                 fps = 25 if row["video_id"] == "video_000" else 50
-                expected = np.linalg.norm(
-                    np.diff(pred[index], axis=0)[keep] * fps, axis=-1
-                ).mean()
+                # One window per camera; the video row pools all of them.
+                speeds = [
+                    np.linalg.norm(np.diff(pred[index], axis=0)[keep] * fps, axis=-1)
+                    for index in np.flatnonzero(arrays["video_ids"] == row["video_id"])
+                    for keep in [arrays["ball_mask"][index, 1:] & arrays["ball_mask"][index, :-1]]
+                ]
+                expected = np.concatenate(speeds).mean()
                 assert row["entities"]["ball"]["velocity"]["pred_norm"][
                     "mean"
                 ] == pytest.approx(expected)

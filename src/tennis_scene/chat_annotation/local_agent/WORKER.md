@@ -53,7 +53,7 @@
 | `init` | 注釈 JSON を作る（前回の試行があればそれを引き継ぐ）。何度実行してもよい |
 | `status` | 検証と要約（エラー、未確認範囲、件数） |
 | `frames --start S --stop E [--step K] [--crop X1 Y1 X2 Y2] [--scale F] [--ruler G] [--draw annotation\|cands-ball]` | 連続フレームの一覧画像。全体表示は既定 scale 0.25。`--ruler` で元画像座標の目盛り |
-| `crops [--source annotation\|cands-ball \| --points JSON] [--frames "S:E,N"] [--top K] [--size N] [--scale F] [--mark] [--draw ...]` | 点ごとの拡大タイル（既定 96px・2倍）。候補確認は `--source cands-ball --size 80 --scale 2 --mark`。`--frames` で指定フレームだけ |
+| `crops [--source annotation\|cands-ball \| --points JSON \| --points-file FILE] [--frames "S:E,N"] [--top K] [--size N] [--scale F] [--mark] [--draw ...]` | 点ごとの拡大タイル（既定 96px・2倍）。点ファイルはcampaign内の絶対パスを渡す。候補確認は `--source cands-ball --size 80 --scale 2 --mark`。`--frames` で指定フレームだけ |
 | `cands-ball [--start --stop]` | ボールモデル候補。**通常は事前計算済み**（`source: prefetched`、筋の中心 blob も付いている）で即座に返る。無い場合だけCPUで計算し、1回約50秒で区切って返るので `rerun_to_continue` が true の間は再実行する |
 | `refine-ball [--start --stop] [--top 2]` | 候補に**筋の中心**（blob）を追加（事前計算済みなら不要。未計算の候補だけ処理）。モデル候補のピークは筋の**先端**に寄るため |
 | `check` | 書き込んだ軌跡の自動点検: 瞬間移動・急な折れ・孤立点・イベントフレームを列挙し、`frames_arg` を返す |

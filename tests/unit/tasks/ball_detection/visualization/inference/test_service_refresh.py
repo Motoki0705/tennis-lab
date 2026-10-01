@@ -57,7 +57,7 @@ def write_tracknet_clip(
     """Write one clip whose rows may cover only some of its frames."""
     indices = tuple(range(frames)) if labelled is None else labelled
     return write_clip(
-        tmp_path / "data" / "tennis" / "tracknet" / "game1" / name,
+        tmp_path / "data" / "ball_detection" / "test-v1" / "tracknet" / "game1" / name,
         frames=frames,
         rows=[clip_row(index) for index in indices],
     )
@@ -83,7 +83,7 @@ def test_catalog_rescan_adds_new_checkpoint_and_clip(tmp_path: Path) -> None:
 
     catalog = service.catalog()
     assert [entry["id"] for entry in catalog["checkpoints"]] == ["run-new.ckpt"]
-    assert service.scenes("tracknet", limit=10)["total"] == 2
+    assert service.scenes("store/test-v1", limit=10)["total"] == 2
 
 
 def test_unavailable_reason_survives_repeated_catalog_calls(tmp_path: Path) -> None:
@@ -116,7 +116,7 @@ def test_infer_rereads_replaced_checkpoint_metadata(
     path = make_tiny_checkpoint(
         tmp_path / "outputs" / "ball_detection" / "run.ckpt", num_frames=2
     )
-    scene = "tracknet::game1/Clip1"
+    scene = "store/test-v1::tracknet/game1/Clip1"
     service.catalog()
     service.validate("run.ckpt", scene, start=0, count=2, device="cpu")
     with pytest.raises(DetectionRequestError, match="between 2 and 2"):
@@ -161,46 +161,36 @@ def test_checkpoint_symlink_outside_root_is_rejected(
     assert "error" in entry and "resolves outside" in entry["error"]
     assert any("linked.ckpt" in text for text in catalog["warnings"])
     with pytest.raises(DetectionRequestError, match="unusable"):
-        service.validate("linked.ckpt", "tracknet::game1/Clip1", count=2, device="cpu")
+        service.validate("linked.ckpt", "store/test-v1::tracknet/game1/Clip1", count=2, device="cpu")
 
 
-def test_clip_directory_symlink_outside_root_is_skipped(
-    tmp_path: Path,
-) -> None:
-    outside = tmp_path / "outside" / "gameX"
-    write_clip(outside / "Clip1", frames=4, rows=[clip_row(index) for index in range(4)])
+def test_store_directory_symlink_outside_data_root_is_rejected(tmp_path: Path) -> None:
     write_tracknet_clip(tmp_path, "Clip1", frames=4)
-    root = tmp_path / "data" / "tennis" / "tracknet"
-    (root / "game_escaped").symlink_to(outside, target_is_directory=True)
-
+    root = tmp_path / "data" / "ball_detection"
+    outside = tmp_path / "outside"
+    from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+    write_store_clip(outside, "tracknet/gameX/Clip1", [frame(0, ball())])
+    (root / "escaped").symlink_to(outside, target_is_directory=True)
     catalog = BallDatasetCatalog(tmp_path / "data")
     entries = {entry.spec.id: entry for entry in catalog.entries()}
-    tracknet = entries["tracknet"]
-    # The good scene is still served, and the escaping link is reported.
-    assert [ref.local_id for ref in catalog.refs("tracknet")] == ["game1/Clip1"]
-    assert any("resolves outside" in text for text in tracknet.warnings)
-    assert any(
-        "resolves outside" in text for text in tracknet.to_dict()["warnings"]
-    )
+    assert entries["store/test-v1"].available
+    assert not entries["store/escaped"].available
+    assert "resolves outside" in str(entries["store/escaped"].reason)
 
 
-def test_frame_symlink_outside_root_disqualifies_the_scene(tmp_path: Path) -> None:
-    clip = write_tracknet_clip(tmp_path, "Clip1", frames=3)
-    secret = tmp_path / "secret.jpg"
-    secret.write_bytes((clip / "0000.jpg").read_bytes())
-    (clip / "0002.jpg").unlink()
-    (clip / "0002.jpg").symlink_to(secret)
-
+def test_shard_symlink_outside_root_disqualifies_store(tmp_path: Path) -> None:
+    directory = write_tracknet_clip(tmp_path, "Clip1", frames=3)
+    shard = directory / "shards" / "clip-00000.bin"
+    secret = tmp_path / "secret.bin"
+    secret.write_bytes(shard.read_bytes())
+    shard.unlink()
+    shard.symlink_to(secret)
     catalog = BallDatasetCatalog(tmp_path / "data")
     entries = {entry.spec.id: entry for entry in catalog.entries()}
-    assert not entries["tracknet"].available
-    assert entries["tracknet"].reason is not None
-    assert any(
-        "resolve outside the dataset root" in text
-        for text in entries["tracknet"].warnings
-    )
+    assert not entries["store/test-v1"].available
+    assert "resolves outside" in str(entries["store/test-v1"].reason)
     with pytest.raises(BallDatasetCatalogError):
-        catalog.resolve("tracknet", "game1/Clip1")
+        catalog.resolve("store/test-v1", "tracknet/game1/Clip1")
 
 
 def test_web_store_with_escaping_reference_is_rejected(tmp_path: Path) -> None:

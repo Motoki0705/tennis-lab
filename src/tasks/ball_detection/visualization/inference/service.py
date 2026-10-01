@@ -4,7 +4,7 @@ The service is the single backend the shared detection app
 (``src.tasks.base.visualization.detection``) talks to.  It owns two things:
 
 * the dataset/scene/frame catalog built from the ball-detection sources
-  (TrackNet, annotated YouTube frames, and the optional unified web store), and
+  (versioned ball frame stores and the optional unified web store), and
 * one bounded inference window per request, executed on CPU in-process or on
   CUDA through the shared GPU queue owned by the HTTP layer.
 
@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Literal, cast
+from typing import Any, Final, Literal
 
 import cv2
 import numpy as np
@@ -50,7 +50,6 @@ from src.tasks.ball_detection.visualization.review.checkpoints import (
     scan_checkpoints,
 )
 from src.tasks.ball_detection.visualization.review.datasets import (
-    DATASET_SPECS,
     BallDatasetCatalog,
     BallDatasetCatalogError,
     BallDatasetSpec,
@@ -288,6 +287,8 @@ class DetectionService:
                     f"frame {index} has no annotation row; it is unlabelled, not "
                     "an annotated negative."
                 )
+            if resolved.frames.annotated(index) and not resolved.frames.supervised(index):
+                warnings.append(f"frame {index} is reviewed but excluded by the observed-only supervision policy.")
             items.append(
                 {
                     "index": index,
@@ -297,6 +298,7 @@ class DetectionService:
                         "rasters": [],
                     },
                     "annotated": resolved.frames.annotated(index),
+                    "supervised": resolved.frames.supervised(index),
                 }
             )
         return {
@@ -322,6 +324,7 @@ class DetectionService:
                     "label": label.instance_id or label.role,
                     "score": float(label.visibility),
                     "visible": bool(label.visibility > 0),
+                    "state": label.state,
                 }
             )
         return points
@@ -463,10 +466,11 @@ class DetectionService:
             threshold=threshold,
         )
         for position in metrics["excluded_frames"]:
-            warnings.append(
-                f"frame {position} has no annotation row; it is unlabelled, not an "
-                "annotated negative, and was excluded from the metrics."
+            reason = (
+                "has reviewed labels excluded by the observed-only supervision policy"
+                if resolved.frames.annotated(position) else "has no annotation row"
             )
+            warnings.append(f"frame {position} {reason}; it was excluded from the metrics.")
         return {
             "scene": resolved.ref.id,
             "start": plan.start,
@@ -486,7 +490,7 @@ class DetectionService:
     ) -> dict[str, Any]:
         """Score the emitted frames with the repository's canonical metrics.
 
-        Only frames that carry an annotation row are scored.  A frame whose row is
+        Only frames with trusted observed-only supervision are scored.  A frame whose row is
         missing is *not* an annotated negative, so counting it would both invent a
         negative and (for a repeated static frame) multiply one frame's ground
         truth by the repeat count.  When nothing in the window is annotated the
@@ -495,12 +499,12 @@ class DetectionService:
         excluded = [
             position
             for position, _ in emitted
-            if not resolved.frames.annotated(position)
+            if not resolved.frames.supervised(position)
         ]
         scored = [
             (position, heatmap)
             for position, heatmap in emitted
-            if resolved.frames.annotated(position)
+            if resolved.frames.supervised(position)
         ]
         base: dict[str, Any] = {
             "window": plan.to_dict(checkpoint_frames=info.num_frames),
@@ -513,7 +517,7 @@ class DetectionService:
                 {
                     "available": False,
                     "reason": (
-                        "no frame in this window has an annotation row, so the "
+                        "no frame in this window has trusted observed-only supervision, so the "
                         "metric cannot be computed."
                     ),
                 }
@@ -554,6 +558,8 @@ class DetectionService:
             torch.from_numpy(coords),
             torch.from_numpy(visibility),
             torch.tensor([[float(width), float(height)]], dtype=torch.float32),
+            # ``scored`` already holds only the frames whose labels are trusted.
+            torch.ones((1, frame_count), dtype=torch.bool),
         )
         values: dict[str, Any] = {
             name: float(value.detach().cpu().item())
@@ -760,12 +766,8 @@ class _ResolvedScene:
     @property
     def ref_mode(self) -> Literal["static", "temporal"]:
         """Return the dataset's sampling mode, not the frame accessor's."""
-        return cast(Literal["static", "temporal"], self.frames.mode)
+        return self.frames.mode
 
-
-def dataset_ids() -> tuple[str, ...]:
-    """Return the catalog dataset ids in display order."""
-    return tuple(spec.id for spec in DATASET_SPECS)
 
 
 __all__ = [
@@ -776,5 +778,4 @@ __all__ = [
     "DetectionService",
     "WindowPlan",
     "WindowMode",
-    "dataset_ids",
 ]

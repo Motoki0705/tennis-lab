@@ -8,7 +8,6 @@ from omegaconf import DictConfig, OmegaConf
 from src.tasks.base.visualization.preview import (
     enable_all_augmentation_blocks,
     resolve_sample_indices,
-    resolve_split_file,
 )
 
 
@@ -74,12 +73,3 @@ def test_enable_all_augmentation_blocks_flips_flags_only() -> None:
 def test_enable_all_augmentation_blocks_rejects_non_mapping() -> None:
     with pytest.raises(ValueError, match="must be a mapping"):
         enable_all_augmentation_blocks(cast(DictConfig, OmegaConf.create([1, 2])))
-
-
-def test_resolve_split_file_looks_up_named_key() -> None:
-    cfg = OmegaConf.create(
-        {"data": {"split": {"train_file": "a.json", "val_file": "b.json"}}}
-    )
-    assert resolve_split_file(cfg, "val") == "b.json"
-    with pytest.raises(ValueError, match="Unknown preview.split"):
-        resolve_split_file(cfg, "test")

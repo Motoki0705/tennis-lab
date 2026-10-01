@@ -1,0 +1,16 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790219330586078624_763222_plcs-reid-mode-transition-probe-20260924 (commit=53db1868054e provider=codex session=01a0d0f9-6057-7961-ad6b-adc46744d619)
+batch {'human_kp': ['torch.float32', [4, 5, 512, 4, 17, 2], True], 'human_vis': ['torch.bool', [4, 5, 512, 4, 17], True], 'court_kp': ['torch.float32', [4, 5, 512, 14, 2], True], 'court_vis': ['torch.bool', [4, 5, 512, 14], True], 'padding_mask': ['torch.bool', [4, 5, 512], True], 'track_person_id': ['torch.int64', [4, 5, 4], True], 'reference_view_index': ['torch.int64', [4], True], 'side_target': ['torch.bool', [4, 5], True], 'sample_index': ['torch.int64', [4], True]}
+{"compiled": false, "phase": "sanity", "loss": 0.5190680027008057, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"compiled": false, "phase": "train", "loss": 0.4640788435935974, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"compiled": false, "phase": "val", "loss": 0.40392470359802246, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"compiled": false, "phase": "train", "loss": 0.34214672446250916, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"compiled": false, "phase": "val", "loss": 0.4033355712890625, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"compiled": true, "phase": "sanity", "loss": 0.5184623599052429, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid/.venv/lib/python3.11/site-packages/torch/_inductor/lowering.py:2633: UserWarning: Torchinductor does not support code generation for complex operators. Performance may be worse than eager.
+  warnings.warn(
+W0924 12:09:10.621000 763426 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1953] [0/1] Not enough SMs to use max_autotune_gemm mode
+{"compiled": true, "phase": "train", "loss": 0.4564376175403595, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"compiled": true, "phase": "val", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+{"compiled": true, "phase": "train", "loss": 0.4661799669265747, "finite": {"track_embedding": true, "track_valid": true, "is_player_logit": true}}
+{"compiled": true, "phase": "val", "loss": NaN, "finite": {"track_embedding": false, "track_valid": true, "is_player_logit": false}}
+inductor {'freezing': False, 'cudagraphs': False}

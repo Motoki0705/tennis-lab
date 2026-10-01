@@ -1,8 +1,6 @@
 """Shared paths and helpers for the Codex CLI annotation campaign.
 
-Campaign tooling, not repository code. Run with PYTHONPATH=<campaign worktree> so the
-`src.tennis_scene.chat_annotation` runtime is the single authority for schemas, video
-decoding and validation.
+The shared chat_annotation runtime owns schemas, video decoding and validation.
 """
 
 from __future__ import annotations
@@ -212,6 +210,9 @@ def verified_timeline(
         "video": str(video.resolve()),
         "size": stat.st_size,
         "mtime_ns": stat.st_mtime_ns,
+        "ctime_ns": stat.st_ctime_ns,
+        "device": stat.st_dev,
+        "inode": stat.st_ino,
         "video_sha256": manifest.sha256,
     }
     candidates = [

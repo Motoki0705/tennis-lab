@@ -4,10 +4,8 @@ For clips that are running or next in the dispatcher order it writes:
   cache/timeline/<video_sha256>.json   verified timeline (workers skip the full-clip decode)
   cache/cands_ball/<clip_id>.json      ball-model candidates + blob (streak-middle) centers
 Workers copy these with `ct cands-ball` / reuse them in every frame read. Search guides only.
-Single instance via flock (.prefetch.lock), two ways to run:
-  bin/prefetch.sh                                   CPU daemon (setsid), follows the queue forever
-  prefetch.py --device cuda --lookahead 0 --exit-when-idle --max-minutes 120
-                                                    GPU batch; only through the training queue
+Single instance via flock (.prefetch.lock). Use the package's ``prefetch`` command;
+CUDA runs require the shared training queue.
 """
 
 from __future__ import annotations
@@ -20,10 +18,26 @@ import time
 import traceback
 from pathlib import Path
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 from .campaign_state import next_candidates, read_control, read_state
 from .common import load_manifest, locate_video, utc_now, verified_timeline
 from .configuration import paths
 from .ct import BallModel, compute_ball_candidates, read_cache, refine_candidates
+from .path_contracts import campaign_resolver, validate_command_paths
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 
 def log(message: str) -> None:
@@ -92,6 +106,8 @@ def main(argv: list[str] | None = None) -> int:
         help="exit after the current clip past this; 0 = no limit",
     )
     args = parser.parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    validate_command_paths()
     if args.device == "cuda" and (
         not os.environ.get("TENNIS_RUN_ID")
         or os.environ.get("TENNIS_GPU_RESOURCE") not in ("half", "all")
@@ -161,7 +177,3 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 1 if failed else 0
             time.sleep(60)
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

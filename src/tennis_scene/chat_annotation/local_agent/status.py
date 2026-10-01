@@ -8,13 +8,31 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 from .campaign_state import read_control, read_state
 from .configuration import paths
 from .dispatcher import rollout_rate_limits, scan_events
+from .path_contracts import campaign_resolver, validate_command_paths
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
 
 
 def main(argv: list[str] | None = None) -> int:
     argparse.ArgumentParser(description=__doc__).parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    validate_command_paths()
     state = read_state()
     control = read_control()
     counts = Counter(t["status"] for t in state["tasks"].values())
@@ -92,7 +110,3 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

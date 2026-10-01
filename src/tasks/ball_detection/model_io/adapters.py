@@ -12,7 +12,10 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.ball_detection.configuration import validate_model
+from src.tasks.ball_detection.model_io.candidates import decode_candidates
 from src.tasks.ball_detection.model_io.contracts import (
+    DEFAULT_CANDIDATE_CONFIG,
+    BallCandidateConfig,
     BallInputLayout,
     BallInputMode,
     BallModelCall,
@@ -365,6 +368,7 @@ class BallModelIOAdapter:
         target_heatmaps = _required_tensor(batch, "heatmaps")
         coords = _required_tensor(batch, "coords")
         visibility = _required_tensor(batch, "visibility")
+        supervised = _required_tensor(batch, "supervised")
         original_size = _required_tensor(batch, "original_size")
         model_call = self.prepare_model_call(
             images, image_normalization=image_normalization, preprocessed=True,
@@ -406,11 +410,16 @@ class BallModelIOAdapter:
             raise BallModelIOError("original_size batch dimension must match images.")
         if coords.shape[2] <= 0:
             raise BallModelIOError("coords must reserve at least one instance slot.")
+        if supervised.dtype != torch.bool or supervised.shape != (batch_size, frame_count):
+            raise BallModelIOError("supervised must be a boolean (B, T) frame mask.")
+        if bool(torch.any(~supervised[..., None] & (visibility > 0))):
+            raise BallModelIOError("An unsupervised frame must not carry a visible target.")
         return BallTrainingCall(
             model_call=model_call,
             target_heatmaps=target_heatmaps,
             coords=coords,
             visibility=visibility,
+            supervised=supervised,
             original_size=original_size,
         )
 
@@ -462,9 +471,10 @@ class BallModelIOAdapter:
         call: BallModelCall,
         *,
         subpixel_refine: bool,
+        candidate_config: BallCandidateConfig = DEFAULT_CANDIDATE_CONFIG,
     ) -> BallPrediction:
         """Decode logits into the canonical typed inference result."""
-        heatmaps = self.probability_heatmaps(logits, call)
+        heatmaps = self.probability_heatmaps(logits, call).float()
         coords, confidence = heatmaps_to_argmax(heatmaps)
         if subpixel_refine:
             coords = refine_peaks_log_parabolic(heatmaps, coords)
@@ -472,14 +482,20 @@ class BallModelIOAdapter:
             coords=coords.cpu(),
             confidence=confidence.cpu(),
             heatmaps=heatmaps.cpu(),
+            candidates=decode_candidates(
+                heatmaps, config=candidate_config, subpixel_refine=subpixel_refine,
+            ),
         )
 
     def mdd_features(
         self, images: Tensor, *,
         image_normalization: BallImageNormalization = IDENTITY_NORMALIZATION,
+        preprocessed: bool = False,
     ) -> Tensor:
-        """Build canonical ``(B,2,T,H,W)`` MDD features for visualization."""
-        call = self.prepare_images(images, image_normalization=image_normalization)
+        """Build MDD from raw RGB or explicitly declared dataset-preprocessed RGB."""
+        call = self.prepare_images(
+            images, image_normalization=image_normalization, preprocessed=preprocessed,
+        )
         return self._rgb_frames_to_mdd(call.images)
 
     def _to_model_input(self, images: Tensor) -> Tensor:

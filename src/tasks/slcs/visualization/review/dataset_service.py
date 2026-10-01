@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Sequence
 from functools import lru_cache
 from pathlib import Path
@@ -129,13 +130,16 @@ class SLCSDatasetReviewService:
     def _revision(self, record: DatasetClipRecord) -> str:
         clip_dir = self._contained(self.root / record.path)
         annotation = slcs_annotation_dir(clip_dir)
+        from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+        marker = json.loads((annotation / "annotation.json").read_text())
+        scene_path = annotation_scene_path(annotation, marker)
         digest = hashlib.sha256()
         for path in (
             self.root / "dataset.json",
             clip_dir / "clip.json",
             annotation / "annotation.json",
-            annotation / "scene.npz",
-            annotation / "scene.metadata.json",
+            scene_path,
+            scene_path.with_suffix(".metadata.json"),
         ):
             stat = self._contained(path).stat()
             digest.update(f"{path.name}:{stat.st_size}:{stat.st_mtime_ns}".encode())

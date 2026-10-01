@@ -29,9 +29,7 @@ def rollout_path(ctx: Ctx) -> Path | None:
             thread = None
     if not thread:
         return None
-    home = paths().codex_home or Path(
-        os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))
-    )
+    home = paths().codex_home
     for day in sorted((home / "sessions").glob("*/*/*"), reverse=True)[:3]:
         hits = list(day.glob(f"*{thread}*.jsonl"))
         if hits:

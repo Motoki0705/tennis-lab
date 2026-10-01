@@ -16,6 +16,7 @@
 | `configuration` / `common` | 明示したroot、設定検証、原子的な保存、動画検証キャッシュ |
 | `campaign_state` / `dispatcher` | 状態台帳、同一clipの重複起動防止、利用枠停止・再開、並列数制御 |
 | `launcher` | Pythonの監視プロセスからCodexを起動し、終了結果を保存 |
+| `processes` / `path_contracts` | boot ID・開始時刻・PGID/sessionによるprocess所有確認、pidfdによるsignal、CLIの入出力scope検証 |
 | `ct` | ワーカー用の注釈編集、一覧画像・拡大画像、候補、補間、完了報告 |
 | `qa` / `phase2` | 品質指標、再アノテーションの選定、新旧比較、食い違いの確認画像 |
 | `intake` | 原本保存、採用・旧維持・差し替え・再確認の指示 |
@@ -53,6 +54,8 @@ checkpointは内容のSHA-256で識別する。同名の別の重みや変更さ
 worktreeで使う場合も`--root`には共有したい元repo側の絶対パスを明示する。
 `--project-root`と`--python`は実行するコード・環境を、`--codex-binary`と`--codex-home`は
 CLI実体・認証環境を明示するための引数。`--python`ではvenvのパスを保持する。
+path引数は絶対パスを使う。Codex homeはinit時に指定値・CODEX_HOME・CLI既定homeの順で
+一度決定してcampaign.jsonに保存し、実行中に別の環境変数やhomeへ切り替えない。
 このモジュール自身が認証キーを保存することはない。
 
 最初は異なる撮影条件の少数クリップで、全フレーム確認・中心位置・対象外の球の除外・
@@ -82,6 +85,9 @@ Codex自体のAPI接続は必要。サンドボックスが使えない場合に
 
 `control.json`が実効設定の正本。`max_parallel`、`max_launch_per_tick`、`adaptive`、
 利用枠を残す`quota_stop_percent`、`slow_seconds`、`timeout_seconds`を設定できる。
+timeoutでは所有を確認したprocess群へTERMを送り、`termination_grace_seconds`後にKILLする。
+親が終了してもliveな子が残る間は終了扱いにしない。Linux pidfdが使えない環境では起動前に停止する。
+PID再利用や別bootのPIDをsignal対象にせず、非zero exitを完了イベントだけで成功へ変換しない。
 起動待ち、確認待ち、利用枠による一時停止を区別し、設定並列数と実稼働数を混同しない。
 `SLOW`は通知で、終了時刻の予測ではない。timeoutも正常完了の予定時刻ではない。
 
@@ -95,6 +101,7 @@ CPUモデル読み込みにもスロット制限がある。CUDA候補計算の�
 ワーカーの状態は`pending → running → review / continue / failed`。
 `review`は、全フレーム確認と形式検証を通った`completed`または`partial`の結果で、
 親による画像確認と採用判断を待っている。意味上の正しさは形式検証では保証されない。
+`--exit-when-idle`の終了時にfailedなtaskが残ればexit 1を返す。
 `continue`は注釈とNOTESを新しいattemptへ引き継ぐ。全フレーム確認済みでも未解決位置の作業は継続できる。
 
 ```bash

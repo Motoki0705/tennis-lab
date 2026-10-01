@@ -1,0 +1,16 @@
+{
+  "run_id": "1790557852275223391_1542131_i934-evidence-meiji-clip000-r4-20260928",
+  "name": "i934-evidence-meiji-clip000-r4-20260928",
+  "command": "PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-3-evidence-contract /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-3-evidence-contract/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-3-evidence-contract/tests/benchmarks/ball_detection_evidence.py --repo /home/kamimura/projects/tennis-lab --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_000 --report /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/i934-evidence-meiji-clip000-r4-20260928 --device cuda",
+  "provider": "codex",
+  "session": "01a0e57b-9d42-7a60-a1e4-8ab2461e46ea",
+  "issue": "934",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "87de832cb049d5da36cd3df7a1549fa240199db8",
+  "branch": "campaign930/i934-3-evidence-contract",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-3-evidence-contract",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-3-evidence-contract",
+  "captured_at": "2026-09-28T10:10:52+09:00"
+}

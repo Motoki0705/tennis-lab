@@ -24,6 +24,13 @@ from pathlib import Path
 from typing import Any
 
 from src.tennis_scene.chat_annotation.runtime.validation import validate_annotation
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 
 from .campaign_state import (
     locked_state,
@@ -42,9 +49,22 @@ from .common import (
 )
 from .configuration import file_sha256, json_object, paths
 from .launcher import MODULE, worker_command, worker_environment
+from .path_contracts import campaign_resolver, validate_command_paths
+from .processes import (
+    ProcessIdentity,
+    capture_supervisor,
+    owned_members,
+    require_process_backend,
+    signal_owned,
+)
 
-SLOW_SECONDS = 3 * 3600
-KILL_SECONDS = 6 * 3600
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.local_agent",
+    fields=(BoundaryPathField("campaign", PathRole.OUTPUT, PathDirection.INPUT, PathKind.DIRECTORY,
+                              must_exist=True, allow_role_root=True),),
+)
+
+
 MAX_FAILURES = 2  # non-quota failures per task before status "failed"
 REVIEW_BATCH = 20  # REVIEW_BATCH event every N tasks waiting for orchestrator QA
 
@@ -57,16 +77,6 @@ def now() -> datetime:
 
 def parse_time(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
-
-
-def pid_alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
 
 
 # --------------------------------------------------------------------------- launch
@@ -163,6 +173,7 @@ def choose_variant(task_id: str, control: dict[str, Any]) -> tuple[str, list[str
 
 
 def launch(state: dict[str, Any], task_id: str, control: dict[str, Any]) -> None:
+    require_process_backend()
     task = state["tasks"][task_id]
     attempt = len(task["attempts"]) + 1
     attempt_dir = paths().tasks / task_id / f"attempt_{attempt:02d}"
@@ -222,6 +233,7 @@ def launch(state: dict[str, Any], task_id: str, control: dict[str, Any]) -> None
             env=worker_environment(),
         )
     children[str(attempt_dir)] = child
+    identity = capture_supervisor(child.pid)
     task["status"] = "running"
     task["attempts"].append(
         {
@@ -229,6 +241,7 @@ def launch(state: dict[str, Any], task_id: str, control: dict[str, Any]) -> None
             "dir": str(attempt_dir),
             "launched_at": task_json["launched_at"],
             "launcher_pid": child.pid,
+            "process_identity": identity.document(),
             "model": control["model"],
             "effort": control["effort"],
             "prompt_version": task_json["prompt_version"],
@@ -282,7 +295,7 @@ def scan_events(path: Path) -> dict[str, Any]:
                 info["usage"] = event.get("usage")
                 info["completed"] = True
             elif kind == "turn.failed":
-                info["failed"] = (event.get("error") or {}).get("message")
+                info["failed"] = (event.get("error") or {}).get("message") or 'turn.failed without an error message'
             elif kind == "error":
                 info["errors"].append(str(event.get("message"))[:500])
     return info
@@ -293,7 +306,7 @@ def rollout_rate_limits(
 ) -> tuple[dict[str, Any] | None, float | None]:
     if not thread_id:
         return None, None
-    home = Path(os.environ["CODEX_HOME"])
+    home = paths().codex_home
     for day in sorted((home / "sessions").glob("*/*/*"), reverse=True)[:3]:
         for path in day.glob(f"*{thread_id}*.jsonl"):
             with path.open("rb") as handle:
@@ -344,6 +357,10 @@ def finalize(state: dict[str, Any], task_id: str) -> None:
     record["exit_code"] = (
         int(exit_code_path.read_text().strip()) if exit_code_path.exists() else None
     )
+    if record.get('supervisor_exit_code') not in (None, 0):
+        record['exit_code'] = record['supervisor_exit_code']
+    if record.get('termination_reason'):
+        record['exit_code'] = 124
     record["ended_at"] = (
         (attempt_dir / "ended_at").read_text().strip()
         if (attempt_dir / "ended_at").exists()
@@ -371,6 +388,7 @@ def finalize(state: dict[str, Any], task_id: str) -> None:
     record["reported_outcome"] = outcome_match.group(1) if outcome_match else None
     annotation_path = attempt_dir / f"annotation_{task['clip_id']}.json"
     reviewed = frames = errors = None
+    annotation_status = validation_status = None
     if annotation_path.exists():
         try:
             annotation = load_annotation(annotation_path)
@@ -382,6 +400,7 @@ def finalize(state: dict[str, Any], task_id: str) -> None:
                 report.target_frames,
                 len(report.errors),
             )
+            annotation_status, validation_status = annotation.status, report.status
         except Exception as error:
             errors = -1
             record["annotation_error"] = str(error)[:500]
@@ -391,6 +410,8 @@ def finalize(state: dict[str, Any], task_id: str) -> None:
     if result and (
         result.get("task_id") != task_id
         or result.get("attempt") != record["n"]
+        or result.get('clip_id') != task['clip_id']
+        or result.get('target') != task['target']
         or not annotation_path.exists()
         or result.get("annotation_sha256") != file_sha256(annotation_path)
     ):
@@ -442,19 +463,14 @@ def finalize(state: dict[str, Any], task_id: str) -> None:
     ok_annotation = errors == 0 and reviewed is not None
     outcome = record["result_outcome"]
     exit_ok = record["exit_code"] == 0
-    if not exit_ok and events["completed"] and not events["failed"]:
-        # codex completed its turn; only the launcher's bookkeeping after it died (e.g. the launcher
-        # script was edited while running). The worker's own outcome is judged as usual below.
-        record["exit_inferred"] = (
-            f"turn.completed in events.jsonl (launcher exit_code={record['exit_code']})"
-        )
-        exit_ok = True
-    note = " exit_inferred=turn.completed" if record.get("exit_inferred") else ""
+    exit_ok = exit_ok and events['completed'] and not events['failed'] and not events['errors']
     if (
         exit_ok
         and result
         and ok_annotation
         and outcome in ("completed", "partial")
+        and outcome == annotation_status
+        and (outcome != 'completed' or validation_status == 'completed')
         and reviewed == frames
     ):
         record["kind"] = "done"
@@ -462,10 +478,10 @@ def finalize(state: dict[str, Any], task_id: str) -> None:
         task["status"] = "review"
         log_event(
             "DONE",
-            f"{task_id} attempt={record['n']} outcome={outcome} reviewed={reviewed}/{frames} ctx={fraction and round(fraction, 3)}{note}",
+            f"{task_id} attempt={record['n']} outcome={outcome} reviewed={reviewed}/{frames} ctx={fraction and round(fraction, 3)}",
         )
         return
-    if exit_ok and result and ok_annotation and outcome == "needs_continuation":
+    if exit_ok and result and ok_annotation and outcome == "needs_continuation" and validation_status != 'completed':
         record["kind"] = "continuation"
         state["transient_streak"] = 0
         task["status"] = "continue"
@@ -488,20 +504,23 @@ def running_state(task: dict[str, Any]) -> str:
     """'finished' | 'alive' | 'dead' for the latest attempt of a running task."""
     record = task["attempts"][-1]
     attempt_dir = Path(record["dir"])
-    child = children.get(record["dir"])  # keyed by attempt dir
+    owner = ProcessIdentity.from_document(record['process_identity'])
+    if owned_members(owner):
+        return "alive"
     if (attempt_dir / "exit_code").exists():
         return "finished"
-    pid_file = attempt_dir / "pid"
-    pid = (
-        int(pid_file.read_text().strip())
-        if pid_file.exists()
-        else record.get("launcher_pid")
-    )
-    if pid and pid_alive(pid):
-        return "alive"
-    if child is not None and child.poll() is None:
-        return "alive"
     return "dead"
+
+
+def terminate_attempt(record: dict[str, Any], reason: str, grace_seconds: float) -> None:
+    owner = ProcessIdentity.from_document(record['process_identity'])
+    if 'termination_requested_at' not in record:
+        record['termination_requested_at'] = now().isoformat()
+        record['termination_reason'] = reason
+        signal_owned(owner, signal.SIGTERM)
+    elif (now() - datetime.fromisoformat(record['termination_requested_at'])).total_seconds() >= grace_seconds:
+        signal_owned(owner, signal.SIGKILL)
+        record['kill_requested_at'] = utc_now()
 
 
 # --------------------------------------------------------------------------- adaptive concurrency
@@ -629,25 +648,26 @@ def concurrency_limit(
 def tick() -> bool:
     """One scheduling pass. Returns False when the dispatcher should exit."""
     control = read_control()
+    finished_children: dict[str, int] = {}
     for key, child in list(children.items()):
-        if (
-            child.poll() is not None
-        ):  # reap; exit_code file written by run_worker.sh is authoritative
+        code = child.poll()
+        if code is not None:
+            finished_children[key] = code
             children.pop(key)
     with locked_state() as state:
         running = [tid for tid, t in state["tasks"].items() if t["status"] == "running"]
         for task_id in running:
             try:
-                status = running_state(state["tasks"][task_id])
                 record = state["tasks"][task_id]["attempts"][-1]
+                if record['dir'] in finished_children:
+                    record['supervisor_exit_code'] = finished_children[record['dir']]
+                status = running_state(state["tasks"][task_id])
                 if status == "finished":
                     finalize(state, task_id)
                 elif status == "dead":
                     marker = Path(record["dir"]) / "exit_code"
                     if not marker.exists():
-                        marker.write_text(
-                            "-9\n"
-                        )  # launcher vanished (reboot/kill) without recording an exit
+                        marker.write_text(str(record.get('supervisor_exit_code', -9)) + '\n')
                     finalize(state, task_id)
                 else:
                     elapsed = (
@@ -661,17 +681,15 @@ def tick() -> bool:
                             "SLOW",
                             f"{task_id} attempt={record['n']} running {elapsed / 3600:.1f} h",
                         )
-                    if elapsed > control["timeout_seconds"] and not record.get(
-                        "killed"
-                    ):
-                        pid = int((Path(record["dir"]) / "pid").read_text().strip())
-                        record["killed"] = True
-                        os.killpg(os.getpgid(pid), signal.SIGTERM)
-                        log_event(
-                            "ERROR",
-                            f"{task_id} attempt={record['n']} killed after {elapsed / 3600:.1f} h",
-                        )
-            except Exception:
+                    owner = ProcessIdentity.from_document(record['process_identity'])
+                    supervisor_alive = any(member.pid == owner.pid for member in owned_members(owner))
+                    if elapsed > control['timeout_seconds'] or not supervisor_alive or record.get('termination_reason'):
+                        reason = 'timeout' if supervisor_alive else 'supervisor exited with live descendants'
+                        terminate_attempt(record, reason, control['termination_grace_seconds'])
+                        log_event('TERMINATING', f"{task_id} attempt={record['n']} reason={record['termination_reason']}")
+            except (ValueError, KeyError, RuntimeError) as error:
+                state['tasks'][task_id]['status'] = 'failed'
+                state['tasks'][task_id]['attempts'][-1].update(kind='failure', failure=f'process monitoring refused: {error}')
                 log_event(
                     "ERROR",
                     f"{task_id} finalize/monitor: {traceback.format_exc()[-600:]!r}",
@@ -779,6 +797,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Exit after all eligible workers finish; review remains a separate step",
     )
     args = parser.parse_args(argv)
+    PATH_BOUNDARY.validate({"campaign": paths().campaign_dir}, resolver=campaign_resolver(paths()))
+    validate_command_paths()
     if args.dry_run:
         from .campaign_state import read_state
 
@@ -808,7 +828,8 @@ def main(argv: list[str] | None = None) -> int:
         log_event("START", f"pid={os.getpid()}")
         while True:
             if not tick():
-                return 0
+                from .campaign_state import read_state
+                return int(any(task['status'] == 'failed' for task in read_state()['tasks'].values()))
             if args.once:
                 return 0
             if args.exit_when_idle:
@@ -822,9 +843,10 @@ def main(argv: list[str] | None = None) -> int:
                         "EXIT",
                         "no runnable tasks; completed results await orchestrator QA",
                     )
-                    return 0
-            time.sleep(float(read_control()["poll_seconds"]))
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+                    return int(any(task['status'] == 'failed' for task in state['tasks'].values()))
+            from .campaign_state import read_state
+            control = read_control()
+            terminating = any(t['status'] == 'running' and t['attempts'][-1].get('termination_reason')
+                              for t in read_state()['tasks'].values())
+            delay = min(control['poll_seconds'], control['termination_grace_seconds']) if terminating else control['poll_seconds']
+            time.sleep(float(delay))

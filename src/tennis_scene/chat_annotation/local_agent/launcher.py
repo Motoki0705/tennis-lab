@@ -36,8 +36,7 @@ def worker_environment() -> dict[str, str]:
     for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
         env[key] = "2"
     env["CUDA_VISIBLE_DEVICES"] = ""
-    if config.codex_home is not None:
-        env["CODEX_HOME"] = str(config.codex_home)
+    env["CODEX_HOME"] = str(config.codex_home)
     return env
 
 
@@ -55,6 +54,7 @@ def codex_command(
         "multi_agent",
         "exec",
         "--ignore-user-config",
+        "--ignore-rules",
         "-m",
         model,
     ]
@@ -100,10 +100,10 @@ def supervise(attempt_dir: Path) -> int:
 
     launch = json_object(directory / "launch.json")
     overrides = VariantConfig(codex_config=launch.get("codex_config", [])).codex_config
-    command = codex_command(directory, launch["model"], launch["effort"], overrides)
     atomic_write_text(directory / "started_at", utc_now() + "\n")
     atomic_write_text(directory / "pid", str(os.getpid()) + "\n")
     try:
+        command = codex_command(directory, launch["model"], launch["effort"], overrides)
         with (
             (directory / "prompt.md").open("rb") as prompt,
             (directory / "events.jsonl").open("wb") as events,

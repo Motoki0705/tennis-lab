@@ -59,13 +59,21 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 ### 共通推論と幾何補正
 
-`CourtPredictor.load_from_checkpoint(..., resolver=resolver, device=device)` はcheckpointの保存モデル構成・loss定義・target bundle・`val_short_side`を読み、全model tensorをstrictにロードします。学習専用のrun/source/augmentation検証と分離しており、旧checkpointへ`artifact_store`等を補う処理はありません。学習時の設定検証は従来どおりです。既定の配布先は `ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt` で、重みはGit管理しません。
+`CourtPredictor.load_from_checkpoint(..., resolver=resolver, device=device)` はcheckpointの保存モデル構成・loss定義・target bundle・`val_short_side`を読み、全model tensorをstrictにロードします。学習専用のrun/source/augmentation検証と分離しており、旧checkpointへ`artifact_store`等を補う処理はありません。学習時の設定検証は従来どおりです。repo全体の既定checkpointは `ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt`（DPT multiscale depth 3、短辺512、SHA-256 `b863df1f…`）で、重みはGit管理しません。旧既定の `ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt` は削除せず残しますが、どの既定設定も参照しません。
+
+| 既定でb863を使う入口 | 領域探索 | 理由 |
+|---|---|---|
+| `tennis_scene` の `court_detection`（`court_kp.region_search.enabled: true`） | 使う（各cameraのframe 0） | 固定カメラの広角映像ではコートが画像の一部で、画像全体の推論はMeiji cam0で校正に失敗する（[region search記録](../../../knowledge/nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)） |
+| `configs/visualization/{kp,line,seg}.yaml` | 使わない | 入力はコート中心の静止画（`court/images`）で、raw headを画像全体について描画する |
+| `synthetic_data_generation` の `alignment.evidence.line_model` | 使わない | 合成動画のraw LINE確率だけを使い、KP・Hを推定しない |
+
+領域探索を使うかは各入口の設定・コードが明示し、失敗時に画像全体の推論へ切り替えません。
 
 `predict(rgb, postprocess="hybrid")` は `CourtPrediction.raw_heads` と `homography` を分けて返します。KP座標は原画像pixel、raw LINE確率・logitsはnative gridで、両サイズを結果に保持します。hybridにはordered KP14・1 peak/channel・LINEが必要です。下流の`max_kp`は4〜8に制限し、範囲外はモデル読込み前に拒否します。失敗理由を返し、raw KPや別Hへ代替しません。`downstream_keypoints()` は再投影14点と画像内validityを返し、失敗時はゼロ座標・全不可視です。`selected`は最適化に採用した観測のmaskであり、このvalidityとは別です。
 
 `inference/regions.py` は固定カメラ向けの明示的な領域探索です。完全に黒い外周paddingを除いた画像の固定gridを候補にし、hybrid成功・画像内KP14・凸な外周・最小面積・raw KPとの整合数を検証します。採択候補は整合数、次にそのconfidence合計で順位付けします。手動点・ボール注釈は参照せず、候補がなければ理由付きで失敗します。選択するのは画像領域だけで、動画の各frameを独立に再推論します。`CourtRegionPrediction` はKPとHを元画像へ平行移動し、raw rasterはcrop固有のgridに保持します。crop外でも元画像内にあるH投影点は有効ですが、推定失敗frameは元の契約どおり全不可視です。領域探索の採択は対象コートの意味的同一性やGT精度を保証しません。
 
-LINEだけの利用・raw head評価は `predict(rgb, heads=("line",), postprocess="none")` のように明示します。`CourtKeypointPredictor`・`CourtLinePredictor`・`CourtSegPredictor`・`CourtSemanticLinePredictor`も`predictor.py`の同じ前処理・forwardを使います。存在しないheadは要求時に拒否します。今回の配布重みは短辺256・KP/SEG/LINE＋poseで、semantic LINE headはありません。
+LINEだけの利用・raw head評価は `predict(rgb, heads=("line",), postprocess="none")` のように明示します。`CourtKeypointPredictor`・`CourtLinePredictor`・`CourtSegPredictor`・`CourtSemanticLinePredictor`も`predictor.py`の同じ前処理・forwardを使います。存在しないheadは要求時に拒否します。既定のb863はKP/SEG/LINE＋pose＋semantic LINE（12ch）を持ちます。
 
 KP schemaがcamera-viewの場合、Hもそのchannel順のコート座標です。複数cameraの物理point identityへは自動変換しません。下流接続の向き設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。UIのraw score・heatmap・head metricには補正座標を混ぜません。 `visualization=semantic_line`には対応headを持つ`visualization.checkpoint`の明示指定が必要です。従来の`outputs/`内の重みには併せて`paths=default`を指定します（KP/SEG/LINEの既定rootは`ckpt/`）。
 

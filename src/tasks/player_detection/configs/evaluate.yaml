@@ -1,0 +1,40 @@
+defaults:
+  - paths: default
+  - _self_
+
+evaluate:
+  # name -> checkpoint-root-relative DINO-format .pth; add more with
+  # '+evaluate.checkpoints.<name>=<path>'.
+  checkpoints:
+    coco_person: dino/checkpoint0029_4scale_swin.pth
+  repository: DINO
+  dataset_dir: ${tennis_dataset:player_detection,chat-player-v1}
+  split: test
+  frame_stride: 1
+  selection:
+    require_reviewed: true
+    require_located_players: true
+    min_visible_box_px: 4.0
+  # Must equal the pipeline's people_models.runtime.dino_detector sizes.
+  input_size:
+    short_side: 800
+    max_long_side: 1333
+  num_workers: 6
+  overlay_frames: 24
+  device: cuda
+
+# Same operating point as training (pipeline dino_detector.confidence).
+evaluation:
+  score_threshold: 0.3
+  iou_threshold: 0.5
+  max_detections: 100
+
+run:
+  output_dir: ${tennis_output:player_detection,evaluate,${evaluate.split},${tennis_run_id:}}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

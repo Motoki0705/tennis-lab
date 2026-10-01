@@ -1,0 +1,16 @@
+{
+  "run_id": "1790514115733425930_3028061_i933-association-meiji-clip000-20260927",
+  "name": "i933-association-meiji-clip000-20260927",
+  "command": "bash tests/benchmarks/build_dino_extension.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i933-association-meiji-clip000-20260927/dino_extension && CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 PYTHONPATH=.:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i933-association-meiji-clip000-20260927/dino_extension/lib .venv/bin/python tests/benchmarks/component_pipeline.py --repo /home/kamimura/projects/tennis-lab --clip /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i933-association-meiji-clip000-20260927 --association-labels /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i933-player-association/tests/benchmarks/labels/player_association/meiji_3cam/video_000/clip_000.json --device cuda",
+  "provider": "claude",
+  "session": "abf284fe-984d-4b6c-afec-7375982b0bb0",
+  "issue": "933",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ed12854b89fd8896552bd1577098f6361a835128",
+  "branch": "campaign930/i933-4-pipeline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i933-player-association",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i933-player-association",
+  "captured_at": "2026-09-27T22:06:51+09:00"
+}

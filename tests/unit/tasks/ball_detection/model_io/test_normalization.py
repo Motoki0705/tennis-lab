@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Literal
 
 import pytest
 import torch
@@ -15,7 +16,7 @@ from tests.unit.tasks.ball_detection.model_io.test_adapters import _rgb_adapter
 @pytest.mark.parametrize("mode", ["rgb", "mdd"])
 @pytest.mark.parametrize("layout", ["btchw", "bcthw"])
 def test_raw_inference_and_dataset_preprocessed_training_have_same_model_input(
-    mode: str, layout: str,
+    mode: Literal["rgb", "mdd"], layout: Literal["btchw", "bcthw"],
 ) -> None:
     adapter = _rgb_adapter()
     adapter.spec = replace(adapter.spec, input_mode=mode, input_layout=layout,
@@ -39,6 +40,7 @@ def test_raw_inference_and_dataset_preprocessed_training_have_same_model_input(
         expected = expected.permute(0, 2, 1, 3, 4)
     inference = adapter.prepare_images(raw, image_normalization=normalization)
     training = adapter.prepare_training_batch({
+        "supervised": torch.ones(1, 3, dtype=torch.bool),
         "images": prepared, "heatmaps": torch.zeros(1, 3, 2, 2),
         "coords": torch.zeros(1, 3, 1, 2), "visibility": torch.ones(1, 3, 1, dtype=torch.bool),
         "original_size": torch.tensor([[2, 2]]),
@@ -49,6 +51,25 @@ def test_raw_inference_and_dataset_preprocessed_training_have_same_model_input(
     if mode == "mdd":
         features = adapter.mdd_features(raw, image_normalization=normalization)
         torch.testing.assert_close(features, expected if layout == "bcthw" else expected.permute(0, 2, 1, 3, 4))
+        preprocessed_features = adapter.mdd_features(
+            prepared, image_normalization=normalization, preprocessed=True,
+        )
+        torch.testing.assert_close(preprocessed_features, features, rtol=0, atol=0)
+
+
+def test_mdd_raw_boundary_rejects_normalized_input_without_explicit_declaration() -> None:
+    normalization = BallImageNormalization(True, (0.5, 0.5, 0.5), (0.25, 0.25, 0.25))
+    prepared = normalization.apply(torch.zeros(1, 2, 3, 2, 2))
+    with pytest.raises(BallModelIOError, match=r"\[0, 1\]"):
+        _rgb_adapter().mdd_features(prepared, image_normalization=normalization)
+
+
+def test_mdd_preprocessed_boundary_rejects_out_of_range_images() -> None:
+    with pytest.raises(BallModelIOError, match="normalization bounds"):
+        _rgb_adapter().mdd_features(
+            torch.full((1, 2, 3, 2, 2), 8.0),
+            image_normalization=BallImageNormalization(True), preprocessed=True,
+        )
 
 
 def test_raw_boundary_still_rejects_already_normalized_rgb() -> None:

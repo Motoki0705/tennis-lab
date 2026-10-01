@@ -266,7 +266,7 @@ rootは左右hipの中点、出力はglobal root残差と17関節の相対姿勢
 - `models/triangulation_residual.py`: camera/time attentionと時間RoPE、ゼロ初期化した2つの残差head。camera順序には依存しない。
 - `model_io/residual_contracts.py`・`residual_checkpoint.py`: 入出力とcheckpoint schemaの厳密な検証。
 - `training/residual_losses.py`・`residual_metrics.py`・`residual_lightning_module.py`: root/relative/worldの成分別Smooth L1、true-camera/clean-UV再投影、GT速度・骨長、paired診断。実行と構成は既存の`runner.py`・`composition.py`を使う。
-- `inference/residual_clip_io.py`・`residual_predictor.py`: 整列済みCourt14と保存cameraを検証して読み、時間windowの予測を融合する。half-turnを二重適用しない。
+- `inference/residual_clip_io.py`・`residual_predictor.py`: clipの`annotation.json`が公開するSceneResult v2から、整列済みCourt14・保存camera・対応付け済みのplayer軸を検証して読み、時間windowの予測を融合する。half-turnと人物対応を二重適用しない。
 - `visualization/adapters/residual.py`・`rendering/residual_comparison.py`: 初期姿勢と補正結果の比較。
 
 単一の`configs/train_triangulation_residual.yaml`がdata/model/loss/trainingの各設定を合成する。

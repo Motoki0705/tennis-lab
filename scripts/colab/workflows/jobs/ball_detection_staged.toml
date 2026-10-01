@@ -9,7 +9,7 @@ protected_override_keys = [
   "paths.data_root",
   "paths.external_asset_root",
   "paths.output_root",
-  "data.sources.tracknet.data_dir",
+  "data.sources.store.data_dir",
   "data.sources.web.data_dir",
   "data.sources.web.enabled",
   "model.backbone.repository_path",
@@ -29,8 +29,8 @@ args = [
 ]
 
 [[inputs]]
-source = "data/tennis/tracknet"
-destination = "data/tennis/tracknet"
+source = "data/ball_detection/ball-mix-v1"
+destination = "data/ball_detection/ball-mix-v1"
 writable = false
 
 [[inputs]]

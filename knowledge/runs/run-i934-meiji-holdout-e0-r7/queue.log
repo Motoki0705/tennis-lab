@@ -1,0 +1,158 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790583830380544588_9731_i934-holdout-ft-e13-vs-mixed-e0-r7-20260928 (commit=78ce7d9bd961 provider=codex session=01a0e707-b9f5-7221-b920-50119a3004e4)
+Validated 63 clips / 36006 unique frames
+ft_e13 1/63 meiji/video_001/clip_000/cam0 frames=1316
+ft_e13 2/63 meiji/video_001/clip_000/cam1 frames=1316
+ft_e13 3/63 meiji/video_001/clip_000/cam2 frames=1316
+ft_e13 4/63 meiji/video_001/clip_001/cam0 frames=1300
+ft_e13 5/63 meiji/video_001/clip_001/cam1 frames=1300
+ft_e13 6/63 meiji/video_001/clip_001/cam2 frames=1300
+ft_e13 7/63 meiji/video_001/clip_002/cam0 frames=446
+ft_e13 8/63 meiji/video_001/clip_002/cam1 frames=446
+ft_e13 9/63 meiji/video_001/clip_002/cam2 frames=446
+ft_e13 10/63 meiji/video_001/clip_003/cam0 frames=1607
+ft_e13 11/63 meiji/video_001/clip_003/cam1 frames=1607
+ft_e13 12/63 meiji/video_001/clip_003/cam2 frames=1607
+ft_e13 13/63 meiji/video_001/clip_004/cam0 frames=248
+ft_e13 14/63 meiji/video_001/clip_004/cam1 frames=248
+ft_e13 15/63 meiji/video_001/clip_004/cam2 frames=248
+ft_e13 16/63 meiji/video_001/clip_005/cam0 frames=443
+ft_e13 17/63 meiji/video_001/clip_005/cam1 frames=443
+ft_e13 18/63 meiji/video_001/clip_005/cam2 frames=443
+ft_e13 19/63 meiji/video_001/clip_006/cam0 frames=183
+ft_e13 20/63 meiji/video_001/clip_006/cam1 frames=183
+ft_e13 21/63 meiji/video_001/clip_006/cam2 frames=183
+ft_e13 22/63 meiji/video_001/clip_007/cam0 frames=514
+ft_e13 23/63 meiji/video_001/clip_007/cam1 frames=514
+ft_e13 24/63 meiji/video_001/clip_007/cam2 frames=514
+ft_e13 25/63 meiji/video_001/clip_008/cam0 frames=187
+ft_e13 26/63 meiji/video_001/clip_008/cam1 frames=187
+ft_e13 27/63 meiji/video_001/clip_008/cam2 frames=187
+ft_e13 28/63 meiji/video_001/clip_009/cam0 frames=619
+ft_e13 29/63 meiji/video_001/clip_009/cam1 frames=619
+ft_e13 30/63 meiji/video_001/clip_009/cam2 frames=619
+ft_e13 31/63 meiji/video_001/clip_010/cam0 frames=260
+ft_e13 32/63 meiji/video_001/clip_010/cam1 frames=260
+ft_e13 33/63 meiji/video_001/clip_010/cam2 frames=260
+ft_e13 34/63 meiji/video_001/clip_011/cam0 frames=179
+ft_e13 35/63 meiji/video_001/clip_011/cam1 frames=179
+ft_e13 36/63 meiji/video_001/clip_011/cam2 frames=179
+ft_e13 37/63 meiji/video_001/clip_012/cam0 frames=633
+ft_e13 38/63 meiji/video_001/clip_012/cam1 frames=633
+ft_e13 39/63 meiji/video_001/clip_012/cam2 frames=633
+ft_e13 40/63 meiji/video_001/clip_013/cam0 frames=242
+ft_e13 41/63 meiji/video_001/clip_013/cam1 frames=242
+ft_e13 42/63 meiji/video_001/clip_013/cam2 frames=242
+ft_e13 43/63 meiji/video_001/clip_014/cam0 frames=226
+ft_e13 44/63 meiji/video_001/clip_014/cam1 frames=226
+ft_e13 45/63 meiji/video_001/clip_014/cam2 frames=226
+ft_e13 46/63 meiji/video_001/clip_015/cam0 frames=281
+ft_e13 47/63 meiji/video_001/clip_015/cam1 frames=281
+ft_e13 48/63 meiji/video_001/clip_015/cam2 frames=281
+ft_e13 49/63 meiji/video_001/clip_016/cam0 frames=175
+ft_e13 50/63 meiji/video_001/clip_016/cam1 frames=175
+ft_e13 51/63 meiji/video_001/clip_016/cam2 frames=175
+ft_e13 52/63 meiji/video_001/clip_017/cam0 frames=178
+ft_e13 53/63 meiji/video_001/clip_017/cam1 frames=178
+ft_e13 54/63 meiji/video_001/clip_017/cam2 frames=178
+ft_e13 55/63 meiji/video_001/clip_018/cam0 frames=1591
+ft_e13 56/63 meiji/video_001/clip_018/cam1 frames=1591
+ft_e13 57/63 meiji/video_001/clip_018/cam2 frames=1591
+ft_e13 58/63 meiji/video_001/clip_019/cam0 frames=300
+ft_e13 59/63 meiji/video_001/clip_019/cam1 frames=300
+ft_e13 60/63 meiji/video_001/clip_019/cam2 frames=300
+ft_e13 61/63 meiji/video_001/clip_020/cam0 frames=1074
+ft_e13 62/63 meiji/video_001/clip_020/cam1 frames=1074
+ft_e13 63/63 meiji/video_001/clip_020/cam2 frames=1074
+mixed_ft 1/63 meiji/video_001/clip_000/cam0 frames=1316
+mixed_ft 2/63 meiji/video_001/clip_000/cam1 frames=1316
+mixed_ft 3/63 meiji/video_001/clip_000/cam2 frames=1316
+mixed_ft 4/63 meiji/video_001/clip_001/cam0 frames=1300
+mixed_ft 5/63 meiji/video_001/clip_001/cam1 frames=1300
+mixed_ft 6/63 meiji/video_001/clip_001/cam2 frames=1300
+mixed_ft 7/63 meiji/video_001/clip_002/cam0 frames=446
+mixed_ft 8/63 meiji/video_001/clip_002/cam1 frames=446
+mixed_ft 9/63 meiji/video_001/clip_002/cam2 frames=446
+mixed_ft 10/63 meiji/video_001/clip_003/cam0 frames=1607
+mixed_ft 11/63 meiji/video_001/clip_003/cam1 frames=1607
+mixed_ft 12/63 meiji/video_001/clip_003/cam2 frames=1607
+mixed_ft 13/63 meiji/video_001/clip_004/cam0 frames=248
+mixed_ft 14/63 meiji/video_001/clip_004/cam1 frames=248
+mixed_ft 15/63 meiji/video_001/clip_004/cam2 frames=248
+mixed_ft 16/63 meiji/video_001/clip_005/cam0 frames=443
+mixed_ft 17/63 meiji/video_001/clip_005/cam1 frames=443
+mixed_ft 18/63 meiji/video_001/clip_005/cam2 frames=443
+mixed_ft 19/63 meiji/video_001/clip_006/cam0 frames=183
+mixed_ft 20/63 meiji/video_001/clip_006/cam1 frames=183
+mixed_ft 21/63 meiji/video_001/clip_006/cam2 frames=183
+mixed_ft 22/63 meiji/video_001/clip_007/cam0 frames=514
+mixed_ft 23/63 meiji/video_001/clip_007/cam1 frames=514
+mixed_ft 24/63 meiji/video_001/clip_007/cam2 frames=514
+mixed_ft 25/63 meiji/video_001/clip_008/cam0 frames=187
+mixed_ft 26/63 meiji/video_001/clip_008/cam1 frames=187
+mixed_ft 27/63 meiji/video_001/clip_008/cam2 frames=187
+mixed_ft 28/63 meiji/video_001/clip_009/cam0 frames=619
+mixed_ft 29/63 meiji/video_001/clip_009/cam1 frames=619
+mixed_ft 30/63 meiji/video_001/clip_009/cam2 frames=619
+mixed_ft 31/63 meiji/video_001/clip_010/cam0 frames=260
+mixed_ft 32/63 meiji/video_001/clip_010/cam1 frames=260
+mixed_ft 33/63 meiji/video_001/clip_010/cam2 frames=260
+mixed_ft 34/63 meiji/video_001/clip_011/cam0 frames=179
+mixed_ft 35/63 meiji/video_001/clip_011/cam1 frames=179
+mixed_ft 36/63 meiji/video_001/clip_011/cam2 frames=179
+mixed_ft 37/63 meiji/video_001/clip_012/cam0 frames=633
+mixed_ft 38/63 meiji/video_001/clip_012/cam1 frames=633
+mixed_ft 39/63 meiji/video_001/clip_012/cam2 frames=633
+mixed_ft 40/63 meiji/video_001/clip_013/cam0 frames=242
+mixed_ft 41/63 meiji/video_001/clip_013/cam1 frames=242
+mixed_ft 42/63 meiji/video_001/clip_013/cam2 frames=242
+mixed_ft 43/63 meiji/video_001/clip_014/cam0 frames=226
+mixed_ft 44/63 meiji/video_001/clip_014/cam1 frames=226
+mixed_ft 45/63 meiji/video_001/clip_014/cam2 frames=226
+mixed_ft 46/63 meiji/video_001/clip_015/cam0 frames=281
+mixed_ft 47/63 meiji/video_001/clip_015/cam1 frames=281
+mixed_ft 48/63 meiji/video_001/clip_015/cam2 frames=281
+mixed_ft 49/63 meiji/video_001/clip_016/cam0 frames=175
+mixed_ft 50/63 meiji/video_001/clip_016/cam1 frames=175
+mixed_ft 51/63 meiji/video_001/clip_016/cam2 frames=175
+mixed_ft 52/63 meiji/video_001/clip_017/cam0 frames=178
+mixed_ft 53/63 meiji/video_001/clip_017/cam1 frames=178
+mixed_ft 54/63 meiji/video_001/clip_017/cam2 frames=178
+mixed_ft 55/63 meiji/video_001/clip_018/cam0 frames=1591
+mixed_ft 56/63 meiji/video_001/clip_018/cam1 frames=1591
+mixed_ft 57/63 meiji/video_001/clip_018/cam2 frames=1591
+mixed_ft 58/63 meiji/video_001/clip_019/cam0 frames=300
+mixed_ft 59/63 meiji/video_001/clip_019/cam1 frames=300
+mixed_ft 60/63 meiji/video_001/clip_019/cam2 frames=300
+mixed_ft 61/63 meiji/video_001/clip_020/cam0 frames=1074
+mixed_ft 62/63 meiji/video_001/clip_020/cam1 frames=1074
+mixed_ft 63/63 meiji/video_001/clip_020/cam2 frames=1074
+{
+  "ft_e13": {
+    "frames": 28806,
+    "reference_frames": 28806,
+    "without_reference_frames": 0,
+    "detected_without_reference_frames": 0,
+    "detected_reference_frames": 15170,
+    "missing_reference_frames": 13636,
+    "wrong_reference_frames": 2354,
+    "matched_reference_frames": 12816,
+    "recall": 0.4449073109768798,
+    "topk_recall_unthresholded": 0.7158925223911685,
+    "accepted_p95_px": 346.0806884765625,
+    "raw_argmax_p95_px": 586.1034545898438
+  },
+  "mixed_ft": {
+    "frames": 28806,
+    "reference_frames": 28806,
+    "without_reference_frames": 0,
+    "detected_without_reference_frames": 0,
+    "detected_reference_frames": 23951,
+    "missing_reference_frames": 4855,
+    "wrong_reference_frames": 4362,
+    "matched_reference_frames": 19589,
+    "recall": 0.680031937790738,
+    "topk_recall_unthresholded": 0.8511421231687842,
+    "accepted_p95_px": 386.29888916015625,
+    "raw_argmax_p95_px": 515.341552734375
+  }
+}
