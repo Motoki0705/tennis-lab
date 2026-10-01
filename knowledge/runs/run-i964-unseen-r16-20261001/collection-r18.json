@@ -1,0 +1,43 @@
+{
+  "status": "ok",
+  "source_head": "32a35af427c95c8b281ee733517074ed33dc792a",
+  "prediction_contents_opened": false,
+  "association_videos_viewed": false,
+  "ffprobe": {
+    "video_000/clip_002": {
+      "programs": [],
+      "streams": [
+        {
+          "width": 1920,
+          "height": 400,
+          "r_frame_rate": "979001/16333",
+          "nb_read_frames": "1355"
+        }
+      ]
+    },
+    "video_001/clip_003": {
+      "programs": [],
+      "streams": [
+        {
+          "width": 1920,
+          "height": 400,
+          "r_frame_rate": "979001/16333",
+          "nb_read_frames": "1607"
+        }
+      ]
+    },
+    "video_002/clip_003": {
+      "programs": [],
+      "streams": [
+        {
+          "width": 1920,
+          "height": 400,
+          "r_frame_rate": "979001/16333",
+          "nb_read_frames": "746"
+        }
+      ]
+    }
+  },
+  "total_camera_frames": 11124,
+  "output_bytes_before_r18": 596913486
+}

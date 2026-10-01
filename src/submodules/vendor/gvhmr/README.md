@@ -25,7 +25,7 @@ vendored from `Motoki0705/GVHMR` @ `900e8c4471e80bb6db5cb14c404c1a0766aba5f4`)
 
 - 小さい regressor 資産（`body_model/data/*.pt`, `hmr2/smpl_mean_params.npz`）は
   このパッケージに同梱（GVHMR リポジトリ由来）。
-- 学習済み重みは `ckpt/`（`third_party/GVHMR/inputs/checkpoints` への symlink）から読む。
+- 学習済み重み・body modelの配置先は[必要な資産](../../README.md#必要な資産)を参照。
 - **SMPL-X 本体（`SMPLX_NEUTRAL.npz`）はライセンス登録が必要**。
   https://smpl-x.is.tue.mpg.de/ から取得し、`ckpt/body_models/smplx/` に配置する。
 
