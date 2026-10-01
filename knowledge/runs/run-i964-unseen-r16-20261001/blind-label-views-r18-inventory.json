@@ -1,0 +1,1554 @@
+{
+  "video_000/clip_002": {
+    "cam0": [
+      {
+        "track": 1,
+        "count": 1353,
+        "first": 2,
+        "last": 1354,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 1347,
+        "first": 2,
+        "last": 1354,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": [
+          [
+            156,
+            162
+          ]
+        ]
+      },
+      {
+        "track": 3,
+        "count": 1238,
+        "first": 2,
+        "last": 1354,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": [
+          [
+            73,
+            84
+          ],
+          [
+            90,
+            105
+          ],
+          [
+            105,
+            109
+          ],
+          [
+            112,
+            115
+          ],
+          [
+            138,
+            143
+          ],
+          [
+            335,
+            348
+          ],
+          [
+            602,
+            613
+          ],
+          [
+            629,
+            632
+          ],
+          [
+            662,
+            666
+          ],
+          [
+            819,
+            822
+          ],
+          [
+            826,
+            844
+          ],
+          [
+            865,
+            871
+          ],
+          [
+            890,
+            893
+          ],
+          [
+            982,
+            985
+          ],
+          [
+            1001,
+            1008
+          ],
+          [
+            1011,
+            1016
+          ],
+          [
+            1028,
+            1033
+          ],
+          [
+            1041,
+            1044
+          ],
+          [
+            1050,
+            1057
+          ]
+        ]
+      },
+      {
+        "track": 4,
+        "count": 188,
+        "first": 2,
+        "last": 232,
+        "source_track_ids": [
+          4
+        ],
+        "inspect_boundaries": [
+          [
+            49,
+            80
+          ],
+          [
+            100,
+            103
+          ],
+          [
+            104,
+            113
+          ]
+        ]
+      },
+      {
+        "track": 5,
+        "count": 204,
+        "first": 2,
+        "last": 231,
+        "source_track_ids": [
+          5
+        ],
+        "inspect_boundaries": [
+          [
+            67,
+            76
+          ],
+          [
+            79,
+            88
+          ],
+          [
+            88,
+            95
+          ],
+          [
+            101,
+            105
+          ]
+        ]
+      },
+      {
+        "track": 8,
+        "count": 39,
+        "first": 49,
+        "last": 110,
+        "source_track_ids": [
+          8
+        ],
+        "inspect_boundaries": [
+          [
+            77,
+            91
+          ],
+          [
+            92,
+            101
+          ]
+        ]
+      },
+      {
+        "track": 10,
+        "count": 1,
+        "first": 142,
+        "last": 142,
+        "source_track_ids": [
+          10
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 11,
+        "count": 246,
+        "first": 230,
+        "last": 493,
+        "source_track_ids": [
+          11
+        ],
+        "inspect_boundaries": [
+          [
+            474,
+            493
+          ]
+        ]
+      },
+      {
+        "track": 12,
+        "count": 1,
+        "first": 274,
+        "last": 274,
+        "source_track_ids": [
+          12
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 15,
+        "count": 443,
+        "first": 374,
+        "last": 831,
+        "source_track_ids": [
+          15
+        ],
+        "inspect_boundaries": [
+          [
+            766,
+            770
+          ],
+          [
+            813,
+            816
+          ],
+          [
+            818,
+            821
+          ],
+          [
+            822,
+            831
+          ]
+        ]
+      },
+      {
+        "track": 16,
+        "count": 229,
+        "first": 470,
+        "last": 710,
+        "source_track_ids": [
+          16
+        ],
+        "inspect_boundaries": [
+          [
+            495,
+            500
+          ],
+          [
+            502,
+            506
+          ],
+          [
+            705,
+            708
+          ]
+        ]
+      },
+      {
+        "track": 21,
+        "count": 121,
+        "first": 706,
+        "last": 838,
+        "source_track_ids": [
+          21
+        ],
+        "inspect_boundaries": [
+          [
+            828,
+            837
+          ]
+        ]
+      },
+      {
+        "track": 23,
+        "count": 143,
+        "first": 825,
+        "last": 1085,
+        "source_track_ids": [
+          23
+        ],
+        "inspect_boundaries": [
+          [
+            836,
+            839
+          ],
+          [
+            955,
+            968
+          ],
+          [
+            968,
+            994
+          ],
+          [
+            994,
+            1009
+          ],
+          [
+            1010,
+            1037
+          ],
+          [
+            1037,
+            1043
+          ],
+          [
+            1044,
+            1070
+          ],
+          [
+            1071,
+            1078
+          ],
+          [
+            1081,
+            1085
+          ]
+        ]
+      },
+      {
+        "track": 25,
+        "count": 477,
+        "first": 878,
+        "last": 1354,
+        "source_track_ids": [
+          25
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 26,
+        "count": 388,
+        "first": 941,
+        "last": 1354,
+        "source_track_ids": [
+          26
+        ],
+        "inspect_boundaries": [
+          [
+            945,
+            955
+          ],
+          [
+            966,
+            969
+          ],
+          [
+            1008,
+            1011
+          ],
+          [
+            1042,
+            1045
+          ],
+          [
+            1069,
+            1072
+          ],
+          [
+            1077,
+            1082
+          ]
+        ]
+      },
+      {
+        "track": 30,
+        "count": 3,
+        "first": 1321,
+        "last": 1323,
+        "source_track_ids": [
+          30
+        ],
+        "inspect_boundaries": []
+      }
+    ],
+    "cam1": [
+      {
+        "track": 1,
+        "count": 1353,
+        "first": 2,
+        "last": 1354,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 1262,
+        "first": 2,
+        "last": 1296,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": [
+          [
+            600,
+            603
+          ],
+          [
+            609,
+            615
+          ],
+          [
+            618,
+            630
+          ],
+          [
+            636,
+            640
+          ],
+          [
+            643,
+            653
+          ]
+        ]
+      },
+      {
+        "track": 3,
+        "count": 1,
+        "first": 10,
+        "last": 10,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 4,
+        "count": 114,
+        "first": 11,
+        "last": 124,
+        "source_track_ids": [
+          4
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 7,
+        "count": 35,
+        "first": 597,
+        "last": 652,
+        "source_track_ids": [
+          7
+        ],
+        "inspect_boundaries": [
+          [
+            598,
+            601
+          ],
+          [
+            602,
+            610
+          ],
+          [
+            613,
+            619
+          ],
+          [
+            636,
+            643
+          ]
+        ]
+      },
+      {
+        "track": 8,
+        "count": 58,
+        "first": 1297,
+        "last": 1354,
+        "source_track_ids": [
+          8
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 9,
+        "count": 1,
+        "first": 1306,
+        "last": 1306,
+        "source_track_ids": [
+          9
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 11,
+        "count": 42,
+        "first": 1313,
+        "last": 1354,
+        "source_track_ids": [
+          11
+        ],
+        "inspect_boundaries": []
+      }
+    ],
+    "cam2": [
+      {
+        "track": 1,
+        "count": 1353,
+        "first": 2,
+        "last": 1354,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 1353,
+        "first": 2,
+        "last": 1354,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 3,
+        "count": 889,
+        "first": 2,
+        "last": 916,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": [
+          [
+            889,
+            916
+          ]
+        ]
+      },
+      {
+        "track": 4,
+        "count": 22,
+        "first": 2,
+        "last": 23,
+        "source_track_ids": [
+          4
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 5,
+        "count": 11,
+        "first": 22,
+        "last": 32,
+        "source_track_ids": [
+          5
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 6,
+        "count": 14,
+        "first": 266,
+        "last": 279,
+        "source_track_ids": [
+          6
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 7,
+        "count": 144,
+        "first": 280,
+        "last": 425,
+        "source_track_ids": [
+          7
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 10,
+        "count": 231,
+        "first": 416,
+        "last": 648,
+        "source_track_ids": [
+          10
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 14,
+        "count": 266,
+        "first": 648,
+        "last": 962,
+        "source_track_ids": [
+          14
+        ],
+        "inspect_boundaries": [
+          [
+            693,
+            721
+          ],
+          [
+            724,
+            740
+          ],
+          [
+            744,
+            749
+          ]
+        ]
+      },
+      {
+        "track": 15,
+        "count": 54,
+        "first": 697,
+        "last": 757,
+        "source_track_ids": [
+          15
+        ],
+        "inspect_boundaries": [
+          [
+            713,
+            717
+          ]
+        ]
+      },
+      {
+        "track": 20,
+        "count": 464,
+        "first": 890,
+        "last": 1354,
+        "source_track_ids": [
+          20
+        ],
+        "inspect_boundaries": []
+      }
+    ]
+  },
+  "video_001/clip_003": {
+    "cam0": [
+      {
+        "track": 1,
+        "count": 1605,
+        "first": 2,
+        "last": 1606,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 1605,
+        "first": 2,
+        "last": 1606,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 3,
+        "count": 649,
+        "first": 2,
+        "last": 763,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": [
+          [
+            122,
+            126
+          ],
+          [
+            228,
+            232
+          ],
+          [
+            278,
+            282
+          ],
+          [
+            284,
+            293
+          ],
+          [
+            300,
+            327
+          ],
+          [
+            338,
+            342
+          ],
+          [
+            343,
+            355
+          ],
+          [
+            418,
+            421
+          ],
+          [
+            441,
+            450
+          ],
+          [
+            721,
+            738
+          ],
+          [
+            738,
+            763
+          ]
+        ]
+      },
+      {
+        "track": 4,
+        "count": 241,
+        "first": 2,
+        "last": 343,
+        "source_track_ids": [
+          4
+        ],
+        "inspect_boundaries": [
+          [
+            70,
+            93
+          ],
+          [
+            97,
+            104
+          ],
+          [
+            156,
+            164
+          ],
+          [
+            172,
+            188
+          ],
+          [
+            197,
+            214
+          ],
+          [
+            221,
+            225
+          ],
+          [
+            232,
+            236
+          ],
+          [
+            238,
+            245
+          ],
+          [
+            298,
+            317
+          ]
+        ]
+      },
+      {
+        "track": 9,
+        "count": 292,
+        "first": 402,
+        "last": 844,
+        "source_track_ids": [
+          9
+        ],
+        "inspect_boundaries": [
+          [
+            434,
+            463
+          ],
+          [
+            528,
+            532
+          ],
+          [
+            594,
+            599
+          ],
+          [
+            600,
+            611
+          ],
+          [
+            624,
+            650
+          ],
+          [
+            654,
+            660
+          ],
+          [
+            728,
+            748
+          ],
+          [
+            748,
+            752
+          ],
+          [
+            775,
+            792
+          ],
+          [
+            795,
+            799
+          ],
+          [
+            804,
+            830
+          ],
+          [
+            836,
+            843
+          ]
+        ]
+      },
+      {
+        "track": 11,
+        "count": 342,
+        "first": 691,
+        "last": 1266,
+        "source_track_ids": [
+          11
+        ],
+        "inspect_boundaries": [
+          [
+            708,
+            723
+          ],
+          [
+            751,
+            755
+          ],
+          [
+            755,
+            776
+          ],
+          [
+            791,
+            805
+          ],
+          [
+            814,
+            845
+          ],
+          [
+            851,
+            881
+          ],
+          [
+            890,
+            909
+          ],
+          [
+            934,
+            944
+          ],
+          [
+            971,
+            974
+          ],
+          [
+            974,
+            990
+          ],
+          [
+            1001,
+            1010
+          ],
+          [
+            1032,
+            1044
+          ],
+          [
+            1166,
+            1171
+          ],
+          [
+            1172,
+            1184
+          ],
+          [
+            1184,
+            1187
+          ],
+          [
+            1197,
+            1218
+          ],
+          [
+            1233,
+            1236
+          ],
+          [
+            1244,
+            1262
+          ]
+        ]
+      },
+      {
+        "track": 13,
+        "count": 870,
+        "first": 723,
+        "last": 1606,
+        "source_track_ids": [
+          13
+        ],
+        "inspect_boundaries": [
+          [
+            1322,
+            1328
+          ],
+          [
+            1362,
+            1365
+          ],
+          [
+            1384,
+            1390
+          ]
+        ]
+      },
+      {
+        "track": 16,
+        "count": 245,
+        "first": 1304,
+        "last": 1605,
+        "source_track_ids": [
+          16
+        ],
+        "inspect_boundaries": [
+          [
+            1310,
+            1327
+          ],
+          [
+            1343,
+            1358
+          ],
+          [
+            1358,
+            1378
+          ],
+          [
+            1553,
+            1556
+          ],
+          [
+            1592,
+            1596
+          ],
+          [
+            1597,
+            1600
+          ]
+        ]
+      },
+      {
+        "track": 19,
+        "count": 2,
+        "first": 1561,
+        "last": 1562,
+        "source_track_ids": [
+          19
+        ],
+        "inspect_boundaries": []
+      }
+    ],
+    "cam1": [
+      {
+        "track": 1,
+        "count": 1605,
+        "first": 2,
+        "last": 1606,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 1603,
+        "first": 2,
+        "last": 1606,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 4,
+        "count": 3,
+        "first": 6,
+        "last": 10,
+        "source_track_ids": [
+          4
+        ],
+        "inspect_boundaries": [
+          [
+            6,
+            9
+          ]
+        ]
+      },
+      {
+        "track": 5,
+        "count": 12,
+        "first": 194,
+        "last": 209,
+        "source_track_ids": [
+          5
+        ],
+        "inspect_boundaries": [
+          [
+            194,
+            199
+          ]
+        ]
+      },
+      {
+        "track": 6,
+        "count": 4,
+        "first": 198,
+        "last": 216,
+        "source_track_ids": [
+          6
+        ],
+        "inspect_boundaries": [
+          [
+            200,
+            215
+          ]
+        ]
+      }
+    ],
+    "cam2": [
+      {
+        "track": 1,
+        "count": 1605,
+        "first": 2,
+        "last": 1606,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 64,
+        "first": 2,
+        "last": 80,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": [
+          [
+            41,
+            52
+          ],
+          [
+            73,
+            79
+          ]
+        ]
+      },
+      {
+        "track": 3,
+        "count": 1605,
+        "first": 2,
+        "last": 1606,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 4,
+        "count": 1494,
+        "first": 2,
+        "last": 1603,
+        "source_track_ids": [
+          4
+        ],
+        "inspect_boundaries": [
+          [
+            420,
+            424
+          ],
+          [
+            461,
+            465
+          ],
+          [
+            508,
+            511
+          ],
+          [
+            1160,
+            1173
+          ],
+          [
+            1178,
+            1181
+          ],
+          [
+            1181,
+            1187
+          ],
+          [
+            1190,
+            1194
+          ],
+          [
+            1194,
+            1211
+          ],
+          [
+            1213,
+            1216
+          ],
+          [
+            1528,
+            1531
+          ],
+          [
+            1532,
+            1536
+          ],
+          [
+            1537,
+            1540
+          ],
+          [
+            1540,
+            1543
+          ],
+          [
+            1546,
+            1552
+          ],
+          [
+            1553,
+            1577
+          ],
+          [
+            1577,
+            1580
+          ],
+          [
+            1580,
+            1587
+          ]
+        ]
+      },
+      {
+        "track": 5,
+        "count": 1551,
+        "first": 40,
+        "last": 1606,
+        "source_track_ids": [
+          5
+        ],
+        "inspect_boundaries": [
+          [
+            57,
+            69
+          ],
+          [
+            1221,
+            1224
+          ]
+        ]
+      },
+      {
+        "track": 22,
+        "count": 2,
+        "first": 1224,
+        "last": 1225,
+        "source_track_ids": [
+          22
+        ],
+        "inspect_boundaries": []
+      }
+    ]
+  },
+  "video_002/clip_003": {
+    "cam0": [
+      {
+        "track": 1,
+        "count": 744,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 740,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": [
+          [
+            295,
+            299
+          ]
+        ]
+      },
+      {
+        "track": 3,
+        "count": 743,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 4,
+        "count": 722,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          4
+        ],
+        "inspect_boundaries": [
+          [
+            92,
+            95
+          ],
+          [
+            209,
+            212
+          ],
+          [
+            295,
+            301
+          ],
+          [
+            610,
+            615
+          ],
+          [
+            623,
+            627
+          ]
+        ]
+      },
+      {
+        "track": 5,
+        "count": 660,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          5
+        ],
+        "inspect_boundaries": [
+          [
+            2,
+            18
+          ],
+          [
+            100,
+            109
+          ],
+          [
+            209,
+            212
+          ],
+          [
+            351,
+            361
+          ],
+          [
+            362,
+            376
+          ],
+          [
+            382,
+            402
+          ],
+          [
+            637,
+            652
+          ]
+        ]
+      },
+      {
+        "track": 7,
+        "count": 4,
+        "first": 240,
+        "last": 244,
+        "source_track_ids": [
+          7
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 13,
+        "count": 3,
+        "first": 457,
+        "last": 459,
+        "source_track_ids": [
+          13
+        ],
+        "inspect_boundaries": []
+      }
+    ],
+    "cam1": [
+      {
+        "track": 1,
+        "count": 744,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 728,
+        "first": 2,
+        "last": 730,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 3,
+        "count": 721,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": [
+          [
+            88,
+            97
+          ],
+          [
+            102,
+            105
+          ],
+          [
+            671,
+            684
+          ]
+        ]
+      },
+      {
+        "track": 5,
+        "count": 11,
+        "first": 88,
+        "last": 104,
+        "source_track_ids": [
+          5
+        ],
+        "inspect_boundaries": [
+          [
+            96,
+            103
+          ]
+        ]
+      },
+      {
+        "track": 10,
+        "count": 3,
+        "first": 685,
+        "last": 696,
+        "source_track_ids": [
+          10
+        ],
+        "inspect_boundaries": [
+          [
+            685,
+            695
+          ]
+        ]
+      }
+    ],
+    "cam2": [
+      {
+        "track": 1,
+        "count": 744,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          1
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 2,
+        "count": 744,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          2
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 3,
+        "count": 737,
+        "first": 2,
+        "last": 745,
+        "source_track_ids": [
+          3
+        ],
+        "inspect_boundaries": [
+          [
+            384,
+            392
+          ]
+        ]
+      },
+      {
+        "track": 7,
+        "count": 192,
+        "first": 132,
+        "last": 323,
+        "source_track_ids": [
+          7
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 14,
+        "count": 1,
+        "first": 274,
+        "last": 274,
+        "source_track_ids": [
+          14
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 17,
+        "count": 9,
+        "first": 384,
+        "last": 421,
+        "source_track_ids": [
+          17
+        ],
+        "inspect_boundaries": [
+          [
+            391,
+            421
+          ]
+        ]
+      },
+      {
+        "track": 18,
+        "count": 142,
+        "first": 407,
+        "last": 548,
+        "source_track_ids": [
+          18
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 24,
+        "count": 16,
+        "first": 476,
+        "last": 493,
+        "source_track_ids": [
+          24
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 30,
+        "count": 22,
+        "first": 531,
+        "last": 571,
+        "source_track_ids": [
+          30
+        ],
+        "inspect_boundaries": [
+          [
+            531,
+            545
+          ],
+          [
+            555,
+            559
+          ],
+          [
+            568,
+            571
+          ]
+        ]
+      },
+      {
+        "track": 31,
+        "count": 196,
+        "first": 550,
+        "last": 745,
+        "source_track_ids": [
+          31
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 32,
+        "count": 3,
+        "first": 550,
+        "last": 552,
+        "source_track_ids": [
+          32
+        ],
+        "inspect_boundaries": []
+      },
+      {
+        "track": 39,
+        "count": 16,
+        "first": 673,
+        "last": 699,
+        "source_track_ids": [
+          39
+        ],
+        "inspect_boundaries": [
+          [
+            681,
+            689
+          ],
+          [
+            693,
+            697
+          ]
+        ]
+      }
+    ]
+  }
+}

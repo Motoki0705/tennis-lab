@@ -21,7 +21,7 @@ assets:
     gvhmr: gvhmr/gvhmr_siga24_release.ckpt
   dino_repository: DINO
   body_models_dir: body_models
-  smpl_faces: smplh/neutral/model.npz
+  smpl_faces: body_models/smplh/neutral/model.npz
   bundled:
     hmr2_mean_params: src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz
     smplx_to_smpl: src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt

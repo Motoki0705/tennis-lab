@@ -2278,7 +2278,7 @@ class PLCSDatasetConfiguration:
             scene_splits=scene_splits,
             objects=objects,
             smplh_model_root=resolver.resolve(
-                PathRole.DATA,
+                PathRole.CHECKPOINT,
                 _text(raw, "smplh_model_root", path="dataset.plcs"),
             ),
             gaussian_count=_integer(
