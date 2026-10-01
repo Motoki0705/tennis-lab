@@ -12,9 +12,13 @@ from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
 from src.tennis_scene.scripts.visualize_component_store import RENDERERS, Review
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
+from tests.support.tennis_scene.ball_refiner import (
+    synthetic_model_recipe as synthetic_model_recipe,
+)
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import setup_pipeline
 
 
+@pytest.mark.parametrize("synthetic_model_recipe", [1, 2], indirect=True)
 def test_gallery_renders_every_declared_component_without_writing_the_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline, paths, _ = setup_pipeline(tmp_path, monkeypatch)
     pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
@@ -23,7 +27,8 @@ def test_gallery_renders_every_declared_component_without_writing_the_store(tmp_
     # Every renderer understands exactly what its component declares.
     for name, node in runner.nodes.items():
         schema, version, _ = RENDERERS[name.split("/")[0]]
-        assert (schema, version) == (node.io.output_schema, node.io.version), name
+        versions = (version,) if isinstance(version, int) else version
+        assert schema == node.io.output_schema and node.io.version in versions, name
     assert set(RENDERERS) == set(STANDARD_COMPONENTS)
 
     monkeypatch.setattr(Review, "frame", lambda self, camera, index: np.zeros((720, 1280, 3), np.uint8))
