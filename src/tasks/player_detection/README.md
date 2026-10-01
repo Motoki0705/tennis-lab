@@ -38,3 +38,41 @@ DINO の denoising は CUDA 前提のため、学習と評価は GPU（training 
 
 DINO の構築と前処理は [src/submodules/models/dino/architecture.py](../../submodules/models/dino/architecture.py) を
 推論（`DinoPersonDetector`）と共有します。
+
+## fine-tuned checkpoint での推論
+
+`inference.DinoPlayerDetector` は export 済みの player checkpoint の出自を検証してから、
+既存の `DinoPersonDetector` でロード・推論します。COCO の person checkpoint や
+Lightning の `.ckpt` を player 用として誤って読まないための入口です。
+入力は BGR `uint8` frame、出力は元画像の pixel `xyxy` box と confidence です。
+tracking ID は検出器の出力には含まれません。
+
+今回の学習で validation AP が最高だった epoch 3 の Lightning checkpoint は
+`ckpt/player_detection/chat-player-v1-e8-best-epoch03.ckpt`、推論用に export した
+DINO 形式は `ckpt/player_detection/chat-player-v1-e8-best-pr937.pth` です。
+推論には後者を使います。pipeline では
+`people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth`
+を指定できます。
+
+```python
+from pathlib import Path
+
+from src.tasks.player_detection.inference import (
+    DinoPlayerDetector,
+    PlayerDetectionRequest,
+)
+
+root = Path("/path/to/tennis-lab")
+detector = DinoPlayerDetector(
+    root / "ckpt/player_detection/chat-player-v1-e8-best-pr937.pth",
+    root / "third_party/DINO",
+    device="cuda",
+    confidence=0.3,
+    short_side=800,
+    max_long_side=1333,
+)
+result = detector.predict(PlayerDetectionRequest(frame_bgr=frame_bgr))
+detector.unload()
+```
+
+`frame_bgr` は OpenCV などで読み込んだ `(H, W, 3)` の配列です。
