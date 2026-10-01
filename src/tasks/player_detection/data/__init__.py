@@ -1,0 +1,1 @@
+"""Player detection data package."""

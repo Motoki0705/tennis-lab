@@ -95,7 +95,7 @@ def test_load_rejects_invalid_visibility_before_sampling(
         make_fixture_scene,
     )
 
-    scene = make_fixture_scene(SLCSFixtureDatasetConfig(), np.random.default_rng(0))
+    scene = make_fixture_scene(SLCSFixtureDatasetConfig(), np.random.default_rng(0), ("cam0", "cam1"))
     getattr(scene, name).flat[0] = value
     monkeypatch.setattr(dataset, "load_slcs_annotation", lambda *a, **kw: scene)
     with pytest.raises(

@@ -1,18 +1,11 @@
 defaults:
-  - paths: default
-  - _self_
+- paths: default
+- _self_
 dataset_directory: ???
 clip_ids: null
 overwrite: false
 continue_on_error: true
-pipeline_overrides:
-  - court_kp.mode=model
-  - court_kp.save_result=false
-  - gvhmr.save_result=false
-  - player_association.save_result=false
-  - ball_detection.save_result=false
-  - plcs.save_result=false
-  - blcs.save_result=false
+pipeline_overrides: []
 hydra:
   run:
     dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:tennis_scene,generate,generate_dataset,${tennis_run_id:}},hydra}

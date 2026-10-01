@@ -1,8 +1,9 @@
-"""Physical-coordinate and association boundaries for PLCS residual inputs."""
+"""Physical-coordinate and published-scene boundaries for PLCS residual inputs."""
 
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -27,9 +28,13 @@ from src.tasks.plcs.inference.residual_clip_io import (
     load_clip_calibration,
     load_real_clip,
 )
+from src.tennis_scene.schema import SceneResult
 from src.utils.schema.court_normalization import (
     court_coordinate_normalization_metadata,
 )
+from tests.support.tennis_scene.annotations import publish_scene_to_clip_store
+
+Mutation = Callable[[dict[str, Any]], None]
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -101,24 +106,15 @@ def _dataset(root: Path) -> dict[str, Path]:
     return scenes
 
 
-def _clip(root: Path) -> Path:
-    annotation = root / "annotations"
-    archive_dir = annotation / "tennis_scene"
-    archive_dir.mkdir(parents=True)
+def _clip(root: Path, *, meta: Mutation | None = None, arrays: Mutation | None = None) -> Path:
+    """Publish a SceneResult v2 through the clip store, as the pipeline does.
+
+    ``meta``/``arrays`` edit the metadata or SceneResult fields before
+    publication; the immutable export cannot be edited afterwards.
+    """
+    annotation = root / "annotations" / "tennis_scene"
     frames, width, height = 3, 640, 480
     camera_ids = ["cam2", "cam0", "cam1"]
-    association = {
-        "camera_ids": camera_ids,
-        "canonical_player_ids": [4, 8],
-        "segments": [
-            {
-                "start_frame": 0,
-                "end_frame": frames,
-                "assignments": [[0, 0, 1], [1, 1, 0]],
-            }
-        ],
-        "reference_camera": "cam0",
-    }
     fits = []
     for index in range(3):
         center = np.array([index * 4.0, [18.0, -18.0, -17.0][index], 3.0])
@@ -129,6 +125,7 @@ def _clip(root: Path) -> Path:
                 "t": (-center).tolist(),
                 "camera_center_court_m": center.tolist(),
                 "calibration": {"source": "unit_fixture"},
+                "calibration_frame_index": 0,
             }
         )
     contract = resolve_court_keypoint_contract("camera_view_v2")
@@ -144,83 +141,65 @@ def _clip(root: Path) -> Path:
     provenance = build_reference_frame_provenance(
         court_views, reference_camera_id="cam0"
     ).to_dict()
-    metadata = {
+    metadata: dict[str, Any] = {
+        "scene_schema_version": 2,
         "camera_ids": camera_ids,
         "num_cameras": 3,
         "sync_assumption": "preprocessed",
-        "frame_index": 0,
-        "court_kp_frame_indices": list(range(frames)),
         "track_ids": [4, 8],
-        "track_ids_by_camera": [[10, 11], [20, 21], [30, 31]],
-        "player_association": association,
         "court_keypoints": contract_metadata,
+        "court_observation_order": "camera_local_v1",
         "court_reference_provenance": provenance,
         "court_reference": {
             "camera_ids": camera_ids,
             "camera_fits": fits,
             "court_keypoints": contract_metadata,
+            "court_observation_order": "camera_local_v1",
             "court_reference_provenance": provenance,
             "reference_camera": "cam0",
             "view_half_turns": [True, False, False],
-            "calibration_frame_index": 0,
             "court_keypoint_views": [view.to_dict() for view in court_views],
         },
     }
-    _write_json(archive_dir / "scene.metadata.json", metadata)
-    _write_json(annotation / "player_association_result.json", association)
-    _write_json(
-        root / "clip.json",
-        {
-            "clip_id": "test_clip",
-            "camera_ids": camera_ids,
-            "num_frames": frames,
-            "width": width,
-            "height": height,
-            "fps": 60.0,
-        },
-    )
-    uv = (
-        np.arange(2 * 3 * frames * 17 * 2, dtype=np.float32).reshape(
-            2, 3, frames, 17, 2
-        )
-        / 1000
-    )
+    if meta is not None:
+        meta(metadata)
+    _write_json(root / "clip.json", {
+        "clip_id": "test_clip", "camera_ids": camera_ids, "num_frames": frames,
+        "width": width, "height": height, "fps": 60.0,
+    })
+    uv = (np.arange(2 * 3 * frames * 17 * 2, dtype=np.float32).reshape(2, 3, frames, 17, 2) / 1000)
     scores = np.full(uv.shape[:-1], 0.75, dtype=np.float32)
     scores[0, 2, 1, 7] = 1.02
     scores[1, 1, 2, 4] = 0
-    uv[1, 1, 2, 4] = np.nan
-    np.savez(
-        archive_dir / "scene.npz",
-        width=width,
-        height=height,
-        num_frames=frames,
-        fps=60.0,
-        court_kp=np.repeat(
-            np.arange(3 * 14 * 2, dtype=np.float32).reshape(3, 1, 14, 2) / 100,
-            frames,
-            axis=1,
-        ),
+    players: np.ndarray = np.ones((2, frames), bool)
+    rejected: np.ndarray = np.zeros((2, frames), bool)
+    fields: dict[str, Any] = dict(
+        num_frames=frames, fps=60.0, width=width, height=height,
+        court_kp=np.repeat(np.arange(3 * 14 * 2, dtype=np.float32).reshape(3, 1, 14, 2) / 100, frames, axis=1),
         court_vis=np.ones((3, frames, 14), dtype=np.float32),
-        human_kp_2d=uv,
-        human_kp_vis=scores,
-        player_track_ids=np.array([4, 8], dtype=np.int32),
-        # Accessing these with allow_pickle=False would fail. The production
-        # archive has large SMPL arrays that must remain unread.
-        smpl_vertices_local=np.array([{"unused": True}], dtype=object),
-        player_position=np.array([{"not_ground_truth": True}], dtype=object),
+        # The residual reader never uses reconstructed geometry: all rejected.
+        player_position=np.zeros((2, frames, 3), np.float32), player_yaw=np.zeros((2, frames), np.float32),
+        ball_uv=np.zeros((3, frames, 2), np.float32), ball_vis=np.zeros((3, frames), bool),
+        ball_3d=np.zeros((frames, 3), np.float32),
+        human_kp_2d=uv, human_kp_vis=scores, player_track_ids=np.array([4, 8], dtype=np.int32),
+        player_kp_3d=np.zeros((2, frames, 17, 3), np.float32),
+        player_observed=players, player_valid=rejected, player_heading_valid=rejected.copy(),
+        player_kp_3d_vis=np.zeros((2, frames, 17), bool), player_smpl_valid=rejected.copy(),
+        ball_3d_valid=np.zeros(frames, bool), player_rejection_code=np.ones((2, frames), np.uint8),
+        player_kp_3d_rejection_code=np.ones((2, frames, 17), np.uint8), ball_rejection_code=np.ones(frames, np.uint8),
+        metadata=metadata,
     )
+    if arrays is not None:
+        arrays(fields)
+    export = publish_scene_to_clip_store(root, "test_clip", SceneResult(**fields))
+    _write_json(annotation / "annotation.json", {"scene_index": "scene.json", "scene_result": str(export.relative_to(annotation))})
     return root
 
 
-def _replace_archive(path: Path, key: str, value: np.ndarray) -> None:
-    with np.load(path, allow_pickle=False) as archive:
-        arrays = {
-            name: archive[name]
-            for name in archive.files
-            if name not in {"smpl_vertices_local", "player_position"}
-        }
-    arrays[key] = value
-    np.savez(path, **arrays)
+def _published(clip: Path) -> SceneResult:
+    from src.tennis_scene.archive import load_scene_result
+
+    return load_scene_result(clip / "annotations/tennis_scene/scene.json")
 
 
 def test_clean_scene_preserves_metres_axes_cameras_and_native_timing(
@@ -357,10 +336,7 @@ def test_calibration_preserves_already_aligned_cam2_court_points(
 ) -> None:
     clip = _clip(tmp_path)
     rig, court, scores, fps, info = load_clip_calibration(clip)
-    with np.load(
-        clip / "annotations/tennis_scene/scene.npz", allow_pickle=False
-    ) as archive:
-        expected = archive["court_kp"][:, 0].astype(np.float64) * [640, 480]
+    expected = _published(clip).court_kp[:, 0].astype(np.float64) * [640, 480]
     # cam2 is the first camera and has a camera-local half-turn in metadata.
     # The serialized SceneResult has applied it already, so every point index
     # and its fitted physical camera must survive unchanged.
@@ -368,6 +344,7 @@ def test_calibration_preserves_already_aligned_cam2_court_points(
     np.testing.assert_array_equal(scores, np.ones((3, 14)))
     np.testing.assert_allclose(rig.centers, [[0, 18, 3], [4, -18, 3], [8, -17, 3]])
     assert fps == 60
+    assert info["calibration_frame_index"] == 0
     assert info["court_coordinate_frame"] == "physical_court"
     assert info["court_reference_provenance"]["reference_camera_local_index"] == 1
     assert (
@@ -377,27 +354,26 @@ def test_calibration_preserves_already_aligned_cam2_court_points(
 
 
 def test_calibration_rejects_consistent_half_turn_reference(tmp_path: Path) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(path)
-    contract = resolve_court_keypoint_contract("camera_view_v2")
-    views = [
-        build_court_view_record(
-            camera_id=camera_id,
-            camera_center_court_m=fit["camera_center_court_m"],
-            contract=contract,
-        )
-        for camera_id, fit in zip(
-            meta["camera_ids"], meta["court_reference"]["camera_fits"], strict=True
-        )
-    ]
-    half_turn = build_reference_frame_provenance(
-        views, reference_camera_id="cam2"
-    ).to_dict()
-    meta["court_reference_provenance"] = half_turn
-    meta["court_reference"]["court_reference_provenance"] = half_turn
-    meta["court_reference"]["reference_camera"] = "cam2"
-    _write_json(path, meta)
+    def half_turn_reference(meta: dict[str, Any]) -> None:
+        contract = resolve_court_keypoint_contract("camera_view_v2")
+        views = [
+            build_court_view_record(
+                camera_id=camera_id,
+                camera_center_court_m=fit["camera_center_court_m"],
+                contract=contract,
+            )
+            for camera_id, fit in zip(
+                meta["camera_ids"], meta["court_reference"]["camera_fits"], strict=True
+            )
+        ]
+        half_turn = build_reference_frame_provenance(
+            views, reference_camera_id="cam2"
+        ).to_dict()
+        meta["court_reference_provenance"] = half_turn
+        meta["court_reference"]["court_reference_provenance"] = half_turn
+        meta["court_reference"]["reference_camera"] = "cam2"
+
+    clip = _clip(tmp_path, meta=half_turn_reference)
     with pytest.raises(ValueError, match="identity reference transforms"):
         load_clip_calibration(clip)
 
@@ -406,16 +382,16 @@ def test_calibration_rejects_consistent_half_turn_reference(tmp_path: Path) -> N
 def test_calibration_rejects_conflicting_root_and_nested_metadata(
     tmp_path: Path, field: str
 ) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(path)
-    if field == "court_keypoints":
-        meta["court_reference"][field] = CourtKeypointContractMetadata.from_contract(
-            resolve_court_keypoint_contract("physical_v1")
-        ).to_dict()
-    else:
-        meta["court_reference"][field]["reference_camera_local_index"] = 2
-    _write_json(path, meta)
+    def conflict(meta: dict[str, Any]) -> None:
+        if field == "court_keypoints":
+            meta["court_reference"][field] = CourtKeypointContractMetadata.from_contract(
+                resolve_court_keypoint_contract("physical_v1")
+            ).to_dict()
+        else:
+            # A copy: root and nested provenance share one object before publication.
+            meta["court_reference"][field] = {**meta["court_reference"][field], "reference_camera_local_index": 2}
+
+    clip = _clip(tmp_path, meta=conflict)
     with pytest.raises(ValueError, match=f"Root and nested {field}"):
         load_clip_calibration(clip)
 
@@ -427,50 +403,43 @@ def test_calibration_rejects_conflicting_root_and_nested_metadata(
         (True, "court_keypoints"),
         (False, "court_reference_provenance"),
         (True, "court_reference_provenance"),
-        (False, "court_kp_frame_indices"),
         (True, "court_keypoint_views"),
         (True, "reference_camera"),
         (True, "view_half_turns"),
     ],
 )
-def test_calibration_rejects_missing_frame_or_court_metadata(
+def test_calibration_rejects_missing_court_metadata(
     tmp_path: Path, nested: bool, field: str
 ) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(path)
-    document = meta["court_reference"] if nested else meta
-    document.pop(field)
-    _write_json(path, meta)
+    clip = _clip(tmp_path, meta=lambda meta: (meta["court_reference"] if nested else meta).pop(field))
     with pytest.raises(ValueError, match=field):
         load_clip_calibration(clip)
 
 
 @pytest.mark.parametrize(
-    "indices", [[0, 2, 1], [0, 1], [0, 1, 1], [1, 2, 3], [0.0, 1.0, 2.0], [False, 1, 2]]
+    ("indices", "match"),
+    [([0, 0, 3], "calibration_frame_index"), ([0, -1, 0], "calibration_frame_index"),
+     ([True, 0, 0], "calibration_frame_index"), ([0, 1, 0], "same frame")],
 )
-def test_calibration_rejects_noncanonical_court_timeline(
-    tmp_path: Path, indices: list[object]
+def test_calibration_rejects_invalid_or_disagreeing_calibration_frames(
+    tmp_path: Path, indices: list[object], match: str
 ) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(path)
-    meta["court_kp_frame_indices"] = indices
-    _write_json(path, meta)
-    with pytest.raises(ValueError, match="court_kp_frame_indices"):
+    def set_frames(meta: dict[str, Any]) -> None:
+        for fit, index in zip(meta["court_reference"]["camera_fits"], indices, strict=True):
+            fit["calibration_frame_index"] = index
+
+    clip = _clip(tmp_path, meta=set_frames)
+    with pytest.raises(ValueError, match=match):
         load_clip_calibration(clip)
 
 
-@pytest.mark.parametrize("frame_index", [1, 3, -1, True])
-def test_calibration_rejects_disagreeing_or_invalid_frame_index(
-    tmp_path: Path, frame_index: object
-) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(path)
-    meta["court_reference"]["calibration_frame_index"] = frame_index
-    _write_json(path, meta)
-    with pytest.raises(ValueError, match="calibration_frame_index"):
+def test_calibration_rejects_time_varying_court(tmp_path: Path) -> None:
+    def vary(fields: dict[str, Any]) -> None:
+        fields["court_kp"] = fields["court_kp"].copy()
+        fields["court_kp"][:, 2] += 0.01
+
+    clip = _clip(tmp_path, arrays=vary)
+    with pytest.raises(ValueError, match="Time-varying calibration"):
         load_clip_calibration(clip)
 
 
@@ -478,21 +447,13 @@ def test_calibration_rejects_disagreeing_or_invalid_frame_index(
 def test_calibration_rejects_disagreeing_camera_order(
     tmp_path: Path, field: str
 ) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(path)
-    meta["court_reference"][field].reverse()
-    _write_json(path, meta)
+    clip = _clip(tmp_path, meta=lambda meta: meta["court_reference"][field].reverse())
     with pytest.raises(ValueError, match="camera order|ordered court_keypoint_views"):
         load_clip_calibration(clip)
 
 
 def test_calibration_rejects_inconsistent_half_turn_flags(tmp_path: Path) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(path)
-    meta["court_reference"]["view_half_turns"] = [False, False, False]
-    _write_json(path, meta)
+    clip = _clip(tmp_path, meta=lambda meta: meta["court_reference"].__setitem__("view_half_turns", [False] * 3))
     with pytest.raises(ValueError, match="view_half_turns"):
         load_clip_calibration(clip)
 
@@ -503,11 +464,10 @@ def test_real_clip_preserves_associated_players_camera_order_and_raw_scores(
     clip = _clip(tmp_path)
     result = load_real_clip(clip)
     assert len(result) == 2
-    with np.load(
-        clip / "annotations/tennis_scene/scene.npz", allow_pickle=False
-    ) as archive:
-        expected_uv = archive["human_kp_2d"].astype(np.float64)
-        expected_scores = archive["human_kp_vis"].astype(np.float64)
+    published = _published(clip)
+    assert published.human_kp_2d is not None and published.human_kp_vis is not None
+    expected_uv = published.human_kp_2d.astype(np.float64)
+    expected_scores = published.human_kp_vis.astype(np.float64)
     for index, scene in enumerate(result):
         np.testing.assert_allclose(
             scene.observations_px, expected_uv[index] * [640, 480]
@@ -517,9 +477,10 @@ def test_real_clip_preserves_associated_players_camera_order_and_raw_scores(
         assert scene.metadata["camera_ids"] == ["cam2", "cam0", "cam1"]
         assert scene.metadata["player_id"] == [4, 8][index]
         assert scene.metadata["association_already_applied"] is True
+        assert scene.metadata["association_source"]["axis"] == "player_track_ids"
         assert scene.metadata["independent_3d_ground_truth"] is False
     assert result[0].scores.max() > 1
-    assert np.isnan(result[1].observations_px[1, 2, 4]).all()
+    assert result[1].scores[1, 2, 4] == 0
     np.testing.assert_allclose(result[0].rig.centers[:, 0], [0, 4, 8])
 
 
@@ -527,70 +488,49 @@ def test_real_clip_scales_uv_using_each_camera_image_size(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     clip = _clip(tmp_path)
-    rig, court, scores, fps, info = real_clip.load_clip_calibration(clip)
+    load = real_clip._load_calibration
+    rig, court, scores, fps, info, path, scene = load(clip)
     varied_rig = CameraRig(
         rig.K, rig.R, rig.t, np.array([[640, 480], [1280, 720], [1920, 1080]])
     )
     monkeypatch.setattr(
         real_clip,
-        "load_clip_calibration",
-        lambda _: (varied_rig, court, scores, fps, info),
+        "_load_calibration",
+        lambda _: (varied_rig, court, scores, fps, info, path, scene),
     )
     result = load_real_clip(clip)
-    with np.load(
-        clip / "annotations/tennis_scene/scene.npz", allow_pickle=False
-    ) as archive:
-        expected_uv = archive["human_kp_2d"].astype(np.float64)
+    assert scene.human_kp_2d is not None
     np.testing.assert_allclose(
         result[0].observations_px,
-        expected_uv[0] * varied_rig.image_size[:, None, None, :],
+        scene.human_kp_2d[0].astype(np.float64) * varied_rig.image_size[:, None, None, :],
     )
-
-
-def test_real_clip_rejects_disagreeing_or_invalid_association(tmp_path: Path) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/player_association_result.json"
-    association = _read_json(path)
-    association["segments"][0]["assignments"][0][2] = 0
-    _write_json(path, association)
-    with pytest.raises(ValueError, match="disagree"):
-        load_real_clip(clip)
-    meta_path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(meta_path)
-    meta["player_association"] = association
-    _write_json(meta_path, meta)
-    with pytest.raises(ValueError, match="same local player"):
-        load_real_clip(clip)
-
-
-def test_real_clip_rejects_association_camera_order_mismatch(tmp_path: Path) -> None:
-    clip = _clip(tmp_path)
-    path = clip / "annotations/player_association_result.json"
-    association = _read_json(path)
-    association["camera_ids"].reverse()
-    _write_json(path, association)
-    meta_path = clip / "annotations/tennis_scene/scene.metadata.json"
-    meta = _read_json(meta_path)
-    meta["player_association"] = association
-    _write_json(meta_path, meta)
-    with pytest.raises(ValueError, match="camera order"):
-        load_real_clip(clip)
 
 
 @pytest.mark.parametrize(
     "key,value,match",
     [
-        ("human_kp_2d", np.zeros((2, 3, 3, 16, 2), dtype=np.float32), "human_kp_2d"),
-        ("human_kp_vis", np.zeros((2, 3, 2, 17), dtype=np.float32), "human_kp_vis"),
-        ("human_kp_vis", np.ones((2, 3, 3, 17), dtype=np.float32), "Nonfinite"),
         ("human_kp_vis", np.full((2, 3, 3, 17), -1.0, dtype=np.float32), "nonnegative"),
-        ("player_track_ids", np.array([8, 4], dtype=np.int32), "canonical association"),
+        ("player_track_ids", np.array([8, 4], dtype=np.int32), "track_ids must match"),
+        ("player_track_ids", np.array([4, 4], dtype=np.int32), "unique nonnegative"),
     ],
 )
 def test_real_clip_rejects_invalid_observation_arrays(
     tmp_path: Path, key: str, value: np.ndarray, match: str
 ) -> None:
-    clip = _clip(tmp_path)
-    _replace_archive(clip / "annotations/tennis_scene/scene.npz", key, value)
+    clip = _clip(tmp_path, arrays=lambda fields: fields.__setitem__(key, value))
     with pytest.raises(ValueError, match=match):
         load_real_clip(clip)
+
+
+def test_calibration_requires_the_published_scene_marker(tmp_path: Path) -> None:
+    clip = _clip(tmp_path)
+    (clip / "annotations/tennis_scene/annotation.json").unlink()
+    with pytest.raises(FileNotFoundError):
+        load_clip_calibration(clip)
+
+
+def test_v1_layout_marker_is_rejected(tmp_path: Path) -> None:
+    clip = _clip(tmp_path)
+    _write_json(clip / "annotations/tennis_scene/annotation.json", {"scene_result": "scene.npz"})
+    with pytest.raises(ValueError, match="v1 layout is not readable"):
+        load_clip_calibration(clip)

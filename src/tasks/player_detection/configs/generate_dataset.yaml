@@ -1,0 +1,34 @@
+# outputs/chat_annotation (processed player labels) -> data/player_detection/<version>
+defaults:
+  - paths: default
+  - _self_
+
+source:
+  # Output-root-relative chat annotation root (processed/player + _preparation).
+  annotation_root: chat_annotation
+  # All current processed player labels are "partial": every frame is reviewed,
+  # but the annotator flagged spatial precision as not fully verified.
+  allowed_statuses: [completed, partial]
+
+dataset:
+  version: chat-player-v1
+  jpeg_quality: 95
+
+split:
+  # Split unit is the YouTube source video (all its clips share one split).
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+
+workers: 6
+
+run:
+  # DATA-root-relative dataset version directory (generate_dataset convention).
+  output_dir: ${tennis_dataset:player_detection,${dataset.version}}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:player_detection,generate,${dataset.version},${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false

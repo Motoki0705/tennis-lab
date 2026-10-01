@@ -146,3 +146,15 @@ def test_negative_depth_planar_solution_is_rejected(
     with pytest.raises(PlanarCameraFitError) as error:
         fit_planar_camera(world, pixels, np.ones(14), (1920, 1080))
     assert error.value.reason == PlanarCameraFailure.INVALID_DEPTH
+
+
+def test_exact_out_of_image_extrapolations_can_be_kept_explicitly() -> None:
+    world, pixels, intrinsic, rotation, translation = _plane_observations(center=(3.0, -16.0, 4.0), hfov_deg=45.0)
+    outside = ~((pixels >= 0) & (pixels <= [1920, 1080])).all(axis=1)
+    assert 0 < outside.sum() <= 8
+    inside = fit_planar_camera(world, pixels, np.ones(14), (1920, 1080))
+    kept = fit_planar_camera(world, pixels, np.ones(14), (1920, 1080), require_in_image=False)
+    np.testing.assert_array_equal(inside.used_mask, ~outside)
+    assert kept.used_mask.all() and kept.rmse_px < 1e-3
+    np.testing.assert_allclose(kept.K, intrinsic, atol=2e-3, rtol=0)
+    np.testing.assert_allclose(kept.R, rotation, atol=2e-6, rtol=0)
