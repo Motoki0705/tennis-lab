@@ -14,7 +14,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
 
 手順3の2ノードにはまだモデル実装がありません（court side: #932、人物対応: #933）。
-既定は`execution.<node>=load`で、同じschemaの確認済みartifactがclip storeに無ければ停止します。
+既定は`execution.<node>=load`で、同じschemaの確認済みartifactがclip storeに無ければ停止します（[import](pipeline/imports/README.md)）。
 他の手順はCourt・人物・球の手動入力を要求しません。
 
 対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計4人物、球は各camera/frame高々1検出です。
@@ -41,6 +41,11 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 
 componentのIO宣言、入力組立、runner、clip store、保存形式とexecute/loadの正本は
 [pipeline/README.md](pipeline/README.md)です。
+storeの採用済みartifactは、推論もstoreへの書き込みもせずにHTML galleryで確認できます。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.visualize_component_store --store <clip>/annotations/tennis_scene --output <dir> [--videos]
+```
 
 ## 座標・対応
 
