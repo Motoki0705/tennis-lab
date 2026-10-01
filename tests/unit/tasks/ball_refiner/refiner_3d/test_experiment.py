@@ -139,3 +139,35 @@ def test_chained_validation_requires_complete_explicit_subset_partition() -> Non
     changed[0]['npz_sha256'] = 'changed'
     with pytest.raises(ValueError, match='mismatch'):
         reference_validation(changed, reference)
+
+
+def test_head_input_trial_preserves_every_other_factor_and_explicit_opt_in() -> None:
+    directory = PROJECT_ROOT / 'src/tasks/ball_refiner/refiner_3d'
+    control = yaml.safe_load((directory / 'training_pilot512_physics10_t128.yaml').read_text())
+    candidate = yaml.safe_load((directory / 'training_pilot512_physics10_head_context_t128.yaml').read_text())
+    original = deepcopy(control)
+    assert_single_factor(candidate, control, 'position_head_input')
+    assert control == original  # Comparison cannot mutate the recorded control.
+    explicit_control = deepcopy(control)
+    explicit_control['model']['position_head_input'] = 'temporal'
+    assert_single_factor(candidate, explicit_control, 'position_head_input')
+    for path, value in (
+        (('model', 'width'), 256), (('model', 'layers'), 3), (('loss', 'reprojection'), .03),
+        (('loss', 'physics'), .0001), (('seed',), 937), (('updates',), 10000),
+        (('learning_rate',), .001), (('expected_counts', 'train'), 64),
+        (('validation_frames',), None), (('steps',), 16),
+    ):
+        changed = deepcopy(candidate)
+        target = changed if len(path) == 1 else changed[path[0]]
+        target[path[-1]] = value
+        with pytest.raises(ValueError, match='beyond'):
+            assert_single_factor(changed, control, 'position_head_input')
+    for setting in ('temporal', 'invalid', None):
+        changed = deepcopy(candidate)
+        changed['model']['position_head_input'] = setting
+        with pytest.raises(ValueError, match='Head-input'):
+            assert_single_factor(changed, control, 'position_head_input')
+    # A head change must also be rejected under a loss-only declaration.
+    candidate['loss']['reprojection'] *= 3
+    with pytest.raises(ValueError, match='beyond'):
+        assert_single_factor(candidate, control, 'reprojection_weight')

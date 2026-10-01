@@ -1,0 +1,35 @@
+{
+  "status": "complete",
+  "historical_initial_state_sha256": "c1b9d479a92530eac9542e74110a4c413ab3525c97e04af9ce3d06f1696ee1ed",
+  "config_sha256": "34ff4af7442351e814f50a177bc92ecc28a2d45d54766d85fd1e9710bce1672a",
+  "model_source_sha256": "9d57688590ceda9771a790616d2e305b394593dd2fe5aaeb6b172e9bb00375ef",
+  "historical_parameter_tensors_bitwise_equal": 61,
+  "rng_state_bitwise_equal": true,
+  "control_parameters": 817285,
+  "candidate_parameters": 817669,
+  "added_parameters": 384,
+  "new_columns_initially_zero": true,
+  "maximum_initial_position_abs_norm_difference": 0.0,
+  "event_logits_bitwise_equal": true,
+  "real_training_rally": "train-00000",
+  "rally_sha256": "55f105341d595eee2c5df3db360a80af9d711ab8314fef0c876f6510cd2c26a7",
+  "batch_shape": [
+    1,
+    128,
+    125
+  ],
+  "all_four_loss_terms": {
+    "x0": 0.32029443979263306,
+    "reprojection": 23.670690536499023,
+    "physics": 768.3246459960938,
+    "event": 1.4765759706497192
+  },
+  "nonzero_added_gradient_elements": 384,
+  "gradient_norm": 0.2995685636997223,
+  "new_columns_updated": true,
+  "cpu_optimizer_steps": 1,
+  "trained_model_discarded": true,
+  "no_gpu_or_val_or_test": true,
+  "elapsed_seconds": 1.177090626093559,
+  "peak_process_rss_bytes": 966889472
+}

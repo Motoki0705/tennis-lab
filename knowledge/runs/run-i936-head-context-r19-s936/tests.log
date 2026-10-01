@@ -1,0 +1,369 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [178 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_mixture_mean_keeps_all_components_and_top_uses_weight_only 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_calibration_report_is_one_explicit_verified_input 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unscored] 
+[gw2] [  0%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unscored] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[rally] 
+[gw2] [  1%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[rally] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_gaussian_hdr_matches_analytic_volume_and_nll 
+tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_short_tail_keeps_absolute_time_noise_and_earliest_ownership 
+[gw1] [  1%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_mixture_mean_keeps_all_components_and_top_uses_weight_only 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_rts_smooths_ballistic_noise_without_ground_truth_or_frame_rejection 
+[gw1] [  2%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_rts_smooths_ballistic_noise_without_ground_truth_or_frame_rejection 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_historical_metric_and_support_changes_fail_explicitly 
+[gw1] [  2%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_historical_metric_and_support_changes_fail_explicitly 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+[gw3] [  3%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_short_tail_keeps_absolute_time_noise_and_earliest_ownership 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_absolute_rmse_derivative_units_and_gap_event_support 
+[gw2] [  3%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_gaussian_hdr_matches_analytic_volume_and_nll 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_multimodal_volume_is_not_a_moment_ellipsoid 
+[gw0] [  4%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_calibration_report_is_one_explicit_verified_input 
+[gw1] [  5%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+[gw3] [  5%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_absolute_rmse_derivative_units_and_gap_event_support 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_no_gap_is_na_and_behind_camera_is_never_a_perfect_reprojection 
+[gw3] [  6%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_no_gap_is_na_and_behind_camera_is_never_a_perfect_reprojection 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_metrics_pool_frames_and_samples_without_rally_mean_bias 
+[gw3] [  6%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_metrics_pool_frames_and_samples_without_rally_mean_bias 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_nonuniform_timestamps_are_rejected 
+[gw3] [  7%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_nonuniform_timestamps_are_rejected 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_strata_partition_original_derivatives_and_do_not_join_disjoint_frames 
+[gw1] [  7%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+[gw3] [  8%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_strata_partition_original_derivatives_and_do_not_join_disjoint_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_camera_strata_use_visibility_including_out_of_frame_not_presence 
+[gw3] [  8%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_camera_strata_use_visibility_including_out_of_frame_not_presence 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[4] 
+[gw3] [  9%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[4] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[127] 
+[gw3] [ 10%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[127] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[128] 
+[gw3] [ 10%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[128] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[129] 
+[gw3] [ 11%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[129] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+[gw3] [ 11%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+[gw0] [ 12%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+[gw3] [ 12%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+[gw2] [ 13%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_multimodal_volume_is_not_a_moment_ellipsoid 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_linear_readout_recovers_affine_signal_on_unseen_frames 
+[gw1] [ 14%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+[gw3] [ 14%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_combined_candidate_is_explicit_and_rejects_any_extra_factor 
+[gw3] [ 15%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_combined_candidate_is_explicit_and_rejects_any_extra_factor 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reprojection_trial_preserves_combined_base_and_rejects_extra_factors 
+[gw3] [ 15%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reprojection_trial_preserves_combined_base_and_rejects_extra_factors 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_chained_validation_requires_complete_explicit_subset_partition 
+[gw3] [ 16%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_chained_validation_requires_complete_explicit_subset_partition 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_head_input_trial_preserves_every_other_factor_and_explicit_opt_in 
+[gw2] [ 16%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_linear_readout_recovers_affine_signal_on_unseen_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_rank_deficiency_is_explicit_and_uses_minimum_norm_solution 
+[gw2] [ 17%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_rank_deficiency_is_explicit_and_uses_minimum_norm_solution 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[nan_token] 
+[gw3] [ 17%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_head_input_trial_preserves_every_other_factor_and_explicit_opt_in 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-16] 
+[gw2] [ 18%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[nan_token] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[inf_target] 
+[gw2] [ 19%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[inf_target] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[shape] 
+[gw2] [ 19%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[shape] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_error_uses_euclidean_metres_and_preserves_empty_strata 
+[gw3] [ 20%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-16] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-32] 
+[gw1] [ 20%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+[gw2] [ 21%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_error_uses_euclidean_metres_and_preserves_empty_strata 
+tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_explicit_noise_matches_original_sampler_and_does_not_mutate_it 
+[gw3] [ 21%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-32] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-33] 
+[gw3] [ 22%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-33] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-65] 
+[gw3] [ 23%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-65] 
+[gw2] [ 23%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_explicit_noise_matches_original_sampler_and_does_not_mutate_it 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-16] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_unknown_runtime_failure_is_not_resampled 
+[gw1] [ 24%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+[gw2] [ 24%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_unknown_runtime_failure_is_not_resampled 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_physics_budget_exhaustion_is_a_failure 
+[gw3] [ 25%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-16] 
+[gw2] [ 25%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_physics_budget_exhaustion_is_a_failure 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-32] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_step_between_windows_is_counted_only_at_seams 
+[gw2] [ 26%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_step_between_windows_is_counted_only_at_seams 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_constant_bias_has_no_roughness_but_alternating_error_does 
+[gw2] [ 26%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_constant_bias_has_no_roughness_but_alternating_error_does 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_local_decomposition_never_smooths_across_seams_or_events 
+[gw2] [ 27%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_local_decomposition_never_smooths_across_seams_or_events 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows0] 
+[gw2] [ 28%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows0] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows1] 
+[gw3] [ 28%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-32] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-33] 
+[gw2] [ 29%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows1] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows2] 
+[gw2] [ 29%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows2] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_camera_perturbation_changes_geometry_without_breaking_rotation 
+[gw3] [ 30%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-33] 
+[gw2] [ 30%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_camera_perturbation_changes_geometry_without_breaking_rotation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-65] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_short_rally_gap_fails_instead_of_shortening_requested_gap 
+[gw1] [ 31%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+[gw2] [ 32%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_short_rally_gap_fails_instead_of_shortening_requested_gap 
+[gw3] [ 32%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-65] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_reader_rejects_partial_dataset_and_corrupt_rally 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_blend_reduces_a_known_window_boundary_jump_without_hiding_frames 
+[gw2] [ 33%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_reader_rejects_partial_dataset_and_corrupt_rally 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_generation_records_late_results_after_a_rally_failure 
+[gw2] [ 33%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_generation_records_late_results_after_a_rally_failure 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_fixed_budget_generator_roundtrip_keeps_unassessed_flags 
+[gw3] [ 34%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_blend_reduces_a_known_window_boundary_jump_without_hiding_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_only_declared_physics_rejections_are_resampled_with_logged_seeds 
+[gw3] [ 34%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_only_declared_physics_rejections_are_resampled_with_logged_seeds 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows3] 
+[gw3] [ 35%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows3] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+[gw1] [ 35%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+[gw0] [ 36%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+[gw3] [ 37%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+[gw3] [ 37%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_rational_resampling_has_no_stride_drift_or_extrapolation 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_rational_resampling_has_no_stride_drift_or_extrapolation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_events_filter_discarded_future_bounces_and_preserve_native_seconds 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_events_filter_discarded_future_bounces_and_preserve_native_seconds 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_event_masks_cover_interpolation_and_acceleration_stencil 
+[gw3] [ 39%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_event_masks_cover_interpolation_and_acceleration_stencil 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes 
+[gw0] [ 39%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_only_bank_change_is_allowed_without_mutating_reports 
+[gw0] [ 40%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_only_bank_change_is_allowed_without_mutating_reports 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[seed] 
+[gw0] [ 41%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[seed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[block] 
+[gw0] [ 41%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[block] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[truth] 
+[gw0] [ 42%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[truth] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[mask] 
+[gw0] [ 42%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[mask] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[samples] 
+[gw1] [ 43%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+[gw0] [ 43%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[samples] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unfinished] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[130] 
+[gw0] [ 44%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unfinished] 
+[gw1] [ 44%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[130] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[shape] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[255] 
+[gw1] [ 45%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[255] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[512] 
+[gw1] [ 46%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[512] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+[gw0] [ 46%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[shape] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[nan] 
+[gw0] [ 47%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[nan] 
+[gw1] [ 47%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[time] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+[gw0] [ 48%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[time] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[None] 
+[gw2] [ 48%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_fixed_budget_generator_roundtrip_keeps_unassessed_flags 
+tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_all_125_components_and_pixel_covariance_survive_padding_and_gaps 
+[gw2] [ 49%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_all_125_components_and_pixel_covariance_survive_padding_and_gaps 
+tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_missing_or_nonconverged_flags_require_explicit_action 
+[gw2] [ 50%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_missing_or_nonconverged_flags_require_explicit_action 
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+[gw3] [ 50%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_unknown_head_input_is_rejected 
+[gw3] [ 51%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_unknown_head_input_is_rejected 
+[gw2] [ 51%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_full_mixture_permutation_invariance_and_last_component_influence 
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling 
+[gw2] [ 52%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_memory_profile_cpu_forward_backward_all_four_losses 
+[gw3] [ 52%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_full_mixture_permutation_invariance_and_last_component_influence 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_condition_readout_preserves_units_full_covariance_and_last_component 
+[gw3] [ 53%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_condition_readout_preserves_units_full_covariance_and_last_component 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_padding_never_changes_real_frames_or_becomes_a_gap 
+[gw3] [ 53%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_padding_never_changes_real_frames_or_becomes_a_gap 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_sampling_reports_empirical_uncertainty_and_replays_explicit_seed 
+[gw3] [ 54%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_sampling_reports_empirical_uncertainty_and_replays_explicit_seed 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_same_backbone_one_step_regression_ignores_flow_rng 
+[gw1] [ 55%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+[gw1] [ 55%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+[gw1] [ 56%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+[gw1] [ 56%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+[gw1] [ 57%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_anchored_config_changes_only_validation_context_and_declared_schedule 
+[gw1] [ 57%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_anchored_config_changes_only_validation_context_and_declared_schedule 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[True] 
+[gw1] [ 58%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[True] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[3] 
+[gw1] [ 58%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[3] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[8] 
+[gw1] [ 59%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[8] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[4.0] 
+[gw1] [ 60%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[4.0] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_validation_preserves_context_tail_and_derivative_seams 
+[gw1] [ 60%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_validation_preserves_context_tail_and_derivative_seams 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val 
+[gw3] [ 61%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_same_backbone_one_step_regression_ignores_flow_rng 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule1] 
+[gw3] [ 61%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule1] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule2] 
+[gw3] [ 62%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule2] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule3] 
+[gw3] [ 62%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule3] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule4] 
+[gw3] [ 63%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule4] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget 
+[gw3] [ 64%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-flow] 
+[gw2] [ 64%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_memory_profile_cpu_forward_backward_all_four_losses 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual[temporal] 
+[gw2] [ 65%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual[temporal] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual[temporal_and_condition] 
+[gw2] [ 65%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual[temporal_and_condition] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_context_head_preserves_initialization_and_learns_its_new_columns 
+[gw3] [ 66%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-flow] 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-regression] 
+[gw2] [ 66%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_context_head_preserves_initialization_and_learns_its_new_columns 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation] 
+[gw2] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation] 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation] 
+[gw2] [ 67%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base] 
+[gw2] [ 68%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection] 
+[gw3] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-regression] 
+[gw2] [ 69%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs] 
+tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity 
+[gw2] [ 70%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection] 
+[gw2] [ 70%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs] 
+[gw2] [ 71%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs] 
+[gw2] [ 71%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene] 
+[gw2] [ 72%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation] 
+[gw2] [ 73%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules] 
+[gw2] [ 73%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules] 
+tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations] 
+[gw2] [ 74%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations] 
+tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy 
+[gw2] [ 74%] PASSED tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy 
+tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none 
+[gw2] [ 75%] PASSED tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none 
+tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities 
+[gw2] [ 75%] PASSED tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities 
+tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths 
+[gw2] [ 76%] PASSED tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths 
+tests/unit/utils/configuration/test_contracts.py::test_ball_refiner_experiment_requires_an_existing_project_plan 
+[gw2] [ 76%] PASSED tests/unit/utils/configuration/test_contracts.py::test_ball_refiner_experiment_requires_an_existing_project_plan 
+tests/unit/utils/configuration/test_contracts.py::test_gvhmr_extraction_boundary_declares_every_storage_and_model_path 
+[gw2] [ 77%] PASSED tests/unit/utils/configuration/test_contracts.py::test_gvhmr_extraction_boundary_declares_every_storage_and_model_path 
+tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema 
+[gw2] [ 78%] PASSED tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema 
+tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root 
+[gw2] [ 78%] PASSED tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root 
+tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries 
+[gw2] [ 79%] PASSED tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries 
+tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles 
+[gw2] [ 79%] PASSED tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.] 
+[gw2] [ 80%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.] 
+[gw2] [ 81%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.] 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.] 
+tests/unit/utils/configuration/test_contracts.py::test_boundary_catalog_follows_package_reexport_to_actual_adapter 
+[gw2] [ 82%] PASSED tests/unit/utils/configuration/test_contracts.py::test_boundary_catalog_follows_package_reexport_to_actual_adapter 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection] 
+[gw2] [ 83%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs] 
+[gw2] [ 83%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection] 
+[gw2] [ 84%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs] 
+[gw2] [ 84%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs] 
+[gw2] [ 85%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene] 
+[gw2] [ 85%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation] 
+[gw2] [ 86%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation] 
+tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules] 
+[gw2] [ 87%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules] 
+tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type 
+[gw2] [ 87%] PASSED tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig] 
+[gw2] [ 88%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallYoutubePathContract] 
+[gw2] [ 88%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallYoutubePathContract] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.TrackQueryModelConfig] 
+[gw2] [ 89%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.TrackQueryModelConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig] 
+[gw2] [ 89%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig] 
+[gw2] [ 90%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig] 
+[gw2] [ 91%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig] 
+[gw2] [ 91%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration] 
+[gw2] [ 92%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration] 
+tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig] 
+[gw2] [ 92%] PASSED tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig] 
+[gw0] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[None] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[4] 
+[gw3] [ 93%] PASSED tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity 
+tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts] 
+[gw3] [ 94%] PASSED tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts] 
+[gw0] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[4] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_nonfinite_loss_records_failure_without_regression_retry 
+[gw0] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_nonfinite_loss_records_failure_without_regression_retry 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_seconds-5101] 
+[gw0] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_seconds-5101] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_device_bytes-10000000001] 
+[gw0] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_device_bytes-10000000001] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[allocator_limit_gib-7.0] 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[allocator_limit_gib-7.0] 
+[gw1] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[updates-20001] 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-flow] 
+[gw0] [ 98%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[updates-20001] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule0] 
+[gw0] [ 98%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule0] 
+[gw1] [ 99%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-flow] 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-regression] 
+[gw1] [100%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-regression] 
+
+======================== 178 passed in 89.01s (0:01:29) ========================
