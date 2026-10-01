@@ -7,7 +7,6 @@ from dataclasses import replace
 from functools import lru_cache, partial
 from typing import TYPE_CHECKING, Any
 
-from src.tasks.person_tracking.all_person import ALL_PERSON_BOTSORT_SETTINGS
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
@@ -125,10 +124,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     body_enabled = cfg.enabled["gvhmr"]
     tracking_encoder = partial(build_encoder, cfg.tracking.encoder, checkpoint_root=cfg.roots.checkpoint_root,
                                external_root=cfg.roots.external_asset_root, device=cfg.device)
-    tracking_assets = ({'pose': cfg.people.vitpose_checkpoint, 'encoder': cfg.tracking_encoder_weights}
-                       if cfg.tracking.method != 'all_person_botsort' else {})
-    if cfg.tracking.offline:
-        tracking_assets['aflink'] = cfg.aflink_checkpoint
+    tracking_assets = {'pose': cfg.people.vitpose_checkpoint, 'encoder': cfg.tracking_encoder_weights,
+                       'aflink': cfg.aflink_checkpoint}
 
     def body_assets() -> dict[str, Any]:
         return asset_identities(body_enabled, cfg.people.body_assets())
@@ -169,7 +166,6 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=tracking_encoder,
             aflink_checkpoint=cfg.aflink_checkpoint, enabled=people_enabled), PersonTrackingInputAssembler(),
             {"detections": f"person_detection/{camera}"}, lambda: {"profile": cfg.tracking.identity(),
-                "baseline": ALL_PERSON_BOTSORT_SETTINGS if cfg.tracking.method == 'all_person_botsort' else None,
                 "assets": asset_identities(people_enabled, tracking_assets), "pose_runtime": cfg.people.runtime.vitpose,
                 "pose_precision": "float32", "boxes": "raw_detection_rows", "enabled": people_enabled}, camera=camera)
         add(f"player_selection/{camera}", PlayerSelectionModule(selection, footpoints=association.footpoints,
@@ -179,7 +175,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                 "enabled": people_enabled, "assets": asset_identities(people_enabled and weights is not None,
                     {} if weights is None else {"encoder": weights})}, camera=camera)
         add(f"pose_estimation/{camera}", PoseEstimationModule(cfg.people,
-            require_evidence=people_enabled and cfg.tracking.method != 'all_person_botsort'), PoseEstimationInputAssembler(),
+            require_evidence=people_enabled), PoseEstimationInputAssembler(),
             {"selection": f"player_selection/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
              "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
@@ -234,7 +230,6 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
            if cfg.ball_refiner.calibration_artifact is not None else {}),
         **({"detector": cfg.people.detector_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
-        **({"tracking_encoder": cfg.tracking_encoder_weights} if people and cfg.tracking.method != 'all_person_botsort' else {}),
-        **({"aflink": cfg.aflink_checkpoint} if people and cfg.tracking.offline else {}),
+        **({"tracking_encoder": cfg.tracking_encoder_weights, "aflink": cfg.aflink_checkpoint} if people else {}),
         **(cfg.people.body_assets() if body else {}),
     }

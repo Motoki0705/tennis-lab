@@ -20,7 +20,7 @@ _ACCAD = Path(
     "/home/kamimura/projects/tennis-lab/data/ACCAD/"
     "Male1Running_c3d/Run C25 - quick side step right_poses.npz"
 )
-_SMPLH = Path("/home/kamimura/projects/tennis-lab/data/smplh")
+_SMPLH = Path("/home/kamimura/projects/tennis-lab/ckpt/body_models/smplh")
 
 
 @pytest.mark.local_data
