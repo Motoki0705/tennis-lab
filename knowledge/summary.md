@@ -1,4 +1,4 @@
-<!-- knowledge-review: fbebfb680167fda08fc8aa225a56c489c5f68b5cccaae7b8f718ea1e0b0a8b09 on 2026-10-01 -->
+<!-- knowledge-review: 84030bcb621138cb26bc4528e4ac45e3ed80fbb9da918b4fd678af236a1e8241 on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-09-30（#964の追跡3方式・native KPR・下流group評価を反映）
@@ -329,6 +329,8 @@ presenceの消失ではなく、全GMMの不確実性とGT画素誤差とは異�
 再投影はscalar lossの約90%なので係数0.01だけで弱いとはしない。一方、保存出力の重み付き座標勾配p50は
 再投影0.116対physics0.288で、network勾配との違いを明記して再投影重み3倍の単因子比較を次に推奨する。
 512train/physics1e-3を基準に保持し、RMSE/粗さ/behindの悪化を成功にしない。[再投影3倍比較](nodes/ball_refiner_3d/000030-run-i936-repro3-512-physics10-r17-s936.md)を同16val/20k主判定で事前登録し、32testsと実CPU preflightが通過した。診断はp50を20%、meanを10%改善し、他軸105%以下・behind非増加を要求する。run18で全160予測/全評価点を回収し、診断と正式規則は両arm不合格。flow p50の改善は約9.5%に留まり、RMSEと窓内を含む粗さが悪化したため3倍を採用しない。比較基準は(c)のreprojection .01を維持し、保存入力・予測のCPU分析でconditioning/座標表現/損失のoffset原因を切り分ける。
+
+[現入力・保存出力のoffset診断](nodes/ball_refiner_3d/000031-run-i936-offset-source-cpu-r18-s936.md)では、入力が全cameraで5px以内の3,031frameでも(c) flowの再投影p50は10.10px、入力は1.49pxだった。正規化の丸め誤差は.001px未満。45窓中43窓で一定translation修正方向の現在の全GMM損失が下がり、physicsは不変だった。入力平均の同一offsetや数値解像度だけでは説明できず、出力損失とnetwork学習の違いが残る。GPUは追加せず、現(c)両encoderの全混合平均read-outを512train/同16valで行うCPU検証を次に選ぶ。旧bankの復元成功を現モデルへ一般化せず、結果によりencoderと時間処理/絶対座標headを切り分ける。oracle補正を推論や正式な改善として採用しない。
 
 [#935 anchored bankで同じ96ラリーを再生成・監査](nodes/ball_refiner_3d/000019-run-i936-anchored-dev-comparison-r12-s936.md)し、失敗0、全80train+valの軌道/camera/mask完全一致を確認した。全混合GT NLLは3.678→−2.979nat、HDR95は85.04→92.42%、平均HDR95体積193.0→33.63m³へ改善。HDR50は67.69%の過大被覆、1cameraの大誤差/過小被覆は残る。16valの混合平均/RTS RMSEは4.99/4.41mへ改善したが、RTSのbehind1件を含み最終優位とはしない。旧#959 devは対照として維持。新bankはfit frame由来で独立Meiji/OOF性能ではない。[640件の生成と最終監査](nodes/ball_refiner_3d/000020-run-i936-pilot-h-anchored-r13-s936.md)は512/64/64、272,986frame、失敗0で完了。全NPZ/JSON・run12 plan・36入力hash・元80train+val・旧#959 controlの不変性を検証した。単調時計6.215時間、最大worker単体RSS0.904GB、全dataset1.432GB。総RAM peakは未記録、wall時刻と単調時計の差も残している。元16valを固定した512trainの同一plan preflightは通過。test/追加valの配列・品質は未評価で、最終較正の完了とはしない。
 
