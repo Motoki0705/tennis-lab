@@ -38,6 +38,7 @@ from src.utils.configuration import (
     PathRole,
     RuntimePathRoots,
 )
+from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 from src.utils.schema.player import COCO17_SKELETON
 
@@ -508,25 +509,15 @@ class Review:
         turns = dict(zip(side["camera_ids"], side["view_half_turns"], strict=True))
         tracks: list[tuple[str, np.ndarray, np.ndarray]] = []
         for view in calibration["calibration"]["views"]:
-            camera = view["camera"]
-            camera_id = camera["camera_id"]
-            rotation: np.ndarray = _array(camera["rotation"]).astype(np.float64)
-            if turns[camera_id]:
-                rotation = rotation @ np.diag([-1., -1., 1.])
-            translation: np.ndarray = _array(camera["translation"]).astype(np.float64)
-            center = -rotation.T @ translation
-            inverse_intrinsic = np.linalg.inv(_array(camera["intrinsic"]).astype(np.float64))
+            camera_id = view["camera"]["camera_id"]
+            camera = PinholeCamera(camera_id, *(_array(view["camera"][key]).astype(np.float64)
+                                                for key in ("intrinsic", "rotation", "translation"))).half_turned(turns[camera_id])
             tracking, _ = self.payload(f"person_tracking/{camera_id}")
             boxes, observed = _array(tracking["boxes_xyxy"]), _array(tracking["observed"])
             for row, track_id in enumerate(_array(tracking["track_ids"])):
                 box = boxes[row]
-                uv1 = np.column_stack(((box[:, 0] + box[:, 2]) / 2, box[:, 3], np.ones(len(box))))
-                rays = (uv1 @ inverse_intrinsic.T) @ rotation
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    scale = -center[2] / rays[:, 2]
-                ground = center + scale[:, None] * rays
-                valid = observed[row] & np.isfinite(ground).all(-1)
-                tracks.append((f"{camera_id}:{int(track_id)}", ground[:, :2], valid))
+                ground, hits = camera.backproject_to_plane(np.column_stack(((box[:, 0] + box[:, 2]) / 2, box[:, 3])))
+                tracks.append((f"{camera_id}:{int(track_id)}", ground[:, :2], observed[row] & hits))
         count = len(tracks)
         distances: np.ndarray = np.full((count, count), np.nan, np.float64)
         comparisons: list[tuple[str, str, float, int]] = []

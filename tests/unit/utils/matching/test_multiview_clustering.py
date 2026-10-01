@@ -7,7 +7,7 @@ from itertools import combinations
 import numpy as np
 import pytest
 
-from src.utils.matching import cluster_multiview
+from src.utils.matching import SolverTimeLimit, cluster_multiview, decision_margins
 from src.utils.matching.multiview_clustering import MAX_ITEMS
 
 
@@ -166,3 +166,43 @@ def test_problem_size_is_bounded():
     count = MAX_ITEMS + 1
     with pytest.raises(ValueError, match="at most"):
         cluster_multiview(np.zeros((count, count)), np.arange(count))
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_requested_margins_equal_the_full_computation(seed):
+    rng = np.random.default_rng(100 + seed)
+    scores, views, allowed = _random_problem(rng, 6, 3)
+    full = cluster_multiview(scores, views, allowed=allowed, with_margins=True)
+    base = cluster_multiview(scores, views, allowed=allowed)
+    items: np.ndarray = np.zeros(6, bool)
+    items[rng.integers(0, 6)] = True
+    partial = decision_margins(base, scores, views, allowed=allowed, items=items)
+    assert full.margins is not None and partial.margins is not None
+    relevant = items[:, None] | items[None, :]
+    np.testing.assert_allclose(partial.margins[relevant], full.margins[relevant])
+    finite_elsewhere = ~relevant & np.isfinite(full.margins)
+    assert np.isnan(partial.margins[finite_elsewhere]).all()
+    assert partial.ambiguous_pairs(np.inf, items=items) == full.ambiguous_pairs(np.inf, items=items)
+
+
+def test_ambiguity_of_an_unrequested_pair_is_refused():
+    views = np.array([0, 1, 2])
+    scores = np.ones((3, 3))
+    base = cluster_multiview(scores, views)
+    partial = decision_margins(base, scores, views, items=np.array([True, False, False]))
+    with pytest.raises(ValueError, match="were not computed"):
+        partial.ambiguous_pairs(1.)
+
+
+def test_margins_of_a_foreign_clustering_are_refused():
+    views = np.array([0, 1])
+    base = cluster_multiview(np.array([[0., 1.], [1., 0.]]), views)
+    with pytest.raises(ValueError, match="does not belong"):
+        decision_margins(base, np.array([[0., -1.], [-1., 0.]]), views)
+
+
+def test_a_solver_time_limit_is_its_own_error_and_returns_nothing():
+    rng = np.random.default_rng(7)
+    scores, views, _ = _random_problem(rng, 20, 20)
+    with pytest.raises(SolverTimeLimit, match="time limit"):
+        cluster_multiview(scores, views, time_limit_s=1e-9)
