@@ -51,6 +51,10 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 DINOv3の外部sourceは `paths.external_asset_root`、学習済み重みは `paths.checkpoint_root` から読む。
 相対パスの正本は `configs/model/encoder/dinov3.yaml`。旧source配下の重みへのfallbackは行わない。
+checkpoint内に保存された旧 `dinov3/checkpoints/<filename>` は、推論境界で同名の
+`dinov3/<filename>` へ明示変換し、警告と `backbone_asset_migration` に記録する。
+呼び出し側のresolverを優先し、省略時の旧layoutはprojectの `ckpt/` を使う。
+checkpoint本体・保存architectureは変更しない。新配置の資産が無ければ停止する。
 
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
