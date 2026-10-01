@@ -273,17 +273,26 @@ def require_config_mapping(
     )
 
 
-def _optional_path(
+def _optional_checkpoint_input(
     mapping: ConfigMapping,
     key: str,
     *,
     path: str,
     resolver: PathResolver,
-    role: PathRole,
 ) -> Path | None:
-    raw = require_config_value(mapping, key, (str, type(None)), path=path)
+    """Keep legacy checkpoint fragments; artifact inputs declare their role."""
+    raw = require_config_value(mapping, key, (str, dict, DictConfig, type(None)), path=path)
     if raw is None:
         return None
+    role = PathRole.CHECKPOINT
+    if not isinstance(raw, str):
+        location = f"{path}.{key}"
+        declaration = exact_config_mapping(raw, path=location, required_keys={"role", "path"})
+        role_name = cast(str, require_config_value(declaration, "role", str, path=location))
+        if role_name not in {PathRole.CHECKPOINT.value, PathRole.ARTIFACT.value}:
+            raise SemanticConfigurationError(f"{location}.role must be checkpoint or artifact.")
+        role = PathRole(role_name)
+        raw = require_config_value(declaration, "path", str, path=location)
     if raw == "":
         raise SemanticConfigurationError(f"{path}.{key}: path must not be empty.")
     resolved: Path = resolver.resolve(role, cast("str", raw))
@@ -416,15 +425,14 @@ class BaseRunConfig:
         )
         if not output:
             raise SemanticConfigurationError("run.output_dir must not be empty.")
-        resume = _optional_path(
-            mapping, "resume", path="run", resolver=resolver, role=PathRole.CHECKPOINT
+        resume = _optional_checkpoint_input(
+            mapping, "resume", path="run", resolver=resolver,
         )
-        init_weights = _optional_path(
+        init_weights = _optional_checkpoint_input(
             mapping,
             "init_weights",
             path="run",
             resolver=resolver,
-            role=PathRole.CHECKPOINT,
         )
         if resume is not None and init_weights is not None:
             raise SemanticConfigurationError(

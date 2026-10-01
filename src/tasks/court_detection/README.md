@@ -56,6 +56,12 @@ checkpoint内に保存された旧 `dinov3/checkpoints/<filename>` は、推論�
 呼び出し側のresolverを優先し、省略時の旧layoutはprojectの `ckpt/` を使う。
 checkpoint本体・保存architectureは変更しない。新配置の資産が無ければ停止する。
 
+学習でも `paths.checkpoint_root=ckpt` を使う。既存の学習出力から再開・初期化するときは
+`run.resume={role:artifact,path:court_detection/.../last.ckpt}` または
+`run.init_weights={role:artifact,path:court_detection/.../model.ckpt}` を明示する。
+これらは `paths.artifact_root=outputs` を参照し、DINOv3の初期weightは引き続きckptから読む。
+文字列だけの指定はcheckpoint root相対で、resumeとinit_weightsは同時に指定しない。
+
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
