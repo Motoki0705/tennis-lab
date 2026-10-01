@@ -1,0 +1,1491 @@
+{
+  "frames": 6383,
+  "val_rallies": 16,
+  "test_arrays_read": 0,
+  "extra_val_arrays_read": 0,
+  "support_counts": {
+    "all": 6383,
+    "three_visible": 4831,
+    "three_visible_input_within5": 3031
+  },
+  "statistics": {
+    "c_flow_mean/reprojection/all": {
+      "count": 17524,
+      "mean": 20.731146580870572,
+      "p50": 12.09613318852902,
+      "p95": 64.35244414521297,
+      "maximum": 1087.516027195607,
+      "rms": 39.98031131785701
+    },
+    "c_flow_mean/error_m/all": {
+      "count": 6383,
+      "mean": 0.9997294239611895,
+      "p50": 0.3890345284238469,
+      "p95": 3.93631927184913,
+      "maximum": 11.301937529207768,
+      "rms": 1.9531850263102082
+    },
+    "c_flow_mean/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 17.64372314613857,
+      "p50": 11.066551082161757,
+      "p95": 55.29473075536423,
+      "maximum": 430.5863754646598,
+      "rms": 29.5598188402856
+    },
+    "c_flow_mean/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.5009686680671053,
+      "p50": 0.3070727467668324,
+      "p95": 1.4642175024663564,
+      "maximum": 6.521456989185078,
+      "rms": 0.765366737918499
+    },
+    "c_flow_mean/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 14.009533998738414,
+      "p50": 10.101917518887824,
+      "p95": 38.85254129760246,
+      "maximum": 233.3763774544526,
+      "rms": 20.0947997671666
+    },
+    "c_flow_mean/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.368107992085186,
+      "p50": 0.2790400745537686,
+      "p95": 0.8884395324228584,
+      "maximum": 4.80289957134926,
+      "rms": 0.4748691100688884
+    },
+    "c_flow_mean/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 17.225192163309604,
+      "p50": 10.975356054229211,
+      "p95": 49.29324234101678,
+      "maximum": 380.09986841817755,
+      "rms": 29.806416180562618
+    },
+    "c_flow_mean/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 0.6156467131802789,
+      "p50": 0.172251708870287,
+      "p95": 1.462329127752669,
+      "maximum": 79.13564184711561,
+      "rms": 2.8476738492813265
+    },
+    "c_flow_samples/reprojection/all": {
+      "count": 70096,
+      "mean": 20.735798850836037,
+      "p50": 12.104423839167525,
+      "p95": 64.21569996883741,
+      "maximum": 1130.0738376589786,
+      "rms": 39.99053047144897
+    },
+    "c_flow_samples/error_m/all": {
+      "count": 25532,
+      "mean": 1.0002344086804662,
+      "p50": 0.3898607785050908,
+      "p95": 3.9382297553993193,
+      "maximum": 11.995252153789195,
+      "rms": 1.956053313090483
+    },
+    "c_flow_samples/reprojection/three_visible": {
+      "count": 57972,
+      "mean": 17.648206727077664,
+      "p50": 11.078523163502426,
+      "p95": 55.092292592108585,
+      "maximum": 431.60537751923647,
+      "rms": 29.566115440702188
+    },
+    "c_flow_samples/error_m/three_visible": {
+      "count": 19324,
+      "mean": 0.5013003188172163,
+      "p50": 0.3071096570733881,
+      "p95": 1.4575743101273146,
+      "maximum": 6.534874834119853,
+      "rms": 0.7656084462423418
+    },
+    "c_flow_samples/reprojection/three_visible_input_within5": {
+      "count": 36372,
+      "mean": 14.014234512818604,
+      "p50": 10.081317359401124,
+      "p95": 38.92743469063792,
+      "maximum": 235.4441713598867,
+      "rms": 20.10298095947634
+    },
+    "c_flow_samples/error_m/three_visible_input_within5": {
+      "count": 12124,
+      "mean": 0.3684864593545643,
+      "p50": 0.28023698749915826,
+      "p95": 0.8888474003225029,
+      "maximum": 4.863057649327327,
+      "rms": 0.4752244091186392
+    },
+    "c_flow_samples/five_frame_trend_px": {
+      "count": 33948,
+      "mean": 17.229443436698308,
+      "p50": 10.969451174275873,
+      "p95": 49.313293062162415,
+      "maximum": 383.4317544782543,
+      "rms": 29.81252715051629
+    },
+    "c_flow_samples/five_frame_residual_px": {
+      "count": 33948,
+      "mean": 0.6165345395033569,
+      "p50": 0.17292662756286736,
+      "p95": 1.4678762357131452,
+      "maximum": 79.76837241743148,
+      "rms": 2.848413951498302
+    },
+    "c_regression_mean/reprojection/all": {
+      "count": 17524,
+      "mean": 18.581451170898905,
+      "p50": 9.624358700824434,
+      "p95": 60.006753961568826,
+      "maximum": 731.9030493766348,
+      "rms": 37.42608527033413
+    },
+    "c_regression_mean/error_m/all": {
+      "count": 6383,
+      "mean": 0.9897124528911929,
+      "p50": 0.3566882754599742,
+      "p95": 3.7453765410951605,
+      "maximum": 15.319507577045707,
+      "rms": 2.054918208717653
+    },
+    "c_regression_mean/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 15.59000204158851,
+      "p50": 8.82939674844437,
+      "p95": 49.42269650725568,
+      "maximum": 442.8096518378272,
+      "rms": 28.686785363811694
+    },
+    "c_regression_mean/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.4767563479670479,
+      "p50": 0.2790618721963962,
+      "p95": 1.4714962781440093,
+      "maximum": 6.448721148089719,
+      "rms": 0.7589279389136477
+    },
+    "c_regression_mean/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 11.852135619191339,
+      "p50": 7.872470985505184,
+      "p95": 34.434693952880856,
+      "maximum": 275.8031628219159,
+      "rms": 18.068463130191727
+    },
+    "c_regression_mean/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.3346914253588927,
+      "p50": 0.24490659570972723,
+      "p95": 0.861519635026086,
+      "maximum": 5.061301480546328,
+      "rms": 0.44606072689647025
+    },
+    "c_regression_mean/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 14.719375066361874,
+      "p50": 8.292064298768892,
+      "p95": 42.6160395321513,
+      "maximum": 428.1258347784924,
+      "rms": 28.848186053086536
+    },
+    "c_regression_mean/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 0.5789285475246881,
+      "p50": 0.17951978423591702,
+      "p95": 1.406642804603416,
+      "maximum": 71.10952108105388,
+      "rms": 2.578600957831591
+    },
+    "c_regression_samples/reprojection/all": {
+      "count": 17524,
+      "mean": 18.581451170898905,
+      "p50": 9.624358700824434,
+      "p95": 60.006753961568826,
+      "maximum": 731.9030493766348,
+      "rms": 37.42608527033413
+    },
+    "c_regression_samples/error_m/all": {
+      "count": 6383,
+      "mean": 0.9897124528911929,
+      "p50": 0.3566882754599742,
+      "p95": 3.7453765410951605,
+      "maximum": 15.319507577045707,
+      "rms": 2.054918208717653
+    },
+    "c_regression_samples/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 15.59000204158851,
+      "p50": 8.82939674844437,
+      "p95": 49.42269650725568,
+      "maximum": 442.8096518378272,
+      "rms": 28.686785363811694
+    },
+    "c_regression_samples/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.4767563479670479,
+      "p50": 0.2790618721963962,
+      "p95": 1.4714962781440093,
+      "maximum": 6.448721148089719,
+      "rms": 0.7589279389136477
+    },
+    "c_regression_samples/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 11.852135619191339,
+      "p50": 7.872470985505184,
+      "p95": 34.434693952880856,
+      "maximum": 275.8031628219159,
+      "rms": 18.068463130191727
+    },
+    "c_regression_samples/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.3346914253588927,
+      "p50": 0.24490659570972723,
+      "p95": 0.861519635026086,
+      "maximum": 5.061301480546328,
+      "rms": 0.44606072689647025
+    },
+    "c_regression_samples/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 14.719375066361874,
+      "p50": 8.292064298768892,
+      "p95": 42.6160395321513,
+      "maximum": 428.1258347784924,
+      "rms": 28.848186053086536
+    },
+    "c_regression_samples/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 0.5789285475246881,
+      "p50": 0.17951978423591702,
+      "p95": 1.406642804603416,
+      "maximum": 71.10952108105388,
+      "rms": 2.578600957831591
+    },
+    "repro3_flow_mean/reprojection/all": {
+      "count": 17524,
+      "mean": 20.017191401121252,
+      "p50": 10.948650680121329,
+      "p95": 67.15796488928787,
+      "maximum": 832.8269803793045,
+      "rms": 38.53893465554617
+    },
+    "repro3_flow_mean/error_m/all": {
+      "count": 6383,
+      "mean": 1.0909028189739385,
+      "p50": 0.37212147689699865,
+      "p95": 4.533118664364736,
+      "maximum": 16.282955061446334,
+      "rms": 2.2869621764724344
+    },
+    "repro3_flow_mean/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 16.87264015954816,
+      "p50": 9.98367628874227,
+      "p95": 55.508509334290174,
+      "maximum": 541.507957694676,
+      "rms": 30.726732820037796
+    },
+    "repro3_flow_mean/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.4997503948554912,
+      "p50": 0.2939060223540876,
+      "p95": 1.5753693462474074,
+      "maximum": 6.511040867626815,
+      "rms": 0.804264588829969
+    },
+    "repro3_flow_mean/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 12.533142048460286,
+      "p50": 8.932913128818456,
+      "p95": 35.550793479579504,
+      "maximum": 238.45614338631984,
+      "rms": 18.952766442880673
+    },
+    "repro3_flow_mean/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.34029151842056854,
+      "p50": 0.261766371770691,
+      "p95": 0.808892158631451,
+      "maximum": 5.824037200331189,
+      "rms": 0.43847022709852773
+    },
+    "repro3_flow_mean/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 16.797497308857388,
+      "p50": 10.079059358616076,
+      "p95": 50.68793148560124,
+      "maximum": 511.9969611254486,
+      "rms": 31.30017938818287
+    },
+    "repro3_flow_mean/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 0.9560811088942794,
+      "p50": 0.3036811866526384,
+      "p95": 3.5055693238017844,
+      "maximum": 70.4855158566214,
+      "rms": 3.074175677647812
+    },
+    "repro3_flow_samples/reprojection/all": {
+      "count": 70096,
+      "mean": 20.019981243826056,
+      "p50": 10.951891825981376,
+      "p95": 67.37289704996303,
+      "maximum": 853.4242691114518,
+      "rms": 38.544101739936664
+    },
+    "repro3_flow_samples/error_m/all": {
+      "count": 25532,
+      "mean": 1.0913777529322428,
+      "p50": 0.3729722254216311,
+      "p95": 4.497653161596651,
+      "maximum": 17.083680938911353,
+      "rms": 2.2904704722839138
+    },
+    "repro3_flow_samples/reprojection/three_visible": {
+      "count": 57972,
+      "mean": 16.87522271674538,
+      "p50": 9.991374071605893,
+      "p95": 55.63265693674708,
+      "maximum": 547.7512819550931,
+      "rms": 30.730782673029115
+    },
+    "repro3_flow_samples/error_m/three_visible": {
+      "count": 19324,
+      "mean": 0.4998638367801948,
+      "p50": 0.2937520382575236,
+      "p95": 1.5765736480949153,
+      "maximum": 6.593547211700123,
+      "rms": 0.8043816408583814
+    },
+    "repro3_flow_samples/reprojection/three_visible_input_within5": {
+      "count": 36372,
+      "mean": 12.535906032862602,
+      "p50": 8.938594971119912,
+      "p95": 35.59804844642029,
+      "maximum": 248.47495975220238,
+      "rms": 18.957433423491825
+    },
+    "repro3_flow_samples/error_m/three_visible_input_within5": {
+      "count": 12124,
+      "mean": 0.3404152605993753,
+      "p50": 0.26127214280064737,
+      "p95": 0.8105879515229124,
+      "maximum": 5.876517783392832,
+      "rms": 0.4386206769626266
+    },
+    "repro3_flow_samples/five_frame_trend_px": {
+      "count": 33948,
+      "mean": 16.799624945859915,
+      "p50": 10.084664518560128,
+      "p95": 50.52025639265094,
+      "maximum": 517.4239886387659,
+      "rms": 31.303355729485386
+    },
+    "repro3_flow_samples/five_frame_residual_px": {
+      "count": 33948,
+      "mean": 0.957704004367695,
+      "p50": 0.3062452000291218,
+      "p95": 3.5219913225201696,
+      "maximum": 70.82885154981538,
+      "rms": 3.075470550950713
+    },
+    "repro3_regression_mean/reprojection/all": {
+      "count": 17524,
+      "mean": 18.255268323038614,
+      "p50": 9.095404246882648,
+      "p95": 64.00747509061735,
+      "maximum": 596.0014667463064,
+      "rms": 36.72106593157695
+    },
+    "repro3_regression_mean/error_m/all": {
+      "count": 6383,
+      "mean": 1.084437702992906,
+      "p50": 0.42385897592589616,
+      "p95": 4.823328303681013,
+      "maximum": 14.366993781642748,
+      "rms": 2.149828203057054
+    },
+    "repro3_regression_mean/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 15.267854910228527,
+      "p50": 8.143305904337488,
+      "p95": 51.55711509810319,
+      "maximum": 561.6063590036398,
+      "rms": 30.062434611243766
+    },
+    "repro3_regression_mean/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.5431725190293244,
+      "p50": 0.3646625326313071,
+      "p95": 1.647810873094862,
+      "maximum": 6.87844552232699,
+      "rms": 0.8448117243974337
+    },
+    "repro3_regression_mean/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 10.953052326898062,
+      "p50": 7.171903407827647,
+      "p95": 33.486712270574614,
+      "maximum": 234.0688755276312,
+      "rms": 17.33289011032493
+    },
+    "repro3_regression_mean/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.38877040922017947,
+      "p50": 0.3382922384715869,
+      "p95": 0.8392950635227003,
+      "maximum": 5.8203063331742175,
+      "rms": 0.4773895372267957
+    },
+    "repro3_regression_mean/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 14.88754174108815,
+      "p50": 7.947245287568557,
+      "p95": 48.18845653743517,
+      "maximum": 523.7779531936638,
+      "rms": 30.888520531246964
+    },
+    "repro3_regression_mean/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 0.8630732996388517,
+      "p50": 0.29915369175049084,
+      "p95": 3.121871834415567,
+      "maximum": 54.054289356058774,
+      "rms": 2.624896702514089
+    },
+    "repro3_regression_samples/reprojection/all": {
+      "count": 17524,
+      "mean": 18.255268323038614,
+      "p50": 9.095404246882648,
+      "p95": 64.00747509061735,
+      "maximum": 596.0014667463064,
+      "rms": 36.72106593157695
+    },
+    "repro3_regression_samples/error_m/all": {
+      "count": 6383,
+      "mean": 1.084437702992906,
+      "p50": 0.42385897592589616,
+      "p95": 4.823328303681013,
+      "maximum": 14.366993781642748,
+      "rms": 2.149828203057054
+    },
+    "repro3_regression_samples/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 15.267854910228527,
+      "p50": 8.143305904337488,
+      "p95": 51.55711509810319,
+      "maximum": 561.6063590036398,
+      "rms": 30.062434611243766
+    },
+    "repro3_regression_samples/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.5431725190293244,
+      "p50": 0.3646625326313071,
+      "p95": 1.647810873094862,
+      "maximum": 6.87844552232699,
+      "rms": 0.8448117243974337
+    },
+    "repro3_regression_samples/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 10.953052326898062,
+      "p50": 7.171903407827647,
+      "p95": 33.486712270574614,
+      "maximum": 234.0688755276312,
+      "rms": 17.33289011032493
+    },
+    "repro3_regression_samples/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.38877040922017947,
+      "p50": 0.3382922384715869,
+      "p95": 0.8392950635227003,
+      "maximum": 5.8203063331742175,
+      "rms": 0.4773895372267957
+    },
+    "repro3_regression_samples/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 14.88754174108815,
+      "p50": 7.947245287568557,
+      "p95": 48.18845653743517,
+      "maximum": 523.7779531936638,
+      "rms": 30.888520531246964
+    },
+    "repro3_regression_samples/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 0.8630732996388517,
+      "p50": 0.29915369175049084,
+      "p95": 3.121871834415567,
+      "maximum": 54.054289356058774,
+      "rms": 2.624896702514089
+    },
+    "mixture_mean/reprojection/all": {
+      "count": 17528,
+      "mean": 16.55021346850066,
+      "p50": 2.489533486982422,
+      "p95": 82.08198055120891,
+      "maximum": 1055.2947862163503,
+      "rms": 52.51582105564453
+    },
+    "mixture_mean/error_m/all": {
+      "count": 6383,
+      "mean": 1.869779110371293,
+      "p50": 0.1387345287887831,
+      "p95": 12.286418731567041,
+      "maximum": 37.70028116963542,
+      "rms": 4.994306312021373
+    },
+    "mixture_mean/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 12.141999257432126,
+      "p50": 2.108715886900009,
+      "p95": 54.46121450836051,
+      "maximum": 1055.2947862163503,
+      "rms": 48.0695946222515
+    },
+    "mixture_mean/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.5165511804350994,
+      "p50": 0.094868454196563,
+      "p95": 2.559648617336118,
+      "maximum": 21.969842900811233,
+      "rms": 1.607497506879467
+    },
+    "mixture_mean/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 1.71364639966335,
+      "p50": 1.4865197046965366,
+      "p95": 3.946862076977941,
+      "maximum": 4.998491457322867,
+      "rms": 2.0357551711745727
+    },
+    "mixture_mean/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.07391066429448094,
+      "p50": 0.05895849943819497,
+      "p95": 0.18680958991449248,
+      "maximum": 0.459972894837035,
+      "rms": 0.09319197600254571
+    },
+    "mixture_mean/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 10.803699731712934,
+      "p50": 1.7606964398140301,
+      "p95": 54.94775075298831,
+      "maximum": 775.3737640660469,
+      "rms": 37.324541430452875
+    },
+    "mixture_mean/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 7.619960896273095,
+      "p50": 1.4576736594437496,
+      "p95": 36.85167486378785,
+      "maximum": 532.2311712202536,
+      "rms": 24.889393730941325
+    },
+    "mixture_mean_rts/reprojection/all": {
+      "count": 17527,
+      "mean": 16.43640899702379,
+      "p50": 2.472078710348802,
+      "p95": 74.81194600500865,
+      "maximum": 8513.657484376603,
+      "rms": 82.06592130890635
+    },
+    "mixture_mean_rts/error_m/all": {
+      "count": 6383,
+      "mean": 1.7177629346762555,
+      "p50": 0.14332723475219336,
+      "p95": 10.762101760095202,
+      "maximum": 37.63892651354061,
+      "rms": 4.408436476414247
+    },
+    "mixture_mean_rts/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 12.159409221352231,
+      "p50": 1.8864726729410317,
+      "p95": 53.223058150668464,
+      "maximum": 927.6566942701705,
+      "rms": 44.791616112063345
+    },
+    "mixture_mean_rts/error_m/three_visible": {
+      "count": 4831,
+      "mean": 0.5366566952939609,
+      "p50": 0.0871826732077802,
+      "p95": 2.872524143738442,
+      "maximum": 21.96984270306465,
+      "rms": 1.6065137654612849
+    },
+    "mixture_mean_rts/reprojection/three_visible_input_within5": {
+      "count": 9093,
+      "mean": 5.256831435372096,
+      "p50": 1.3687903107946282,
+      "p95": 18.64980230671277,
+      "maximum": 556.3780221675445,
+      "rms": 20.825528342398457
+    },
+    "mixture_mean_rts/error_m/three_visible_input_within5": {
+      "count": 3031,
+      "mean": 0.22456037050386685,
+      "p50": 0.062290748516519,
+      "p95": 0.926955330905066,
+      "maximum": 16.746692976560233,
+      "rms": 0.7203069519902818
+    },
+    "mixture_mean_rts/five_frame_trend_px": {
+      "count": 8487,
+      "mean": 12.514543945507384,
+      "p50": 1.865630808059675,
+      "p95": 52.15573927893896,
+      "maximum": 655.3156007496797,
+      "rms": 47.10724236686706
+    },
+    "mixture_mean_rts/five_frame_residual_px": {
+      "count": 8487,
+      "mean": 0.4580096364258728,
+      "p50": 0.058598917449379825,
+      "p95": 1.3109594233514046,
+      "maximum": 93.66658475147489,
+      "rms": 2.885385377003043
+    }
+  },
+  "error_alignment": {
+    "c_flow_mean/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        -0.1750872710037919,
+        -0.4424393153548146,
+        -0.02912868419539009
+      ],
+      "pearson_per_axis": [
+        0.6416536653725701,
+        -0.03439278333963864,
+        0.6469190472106104
+      ],
+      "cosine_mean": 0.1615535052967597
+    },
+    "c_flow_mean/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        -0.1879029285109287,
+        -0.05758709621690314,
+        -0.040794526722975316
+      ],
+      "pearson_per_axis": [
+        0.6223500400096299,
+        0.49921179306253577,
+        0.6005245470365363
+      ],
+      "cosine_mean": 0.15982406602356206
+    },
+    "c_flow_mean/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        -0.1857500168866979,
+        -0.03112427813422853,
+        -0.03262258930671736
+      ],
+      "pearson_per_axis": [
+        0.04187513485348615,
+        0.05357428189246557,
+        0.04422285622551357
+      ],
+      "cosine_mean": 0.03710009455760885
+    },
+    "c_flow_samples/all": {
+      "count": 25532,
+      "mean_signed_error_m": [
+        -0.17508727535719923,
+        -0.44243931594010005,
+        -0.02912868490423684
+      ],
+      "pearson_per_axis": [
+        0.6413708717908956,
+        -0.03433121244266466,
+        0.6467191347204436
+      ],
+      "cosine_mean": 0.16149070235844412
+    },
+    "c_flow_samples/three_visible": {
+      "count": 19324,
+      "mean_signed_error_m": [
+        -0.18790292959948487,
+        -0.057587092453711894,
+        -0.04079452680869034
+      ],
+      "pearson_per_axis": [
+        0.6222921918764988,
+        0.4990113829015304,
+        0.6004192183078384
+      ],
+      "cosine_mean": 0.15968117040477844
+    },
+    "c_flow_samples/three_visible_input_within5": {
+      "count": 12124,
+      "mean_signed_error_m": [
+        -0.1857500191545258,
+        -0.03112427637224893,
+        -0.032622589361410666
+      ],
+      "pearson_per_axis": [
+        0.04186373720365165,
+        0.05351992628834995,
+        0.044203428268162
+      ],
+      "cosine_mean": 0.03698231401776533
+    },
+    "c_regression_mean/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        0.0896895781296772,
+        -0.37867579440185645,
+        -0.0896857152736643
+      ],
+      "pearson_per_axis": [
+        0.41554469197725696,
+        -0.005687037724046413,
+        0.6720973806021863
+      ],
+      "cosine_mean": 0.2026055535474719
+    },
+    "c_regression_mean/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        0.06461948992221714,
+        0.04909489125645093,
+        -0.1031740248206338
+      ],
+      "pearson_per_axis": [
+        0.6338791881613742,
+        0.5291699580683782,
+        0.6264647446953675
+      ],
+      "cosine_mean": 0.20641216692844705
+    },
+    "c_regression_mean/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        0.06705263361550809,
+        0.09056146798266085,
+        -0.09490147859276528
+      ],
+      "pearson_per_axis": [
+        0.0435323299305756,
+        0.050847950152192255,
+        0.03098067970272963
+      ],
+      "cosine_mean": 0.08623556576554317
+    },
+    "c_regression_samples/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        0.0896895781296772,
+        -0.37867579440185645,
+        -0.0896857152736643
+      ],
+      "pearson_per_axis": [
+        0.41554469197725696,
+        -0.005687037724046413,
+        0.6720973806021863
+      ],
+      "cosine_mean": 0.2026055535474719
+    },
+    "c_regression_samples/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        0.06461948992221714,
+        0.04909489125645093,
+        -0.1031740248206338
+      ],
+      "pearson_per_axis": [
+        0.6338791881613742,
+        0.5291699580683782,
+        0.6264647446953675
+      ],
+      "cosine_mean": 0.20641216692844705
+    },
+    "c_regression_samples/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        0.06705263361550809,
+        0.09056146798266085,
+        -0.09490147859276528
+      ],
+      "pearson_per_axis": [
+        0.0435323299305756,
+        0.050847950152192255,
+        0.03098067970272963
+      ],
+      "cosine_mean": 0.08623556576554317
+    },
+    "repro3_flow_mean/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        -0.09067213541680402,
+        -0.35100883677190614,
+        -0.06895955131442566
+      ],
+      "pearson_per_axis": [
+        0.600471149071279,
+        0.03968471326796536,
+        0.6902348462725514
+      ],
+      "cosine_mean": 0.21141985649293527
+    },
+    "repro3_flow_mean/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        -0.14761959751969847,
+        0.09761983135232115,
+        -0.06396324577561509
+      ],
+      "pearson_per_axis": [
+        0.6890717071697375,
+        0.5348647401142601,
+        0.7722463633352314
+      ],
+      "cosine_mean": 0.20926906195890194
+    },
+    "repro3_flow_mean/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        -0.14254703958067813,
+        0.12067880944611738,
+        -0.054514188805788774
+      ],
+      "pearson_per_axis": [
+        0.07925023763670377,
+        0.07278226853125565,
+        0.11189616903862841
+      ],
+      "cosine_mean": 0.10888437698104228
+    },
+    "repro3_flow_samples/all": {
+      "count": 25532,
+      "mean_signed_error_m": [
+        -0.0906721383886087,
+        -0.3510088362428073,
+        -0.0689595526720378
+      ],
+      "pearson_per_axis": [
+        0.6000785842451164,
+        0.03961365289045352,
+        0.6899762168990132
+      ],
+      "cosine_mean": 0.21138208466307426
+    },
+    "repro3_flow_samples/three_visible": {
+      "count": 19324,
+      "mean_signed_error_m": [
+        -0.14761960040371355,
+        0.09761983365769274,
+        -0.06396324563454646
+      ],
+      "pearson_per_axis": [
+        0.6890012367887325,
+        0.5347757349720479,
+        0.7721393002818123
+      ],
+      "cosine_mean": 0.20922083759623605
+    },
+    "repro3_flow_samples/three_visible_input_within5": {
+      "count": 12124,
+      "mean_signed_error_m": [
+        -0.14254704440769994,
+        0.12067881230608003,
+        -0.054514185847011364
+      ],
+      "pearson_per_axis": [
+        0.07922746381950722,
+        0.07274959443723447,
+        0.11184732712073575
+      ],
+      "cosine_mean": 0.10881546023919222
+    },
+    "repro3_regression_mean/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        0.12761484394625647,
+        -0.2168652292727519,
+        -0.03141085856399031
+      ],
+      "pearson_per_axis": [
+        0.5852611391932018,
+        0.05787209859986357,
+        0.7331438855354167
+      ],
+      "cosine_mean": 0.2249857148096634
+    },
+    "repro3_regression_mean/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        0.09381881202163123,
+        0.23620363436534245,
+        -0.041722042224841965
+      ],
+      "pearson_per_axis": [
+        0.7145732593748192,
+        0.5839858203356957,
+        0.7474371394354027
+      ],
+      "cosine_mean": 0.2181912568308244
+    },
+    "repro3_regression_mean/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        0.09733367319854777,
+        0.2813397723759999,
+        -0.03424531831129902
+      ],
+      "pearson_per_axis": [
+        0.057328287950037325,
+        0.10924118140612017,
+        0.12624663723957474
+      ],
+      "cosine_mean": 0.13190788395004177
+    },
+    "repro3_regression_samples/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        0.12761484394625647,
+        -0.2168652292727519,
+        -0.03141085856399031
+      ],
+      "pearson_per_axis": [
+        0.5852611391932018,
+        0.05787209859986357,
+        0.7331438855354167
+      ],
+      "cosine_mean": 0.2249857148096634
+    },
+    "repro3_regression_samples/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        0.09381881202163123,
+        0.23620363436534245,
+        -0.041722042224841965
+      ],
+      "pearson_per_axis": [
+        0.7145732593748192,
+        0.5839858203356957,
+        0.7474371394354027
+      ],
+      "cosine_mean": 0.2181912568308244
+    },
+    "repro3_regression_samples/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        0.09733367319854777,
+        0.2813397723759999,
+        -0.03424531831129902
+      ],
+      "pearson_per_axis": [
+        0.057328287950037325,
+        0.10924118140612017,
+        0.12624663723957474
+      ],
+      "cosine_mean": 0.13190788395004177
+    },
+    "mixture_mean/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        0.07414560146176347,
+        -0.16248177591362026,
+        0.05237757943814299
+      ],
+      "pearson_per_axis": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "cosine_mean": 1.0
+    },
+    "mixture_mean/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        -0.019598794821534885,
+        -0.18273119814813282,
+        -0.014887799772898398
+      ],
+      "pearson_per_axis": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "cosine_mean": 1.0
+    },
+    "mixture_mean/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        0.0007798996025456014,
+        0.011742033650425294,
+        0.0019324952679052217
+      ],
+      "pearson_per_axis": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "cosine_mean": 1.0
+    },
+    "mixture_mean_rts/all": {
+      "count": 6383,
+      "mean_signed_error_m": [
+        0.11445150373712723,
+        -0.14655587618889712,
+        0.004051404120588403
+      ],
+      "pearson_per_axis": [
+        0.9216545844425184,
+        0.8848944438566154,
+        0.7737102669882396
+      ],
+      "cosine_mean": 0.4947466616150883
+    },
+    "mixture_mean_rts/three_visible": {
+      "count": 4831,
+      "mean_signed_error_m": [
+        0.0024000816846266775,
+        -0.21863827937304983,
+        -0.04486502502487334
+      ],
+      "pearson_per_axis": [
+        0.551976739315341,
+        0.4756889053902189,
+        0.6042331250044587
+      ],
+      "cosine_mean": 0.4310662672717482
+    },
+    "mixture_mean_rts/three_visible_input_within5": {
+      "count": 3031,
+      "mean_signed_error_m": [
+        0.004847884331487245,
+        -0.03944235021813522,
+        -0.013582320767281966
+      ],
+      "pearson_per_axis": [
+        0.03334370485814211,
+        0.03022020092965092,
+        0.040268409004636914
+      ],
+      "cosine_mean": 0.3209073228005371
+    }
+  },
+  "normalization": {
+    "scale_xyz_m": [
+      11.885,
+      11.885,
+      11.885
+    ],
+    "maximum_errors": {
+      "round_trip_m": 1.9073486328125e-06,
+      "round_trip_three_visible_px": 0.00022197794096945176,
+      "next_float32_m": 3.814697265625e-06,
+      "next_float32_three_visible_px": 0.0009343257803422617
+    }
+  },
+  "oracle_summary": {
+    "c_flow_mean": {
+      "windows_samples": 45,
+      "lowered_reprojection": 36,
+      "negative_reprojection_direction": 43,
+      "negative_weighted_position_direction": 43,
+      "maximum_physics_change": 3.3306690738754696e-15,
+      "mean_before": {
+        "x0": 0.0021119345222660726,
+        "reprojection": 10.139145599899084,
+        "physics": 2.1424073153521177
+      },
+      "mean_after": {
+        "x0": 0.001987221257764515,
+        "reprojection": 9.239692464322435,
+        "physics": 2.142407315352118
+      },
+      "offset_m": {
+        "count": 45,
+        "mean": 0.3522858266718104,
+        "p50": 0.2659166278279362,
+        "p95": 0.7708938570537875,
+        "maximum": 1.2872979841968848,
+        "rms": 0.42069529729610877
+      }
+    },
+    "c_flow_samples": {
+      "windows_samples": 180,
+      "lowered_reprojection": 144,
+      "negative_reprojection_direction": 170,
+      "negative_weighted_position_direction": 171,
+      "maximum_physics_change": 5.329070518200751e-15,
+      "mean_before": {
+        "x0": 0.002113028750694377,
+        "reprojection": 10.139909969992077,
+        "physics": 2.15448497776054
+      },
+      "mean_after": {
+        "x0": 0.001988210672101087,
+        "reprojection": 9.241306268975041,
+        "physics": 2.1544849777605397
+      },
+      "offset_m": {
+        "count": 180,
+        "mean": 0.35239890428575926,
+        "p50": 0.2687565230004539,
+        "p95": 0.7820401218680498,
+        "maximum": 1.3197872246879496,
+        "rms": 0.4208399066781637
+      }
+    },
+    "c_regression_mean": {
+      "windows_samples": 45,
+      "lowered_reprojection": 33,
+      "negative_reprojection_direction": 43,
+      "negative_weighted_position_direction": 43,
+      "maximum_physics_change": 1.4654943925052066e-14,
+      "mean_before": {
+        "x0": 0.0021404642518592734,
+        "reprojection": 9.67132399308508,
+        "physics": 2.2414237245364617
+      },
+      "mean_after": {
+        "x0": 0.0020982883123698147,
+        "reprojection": 9.21708634591022,
+        "physics": 2.2414237245364608
+      },
+      "offset_m": {
+        "count": 45,
+        "mean": 0.29999985477837426,
+        "p50": 0.2349579577278218,
+        "p95": 0.6717152057354496,
+        "maximum": 1.1835168095601825,
+        "rms": 0.36964119925803823
+      }
+    },
+    "c_regression_samples": {
+      "windows_samples": 45,
+      "lowered_reprojection": 33,
+      "negative_reprojection_direction": 43,
+      "negative_weighted_position_direction": 43,
+      "maximum_physics_change": 1.4654943925052066e-14,
+      "mean_before": {
+        "x0": 0.0021404642518592734,
+        "reprojection": 9.67132399308508,
+        "physics": 2.2414237245364617
+      },
+      "mean_after": {
+        "x0": 0.0020982883123698147,
+        "reprojection": 9.21708634591022,
+        "physics": 2.2414237245364608
+      },
+      "offset_m": {
+        "count": 45,
+        "mean": 0.29999985477837426,
+        "p50": 0.2349579577278218,
+        "p95": 0.6717152057354496,
+        "maximum": 1.1835168095601825,
+        "rms": 0.36964119925803823
+      }
+    },
+    "repro3_flow_mean": {
+      "windows_samples": 45,
+      "lowered_reprojection": 35,
+      "negative_reprojection_direction": 41,
+      "negative_weighted_position_direction": 41,
+      "maximum_physics_change": 3.1086244689504383e-15,
+      "mean_before": {
+        "x0": 0.0025003326175190195,
+        "reprojection": 9.79780330188863,
+        "physics": 5.562425855558079
+      },
+      "mean_after": {
+        "x0": 0.002409364579434661,
+        "reprojection": 9.026235092949035,
+        "physics": 5.562425855558078
+      },
+      "offset_m": {
+        "count": 45,
+        "mean": 0.35521980713087764,
+        "p50": 0.3021935770902879,
+        "p95": 0.7791421347968593,
+        "maximum": 1.116453287431067,
+        "rms": 0.41407774757150173
+      }
+    },
+    "repro3_flow_samples": {
+      "windows_samples": 180,
+      "lowered_reprojection": 140,
+      "negative_reprojection_direction": 164,
+      "negative_weighted_position_direction": 164,
+      "maximum_physics_change": 1.509903313490213e-14,
+      "mean_before": {
+        "x0": 0.0025011108645110807,
+        "reprojection": 9.798269137471367,
+        "physics": 5.579728985510149
+      },
+      "mean_after": {
+        "x0": 0.0024101038426966944,
+        "reprojection": 9.027021424040223,
+        "physics": 5.579728985510149
+      },
+      "offset_m": {
+        "count": 180,
+        "mean": 0.3552553948407635,
+        "p50": 0.3016311053976094,
+        "p95": 0.7938283851666131,
+        "maximum": 1.1329091006413095,
+        "rms": 0.41412779061644295
+      }
+    },
+    "repro3_regression_mean": {
+      "windows_samples": 45,
+      "lowered_reprojection": 31,
+      "negative_reprojection_direction": 43,
+      "negative_weighted_position_direction": 43,
+      "maximum_physics_change": 6.217248937900877e-15,
+      "mean_before": {
+        "x0": 0.0026074138123456706,
+        "reprojection": 9.346447747342845,
+        "physics": 5.2036778773805645
+      },
+      "mean_after": {
+        "x0": 0.00250362154516818,
+        "reprojection": 9.02778623968716,
+        "physics": 5.203677877380565
+      },
+      "offset_m": {
+        "count": 45,
+        "mean": 0.395249841952519,
+        "p50": 0.3316347112530602,
+        "p95": 0.7382512669364564,
+        "maximum": 1.3948022848615824,
+        "rms": 0.466870605354424
+      }
+    },
+    "repro3_regression_samples": {
+      "windows_samples": 45,
+      "lowered_reprojection": 31,
+      "negative_reprojection_direction": 43,
+      "negative_weighted_position_direction": 43,
+      "maximum_physics_change": 6.217248937900877e-15,
+      "mean_before": {
+        "x0": 0.0026074138123456706,
+        "reprojection": 9.346447747342845,
+        "physics": 5.2036778773805645
+      },
+      "mean_after": {
+        "x0": 0.00250362154516818,
+        "reprojection": 9.02778623968716,
+        "physics": 5.203677877380565
+      },
+      "offset_m": {
+        "count": 45,
+        "mean": 0.395249841952519,
+        "p50": 0.3316347112530602,
+        "p95": 0.7382512669364564,
+        "maximum": 1.3948022848615824,
+        "rms": 0.466870605354424
+      }
+    }
+  },
+  "oracle_windows": 56,
+  "oracle_skipped_windows": [
+    {
+      "rally": "val-00000",
+      "start": 128,
+      "stop": 178,
+      "support": 0
+    },
+    {
+      "rally": "val-00003",
+      "start": 128,
+      "stop": 199,
+      "support": 0
+    },
+    {
+      "rally": "val-00006",
+      "start": 384,
+      "stop": 425,
+      "support": 0
+    },
+    {
+      "rally": "val-00007",
+      "start": 128,
+      "stop": 256,
+      "support": 0
+    },
+    {
+      "rally": "val-00007",
+      "start": 256,
+      "stop": 286,
+      "support": 0
+    },
+    {
+      "rally": "val-00010",
+      "start": 256,
+      "stop": 384,
+      "support": 2
+    },
+    {
+      "rally": "val-00010",
+      "start": 384,
+      "stop": 411,
+      "support": 0
+    },
+    {
+      "rally": "val-00012",
+      "start": 384,
+      "stop": 452,
+      "support": 0
+    },
+    {
+      "rally": "val-00013",
+      "start": 256,
+      "stop": 290,
+      "support": 0
+    },
+    {
+      "rally": "val-00014",
+      "start": 384,
+      "stop": 450,
+      "support": 0
+    },
+    {
+      "rally": "val-00015",
+      "start": 128,
+      "stop": 204,
+      "support": 0
+    }
+  ],
+  "oracle_definition": "GT-derived constant translation per original ownership window using >=3 three-visible free frames; only loss diagnosis, no performance replacement or model change",
+  "source_hashes": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-reprojection-gap-r17-s936/analyze.py": "cfff84e8dbb6f79c555e23187133f55f688adbc2cc24743ed67f281277e34c90",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-offset-source-cpu-r18-s936/analyze.py": "7f4bef631511628b134ca472e7946fb56f03c90dd1fe315fa9499ea3fee5d4bf",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/diffusion/model.py": "319a1d8e543b140700d57e7fb107f4ead0a1e1e68895762699b0e5de71cf6458",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/diffusion/losses.py": "a8784882e5eebeb7dfd41eeb9f76aa53107984e5b7dd790213251ea05a00e289",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/diffusion/data.py": "c28688b5ce950a6db60238be0991f90c55e76edc41bff3f68b6413b29ae19002",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/schema/court_normalization.py": "bffdf9dbc6cd256691d169f62874ef45900b39ded45dac9a5902b1225ea405c6",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/schema/court.py": "04e63de5dde6459a847f74a1e9221c69a6ee53f3b42bf24a20fe199fa7fb75ba",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/manifest.json": "633b2120a82bd5481843c5cc3d02ca181d276c0100bd4a2414b2318cf0d2f3f5",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/manifest.json": "4733853d1d34446563f0f09eadca5f7d13cec7c2ea8a999c35d084761bc35762",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/manifest.json": "4789beb60aa77d5fec68f236d976e449041275b6743efdd210331c67993b9f35",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00000.npz": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00000.npz": "186df982c130c4bd36a9189cff08f0fd084c4ce1188a1f5958eb4effa48b9505",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00000.npz": "eb962e0a64b4c5bf3242a3f95586042d2e3d2257a3367f544be55548239af62c",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00000.npz": "f67a0e88539840ab61b6fbe015d58096422e42781bef3d95ce5f124fe31e09b0",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00000.npz": "a7e3cb25c7088c0dc0765022ac52597540775bab8bd32844b29eefd59ecc7a14",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00000.npz": "57b7eab184db4a36b02787e91057e2d9baf2ef9934e2dc0dd67cc2f011c83172",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00001.npz": "7ccd84ed5c86201e1a63cfad52c00105d734d512de8671c87bec0e999acfe0c5",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00001.npz": "98233b72a3c874d843dab202c8ccf77e14debf4bd3626bcb0b4fbe932dfaff52",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00001.npz": "ab3c04ecbdedca9b5105ad7d6a3930b7efd91cbd24a53af5e6550e7a7a730420",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00001.npz": "4dd2c1204506beb46d303ffbf9ee3d9486c502223d664ab53eeced002be440b2",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00001.npz": "29b163a481560aca9d32279132ffdf3da0e5752544c007cd28db1011a863332b",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00001.npz": "93f4b67db096267e4a227263acf105dac6dddeba0ee350eaa050fd6a2bd6f61b",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00002.npz": "1152f4a4079ef65c6644c6b4da15bd6169b6a72136addce29e58f59ae3e3afab",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00002.npz": "f81b6d469dda875e70d559417a5a54f0d47fb771ec00a8fe17894d1039e1a1f0",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00002.npz": "3c0fd14b5b8909fe9eedc966825b19f33048c3fcd1e4c377d9669dce98cac614",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00002.npz": "a5dbde25a7ae07053d6dc5f5c0fa59d86ee86b6e69a5446163ef3983b08bfe01",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00002.npz": "21e4dba2840e4f0a336fe3a21a684188aa61b66b7f4c3986086c06fb989acb68",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00002.npz": "cdd383bd761e4e615b2c7acbdb038c82b870e41279687add25bfb79a908db741",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00003.npz": "7506d130babdebcf8eee368496aea13bbc1455e821a39fe86e1f2e31cd689f1a",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00003.npz": "a70b639cbb992c4320306c9f1b4629d011cc9097496540e9a102b1864ff02344",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00003.npz": "a670cca28d200cffffc32f4d763ec6cfcd8ee0c08b094c2e1aead182b507586c",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00003.npz": "a2a630c486be41bf69efc022448a08308e86856a59da8ef4f20dcb7eb944bfd1",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00003.npz": "ecce298c48400aac1a5f9a0997954fadd1e1035dfa80174f251db41ef22d8e8f",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00003.npz": "c909d85b895258e2922ef7a6a27bd8e69d9205dafe903dc49662841830a00dfa",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00004.npz": "5a472cfd898573aed990edd0269c6d237d4c8cc46541f5778d2d0a452f8e525e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00004.npz": "14bbd35cf088d53c8078536c3c60bb0fc7cedb5c9310c501e4c4457726279a9f",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00004.npz": "00b86fb8526314bcdab9f583ee7382d03f6dbec9fcac010f2698de87f28d0770",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00004.npz": "9c5634b30c6d87e4d03d26ecf9eab98c9a5acaa78d983d134f4358c78a2a6377",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00004.npz": "b6b6956b7c551a8ef10ac996abb4aa274628f7663baf61235f05c5c7f5f4d6c9",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00004.npz": "acc7c3aacf77cd7b8b7926fbfaae3cb84b6e1b4f432b8da081dfbbe59b6f91e6",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00005.npz": "83f2173e38118fc89584651cc5ce2b6c181ff0e8602151d3a77965dadea3ccae",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00005.npz": "f45aa5cb718537f6c8e87ee13c969626c1a4d169b88366a997d092ef4848239c",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00005.npz": "85d289fd5f9eea2c211fdb51e64271e937d0eb53baefb7f739cc4b303a074dcd",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00005.npz": "7b4faeed6cb56bf34ad3590ef2380047215b0d696862e39cf3c26686f1dc4249",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00005.npz": "87fc7d2ff1e052f171f0269c16ec8e2bb42a52cbf034e7b805682c3ce8f14915",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00005.npz": "5fd628517e2bb2c61569c3d67684ca79c3771d2d91cee8c3727cfc3d021b38ed",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00006.npz": "0108b03e44b3cd2f71d6ee067cebf2b3b5e6bd2a25cd268aa04974b4d5662b9e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00006.npz": "e6ce6e7c30897a733ade5ee22802ae10223e83b449d34394ebfcca62b2548923",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00006.npz": "a83558fe2236b681d0ae8361c81ec5cad9f77a80201638b5f8ed3da70abb1873",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00006.npz": "f4bd578a5a97bf8b5933c52df15e83a76f54e8acda7c0bebf3931a93fe70548d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00006.npz": "fcd059cc2f8e3b0639d63486df967b60cf5827fa9c7c8bddf5a97b35fdfd9161",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00006.npz": "71a30a27b91fc58bc7ce0e2303574b9262c9de0fb41b5810679db4f621ed941f",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00007.npz": "5cefa9c0e502dfb745fab87d83826d5b9e1173edbfe2fab8e57d4a7b0016e71e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00007.npz": "065f6f0e84dcbb9c9961c3b963c4a894c143119f1edca3effe79707cbaf9698b",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00007.npz": "962d558922f7270fad471d91badd407c0968f3f67d0fff94e0a8320664d3b1fe",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00007.npz": "9d47cf69c311ab2195d102f34eb0f6be9d22c8841e456207773eaf35aeff38c2",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00007.npz": "b1aea0d0e7ddf072d4caeeab45dd49f735a9bb7d8db9ecc2d0bd511d1976b36c",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00007.npz": "b8b5d4163eafb366da43517f2d811a0f254c57b713fdee4375ca64973163524d",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00008.npz": "257d516d9f61ac7eb1fd80e5a621e285db4d51fe9da70ba0826347b57b9af7af",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00008.npz": "d0333cfd6776b8b73fa3cc9ed6eed180ba79b190e70cd4f066eb6db62729600b",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00008.npz": "71545b0f5f60d5ac34eb85e382bb11b9cb6c87b46e25214bc95ae90321556788",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00008.npz": "ee1be32134191814645167f7a1a3b4f3bd2fb5eda9f0f019e4122a247fb4883c",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00008.npz": "c1d97c67c902e6a3f8d03316c233059bf69dedd3a9c1d7c8ce964f7358d33684",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00008.npz": "0aff186a5669d38d9159265bbac67e64ea0b240fd456b77f0a16d23997d20b71",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00009.npz": "d367fc64a3d3c94740d930dda1e88543f433578cbcc52c77c94ed00a13103c5f",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00009.npz": "e1fde21814bf753f4b9026c35e1b28f43693286b16dbf3c020126aaa67ba1121",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00009.npz": "3f676a4b5527f12633892bccc7ae5b61b87f17963a6b22d42f9d9a979dc8a05a",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00009.npz": "416ba0f9b71052588af886d24c27d21e4127a6d6ec7cf531aa89415a8426bf6b",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00009.npz": "702565f703a1f73d4d5e23f4b73a21ca5524c69115e96f9d63394887b7383a31",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00009.npz": "b45e9861987a0e7c0b047beb1931db95959098033f3906396d91239db9a27b4b",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00010.npz": "665e1495f65f3543c07699a8fa50761105e56598196155d979c9afce86423897",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00010.npz": "83a56a0be50440c3105dccb3c2dc121c2cbb5f0e08942ce71a0e6a0950c41f8d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00010.npz": "d8a2f774b0b112faac5e9a8ea63ac77ae23e59415abccdece8ce7aead1cc40d7",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00010.npz": "445da7944ce5f55b3e93a10f8c1b9cadabea808b48313ac1f677235f8352fa09",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00010.npz": "16d2322a4d65d2e1c62bf38dec062f597a03304f50214f79d482a01fb9e53227",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00010.npz": "6f14c7f62e88a994d8830d845cfde5628175b971eaa9d05516d14f34c60bca5d",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00011.npz": "d2d282c03672918d51218296e122c35f20794be297637f21b0bc87c5fe716c21",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00011.npz": "0d77ec6271e45c99e488b5057e4f2003012fbbbbfac43a6a4622a45fcd0c5f0b",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00011.npz": "8feb9b68caaded05619be4a3f43df59a93f115973c4fd2ba73c99dfbb93b184a",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00011.npz": "8a4a47fcadaed870e7ed7fb8fb705240390f85359e7809cef3291095c551daee",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00011.npz": "54ea1054722e3e7292b4b69acef47f1e9b512a0bbc80b81f5f1a8685de2af7c1",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00011.npz": "b58756c08638e84cc1ea1ff5403e3cc522f7c54742bb99eb2dfc55c80d2a2c2c",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00012.npz": "404a83f4f6c5b7cccedd7ceadfaeaca3421b3fd931de5abc4bc7207e4f708b02",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00012.npz": "4ac4a20d84a410a4cb8c72c203527cded0efbae82892e0455c939fc8f7454469",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00012.npz": "d966d2badd5bd583e1bb059cedf525778b1d603c4973f480eb7ab2412b31e8ab",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00012.npz": "3b1c71b30ddd19d4bdbc27d397265c56399c838490445065eab2a0470fd3c8f6",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00012.npz": "db2a399d4670bec22f7f68c794e0cdd3240c286ccd0a5858c5eec66440653594",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00012.npz": "d55a8168a91201a02046814d31896284ae64fbefacc89db07f04a28233de1dce",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00013.npz": "5e8caef46f2837cc32777fd57e6e8866f795d32f1c9250f9ccca7891a7df642d",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00013.npz": "d12b048dfa311fb9aa667fe50dae3e2e98e6f9c67a2e6cc3cda9a405a3bfd966",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00013.npz": "a41efcb0a68467e6c64b598610cf6f1cc7891d924f1a1adfab950913d1a06863",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00013.npz": "8d9c05faf9e50cc66508f0517f74d05fea797280783a94d94a207b530c44e102",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00013.npz": "2e04cf7c6d2af5f2f997f7f6dc69d71c8c6a2ce38020c04e2ed81cc1fcd4ebfc",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00013.npz": "9a0ea88895fbfbebfd736159d1afc4ddb1235f529c29b5e05b220d0230d567d9",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00014.npz": "4f7d8945ebb9e3838c2932548cdd626e831552aacbca9bb0ed23a18296bc4fd3",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00014.npz": "1cada5a215fab06183fa19afbaf71c2a4b33ab1bffa2b4f27d17e7740ede4d4f",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00014.npz": "9102f0d5b2d85dd7dae030bca0dfe62979fa8da6394da711488d761456ebed60",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00014.npz": "3516e257e041b0fba63811d8c11444b0c2490b2e49226b2a3f1f3d2a0f1ea8da",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00014.npz": "4ad378a06da2f94176380b0f8267c4382ef652c6367aaa0620d5dd92dd223cce",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00014.npz": "629f9c4c390ed71b9aa49ae921f76604bcd17219964be1ffef96d154490bebef",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936/val-00015.npz": "27076b213e066edc77be2c1a384841ee4e9ff03427e384566399a39974c99990",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/flow/predictions/update-20000/val-00015.npz": "b4dca58d924692a27df611234ce860b0c1fe65e7873845f317822eb28d2ec53b",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/regression/predictions/update-20000/val-00015.npz": "12dd05e8b7a7babc15fada2a8a3b912de8f182085e14e7f2ec17fb145c6007e7",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/flow/predictions/update-20000/val-00015.npz": "eac7b8c1ee8bc770155403e2b514883291ccc9a59acfd0036e55d309562a92d2",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-repro3-512-physics10-r17-s936/collected/regression/predictions/update-20000/val-00015.npz": "e01a2ae5e62184d1b10772853257b8b376b44709c0a49a8c54e8b9e28db0f1a8",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-combined512-physics10-r16-s936/collected/baseline_predictions/val-00015.npz": "49b4a84fc46bdcd39189b42bfab3e33ae9119bd570c398369fabac00169a3247"
+  },
+  "input_npz_hashes": {
+    "val-00000": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef",
+    "val-00001": "7ccd84ed5c86201e1a63cfad52c00105d734d512de8671c87bec0e999acfe0c5",
+    "val-00002": "1152f4a4079ef65c6644c6b4da15bd6169b6a72136addce29e58f59ae3e3afab",
+    "val-00003": "7506d130babdebcf8eee368496aea13bbc1455e821a39fe86e1f2e31cd689f1a",
+    "val-00004": "5a472cfd898573aed990edd0269c6d237d4c8cc46541f5778d2d0a452f8e525e",
+    "val-00005": "83f2173e38118fc89584651cc5ce2b6c181ff0e8602151d3a77965dadea3ccae",
+    "val-00006": "0108b03e44b3cd2f71d6ee067cebf2b3b5e6bd2a25cd268aa04974b4d5662b9e",
+    "val-00007": "5cefa9c0e502dfb745fab87d83826d5b9e1173edbfe2fab8e57d4a7b0016e71e",
+    "val-00008": "257d516d9f61ac7eb1fd80e5a621e285db4d51fe9da70ba0826347b57b9af7af",
+    "val-00009": "d367fc64a3d3c94740d930dda1e88543f433578cbcc52c77c94ed00a13103c5f",
+    "val-00010": "665e1495f65f3543c07699a8fa50761105e56598196155d979c9afce86423897",
+    "val-00011": "d2d282c03672918d51218296e122c35f20794be297637f21b0bc87c5fe716c21",
+    "val-00012": "404a83f4f6c5b7cccedd7ceadfaeaca3421b3fd931de5abc4bc7207e4f708b02",
+    "val-00013": "5e8caef46f2837cc32777fd57e6e8866f795d32f1c9250f9ccca7891a7df642d",
+    "val-00014": "4f7d8945ebb9e3838c2932548cdd626e831552aacbca9bb0ed23a18296bc4fd3",
+    "val-00015": "27076b213e066edc77be2c1a384841ee4e9ff03427e384566399a39974c99990"
+  },
+  "resources": {
+    "seconds": 5.347477215109393,
+    "peak_rss_bytes": 946925568,
+    "minimum_available_host_bytes": 24148049920
+  }
+}
