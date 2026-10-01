@@ -1,4 +1,4 @@
-"""CPU-only read-out of the mixture mean from a frozen flow condition encoder."""
+"""CPU-only read-out of the mixture mean from a frozen condition encoder."""
 from __future__ import annotations
 
 import argparse
@@ -30,6 +30,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('dataset', 'training-output', 'output'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--objective', choices=('flow', 'regression'), default='flow')
     args = parser.parse_args()
     if not all(p.is_absolute() for p in (args.dataset, args.training_output, args.output)):
         parser.error('All paths must be absolute')
@@ -39,7 +40,7 @@ def main() -> None:
     paths = PATH_BOUNDARY.validate({'dataset': args.dataset, 'training_output': args.training_output,
                                    'output': args.output}, resolver=PathResolver(roots))
     result = run_conditioning_probe(paths.declared('dataset').path, paths.declared('training_output').path,
-                                   paths.declared('output').path)
+                                   paths.declared('output').path, objective=args.objective)
     print(result['results'])
 
 

@@ -213,13 +213,15 @@ loss・加速度・jerkは全frameを一度ずつ継いだ元系列で計算し�
 
 `python -m src.tasks.ball_refiner.scripts.probe_conditioning_3d`に絶対pathの
 `--dataset`、完了dev runの`--training-output`、新規`--output`を渡す。
-最終flow checkpointを凍結し、実モデルの`encode_condition()`を共有して、
+`--objective flow|regression`（既定flow）で指定した最終checkpointを凍結し、
+実モデルの`encode_condition()`を共有して、
 全成分の非線形符号化・重み付きpool直後のtokenから全混合平均を読み出す。
-全train実frameで切片付き線形headをfloat64 SVD最小二乗でfitし、全valで固定評価する。
+全train実frameで切片付き線形headをfloat64 SVD最小二乗でfitし、
+学習manifestの固定val cohortの全frameで評価する。追加valは開かず、未使用IDを保存する。
 正則化・seed/checkpoint選択・test NPZ読込は行わない。合成GTをfit教師に使わない。
 rankと特異値を報告し、rank不足を別solverやridgeで黙って修正しない。
 
-正規化round trip、raw特徴からの平均復元、可視camera数別誤差、全入力/重みhash、
+正規化round trip、raw特徴からの平均復元、可視camera数別RMSE・p50/p95、全入力/重みhash、
 head係数と予測を保存する。診断基準と解釈は実験knowledgeを参照。
 良いread-outはtokenに平均位置が残る証拠だが、時間Transformerがそれを利用できる保証ではない。
 悪い線形read-outだけで非線形な情報復元も不可能とは断定しない。

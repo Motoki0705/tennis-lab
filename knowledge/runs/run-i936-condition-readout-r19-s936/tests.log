@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [10 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-flow] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_linear_readout_recovers_affine_signal_on_unseen_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[shape] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[nan_token] 
+[gw0] [ 10%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[nan_token] 
+[gw2] [ 20%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[shape] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[inf_target] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_error_uses_euclidean_metres_and_preserves_empty_strata 
+[gw0] [ 30%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[inf_target] 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-flow] 
+[gw1] [ 40%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_linear_readout_recovers_affine_signal_on_unseen_frames 
+[gw2] [ 50%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_error_uses_euclidean_metres_and_preserves_empty_strata 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_rank_deficiency_is_explicit_and_uses_minimum_norm_solution 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-regression] 
+[gw1] [ 60%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_rank_deficiency_is_explicit_and_uses_minimum_norm_solution 
+[gw3] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-flow] 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-regression] 
+[gw2] [ 80%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-regression] 
+[gw0] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[True-flow] 
+[gw3] [100%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_excluded_rallies[False-regression] 
+
+============================== 10 passed in 9.32s ==============================

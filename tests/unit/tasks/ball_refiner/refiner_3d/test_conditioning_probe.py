@@ -49,5 +49,6 @@ def test_error_uses_euclidean_metres_and_preserves_empty_strata() -> None:
     result = error_summary(predicted, target)
     assert result['frames'] == 2
     assert result['rmse_m'] == pytest.approx((25/2)**.5)
+    assert result['p50_m'] == pytest.approx(2.5)
     assert result['p95_m'] == pytest.approx(4.75)
-    assert error_summary(predicted[:0], target[:0]) == {'frames': 0, 'rmse_m': None, 'p95_m': None, 'maximum_m': None}
+    assert error_summary(predicted[:0], target[:0]) == {'frames': 0, 'rmse_m': None, 'p50_m': None, 'p95_m': None, 'maximum_m': None}
