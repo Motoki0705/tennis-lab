@@ -144,6 +144,9 @@ def resume_meiji_cache(evidence: EvidenceCache, producer: ContextProducer, plan_
         caches[name] = cache
         write_json_atomic(progress_path, progress)
     validate_plan(plan_path, plan_sha256, evidence, producer)
+    verify_final = getattr(producer, "verify_final", None)
+    if verify_final is not None:
+        verify_final()
     # A killed assembly can be retried without touching or inferring any clip.
     assemblies = progress.setdefault("assemblies", [])
     output: Path

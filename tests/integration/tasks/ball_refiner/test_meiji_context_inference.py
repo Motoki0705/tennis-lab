@@ -33,6 +33,19 @@ def test_refuses_nonfrozen_person_configuration(producer):
         module.MeijiContextProducer(replace(producer.scene, merge_duplicate_person_boxes=True), producer.freeze)
 
 
+def test_verified_identity_cannot_ignore_changed_file_fingerprints(producer, monkeypatch):
+    producer._verified_identity = {"assets": {"pose": "checked_hash"}}
+    producer._verified_files = {"pose": (1, 2, 3, 4, 5)}
+    current = dict(producer._verified_files)
+    monkeypatch.setattr(producer, "_fingerprints", lambda: current)
+    result = producer.identity()
+    result["assets"]["pose"] = "caller_mutation"
+    assert producer.identity()["assets"]["pose"] == "checked_hash"
+    current["pose"] = (1, 2, 3, 4, 6)
+    with pytest.raises(ValueError, match="changed"):
+        producer.identity()
+
+
 @pytest.mark.parametrize("fail", [False, True])
 def test_shared_tracking_keeps_all_joints_and_missing_frames(producer, tmp_path, monkeypatch, fail):
     store_path = write_store_clip(tmp_path / "store", "meiji/video_002/clip_001/cam0",

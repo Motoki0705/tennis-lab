@@ -1,6 +1,7 @@
 """Meiji JPEG context through #964's frozen detection/feature/tracking/selection."""
 from __future__ import annotations
 
+import copy
 import json
 import time
 from collections.abc import Iterator
@@ -17,6 +18,7 @@ from src.submodules.models import (
     DinoPersonDetector,
     PersonDetectionRequest,
     ViTPosePose2D,
+    validate_dino_extension,
 )
 from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
 from src.tasks.ball_refiner.data.context_arrays import ContextArrays, GeneratedContext
@@ -74,6 +76,8 @@ class MeijiContextProducer(StoredJPEGContextProducer):
         super().__init__(people=scene.people, court=scene.court_kp, max_tracks=scene.max_tracks_per_camera)
         self.scene, self.freeze = scene, freeze
         self.progress: dict[str, Any] = {}
+        self._verified_identity: dict[str, Any] | None = None
+        self._verified_files: dict[str, tuple[int, ...]] = {}
         frozen = json.loads(freeze.read_text())["person"]
         actual = {
             "detector_runtime": asdict(self.people.runtime.dino_detector),
@@ -86,7 +90,29 @@ class MeijiContextProducer(StoredJPEGContextProducer):
         if any(actual[k] != frozen[k] for k in actual):
             raise ValueError("Meiji producer differs from the frozen #964 person defaults")
 
+    def _fingerprints(self) -> dict[str, tuple[int, ...]]:
+        paths = [*sorted((PROJECT_ROOT / "src").rglob("*.py")), *sorted(self.people.dino_repository.rglob("*.py")),
+                 self.people.dino_checkpoint, self.people.vitpose_checkpoint, self.court.checkpoint,
+                 self.scene.aflink_checkpoint, self.scene.tracking_encoder_weights, self.freeze, validate_dino_extension()]
+        result: dict[str, tuple[int, ...]] = {}
+        for path in paths:
+            stat = path.stat()
+            result[str(path)] = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        return result
+
+    def verify_final(self) -> None:
+        """Rehash every weight/code byte at publication, beyond per-clip stat checks."""
+        previous = self._verified_identity
+        self._verified_identity = None
+        if self.identity() != previous:
+            raise ValueError("Context producer changed during generation")
+
     def identity(self) -> dict[str, Any]:
+        before = self._fingerprints()
+        if self._verified_identity is not None:
+            if before != self._verified_files:
+                raise ValueError("Verified context input/code/assets changed during generation")
+            return copy.deepcopy(self._verified_identity)
         identity: dict[str, Any] = super().identity()
         frozen = json.loads(self.freeze.read_text())
         assets = {"dino": "detector", "vitpose": "vitpose", "court": "court"}
@@ -97,7 +123,10 @@ class MeijiContextProducer(StoredJPEGContextProducer):
             if identity["assets"][key]["sha256"] != frozen["assets"][original]["sha256"]:
                 raise ValueError(f"Frozen person/court weight changed: {key}")
         for name, digest in frozen["source"].items():
-            if name.startswith(("src/tasks/person_tracking/", "src/tasks/player_association/", "src/submodules/models/")) \
+            # #935 added only the CPU extension-preflight public re-export to
+            # models/__init__.py. Frozen inference implementation must match.
+            if name.endswith(".py") and name != "src/submodules/models/__init__.py" \
+                    and name.startswith(("src/tasks/person_tracking/", "src/tasks/player_association/", "src/submodules/models/")) \
                     and dual_sha256(PROJECT_ROOT / name) != digest:
                 raise ValueError(f"Frozen shared person implementation changed: {name}")
         identity.update(producer="meiji_i964_shared_sequence.v1", tracking=self.scene.tracking.identity(),
@@ -105,6 +134,9 @@ class MeijiContextProducer(StoredJPEGContextProducer):
                         association=json_value(asdict(self.scene.player_association)),
                         camera_geometry=asdict(self.scene.camera_geometry),
                         frozen_person={"sha256": dual_sha256(self.freeze), "person": frozen["person"]})
+        if before != self._fingerprints():
+            raise ValueError("Context producer inputs changed while hashing")
+        self._verified_identity, self._verified_files = copy.deepcopy(identity), before
         return identity
 
     def _tracking(self, store: BallFrameStore, clip: ClipRecord) -> tuple[TrackingSequence, np.ndarray]:
