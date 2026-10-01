@@ -1,0 +1,133 @@
+{
+  "old_base": "3c31e3bd5f0deb08c72acd481b74cd923a52d3da",
+  "new_base": "32a35af427c95c8b281ee733517074ed33dc792a",
+  "branches": [
+    [
+      "campaign930/i935-1-model-contract",
+      "6eb80f3c25428c944da3d42fb276309d63e12b3d"
+    ],
+    [
+      "campaign930/i935-2-data-training",
+      "622b5625b459c24c55249b842c0e74a330b5b835"
+    ],
+    [
+      "campaign930/i935-3-cache-training",
+      "1325a00c0c64b0e932edd261d4bfd2e0fa404db3"
+    ],
+    [
+      "campaign930/i935-4-training",
+      "9ea11bc2eb624c6eb84c71433868140050093a3e"
+    ],
+    [
+      "campaign930/i935-5-evaluation",
+      "5c84775d5998150811a0796bb79d3325cbcf404b"
+    ],
+    [
+      "campaign930/i935-6-inference",
+      "36759e96174093c6fe007f668806a707300bacac"
+    ],
+    [
+      "campaign930/i935-7-pipeline",
+      "0b58995afbbfb3bc58fc9fe57984270de0d290a1"
+    ],
+    [
+      "campaign930/i935-8-context-cache",
+      "47b33aa1c06de729dceaab78b931e5f9751d86e7"
+    ],
+    [
+      "campaign930/i935-9-context-shards",
+      "de0906e6cf15acec614e3a94455911df221128b2"
+    ],
+    [
+      "campaign930/i935-10-detector-selection",
+      "f5a98c9f1d1f8446a9d6867535abae66d2547316"
+    ],
+    [
+      "campaign930/i935-11-pilot-retrain",
+      "b8e2dbbb6ae35a2f5c620e15bc5e7f95b071b58f"
+    ],
+    [
+      "campaign930/i935-12-precision-diagnosis",
+      "b40bde5961ecb16fb374842de31c2ba563c6071a"
+    ],
+    [
+      "campaign930/i935-13-covariance-calibration",
+      "2157255a8eff6f79633b9ee39d03e2818fe2ced2"
+    ],
+    [
+      "campaign930/i935-14-pipeline-candidate",
+      "7057ba8dc1413966633382738452350b44d90799"
+    ]
+  ],
+  "worktrees": {
+    "campaign930/i935-1-model-contract": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-1-model-contract",
+    "campaign930/i935-10-detector-selection": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection",
+    "campaign930/i935-14-pipeline-candidate": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+    "campaign930/i935-2-data-training": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-2-data-training",
+    "campaign930/i935-3-cache-training": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-3-cache-training",
+    "campaign930/i935-4-training": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-4-training",
+    "campaign930/i935-5-evaluation": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-5-evaluation",
+    "campaign930/i935-6-inference": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-6-inference",
+    "campaign930/i935-7-pipeline": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-7-pipeline",
+    "campaign930/i935-8-context-cache": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-8-context-cache",
+    "campaign930/i935-9-context-shards": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-9-context-shards"
+  },
+  "done": [
+    [
+      "campaign930/i935-1-model-contract",
+      "1d41079b457852aff23e61b9b323d1da130642de"
+    ],
+    [
+      "campaign930/i935-2-data-training",
+      "d8a06121471fa852dbeec4fc8b6623d4ccaf379f"
+    ],
+    [
+      "campaign930/i935-3-cache-training",
+      "33b9871c1a416aa450f202cf1801df01eb5d8ca8"
+    ],
+    [
+      "campaign930/i935-4-training",
+      "407d8340195dab6716a2363f8b53ae55d0b3ca88"
+    ],
+    [
+      "campaign930/i935-5-evaluation",
+      "cdd9550944f69050db86d29d2f8819275fe32fe1"
+    ],
+    [
+      "campaign930/i935-6-inference",
+      "b6b2b57a212a33321ade8e56e24a5e137529ab46"
+    ],
+    [
+      "campaign930/i935-7-pipeline",
+      "6324d9e0849c85412347549d47b3d1f82633d631"
+    ],
+    [
+      "campaign930/i935-8-context-cache",
+      "f546bcd791db43f01857d9870345d129155cae58"
+    ],
+    [
+      "campaign930/i935-9-context-shards",
+      "6d7d03cca227208ba1f888ad751aebfcb7121d25"
+    ],
+    [
+      "campaign930/i935-10-detector-selection",
+      "59d9b82898ed1d2eb3aa7a7e1c0f4458db93d335"
+    ],
+    [
+      "campaign930/i935-11-pilot-retrain",
+      "b090479be198c013a4871cafe2ced1d72202f65e"
+    ],
+    [
+      "campaign930/i935-12-precision-diagnosis",
+      "b2ded1b04472c18cacffd313e56d2c7e94b4f55d"
+    ],
+    [
+      "campaign930/i935-13-covariance-calibration",
+      "4e0a22450ece560ef90129cf3acd1634fd9b6c19"
+    ],
+    [
+      "campaign930/i935-14-pipeline-candidate",
+      "47e665c3f471313c0388e37dfaf8581c34e81f4b"
+    ]
+  ]
+}
