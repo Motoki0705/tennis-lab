@@ -10,7 +10,12 @@ from typing import Literal, TypeAlias, cast
 
 from omegaconf import DictConfig
 
-from src.tasks.base.configuration import require_config_mapping, require_config_value
+from src.tasks.base.configuration import (
+    CheckpointInput,
+    require_config_mapping,
+    require_config_value,
+    resolve_checkpoint_input,
+)
 from src.tasks.base.visualization.gif import save_gif
 from src.tasks.court_detection.configuration import (
     CourtRenderConfig,
@@ -49,7 +54,7 @@ class RuntimeConfig:
 
     task: CourtTargetHead
     image_source: str
-    checkpoint: str
+    checkpoint: CheckpointInput
     save: Path
     device: str
     resolver: PathResolver
@@ -94,11 +99,20 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     image_source_raw = str(
         require_config_value(vis, "image_source", str, path="visualization")
     )
-    checkpoint = str(require_config_value(vis, "checkpoint", str, path="visualization"))
-    if not checkpoint.strip() or checkpoint == "???":
+    checkpoint_value = vis["checkpoint"]
+    if checkpoint_value is None or (
+        isinstance(checkpoint_value, str)
+        and (not checkpoint_value.strip() or checkpoint_value == "???")
+    ):
         raise MissingConfigurationKeyError(
             "visualization.checkpoint must be explicitly set to a compatible checkpoint."
         )
+    checkpoint = cast(
+        CheckpointInput,
+        resolve_checkpoint_input(
+            vis, "checkpoint", path="visualization", resolver=resolver
+        ),
+    )
     save_raw = str(require_config_value(vis, "save", str, path="visualization"))
     image_source = str(resolver.resolve(PathRole.DATA, image_source_raw))
     save_path = resolver.resolve(PathRole.ARTIFACT, save_raw)
@@ -164,13 +178,14 @@ def run_visualization(cfg: RuntimeConfig) -> int:
 
     if cfg.info:
         logger.info("Task: %s", cfg.task)
-        logger.info("Checkpoint: %s", cfg.checkpoint)
+        logger.info("Checkpoint: %s", cfg.checkpoint.path)
         logger.info("Save path: %s", cfg.save)
         return 0
 
     pipeline = build_court_visualization_pipeline(
         cfg.task,
-        checkpoint_path=cfg.checkpoint,
+        checkpoint_path=cfg.checkpoint.path,
+        checkpoint_role=cfg.checkpoint.role,
         device=cfg.device,
         resolver=cfg.resolver,
     )
