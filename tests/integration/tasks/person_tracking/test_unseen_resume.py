@@ -78,3 +78,31 @@ def test_resume_cannot_retry_preparation_or_inference(resume: Any, tmp_path: Pat
     (tmp_path / extra).touch()
     with pytest.raises(FileExistsError, match='original opening'):
         resume.require_unstarted_directory(tmp_path)
+
+
+@pytest.mark.parametrize('violation', ['none', 'inference_started', 'changed_receipt'])
+def test_path_error_continuation_keeps_both_openings_and_cannot_retry_inference(
+    resume: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, violation: str,
+) -> None:
+    opening, first_resume, stop_path = (tmp_path / n for n in (
+        'opening.json', 'resumed-opening-r17.json', 'preparation-stop-r17.json'))
+    opening.write_text('original freeze opening')
+    first_resume.write_text('original run17 resumption')
+    stop_path.write_text(json.dumps({'failure': {'exception_type': 'PathContractError'},
+        'inference_attempts': int(violation == 'inference_started'), 'scoring_batches': 0,
+        'reserved_person_labels_opened': False, 'reserved_media_decoded': False, 'queue_job': None}))
+    execution = {'path': 'immutable-execution-addendum', 'sha256': 'unchanged'}
+    document = {'schema': 'i964_unseen_preparation_resume_v1', 'execution_addendum': execution,
+                'freeze_commit': 'frozen', 'previous_files': {p.name: file_identity(p) for p in (opening, first_resume, stop_path)}}
+    monkeypatch.setattr(resume, 'pushed_document', lambda *a: document)
+    if violation == 'changed_receipt':
+        first_resume.write_text('changed')
+    if violation != 'none':
+        with pytest.raises(ValueError):
+            resume.load_preparation_addendum(Path('pushed'), 'commit', execution, tmp_path, 'frozen')
+    else:
+        assert resume.load_preparation_addendum(Path('pushed'), 'commit', execution, tmp_path, 'frozen') == document
+        resume.require_unstarted_directory(tmp_path, document)
+        (tmp_path / 'attempt.json').touch()
+        with pytest.raises(FileExistsError):
+            resume.require_unstarted_directory(tmp_path, document)

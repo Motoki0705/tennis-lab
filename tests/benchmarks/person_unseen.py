@@ -26,6 +26,7 @@ from person_unseen_freeze import (  # type: ignore[import-not-found]
 )
 from person_unseen_resume import (  # type: ignore[import-not-found]
     load_addendum,
+    load_preparation_addendum,
     require_unstarted_directory,
 )
 from person_unseen_video import render  # type: ignore[import-not-found]
@@ -77,7 +78,7 @@ def clip_config(frozen: dict[str, Any], clip: Path) -> Any:
     from omegaconf import OmegaConf
     manifest = ClipManifest.load(clip)
     cfg = OmegaConf.create(frozen['pipeline_config'])
-    cfg.video_paths = [str(manifest.media_path(c)) for c in CAMERAS]
+    cfg.video_paths = [str(manifest.media_path(c).relative_to(Path(cfg.paths.data_root))) for c in CAMERAS]
     cfg.camera_ids = list(CAMERAS)
     return cfg
 
@@ -103,27 +104,39 @@ def selected_sides(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def plan(freeze: Path, commit: str, report: Path, *, addendum: Path | None = None,
-         addendum_commit: str | None = None) -> None:
+         addendum_commit: str | None = None, preparation_addendum: Path | None = None,
+         preparation_commit: str | None = None) -> None:
     frozen = require_pushed(freeze, commit)
     if report != Path(frozen['report']):
         raise ValueError('Use the one frozen output directory')
     verify(frozen)
     if (addendum is None) != (addendum_commit is None):
         raise ValueError('Resumed preparation requires both addendum and its pushed commit')
+    if (preparation_addendum is None) != (preparation_commit is None) \
+            or (preparation_addendum is not None and addendum is None):
+        raise ValueError('Preparation continuation requires the original and new pushed addenda')
     execution_addendum = None
+    preparation_record = None
     budget = frozen['budget']
     opening_name = 'opening.json'
     if addendum is not None and addendum_commit is not None:
         resumed = load_addendum(addendum, addendum_commit, freeze, commit, frozen)
-        require_unstarted_directory(report)
         execution_addendum = {'file': file_identity(addendum), 'commit': addendum_commit}
         budget = resumed['budget']
         opening_name = 'resumed-opening-r17.json'
+        preparation = None
+        if preparation_addendum is not None and preparation_commit is not None:
+            preparation = load_preparation_addendum(preparation_addendum, preparation_commit,
+                                                   file_identity(addendum), report, commit)
+            preparation_record = {'file': file_identity(preparation_addendum), 'commit': preparation_commit}
+            opening_name = 'resumed-opening-r17b.json'
+        require_unstarted_directory(report, preparation)
     else:
         # Existing or failed preparation must be investigated, never silently replaced.
         report.mkdir(parents=True, exist_ok=False)
     claim(report / opening_name, {'freeze': file_identity(freeze), 'freeze_commit': commit,
         'execution_addendum': execution_addendum,
+        'preparation_addendum': preparation_record,
         'time_unix': time.time(), 'event': 'pre-open gate passed; metadata/hash preparation begins',
         'inference_attempts': 0, 'scoring_batches': 0})
     repo = Path(frozen['repo'])
@@ -168,6 +181,7 @@ def plan(freeze: Path, commit: str, report: Path, *, addendum: Path | None = Non
                         'labels_exist': (clip_root / 'annotations/player_association/labels.json').exists()})
     receipt = {'schema': 'i964_unseen_plan_v2', 'freeze': file_identity(freeze), 'freeze_commit': commit,
                'execution_addendum': execution_addendum,
+               'preparation_addendum': preparation_record,
                'side_reference': file_identity(side_path), 'records': records, 'budget': budget,
                'camera_frames': sum(r['source']['videos'][0]['num_frames'] * 3 for r in records),
                'labels_opened': False, 'scoring_batches': 0,
@@ -335,6 +349,10 @@ def execute(report: Path) -> None:
                                        plan_doc['freeze_commit'], frozen)['budget']
     if plan_doc['budget'] != expected_budget:
         raise ValueError('Execution budget differs from the pushed authorization')
+    if plan_doc['preparation_addendum'] is not None:
+        preparation = plan_doc['preparation_addendum']
+        load_preparation_addendum(checked(preparation['file']), preparation['commit'],
+                                 plan_doc['execution_addendum']['file'], report, plan_doc['freeze_commit'])
     for record in (*plan_doc['entrypoints'], plan_doc['side_reference']):
         checked(record)
     claim(report / 'attempt.json', {'time_unix': time.time(), 'plan': file_identity(report / 'plan.json'),
@@ -393,11 +411,15 @@ if __name__ == '__main__':
     parser.add_argument('--freeze-commit')
     parser.add_argument('--addendum', type=Path)
     parser.add_argument('--addendum-commit')
+    parser.add_argument('--preparation-addendum', type=Path)
+    parser.add_argument('--preparation-commit')
     args = parser.parse_args()
     if args.phase == 'plan':
         if args.freeze is None or args.freeze_commit is None:
             parser.error('plan requires --freeze and --freeze-commit')
         plan(args.freeze.resolve(), args.freeze_commit, args.report.resolve(),
-             addendum=None if args.addendum is None else args.addendum.resolve(), addendum_commit=args.addendum_commit)
+             addendum=None if args.addendum is None else args.addendum.resolve(), addendum_commit=args.addendum_commit,
+             preparation_addendum=None if args.preparation_addendum is None else args.preparation_addendum.resolve(),
+             preparation_commit=args.preparation_commit)
     else:
         execute(args.report.resolve())

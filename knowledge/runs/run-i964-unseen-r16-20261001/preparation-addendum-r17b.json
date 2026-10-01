@@ -1,0 +1,30 @@
+{
+  "schema": "i964_unseen_preparation_resume_v1",
+  "created_at": "2026-10-01T00:02:57.097069+00:00",
+  "execution_addendum": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/execution-addendum-r17.json",
+    "sha256": "8e3a25131d187782cffae0569c633d88477de9571b7727287670dd6d3bdc2f64"
+  },
+  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "previous_files": {
+    "opening.json": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/opening.json",
+      "sha256": "b5113c99bf67503297eb47a9c2ca2373e5ac532aeb807c2b98de1027552799e1"
+    },
+    "resumed-opening-r17.json": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/resumed-opening-r17.json",
+      "sha256": "588759f93bcfbf550459d2942c7b953a20248c528bb14361d67ed2ac74ffbcaf"
+    },
+    "preparation-stop-r17.json": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/preparation-stop-r17.json",
+      "sha256": "0db22463a4805cf4b8053a90d0ee5cdc215b47d114274f03213e818163298695"
+    }
+  },
+  "reason": "Continue the same authorized CPU preparation after correcting absolute video_paths to the existing data-root-relative PathResolver contract.",
+  "new_receipt": "resumed-opening-r17b.json",
+  "labels_opened": false,
+  "inference_attempts": 0,
+  "scoring_batches": 0,
+  "unchanged": "Original freeze, all previous receipts, execution budget, person settings, models, rules, full clip/frame set, ball/court_side.",
+  "retry_policy": "Only this recorded pre-inference preparation failure; no inference or scoring retries."
+}
