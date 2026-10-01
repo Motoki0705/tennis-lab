@@ -29,7 +29,7 @@ from src.tasks.court_detection.visualization.rendering import (
     render_line_frames,
     render_seg_frames,
 )
-from src.utils.configuration import PathResolver
+from src.utils.configuration import PathResolver, PathRole
 
 CourtTargetHead: TypeAlias = Literal["kp", "seg", "line", "semantic_line"]
 
@@ -136,6 +136,7 @@ def build_court_visualization_pipeline(
     checkpoint_path: str | Path,
     device: str,
     resolver: PathResolver,
+    checkpoint_role: PathRole = PathRole.CHECKPOINT,
 ) -> CourtVisualizationPipeline:
     """Select and load the exact target-head pipeline before the frame loop."""
     if task == "kp":
@@ -144,6 +145,7 @@ def build_court_visualization_pipeline(
                 checkpoint_path,
                 device=device,
                 resolver=resolver,
+                checkpoint_role=checkpoint_role,
                 subpixel_refine=True,
             )
         )
@@ -153,6 +155,7 @@ def build_court_visualization_pipeline(
                 checkpoint_path,
                 device=device,
                 resolver=resolver,
+                checkpoint_role=checkpoint_role,
             )
         )
     if task == "line":
@@ -161,6 +164,7 @@ def build_court_visualization_pipeline(
                 checkpoint_path,
                 device=device,
                 resolver=resolver,
+                checkpoint_role=checkpoint_role,
             )
         )
     if task == "semantic_line":
@@ -169,6 +173,7 @@ def build_court_visualization_pipeline(
                 checkpoint_path,
                 device=device,
                 resolver=resolver,
+                checkpoint_role=checkpoint_role,
             )
         )
     raise CourtModelIOError(f"Unsupported Court visualization head {task!r}.")
