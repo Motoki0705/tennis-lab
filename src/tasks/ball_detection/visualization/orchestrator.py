@@ -32,7 +32,7 @@ from src.tasks.base.visualization.orchestrator import (
     parse_rgb as _parse_rgb,
 )
 from src.tasks.base.visualization.orchestrator import resolve_device
-from src.utils.configuration import PathResolver
+from src.utils.configuration import PathResolver, PathRole
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ class RuntimeConfig:
     store_dir: Path
     clip_id: str
     checkpoint: Path
+    checkpoint_role: PathRole
     save: Path
     device: torch.device
     fps: float
@@ -77,7 +78,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 
     store_dir = paths.data(str(vis.store_dir))
     clip_id = str(vis.clip_id)
-    checkpoint = paths.checkpoint(str(vis.checkpoint))
+    checkpoint = paths.checkpoint_input(vis, "checkpoint", path="visualization")
     save_path = paths.artifact(str(vis.save))
 
     image_size_hw = _parse_hw(data_cfg.image_size, name="data.image_size")
@@ -119,7 +120,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     return RuntimeConfig(
         store_dir=store_dir,
         clip_id=clip_id,
-        checkpoint=checkpoint,
+        checkpoint=checkpoint.path,
+        checkpoint_role=checkpoint.role,
         save=save_path,
         device=resolve_device(str(run.device)),
         fps=fps,
@@ -194,6 +196,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     predictor = BallDetectionPredictor.load_from_checkpoint(
         cfg.checkpoint,
         resolver=cfg.resolver,
+        checkpoint_role=cfg.checkpoint_role,
         device=cfg.device,
         subpixel_refine=cfg.subpixel_refine,
         strict=cfg.strict,

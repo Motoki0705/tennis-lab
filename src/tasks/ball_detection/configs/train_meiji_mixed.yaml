@@ -5,9 +5,6 @@ defaults:
   - override model: conv_next_unet
   - _self_
 
-paths:
-  checkpoint_root: ckpt
-
 data:
   # Match the fixed refiner candidate-cache window stride.
   eval_stride: 4

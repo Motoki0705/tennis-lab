@@ -1,6 +1,8 @@
 output_dir: ${tennis_output:ball_detection,evaluate,${model.name},${tennis_run_id:}}
 seed: 42
 gpus: 1
-checkpoint_path: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+checkpoint_path:
+  role: artifact
+  path: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
 strict: true
 weights_only: false

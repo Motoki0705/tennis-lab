@@ -23,7 +23,7 @@ from src.tasks.ball_detection.model_io.normalization import (
 )
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO
-from src.utils.configuration import PathResolver
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
 
 
@@ -73,12 +73,13 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
         subpixel_refine: bool,
         strict: bool,
         weights_only: bool,
+        checkpoint_role: PathRole = PathRole.CHECKPOINT,
         **kwargs: Any,
     ) -> Self:
         """Restore one checkpoint's model and adapter without training state."""
         if kwargs:
             raise TypeError(f"Unsupported Ball checkpoint options: {sorted(kwargs)}")
-        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver, role=checkpoint_role)
         if len(checkpoints) != 1:
             raise ValueError(
                 f"{cls.__name__} expects a single checkpoint, got {len(checkpoints)} checkpoints."

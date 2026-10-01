@@ -12,6 +12,7 @@ from torch import nn
 import src.tasks.ball_detection.models.dinov3_rope as dinov3_module
 from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_model
 from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
+from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
 from src.tasks.ball_detection.model_io.adapters import (
     BallModelIOAdapter,
     DINOv3BallExecutionBoundary,
@@ -20,10 +21,11 @@ from src.tasks.ball_detection.model_io.contracts import (
     BallModelInputSpec,
     BallModelIOError,
 )
+from src.tasks.ball_detection.model_io.evaluation import CheckpointBallHeatmapPredictor
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
 from src.tasks.ball_detection.models.dinov3_rope import DINOv3RoPEBallDetector
 from src.tasks.base.model_io import bind_model_io
-from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
 from src.utils.models.loading import DINOv3BackboneAdapter
 from src.utils.models.lora import LoRAConfig
@@ -226,7 +228,8 @@ def test_legacy_backbone_metadata_migrates_explicitly_and_preserves_saved_weight
     config.paths.checkpoint_root = "outputs"
     config.model.backbone.checkpoint_path = f"dinov3/checkpoints/{filename}"
     saved = OmegaConf.to_container(config, resolve=True)
-    checkpoint = tmp_path / "detector.ckpt"
+    checkpoint = tmp_path / "outputs/detector.ckpt"
+    checkpoint.parent.mkdir()
     torch.save({"hyper_parameters": {"config": saved},
                 "state_dict": {f"model.{key}": tensor for key, tensor in original.model.state_dict().items()}}, checkpoint)
     roots = RuntimePathRoots.from_mapping({**dict(config.paths), "checkpoint_root": str(weights_root)}, repository_root=tmp_path)
@@ -241,6 +244,22 @@ def test_legacy_backbone_metadata_migrates_explicitly_and_preserves_saved_weight
     assert "Migrating saved DINOv3 asset path" in caplog.text
     for name, value in original.model.state_dict().items():
         torch.testing.assert_close(loaded.model_io.model.state_dict()[name], value, rtol=0, atol=0)
+    runtime_resolver = PathResolver(roots)
+    reference = BallRuntimePaths(runtime_resolver).checkpoint_input(
+        {"checkpoint": {"role": "artifact", "path": "detector.ckpt"}}, "checkpoint", path="inference",
+    )
+    assert reference.path == checkpoint and reference.role is PathRole.ARTIFACT
+    predictor = BallDetectionPredictor.load_from_checkpoint(
+        reference.path, resolver=runtime_resolver, checkpoint_role=reference.role,
+        device="cpu", subpixel_refine=True, strict=True, weights_only=False,
+    )
+    evaluator = CheckpointBallHeatmapPredictor.load(
+        reference.path, resolver=runtime_resolver, device=torch.device("cpu"), strict=True, weights_only=False,
+    )
+    assert loaded_paths[-2:] == [canonical, canonical]
+    for model in (predictor.model, evaluator.model):
+        for name, value in original.model.state_dict().items():
+            torch.testing.assert_close(model.state_dict()[name], value, rtol=0, atol=0)
     assert torch.load(checkpoint, weights_only=False)["hyper_parameters"]["config"] == saved
     legacy = tmp_path / "third_party/dinov3/checkpoints" / filename
     legacy.parent.mkdir(parents=True)

@@ -17,7 +17,7 @@ from src.tasks.ball_detection.data.components.augmentation import (
     normalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.inference import BallDetectionPredictor
-from src.utils.configuration import PathResolver
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.data.heatmaps import heatmaps_to_peaks
 from src.utils.io import (
     load_json,
@@ -55,6 +55,7 @@ class CandidatePredictionConfig:
     """Settings for prediction over selected candidate clips."""
 
     checkpoint: Path
+    checkpoint_role: PathRole
     device: str
     sequence_length: int
     window_stride: int
@@ -321,6 +322,7 @@ def predict_candidates(
     predictor = BallDetectionPredictor.load_from_checkpoint(
         config.checkpoint,
         resolver=config.resolver,
+        checkpoint_role=config.checkpoint_role,
         device=config.device,
         subpixel_refine=config.subpixel_refine,
         strict=config.strict,
