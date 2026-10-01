@@ -29,7 +29,6 @@ from src.tennis_scene.schema import SceneResult
 from src.utils.io import load_json
 
 SLCS_ANNOTATION_FILENAME = "annotation.json"
-SLCS_SCENE_ARCHIVE_FILENAME = "scene.npz"
 _SLCS_ANNOTATION_RELATIVE_DIR = Path("annotations") / "tennis_scene"
 
 # SceneResult arrays without which SLCS training has no defined input/target.
@@ -177,18 +176,18 @@ def load_slcs_annotation(
                 f"clip.json (marker digest {recorded!r} != current {actual!r})."
             )
 
-    scene_path = annotation_dir / SLCS_SCENE_ARCHIVE_FILENAME
-    if not scene_path.is_file():
+    from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+    # Resolves through scene.json and verifies the export checksums and lineage.
+    scene = load_scene_result(annotation_scene_path(annotation_dir, marker))
+    if scene.schema_version != 2:
         raise DatasetManifestError(
-            f"{manifest.clip_id}: scene archive missing: {scene_path}"
+            f"{manifest.clip_id}: SLCS reads only SceneResult v2, got v{scene.schema_version}"
         )
-    scene = load_scene_result(scene_path)
-    if scene.schema_version == 2:
-        context = scene.metadata.get("court_reference")
-        if not isinstance(context, dict) or tuple(context.get("camera_ids", ())) != tuple(manifest.camera_ids):
-            raise DatasetManifestError(
-                f"{manifest.clip_id}: v2 SLCS input requires calibration for every manifest camera"
-            )
+    context = scene.metadata.get("court_reference")
+    if not isinstance(context, dict) or tuple(context.get("camera_ids", ())) != tuple(manifest.camera_ids):
+        raise DatasetManifestError(
+            f"{manifest.clip_id}: SLCS input requires calibration for every manifest camera"
+        )
     _validate_scene_against_manifest(scene, manifest)
     _validate_scene_arrays(scene, arrays_spec, clip_id=manifest.clip_id)
     return scene
@@ -198,7 +197,6 @@ __all__ = [
     "IncompleteAnnotationError",
     "REQUIRED_SCENE_ARRAYS",
     "SLCS_ANNOTATION_FILENAME",
-    "SLCS_SCENE_ARCHIVE_FILENAME",
     "SLCSDataIndex",
     "has_slcs_annotation",
     "load_slcs_annotation",

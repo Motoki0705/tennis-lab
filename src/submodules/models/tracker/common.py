@@ -24,7 +24,7 @@ class TrackRequest:
     """Request for person tracking on a video."""
 
     video_path: str | Path
-    num_tracks: int
+    num_tracks: int | None
     interactive: bool
     footpoint_polygon_px: tuple[tuple[float, float], ...] | None = None
     stitch_tracklets_in_roi: bool = False
@@ -94,6 +94,8 @@ def select_and_complete_tracks(
     track_history: list[list[dict]], request: TrackRequest, num_frames: int
 ) -> TrackResult:
     """Select tracks, interpolate missing frames, and apply bbox smoothing."""
+    if request.num_tracks is None and request.interactive:
+        raise ValueError("All-track selection forbids interactive selection")
     if request.stitch_tracklets_in_roi:
         if request.footpoint_polygon_px is None:
             raise ValueError("stitch_tracklets_in_roi requires footpoint_polygon_px.")
@@ -105,6 +107,8 @@ def select_and_complete_tracks(
         track_history = stitch_single_subject_tracklets(track_history)
     id_to_frame_ids, id_to_bbx_xyxys, ids_by_area = sort_tracks(track_history)
     if not ids_by_area:
+        if request.num_tracks is None:
+            return TrackResult({}, num_frames, {})
         raise RuntimeError(f"No person tracks detected in {request.video_path}")
 
     if request.interactive:
@@ -117,6 +121,8 @@ def select_and_complete_tracks(
             )
             if int(track_id) in id_to_frame_ids
         ]
+    elif request.num_tracks is None:
+        selected_ids = sorted(id_to_frame_ids)
     else:
         if request.num_tracks <= 0:
             raise ValueError(f"num_tracks must be positive, got {request.num_tracks}")

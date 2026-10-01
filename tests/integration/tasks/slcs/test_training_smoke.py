@@ -279,7 +279,7 @@ def test_real_rgb_profile_normal_fit_saves_monitored_checkpoint(
     runtime = runner.validate_runtime_config(config)
     datamodule = runner.build_datamodule(config)
     steps = runner.resolve_steps_per_epoch(config, datamodule, train_loader=None)
-    assert steps == 1
+    assert steps == 2  # one train window per camera
     module = runner.build_lightning_module(config, datamodule, steps_per_epoch=steps)
     logger = runner.build_logger(config, tmp_path / "outputs" / str(config.run.output_dir))
     assert isinstance(logger, TensorBoardLogger)
@@ -297,7 +297,7 @@ def test_real_rgb_profile_normal_fit_saves_monitored_checkpoint(
         trainer.fit(module, datamodule=datamodule)
     finally:
         torch.set_num_threads(old_threads)
-    assert trainer.global_step == 1
+    assert trainer.global_step == 2
     assert trainer.callback_metrics["train/loss_ball_velocity"] > 0
     assert checkpoint.monitor in trainer.callback_metrics
     assert checkpoint.best_model_score is not None
@@ -306,7 +306,7 @@ def test_real_rgb_profile_normal_fit_saves_monitored_checkpoint(
     saved_path = Path(checkpoint.best_model_path)
     assert saved_path.is_file() and saved_path.stat().st_size > 0
     saved = torch.load(saved_path, map_location="cpu", weights_only=False)
-    assert saved["epoch"] == 0 and saved["global_step"] == 1
+    assert saved["epoch"] == 0 and saved["global_step"] == 2
     assert saved["optimizer_states"] and saved["state_dict"]
     logger.experiment.flush()
     hparams = OmegaConf.load(Path(logger.log_dir) / "hparams.yaml")

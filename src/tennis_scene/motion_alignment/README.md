@@ -15,7 +15,7 @@
 加速度正則化を使います。解析的な疎Jacobianを用いるfloat64 CPU最小二乗です。
 失敗・未収束は理由付き欠測にし、他方式へ切り替えません。
 
-設定は`TemporalPlacementConfig`です。
+設定の唯一の入口は`configs/pipeline.yaml`の`player_reconstruction.placement`です。
 `data_sigma_m`、加速度のsigma・`temporal_weight`が目的関数、`min_joints`がframe支持、
 `min_scale_pairs`とscale上下限が体格推定、`max_nfev`が計算量を制御します。
 再投影の閾値と重みsigmaは1920×1080を基準とし、画像対角長の比で変換します。
@@ -45,11 +45,13 @@ fitの原点はCOCO hip中心ですが、SceneResultの`player_position`はSMPL 
 3D関節・mesh・SMPL rootが同一の変換を受けるため、位置の二重加算はありません。
 
 SceneResultのvalidity・archive契約は[tennis_scene README](../README.md)を参照してください。
-旧v1 archiveの`gvhmr_aligned_*`とその閲覧機能は読込互換のため保持します。
+旧v1 archiveの`gvhmr_aligned_*`とその閲覧機能は読込互換のため保持しますが、旧推定器はありません。
 床接地・非貫通・関節IKはこの配置の目的関数には含めません。
 
-## 移行中の旧整合
+## 保存済みデータでの確認
 
-`similarity.py`（GVHMR world motionをPLCS軌道へ全区間共通の相似変換で合わせる旧方式）は、
-現行orchestratorの`gvhmr_aligned_*`出力が使用しています。宣言型component pipelineへの移行で
-本ディレクトリの配置処理へ置き換え、`similarity.py`は削除します。
+`tests/benchmarks/coco17_placement.py`は、保存した三角測量・GVHMRの固定bundleから
+本番fitterとmesh/renderer境界をCPUで再検証します。ニューラル推論や学習は行いません。
+`--repo`にSMPL-X資産を持つrepo、`--inputs`に`triangulation.npz`、
+`scene_observations.metadata.json`、`cam1.gvhmr.npz`、`cam2.gvhmr.npz`を持つ
+Meiji比較bundle、`--output`に別の出力先を指定します。入力SHAと数値診断を保存します。

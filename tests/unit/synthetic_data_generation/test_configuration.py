@@ -239,7 +239,7 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         evidence.line_model.checkpoint_path
         == (
             resolver.roots.checkpoint_root
-            / "court_detection/hybrid/court-detection-epoch=17.ckpt"
+            / "court_detection/multiscale_depth3/b863df1f01f0.ckpt"
         ).resolve()
     )
     assert (
