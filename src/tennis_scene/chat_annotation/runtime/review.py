@@ -8,6 +8,7 @@ import zipfile
 from collections.abc import Iterator
 from fractions import Fraction
 from pathlib import Path
+from typing import BinaryIO
 
 import av
 import cv2
@@ -71,7 +72,7 @@ def render_overlay(
     video: Path,
     manifest: ClipManifest,
     annotation: SupportedAnnotation,
-    output: Path,
+    output: Path | BinaryIO,
 ) -> None:
     timeline = check_clip(video, manifest)
     footer_height = 80

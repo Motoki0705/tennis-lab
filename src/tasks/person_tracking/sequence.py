@@ -12,12 +12,9 @@ from typing import Any
 
 import numpy as np
 
-from src.tasks.person_tracking.botsort_pose import BotSortPoseConfig
 from src.tasks.person_tracking.contracts import DetectionFeatures
-from src.tasks.person_tracking.deep_ocsort_pose import DeepOCSortPoseConfig
 from src.tasks.person_tracking.features import FeatureConfig
-from src.tasks.person_tracking.methods import build_tracker
-from src.tasks.person_tracking.strongsort import StrongSortConfig
+from src.tasks.person_tracking.strongsort import StrongSort, StrongSortConfig
 from src.tasks.person_tracking.strongsort_offline import (
     AFLink,
     ReconstructedTracks,
@@ -25,45 +22,28 @@ from src.tasks.person_tracking.strongsort_offline import (
 )
 
 CLIP_ENCODER = 'clipreid_vitb16_market1501'
-METHODS = ('strongsort_pp_pose', 'strongsort_pp', 'deep_ocsort_pose',
-           'deep_ocsort_pose_aflink_gsi', 'botsort_pose', 'all_person_botsort')
+ADOPTED_METHOD = 'strongsort_pp_pose'
 
 
 @dataclass(frozen=True)
 class TrackingConfig:
-    method: str = 'strongsort_pp_pose'
+    method: str = ADOPTED_METHOD
     encoder: str = CLIP_ENCODER
     features: FeatureConfig = FeatureConfig()
 
     def __post_init__(self) -> None:
-        if self.method not in METHODS:
-            raise ValueError(f'Unknown tracking method {self.method!r}; available: {METHODS}')
+        if self.method != ADOPTED_METHOD:
+            raise ValueError(f'Production tracking requires {ADOPTED_METHOD!r}; '
+                             'other methods use tests/benchmarks/person_tracking_features.py')
         if self.encoder != CLIP_ENCODER:
             raise ValueError('Production tracking profile requires explicit CLIP-ReID; other encoders use comparison adapters')
 
-    @property
-    def offline(self) -> bool:
-        return self.method in ('strongsort_pp_pose', 'strongsort_pp', 'deep_ocsort_pose_aflink_gsi')
-
-    @property
-    def online(self) -> str:
-        if self.method.startswith('strongsort'):
-            return 'strongsort'
-        return 'deep_ocsort_pose' if self.method.startswith('deep_ocsort') else self.method
-
-    def online_config(self) -> StrongSortConfig | DeepOCSortPoseConfig | BotSortPoseConfig:
-        if self.online == 'strongsort':
-            return StrongSortConfig(pose_weight=.15 if self.method == 'strongsort_pp_pose' else 0.)
-        if self.online == 'deep_ocsort_pose':
-            return DeepOCSortPoseConfig()
-        if self.online == 'botsort_pose':
-            return BotSortPoseConfig()
-        raise ValueError('Motion-only baseline consumes decoded frames, not detection features')
+    def online_config(self) -> StrongSortConfig:
+        return StrongSortConfig(pose_weight=.15)
 
     def identity(self) -> dict[str, Any]:
-        return {**asdict(self), 'online_config': asdict(self.online_config())
-                if self.method != 'all_person_botsort' else None,
-                'offline_profile': 'i964_run9_aflink_gsi' if self.offline else None}
+        return {**asdict(self), 'online_config': asdict(self.online_config()),
+                'offline_profile': 'i964_run9_aflink_gsi'}
 
 
 @dataclass(frozen=True)
@@ -125,9 +105,9 @@ def track_sequence(frames: Iterable[DetectionFeatures], *, fps: float,
                    config: TrackingConfig, aflink: AFLink | None) -> TrackingSequence:
     if not np.isfinite(fps) or fps <= 0:
         raise ValueError('Tracking requires positive finite fps')
-    if config.offline != (aflink is not None):
-        raise ValueError('AFLink must be supplied exactly for an AFLink/GSI profile')
-    tracker = build_tracker(config.online, fps=fps, config=config.online_config())
+    if aflink is None:
+        raise ValueError('AFLink must be supplied for the adopted AFLink/GSI profile')
+    tracker = StrongSort(config.online_config())
     features, assignments = [], []
     seen: set[int] = set()
     dimension = None
@@ -161,8 +141,6 @@ def track_sequence(frames: Iterable[DetectionFeatures], *, fps: float,
     evidence = TrackEvidence(origins, poses, embeddings, valid, config.encoder)
     source_ids: tuple[tuple[int, ...], ...] = tuple((int(i),) for i in ids)
     output = TrackingSequence(ids, boxes, evidence, source_ids, None, ())
-    if aflink is None:
-        return output
     roots, candidates = aflink.links(boxes, output.observed)
     groups = sorted(set(roots.values()))
     merged: np.ndarray = np.zeros((len(groups), len(features), 4), np.float32)
