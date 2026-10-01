@@ -21,6 +21,7 @@ from src.utils.schema.court_normalization import (
     normalize_court_position,
 )
 
+from .cohort import reference_validation
 from .data import rally_window
 from .model import ModelConfig, TrajectoryDenoiser, condition_features
 
@@ -66,13 +67,18 @@ def error_summary(prediction_m: Tensor, target_m: Tensor) -> dict[str, Any]:
     if not bool(torch.isfinite(prediction_m).all() & torch.isfinite(target_m).all()):
         raise FloatingPointError('Nonfinite read-out prediction or target')
     if not len(target_m):
-        return {'frames': 0, 'rmse_m': None, 'p95_m': None, 'maximum_m': None}
+        return {'frames': 0, 'rmse_m': None, 'p50_m': None, 'p95_m': None, 'maximum_m': None}
     errors = torch.linalg.vector_norm(prediction_m - target_m, dim=-1)
     return {'frames': len(errors), 'rmse_m': float(errors.square().mean().sqrt()),
-            'p95_m': float(torch.quantile(errors, .95)), 'maximum_m': float(errors.max())}
+            'p50_m': float(torch.quantile(errors, .5)), 'p95_m': float(torch.quantile(errors, .95)),
+            'maximum_m': float(errors.max())}
 
 
-def run_conditioning_probe(dataset: Path, training_output: Path, output: Path) -> dict[str, Any]:
+def run_conditioning_probe(
+    dataset: Path, training_output: Path, output: Path, *, objective: str = 'flow',
+) -> dict[str, Any]:
+    if objective not in ('flow', 'regression'):
+        raise ValueError('Read-out objective must be flow or regression')
     if output.exists():
         raise FileExistsError(output)
     torch.set_num_threads(1)
@@ -82,13 +88,13 @@ def run_conditioning_probe(dataset: Path, training_output: Path, output: Path) -
     training = json.loads(training_path.read_text())
     if training['status'] != 'complete' or hashes['dataset_manifest'] != training['source_manifest_sha256']:
         raise ValueError('Require the completed training run and its exact dataset')
-    arm = training['arms']['flow']
-    checkpoint = training_output / 'flow' / 'dev-only.pt'
+    arm = training['arms'][objective]
+    checkpoint = training_output / objective / 'dev-only.pt'
     hashes['checkpoint'] = sha256(checkpoint)
     if arm['status'] != 'complete' or hashes['checkpoint'] != arm['checkpoint_sha256']:
-        raise ValueError('Incomplete or changed flow checkpoint')
+        raise ValueError(f'Incomplete or changed {objective} checkpoint')
     saved = torch.load(checkpoint, map_location='cpu', weights_only=True)
-    if not saved['diagnostic_only'] or saved['objective'] != 'flow' or saved['updates'] != arm['updates']:
+    if not saved['diagnostic_only'] or saved['objective'] != objective or saved['updates'] != arm['updates']:
         raise ValueError('Unexpected diagnostic checkpoint identity')
     if saved['config'] != {**training['config'], 'evaluate_updates': tuple(training['config']['evaluate_updates'])}:
         raise ValueError('Checkpoint/config mismatch')
@@ -99,18 +105,22 @@ def run_conditioning_probe(dataset: Path, training_output: Path, output: Path) -
     source = SyntheticDataset(dataset)
     if source.manifest['counts'] != training['config']['expected_counts']:
         raise ValueError('Unexpected split sizes')
-    records = sorted((r for r in source.records if r['split'] in ('train', 'val')), key=lambda r: r['rally_id'])
+    val_ids = reference_validation(source.records, training)
+    records = sorted((r for r in source.records if r['split'] == 'train' or r['rally_id'] in val_ids),
+                     key=lambda r: r['rally_id'])
     identities = [{'rally_id': r['rally_id'], 'npz_sha256': r['npz_sha256']} for r in records]
     if identities != training['read_rallies']:
         raise ValueError('Probe must use exactly the historical train/val inputs')
     manifest: dict[str, Any] = {
         'status': 'running', 'diagnostic_only': True, 'device': 'cpu',
         'dataset': str(dataset), 'training_output': str(training_output), 'input_hashes': hashes,
-        'encoder': {'objective': 'flow', 'updates': saved['updates'], 'frozen': True,
+        'encoder': {'objective': objective, 'updates': saved['updates'], 'frozen': True,
                     'location': 'weighted nonlinear component tokens before state addition and temporal attention'},
         'solver': {'driver': 'gelsd', 'rcond': RCOND, 'ridge': 0., 'intercept': True, 'dtype': 'float64'},
         'readout_tolerance_m': READOUT_TOLERANCE_M, 'court_normalization': court_coordinate_normalization_metadata(),
-        'selection': 'all train frames fit, all val frames evaluate, no test NPZ reads; no GT target in fit',
+        'selection': 'all train frames fit, exact historical val cohort evaluated; no extra val/test NPZ reads or GT fit target',
+        'unused_val_rallies': sorted(r['rally_id'] for r in source.records
+                                    if r['split'] == 'val' and r['rally_id'] not in val_ids),
         'read_rallies': [], 'results': {},
     }
     output.mkdir(parents=True, exist_ok=False)
@@ -150,7 +160,8 @@ def run_conditioning_probe(dataset: Path, training_output: Path, output: Path) -
         if max_round_trip > 1e-10 or max_raw_feature_error > 1e-5:
             raise ValueError('Court normalization/raw feature read-out exceeds numeric tolerance')
         fit = fit_readout(torch.cat(tokens['train']), normalize_court_position(torch.cat(targets['train'])))
-        np.savez_compressed(output / 'head.npz', coefficients=fit.coefficients.numpy(), singular_values=fit.singular_values.numpy())
+        np.savez_compressed(output / 'head.npz', coefficients=fit.coefficients.numpy(),
+                            singular_values=fit.singular_values.numpy(), rank=fit.rank)
         manifest['solver'].update(rank=fit.rank, columns=fit.coefficients.shape[0])
         for split in ('train', 'val'):
             target = torch.cat(targets[split])
