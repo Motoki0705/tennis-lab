@@ -1,0 +1,12 @@
+{
+  "job_id": "1790819790903430816_1781754_i936-head-context-r19-s936-20261001",
+  "registered_at": "2026-10-01T01:56:30.922487+00:00",
+  "registered_commit": "7c4521f9acb031881c4dc83cfb93f8134fbc0e8b",
+  "clean_at_enqueue": true,
+  "resource": "all",
+  "plan_sha256": "c5fc1770b417d95f10963eb8cc89f6d36adb05425f68eb2825f78510ddd80e1c",
+  "rule_url": "https://github.com/Motoki0705/tennis-lab/issues/936#issuecomment-5923087105",
+  "training_queue_dir": "/home/kamimura/projects/tennis-lab/.training_queue",
+  "command": "timeout --signal=TERM --kill-after=15s 5340s env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.experiment_dev_3d --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-head-context-r19-s936/plan.json --device cuda",
+  "session": "01a0f519-04f1-7523-aed3-bc44a5fa493c"
+}
