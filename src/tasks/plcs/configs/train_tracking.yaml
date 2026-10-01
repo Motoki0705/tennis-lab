@@ -11,7 +11,7 @@ defaults:
   - _self_
 
 external_assets:
-  smplh_model_path: smplx/smplh
+  smplh_model_path: body_models/smplh
 
 training:
   trainer:
