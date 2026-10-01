@@ -19,6 +19,12 @@ human UV/visibility には適用しません。
 
 ## Motion source contract
 
+学習・生成のlicensed body modelは `paths.external_asset_root=ckpt` を使い、
+モデル本体を `body_models/smplh` から読む。このrootのPLCS内の用途はSMPL-Hだけで、
+学習のresume/init_weightsを解決する `paths.checkpoint_root=outputs` とは独立している。
+ACCAD adapterは `SMPLH_MALE.pkl` / `SMPLH_FEMALE.pkl`、synthetic生成・reviewは
+`<gender>/model.npz` を使う。GVHMR抽出の資産配置は[submodule README](../../submodules/README.md#必要な資産)を参照。
+
 dataset generator へ渡すモーションの唯一の境界は
 `motion/contracts.py` の `Coco17MotionClip` です。全source adapterは、右手系・metre・
 Z-upのCOCO-17 joint、native timestamp/FPS、root translation、完全なroot rotation、

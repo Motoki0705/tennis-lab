@@ -26,6 +26,9 @@ from src.tasks.person_tracking.features import FeatureConfig
 from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tasks.player_association.appearance.encoders import encoder_weights
 from src.tasks.player_association.association.associate import AssociationConfig
+from src.tasks.player_association.association.config import (
+    DEFAULT_CONFIG as DEFAULT_ASSOCIATION_CONFIG,
+)
 from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
@@ -221,7 +224,7 @@ _COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", fields={
     "min_support": ConfigField.of(float, int), "min_margin": ConfigField.of(float, int),
 })
 _PLAYER_ASSOCIATION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_association", fields={
-    "config": ConfigField.of(str), "players_per_side": ConfigField.of(int),
+    "players_per_side": ConfigField.of(int),
 })
 _PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
     name: ConfigField.of(int) if name in {"min_joints", "min_scale_pairs", "max_nfev"} else ConfigField.of(float, int)
@@ -332,11 +335,11 @@ class PipelineRuntimeConfig:
             detector=cast(str, models["detector"]),
             dino_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["dino_checkpoint"])),
             dino_repository=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["dino_repository"])),
-            yolo_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["yolo_checkpoint"])),
-            vitpose_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["vitpose_checkpoint"])),
-            hmr2_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["hmr2_checkpoint"])),
-            gvhmr_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["gvhmr_checkpoint"])),
-            body_models_dir=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["body_models_dir"])),
+            yolo_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["yolo_checkpoint"])),
+            vitpose_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["vitpose_checkpoint"])),
+            hmr2_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["hmr2_checkpoint"])),
+            gvhmr_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["gvhmr_checkpoint"])),
+            body_models_dir=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["body_models_dir"])),
             bundled_assets=BundledModelAssetPaths.from_mapping(_mapping(models["bundled_assets"], name="bundled_assets"), resolver=resolver), runtime=runtime,
         )
         tracking_section = _mapping(value['person_tracking'], name='person_tracking')
@@ -357,7 +360,7 @@ class PipelineRuntimeConfig:
             max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
             min_margin=float(cast(float, side["min_margin"])))
         association_section = _mapping(value["player_association"], name="player_association")
-        association = load_association_config(resolver.resolve(PathRole.PROJECT, cast(str, association_section["config"])),
+        association = load_association_config(resolver.resolve(PathRole.PROJECT, DEFAULT_ASSOCIATION_CONFIG.relative_to(PROJECT_ROOT)),
                                               players_per_side=cast(int, association_section["players_per_side"]))
         association_weights = None if association.appearance is None else encoder_weights(
             association.appearance.encoder, checkpoint_root=roots.checkpoint_root, external_root=roots.external_asset_root)
@@ -725,10 +728,10 @@ def parse_visualization_config(cfg: DictConfig) -> VisualizationRuntimeConfig:
     return VisualizationRuntimeConfig(
         roots=roots,
         smpl_faces_path=resolver.resolve(
-            PathRole.DATA, cast(str, assets["smpl_faces"])
+            PathRole.CHECKPOINT, cast(str, assets["smpl_faces"])
         ),
         smpl_joint_regressor_path=resolver.resolve(
-            PathRole.EXTERNAL_ASSET, cast(str, assets["smpl_joint_regressor"])
+            PathRole.PROJECT, cast(str, assets["smpl_joint_regressor"])
         ),
         input_path=resolver.resolve(PathRole.ARTIFACT, cast(str, value["input"])),
         output_path=None
