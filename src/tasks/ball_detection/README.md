@@ -50,6 +50,7 @@
 
 ### inference/
 - **`checkpoint.py`**: predictor・レビューUI共通の推論専用loader。保存されたmodel設定・`model.`重みと入力正規化をstrict復元する。`data.augmentation.normalize_imagenet.enabled`は必須で、有効なら保存されたmean/stdも使う。学習専用オプションは要求・補完しない。
+  旧DINOv3の`dinov3/checkpoints/<filename>`だけを同名のCHECKPOINT配下`dinov3/<filename>`へ明示移行し、警告と`LoadedBallCheckpoint.backbone_asset_migration`に記録する。callerのresolverを優先し、省略時の旧layoutはprojectの`ckpt/`を使う。保存config・tensorは変更せず、新配置がなければ停止する。
 - **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction`（点・score・native heatmap・候補の局所特徴）を返す。
 
 ### evaluation/

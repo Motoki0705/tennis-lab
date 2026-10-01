@@ -47,10 +47,10 @@ plt.switch_backend("Agg")
 
 RenderResult = tuple[list[str], list[tuple[str, str]]]
 Renderer = Callable[[Any, str, str, dict[str, Any]], RenderResult]
-RENDERERS: dict[str, tuple[str, int, Renderer]] = {}
+RENDERERS: dict[str, tuple[str, int | tuple[int, ...], Renderer]] = {}
 
 
-def renders(component: str, schema: str, version: int) -> Callable[[Renderer], Renderer]:
+def renders(component: str, schema: str, version: int | tuple[int, ...]) -> Callable[[Renderer], Renderer]:
     """Register the renderer of one component output schema/version."""
     def register(function: Renderer) -> Renderer:
         if component not in STANDARD_COMPONENTS:
@@ -270,7 +270,8 @@ class Review:
     def payload(self, node: str) -> tuple[dict[str, Any], dict[str, Any]]:
         reference = self.references[node]
         schema, version, _ = RENDERERS[node.split("/")[0]]
-        if (reference["schema"], reference["version"]) != (schema, version):
+        versions = (version,) if isinstance(version, int) else version
+        if reference["schema"] != schema or reference["version"] not in versions:
             raise ValueError(f"{node} is {reference['schema']} v{reference['version']}; the gallery renders {schema} v{version}")
         descriptor = self.descriptor(node)
         location = (self.root / reference["path"]).resolve().parent
@@ -394,6 +395,52 @@ class Review:
                 ("local patch shape", str(_array(evidence["patches"]).shape)),
             ])
         return [image, timeline], details
+
+    @renders("ball_refiner_2d", "ball_distribution_2d", (1, 2))
+    def render_ball_refiner(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        distribution = value["prediction"]["distribution"]
+        means = _array(distribution["means"])[0] * (np.asarray(value["source_size_wh"]) - 1)
+        logits: np.ndarray = _array(distribution["mixture_logits"])[0].astype(np.float64)
+        weights = np.exp(logits - logits.max(axis=-1, keepdims=True))
+        weights /= weights.sum(axis=-1, keepdims=True)
+        presence = 1 / (1 + np.exp(-np.clip(_array(distribution["presence_logits"])[0].astype(np.float64), -700, 700)))
+
+        def draw(image: np.ndarray, frame: int) -> None:
+            for component, point in enumerate(means[frame]):
+                pixel = tuple(np.rint(point).astype(int))
+                color = COLORS_BGR[component % len(COLORS_BGR)]
+                cv2.circle(image, pixel, 12, color, 3)
+                _text(image, f"k{component}: {weights[frame, component]:.2f}", (pixel[0] + 15, pixel[1]), color)
+            _text(image, f"presence {presence[frame]:.3f}", (60, 110))
+
+        image = self.sheet(node, camera, draw)
+        self.movie(node, camera, draw)
+        details = [("GMM components", str(means.shape[1])), ("frames", str(len(means))),
+                   ("calibration", str(value["calibration"])),
+                   ("shown hypotheses", "all component means and weights")]
+        if self.references[node]["version"] == 2:
+            details.extend([("covariance calibration", json.dumps(value["covariance_calibration"], sort_keys=True)),
+                            ("calibration artifact SHA256", value["calibration_artifact_sha256"])])
+        return [image], details
+
+    @renders("ball_points", "ball_points", 1)
+    def render_ball_points(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        positions = _array(value["uv_px"])
+        observed: np.ndarray = _array(value["observed"]).astype(bool)
+        presence, area = _array(value["presence_probability"]), _array(value["area_px2"])
+        codes = _array(value["rejection_codes"])
+
+        def draw(image: np.ndarray, frame: int) -> None:
+            if observed[frame]:
+                pixel = tuple(np.rint(positions[frame]).astype(int))
+                cv2.circle(image, pixel, 15, (30, 220, 255), 4)
+            _text(image, f"{'accepted' if observed[frame] else 'missing'}: p={presence[frame]:.3f}, area={area[frame]:.1f} px2", (60, 110))
+
+        image = self.sheet(node, camera, draw)
+        self.movie(node, camera, draw)
+        return [image], [("accepted frames", str(_count(observed))), ("missing frames", str(_count(~observed))),
+                         ("presence rejection", str(_count(codes & 1))), ("area rejection", str(_count(codes & 2))),
+                         ("fixed confidence rule", json.dumps(value["rule"], sort_keys=True))]
 
     @renders("person_detection", "person_detections", 2)
     def render_person_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:

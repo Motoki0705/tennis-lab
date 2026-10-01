@@ -20,9 +20,6 @@ from src.tasks.ball_refiner.data.meiji_context import (
     write_meiji_plan,
 )
 from src.tasks.ball_refiner.data.meiji_context_inference import load_meiji_producer
-from src.tasks.ball_refiner.scripts.generate_context import (
-    PATH_BOUNDARY as CONTEXT_BOUNDARY,
-)
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import (
     BoundaryPathField,
@@ -36,7 +33,10 @@ from src.utils.configuration import (
 from src.utils.paths import PROJECT_ROOT
 
 PATH_BOUNDARY = NonHydraPathBoundary(name="ball_refiner.meiji_context", fields=(
-    *CONTEXT_BOUNDARY.fields,
+    BoundaryPathField("scene_config", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+    BoundaryPathField("store", PathRole.DATA, PathDirection.INPUT, PathKind.DIRECTORY, must_exist=True),
+    BoundaryPathField("evidence", PathRole.CACHE, PathDirection.INPUT, PathKind.DIRECTORY, must_exist=True),
+    BoundaryPathField("output", PathRole.CACHE, PathDirection.OUTPUT, PathKind.DIRECTORY),
     BoundaryPathField("freeze", PathRole.PROJECT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
 ))
 

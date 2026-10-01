@@ -334,6 +334,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "ball_refiner.generate_context",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.ball_refiner.scripts.meiji_context": (
+        "ball_refiner.meiji_context",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner.scripts.export_pilot": (
         "ball_refiner.export_pilot",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -474,6 +478,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.generate_evidence", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_detectors", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.generate_context", "main", domain="ball_refiner", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_refiner.scripts.meiji_context", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.context_shards", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.export_pilot", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.run_pipeline", "main", domain="ball_refiner", executable_module=True),

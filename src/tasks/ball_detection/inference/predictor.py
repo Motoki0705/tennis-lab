@@ -84,7 +84,7 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
                 f"{cls.__name__} expects a single checkpoint, got {len(checkpoints)} checkpoints."
             )
         resolved_device = resolve_device(device)
-        loaded = load_ball_checkpoint(checkpoints[0], strict=strict, weights_only=weights_only)
+        loaded = load_ball_checkpoint(checkpoints[0], strict=strict, weights_only=weights_only, resolver=resolver)
         return cls(
             model_io=loaded.model_io,
             device=resolved_device,

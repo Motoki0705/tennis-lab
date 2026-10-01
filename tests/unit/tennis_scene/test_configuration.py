@@ -40,10 +40,13 @@ def _composed(config_name: str, overrides: list[str]) -> Iterator[DictConfig]:
 def _pipeline_config(root: Path, *overrides: str) -> DictConfig:
     """Compose the shipped pipeline config with a temporary project root.
 
-    The association config is project-owned and read while the runtime config
-    is built, so the temporary root receives the shipped copy.
+    Project-owned association and ball confidence configs are read while the
+    runtime config is built, so the temporary root receives the shipped copies.
     """
-    for source in (DEFAULT_CONFIG, LEGACY_CONFIG):
+    for source in (
+        DEFAULT_CONFIG, LEGACY_CONFIG,
+        PROJECT_ROOT / "src/tasks/ball_refiner/configs/confidence/meiji_val_r29.yaml",
+    ):
         target = root / source.relative_to(PROJECT_ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
