@@ -7,6 +7,7 @@ module, or ``PYTHONPATH`` entry) is reproducible when it is
 - saved in a run bundle (``$SCRIPT_DIR/...`` or ``knowledge/runs/<run>/...``),
 - tracked by git at the commit the repro.sh checks out (HEAD when it pins none),
 - added by the bundle's ``uncommitted.patch``, or
+- an explicitly supported tool module pinned in that commit's ``uv.lock``, or
 - a checkout of this repository itself (a ``PYTHONPATH`` of the repo root).
 
 Anything else (``/tmp``, ``outputs/``, an untracked build) is reported. Data
@@ -26,6 +27,7 @@ import os
 import re
 import shlex
 import subprocess
+import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -33,6 +35,9 @@ from kg_lib import repo_root
 
 SCRIPT_SUFFIXES = (".py", ".sh", ".yaml", ".yml")
 COMMAND_MARKER = "# --- original training command ---"
+# Import names of external CLIs used by recorded runs, with their distributions.
+# Unknown modules still have to resolve to repository or saved patch source.
+LOCKED_TOOL_MODULES = {"pytest": "pytest"}
 # Checkouts of this repository under other names (worktrees, earlier clones).
 CHECKOUT_PATTERNS = (
     re.compile(r"^/home/[^/]+/projects/tennis-lab/\.claude/worktrees/[^/]+/?(?P<rel>.*)$"),
@@ -110,6 +115,23 @@ def _module_paths(module: str) -> tuple[str, ...]:
     return (f"{base}.py", f"{base}/__main__.py")
 
 
+def _locked_tool(root: Path, commit: str, module: str) -> str | None:
+    distribution = LOCKED_TOOL_MODULES.get(module)
+    if distribution is None:
+        return None
+    lock = _git(root, "show", f"{commit}:uv.lock")
+    if lock.returncode:
+        return None
+    for package in tomllib.loads(lock.stdout).get("package", []):
+        if (
+            package.get("name") == distribution
+            and package.get("version")
+            and package.get("source", {}).get("registry")
+        ):
+            return f"{distribution}=={package['version']} pinned in uv.lock at {commit[:8]}"
+    return None
+
+
 def check_run(root: Path, repro: Path) -> list[Finding]:
     text = repro.read_text()
     run_dir = repro.parent
@@ -141,7 +163,11 @@ def _in_repository(root: Path, commit: str, patched: set[str], relative: str) ->
 def _resolve(root: Path, run_dir: Path, commit: str, patched: set[str], kind: str, value: str) -> tuple[str, str]:
     if kind == "module":
         results = [_in_repository(root, commit, patched, relative) for relative in _module_paths(value)]
-        return next((r for r in results if r[0] == "ok"), results[0])
+        for result in results:
+            if result[0] == "ok":
+                return result
+        locked_tool = _locked_tool(root, commit, value)
+        return ("ok", locked_tool) if locked_tool is not None else results[0]
     for variable in ROOT_VARIABLES:
         if value.startswith(f"{variable}/"):
             value = value.removeprefix(f"{variable}/")
