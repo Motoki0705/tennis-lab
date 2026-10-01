@@ -1,4 +1,4 @@
-"""Source-neutral precomputation of binary Court line targets."""
+"""In-memory rasterization of binary Court line targets."""
 
 from __future__ import annotations
 

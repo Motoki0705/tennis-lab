@@ -656,7 +656,6 @@ class CourtTargetConfig:
 
 @dataclass(frozen=True, slots=True)
 class CourtProcessingConfig:
-    derived_target_root: Path | None
     targets: tuple[CourtTargetConfig, ...]
 
     @classmethod
@@ -666,7 +665,7 @@ class CourtProcessingConfig:
         mapping = as_config_mapping(value, path="data.processing")
         _exact(
             mapping,
-            {"derived_target_root", "targets"},
+            {"targets"},
             path="data.processing",
         )
         raw_targets = _sequence(mapping, "targets", path="data.processing")
@@ -683,17 +682,7 @@ class CourtProcessingConfig:
             raise SemanticConfigurationError(
                 "data.processing.targets must not repeat a target kind."
             )
-        return cls(
-            derived_target_root=None if mapping["derived_target_root"] is None else resolver.resolve(
-                PathRole.DATA,
-                _string(
-                    mapping,
-                    "derived_target_root",
-                    path="data.processing",
-                ),
-            ),
-            targets=targets,
-        )
+        return cls(targets=targets)
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+from typing import cast
 
 import pytest
 from PIL import Image
@@ -160,7 +161,7 @@ def test_dense_layers_are_generated_without_stored_masks(
     ]
     assert [raster["name"] for raster in ground_truth["rasters"]] == ["seg", "line", "semantic_line"]
     assert preview["warnings"] == []
-    assert not catalog.records("tennis_court_detector/train")[0].dense_target_refs
+
 
 
 def test_corrupt_image_shard_is_reported(materialized_catalog: CourtDatasetCatalog) -> None:
@@ -185,7 +186,7 @@ def test_preview_uses_original_pixels_and_source_sized_rasters(
 
     assert (preview["width"], preview["height"]) == (32, 24)
     assert preview["frames"] == 1
-    expected = record.payload["keypoints"][0]
+    expected = cast(tuple[tuple[float, float], ...], record.payload["keypoints"])[0]
     point = preview["items"][0]["gt"]["points"][0]
     assert (point["x"], point["y"]) == (expected[0], expected[1])
     assert [raster["name"] for raster in preview["items"][0]["gt"]["rasters"]] == [

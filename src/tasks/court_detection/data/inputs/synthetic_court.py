@@ -51,14 +51,6 @@ from src.tasks.court_detection.data.contracts import (
     CourtSampleRecord,
     CourtSourceSplit,
 )
-from src.tasks.court_detection.data.target_generation.store import (
-    SEGMENTATION_TARGET_SCHEMA,
-    CourtDerivedTargetStore,
-)
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    SEMANTIC_LINE_TARGET_SCHEMA,
-)
 from src.utils.data.float32_store import read_float32
 from src.utils.data.image_record_store import ImageRecordStore
 from src.utils.schema.court import (
@@ -163,13 +155,8 @@ class SyntheticCourtInput:
     def __init__(
         self,
         config: SyntheticCourtSourceConfig,
-        *,
-        target_store: CourtDerivedTargetStore | None = None,
-        line_target_schema: str = LINE_TARGET_SCHEMA,
     ) -> None:
         self.config = config
-        self.target_store = target_store
-        self.line_target_schema = line_target_schema
         self._image_stores: dict[Path, ImageRecordStore] = {}
         flip_permutation: tuple[int, ...]
         if config.schema == "v1":
@@ -204,7 +191,6 @@ class SyntheticCourtInput:
                 {
                     CourtInputCapability.KEYPOINT_CHANNELS,
                     CourtInputCapability.COURT_INSTANCES,
-                    *({CourtInputCapability.SEGMENTATION_REFERENCE, CourtInputCapability.LINE_REFERENCE, CourtInputCapability.SEMANTIC_LINE_REFERENCE} if target_store is not None else set()),
                     *(
                         {CourtInputCapability.V3_TARGET_COURT_POSE}
                         if config.schema == "v3"
@@ -284,7 +270,6 @@ class SyntheticCourtInput:
             image=image,
             keypoint_channels=channels,
             court_instances=instances,
-            dense_target_refs=record.dense_target_refs,
             metadata=CourtSampleMetadata(
                 source_kind="synthetic_court",
                 source_schema=self.spec.source_schema,
@@ -549,30 +534,11 @@ class SyntheticCourtInput:
         source_target_digest = hashlib.sha256(digest_bytes).hexdigest()
 
         stable_id = f"{scene_id}:{source_sample_id}"
-        derived_key = f"{self.config.court_scope}/{scene_id}/{source_sample_id}"
         return CourtSampleRecord(
             sample_id=stable_id,
             split=split,
             image_path=paths["rgb"],
             annotation_path=paths["labels"],
-            derived_key=derived_key,
-            dense_target_refs={} if self.target_store is None else {
-                "seg": self.target_store.path_for(
-                    source_kind="synthetic_court",
-                    derived_key=derived_key,
-                    target_schema=SEGMENTATION_TARGET_SCHEMA,
-                ),
-                "line": self.target_store.path_for(
-                    source_kind="synthetic_court",
-                    derived_key=derived_key,
-                    target_schema=self.line_target_schema,
-                ),
-                "semantic_line": self.target_store.path_for(
-                    source_kind="synthetic_court",
-                    derived_key=derived_key,
-                    target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
-                ),
-            },
             payload={
                 "source_schema": self.spec.source_schema,
                 "court_scope": self.config.court_scope,
@@ -634,7 +600,7 @@ class SyntheticCourtInput:
 
     def _load_labels(self, record: CourtSampleRecord) -> dict[str, object]:
         manifest_record = cast(Mapping[str, object], record.payload["manifest_record"])
-        labels = read_court_labels(cast(Path, record.payload["dataset_root"]), manifest_record, dataset_schema=self.spec.source_schema)
+        labels: dict[str, object] = read_court_labels(cast(Path, record.payload["dataset_root"]), manifest_record, dataset_schema=self.spec.source_schema)
         expected_keys = set(_BASE_LABEL_KEYS)
         expected_schema = COURT_SAMPLE_SCHEMA
         if self.config.schema in {"v2", "v3"}:

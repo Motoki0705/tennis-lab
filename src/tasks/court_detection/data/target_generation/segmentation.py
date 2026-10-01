@@ -1,4 +1,4 @@
-"""Source-neutral precomputation of Court cell-segmentation targets."""
+"""In-memory rasterization of Court cell-segmentation targets."""
 
 from __future__ import annotations
 

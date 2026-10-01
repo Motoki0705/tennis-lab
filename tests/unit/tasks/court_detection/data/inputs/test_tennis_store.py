@@ -58,10 +58,10 @@ def test_migration_preserves_jpeg_points_and_splits_without_source_files(
         )
     )
     assert layer.available_splits == ("train", "val")
-    for split in layer.available_splits:
-        record = layer.records(split)[0]
+    for store_split in layer.available_splits:
+        record = layer.records(store_split)[0]
         raw = layer.load(record)
-        assert not raw.dense_target_refs
+
         assert raw.keypoint_channels is not None
         torch.testing.assert_close(
             raw.keypoint_channels.points_xy[:, 0], torch.tensor(points)

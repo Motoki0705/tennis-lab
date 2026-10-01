@@ -48,9 +48,6 @@ from src.tasks.court_detection.data.processing.targets import (
     CourtTargetBuilder,
     KeypointTargetBuilder,
 )
-from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
-)
 from src.utils.data.heatmaps import generate_gaussian_heatmaps
 
 
@@ -166,7 +163,7 @@ def test_tennis_court_detector_input_emits_ordered_14_by_1_channels(tmp_path) ->
             ),
             excluded_sample_ids=(),
         ),
-        target_store=CourtDerivedTargetStore(tmp_path / "derived"),
+
     )
 
     sample = input_layer.load(input_layer.records("train")[0])
@@ -306,7 +303,7 @@ def test_synthetic_input_consumes_manifest_paths_and_renderer_visibility(
             workspace_root=tmp_path,
             scene_ids=("B00",),
         ),
-        target_store=CourtDerivedTargetStore(tmp_path / "derived"),
+
     )
 
     sample = input_layer.load(input_layer.records("train")[0])
@@ -327,8 +324,8 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path, mon
         split="train",
         image_path=tmp_path / "unused.png",
         annotation_path=tmp_path / "unused.json",
-        derived_key="train/sample",
-        dense_target_refs={},
+
+
         payload={},
     )
     metadata = CourtSampleMetadata(
@@ -343,7 +340,7 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path, mon
         image=Image.new("RGB", (8, 8)),
         keypoint_channels=None,
         court_instances=(),
-        dense_target_refs={},
+
         metadata=metadata,
     )
 
