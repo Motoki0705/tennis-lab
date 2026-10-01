@@ -16,6 +16,7 @@ from src.utils.geometry.probabilistic_triangulation.solver import (
     HybridConfig,
     triangulate_hybrid,
 )
+from src.utils.geometry.probabilistic_triangulation.volume import VoxelConfig
 from src.utils.geometry.triangulation import PinholeCamera
 
 
@@ -24,6 +25,7 @@ def test_fixed_budget_matches_the_compared_hybrid_and_keeps_all_products():
     prior = GaussianPrior3D(np.array([0., 0., 2.]), np.diag([36., 144., 9.]))
     obs = CameraGMM(np.zeros((1, 4, 2)), np.tile(np.eye(2) * 100, (1, 4, 1, 1)), np.full((1, 4), .25), np.array([.8]))
     config = conditioning_config(dict(method="fixed_hybrid", initial_cells=8, levels=4, refine_cells=64, prior_sigmas=5.))
+    assert isinstance(config, VoxelConfig)
     laplace = LaplaceConfig(5, 100)
     result = triangulate_conditioning(obs, cameras, prior=prior, laplace=laplace, config=config)
     compared = triangulate_hybrid(obs, cameras, prior=prior, config=HybridConfig(laplace, config))
