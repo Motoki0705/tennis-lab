@@ -24,6 +24,7 @@ execution:
   pose_estimation: execute
   ball_detection: execute
   ball_refiner_2d: execute
+  ball_points: execute
   player_association: execute
   court_side: execute
   camera_alignment: execute
@@ -117,6 +118,7 @@ person_observations:
   baseline_margin_m: 10.0
   # Cap linked player groups AFTER court dwell selection; never cap raw person tracks.
   max_tracks_per_camera: 6
+ball_confidence: src/tasks/ball_refiner/configs/confidence/meiji_val_r29.yaml
 ball_detection:
   enabled: true
   batch_size: 4

@@ -13,7 +13,7 @@
 - 文脈なしの基準学習は[学習pilot](#文脈なし学習pilot)から実行する。
   [専用pipeline recipe](../../tennis_scene/pipeline/README.md#2d-ball-refinerの専用recipe)は
   未較正の文脈なしpilotを明示的に実行・保存する。文脈あり学習・最終holdout評価は後続PRで実装する。
-  既存pipelineの三角測量はまだ切り替わっていない。最終的な#936の入力はrefinerの全分布のみとし、
+  標準pipelineの点consumerは同じconfidence規則を通したrefiner点へ接続済み。最終的な#936の入力はrefinerの全分布のみとし、
   detectorの点推定へ戻す経路は設けない。court_sideの幾何的な仮説検定は別の利用者である。
 
 ## 2DモデルのAPI

@@ -15,7 +15,7 @@ OutputCo = TypeVar("OutputCo", covariant=True)
 
 STANDARD_COMPONENTS = (
     "court_detection", "court_calibration", "person_detection", "person_tracking", "player_selection", "pose_estimation",
-    "ball_detection", "ball_refiner_2d", "player_association", "court_side", "camera_alignment", "player_triangulation",
+    "ball_detection", "ball_refiner_2d", "ball_points", "player_association", "court_side", "camera_alignment", "player_triangulation",
     "ball_triangulation", "body_view_selection", "gvhmr", "body_placement", "scene_assembly",
 )
 
