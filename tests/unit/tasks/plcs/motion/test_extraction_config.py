@@ -11,9 +11,22 @@ from hydra.errors import ConfigCompositionException
 from omegaconf import OmegaConf
 
 from src.tasks.plcs.motion.extraction_config import ExtractionConfig
+from src.tasks.plcs.motion.gvhmr_extraction import load_model_runtime
 from src.tasks.plcs.motion.reproducibility import publish_run
 
 ROOT = Path(__file__).parents[5]
+
+
+def test_gvhmr_and_dino_use_the_same_explicit_checkpoint_root(tmp_path: Path) -> None:
+    checkpoint_root = tmp_path / 'published'
+    dino = checkpoint_root / 'dino/checkpoint0029_4scale_swin.pth'
+    dino.parent.mkdir(parents=True)
+    dino.touch()
+    runtime = load_model_runtime(ROOT / 'src/submodules/configs/demo_gvhmr.yaml',
+        repository_root=tmp_path, checkpoint_root=checkpoint_root)
+    assert runtime.assets.dino_checkpoint == dino
+    assert runtime.assets.gvhmr_checkpoint == checkpoint_root / 'gvhmr/gvhmr_siga24_release.ckpt'
+    assert runtime.assets.body_models_dir == checkpoint_root / 'body_models'
 
 
 def test_dataset_selection_is_required() -> None:
@@ -53,6 +66,8 @@ def test_other_dataset_and_runtime_override_without_script_changes(
         assert validated.dataset_root == tmp_path / "input"
         assert validated.selection.dataset_id == "other"
         assert load.call_args.kwargs["runtime_overrides"] == {"static_cam": False}
+        assert load.call_args.kwargs["checkpoint_root"] == tmp_path / "ckpt"
+        assert load.call_args.kwargs["dino_checkpoint"] == tmp_path / "ckpt/dino/checkpoint0029_4scale_swin.pth"
         publish_run(
             tmp_path / "snapshot", {"sha256": "fixture", "config": validated.resolved}
         )

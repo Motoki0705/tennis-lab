@@ -76,7 +76,7 @@ def load_smpl_faces(path):
     """Load SMPL triangle faces (13776, 3) from an .npz/.pkl body-model file.
 
     SMPL and SMPL-H share the same mesh topology, so e.g.
-    ``data/smplh/neutral/model.npz`` works as a faces source.
+    ``ckpt/body_models/smplh/neutral/model.npz`` works as a faces source.
     """
     import pickle
 
