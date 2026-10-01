@@ -149,6 +149,11 @@ def test_all_task_cli_output_contracts(
         overrides += ["workflow.video_id=smoke-video"]
     if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
         overrides += ["evaluation.checkpoint=smoke/model.ckpt"]
+    if boundary.module == "src.tasks.player_detection.scripts.export_checkpoint":
+        overrides += [
+            "export.lightning_checkpoint=smoke/model.ckpt",
+            "export.destination=player_detection/smoke.pth",
+        ]
     if boundary.module == "src.tasks.slcs.scripts.generate_dataset":
         overrides += ["data.dataset_root=smoke/clips"]
     cfg = _compose_boundary(boundary, overrides)
