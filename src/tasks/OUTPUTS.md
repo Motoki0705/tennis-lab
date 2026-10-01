@@ -102,6 +102,7 @@ run:
 ```
 
 `resume`と`init_weights`の同時指定、未知role・余分なkey・絶対path・root外への参照は拒否する。
+共通の`resolve_checkpoint_input`は解決済みpathとroleを保持する。推論consumerも元モデルのARTIFACT参照を維持し、別途読む事前学習重みのCHECKPOINT rootを書き換えない。
 別の学習出力を読むときは `paths.artifact_root` を明示し、ファイルの自動探索・コピーは行わない。
 staged ball trainingは `train/staged/phase1`〜`phase4` を明示的なrun-idとして使い、
 前phaseのcheckpointを次phaseが参照する。別のstaged実験では4つの出力と入力参照を

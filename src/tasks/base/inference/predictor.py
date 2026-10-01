@@ -54,6 +54,7 @@ class BasePredictor(ABC, Generic[PredictionT_co]):
         checkpoint_path: str | Path | Iterable[str | Path],
         *,
         resolver: PathResolver,
+        role: PathRole = PathRole.CHECKPOINT,
     ) -> list[Path]:
         """Normalize and validate checkpoint paths.
 
@@ -67,13 +68,15 @@ class BasePredictor(ABC, Generic[PredictionT_co]):
             FileNotFoundError: If any checkpoint file does not exist.
             ValueError: If no checkpoints are provided.
         """
+        if role not in {PathRole.CHECKPOINT, PathRole.ARTIFACT}:
+            raise ValueError("Checkpoint inputs require checkpoint or artifact authority")
         paths = checkpoint_path
         if isinstance(paths, (str, Path)):
             paths = [paths]
         checkpoints = [
-            resolver.validate(PathRole.CHECKPOINT, candidate)
+            resolver.validate(role, candidate)
             if (candidate := Path(path)).is_absolute()
-            else resolver.resolve(PathRole.CHECKPOINT, candidate)
+            else resolver.resolve(role, candidate)
             for path in paths
         ]
         if not checkpoints:
