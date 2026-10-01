@@ -258,7 +258,7 @@ def load_model_runtime(
     runtime_overrides: Mapping[str, object] | None = None,
     asset_roots: RuntimePathRoots | None = None,
 ) -> GvhmrDemoConfig:
-    """Reuse the canonical model settings with DINO's separate checkpoint root."""
+    """Reuse canonical model settings under one explicit checkpoint root."""
     config_path = Path(path)
     root = Path(repository_root).resolve()
     if not config_path.is_file():
@@ -268,15 +268,6 @@ def load_model_runtime(
     raw = OmegaConf.to_container(OmegaConf.load(config_path), resolve=False)
     if not isinstance(raw, dict):
         raise TypeError("GVHMR model config must contain a mapping.")
-    assets = raw.get("assets")
-    if not isinstance(assets, dict):
-        raise TypeError("GVHMR model config assets must contain a mapping.")
-    checkpoints = assets.get("checkpoints")
-    if not isinstance(checkpoints, dict):
-        raise TypeError("GVHMR model config checkpoints must contain a mapping.")
-    dino_relative = checkpoints.get("dino")
-    if not isinstance(dino_relative, str) or not dino_relative.strip():
-        raise TypeError("GVHMR model config DINO checkpoint must be a path string.")
     raw.pop("defaults", None)
     raw.pop("hydra", None)
     if asset_roots is not None:
@@ -301,7 +292,7 @@ def load_model_runtime(
     resolved_dino = (
         Path(dino_checkpoint).resolve()
         if dino_checkpoint
-        else (root / "ckpt" / dino_relative).resolve()
+        else runtime.assets.dino_checkpoint
     )
     if not resolved_dino.is_file():
         raise FileNotFoundError(f"DINO checkpoint not found: {resolved_dino}")

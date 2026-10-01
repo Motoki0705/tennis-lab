@@ -18,6 +18,7 @@ from src.utils.configuration import (
     PathRole,
     RuntimePathRoots,
 )
+from src.utils.paths import PROJECT_ROOT
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="plcs.accad_motion_review",
@@ -39,7 +40,7 @@ PATH_BOUNDARY = NonHydraPathBoundary(
         ),
         BoundaryPathField(
             "smplh_root",
-            PathRole.DATA,
+            PathRole.CHECKPOINT,
             PathDirection.INPUT,
             PathKind.DIRECTORY,
             must_exist=True,
@@ -51,6 +52,7 @@ PATH_BOUNDARY = NonHydraPathBoundary(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--checkpoint-root", type=Path, default=PROJECT_ROOT / "ckpt")
     parser.add_argument(
         "--accad-root",
         type=Path,
@@ -61,22 +63,23 @@ def main() -> None:
         "--smplh-root",
         type=Path,
         default=None,
-        help="Directory holding <gender>/model.npz. Defaults to <data-root>/smplh.",
+        help="Directory holding <gender>/model.npz. Defaults to <checkpoint-root>/body_models/smplh.",
     )
     parser.add_argument("--port", type=int, default=8769)
     args = parser.parse_args()
 
     data_root = args.data_root.expanduser().resolve()
+    checkpoint_root = args.checkpoint_root.expanduser().resolve()
     accad_root = (
         args.accad_root.expanduser() if args.accad_root else data_root / "ACCAD"
     ).resolve()
     smplh_root = (
-        args.smplh_root.expanduser() if args.smplh_root else data_root / "smplh"
+        args.smplh_root.expanduser() if args.smplh_root else checkpoint_root / "body_models/smplh"
     ).resolve()
     roots = RuntimePathRoots(
         project_root=data_root.parent,
         data_root=data_root,
-        checkpoint_root=data_root,
+        checkpoint_root=checkpoint_root,
         artifact_root=data_root,
         output_root=data_root,
         cache_root=data_root,
