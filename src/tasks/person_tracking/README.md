@@ -16,7 +16,7 @@ AFLinkは論文再実装と公開重みを当面使うが、**重みの独立し
 | `strongsort.py` / `strongsort_offline.py` | 論文からのStrongSORT・AFLink・GSI推論再実装。明示的なpose重み（既定0）で共通pose距離を両照合段へ加算できる。GSI補間は別maskで保持。[出自と重みの制約](strongsort_NOTICE.md) |
 | `part_archive.py` | 検証済みKPR native archiveのreader。Deep OC-SORT / StrongSORTへ共通可視partのEuclidean距離を渡す |
 | `feature_tracks.py` / `evaluation.py` | 元検出rowを維持するscatter・共通外観samplingと、部分参照ラベル上のcamera内IDF1/switch/fragment |
-| `methods.py` / `sequence.py` | 明示選択とproduction/文脈/比較が共有する`track_sequence`。固定profile、元row・pose・CLIP、AFLink source ID、GSI syntheticを保存 |
+| `methods.py` / `sequence.py` | 比較用tracker factoryと、採用profile専用のproduction/文脈共通`track_sequence`。元row・pose・CLIP、AFLink source ID、GSI syntheticを保存 |
 | `duplicate_boxes.py` | 検出直後の任意greedy統合（IoU>=.8）。score降順・同点元row順でkeep/dropを記録。既定off |
 | `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
 | `court_linking.py` | 標準pipelineと開発比較で共有する固定選別。足元連続性とCLIPで断片を連結して滞在を集約する。領域はmembership判定にだけ使い、選択済み断片の全実観測を保持する。定義・限界はmodule docstring |
@@ -32,8 +32,9 @@ track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わ
 1 cameraごとにtrackerを構築し、空frameも含め0から順に渡す。
 上限6は共通コート選別後のgroupにだけ適用する。
 
-`TrackingConfig`の既定は`strongsort_pp_pose`。`strongsort_pp`（poseなし）、`deep_ocsort_pose`、
-`deep_ocsort_pose_aflink_gsi`、`botsort_pose`、`all_person_botsort`は明示指定する。
+`TrackingConfig`は採用済み`strongsort_pp_pose`＋CLIPだけを受け付ける。
+他のtrackerは`methods.build_tracker`と`tests/benchmarks/person_tracking_*.py`の比較入口で使用する。
+標準pipelineに比較方式を指定すると停止する。
 名前の誤り・欠損重み・不正な特徴や状態は停止する。profileの値は`TrackingConfig.identity()`と
 [run 10定義](../../../knowledge/runs/run-i964-tracker-hybrids-r10-20260930/protocol-addendum.md)で確認できる。
 既定のpose重みは.15、低信頼poseの扱い・AFLink/GSIも固定定義どおり。Kalman潜在状態は実boxとは区別する。

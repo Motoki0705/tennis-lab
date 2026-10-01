@@ -1,6 +1,6 @@
 project_root: .
 data_root: data
-checkpoint_root: outputs
+checkpoint_root: ckpt
 artifact_root: outputs
 output_root: outputs
 cache_root: .cache
