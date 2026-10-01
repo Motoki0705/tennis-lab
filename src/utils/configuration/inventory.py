@@ -315,6 +315,13 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     **{
+        f"src.tennis_scene.chat_annotation.local_agent.{name}": (
+            "tennis_scene.chat_annotation.local_agent",
+            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+        )
+        for name in ("__main__", "audit", "ct", "dispatcher", "efficiency", "intake", "phase2", "prefetch", "qa", "status")
+    },
+    **{
         f"src.tennis_scene.chat_annotation.scripts.{script}": (
             f"tennis_scene.chat_annotation.{script}",
             "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -432,6 +439,11 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    *(
+        _non_hydra_boundary(f"src.tennis_scene.chat_annotation.local_agent.{name}", "main",
+                            domain="tennis_scene", executable_module=name == "__main__")
+        for name in ("__main__", "audit", "ct", "dispatcher", "efficiency", "intake", "phase2", "prefetch", "qa", "status")
+    ),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.review_ui", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.serve_artifacts", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.scripts.sync_done", "main", domain="tennis_scene", executable_module=True),
