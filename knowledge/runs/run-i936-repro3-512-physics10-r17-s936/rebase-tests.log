@@ -1,0 +1,549 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [268 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[1] 
+tests/unit/utils/geometry/test_convergence.py::test_cap_retains_nonconverged_tiny_mass_component_without_selection 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_adaptive_positive_depth_moments_and_evidence 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_quarter_turn_around_z 
+[gw1] [  0%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_quarter_turn_around_z 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_sign_flips_with_direction 
+[gw1] [  0%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_sign_flips_with_direction 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_component_along_axis_is_ignored 
+[gw1] [  1%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_component_along_axis_is_ignored 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_picks_the_more_dominant_side 
+[gw1] [  1%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_picks_the_more_dominant_side 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_height_can_be_the_dominant_side 
+[gw1] [  1%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_height_can_be_the_dominant_side 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_normalized_boxes_use_unit_image_size 
+[gw1] [  2%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_normalized_boxes_use_unit_image_size 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_full_frame_box_is_one 
+[gw1] [  2%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_full_frame_box_is_one 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_non_positive_image_size_raises 
+[gw1] [  2%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_non_positive_image_size_raises 
+tests/unit/utils/geometry/test_bbox.py::test_pairwise_iou_known_values_and_empty_boxes 
+[gw1] [  3%] PASSED tests/unit/utils/geometry/test_bbox.py::test_pairwise_iou_known_values_and_empty_boxes 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_frozen_behind_camera_case_uses_volume_and_keeps_its_mass 
+[gw3] [  3%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[1] 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[100] 
+[gw1] [  4%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_frozen_behind_camera_case_uses_volume_and_keeps_its_mass 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_boundary_volume_evidence_and_moments_match_refined_integral 
+[gw1] [  4%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_boundary_volume_evidence_and_moments_match_refined_integral 
+tests/unit/utils/geometry/test_cheirality_hybrid.py::test_impossible_positive_region_fails_without_component_removal 
+[gw1] [  4%] PASSED tests/unit/utils/geometry/test_cheirality_hybrid.py::test_impossible_positive_region_fails_without_component_removal 
+tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_matches_the_compared_hybrid_and_keeps_all_products 
+[gw2] [  5%] PASSED tests/unit/utils/geometry/test_convergence.py::test_cap_retains_nonconverged_tiny_mass_component_without_selection 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change0] 
+[gw1] [  5%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_matches_the_compared_hybrid_and_keeps_all_products 
+[gw2] [  5%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change0] 
+tests/unit/utils/geometry/test_conditioning.py::test_unknown_conditioning_method_is_an_error 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change1] 
+[gw1] [  6%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_unknown_conditioning_method_is_an_error 
+tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_retains_known_linear_gaussian_moments 
+[gw2] [  6%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change1] 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change2] 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change2] 
+[gw1] [  7%] PASSED tests/unit/utils/geometry/test_conditioning.py::test_fixed_budget_retains_known_linear_gaussian_moments 
+tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change3] 
+tests/unit/utils/geometry/test_convergence.py::test_checked_boundary_matches_independent_last_grid_and_reuses_laplace 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_convergence.py::test_bad_refinement_contract_fails[change3] 
+tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_scales_each_axis 
+[gw2] [  8%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_scales_each_axis 
+tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_zero_position_maps_to_origin 
+[gw2] [  8%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_zero_position_maps_to_origin 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_identity_placement_is_noop 
+[gw2] [  8%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_identity_placement_is_noop 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_round_trip_recovers_canonical 
+[gw2] [  9%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_round_trip_recovers_canonical 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_z_axis_is_pure_translation 
+[gw2] [  9%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_z_axis_is_pure_translation 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+[gw2] [ 10%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-1.0] 
+[gw2] [ 10%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-1.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-30.0] 
+[gw2] [ 10%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-30.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-1.0] 
+[gw2] [ 11%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-1.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-30.0] 
+[gw2] [ 11%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-30.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_invalid_margins_are_rejected 
+[gw2] [ 11%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_invalid_margins_are_rejected 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_zero_yaw_converts_smpl_y_up_to_court_z_up 
+[gw2] [ 12%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_zero_yaw_converts_smpl_y_up_to_court_z_up 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_translation_only 
+[gw2] [ 12%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_translation_only 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_batch_matches_per_frame 
+[gw2] [ 13%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_batch_matches_per_frame 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_yaw_rotates_around_court_z_axis 
+[gw2] [ 13%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_yaw_rotates_around_court_z_axis 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_exact_observations_are_consistent_and_a_missing_view_is_ignored 
+[gw2] [ 13%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_exact_observations_are_consistent_and_a_missing_view_is_ignored 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_wrong_camera_pose_and_implausible_points_cost_one 
+[gw2] [ 14%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_wrong_camera_pose_and_implausible_points_cost_one 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_contract_violations_are_errors 
+[gw2] [ 14%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_contract_violations_are_errors 
+tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[-1] 
+[gw1] [ 14%] PASSED tests/unit/utils/geometry/test_convergence.py::test_checked_boundary_matches_independent_last_grid_and_reuses_laplace 
+[gw2] [ 15%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[-1] 
+tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[1] 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_differs_from_size_normalization 
+[gw1] [ 15%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_differs_from_size_normalization 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_rejects_empty_image 
+[gw1] [ 16%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_rejects_empty_image 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_zero_yaw_is_identity 
+[gw1] [ 16%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_zero_yaw_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_is_a_proper_rotation 
+[gw2] [ 16%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[1] 
+tests/unit/utils/geometry/test_planar_camera.py::test_missing_points_and_low_score_outliers_do_not_bias_fit 
+[gw1] [ 17%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_is_a_proper_rotation 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_rotates_x_into_minus_z_for_quarter_turn 
+[gw1] [ 17%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_rotates_x_into_minus_z_for_quarter_turn 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_returns_float32 
+[gw1] [ 17%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_returns_float32 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_batched_shape 
+[gw1] [ 18%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_batched_shape 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_zero_yaw_is_identity 
+[gw2] [ 18%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_missing_points_and_low_score_outliers_do_not_bias_fit 
+[gw1] [ 19%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_zero_yaw_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_each_matrix_is_a_proper_rotation 
+tests/unit/utils/geometry/test_planar_camera.py::test_out_of_image_outliers_cannot_supply_calibration_support 
+[gw1] [ 19%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_each_matrix_is_a_proper_rotation 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_zero_rotation_is_identity 
+[gw2] [ 19%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_out_of_image_outliers_cannot_supply_calibration_support 
+tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[world] 
+[gw1] [ 20%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_zero_rotation_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_matches_rotation_matrix_z_for_z_axis 
+[gw2] [ 20%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[world] 
+[gw1] [ 20%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_matches_rotation_matrix_z_for_z_axis 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_batched_proper_rotations 
+tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[image] 
+[gw1] [ 21%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_batched_proper_rotations 
+tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_maps_smpl_up_axis_to_court_up_axis 
+[gw2] [ 21%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[image] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[nan] 
+[gw1] [ 22%] PASSED tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_maps_smpl_up_axis_to_court_up_axis 
+tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_rejects_non_xyz_points 
+[gw2] [ 22%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[nan] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[score] 
+[gw1] [ 22%] PASSED tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_rejects_non_xyz_points 
+tests/unit/utils/geometry/test_point_triangulation.py::test_speed_gate_rejects_both_endpoints_without_bridging_gaps 
+[gw2] [ 23%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[score] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[plane] 
+[gw1] [ 23%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_speed_gate_rejects_both_endpoints_without_bridging_gaps 
+tests/unit/utils/geometry/test_point_triangulation.py::test_rejects_invalid_confidence 
+[gw2] [ 23%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[plane] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[size] 
+[gw1] [ 24%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_rejects_invalid_confidence 
+[gw2] [ 24%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[size] 
+tests/unit/utils/geometry/test_point_triangulation.py::test_backproject_to_plane_inverts_projection_and_rejects_rays_behind_the_camera 
+tests/unit/utils/geometry/test_planar_camera.py::test_camera_below_known_plane_is_rejected 
+[gw1] [ 25%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_backproject_to_plane_inverts_projection_and_rejects_rays_behind_the_camera 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[False] 
+[gw2] [ 25%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_camera_below_known_plane_is_rejected 
+[gw1] [ 25%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[False] 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[True] 
+tests/unit/utils/geometry/test_planar_camera.py::test_focal_optimization_cannot_silently_saturate_bounds 
+[gw1] [ 26%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance[True] 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+[gw1] [ 26%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+[gw2] [ 26%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_focal_optimization_cannot_silently_saturate_bounds 
+[gw1] [ 27%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+tests/unit/utils/geometry/test_planar_camera.py::test_negative_depth_planar_solution_is_rejected 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+[gw1] [ 27%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+[gw2] [ 27%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_negative_depth_planar_solution_is_rejected 
+tests/unit/utils/geometry/test_planar_camera.py::test_exact_out_of_image_extrapolations_can_be_kept_explicitly 
+[gw2] [ 28%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_exact_out_of_image_extrapolations_can_be_kept_explicitly 
+tests/unit/utils/geometry/test_point_triangulation.py::test_recovers_known_points_and_rejects_missing_support 
+[gw2] [ 28%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_recovers_known_points_and_rejects_missing_support 
+tests/unit/utils/geometry/test_point_triangulation.py::test_pair_consensus_ignores_one_bad_camera 
+[gw2] [ 29%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_pair_consensus_ignores_one_bad_camera 
+tests/unit/utils/geometry/test_point_triangulation.py::test_points_outside_the_height_bounds_are_rejected 
+[gw2] [ 29%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_points_outside_the_height_bounds_are_rejected 
+tests/unit/utils/geometry/test_point_triangulation.py::test_half_turn_is_a_gauge_change_of_the_court_frame 
+[gw2] [ 29%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_half_turn_is_a_gauge_change_of_the_court_frame 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+[gw2] [ 30%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+[gw2] [ 30%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+[gw2] [ 30%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+[gw2] [ 31%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.01] 
+[gw2] [ 31%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.01] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.3] 
+[gw2] [ 32%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_single_view_matches_independent_polar_integral[0.3] 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_multiview_ray_integrates_product_and_cheirality 
+[gw3] [ 32%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_positive_depth_approximation_keeps_broad_and_budget_limited_products[100] 
+tests/unit/utils/geometry/test_diagnostic_laplace.py::test_diagnostic_policy_still_rejects_impossible_camera_intersection 
+[gw3] [ 32%] PASSED tests/unit/utils/geometry/test_diagnostic_laplace.py::test_diagnostic_policy_still_rejects_impossible_camera_intersection 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_inside_range_is_unchanged 
+[gw3] [ 33%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_inside_range_is_unchanged 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_negative_value_clamped_to_zero 
+[gw3] [ 33%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_negative_value_clamped_to_zero 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_above_max_clamped_to_axis_size_minus_one 
+[gw3] [ 33%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_above_max_clamped_to_axis_size_minus_one 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_zero_axis_size_clamps_to_zero 
+[gw3] [ 34%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_zero_axis_size_clamps_to_zero 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_returns_float 
+[gw3] [ 34%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_returns_float 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_scales_by_width_and_height 
+[gw3] [ 35%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_scales_by_width_and_height 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_does_not_mutate_input 
+[gw3] [ 35%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_does_not_mutate_input 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_supports_leading_dims 
+[gw3] [ 35%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_supports_leading_dims 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_scales_back_to_pixels 
+[gw3] [ 36%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_scales_back_to_pixels 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_round_trip_recovers_original 
+[gw3] [ 36%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_round_trip_recovers_original 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_does_not_mutate_input 
+[gw3] [ 36%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_does_not_mutate_input 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_last_pixel_centre_maps_to_one 
+[gw3] [ 37%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_last_pixel_centre_maps_to_one 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_round_trip_and_float32 
+[gw3] [ 37%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_round_trip_and_float32 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_rts_smooths_ballistic_noise_without_ground_truth_or_frame_rejection 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_rts_smooths_ballistic_noise_without_ground_truth_or_frame_rejection 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_historical_metric_and_support_changes_fail_explicitly 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_historical_metric_and_support_changes_fail_explicitly 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+[gw3] [ 38%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_uses_all_four_modes_and_requested_camera_gap_stratum 
+[gw0] [ 39%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_adaptive_positive_depth_moments_and_evidence 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_cap_and_tiny_components_remain_flagged 
+[gw3] [ 39%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_bootstrap_rejects_hash_mismatch_and_cross_clip_continuation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+[gw1] [ 39%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+[gw0] [ 40%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_cap_and_tiny_components_remain_flagged 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_dataset_requires_finite_embedded_diagnostic_without_changing_outer_rule 
+[gw0] [ 40%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_dataset_requires_finite_embedded_diagnostic_without_changing_outer_rule 
+tests/unit/utils/geometry/test_adaptive_ray.py::test_saddle_chart_is_explicit_and_does_not_repair_covariance 
+[gw1] [ 41%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+[gw1] [ 41%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_identity_axis_angle 
+[gw1] [ 41%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_identity_axis_angle 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_z_rotation_90deg 
+[gw3] [ 42%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[flag] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+[gw2] [ 42%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_multiview_ray_integrates_product_and_cheirality 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_ray_checks_keep_tiny_components_and_cap 
+[gw1] [ 42%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_z_rotation_90deg 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_quaternion_identity 
+[gw1] [ 43%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_quaternion_identity 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_euler_z_matches_axis_angle 
+[gw1] [ 43%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_euler_z_matches_axis_angle 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_quaternion_roundtrip 
+[gw2] [ 44%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_ray_checks_keep_tiny_components_and_cap 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_unknown_integrator_and_bad_orders_are_explicit_errors 
+[gw1] [ 44%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_quaternion_roundtrip 
+[gw2] [ 44%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_unknown_integrator_and_bad_orders_are_explicit_errors 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_axis_angle_roundtrip 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_bounded_depth_gradient_matches_independent_finite_difference 
+[gw1] [ 45%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_axis_angle_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_6d_roundtrip 
+[gw1] [ 45%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_6d_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_axis_angle_quaternion_roundtrip 
+[gw1] [ 45%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_axis_angle_quaternion_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_small_angle_stability 
+[gw1] [ 46%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_small_angle_stability 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_rotation_6d_produces_valid_rotations 
+[gw1] [ 46%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_rotation_6d_produces_valid_rotations 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[truth] 
+[gw1] [ 47%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[truth] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[mask] 
+[gw1] [ 47%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[mask] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[samples] 
+[gw1] [ 47%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[samples] 
+[gw3] [ 48%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[cap] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unfinished] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+[gw1] [ 48%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unfinished] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unscored] 
+[gw1] [ 48%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[unscored] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[rally] 
+[gw1] [ 49%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[rally] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_gaussian_hdr_matches_analytic_volume_and_nll 
+[gw2] [ 49%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_bounded_depth_gradient_matches_independent_finite_difference 
+tests/unit/utils/geometry/test_ray_quadrature.py::test_camera_chart_change_transports_the_pilot_mode 
+[gw0] [ 50%] PASSED tests/unit/utils/geometry/test_adaptive_ray.py::test_saddle_chart_is_explicit_and_does_not_repair_covariance 
+tests/unit/utils/geometry/test_affine.py::test_centered_affine_matches_torchvision_single_shear_forward_matrix 
+[gw0] [ 50%] PASSED tests/unit/utils/geometry/test_affine.py::test_centered_affine_matches_torchvision_single_shear_forward_matrix 
+tests/unit/utils/geometry/test_affine.py::test_transform_points_accepts_homogeneous_and_cv2_affine_matrices 
+[gw0] [ 50%] PASSED tests/unit/utils/geometry/test_affine.py::test_transform_points_accepts_homogeneous_and_cv2_affine_matrices 
+tests/unit/utils/geometry/test_affine.py::test_invert_homogeneous_matrix_round_trips_affine_matrix 
+[gw0] [ 51%] PASSED tests/unit/utils/geometry/test_affine.py::test_invert_homogeneous_matrix_round_trips_affine_matrix 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_unit_norm_result 
+[gw0] [ 51%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_unit_norm_result 
+[gw3] [ 51%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[weights] 
+[gw1] [ 52%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_gaussian_hdr_matches_analytic_volume_and_nll 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_multimodal_volume_is_not_a_moment_ellipsoid 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_preserves_direction_batched 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+[gw0] [ 52%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_preserves_direction_batched 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_zero_vector_is_safe 
+[gw0] [ 52%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_zero_vector_is_safe 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_zero_difference 
+[gw0] [ 53%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_zero_difference 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_result_wrapped_into_pi_range 
+[gw0] [ 53%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_result_wrapped_into_pi_range 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_sign_is_preserved 
+[gw0] [ 54%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_sign_is_preserved 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_orthogonal_cos_sin_pairs 
+[gw0] [ 54%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_orthogonal_cos_sin_pairs 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_error_is_non_negative_and_wrapped 
+[gw0] [ 54%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_error_is_non_negative_and_wrapped 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_batched_shape 
+[gw0] [ 55%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_batched_shape 
+tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_short_tail_keeps_absolute_time_noise_and_earliest_ownership 
+[gw3] [ 55%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[camera] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+[gw0] [ 55%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_short_tail_keeps_absolute_time_noise_and_earliest_ownership 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_absolute_rmse_derivative_units_and_gap_event_support 
+[gw0] [ 56%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_absolute_rmse_derivative_units_and_gap_event_support 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_no_gap_is_na_and_behind_camera_is_never_a_perfect_reprojection 
+[gw0] [ 56%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_no_gap_is_na_and_behind_camera_is_never_a_perfect_reprojection 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_metrics_pool_frames_and_samples_without_rally_mean_bias 
+[gw1] [ 57%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_metrics.py::test_multimodal_volume_is_not_a_moment_ellipsoid 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_linear_readout_recovers_affine_signal_on_unseen_frames 
+[gw0] [ 57%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_metrics_pool_frames_and_samples_without_rally_mean_bias 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_nonuniform_timestamps_are_rejected 
+[gw0] [ 57%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_nonuniform_timestamps_are_rejected 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_strata_partition_original_derivatives_and_do_not_join_disjoint_frames 
+[gw0] [ 58%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_strata_partition_original_derivatives_and_do_not_join_disjoint_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_camera_strata_use_visibility_including_out_of_frame_not_presence 
+[gw1] [ 58%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_linear_readout_recovers_affine_signal_on_unseen_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_rank_deficiency_is_explicit_and_uses_minimum_norm_solution 
+[gw0] [ 58%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_camera_strata_use_visibility_including_out_of_frame_not_presence 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[4] 
+[gw0] [ 59%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[4] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[127] 
+[gw1] [ 59%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_rank_deficiency_is_explicit_and_uses_minimum_norm_solution 
+[gw0] [ 60%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[127] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[nan_token] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[128] 
+[gw0] [ 60%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[128] 
+[gw1] [ 60%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[nan_token] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[129] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[inf_target] 
+[gw0] [ 61%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[129] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[130] 
+[gw1] [ 61%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[inf_target] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[shape] 
+[gw0] [ 61%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[130] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[255] 
+[gw3] [ 62%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_reader_rejects_false_convergence_and_modified_calibration[presence] 
+[gw1] [ 62%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_invalid_fit_is_rejected[shape] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+[gw0] [ 63%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[255] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_error_uses_euclidean_metres_and_preserves_empty_strata 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[512] 
+[gw0] [ 63%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[512] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+[gw0] [ 63%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_physics_uses_seconds_and_excludes_impact_stencils 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+[gw1] [ 64%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_conditioning_probe.py::test_error_uses_euclidean_metres_and_preserves_empty_strata 
+tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_explicit_noise_matches_original_sampler_and_does_not_mutate_it 
+[gw1] [ 64%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_context_probe.py::test_explicit_noise_matches_original_sampler_and_does_not_mutate_it 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+[gw1] [ 64%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+[gw1] [ 65%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+[gw1] [ 65%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+[gw1] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_combined_candidate_is_explicit_and_rejects_any_extra_factor 
+[gw1] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_combined_candidate_is_explicit_and_rejects_any_extra_factor 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reprojection_trial_preserves_combined_base_and_rejects_extra_factors 
+[gw1] [ 66%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reprojection_trial_preserves_combined_base_and_rejects_extra_factors 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_chained_validation_requires_complete_explicit_subset_partition 
+[gw1] [ 67%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_chained_validation_requires_complete_explicit_subset_partition 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-16] 
+[gw3] [ 67%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_relative_calibration_paths_resolve_inside_explicit_project_root 
+tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_calibration_report_is_one_explicit_verified_input 
+[gw1] [ 67%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-16] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-32] 
+[gw3] [ 68%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_calibration.py::test_calibration_report_is_one_explicit_verified_input 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+[gw1] [ 68%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-32] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-33] 
+[gw0] [ 69%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_robust_reprojection_preserves_modes_and_has_finite_outlier_gradients 
+tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+[gw0] [ 69%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_diffusion_losses.py::test_padding_and_absent_views_need_no_fake_2d_covariance_or_mixture 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+[gw1] [ 69%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-33] 
+[gw0] [ 70%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-65] 
+[gw0] [ 70%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_only_declared_physics_rejections_are_resampled_with_logged_seeds 
+[gw0] [ 70%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_only_declared_physics_rejections_are_resampled_with_logged_seeds 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_unknown_runtime_failure_is_not_resampled 
+[gw0] [ 71%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_unknown_runtime_failure_is_not_resampled 
+tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_physics_budget_exhaustion_is_a_failure 
+[gw0] [ 71%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_physics_sampling.py::test_physics_budget_exhaustion_is_a_failure 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_step_between_windows_is_counted_only_at_seams 
+[gw0] [ 72%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_step_between_windows_is_counted_only_at_seams 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_constant_bias_has_no_roughness_but_alternating_error_does 
+[gw0] [ 72%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_constant_bias_has_no_roughness_but_alternating_error_does 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_local_decomposition_never_smooths_across_seams_or_events 
+[gw3] [ 72%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+[gw0] [ 73%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_local_decomposition_never_smooths_across_seams_or_events 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows0] 
+[gw0] [ 73%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows0] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows1] 
+[gw0] [ 73%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows1] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows2] 
+[gw1] [ 74%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[flow-65] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-16] 
+[gw0] [ 74%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows2] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows3] 
+[gw0] [ 75%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows3] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+[gw1] [ 75%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-16] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-32] 
+[gw1] [ 75%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-32] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-33] 
+[gw1] [ 76%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-33] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-65] 
+[gw1] [ 76%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_overlap_preserves_pointwise_function_all_samples_and_short_tail[regression-65] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_blend_reduces_a_known_window_boundary_jump_without_hiding_frames 
+[gw1] [ 76%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_overlap_inference.py::test_blend_reduces_a_known_window_boundary_jump_without_hiding_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_events_filter_discarded_future_bounces_and_preserve_native_seconds 
+[gw1] [ 77%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_events_filter_discarded_future_bounces_and_preserve_native_seconds 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_event_masks_cover_interpolation_and_acceleration_stencil 
+[gw1] [ 77%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_event_masks_cover_interpolation_and_acceleration_stencil 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes 
+[gw0] [ 77%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_single_gaussian_hdr_threshold_matches_chi_squared 
+tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+[gw0] [ 78%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_scoring.py::test_multimodal_hdr_excludes_low_density_gap_at_mixture_mean 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_rational_resampling_has_no_stride_drift_or_extrapolation 
+[gw0] [ 78%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_rational_resampling_has_no_stride_drift_or_extrapolation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_short_rally_gap_fails_instead_of_shortening_requested_gap 
+[gw0] [ 79%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_short_rally_gap_fails_instead_of_shortening_requested_gap 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_reader_rejects_partial_dataset_and_corrupt_rally 
+[gw0] [ 79%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_reader_rejects_partial_dataset_and_corrupt_rally 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_generation_records_late_results_after_a_rally_failure 
+[gw0] [ 79%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_generation_records_late_results_after_a_rally_failure 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_fixed_budget_generator_roundtrip_keeps_unassessed_flags 
+[gw1] [ 80%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_long_occlusion_retains_calibrated_presence_covariance_and_all_125_modes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_camera_perturbation_changes_geometry_without_breaking_rotation 
+[gw3] [ 80%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+[gw1] [ 80%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_camera_perturbation_changes_geometry_without_breaking_rotation 
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling 
+[gw1] [ 81%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_pixel_covariance_is_promoted_before_asymmetric_float32_scaling 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_memory_profile_cpu_forward_backward_all_four_losses 
+[gw3] [ 81%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_stratified_sampling_keeps_small_mass_products_and_exact_absence 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_only_bank_change_is_allowed_without_mutating_reports 
+[gw3] [ 82%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_only_bank_change_is_allowed_without_mutating_reports 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[seed] 
+[gw3] [ 82%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[seed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[block] 
+[gw3] [ 82%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_condition_audit.py::test_unpaired_comparison_is_rejected[block] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_full_mixture_permutation_invariance_and_last_component_influence 
+[gw3] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_full_mixture_permutation_invariance_and_last_component_influence 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_condition_readout_preserves_units_full_covariance_and_last_component 
+[gw3] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_condition_readout_preserves_units_full_covariance_and_last_component 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_padding_never_changes_real_frames_or_becomes_a_gap 
+[gw3] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_padding_never_changes_real_frames_or_becomes_a_gap 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_sampling_reports_empirical_uncertainty_and_replays_explicit_seed 
+[gw3] [ 84%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_sampling_reports_empirical_uncertainty_and_replays_explicit_seed 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_same_backbone_one_step_regression_ignores_flow_rng 
+[gw0] [ 84%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_synthetic.py::test_fixed_budget_generator_roundtrip_keeps_unassessed_flags 
+tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_all_125_components_and_pixel_covariance_survive_padding_and_gaps 
+[gw0] [ 85%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_all_125_components_and_pixel_covariance_survive_padding_and_gaps 
+tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_missing_or_nonconverged_flags_require_explicit_action 
+[gw3] [ 85%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_same_backbone_one_step_regression_ignores_flow_rng 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[shape] 
+[gw0] [ 85%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_training_data.py::test_missing_or_nonconverged_flags_require_explicit_action 
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+[gw3] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[shape] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[nan] 
+[gw0] [ 86%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[None] 
+[gw3] [ 86%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[nan] 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[time] 
+[gw3] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_flow_boundary_rejects_invalid_state[time] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_nonfinite_loss_records_failure_without_regression_retry 
+[gw3] [ 87%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_nonfinite_loss_records_failure_without_regression_retry 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_seconds-5101] 
+[gw3] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_seconds-5101] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_device_bytes-10000000001] 
+[gw3] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[maximum_device_bytes-10000000001] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[allocator_limit_gib-7.0] 
+[gw3] [ 88%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[allocator_limit_gib-7.0] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[updates-20001] 
+[gw3] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_excess_budget_is_rejected[updates-20001] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule0] 
+[gw3] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule0] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule1] 
+[gw3] [ 89%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule1] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule2] 
+[gw3] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule2] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule3] 
+[gw3] [ 90%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule3] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule4] 
+[gw3] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_evaluation_schedule_is_rejected[schedule4] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget 
+[gw3] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_long_config_changes_only_updates_evaluation_schedule_and_wall_budget 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_anchored_config_changes_only_validation_context_and_declared_schedule 
+[gw3] [ 91%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_anchored_config_changes_only_validation_context_and_declared_schedule 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[True] 
+[gw3] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[True] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[3] 
+[gw3] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[3] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[8] 
+[gw3] [ 92%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[8] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[4.0] 
+[gw3] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_invalid_validation_context_is_rejected[4.0] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_validation_preserves_context_tail_and_derivative_seams 
+[gw3] [ 93%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_validation_preserves_context_tail_and_derivative_seams 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val 
+[gw1] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_memory_profile_cpu_forward_backward_all_four_losses 
+tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual 
+[gw1] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_refiner_3d_diffusion.py::test_output_head_is_absolute_x0_and_not_a_residual 
+tests/integration/tasks/ball_refiner/test_context_probe.py::test_context_comparison_never_loads_train_or_test 
+[gw1] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_context_probe.py::test_context_comparison_never_loads_train_or_test 
+[gw2] [ 95%] PASSED tests/unit/utils/geometry/test_ray_quadrature.py::test_camera_chart_change_transports_the_pilot_mode 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_standardize_quaternion_nonnegative_real 
+[gw2] [ 95%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_standardize_quaternion_nonnegative_real 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_matrix_to_quaternion_unit_norm 
+[gw2] [ 95%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_matrix_to_quaternion_unit_norm 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_matrix_shape_raises 
+[gw2] [ 96%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_matrix_shape_raises 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_euler_convention_raises 
+[gw2] [ 96%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_euler_convention_raises 
+tests/unit/utils/geometry/test_triangulation.py::test_recovers_world_coordinates_with_missing_and_corrupt_view 
+[gw2] [ 97%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_recovers_world_coordinates_with_missing_and_corrupt_view 
+tests/unit/utils/geometry/test_triangulation.py::test_refinement_reduces_weighted_pixel_error 
+[gw2] [ 97%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_refinement_reduces_weighted_pixel_error 
+tests/unit/utils/geometry/test_triangulation.py::test_rejects_missing_degenerate_and_behind_camera 
+[gw2] [ 97%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_rejects_missing_degenerate_and_behind_camera 
+tests/unit/utils/geometry/test_triangulation.py::test_missing_camera_on_projection_plane_does_not_poison_visible_pair 
+[gw2] [ 98%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_missing_camera_on_projection_plane_does_not_poison_visible_pair 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_mixture_mean_keeps_all_components_and_top_uses_weight_only 
+[gw2] [ 98%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_mixture_mean_keeps_all_components_and_top_uses_weight_only 
+[gw0] [ 98%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[None] 
+tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[4] 
+[gw0] [ 99%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_two_arms_train_from_identical_initialization_without_test_reads[4] 
+[gw3] [ 99%] PASSED tests/integration/tasks/ball_refiner/test_dev_training_3d.py::test_larger_dataset_keeps_reference_validation_and_never_opens_extra_val 
+tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_test_rally 
+[gw3] [100%] PASSED tests/integration/tasks/ball_refiner/test_conditioning_probe.py::test_probe_fits_train_only_and_never_opens_test_rally 
+
+============================= 268 passed in 19.98s =============================
