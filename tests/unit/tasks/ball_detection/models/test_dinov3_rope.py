@@ -4,8 +4,11 @@ from pathlib import Path
 
 import pytest
 import torch
+from hydra import compose, initialize_config_dir
 from torch import nn
 
+import src.tasks.ball_detection.models.dinov3_rope as dinov3_module
+from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_model
 from src.tasks.ball_detection.model_io.adapters import (
     BallModelIOAdapter,
     DINOv3BallExecutionBoundary,
@@ -19,6 +22,7 @@ from src.tasks.base.model_io import bind_model_io
 from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU, FFNType
 from src.utils.models.loading import DINOv3BackboneAdapter
 from src.utils.models.lora import LoRAConfig
+from src.utils.paths import PROJECT_ROOT
 
 
 class _FakeDINOv3(nn.Module):
@@ -156,3 +160,30 @@ def test_decoder_checkpoint_execution_is_selected_on_mode_change() -> None:
     assert model._decoder_block_executor.__name__ == "_run_decoder_block"
     model.train()
     assert model._decoder_block_executor.__name__ == "_checkpoint_decoder_block"
+
+
+def test_composed_backbone_loads_weights_from_checkpoint_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checkpoint_root = tmp_path / "weights"
+    external_root = tmp_path / "vendor"
+    with initialize_config_dir(
+        version_base=None, config_dir=str(PROJECT_ROOT / "src/tasks/ball_detection/configs"),
+    ):
+        config = compose(config_name="train", overrides=[
+            "model=dinov3_rope", f"paths.checkpoint_root={checkpoint_root}",
+            f"paths.external_asset_root={external_root}",
+        ])
+    loaded: dict[str, object] = {}
+
+    def load_backbone(**kwargs: object) -> DINOv3BackboneAdapter:
+        loaded.update(kwargs)
+        return DINOv3BackboneAdapter(_FakeDINOv3())
+
+    monkeypatch.setattr(dinov3_module, "load_dinov3_backbone", load_backbone)
+    validate_model(config, paths=BallRuntimePaths.from_config(config))
+    DINOv3RoPEBallDetector.from_config(config)
+    assert loaded["repository_path"] == external_root / "dinov3"
+    assert loaded["checkpoint_path"] == (
+        checkpoint_root / "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )

@@ -151,7 +151,7 @@ def test_named_ball_paths_are_explicit_and_preserve_person_defaults() -> None:
     assert current.ball_detection.overlap_aggregation == "nearest_window_centre_then_earlier_start"
     assert current.ball_refiner.calibration_artifact is not None
     assert current.component_sources["ball_refiner_2d"] == "execute"
-    legacy = _runtime(["ball_path=ft_e13"])
+    legacy = _runtime(["ball_path=comparison/ft_e13"])
     assert legacy.ball_refiner.path == "bundle"
     assert legacy.ball_refiner.calibration_artifact is None
     assert legacy.ball_detection.checkpoint.name == "run-i618-convnext-v2-ft-epoch13.ckpt"

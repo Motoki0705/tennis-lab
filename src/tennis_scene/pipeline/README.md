@@ -130,7 +130,7 @@ recipe構築時に検出器checkpointのhashと全前処理/候補/窓設定を�
 検出点の閾値・trajectory gateはrefiner入力に使わず、注釈import・証拠なしは停止する。
 sourceとcheckpointのhashは実行前後にも照合する。RGBの媒体差はbundleへ明記する。
 
-出力は`ball_distribution_2d` schema v1、型は`components/ball_refiner.py:BallRefiner2DOutput`。
+未較正`bundle` optionの出力は`ball_distribution_2d` schema v1、型は`components/ball_refiner.py:BallRefiner2DOutput`。
 `prediction.distribution`に平均・Cholesky因子・混合logit・存在logitを全frame保存し、
 full covariance・混合weight・存在確率は元の精度で復元できる。単位はsourceのW−1/H−1で正規化したuv。
 sourceサイズ、frame/PTS/time base/実秒、detectorとrefiner両方の採用窓、未較正であることも保存する。
@@ -145,16 +145,18 @@ code・bundle・設定・source・依存artifactの不一致や配列のchecksum
 # CUDAは共有training queue経由。storeは既存の標準sceneとは分けた明示的なpathにする。
 .venv/bin/python -m src.tasks.ball_refiner.scripts.run_pipeline \
   --video <絶対data-root>/clip/cam0.mp4 --camera-id cam0 \
-  --bundle <絶対checkpoint-root>/ball_refiner/<bundle-id> \
-  --detector-checkpoint <絶対checkpoint-root>/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt \
+  --ball-path e9_anchored_s42_covariance \
+  --bundle <絶対checkpoint-root>/ball_refiner/i935-anchored-12k-s42 \
+  --detector-checkpoint <絶対checkpoint-root>/ball_detection/i935-mixed-ft-s42-epoch09.ckpt \
+  --calibration-artifact <絶対checkpoint-root>/ball_refiner/i935-anchored-12k-s42/covariance-calibration-r23.json \
   --store <絶対artifact-root>/ball_refiner/<run-id>/cam0 \
   --device cuda --source execute --detector-batch-size 4 --refiner-batch-size 32
 ```
 
 ### ボール経路の既定と明示option
 
-上のCLIに `--ball-path e9_anchored_s42_covariance --calibration-artifact <絶対path>/covariance-calibration-r23.json`
-を追加し、`--bundle`と`--detector-checkpoint`にも対応する資産を明示する。
+上のCLIは採用済みの較正経路を明示する。未較正bundleの比較は
+`--ball-path bundle`を指定し、較正artifactを渡さず対応するbundle/検出器を明示する。
 資産の固定SHA256は[名前付きoption](../../tasks/ball_refiner/pipeline_options.py)が正本。
 検出器e9、anchored_12k seed42のepoch41（checkpoint `985308b0…`）から書き出したbundle、
 共分散倍率artifact `197f9e64…`（Σに1.8125148752倍）を要求する。
@@ -167,12 +169,13 @@ manifestは重み・全入力設定・元checkpointを束縛し、倍率artifact
 倍率、元checkpoint SHA256、artifact SHA256を保存し、load-onlyでは再補正しない。
 既存`bundle` optionは未較正schema v1を維持し、未知optionや暗黙の倍率1は許可しない。
 標準sceneの既定は `ball_path=e9_anchored_s42_covariance`。旧ft-e13＋旧refinerは
-`ball_path=ft_e13` で明示する。checkpoint-root内の配布名は `configs/ball_path/` が正本。
+`ball_path=comparison/ft_e13` で明示する。checkpoint-root内の配布名は `configs/ball_path/` が正本。
+採用済みの実体は`ckpt/`に置き、学習runやexport元へのsymlinkで代用しない。
 資産が無ければ停止し、旧重みを自動選択しない。動画は直接decodeし、JPEG化・再学習・倍率再fitはしない。
 元動画3cameraのexecute/fresh-loadは通過したが、
 [固定Bゲート](../../../knowledge/nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)の
 GT位置誤差p90が不合格だったため、run26時点では既定を維持した。
-[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)は
+[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)
 に従ってe9を既定化した。confidence規則とpoint consumer配線は実装済み。安全benchと全scene qualificationで確認する。
 seedの事前判定FAILと、
 それを保持して再現は十分と扱う追加ユーザー判断も同記録から辿れる。

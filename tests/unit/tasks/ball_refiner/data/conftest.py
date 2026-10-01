@@ -31,7 +31,6 @@ def window_data(tmp_path):
         np.zeros(11, dtype=np.int64), candidates.coords[0, :, 0].numpy(), candidates.scores[0, :, 0].numpy(),
         candidates, (7, 9), 1,
     )
-    values = dict(OmegaConf.load(Path(__file__).resolve().parents[5] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"))
+    values = dict(OmegaConf.load(Path(__file__).resolve().parents[5] / "src/tasks/ball_refiner/configs/model/comparison/absolute.yaml"))
     values.update(patch_size=3, use_pose=False, use_court=False, hidden_dim=16, attention_heads=2)
     return LoadedClip(store.clips[0], evidence, targets), Refiner2DConfig(**values)
-

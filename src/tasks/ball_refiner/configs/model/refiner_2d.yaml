@@ -1,15 +1,7 @@
-components: 4
-hidden_dim: 128
-attention_heads: 4
-temporal_layers: 1
-patch_size: 5
-court_keypoints: 14
-dropout: 0.1
-pose_dropout: 0.25
-min_std: 0.001
-max_std: 0.5
-initial_std: 0.05
-max_correlation: 0.95
-use_detector: true
-use_pose: true
-use_court: true
+defaults:
+  - /model/comparison/absolute@_here_
+  - _self_
+
+mean_parameterization: candidate_residual_v1
+anchored_components: 3
+max_offset_uv: 0.02
