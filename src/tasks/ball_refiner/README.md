@@ -314,7 +314,33 @@ CPUの`data/audit.py`と次の入口で全source/splitの教師数とMeiji全cam
 実データ監査の結果と生成不足の判断は[knowledge](../../../knowledge/nodes/ball_refiner/000001-run-i935-data-audit-r2.md)を参照。
 文脈なしDataLoaderは下記のpilotへ接続する。文脈あり入力の未生成は補完しない。
 
-### 全sourceのJPEG文脈cache
+### Meijiの凍結人物経路による文脈cache
+
+`data/meiji_context_inference.py` は #964 の凍結人物設定・重み・共有実装を検証し、
+同じJPEGの全画面DINO → `FeatureExtractor`（全17関節＋CLIP）→ `track_sequence` →
+frame 0のcourt校正と共通court選別を呼ぶ。選別したgroupの実観測だけを保存し、
+GSI補間をpose観測にしない。各frameの未検出・選別なし・court校正失敗を区別する。
+負の値を含む有限な生heatmap peakを保持し、モデル入力への変換時だけ[0,1]にclipして
+負値と飽和の件数を記録する。非有限値やmodel/runtime例外は失敗として停止する。
+
+`scripts/meiji_context.py plan|generate` は既存cacheと別の入口。
+Meiji train/video_002・val/video_000の108 camera-clip / 52,866 frameを固定する。
+TrackNet/chatは計画と完成manifestで `absent_by_policy` とし、未生成を観測へ変換しない。
+`--store --evidence --scene-config --freeze --output` は全て絶対path。
+`plan` はCPUだけで新しいoutput内に `plan.json` を作り、hashを出力する。
+`generate --plan-sha256 <hash>` は同じ引数を指定して共有queueで実行する。
+CUDA allocatorは7GiB、モデルstageを分離し、外側の監視jobで全GPU使用量も制限する。
+
+`data/meiji_context.py` がclip単位の完了receiptを保存する。再開時は計画・入力JPEG・
+code・重み・完成NPZのhashとframe/PTSを照合する。失敗/中断clipは記録を保持し、
+明示的な次回実行で新しいattemptへ全clipを再計算する。途中結果はreaderへ公開しない。
+全clip完了後は同じ `ContextCache` 契約へ統合し、coverageと出自を付ける。
+このcache作成は文脈モデルの学習・clip_000 scene qualificationを実行しない。
+2系列の繰り返しcross-attentionと同予算の旧融合比較は
+[ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5913365577)に従う後続作業。
+
+### 旧全sourceのJPEG文脈cache（BoT-SORT比較用）
+
 
 `scripts/generate_context.py`はdetector cacheと**同一のJPEG shard**を使い、
 TrackNet・Meiji・chat_annotationの各clipを独立に処理する。camera_id=Noneもそのまま保存し、

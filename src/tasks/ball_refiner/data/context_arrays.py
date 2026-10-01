@@ -58,8 +58,8 @@ class ContextArrays:
             raise ValueError("Track IDs must be nonnegative, unique and sorted")
         if p and not self.track_observed.any(axis=0).all():
             raise ValueError("Every track needs at least one observed crop")
-        if (self.boxes_xys[..., 2][self.track_observed] <= 0).any() or (self.keypoints[..., 2] < 0).any():
-            raise ValueError("Observed boxes need positive sizes; pose peaks must be nonnegative")
+        if (self.boxes_xys[..., 2][self.track_observed] <= 0).any():
+            raise ValueError("Observed boxes need positive sizes")
         if (self.keypoints[~self.track_observed] != 0).any() or (self.boxes_xys[~self.track_observed] != 0).any():
             raise ValueError("Unobserved crops must be zero, not interpolated pose observations")
 
@@ -81,7 +81,7 @@ class ContextArrays:
         denominator = np.asarray((clip.source_width - 1, clip.source_height - 1), np.float32)
         joints = np.take(self.keypoints, POSE_JOINTS, axis=2)
         raw = joints[..., 2]
-        confidence = np.minimum(raw, np.float32(1))
+        confidence = np.clip(raw, np.float32(0), np.float32(1))
         valid = self.track_observed[..., None] & (confidence > 0) & (confidence >= pose_threshold)
         pose = PoseContext(joints[..., :2] / np.float32(clip.scale) / denominator, confidence, valid)
         court = CourtContext(self.court_points / np.float32(clip.scale) / denominator,
@@ -90,9 +90,10 @@ class ContextArrays:
             **provenance, "pose_status": "generated", "court_status": "generated",
             "pose_threshold": pose_threshold, "pose_frames": int(valid.any(axis=(1, 2)).sum()),
             "court_keypoints": int(self.court_valid.sum()),
-            "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+            "pose_confidence_transform": "finite_heatmap_peak_clip_zero_one.v2",
             "pose_confidence_total_slots": int(raw.size),
             "pose_confidence_saturated_slots": int((raw > 1).sum()),
+            "pose_confidence_negative_slots": int((raw < 0).sum()),
             "pose_confidence_raw_max": float(raw.max(initial=0)),
         })
 
