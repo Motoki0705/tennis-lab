@@ -49,6 +49,9 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 ## Model and runtime
 
+DINOv3の外部sourceは `paths.external_asset_root`、学習済み重みは `paths.checkpoint_root` から読む。
+相対パスの正本は `configs/model/encoder/dinov3.yaml`。旧source配下の重みへのfallbackは行わない。
+
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
