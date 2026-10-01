@@ -656,7 +656,7 @@ class CourtTargetConfig:
 
 @dataclass(frozen=True, slots=True)
 class CourtProcessingConfig:
-    derived_target_root: Path
+    derived_target_root: Path | None
     targets: tuple[CourtTargetConfig, ...]
 
     @classmethod
@@ -684,7 +684,7 @@ class CourtProcessingConfig:
                 "data.processing.targets must not repeat a target kind."
             )
         return cls(
-            derived_target_root=resolver.resolve(
+            derived_target_root=None if mapping["derived_target_root"] is None else resolver.resolve(
                 PathRole.DATA,
                 _string(
                     mapping,

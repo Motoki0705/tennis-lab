@@ -106,6 +106,7 @@ def generate_line_target(
     instances: tuple[CourtInstance2D, ...],
     line_width_metres: float = DEFAULT_LINE_WIDTH_METRES,
     baseline_width_metres: float = DEFAULT_BASELINE_WIDTH_METRES,
+    rasterizers: tuple[CourtPlaneRasterizer | None, ...] | None = None,
 ) -> UInt8Array:
     """Render all court instances into one binary uint8 line mask."""
     if height <= 0 or width <= 0 or not instances:
@@ -122,12 +123,10 @@ def generate_line_target(
         baseline_width_metres=baseline_width_metres,
     )
     output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
-    for instance in instances:
-        rasterizer = CourtPlaneRasterizer.from_instance(
-            instance,
-            width=width,
-            height=height,
-        )
+    projectors = rasterizers if rasterizers is not None else tuple(CourtPlaneRasterizer.from_instance(instance, width=width, height=height) for instance in instances)
+    if len(projectors) != len(instances):
+        raise ValueError("Court rasterizer count disagrees with instances.")
+    for rasterizer in projectors:
         if rasterizer is None:
             continue
         for line in metric_lines:

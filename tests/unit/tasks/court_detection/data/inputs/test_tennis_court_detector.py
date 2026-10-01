@@ -11,7 +11,7 @@ from PIL import Image
 
 from src.tasks.court_detection.configuration import TennisCourtDetectorSourceConfig
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
-    TennisCourtDetectorInput,
+    LegacyTennisCourtDetectorInput as TennisCourtDetectorInput,
 )
 from src.tasks.court_detection.data.target_generation.store import (
     CourtDerivedTargetStore,

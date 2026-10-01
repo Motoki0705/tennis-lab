@@ -20,7 +20,7 @@ def build_court_processing_pipeline(
     is_train: bool,
     require_pose: bool = False,
 ) -> CourtProcessingPipeline:
-    store = CourtDerivedTargetStore(config.processing.derived_target_root)
+    store = None if config.processing.derived_target_root is None else CourtDerivedTargetStore(config.processing.derived_target_root)
     line_schema = next(
         (
             target.target_schema

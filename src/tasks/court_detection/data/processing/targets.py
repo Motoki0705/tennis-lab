@@ -7,7 +7,6 @@ from typing import Protocol
 
 import numpy as np
 import torch
-from PIL import Image
 from torch import Tensor
 
 from src.tasks.court_detection.configuration import CourtTargetConfig
@@ -20,8 +19,8 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetSpec,
     CourtTransformedSample,
 )
-from src.tasks.court_detection.data.target_generation.store import (
-    validate_derived_target,
+from src.tasks.court_detection.data.target_generation.online import (
+    generate_online_targets,
 )
 from src.tasks.court_detection.target_schemas import (
     SEMANTIC_LINE_CHANNEL_NAMES,
@@ -107,7 +106,7 @@ class KeypointTargetBuilder:
         }
 
 
-class _PrecomputedDenseTargetBuilder:
+class _OnlineDenseTargetBuilder:
     kind: CourtDenseTargetKind
     capability: CourtInputCapability
 
@@ -121,41 +120,20 @@ class _PrecomputedDenseTargetBuilder:
 
     @property
     def required_capabilities(self) -> frozenset[CourtInputCapability]:
-        return frozenset({self.capability})
+        return frozenset({CourtInputCapability.COURT_INSTANCES})
 
     def preflight(self, records: tuple[CourtSampleRecord, ...]) -> None:
         if not records:
             raise ValueError(f"{self.kind} target requires a non-empty split.")
-        for record in records:
-            validate_derived_target(
-                record,
-                input_spec=self._input_spec,
-                target_kind=self.kind,
-                target_schema=self.spec.schema,
-            )
 
     def load_dense(self, raw: CourtRawSample) -> Mapping[CourtDenseTargetKind, Tensor]:
-        try:
-            path = raw.dense_target_refs[self.kind]
-        except KeyError as error:
-            raise FileNotFoundError(
-                f"Court sample {raw.sample_id!r} has no {self.kind} target reference."
-            ) from error
-        if not path.is_file():
-            raise FileNotFoundError(f"Precomputed Court target is missing: {path}")
-        with Image.open(path) as handle:
-            array = np.asarray(handle.convert("L"), dtype=np.uint8)
-        if array.shape != (raw.image.height, raw.image.width):
-            raise ValueError(
-                f"Precomputed Court {self.kind} target resolution disagrees with RGB."
-            )
-        return {self.kind: self._decode(array)}
+        return generate_online_targets(raw, {self.kind: self.spec.schema})
 
     def _decode(self, array: np.ndarray) -> Tensor:
         raise NotImplementedError
 
 
-class SegmentationTargetBuilder(_PrecomputedDenseTargetBuilder):
+class SegmentationTargetBuilder(_OnlineDenseTargetBuilder):
     kind: CourtDenseTargetKind = "seg"
     capability = CourtInputCapability.SEGMENTATION_REFERENCE
 
@@ -175,7 +153,7 @@ class SegmentationTargetBuilder(_PrecomputedDenseTargetBuilder):
                     "doubles_right",
                 ),
                 target_dtype=torch.long,
-                precomputed=True,
+                precomputed=False,
             ),
             input_spec=input_spec,
         )
@@ -195,7 +173,7 @@ class SegmentationTargetBuilder(_PrecomputedDenseTargetBuilder):
         return mask
 
 
-class LineTargetBuilder(_PrecomputedDenseTargetBuilder):
+class LineTargetBuilder(_OnlineDenseTargetBuilder):
     kind: CourtDenseTargetKind = "line"
     capability = CourtInputCapability.LINE_REFERENCE
 
@@ -207,7 +185,7 @@ class LineTargetBuilder(_PrecomputedDenseTargetBuilder):
                 output_channels=1,
                 channel_names=("court_line",),
                 target_dtype=torch.float32,
-                precomputed=True,
+                precomputed=False,
             ),
             input_spec=input_spec,
         )
@@ -225,9 +203,13 @@ class LineTargetBuilder(_PrecomputedDenseTargetBuilder):
         return target
 
 
-class SemanticLineTargetBuilder(_PrecomputedDenseTargetBuilder):
+class SemanticLineTargetBuilder(_OnlineDenseTargetBuilder):
     kind: CourtDenseTargetKind = "semantic_line"
     capability = CourtInputCapability.SEMANTIC_LINE_REFERENCE
+
+    @property
+    def required_capabilities(self) -> frozenset[CourtInputCapability]:
+        return frozenset({CourtInputCapability.COURT_INSTANCES, CourtInputCapability.KEYPOINT_CHANNELS})
 
     def __init__(self, *, target_schema: str, input_spec: CourtInputSpec) -> None:
         super().__init__(
@@ -237,7 +219,7 @@ class SemanticLineTargetBuilder(_PrecomputedDenseTargetBuilder):
                 output_channels=len(SEMANTIC_LINE_CHANNEL_NAMES),
                 channel_names=SEMANTIC_LINE_CHANNEL_NAMES,
                 target_dtype=torch.long,
-                precomputed=True,
+                precomputed=False,
             ),
             input_spec=input_spec,
         )

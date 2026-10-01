@@ -38,7 +38,7 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.data.inputs.contract import CourtInput
 from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
-    TennisCourtDetectorInput,
+    LegacyTennisCourtDetectorInput as TennisCourtDetectorInput,
 )
 from src.tasks.court_detection.data.processing.geometry import CourtProcessingGeometry
 from src.tasks.court_detection.data.processing.pipeline import (
@@ -321,7 +321,7 @@ def test_synthetic_input_consumes_manifest_paths_and_renderer_visibility(
     assert len(sample.court_instances) == 2
 
 
-def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path) -> None:
+def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path, monkeypatch) -> None:
     record = CourtSampleRecord(
         sample_id="sample",
         split="train",
@@ -356,7 +356,10 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path) -> 
         def __init__(self):
             self.sample_calls = 0
             self.apply_calls = 0
-            self.plan = object()
+            from src.tasks.court_detection.data.processing.geometry import (
+                CourtGeometryPlan,
+            )
+            self.plan = CourtGeometryPlan(torch.eye(3), (8, 8), False)
 
         def sample(self, selected):
             assert selected is raw
@@ -402,6 +405,7 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path) -> 
             self.seen.append(id(selected))
             return torch.tensor(1.0)
 
+    monkeypatch.setattr("src.tasks.court_detection.data.processing.pipeline.generate_online_targets", lambda *args, **kwargs: {})
     geometry = _Geometry()
     first = _Builder("kp")
     second = _Builder("line")

@@ -307,7 +307,10 @@ def _validate_domain_manifest(target: DatasetTarget, path: Path) -> DatasetManif
             path.parent,
             array_validation=CourtArrayValidationMode.HEADERS_ONLY,
         )
-        payload = _read_json(path)
+        from src.synthetic_data_generation.dataset.court.sample_store import (
+            read_court_manifest,
+        )
+        payload = read_court_manifest(path.parent)
         return _court_report_manifest(
             payload,
             report=report,
