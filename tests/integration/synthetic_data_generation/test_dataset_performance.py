@@ -52,10 +52,10 @@ def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
             gender=np.asarray("neutral"),
             mocap_framerate=np.asarray(30.0),
         )
-    (data_root / "smplh").mkdir()
+    (tmp_path / "ckpt/body_models/smplh").mkdir(parents=True)
     checkpoint = (
-        external_root
-        / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+        tmp_path / "ckpt"
+        / "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
     )
     checkpoint.parent.mkdir(parents=True)
     checkpoint.write_bytes(b"integration fixture")
@@ -68,6 +68,7 @@ def _runtime(tmp_path: Path) -> ScenePipelineConfiguration:
             overrides=[
                 f"roots.data_root={data_root.as_posix()}",
                 f"roots.external_asset_root={external_root.as_posix()}",
+                f"roots.checkpoint_root={(tmp_path / 'ckpt').as_posix()}",
             ],
         )
     return ScenePipelineConfiguration.from_config(config)
