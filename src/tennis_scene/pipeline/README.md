@@ -29,12 +29,12 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 動画 → court_detection → court_calibration
 動画 → person_detection → person_tracking
 track＋court → player_selection → pose_estimation
-動画 → ball_detection → ball_refiner_2d
-ball＋court → court_side（ballだけのhalf-turn仮説検定）
+動画 → ball_detection → ball_refiner_2d → ball_points
+ball_points＋court → court_side（ballだけのhalf-turn仮説検定）
 選別group＋court＋side（＋動画のcrop） → player_association
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
-単一球観測＋camera → ball_triangulation
+ball_points＋camera → ball_triangulation
 人物対応＋2D観測＋camera → body_view_selection → gvhmr
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
@@ -113,7 +113,7 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 
 モデル実行では `evidence` は必須。注釈importと無効な検出器は `None` を明示し、
 `score_semantics` で区別する。refinerは証拠なしを実検出とみなしてはならない。
-下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refiner分布から確率的三角測量への接続は#936）。
+下流のside・幾何・三角測量は、refiner由来の `ball_points` だけを使う。検出器の点への戻り道は無い（確率的三角測量への接続は#936）。
 v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
 
 ## 2D ball refinerの専用recipe
@@ -173,9 +173,23 @@ manifestは重み・全入力設定・元checkpointを束縛し、倍率artifact
 [固定Bゲート](../../../knowledge/nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)の
 GT位置誤差p90が不合格だったため、run26時点では既定を維持した。
 [2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)は
-に従ってe9を既定化した。confidence規則・point consumer配線・安全benchは後続の検証項目。
+に従ってe9を既定化した。confidence規則とpoint consumer配線は実装済み。安全benchと全scene qualificationで確認する。
 seedの事前判定FAILと、
 それを保持して再現は十分と扱う追加ユーザー判断も同記録から辿れる。
+
+## 信頼度を共有する点consumer
+
+`ball_points` は保存済み全GMMを最大weight成分の平均へ縮約し、
+[固定confidence規則](../../tasks/ball_refiner/README.md#点consumerの信頼度規則)で選別する。
+`BallPointsOutput` / schema `ball_points` v1に点、存在確率、source px²面積、採否、規則、棄却bitを保存する。
+bit1は存在確率不足、bit2は面積超過、0は採用。棄却frameは座標・confidence=0とobserved=false。
+codec再読込時も規則とmaskの一致を検証する。補間・検出点へのfallbackは行わない。
+
+`court_side`・`camera_alignment`・`ball_triangulation` は同じcameraごとのball_points artifactに依存し、
+検出器のscore閾値を重ねて適用しない。court_sideのball-only/margin .15は不変。
+旧ball_detectionsをpoint consumerへload/importすることはschema不一致として拒否する。
+全GMMは別のartifactとして保持され、#936はそこから分布を利用できる。
+ball_detectionを無効化する場合はball/refiner/points chain全体のloadを明示する必要がある。
 
 ## 成果物
 
