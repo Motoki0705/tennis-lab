@@ -1,6 +1,6 @@
 task: kp
 image_source: court/images
-checkpoint: court_detection/hybrid/court-detection-epoch=17.ckpt
+checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt  # whole image; no region search
 save: ${run.output_dir}/kp.gif
 fps: 6
 max_frames: 24

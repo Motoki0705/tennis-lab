@@ -287,7 +287,7 @@ def test_configured_paths_retain_their_declared_runtime_roles() -> None:
         line_model.checkpoint_path
         == (
             runtime.resolver.roots.checkpoint_root
-            / "court_detection/hybrid/court-detection-epoch=17.ckpt"
+            / "court_detection/multiscale_depth3/b863df1f01f0.ckpt"
         ).resolve()
     )
     for path in (runtime.plcs.accad_root, runtime.plcs.smplh_model_root):

@@ -11,6 +11,7 @@ from src.submodules.models._base.inference_model import BaseInferenceModel
 def test_models_root_owns_the_documented_public_symbols() -> None:
     expected = {
         "BaseInferenceModel",
+        "BotSortAssociator",
         "DinoPersonDetector",
         "DinoPersonTracker",
         "GvhmrMeshRecovery",
@@ -29,6 +30,8 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "TrackResult",
         "ViTPosePose2D",
         "YoloPersonTracker",
+        "filter_detections_by_footpoint",
+        "select_and_complete_tracks",
     }
     assert set(models.__all__) == expected
     for name in expected:
