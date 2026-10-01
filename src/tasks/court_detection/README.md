@@ -88,7 +88,7 @@ checkpoint本体・保存architectureは変更しない。新配置の資産が�
 
 LINEだけの利用・raw head評価は `predict(rgb, heads=("line",), postprocess="none")` のように明示します。`CourtKeypointPredictor`・`CourtLinePredictor`・`CourtSegPredictor`・`CourtSemanticLinePredictor`も`predictor.py`の同じ前処理・forwardを使います。存在しないheadは要求時に拒否します。既定のb863はKP/SEG/LINE＋pose＋semantic LINE（12ch）を持ちます。
 
-KP schemaがcamera-viewの場合、Hもそのchannel順のコート座標です。複数cameraの物理point identityへは自動変換しません。下流接続の向き設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。UIのraw score・heatmap・head metricには補正座標を混ぜません。 `visualization=semantic_line`には対応headを持つ`visualization.checkpoint`の明示指定が必要です。従来の`outputs/`内の重みには併せて`paths=default`を指定します（KP/SEG/LINEの既定rootは`ckpt/`）。
+KP schemaがcamera-viewの場合、Hもそのchannel順のコート座標です。複数cameraの物理point identityへは自動変換しません。下流接続の向き設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。UIのraw score・heatmap・head metricには補正座標を混ぜません。 `visualization=semantic_line`には対応headを持つ`visualization.checkpoint`の明示指定が必要です。`outputs/`内のモデルは `visualization.checkpoint={role:artifact,path:court_detection/.../model.ckpt}` で選びます。事前学習backboneは引き続き`paths.checkpoint_root`から読みます。Pythonの推論入口では同じresolverと`checkpoint_role=PathRole.ARTIFACT`を渡します。
 
 実checkpointの確認は `python -m src.tasks.court_detection.scripts.audit_hybrid_inference --checkpoint <absolute.ckpt> --image <image> --output-dir <new-directory>` で、KP/LINE/H・画像・診断・実行時間を保存できます。複数画像は`--image`を繰り返し指定します。`--scene-root`は既存ownerのハッシュを前後照合する読み取り専用オプションです。Hの生成可否とLINE支持率はGT精度ではありません。
 
