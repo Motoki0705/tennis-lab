@@ -1,29 +1,13 @@
-"""Read-only dataset catalog and frame access for the ball-detection review UI.
+"""Read-only catalog of versioned ball frame stores and the optional Web store.
 
-The review UI browses two kinds of supervised sources:
-
-* clip datasets written on disk as ``<root>/<...>/<Clip*>/Label.csv`` plus
-  numbered ``*.jpg`` frames (TrackNet and the annotated YouTube frames), and
-* the optional unified web store under ``data/tennis/web/unified``, whose
-  ``static`` samples are single annotated stills and whose ``temporal`` samples
-  are split-safe windows inside one video sequence.
-
-Every dataset exposes dense ``0..frames-1`` frame positions so the HTTP layer
-addresses one frame with a single integer.  Scene ids are ``<dataset>:<local>``
-and are always resolved through the enumerated catalog: an id the catalog did
-not produce is rejected before any path is touched, so the service never
-accepts a caller-supplied filesystem path.
-
-Annotations are parsed with the existing multi-instance
-``TrackNetDataModule._read_label_csv`` parser instead of re-implementing the
-single-instance helper in ``visualization/io/clip.py``; the review UI must
-preserve every ball instance a dataset defines.
+Ball versions are discovered under data/ball_detection/<version>. Each scene
+is a full camera clip, including unreviewed and unresolved frames. Requests
+resolve only enumerated opaque IDs, never caller-supplied filesystem paths.
 """
 
 from __future__ import annotations
 
-import math
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Literal, Protocol, cast
@@ -31,13 +15,18 @@ from typing import Any, Final, Literal, Protocol, cast
 import cv2
 import numpy as np
 from numpy.typing import NDArray
-from PIL import Image
 
 from src.tasks.ball_detection.data.components.web.data_access_layer.web_store import (
     WebFrameStore,
 )
-from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
+from src.tasks.ball_detection.data.store import (
+    METADATA_FILE,
+    SHARDS_DIR,
+    BallFrameStore,
+    shard_name,
+)
 from src.tasks.ball_detection.data.types import FrameLabel
+from src.tasks.ball_detection.visualization.io.store_frames import StoreSceneFrames
 
 SceneMode = Literal["temporal", "static"]
 
@@ -46,14 +35,6 @@ SPLIT_NAMES: Final[tuple[str, ...]] = ("train", "val", "test")
 #: Scene ids are opaque to the HTTP layer; the service splits them back into
 #: ``(dataset, local)`` before resolving them through the catalog.
 SCENE_SEPARATOR: Final = "::"
-
-# Clip directories are recognised by the same prefix convention the data
-# modules use (``TrackNetDataModule._is_clip_dir``); only directories that also
-# carry a ``Label.csv`` are offered as supervised scenes.
-_CLIP_PREFIXES: Final[tuple[str, ...]] = ("Clip", "clip_")
-# ``<root>/<game>/<Clip*>`` and ``<root>/<video>/<clip_*>`` both fit in 3.
-_SCENE_MAX_DEPTH: Final = 3
-
 
 @dataclass(frozen=True, slots=True)
 class BallDatasetSpec:
@@ -66,8 +47,6 @@ class BallDatasetSpec:
 
 
 DATASET_SPECS: Final[tuple[BallDatasetSpec, ...]] = (
-    BallDatasetSpec("tracknet", "TrackNet", "tennis/tracknet", "temporal"),
-    BallDatasetSpec("youtube", "YouTube", "tennis/youtube/frames", "temporal"),
     BallDatasetSpec("web_static", "Web frames (static)", WEB_RELATIVE, "static"),
     BallDatasetSpec(
         "web_temporal", "Web sequences (temporal)", WEB_RELATIVE, "temporal"
@@ -109,7 +88,11 @@ class SceneFrames(Protocol):
         ...
 
     def annotated(self, index: int) -> bool:
-        """Return whether the frame carries an annotation row at all."""
+        """Return whether the frame was reviewed."""
+        ...
+
+    def supervised(self, index: int) -> bool:
+        """Return whether the observed-only target is trusted for scoring."""
         ...
 
 
@@ -132,95 +115,6 @@ def _require_within(path: Path, root: Path, *, what: str) -> Path:
             "to read it."
         )
     return resolved
-
-
-def _escapes_via_symlink(path: Path, root: Path) -> bool:
-    """Return whether ``path`` is a symlink leading outside ``root``.
-
-    The caller only uses this for files whose *directory* was already verified to
-    live inside the root, so a plain file cannot escape and the expensive
-    resolution is skipped for it.  Read paths still re-verify with
-    :func:`_require_within`.
-    """
-    if not path.is_symlink():
-        return False
-    return not path.resolve().is_relative_to(Path(root).resolve())
-
-
-def _validate_labels(
-    labels: Mapping[str, tuple[FrameLabel, ...]],
-    *,
-    source: Path,
-) -> None:
-    """Reject non-finite annotations so they can never reach JSON output."""
-    for frame_name, instances in labels.items():
-        for label in instances:
-            if not (
-                math.isfinite(label.x)
-                and math.isfinite(label.y)
-                and math.isfinite(label.visibility)
-            ):
-                raise BallDatasetCatalogError(
-                    f"{source}: annotation for {frame_name!r} (instance "
-                    f"{label.instance_id!r}) has a non-finite coordinate or "
-                    "visibility."
-                )
-
-
-def read_clip_labels(path: Path) -> dict[str, tuple[FrameLabel, ...]]:
-    """Parse a TrackNet-style multi-instance ``Label.csv``."""
-    labels: dict[str, tuple[FrameLabel, ...]] = TrackNetDataModule._read_label_csv(path)
-    _validate_labels(labels, source=path)
-    return labels
-
-
-@dataclass(frozen=True, slots=True)
-class ClipSceneFrames:
-    """Frame accessor over one ``Label.csv`` clip directory."""
-
-    clip_dir: Path
-    frame_names: tuple[str, ...]
-    label_map: Mapping[str, tuple[FrameLabel, ...]]
-    mode: SceneMode = "temporal"
-    #: Root the clip must stay inside.  A frame file that resolves outside it is
-    #: refused, so a planted symlink cannot hand the UI foreign pixels.
-    root: Path | None = None
-
-    @property
-    def frames(self) -> int:
-        return len(self.frame_names)
-
-    def name(self, index: int) -> str:
-        checked = _check_index(index, self.frames, context=str(self.clip_dir))
-        return self.frame_names[checked]
-
-    def _frame_path(self, index: int) -> Path:
-        path = self.clip_dir / self.name(index)
-        if self.root is None:
-            return path
-        return _require_within(path, self.root, what="frame")
-
-    def original_size(self, index: int) -> tuple[int, int]:
-        with Image.open(self._frame_path(index)) as image:
-            return int(image.width), int(image.height)
-
-    def read_rgb(self, index: int) -> NDArray[np.uint8]:
-        path = self._frame_path(index)
-        image_bgr = cv2.imread(str(path))
-        if image_bgr is None:
-            raise BallDatasetCatalogError(f"Failed to read frame {path}.")
-        return cast(NDArray[np.uint8], cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB))
-
-    def labels(self, index: int) -> tuple[FrameLabel, ...]:
-        return tuple(self.label_map.get(self.name(index), ()))
-
-    def annotated(self, index: int) -> bool:
-        """Return whether this frame has an annotation row at all.
-
-        A frame with no row is *missing*, not an annotated negative; the two stay
-        distinct because only the latter may be scored as "no ball present".
-        """
-        return self.name(index) in self.label_map
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,6 +161,10 @@ class WebSceneFrames:
         return True
 
 
+    def supervised(self, index: int) -> bool:
+        return self.annotated(index)
+
+
 @dataclass(frozen=True, slots=True)
 class SceneRef:
     """One catalogued scene before its frames are materialised."""
@@ -275,7 +173,7 @@ class SceneRef:
     local_id: str
     label: str
     frames: int
-    clip_dir: Path | None = None
+    clip_id: str | None = None
     sample_indices: tuple[int, ...] = ()
 
     @property
@@ -317,43 +215,6 @@ class DatasetEntry:
         return payload
 
 
-def _is_clip_dir(path: Path) -> bool:
-    return path.is_dir() and path.name.startswith(_CLIP_PREFIXES)
-
-
-def _iter_clip_dirs(root: Path) -> tuple[list[Path], list[str]]:
-    """Return ``Label.csv`` clip directories below ``root``, plus rejections.
-
-    Traversal never follows a directory symlink that leaves ``root``: such a
-    link is reported instead of being scanned, so the catalog can only ever
-    describe scenes the operator's data root actually contains.
-    """
-    root_resolved = Path(root).resolve()
-    found: list[Path] = []
-    rejected: list[str] = []
-    stack: list[tuple[Path, int]] = [(root, 0)]
-    while stack:
-        directory, depth = stack.pop()
-        if depth >= _SCENE_MAX_DEPTH:
-            continue
-        for child in sorted(directory.iterdir()):
-            if not child.is_dir() or child.name.startswith("."):
-                continue
-            if not child.resolve().is_relative_to(root_resolved):
-                rejected.append(f"{child} resolves outside the dataset root; skipped.")
-                continue
-            if _is_clip_dir(child):
-                if (child / "Label.csv").is_file():
-                    found.append(child)
-                continue
-            stack.append((child, depth + 1))
-    return sorted(found), rejected
-
-
-def _clip_frame_names(clip_dir: Path) -> tuple[str, ...]:
-    return tuple(sorted(path.name for path in clip_dir.glob("*.jpg")))
-
-
 def _natural_key(relative: str) -> tuple[tuple[int, object], ...]:
     """Return a sort key that orders ``Clip2`` before ``Clip10``."""
     key: list[tuple[int, object]] = []
@@ -378,7 +239,8 @@ class BallDatasetCatalog:
         # explicit ``refresh()`` may drop it.
         self._reasons: dict[str, str] = {}
         self._warnings: dict[str, tuple[str, ...]] = {}
-        self._labels: dict[Path, dict[str, tuple[FrameLabel, ...]]] = {}
+        self._ball_stores: dict[str, BallFrameStore] = {}
+        self._specs: tuple[BallDatasetSpec, ...] | None = None
         self._store: WebFrameStore | None = None
         self._store_error: str | None = None
 
@@ -395,11 +257,27 @@ class BallDatasetCatalog:
         self._ref_index.clear()
         self._reasons.clear()
         self._warnings.clear()
-        self._labels.clear()
+        self._ball_stores.clear()
+        self._specs = None
         self._store = None
         self._store_error = None
 
     # ----------------------------------------------------------- discovery
+
+    def specs(self) -> tuple[BallDatasetSpec, ...]:
+        """Discover version directories; a malformed store stays visible with a reason."""
+        if self._specs is None:
+            root = self.data_root / "ball_detection"
+            versions = sorted(root.iterdir()) if root.is_dir() else []
+            self._specs = tuple(
+                BallDatasetSpec(
+                    f"store/{version.name}", f"Ball store ({version.name})",
+                    f"ball_detection/{version.name}", "temporal",
+                )
+                for version in versions
+                if version.is_dir() and (version / METADATA_FILE).is_file()
+            ) + DATASET_SPECS
+        return self._specs
 
     def root_of(self, spec: BallDatasetSpec) -> Path:
         """Return the absolute root directory of one dataset source."""
@@ -407,10 +285,10 @@ class BallDatasetCatalog:
 
     def spec(self, dataset_id: str) -> BallDatasetSpec:
         """Return the dataset spec for ``dataset_id`` or fail loudly."""
-        for spec in DATASET_SPECS:
+        for spec in self.specs():
             if spec.id == dataset_id:
                 return spec
-        known = ", ".join(spec.id for spec in DATASET_SPECS)
+        known = ", ".join(spec.id for spec in self.specs())
         raise BallDatasetCatalogError(
             f"Unknown dataset {dataset_id!r}; expected one of [{known}]."
         )
@@ -418,7 +296,7 @@ class BallDatasetCatalog:
     def entries(self) -> list[DatasetEntry]:
         """Return one availability summary per dataset source."""
         entries: list[DatasetEntry] = []
-        for spec in DATASET_SPECS:
+        for spec in self.specs():
             refs, reason = self._scene_refs(spec)
             entries.append(
                 DatasetEntry(
@@ -458,62 +336,35 @@ class BallDatasetCatalog:
         if spec.id.startswith("web_"):
             refs, reason = self._web_refs(spec)
         else:
-            refs, reason = self._clip_refs(spec)
+            refs, reason = self._ball_refs(spec)
         self._refs[spec.id] = refs
         self._ref_index[spec.id] = {ref.local_id: ref for ref in refs}
         if reason is not None:
             self._reasons[spec.id] = reason
         return refs, reason
 
-    def _clip_refs(
+    def _ball_refs(
         self, spec: BallDatasetSpec
     ) -> tuple[tuple[SceneRef, ...], str | None]:
-        root = self.root_of(spec)
-        if not root.is_dir():
-            return (), f"directory not found: {root}"
-        clip_dirs, rejected = _iter_clip_dirs(root)
-        escaped: list[str] = list(rejected)
-        discovered: list[tuple[str, Path, tuple[str, ...]]] = []
-        for clip_dir in clip_dirs:
-            frame_names = _clip_frame_names(clip_dir)
-            if not frame_names:
-                continue
-            # Every frame the scene offers must live under the configured root;
-            # one escaping symlink disqualifies the whole scene rather than
-            # serving a scene whose pixels come from somewhere else.
-            escaped_frames = [
-                frame_name
-                for frame_name in frame_names
-                if _escapes_via_symlink(clip_dir / frame_name, root)
-            ]
-            if escaped_frames:
-                escaped.append(
-                    f"scene {clip_dir.name} skipped: frame(s) "
-                    f"{', '.join(escaped_frames[:3])} resolve outside the dataset "
-                    f"root {root}."
-                )
-                continue
-            discovered.append(
-                (clip_dir.relative_to(root).as_posix(), clip_dir, frame_names)
+        root = self.data_root / spec.relative
+        try:
+            _require_within(root, self.data_root, what="ball store")
+            for name in (METADATA_FILE, "index.npz"):
+                _require_within(root / name, root, what="store index")
+            store = BallFrameStore(root.resolve())
+            for clip in store.clips:
+                _require_within(root / SHARDS_DIR / shard_name(clip.index), root, what="shard")
+        except (OSError, ValueError, KeyError) as error:
+            return (), str(error)
+        self._ball_stores[spec.id] = store
+        return tuple(
+            SceneRef(
+                dataset_id=spec.id, local_id=clip.clip_id,
+                label=f"{clip.clip_id} [{clip.split}]", frames=clip.frame_count,
+                clip_id=clip.clip_id,
             )
-        if escaped:
-            self._warnings[spec.id] = tuple(sorted(escaped))
-        refs: list[SceneRef] = []
-        for local_id, clip_dir, frame_names in sorted(
-            discovered, key=lambda item: _natural_key(item[0])
-        ):
-            refs.append(
-                SceneRef(
-                    dataset_id=spec.id,
-                    local_id=local_id,
-                    label=local_id,
-                    frames=len(frame_names),
-                    clip_dir=clip_dir,
-                )
-            )
-        if not refs:
-            return (), f"no annotated clips found below {root}"
-        return tuple(refs), None
+            for clip in sorted(store.clips, key=lambda clip: _natural_key(clip.clip_id))
+        ), None
 
     def _open_store(self) -> WebFrameStore | None:
         if self._store is not None:
@@ -616,17 +467,9 @@ class BallDatasetCatalog:
         """Resolve one catalogued scene to a concrete frame accessor."""
         spec = self.spec(dataset_id)
         ref = self.scene_ref(dataset_id, local_id)
-        if ref.clip_dir is not None:
-            label_map = self._labels.get(ref.clip_dir)
-            if label_map is None:
-                label_map = read_clip_labels(ref.clip_dir / "Label.csv")
-                self._labels[ref.clip_dir] = label_map
-            return ClipSceneFrames(
-                clip_dir=ref.clip_dir,
-                frame_names=_clip_frame_names(ref.clip_dir),
-                label_map=label_map,
-                mode=spec.mode,
-                root=self.root_of(spec),
+        if ref.clip_id is not None:
+            return StoreSceneFrames(
+                self._ball_stores[dataset_id], ref.clip_id,
             )
         store = self._open_store()
         if store is None:
@@ -637,7 +480,7 @@ class BallDatasetCatalog:
 
     def iter_scene_refs(self) -> Iterator[SceneRef]:
         """Yield every scene reference across all datasets."""
-        for spec in DATASET_SPECS:
+        for spec in self.specs():
             yield from self._scene_refs(spec)[0]
 
 
@@ -659,12 +502,11 @@ __all__ = [
     "BallDatasetCatalog",
     "BallDatasetCatalogError",
     "BallDatasetSpec",
-    "ClipSceneFrames",
+    "StoreSceneFrames",
     "DatasetEntry",
     "SceneFrames",
     "SceneMode",
     "SceneRef",
     "WebSceneFrames",
-    "read_clip_labels",
     "split_scene_id",
 ]

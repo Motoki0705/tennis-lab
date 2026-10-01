@@ -29,12 +29,11 @@ from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
     denormalize_tensor_images_imagenet,
 )
-from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
-from src.tasks.ball_detection.data.types import BallDetectionSample, ClipWindow
-from src.tasks.base.visualization.preview import (
-    resolve_sample_indices,
-    resolve_split_file,
-)
+from src.tasks.ball_detection.data.store import split_names
+from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
+from src.tasks.ball_detection.data.store_dataset import BallStoreDataset
+from src.tasks.ball_detection.data.types import BallDetectionSample
+from src.tasks.base.visualization.preview import resolve_sample_indices
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
 
@@ -50,32 +49,19 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir = BallRuntimePaths.from_config(cfg).output(str(cfg.preview.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    split_name = str(cfg.preview.split)
-    split_file = resolve_split_file(cfg, split_name)
+    (split_name,) = split_names([str(cfg.preview.split)])
     datamodule = build_ball_detection_datamodule(cfg)
-    if not isinstance(datamodule, TrackNetDataModule):
-        raise TypeError(
-            "Augmentation previews require a TrackNet-compatible datamodule."
-        )
-    base_dataset = datamodule.create_dataset(
-        split_name=split_name,
-        split_file=split_file,
-        augmentation=None,
-    )
+    if not isinstance(datamodule, BallStoreDataModule):
+        raise TypeError("Augmentation previews require data.source=store.")
+    base_dataset = datamodule.create_dataset(split_name, augmentation=None)
     augmented_cfg = _build_augmented_config(cfg)
-    augmented_datamodule = build_ball_detection_datamodule(augmented_cfg)
-    if not isinstance(augmented_datamodule, TrackNetDataModule):
-        raise TypeError(
-            "Augmentation previews require a TrackNet-compatible datamodule."
-        )
     augmentation_container = OmegaConf.to_container(
         augmented_cfg.data.augmentation, resolve=True
     )
     if not isinstance(augmentation_container, dict):
         raise TypeError("data.augmentation must resolve to a mapping.")
-    augmented_dataset = augmented_datamodule.create_dataset(
-        split_name=split_name,
-        split_file=split_file,
+    augmented_dataset = datamodule.create_dataset(
+        split_name,
         augmentation=BallDetectionAugmentation(
             cast(dict[str, Any], augmentation_container)
         ),
@@ -90,27 +76,22 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         base_sample = base_dataset[sample_index]
         torch.manual_seed(int(cfg.preview.seed) + sample_index)
         augmented_sample = augmented_dataset[sample_index]
-        window = base_dataset.windows[sample_index]
+        frame_names = _frame_names(base_dataset, sample_index)
         sheet = _render_contact_sheet(
             base_sample=base_sample,
             augmented_sample=augmented_sample,
-            window=window,
+            frame_names=frame_names,
             cfg=cfg,
         )
 
-        file_stem = _sample_stem(window=window, sample_index=sample_index)
+        file_stem = f"{sample_index:06d}_{base_sample['window_id']}".replace("/", "_").replace(":", "_start")
         image_path = output_dir / f"{file_stem}.png"
         cv2.imwrite(str(image_path), cv2.cvtColor(sheet, cv2.COLOR_RGB2BGR))
 
         metadata = {
             "sample_index": sample_index,
-            "clip_dir": str(window.clip_dir),
-            "start_index": int(window.start_index),
-            "frame_names": list(
-                window.frame_names[
-                    window.start_index : window.start_index + int(cfg.model.num_frames)
-                ]
-            ),
+            "window_id": base_sample["window_id"],
+            "frame_names": frame_names,
             "output_image": str(image_path),
             "split": split_name,
         }
@@ -157,7 +138,7 @@ def _render_contact_sheet(
     *,
     base_sample: BallDetectionSample,
     augmented_sample: BallDetectionSample,
-    window: ClipWindow,
+    frame_names: list[str],
     cfg: DictConfig,
 ) -> np.ndarray:
     """Render a two-row contact sheet for one sample window."""
@@ -188,11 +169,6 @@ def _render_contact_sheet(
         thickness=int(draw_cfg.thickness),
     )
 
-    frame_names = list(
-        window.frame_names[
-            window.start_index : window.start_index + len(annotated_base)
-        ]
-    )
     tile_gap = int(cfg.preview.layout.tile_gap)
     header_height = int(cfg.preview.layout.header_height)
     row_gap = int(cfg.preview.layout.row_gap)
@@ -369,11 +345,11 @@ def _put_label(
     )
 
 
-def _sample_stem(*, window: ClipWindow, sample_index: int) -> str:
-    """Build a stable output file stem for one window."""
-    clip_name = window.clip_dir.name
-    game_name = window.clip_dir.parent.name
-    return f"{sample_index:06d}_{game_name}_{clip_name}_start{window.start_index:04d}"
+def _frame_names(dataset: BallStoreDataset, sample_index: int) -> list[str]:
+    """``<clip_id>:<frame>`` of every frame of one window."""
+    window = dataset.windows[sample_index]
+    clip = dataset.store.clips[window.clip]
+    return [f"{clip.clip_id}:{window.start + offset}" for offset in range(dataset.num_frames)]
 
 
 if __name__ == "__main__":

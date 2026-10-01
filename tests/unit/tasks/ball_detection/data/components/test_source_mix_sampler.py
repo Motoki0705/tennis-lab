@@ -1,91 +1,55 @@
-"""Unit tests for deterministic exact-ratio source mixing."""
+"""Exact epoch quotas, coverage, and deterministic source mixing."""
 
-from __future__ import annotations
+from collections import Counter
 
 import pytest
 
 from src.tasks.ball_detection.data.components.source_mix_sampler import (
-    ExactSourceMixBatchSampler,
+    SourceMixSampler,
+    allocate_counts,
 )
 
 
-def _sampler(
-    *,
-    synthetic_per_batch: int = 1,
-    synthetic_batch_period: int = 1,
-) -> ExactSourceMixBatchSampler:
-    return ExactSourceMixBatchSampler(
-        real_size=20,
-        synthetic_size=10,
-        batch_size=6,
-        synthetic_per_batch=synthetic_per_batch,
-        synthetic_batch_period=synthetic_batch_period,
-        steps_per_epoch=4,
-        seed=731,
+def test_epoch_quotas_and_reproducibility() -> None:
+    sampler = SourceMixSampler(
+        source_indices={"a": range(10), "b": range(10, 12)},
+        weights={"a": 1, "b": 2},
+        samples_per_epoch=18,
+        seed=4,
     )
+    first = list(sampler)
+    assert Counter("a" if index < 10 else "b" for index in first) == {"a": 6, "b": 12}
+    assert len(set(index for index in first if index < 10)) == 6
+    assert Counter(index for index in first if index >= 10) == {10: 6, 11: 6}
+    assert first == sampler.epoch_indices(0)
+    assert first != list(sampler)
+    sampler.set_epoch(0)
+    assert first == list(sampler)
 
 
-def test_each_batch_has_exact_source_ratio() -> None:
-    batches = list(_sampler())
-
-    assert len(batches) == 4
-    assert all(len(batch) == 6 for batch in batches)
-    assert all(sum(index >= 20 for index in batch) == 1 for batch in batches)
-
-
-def test_control_batches_are_real_only() -> None:
-    batches = list(_sampler(synthetic_per_batch=0))
-
-    assert all(all(index < 20 for index in batch) for batch in batches)
+def test_rounding_and_zero_quota_are_defined() -> None:
+    assert allocate_counts(8, {"a": 1, "b": 1, "c": 1}) == {"a": 3, "b": 3, "c": 2}
+    sampler = SourceMixSampler(
+        source_indices={"a": [0], "b": [1]},
+        weights={"a": 100, "b": 1},
+        samples_per_epoch=1,
+        seed=3,
+    )
+    assert list(sampler) == [0]
 
 
-def test_periodic_mix_rotates_phase_between_epochs() -> None:
-    sampler = _sampler(synthetic_batch_period=2)
-
-    first_counts = [
-        sum(index >= 20 for index in batch) for batch in list(sampler)
-    ]
-    second_counts = [
-        sum(index >= 20 for index in batch) for batch in list(sampler)
-    ]
-
-    assert first_counts == [1, 0, 1, 0]
-    assert second_counts == [0, 1, 0, 1]
+@pytest.mark.parametrize("weight", [0, -1, float("nan"), float("inf")])
+def test_invalid_weights_fail(weight: float) -> None:
+    with pytest.raises(ValueError, match="weight"):
+        allocate_counts(10, {"a": weight})
 
 
-def test_seed_is_reproducible_and_epochs_change() -> None:
-    first_sampler = _sampler()
-    second_sampler = _sampler()
-
-    first_epoch = list(first_sampler)
-    assert first_epoch == list(second_sampler)
-    assert first_epoch != list(first_sampler)
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "match"),
-    [
-        ({"real_size": 0}, "real_size"),
-        ({"synthetic_size": 0}, "synthetic_size"),
-        ({"synthetic_per_batch": 6}, "synthetic_per_batch"),
-        ({"synthetic_batch_period": 0}, "synthetic_batch_period"),
-        ({"steps_per_epoch": 0}, "steps_per_epoch"),
-    ],
-)
-def test_invalid_plan_fails_explicitly(
-    kwargs: dict[str, int],
-    match: str,
-) -> None:
-    config = {
-        "real_size": 20,
-        "synthetic_size": 10,
-        "batch_size": 6,
-        "synthetic_per_batch": 1,
-        "synthetic_batch_period": 1,
-        "steps_per_epoch": 4,
-        "seed": 731,
-    }
-    config.update(kwargs)
-
-    with pytest.raises(ValueError, match=match):
-        ExactSourceMixBatchSampler(**config)
+def test_missing_source_has_no_fallback() -> None:
+    with pytest.raises(ValueError, match="without samples"):
+        SourceMixSampler(
+            source_indices={"a": []}, weights={"a": 1}, samples_per_epoch=8, seed=1
+        )
+    with pytest.raises(ValueError, match="exactly"):
+        SourceMixSampler(
+            source_indices={"a": [0]}, weights={"b": 1}, samples_per_epoch=8, seed=1
+        )

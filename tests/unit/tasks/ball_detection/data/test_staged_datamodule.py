@@ -40,6 +40,8 @@ class _TaggedDataset(Dataset[BallDetectionSample]):
             "heatmaps": torch.empty(0),
             "coords": torch.empty(0),
             "visibility": torch.empty(0),
+            "supervised": torch.empty(0, dtype=torch.bool),
+            "source": self.source,
             "original_size": torch.empty(0),
             "heatmap_size": torch.empty(0),
             "window_id": f"{self.source}:{self.split}:{index!r}",
@@ -76,8 +78,8 @@ def _fake_source_class(source: str) -> type[_FakeSourceDataModule]:
 def fake_sources(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         staged_module,
-        "TrackNetDataModule",
-        _fake_source_class("tracknet"),
+        "BallStoreDataModule",
+        _fake_source_class("store"),
     )
     monkeypatch.setattr(
         staged_module,
@@ -103,8 +105,8 @@ def _config(
     config.data.pin_memory = False
     config.data.effective_batch_size = 8
     config.data.batch_size_by_t = {1: 8, 2: 4, 3: 3, 4: 2}
-    config.data.sources.tracknet.enabled = True
-    config.data.sources.tracknet.splits = ["train", "val", "test"]
+    config.data.sources.store.enabled = True
+    config.data.sources.store.splits = ["train", "val", "test"]
     config.data.sources.web.enabled = web_enabled
     config.data.sources.web.splits = web_splits or ["train", "val", "test"]
     return config
@@ -128,9 +130,9 @@ def test_source_splits_gate_web_to_train_only(fake_sources: None) -> None:
 
     datamodule.setup(stage=None)
 
-    assert _concat_sources(datamodule.train_dataset) == ["tracknet", "web"]
-    assert _concat_sources(datamodule.val_dataset) == ["tracknet"]
-    assert _concat_sources(datamodule.test_dataset) == ["tracknet"]
+    assert _concat_sources(datamodule.train_dataset) == ["store", "web"]
+    assert _concat_sources(datamodule.val_dataset) == ["store"]
+    assert _concat_sources(datamodule.test_dataset) == ["store"]
     assert datamodule.train_dataset is not None
     assert datamodule.train_dataset[8]["window_id"].startswith("web:")
     assert _dataset_length(datamodule.val_dataset) == 3

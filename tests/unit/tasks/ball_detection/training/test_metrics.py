@@ -46,6 +46,7 @@ def _run_metric(*, subpixel_refine: bool, center_norm: tuple[float, float]) -> d
         batch["target_coords"],
         batch["target_visibility"],
         batch["original_size"],
+        torch.ones(1, 1, dtype=torch.bool),
     )
     return {name: float(value) for name, value in metric.compute().items()}
 
@@ -68,3 +69,25 @@ class TestBallDetectionMetricsSubpixel:
             values = _run_metric(subpixel_refine=subpixel_refine, center_norm=center)
             assert values["f1"] == 1.0
             assert values["mean_distance_px"] < 1.0e-3
+
+
+def test_unknown_frame_predictions_are_excluded_but_known_negatives_count() -> None:
+    from src.tasks.ball_detection.evaluation.contracts import MetricsSpec
+    from src.tasks.ball_detection.evaluation.metrics import StratifiedBallMetrics
+
+    spec = MetricsSpec(peak_threshold=0.5, ball_distance_threshold=4.0,
+                       nms_kernel=3, max_predictions_per_frame=1, subpixel_refine=False)
+    tracker = StratifiedBallMetrics(spec)
+    predictions = torch.zeros(2, 2, 5, 5)
+    predictions[:, :, 2, 2] = 1
+    tracker.update(predictions, torch.zeros(2, 2, 1, 2), torch.zeros(2, 2, 1),
+                   torch.full((2, 2), 5.0), torch.tensor([[True, False], [False, False]]),
+                   sources=['tracknet', 'meiji'])
+    result = tracker.compute()
+    assert isinstance(result['aggregate'], dict)
+    assert isinstance(result['by_source'], dict)
+    assert result['aggregate']['frames'] == 1
+    assert result['aggregate']['negative_false_positive_frames'] == 1
+    assert result['aggregate']['unsupervised_excluded_frames'] == 3
+    assert result['by_source']['meiji']['negative_frames'] == 0
+    assert result['by_source']['meiji']['negative_frame_fpr'] is None

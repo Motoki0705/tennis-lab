@@ -51,6 +51,7 @@ def _valid_training_batch() -> dict[str, torch.Tensor]:
     return {
         "images": torch.zeros(1, 2, 3, 8, 8),
         "heatmaps": torch.zeros(1, 2, 8, 8),
+        "supervised": torch.ones(1, 2, dtype=torch.bool),
         "coords": torch.zeros(1, 2, 1, 2),
         "visibility": torch.ones(1, 2, 1, dtype=torch.bool),
         "original_size": torch.tensor([[8, 8]], dtype=torch.int64),
@@ -204,3 +205,13 @@ def test_mdd_adapter_constructs_two_channel_temporal_input() -> None:
         call.model_input[:, :, 0],
         torch.zeros_like(call.model_input[:, :, 0]),
     )
+
+
+@pytest.mark.parametrize('mask', [torch.ones(1, 2), torch.ones(1, 1, dtype=torch.bool), torch.zeros(1, 2, dtype=torch.bool)])
+def test_supervision_contract_rejects_invalid_masks_before_forward(mask: torch.Tensor) -> None:
+    model = _CountingBallModel()
+    batch = _valid_training_batch()
+    batch['supervised'] = mask
+    with pytest.raises(BallModelIOError, match='supervised'):
+        _run_training_boundary(_rgb_adapter(), model, batch)
+    assert model.calls == 0

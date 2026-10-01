@@ -1,7 +1,7 @@
 """Read-only ball-detection dataset catalog for the review UI.
 
-The package exposes the datasets the ball-detection task can serve (TrackNet
-clips, annotated YouTube frames, and the optional unified web store) as opaque
+The package exposes versioned ball frame stores and the optional unified web
+store as opaque
 scenes with dense frame positions and multi-instance ``FrameLabel`` ground
 truth.  The HTTP layer lives in
 ``src.tasks.ball_detection.visualization.inference.service``, which both the
@@ -24,11 +24,11 @@ from .datasets import (
     BallDatasetCatalog,
     BallDatasetCatalogError,
     BallDatasetSpec,
-    ClipSceneFrames,
     DatasetEntry,
     SceneFrames,
     SceneMode,
     SceneRef,
+    StoreSceneFrames,
     WebSceneFrames,
     split_scene_id,
 )
@@ -44,7 +44,7 @@ __all__ = [
     "BallDatasetCatalogError",
     "BallDatasetSpec",
     "BallMetricsDefaults",
-    "ClipSceneFrames",
+    "StoreSceneFrames",
     "DatasetEntry",
     "SceneFrames",
     "SceneMode",

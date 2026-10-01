@@ -129,7 +129,7 @@ def test_derived_output_rejects_parent_escape() -> None:
 
 def test_visualization_rejects_absolute_clip_path() -> None:
     config = _compose("visualize")
-    config.visualization.clip_dir = "/tmp/clip"
+    config.visualization.store_dir = "/tmp/clip"
 
     with pytest.raises(ConfigurationError):
         validate_visualization(config)

@@ -365,6 +365,7 @@ class BallModelIOAdapter:
         target_heatmaps = _required_tensor(batch, "heatmaps")
         coords = _required_tensor(batch, "coords")
         visibility = _required_tensor(batch, "visibility")
+        supervised = _required_tensor(batch, "supervised")
         original_size = _required_tensor(batch, "original_size")
         model_call = self.prepare_model_call(
             images, image_normalization=image_normalization, preprocessed=True,
@@ -406,11 +407,16 @@ class BallModelIOAdapter:
             raise BallModelIOError("original_size batch dimension must match images.")
         if coords.shape[2] <= 0:
             raise BallModelIOError("coords must reserve at least one instance slot.")
+        if supervised.dtype != torch.bool or supervised.shape != (batch_size, frame_count):
+            raise BallModelIOError("supervised must be a boolean (B, T) frame mask.")
+        if bool(torch.any(~supervised[..., None] & (visibility > 0))):
+            raise BallModelIOError("An unsupervised frame must not carry a visible target.")
         return BallTrainingCall(
             model_call=model_call,
             target_heatmaps=target_heatmaps,
             coords=coords,
             visibility=visibility,
+            supervised=supervised,
             original_size=original_size,
         )
 

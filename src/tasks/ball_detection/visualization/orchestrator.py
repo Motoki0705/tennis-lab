@@ -41,7 +41,8 @@ logger = logging.getLogger(__name__)
 class RuntimeConfig:
     """Resolved runtime settings for ball detection visualization."""
 
-    clip_dir: Path
+    store_dir: Path
+    clip_id: str
     checkpoint: Path
     save: Path
     device: torch.device
@@ -74,7 +75,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     metrics_cfg = cfg.metrics
     paths = BallRuntimePaths.from_config(cfg)
 
-    clip_dir = paths.data(str(vis.clip_dir))
+    store_dir = paths.data(str(vis.store_dir))
+    clip_id = str(vis.clip_id)
     checkpoint = paths.checkpoint(str(vis.checkpoint))
     save_path = paths.artifact(str(vis.save))
 
@@ -115,7 +117,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     gif_cfg = vis.gif
 
     return RuntimeConfig(
-        clip_dir=clip_dir,
+        store_dir=store_dir,
+        clip_id=clip_id,
         checkpoint=checkpoint,
         save=save_path,
         device=resolve_device(str(run.device)),
@@ -131,7 +134,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         imagenet_std=imagenet_std,
         gif_loop=int(gif_cfg.loop),
         info=bool(vis.info),
-        clip_label=f"{clip_dir.parent.name}/{clip_dir.name}",
+        clip_label=clip_id,
         draw=DrawStyle(
             gt_radius=int(draw_cfg.gt_radius),
             pred_radius=int(draw_cfg.pred_radius),
@@ -170,7 +173,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 def run_visualization(cfg: RuntimeConfig) -> int:
     """Run clip-level visualization and save a GIF."""
     clip = load_clip_sequence(
-        clip_dir=cfg.clip_dir,
+        store_dir=cfg.store_dir,
+        clip_id=cfg.clip_id,
         sequence_length=cfg.sequence_length,
         image_size_hw=cfg.image_size_hw,
         max_frames=cfg.max_frames,

@@ -28,10 +28,11 @@ from src.tasks.ball_detection.configuration import (
     DetailedEvaluationConfig,
 )
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.training.lightning_module import (
-    BallDetectionLightningModule,
-)
+from src.tasks.ball_detection.model_io.evaluation import CheckpointBallHeatmapPredictor
+from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
+from src.tasks.ball_detection.training.lightning_module import supervised_frame_mean
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
+from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
 from src.utils.data.heatmaps import heatmaps_to_argmax
 from src.utils.device import resolve_device
 from src.utils.hydra import hydra_main
@@ -42,6 +43,7 @@ class SplitAnalysis:
     """Aggregated split-level detector behavior summary."""
 
     total_frames: int = 0
+    unsupervised_frames: int = 0
     visible_frames: int = 0
     invisible_frames: int = 0
     matched_frames: int = 0
@@ -115,6 +117,7 @@ class SplitAnalysis:
             "mean_loss": self.loss_sum / max(self.batch_count, 1),
             "frame_counts": {
                 "total": self.total_frames,
+                "unsupervised_excluded": self.unsupervised_frames,
                 "visible": self.visible_frames,
                 "invisible": self.invisible_frames,
             },
@@ -205,13 +208,14 @@ def _move_batch_to_device(
 
 
 def _forward_batch(
-    module: BallDetectionLightningModule,
+    module: CheckpointBallHeatmapPredictor,
     batch: dict[str, Tensor],
+    loss_fn: FocalBCEWithLogitsLoss,
 ) -> tuple[Tensor, Tensor]:
     images = batch["images"]
     target_heatmaps = batch["heatmaps"]
 
-    model_io = module.model_io
+    model_io = module.adapter
     model_call = model_io.prepare_model_call(
         images, image_normalization=module.image_normalization, preprocessed=True,
     )
@@ -221,7 +225,9 @@ def _forward_batch(
         target_size_hw=cast(tuple[int, int], tuple(target_heatmaps.shape[-2:])),
     )
 
-    loss = module.loss_fn(logits, target_heatmaps)
+    loss = supervised_frame_mean(
+        loss_fn.elementwise(logits, target_heatmaps), batch["supervised"]
+    )
     pred_heatmaps = torch.sigmoid(logits)
     return loss, pred_heatmaps
 
@@ -301,7 +307,7 @@ def _compute_speed_px(
 
 
 def _collect_split_result(
-    module: BallDetectionLightningModule,
+    module: CheckpointBallHeatmapPredictor,
     dataloader: torch.utils.data.DataLoader,
     cfg: DictConfig,
     evaluation: DetailedEvaluationConfig,
@@ -317,7 +323,8 @@ def _collect_split_result(
         subpixel_refine=bool(cfg.metrics.subpixel_refine),
     ).to(device)
 
-    module.eval()
+    module.model.eval()
+    loss_fn = FocalBCEWithLogitsLoss(gamma=float(cfg.loss.gamma))
     with torch.inference_mode():
         for batch_idx, batch in enumerate(dataloader):
             if (
@@ -327,12 +334,14 @@ def _collect_split_result(
                 break
 
             batch_on_device = _move_batch_to_device(batch, device)
-            loss, pred_heatmaps = _forward_batch(module, batch_on_device)
+            loss, pred_heatmaps = _forward_batch(module, batch_on_device, loss_fn)
+            supervised = batch_on_device["supervised"]
             metrics.update(
                 pred_heatmaps,
                 batch_on_device["coords"],
                 batch_on_device["visibility"],
                 batch_on_device["original_size"],
+                supervised,
             )
             primary_coords, target_visible = _select_primary_targets(
                 batch_on_device["coords"],
@@ -354,7 +363,10 @@ def _collect_split_result(
             )
             suppressed = (~pred_visible) & target_visible
             localization = pred_visible & target_visible & ~matched
-            absent_false_positive = pred_visible & ~target_visible
+            # Unsupervised frames never carry a visible target (model-I/O
+            # contract), so only the negative side needs the explicit mask.
+            negative = supervised & ~target_visible
+            absent_false_positive = pred_visible & negative
             edge_mask = _compute_edge_mask(
                 primary_coords,
                 batch_on_device["original_size"],
@@ -367,9 +379,10 @@ def _collect_split_result(
             )
             speed_mask = speed_valid_mask & target_visible
 
-            analysis.total_frames += int(peak_values.numel())
+            analysis.total_frames += int(supervised.sum().item())
+            analysis.unsupervised_frames += int((~supervised).sum().item())
             analysis.visible_frames += int(target_visible.sum().item())
-            analysis.invisible_frames += int((~target_visible).sum().item())
+            analysis.invisible_frames += int(negative.sum().item())
             analysis.matched_frames += int(matched.sum().item())
             analysis.suppressed_miss_frames += int(suppressed.sum().item())
             analysis.localization_error_frames += int(localization.sum().item())
@@ -383,7 +396,7 @@ def _collect_split_result(
                 _tensor_to_float_list(peak_values[target_visible])
             )
             analysis.invisible_peak_values.extend(
-                _tensor_to_float_list(peak_values[~target_visible])
+                _tensor_to_float_list(peak_values[negative])
             )
             analysis.visible_distances_px.extend(
                 _tensor_to_float_list(distances_px[target_visible])
@@ -420,7 +433,7 @@ def _build_dataloader(
     split_name: str,
 ) -> torch.utils.data.DataLoader:
     if split_name == "val":
-        datamodule.setup(stage="fit")
+        datamodule.setup(stage="validate")
         dataloader = datamodule.val_dataloader()
         if not isinstance(dataloader, torch.utils.data.DataLoader):
             raise TypeError("Ball validation dataloader must be a DataLoader.")
@@ -496,14 +509,14 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     torch.set_float32_matmul_precision(str(cfg.training.matmul_precision))
 
     datamodule = build_ball_detection_datamodule(cfg)
-    module = BallDetectionLightningModule.load_from_checkpoint(
-        str(checkpoint_path),
-        map_location=device,
+    module = CheckpointBallHeatmapPredictor.load(
+        checkpoint_path,
+        device=device,
         strict=bool(cfg.run.strict),
         weights_only=bool(cfg.run.weights_only),
     )
-    module.to(device)
-    module.eval()
+    if BallImageNormalization.from_config(cfg) != module.image_normalization:
+        raise ValueError("Evaluation normalization must match the saved checkpoint preprocessing.")
 
     split_results: dict[str, Any] = {}
     for split_name in evaluation.splits:

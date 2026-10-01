@@ -23,17 +23,15 @@ from omegaconf import DictConfig
 from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
 from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
+from src.tasks.ball_detection.data.store import split_names
+from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
 from src.tasks.base.visualization.preview import (
     compose_titled_row as _compose_row,
 )
 from src.tasks.base.visualization.preview import (
     draw_normalized_point as _draw_point,
 )
-from src.tasks.base.visualization.preview import (
-    resolve_sample_indices,
-    resolve_split_file,
-)
+from src.tasks.base.visualization.preview import resolve_sample_indices
 from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
@@ -50,15 +48,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir = BallRuntimePaths.from_config(cfg).output(str(cfg.preview.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    split_name = str(cfg.preview.split)
+    (split_name,) = split_names([str(cfg.preview.split)])
     datamodule = build_ball_detection_datamodule(cfg)
-    if not isinstance(datamodule, TrackNetDataModule):
-        raise TypeError("Heatmap previews require a TrackNet-compatible datamodule.")
-    dataset = datamodule.create_dataset(
-        split_name=split_name,
-        split_file=resolve_split_file(cfg, split_name),
-        augmentation=None,
-    )
+    if not isinstance(datamodule, BallStoreDataModule):
+        raise TypeError("Heatmap previews require data.source=store.")
+    dataset = datamodule.create_dataset(split_name, augmentation=None)
     sample_indices = resolve_sample_indices(cfg, len(dataset))
 
     manifest: list[dict[str, Any]] = []
@@ -126,8 +120,8 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             {
                 "sample_index": sample_index,
                 "frame_index": frame_index,
-                "clip_dir": str(window.clip_dir),
-                "frame_name": window.frame_names[window.start_index + frame_index],
+                "clip_id": dataset.store.clips[window.clip].clip_id,
+                "clip_frame_index": window.start + frame_index,
                 "output_image": str(image_path),
                 "visible": visible,
                 "centers_xy": centers_xy,
