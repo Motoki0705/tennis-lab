@@ -95,6 +95,7 @@ namespaces = false
 "src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt", "resources/*/*.txt"]
 "src.tennis_scene.chat_annotation.web" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tennis_scene.chat_annotation.artifacts" = ["Dockerfile", "Dockerfile.dockerignore", "compose.yaml"]
+"src.tennis_scene.chat_annotation.local_agent" = ["WORKER.md"]
 "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
@@ -283,6 +284,7 @@ module = [
     "src.synthetic_data_generation.alignment.manual.models",
     "src.synthetic_data_generation.appearance.contracts",
     "src.synthetic_data_generation.appearance.configuration",
+    "src.tennis_scene.chat_annotation.local_agent.configuration",
     "src.synthetic_data_generation.alignment.manual.web",
     "src.synthetic_data_generation.dataset.court.review.web",
     "src.tasks.base.visualization.review.web",
