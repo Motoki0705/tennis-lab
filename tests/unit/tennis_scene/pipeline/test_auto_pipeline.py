@@ -20,6 +20,7 @@ from src.tennis_scene.pipeline.components.ball_detection import (
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKPResult
 from src.tennis_scene.pipeline.contracts import ComponentIO
+from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.observation_types import ObjectObservations
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.utils.configuration import PathRole
@@ -39,7 +40,7 @@ def _camera(name: str, center: list[float]) -> PinholeCamera:
 
 
 def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False, overrides: tuple[str, ...] = ()) -> PipelineRuntimeConfig:
-    """``execute_identity_overrides`` executes test stand-ins for the import-only nodes."""
+    """``execute_identity_overrides`` executes a test stand-in for the import-only association."""
     config_dir = Path(__file__).parents[4] / "src/tennis_scene/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
         cfg = compose(config_name="pipeline", overrides=[
@@ -47,7 +48,7 @@ def runtime(tmp_path: Path, *, execute_identity_overrides: bool = False, overrid
             f"paths.artifact_root={tmp_path}", f"paths.output_root={tmp_path}",
             f"paths.checkpoint_root={tmp_path / 'ckpt'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
             "output_directory=run", "cache.directory=stages",
-            *(["execution.player_association=execute", "execution.court_side=execute"] if execute_identity_overrides else []),
+            *(["execution.player_association=execute"] if execute_identity_overrides else []),
             *overrides,
         ])
     return PipelineRuntimeConfig.from_config(cfg)
@@ -97,7 +98,8 @@ def inputs(*, empty: bool = False, frames: int = 24) -> tuple[CourtKPResult, Obj
     human = np.stack([c.project(people_xyz)[0] for c in cameras]).astype(np.float32)[:, :, None]
     confidence = np.full(human.shape[:-1], .9, np.float32)
     observed = np.ones(human.shape[:3], bool)
-    ball_xyz = np.c_[np.zeros(frames), -3 + np.arange(frames) * .01, np.ones(frames) * 1.4]
+    # A ball in play moves ~0.3 m per frame at 30 fps; a static one would be counted once by court_side.
+    ball_xyz = np.c_[1 + np.arange(frames) * .05, -8 + np.arange(frames) * .3, np.ones(frames) * 1.4]
     ball_px = np.stack([c.project(ball_xyz)[0] for c in cameras]).astype(np.float32)
     ball_visible: NDArray[np.bool_] = np.ones((3, frames), bool)
     score: NDArray[np.float32] = np.full((3, frames), .9, np.float32)
@@ -164,10 +166,8 @@ def patch_video_probe(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, frames: i
 
 def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bool = False) -> tuple[TennisSceneOrchestrator, tuple[Path, ...], dict[str, Any]]:
     from src.tennis_scene.pipeline.components.identity import (
-        CourtSideOutput,
         DeclaredArtifacts,
         PlayerIdentitiesOutput,
-        court_side_io,
         player_association_io,
     )
     from src.tennis_scene.pipeline.input_assembly.observations import gather_people
@@ -184,14 +184,7 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
             active = tuple(v.source_index for v in calibration.calibration.views)
             raw = gather_people(request.context.source, request.artifacts).select_views(active)
             return PlayerIdentitiesOutput(raw.camera_ids, raw.local_track_ids.copy(), raw.local_track_ids.copy())
-    class Side:
-        io = court_side_io(people.camera_ids)
-        calls = 0
-        def process(self, request: DeclaredArtifacts) -> CourtSideOutput:
-            self.calls += 1
-            calibration = request.artifacts["calibration"]
-            return CourtSideOutput(calibration.calibration.camera_ids, calibration.reference_camera, (False, False, True))
-    stages["player_association"], stages["court_side"] = Identities(), Side()
+    stages["player_association"] = Identities()
     pipeline = TennisSceneOrchestrator(cfg, components=stages)
     paths = patch_video_probe(tmp_path, monkeypatch)
     def forbidden(*args: Any, **kwargs: Any) -> None:
@@ -208,6 +201,9 @@ def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch:
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
     assert scene.player_kp_3d_vis.all() and scene.ball_3d_valid.all()
     assert all(stage.calls == 1 for stage in stages.values())
+    assert pipeline.last_runner is not None and pipeline.last_runner.statuses["court_side"] == "executed"
+    side = pipeline.last_runner.output("court_side")  # the fixture's cam2 court is half-turned
+    assert side.view_half_turns == (False, False, True) and len(side.hypotheses) == 4 and side.margin > .5
     assert pipeline.last_store is not None
     assert pipeline.last_store.index_path.is_file()
     assert not scene.player_valid.any()
@@ -222,13 +218,14 @@ def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch:
     np.testing.assert_array_equal(load_scene_result(output).ball_3d, scene.ball_3d)
 
 
-def test_empty_observations_preserve_masks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_clip_without_ball_evidence_stops_at_the_side_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch, empty=True)
-    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
-    assert scene.metadata["status"] == "empty"
-    assert scene.metadata["court_reference"] is None
-    assert scene.player_position.shape == (0, 24, 3)
-    assert not scene.ball_3d_valid.any()
+    with pytest.raises(ReconstructionUnavailable, match="insufficient_frames") as stopped:
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
+    assert stopped.value.reason == "court_side_insufficient_frames" and stopped.value.diagnostics["frames"] == 0
+    assert pipeline.last_runner is not None and pipeline.last_runner.statuses["court_side"] == "failed"
+    assert pipeline.last_receipt is not None and pipeline.last_receipt["error_reason"] == "court_side_insufficient_frames"
+    assert pipeline.last_receipt["error_diagnostics"]["pair_frames"] == {"cam0-cam1": 0, "cam0-cam2": 0, "cam1-cam2": 0}
 
 
 def test_single_ball_missing_views_remain_invalid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -245,7 +242,7 @@ def test_single_ball_missing_views_remain_invalid(tmp_path: Path, monkeypatch: p
 
 
 def test_v2_missing_mask_rejected_before_archive_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    pipeline, paths, _ = setup_pipeline(tmp_path, monkeypatch, empty=True)
+    pipeline, paths, _ = setup_pipeline(tmp_path, monkeypatch)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     scene.ball_3d_valid = None
     with pytest.raises(ValueError, match="ball_3d_valid"):

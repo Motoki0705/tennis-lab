@@ -1,7 +1,7 @@
-<!-- knowledge-review: 407df532c345d1fc4e3e69ca98590a1f39d0ab86a36db1d9152183650a839177 on 2026-10-01 -->
+<!-- knowledge-review: be12486ed392d0e40c883d171bbf2bce711b6e5046efd83cafc5c3df5b32191e on 2026-10-01 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマークを反映）
+更新日: 2026-09-27（#915分割後の既定設定での実clip qualificationとv2 dataset再生成、#932 ballだけのside判定の合成ベンチマーク・実clip判定・component化したqualificationを反映）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -17,12 +17,15 @@ sideは`src/tasks/court_side`の幾何的な仮説検定でballだけから決�
 [合成ベンチマーク](nodes/court_side/000001-run-i932-synthetic-side-thresholds.md)で閾値を`min_frames=8, max_cost=0.8, min_support=0.2, min_margin=0.15`に決めた。
 選定に使わないscene・seedのheld-outでも28条件の誤判定は0で、誤判定を防いでいるのはmarginである（誤った仮説が最良になった試行のmarginは最大0.10）。
 静止した誤検出の反復が誤った仮説を支持する失敗を合成で観測し、同じ観測の繰り返しを証拠から除いた。
-実検出器のballでMeiji全clipが決まるかは未確認で、次に検証する。
+[Meiji 3camの全clip](nodes/court_side/000002-run-i932-meiji-clips-side-20260927.md)では、注釈ballで51 clip中50 clipが決まり（すべて[F,F,T]、margin 0.34以上、clip_000は人手確定と一致）、検出器ball（ft-e13）では7 clipだけが決まった（誤判定0、注釈と両方決まった6 clipはすべて一致）。
+検出器ballの44 clipは理由付きで停止した。原因は閾値ではなく、検出器の見落としと、同じ別物体に長く張り付く誤検出である（注釈ballから20 px以内のprecisionはcam0 46%〜cam2 76%）。検出器ballの最良仮説が誤っていたclipが9あり（最大margin 0.086）、margin 0.15がそれらを止めている。
+したがって本番でsideが決まる割合は、ball検出器の改善（#934、top-K出力）に依存する。court検出で失敗する6 clipは別の課題である。
+既定`pipeline.yaml`で`court_side`をexecuteにして[Meiji clip_000を再実行](nodes/tennis_scene/000024-run-i932-component-side-meiji-clip000-20260927.md)すると、sideは[F,F,T]（margin 0.60）で、scene.npzの全配列がside importの000022とbit単位で一致した（ballは注釈のimport）。
 
 ## 2026-09-27の#915分割と既定設定での実clip確認
 
 #915は#931でPR #937〜#940に分割した。PLCSの固定track Re-IDとCourtSideModelはmainに入れない（下記2026-09-24・25の記録は実験履歴として残す）。
-`player_association`・`court_side`はtennis_scene所有のschemaだけを持つload専用nodeとなり、モデルが入るまで（#933・#932）は確認済みデータの`imports/`で埋める。
+`player_association`・`court_side`はtennis_scene所有のschemaだけを持つload専用nodeとなり、モデルが入るまで（#933・#932）は確認済みデータの`imports/`で埋める（`court_side`は#932でballから決めるcomponentになった。上の節）。
 分割後の既定`pipeline.yaml`（b863 Court＋region search、ROI 10m）で[Meiji clip_000を完走](nodes/tennis_scene/000022-run-i931-default-meiji-clip000-20260927.md)した。有効frame数とsideは#915の最終runと完全に一致した。
 このrunでball・side・人物対応はimportしたものであり、side・対応モデルの精度評価ではない。
 同時に、全repro.shのscript参照が再現可能であることを`kg_repro_paths.py`で検査するようにした。

@@ -23,7 +23,6 @@ from src.tennis_scene.pipeline.imports.ball_annotations import (
     convert_ball_annotation,
     import_ball_annotations,
 )
-from src.tennis_scene.pipeline.imports.court_side import import_ball_confirmed_sides
 from src.tennis_scene.pipeline.imports.manual_association import (
     PlayerAssociationResult,
     PlayerAssociationSegment,
@@ -96,10 +95,6 @@ def test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs(tmp_
 
     upstream = ("court_calibration", *(f"pose_estimation/{c}" for c in CAMERAS))
     ComponentRunner(nodes, store).run(targets=upstream)
-    side, confirmation = import_ball_confirmed_sides(nodes, store, source, ball_threshold=cfg.ball_detection.score_threshold,
-        ball_reprojection_px=cfg.ball_reprojection_px, max_frames=cfg.sampling_max_frames, config=cfg.camera_geometry)
-    # The fixture's cam2 court is half-turned; all four hypotheses were scored.
-    assert confirmation["view_half_turns"] == [False, False, True] and len(confirmation["candidates"]) == 4
 
     legacy = tmp_path / "legacy"
     legacy.mkdir()
@@ -111,23 +106,30 @@ def test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs(tmp_
     person, document = import_confirmed_person_association(nodes, store, source,
         historical_association=history, legacy_gvhmr_directory=legacy)
     assert document["player_id_matrix"] == [[5], [5], [5]]
-    for reference in (imported["ball_detection/cam0"], side, person):
+    for reference in (imported["ball_detection/cam0"], person):
         provenance = store.descriptor(reference)["provenance"]
         assert provenance["origin"] == "import" and provenance.get("model_inference", False) is False
 
     runner = ComponentRunner(nodes, store)
     runner.run()
-    assert {runner.statuses[n] for n in (*imported, "court_side", "player_association")} == {"loaded"}
+    assert {runner.statuses[n] for n in (*imported, "player_association")} == {"loaded"}
+    # The side is decided by the component from the imported ball, not imported.
+    assert runner.statuses["court_side"] == "executed"
+    side = runner.output("court_side")
+    # The fixture's cam2 court is half-turned; all four hypotheses were scored.
+    assert side.view_half_turns == (False, False, True) and len(side.hypotheses) == 4
     scene = runner.output("scene_assembly")
     assert scene.player_track_ids.tolist() == [5] and scene.player_kp_3d_vis.any()
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
 
-    # An import records its bound inputs: replacing one invalidates it explicitly.
+    # Replacing an imported ball re-decides the side from the new artifact.
     import_ball_annotations(nodes, store, source, annotations)  # same bytes: same artifacts
+    assert ComponentRunner(nodes, store).run() and store.active("court_side") == runner.references["court_side"]
     write_ball_annotation(annotations / "cam1_annotations.json", source.video("cam1"), balls[1].uv_px, ["observed"] * source.num_frames)
     import_ball_annotations(nodes, store, source, annotations)
-    with pytest.raises(ValueError, match="dependencies changed: court_side"):
-        ComponentRunner(nodes, store).run()
+    rerun = ComponentRunner(nodes, store)
+    rerun.run()
+    assert rerun.statuses["court_side"] == "executed" and rerun.references["court_side"] != runner.references["court_side"]
 
 
 def test_imports_require_a_load_only_node_and_adopted_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -135,6 +137,8 @@ def test_imports_require_a_load_only_node_and_adopted_inputs(tmp_path: Path, mon
     with pytest.raises(ValueError, match="load-only"):
         bind_import(nodes, "ball_detection/cam0", store)
     with pytest.raises(FileNotFoundError, match="court_calibration"):
+        bind_import(nodes, "player_association", store)
+    with pytest.raises(ValueError, match="load-only"):
         bind_import(nodes, "court_side", store)
     with pytest.raises(ValueError, match="Unknown import target"):
         bind_import(nodes, "person_reid", store)
@@ -144,6 +148,7 @@ def test_imports_require_a_load_only_node_and_adopted_inputs(tmp_path: Path, mon
     (lambda d: d["source"].update(sha256="0" * 64), "does not identify"),
     (lambda d: d["frames"][2].update(visibility="occluded"), "disagrees"),
     (lambda d: d["frames"][2]["center_normalized"].update(x=.9), "disagree"),
+    (lambda d: d["frames"][2]["center_px"].update(x=100.01), "disagree"),
     (lambda d: d["frames"].pop(), "every frame once"),
     (lambda d: d["frames"][1].update(center_px={"x": 5000., "y": 1.}), "outside"),
 ])
@@ -156,6 +161,20 @@ def test_ball_annotation_contract_violations_stop(tmp_path: Path, mutation: Any,
     path.write_text(json.dumps(document))
     with pytest.raises(ValueError, match=message):
         convert_ball_annotation(path, video)
+
+
+def test_ball_annotation_accepts_pixels_rounded_after_normalization(tmp_path: Path) -> None:
+    # Meiji video_001/clip_000 rounds center_px to 3 decimals after computing center_normalized.
+    video = SourceVideo("cam0", tmp_path / "cam0.mp4", "a" * 64, 6, 30., 1920, 1080)
+    path = tmp_path / "cam0_annotations.json"
+    write_ball_annotation(path, video, np.full((6, 2), 354.3155, np.float32), ["observed"] * 6)
+    document = json.loads(path.read_text())
+    for row in document["frames"]:
+        row["center_normalized"] = {"x": round(354.3155 / 1920, 9), "y": round(354.3155 / 1080, 9)}
+        row["center_px"] = {"x": 354.315, "y": 354.315}
+    path.write_text(json.dumps(document))
+    ball, _ = convert_ball_annotation(path, video)
+    np.testing.assert_allclose(ball.uv_px, 354.315, rtol=0, atol=1e-4)
 
 
 def _poses(camera: str, centres: list[list[float]], observed: list[int], track_ids: list[int], frames: int = 40) -> ObjectObservations:

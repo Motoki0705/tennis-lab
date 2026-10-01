@@ -1,10 +1,10 @@
-"""Camera-local calibration and one shared, geometrically validated side decision."""
+"""Camera-local calibration and geometric validation of the decided court sides."""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from itertools import combinations, product
+from itertools import combinations
 from typing import Any
 
 import cv2
@@ -36,14 +36,13 @@ class CameraGeometryConfig:
     side_min_frames: int = 8
     side_max_cost: float = 0.5
     side_min_support: float = 0.5
-    side_min_margin: float = 0.1
 
     def __post_init__(self) -> None:
         if self.reference_camera is not None and not self.reference_camera.strip():
             raise ValueError("Reference camera must be a nonempty ID")
         if self.side_min_frames < 1:
             raise ValueError("Camera geometry sample counts must be positive")
-        for value in (self.calibration_error_ratio, self.side_max_cost, self.side_min_support, self.side_min_margin):
+        for value in (self.calibration_error_ratio, self.side_max_cost, self.side_min_support):
             if not math.isfinite(value) or not 0 < value <= 1:
                 raise ValueError("Camera geometry thresholds must be in (0,1]")
 
@@ -216,35 +215,33 @@ def _score_candidate(evidence: tuple[SideEvidence, ...], cameras: tuple[PinholeC
 def resolve_camera_geometry(
     calibration: CalibrationSet,
     reference_camera: str,
-    side_predictions: tuple[NDArray[np.bool_], ...],
+    view_half_turns: tuple[bool, ...],
     evidence: tuple[SideEvidence, ...],
     *,
     config: CameraGeometryConfig,
 ) -> CameraGeometryResult:
+    """Validate one decided side assignment against the matched observations.
+
+    The side itself is decided upstream (``court_side``); this only requires
+    the combined evidence to be connected and geometrically consistent.
+    """
     ids = calibration.camera_ids
     reference = ids.index(reference_camera)
-    if not side_predictions or any(x.shape != (len(ids),) or x.dtype != np.bool_ for x in side_predictions):
-        raise ValueError("Side predictions must match calibrated cameras")
+    if len(view_half_turns) != len(ids) or any(type(turn) is not bool for turn in view_half_turns) or view_half_turns[reference]:
+        raise ValueError("Side assignment must hold one boolean per calibrated camera and keep the reference unturned")
     _check_side_evidence(evidence, len(ids), reference, config)
-    choices = [(False,) if view == reference else tuple(sorted({bool(x[view]) for x in side_predictions})) for view in range(len(ids))]
-    scored = []
-    for sides in product(*choices):
-        cameras = tuple(v.camera.half_turned(turn) for v, turn in zip(calibration.views, sides, strict=True))
-        cost, support = _score_candidate(evidence, cameras)
-        scored.append((cost, tuple(sides), support, cameras))
-    scored.sort(key=lambda item: (item[0], item[1]))
-    cost, sides, support, cameras = scored[0]
-    receipt = [{"view_half_turns": list(x[1]), "cost": x[0], "support": x[2]} for x in scored]
+    sides = tuple(view_half_turns)
+    cameras = tuple(v.camera.half_turned(turn) for v, turn in zip(calibration.views, sides, strict=True))
+    cost, support = _score_candidate(evidence, cameras)
+    validation = {"view_half_turns": list(sides), "cost": cost, "support": support}
     if cost > config.side_max_cost or support < config.side_min_support:
-        raise ReconstructionUnavailable("side_geometry_rejected", "Side candidate lacks absolute geometric support", diagnostics={"candidates": receipt})
-    if len(scored) > 1 and scored[1][0] - cost < config.side_min_margin:
-        raise ReconstructionUnavailable("side_ambiguous", "Side candidate margin is insufficient", diagnostics={"candidates": receipt})
+        raise ReconstructionUnavailable("side_geometry_rejected", "Side assignment lacks absolute geometric support", diagnostics={"validation": validation})
     contract = resolve_court_keypoint_contract("camera_view_v2")
     records = tuple(build_court_view_record(camera_id=c.camera_id, camera_center_court_m=c.center.tolist(), contract=contract) for c in cameras)
     selection = ReferenceViewSelection.create(stable_camera_id_table=StableCameraIdTable.from_complete_scene_camera_ids(ids), selected_views=records, reference_camera_id=reference_camera)
     document: dict[str, Any] = {
         "camera_ids": list(ids), "reference_camera": reference_camera,
-        "view_half_turns": list(sides), "side_candidates": receipt,
+        "view_half_turns": list(sides), "side_validation": validation,
         "court_keypoint_views": [r.to_dict() for r in records],
         "court_reference_provenance": selection.provenance.to_dict(),
         "camera_fits": [{"K": c.intrinsic.tolist(), "R": c.rotation.tolist(), "t": c.translation.tolist(), "camera_center_court_m": c.center.tolist(), "rmse_px": local.rmse_px, "calibration_frame_index": local.frame_index, "calibration": "approximate single-plane pinhole; no distortion correction"} for c, local in zip(cameras, calibration.views, strict=True)],

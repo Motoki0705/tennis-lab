@@ -502,7 +502,7 @@ class Review:
         return images, details
 
     def ground_distance_matrix(self) -> tuple[str, list[tuple[str, str, float, int]]]:
-        """Compare camera-local bbox footpoints on the ball-confirmed court plane."""
+        """Compare camera-local bbox footpoints on the court plane of the adopted sides."""
         calibration, _ = self.payload("court_calibration")
         side, _ = self.payload("court_side")
         turns = dict(zip(side["camera_ids"], side["view_half_turns"], strict=True))
@@ -558,7 +558,7 @@ class Review:
         image = _save_plot(self.output / "images" / "player_association_ground_distance.png", plot, figsize=(10, 8))
         return image, comparisons
 
-    @renders("court_side", "court_side", 2)
+    @renders("court_side", "court_side", 3)
     def render_court_side(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         turns = value["view_half_turns"]
         cells: list[np.ndarray] = []
@@ -570,6 +570,9 @@ class Review:
         sheet = _save_image(self.output / "images" / "court_side_cameras.png", np.hstack(cells))
         details = [(camera_id, "180°" if turn else "0°") for camera_id, turn in zip(value["camera_ids"], turns, strict=True)]
         details.append(("reference", value["reference_camera"]))
+        details.append(("ball evidence", f"{value['frames']} multi-view frames, margin {value['margin']:.3f}"))
+        details += [(f"hypothesis {['180°' if t else '0°' for t in item['view_half_turns']]}",
+                     f"cost {item['cost']:.3f}, support {item['support']:.3f}") for item in value["hypotheses"]]
         return [sheet], details
 
     @renders("camera_alignment", "aligned_cameras", 1)

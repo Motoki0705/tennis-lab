@@ -23,6 +23,11 @@ IMPORTER_VERSION = 1
 POINT_KINDS = {"unresolved": 0, "observed": 1, "interpolated": 2, "occlusion_estimated": 3}
 EXPECTED_VISIBILITY = {"unresolved": "unknown", "observed": "visible", "interpolated": "not_independently_visible",
                        "occlusion_estimated": "occluded"}
+# ``center_px`` and ``center_normalized`` must describe the same point to within this many
+# pixels. Exporters round the pixel to 3 decimals (<= 5e-4 px) independently of the
+# normalized value (9 decimals, <= 1e-6 px at 1920 px); a real contract violation, such as
+# normalizing by another resolution, is off by whole pixels.
+COORDINATE_AGREEMENT_PX = 1e-3
 
 
 def convert_ball_annotation(path: Path, video: SourceVideo) -> tuple[BallDetectionOutput, dict[str, Any]]:
@@ -67,7 +72,8 @@ def convert_ball_annotation(path: Path, video: SourceVideo) -> tuple[BallDetecti
         if not np.isfinite(pixel).all() or (pixel < 0).any() or (pixel >= [video.width, video.height]).any():
             raise ValueError(f"Ball frame {frame} lies outside the source image")
         normalized = row["center_normalized"]
-        if not np.allclose(pixel / [video.width, video.height], [normalized["x"], normalized["y"]], rtol=0, atol=1e-7):
+        denormalized = np.asarray([normalized["x"], normalized["y"]], np.float64) * [video.width, video.height]
+        if not (np.abs(denormalized - pixel) <= COORDINATE_AGREEMENT_PX).all():
             raise ValueError(f"Ball frame {frame}: pixel and normalized coordinates disagree")
         uv[frame] = pixel
         confidence[frame] = float(kind == "observed")
