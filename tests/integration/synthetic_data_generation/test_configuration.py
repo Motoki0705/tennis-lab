@@ -290,8 +290,8 @@ def test_configured_paths_retain_their_declared_runtime_roles() -> None:
             / "court_detection/multiscale_depth3/b863df1f01f0.ckpt"
         ).resolve()
     )
-    for path in (runtime.plcs.accad_root, runtime.plcs.smplh_model_root):
-        assert runtime.resolver.validate(PathRole.DATA, path) == path
+    assert runtime.resolver.validate(PathRole.DATA, runtime.plcs.accad_root) == runtime.plcs.accad_root
+    assert runtime.resolver.validate(PathRole.CHECKPOINT, runtime.plcs.smplh_model_root) == runtime.plcs.smplh_model_root
 
 
 def test_composition_root_can_construct_each_no_default_runtime_input() -> None:

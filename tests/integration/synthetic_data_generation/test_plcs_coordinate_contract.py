@@ -38,7 +38,7 @@ from src.synthetic_data_generation.scene_contract import RigidTransform
 from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_SMPLH_ROOT = _PROJECT_ROOT / "data" / "smplh"
+_SMPLH_ROOT = _PROJECT_ROOT / "ckpt/body_models/smplh"
 
 
 @dataclass(frozen=True, slots=True)

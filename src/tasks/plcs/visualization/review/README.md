@@ -16,7 +16,8 @@
 
 ブラウザで `http://127.0.0.1:8769` を開く。GPU・フロントエンドのビルド・外部CDNは
 不要。`--accad-root` は既定で `<data-root>/ACCAD`、`--smplh-root` は
-`<data-root>/smplh`（`<gender>/model.npz` を置くディレクトリ）。
+`<checkpoint-root>/body_models/smplh`（`<gender>/model.npz` を置くディレクトリ）。
+`--checkpoint-root` の既定はrepositoryの `ckpt/`。
 
 ## 画面
 

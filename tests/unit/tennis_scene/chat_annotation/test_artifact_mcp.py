@@ -14,6 +14,7 @@ from starlette.testclient import TestClient
 from src.tennis_scene.chat_annotation.artifacts import server
 
 
+@pytest.mark.parametrize("protocol_version", ["2025-03-26", "2025-11-25"])
 @pytest.mark.parametrize(
     "download_host",
     [
@@ -25,7 +26,10 @@ from src.tennis_scene.chat_annotation.artifacts import server
     ],
 )
 def test_real_http_mcp_discovery_and_save(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, download_host: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    download_host: str,
+    protocol_version: str,
 ) -> None:
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w") as archive:
@@ -48,7 +52,9 @@ def test_real_http_mcp_discovery_and_save(
     monkeypatch.setattr(server.httpx, "stream", download_stream)
     mcp = server.create_server(tmp_path)
     with TestClient(
-        mcp.streamable_http_app(), base_url="http://127.0.0.1:8000"
+        mcp.streamable_http_app(stateless_http=True, json_response=True),
+        base_url="http://127.0.0.1:8000",
+        headers={"MCP-Protocol-Version": protocol_version},
     ) as client:
 
         def call(method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -69,7 +75,7 @@ def test_real_http_mcp_discovery_and_save(
         assert "serverInfo" in call(
             "initialize",
             {
-                "protocolVersion": "2025-03-26",
+                "protocolVersion": protocol_version,
                 "capabilities": {},
                 "clientInfo": {"name": "test", "version": "1"},
             },
@@ -78,6 +84,12 @@ def test_real_http_mcp_discovery_and_save(
         assert set(tools) == {"save_artifact", "list_artifacts", "read_artifact"}
         descriptor = tools["save_artifact"]
         assert descriptor["_meta"]["openai/fileParams"] == ["file"]
+        assert descriptor["annotations"] == {
+            "readOnlyHint": False,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        }
         file_schema = descriptor["inputSchema"]["$defs"]["OpenAIFile"]
         assert set(file_schema["properties"]) == {
             "download_url",
@@ -102,6 +114,26 @@ def test_real_http_mcp_discovery_and_save(
         assert not result.get("isError")
         receipt = result["structuredContent"]
         assert (tmp_path / receipt["artifact_id"]).read_bytes() == stream.getvalue()
+        listing = call(
+            "tools/call", {"name": "list_artifacts", "arguments": {}}
+        )
+        assert not listing.get("isError")
+        assert listing["structuredContent"] == {
+            "artifacts": [
+                {"artifact_id": receipt["artifact_id"], "bytes": len(stream.getvalue())}
+            ],
+            "next_offset": None,
+        }
+        readback = call(
+            "tools/call",
+            {
+                "name": "read_artifact",
+                "arguments": {"artifact_id": receipt["artifact_id"]},
+            },
+        )
+        assert not readback.get("isError")
+        assert readback["structuredContent"]["artifact_id"] == receipt["artifact_id"]
+        assert readback["structuredContent"]["members"] == ["clip__ball.json"]
         invalid = call(
             "tools/call",
             {

@@ -85,6 +85,24 @@ CLIで指定する場合も `run.output_dir=slcs/train/meiji_rgb_v1/s43-001` の
 新規学習は既存の `config.yaml` があるrunへ書き込めない。
 継続学習は `run.resume` と既存の `run.output_dir` を明示する。
 別施策への重み継承は、新しいrun-idと `run.init_weights` を指定する。
+両fieldは `null`（無効）、CHECKPOINT root相対の文字列、または
+`{role: checkpoint|artifact, path: <選んだroot相対path>}` を受け付ける。
+文字列の解決先はCHECKPOINTのままで、既存学習runを読む場合だけARTIFACTを明示する。
+例えば採用/事前学習重みを`ckpt/`に置き、`outputs/`の学習を再開する設定は次のとおり。
+
+```yaml
+paths:
+  checkpoint_root: ckpt
+  artifact_root: outputs
+run:
+  resume:
+    role: artifact
+    path: ball_detection/train/experiment/run-id/logs/version_0/checkpoints/last.ckpt
+  init_weights: null
+```
+
+`resume`と`init_weights`の同時指定、未知role・余分なkey・絶対path・root外への参照は拒否する。
+別の学習出力を読むときは `paths.artifact_root` を明示し、ファイルの自動探索・コピーは行わない。
 staged ball trainingは `train/staged/phase1`〜`phase4` を明示的なrun-idとして使い、
 前phaseのcheckpointを次phaseが参照する。別のstaged実験では4つの出力と入力参照を
 同じ新しい実験名に揃える。
@@ -139,11 +157,10 @@ sceneを入力とするSLCS学習準備は[生成ガイド](slcs/generate_datase
 実験履歴の旧トップレベルCLI名・command・patchは当時の実行証拠なので書き換えない。
 履歴の再実行にはそのrunが記録したcommitを使い、現在のcheckoutでは上表と生成ガイドの`src.*`入口を使う。
 
-入力checkpointはCHECKPOINT、既存hparamsやsceneなどの実験成果物入力は入口の
-ARTIFACT契約を使う。CHECKPOINTの既定はball/court/PLCSが `outputs`、BLCSが
-`ckpt`、SLCSが `checkpoints`。これは既存入力の配置を表すもので、新規学習checkpointの
-保存rootではない。実RGB学習設定がcheckpoint_rootを明示する場合はその設定が優先する。
-学習出力を移した後で再開・評価するときは、入力checkpoint_rootも対応する場所へ設定する。
+配布checkpointはCHECKPOINT、既存hparamsやsceneなどの実験成果物入力は入口の
+ARTIFACT契約を使う。各入口のroot既定値はその設定ファイルを参照する。
+新規学習checkpointの保存先はOUTPUTの学習runであり、入力rootとは独立している。
+学習出力を移した後の再開は上記のARTIFACT参照、評価は各入口が宣言する入力rootを設定する。
 
 ## 非Hydraの閲覧・推論UI
 
