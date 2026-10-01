@@ -36,6 +36,14 @@ class CropSamplingConfig:
 
 
 @dataclass(frozen=True)
+class TrackAppearance:
+    """Embeddings of the sampled crops of one track; ``(0, 0)`` embeddings without samples."""
+
+    frames: NDArray[np.int64]  # (K,)
+    embeddings: NDArray[np.float32]  # (K, E)
+
+
+@dataclass(frozen=True)
 class TrackSamples:
     frames: NDArray[np.int64]  # (K,) sampled frames, sorted
     rejected: dict[str, int] = field(default_factory=dict)  # reason -> observed frames rejected
@@ -120,3 +128,13 @@ def embed_samples(video: Path, boxes: NDArray[np.floating], samples: list[TrackS
         matrix = np.concatenate(embedded) if embedded else np.zeros((0, 0), np.float32)
         result[encoder.name] = [matrix[rows == row] for row in range(len(samples))]
     return result
+
+
+def embed_tracks(video: Path, boxes: NDArray[np.floating], observed: NDArray[np.bool_], image_size: tuple[int, int],
+                 encoder: AppearanceEncoder, config: CropSamplingConfig) -> tuple[tuple[TrackAppearance, ...], list[TrackSamples]]:
+    """Appearance of every track of one camera and the samples it was built from (with rejection counts)."""
+    samples = sample_tracks(boxes, observed, image_size, config)
+    embedded = embed_samples(video, boxes, samples, [encoder])[encoder.name]
+    appearances = tuple(TrackAppearance(track.frames, embedded[row].astype(np.float32) if len(track.frames) else np.zeros((0, 0), np.float32))
+                        for row, track in enumerate(samples))
+    return appearances, samples

@@ -52,6 +52,7 @@ from src.tasks.player_association.appearance.affinity import (
     appearance_score,
     segment_embedding,
 )
+from src.tasks.player_association.appearance.sampling import TrackAppearance
 from src.tasks.player_association.geometry.affinity import (
     GeometryAffinityConfig,
     geometry_score,
@@ -112,14 +113,6 @@ class AssociationConfig:
         if not (self.continuity_score >= 0 and self.min_segment_s > 0 and self.max_handoff_overlap_s >= 0 and 0 < self.min_presence_fraction <= 1
                 and 0 < self.max_runner_up_ratio <= 1 and self.min_margin >= 0 and self.max_undecided_segment_s >= 0 and self.time_limit_s > 0):
             raise ValueError(f"Invalid association config: {self}")
-
-
-@dataclass(frozen=True)
-class TrackAppearance:
-    """Embeddings of the sampled crops of one track."""
-
-    frames: NDArray[np.int64]  # (K,)
-    embeddings: NDArray[np.float32]  # (K, E)
 
 
 @dataclass(frozen=True)
