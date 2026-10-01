@@ -72,6 +72,22 @@ def test_loads_weights_from_checkpoint(
     torch.testing.assert_close(target.linear.weight, source.linear.weight)
 
 
+def test_explicit_artifact_loads_original_training_weights_without_copying(
+    tmp_path: Path, make_training_config: Any,
+) -> None:
+    source = _TinyModule()
+    checkpoint = tmp_path / "prior-runs/experiment/last.ckpt"
+    checkpoint.parent.mkdir(parents=True)
+    torch.save(_checkpoint(source.state_dict()), checkpoint)
+    config = make_training_config(run={"init_weights": {"role": "artifact", "path": "experiment/last.ckpt"}})
+    config["paths"].update(checkpoint_root="adopted", artifact_root="prior-runs")
+    runtime = TrainingRuntimeConfig.from_config(config, repository_root=tmp_path)
+    target = _TinyModule()
+    _runner().maybe_load_init_weights(runtime, target)
+    torch.testing.assert_close(target.linear.weight, source.linear.weight)
+    assert checkpoint.is_file() and not (tmp_path / "adopted").exists()
+
+
 def test_mutually_exclusive_with_resume(
     tmp_path: Path, make_training_config: Any
 ) -> None:

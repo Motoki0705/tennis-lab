@@ -63,11 +63,11 @@ people_models:
   # COCO full-frame source (#964). #937 is available through an explicit checkpoint override.
   dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
   dino_repository: DINO
-  yolo_checkpoint: GVHMR/inputs/checkpoints/yolo/yolov8x.pt
-  vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
-  hmr2_checkpoint: GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
-  gvhmr_checkpoint: GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
-  body_models_dir: GVHMR/inputs/checkpoints/body_models
+  yolo_checkpoint: yolo/yolov8x.pt
+  vitpose_checkpoint: vitpose/vitpose-h-multi-coco.pth
+  hmr2_checkpoint: hmr2/epoch=10-step=25000.ckpt
+  gvhmr_checkpoint: gvhmr/gvhmr_siga24_release.ckpt
+  body_models_dir: body_models
   bundled_assets:
     hmr2_mean_params: src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz
     smplx_to_smpl: src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt
@@ -103,7 +103,7 @@ people_models:
       batch_size: 16
     static_cam: true
 person_tracking:
-  # Fixed run-10 pose/CLIP profile, including run-9 AFLink/GSI; alternatives are explicit.
+  # The adopted run-10 pose/CLIP profile; comparison methods use benchmark entrypoints.
   method: strongsort_pp_pose
   encoder: clipreid_vitb16_market1501
   aflink_checkpoint: person_tracking/AFLink_epoch20.pth
@@ -161,9 +161,8 @@ court_side:
   min_support: 0.2
   min_margin: 0.15
 # Cross-camera association of the person tracks (src/tasks/player_association, #933). The
-# method's parameters live in `config` (project-relative); the game format is the clip's.
+# task owns the adopted parameter file; the game format is the clip's.
 player_association:
-  config: src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml
   players_per_side: 1  # 1 = singles, 2 = doubles
 player_reconstruction:
   enabled: true
