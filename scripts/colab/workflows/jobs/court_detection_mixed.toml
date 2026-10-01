@@ -14,7 +14,6 @@ protected_override_keys = [
   "data.source.workspace_root",
   "mixed.sources.synthetic_court.workspace_root",
   "mixed.sources.tennis_court_detector.root",
-  "data.processing.derived_target_root",
   "model.encoder.repository_path",
   "model.encoder.checkpoint_path",
   "run.output_dir",

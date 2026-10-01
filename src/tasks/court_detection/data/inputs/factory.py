@@ -15,61 +15,27 @@ from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourt
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
     TennisCourtDetectorInput,
 )
-from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
-)
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    line_target_definition,
-)
-
-
-def _validate_external_store(
-    config: CourtSourceConfig,
-    store: CourtDerivedTargetStore | None,
-) -> None:
-    if store is None:
-        return
-    source_root = (
-        config.root
-        if isinstance(config, TennisCourtDetectorSourceConfig)
-        else config.workspace_root
-    )
-    if store.root.resolve(strict=False).is_relative_to(
-        source_root.resolve(strict=False)
-    ):
-        raise ValueError(
-            "Court derived_target_root must be outside the selected source root."
-        )
 
 
 def _build_tennis(
     config: CourtSourceConfig,
-    store: CourtDerivedTargetStore | None,
-    line_target_schema: str,
 ) -> CourtInput:
     return TennisCourtDetectorInput(
         cast(TennisCourtDetectorSourceConfig, config),
-        target_store=store,
-        line_target_schema=line_target_schema,
     )
 
 
 def _build_synthetic(
     config: CourtSourceConfig,
-    store: CourtDerivedTargetStore | None,
-    line_target_schema: str,
 ) -> CourtInput:
     return SyntheticCourtInput(
         cast(SyntheticCourtSourceConfig, config),
-        target_store=store,
-        line_target_schema=line_target_schema,
     )
 
 
 _BUILDERS: dict[
     str,
-    Callable[[CourtSourceConfig, CourtDerivedTargetStore | None, str], CourtInput],
+    Callable[[CourtSourceConfig], CourtInput],
 ] = {
     "tennis_court_detector": _build_tennis,
     "synthetic_court": _build_synthetic,
@@ -78,19 +44,13 @@ _BUILDERS: dict[
 
 def build_court_input(
     config: CourtSourceConfig,
-    *,
-    target_store: CourtDerivedTargetStore | None,
-    line_target_schema: str = LINE_TARGET_SCHEMA,
 ) -> CourtInput:
     """Resolve the explicit source discriminator exactly once."""
-    if target_store is not None:
-        _validate_external_store(config, target_store)
-    line_target_definition(line_target_schema)
     try:
         builder = _BUILDERS[config.kind]
     except KeyError as error:  # defensive: typed configuration already validates
         raise ValueError(f"Unsupported Court input kind: {config.kind!r}.") from error
-    return builder(config, target_store, line_target_schema)
+    return builder(config)
 
 
 __all__ = ["build_court_input"]

@@ -15,7 +15,6 @@ from PIL import Image
 
 from src.tasks.court_detection.configuration import TennisCourtDetectorSourceConfig
 from src.tasks.court_detection.data.contracts import (
-    CourtDenseTargetKind,
     CourtInputCapability,
     CourtInputSpec,
     CourtInstance2D,
@@ -24,14 +23,6 @@ from src.tasks.court_detection.data.contracts import (
     CourtSampleMetadata,
     CourtSampleRecord,
     CourtSourceSplit,
-)
-from src.tasks.court_detection.data.target_generation.store import (
-    SEGMENTATION_TARGET_SCHEMA,
-    CourtDerivedTargetStore,
-)
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    SEMANTIC_LINE_TARGET_SCHEMA,
 )
 from src.utils.data.image_record_store import ImageRecordStore
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
@@ -50,14 +41,9 @@ class LegacyTennisCourtDetectorInput:
     def __init__(
         self,
         config: TennisCourtDetectorSourceConfig,
-        *,
-        target_store: CourtDerivedTargetStore | None = None,
-        line_target_schema: str = LINE_TARGET_SCHEMA,
     ) -> None:
         self.config = config
         self.root = config.root
-        self.target_store = target_store
-        self.line_target_schema = line_target_schema
         self._spec = CourtInputSpec(
             source_kind="tennis_court_detector",
             source_schema="tennis_court_detector_annotations_v1",
@@ -65,7 +51,6 @@ class LegacyTennisCourtDetectorInput:
                 {
                     CourtInputCapability.KEYPOINT_CHANNELS,
                     CourtInputCapability.COURT_INSTANCES,
-                    *({CourtInputCapability.SEGMENTATION_REFERENCE, CourtInputCapability.LINE_REFERENCE, CourtInputCapability.SEMANTIC_LINE_REFERENCE} if target_store is not None else set()),
                 }
             ),
             keypoint_schema=_TCD_KP_SCHEMA,
@@ -135,7 +120,6 @@ class LegacyTennisCourtDetectorInput:
             image=image,
             keypoint_channels=channels,
             court_instances=(instance,),
-            dense_target_refs=record.dense_target_refs,
             metadata=CourtSampleMetadata(
                 source_kind="tennis_court_detector",
                 source_schema=self.spec.source_schema,
@@ -157,12 +141,6 @@ class LegacyTennisCourtDetectorInput:
     def _load_image(self, record: CourtSampleRecord) -> Image.Image:
         with Image.open(record.image_path) as handle:
             return handle.convert("RGB")
-
-    def _audit_target_refs(self, derived_key: str) -> dict[CourtDenseTargetKind, Path]:
-        if self.target_store is None:
-            return {}
-        schemas: dict[CourtDenseTargetKind, str] = {"seg": SEGMENTATION_TARGET_SCHEMA, "line": self.line_target_schema, "semantic_line": SEMANTIC_LINE_TARGET_SCHEMA}
-        return {kind: self.target_store.path_for(source_kind="tennis_court_detector", derived_key=derived_key, target_schema=schema) for kind, schema in schemas.items()}
 
     def _load_records(self) -> dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]]:
         records: dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]] = {}
@@ -259,31 +237,12 @@ class LegacyTennisCourtDetectorInput:
                     allow_nan=False,
                 ).encode("utf-8")
             ).hexdigest()
-            derived_key = f"{source_split}/{sample_id}"
             result.append(
                 CourtSampleRecord(
                     sample_id=sample_id,
                     split=split,
                     image_path=image_path,
                     annotation_path=annotation_path,
-                    derived_key=derived_key,
-                    dense_target_refs={} if self.target_store is None else {
-                        "seg": self.target_store.path_for(
-                            source_kind="tennis_court_detector",
-                            derived_key=derived_key,
-                            target_schema=SEGMENTATION_TARGET_SCHEMA,
-                        ),
-                        "line": self.target_store.path_for(
-                            source_kind="tennis_court_detector",
-                            derived_key=derived_key,
-                            target_schema=self.line_target_schema,
-                        ),
-                        "semantic_line": self.target_store.path_for(
-                            source_kind="tennis_court_detector",
-                            derived_key=derived_key,
-                            target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
-                        ),
-                    },
                     payload={
                         "source_schema": self.spec.source_schema,
                         "source_sample_id": sample_id,
@@ -394,14 +353,14 @@ class LegacyTennisCourtDetectorInput:
 class TennisCourtDetectorInput(LegacyTennisCourtDetectorInput):
     """Read the published JPEG/KP14 store; upstream files are migration inputs."""
 
-    def __init__(self, config: TennisCourtDetectorSourceConfig, *, target_store: CourtDerivedTargetStore | None = None, line_target_schema: str = LINE_TARGET_SCHEMA) -> None:
+    def __init__(self, config: TennisCourtDetectorSourceConfig) -> None:
         descriptor = json.loads((config.root / "dataset.json").read_text())
         if not isinstance(descriptor, dict) or set(descriptor) != {"schema", "storage"} or descriptor["schema"] != "tennis_court_detector_store_v1":
             raise ValueError("Expected a published TennisCourtDetector JPEG store.")
         self.image_store = ImageRecordStore(config.root, descriptor["storage"])
         if self.image_store.metadata.get("source_schema") != "tennis_court_detector_annotations_v1":
             raise ValueError("TennisCourtDetector store changed its annotation schema.")
-        super().__init__(config, target_store=target_store, line_target_schema=line_target_schema)
+        super().__init__(config)
 
     def _read_source_split(self, split: CourtSourceSplit, source_split: str) -> tuple[CourtSampleRecord, ...]:
         records: list[CourtSampleRecord] = []
@@ -425,7 +384,6 @@ class TennisCourtDetectorInput(LegacyTennisCourtDetectorInput):
                 sample_id=sample_id, split=split,
                 image_path=self.image_store.paths[int(self.image_store.arrays["shard"][row])],
                 annotation_path=self.root / "index.npz",
-                derived_key=f"{source_split}/{sample_id}", dense_target_refs=self._audit_target_refs(f"{source_split}/{sample_id}"),
                 payload={"source_schema": self.spec.source_schema, "source_sample_id": sample_id,
                          "source_target_sha256": digest, "width": value["width"], "height": value["height"],
                          "source_split": source_split, "keypoints": points, "annotation_metric": metric, "image_index": row},

@@ -41,7 +41,7 @@ python -m src.tasks.court_detection.scripts.train \
 [Synthetic Court](../../synthetic_data_generation/dataset/court/README.md#jpeg-shard-publication)
 を参照してください。TennisCourtDetectorも既存JPEGを再圧縮せずshardへ収容し、
 KP14・split・注釈metricを圧縮indexへ保存します。PNG入力は品質95のJPEGへ変換します。
-`data.processing.derived_target_root: null`が通常設定です。dense PNGを必要とせず、
+dense PNGを保存せず、
 学習時もreview時も同じgeometryと物理線幅から生成します。旧マスクの読み込みへの
 fallbackはありません。checkpointのdense target specは`precomputed=false`になります。
 
@@ -130,7 +130,6 @@ Synthetic V3の座標・camera authority・KP semanticの定義は、このconsu
 ## Utilities and scripts
 
 - `src/utils/data/heatmaps.py`: single-peakとall-court multi-peakを共通に扱うdomain-neutral Gaussian heatmap utility。
-- `scripts/materialize_targets.py`: 出力先を明示した場合だけ使うraster audit用export。学習入力には使用しません。
 - `scripts/preview_heatmaps.py`: configured sourceのKP channel/visibilityを使うheatmap preview。
 - `scripts/preview_augmentation.py`: 選択target全部を共有geometry上で確認するaugmentation preview。
 - `scripts/train.py`: Hydra学習entry point。
@@ -154,7 +153,7 @@ python -m src.tasks.court_detection.scripts.preview_augmentation \
   preview.split=train preview.max_samples=4
 ```
 
-KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行single-court LINE schema `court_line_binary_75mm_150mm_single_court_v3` は通常線7.5 cm、baseline 15 cmです。semantic schemaは同じ物理幅を使い、`background / far・near baseline / left・right doubles sideline / left・right singles sideline / far・near service line / center service line / far・near center mark`のcamera-view 12クラスです。交点は生成順で一意に上書きし、水平反転時は左右sideline classだけを交換します。旧all-court schema `court_line_binary_75mm_150mm_v2` と旧5 cm / 10 cm schema `court_line_binary_v1` は別schemaとしてのみ読み取り可能で、現行教師とderived target pathを共有しません。SEGも現行`court_cell_segmentation_single_court_v2`と旧all-court `court_cell_segmentation_v1`を区別します。
+KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行single-court LINE schema `court_line_binary_75mm_150mm_single_court_v3` は通常線7.5 cm、baseline 15 cmです。semantic schemaは同じ物理幅を使い、`background / far・near baseline / left・right doubles sideline / left・right singles sideline / far・near service line / center service line / far・near center mark`のcamera-view 12クラスです。交点は生成順で一意に上書きし、水平反転時は左右sideline classだけを交換します。旧all-court schema `court_line_binary_75mm_150mm_v2` と旧5 cm / 10 cm schema `court_line_binary_v1` は別schemaとして扱い、現行教師とは物理線幅の契約を区別します。SEGも現行`court_cell_segmentation_single_court_v2`と旧all-court `court_cell_segmentation_v1`を区別します。
 
 KP metricは教師のpoint capacityが1なら各channelの有効画像領域に対してglobal argmaxを1点だけ抽出します。旧all-court形式の`P>1`教師だけがmulti-peak NMSを使用し、この選択はpose lossやLoRAの有無には依存しません。
 

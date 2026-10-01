@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
 import torch
 from PIL import Image
 
@@ -47,7 +48,6 @@ def _raw() -> CourtRawSample:
         Image.new("RGB", (256, 256)),
         channels,
         (instance,),
-        {},
         CourtSampleMetadata("tennis_court_detector", "test", "sample", None, {}),
     )
 
@@ -111,3 +111,10 @@ def test_invisible_heatmap_points_still_define_dense_geometry() -> None:
         generate_online_targets(raw, schemas)["seg"],
         generate_online_targets(occluded, schemas)["seg"],
     )
+
+
+def test_single_court_dense_targets_reject_multiple_instances() -> None:
+    raw = _raw()
+    multiple = replace(raw, court_instances=(raw.court_instances[0], replace(raw.court_instances[0], court_instance_id="second")))
+    with pytest.raises(ValueError, match="exactly one selected court"):
+        generate_online_targets(multiple, {"line": LINE_TARGET_SCHEMA})

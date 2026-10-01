@@ -45,12 +45,9 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.data.inputs.contract import CourtInput
 from src.tasks.court_detection.data.inputs.factory import build_court_input
 from src.tasks.court_detection.data.processing.targets import build_target_builder
-from src.tasks.court_detection.data.target_generation.store import (
-    SEGMENTATION_TARGET_SCHEMA,
-    CourtDerivedTargetStore,
-)
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
+    SEGMENTATION_TARGET_SCHEMA,
     SEMANTIC_LINE_CHANNEL_NAMES,
     SEMANTIC_LINE_TARGET_SCHEMA,
 )
@@ -77,7 +74,7 @@ _SYNTHETIC_SOURCE_RELATIVE = Path("synthetic_data_generation") / "scenes"
 _SCENE_SEPARATOR = "::"
 
 # The dense schemas the review UI can render.  These are the current single
-# source of truth for materialized Court targets.
+# source of truth for online Court targets.
 DENSE_TARGET_SCHEMAS: Mapping[CourtDenseTargetKind, str] = MappingProxyType(
     {
         "seg": SEGMENTATION_TARGET_SCHEMA,
@@ -214,7 +211,7 @@ def layer_identity(
 
     Catalog compatibility filtering must stay cheap, so the keypoint channel
     names are read from the same constants the input layers declare and the
-    dense schemas are the current materialized-target schemas.  The heavy
+    dense schemas are the current online-target schemas.  The heavy
     canonical input is still built and revalidated before any preview or
     inference runs, so a divergence fails loudly instead of mislabeling a layer.
     """
@@ -251,14 +248,11 @@ class CourtDatasetCatalog:
         data_root: Path,
         checkpoint_root: Path,
         output_root: Path,
-        derived_target_root: Path | None = None,
     ) -> None:
         self.project_root = project_root.resolve(strict=False)
         self.data_root = data_root.resolve(strict=False)
         self.checkpoint_root = checkpoint_root.resolve(strict=False)
         self.output_root = output_root.resolve(strict=False)
-        self.derived_target_root = derived_target_root
-        self.target_store = None if derived_target_root is None else CourtDerivedTargetStore(derived_target_root)
         self.resolver = build_path_resolver(
             project_root=self.project_root,
             data_root=self.data_root,
@@ -467,7 +461,7 @@ class CourtDatasetCatalog:
                 "TennisCourtDetector preset の root が review の data root と一致しません: "
                 f"preset={config.root}, review={self._tennis_root}"
             )
-        return build_court_input(config, target_store=self.target_store)
+        return build_court_input(config)
 
     def _build_synthetic_input(self, scene_id: str) -> CourtInput:
         manifest = self._synthetic_manifest(scene_id)
@@ -493,7 +487,7 @@ class CourtDatasetCatalog:
                 "Synthetic Court の workspace が review の data root と一致しません: "
                 f"config={config.workspace_root}, review={self._synthetic_workspace}"
             )
-        return build_court_input(config, target_store=self.target_store)
+        return build_court_input(config)
 
     def _synthetic_manifest(self, scene_id: str) -> Mapping[str, object]:
         manifest_path = (
@@ -508,7 +502,8 @@ class CourtDatasetCatalog:
             raise ValueError(
                 f"Synthetic Court dataset.json は mapping である必要があります: {manifest_path}"
             )
-        return read_court_manifest(manifest_path.parent)
+        manifest: Mapping[str, object] = read_court_manifest(manifest_path.parent)
+        return manifest
 
     def _discover(self) -> list[CourtDatasetEntry]:
         entries: list[CourtDatasetEntry] = []

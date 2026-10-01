@@ -16,9 +16,6 @@ from PIL import Image
 from src.tasks.court_detection.configuration import SyntheticCourtSourceConfig
 from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
 from src.tasks.court_detection.data.processing.geometry import CourtProcessingGeometry
-from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
-)
 from src.utils.schema.court import (
     CAMERA_VIEW_HALF_TURN_INDEX,
     COURT_KP_NAMES,
@@ -279,7 +276,7 @@ def _input(
             workspace_root=root,
             scene_ids=("B00",),
         ),
-        target_store=CourtDerivedTargetStore(root / "derived"),
+
     )
 
 
@@ -437,8 +434,8 @@ def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping
         "court-b",
     ]
     assert (
-        target_input.records("train")[0].dense_target_refs
-        != all_input.records("train")[0].dense_target_refs
+        target_input.records("train")[0].payload["source_target_sha256"]
+        != all_input.records("train")[0].payload["source_target_sha256"]
     )
 
 
@@ -592,7 +589,6 @@ def test_v2_target_scope_selects_exact_bound_court_and_keeps_dense_inventory(
     torch.testing.assert_close(
         target_channels.physical_indices[:, 0], all_channels.physical_indices[:, 1]
     )
-    assert target_record.dense_target_refs != all_record.dense_target_refs
     assert (
         target_record.payload["source_target_sha256"]
         != all_record.payload["source_target_sha256"]

@@ -143,7 +143,6 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 | PLCS `extract_gvhmr_motions` | DATA / `run.output_dir`（`plcs/motions/gvhmr/<collection-version>`）。抽出元もDATA、外部モデルは別のroot |
 | ball `convert_web_dataset` | DATA / `convert.output_dir`。既存共有dataset `tennis/web/unified` を維持 |
 | ball/court YouTube準備・annotation、ball SSL画像抽出・clip予測 | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
-| court `generate_masks`、`generate_line_masks`、`materialize_targets` | DATA配下の派生教師・target store。line maskのpreviewはOUTPUT / `generate_line_masks.preview_dir`（同じgenerate run内の `preview/`）。`materialize_targets` のログ用途はprecompute |
 | SLCS `generate_dataset` | DATA / `data.dataset_root` のsceneを検証し、同datasetへDINO特徴とsplitを追記。HydraログはOUTPUTのgenerate run |
 | SLCS `make_splits` | DATA / `data.split_file` |
 | SLCS `precompute_dino_tokens` | DATA / `data.dataset_root` 内のmanifestが示すclipの特徴ファイル。ログはprecompute run |

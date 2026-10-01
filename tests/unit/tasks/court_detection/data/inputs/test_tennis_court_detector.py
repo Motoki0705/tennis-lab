@@ -13,9 +13,6 @@ from src.tasks.court_detection.configuration import TennisCourtDetectorSourceCon
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
     LegacyTennisCourtDetectorInput as TennisCourtDetectorInput,
 )
-from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
-)
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
 pytestmark = pytest.mark.unit
@@ -44,7 +41,7 @@ def _input(
             ),
             excluded_sample_ids=excluded_sample_ids,
         ),
-        target_store=CourtDerivedTargetStore(root.parent / "derived"),
+
     )
 
 

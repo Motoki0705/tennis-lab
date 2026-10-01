@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol
 
-import numpy as np
 import torch
 from torch import Tensor
 
@@ -108,7 +107,6 @@ class KeypointTargetBuilder:
 
 class _OnlineDenseTargetBuilder:
     kind: CourtDenseTargetKind
-    capability: CourtInputCapability
 
     def __init__(self, spec: CourtTargetSpec, *, input_spec: CourtInputSpec) -> None:
         self._spec = spec
@@ -127,15 +125,13 @@ class _OnlineDenseTargetBuilder:
             raise ValueError(f"{self.kind} target requires a non-empty split.")
 
     def load_dense(self, raw: CourtRawSample) -> Mapping[CourtDenseTargetKind, Tensor]:
-        return generate_online_targets(raw, {self.kind: self.spec.schema})
+        targets: Mapping[CourtDenseTargetKind, Tensor] = generate_online_targets(raw, {self.kind: self.spec.schema})
+        return targets
 
-    def _decode(self, array: np.ndarray) -> Tensor:
-        raise NotImplementedError
 
 
 class SegmentationTargetBuilder(_OnlineDenseTargetBuilder):
     kind: CourtDenseTargetKind = "seg"
-    capability = CourtInputCapability.SEGMENTATION_REFERENCE
 
     def __init__(self, *, target_schema: str, input_spec: CourtInputSpec) -> None:
         super().__init__(
@@ -158,11 +154,6 @@ class SegmentationTargetBuilder(_OnlineDenseTargetBuilder):
             input_spec=input_spec,
         )
 
-    def _decode(self, array: np.ndarray) -> Tensor:
-        if int(array.max(initial=0)) > 6:
-            raise ValueError("Court segmentation labels must be in [0,6].")
-        return torch.from_numpy(np.ascontiguousarray(array).copy()).long()
-
     def build(self, sample: CourtTransformedSample) -> object:
         mask = sample.dense_targets["seg"].long()
         if sample.horizontal_flipped:
@@ -175,7 +166,6 @@ class SegmentationTargetBuilder(_OnlineDenseTargetBuilder):
 
 class LineTargetBuilder(_OnlineDenseTargetBuilder):
     kind: CourtDenseTargetKind = "line"
-    capability = CourtInputCapability.LINE_REFERENCE
 
     def __init__(self, *, target_schema: str, input_spec: CourtInputSpec) -> None:
         super().__init__(
@@ -190,12 +180,6 @@ class LineTargetBuilder(_OnlineDenseTargetBuilder):
             input_spec=input_spec,
         )
 
-    def _decode(self, array: np.ndarray) -> Tensor:
-        unique = set(np.unique(array).tolist())
-        if not unique.issubset({0, 1, 255}):
-            raise ValueError("Court line targets must be binary.")
-        return torch.from_numpy((array > 0).astype(np.float32)).unsqueeze(0)
-
     def build(self, sample: CourtTransformedSample) -> object:
         target = sample.dense_targets["line"].float()
         if target.ndim != 3 or target.shape[0] != 1:
@@ -205,7 +189,6 @@ class LineTargetBuilder(_OnlineDenseTargetBuilder):
 
 class SemanticLineTargetBuilder(_OnlineDenseTargetBuilder):
     kind: CourtDenseTargetKind = "semantic_line"
-    capability = CourtInputCapability.SEMANTIC_LINE_REFERENCE
 
     @property
     def required_capabilities(self) -> frozenset[CourtInputCapability]:
@@ -223,11 +206,6 @@ class SemanticLineTargetBuilder(_OnlineDenseTargetBuilder):
             ),
             input_spec=input_spec,
         )
-
-    def _decode(self, array: np.ndarray) -> Tensor:
-        if int(array.max(initial=0)) >= len(SEMANTIC_LINE_CHANNEL_NAMES):
-            raise ValueError("Court semantic-line labels are out of range.")
-        return torch.from_numpy(np.ascontiguousarray(array).copy()).long()
 
     def build(self, sample: CourtTransformedSample) -> object:
         mask = sample.dense_targets["semantic_line"].long()
