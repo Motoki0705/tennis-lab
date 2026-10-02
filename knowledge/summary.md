@@ -1,4 +1,4 @@
-<!-- knowledge-review: 3e390441f9ded7353ab2246eeb1f8685f40118a236e204fa23fc2d03632b8bd6 on 2026-10-02 -->
+<!-- knowledge-review: 82aa8159997296ea20be15205f2d18b21625de80ce38d11cc13593a1b402ae9e on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-01（人物資産・参照rootの統合後も人物評価と#935の品質保留を維持。重みの配置変更は採否を変えない）
@@ -446,4 +446,4 @@ CPUの契約回帰は検証し、安全bench全11,200件は元dataset欠測で�
 過去FAILとclip停止・全scene未検証を残す。ユーザーは既存結果・今回回帰・最新CIに基づく従来stackのmergeを許可した。
 merge方針の変更は品質合格の新観測ではない。
 
-人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価を完了し、clip_000全pipeline検証だけ#935 stackに残す。
+人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価run16は完了した。clip_000全pipelineは当時未検証で、今回のmerge許可後も新たな品質測定は行っていない。

@@ -17,6 +17,7 @@ config:
   side_margin: 0.15
 metrics:
   safety_cases_executed: 0
+  cpu_tests_passed: 522
 artifacts:
   run_dir: knowledge/runs/run-i935-unfiltered-production-safety-20261002
 parents:
@@ -39,6 +40,8 @@ e9＋anchored_12k seed42＋共分散倍率1.8125148752087792、court_sideのball
 過去の精度判定を新しい合格観測に変更する意味ではない。
 保存・下流・旧artifactの扱いは[点consumer契約](../../../src/tennis_scene/pipeline/README.md#refinerの点consumer)を正本とする。
 
+[CPU関連suite](../../runs/run-i935-unfiltered-production-safety-20261002/cpu-tests.log)は522件成功（180.00秒）。
+[対象commit・コマンド・環境](../../runs/run-i935-unfiltered-production-safety-20261002/verification.json)を保存した。
 CPU回帰では、存在確率が0に丸められ、大きい共分散を持つframeも最大weight成分の平均点として下流へ届くこと、
 全GMMのtensor・camera・実PTS・窓出自をreadbackできること、v2のexecute/load、旧v1の拒否、旧gallery閲覧を検証した。
 旧未選別座標とのbit一致も検査した。閾値helperと旧規則は過去bench再現専用としてtests/benchmarksに隔離し、
