@@ -16,7 +16,7 @@ from src.tasks.plcs.generate_dataset.sampling.motion_source import (
     MotionCategory,
     load_amass_motion_clip,
 )
-from src.tasks.plcs.motion import Coco17MotionClip, load_motion_clip
+from src.tasks.plcs.motion import Coco17MotionClip
 from src.tasks.plcs.motion.sources import AccadCoco17Adapter
 
 if TYPE_CHECKING:
@@ -27,7 +27,6 @@ class MotionFormat(StrEnum):
     """Registered source adapters accepted at the generation boundary."""
 
     AMASS_SMPLH_V1 = "amass_smplh_v1"
-    COCO17_MOTION_V1 = "coco17_motion_v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,14 +111,13 @@ class MotionSampler:
                 raise ValueError(
                     f"motion_sources.{category}.weight must be positive and finite."
                 )
-            if source_format is MotionFormat.AMASS_SMPLH_V1:
-                try:
-                    MotionCategory(category)
-                except ValueError as error:
-                    raise ValueError(
-                        "AMASS/SMPL-H categories must be running, walking, or general; "
-                        f"got {category!r}."
-                    ) from error
+            try:
+                MotionCategory(category)
+            except ValueError as error:
+                raise ValueError(
+                    "AMASS/SMPL-H categories must be running, walking, or general; "
+                    f"got {category!r}."
+                ) from error
             sources[category] = MotionSourceConfig(
                 format=source_format,
                 paths=paths,
@@ -138,21 +136,14 @@ class MotionSampler:
                 if path.is_file():
                     candidates = [path]
                 elif path.is_dir():
-                    pattern = (
-                        "*_poses.npz"
-                        if source.format is MotionFormat.AMASS_SMPLH_V1
-                        else "*.motion.npz"
-                    )
+                    pattern = "*_poses.npz"
                     candidates = sorted(path.rglob(pattern))
                 else:
                     raise FileNotFoundError(
                         f"Configured motion source does not exist: {path}"
                     )
                 for candidate in candidates:
-                    if source.format is MotionFormat.AMASS_SMPLH_V1:
-                        valid_name = candidate.name.endswith("_poses.npz")
-                    else:
-                        valid_name = candidate.name.endswith(".motion.npz")
+                    valid_name = candidate.name.endswith("_poses.npz")
                     if not valid_name:
                         raise ValueError(
                             f"{candidate} does not match {source.format.value}."
@@ -178,8 +169,8 @@ class MotionSampler:
     ) -> Coco17MotionClip:
         """Sample one compatible file and return the common contract.
 
-        ``required_fps`` is used by multi-person generation, whose persisted scene
-        has one shared time axis. It filters native sources rather than resampling
+        ``required_fps`` selects sources at an explicit native frame rate.
+        It filters native sources rather than resampling
         them, so no source motion is silently sped up or slowed down.
         """
         if required_fps is not None:
@@ -229,18 +220,15 @@ class MotionSampler:
         cached = self._native_fps_cache.get(path)
         if cached is not None:
             return cached
-        if source.format is MotionFormat.COCO17_MOTION_V1:
-            fps = load_motion_clip(path).fps
-        else:
-            with np.load(path, allow_pickle=False) as archive:
-                if "mocap_framerate" not in archive.files:
-                    raise ValueError(
-                        f"{path}: missing required mocap_framerate for FPS matching."
-                    )
-                raw = np.asarray(archive["mocap_framerate"])
-            if raw.size != 1 or not np.issubdtype(raw.dtype, np.number):
-                raise ValueError(f"{path}: mocap_framerate must be one numeric scalar.")
-            fps = float(raw.reshape(()).item())
+        with np.load(path, allow_pickle=False) as archive:
+            if "mocap_framerate" not in archive.files:
+                raise ValueError(
+                    f"{path}: missing required mocap_framerate for FPS matching."
+                )
+            raw = np.asarray(archive["mocap_framerate"])
+        if raw.size != 1 or not np.issubdtype(raw.dtype, np.number):
+            raise ValueError(f"{path}: mocap_framerate must be one numeric scalar.")
+        fps = float(raw.reshape(()).item())
         if not math.isfinite(fps) or fps <= 0.0:
             raise ValueError(f"{path}: native FPS must be positive and finite.")
         self._native_fps_cache[path] = fps
@@ -250,16 +238,7 @@ class MotionSampler:
         """Load one configured file through its explicitly registered adapter."""
         if category not in self._motion_sources:
             raise ValueError(f"Unknown motion category: {category}")
-        source = self._motion_sources[category]
         resolved = Path(path).resolve()
-        if source.format is MotionFormat.COCO17_MOTION_V1:
-            clip = load_motion_clip(resolved)
-            if clip.category != category:
-                raise ValueError(
-                    f"Configured category {category!r} disagrees with artifact "
-                    f"category {clip.category!r}: {resolved}"
-                )
-            return clip
         if self._accad_adapter is None:
             raise RuntimeError("AMASS/SMPL-H source has no configured adapter.")
         raw = load_amass_motion_clip(resolved, category=MotionCategory(category))

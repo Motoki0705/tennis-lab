@@ -10,7 +10,6 @@ from typing import Any
 import numpy as np
 import pytest
 import torch
-from omegaconf import OmegaConf
 
 from src.tasks.base.generate_dataset import (
     CourtKeypointArtifactMetadata,
@@ -22,22 +21,11 @@ from src.tasks.base.generate_dataset import (
     resolve_court_keypoint_contract,
 )
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCS_DATASET_SCHEMA_ID
-from src.tasks.blcs.model_io import (
-    BLCSTrackQueryPrediction,
-    BLCSTrajectoryPrediction,
-    blcs_reference_metadata_from_batch,
-)
-from src.tasks.blcs.model_io.checkpoints import (
-    resolve_blcs_track_query_reference_contract,
-)
+from src.tasks.blcs.model_io import BLCSTrajectoryPrediction
 from src.tasks.blcs.visualization.inference.service import (
     InferenceService,
     derive_checkpoint_metadata,
     forms_for_model,
-)
-from src.tasks.blcs.visualization.inference.tracking import (
-    build_tracking_input,
-    tracking_metrics,
 )
 from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court_normalization import court_coordinate_normalization_metadata
@@ -50,7 +38,7 @@ _AUGMENTATION_CONFIG = (
     / "src/tasks/blcs/configs/data/_augmentation.yaml"
 )
 
-SINGLE_FORMS = ("single_object", "single_object_broadcast")
+SINGLE_FORMS = ("single_object",)
 REFERENCE_SINGLE_FORMS = ("single_object_camera_view_v2",)
 MULTI_FORMS = ("multi_object", "multi_object_broadcast")
 REFERENCE_MULTI_FORMS = ("multi_object_camera_view_v2",)
@@ -63,7 +51,7 @@ def _trajectory_config(
     *,
     name: str,
     selector: str,
-    scene_dir: str = "blcs/single_object_camera_view_v2",
+    scene_dir: str = "blcs/single_object",
     input_profile: str = "multiview",
     num_court_tokens: int = 14,
     max_seq_len: int = 256,
@@ -86,49 +74,6 @@ def _trajectory_config(
             "scene_dir": scene_dir,
             "seq_len_range": list(seq_len_range),
             "num_views_range": list(num_views_range),
-        },
-    }
-
-
-def _tracking_data_config(
-    *,
-    selector: str,
-    scene_dir: str,
-    reference: bool,
-    num_queries: int = 2,
-    num_views_range: Sequence[int] = (6, 6),
-) -> dict[str, Any]:
-    model: dict[str, Any] = {
-        "name": "blcs_track_query_reference" if reference else "blcs_track_query",
-        "num_queries": num_queries,
-    }
-    if reference:
-        model.update(
-            {
-                "target_frame_contract": "reference_camera_court_rzpi_v1",
-                "track_query_rope_contract": "time_camera_reference_selector_v1",
-                "reference_selector_mode": "reference",
-            }
-        )
-    return {
-        "court_keypoints": {"selector": selector},
-        "model": model,
-        "data": {
-            "seq_len_range": [6, 6],
-            "num_views_range": list(num_views_range),
-            "camera_mode": "first",
-            "scene_dir": scene_dir,
-            "lifecycle": {"pack_to_query_slots": True, "min_reuse_gap_frames": 0},
-            "association": {
-                "max_distance": 0.04,
-                "max_missed_frames": 2,
-                "min_reuse_gap_frames": 4,
-                "use_velocity_prediction": True,
-                "min_common_keypoints": 1,
-                "cost_reduction": "mean",
-                "overflow_policy": "error",
-            },
-            "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
         },
     }
 
@@ -355,106 +300,10 @@ def _fail_load(*args: object, **kwargs: object) -> None:
 # ------------------------------------------------------------------- metadata
 
 
-@pytest.mark.parametrize(
-    ("name", "selector", "family", "mode", "reference", "profile", "scene_dir"),
-    [
-        (
-            "blcs",
-            "physical_v1",
-            "trajectory",
-            "single",
-            False,
-            "single",
-            "blcs/single_object",
-        ),
-        (
-            "blcs_multiview_axial",
-            "physical_v1",
-            "trajectory",
-            "single",
-            False,
-            "multiview",
-            "blcs/single_object",
-        ),
-        (
-            "blcs_multiview_axial_reference",
-            "camera_view_v2",
-            "trajectory",
-            "single",
-            True,
-            "multiview",
-            "blcs/single_object_camera_view_v2",
-        ),
-        (
-            "blcs_track_query",
-            "physical_v1",
-            "tracking",
-            "multi",
-            False,
-            "tracking",
-            "blcs/multi_object",
-        ),
-        (
-            "blcs_track_query_reference",
-            "camera_view_v2",
-            "tracking",
-            "multi",
-            True,
-            "tracking",
-            "blcs/multi_object_camera_view_v2",
-        ),
-    ],
-)
-def test_derive_checkpoint_metadata_classifies_every_family(
-    name: str,
-    selector: str,
-    family: str,
-    mode: str,
-    reference: bool,
-    profile: str,
-    scene_dir: str,
-) -> None:
-    if family == "tracking":
-        config: dict[str, Any] = _tracking_data_config(
-            selector=selector,
-            scene_dir=scene_dir,
-            reference=reference,
-        )
-        config["model"]["num_queries"] = 4
-    else:
-        config = _trajectory_config(
-            name=name,
-            selector=selector,
-            scene_dir=scene_dir,
-            input_profile=profile,
-        )
-    metadata = derive_checkpoint_metadata(config)
-    assert metadata["model_family"] == family
-    assert metadata["object_mode"] == mode
-    assert metadata["reference"] is reference
-    assert metadata["input_profile"] == profile
-    assert metadata["runnable"] is True
-    assert metadata["unavailable_reason"] is None
-    assert metadata["seq_len"] == (6 if family == "tracking" else 128)
-
-
 def test_derive_checkpoint_metadata_rejects_selector_mismatch() -> None:
-    with pytest.raises(ValueError, match="requires court_keypoints.selector"):
+    with pytest.raises(ValueError, match="physical_v1"):
         derive_checkpoint_metadata(
-            _trajectory_config(
-                name="blcs_multiview_axial_reference",
-                selector="physical_v1",
-                scene_dir="blcs/single_object",
-            )
-        )
-    with pytest.raises(ValueError, match="requires court_keypoints.selector"):
-        derive_checkpoint_metadata(
-            _trajectory_config(
-                name="blcs",
-                selector="camera_view_v2",
-                scene_dir="blcs/single_object_camera_view_v2",
-                input_profile="single",
-            )
+            _trajectory_config(name="blcs_multiview_axial", selector="camera_view_v2")
         )
 
 
@@ -463,10 +312,10 @@ def test_derive_checkpoint_metadata_rejects_unknown_model_and_scene_dir() -> Non
     with pytest.raises(ValueError, match="Unsupported BLCS checkpoint model name"):
         derive_checkpoint_metadata(unknown)
     mismatched = _trajectory_config(
-        name="blcs",
+        name="blcs_multiview_axial",
         selector="physical_v1",
         scene_dir="blcs/multi_object",
-        input_profile="single",
+        input_profile="multiview",
     )
     with pytest.raises(ValueError, match="contradicts model.name"):
         derive_checkpoint_metadata(mismatched)
@@ -474,13 +323,7 @@ def test_derive_checkpoint_metadata_rejects_unknown_model_and_scene_dir() -> Non
 
 @pytest.mark.parametrize(
     ("name", "selector", "expected"),
-    [
-        ("blcs", "physical_v1", SINGLE_FORMS),
-        ("blcs_multiview_axial", "physical_v1", SINGLE_FORMS),
-        ("blcs_multiview_axial_reference", "camera_view_v2", REFERENCE_SINGLE_FORMS),
-        ("blcs_track_query", "physical_v1", MULTI_FORMS),
-        ("blcs_track_query_reference", "camera_view_v2", REFERENCE_MULTI_FORMS),
-    ],
+    [("blcs_multiview_axial", "physical_v1", SINGLE_FORMS)],
 )
 def test_forms_for_model_maps_every_model_to_its_forms(
     name: str,
@@ -491,88 +334,6 @@ def test_forms_for_model_maps_every_model_to_its_forms(
 
 
 # -------------------------------------------------------------------- catalog
-
-
-def test_catalog_classifies_all_six_forms_and_runnable_checkpoints(
-    tmp_path: Path,
-) -> None:
-    _build_dataset(tmp_path)
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "single.ckpt",
-        _trajectory_config(
-            name="blcs",
-            selector="physical_v1",
-            scene_dir="blcs/single_object",
-            input_profile="single",
-        ),
-    )
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "axial.ckpt",
-        _trajectory_config(
-            name="blcs_multiview_axial",
-            selector="physical_v1",
-            scene_dir="blcs/single_object",
-        ),
-    )
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "reference.ckpt",
-        _trajectory_config(
-            name="blcs_multiview_axial_reference",
-            selector="camera_view_v2",
-            scene_dir="blcs/single_object_camera_view_v2",
-        ),
-    )
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "track_physical.ckpt",
-        _tracking_data_config(
-            selector="physical_v1",
-            scene_dir="blcs/multi_object",
-            reference=False,
-        ),
-    )
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "track_reference.ckpt",
-        _tracking_data_config(
-            selector="camera_view_v2",
-            scene_dir="blcs/multi_object_camera_view_v2",
-            reference=True,
-        ),
-    )
-    catalog = _service(tmp_path).catalog()
-    forms = {form["id"]: form for form in catalog["scene_forms"]}
-    assert set(forms) == {
-        "single_object",
-        "single_object_broadcast",
-        "single_object_camera_view_v2",
-        "multi_object",
-        "multi_object_broadcast",
-        "multi_object_camera_view_v2",
-    }
-    assert forms["single_object"]["object_mode"] == "single"
-    assert forms["single_object"]["reference"] is False
-    assert forms["single_object"]["num_cameras"] == [6, 6]
-    assert forms["multi_object"]["object_mode"] == "multi"
-    assert forms["multi_object"]["num_cameras"] == [6, 6]
-    assert forms["multi_object_camera_view_v2"]["reference"] is True
-    assert forms["single_object_camera_view_v2"]["reference"] is True
-
-    by_id = {entry["id"]: entry for entry in catalog["checkpoints"]}
-    assert all(entry["runnable"] for entry in by_id.values()), by_id
-    assert by_id["checkpoints:blcs/single.ckpt"]["allowed_forms"] == list(SINGLE_FORMS)
-    assert by_id["checkpoints:blcs/axial.ckpt"]["allowed_forms"] == list(SINGLE_FORMS)
-    assert by_id["checkpoints:blcs/reference.ckpt"]["allowed_forms"] == list(
-        REFERENCE_SINGLE_FORMS
-    )
-    assert by_id["checkpoints:blcs/track_physical.ckpt"]["allowed_forms"] == list(
-        MULTI_FORMS
-    )
-    assert by_id["checkpoints:blcs/track_reference.ckpt"]["allowed_forms"] == list(
-        REFERENCE_MULTI_FORMS
-    )
-    assert by_id["checkpoints:blcs/track_physical.ckpt"]["num_queries"] == 2
-    assert by_id["checkpoints:blcs/track_reference.ckpt"]["reference"] is True
-    assert by_id["checkpoints:blcs/reference.ckpt"]["num_views_range"] == (3, 4)
-    assert catalog["world"]["units"] == "metres"
 
 
 def test_catalog_reports_unreadable_checkpoint_without_failing(tmp_path: Path) -> None:
@@ -642,40 +403,16 @@ def _single_checkpoint(tmp_path: Path) -> str:
     _write_checkpoint(
         tmp_path / "ckpt" / "blcs" / "single.ckpt",
         _trajectory_config(
-            name="blcs",
+            name="blcs_multiview_axial",
             selector="physical_v1",
             scene_dir="blcs/single_object",
-            input_profile="single",
+            input_profile="multiview",
             max_seq_len=8,
             seq_len_range=(4, 4),
             num_views_range=(1, 1),
         ),
     )
     return "checkpoints:blcs/single.ckpt"
-
-
-def test_broadcast_views_are_not_rejected_by_training_sampling_range(
-    tmp_path: Path,
-) -> None:
-    _build_dataset(tmp_path)
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "axial.ckpt",
-        _trajectory_config(
-            name="blcs_multiview_axial",
-            selector="physical_v1",
-            scene_dir="blcs/single_object",
-            num_views_range=(3, 4),
-        ),
-    )
-    result = _service(tmp_path).validate_inference_request(
-        checkpoint="checkpoints:blcs/axial.ckpt",
-        form="single_object_broadcast",
-        scene_id="scene_000000",
-        cameras=[0, 1],
-        device="cpu",
-    )
-    assert result.cameras == (0, 1)
-    assert any("sampling range" in warning for warning in result.warnings)
 
 
 def test_validate_inference_request_resolves_without_loading_a_model(
@@ -722,8 +459,9 @@ def test_validate_inference_request_rejects_bad_requests_before_model_load(
         service.validate_inference_request(**{**base, "form": "multi_object"})
     with pytest.raises(ValueError, match="outside 0"):
         service.validate_inference_request(**{**base, "cameras": [9]})
-    with pytest.raises(ValueError, match="exactly one camera"):
-        service.validate_inference_request(**{**base, "cameras": [0, 1]})
+    assert service.validate_inference_request(
+        **{**base, "cameras": [0, 1]}
+    ).cameras == (0, 1)
     with pytest.raises(ValueError, match="must be a positive integer"):
         service.validate_inference_request(**{**base, "cameras": [0], "window": 0})
     with pytest.raises(ValueError, match="reference_camera_id=null"):
@@ -762,40 +500,6 @@ def test_validate_inference_request_warns_on_window_clamp_and_shrink(
     )
     assert shrunk.window == 2
     assert any("smaller than trained clip length" in w for w in shrunk.warnings)
-
-
-def test_validate_inference_request_requires_reference_camera(
-    tmp_path: Path,
-) -> None:
-    _build_dataset(tmp_path)
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "reference.ckpt",
-        _trajectory_config(
-            name="blcs_multiview_axial_reference",
-            selector="camera_view_v2",
-            scene_dir="blcs/single_object_camera_view_v2",
-            seq_len_range=(4, 4),
-            num_views_range=(3, 4),
-        ),
-    )
-    service = _service(tmp_path)
-    with pytest.raises(ValueError, match="explicit reference_camera_id"):
-        service.validate_inference_request(
-            checkpoint="checkpoints:blcs/reference.ckpt",
-            form="single_object_camera_view_v2",
-            scene_id="scene_000000",
-            cameras=[0, 1, 2],
-            device="cpu",
-        )
-    with pytest.raises(ValueError, match="must be one of the selected cameras"):
-        service.validate_inference_request(
-            checkpoint="checkpoints:blcs/reference.ckpt",
-            form="single_object_camera_view_v2",
-            scene_id="scene_000000",
-            cameras=[0, 1, 2],
-            reference_camera_id="cam_5",
-            device="cpu",
-        )
 
 
 # -------------------------------------------------------------------- inference
@@ -859,185 +563,7 @@ def test_infer_trajectory_windowed_single_object(
     json.dumps(response, allow_nan=False)
 
 
-class _StubTrackingPredictor:
-    """Return constant query tracks so the matched-metric path can be checked."""
-
-    def __init__(self, num_queries: int, presence: bool = True) -> None:
-        self.num_queries = num_queries
-        self._presence = presence
-        self.calls = 0
-
-    def predict_batch(
-        self,
-        batch: dict[str, Any],
-        *,
-        denormalize: bool,
-        court_reference_provenance: Any = None,
-        reference_metadata: Any = None,
-    ) -> BLCSTrackQueryPrediction:
-        del denormalize, reference_metadata
-        ball_uv = batch["ball_uv"]
-        frames = int(ball_uv.shape[2])
-        self.calls += 1
-        position = torch.ones(1, frames, self.num_queries, 3)
-        logits = torch.full((1, frames, self.num_queries), 4.0)
-        if not self._presence:
-            logits = torch.full((1, frames, self.num_queries), -4.0)
-        probability = logits.sigmoid()
-        return BLCSTrackQueryPrediction(
-            position=position,
-            presence_logits=logits,
-            presence_probability=probability,
-            presence=probability >= 0.5,
-            court_reference_provenance=court_reference_provenance,
-            coordinates_in_metres=True,
-        )
-
-
-def test_infer_tracking_multi_object_uses_canonical_dataset(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _build_dataset(tmp_path)
-    _write_checkpoint(
-        tmp_path / "ckpt" / "blcs" / "track.ckpt",
-        _tracking_data_config(
-            selector="physical_v1",
-            scene_dir="blcs/multi_object",
-            reference=False,
-        ),
-    )
-    service = _service(tmp_path, device="cpu")
-    stub = _StubTrackingPredictor(num_queries=2, presence=True)
-    monkeypatch.setattr(service, "_tracking_predictor", lambda *a, **k: stub)
-    response = service.infer(
-        checkpoint="checkpoints:blcs/track.ckpt",
-        form="multi_object",
-        scene_id="scene_000000",
-        cameras=[0, 1, 2, 3, 4, 5],
-        window=6,
-    )
-    assert stub.calls == 1
-    assert response["frames"] == 6
-    assert response["prediction"]["tracks"] == 2
-    assert response["prediction"]["presence"] is not None
-    assert len(response["prediction"]["positions"]) == 6 * 2 * 3
-    assert len(response["prediction"]["presence"]) == 6 * 2
-    metrics = response["metrics"]
-    assert metrics["matched_pairs"] > 0
-    assert metrics["gt_present"] == 11.0
-    assert metrics["predicted_present"] == 12.0
-    assert 0.0 < metrics["presence_precision"] < 1.0
-    assert 0.0 < metrics["presence_recall"] <= 1.0
-    assert response["prediction"]["presence"][-2:] == [1, 1]
-    json.dumps(response, allow_nan=False)
-
-
-def test_tracking_metrics_match_ignoring_query_slot_order() -> None:
-    target: np.ndarray = np.zeros((2, 2, 3), dtype=np.float64)
-    target[0, 0] = (0.0, 0.0, 0.0)
-    target[0, 1] = (5.0, 0.0, 0.0)
-    target[1, 0] = (0.0, 1.0, 0.0)
-    target[1, 1] = (5.0, 1.0, 0.0)
-    present: np.ndarray = np.ones((2, 2), dtype=bool)
-    prediction = target[:, ::-1, :].copy() + 0.05
-    order_swapped = tracking_metrics(
-        predicted_position=prediction,
-        predicted_present=present.copy(),
-        target_position=target,
-        target_present=present,
-    )
-    straight = tracking_metrics(
-        predicted_position=target + 0.05,
-        predicted_present=present.copy(),
-        target_position=target,
-        target_present=present,
-    )
-    assert order_swapped["position_error_m"] == pytest.approx(
-        straight["position_error_m"]
-    )
-    assert order_swapped["position_error_m"] == pytest.approx(np.sqrt(3) * 0.05)
-    assert order_swapped["accuracy_0p3m"] == 1.0
-    assert order_swapped["matched_pairs"] == 4.0
-
-    absent = tracking_metrics(
-        predicted_position=target + 0.05,
-        predicted_present=present.copy(),
-        target_position=target,
-        target_present=np.zeros((2, 2), dtype=bool),
-    )
-    assert absent["matched_pairs"] == 0.0
-    assert absent["position_error_m"] is None
-    assert absent["accuracy_0p3m"] is None
-    assert absent["presence_precision"] == 0.0
-
-
-def test_tracking_metrics_counts_false_positives_and_negatives() -> None:
-    target: np.ndarray = np.zeros((1, 2, 3), dtype=np.float64)
-    present = np.array([[True, False]])
-    predicted_present = np.array([[True, True]])
-    metrics = tracking_metrics(
-        predicted_position=np.zeros((1, 2, 3), dtype=np.float64),
-        predicted_present=predicted_present,
-        target_position=target,
-        target_present=present,
-    )
-    assert metrics["matched_pairs"] == 1.0
-    assert metrics["predicted_present"] == 2.0
-    assert metrics["gt_present"] == 1.0
-    assert metrics["presence_precision"] == pytest.approx(0.5)
-    assert metrics["presence_recall"] == pytest.approx(1.0)
-
-
 # --------------------------------------------- canonical dataset integration
-
-
-@pytest.mark.parametrize(
-    ("form", "reference"),
-    [
-        ("multi_object", False),
-        ("multi_object_broadcast", False),
-        ("multi_object_camera_view_v2", True),
-    ],
-)
-def test_build_tracking_input_from_every_multi_form(
-    tmp_path: Path,
-    form: str,
-    reference: bool,
-) -> None:
-    _build_dataset(tmp_path)
-    config = _tracking_data_config(
-        selector="camera_view_v2" if reference else "physical_v1",
-        scene_dir=f"blcs/{form}",
-        reference=reference,
-    )
-    num_cameras = 3 if reference else 2
-    tracking_input = build_tracking_input(
-        scene_dir=tmp_path / "data" / "blcs" / form,
-        scene_id="scene_000000",
-        config=config,
-        reference_camera_id="cam_0" if reference else None,
-        camera_indices=tuple(range(num_cameras)),
-        window_start=0,
-        window_length=4,
-        seed=0,
-    )
-    assert tracking_input.window_length == 4
-    assert tracking_input.ground_truth.shape == (4, 2, 3)
-    assert tracking_input.ground_truth_present.shape == (4, 2)
-    assert tracking_input.batch["ball_uv"].shape == (1, num_cameras, 4, 2, 2)
-    assert tracking_input.batch["ball_vis"].shape == (1, num_cameras, 4, 2)
-    assert tracking_input.batch["court_kp"].shape == (1, num_cameras, 4, 14, 2)
-    assert tracking_input.batch["padding_mask"].shape == (1, num_cameras, 4)
-    metadata = blcs_reference_metadata_from_batch(tracking_input.batch)
-    if reference:
-        assert metadata is not None
-        assert metadata.track_query_contract is not None
-        assert metadata.track_query_contract == (
-            resolve_blcs_track_query_reference_contract(config)
-        )
-    else:
-        assert metadata is None
 
 
 @pytest.mark.parametrize(

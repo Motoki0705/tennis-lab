@@ -50,7 +50,7 @@ def load_camera(saved: dict[str, Any], camera: Any) -> tuple[CameraTracks, dict[
     with np.load(saved['path'], allow_pickle=False) as a:
         arrays = dict(a)
     appearance = [TrackAppearance(arrays[f'appearance/{i}/frames'], arrays[f'appearance/{i}/embeddings']) for i in range(len(arrays['track_ids']))]
-    return CameraTracks(camera, (1920, 1080), arrays['track_ids'], arrays['boxes'], arrays['observed'], appearance), arrays
+    return CameraTracks(camera, (1920, 1080), arrays['track_ids'], arrays['boxes'], arrays['observed'], tuple(appearance)), arrays
 
 
 def select_next(repo: Path, report: Path, max_clips: int) -> None:
