@@ -58,6 +58,7 @@ __all__ = [
     "ImageFeatureResult",
     "PersonDetectionRequest",
     "PersonDetectionResult",
+    "Pose2DFrameSequenceRequest",
     "Pose2DRequest",
     "Pose2DFrameSequenceRequest",
     "Pose2DResult",

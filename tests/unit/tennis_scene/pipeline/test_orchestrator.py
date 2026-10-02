@@ -38,7 +38,12 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     source = _source(tmp_path)
     runner = ComponentRunner(standard_definition(_runtime_with_assets(tmp_path), source, code_identity="test"), ClipStore(tmp_path / "store", {"clip": "clip"}))
     order = runner.order
-    assert order.index("court_calibration") < order.index("person_detection/cam0")
+    assert order.index("court_calibration") < order.index("player_selection/cam0")
+    assert order.index("person_tracking/cam0") < order.index("player_selection/cam0") < order.index("pose_estimation/cam0")
+    nodes = {n.name: n for n in standard_definition(_runtime_with_assets(tmp_path), source, code_identity="test")}
+    assert nodes["person_detection/cam0"].bindings == {}
+    assert nodes["player_selection/cam0"].settings["rule"]["max_candidates"] == 6
+    assert nodes["player_selection/cam0"].settings["rule"]["min_presence_fraction"] == .25
     assert order.index("court_side") < order.index("player_association") < order.index("player_triangulation")
     assert order.index("person_tracking/cam2") < order.index("player_association")
     assert order.index("court_side") < order.index("camera_alignment")
@@ -58,15 +63,15 @@ def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
     standard_definition(disabled, _source(tmp_path), code_identity="test")
 
 
-def test_missing_player_checkpoint_does_not_select_available_coco_weights(tmp_path: Path) -> None:
+def test_missing_coco_checkpoint_does_not_select_available_player_weights(tmp_path: Path) -> None:
     from src.tennis_scene.pipeline.definition import standard_definition
 
     cfg = _runtime_with_assets(tmp_path)
-    legacy = cfg.roots.checkpoint_root / "dino/checkpoint0029_4scale_swin.pth"
+    legacy = cfg.roots.checkpoint_root / "player_detection/chat-player-v1-e8-best-pr937.pth"
     legacy.parent.mkdir(parents=True, exist_ok=True)
     legacy.write_bytes(b"available legacy checkpoint")
     cfg.people.detector_checkpoint.unlink()
-    with pytest.raises(FileNotFoundError, match="chat-player-v1-e8-best-pr937"):
+    with pytest.raises(FileNotFoundError, match="checkpoint0029_4scale_swin"):
         standard_definition(cfg, _source(tmp_path), code_identity="test")
 
 
@@ -83,9 +88,10 @@ def test_the_association_records_its_encoder_weights_and_needs_them_only_with_pe
     cfg.association_encoder_weights.unlink()
     with pytest.raises(FileNotFoundError, match="person_vit_clip_reid"):
         standard_definition(cfg, source, code_identity="test")
-    # Geometry-only association and disabled person observations read no Re-ID weights.
+    # Geometry-only association still needs CLIP for the default tracker.
     geometry_only = replace(cfg, player_association=replace(cfg.player_association, appearance=None), association_encoder_weights=None)
-    standard_definition(geometry_only, source, code_identity="test")
+    with pytest.raises(FileNotFoundError, match="person_vit_clip_reid"):
+        standard_definition(geometry_only, source, code_identity="test")
     no_people = replace(cfg, enabled={**cfg.enabled, "person_observations": False, "player_reconstruction": False, "gvhmr": False})
     node = next(node for node in standard_definition(no_people, source, code_identity="test") if node.name == "player_association")
     assert node.settings["assets"] == {"enabled": False}

@@ -1,0 +1,55 @@
+selected coco_fullframe_0.30 video_000/clip_000/cam0: 10 tracks -> 2 groups; CLIP 11 new/5 cached
+selected coco_fullframe_0.30 video_000/clip_000/cam1: 6 tracks -> 2 groups; CLIP 13 new/19 cached
+selected coco_fullframe_0.30 video_000/clip_000/cam2: 9 tracks -> 2 groups; CLIP 26 new/22 cached
+completed coco_fullframe_0.30 video_000/clip_000: association ok 
+selected coco_fullframe_0.30 video_000/clip_007/cam0: 12 tracks -> 2 groups; CLIP 21 new/11 cached
+selected coco_fullframe_0.30 video_000/clip_007/cam1: 4 tracks -> 2 groups; CLIP 28 new/34 cached
+selected coco_fullframe_0.30 video_000/clip_007/cam2: 12 tracks -> 3 groups; CLIP 31 new/36 cached
+completed coco_fullframe_0.30 video_000/clip_007: association ok 
+selected coco_fullframe_0.30 video_001/clip_001/cam0: 20 tracks -> 2 groups; CLIP 13 new/15 cached
+selected coco_fullframe_0.30 video_001/clip_001/cam1: 7 tracks -> 2 groups; CLIP 59 new/5 cached
+selected coco_fullframe_0.30 video_001/clip_001/cam2: 21 tracks -> 2 groups; CLIP 29 new/19 cached
+completed coco_fullframe_0.30 video_001/clip_001: association ok 
+selected coco_fullframe_0.30 video_002/clip_013/cam0: 9 tracks -> 3 groups; CLIP 0 new/24 cached
+selected coco_fullframe_0.30 video_002/clip_013/cam1: 5 tracks -> 2 groups; CLIP 12 new/20 cached
+selected coco_fullframe_0.30 video_002/clip_013/cam2: 5 tracks -> 2 groups; CLIP 15 new/17 cached
+completed coco_fullframe_0.30 video_002/clip_013: association ok 
+selected union_fullframe_0.30 video_000/clip_000/cam0: 18 tracks -> 3 groups; CLIP 29 new/3 cached
+selected union_fullframe_0.30 video_000/clip_000/cam1: 8 tracks -> 2 groups; CLIP 30 new/21 cached
+selected union_fullframe_0.30 video_000/clip_000/cam2: 9 tracks -> 2 groups; CLIP 0 new/32 cached
+completed union_fullframe_0.30 video_000/clip_000: association ok 
+selected union_fullframe_0.30 video_000/clip_007/cam0: 9 tracks -> 2 groups; CLIP 11 new/21 cached
+selected union_fullframe_0.30 video_000/clip_007/cam1: 4 tracks -> 2 groups; CLIP 7 new/31 cached
+selected union_fullframe_0.30 video_000/clip_007/cam2: 17 tracks -> 2 groups; CLIP 39 new/41 cached
+completed union_fullframe_0.30 video_000/clip_007: association ok 
+selected union_fullframe_0.30 video_001/clip_001/cam0: 24 tracks -> 3 groups; CLIP 13 new/3 cached
+selected union_fullframe_0.30 video_001/clip_001/cam1: 8 tracks -> 2 groups; CLIP 55 new/12 cached
+selected union_fullframe_0.30 video_001/clip_001/cam2: 23 tracks -> 2 groups; CLIP 6 new/26 cached
+completed union_fullframe_0.30 video_001/clip_001: association ok 
+selected union_fullframe_0.30 video_002/clip_013/cam0: 10 tracks -> 2 groups; CLIP 0 new/32 cached
+selected union_fullframe_0.30 video_002/clip_013/cam1: 4 tracks -> 2 groups; CLIP 25 new/23 cached
+selected union_fullframe_0.30 video_002/clip_013/cam2: 4 tracks -> 2 groups; CLIP 0 new/32 cached
+completed union_fullframe_0.30 video_002/clip_013: association ok 
+	Command being timed: "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_fullframe.py --phase select --max-clips 8 --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-fullframe-r6-20260929"
+	User time (seconds): 381.36
+	System time (seconds): 22.27
+	Percent of CPU this job got: 165%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:03.58
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1739328
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 8588030
+	Voluntary context switches: 2034
+	Involuntary context switches: 2410
+	Swaps: 0
+	File system inputs: 320
+	File system outputs: 24112
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

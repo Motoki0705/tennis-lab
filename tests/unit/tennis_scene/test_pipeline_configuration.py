@@ -127,14 +127,18 @@ def test_detector_can_be_replaced_without_changing_the_runner() -> None:
     assert _runtime(["people_models.detector=yolo"]).people.detector == "yolo"
 
 
-def test_default_player_checkpoint_and_explicit_coco_comparison() -> None:
+def test_default_coco_source_and_explicit_finetuned_comparison() -> None:
     runtime = _runtime([])
     assert runtime.people.detector == "dino"
     assert runtime.people.detector_checkpoint == (
-        runtime.roots.checkpoint_root / "player_detection/chat-player-v1-e8-best-pr937.pth"
+        runtime.roots.checkpoint_root / "dino/checkpoint0029_4scale_swin.pth"
     )
-    legacy = _runtime(["people_models.dino_checkpoint=dino/checkpoint0029_4scale_swin.pth"])
+    legacy = _runtime(["people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth"])
     assert legacy.people.detector_checkpoint == (
-        legacy.roots.checkpoint_root / "dino/checkpoint0029_4scale_swin.pth"
+        legacy.roots.checkpoint_root / "player_detection/chat-player-v1-e8-best-pr937.pth"
     )
     assert legacy.people.runtime.dino_detector == runtime.people.runtime.dino_detector
+
+    assert runtime.people.runtime.dino_detector.confidence == .30
+    assert runtime.people.runtime.dino_detector.short_side == 800
+    assert runtime.people.runtime.dino_detector.max_long_side == 1333

@@ -1,0 +1,13 @@
+camera,changed_frames,clip,dropped_boxes,input_boxes
+cam0,0,video_000/clip_000,0,4568
+cam1,3,video_000/clip_000,3,2231
+cam2,6,video_000/clip_000,6,3590
+cam0,1,video_000/clip_007,1,3181
+cam1,1,video_000/clip_007,1,1466
+cam2,2,video_000/clip_007,2,2813
+cam0,4,video_001/clip_001,4,6946
+cam1,0,video_001/clip_001,0,4458
+cam2,6,video_001/clip_001,6,6568
+cam0,0,video_002/clip_013,0,2352
+cam1,0,video_002/clip_013,0,1083
+cam2,3,video_002/clip_013,3,1275

@@ -1,0 +1,31 @@
+strongsort_pp_pose__clipreid_vitb16_market1501/video_000/clip_000: raw=0.960725 group=0.998657
+strongsort_pp_pose__clipreid_vitb16_market1501/video_000/clip_007: raw=0.916449 group=0.960771
+strongsort_pp_pose__clipreid_vitb16_market1501/video_001/clip_001: raw=0.963159 group=0.963159
+strongsort_pp_pose__clipreid_vitb16_market1501/video_002/clip_013: raw=0.972025 group=0.941995
+deep_ocsort_pose_aflink_gsi__clipreid_vitb16_market1501/video_000/clip_000: raw=0.877646 group=0.914580
+deep_ocsort_pose_aflink_gsi__clipreid_vitb16_market1501/video_000/clip_007: raw=0.909553 group=0.909553
+deep_ocsort_pose_aflink_gsi__clipreid_vitb16_market1501/video_001/clip_001: raw=0.959052 group=0.960687
+deep_ocsort_pose_aflink_gsi__clipreid_vitb16_market1501/video_002/clip_013: raw=0.945288 group=0.849462
+	Command being timed: "timeout 1100 bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-tracker-hybrids-r10-20260930/run.sh evaluate"
+	User time (seconds): 32.96
+	System time (seconds): 1.19
+	Percent of CPU this job got: 102%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:33.46
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1112832
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 238252
+	Voluntary context switches: 265
+	Involuntary context switches: 592
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 7864
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

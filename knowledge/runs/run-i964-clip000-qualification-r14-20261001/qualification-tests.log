@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [5 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_preserves_all_three_camera_timelines 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_fresh_store_and_process_required_before_loading_inputs 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_qualification_rejects_cached_or_partial_execution 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_archive_all_fields_comparison_detects_changed_observations 
+[gw1] [ 20%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_qualification_rejects_cached_or_partial_execution 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_stops_on_truncated_camera 
+[gw0] [ 40%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_fresh_store_and_process_required_before_loading_inputs 
+[gw2] [ 60%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_archive_all_fields_comparison_detects_changed_observations 
+[gw1] [ 80%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_stops_on_truncated_camera 
+[gw3] [100%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_preserves_all_three_camera_timelines 
+
+============================== 5 passed in 17.00s ==============================

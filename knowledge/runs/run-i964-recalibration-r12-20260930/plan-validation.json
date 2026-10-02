@@ -1,0 +1,13 @@
+{
+  "status": "ok",
+  "device": "cpu",
+  "plan_sha256": "25efbaf8bc6c505841bc93dd32a321cb1b21aae129f537841c35885851a0854d",
+  "checks": [
+    "protocol/benchmark/entrypoint/code hashes",
+    "all input/checkpoint hashes",
+    "18 cameras for 6 unlabeled clips",
+    "no selected dev/reserved clips or person label files"
+  ],
+  "fitting": false,
+  "dev_scoring": false
+}

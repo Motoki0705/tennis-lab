@@ -1,0 +1,24 @@
+variant,encoder,decided_clips,total_clips,pair_f1,tp,fp,fn,group_accuracy,matched_label_boxes,label_boxes,undecided
+old_old,clipreid_vitb16_market1501,4,4,0.9729042106602214,19120,0,1065,0.8504432370603374,25147,25147,
+new_old,clipreid_vitb16_market1501,4,4,0.9797171299882377,17075,0,707,0.8961967400629111,23721,25147,
+botsort_pose__clipreid_vitb16_market1501,clipreid_vitb16_market1501,3,4,0.9680269076467967,11944,0,789,0.8197542102867547,13873,13874,ambiguous_players
+botsort_pose__clipreid_vitb16_market1501,kpr_market_solider_parts,0,4,,0,0,0,,0,0,ambiguous_players; ambiguous_players; ambiguous_players; ambiguous_association
+botsort_pose__clipreid_vitb16_market1501,solider_swin_base_msmt17,3,4,0.9680269076467967,11944,0,789,0.8197542102867547,13873,13874,ambiguous_players
+botsort_pose__solider_swin_base_msmt17,clipreid_vitb16_market1501,3,4,0.9559691702197441,11659,0,1074,0.7482931269913519,13873,13874,ambiguous_players
+botsort_pose__solider_swin_base_msmt17,kpr_market_solider_parts,0,4,,0,0,0,,0,0,ambiguous_players; ambiguous_players; ambiguous_players; ambiguous_association
+botsort_pose__solider_swin_base_msmt17,solider_swin_base_msmt17,3,4,0.9559691702197441,11659,0,1074,0.7482931269913519,13873,13874,ambiguous_players
+deep_ocsort_pose__clipreid_vitb16_market1501,clipreid_vitb16_market1501,4,4,0.9675977653631285,18619,6,1241,0.8258507291964541,24799,25147,
+deep_ocsort_pose__clipreid_vitb16_market1501,kpr_market_solider_parts,0,4,,0,0,0,,0,0,ambiguous_players; ambiguous_players; ambiguous_association; ambiguous_association
+deep_ocsort_pose__clipreid_vitb16_market1501,solider_swin_base_msmt17,4,4,0.9675977653631285,18619,6,1241,0.8258507291964541,24799,25147,
+deep_ocsort_pose__solider_swin_base_msmt17,clipreid_vitb16_market1501,4,4,0.9685067967209713,18667,6,1208,0.8309979982842436,24807,25147,
+deep_ocsort_pose__solider_swin_base_msmt17,kpr_market_solider_parts,0,4,,0,0,0,,0,0,ambiguous_players; ambiguous_players; ambiguous_association; ambiguous_association
+deep_ocsort_pose__solider_swin_base_msmt17,solider_swin_base_msmt17,4,4,0.9685067967209713,18667,6,1208,0.8309979982842436,24807,25147,
+deep_ocsort_pose_lab__clipreid_vitb16_market1501,clipreid_vitb16_market1501,4,4,0.9908147559704086,9978,0,185,0.8867600800686303,16000,25147,
+deep_ocsort_pose_lab__clipreid_vitb16_market1501,kpr_market_solider_parts,1,4,,0,0,0,0.7776923076923077,3748,11273,ambiguous_players; ambiguous_players; ambiguous_association
+deep_ocsort_pose_lab__clipreid_vitb16_market1501,solider_swin_base_msmt17,4,4,0.9908147559704086,9978,0,185,0.8867600800686303,16000,25147,
+strongsort_pp__clipreid_vitb16_market1501,clipreid_vitb16_market1501,4,4,0.9485209574579283,18149,6,1964,0.7414732014903984,25057,25147,
+strongsort_pp__clipreid_vitb16_market1501,kpr_market_solider_parts,0,4,,0,0,0,,0,0,ambiguous_players; ambiguous_players; ambiguous_association; ambiguous_association
+strongsort_pp__clipreid_vitb16_market1501,solider_swin_base_msmt17,4,4,0.9485209574579283,18149,6,1964,0.7414732014903984,25057,25147,
+best_kpr__kpr_market_solider_parts,clipreid_vitb16_market1501,4,4,0.9436656829679595,17907,0,2138,0.6870163370593293,25003,25147,
+best_kpr__kpr_market_solider_parts,kpr_market_solider_parts,0,4,,0,0,0,,0,0,ambiguous_players; ambiguous_players; ambiguous_association; ambiguous_association
+best_kpr__kpr_market_solider_parts,solider_swin_base_msmt17,4,4,0.9436656829679595,17907,0,2138,0.6870163370593293,25003,25147,

@@ -1,0 +1,47 @@
+{
+  "status": "ok",
+  "state_keys": 144,
+  "state_keys_equal": true,
+  "weight_sha256": "b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4",
+  "trials": [
+    {
+      "former_length": 1,
+      "later_length": 1,
+      "inputs_equal": true,
+      "max_abs_diff": 0.0
+    },
+    {
+      "former_length": 2,
+      "later_length": 2,
+      "inputs_equal": true,
+      "max_abs_diff": 0.0
+    },
+    {
+      "former_length": 30,
+      "later_length": 30,
+      "inputs_equal": true,
+      "max_abs_diff": 0.0
+    },
+    {
+      "former_length": 40,
+      "later_length": 10,
+      "inputs_equal": true,
+      "max_abs_diff": 0.0
+    },
+    {
+      "former_length": 10,
+      "later_length": 50,
+      "inputs_equal": true,
+      "max_abs_diff": 0.0
+    }
+  ],
+  "upstream": {
+    "AFLink/__init__.py": "1d8b47dcff1e9a8357170ae953939583ea62c53dd24e3ae8a34a61820190598e",
+    "AFLink/config.py": "d50b2f6abb4c6eae18555b914d6f11baf6e96ba79dc4d2fd61c31c71adadf305",
+    "AFLink/dataset.py": "c940776f198a766990abb12eb4aeaa1a9324a3f7075936aae98dfc5753a20773",
+    "AFLink/model.py": "cdcab678caf1ff3cdb13c54bbda3979df5e241c1f1be00eb8edbce6b3234afe7",
+    "GSI.py": "89e7d9577d6d48e1d903cc9b3597ae1663496a11515e049acec7374a064147a3"
+  },
+  "implementation_sha256": "1d71ab622a617264c02c7421f4c649321bb9fb7ee5965f349fd5f76a5e9cc584",
+  "scope": "AFLink input preprocessing and learned inference only; no full tracker parity claim"
+}

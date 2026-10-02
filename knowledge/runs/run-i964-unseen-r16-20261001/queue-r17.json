@@ -1,0 +1,31 @@
+{
+  "job_id": "1790813637388753719_162393_i964-unseen-r17-20261001",
+  "job_file": "/home/kamimura/projects/tennis-lab/.training_queue/jobs/1790813637388753719_162393_i964-unseen-r17-20261001.job",
+  "name": "i964-unseen-r17-20261001",
+  "command": "timeout -k 10s 10790s bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_unseen.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "provider": "codex",
+  "session": "01a0f4ae-9a60-7860-b8a1-37d447baff64",
+  "issue": 964,
+  "resource": "all",
+  "code_commit": "a952903a114d8005d81de39bc159735aade614ce",
+  "estimate_comment": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5921844891",
+  "wall_grant_seconds": 10800,
+  "peak_vram_limit_bytes": 10000000000,
+  "output_limit_bytes": 3000000000,
+  "expected_wall_minutes": [
+    150,
+    180
+  ],
+  "expected_peak_vram_gb": [
+    4.3,
+    8.0
+  ],
+  "expected_output_gb": [
+    1,
+    3
+  ],
+  "camera_frames": 11124,
+  "scoring_batches": 0,
+  "labels_opened": false
+}

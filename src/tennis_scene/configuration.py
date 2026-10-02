@@ -22,8 +22,13 @@ from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
 from src.tasks.court_side.hypothesis import CourtSideConfig
+from src.tasks.person_tracking.features import FeatureConfig
+from src.tasks.person_tracking.sequence import TrackingConfig
 from src.tasks.player_association.appearance.encoders import encoder_weights
 from src.tasks.player_association.association.associate import AssociationConfig
+from src.tasks.player_association.association.config import (
+    DEFAULT_CONFIG as DEFAULT_ASSOCIATION_CONFIG,
+)
 from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
@@ -163,6 +168,7 @@ _PEOPLE_MODELS_SCHEMA = StrictConfigSchema(
         **{name: ConfigField.of(str) for name in ("detector", "gvhmr_checkpoint", "yolo_checkpoint", "dino_checkpoint", "dino_repository", "vitpose_checkpoint", "hmr2_checkpoint", "body_models_dir")},
         "bundled_assets": ConfigField.mapping(BUNDLED_MODEL_ASSET_SCHEMA),
         "runtime": ConfigField.mapping(SUBMODULE_RUNTIME_SCHEMA),
+        "merge_duplicate_person_boxes": ConfigField.of(bool),
     },
 )
 _TRAJECTORY_SCHEMA = StrictConfigSchema(
@@ -218,7 +224,7 @@ _COURT_SIDE_SCHEMA = StrictConfigSchema(name="tennis_scene.court_side", fields={
     "min_support": ConfigField.of(float, int), "min_margin": ConfigField.of(float, int),
 })
 _PLAYER_ASSOCIATION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_association", fields={
-    "config": ConfigField.of(str), "players_per_side": ConfigField.of(int),
+    "players_per_side": ConfigField.of(int),
 })
 _PLACEMENT_SCHEMA = StrictConfigSchema(name="tennis_scene.player_reconstruction.placement", fields={
     name: ConfigField.of(int) if name in {"min_joints", "min_scale_pairs", "max_nfev"} else ConfigField.of(float, int)
@@ -234,6 +240,9 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
+    "person_tracking": ConfigField.mapping(StrictConfigSchema(name='tennis_scene.person_tracking', fields={
+        'method': ConfigField.of(str), 'encoder': ConfigField.of(str), 'aflink_checkpoint': ConfigField.of(str),
+    })),
     "execution": ConfigField.mapping(_EXECUTION_SCHEMA),
     "paths": ConfigField.mapping(PATHS_SCHEMA), "video_paths": ConfigField.sequence(ConfigField.of(str)),
     "camera_ids": ConfigField.sequence(ConfigField.of(str)), "output_name": ConfigField.of(str),
@@ -280,6 +289,10 @@ class PipelineRuntimeConfig:
     enabled: Mapping[str, bool]
     processing_settings: Mapping[str, object]
     component_sources: Mapping[str, str]
+    tracking: TrackingConfig
+    tracking_encoder_weights: Path
+    aflink_checkpoint: Path
+    merge_duplicate_person_boxes: bool
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -322,13 +335,19 @@ class PipelineRuntimeConfig:
             detector=cast(str, models["detector"]),
             dino_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["dino_checkpoint"])),
             dino_repository=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["dino_repository"])),
-            yolo_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["yolo_checkpoint"])),
-            vitpose_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["vitpose_checkpoint"])),
-            hmr2_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["hmr2_checkpoint"])),
-            gvhmr_checkpoint=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["gvhmr_checkpoint"])),
-            body_models_dir=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["body_models_dir"])),
+            yolo_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["yolo_checkpoint"])),
+            vitpose_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["vitpose_checkpoint"])),
+            hmr2_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["hmr2_checkpoint"])),
+            gvhmr_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["gvhmr_checkpoint"])),
+            body_models_dir=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["body_models_dir"])),
             bundled_assets=BundledModelAssetPaths.from_mapping(_mapping(models["bundled_assets"], name="bundled_assets"), resolver=resolver), runtime=runtime,
         )
+        tracking_section = _mapping(value['person_tracking'], name='person_tracking')
+        tracking = TrackingConfig(method=cast(str, tracking_section['method']), encoder=cast(str, tracking_section['encoder']),
+                                  features=FeatureConfig(bbox_enlarge=runtime.tracking.bbox_enlarge))
+        tracking_weights = encoder_weights(tracking.encoder, checkpoint_root=roots.checkpoint_root,
+                                           external_root=roots.external_asset_root)
+        aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))
         ball_config = build_ball_detection_config(_mapping(value["ball_detection"], name="ball_detection"), resolver, device=device)
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
@@ -341,7 +360,7 @@ class PipelineRuntimeConfig:
             max_cost=float(cast(float, side["max_cost"])), min_support=float(cast(float, side["min_support"])),
             min_margin=float(cast(float, side["min_margin"])))
         association_section = _mapping(value["player_association"], name="player_association")
-        association = load_association_config(resolver.resolve(PathRole.PROJECT, cast(str, association_section["config"])),
+        association = load_association_config(resolver.resolve(PathRole.PROJECT, DEFAULT_ASSOCIATION_CONFIG.relative_to(PROJECT_ROOT)),
                                               players_per_side=cast(int, association_section["players_per_side"]))
         association_weights = None if association.appearance is None else encoder_weights(
             association.appearance.encoder, checkpoint_root=roots.checkpoint_root, external_root=roots.external_asset_root)
@@ -372,7 +391,8 @@ class PipelineRuntimeConfig:
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
-            cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources)
+            cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
+            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']))
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(
@@ -708,10 +728,10 @@ def parse_visualization_config(cfg: DictConfig) -> VisualizationRuntimeConfig:
     return VisualizationRuntimeConfig(
         roots=roots,
         smpl_faces_path=resolver.resolve(
-            PathRole.DATA, cast(str, assets["smpl_faces"])
+            PathRole.CHECKPOINT, cast(str, assets["smpl_faces"])
         ),
         smpl_joint_regressor_path=resolver.resolve(
-            PathRole.EXTERNAL_ASSET, cast(str, assets["smpl_joint_regressor"])
+            PathRole.PROJECT, cast(str, assets["smpl_joint_regressor"])
         ),
         input_path=resolver.resolve(PathRole.ARTIFACT, cast(str, value["input"])),
         output_path=None

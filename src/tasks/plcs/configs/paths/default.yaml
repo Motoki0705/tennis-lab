@@ -4,4 +4,4 @@ checkpoint_root: outputs
 artifact_root: outputs
 output_root: outputs
 cache_root: .cache
-external_asset_root: data
+external_asset_root: ckpt

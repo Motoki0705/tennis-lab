@@ -1,8 +1,7 @@
-<!-- knowledge-review: 70ae1a87f9c57736918049b57a6d5ddf0cf8fd5ffb53c7e753640396d018483b on 2026-10-02 -->
-
+<!-- knowledge-review: effa06a40d385788e3868c4919509c557064e64b0adf7e9a9ff97f61d87c271b on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-02（pose蓄積と#964の検出器比較を統合。実験結果・採否の変更なし）
+更新日: 2026-10-02（人物経路・未見評価とpose蓄積の結論を統合。実験結果・採否の変更なし）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -23,17 +22,107 @@
 対象689clipの処理とレビューは継続中。従来#964のコート選別は過去の比較として維持し、
 今回のposeデータ生成方針とは区別する。次は全対象のcoverage・保留・ID切替の実例を監査する。
 
-## 2026-09-29の選手検出切替（#964）
+## 2026-09-30の人物source・コート選別（#964）
 
 [#937のFT検出器比較](nodes/player_detection/000004-run-i964-detectors-val-meiji-r1-20260929.md)では、
 重み選択に使ったchat validationでprecisionが改善した。Meijiの参照は旧COCO boxに基づくため、
 そこでの数字は旧boxとの一致率であり検出recallではない。FTの不一致はcam0の小さい遠側人物に集中し、
-多くはIoU=0で、単なるbox形状差と決めつけられない。ユーザー指定のFT切替を保ち、追跡比較ではcoverageを併記する。
-CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
+閾値0.3での不一致をそのまま検出失敗とは扱えない。ユーザーは2Dを全人物の候補生成へ、選手判定をコート座標での滞在時間へ移すと決めた。
+[遠側GPU診断](nodes/player_detection/000005-run-i964-far-r3-20260929.md)はこの方針変更でcancelled。保存済み23archiveのhashを確認し、CPU比較へ再利用する。
+1080/1920は11/12 camera-clipに限り、高解像度・tileは追加実行しない。選別精度と動画をrun 6で確認した。
+CLIP-ReID/SOLIDER/KPRと複数trackerの固定dev比較はrun 9までに実施した。既定採用と新clipの調整後一回の未見評価は未完了。
 既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
 
+共通人物特徴の[初回smoke](nodes/person_tracking/000001-run-i964-features-smoke-r2-20260929.md)は、
+ViTPoseの回帰heatmap peakを確率とみなす検査で停止した。実入力のCPU再現で有限の1超scoreを確認し、
+生値を保持する契約へ修正した。[GPU再実行](nodes/person_tracking/000002-run-i964-features-smoke-r3-20260929.md)は
+同じ入力の1超scoreを保持して3camera×120frameを完走し、同じ#937検出のUltralytics BoT-SORT baselineも完走した。
+これは機能smokeに限り、追跡品質の比較ではない。
+[保存済みデータのCPU選別診断](nodes/person_tracking/000003-run-i964-court-selection-cpu-r4-20260929.md)では、
+高い旧box一致率でもcamera-local滞在選別で遠側の観測を失い、FT低閾値/unionは隣コート人物も残した。
+CLIP付きの第2確認も全clipでは決定できず、この基準のまま既定に採用しない。
+続く[原因分離と断片連結](nodes/person_tracking/000004-run-i964-court-selection-r5-20260929.md)では、
+確認できる隣コートunitは選手との混在ではなく横余白で採用されていた。主コート内の滞在coreと外側境界を分け、
+足元連続性と利用可能なCLIPで断片を連結すると、隣コートを除外しFT/unionのcam0 far保持を改善できた。
+単frameの足元跳びで分割する初回案は投影ノイズで過分割になり不採用。時間窓と1秒以内のgapに修正したが、
+他camera/旧経路の選手保持低下とコート内へ投影される非選手が残るため、既定へは採用しない。
+[全画面COCOのqueue job](nodes/player_detection/000006-run-i964-coco-fullframe-r5-20260929.md)は12 camera-clip完了し、全archiveのhash一致を確認した。
+[run 6](nodes/person_tracking/000005-run-i964-fullframe-selection-r6-20260930.md)では選択済み断片の全観測を保持するよう修正し、
+元データ固定のauditでwide観測の大半を回復し隣コート除外を維持した。ROI前7条件のCPU比較を完了し、
+ユーザーはCOCO全画面 .30を選択し、[run 7](nodes/person_tracking/000006-run-i964-default-solider-cpu-r7-20260930.md)でpipeline既定とコート選別/v3接続へ反映した。
+unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低閾値COCOはraw候補と断片を増やした。
+参照がCOCOに有利である制約は変わらない。SOLIDER推論portは実重みの2 dev cropで上流CPU forwardと一致し、run 7時点では精度比較の前段に留まった。
+[特徴job回収](nodes/person_tracking/000007-run-i964-coco-person-features-r7-20260930.md)で全24 NPZ・各40,531rowのhash/値/出自一致を確認した。
+[事前固定した2方式×2encoder比較](nodes/person_tracking/000008-run-i964-tracker-matrix-r8-20260930.md)では候補内でDeep OC-SORT+pose/CLIPを推薦する。
+新検出+旧追跡はLab連結曖昧により1camera停止（11/12完走）、候補は全camera完走した。停止を予測空として扱う固定規則の下で
+推薦候補の選手coverageは増えたが、IDF1は微減しcam1遠側とfragmentが悪化したため、既定採用を自動で進めない。
+BoT候補は非選手残存と1clipの対応停止が多い。camera間encoderをSOLIDERへ替えても今回の固定尺度で最終対応は変わらなかった。
+[KPRの実2crop CPU parity](nodes/person_tracking/000009-run-i964-kpr-cpu-parity-r8-20260930.md)はpositive/negative両promptで上流と差0。
+KPRの[全12 archive回収](nodes/person_tracking/000010-run-i964-kpr-native-features-r8-20260930.md)では、40,531rowの元検出・pose・出自が一致し、native parts/visibilityのshape・有限値・normを確認した。この回収は特徴整合性の確認であり、精度比較は次のrun 9に分けた。
+[run 9のoffline linking・native KPR比較](nodes/person_tracking/000011-run-i964-tracker-linking-r9-20260930.md)では、
+追加したStrongSORT++/CLIPが固定raw-ID主指標の候補内推薦となった。全12camera完走しDeep OC-SORTのcam1遠側/断片化を改善するが、
+追加group IDF1とcamera間pair F1では新検出+旧追跡に届かないため、既定採用の合格とはしない。
+旧Labの候補への適用は3cameraで曖昧停止。KPRはnative距離で評価し、trackerのgroup指標には利点がある一方、
+camera間では固定CLIP尺度の転用が大半で曖昧停止となった。重み条件未確認のAFLinkを含め最終採用はユーザー判断を要する。
+cam1遠側の欠測には全件元検出があり、重複検出由来の競合IDと別人trackへの移行/選別除外が主因だった。
+小cropの外観/pose不良だけでは説明できない。全pipeline完走・調整凍結後の未見一回評価は後続とする。
+
+[ユーザー指定の2 hybridを固定比較したrun 10](nodes/person_tracking/000012-run-i964-tracker-hybrids-r10-20260930.md)では、
+StrongSORT++＋pose/CLIPがraw/group IDF1の候補内推薦となった。poseなしよりswitchと選手保持は改善したが、
+fragmentは増え、cam1遠側の改善も小さい。camera間pair F1はDeep+pose/CLIPより低く、下流での一律な勝利ではない。
+Deep+poseへAFLink/GSIを足すとrawは改善するがgroupは悪化し、pair F1の差は僅かだった。
+旧9条件の全144層と決定済みpair指標を完全再現し、変えたStrongSORTのオンライン出力もpose重み0で一致した。
+GSI syntheticは別maskのままで評価の実観測へ入れていない。費用付き重複box対策は未実装の提案に留めた。
+この時点では既定判断を保留した。次のrun 11でユーザー決定を反映した。
+
+[run 11](nodes/person_tracking/000013-run-i964-default-merge-r11-20260930.md)で、ユーザーが選んだ
+**StrongSORT++＋pose/CLIP**を標準pipelineと#935向け共通入口の既定へ接続した。
+元検出row/pose/CLIPを選別後も保持し、GSIを実観測へ昇格しない。AFLink公開重みは利用条件が未確認のまま
+当面使用し、継続利用か自前再学習かを後日判断する。重複boxのgreedy IoU>=.8統合は明示optionで既定off。
+同じ4 dev×3cameraで26boxを削減したが、raw/group IDF1・pair F1・switch/fragment・選手保持は変わらず、
+今回の証拠ではmerge offの維持を推薦する。全26件の前後画像/ラベル監査で別人削除は認めなかったが、
+完全GTや未見の安全性は保証しない。offのrun 10完全一致とschema/共通経路テストは確認済み。
+#935実producerへの積み直し、独立した無ラベルclipでの#933再較正、clip_000全pipeline、
+設定凍結後の予約未見一回は費用付き計画だけを残し、今回実行していない。
 
 ## 2026-09-27のcamera間人物対応（#933）
+
+[run 12の事前protocol](nodes/player_association/000003-run-i964-recalibration-r12-20260930.md)は、
+新既定StrongSORT++＋pose/CLIP、ユーザー確定のmerge offを固定し、無ラベル6clipで
+尺度/判定しきい値を較正してからdevを一度採点する計画。
+[run14のfit](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)は支持/安定性条件を満たし、
+LOVO正例recall85.93%、全動画の負例誤結合0でAを選択した。A/B同点、Cはrecall不足。
+video_001/clip_020の停止を母数へ含み、同動画recall54.97%という弱点も残る。
+新尺度を名前付きの非既定YAMLとしてcommit/pushした後、devを一度だけ採点した。
+旧/新とも4/4決定、pair F1=.957119、group accuracy=.763256で、全12cameraのID配列が同一。
+旧尺度の再計算もrun11に一致した。今回の再較正でdev低下は改善せず、旧尺度が主因という説明は裏付けられない。
+dev後の再fit/再選択は行わない。
+[clip_000資格確認](nodes/tennis_scene/000026-run-i964-clip000-qualification-r14-20261001.md)は、
+run15に失敗を回収した。19/28nodeと153配列はhash/型/依存・人物元row/box/poseを照合できたが、
+court_sideがcam2反転のmargin .118504 < .15で停止した。scene export・全長動画は未生成。
+資源制限ではなくball根拠の曖昧性。[同じruleのCPU診断](nodes/court_side/000003-run-i964-clip000-side-diagnosis-r15-20261001.md)で
+全score/元point gateの再現を確認した。275frame中89はcam2に情報を持たず、全3viewのsupportは5/52。
+同じ校正/規則のball反実仮想はobserved注釈margin .604826、e9 cache top-1 .381587、
+e9＋現行score/gate .406997でFFTに決まる。e9は720p JPEG/採用窓も異なり、元MP4本番への一般化は未確認。
+ball labelはclip_000の診断専用で使用し、production import・人物label再採点・未見の開封は0。
+閾値/既定は変更していない。診断nodeに、#935と接続する入力整合/ball証拠改善と、
+#932で別評価が要るball-only集約/rig蓄積の費用・不確実性を提示した。どの対策も選択せず、全pipeline受入は未達。
+旧#933の結論は旧trackに限定したまま維持する。2026-10-01のユーザー判断により、
+[run16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)で候補Aを既定にし、
+人物設定と資産hashを未見開封前に凍結する。clip_000完走を最後の未完項目として残し、
+予約3clipを同じ注釈ball由来side規約で一回だけ評価する予定だが、事前検査で
+video_001/clip_003のcourt/side参照欠測と、現componentの見積り約157分（2時間grant超過）が判明した。
+run16のGPU投入・人物推論/採点は0。run17では欠測の明示的な停止扱いと3時間枠が承認され、
+同ノードの実行addendumとパス契約修正の準備追記でCPU検査を完了し、全9camera/11,124frameを1jobへ登録した。
+全cameraの人物処理/動画と停止clipの母数を保持し、
+人物freezeとft-e13/court_sideは維持する。未見の採点は保存出力から次runに一回だけ行う。
+[run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
+特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
+旧見積りは不足していた。run 14で再開jobの成功と全18cameraのhash/元rowを検証した。
+新規9cameraは約76分、peak GPU4.26GBで完了した。実fitと固定後のdev一回は上記run14で完了した。
+準備中に旧devの小crop外観maskとproductionの差（9/40,531row）が判明した。
+既定を維持して9行を明示mask投影し、2cameraのCPU再追跡と元row/GSI検証を完了した。
+run 11は保存特徴からの再現として有効だが、画像入口との完全同一性の証明とはしない。
 
 幾何（box下端の足元距離の対数尤度比）とCLIP-ReIDの外観をMILP（`cluster_multiview`）で統合し、コートの各sideで在場の長いidentityを選手に選ぶ対応付けを
 [Meijiの人手ラベル4 clipで評価](nodes/player_association/000002-run-i933-association-meiji.md)した（sideは注釈ballの判定）。
@@ -286,3 +375,5 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
+
+人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価を完了し、clip_000全pipeline検証だけ#935 stackに残す。

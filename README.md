@@ -97,6 +97,7 @@ Video
 
 - `src/`: タスク実装（各タスクは `configs/` + `scripts/` + `training/` などを持つ）
 - `third_party/`: 外部モジュール（例: GVHMR）。vendor codeは隔離
+- `ckpt/`: 採用checkpoint・外部モデル重み・body modelの実体（git管理外）
 - `data/`: データセット/入力（大きなデータやモデルはコミットしない）
 - `outputs/`: 学習ログ・チェックポイント・生成物（大きなartifactはコミットしない）
 - `assets/`: README用の軽量デモ素材（GIF/PNGなど）
