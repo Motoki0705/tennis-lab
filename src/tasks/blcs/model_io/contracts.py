@@ -325,21 +325,6 @@ class BLCSTrajectoryPrediction:
 
 
 @dataclass(frozen=True, slots=True)
-class BLCSTrackQueryPrediction:
-    """Decoded lifecycle-query output including configured presence semantics."""
-
-    position: Tensor
-    presence_logits: Tensor
-    presence_probability: Tensor
-    presence: Tensor
-    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] = field(
-        default_factory=tuple
-    )
-    coordinates_in_metres: bool = False
-    reference_metadata: BLCSReferenceMetadata | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class BLCSTrajectoryTrainingBatch:
     """Validated standard-model call and all tensors consumed by training."""
 
@@ -356,23 +341,6 @@ class BLCSTrajectoryTrainingBatch:
     camera_cy: Tensor
     camera_w: Tensor
     camera_h: Tensor
-    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] = field(
-        default_factory=tuple
-    )
-    reference_metadata: BLCSReferenceMetadata | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class BLCSTrackQueryTrainingBatch:
-    """Validated tracking-model call and lifecycle supervision tensors."""
-
-    call: ModelCall
-    target_position: Tensor
-    target_velocity: Tensor
-    target_presence: Tensor
-    target_instance_id: Tensor
-    target_slot_mask: Tensor
-    frame_valid: Tensor
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] = field(
         default_factory=tuple
     )
@@ -425,8 +393,7 @@ def blcs_trajectory_prediction_to_physical(
         )
     )
     identity = tuple(
-        build_physical_court_provenance()
-        for _ in prediction.court_reference_provenance
+        build_physical_court_provenance() for _ in prediction.court_reference_provenance
     )
     return BLCSTrajectoryPrediction(
         position=position,
@@ -437,41 +404,10 @@ def blcs_trajectory_prediction_to_physical(
     )
 
 
-def blcs_track_query_prediction_to_physical(
-    prediction: BLCSTrackQueryPrediction,
-) -> BLCSTrackQueryPrediction:
-    """Restore a metre-valued tracking prediction to physical court space."""
-    if not prediction.coordinates_in_metres:
-        raise ValueError(
-            "BLCS predictions must be denormalized to metres before frame restoration."
-        )
-    position = _physical_batch(
-        prediction.position,
-        prediction.court_reference_provenance,
-        vector=False,
-    )
-    identity = tuple(
-        build_physical_court_provenance()
-        for _ in prediction.court_reference_provenance
-    )
-    return BLCSTrackQueryPrediction(
-        position=position,
-        presence_logits=prediction.presence_logits,
-        presence_probability=prediction.presence_probability,
-        presence=prediction.presence,
-        court_reference_provenance=identity,
-        coordinates_in_metres=True,
-        reference_metadata=prediction.reference_metadata,
-    )
-
-
 __all__ = [
     "BLCSReferenceMetadata",
-    "BLCSTrackQueryPrediction",
-    "BLCSTrackQueryTrainingBatch",
     "BLCSTrajectoryPrediction",
     "BLCSTrajectoryTrainingBatch",
     "blcs_reference_metadata_from_batch",
-    "blcs_track_query_prediction_to_physical",
     "blcs_trajectory_prediction_to_physical",
 ]

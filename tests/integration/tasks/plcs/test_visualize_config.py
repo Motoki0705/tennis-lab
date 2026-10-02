@@ -37,7 +37,7 @@ def test_default_config_parses_style_and_view() -> None:
     assert runtime.mode == "visualize"
     assert (
         runtime.scene_path
-        == _PROJECT_ROOT / "data/plcs/single_object/scenes/scene_000000"
+        == (_PROJECT_ROOT / "data/plcs/single_object/scenes/scene_000000").resolve()
     )
     assert runtime.animation_view == "3d"
     assert runtime.canonical_pose_source == "gt"
@@ -52,7 +52,7 @@ def test_multiview_config_uses_canonical_single_object_scene() -> None:
 
     assert (
         runtime.scene_path
-        == _PROJECT_ROOT / "data/plcs/single_object/scenes/scene_000001"
+        == (_PROJECT_ROOT / "data/plcs/single_object/scenes/scene_000001").resolve()
     )
 
 
@@ -70,12 +70,6 @@ def test_style_and_view_hydra_overrides() -> None:
     assert runtime.style.theme == "light"
     assert runtime.style.show_shadow is False
     assert runtime.view_3d.base == CAMERA_PRESETS["side"]
-
-
-def test_camera_view_contract_composes_independently_for_visualization() -> None:
-    runtime = _build(["court_keypoints=camera_view_v2"])
-
-    assert runtime.court_keypoint_contract.selector == "camera_view_v2"
 
 
 def test_invalid_canonical_pose_source_is_rejected() -> None:

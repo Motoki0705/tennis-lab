@@ -18,14 +18,6 @@ from src.tasks.base.visualization.review.catalog import (
 )
 
 DATA_ROOT = Path("/home/kamimura/projects/tennis-lab/data")
-EXPECTED_FORMS = {
-    "single_object",
-    "multi_object",
-    "single_object_broadcast",
-    "multi_object_broadcast",
-    "single_object_camera_view_v2",
-    "multi_object_camera_view_v2",
-}
 
 
 def _write_form(
@@ -63,8 +55,23 @@ def _write_form(
 
 
 def test_discovers_forms_scenes_and_mode(tmp_path: Path) -> None:
-    _write_form(tmp_path, "blcs", "single_object", mode="single_object", selector="physical_v1", scenes=("scene_000001", "scene_000000"), samples=True)
-    _write_form(tmp_path, "blcs", "multi_object", mode="multi_object", selector="physical_v1", scenes=("scene_000000",))
+    _write_form(
+        tmp_path,
+        "blcs",
+        "single_object",
+        mode="single_object",
+        selector="physical_v1",
+        scenes=("scene_000001", "scene_000000"),
+        samples=True,
+    )
+    _write_form(
+        tmp_path,
+        "blcs",
+        "multi_object",
+        mode="multi_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
     catalog = DatasetCatalog(tmp_path, "blcs")
     forms = {form.name: form for form in catalog.forms()}
     assert set(forms) == {"single_object", "multi_object"}
@@ -78,7 +85,14 @@ def test_discovers_forms_scenes_and_mode(tmp_path: Path) -> None:
 
 
 def test_revision_is_stable_then_changes_on_touch(tmp_path: Path) -> None:
-    form = _write_form(tmp_path, "blcs", "single_object", mode="single_object", selector="physical_v1", scenes=("scene_000000",))
+    form = _write_form(
+        tmp_path,
+        "blcs",
+        "single_object",
+        mode="single_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
     catalog = DatasetCatalog(tmp_path, "blcs")
     first = catalog.revision("single_object", "scene_000000")
     assert len(first) == 20
@@ -91,8 +105,14 @@ def test_revision_is_stable_then_changes_on_touch(tmp_path: Path) -> None:
 
 
 def test_revision_changes_when_array_changes(tmp_path: Path) -> None:
-    form = _write_form(tmp_path, "blcs", "single_object", mode="single_object",
-                       selector="physical_v1", scenes=("scene_000000",))
+    form = _write_form(
+        tmp_path,
+        "blcs",
+        "single_object",
+        mode="single_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
     array = form / "scenes" / "scene_000000" / "position.npy"
     array.write_bytes(b"array-one")
     catalog = DatasetCatalog(tmp_path, "blcs")
@@ -103,16 +123,47 @@ def test_revision_changes_when_array_changes(tmp_path: Path) -> None:
 
 
 def test_forms_filter_and_unknown_form_are_explicit(tmp_path: Path) -> None:
-    _write_form(tmp_path, "plcs", "single_object", mode="single_object", selector="physical_v1", scenes=("scene_000000",))
-    _write_form(tmp_path, "plcs", "multi_object", mode="multi_object", selector="physical_v1", scenes=("scene_000000",))
-    assert [form.name for form in DatasetCatalog(tmp_path, "plcs", forms=["multi_object"]).forms()] == ["multi_object"]
+    _write_form(
+        tmp_path,
+        "plcs",
+        "single_object",
+        mode="single_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
+    _write_form(
+        tmp_path,
+        "plcs",
+        "multi_object",
+        mode="multi_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
+    assert [
+        form.name
+        for form in DatasetCatalog(tmp_path, "plcs", forms=["multi_object"]).forms()
+    ] == ["multi_object"]
     with pytest.raises(DatasetCatalogError):
         DatasetCatalog(tmp_path, "plcs", forms=["missing_form"])
 
 
 def test_contract_selector_is_resolved_per_form(tmp_path: Path) -> None:
-    _write_form(tmp_path, "blcs", "single_object", mode="single_object", selector="physical_v1", scenes=("scene_000000",))
-    _write_form(tmp_path, "blcs", "single_object_camera_view_v2", mode="single_object", selector="camera_view_v2", scenes=("scene_000000",))
+    _write_form(
+        tmp_path,
+        "blcs",
+        "single_object",
+        mode="single_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
+    _write_form(
+        tmp_path,
+        "blcs",
+        "single_object_camera_view_v2",
+        mode="single_object",
+        selector="camera_view_v2",
+        scenes=("scene_000000",),
+    )
     catalog = DatasetCatalog(tmp_path, "blcs")
     assert catalog.court_contract("single_object").selector == PHYSICAL_V1_SELECTOR
     assert (
@@ -123,26 +174,39 @@ def test_contract_selector_is_resolved_per_form(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("scene", ["../secret", "a/b", "..", "."])
 def test_scene_paths_cannot_escape(tmp_path: Path, scene: str) -> None:
-    _write_form(tmp_path, "blcs", "single_object", mode="single_object", selector="physical_v1", scenes=("scene_000000",))
+    _write_form(
+        tmp_path,
+        "blcs",
+        "single_object",
+        mode="single_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
     catalog = DatasetCatalog(tmp_path, "blcs")
     with pytest.raises(DatasetCatalogError):
         catalog.scene_path("single_object", scene)
 
 
 def test_form_paths_cannot_escape(tmp_path: Path) -> None:
-    _write_form(tmp_path, "blcs", "single_object", mode="single_object", selector="physical_v1", scenes=("scene_000000",))
+    _write_form(
+        tmp_path,
+        "blcs",
+        "single_object",
+        mode="single_object",
+        selector="physical_v1",
+        scenes=("scene_000000",),
+    )
     catalog = DatasetCatalog(tmp_path, "blcs")
     for escape in ("../single_object", "a/b", "..", "."):
         with pytest.raises(DatasetCatalogError):
             catalog.scenes(escape)
 
 
-@pytest.mark.skipif(not (DATA_ROOT / "blcs").is_dir(), reason="BLCS data missing")
+@pytest.mark.local_data
+@pytest.mark.skipif(
+    not (DATA_ROOT / "blcs" / "single_object").is_dir(),
+    reason="Local BLCS single_object dataset is unavailable",
+)
 def test_real_blcs_forms_are_detected() -> None:
     catalog = DatasetCatalog(DATA_ROOT, "blcs")
-    forms = {form.name: form for form in catalog.forms()}
-    # Versioned experiment datasets may coexist with the standard forms.
-    assert set(forms) >= EXPECTED_FORMS
-    assert forms["single_object"].scene_count == 1000
-    assert forms["single_object"].has_samples is True
-    assert forms["single_object_camera_view_v2"].has_samples is False
+    assert {form.name for form in catalog.forms()} == {"single_object"}

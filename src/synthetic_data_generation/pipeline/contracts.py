@@ -23,8 +23,6 @@ class StageName(StrEnum):
     RECONSTRUCTION = "reconstruction"
     ALIGNMENT = "alignment"
     COURT_DATASET = "court_dataset"
-    BLCS_DATASET = "blcs_dataset"
-    PLCS_DATASET = "plcs_dataset"
     REPORT = "report"
 
 
@@ -32,17 +30,11 @@ class DatasetTarget(StrEnum):
     """Dataset domains that may be explicitly requested."""
 
     COURT = "court"
-    BLCS = "blcs"
-    PLCS = "plcs"
 
     @property
     def stage(self) -> StageName:
         """Return the one stage owned by this target."""
-        return {
-            DatasetTarget.COURT: StageName.COURT_DATASET,
-            DatasetTarget.BLCS: StageName.BLCS_DATASET,
-            DatasetTarget.PLCS: StageName.PLCS_DATASET,
-        }[self]
+        return {DatasetTarget.COURT: StageName.COURT_DATASET}[self]
 
 
 class StageStatus(StrEnum):
@@ -77,9 +69,13 @@ class ScenePipelineRequest:
 
     def __post_init__(self) -> None:
         if _SCENE_ID.fullmatch(self.scene_id) is None:
-            raise ValueError(f"scene_id is not a portable fixed-path identifier: {self.scene_id!r}.")
+            raise ValueError(
+                f"scene_id is not a portable fixed-path identifier: {self.scene_id!r}."
+            )
         if not self.source_video.is_absolute():
-            raise ValueError("source_video must be an absolute path resolved at the boundary.")
+            raise ValueError(
+                "source_video must be an absolute path resolved at the boundary."
+            )
         if not self.source_video.is_file():
             raise FileNotFoundError(f"source_video does not exist: {self.source_video}")
         if not self.targets:
@@ -91,11 +87,7 @@ class ScenePipelineRequest:
         if not isinstance(self.through_stage, StageName):
             raise TypeError("through_stage must be a StageName value.")
         terminal_target = next(
-            (
-                target
-                for target in DatasetTarget
-                if target.stage is self.through_stage
-            ),
+            (target for target in DatasetTarget if target.stage is self.through_stage),
             None,
         )
         if terminal_target is not None and terminal_target not in self.targets:
@@ -103,7 +95,10 @@ class ScenePipelineRequest:
                 f"through_stage {self.through_stage.value!r} requires the "
                 f"{terminal_target.value!r} dataset target."
             )
-        if not self.config_schema.strip() or self.config_schema != self.config_schema.strip():
+        if (
+            not self.config_schema.strip()
+            or self.config_schema != self.config_schema.strip()
+        ):
             raise ValueError("config_schema must be a non-empty trimmed identifier.")
 
     @property
@@ -138,7 +133,9 @@ class StageInput:
 
     def __post_init__(self) -> None:
         stage_bound = self.kind is StageInputKind.STAGE_OUTPUT
-        if stage_bound != (self.producer is not None and self.relative_path is not None):
+        if stage_bound != (
+            self.producer is not None and self.relative_path is not None
+        ):
             raise ValueError(
                 "Stage-output inputs require both producer and relative_path; "
                 "request/configuration inputs require neither."
@@ -317,7 +314,9 @@ class StageDefinition(Generic[SummaryT]):
             _validate_relative_path(output, label="Stage output")
         for method in ("preflight", "execute", "validate"):
             if not callable(getattr(self.handler, method, None)):
-                raise TypeError(f"Stage {self.name.value} has an unbound handler lifecycle.")
+                raise TypeError(
+                    f"Stage {self.name.value} has an unbound handler lifecycle."
+                )
         for method in (
             "preflight",
             "prepare",
@@ -330,14 +329,14 @@ class StageDefinition(Generic[SummaryT]):
                 raise TypeError(
                     f"Stage {self.name.value} has an incomplete publication strategy."
                 )
-        if not callable(
-            getattr(self.reusable_publication_validator, "validate", None)
-        ):
+        if not callable(getattr(self.reusable_publication_validator, "validate", None)):
             raise TypeError(
                 f"Stage {self.name.value} has no reusable-publication validator."
             )
         if not issubclass(self.summary_type, StageExecutionSummary):
-            raise TypeError("Stage summary_type must derive from StageExecutionSummary.")
+            raise TypeError(
+                "Stage summary_type must derive from StageExecutionSummary."
+            )
 
     @property
     def descendants(self) -> tuple[StageName, ...]:
@@ -422,11 +421,17 @@ class StageExecutionPlan:
                 raise ValueError(f"Execution plan {label} contains duplicate stages.")
             names[label] = set(inventory_names)
         if self.cursor.name not in names["selected"]:
-            raise ValueError("Execution-plan cursor must belong to the selected request stages.")
+            raise ValueError(
+                "Execution-plan cursor must belong to the selected request stages."
+            )
         if self.cursor.name not in names["invalidated"]:
-            raise ValueError("Execution-plan cursor must be invalidated before execution.")
+            raise ValueError(
+                "Execution-plan cursor must be invalidated before execution."
+            )
         if self.cursor.name not in names["execution"]:
-            raise ValueError("Execution-plan cursor must belong to the execution stages.")
+            raise ValueError(
+                "Execution-plan cursor must belong to the execution stages."
+            )
         if not names["retained_ancestors"] <= names["selected"]:
             raise ValueError(
                 "Retained prerequisites must belong to the selected request stages."
@@ -434,7 +439,9 @@ class StageExecutionPlan:
         if names["retained_ancestors"] & names["invalidated"]:
             raise ValueError("Retained prerequisites cannot also be invalidated.")
         if not names["execution"] <= names["selected"]:
-            raise ValueError("Execution stages must belong to the selected request stages.")
+            raise ValueError(
+                "Execution stages must belong to the selected request stages."
+            )
         if not names["execution"] <= names["invalidated"]:
             raise ValueError("Execution stages must be invalidated before they begin.")
 
