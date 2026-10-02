@@ -22,14 +22,6 @@ def test_cli_composes_one_complete_explicit_publication_request() -> None:
             "publication.scene_id=scene-0",
             "publication.court.trajectory_id=trajectory-0",
             "publication.court.frame_indices=[0,2]",
-            "publication.blcs.logical_scene_id=logical-0",
-            "publication.blcs.camera_id=camera-0",
-            "publication.blcs.frame_indices=[0,2]",
-            "publication.blcs.camera_ids=[camera-0,camera-1]",
-            "publication.plcs.logical_scene_id=logical-0",
-            "publication.plcs.camera_id=camera-0",
-            "publication.plcs.frame_indices=[0,2]",
-            "publication.plcs.camera_ids=[camera-0,camera-1]",
             "publication.captured.camera_ids=[camera-0,camera-1]",
             "--cfg",
             "job",
@@ -56,18 +48,8 @@ def test_cli_composes_one_complete_explicit_publication_request() -> None:
         "trajectory_id": "trajectory-0",
         "frame_indices": [0, 2],
     }
-    assert publication["blcs"] == {
-        "logical_scene_id": "logical-0",
-        "camera_id": "camera-0",
-        "frame_indices": [0, 2],
-        "camera_ids": ["camera-0", "camera-1"],
-    }
-    assert publication["plcs"] == {
-        "logical_scene_id": "logical-0",
-        "camera_id": "camera-0",
-        "frame_indices": [0, 2],
-        "camera_ids": ["camera-0", "camera-1"],
-    }
+    assert "blcs" not in publication
+    assert "plcs" not in publication
     assert publication["captured"] == {"camera_ids": ["camera-0", "camera-1"]}
     assert publication["drawing"] == {
         "dataset_size": [960, 540],
@@ -78,10 +60,7 @@ def test_cli_composes_one_complete_explicit_publication_request() -> None:
         "frustum_depth_metres": 3.0,
         "line_width": 1.4,
         "font_size": 12,
-        "history_frames": 12,
         "maximum_rendered_captured_cameras": 24,
-        "coincident_centre_tolerance_metres": 1.0e-6,
-        "coincident_forward_angle_tolerance_degrees": 1.0e-6,
         "maximum_artifact_bytes": 12_582_912,
         "maximum_bundle_bytes": 75_497_472,
     }

@@ -16,9 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 ENTRYPOINTS = (
     "src.tasks.slcs.scripts.generate_dataset",
     "src.tasks.slcs.scripts.evaluate_run",
-    "src.tasks.blcs.scripts.evaluate_real",
 )
 REMOVED_ENTRYPOINTS = (
+    "src/tasks/blcs/scripts/evaluate_real.py",
     "scripts/analysis/benchmark_vitpose_precision.py",
     "scripts/analysis/calibrate_slcs_ball_velocity.py",
     "scripts/analysis/compare_slcs_ball_anchors.py",

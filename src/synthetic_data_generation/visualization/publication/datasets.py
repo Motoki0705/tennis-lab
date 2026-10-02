@@ -12,15 +12,10 @@ from numpy.typing import NDArray
 from PIL import Image
 
 from src.synthetic_data_generation.visualization.overlays import (
-    new_ball_history,
-    render_blcs_overlay,
     render_court_overlay,
-    render_plcs_overlay,
 )
 from src.synthetic_data_generation.visualization.sources import (
-    BLCSVisualizationSource,
     CourtVisualizationSource,
-    PLCSVisualizationSource,
 )
 
 GIF_ENCODER = "pillow-gif-fixed-palette-v1"
@@ -77,112 +72,6 @@ def render_court_dataset_gif(
         height=size[1],
         duration_ms=duration_ms,
         mapping=mapping,
-    )
-
-
-def render_blcs_dataset_gif(
-    source: BLCSVisualizationSource,
-    output: Path,
-    *,
-    logical_scene_id: str,
-    camera_id: str,
-    frame_indices: tuple[int, ...],
-    size: tuple[int, int],
-    duration_ms: int,
-    history_frames: int,
-) -> DatasetGifResult:
-    """Render one complete BLCS view while preserving history through unselected frames."""
-    history = new_ball_history(source.object_ids, history_frames=history_frames)
-    frames = (
-        render_blcs_overlay(
-            frame,
-            logical_scene_id=logical_scene_id,
-            camera_id=camera_id,
-            object_ids=source.object_ids,
-            court_kp=source.court_kp,
-            court_vis=source.court_vis,
-            history=history,
-            history_frames=history_frames,
-        )
-        for frame in source.frames()
-    )
-    mapping = _render_selected_gif(
-        frames,
-        source.frame_order,
-        output,
-        frame_indices=frame_indices,
-        size=size,
-        duration_ms=duration_ms,
-    )
-    return DatasetGifResult(
-        domain="blcs",
-        dataset_schema=source.dataset_schema,
-        dataset_scene_id=source.dataset_scene_id,
-        source_count=source.frame_count,
-        source_width=source.width,
-        source_height=source.height,
-        source_fps=source.source_fps,
-        width=size[0],
-        height=size[1],
-        duration_ms=duration_ms,
-        mapping=tuple(
-            {
-                **value,
-                "logical_scene_id": logical_scene_id,
-                "camera_id": camera_id,
-            }
-            for value in mapping
-        ),
-    )
-
-
-def render_plcs_dataset_gif(
-    source: PLCSVisualizationSource,
-    output: Path,
-    *,
-    logical_scene_id: str,
-    camera_id: str,
-    frame_indices: tuple[int, ...],
-    size: tuple[int, int],
-    duration_ms: int,
-) -> DatasetGifResult:
-    """Render one complete PLCS view in canonical logical-frame order."""
-    frames = (
-        render_plcs_overlay(
-            frame,
-            logical_scene_id=logical_scene_id,
-            camera_id=camera_id,
-            object_ids=source.object_ids,
-        )
-        for frame in source.frames()
-    )
-    mapping = _render_selected_gif(
-        frames,
-        source.frame_order,
-        output,
-        frame_indices=frame_indices,
-        size=size,
-        duration_ms=duration_ms,
-    )
-    return DatasetGifResult(
-        domain="plcs",
-        dataset_schema=source.dataset_schema,
-        dataset_scene_id=source.dataset_scene_id,
-        source_count=source.frame_count,
-        source_width=source.width,
-        source_height=source.height,
-        source_fps=None,
-        width=size[0],
-        height=size[1],
-        duration_ms=duration_ms,
-        mapping=tuple(
-            {
-                **value,
-                "logical_scene_id": logical_scene_id,
-                "camera_id": camera_id,
-            }
-            for value in mapping
-        ),
     )
 
 
@@ -297,8 +186,6 @@ def _rgb_uint8(value: NDArray[np.uint8]) -> NDArray[np.uint8]:
 __all__ = [
     "DatasetGifResult",
     "GIF_ENCODER",
-    "render_blcs_dataset_gif",
     "render_court_dataset_gif",
-    "render_plcs_dataset_gif",
     "write_deterministic_gif",
 ]

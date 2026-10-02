@@ -55,7 +55,7 @@ def test_court_request_requires_only_explicit_trajectory_id(tmp_path: Path) -> N
 
 @pytest.mark.parametrize(
     "domain",
-    [DatasetVisualizationDomain.BLCS, DatasetVisualizationDomain.PLCS],
+    [],
 )
 def test_compact_domains_require_scene_and_camera(
     tmp_path: Path,
@@ -108,45 +108,6 @@ def test_request_rejects_output_inside_dataset_or_existing_output(
             crf=17,
             history_frames=12,
         )
-
-
-def test_hydra_boundary_builds_one_strict_domain_selection(tmp_path: Path) -> None:
-    data_root = tmp_path / "runtime-data"
-    output_root = tmp_path / "runtime-output"
-    root = _dataset_root(data_root, "plcs")
-    config = OmegaConf.create(
-        {
-            "roots": {
-                "project_root": str(tmp_path),
-                "data_root": str(data_root),
-                "checkpoint_root": "ckpt",
-                "artifact_root": "artifacts",
-                "output_root": str(output_root),
-                "cache_root": ".cache",
-                "external_asset_root": "third_party",
-            },
-            "visualization": {
-                "domain": "plcs",
-                "dataset_root": "scenes/scene-0/datasets/plcs",
-                "output_video": "previews/plcs.mp4",
-                "trajectory_id": None,
-                "logical_scene_id": "logical-0",
-                "camera_id": "camera-0",
-                "fps": 24.0,
-                "crf": 19,
-                "history_frames": 0,
-            },
-        }
-    )
-
-    request = build_visualization_request(config)
-
-    assert request.domain is DatasetVisualizationDomain.PLCS
-    assert request.logical_scene_id == "logical-0"
-    assert request.camera_id == "camera-0"
-    assert request.fps == 24.0
-    assert request.dataset_root == root
-    assert request.output_video == output_root / "previews/plcs.mp4"
 
 
 @pytest.mark.parametrize("field", ["dataset_root", "output_video"])

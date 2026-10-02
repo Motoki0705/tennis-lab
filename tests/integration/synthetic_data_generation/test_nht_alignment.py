@@ -98,8 +98,6 @@ def _definitions() -> StageRegistry:
             reconstruction=_NoopHandler(StageName.RECONSTRUCTION),
             alignment=_NoopHandler(StageName.ALIGNMENT),
             court_dataset=_NoopHandler(StageName.COURT_DATASET),
-            blcs_dataset=_NoopHandler(StageName.BLCS_DATASET),
-            plcs_dataset=_NoopHandler(StageName.PLCS_DATASET),
             report=_NoopHandler(StageName.REPORT),
         )
     )

@@ -1,25 +1,4 @@
 defaults:
-  - court_keypoints: physical_v1
-  - model: multiview_axial_base
-  - data: multiview_chunked_sequence
-  - training: gan_base
-  - loss: canonical
-  - metrics: default
-  - qualitative: default
-  - run: train
-  - generation: single_object
-  - paths: default
-  - camera: default
-  - motion_sources: accad
+  - train_chunked
+  - override training: gan_base
   - _self_
-
-external_assets:
-  smplh_model_path: smplx/smplh
-  coco17_regressor_path: src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt
-
-hydra:
-  run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
-  output_subdir: null
-  job:
-    chdir: false
