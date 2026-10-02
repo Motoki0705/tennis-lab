@@ -17,8 +17,6 @@ class DatasetDomain(StrEnum):
     """Canonical synthetic dataset domains."""
 
     COURT = "court"
-    BLCS = "blcs"
-    PLCS = "plcs"
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +37,9 @@ class TargetCourtBinding:
                 raise ValueError(f"{name} must be a portable identifier.")
         if not isinstance(self.scene_from_court, RigidTransform):
             raise TypeError("scene_from_court must be a RigidTransform.")
-        if isinstance(self.selection_seed, bool) or not isinstance(self.selection_seed, int):
+        if isinstance(self.selection_seed, bool) or not isinstance(
+            self.selection_seed, int
+        ):
             raise TypeError("selection_seed must be an integer.")
 
     def to_dict(self) -> dict[str, object]:
@@ -71,7 +71,9 @@ class TargetCourtBinding:
         return cls(
             court_instance_id=_text(raw["court_instance_id"], name="court_instance_id"),
             candidate_id=_text(raw["candidate_id"], name="candidate_id"),
-            scene_from_court=RigidTransform(tuple(_number(item, name="scene_from_court") for item in transform)),
+            scene_from_court=RigidTransform(
+                tuple(_number(item, name="scene_from_court") for item in transform)
+            ),
             selection_seed=_integer(raw["selection_seed"], name="selection_seed"),
         )
 
@@ -96,7 +98,9 @@ class FrameInventory:
         ):
             if values != expected:
                 missing = sorted(set(expected) - set(values))
-                duplicates = sorted({value for value in values if values.count(value) > 1})
+                duplicates = sorted(
+                    {value for value in values if values.count(value) > 1}
+                )
                 unexpected = sorted(set(values) - set(expected))
                 raise ValueError(
                     f"{name} must equal 0..T-1 in order; missing={missing}, "
@@ -120,7 +124,14 @@ class FrameInventory:
         raw = _mapping(value, name="frame inventory")
         require_exact_keys(
             raw,
-            keys=("source", "planned", "rendered", "labelled", "first_frame", "last_frame"),
+            keys=(
+                "source",
+                "planned",
+                "rendered",
+                "labelled",
+                "first_frame",
+                "last_frame",
+            ),
             name="frame inventory",
         )
         source_count = _integer(raw["source"], name="frame inventory source", minimum=1)
@@ -168,7 +179,9 @@ class DatasetManifest:
         if len(self.target_courts) != len(
             {binding.court_instance_id for binding in self.target_courts}
         ):
-            raise ValueError("Target-court bindings must have unique court_instance_id values.")
+            raise ValueError(
+                "Target-court bindings must have unique court_instance_id values."
+            )
         if any(not isinstance(key, str) for key in self.metadata):
             raise TypeError("Dataset metadata keys must be strings.")
 
@@ -213,9 +226,13 @@ class DatasetManifest:
             domain=domain,
             schema=_text(raw["schema"], name="schema"),
             frame_inventory=FrameInventory.from_dict(raw["frame_inventory"]),
-            target_courts=tuple(TargetCourtBinding.from_dict(item) for item in bindings),
+            target_courts=tuple(
+                TargetCourtBinding.from_dict(item) for item in bindings
+            ),
             metadata=dict(metadata),
-            diagnostics=tuple(_text(item, name="diagnostic path") for item in diagnostics),
+            diagnostics=tuple(
+                _text(item, name="diagnostic path") for item in diagnostics
+            ),
         )
 
 

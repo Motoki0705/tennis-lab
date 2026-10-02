@@ -23,8 +23,8 @@ def test_shared_readme_is_the_only_detailed_court_keypoint_authority() -> None:
         "physical_courtkp20_v1",
         "camera_view_courtkp20_rzpi_v1",
         "Camera-local disk semantics",
-        "Model reference semantics",
-        "camera_local_v1",
+        "Shared reference-frame geometry",
+        "reference_camera_court_rzpi_v1",
         "#782/#788",
         "court_coordinate_normalization",
         "separate metadata field",
@@ -38,7 +38,7 @@ def test_shared_readme_is_the_only_detailed_court_keypoint_authority() -> None:
     authority_only_fragments = (
         "physical_courtkp20_v1",
         "camera_view_courtkp20_rzpi_v1",
-        "camera_local_v1",
+        "reference_camera_court_rzpi_v1",
         "OPPOSITE_COURT_END_INDEX",
         "(3,2,1,0,7,6,5,4,11,10,9,8,13,12,14,17,18,15,16,19)",
     )

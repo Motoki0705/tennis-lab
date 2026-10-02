@@ -83,13 +83,11 @@ class PLCSReferenceMetadata:
         )
         if self.physical_from_reference.shape != (batch_size, 3, 3):
             raise ValueError(
-                "physical_from_reference must have shape "
-                f"({batch_size}, 3, 3)."
+                f"physical_from_reference must have shape ({batch_size}, 3, 3)."
             )
         if (
             not self.physical_from_reference.is_floating_point()
-            or self.physical_from_reference.dtype
-            != self.reference_from_physical.dtype
+            or self.physical_from_reference.dtype != self.reference_from_physical.dtype
             or self.physical_from_reference.device
             != self.reference_from_physical.device
         ):
@@ -385,17 +383,6 @@ class PLCSDecodedPrediction:
     reference_metadata: PLCSReferenceMetadata | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class PLCSTrackingDecodedPrediction:
-    """Canonical decoded output for the fixed track-query profile."""
-
-    position: Tensor
-    rotation: Tensor
-    presence_logits: Tensor
-    court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
-    reference_metadata: PLCSReferenceMetadata | None = None
-
-
 Float32Array: TypeAlias = np.ndarray
 
 
@@ -418,6 +405,5 @@ __all__ = [
     "PLCSPreparedBatch",
     "PLCSReprojectionTarget",
     "PLCSReferenceMetadata",
-    "PLCSTrackingDecodedPrediction",
     "plcs_reference_metadata_from_batch",
 ]
