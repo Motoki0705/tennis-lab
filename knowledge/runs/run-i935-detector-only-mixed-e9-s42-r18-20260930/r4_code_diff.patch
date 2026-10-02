@@ -1,0 +1,1331 @@
+diff --git a/src/tasks/ball_refiner/configs/train.yaml b/src/tasks/ball_refiner/configs/train.yaml
+index c882d457..24a8e3df 100644
+--- a/src/tasks/ball_refiner/configs/train.yaml
++++ b/src/tasks/ball_refiner/configs/train.yaml
+@@ -44,7 +44,7 @@ compile:
+   dynamic: false
+ 
+ run:
+-  output_dir: ???
++  output_dir: ${tennis_output:ball_refiner,train,detector_only,${tennis_run_id:}}
+   device: cuda
+   seed: 42
+   dry_run: false
+diff --git a/src/tasks/ball_refiner/data/cache_identity.py b/src/tasks/ball_refiner/data/cache_identity.py
+new file mode 100644
+index 00000000..dcafbf29
+--- /dev/null
++++ b/src/tasks/ball_refiner/data/cache_identity.py
+@@ -0,0 +1,44 @@
++"""Source selection and identity shared by detector and context caches."""
++
++from __future__ import annotations
++
++from dataclasses import asdict
++from pathlib import Path
++from typing import Any
++
++from src.tasks.ball_detection.data.store import (
++    SOURCES,
++    SPLIT_CODES,
++    BallFrameStore,
++    ClipRecord,
++)
++from src.utils.checksum import dual_sha256
++
++
++def clip_record(clip: ClipRecord) -> dict[str, Any]:
++    return {**asdict(clip), "track_ids": list(clip.track_ids)}
++
++
++def store_hashes(directory: Path) -> dict[str, str]:
++    return {name: dual_sha256(directory / name) for name in ("metadata.json", "index.npz")}
++
++
++def select_clips(
++    store: BallFrameStore, *, splits: tuple[str, ...], sources: tuple[str, ...],
++) -> tuple[ClipRecord, ...]:
++    """Select only explicit source/split pairs; never select by label quality."""
++    for name, requested, allowed in (("splits", splits, SPLIT_CODES), ("sources", sources, SOURCES)):
++        if not requested or len(set(requested)) != len(requested) or not set(requested) <= set(allowed):
++            raise ValueError(f"Invalid or repeated {name}: {requested}")
++    groups: dict[tuple[str, str], str] = {}
++    for clip in store.clips:
++        group = (clip.source, clip.group_id)
++        if group in groups and groups[group] != clip.split:
++            raise ValueError(f"Source group crosses splits: {group}")
++        groups[group] = clip.split
++    clips = tuple(clip for clip in store.clips if clip.split in splits and clip.source in sources)
++    if {(clip.source, clip.split) for clip in clips} != {(source, split) for source in sources for split in splits}:
++        raise ValueError("Every requested source/split pair must contain at least one clip")
++    return clips
++
++
+diff --git a/src/tasks/ball_refiner/data/context_arrays.py b/src/tasks/ball_refiner/data/context_arrays.py
+new file mode 100644
+index 00000000..9453250e
+--- /dev/null
++++ b/src/tasks/ball_refiner/data/context_arrays.py
+@@ -0,0 +1,117 @@
++"""Generated, camera-local context in the decoded JPEG's pixel coordinates."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass, fields
++from typing import Any
++
++import numpy as np
++from numpy.typing import NDArray
++
++from src.tasks.ball_detection.data.store import ClipRecord
++from src.tasks.ball_refiner.data.context import (
++    COURT_KEYPOINTS,
++    POSE_JOINTS,
++    CourtContext,
++    PipelineContext,
++    PoseContext,
++)
++
++
++@dataclass(frozen=True)
++class ContextArrays:
++    """Raw COCO17 retains heatmap peaks; absent crops are explicitly zero.
++
++    All model coordinates use stored JPEG pixels. Camera IDs are optional
++    store metadata, never invented for single-camera sources. Track IDs are
++    provenance only; the model consumes an unordered set of people.
++    """
++
++    frame_index: NDArray[np.int32]
++    pts: NDArray[np.int64]
++    detection_count: NDArray[np.int32]
++    track_ids: NDArray[np.int64]
++    boxes_xys: NDArray[np.float32]  # T,P,3; only observed boxes are retained
++    track_observed: NDArray[np.bool_]  # T,P
++    keypoints: NDArray[np.float32]  # T,P,17,3 (x,y,raw heatmap peak)
++    court_points: NDArray[np.float32]  # 14,2; frame 0
++    court_valid: NDArray[np.bool_]
++
++    def __post_init__(self) -> None:
++        n, p = len(self.frame_index), len(self.track_ids)
++        for name, shape, dtype in (
++            ("frame_index", (n,), np.int32), ("pts", (n,), np.int64),
++            ("detection_count", (n,), np.int32), ("track_ids", (p,), np.int64),
++            ("boxes_xys", (n, p, 3), np.float32), ("track_observed", (n, p), np.bool_),
++            ("keypoints", (n, p, 17, 3), np.float32),
++            ("court_points", (COURT_KEYPOINTS, 2), np.float32),
++            ("court_valid", (COURT_KEYPOINTS,), np.bool_),
++        ):
++            value = getattr(self, name)
++            if value.shape != shape or value.dtype != dtype or not np.isfinite(value).all():
++                raise ValueError(f"Invalid context array {name}")
++        if n < 1 or not np.array_equal(self.frame_index, np.arange(n)) or (np.diff(self.pts) <= 0).any():
++            raise ValueError("Context must cover a dense, increasing source timeline")
++        if (self.detection_count < 0).any() or (self.track_observed.sum(axis=1) > self.detection_count).any():
++            raise ValueError("Observed tracks must be backed by per-frame detections")
++        if (self.track_ids < 0).any() or (np.diff(self.track_ids) <= 0).any():
++            raise ValueError("Track IDs must be nonnegative, unique and sorted")
++        if p and not self.track_observed.any(axis=0).all():
++            raise ValueError("Every track needs at least one observed crop")
++        if (self.boxes_xys[..., 2][self.track_observed] <= 0).any() or (self.keypoints[..., 2] < 0).any():
++            raise ValueError("Observed boxes need positive sizes; pose peaks must be nonnegative")
++        if (self.keypoints[~self.track_observed] != 0).any() or (self.boxes_xys[~self.track_observed] != 0).any():
++            raise ValueError("Unobserved crops must be zero, not interpolated pose observations")
++
++    def arrays(self) -> dict[str, NDArray[np.generic]]:
++        return {field.name: getattr(self, field.name) for field in fields(self)}
++
++    @classmethod
++    def from_arrays(cls, values: dict[str, NDArray[np.generic]]) -> ContextArrays:
++        if set(values) != {field.name for field in fields(cls)}:
++            raise ValueError("Context array keys do not match the versioned contract")
++        return cls(**values)
++
++    def model_context(self, clip: ClipRecord, *, pose_threshold: float, provenance: dict[str, Any]) -> PipelineContext:
++        """Convert once to source endpoint UV, preserving outside-image poses."""
++        if len(self.frame_index) != clip.frame_count or min(clip.width, clip.height, clip.source_width, clip.source_height) <= 1:
++            raise ValueError("Context/source size or timeline mismatch")
++        if not np.isfinite(pose_threshold) or not 0 <= pose_threshold <= 1:
++            raise ValueError("pose_threshold must be in [0,1]")
++        denominator = np.asarray((clip.source_width - 1, clip.source_height - 1), np.float32)
++        joints = np.take(self.keypoints, POSE_JOINTS, axis=2)
++        raw = joints[..., 2]
++        confidence = np.minimum(raw, np.float32(1))
++        valid = self.track_observed[..., None] & (confidence > 0) & (confidence >= pose_threshold)
++        pose = PoseContext(joints[..., :2] / np.float32(clip.scale) / denominator, confidence, valid)
++        court = CourtContext(self.court_points / np.float32(clip.scale) / denominator,
++                             self.court_valid.astype(np.float32), self.court_valid.copy())
++        return PipelineContext(pose, court, {
++            **provenance, "pose_status": "generated", "court_status": "generated",
++            "pose_threshold": pose_threshold, "pose_frames": int(valid.any(axis=(1, 2)).sum()),
++            "court_keypoints": int(self.court_valid.sum()),
++            "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
++            "pose_confidence_total_slots": int(raw.size),
++            "pose_confidence_saturated_slots": int((raw > 1).sum()),
++            "pose_confidence_raw_max": float(raw.max(initial=0)),
++        })
++
++
++@dataclass(frozen=True)
++class GeneratedContext:
++    arrays: ContextArrays
++    execution: dict[str, Any]
++
++    def __post_init__(self) -> None:
++        """Execution receipts distinguish no observations from skipped models."""
++        n = len(self.arrays.frame_index)
++        expected = {
++            "person_detection_frames": n, "tracking_frames": n,
++            "pose_crops": int(self.arrays.track_observed.sum()),
++            "court_frame_indices": [0], "person_region_policy": "full_frame",
++            "status": "complete",
++        }
++        if any(type(self.execution.get(key)) is not type(value) or self.execution[key] != value for key, value in expected.items()):
++            raise ValueError("Context execution receipt is incomplete or inconsistent")
++        if not isinstance(self.execution.get("court_diagnostics"), dict):
++            raise ValueError("Court execution needs explicit geometry diagnostics")
+diff --git a/src/tasks/ball_refiner/data/context_cache.py b/src/tasks/ball_refiner/data/context_cache.py
+new file mode 100644
+index 00000000..45600bf7
+--- /dev/null
++++ b/src/tasks/ball_refiner/data/context_cache.py
+@@ -0,0 +1,176 @@
++"""Immutable context caches bound to the detector's exact decoded JPEG shards."""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++from typing import Any, Protocol
++
++import numpy as np
++
++from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord, shard_name
++from src.tasks.ball_refiner.data.cache_identity import clip_record, store_hashes
++from src.tasks.ball_refiner.data.context_arrays import ContextArrays, GeneratedContext
++from src.tasks.ball_refiner.data.evidence_cache import EvidenceCache
++from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
++from src.utils.checksum import dual_sha256
++
++SCHEMA = "ball_refiner_context.v1"
++RGB_CONDITION = "unmodified_stored_jpeg_bgr.v1"
++COORDINATES = "stored_jpeg_pixels; source_xy=stored_xy/clip.scale"
++
++
++class ContextProducer(Protocol):
++    def identity(self) -> dict[str, Any]:
++        """Rehash assets/code and return the complete inference configuration."""
++        ...
++
++    def predict(self, store: BallFrameStore, clip: ClipRecord) -> GeneratedContext:
++        """Execute all frames from the store; do not catch model failures."""
++        ...
++
++
++def _assert_timeline(result: ContextArrays, store: BallFrameStore, clip: ClipRecord) -> None:
++    rows = store.clip_rows(clip)
++    if not np.array_equal(result.frame_index, store.frames["frame_index"][rows]) or not np.array_equal(
++        result.pts, store.frames["pts"][rows],
++    ):
++        raise ValueError(f"Context frame/PTS mismatch: {clip.clip_id}")
++    points = result.court_points[result.court_valid]
++    if (points < 0).any() or (points > np.asarray([clip.width - 1, clip.height - 1])).any():
++        raise ValueError(f"Valid court points must be inside the stored image: {clip.clip_id}")
++
++
++def context_cache_identity(evidence: EvidenceCache) -> dict[str, Any]:
++    """Snapshot the exact input and generator shared by monolithic/sharded builds."""
++    store = evidence.store
++    hashes = store_hashes(store.directory)
++    if hashes != evidence.manifest["store"]["sha256"]:
++        raise ValueError("Store changed after opening detector evidence")
++    evidence_path = evidence.directory / "manifest.json"
++    digest = dual_sha256(evidence_path)
++    if json.loads(evidence_path.read_text()) != evidence.manifest or dual_sha256(evidence_path) != digest:
++        raise ValueError("Detector manifest changed after opening evidence")
++    return {
++        "schema": SCHEMA, "rgb_condition": RGB_CONDITION, "coordinate_system": COORDINATES,
++        "generator_sha256": {name: dual_sha256(Path(__file__).with_name(name)) for name in (
++            "context_cache.py", "context_arrays.py", "cache_identity.py",
++        )},
++        "store": {"directory": str(store.directory), "sha256": hashes},
++        "evidence": {"directory": str(evidence.directory), "manifest_sha256": digest},
++    }
++
++
++def generate_context_cache(
++    evidence: EvidenceCache, *, output: Path, producer: ContextProducer,
++    clip_ids: tuple[str, ...] | None,
++    expected_identity: dict[str, Any] | None = None,
++) -> Path:
++    """Publish every completed clip, then mark complete after final hash checks.
++
++    ``None`` explicitly means every clip in the detector cache. A pilot can
++    name a subset, retained in the manifest and never advertised as full
++    coverage. This schema accepts only unmodified JPEG input; RGB occlusion
++    needs a separately identified cache of both detector and context evidence.
++    """
++    if not output.is_absolute():
++        raise ValueError("Context output must be absolute")
++    if output.exists():
++        raise FileExistsError(f"Context output already exists: {output}")
++    selected = evidence.clip_ids if clip_ids is None else clip_ids
++    if not selected or len(set(selected)) != len(selected) or not set(selected) <= set(evidence.clip_ids):
++        raise ValueError("Context selection must name unique clips from the detector cache")
++    selected = tuple(clip_id for clip_id in evidence.clip_ids if clip_id in set(selected))
++    store = evidence.store
++    identity = {**context_cache_identity(evidence), "model_identity": json_value(producer.identity())}
++    if expected_identity is not None and identity != expected_identity:
++        raise ValueError("Context generation identity differs from the pinned shard plan")
++    detector_records = {record["clip"]["clip_id"]: record for record in evidence.manifest["clips"]}
++    manifest: dict[str, Any] = {
++        **identity, "status": "building",
++        "selection": {"clip_ids": list(selected), "scope": "all_evidence" if clip_ids is None else "explicit_subset"},
++        "clips": [],
++    }
++    (output / "clips").mkdir(parents=True, exist_ok=False)
++    write_json_atomic(output / "manifest.json", manifest)
++    for clip_id in selected:
++        clip = store.clip_by_id(clip_id)
++        shard = store.directory / "shards" / shard_name(clip.index)
++        shard_hash = detector_records[clip_id]["jpeg_shard_sha256"]
++        if dual_sha256(shard) != shard_hash:
++            raise ValueError(f"Context RGB differs from detector JPEG input: {clip_id}")
++        result = producer.predict(store, clip)
++        _assert_timeline(result.arrays, store, clip)
++        if dual_sha256(shard) != shard_hash:
++            raise ValueError(f"JPEG shard changed during context inference: {clip_id}")
++        relative = f"clips/clip-{clip.index:05d}.npz"
++        with (output / relative).open("xb") as stream:
++            np.savez_compressed(stream, **result.arrays.arrays())
++        manifest["clips"].append({
++            "clip": clip_record(clip), "file": relative, "sha256": dual_sha256(output / relative),
++            "jpeg_shard_sha256": shard_hash, "execution": result.execution,
++        })
++        write_json_atomic(output / "manifest.json", manifest)
++        print(json.dumps({"clip_id": clip_id, "completed": len(manifest["clips"]), "total": len(selected),
++                          "frames": clip.frame_count, "tracks": len(result.arrays.track_ids)}), flush=True)
++    for record in manifest["clips"]:
++        shard = store.directory / "shards" / shard_name(record["clip"]["index"])
++        if dual_sha256(shard) != record["jpeg_shard_sha256"]:
++            raise ValueError("A completed clip's JPEG shard changed before publication")
++    if {**context_cache_identity(evidence), "model_identity": json_value(producer.identity())} != identity:
++        raise ValueError("Context store, detector manifest, model assets or code changed during generation")
++    manifest["status"] = "complete"
++    write_json_atomic(output / "manifest.json", manifest)
++    return output
++
++
++class ContextCache:
++    def __init__(self, directory: Path, evidence: EvidenceCache) -> None:
++        if not directory.is_absolute():
++            raise ValueError("Context cache directory must be absolute")
++        manifest = json.loads((directory / "manifest.json").read_text())
++        if (manifest["schema"] != SCHEMA or manifest["status"] != "complete"
++                or manifest["rgb_condition"] != RGB_CONDITION or manifest["coordinate_system"] != COORDINATES):
++            raise ValueError("Incomplete or incompatible context cache")
++        if (manifest["store"]["sha256"] != store_hashes(evidence.store.directory)
++                or manifest["evidence"]["manifest_sha256"] != dual_sha256(evidence.directory / "manifest.json")):
++            raise ValueError("Context does not belong to this store/detector evidence")
++        selected = manifest["selection"]["clip_ids"]
++        scope = manifest["selection"]["scope"]
++        if (not selected or scope not in {"all_evidence", "explicit_subset"}
++                or selected != [item for item in evidence.clip_ids if item in set(selected)]
++                or (scope == "all_evidence" and selected != list(evidence.clip_ids))):
++            raise ValueError("Context selection is not an exact ordered detector-cache subset")
++        records = manifest["clips"]
++        if [record["clip"]["clip_id"] for record in records] != selected:
++            raise ValueError("Context cache does not cover every declared clip exactly once")
++        detector_records = {record["clip"]["clip_id"]: record for record in evidence.manifest["clips"]}
++        for record in records:
++            clip = evidence.store.clip_by_id(record["clip"]["clip_id"])
++            if (record["clip"] != clip_record(clip) or record["file"] != f"clips/clip-{clip.index:05d}.npz"
++                    or record["jpeg_shard_sha256"] != detector_records[clip.clip_id]["jpeg_shard_sha256"]):
++                raise ValueError(f"Context metadata/RGB/path mismatch: {clip.clip_id}")
++        self.directory, self.evidence = directory, evidence
++        self.clip_ids = tuple(selected)
++        self.manifest: dict[str, Any] = manifest
++        self._records = {record["clip"]["clip_id"]: record for record in records}
++
++    def require_clips(self, clip_ids: tuple[str, ...]) -> None:
++        """Training must call this before constructing any full/context dataset."""
++        if not set(clip_ids) <= set(self.clip_ids):
++            raise ValueError(f"Context was not generated for required clips: {sorted(set(clip_ids) - set(self.clip_ids))}")
++
++    def load(self, clip_id: str) -> GeneratedContext:
++        record = self._records[clip_id]
++        path = self.directory / record["file"]
++        if not path.resolve().is_relative_to(self.directory.resolve()):
++            raise ValueError("Context NPZ escapes the cache directory")
++        digest = dual_sha256(path)
++        if digest != record["sha256"]:
++            raise ValueError(f"Context checksum mismatch: {clip_id}")
++        with np.load(path, allow_pickle=False) as archive:
++            arrays = ContextArrays.from_arrays({name: archive[name] for name in archive.files})
++        if dual_sha256(path) != digest:
++            raise ValueError(f"Context changed during read: {clip_id}")
++        _assert_timeline(arrays, self.evidence.store, self.evidence.store.clip_by_id(clip_id))
++        return GeneratedContext(arrays, record["execution"])
+diff --git a/src/tasks/ball_refiner/data/context_inference.py b/src/tasks/ball_refiner/data/context_inference.py
+new file mode 100644
+index 00000000..64ddeb13
+--- /dev/null
++++ b/src/tasks/ball_refiner/data/context_inference.py
+@@ -0,0 +1,174 @@
++"""Full-frame DINO -> BoT-SORT -> ViTPose and frame-zero court on stored JPEGs."""
++
++from __future__ import annotations
++
++import importlib.metadata
++import time
++from dataclasses import asdict
++from pathlib import Path
++from typing import Any
++
++import cv2
++import numpy as np
++import torch
++from omegaconf import DictConfig, OmegaConf
++
++from src.submodules.models import (
++    BotSortAssociator,
++    DinoPersonDetector,
++    PersonDetectionRequest,
++    Pose2DFrameSequenceRequest,
++    TrackRequest,
++    ViTPosePose2D,
++    select_and_complete_tracks,
++    validate_dino_extension,
++)
++from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
++from src.tasks.ball_refiner.data.context_arrays import ContextArrays, GeneratedContext
++from src.tasks.court_detection.inference.regions import CourtRegionUnavailable
++from src.tennis_scene.configuration import PipelineRuntimeConfig
++from src.tennis_scene.pipeline.artifacts import json_value
++from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
++from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
++from src.utils.checksum import dual_sha256
++from src.utils.paths import PROJECT_ROOT
++
++
++def load_context_producer(scene_config: Path, *, max_tracks: int) -> StoredJPEGContextProducer:
++    """Use the scene's strict config adapters without binding video inputs."""
++    config = OmegaConf.load(scene_config)
++    if not isinstance(config, DictConfig):
++        raise TypeError("scene_config must contain the complete composed scene configuration")
++    scene = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
++    return StoredJPEGContextProducer(people=scene.people, court=scene.court_kp, max_tracks=max_tracks)
++
++
++class StoredJPEGContextProducer:
++    """Execute each stage explicitly; keep only observed (not filled) pose crops.
++
++    Full-frame detection is a fixed policy, not a fallback for missing court
++    ROI. The refiner has no track-ID embedding, so this producer keeps raw
++    BoT-SORT IDs without scene-specific tracklet linking or player selection.
++    The existing tracker box completion/smoothing is used only to crop the
++    actually observed frames. All stages share unmodified stored images.
++    """
++
++    def __init__(self, *, people: PeopleModelConfig, court: CourtKPConfig, max_tracks: int) -> None:
++        if people.detector != "dino" or people.runtime.device != court.device:
++            raise ValueError("Context generation requires explicit DINO and a common model device")
++        if type(max_tracks) is not int or max_tracks < 1:
++            raise ValueError("max_tracks must be a positive integer; truncation is forbidden")
++        self.people, self.court, self.max_tracks = people, court, max_tracks
++
++    def identity(self) -> dict[str, Any]:
++        extension_path = validate_dino_extension()
++        assets = {"dino": self.people.dino_checkpoint, "vitpose": self.people.vitpose_checkpoint,
++                  "court": self.court.checkpoint, "dino_extension": extension_path}
++        source_root = PROJECT_ROOT / "src"
++        repository = self.people.dino_repository
++        if not repository.is_absolute() or not (repository / "models").is_dir():
++            raise ValueError("DINO repository must be an existing absolute source directory")
++        return {
++            "assets": {name: {"path": str(path), "sha256": dual_sha256(path)} for name, path in assets.items()},
++            "source_sha256": {str(path.relative_to(source_root)): dual_sha256(path)
++                              for path in sorted(source_root.rglob("*.py"))},
++            "dino_repository": {"path": str(repository), "sha256": {
++                str(path.relative_to(repository)): dual_sha256(path) for path in sorted(repository.rglob("*.py"))}},
++            "person_region_policy": "full_frame", "max_tracks": self.max_tracks,
++            "tracking": "botsort_raw_ids; complete_and_smooth_boxes; observed_crops_only",
++            "people_runtime": json_value(asdict(self.people.runtime)),
++            "pose_precision": "float32",
++            "dino_extension_preflight": "cpu_dispatch_forward_backward_v1",
++            "court": {"subpixel_refine": self.court.subpixel_refine,
++                      "postprocess": asdict(self.court.postprocess), "region_search": asdict(self.court.region_search)},
++            "versions": {name: importlib.metadata.version(name) for name in ("torch", "numpy", "ultralytics")},
++        }
++
++    def predict(self, store: BallFrameStore, clip: ClipRecord) -> GeneratedContext:
++        if store.clip_by_id(clip.clip_id) != clip:
++            raise ValueError("Context clip does not belong to the store")
++        n = clip.frame_count
++        rows = store.clip_rows(clip)
++        runtime = self.people.runtime
++        detector = DinoPersonDetector(
++            self.people.dino_checkpoint, self.people.dino_repository, device=runtime.device,
++            confidence=runtime.dino_detector.confidence, short_side=runtime.dino_detector.short_side,
++            max_long_side=runtime.dino_detector.max_long_side,
++        )
++        associator = BotSortAssociator()
++        history: list[list[dict[str, Any]]] = []
++        counts: list[int] = []
++        start = time.perf_counter()
++        try:
++            for row in rows:
++                image = store.read_bgr(int(row))
++                detection = detector.predict(PersonDetectionRequest(image))
++                counts.append(len(detection.scores))
++                history.append(associator.update(detection, image))
++        finally:
++            detector.unload()
++        detection_seconds = time.perf_counter() - start
++        # In all-track, noninteractive mode video_path is a diagnostic label;
++        # select_and_complete_tracks performs no video read or UI operation.
++        tracked = select_and_complete_tracks(history, TrackRequest(clip.clip_id, None, False), n)
++        ids = tracked.track_ids
++        if len(ids) > self.max_tracks:
++            raise ValueError(f"{clip.clip_id}: {len(ids)} tracks exceed explicit cap {self.max_tracks}")
++        p = len(ids)
++        boxes: np.ndarray = np.zeros((n, p, 3), np.float32)
++        observed: np.ndarray = np.zeros((n, p), bool)
++        for person, track_id in enumerate(ids):
++            mask = tracked.observed_mask(track_id).numpy()
++            observed[:, person] = mask
++            boxes[mask, person] = tracked.bbx_xys(track_id, base_enlarge=runtime.tracking.bbox_enlarge).numpy()[mask]
++        keypoints: np.ndarray = np.zeros((n, p, 17, 3), np.float32)
++        frames, people = np.nonzero(observed)
++        pose = ViTPosePose2D(
++            self.people.vitpose_checkpoint, device=runtime.device, flip_test=runtime.vitpose.flip_test,
++            batch_size=runtime.vitpose.batch_size, head_config=runtime.vitpose.head, precision="float32",
++        )
++        start = time.perf_counter()
++        completed_crops = 0
++        try:
++            if len(frames):
++                request = Pose2DFrameSequenceRequest(
++                    ((index, store.read_bgr(int(row))) for index, row in enumerate(rows)),
++                    torch.from_numpy(boxes[frames, people]), torch.from_numpy(frames.astype(np.int64)),
++                )
++                result = pose.predict(request).keypoints
++                if result.shape != (len(frames), 17, 3) or result.device.type != "cpu" or result.dtype != torch.float32:
++                    raise ValueError("ViTPose must preserve every requested observed crop as CPU float32 COCO17")
++                keypoints[frames, people] = result.numpy()
++                completed_crops = len(result)
++        finally:
++            pose.unload()
++        pose_seconds = time.perf_counter() - start
++        court = CourtKPModule(self.court)
++        start = time.perf_counter()
++        try:
++            rgb = cv2.cvtColor(store.read_bgr(int(rows[0])), cv2.COLOR_BGR2RGB)
++            try:
++                prediction = court.predict_image(rgb)
++                court_points, court_valid = prediction.points_px, prediction.valid
++                diagnostics: dict[str, Any] = {"geometry": prediction.diagnostics, "region_selection": prediction.region_selection}
++            except CourtRegionUnavailable as exc:
++                # Search really executed; this is a measured absent context.
++                # Decoder/model/runtime exceptions are deliberately not caught.
++                court_points = np.zeros((14, 2), np.float32)
++                court_valid = np.zeros(14, bool)
++                diagnostics = {"status": "no_supported_region", "candidates": list(exc.candidates)}
++        finally:
++            court.unload()
++        arrays = ContextArrays(
++            frame_index=store.frames["frame_index"][rows].copy(), pts=store.frames["pts"][rows].copy(),
++            detection_count=np.asarray(counts, np.int32), track_ids=np.asarray(ids, np.int64),
++            boxes_xys=boxes, track_observed=observed, keypoints=keypoints,
++            court_points=court_points, court_valid=court_valid,
++        )
++        return GeneratedContext(arrays, {
++            "status": "complete", "person_region_policy": "full_frame",
++            "person_detection_frames": len(counts), "tracking_frames": len(history), "pose_crops": completed_crops,
++            "court_frame_indices": [0], "court_diagnostics": diagnostics,
++            "seconds": {"detection_tracking": detection_seconds, "pose": pose_seconds,
++                        "court": time.perf_counter() - start},
++        })
+diff --git a/src/tasks/ball_refiner/data/context_shards.py b/src/tasks/ball_refiner/data/context_shards.py
+new file mode 100644
+index 00000000..2032ef26
+--- /dev/null
++++ b/src/tasks/ball_refiner/data/context_shards.py
+@@ -0,0 +1,152 @@
++"""Pinned whole-clip generation and exact, immutable context-cache assembly."""
++
++from __future__ import annotations
++
++import copy
++import json
++import shutil
++from pathlib import Path
++from typing import Any
++
++from src.tasks.ball_detection.data.store import shard_name
++from src.tasks.ball_refiner.data.context_cache import (
++    ContextCache,
++    ContextProducer,
++    context_cache_identity,
++    generate_context_cache,
++)
++from src.tasks.ball_refiner.data.evidence_cache import EvidenceCache
++from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
++from src.utils.checksum import dual_sha256
++
++PLAN_SCHEMA = "ball_refiner_context_shards.v1"
++
++
++def _shards(evidence: EvidenceCache) -> list[dict[str, Any]]:
++    # Never split a tracking sequence, select by labels, or pack unrelated clips.
++    return [{"index": index, "clip_id": record["clip"]["clip_id"],
++             "source": record["clip"]["source"], "frames": record["clip"]["frame_count"],
++             "jpeg_shard_sha256": record["jpeg_shard_sha256"]}
++            for index, record in enumerate(evidence.manifest["clips"])]
++
++
++def write_context_plan(evidence: EvidenceCache, *, producer: ContextProducer, output: Path) -> Path:
++    """Pin all detector clips and model/code identity before any queued inference."""
++    if not output.is_absolute():
++        raise ValueError("Context plan output must be absolute")
++    if output.exists():
++        raise FileExistsError(f"Context plan output already exists: {output}")
++    plan = {
++        "schema": PLAN_SCHEMA,
++        "identity": {**context_cache_identity(evidence), "model_identity": json_value(producer.identity())},
++        "shards": _shards(evidence),
++    }
++    output.mkdir(parents=True, exist_ok=False)
++    path = output / "plan.json"
++    write_json_atomic(path, plan)
++    return path
++
++
++def read_context_plan(path: Path, evidence: EvidenceCache) -> dict[str, Any]:
++    """Validate complete ordered coverage and current input identity on every use."""
++    if not path.is_absolute():
++        raise ValueError("Context plan path must be absolute")
++    digest = dual_sha256(path)
++    plan: dict[str, Any] = json.loads(path.read_text())
++    if (set(plan) != {"schema", "identity", "shards"} or plan["schema"] != PLAN_SCHEMA
++            or plan["shards"] != _shards(evidence)):
++        raise ValueError("Context plan must cover every detector clip exactly once in order")
++    identity = plan["identity"]
++    current = context_cache_identity(evidence)
++    if (not isinstance(identity, dict) or set(identity) != {*current, "model_identity"}
++            or not isinstance(identity["model_identity"], dict)
++            or any(identity[key] != value for key, value in current.items())):
++        raise ValueError("Context plan input/generator identity changed")
++    if dual_sha256(path) != digest:
++        raise ValueError("Context plan changed during read")
++    return plan
++
++
++def generate_context_shard(
++    evidence: EvidenceCache, *, plan_path: Path, shard_index: int,
++    producer: ContextProducer, output: Path,
++) -> Path:
++    plan = read_context_plan(plan_path, evidence)
++    if type(shard_index) is not int or not 0 <= shard_index < len(plan["shards"]):
++        raise ValueError("Shard index must address one whole clip in the plan")
++    return generate_context_cache(
++        evidence, output=output, producer=producer,
++        clip_ids=(plan["shards"][shard_index]["clip_id"],), expected_identity=plan["identity"],
++    )
++
++
++def merge_context_shards(
++    evidence: EvidenceCache, *, plan_path: Path, shards: tuple[Path, ...], output: Path,
++) -> Path:
++    """Copy verified NPZ bytes; publish a normal ContextCache only at full coverage.
++
++    Input paths are explicit, including replacement attempts. No directory scan,
++    latest-attempt preference, partial recovery, hard links or in-place mutation.
++    Source caches remain usable independently and retain their failure history.
++    """
++    if not output.is_absolute():
++        raise ValueError("Merged context output must be absolute")
++    if output.exists():
++        raise FileExistsError(f"Merged context output already exists: {output}")
++    plan_digest = dual_sha256(plan_path)
++    plan = read_context_plan(plan_path, evidence)
++    if len(shards) != len(plan["shards"]) or len({path.resolve() for path in shards}) != len(shards):
++        raise ValueError("Assembly requires one unique shard per planned clip")
++    caches: dict[str, ContextCache] = {}
++    receipts = []
++    for path in shards:
++        manifest_path = path / "manifest.json"
++        digest = dual_sha256(manifest_path)
++        cache = ContextCache(path, evidence)
++        if any(cache.manifest.get(key) != value for key, value in plan["identity"].items()):
++            raise ValueError(f"Shard model/code/input identity differs from the plan: {path}")
++        if len(cache.clip_ids) != 1 or cache.clip_ids[0] in caches:
++            raise ValueError("Each planned clip must be covered by exactly one whole-clip shard")
++        if dual_sha256(manifest_path) != digest:
++            raise ValueError("Shard manifest changed during assembly preflight")
++        caches[cache.clip_ids[0]] = cache
++        receipts.append({"directory": str(path), "manifest_sha256": digest, "clip_id": cache.clip_ids[0]})
++    if set(caches) != set(evidence.clip_ids):
++        raise ValueError("Shards do not cover the complete detector selection")
++    manifest: dict[str, Any] = {
++        **copy.deepcopy(plan["identity"]), "status": "building",
++        "selection": {"clip_ids": list(evidence.clip_ids), "scope": "all_evidence"},
++        "assembly": {"schema": PLAN_SCHEMA, "plan": {"path": str(plan_path), "sha256": plan_digest},
++                     "shards": sorted(receipts, key=lambda item: evidence.clip_ids.index(item["clip_id"]))},
++        "clips": [],
++    }
++    (output / "clips").mkdir(parents=True, exist_ok=False)
++    write_json_atomic(output / "manifest.json", manifest)
++    for clip_id in evidence.clip_ids:
++        cache = caches[clip_id]
++        cache.load(clip_id)  # Shapes, checksum, complete execution receipt and exact frame/PTS.
++        record = copy.deepcopy(cache.manifest["clips"][0])
++        jpeg = evidence.store.directory / "shards" / shard_name(record["clip"]["index"])
++        if dual_sha256(jpeg) != record["jpeg_shard_sha256"]:
++            raise ValueError(f"JPEG shard changed before assembly: {clip_id}")
++        source, destination = cache.directory / record["file"], output / record["file"]
++        with source.open("rb") as src, destination.open("xb") as dst:
++            shutil.copyfileobj(src, dst)
++        if dual_sha256(destination) != record["sha256"] or dual_sha256(source) != record["sha256"]:
++            raise ValueError(f"Context NPZ changed during assembly: {clip_id}")
++        manifest["clips"].append(record)
++        write_json_atomic(output / "manifest.json", manifest)
++    # Recheck after the final copy, including clips read early in the assembly.
++    for record in manifest["clips"]:
++        jpeg = evidence.store.directory / "shards" / shard_name(record["clip"]["index"])
++        if (dual_sha256(jpeg) != record["jpeg_shard_sha256"]
++                or dual_sha256(output / record["file"]) != record["sha256"]):
++            raise ValueError("JPEG or assembled NPZ changed before publication")
++    for receipt in receipts:
++        if dual_sha256(Path(receipt["directory"]) / "manifest.json") != receipt["manifest_sha256"]:
++            raise ValueError("Shard manifest changed before publication")
++    if dual_sha256(plan_path) != plan_digest or read_context_plan(plan_path, evidence) != plan:
++        raise ValueError("Context plan changed before publication")
++    manifest["status"] = "complete"
++    write_json_atomic(output / "manifest.json", manifest)
++    return output
+diff --git a/src/tasks/ball_refiner/data/evidence_cache.py b/src/tasks/ball_refiner/data/evidence_cache.py
+index a6e6e130..3d93250c 100644
+--- a/src/tasks/ball_refiner/data/evidence_cache.py
++++ b/src/tasks/ball_refiner/data/evidence_cache.py
+@@ -13,15 +13,17 @@ import torch
+ from omegaconf import OmegaConf
+ 
+ from src.tasks.ball_detection.data.store import (
+-    SOURCES,
+-    SPLIT_CODES,
+     BallFrameStore,
+-    ClipRecord,
+     shard_name,
+ )
+ from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
+ from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
+ from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
++from src.tasks.ball_refiner.data.cache_identity import (
++    clip_record,
++    select_clips,
++    store_hashes,
++)
+ from src.tasks.ball_refiner.data.evidence import ClipEvidence
+ from src.tasks.ball_refiner.data.evidence_inference import (
+     WINDOW_SELECTION,
+@@ -33,33 +35,6 @@ from src.utils.checksum import dual_sha256
+ SCHEMA = "ball_refiner_detector_evidence.v1"
+ 
+ 
+-def _clip_record(clip: ClipRecord) -> dict[str, Any]:
+-    return {**asdict(clip), "track_ids": list(clip.track_ids)}
+-
+-
+-def _store_hashes(directory: Path) -> dict[str, str]:
+-    return {name: dual_sha256(directory / name) for name in ("metadata.json", "index.npz")}
+-
+-
+-def select_clips(
+-    store: BallFrameStore, *, splits: tuple[str, ...], sources: tuple[str, ...],
+-) -> tuple[ClipRecord, ...]:
+-    """Select only explicit source/split pairs; never select by label quality."""
+-    for name, requested, allowed in (("splits", splits, SPLIT_CODES), ("sources", sources, SOURCES)):
+-        if not requested or len(set(requested)) != len(requested) or not set(requested) <= set(allowed):
+-            raise ValueError(f"Invalid or repeated {name}: {requested}")
+-    groups: dict[tuple[str, str], str] = {}
+-    for clip in store.clips:
+-        group = (clip.source, clip.group_id)
+-        if group in groups and groups[group] != clip.split:
+-            raise ValueError(f"Source group crosses splits: {group}")
+-        groups[group] = clip.split
+-    clips = tuple(clip for clip in store.clips if clip.split in splits and clip.source in sources)
+-    if {(clip.source, clip.split) for clip in clips} != {(source, split) for source in sources for split in splits}:
+-        raise ValueError("Every requested source/split pair must contain at least one clip")
+-    return clips
+-
+-
+ def generate_evidence_cache(
+     *, store_directory: Path, checkpoint: Path, output: Path, splits: tuple[str, ...],
+     sources: tuple[str, ...], device: str, subpixel_refine: bool,
+@@ -76,7 +51,7 @@ def generate_evidence_cache(
+         raise ValueError("Cache input and output paths must be absolute")
+     if output.exists():
+         raise FileExistsError(f"Evidence cache output already exists: {output}")
+-    hashes = _store_hashes(store_directory)
++    hashes = store_hashes(store_directory)
+     store = BallFrameStore(store_directory)
+     clips = select_clips(store, splits=splits, sources=sources)
+     checkpoint_hash = dual_sha256(checkpoint)
+@@ -99,7 +74,7 @@ def generate_evidence_cache(
+         "schema": SCHEMA, "status": "building",
+         "generator_sha256": {
+             name: dual_sha256(Path(__file__).with_name(name))
+-            for name in ("evidence.py", "evidence_inference.py", "evidence_cache.py")
++            for name in ("evidence.py", "evidence_inference.py", "evidence_cache.py", "cache_identity.py")
+         },
+         "store": {"directory": str(store_directory.resolve()), "sha256": hashes},
+         "detector": {
+@@ -133,13 +108,13 @@ def generate_evidence_cache(
+         with (output / relative).open("xb") as stream:
+             np.savez_compressed(stream, **evidence.arrays())
+         manifest["clips"].append({
+-            "clip": _clip_record(clip), "file": relative, "sha256": dual_sha256(output / relative),
++            "clip": clip_record(clip), "file": relative, "sha256": dual_sha256(output / relative),
+             "jpeg_shard_sha256": shard_hash, "heatmap_size_hw": list(evidence.heatmap_size_hw),
+         })
+         write_json_atomic(output / "manifest.json", manifest)
+         print(json.dumps({"completed_clips": len(manifest["clips"]), "total_clips": len(clips),
+                           "clip_id": clip.clip_id, "frames": clip.frame_count}), flush=True)
+-    if _store_hashes(store_directory) != hashes or dual_sha256(checkpoint) != checkpoint_hash:
++    if store_hashes(store_directory) != hashes or dual_sha256(checkpoint) != checkpoint_hash:
+         raise ValueError("Store or checkpoint changed during cache generation")
+     manifest["status"] = "complete"
+     write_json_atomic(output / "manifest.json", manifest)
+@@ -156,7 +131,7 @@ class EvidenceCache:
+         manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+         if manifest["schema"] != SCHEMA or manifest["status"] != "complete":
+             raise ValueError("Evidence cache is incomplete or has an unsupported schema")
+-        if manifest["store"]["sha256"] != _store_hashes(store.directory):
++        if manifest["store"]["sha256"] != store_hashes(store.directory):
+             raise ValueError("Evidence cache belongs to different store metadata/labels")
+         if manifest["coordinate_system"] != "source_xy_div_size_minus_one":
+             raise ValueError("Evidence cache coordinates must use source endpoint normalization")
+@@ -174,7 +149,7 @@ class EvidenceCache:
+         if selection["clip_ids"] != list(self.clip_ids) or [r["clip"]["clip_id"] for r in records] != list(self.clip_ids):
+             raise ValueError("Evidence cache does not cover every declared clip exactly once")
+         for clip, record in zip(clips, records, strict=True):
+-            if record["clip"] != _clip_record(clip) or record["file"] != f"clips/clip-{clip.index:05d}.npz":
++            if record["clip"] != clip_record(clip) or record["file"] != f"clips/clip-{clip.index:05d}.npz":
+                 raise ValueError(f"Cache clip metadata/path disagrees with store: {clip.clip_id}")
+         self.manifest: dict[str, Any] = manifest
+         self._records = {record["clip"]["clip_id"]: record for record in records}
+diff --git a/src/tasks/ball_refiner/data/gaps.py b/src/tasks/ball_refiner/data/gaps.py
+index cf73cb3a..2339cf16 100644
+--- a/src/tasks/ball_refiner/data/gaps.py
++++ b/src/tasks/ball_refiner/data/gaps.py
+@@ -11,7 +11,7 @@ from numpy.typing import NDArray
+ 
+ from src.tasks.ball_detection.data.store import ClipRecord
+ from src.tasks.ball_detection.model_io.contracts import BallCandidates
+-from src.tasks.ball_refiner.data.windows import CANDIDATE_FIELDS
++from src.tasks.ball_refiner.data.inputs import CANDIDATE_FIELDS
+ from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
+ 
+ 
+diff --git a/src/tasks/ball_refiner/data/inputs.py b/src/tasks/ball_refiner/data/inputs.py
+new file mode 100644
+index 00000000..b3387c1a
+--- /dev/null
++++ b/src/tasks/ball_refiner/data/inputs.py
+@@ -0,0 +1,114 @@
++"""Label-free input slicing, person-axis collation and device transfer."""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++from dataclasses import fields
++
++import torch
++
++from src.tasks.ball_detection.model_io.contracts import BallCandidates
++from src.tasks.ball_refiner.data.evidence import ClipEvidence
++from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
++from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
++
++CANDIDATE_FIELDS = ("coords", "scores", "valid", "cells", "patches", "patch_valid")
++POSE_FIELDS = ("pose_uv", "pose_confidence", "pose_valid")
++STATIC_FIELDS = ("court_uv", "court_confidence", "court_valid")
++
++
++def input_to(inputs: Refiner2DInput, device: torch.device) -> Refiner2DInput:
++    candidates = BallCandidates(
++        **{name: getattr(inputs.candidates, name).to(device) for name in CANDIDATE_FIELDS},
++        config=inputs.candidates.config,
++    )
++    return Refiner2DInput(candidates=candidates, **{
++        field.name: getattr(inputs, field.name).to(device)
++        for field in fields(inputs) if field.name != "candidates"
++    })
++
++
++def slice_input(inputs: Refiner2DInput, start: int, stop: int) -> Refiner2DInput:
++    """Copy real frames and retain every person with a valid joint in this window.
++
++    Cumulative clip track IDs are provenance, not a model size limit. Only fully
++    masked columns disappear; active people are never ranked or truncated.
++    """
++    times = inputs.timestamps_seconds
++    if times.ndim != 2 or times.shape[0] != 1 or not 0 <= start < stop <= times.shape[1]:
++        raise ValueError("Input slice requires one camera and a nonempty real frame range")
++    candidates = BallCandidates(**{
++        name: getattr(inputs.candidates, name)[:, start:stop].clone() for name in CANDIDATE_FIELDS
++    }, config=inputs.candidates.config)
++    valid = inputs.pose_valid[:, start:stop]
++    active = valid.any(dim=(0, 1, 3))
++    return Refiner2DInput(candidates=candidates, **{
++        name: getattr(inputs, name)[:, start:stop, active].clone() for name in POSE_FIELDS
++    }, timestamps_seconds=times[:, start:stop].clone(),
++        **{name: getattr(inputs, name).clone() for name in STATIC_FIELDS})
++
++
++def detector_only_input(
++    evidence: ClipEvidence, start: int, length: int, config: Refiner2DConfig,
++) -> Refiner2DInput:
++    """Construct the explicitly configured ablation; never invent missing context."""
++    if config.use_pose or config.use_court or not config.use_detector:
++        raise ValueError("Detector-only input requires use_detector=true, use_pose/use_court=false")
++    if not 0 <= start < start + length <= len(evidence.frame_index):
++        raise ValueError("Window must contain only real source frames")
++    if config.patch_size != evidence.candidates.config.patch_size:
++        raise ValueError("Model and evidence patch sizes differ")
++    candidates = BallCandidates(**{
++        name: getattr(evidence.candidates, name)[:, start:start + length].clone()
++        for name in CANDIDATE_FIELDS
++    }, config=evidence.candidates.config)
++    return detector_only_sequence_input(
++        candidates, torch.from_numpy(evidence.timestamps_seconds[start:start + length].copy())[None], config,
++    )
++
++
++def detector_only_sequence_input(
++    candidates: BallCandidates, timestamps_seconds: torch.Tensor, config: Refiner2DConfig,
++) -> Refiner2DInput:
++    """Construct the label-free ablation from full-camera evidence."""
++    if config.use_pose or config.use_court or not config.use_detector:
++        raise ValueError("Detector-only input requires use_detector=true, use_pose/use_court=false")
++    if (timestamps_seconds.ndim != 2 or timestamps_seconds.shape[0] != 1
++            or config.patch_size != candidates.config.patch_size):
++        raise ValueError("Require one camera timeline and matching candidate patch size")
++    length = timestamps_seconds.shape[1]
++    return Refiner2DInput(
++        candidates=candidates,
++        timestamps_seconds=timestamps_seconds,
++        pose_uv=torch.zeros(1, length, 0, 4, 2), pose_confidence=torch.zeros(1, length, 0, 4),
++        pose_valid=torch.zeros(1, length, 0, 4, dtype=torch.bool),
++        court_uv=torch.zeros(1, config.court_keypoints, 2), court_confidence=torch.zeros(1, config.court_keypoints),
++        court_valid=torch.zeros(1, config.court_keypoints, dtype=torch.bool),
++    )
++
++
++def collate_inputs(inputs: Sequence[Refiner2DInput]) -> Refiner2DInput:
++    """Pad only the unordered person axis; temporal and candidate axes must match."""
++    if not inputs:
++        raise ValueError("Cannot collate an empty input batch")
++    length = inputs[0].timestamps_seconds.shape[1]
++    config = inputs[0].candidates.config
++    if any(x.timestamps_seconds.shape != (1, length) or x.candidates.config != config for x in inputs):
++        raise ValueError("Collation requires matching real time windows and candidate settings")
++    people = max(x.pose_uv.shape[2] for x in inputs)
++    pose: dict[str, torch.Tensor] = {}
++    for name in ("pose_uv", "pose_confidence", "pose_valid"):
++        values = []
++        for item in inputs:
++            value = getattr(item, name)
++            padded = value.new_zeros((1, length, people, *value.shape[3:]))
++            padded[:, :, :value.shape[2]] = value
++            values.append(padded)
++        pose[name] = torch.cat(values)
++    candidates = BallCandidates(**{
++        name: torch.cat([getattr(x.candidates, name) for x in inputs]) for name in CANDIDATE_FIELDS
++    }, config=config)
++    return Refiner2DInput(candidates=candidates, **pose, **{
++        name: torch.cat([getattr(x, name) for x in inputs])
++        for name in ("timestamps_seconds", *STATIC_FIELDS)
++    })
+diff --git a/src/tasks/ball_refiner/data/temporal.py b/src/tasks/ball_refiner/data/temporal.py
+new file mode 100644
+index 00000000..179df3b3
+--- /dev/null
++++ b/src/tasks/ball_refiner/data/temporal.py
+@@ -0,0 +1,39 @@
++"""Real-frame temporal windows and deterministic centre ownership."""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++
++import numpy as np
++from numpy.typing import NDArray
++
++
++def window_starts(frames: int, length: int, stride: int) -> tuple[int, ...]:
++    """Backfill the tail with real frames; a short clip is an explicit error."""
++    if length < 1 or not 1 <= stride <= length or frames < length:
++        raise ValueError("Windows require frames >= length >= stride >= 1; no padding")
++    starts = list(range(0, frames - length + 1, stride))
++    if starts[-1] != frames - length:
++        starts.append(frames - length)
++    return tuple(starts)
++
++
++def window_owners(frames: int, starts: Sequence[int], length: int) -> NDArray[np.int64]:
++    """One prediction per frame: nearest centre, ties resolved by earlier start."""
++    owners: NDArray[np.int64] = np.full(frames, -1, dtype=np.int64)
++    distances = np.full(frames, np.inf)
++    if not starts or list(starts) != sorted(set(starts)):
++        raise ValueError("Window starts must be nonempty, sorted and unique")
++    for index, start in enumerate(starts):
++        if start < 0 or start + length > frames:
++            raise ValueError("Window exceeds the source timeline")
++        rows = np.arange(start, start + length)
++        distance = np.abs(rows - (start + (length - 1) / 2))
++        take = distance < distances[rows]
++        owners[rows[take]] = index
++        distances[rows[take]] = distance[take]
++    if (owners < 0).any():
++        raise ValueError("Window policy leaves source frames uncovered")
++    return owners
++
++
+diff --git a/src/tasks/ball_refiner/data/windows.py b/src/tasks/ball_refiner/data/windows.py
+index 54919cb6..89dd735c 100644
+--- a/src/tasks/ball_refiner/data/windows.py
++++ b/src/tasks/ball_refiner/data/windows.py
+@@ -11,43 +11,19 @@ from numpy.typing import NDArray
+ from torch.utils.data import Dataset, Sampler
+ 
+ from src.tasks.ball_detection.data.store import ClipRecord
+-from src.tasks.ball_detection.model_io.contracts import BallCandidates
+ from src.tasks.ball_refiner.data.evidence import ClipEvidence
++from src.tasks.ball_refiner.data.inputs import CANDIDATE_FIELDS as CANDIDATE_FIELDS
++from src.tasks.ball_refiner.data.inputs import (
++    collate_inputs,
++    detector_only_input,
++    input_to,
++)
+ from src.tasks.ball_refiner.data.targets import ClipTargets
++from src.tasks.ball_refiner.data.temporal import window_owners as window_owners
++from src.tasks.ball_refiner.data.temporal import window_starts
+ from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
+ from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput, Refiner2DTarget
+ 
+-CANDIDATE_FIELDS = ("coords", "scores", "valid", "cells", "patches", "patch_valid")
+-
+-
+-def window_starts(frames: int, length: int, stride: int) -> tuple[int, ...]:
+-    """Backfill the tail with real frames; a short clip is an explicit error."""
+-    if length < 1 or not 1 <= stride <= length or frames < length:
+-        raise ValueError("Windows require frames >= length >= stride >= 1; no padding")
+-    starts = list(range(0, frames - length + 1, stride))
+-    if starts[-1] != frames - length:
+-        starts.append(frames - length)
+-    return tuple(starts)
+-
+-
+-def window_owners(frames: int, starts: Sequence[int], length: int) -> NDArray[np.int64]:
+-    """One prediction per frame: nearest centre, ties resolved by earlier start."""
+-    owners: NDArray[np.int64] = np.full(frames, -1, dtype=np.int64)
+-    distances = np.full(frames, np.inf)
+-    if not starts or list(starts) != sorted(set(starts)):
+-        raise ValueError("Window starts must be nonempty, sorted and unique")
+-    for index, start in enumerate(starts):
+-        if start < 0 or start + length > frames:
+-            raise ValueError("Window exceeds the source timeline")
+-        rows = np.arange(start, start + length)
+-        distance = np.abs(rows - (start + (length - 1) / 2))
+-        take = distance < distances[rows]
+-        owners[rows[take]] = index
+-        distances[rows[take]] = distance[take]
+-    if (owners < 0).any():
+-        raise ValueError("Window policy leaves source frames uncovered")
+-    return owners
+-
+ 
+ @dataclass(frozen=True)
+ class LoadedClip:
+@@ -77,46 +53,17 @@ class RefinerBatch:
+     target: Refiner2DTarget
+ 
+     def to(self, device: torch.device) -> RefinerBatch:
+-        source = self.inputs
+-        candidates = BallCandidates(
+-            **{name: getattr(source.candidates, name).to(device) for name in CANDIDATE_FIELDS},
+-            config=source.candidates.config,
+-        )
+-        inputs = Refiner2DInput(candidates=candidates, **{
+-            field.name: getattr(source, field.name).to(device)
+-            for field in fields(source) if field.name != "candidates"
+-        })
+         target = Refiner2DTarget(**{
+             field.name: getattr(self.target, field.name).to(device) for field in fields(self.target)
+         })
+-        return RefinerBatch(inputs, target)
++        return RefinerBatch(input_to(self.inputs, device), target)
+ 
+ 
+ def detector_only_window(
+     clip: LoadedClip, start: int, length: int, config: Refiner2DConfig,
+ ) -> WindowSample:
+-    """An explicit ablation, never a fallback for missing generated context."""
+-    if config.use_pose or config.use_court or not config.use_detector:
+-        raise ValueError("Detector-only dataset requires use_detector=true, use_pose/use_court=false")
+-    if not 0 <= start < start + length <= clip.record.frame_count:
+-        raise ValueError("Window must contain only real source frames")
+-    evidence = clip.evidence
+-    if config.patch_size != evidence.candidates.config.patch_size:
+-        raise ValueError("Model and evidence patch sizes differ")
+-    candidates = BallCandidates(**{
+-        name: getattr(evidence.candidates, name)[:, start:start + length].clone()
+-        for name in CANDIDATE_FIELDS
+-    }, config=evidence.candidates.config)
+-    inputs = Refiner2DInput(
+-        candidates=candidates,
+-        timestamps_seconds=torch.from_numpy(evidence.timestamps_seconds[start:start + length].copy())[None],
+-        pose_uv=torch.zeros(1, length, 0, 4, 2),
+-        pose_confidence=torch.zeros(1, length, 0, 4),
+-        pose_valid=torch.zeros(1, length, 0, 4, dtype=torch.bool),
+-        court_uv=torch.zeros(1, config.court_keypoints, 2),
+-        court_confidence=torch.zeros(1, config.court_keypoints),
+-        court_valid=torch.zeros(1, config.court_keypoints, dtype=torch.bool),
+-    )
++    """Attach labels only at the training boundary."""
++    inputs = detector_only_input(clip.evidence, start, length, config)
+     return WindowSample(inputs, clip.targets.target(start, start + length), clip.record.clip_id, start)
+ 
+ 
+@@ -124,28 +71,7 @@ def collate_windows(samples: Sequence[WindowSample]) -> RefinerBatch:
+     """Pad only the unordered person axis; differing temporal lengths fail."""
+     if not samples:
+         raise ValueError("Cannot collate an empty batch")
+-    inputs = [sample.inputs for sample in samples]
+-    length = inputs[0].timestamps_seconds.shape[1]
+-    config = inputs[0].candidates.config
+-    if any(x.timestamps_seconds.shape != (1, length) or x.candidates.config != config for x in inputs):
+-        raise ValueError("Collation requires matching real time windows and candidate settings")
+-    people = max(x.pose_uv.shape[2] for x in inputs)
+-    pose: dict[str, torch.Tensor] = {}
+-    for name in ("pose_uv", "pose_confidence", "pose_valid"):
+-        values = []
+-        for item in inputs:
+-            value = getattr(item, name)
+-            padded = value.new_zeros((1, length, people, *value.shape[3:]))
+-            padded[:, :, :value.shape[2]] = value
+-            values.append(padded)
+-        pose[name] = torch.cat(values)
+-    candidates = BallCandidates(**{
+-        name: torch.cat([getattr(x.candidates, name) for x in inputs]) for name in CANDIDATE_FIELDS
+-    }, config=config)
+-    batch = Refiner2DInput(candidates=candidates, **pose, **{
+-        name: torch.cat([getattr(x, name) for x in inputs])
+-        for name in ("timestamps_seconds", "court_uv", "court_confidence", "court_valid")
+-    })
++    batch = collate_inputs([sample.inputs for sample in samples])
+     target = Refiner2DTarget(**{
+         field.name: torch.cat([getattr(x.target, field.name) for x in samples])
+         for field in fields(Refiner2DTarget)
+diff --git a/src/tasks/ball_refiner/inference.py b/src/tasks/ball_refiner/inference.py
+new file mode 100644
+index 00000000..90f4acf6
+--- /dev/null
++++ b/src/tasks/ball_refiner/inference.py
+@@ -0,0 +1,91 @@
++"""Annotation-free single-camera inference shared by evaluation and deployment."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass, fields
++from typing import TypeAlias
++
++import numpy as np
++import torch
++from numpy.typing import NDArray
++
++from src.tasks.ball_refiner.data.inputs import collate_inputs, input_to, slice_input
++from src.tasks.ball_refiner.data.temporal import window_owners, window_starts
++from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
++from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
++from src.tasks.base.model_io import BoundModelIO
++
++RefinerPair: TypeAlias = BoundModelIO[Refiner2DInput, torch.Tensor, BallGMM2D]
++
++
++@dataclass(frozen=True)
++class SequencePrediction:
++    """Complete CPU GMM and the exact source window chosen for every real frame."""
++
++    distribution: BallGMM2D
++    window_start: NDArray[np.int64]
++    time_index: NDArray[np.int64]
++    window_length: int
++
++    def __post_init__(self) -> None:
++        batch, frames = self.distribution.means.shape[:2]
++        if batch != 1 or self.distribution.means.device.type != "cpu":
++            raise ValueError("Sequence prediction must be one complete camera on CPU")
++        if type(self.window_length) is not int or not 1 <= self.window_length <= frames:
++            raise ValueError("Invalid real prediction window length")
++        for value in (self.window_start, self.time_index):
++            if value.dtype != np.int64 or value.shape != (frames,):
++                raise ValueError("Prediction provenance must address every source frame")
++        if ((self.window_start < 0).any() or (self.window_start + self.window_length > frames).any()
++                or (self.time_index < 0).any() or (self.time_index >= self.window_length).any()
++                or not np.array_equal(self.window_start + self.time_index, np.arange(frames))):
++            raise ValueError("Prediction provenance does not address real source frames")
++
++
++def predict_sequence(
++    pair: RefinerPair, inputs: Refiner2DInput, *, window_length: int, stride: int,
++    batch_size: int, device: torch.device,
++) -> SequencePrediction:
++    """Copy all GMM fields atomically from the nearest-centre window, earlier on ties.
++
++    Inputs contain one camera's entire CPU timeline, including explicit pose/court
++    if configured. No labels, frame selection by detections, time padding, component
++    averaging, presence threshold or fallback is applied. The caller places the model
++    on the requested device; only each inference batch moves there.
++    """
++    if any(type(value) is not int or value < 1 for value in (window_length, stride, batch_size)):
++        raise ValueError("Inference window length, stride and batch size must be positive integers")
++    times = inputs.timestamps_seconds
++    if times.ndim != 2 or times.shape[0] != 1 or times.device.type != "cpu":
++        raise ValueError("Sequence inference requires one camera's complete CPU timeline")
++    frames = times.shape[1]
++    starts = window_starts(frames, window_length, stride)
++    owners = window_owners(frames, starts, window_length)
++    # Validate the global timeline too: a discontinuity could otherwise sit between
++    # disjoint windows and escape each batch's strictly-increasing time check.
++    with torch.no_grad():
++        pair.build_call(inputs)
++    collected: dict[str, torch.Tensor] = {}
++    was_training = pair.model.training
++    try:
++        pair.model.eval()
++        with torch.no_grad():
++            for offset in range(0, len(starts), batch_size):
++                selected = starts[offset:offset + batch_size]
++                batch = collate_inputs([slice_input(inputs, start, start + window_length) for start in selected])
++                prediction = pair.run(input_to(batch, device))
++                for field in fields(prediction):
++                    values = getattr(prediction, field.name).cpu()
++                    if values.shape[:2] != (len(selected), window_length):
++                        raise ValueError("Model output does not cover the requested real windows")
++                    if field.name not in collected:
++                        collected[field.name] = torch.empty((1, frames, *values.shape[2:]), dtype=values.dtype)
++                    for row, start in enumerate(selected):
++                        indices = np.flatnonzero(owners[start:start + window_length] == offset + row)
++                        collected[field.name][0, start + indices] = values[row, indices]
++    finally:
++        pair.model.train(was_training)
++    selected_starts = np.asarray(starts, dtype=np.int64)[owners]
++    return SequencePrediction(
++        BallGMM2D(**collected), selected_starts, np.arange(frames, dtype=np.int64) - selected_starts, window_length,
++    )
+diff --git a/src/tasks/ball_refiner/training/configuration.py b/src/tasks/ball_refiner/training/configuration.py
+index ddfabfbb..66578032 100644
+--- a/src/tasks/ball_refiner/training/configuration.py
++++ b/src/tasks/ball_refiner/training/configuration.py
+@@ -117,8 +117,6 @@ class PilotConfig:
+         store = resolver.resolve(PathRole.DATA, data["store"])
+         evidence = resolver.resolve(PathRole.CACHE, data["evidence"])
+         output = resolver.resolve(PathRole.OUTPUT, run["output_dir"])
+-        if not store.is_dir() or not evidence.is_dir():
+-            raise FileNotFoundError("Store and evidence cache directories must exist")
+         if any(output == path or output.is_relative_to(path) or path.is_relative_to(output) for path in (store, evidence)):
+             raise ValueError("Pilot output must be separate from input store/cache")
+         return cls(model, train, compilation, store, evidence, output, sources, length, stride,
+diff --git a/src/tasks/ball_refiner/training/evaluation.py b/src/tasks/ball_refiner/training/evaluation.py
+index 5c0bca27..6da23de7 100644
+--- a/src/tasks/ball_refiner/training/evaluation.py
++++ b/src/tasks/ball_refiner/training/evaluation.py
+@@ -3,7 +3,7 @@
+ from __future__ import annotations
+ 
+ from dataclasses import fields
+-from typing import Any, TypeAlias
++from typing import Any
+ 
+ import numpy as np
+ import torch
+@@ -11,53 +11,30 @@ from numpy.typing import NDArray
+ from torch.nn import functional as F
+ 
+ from src.tasks.ball_refiner.data.gaps import fixed_gap_mask, mask_detector_evidence
+-from src.tasks.ball_refiner.data.windows import (
+-    LoadedClip,
+-    collate_windows,
+-    detector_only_window,
+-    window_owners,
+-    window_starts,
+-)
+-from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
++from src.tasks.ball_refiner.data.inputs import detector_only_input
++from src.tasks.ball_refiner.data.windows import LoadedClip
++from src.tasks.ball_refiner.inference import RefinerPair, predict_sequence
+ from src.tasks.ball_refiner.refiner_2d.distribution import (
+     BallGMM2D,
+     conditional_log_density,
+ )
+ from src.tasks.ball_refiner.training.configuration import PilotConfig
+-from src.tasks.base.model_io import BoundModelIO
+-
+-RefinerPair: TypeAlias = BoundModelIO[Refiner2DInput, torch.Tensor, BallGMM2D]
+ 
+ 
+ def predict_clip(
+     pair: RefinerPair, clip: LoadedClip, config: PilotConfig, *, device: torch.device,
+     gap: NDArray[np.bool_],
+ ) -> BallGMM2D:
+-    """Copy the complete GMM from one selected window; never average components."""
++    """Training wrapper; the shared inference core never receives annotations."""
+     frames = clip.record.frame_count
+     if gap.dtype != np.bool_ or gap.shape != (frames,):
+         raise ValueError("Global gap mask must address every source frame")
+-    length = config.window_length
+-    starts = window_starts(frames, length, config.stride)
+-    owners = window_owners(frames, starts, length)
+-    collected: dict[str, torch.Tensor] = {}
+-    pair.model.eval()
+-    for offset in range(0, len(starts), config.training.batch_size):
+-        selected = starts[offset:offset + config.training.batch_size]
+-        batch = collate_windows([detector_only_window(clip, start, length, config.model) for start in selected])
+-        gap_batch = torch.from_numpy(np.stack([gap[start:start + length] for start in selected]))
+-        inputs = mask_detector_evidence(batch.inputs, gap_batch)
+-        batch = type(batch)(inputs, batch.target).to(device)
+-        with torch.no_grad():
+-            prediction = pair.run(batch.inputs)
+-        for field in fields(prediction):
+-            values = getattr(prediction, field.name).cpu()
+-            if field.name not in collected:
+-                collected[field.name] = torch.empty((1, frames, *values.shape[2:]), dtype=values.dtype)
+-            for row, start in enumerate(selected):
+-                indices = np.flatnonzero(owners[start:start + length] == offset + row)
+-                collected[field.name][0, start + indices] = values[row, indices]
+-    return BallGMM2D(**collected)
++    inputs = detector_only_input(clip.evidence, 0, frames, config.model)
++    inputs = mask_detector_evidence(inputs, torch.from_numpy(gap)[None])
++    return predict_sequence(
++        pair, inputs, window_length=config.window_length, stride=config.stride,
++        batch_size=config.training.batch_size, device=device,
++    ).distribution
+ 
+ 
+ def metric_rows(
+diff --git a/src/tasks/ball_refiner/training/runner.py b/src/tasks/ball_refiner/training/runner.py
+index 017e5f36..dddbfc41 100644
+--- a/src/tasks/ball_refiner/training/runner.py
++++ b/src/tasks/ball_refiner/training/runner.py
+@@ -100,6 +100,8 @@ def _save_checkpoint(path: Path, payload: dict[str, Any]) -> None:
+ 
+ def run_training(config_value: DictConfig) -> Path:
+     config = PilotConfig.from_config(config_value)
++    if not config.store.is_dir() or not config.evidence.is_dir():
++        raise FileNotFoundError("Store and evidence cache directories must exist")
+     # Hydra may already have made its metadata subdirectory, but a prior run is never reused.
+     config.output.mkdir(parents=True, exist_ok=True)
+     if any(path.name != "hydra" for path in config.output.iterdir()):

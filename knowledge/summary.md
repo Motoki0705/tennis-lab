@@ -1,4 +1,4 @@
-<!-- knowledge-review: eb069fd037f63105050acdc8adc1b3ab897e43a1d0f873de0b76821d23387da7 on 2026-10-02 -->
+<!-- knowledge-review: 5c80151628645468e9027c7b79bbc9a6ea0130f0b33c473ebfa66be4be8f0661 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・未見評価とpose蓄積の結論を統合。実験結果・採否の変更なし）
@@ -314,8 +314,12 @@ Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6�
 peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害として扱うが、根本原因を断定しない。
 候補recallはepoch 4以降の上積みが小さく、epoch 10–11の再開・延長は行わない。threshold F1との順位逆転も再現した。
 [epoch 9の新cache回収](nodes/ball_refiner/000015-run-i935-evidence-mixed-e9-trainval-r17-20260930.md)で全329 clip / 145,767 frameのhash・読込が一致し、Meiji候補recallはbf16 validationとcamera別でも0.13 pp未満の差だった。
-旧ft-e13より候補recallが高いこととrefinerの改善は別なので、次は旧pilotのrecipeを維持してcacheだけを変え、同一val frameで位置・分布を比較する。testは使わない。
-#964完了までperson/poseを使用しない。比較だけでdeployを変更せず、文脈の採否も同一母数のfull/ablationで判断する。
+[同条件pilot再学習の回収](nodes/ball_refiner/000016-run-i935-detector-only-mixed-e9-s42-r18-20260930.md)は12epoch/3,000更新、560 paired NPZのhash・母数・全既存集計が一致した。
+新pilotはMeiji全cameraで旧pilotよりobservedの裾誤差を抑え、新detector単体に対してもp95を改善するが、中央値の精密定位は劣る。
+TrackNetの観測位置は退行し、chatは中央値が悪化して裾だけ改善。Meiji較正側のgap HDR95 coverageも約86%に留まり、較正済みとは扱わない。
+detectorの一様gap密度によるcoverage=1は全画面領域の自明な結果なので、coverageと面積を併記し、位置誤差を公平な比較とする。
+存在/位置の教師がない層はN/A。次はcourt-onlyのposeなしablationと元動画componentへの切替を費用付きで提案する。
+#964完了までperson/poseを使用せず、ユーザーへの提示前にpipeline defaultを変更しない。testは引き続き未使用。
 
 ### Player Detection
 

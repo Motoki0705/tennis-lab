@@ -510,6 +510,32 @@ checksumとMonte Carlo seedをmanifestへ残す。clip完了ごとに進捗を�
   run.output_dir=ball_refiner/evaluate/detector_only/<evaluation-run-id>
 ```
 
+## 新旧pilotの同一validation比較
+
+`evaluation/pilot_comparison.py::run_comparison`は完了した2つのpilotを復元し、
+全sourceのval（Meiji video_000、TrackNet game9、chat val）で同一frameを比較する。
+学習recipe・split・教師/frame/PTSの一致を要求し、旧pilotは旧cache、新pilotは新cacheを使う。
+source/camera別、Meiji選択側/較正側別に、観測、人工証拠gap、occlusion_estimated参考値、
+interpolated参考値、確定不存在、unknownを分ける。推定ラベルをobserved GTへ昇格させない。
+各指標の母数とN/Aを明示し、frameごとの全GMM・指標・教師理由・入力hashを保存する。
+不存在はrefinerの存在Bernoulli NLLだけが定義され、条件付き位置NLL/coverageはN/A。
+unknownは存在の負例にしない。detector scoreからamodal存在確率を捏造しない。
+
+`evaluation/paired_metrics.py`でGMMのNLLとHDRを既存診断と同じ方法で算出する。
+detectorはnative heatmapを同じJPEG/窓/精度で再推論し、cacheの採用窓・argmaxと照合する。
+`infer_clip_evidence`のheatmap sinkは中心距離が改善するたびに上書きし、最終値を候補と同じ窓に揃える。
+密度はsource UVに写したnative格子の中点を境界とする区分定数分布で、画像端まで積分し、
+明示した一定の一様成分を混合する。全ゼロheatmapは一様分布と定義する。
+HDRは同密度cellを全て含むので平坦分布のcoverageは保守的に100%となる。
+人工gapではdetectorの空間証拠が無く、一様分布・点推定なしと明記する。
+これはRGB遮蔽再推論ではなく、未較正の有限画像密度とR²のGMMとの比較である。
+温度・一様成分率・分散scaleをこの評価でfitしない。設定・実行計画・結果はknowledgeへ記録する。
+
+`visualization/overlay.py`は保存済みGMMの各成分のfull covarianceを表示画素へ変換し、
+2σ楕円を成分weightのalphaで描く。混合平均は点markerとして描き、成分間分散を各楕円へ混ぜない。
+各成分の2σ楕円はGMMの95% HDRではない。storeのsource→JPEG変換率も座標変換に含める。
+具体的なval動画の再現script・入力hash・frame/PTS・読み方は対応するknowledge runへ保存する。
+
 ## 推論bundleの書き出し
 
 `deployment.py`の`export_pilot_bundle`は、完了したpilotのbest checkpointとconfig・data manifest・
