@@ -4,11 +4,42 @@ import argparse
 import json
 from pathlib import Path
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
+from ..artifacts.configuration import artifact_path_resolver
 from .selection import initialize
 from .storage import read_json
 
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.chat_annotation.player_pose",
+    fields=(
+        BoundaryPathField(
+            "campaign",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.DIRECTORY,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "config",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+    ),
+)
 
-def main() -> None:
+
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Court-free ball-store player pose campaign"
     )
@@ -26,9 +57,26 @@ def main() -> None:
     parser.add_argument("--campaign", required=True, type=Path)
     parser.add_argument("--config", type=Path)
     parser.add_argument("--index", type=int)
-    args = parser.parse_args()
-    if not args.campaign.is_absolute():
-        parser.error("--campaign must be absolute")
+    args = parser.parse_args(argv)
+    paths = {"campaign": args.campaign}
+    if args.config is not None:
+        paths["config"] = args.config
+    checked = PATH_BOUNDARY.validate(
+        paths,
+        resolver=artifact_path_resolver(args.campaign.resolve()),
+        independent_artifact_inputs=True,
+    )
+    args.campaign = checked.declared("campaign").path
+    if args.config is not None:
+        args.config = checked.declared("config").path
+    if args.command != "init" and not args.campaign.is_dir():
+        parser.error("--campaign must be an existing campaign directory")
+    if args.command != "init" and args.config is not None:
+        parser.error("--config is accepted only by init")
+    if args.index is not None and args.index < 0:
+        parser.error("--index must be nonnegative")
+    if args.index is not None and args.command not in {"generate-clip", "review-clip"}:
+        parser.error("--index is accepted only by generate-clip and review-clip")
     if args.command == "init":
         if args.config is None:
             parser.error("init requires --config")
