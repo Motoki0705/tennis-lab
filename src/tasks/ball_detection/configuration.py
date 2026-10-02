@@ -13,7 +13,12 @@ from urllib.parse import urlsplit
 
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.base.configuration import BaseRunConfig, BaseTrainingConfig
+from src.tasks.base.configuration import (
+    BaseRunConfig,
+    BaseTrainingConfig,
+    CheckpointInput,
+    resolve_checkpoint_input,
+)
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -260,6 +265,12 @@ class BallRuntimePaths:
     def checkpoint(self, relative: str) -> Path:
         resolved: Path = self.resolver.resolve(PathRole.CHECKPOINT, relative)
         return resolved
+
+    def checkpoint_input(self, mapping: ConfigMapping, key: str, *, path: str) -> CheckpointInput:
+        declared = resolve_checkpoint_input(mapping, key, path=path, resolver=self.resolver)
+        if declared is None:
+            raise SemanticConfigurationError(f"{path}.{key}: checkpoint input is required.")
+        return declared
 
     def output(self, relative: str) -> Path:
         resolved: Path = self.resolver.resolve(PathRole.OUTPUT, relative)
@@ -643,7 +654,7 @@ def validate_model(
         )
         if paths is not None:
             paths.external_asset(repository_path)
-            paths.external_asset(checkpoint_path)
+            paths.checkpoint(checkpoint_path)
     return model
 
 
@@ -1507,7 +1518,7 @@ def validate_visualization(config: DictConfig) -> None:
             "gif",
         },
     )
-    for key in ("store_dir", "clip_id", "checkpoint", "save"):
+    for key in ("store_dir", "clip_id", "save"):
         typed(vis, key, str, path="visualization")
     fps = _required_number(vis, "fps", path="visualization")
     _positive(fps, path="visualization.fps")
@@ -1533,7 +1544,7 @@ def validate_visualization(config: DictConfig) -> None:
     )
     paths.output(cast(str, run["output_dir"]))
     paths.data(cast(str, vis["store_dir"]))
-    paths.checkpoint(cast(str, vis["checkpoint"]))
+    paths.checkpoint_input(vis, "checkpoint", path="visualization")
     paths.artifact(cast(str, vis["save"]))
 
 
@@ -1675,8 +1686,7 @@ def validate_eval(config: DictConfig) -> None:
             "weights_only",
         },
     )
-    for key in ("output_dir", "checkpoint_path"):
-        typed(run, key, str, path="run")
+    typed(run, "output_dir", str, path="run")
     typed(run, "seed", int, path="run")
     _positive(
         cast(int, typed(run, "gpus", int, path="run")),
@@ -1686,7 +1696,7 @@ def validate_eval(config: DictConfig) -> None:
     for key in ("strict", "weights_only"):
         typed(run, key, bool, path="run")
     paths.output(cast(str, run["output_dir"]))
-    paths.checkpoint(cast(str, run["checkpoint_path"]))
+    paths.checkpoint_input(run, "checkpoint_path", path="run")
     DetailedEvaluationConfig.from_config(config)
 
 
@@ -2341,7 +2351,7 @@ def validate_youtube_boundary(config: DictConfig) -> None:
             prediction,
             path="workflow.prediction",
             fields={
-                "checkpoint": str,
+                "checkpoint": (str, dict, DictConfig),
                 "device": str,
                 "sequence_length": int,
                 "window_stride": int,
@@ -2424,7 +2434,7 @@ def validate_youtube_boundary(config: DictConfig) -> None:
             _validate_trimmed_string(
                 prediction["device"], path="workflow.prediction.device"
             )
-        paths.checkpoint(cast(str, prediction["checkpoint"]))
+        paths.checkpoint_input(prediction, "checkpoint", path="workflow.prediction")
         return
     if "discovery" not in workflow:
         workflow = exact_mapping(

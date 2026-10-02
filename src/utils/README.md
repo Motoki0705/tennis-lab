@@ -12,6 +12,7 @@
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
 - **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
 - **`checksum.py`**: 独立した2実装とfileのstat・読取長を照合する `dual_sha256()`。不一致は `FileIntegrityError` で停止し、単独実装への切替や自動再試行を行わない。契約と限界は同関数のdocstringを参照。
+- **`resource_guard.py`**: sampled MemAvailableの継続低下/緊急停止判定と10秒bucketのRAM記録。起動条件は呼出し側が検査する。
 - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
 - **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。

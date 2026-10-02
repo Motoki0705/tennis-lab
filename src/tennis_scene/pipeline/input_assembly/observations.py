@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
+from src.tennis_scene.pipeline.components.ball_points import BallPointsOutput
 from src.tennis_scene.pipeline.components.identity import PlayerIdentitiesOutput
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.observation_types import (
@@ -39,16 +39,18 @@ def gather_people(source: ClipSource, artifacts: Mapping[str, Any]) -> ObjectObs
 
 
 def gather_balls(source: ClipSource, artifacts: Mapping[str, Any]) -> ObjectObservations:
-    rows: list[BallDetectionOutput] = [artifacts[f"ball_{c}"] for c in source.camera_ids]
+    rows: list[BallPointsOutput] = [artifacts[f"ball_{c}"] for c in source.camera_ids]
     for camera_id, row in zip(source.camera_ids, rows, strict=True):
-        if row.camera_id != camera_id or len(row.frame_indices) != source.num_frames:
+        if not isinstance(row, BallPointsOutput):
+            raise TypeError("Point consumers require unfiltered refiner points")
+        if row.camera_id != camera_id or not np.array_equal(row.frame_indices, np.arange(source.num_frames)):
             raise ValueError("Ball artifact camera/timeline mismatch")
-        if row.evidence is not None and row.evidence.source_size_wh != source.size:
-            raise ValueError("Ball evidence source image size mismatch")
+        if row.source_size_wh != source.size:
+            raise ValueError("Ball points source image size mismatch")
     return ObjectObservations(source.camera_ids, source.size, source.fps,
         np.stack([r.uv_px for r in rows])[:, :, None, None],
-        np.stack([r.confidence for r in rows])[:, :, None, None],
-        np.stack([r.observed for r in rows])[:, :, None], np.zeros((len(rows), 1), np.int64))
+        np.ones((len(rows), source.num_frames, 1, 1), np.float32),
+        np.ones((len(rows), source.num_frames, 1), bool), np.zeros((len(rows), 1), np.int64))
 
 
 def identified_people(raw: ObjectObservations, identities: PlayerIdentitiesOutput, threshold: float) -> GroupedObservations:

@@ -1,0 +1,150 @@
+{
+  "status": "complete",
+  "metrics": [
+    {
+      "mode": "raw",
+      "refiner_input": "pipeline",
+      "frames": 217,
+      "median_error_px": 3.2736707044690108,
+      "p90_error_px": 158.22421283420547,
+      "mean_nll_px": 6.157800116616308,
+      "winner_changes_from_cache_cuda": 62,
+      "winner_changes_from_source_cuda": 0,
+      "free_winner_frames": 60,
+      "free_winner_frames_217_265": 39
+    },
+    {
+      "mode": "raw",
+      "refiner_input": "store_coordinate_convention",
+      "frames": 217,
+      "median_error_px": 3.258023270774664,
+      "p90_error_px": 158.16882512441904,
+      "mean_nll_px": 6.147426633766677,
+      "winner_changes_from_cache_cuda": 62,
+      "winner_changes_from_source_cuda": 0,
+      "free_winner_frames": 60,
+      "free_winner_frames_217_265": 39
+    },
+    {
+      "mode": "raw",
+      "refiner_input": "cached_evidence_replay",
+      "frames": 217,
+      "median_error_px": 3.158048278507688,
+      "p90_error_px": 55.107617247685866,
+      "mean_nll_px": 5.663520397462797,
+      "winner_changes_from_cache_cuda": 0,
+      "winner_changes_from_source_cuda": 62,
+      "free_winner_frames": 42,
+      "free_winner_frames_217_265": 14
+    },
+    {
+      "mode": "resize_only",
+      "refiner_input": "pipeline",
+      "frames": 217,
+      "median_error_px": 2.396124966926619,
+      "p90_error_px": 78.58804117807715,
+      "mean_nll_px": 5.336373131953825,
+      "winner_changes_from_cache_cuda": 26,
+      "winner_changes_from_source_cuda": 64,
+      "free_winner_frames": 36,
+      "free_winner_frames_217_265": 13
+    },
+    {
+      "mode": "resize_only",
+      "refiner_input": "store_coordinate_convention",
+      "frames": 217,
+      "median_error_px": 2.3027921019363005,
+      "p90_error_px": 78.34970308415342,
+      "mean_nll_px": 5.328741559222703,
+      "winner_changes_from_cache_cuda": 26,
+      "winner_changes_from_source_cuda": 64,
+      "free_winner_frames": 36,
+      "free_winner_frames_217_265": 13
+    },
+    {
+      "mode": "resize_only",
+      "refiner_input": "cached_evidence_replay",
+      "frames": 217,
+      "median_error_px": 3.158048278507688,
+      "p90_error_px": 55.107617247685866,
+      "mean_nll_px": 5.663520397462797,
+      "winner_changes_from_cache_cuda": 0,
+      "winner_changes_from_source_cuda": 62,
+      "free_winner_frames": 42,
+      "free_winner_frames_217_265": 14
+    },
+    {
+      "mode": "reencoded",
+      "refiner_input": "pipeline",
+      "frames": 217,
+      "median_error_px": 3.3571717045206544,
+      "p90_error_px": 55.16200120068717,
+      "mean_nll_px": 5.670583182616587,
+      "winner_changes_from_cache_cuda": 0,
+      "winner_changes_from_source_cuda": 62,
+      "free_winner_frames": 42,
+      "free_winner_frames_217_265": 14
+    },
+    {
+      "mode": "reencoded",
+      "refiner_input": "store_coordinate_convention",
+      "frames": 217,
+      "median_error_px": 3.159344869194712,
+      "p90_error_px": 55.18947289095857,
+      "mean_nll_px": 5.66335142805623,
+      "winner_changes_from_cache_cuda": 0,
+      "winner_changes_from_source_cuda": 62,
+      "free_winner_frames": 42,
+      "free_winner_frames_217_265": 14
+    },
+    {
+      "mode": "reencoded",
+      "refiner_input": "cached_evidence_replay",
+      "frames": 217,
+      "median_error_px": 3.158048278507688,
+      "p90_error_px": 55.107617247685866,
+      "mean_nll_px": 5.663520397462797,
+      "winner_changes_from_cache_cuda": 0,
+      "winner_changes_from_source_cuda": 62,
+      "free_winner_frames": 42,
+      "free_winner_frames_217_265": 14
+    }
+  ],
+  "anchor_reassignment": [
+    {
+      "camera": "cam0",
+      "anchored_component_frame_pairs": 810,
+      "same_component_mean_distance_over_100px": 395,
+      "among_those_anchor_not_spatially_same_20px": 395,
+      "spatially_matched_anchors_in_top3": 435,
+      "spatially_matched_component_mean_distance_px_median_p90": [
+        4.747798124544509,
+        13.360429144364058
+      ]
+    },
+    {
+      "camera": "cam1",
+      "anchored_component_frame_pairs": 810,
+      "same_component_mean_distance_over_100px": 353,
+      "among_those_anchor_not_spatially_same_20px": 353,
+      "spatially_matched_anchors_in_top3": 457,
+      "spatially_matched_component_mean_distance_px_median_p90": [
+        2.840910528660624,
+        12.685100147853147
+      ]
+    },
+    {
+      "camera": "cam2",
+      "anchored_component_frame_pairs": 810,
+      "same_component_mean_distance_over_100px": 346,
+      "among_those_anchor_not_spatially_same_20px": 346,
+      "spatially_matched_anchors_in_top3": 482,
+      "spatially_matched_component_mean_distance_px_median_p90": [
+        4.270521532095235,
+        14.535312858582929
+      ]
+    }
+  ],
+  "scope": "cam2 270 frames, 217 observed, CPU media interventions; no pipeline/gate/default/calibration change",
+  "causal_limit": "Resize and JPEG are isolated as sequential interventions, not additive effects; CPU/CUDA differences reported separately; no new independent clip tested"
+}

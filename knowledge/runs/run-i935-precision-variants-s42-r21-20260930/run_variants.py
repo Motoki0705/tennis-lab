@@ -29,6 +29,7 @@ from src.tasks.ball_refiner.training.evaluation import predict_clip
 from src.tasks.ball_refiner.training.runner import prepare_data, run_training
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.utils.checksum import dual_sha256
+from src.utils.resource_guard import HostRAMGuard, available_ram_bytes, process_tree_rss_bytes
 
 
 def differences(a: dict[str, Any], b: dict[str, Any], prefix: str = '') -> dict[str, Any]:
@@ -43,7 +44,7 @@ def differences(a: dict[str, Any], b: dict[str, Any], prefix: str = '') -> dict[
 
 
 def ram_available() -> int:
-    return next(int(line.split()[1]) * 1024 for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:'))
+    return available_ram_bytes()
 
 
 def output_size(path: Path) -> int:
@@ -138,6 +139,8 @@ def main() -> None:
     phases: list[dict[str, Any]] = []
     stop = threading.Event()
     monitor: dict[str, Any] = {'peak_device_used_bytes': 0, 'samples': 0, 'failure': None}
+    ram_guard = HostRAMGuard()
+    ram_guard.sample(ram_available(), time.monotonic() - started, rss_bytes=process_tree_rss_bytes())
 
     def terminate(signum: int, frame: FrameType | None) -> None:
         raise RuntimeError(f'Queue timeout/resource signal {signum}: {monitor["failure"]}')
@@ -155,8 +158,9 @@ def main() -> None:
                 used = int(result.stdout.strip()) * 1024**2
                 monitor['peak_device_used_bytes'] = max(monitor['peak_device_used_bytes'], used)
                 monitor['samples'] += 1
-                if used > plan['gpu_device_used_limit_bytes'] or ram_available() < 6 * 1024**3:
-                    raise RuntimeError(f'Resource limit exceeded: device {used}, RAM available {ram_available()}')
+                ram_failure = ram_guard.sample(ram_available(), time.monotonic() - started, rss_bytes=process_tree_rss_bytes())
+                if used > plan['gpu_device_used_limit_bytes'] or ram_failure:
+                    raise RuntimeError(f'Resource limit exceeded: device {used}, RAM: {ram_failure}')
                 if monitor['samples'] % 10 == 0:
                     disk_bytes = sum(output_size(p) for p in output_paths)
                     if disk_bytes > plan['disk_budget_bytes']:
@@ -169,6 +173,7 @@ def main() -> None:
     def publish() -> None:
         write_json_atomic(report / 'resource_usage.json', {
             'status': status, 'seconds': time.monotonic() - started, 'phases': phases, 'device_monitor': monitor,
+            'host_ram': ram_guard.report(),
             'peak_cuda_allocated_bytes': torch.cuda.max_memory_allocated(device),
             'peak_cuda_reserved_bytes': torch.cuda.max_memory_reserved(device), 'queue_job': os.environ.get('TENNIS_RUN_ID'),
             'output_bytes': {str(p): output_size(p) for p in output_paths},

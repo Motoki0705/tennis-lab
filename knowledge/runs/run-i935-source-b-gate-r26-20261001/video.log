@@ -1,0 +1,26 @@
+{
+  "video": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/outputs/campaign935-r26-source-video/clip_010-source-3cam-4x-slow.mp4",
+  "sha256": "3b8110207a2444c05be5f8dceeb3334f6b37a0497785786f248254355e052321",
+  "bytes": 6716279,
+  "source_fps": "2997003/50000",
+  "playback_fps": "2997003/200000",
+  "frames": 270,
+  "camera_frames": 810,
+  "duration_seconds": 18.017999981982,
+  "size_wh": [
+    1920,
+    960
+  ],
+  "slow_factor": 4,
+  "cpu_seconds_wall": 42.92607437400147,
+  "peak_rss_bytes": 1394294784,
+  "minimum_host_available_bytes": 20169572352,
+  "b_gate_passed": false,
+  "snapshots": {
+    "frame-000.jpg": "fd6bf5a0d34e09f8b77a500ea09fd41186421198e1aa0922b9a4dc0bbc52c584",
+    "frame-067.jpg": "7e43fe95a512a479bcb84f0257cb6e845a2187d3d6cf795de5081b5245096aa3",
+    "frame-135.jpg": "469f478e3112e3f2ab95ec67a5902b81ef79a7e46fc1433b6b36286cfe7ed32c",
+    "frame-202.jpg": "56abcb54b8dd8295c9b473928d4cdbdaa21afd2b405b74dc2eb6ae88a2704eb4",
+    "frame-269.jpg": "752a5faeee15b0651bd26c8fa5122b1c9f5a9ca91465c377c4cf69f54730f09d"
+  }
+}

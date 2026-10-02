@@ -311,7 +311,7 @@ class DINOv3RoPEBallDetector(nn.Module):
             backbone_repository_path=paths.external_asset(
                 str(backbone_cfg["repository_path"])
             ),
-            backbone_checkpoint_path=paths.external_asset(
+            backbone_checkpoint_path=paths.checkpoint(
                 str(backbone_cfg["checkpoint_path"])
             ),
             backbone_name=str(backbone_cfg["name"]),

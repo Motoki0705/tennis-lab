@@ -23,7 +23,7 @@ from tests.integration.tasks.ball_refiner.test_training import (
 def test_cached_evaluation_trains_restores_and_exports_candidate_variant(pilot_inputs, tmp_path, monkeypatch, training_seed):
     for module in (original, cached):
         monkeypatch.setattr(module, 'validation_clips', lambda store: tuple(r for r in store.clips if r.split == 'val'))
-    baseline = run_training(config_for(pilot_inputs, tmp_path / 'baseline'))
+    baseline = run_training(config_for(pilot_inputs, tmp_path / 'baseline', model='comparison/absolute'))
     settings = original.ComparisonSettings(levels=(.5, .9), samples=32, seed=1729, chunk_size=4, uniform_weight=.001)
     reference = original.run_comparison(baseline, baseline, tmp_path / 'reference', settings=settings, device=torch.device('cpu'))
     cfg = config_for(pilot_inputs, tmp_path / 'anchored')
