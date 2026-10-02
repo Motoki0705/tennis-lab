@@ -25,10 +25,12 @@ from src.tasks.court_detection.data.contracts import (
 )
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
-from src.tasks.court_detection.models import hierarchical_model as model_module
-from src.tasks.court_detection.models.decoder import build_court_decoder
-from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.models import dinov3_dpt as model_module
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtDINOv3Encoder,
+    CourtHierarchicalModel,
+    build_court_decoder,
+)
 
 _CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/court_detection/configs"
 
@@ -100,8 +102,6 @@ def test_dinov3_dpt_factory_binds_exact_bundle(monkeypatch) -> None:
             config_name="train",
             overrides=[
                 "data/processing=all",
-                "model/encoder=dinov3",
-                "model/decoder=dpt",
             ],
         )
 
@@ -178,7 +178,7 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
         name="court_hierarchical",
         in_channels=3,
         encoder=CourtEncoderConfig(
-            name="default",
+            name="dinov3",
             repository_path=None,
             checkpoint_path=None,
             backbone_name=None,
@@ -190,25 +190,25 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
             lora=None,
         ),
         decoder=CourtDecoderConfig(
-            name="fpn",
+            name="dpt",
             size=None,
-            channels=(4, 4, 4, 4),
+            channels=64,
             reassemble_factors=None,
         ),
         transformer_encoder=CourtTransformerEncoderConfig(
-            name="none",
-            enabled=False,
-            dim=None,
-            depth=None,
-            num_heads=None,
-            head_dim=None,
-            ffn_dim=None,
-            rope_dim=None,
-            rope_theta=None,
-            dropout=None,
-            attention_type=None,
+            name="transformer",
+            enabled=True,
+            dim=4,
+            depth=1,
+            num_heads=1,
+            head_dim=4,
+            ffn_dim=8,
+            rope_dim=4,
+            rope_theta=10000.0,
+            dropout=0.0,
+            attention_type="mha",
             n_kv_heads=None,
-            ffn_type=None,
+            ffn_type="swiglu",
         ),
         dense_head=CourtDenseHeadConfig(
             name="residual",
@@ -226,9 +226,9 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
     model = CourtHierarchicalModel(config, bundle)
     images = torch.randn(2, 3, 8, 8)
 
-    assert not hasattr(model, "transformer_encoder")
-    assert not hasattr(model, "pose_head")
-    assert not any(
+    assert model.transformer_enabled
+    assert hasattr(model, "pose_head")
+    assert any(
         name.startswith(("transformer_encoder.", "pose_head."))
         for name, _ in model.named_parameters()
     )
@@ -239,12 +239,12 @@ def test_shared_decoder_arbitrary_bundle_forward_backward(
     state_keys = set(model.state_dict())
     assert expected_state_keys.issubset(state_keys)
     assert all(
-        key.startswith("encoder.")
+        key.startswith(("encoder.", "transformer_encoder.", "pose_head."))
         or any(key.startswith(f"heads.{kind}.") for kind in kinds)
         for key in state_keys
     )
-    outputs = model(images)
-    with pytest.raises(ValueError, match="enabled intermediate Transformer"):
+    outputs = model(images, *encoder(images)).dense_logits
+    with pytest.raises(ValueError, match="requires all four feature maps"):
         model(
             images,
             patch_valid_mask=torch.ones(2, 8, 8, dtype=torch.bool),

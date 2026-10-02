@@ -36,7 +36,6 @@ BUILTIN_ACCELERATORS = {
     "blcs": "gpu",
     "blcs_generate_dataset": "cpu",
     "court_detection": "gpu",
-    "court_detection_mixed": "gpu",
     "plcs": "gpu",
     "plcs_generate_dataset": "cpu",
     "slcs": "gpu",

@@ -25,7 +25,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtTrainingResult,
     CourtTrainingTargetKind,
 )
-from src.tasks.court_detection.models.pose_head import CourtRawPoseOutput
+from src.tasks.court_detection.models.dinov3_dpt import CourtRawPoseOutput
 
 POSE_SUPERVISION_MASK = "pose_supervision_mask"
 

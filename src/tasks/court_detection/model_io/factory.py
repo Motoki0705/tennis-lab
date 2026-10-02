@@ -24,7 +24,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelOutput,
     CourtModelSpec,
 )
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.models.dinov3_dpt import CourtHierarchicalModel
 
 CourtDetectionRawOutput: TypeAlias = CourtLogits | CourtModelOutput
 CourtDetectionBoundModelIO: TypeAlias = BoundModelIO[

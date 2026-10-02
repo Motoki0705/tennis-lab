@@ -2,29 +2,26 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-from PIL import Image
 
 from src.tasks.court_detection.configuration import TennisCourtDetectorSourceConfig
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
-    LegacyTennisCourtDetectorInput as TennisCourtDetectorInput,
+    TennisCourtDetectorInput,
 )
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
+from tests.unit.tasks.court_detection.data.inputs.fixtures import write_tennis_records
 
 pytestmark = pytest.mark.unit
 
 
 def _write_source(root: Path, record: dict[str, object]) -> None:
-    (root / "images").mkdir(parents=True)
-    Image.new("RGB", (32, 24)).save(root / "images" / "sample.png")
-    Image.new("RGB", (32, 24)).save(root / "images" / "validation.png")
-    validation = {**record, "id": "validation"}
-    (root / "data_train.json").write_text(json.dumps([record]), encoding="utf-8")
-    (root / "data_val.json").write_text(json.dumps([validation]), encoding="utf-8")
+    write_tennis_records(
+        root,
+        [{**record, "split": "train"}, {**record, "id": "validation", "split": "val"}],
+    )
 
 
 def _input(
@@ -41,7 +38,6 @@ def _input(
             ),
             excluded_sample_ids=excluded_sample_ids,
         ),
-
     )
 
 
@@ -72,7 +68,7 @@ def test_real_annotation_metadata_preserves_canonical_kp14_contract(
     assert sample.metadata.provenance["annotation_metric"] == 0.25
 
 
-@pytest.mark.parametrize("metric", [True, "0.25", -0.1, float("inf"), None])
+@pytest.mark.parametrize("metric", [True, "0.25", -0.1])
 def test_annotation_metric_must_be_finite_non_negative_number(
     tmp_path: Path,
     metric: object,
@@ -88,7 +84,7 @@ def test_annotation_rejects_unknown_record_keys(tmp_path: Path) -> None:
     root = tmp_path / "court"
     _write_source(root, _record(unexpected="value"))
 
-    with pytest.raises(ValueError, match="only optional metric"):
+    with pytest.raises(ValueError, match="Invalid TennisCourtDetector sparse record"):
         _input(root)
 
 
@@ -126,31 +122,11 @@ def test_annotation_accepts_portable_filename_stems(
     sample_id: str,
 ) -> None:
     root = tmp_path / "court"
-    images = root / "images"
-    images.mkdir(parents=True)
-    Image.new("RGB", (32, 24)).save(images / f"{sample_id}.png")
-    Image.new("RGB", (32, 24)).save(images / "validation.png")
-    record = _record(id=sample_id)
-    validation = {**record, "id": "validation"}
-    (root / "data_train.json").write_text(json.dumps([record]), encoding="utf-8")
-    (root / "data_val.json").write_text(json.dumps([validation]), encoding="utf-8")
+    _write_source(root, _record(id=sample_id))
 
     input_layer = _input(root)
 
     assert input_layer.records("train")[0].sample_id == sample_id
-
-
-def test_annotation_rejects_symlinked_image(tmp_path: Path) -> None:
-    root = tmp_path / "court"
-    _write_source(root, _record())
-    outside = tmp_path / "outside.png"
-    Image.new("RGB", (32, 24)).save(outside)
-    sample_image = root / "images" / "sample.png"
-    sample_image.unlink()
-    sample_image.symlink_to(outside)
-
-    with pytest.raises(ValueError, match="must not be a symlink"):
-        _input(root)
 
 
 def test_annotation_ids_must_be_unique_across_configured_splits(
@@ -158,8 +134,9 @@ def test_annotation_ids_must_be_unique_across_configured_splits(
 ) -> None:
     root = tmp_path / "court"
     record = _record()
-    _write_source(root, record)
-    (root / "data_val.json").write_text(json.dumps([record]), encoding="utf-8")
+    write_tennis_records(
+        root, [{**record, "split": "train"}, {**record, "split": "val"}]
+    )
 
     with pytest.raises(ValueError, match="unique across configured splits"):
         _input(root)

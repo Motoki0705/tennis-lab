@@ -1,56 +1,61 @@
 # Court Detection
 
-出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
+DINOv3 + Transformer + multiscale DPTの単一モデルで、コートの
+`kp / seg / line / semantic_line / pose`を推定します。
+出力先は[タスク出力規約](../OUTPUTS.md)、UIの起動方法は
+[Web UI利用ガイド](visualization/README.md)を参照してください。
 
-テニス映像から `kp / seg / line / semantic_line` を推定します。データsourceとtarget集合は独立に選択し、単一の `CourtDetectionDataset` / `CourtDetectionDataModule` が任意の非空target subsetを処理します。
+## 学習データ
 
-## Data composition
+学習入力は次の2種類です。画像と疎なラベルを読み、dense教師は学習解像度で
+オンザフライ生成します。保存済みのdenseマスクへのfallbackはありません。
 
-- `data/source=tennis_court_detector`: yastrebksv/TennisCourtDetector由来の実画像とordered KP14。
-- `data/source=synthetic_court`: `schema: v3`を明示したcurrent synthetic source。manifestが明示したRGB配列とlabelsをstrictに読みます。保存codecは下記のSynthetic Court契約に従います。
-- `data/source=synthetic_court_v2`: `schema: v2`を明示したlegacy synthetic source。
-- `data/source=synthetic_court_v1`: `schema: v1`を明示したcanonical v1回帰source。physical pointを7 semantic multi-peak channelへまとめます。
-- `data/processing=kp|seg|line|semantic_line|kp_seg|kp_line|seg_line|all`: 選択したtargetを同じ幾何変換で生成します。`all`が4-head構成です。
+| 入力 | 保存先（data rootからの相対パス） | 教師 |
+|---|---|---|
+| TennisCourtDetector実画像 | `court_detection/tennis_court_detector-v1` | ordered KP14 |
+| Synthetic Court V3 | `synthetic_data_generation/scenes/<scene>/datasets/court` | camera-view KP14、対象コート、camera poseと内部パラメータ |
 
-Synthetic schema v2/v3では`data.source.court_scope=target_court`を既定とし、sampleの`target_court.binding.court_instance_id`とexact matchする1面だけを4つのdense教師で共有します。`all_courts`を明示するとKP channelとcourt instance inventoryの両方が全accepted courtを保持しますが、現行のsingle-court dense schemaでは複数コートからのdense生成を拒否します。scopeはsource geometry digestにも含まれます。target bindingを持たないv1で`target_court`を指定した場合はtyped configuration validationで拒否されます。
+TennisCourtDetectorは`dataset.json`、`index.npz`、JPEG shardを必須とします。
+旧JSON＋個別画像の読み込み・移行機能は提供しません。`train / val`だけを持ち、
+validationをtestとして代用しません。退化した注釈`QszoUKyCOHo_600`はsource設定で
+明示的に除外し、除外IDがちょうど1件に一致しなければ停止します。
 
-source固有のmanifest・annotation・path解決は `data/inputs/`、target固有の構築は `data/processing/targets.py` が所有します。`data/processing/geometry.py` はRGBと全targetに適用する幾何変換をsampleごとに一度だけ決定します。seg/line/semantic_lineは`data/target_generation/online.py`で、augmentation後の学習解像度へオンザフライ生成します。元画像pixelのKP14から推定したHを幾何変換し、全dense headで共有します。画面外KPの座標と可視性は分けて保持し、元画像外・paddingには教師を外挿しません。
+Synthetic consumerは`schema: v3`、`court_scope: target_court`専用です。
+投影に複数コートがあっても、target bindingが指定する1面だけを全教師で共有します。
+V1/V2、all-courtsは拒否します。splitは`train / validation / test`を
+`train / val / test`へ対応付け、空splitとtrajectory group leakageを拒否します。
+生成・保存形式・camera-view KP14の意味と座標契約の正本は
+[Synthetic Court](../../synthetic_data_generation/dataset/court/README.md)です。
 
-TennisCourtDetector presetは、14点中8点しか一意でなくcourt planeを構成できない`QszoUKyCOHo_600`を`excluded_sample_ids`で明示的にquarantineします。設定したIDがannotation内のちょうど1件に一致しなければsource初期化時に停止するため、データ更新後も古い除外を静かに引き継ぎません。
+## モデルと教師
 
-```bash
-# synthetic sourceの4-head学習
-python -m src.tasks.court_detection.scripts.train \
-  data/source=synthetic_court data/processing=all \
-  run.test_after_fit=true
+タスク固有モデル実装は`models/dinov3_dpt.py`の1ファイルです。
+DINOv3の4段の特徴のうち最深段をTransformerで処理し、DPTが4段を融合します。
+Transformerのpose queryをpose headへ、DPT特徴を4つのresidual dense headへ渡します。
+DINOv3のロード・LoRA・共通Transformer部品は`src/utils/models`を利用します。
+CNN encoder、FPN、U-Net、Transformerなし、linear headの選択肢はありません。
 
-# synthetic v3でcameraの対象コート1面だけを全モダリティの教師にする
-python -m src.tasks.court_detection.scripts.train \
-  data/source=synthetic_court data.source.court_scope=target_court \
-  data/processing=kp
+| 出力 | 内容 | 実画像 | 合成V3 |
+|---|---|---|---|
+| KP | 14 channel、各channel 1点のGaussian heatmap | 学習 | 学習 |
+| SEG | backgroundを含む7クラスのコート領域 | 学習 | 学習 |
+| LINE | binary line 1 channel | 学習 | 学習 |
+| semantic LINE | backgroundを含む12種類の線 | 学習 | 学習 |
+| pose | カメラ位置・回転・焦点距離（raw pose10d） | 教師なし | 学習 |
 
-# KP-only DINOv3 + DPT + LoRA
-python -m src.tasks.court_detection.scripts.train \
-  data/source=synthetic_court data/processing=kp \
-  model/encoder=dinov3 model/decoder=dpt training=lora
-```
+4つの画像教師は同じ幾何変換を共有します。SEG・LINE・semantic LINEはKP14から
+推定したhomographyと物理線幅を使って生成し、元画像外やpaddingには外挿しません。
+教師schemaの正本は`target_schemas.py`です。既定のKP sigmaは画像対角長の0.01、
+LINE幅は通常線7.5 cm・baseline 15 cmです。各schemaの末尾の版番号は
+データsourceのV3とは独立です。
 
-学習入力はJPEG shardと疎なKPラベルです。TennisCourtDetectorは
-`data/court_detection/tennis_court_detector-v1/`、Syntheticは各sceneの既存
-`datasets/court/` ownerを使用します。後者の保存契約は
-[Synthetic Court](../../synthetic_data_generation/dataset/court/README.md#jpeg-shard-publication)
-を参照してください。TennisCourtDetectorも既存JPEGを再圧縮せずshardへ収容し、
-KP14・split・注釈metricを圧縮indexへ保存します。PNG入力は品質95のJPEGへ変換します。
-dense PNGを保存せず、
-学習時もreview時も同じgeometryと物理線幅から生成します。旧マスクの読み込みへの
-fallbackはありません。checkpointのdense target specは`precomputed=false`になります。
-
-Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は [`src/synthetic_data_generation/dataset/court/README.md`](../../synthetic_data_generation/dataset/court/README.md) です。このREADMEではconsumer設定、オンザフライ教師生成、学習手順だけを管理します。
-
-## Model and runtime
+モデル設定は`configs/model/dinov3_dpt.yaml`に集約しています。
+既定はViT-B/16、8層のMHA + 2-D RoPE + SwiGLU、DPT large（512 channels）、
+各dense headはhidden 256・residual depth 2です。数値設定を変更でき、
+checkpointの読み込みでは保存された値を使用します。
 
 DINOv3の外部sourceは `paths.external_asset_root`、学習済み重みは `paths.checkpoint_root` から読む。
-相対パスの正本は `configs/model/encoder/dinov3.yaml`。旧source配下の重みへのfallbackは行わない。
+相対パスの正本は `configs/model/dinov3_dpt.yaml`。旧source配下の重みへのfallbackは行わない。
 checkpoint内に保存された旧 `dinov3/checkpoints/<filename>` は、推論境界で同名の
 `dinov3/<filename>` へ明示変換し、警告と `backbone_asset_migration` に記録する。
 呼び出し側のresolverを優先し、省略時の旧layoutはprojectの `ckpt/` を使う。
@@ -62,207 +67,84 @@ checkpoint本体・保存architectureは変更しない。新配置の資産が�
 これらは `paths.artifact_root=outputs` を参照し、DINOv3の初期weightは引き続きckptから読む。
 文字列だけの指定はcheckpoint root相対で、resumeとinit_weightsは同時に指定しない。
 
-- `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
-- `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
-- `training/`: targetごとのloss/metricを一つのbundleとして集約します。
-- `inference/`: `CourtPredictor` が1回のforwardでraw head群と任意のKP・LINE共同推定を返します。head別predictorは同じ実装へのraw出力の委譲です。
-- `geometry/hybrid_homography.py` / `line_evidence.py`: 再投影・LINE支持の硬いゲートで外れ値を除いた既定最大8点とLINEでHを推定します。規格コートのメートル座標・KP14順序・主要9線を共有し、候補を双方向LINE距離で比較します。
-- `geometry/confidence_homography.py`: KP座標・スコアから信頼度順PROSACとインライア再推定を行うAPI。推定H、採用点、残差、失敗理由を返します。呼び出し側が原画像pixelの再投影閾値を明示します。
-- `visualization/`: bundle-awareなprediction/rendering surface。
+## 学習
 
-### 共通推論と幾何補正
-
-`CourtPredictor.load_from_checkpoint(..., resolver=resolver, device=device)` はcheckpointの保存モデル構成・loss定義・target bundle・`val_short_side`を読み、全model tensorをstrictにロードします。学習専用のrun/source/augmentation検証と分離しており、旧checkpointへ`artifact_store`等を補う処理はありません。学習時の設定検証は従来どおりです。repo全体の既定checkpointは `ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt`（DPT multiscale depth 3、短辺512、SHA-256 `b863df1f…`）で、重みはGit管理しません。旧既定の `ckpt/court_detection/hybrid/court-detection-epoch=17.ckpt` は削除せず残しますが、どの既定設定も参照しません。
-
-| 既定でb863を使う入口 | 領域探索 | 理由 |
-|---|---|---|
-| `tennis_scene` の `court_detection`（`court_kp.region_search.enabled: true`） | 使う（各cameraのframe 0） | 固定カメラの広角映像ではコートが画像の一部で、画像全体の推論はMeiji cam0で校正に失敗する（[region search記録](../../../knowledge/nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)） |
-| `configs/visualization/{kp,line,seg}.yaml` | 使わない | 入力はコート中心の静止画（TennisCourtDetectorのJPEG store）で、raw headを画像全体について描画する |
-| `synthetic_data_generation` の `alignment.evidence.line_model` | 使わない | 合成動画のraw LINE確率だけを使い、KP・Hを推定しない |
-
-領域探索を使うかは各入口の設定・コードが明示し、失敗時に画像全体の推論へ切り替えません。
-
-`predict(rgb, postprocess="hybrid")` は `CourtPrediction.raw_heads` と `homography` を分けて返します。KP座標は原画像pixel、raw LINE確率・logitsはnative gridで、両サイズを結果に保持します。hybridにはordered KP14・1 peak/channel・LINEが必要です。下流の`max_kp`は4〜8に制限し、範囲外はモデル読込み前に拒否します。失敗理由を返し、raw KPや別Hへ代替しません。`downstream_keypoints()` は再投影14点と画像内validityを返し、失敗時はゼロ座標・全不可視です。`selected`は最適化に採用した観測のmaskであり、このvalidityとは別です。
-
-`inference/regions.py` は固定カメラ向けの明示的な領域探索です。完全に黒い外周paddingを除いた画像の固定gridを候補にし、hybrid成功・画像内KP14・凸な外周・最小面積・raw KPとの整合数を検証します。採択候補は整合数、次にそのconfidence合計で順位付けします。手動点・ボール注釈は参照せず、候補がなければ理由付きで失敗します。選択するのは画像領域だけで、動画の各frameを独立に再推論します。`CourtRegionPrediction` はKPとHを元画像へ平行移動し、raw rasterはcrop固有のgridに保持します。crop外でも元画像内にあるH投影点は有効ですが、推定失敗frameは元の契約どおり全不可視です。領域探索の採択は対象コートの意味的同一性やGT精度を保証しません。
-
-LINEだけの利用・raw head評価は `predict(rgb, heads=("line",), postprocess="none")` のように明示します。`CourtKeypointPredictor`・`CourtLinePredictor`・`CourtSegPredictor`・`CourtSemanticLinePredictor`も`predictor.py`の同じ前処理・forwardを使います。存在しないheadは要求時に拒否します。既定のb863はKP/SEG/LINE＋pose＋semantic LINE（12ch）を持ちます。
-
-KP schemaがcamera-viewの場合、Hもそのchannel順のコート座標です。複数cameraの物理point identityへは自動変換しません。下流接続の向き設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。UIのraw score・heatmap・head metricには補正座標を混ぜません。 `visualization=semantic_line`には対応headを持つ`visualization.checkpoint`の明示指定が必要です。`outputs/`内のモデルは `visualization.checkpoint={role:artifact,path:court_detection/.../model.ckpt}` で選びます。事前学習backboneは引き続き`paths.checkpoint_root`から読みます。Pythonの推論入口では同じresolverと`checkpoint_role=PathRole.ARTIFACT`を渡します。
-
-実checkpointの確認は `python -m src.tasks.court_detection.scripts.audit_hybrid_inference --checkpoint <absolute.ckpt> --image <image> --output-dir <new-directory>` で、KP/LINE/H・画像・診断・実行時間を保存できます。複数画像は`--image`を繰り返し指定します。`--scene-root`は既存ownerのハッシュを前後照合する読み取り専用オプションです。Hの生成可否とLINE支持率はGT精度ではありません。
-
-### KP heatmapのピークcardinality
-
-KP教師は`schema`ごとに`points_xy=[C,P,2]`のP個のGaussianをmax reductionするため、教師契約自体は1 ch→1点に固定しません。一方、現行の主経路（single target court、ordered KP14、camera pose）は`C=14, P=1`で、1つの意味チャネルが1つの物理点を持ちます。inferenceもこの契約に合わせ、既定では各チャネル最大1候補だけを返します。multi-peakは`max_peaks>1`を明示したときだけ有効になります。このpeak抽出契約の正本は `model_io/keypoint_decoder.py` で、predictorとdense test payloadは同じconfigを共有します。
-
-| 状況 | 1 ch→1点（既定） | 理由 |
-|---|---|---|
-| single target court / ordered KP14 (`P=1`) | 適切 | 意味チャネルと物理点が1対1で、主峰がその点 |
-| camera pose / homography / KP–pose consistency | 適切 | 一意なKP14対応が必要 |
-| legacy symmetric KP7 (`P=2`) と all-courts | 不適切 | 1チャネルが複数の物理点を持ち、multi-peak抽出が必須 |
-| 複数court instance | 不適切 | peak抽出だけではinstance帰属を決められず、instance-aware matchingやquery headが別途必要 |
-
-<img src="../../../assets/court_detection/kp-peak-cardinality.svg" width="900" alt="同じ1チャネル二峰heatmapに対する、旧既定K=4・新既定K=1・明示K=2のpeak抽出結果と一様マップ/同値plateauの扱いの比較" />
-
-設定は `configs/data/default.yaml` をcomposition rootとし、`configs/data/source/` と `configs/data/processing/` を直交してoverrideします。syntheticの`schema=v1|v2|v3`はtyped configで必須で、directory内容から自動推測しません。v2/v3の`train / validation / test`は学習側`train / val / test`へ一意に変換し、空splitやtrajectory group leakageを拒否します。TennisCourtDetectorにtest splitがない既定設定は`data.source.split_mapping.test: null`であり、validationをtestとして代用しません。
-
-Model compositionは `model/hierarchical.yaml` をrootとし、encoder、transformer encoder、decoder、dense headを独立したHydra groupとして選択します。既定構成はDINOv3 ViT-B/16、8層のMHA + 2-D RoPE + SwiGLUによるtransformer encoder、DPT decoderです。DPT decoderの出力channelsは512です。
-
-既定のdense headは、DPTのnative-resolution feature上でタスクごとに独立して動くresidual adapterです。各branchは `1x1 projection -> depthwise/pointwise residual block -> 1x1 output` であり、既定は4 headともhidden channels 256、residual depth 2です。小チャネルのlogitsだけを最後に入力解像度へbilinear補間します。`model/dense_head=linear` は既存の1x1 Conv checkpointを明示的に再構築する場合だけに使用します。
-
-Loss presetは `configs/loss/` で管理し、KP、court-cell SEG、binary LINE、semantic LINEのdense項、camera poseのtranslation/rotation/focal項、任意のKP–pose consistency項と各weightを同時に記述します。semantic LINEはcategorical CE + multiclass Diceです。`default`はdense-only、`pose`はdense lossを維持しながら3種のpose lossを各weight 1.0で有効化します。
-
-pose-only objectiveは専用loss presetを持ちません。`loss=pose`をcomposeし、明示的なoverrideで4つのhead weightを0にします。V3 target-court KP14のgeometry・data・head contractは保持されるためdense branchはforwardされますが、dense headにはdense loss由来のgradientは流れません。通常のdense-only設定では0 weightを許可しません。
+入口は`src.tasks.court_detection.scripts.train`だけです。
+既定は合成4枚＋実画像4枚の固定比率バッチ、4つのdense lossとpose lossです。
+`data.source`が合成sourceを所有し、`mixed.sources.synthetic_court`がこれを参照します。
+実画像sourceは`mixed.sources.tennis_court_detector`で指定します。
+混合数の合計は`data.batch_size`と一致させます。
 
 ```bash
-# DINOv3 + DPT + LoRA
-python -m src.tasks.court_detection.scripts.train \
-  data/source=synthetic_court data/processing=kp \
-  model/encoder=dinov3 model/decoder=dpt training=lora
-
-# DINOv3 patch gridにtransformer refinementを有効化
-python -m src.tasks.court_detection.scripts.train \
-  data/source=synthetic_court data/processing=all \
-  model/encoder=dinov3 model/transformer_encoder=default model/decoder=dpt
-
-# KP14 contractを保持するpose-only objective
-python -m src.tasks.court_detection.scripts.train \
-  data/source=synthetic_court \
-  data.source.court_scope=target_court \
-  data/processing=kp data/augmentation=pose_safe \
-  model/encoder=dinov3 model/transformer_encoder=default model/decoder=dpt \
-  loss=pose \
-  loss.kp.weight=0.0 loss.seg.weight=0.0 loss.line.weight=0.0 \
-  loss.semantic_line.weight=0.0 \
-  loss.consistency.enabled=false
+# このコマンドを共有training queueへ登録する。ローカルGPUへ直接起動しない。
+.venv/bin/python -m src.tasks.court_detection.scripts.train \
+  'data.source.scene_ids=[B00,B01,B02,B03]' \
+  run.output_dir=court_detection/train/dinov3_dpt/s42-001
 ```
 
-Synthetic V3の座標・camera authority・KP semanticの定義は、このconsumer READMEでは再定義しません。正本は上記のSynthetic Court READMEです。
+GPU実行手順は[training-queue skill](../../../.agents/skills/training-queue/SKILL.md)に従います。
+worktreeも元repoのqueueを共有します。上記のscene集合・run出力先は実験ごとに明示します。
+DINOv3の学習方法は`training=lora`や`model.encoder.train_mode`で設定できます。
 
-## Utilities and scripts
+`pose_supervision_mask`によりpose loss・pose metric・任意のKP–pose consistencyは
+合成サンプルだけを対象にします。実画像にposeのゼロ教師を補いません。
+pose教師が必要な合成サンプルで欠落していたら、モデル・worker構築前に失敗します。
+pose学習では`data/augmentation=pose_safe`を使用します。
+`run.test_after_fit=true`は合成の明示的test splitだけを評価します。
 
-- `src/utils/data/heatmaps.py`: single-peakとall-court multi-peakを共通に扱うdomain-neutral Gaussian heatmap utility。
-- `scripts/preview_heatmaps.py`: configured sourceのKP channel/visibilityを使うheatmap preview。
-- `scripts/preview_augmentation.py`: 選択target全部を共有geometry上で確認するaugmentation preview。
-- `scripts/train.py`: Hydra学習entry point。
-- `scripts/visualize.py`: checkpointに保存されたtarget bundleを使うprediction visualization。
+`data/processing`はpreviewや教師検査にも使うtarget選択です。学習の既定は`all`で、
+`loss=default`はpose lossを無効にする明示的なdense-only実験に使用できます。
 
-## Target inspection before training
+## 学習前の確認
 
-`preview_augmentation.py` はRGB、実際のKP heatmap、7-class court-cell SEG、binary LINE、12-class semantic LINEを別panelへ描画します。各sampleのJSONにはlossへ渡るtensor shape、可視KP数、Gaussianのpixel sigma / FWHM、各categorical classの画素数、LINE foreground比率を保存します。
+`review_dataset.py`は両sourceのGTを表示し、checkpoint・GPUは不要です。
+`preview_augmentation.py`は実際の学習tensor、可視KP、各クラスの画素数を確認します。
+heatmap previewもこの入口へ統合しています。
 
 ```bash
-# mixed学習のSynthetic側を、augmentation drawも含めて確認
-python -m src.tasks.court_detection.scripts.preview_augmentation \
-  data/source=synthetic_court \
-  data.source.court_scope=target_court \
-  data/processing=all data/augmentation=pose_safe \
+.venv/bin/python -m src.tasks.court_detection.scripts.preview_augmentation \
+  data/source=synthetic_court data/processing=all data/augmentation=pose_safe \
   preview.require_pose=true preview.split=val preview.max_samples=4
 
-# TennisCourtDetector側を確認
-python -m src.tasks.court_detection.scripts.preview_augmentation \
+.venv/bin/python -m src.tasks.court_detection.scripts.preview_augmentation \
   data/source=tennis_court_detector data/processing=all \
   preview.split=train preview.max_samples=4
 ```
 
-KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行single-court LINE schema `court_line_binary_75mm_150mm_single_court_v3` は通常線7.5 cm、baseline 15 cmです。semantic schemaは同じ物理幅を使い、`background / far・near baseline / left・right doubles sideline / left・right singles sideline / far・near service line / center service line / far・near center mark`のcamera-view 12クラスです。交点は生成順で一意に上書きし、水平反転時は左右sideline classだけを交換します。旧all-court schema `court_line_binary_75mm_150mm_v2` と旧5 cm / 10 cm schema `court_line_binary_v1` は別schemaとして扱い、現行教師とは物理線幅の契約を区別します。SEGも現行`court_cell_segmentation_single_court_v2`と旧all-court `court_cell_segmentation_v1`を区別します。
+YouTubeの取得・20点注釈・専用previewは、このタスクの提供範囲に含めません。
 
-KP metricは教師のpoint capacityが1なら各channelの有効画像領域に対してglobal argmaxを1点だけ抽出します。旧all-court形式の`P>1`教師だけがmulti-peak NMSを使用し、この選択はpose lossやLoRAの有無には依存しません。
+## 推論・checkpoint
 
-`prepare_youtube_dataset.py` の `workflow.target_preview` は、完成済みYouTube annotationのground KP14からsigmaと物理線幅の候補を比較します。既存annotationだけを読む場合は `enabled=true only=true` を指定します。このYouTube annotation storeは現在のCourt DataModuleへ接続されていないため、このpreviewはtarget候補のauditであり、データを学習へ暗黙に追加しません。
+既定checkpointは`ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt`です。
+4つのdense headとpose headを持ち、residual depthは3です。
+`CourtPredictor.load_from_checkpoint`は保存モデル構成・target bundle・解像度を読み、
+全モデル重みを`strict=True`でロードします。過去の別アーキテクチャへのfallbackはありません。
+学習専用のsource/run設定は推論のために補完しません。
+`outputs/`内のモデルは`visualization.checkpoint={role:artifact,path:court_detection/.../model.ckpt}`で指定します。
+Python APIでは同じresolverと`checkpoint_role=PathRole.ARTIFACT`を渡し、
+事前学習backboneは`paths.checkpoint_root`から読みます。
 
-```bash
-python -m src.tasks.court_detection.scripts.prepare_youtube_dataset \
-  workflow.target_preview.enabled=true \
-  workflow.target_preview.only=true \
-  workflow.target_preview.sigma_ratios=[0.005,0.01,0.02] \
-  workflow.target_preview.line_width_metres=[0.025,0.05,0.075]
-```
+`CourtPredictor.predict(rgb, postprocess="hybrid")`はraw headとhomographyを分けて返します。
+ordered KP14とLINEでHを推定し、失敗理由を返します。別Hへの代替はありません。
+下流の採用点数`max_kp`は4〜8です。`downstream_keypoints()`は再投影14点と
+画像内validityを返し、失敗時はゼロ座標・全不可視です。
+raw KPは原画像pixel、raw LINEはnative gridで、結果は両サイズを保持します。
 
-YouTube annotation UIは20点を収集しますが、TennisCourtDetector学習契約はordered KP14です。20点annotationからKP14への変換は別の明示的なデータ準備工程を必要とします。
+`CourtLinePredictor`などのhead別APIは同じforward経路へ委譲します。
+LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明示します。
+固定カメラ向け領域探索は`inference/regions.py`に残し、`tennis_scene`が利用します。
+合成データ生成のalignmentも`CourtLinePredictor`を利用します。
 
-## Mixed-source training
-
-`train_mixed`はSynthetic Court V3とTennisCourtDetectorを各train batchへ固定比率で入れます。既定は`synthetic_court=4`、`tennis_court_detector=4`です。KP14は両sourceとも`COURT_KP_NAMES[:14]`へ明示的に正規化され、Synthetic側は全モダリティで1面だけを教師にする`court_scope=target_court`を必須とします。source固有schemaの組合せ、semantic channel名、flip permutationのいずれかが変わった場合はmodel構築前に停止します。
-
-```bash
-# 両sourceの4 dense headだけを学習
-python -m src.tasks.court_detection.scripts.train_mixed \
-  data/processing=all data/augmentation=pose_safe \
-  loss=default \
-  run.output_dir=court_detection/train/mixed_source_dense_only/s42-001 \
-  run.test_after_fit=true
-
-# dense lossは全sample、pose lossはSynthetic Court V3 sampleだけで学習
-python -m src.tasks.court_detection.scripts.train_mixed \
-  data/processing=all data/augmentation=pose_safe \
-  loss=pose \
-  run.output_dir=court_detection/train/mixed_source_dense_pose/s42-001 \
-  run.test_after_fit=true
-```
-
-pose有効時はcollateが必須の`pose_supervision_mask`を生成します。Synthetic Court V3だけが`true`となり、TennisCourtDetector sampleはpose lossとpose metricの双方から除外されます。mask欠落時に全sampleをpose教師として扱うfallbackはありません。TennisCourtDetectorにはtest splitがないため、`test_after_fit`はSynthetic Court V3の明示的test splitだけを評価します。
-
-`run.output_dir`はvariantごとに明示が必須です。config、非queue実行時のtest prediction、その他のrun artifactを異なる学習条件間で上書きしないため、同じ出力先を再利用しないでください。
+KPのcamera-view順序を複数cameraの物理point identityへ自動変換しません。
+向きの設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。
 
 ## Dataset review / inference UI
 
-画像座標系のWeb UIで、このタスクのdataset GTとcheckpoint predictionを重ねて確認します。
-起動コマンドと操作手順は[Web UI利用ガイド](visualization/README.md)、HTTP APIは
-[共有detection基盤](../base/visualization/detection/README.md)を参照してください。この節はCourt固有の
-source契約とcheckpoint互換契約だけを管理します。
+GTと予測を原画像へ重ね、KP・SEG・LINE・semantic LINEを比較します。
+poseの画面表示は提供しません。dataset catalogは実画像と合成V3だけを受理し、
+旧合成sceneや壊れたstoreは理由を表示して無効化します。
+checkpointは本文の保存構成・target bundleを検証し、対応しない構成は理由付きで拒否します。
+比較対象は教師schemaとchannel意味が一致するlayerだけです。
 
-### source契約
-
-左のdataset一覧は、ディレクトリ名から推測せず、次のcanonical input契約で解決します。
-
-- `tennis_court_detector`: `configs/data/source/tennis_court_detector.yaml`を正本とし、
-  `excluded_sample_ids`（既定は`QszoUKyCOHo_600`）を適用した`train`/`val`を列挙します。
-- `synthetic_court`: `data/synthetic_data_generation/scenes/<scene>/datasets/court/dataset.json`が
-  明示した`schema`からtyped config（v1=`all_courts`、v2/v3=`target_court`）を選び、scene×splitを
-  列挙します。schema欠落・未知schema・`status!=completed`のsceneはそのsceneだけを理由付きで
-  無効化します。Synthetic側の座標・semantic契約の正本は
-  [`src/synthetic_data_generation/dataset/court/README.md`](../../synthetic_data_generation/dataset/court/README.md)です。
-
-各行は`build_court_input`の`CourtSampleRecord`をそのまま使い、scene IDはサーバ側で
-`<dataset>::<sample_id>`に解決します。1 sample = 1 still imageなので、UIは`count=1`・
-`start=0`だけを受理します（frame再生はBall側の機能です）。
-
-### GT表示とlayerの扱い
-
-GTは`kp`/`seg`/`line`/`semantic_line`をoriginal image pixelの座標・解像度で返します。
-dense layerは保存されたKP geometryからcanonical builder経由で生成します。
-shard/indexの破損や幾何契約の不一致は理由付きで拒否します。2Dラベルから未観測の3Dコートやcamera poseを構成しません。
-
-### checkpoint互換契約
-
-候補は`outputs/court_detection/**/*.ckpt`と`ckpt/court_detection/**/*.ckpt`を再帰scanし、
-checkpoint本体（`hyper_parameters.config`と`target_bundle_state`）の推論契約を正本として判定します。
-`hparams.yaml`は本体との一致確認にのみ使い、本文が読めないcheckpointは常にunusableです。
-
-- `target_bundle_state`を持たないlegacy single-head checkpoint（`ckpt/court_detection/kp`・`line`）は、
-  現行bundleへ移行せずunsupportedと理由を表示します。
-- モデル構成・出力bundle・推論解像度が不正な保存configはunsupportedです。学習専用の`run.artifact_store`の有無は推論可否に使いません。
-- 互換datasetは、bundleが宣言したKP channel semanticsとdense target schemaが一致するものだけです。
-  schemaが違うlayerは同じ教師として比較せず、dataset側を明示的に除外します。
-- synthetic v1（`all_courts`、7-channel semantic KP）は14-channel bundleとsemanticが違うため、
-  checkpoint比較の対象外です。互換と判定した場合も、直前のrequestでcanonical inputのchannel順を
-  bundleと再照合し、食い違えば停止します。
-- checkpoint選択後は、そのrunが学習したheadに対応するlayerだけを評価対象にします。
-
-### 推論
-
-1回のforwardで選択checkpointの全headをdecodeし、viewerはそれを
-original pixel・original解像度で重ねます。metricsは教師schemaが一致したlayerだけを対象とし、
-予測gridがGT gridと異なる場合はnearest/bilinearでGT側へ再標本化したことをwarningに残します。
-
-### テスト
-
-```bash
-.venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/visualization
-```
-
-fixtureでcanonical source契約（syntheticのschema解決、除外sample、online target生成、traversal拒否）、checkpoint互換（bundle無し・不正bundle・古いconfig・stale
-sidecar・root外symlink拒否）、original pixel/mask size、mock inferenceの応答契約を検証します。
-`local_data`マークの2件は実データ（TennisCourtDetectorとSynthetic B00）のGT smokeです。
+検証入口は`.venv/bin/python -m pytest tests/unit/tasks/court_detection tests/integration/tasks/court_detection`です。
+`local_data`テストは実データ・既定checkpointがある環境で明示的に実行します。

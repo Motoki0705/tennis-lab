@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-SEGMENTATION_TARGET_SCHEMA_V1 = "court_cell_segmentation_v1"
 SEGMENTATION_TARGET_SCHEMA = "court_cell_segmentation_single_court_v2"
 
 SEMANTIC_LINE_TARGET_SCHEMA = (
@@ -40,8 +39,6 @@ class CourtLineTargetDefinition:
     baseline_width_metres: float
 
 
-LINE_TARGET_SCHEMA_V1 = "court_line_binary_v1"
-LINE_TARGET_SCHEMA_V2 = "court_line_binary_75mm_150mm_v2"
 LINE_TARGET_SCHEMA_V3 = "court_line_binary_75mm_150mm_single_court_v3"
 LINE_TARGET_SCHEMA = LINE_TARGET_SCHEMA_V3
 
@@ -53,16 +50,6 @@ SEMANTIC_LINE_TARGET_DEFINITION = CourtLineTargetDefinition(
 
 LINE_TARGET_DEFINITIONS: Mapping[str, CourtLineTargetDefinition] = MappingProxyType(
     {
-        LINE_TARGET_SCHEMA_V1: CourtLineTargetDefinition(
-            schema=LINE_TARGET_SCHEMA_V1,
-            line_width_metres=0.05,
-            baseline_width_metres=0.10,
-        ),
-        LINE_TARGET_SCHEMA_V2: CourtLineTargetDefinition(
-            schema=LINE_TARGET_SCHEMA_V2,
-            line_width_metres=0.075,
-            baseline_width_metres=0.15,
-        ),
         LINE_TARGET_SCHEMA_V3: CourtLineTargetDefinition(
             schema=LINE_TARGET_SCHEMA_V3,
             line_width_metres=0.075,
@@ -77,21 +64,20 @@ def line_target_definition(schema: str) -> CourtLineTargetDefinition:
     try:
         return LINE_TARGET_DEFINITIONS[schema]
     except KeyError as error:
-        raise ValueError(f"Unsupported Court line target schema: {schema!r}.") from error
+        raise ValueError(
+            f"Unsupported Court line target schema: {schema!r}."
+        ) from error
 
 
 __all__ = [
     "LINE_TARGET_DEFINITIONS",
     "LINE_TARGET_SCHEMA",
-    "LINE_TARGET_SCHEMA_V1",
-    "LINE_TARGET_SCHEMA_V2",
     "LINE_TARGET_SCHEMA_V3",
     "SEMANTIC_LINE_CHANNEL_NAMES",
     "SEMANTIC_LINE_CLASS_BY_NAME",
     "SEMANTIC_LINE_TARGET_DEFINITION",
     "SEMANTIC_LINE_TARGET_SCHEMA",
     "SEGMENTATION_TARGET_SCHEMA",
-    "SEGMENTATION_TARGET_SCHEMA_V1",
     "CourtLineTargetDefinition",
     "line_target_definition",
 ]

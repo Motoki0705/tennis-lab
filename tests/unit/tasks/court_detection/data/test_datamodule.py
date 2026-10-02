@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -26,13 +27,15 @@ def _compose(tmp_path: Path, *, processing: str = "kp"):
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train",
-            overrides=[f"data/processing={processing}"],
+            overrides=["loss=default", f"data/processing={processing}"],
         )
     config.paths.project_root = str(tmp_path)
     config.paths.data_root = "data"
     config.paths.output_root = "outputs"
     config.paths.checkpoint_root = "checkpoints"
     config.paths.artifact_root = "artifacts"
+    config.mixed.train_batch_counts.synthetic_court = 1
+    config.mixed.train_batch_counts.tennis_court_detector = 1
     config.data.batch_size = 2
     config.data.num_workers = 0
     config.data.pin_memory = False
@@ -70,7 +73,7 @@ def test_setup_test_requests_explicit_test_split_without_fallback(
         {
             "kp": CourtTargetSpec(
                 kind="kp",
-                schema="test_kp",
+                schema="synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
                 output_channels=2,
                 channel_names=("left", "right"),
                 target_dtype=torch.float32,
@@ -84,12 +87,13 @@ def test_setup_test_requests_explicit_test_split_without_fallback(
         split="test",
         image_path=tmp_path / "unused.png",
         annotation_path=tmp_path / "unused.json",
-
-
         payload={},
     )
 
     class _Input:
+        available_splits = ("test",)
+        spec = SimpleNamespace(keypoint_flip_permutation=tuple(range(14)))
+
         def records(self, split: str):
             record_calls.append(split)
             return (record,)
@@ -107,13 +111,13 @@ def test_setup_test_requests_explicit_test_split_without_fallback(
     monkeypatch.setattr(
         datamodule_module,
         "build_court_processing_pipeline",
-        lambda config, *, is_train: _Pipeline(),
+        lambda config, *, is_train, require_pose: _Pipeline(),
     )
 
     datamodule = CourtDetectionDataModule(_compose(tmp_path))
     datamodule.setup("test")
 
-    assert record_calls == ["test"]
+    assert record_calls == ["test", "test"]
     assert datamodule.test_dataset is not None
     assert datamodule.target_bundle_spec == bundle
 
@@ -126,9 +130,7 @@ def test_pose_datamodule_scans_all_authority_before_model_or_workers(
         {
             "kp": CourtTargetSpec(
                 kind="kp",
-                schema=(
-                    "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1"
-                ),
+                schema=("synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1"),
                 output_channels=14,
                 channel_names=tuple(f"kp_{index}" for index in range(14)),
                 target_dtype=torch.float32,
@@ -143,8 +145,6 @@ def test_pose_datamodule_scans_all_authority_before_model_or_workers(
                 split=split,
                 image_path=tmp_path / "unused.npy",
                 annotation_path=tmp_path / "unused.json",
-
-
                 payload={},
             ),
         )
@@ -154,6 +154,7 @@ def test_pose_datamodule_scans_all_authority_before_model_or_workers(
 
     class _Input:
         available_splits = ("train", "val", "test")
+        spec = SimpleNamespace(keypoint_flip_permutation=tuple(range(14)))
 
         def records(self, split):
             return records[split]
@@ -170,7 +171,7 @@ def test_pose_datamodule_scans_all_authority_before_model_or_workers(
 
     def _factory(config, *, is_train, require_pose=False):
         _ = config
-        assert require_pose
+        assert require_pose == (config.source.kind == "synthetic_court")
         return _Pipeline(is_train)
 
     monkeypatch.setattr(
@@ -186,9 +187,6 @@ def test_pose_datamodule_scans_all_authority_before_model_or_workers(
                 "data.source.court_scope=target_court",
                 "data/processing=kp",
                 "data/augmentation=pose_safe",
-                "model/encoder=dinov3",
-                "model/transformer_encoder=default",
-                "model/decoder=dpt",
                 "loss.pose.enabled=true",
                 "loss.pose.translation_weight=1.0",
                 "loss.pose.rotation_weight=1.0",
