@@ -5,7 +5,6 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import astuple
 from pathlib import Path
-from typing import cast
 
 import pytest
 from hydra import compose, initialize_config_dir
@@ -18,11 +17,6 @@ from src.synthetic_data_generation.configuration import (
     AlignmentConfiguration,
     CourtDatasetConfiguration,
     ScenePipelineConfiguration,
-    _blcs_generator_config,
-    _blcs_source_settings,
-)
-from src.synthetic_data_generation.dataset.blcs.source import (
-    BLCSTrajectorySourceSettings,
 )
 from src.synthetic_data_generation.dataset.court.contracts import OrbitTargetMode
 from src.synthetic_data_generation.dataset.court.schema import (
@@ -30,10 +24,6 @@ from src.synthetic_data_generation.dataset.court.schema import (
 )
 from src.synthetic_data_generation.pipeline.contracts import DatasetTarget, StageName
 from src.synthetic_data_generation.reconstruction import NHT_PIPELINE_CONFIG_SCHEMA
-from src.tasks.blcs.generate_dataset.source_api import (
-    BLCSGeneratorConfiguration,
-    BLCSTimelineSpec,
-)
 from src.utils.configuration import (
     ConfigurationError,
     PathContractError,
@@ -43,7 +33,6 @@ from src.utils.configuration import (
 from src.utils.paths import PROJECT_ROOT
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
-_BLCS_GENERATOR_RUNTIME_TYPE = cast(type[object], BLCSGeneratorConfiguration)
 
 pytestmark = pytest.mark.local_data
 
@@ -51,18 +40,6 @@ pytestmark = pytest.mark.local_data
 def _compose(*overrides: str) -> DictConfig:
     with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
         return compose(config_name="run_scene_pipeline", overrides=list(overrides))
-
-
-def test_blcs_configuration_is_parsed_through_public_source_contracts() -> None:
-    config = _compose()
-
-    generator = _blcs_generator_config(config.dataset.blcs.generator)
-    source = _blcs_source_settings(config.dataset.blcs.trajectory_source)
-
-    assert isinstance(generator, _BLCS_GENERATOR_RUNTIME_TYPE)
-    assert isinstance(source.timeline, BLCSTimelineSpec)
-    assert source.timeline.min_scene_frames == 512
-    assert source.maximum_physics_attempts_per_object == 64
 
 
 def test_b00_configuration_is_the_canonical_scene_request() -> None:
@@ -99,27 +76,6 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
     )
 
 
-@pytest.mark.parametrize(
-    ("profile", "scene_id"),
-    [("b01", "B01"), ("b02", "B02"), ("b03", "B03")],
-)
-def test_alignment_terminal_profiles_do_not_require_plcs_scene_split(
-    profile: str,
-    scene_id: str,
-) -> None:
-    runtime = ScenePipelineConfiguration.from_config(
-        _compose(
-            f"profile={profile}",
-            "request.through_stage=alignment",
-        )
-    )
-
-    assert runtime.request.scene_id == scene_id
-    assert runtime.request.through_stage is StageName.ALIGNMENT
-    assert runtime.request.active_targets == frozenset()
-    assert scene_id not in runtime.plcs.scene_splits
-
-
 def test_dataset_terminal_must_belong_to_explicit_targets() -> None:
     config = _compose(
         "request.targets=[court]",
@@ -137,34 +93,11 @@ def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
     assert runtime.court.sampling.minimum_trajectory_groups >= 24
     assert runtime.court.sampling.minimum_accepted_frames >= 2_000
     assert runtime.court.sampling.maximum_adjacent_step_m <= 1.05
-    assert runtime.blcs.timeline.frame_selection == "all_source_frames"
-    assert runtime.plcs.timeline.frame_selection == "all_source_frames"
-    assert runtime.blcs.timeline.chunk_size_frames not in {5, 12, 64}
-    assert runtime.plcs.timeline.chunk_size_frames not in {5, 12, 64}
     assert (
         runtime.court.performance.maximum_wall_seconds,
         runtime.court.performance.maximum_nht_invocations,
         runtime.court.performance.maximum_complete_array_scans_per_sample,
     ) == (1_800.0, 8, 2)
-    assert (
-        runtime.blcs.performance.maximum_wall_seconds,
-        runtime.blcs.performance.maximum_nht_invocations,
-        runtime.blcs.performance.maximum_background_cache_misses,
-        runtime.blcs.performance.maximum_published_fraction_of_dense_reference,
-        runtime.blcs.performance.maximum_batch_frames,
-    ) == (3_600.0, 3, 18, 0.2, 1)
-    assert (
-        runtime.plcs.performance.maximum_wall_seconds,
-        runtime.plcs.performance.maximum_nht_invocations,
-        runtime.plcs.performance.maximum_background_cache_misses,
-        runtime.plcs.performance.maximum_published_fraction_of_dense_reference,
-        runtime.plcs.performance.maximum_batch_frames,
-    ) == (5_400.0, 1, 12, 0.25, 32)
-    assert {
-        runtime.court.performance.execution_device,
-        runtime.blcs.performance.execution_device,
-        runtime.plcs.performance.execution_device,
-    } == {"cuda:0"}
 
 
 @pytest.mark.parametrize(
@@ -319,61 +252,6 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         0.3,
         0.3,
     )
-
-
-def test_blcs_and_plcs_production_inputs_are_typed_and_have_no_frame_subset() -> None:
-    runtime = ScenePipelineConfiguration.from_config(_compose())
-
-    assert isinstance(runtime.blcs.trajectory_source, BLCSTrajectorySourceSettings)
-    assert isinstance(runtime.blcs.trajectory_source.timeline, BLCSTimelineSpec)
-    assert isinstance(runtime.blcs.generator, _BLCS_GENERATOR_RUNTIME_TYPE)
-    assert runtime.blcs.trajectory_source.scene_count == 3
-    assert runtime.blcs.trajectory_source.maximum_physics_attempts_per_object == 64
-    assert runtime.blcs.trajectory_source.split_scene_counts == {
-        "train": 1,
-        "validation": 1,
-        "test": 1,
-    }
-    assert runtime.blcs.trajectory_source.timeline.min_scene_frames == 512
-    assert runtime.blcs.assets.ball.role.value == "movable"
-    assert runtime.blcs.assets.ball.asset_class == "ball"
-    assert runtime.blcs.assets.ball.floating_dtype == "float32"
-    assert runtime.blcs.assets.ball.appearance_model == "rgb"
-    assert runtime.blcs.assets.ball.appearance_space == "linear_rgb"
-    assert runtime.blcs.assets.settings.radius_m == 0.0335
-    assert runtime.blcs.assets.settings.visibility_threshold == 0.0001
-    assert runtime.blcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
-
-    assert (
-        runtime.plcs.accad_root
-        == (runtime.resolver.roots.data_root / "ACCAD").resolve()
-    )
-    assert (
-        runtime.plcs.smplh_model_root
-        == (runtime.resolver.roots.data_root / "smplh").resolve()
-    )
-    assert runtime.plcs.scene_splits == {
-        "B00": "train",
-        "B00-plcs-002": "train",
-    }
-    assert tuple(item.category.value for item in runtime.plcs.objects) == (
-        "running",
-        "walking",
-        "general",
-    )
-    assert runtime.plcs.gaussian_count == 2048
-    assert runtime.plcs.smplh_batch_size == 32
-    assert runtime.plcs.device == "cuda:0"
-    assert runtime.plcs.appearance.source == "palette"
-    assert runtime.plcs.appearance.assignment == "object_index_modulo_palette"
-    assert runtime.plcs.appearance.gaussian_fill == "uniform"
-    assert runtime.plcs.appearance.appearance_model == "rgb"
-    assert runtime.plcs.appearance.appearance_space == "linear_rgb"
-    assert len(runtime.plcs.appearance.colors) == 6
-    assert (
-        runtime.plcs.appearance.color_for_object(6) == runtime.plcs.appearance.colors[0]
-    )
-    assert runtime.plcs.render_timeout_seconds == runtime.nht.render_timeout_seconds
 
 
 @pytest.mark.parametrize(

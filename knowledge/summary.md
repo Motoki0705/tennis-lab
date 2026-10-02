@@ -1,7 +1,8 @@
-<!-- knowledge-review: 0535c5d1e32c7806be046bd8b049972cda50b14af278cbae6739df6899122bff on 2026-10-01 -->
+<!-- knowledge-review: 70ae1a87f9c57736918049b57a6d5ddf0cf8fd5ffb53c7e753640396d018483b on 2026-10-02 -->
+
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-29（#964の選手検出validation・旧box一致率の偏りと遠側小人物の未一致を反映）
+更新日: 2026-10-02（pose蓄積と#964の検出器比較を統合。実験結果・採否の変更なし）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -11,6 +12,17 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
+## 2026-10-02のボール検出用pose蓄積
+
+ユーザー指定でball-mix-v2の存在率40%以下をpose対象から外し、コートによる人物選別を
+使わず、全画面COCO DINO＋既存StrongSORT++/pose/CLIPのrawトラックをGPTで選別する。
+[GPU動作確認](nodes/player_pose_annotation/000001-run-ball-mix-v2-player-pose-gpu-smoke-20261002.md)と
+[最初の実clip](nodes/player_pose_annotation/000002-run-player-pose-v2-pilot-00034-20261002.md)は完走した。
+初回は20rawトラックから2選手を採用し、欠損を補わずframe/PTSと入力hashを検証した。
+この1clipの機能確認から、全clipのID精度・移動カメラへの頑健性は主張しない。
+対象689clipの処理とレビューは継続中。従来#964のコート選別は過去の比較として維持し、
+今回のposeデータ生成方針とは区別する。次は全対象のcoverage・保留・ID切替の実例を監査する。
+
 ## 2026-09-29の選手検出切替（#964）
 
 [#937のFT検出器比較](nodes/player_detection/000004-run-i964-detectors-val-meiji-r1-20260929.md)では、
@@ -19,6 +31,7 @@
 多くはIoU=0で、単なるbox形状差と決めつけられない。ユーザー指定のFT切替を保ち、追跡比較ではcoverageを併記する。
 CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
 既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
+
 
 ## 2026-09-27のcamera間人物対応（#933）
 
