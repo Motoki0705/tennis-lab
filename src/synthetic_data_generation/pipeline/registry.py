@@ -23,7 +23,6 @@ from src.synthetic_data_generation.pipeline.publication import (
     ExternalAtomicPublication,
 )
 from src.synthetic_data_generation.pipeline.reuse import (
-    PLCSV5ReusablePublicationValidator,
     RequiredOutputsReusablePublicationValidator,
 )
 
@@ -36,8 +35,6 @@ class CanonicalStageHandlers:
     reconstruction: StageHandler[StageExecutionSummary]
     alignment: StageHandler[StageExecutionSummary]
     court_dataset: StageHandler[StageExecutionSummary]
-    blcs_dataset: StageHandler[StageExecutionSummary]
-    plcs_dataset: StageHandler[StageExecutionSummary]
     report: StageHandler[StageExecutionSummary]
 
 
@@ -69,7 +66,9 @@ class StageRegistry:
                 )
             handler_id = id(definition.handler)
             if handler_id in handler_ids:
-                raise ValueError("One handler instance cannot own multiple stage definitions.")
+                raise ValueError(
+                    "One handler instance cannot own multiple stage definitions."
+                )
             handler_ids.add(handler_id)
         self._validate_owner_uniqueness()
         self.ordered_names(set(StageName))
@@ -170,7 +169,9 @@ class StageRegistry:
             )
         reusable_names = set(reusable_stages)
         if not reusable_names <= selected_names:
-            raise ValueError("Reusable stages must belong to the selected request stages.")
+            raise ValueError(
+                "Reusable stages must belong to the selected request stages."
+            )
         cursor = self.definition(request.from_stage)
         invalidated_names = {
             definition.name
@@ -232,7 +233,9 @@ class StageRegistry:
                 else self.definition(stage).descendants
             )
             if tuple(actual) != expected:
-                raise RuntimeError("Bound descendant inventory disagrees with the stage graph.")
+                raise RuntimeError(
+                    "Bound descendant inventory disagrees with the stage graph."
+                )
         return definitions
 
     def _validate_owner_uniqueness(self) -> None:
@@ -258,7 +261,9 @@ class StageRegistry:
                 producer_name = stage_input.producer
                 relative_path = stage_input.relative_path
                 if producer_name is None or relative_path is None:
-                    raise RuntimeError("Invalid StageInput escaped construction validation.")
+                    raise RuntimeError(
+                        "Invalid StageInput escaped construction validation."
+                    )
                 if producer_name not in self.definitions:
                     raise ValueError(
                         f"Stage {definition.name.value} has unknown input producer "
@@ -315,7 +320,6 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
     atomic = AtomicDirectoryPublication()
     external = ExternalAtomicPublication()
     required_outputs_reuse = RequiredOutputsReusablePublicationValidator()
-    plcs_v5_reuse = PLCSV5ReusablePublicationValidator()
     definitions = {
         StageName.INGEST: StageDefinition(
             name=StageName.INGEST,
@@ -349,8 +353,12 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             required_inputs=(
                 config,
                 StageInput.stage_output(StageName.RECONSTRUCTION, "export/scene.json"),
-                StageInput.stage_output(StageName.RECONSTRUCTION, "export/cameras.json"),
-                StageInput.stage_output(StageName.RECONSTRUCTION, "export/points_scene.npy"),
+                StageInput.stage_output(
+                    StageName.RECONSTRUCTION, "export/cameras.json"
+                ),
+                StageInput.stage_output(
+                    StageName.RECONSTRUCTION, "export/points_scene.npy"
+                ),
                 StageInput.stage_output(StageName.RECONSTRUCTION, "export/images"),
                 StageInput.stage_output(StageName.RECONSTRUCTION, "export/model"),
             ),
@@ -371,64 +379,25 @@ def canonical_registry(handlers: CanonicalStageHandlers) -> StageRegistry:
             dependencies=(StageName.ALIGNMENT,),
             owner_relative_path=Path("datasets/court"),
             required_inputs=_dataset_inputs(config),
-            required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
+            required_outputs=(
+                Path("dataset.json"),
+                Path("samples"),
+                Path("diagnostics"),
+            ),
             handler=handlers.court_dataset,
             publication=atomic,
             reusable_publication_validator=required_outputs_reuse,
             summary_type=StageExecutionSummary,
         ),
-        StageName.BLCS_DATASET: StageDefinition(
-            name=StageName.BLCS_DATASET,
-            dependencies=(StageName.ALIGNMENT,),
-            owner_relative_path=Path("datasets/blcs"),
-            required_inputs=_dataset_inputs(config),
-            required_outputs=(Path("dataset.json"), Path("samples"), Path("diagnostics")),
-            handler=handlers.blcs_dataset,
-            publication=atomic,
-            reusable_publication_validator=required_outputs_reuse,
-            summary_type=StageExecutionSummary,
-        ),
-        StageName.PLCS_DATASET: StageDefinition(
-            name=StageName.PLCS_DATASET,
-            dependencies=(StageName.ALIGNMENT,),
-            owner_relative_path=Path("datasets/plcs"),
-            required_inputs=_dataset_inputs(config),
-            required_outputs=(
-                Path("dataset.json"),
-                Path("backgrounds"),
-                Path("scenes"),
-                Path("diagnostics"),
-            ),
-            handler=handlers.plcs_dataset,
-            publication=atomic,
-            reusable_publication_validator=plcs_v5_reuse,
-            summary_type=StageExecutionSummary,
-        ),
         StageName.REPORT: StageDefinition(
             name=StageName.REPORT,
-            dependencies=(
-                StageName.COURT_DATASET,
-                StageName.BLCS_DATASET,
-                StageName.PLCS_DATASET,
-            ),
+            dependencies=(StageName.COURT_DATASET,),
             owner_relative_path=Path("report"),
             required_inputs=(
                 config,
                 StageInput.stage_output(StageName.ALIGNMENT, "alignment.json"),
                 StageInput.stage_output(
-                    StageName.COURT_DATASET,
-                    "dataset.json",
-                    target=DatasetTarget.COURT,
-                ),
-                StageInput.stage_output(
-                    StageName.BLCS_DATASET,
-                    "dataset.json",
-                    target=DatasetTarget.BLCS,
-                ),
-                StageInput.stage_output(
-                    StageName.PLCS_DATASET,
-                    "dataset.json",
-                    target=DatasetTarget.PLCS,
+                    StageName.COURT_DATASET, "dataset.json", target=DatasetTarget.COURT
                 ),
             ),
             required_outputs=(Path("index.html"), Path("report.json")),

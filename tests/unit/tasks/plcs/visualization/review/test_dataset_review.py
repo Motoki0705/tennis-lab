@@ -21,16 +21,9 @@ from src.utils.projection.camera_projector import project_points
 
 DATA_ROOT = Path("/home/kamimura/projects/tennis-lab/data")
 SCENE = "scene_000000"
-FORMS = (
-    "single_object",
-    "multi_object",
-    "single_object_broadcast",
-    "multi_object_broadcast",
-    "multi_object_camera_view_v2",
-    "single_object_camera_view_v2",
-)
+FORMS = ("single_object",)
 
-pytestmark = pytest.mark.skipif(
+_data_availability = pytest.mark.skipif(
     not (DATA_ROOT / "plcs").is_dir(), reason="PLCS dataset is unavailable"
 )
 
@@ -50,9 +43,7 @@ def project(record: Any, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         camera, torch.as_tensor(np.asarray(points), dtype=torch.float32)
     )
     uv = (uv / torch.tensor([camera.w, camera.h], dtype=torch.float32)).numpy()
-    in_bounds = (
-        (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
-    )
+    in_bounds = (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
     return uv, (in_front.numpy() & in_bounds)
 
 
@@ -67,9 +58,7 @@ def test_court_keypoints_reproject_exactly(form: str) -> None:
         # PLCS stores the (static) court projection once per frame.
         saved = np.load(directory / f"cam_{index}_court_kp_uv.npy")[0]
         saved_vis = np.load(directory / f"cam_{index}_court_kp_vis.npy")[0]
-        order = np.asarray(
-            meta["court_keypoint_views"][index]["semantic_to_physical"]
-        )
+        order = np.asarray(meta["court_keypoint_views"][index]["semantic_to_physical"])
         physical = np.empty_like(uv)
         physical[order] = saved
         physical_vis = np.empty_like(visible)
@@ -122,7 +111,11 @@ def test_api_shapes_and_errors() -> None:
     frames = document["entity"]["frames"]
     buffer = client.get(
         "/api/scene/buffer",
-        params={"form": "single_object", "scene": SCENE, "revision": document["revision"]},
+        params={
+            "form": "single_object",
+            "scene": SCENE,
+            "revision": document["revision"],
+        },
     ).content
     assert len(buffer) == frames * 17 * 3 * 4 + frames * 2 * 4
 
@@ -150,3 +143,6 @@ def test_api_shapes_and_errors() -> None:
         "/api/scene", params={"form": "single_object", "scene": "../escape"}
     )
     assert escaped.status_code in {404, 422}
+
+
+pytestmark = [pytest.mark.local_data, _data_availability]

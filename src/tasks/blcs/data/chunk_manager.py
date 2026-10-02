@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
 
 from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
@@ -26,22 +24,14 @@ class _BLCSChunkGenerator:
         generation_workers: int,
         generation_chunksize: int,
         generation_seed: int,
-        multi_object: bool,
-        timeline_config: Mapping[str, Any] | None,
-        maximum_physics_attempts_per_object: int | None,
+        maximum_physics_attempts_per_scene: int | None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
         self.generation_workers = generation_workers
         self.generation_chunksize = generation_chunksize
         self.generation_seed = generation_seed
-        self.multi_object = multi_object
-        self.timeline_config = (
-            dict(timeline_config) if timeline_config is not None else None
-        )
-        self.maximum_physics_attempts_per_object = (
-            maximum_physics_attempts_per_object
-        )
+        self.maximum_physics_attempts_per_scene = maximum_physics_attempts_per_scene
         self._next_scene_index = 0
 
     def __call__(
@@ -64,12 +54,7 @@ class _BLCSChunkGenerator:
             num_workers=self.generation_workers,
             start_index=start_index,
             seed=self.generation_seed,
-            multi_object=self.multi_object,
-            timeline_config=self.timeline_config,
-            maximum_physics_attempts_per_scene=None,
-            maximum_physics_attempts_per_object=(
-                self.maximum_physics_attempts_per_object
-            ),
+            maximum_physics_attempts_per_scene=self.maximum_physics_attempts_per_scene,
             chunksize=self.generation_chunksize,
         ):
             if stop_event.is_set():
@@ -99,9 +84,7 @@ class ChunkManager(BaseChunkManager):
         generation_workers: int,
         generation_chunksize: int,
         generation_seed: int,
-        multi_object: bool,
-        timeline_config: Mapping[str, Any] | None,
-        maximum_physics_attempts_per_object: int | None,
+        maximum_physics_attempts_per_scene: int | None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
@@ -115,11 +98,7 @@ class ChunkManager(BaseChunkManager):
                 generation_workers=self.generation_workers,
                 generation_chunksize=generation_chunksize,
                 generation_seed=generation_seed,
-                multi_object=multi_object,
-                timeline_config=timeline_config,
-                maximum_physics_attempts_per_object=(
-                    maximum_physics_attempts_per_object
-                ),
+                maximum_physics_attempts_per_scene=(maximum_physics_attempts_per_scene),
             ),
             scenes_per_chunk=scenes_per_chunk,
             epochs_per_chunk=epochs_per_chunk,
