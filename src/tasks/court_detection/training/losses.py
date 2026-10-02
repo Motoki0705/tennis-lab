@@ -174,7 +174,9 @@ def keypoint_pose_consistency_loss(
 
     visible_count = point_visible.sum()
     if int(visible_count) == 0:
-        raise ValueError("Court consistency loss requires at least one GT-visible point.")
+        raise ValueError(
+            "Court consistency loss requires at least one GT-visible point."
+        )
 
     with torch.autocast(device_type=dense_points_xy.device.type, enabled=False):
         dense_authority = dense_points_xy.to(dtype=compute_dtype)
@@ -215,11 +217,8 @@ def keypoint_pose_consistency_loss(
         cheirality = (cheirality_per_point * visible_weight).sum() / count
         mean_distance_px = (distance_px * visible_weight).sum() / count
         invalid_depth_fraction = (
-            ((depth_authority <= minimum_depth) & point_visible)
-            .to(dtype=compute_dtype)
-            .sum()
-            / count
-        )
+            (depth_authority <= minimum_depth) & point_visible
+        ).to(dtype=compute_dtype).sum() / count
     return CourtKeypointPoseConsistencyLoss(
         coordinate=coordinate,
         cheirality=cheirality,
@@ -233,10 +232,22 @@ def keypoint_pose_consistency_loss(
 class DiceLoss(nn.Module):
     """Per-class Dice loss averaged over classes (for segmentation)."""
 
-    def __init__(self, num_classes: int, smooth: float = 1.0) -> None:
+    def __init__(
+        self, num_classes: int, smooth: float = 1.0, *, coverage_targets: bool = False
+    ) -> None:
         super().__init__()
         self.num_classes = num_classes
         self.smooth = smooth
+        self._prepare_targets = (
+            self._coverage_targets if coverage_targets else self._label_targets
+        )
+
+    def _label_targets(self, targets: Tensor) -> Tensor:
+        return F.one_hot(targets, self.num_classes).permute(0, 3, 1, 2)
+
+    @staticmethod
+    def _coverage_targets(targets: Tensor) -> Tensor:
+        return targets
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Compute Dice loss.
@@ -246,11 +257,10 @@ class DiceLoss(nn.Module):
         logits:
             ``[B, C, H, W]`` raw logits.
         targets:
-            ``[B, H, W]`` int64 labels.
+            ``[B,H,W]`` int64 labels, or ``[B,C,H,W]`` class coverage when configured.
         """
         probs = F.softmax(logits, dim=1)
-        targets_oh = F.one_hot(targets, self.num_classes)
-        targets_oh = targets_oh.permute(0, 3, 1, 2).to(dtype=probs.dtype)
+        targets_oh = self._prepare_targets(targets).to(dtype=probs.dtype)
 
         dims = (0, 2, 3)
         intersection = (probs * targets_oh).sum(dim=dims)
@@ -277,7 +287,11 @@ class BinaryDiceLoss(nn.Module):
 
 def rotation_geodesic_radians(prediction: Tensor, target: Tensor) -> Tensor:
     """Return stable per-sample SO(3) geodesic angles in radians."""
-    if prediction.shape != target.shape or prediction.ndim != 3 or prediction.shape[-2:] != (3, 3):
+    if (
+        prediction.shape != target.shape
+        or prediction.ndim != 3
+        or prediction.shape[-2:] != (3, 3)
+    ):
         raise ValueError("Rotation geodesic inputs must share shape (B,3,3).")
     if prediction.device != target.device:
         raise ValueError("Rotation geodesic inputs must share device.")
@@ -297,12 +311,7 @@ def rotation_geodesic_radians(prediction: Tensor, target: Tensor) -> Tensor:
             dim=-1,
         )
         sine = 0.5 * torch.linalg.vector_norm(skew, dim=-1)
-        cosine = 0.5 * (
-            relative[:, 0, 0]
-            + relative[:, 1, 1]
-            + relative[:, 2, 2]
-            - 1.0
-        )
+        cosine = 0.5 * (relative[:, 0, 0] + relative[:, 1, 1] + relative[:, 2, 2] - 1.0)
         return torch.atan2(sine, cosine)
 
 

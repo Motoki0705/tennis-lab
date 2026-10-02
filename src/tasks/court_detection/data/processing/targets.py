@@ -22,6 +22,7 @@ from src.tasks.court_detection.data.target_generation.online import (
     generate_online_targets,
 )
 from src.tasks.court_detection.target_schemas import (
+    DENSE_COVERAGE_SCHEMAS,
     SEMANTIC_LINE_CHANNEL_NAMES,
     SEMANTIC_LINE_CLASS_BY_NAME,
 )
@@ -125,9 +126,10 @@ class _OnlineDenseTargetBuilder:
             raise ValueError(f"{self.kind} target requires a non-empty split.")
 
     def load_dense(self, raw: CourtRawSample) -> Mapping[CourtDenseTargetKind, Tensor]:
-        targets: Mapping[CourtDenseTargetKind, Tensor] = generate_online_targets(raw, {self.kind: self.spec.schema})
+        targets: Mapping[CourtDenseTargetKind, Tensor] = generate_online_targets(
+            raw, {self.kind: self.spec.schema}
+        )
         return targets
-
 
 
 class SegmentationTargetBuilder(_OnlineDenseTargetBuilder):
@@ -148,14 +150,20 @@ class SegmentationTargetBuilder(_OnlineDenseTargetBuilder):
                     "doubles_left",
                     "doubles_right",
                 ),
-                target_dtype=torch.long,
+                target_dtype=torch.float32
+                if target_schema in DENSE_COVERAGE_SCHEMAS
+                else torch.long,
                 precomputed=False,
             ),
             input_spec=input_spec,
         )
 
     def build(self, sample: CourtTransformedSample) -> object:
-        mask = sample.dense_targets["seg"].long()
+        mask = sample.dense_targets["seg"].to(dtype=self.spec.target_dtype)
+        if self.spec.target_dtype == torch.float32:
+            if sample.horizontal_flipped:
+                mask = mask[[0, 2, 1, 4, 3, 6, 5]]
+            return mask
         if sample.horizontal_flipped:
             source = mask.clone()
             for left, right in ((1, 2), (3, 4), (5, 6)):
@@ -166,6 +174,13 @@ class SegmentationTargetBuilder(_OnlineDenseTargetBuilder):
 
 class LineTargetBuilder(_OnlineDenseTargetBuilder):
     kind: CourtDenseTargetKind = "line"
+
+    @property
+    def required_capabilities(self) -> frozenset[CourtInputCapability]:
+        kinds = {CourtInputCapability.COURT_INSTANCES}
+        if self.spec.schema in DENSE_COVERAGE_SCHEMAS:
+            kinds.add(CourtInputCapability.KEYPOINT_CHANNELS)
+        return frozenset(kinds)
 
     def __init__(self, *, target_schema: str, input_spec: CourtInputSpec) -> None:
         super().__init__(
@@ -192,7 +207,12 @@ class SemanticLineTargetBuilder(_OnlineDenseTargetBuilder):
 
     @property
     def required_capabilities(self) -> frozenset[CourtInputCapability]:
-        return frozenset({CourtInputCapability.COURT_INSTANCES, CourtInputCapability.KEYPOINT_CHANNELS})
+        return frozenset(
+            {
+                CourtInputCapability.COURT_INSTANCES,
+                CourtInputCapability.KEYPOINT_CHANNELS,
+            }
+        )
 
     def __init__(self, *, target_schema: str, input_spec: CourtInputSpec) -> None:
         super().__init__(
@@ -201,14 +221,20 @@ class SemanticLineTargetBuilder(_OnlineDenseTargetBuilder):
                 schema=target_schema,
                 output_channels=len(SEMANTIC_LINE_CHANNEL_NAMES),
                 channel_names=SEMANTIC_LINE_CHANNEL_NAMES,
-                target_dtype=torch.long,
+                target_dtype=torch.float32
+                if target_schema in DENSE_COVERAGE_SCHEMAS
+                else torch.long,
                 precomputed=False,
             ),
             input_spec=input_spec,
         )
 
     def build(self, sample: CourtTransformedSample) -> object:
-        mask = sample.dense_targets["semantic_line"].long()
+        mask = sample.dense_targets["semantic_line"].to(dtype=self.spec.target_dtype)
+        if self.spec.target_dtype == torch.float32:
+            if sample.horizontal_flipped:
+                mask = mask[[0, 1, 2, 4, 3, 6, 5, 7, 8, 9, 10, 11]]
+            return mask
         if sample.horizontal_flipped:
             source = mask.clone()
             for left_name, right_name in (

@@ -432,8 +432,8 @@ def test_real_three_target_dataset_dataloader_contract(
     assert tuple(targets) == ("kp", "seg", "line", "semantic_line")
     assert kp["heatmap"].shape == (1, kp_channels, 32, 48)
     assert kp["point_visible"].dtype == torch.bool
-    assert cast(torch.Tensor, targets["seg"]).shape == (1, 32, 48)
-    assert cast(torch.Tensor, targets["seg"]).dtype == torch.long
+    assert cast(torch.Tensor, targets["seg"]).shape == (1, 7, 32, 48)
+    assert cast(torch.Tensor, targets["seg"]).dtype == torch.float32
     assert cast(torch.Tensor, targets["line"]).shape == (1, 1, 32, 48)
 
 

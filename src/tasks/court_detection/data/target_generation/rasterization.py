@@ -134,8 +134,14 @@ class CourtPlaneRasterizer:
             point_in_front=point_in_front,
         )
 
-    def project_polygon(self, points_xy: NDArray[np.floating]) -> Int32Array | None:
-        """Clip a metric polygon to positive depth and the image before projection."""
+    def project_polygon_float(
+        self, points_xy: NDArray[np.floating], *, pixel_edges: bool = True
+    ) -> Float64Array | None:
+        """Clip before division and retain subpixel geometry, including thin quads.
+
+        Integer image coordinates denote pixel centres. Coverage rendering clips
+        to the outer pixel edges; the old hard-mask renderer uses centre bounds.
+        """
         points = np.asarray(points_xy, dtype=np.float64)
         if points.ndim != 2 or points.shape[0] < 3 or points.shape[1] != 2:
             raise ValueError("Court raster polygons must have shape (N>=3, 2).")
@@ -145,12 +151,15 @@ class CourtPlaneRasterizer:
             (points, np.ones((points.shape[0], 1), dtype=np.float64)), axis=1
         )
         clipped = source_h @ self.homography.T
+        lower = -0.5 if pixel_edges else 0.0
+        upper_x = self.width - 0.5 if pixel_edges else float(self.width - 1)
+        upper_y = self.height - 0.5 if pixel_edges else float(self.height - 1)
         distance_functions = (
             lambda value: value[:, 2] - _MIN_NORMALIZED_DEPTH,
-            lambda value: value[:, 0],
-            lambda value: float(self.width - 1) * value[:, 2] - value[:, 0],
-            lambda value: value[:, 1],
-            lambda value: float(self.height - 1) * value[:, 2] - value[:, 1],
+            lambda value: value[:, 0] - lower * value[:, 2],
+            lambda value: upper_x * value[:, 2] - value[:, 0],
+            lambda value: value[:, 1] - lower * value[:, 2],
+            lambda value: upper_y * value[:, 2] - value[:, 1],
         )
         for distance_function in distance_functions:
             if clipped.shape[0] == 0:
@@ -162,8 +171,15 @@ class CourtPlaneRasterizer:
         if clipped.shape[0] < 3:
             return None
         projected = clipped[:, :2] / clipped[:, 2, None]
-        projected[:, 0] = np.clip(projected[:, 0], 0.0, float(self.width - 1))
-        projected[:, 1] = np.clip(projected[:, 1], 0.0, float(self.height - 1))
+        projected[:, 0] = np.clip(projected[:, 0], lower, upper_x)
+        projected[:, 1] = np.clip(projected[:, 1], lower, upper_y)
+        return projected
+
+    def project_polygon(self, points_xy: NDArray[np.floating]) -> Int32Array | None:
+        """Render the historical integer-pixel contract of saved checkpoints."""
+        projected = self.project_polygon_float(points_xy, pixel_edges=False)
+        if projected is None:
+            return None
         rounded = np.rint(projected).astype(np.int32)
         deduplicated: list[Int32Array] = []
         for point in rounded:

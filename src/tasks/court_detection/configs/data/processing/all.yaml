@@ -2,8 +2,8 @@ targets:
   - kind: kp
     sigma_ratio: 0.01
   - kind: seg
-    target_schema: court_cell_segmentation_single_court_v2
+    target_schema: court_cell_segmentation_coverage8_single_court_v3
   - kind: line
-    target_schema: court_line_binary_75mm_150mm_single_court_v3
+    target_schema: court_line_coverage8_75mm_150mm_single_court_v4
   - kind: semantic_line
-    target_schema: court_line_semantic_camera_view_75mm_150mm_single_court_v1
+    target_schema: court_line_semantic_camera_view_75mm_150mm_coverage8_single_court_v2

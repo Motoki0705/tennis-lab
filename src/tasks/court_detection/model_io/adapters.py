@@ -288,18 +288,27 @@ class CourtModelIOAdapter(nn.Module):
         )
         self.kp_loss = FocalBCEWithLogitsLoss(gamma=loss_config.kp_focal_gamma)
         self.seg_dice = DiceLoss(
+            coverage_targets=(
+                "seg" in spec.target_bundle.targets
+                and spec.target_bundle.targets["seg"].target_dtype == torch.float32
+            ),
             num_classes=(
                 spec.target_bundle.targets["seg"].output_channels
                 if "seg" in spec.target_bundle.targets
                 else 1
-            )
+            ),
         )
         self.semantic_line_dice = DiceLoss(
+            coverage_targets=(
+                "semantic_line" in spec.target_bundle.targets
+                and spec.target_bundle.targets["semantic_line"].target_dtype
+                == torch.float32
+            ),
             num_classes=(
                 spec.target_bundle.targets["semantic_line"].output_channels
                 if "semantic_line" in spec.target_bundle.targets
                 else 1
-            )
+            ),
         )
         self.line_dice = BinaryDiceLoss()
 
@@ -730,6 +739,29 @@ class CourtModelIOAdapter(nn.Module):
         if not isinstance(value, Tensor):
             raise CourtModelIOError(f"Court {kind} target must be a Tensor.")
         channels = self.spec.target_bundle.targets[kind].output_channels
+        if self.spec.target_bundle.targets[kind].target_dtype == torch.float32:
+            if (
+                value.shape != (call.batch_size, channels, call.height, call.width)
+                or value.dtype != torch.float32
+            ):
+                raise CourtModelIOError(
+                    f"Court {kind} coverage must be float32 (B,C,H,W)."
+                )
+            if not bool(torch.isfinite(value).all()) or bool(
+                torch.any((value < 0) | (value > 1))
+            ):
+                raise CourtModelIOError(
+                    f"Court {kind} coverage must be finite in [0,1]."
+                )
+            if not bool(
+                torch.allclose(
+                    value.sum(1), torch.ones_like(value[:, 0]), atol=1e-5, rtol=0.0
+                )
+            ):
+                raise CourtModelIOError(
+                    f"Court {kind} coverage channels must sum to one."
+                )
+            return value
         if (
             value.shape != (call.batch_size, call.height, call.width)
             or value.dtype != torch.long
