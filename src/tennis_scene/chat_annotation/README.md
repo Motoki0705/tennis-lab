@@ -1,11 +1,17 @@
 # ChatGPT Project用のテニス動画アノテーション準備
 
+ball frame storeからの人物検出・追跡とGPTによる選手IDレビューは
+[player_pose](player_pose/README.md)を参照する。
+
 YouTube URLから動画を取得し、前後の参考区間を含む最大15秒・500,000,000 bytes以下の
 MP4と、Chatへ貼り付ける短いリクエスト本文を作る。対象は対象コートのプレーヤーと
 プレー中のボールで、参考区間を含む添付動画の全フレームを処理する。
 アノテーションの正本・座標・補間・可視化・返却形式は
 [PROTOCOL.md](resources/PROTOCOL.md)、機械契約は
 [runtime/contracts.py](runtime/contracts.py)を参照する。対象別REQUESTには機械契約から生成したJSON Schemaを含める。
+
+ローカルのCodex CLIによるボール注釈・並列実行・採用判定・再アノテーションの運用は
+[local_agent](local_agent/README.md) を参照する。
 
 ## 実行
 
