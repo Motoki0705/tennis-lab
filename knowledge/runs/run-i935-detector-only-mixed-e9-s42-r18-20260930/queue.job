@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i935-detector-only-mixed-e9-s42-r18-20260930
+# added: 2026-09-30T10:04:10+09:00
+# provider: codex
+# session: 01a0efbe-288b-75f0-9741-326beaf4d6aa
+# issue: 935
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain
+export TENNIS_RUN_ID=1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930 --name i935-detector-only-mixed-e9-s42-r18-20260930 --provider codex --session 01a0efbe-288b-75f0-9741-326beaf4d6aa --issue 935 --cmd timeout\ --signal=TERM\ --kill-after=15s\ 7185s\ env\ PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain\ OMP_NUM_THREADS=4\ MKL_NUM_THREADS=4\ OPENBLAS_NUM_THREADS=4\ TORCHINDUCTOR_COMPILE_THREADS=2\ MAX_JOBS=2\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python\ -u\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/run_pilot.py\ --plan\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/plan.json
+timeout --signal=TERM --kill-after=15s 7185s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 TORCHINDUCTOR_COMPILE_THREADS=2 MAX_JOBS=2 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/run_pilot.py --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/plan.json

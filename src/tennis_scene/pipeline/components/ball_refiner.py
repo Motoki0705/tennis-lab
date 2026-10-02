@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, fields, replace
 from fractions import Fraction
 
 import numpy as np
@@ -10,6 +11,8 @@ from numpy.typing import NDArray
 
 from src.tasks.ball_refiner.deployment import InferenceBundle
 from src.tasks.ball_refiner.inference import SequencePrediction, predict_sequence
+from src.tasks.ball_refiner.pipeline_options import CalibrationArtifact
+from src.tasks.ball_refiner.refiner_2d.calibration import CovarianceCalibration
 from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
 from src.tennis_scene.pipeline.components.base import release_inference_memory
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
@@ -46,8 +49,9 @@ class BallRefiner2DOutput:
         n = self.prediction.distribution.means.shape[1]
         if (not self.camera_id or len(self.source_size_wh) != 2
                 or any(type(x) is not int or x <= 1 for x in self.source_size_wh)
-                or self.calibration != "uncalibrated"):
+                ):
             raise ValueError("Invalid refiner source size, camera or calibration status")
+        self._validate_calibration()
         for array, dtype in ((self.frame_indices, np.int64), (self.pts, np.int64),
                              (self.timestamps_seconds, np.float32), (self.detector_window_start, np.int64),
                              (self.detector_time_index, np.int64)):
@@ -65,6 +69,23 @@ class BallRefiner2DOutput:
                 or (self.detector_time_index >= length).any()
                 or not np.array_equal(self.detector_window_start + self.detector_time_index, self.frame_indices)):
             raise ValueError("Refiner artifact detector provenance must address real source frames")
+
+    def _validate_calibration(self) -> None:
+        if self.calibration != "uncalibrated":
+            raise ValueError("The v1 refiner output requires uncalibrated predictions")
+
+
+@dataclass(frozen=True)
+class CalibratedBallRefiner2DOutput(BallRefiner2DOutput):
+    """Schema v2 retains the exact applied scale and both immutable identities."""
+
+    covariance_calibration: CovarianceCalibration
+    calibration_artifact_sha256: str
+
+    def _validate_calibration(self) -> None:
+        if (self.calibration != "covariance_scale_v1"
+                or re.fullmatch(r"[0-9a-f]{64}", self.calibration_artifact_sha256) is None):
+            raise ValueError("Calibrated refiner output requires its artifact SHA256 and scaling semantics")
 
 
 class BallRefiner2DModule:
@@ -96,3 +117,27 @@ class BallRefiner2DModule:
             inputs.pts, inputs.time_base, inputs.model_input.timestamps_seconds[0].numpy().copy(), prediction,
             inputs.detector_window_start, inputs.detector_time_index, self.bundle.detector.window_length, "uncalibrated",
         )
+
+
+class CalibratedBallRefiner2DModule(BallRefiner2DModule):
+    io = ComponentIO("ball_refiner_2d", BallRefiner2DInput, CalibratedBallRefiner2DOutput,
+                     {"detections": InputPort("ball_detections", version=2)}, "ball_distribution_2d", version=2)
+
+    def __init__(
+        self, bundle: InferenceBundle, *, device: str, batch_size: int, calibration: CalibrationArtifact,
+    ) -> None:
+        super().__init__(bundle, device=device, batch_size=batch_size)
+        self.calibration = calibration
+
+    def process(self, inputs: BallRefiner2DInput) -> CalibratedBallRefiner2DOutput:
+        calibration = self.calibration.load()
+        raw = super().process(inputs)
+        if self.calibration.load() != calibration:
+            raise ValueError("Covariance calibration changed during inference")
+        values = {field.name: getattr(raw, field.name) for field in fields(raw)}
+        values.update(
+            prediction=replace(raw.prediction, distribution=calibration.apply(raw.prediction.distribution)),
+            calibration="covariance_scale_v1", covariance_calibration=calibration,
+            calibration_artifact_sha256=self.calibration.sha256,
+        )
+        return CalibratedBallRefiner2DOutput(**values)

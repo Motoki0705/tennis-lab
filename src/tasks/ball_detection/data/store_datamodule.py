@@ -7,8 +7,9 @@
   (:class:`SourceMixSampler`); consecutive windows overlap, so an epoch is a
   sample of the pool rather than one pass over it.
 * **Windows** are ``model.num_frames`` long and must contain a supervised frame.
-* **Val / test**: every ``data.eval_stride``-th window of the split, in store
-  order.
+* **Val**: every ``data.eval_stride``-th window plus real tail backfill,
+  independent of labels. Short clips/gaps fail explicitly.
+* **Test**: every supervised ``data.eval_stride``-th window, in store order.
 * **Supervision**: ``data.supervision`` assigns every point kind a role
   (:mod:`.supervision`); samples carry the per-frame ``supervised`` mask.
 """
@@ -116,6 +117,7 @@ class BallStoreDataModule(pl.LightningDataModule):
             self.store.split_clips(split, self.sources),
             length=int(self.config.model.num_frames),
             stride=self.strides[split],
+            validation=split == "val",
         )
         self.selection_stats[split] = selection.stats
         print(

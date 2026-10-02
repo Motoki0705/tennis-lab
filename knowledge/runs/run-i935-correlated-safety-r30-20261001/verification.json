@@ -1,0 +1,7 @@
+{
+  "benchmark_sha256": "f9185388b8f007826473d994ae32f84ad74cee430ff1db873d9a84671c5f59f8",
+  "diagnostic_sha256": "ccc1817e22a382ede6a3dfd71ca37925729834f68bafd50fe84c9c42cc989cae",
+  "original_conditions_reproduced": 28,
+  "previous_wrong_cases_reproduced": 3,
+  "gpu_used": false
+}

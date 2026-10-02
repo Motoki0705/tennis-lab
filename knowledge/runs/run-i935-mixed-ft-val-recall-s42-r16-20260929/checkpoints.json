@@ -1,0 +1,112 @@
+[
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=00.ckpt",
+    "sha256": "bf49e27e008e8547c0f706b15b2b7a06b7a67ae0c780447b397c90ad8ba06015",
+    "bytes": 250638059,
+    "epoch": 0,
+    "global_step": 1920,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=00.ckpt",
+    "best_model_score": 0.8699960708618164
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=01.ckpt",
+    "sha256": "0095334b1a156eed3402cf84b8a770b31cb099ef19ae2a6120809cbeb56c197f",
+    "bytes": 250638633,
+    "epoch": 1,
+    "global_step": 3840,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=01.ckpt",
+    "best_model_score": 0.8837310671806335
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=02.ckpt",
+    "sha256": "37476e2a5d61271845e165f98b0df76e0c731298093fb8f586c28587ac1c7ac3",
+    "bytes": 250639079,
+    "epoch": 2,
+    "global_step": 5760,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=02.ckpt",
+    "best_model_score": 0.8904681205749512
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=03.ckpt",
+    "sha256": "6912938fa40b982864aac0d26a6bc42306f407f9db8a2fa4d4c6f8e48da71401",
+    "bytes": 250639461,
+    "epoch": 3,
+    "global_step": 7680,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=03.ckpt",
+    "best_model_score": 0.8936845064163208
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=04.ckpt",
+    "sha256": "afca6dc552e6887a77a2f96befbbc470fb09c44f906a548279cd33f0c2a2643e",
+    "bytes": 250639907,
+    "epoch": 4,
+    "global_step": 9600,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=04.ckpt",
+    "best_model_score": 0.9074629545211792
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=05.ckpt",
+    "sha256": "54c2f771cf7b54cba3ad4c3d9015b3c380c0614dbc0b2da73dc86055d0792658",
+    "bytes": 250640353,
+    "epoch": 5,
+    "global_step": 11520,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=04.ckpt",
+    "best_model_score": 0.9074629545211792
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=06.ckpt",
+    "sha256": "cc0f559bb863d8570fe87612764b47a5a4e12b1ab68a152db07fdf20469649df",
+    "bytes": 250640735,
+    "epoch": 6,
+    "global_step": 13440,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=04.ckpt",
+    "best_model_score": 0.9074629545211792
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=07.ckpt",
+    "sha256": "e7f851f3b3cb9992a4cb7d4d3a9e3e3ec5f196af04b7f2cbb5e41aa50e4deb48",
+    "bytes": 250641181,
+    "epoch": 7,
+    "global_step": 15360,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=07.ckpt",
+    "best_model_score": 0.9077671766281128
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=08.ckpt",
+    "sha256": "c655ba2b4a129a116a5640fc7270c39af4024ad7ffcb2d12fe5800fc446a1857",
+    "bytes": 250641563,
+    "epoch": 8,
+    "global_step": 17280,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=07.ckpt",
+    "best_model_score": 0.9077671766281128
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+    "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+    "bytes": 250642009,
+    "epoch": 9,
+    "global_step": 19200,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+    "best_model_score": 0.9084191918373108
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/last.ckpt",
+    "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+    "bytes": 250642009,
+    "epoch": 9,
+    "global_step": 19200,
+    "monitor": "val/meiji/candidate_recall_at_8_20px",
+    "best_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+    "best_model_score": 0.9084191918373108
+  }
+]

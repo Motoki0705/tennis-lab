@@ -16,7 +16,7 @@ from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
 from src.tasks.ball_refiner.inference import RefinerPair
 from src.tasks.ball_refiner.refiner_2d import build_ball_refiner_2d
-from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
+from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig, parse_model_config
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.utils.checksum import dual_sha256
 
@@ -106,7 +106,7 @@ def load_inference_bundle(directory: Path) -> InferenceBundle:
             or raw["window_selection"] != CENTRE_SELECTION
             or raw["coordinate_system"] != "source_xy_div_size_minus_one"):
         raise ValueError("Unsupported inference bundle semantics")
-    model = Refiner2DConfig(**raw["model_config"])
+    model = parse_model_config(raw["model_config"])
     if not model.use_detector or model.use_pose or model.use_court:
         raise ValueError("This bundle schema supports the explicit detector-only pilot")
     requirements = _detector_requirements(raw["detector"])

@@ -1,0 +1,82 @@
+{
+  "schema": "i935_evidence_rebuild_plan.r17",
+  "selected_epoch": 9,
+  "selection_artifact": "selection.json",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt",
+  "reference_manifest": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928/manifest.json",
+  "store": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1",
+  "output": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930",
+  "report": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/analyze/evidence_cache/i935-mixed-e9-trainval-r17-20260930",
+  "sources": [
+    "tracknet",
+    "meiji",
+    "chat_annotation"
+  ],
+  "splits": [
+    "train",
+    "val"
+  ],
+  "settings": {
+    "window_length": 8,
+    "stride": 4,
+    "batch_size": 4,
+    "candidates": {
+      "max_candidates": 8,
+      "nms_kernel": 5,
+      "patch_size": 5
+    },
+    "subpixel_refine": true,
+    "image_size_hw": [
+      288,
+      512
+    ],
+    "window_selection": "nearest_window_centre_then_earlier_start",
+    "tail_policy": "backfill_real_frames_no_padding"
+  },
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928/manifest.json": "cc9e094dad26903c692de9acd75996d890ea877799556454fc4db6757d59a15f",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/metadata.json": "b7796c1d9a99c2b44496264f54102729bea1ff26dd2550ef2b470780a93ef4c0",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/index.npz": "a078912bc31c207b5be807b453bfba203da30b2ec2815993eebe98f896cb7523",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/knowledge/runs/run-i935-mixed-ft-val-recall-s42-r16-20260929/rebuild_cache.py": "fab342ec9e63644321fb915198318a4960e3ff772841e104a33aa5e77d740b6f",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_refiner/data/evidence.py": "fc13f36942df89400cee80058e07707fde8ba57c195db93351eeda312ba40655",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_refiner/data/evidence_cache.py": "9cebf566b1a7b22f4aa312a909f0f124edfade352f89510a9e5768d226d02de1",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_refiner/data/evidence_inference.py": "53d8ad9d1d7259cb21a4c761f28ec5e60d020e85df2ba46da08ea35c60490648",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_refiner/data/cache_identity.py": "beeac159996d5b780497b89c85f9f09a768453c7dea69e4ca6bc5665aeda580c",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_detection/inference/checkpoint.py": "c4f05c6017635c60637f9b03c8400567e63f56e865ef8f26a2db23d04992a4b5",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_detection/inference/predictor.py": "0fce27efdc13bded638f77e873b1fbf9a5fbfaec67e59b0e5671b06e84fa0edc"
+  },
+  "allocator_limit_bytes": 6442450944,
+  "disk_budget_bytes": 5000000000,
+  "estimates": {
+    "runtime_minutes": [
+      45,
+      70
+    ],
+    "runtime_limit_seconds": 5400,
+    "timeout_term_seconds": 5385,
+    "timeout_kill_after_seconds": 15,
+    "peak_vram_gb": [
+      2,
+      4
+    ],
+    "peak_vram_limit_gb": 8,
+    "new_output_gb": [
+      0.1,
+      0.3
+    ],
+    "new_output_budget_gb": 0.5,
+    "reference_cache_bytes": 103465975,
+    "basis": "Same r3 cache architecture, preprocessing, 329 clips / 145767 frames and batch 4; previous build about 41 minutes (orchestrator audit). No new timing probe on GPU."
+  },
+  "context": {
+    "pose": "not_generated",
+    "court": "not_generated"
+  },
+  "queue": {
+    "resource": "all",
+    "provider": "codex",
+    "issue": 935,
+    "prune_ckpt": false
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "queue_job": "1790774709010605164_1159028_i935-e9-anchored-source3cam-r25-20260930",
+  "queue_state_at_capture": "jobs",
+  "worker_pid": 3216003,
+  "preceding_jobs": [
+    "1790770959248007705_1601943_i964-recalibration-features-r12-20260930",
+    "1790771078312809159_1781052_i936-anchored-t128-flow-regression-r13-s936-20260930"
+  ],
+  "captured_at": "2026-09-30T22:27:08.331059",
+  "new_local_file_bytes_at_capture": 1618250,
+  "disk_budget_bytes": 5000000000,
+  "expected_gpu_output_bytes": 1800000000,
+  "scope": "Run25 new tracked evidence and own CPU/temp files; queued GPU output not yet created; empty external compiler directory excluded",
+  "seed_gate": "fail (9/10)",
+  "default_switch_allowed": false,
+  "b_gate": "https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5910704846",
+  "next_run": "After quota reset, collect every phase and full-field diagnostics; score same-frame GT median/p90/NLL; make clip_010 video; no default switch without resolving seed reproduction failure."
+}
