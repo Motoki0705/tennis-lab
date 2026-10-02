@@ -23,7 +23,7 @@ train_sampling:
 
 # Window starts every N frames (windows are model.num_frames long).
 train_stride: 1
-# Non-overlapping evaluation windows at the configured model length.
+# null uses model.num_frames; validation also backfills the real tail.
 eval_stride: null
 
 # Every point_kind gets exactly one role (data/supervision.py). A frame with an

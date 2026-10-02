@@ -1,0 +1,2 @@
+[worker] 2026-10-01T00:50:31+09:00 running: 1790774709010605164_1159028_i935-e9-anchored-source3cam-r25-20260930.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790774709010605164_1159028_i935-e9-anchored-source3cam-r25-20260930.log)
+[worker] 2026-10-01T00:52:50+09:00 FAILED (rc=1): 1790774709010605164_1159028_i935-e9-anchored-source3cam-r25-20260930.job resource=all slot=all

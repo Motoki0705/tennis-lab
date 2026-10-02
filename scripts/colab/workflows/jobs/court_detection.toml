@@ -8,6 +8,7 @@ setup = ["base", "submodules"]
 protected_override_keys = [
   "paths.data_root",
   "paths.external_asset_root",
+  "paths.checkpoint_root",
   "paths.output_root",
   "data/source",
   "data/processing",
@@ -42,5 +43,5 @@ writable = false
 
 [[inputs]]
 source = "data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-destination = "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+destination = "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
 writable = false

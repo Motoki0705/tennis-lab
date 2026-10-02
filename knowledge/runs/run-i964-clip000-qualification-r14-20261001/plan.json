@@ -1,0 +1,90 @@
+{
+  "schema": "i964_full_pipeline_qualification_plan_v1",
+  "preflight": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/preflight.json",
+    "sha256": "cff24b7c047ab6985885c6ffac932041dc3a14700407e43b4c025652ed46cea1"
+  },
+  "association_config": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml",
+    "sha256": "3f18419c49567f697e43fd18c78d6df78ffcd6c654bef5cac0ddc88193a74789"
+  },
+  "fit_config_commit": "b03eb152",
+  "dev_evidence_commit": "8230f3ae",
+  "fit_adoptable": true,
+  "default_changed": false,
+  "user_freeze": false,
+  "reserved_clips_opened": false,
+  "clip": "video_000/clip_000",
+  "frames_per_camera": 1010,
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "budget": {
+    "resource": "all",
+    "expected_wall_seconds": [
+      3300,
+      5100
+    ],
+    "wall_seconds": 5360,
+    "outer_timeout_seconds": 5380,
+    "outer_kill_grace_seconds": 10,
+    "grant_max_wall_seconds": 5400,
+    "expected_peak_gpu_bytes": [
+      8000000000,
+      10000000000
+    ],
+    "allocator_bytes": 8589934592,
+    "vram_stop_bytes": 11000000000,
+    "grant_max_peak_gpu_bytes": 12000000000,
+    "expected_output_bytes": [
+      2000000000,
+      3000000000
+    ],
+    "disk_limit_bytes": 4800000000,
+    "run_disk_budget_bytes": 5000000000,
+    "min_host_available_bytes": 6442450944,
+    "cpu_threads": 4,
+    "build_jobs": 2
+  },
+  "entrypoints": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_qualification.py",
+      "sha256": "9eb0f50d12457e9468f3af64266ee4a5bacf716152bcc86c464e88167ac5a64a"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_qualification_video.py",
+      "sha256": "7b35f8eaadbdb837c304c78be14c6e745a2231d1c9d2437a3abf25df9b8fbb01"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_qualification.sh",
+      "sha256": "ed753fcf6a4199cc076fed6de08269bdb0a40703826268cc87907c4a5bca6e42"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_preflight.py",
+      "sha256": "3a01b52845581d27621917caa094f9747f89f1438490e8604bf5ef3eac24f85c"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/association_feature_guard.py",
+      "sha256": "5391d08336eef436fe83af4060eee3c1746484e2bf4cadc819c67be36fa0321a"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/build_dino_extension.sh",
+      "sha256": "08a2c4f046d6b7eba943c4f5d714e1e7aef9e002c24b5ed6f83bf4e978395921"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/setup.py",
+      "sha256": "a9590fb9a1551821c370de4540ba7befcdc51b33d98ffb090e4031e4104fc060"
+    }
+  ],
+  "qualification": [
+    "28 components execute into a fresh store",
+    "all artifacts validate and load in a separate CPU process",
+    "all scene fields compare with exported archive",
+    "source detection rows and nonsynthetic observations validate",
+    "full-length synchronized three-camera plus court-plane video and all-frame readback"
+  ],
+  "estimate_basis": "3030 source camera-frames; resume detector/feature per-frame timings plus fresh court/ball/GVHMR/body and repeated model/input SHA-256 checks/build/video. Full-pipeline runtime and peak are estimates, not a measured qualification. Guard stops without retries.",
+  "failure_policy": "keep run/stage/guard receipts; no old artifacts, imports, alternate settings, second job or dev refit"
+}

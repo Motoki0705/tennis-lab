@@ -1,0 +1,342 @@
+{
+  "source": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930/evaluation/strongsort_pp_pose__clipreid_vitb16_market1501/video_002/clip_013/result.json",
+    "sha256": "c5fa8b86d57c7b87f8040f153e11b84ffb7f62e2a6f34e72fa02ef0bbd9bce72"
+  },
+  "clip": "video_002/clip_013",
+  "variant": "strongsort_pp_pose__clipreid_vitb16_market1501",
+  "camera": "cam0",
+  "evidence": {
+    "arrays": {
+      "bytes": 47107,
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930/evaluation/strongsort_pp_pose__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz",
+      "sha256": "3a73d9768c4e348d70eaa2b82196726aab14f3dbb97b180310ec4b97bd8c5d42"
+    },
+    "group_metrics": {
+      "fragment_events": [],
+      "fragments": 0,
+      "id_switches": 1,
+      "idf1": 0.8524124881740776,
+      "idfn": 158,
+      "idfp": 154,
+      "idtp": 901,
+      "mapping": [
+        {
+          "camera": "cam0",
+          "clip": "video_002/clip_013",
+          "person": "A",
+          "track_id": 0
+        },
+        {
+          "camera": "cam0",
+          "clip": "video_002/clip_013",
+          "person": "B",
+          "track_id": 1
+        }
+      ],
+      "nonplayer_units": 0,
+      "nonplayer_units_kept": 0,
+      "player_identities": 2,
+      "player_identities_kept50": 2,
+      "player_units": 1059,
+      "player_units_kept": 1055,
+      "switch_events": [
+        {
+          "camera": "cam0",
+          "clip": "video_002/clip_013",
+          "frame": 381,
+          "near_far": "far",
+          "person": "B",
+          "previous_track_id": 1,
+          "role": "player",
+          "track_id": 2
+        }
+      ]
+    },
+    "group_unlabelled_selected_boxes": 1,
+    "metrics": {
+      "fragment_events": [],
+      "fragments": 0,
+      "id_switches": 0,
+      "idf1": 0.9981078524124882,
+      "idfn": 4,
+      "idfp": 0,
+      "idtp": 1055,
+      "mapping": [
+        {
+          "camera": "cam0",
+          "clip": "video_002/clip_013",
+          "person": "A",
+          "track_id": 1
+        },
+        {
+          "camera": "cam0",
+          "clip": "video_002/clip_013",
+          "person": "B",
+          "track_id": 3
+        }
+      ],
+      "nonplayer_units": 0,
+      "nonplayer_units_kept": 0,
+      "player_identities": 2,
+      "player_identities_kept50": 2,
+      "player_units": 1059,
+      "player_units_kept": 1055,
+      "switch_events": []
+    },
+    "selection": {
+      "all_tracks": 9,
+      "fragments": [
+        {
+          "ambiguous": false,
+          "appearance": true,
+          "end": 535,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 533,
+          "row": 0,
+          "start": 2,
+          "track_id": 1
+        },
+        {
+          "ambiguous": false,
+          "appearance": false,
+          "end": 535,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 503,
+          "row": 1,
+          "start": 2,
+          "track_id": 2
+        },
+        {
+          "ambiguous": false,
+          "appearance": false,
+          "end": 381,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 369,
+          "row": 2,
+          "start": 2,
+          "track_id": 3
+        },
+        {
+          "ambiguous": false,
+          "appearance": true,
+          "end": 535,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 154,
+          "row": 2,
+          "start": 381,
+          "track_id": 3
+        },
+        {
+          "ambiguous": false,
+          "appearance": false,
+          "end": 535,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 520,
+          "row": 3,
+          "start": 15,
+          "track_id": 6
+        },
+        {
+          "ambiguous": false,
+          "appearance": false,
+          "end": 42,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 5,
+          "row": 4,
+          "start": 37,
+          "track_id": 8
+        },
+        {
+          "ambiguous": false,
+          "appearance": false,
+          "end": 133,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 8,
+          "row": 5,
+          "start": 118,
+          "track_id": 11
+        },
+        {
+          "ambiguous": false,
+          "appearance": false,
+          "end": 291,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 2,
+          "row": 6,
+          "start": 284,
+          "track_id": 13
+        },
+        {
+          "ambiguous": false,
+          "appearance": false,
+          "end": 535,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 188,
+          "row": 7,
+          "start": 325,
+          "track_id": 14
+        },
+        {
+          "ambiguous": false,
+          "appearance": true,
+          "end": 531,
+          "excluded_short_ambiguous": false,
+          "observed_frames": 43,
+          "row": 8,
+          "start": 485,
+          "track_id": 16
+        }
+      ],
+      "groups": [
+        {
+          "fragments": [
+            0
+          ],
+          "in_core_frames": 533,
+          "reason": "selected",
+          "selected": true,
+          "track_ids": [
+            1
+          ]
+        },
+        {
+          "fragments": [
+            1
+          ],
+          "in_core_frames": 0,
+          "reason": "insufficient_dwell",
+          "selected": false,
+          "track_ids": [
+            2
+          ]
+        },
+        {
+          "fragments": [
+            2
+          ],
+          "in_core_frames": 365,
+          "reason": "selected",
+          "selected": true,
+          "track_ids": [
+            3
+          ]
+        },
+        {
+          "fragments": [
+            3
+          ],
+          "in_core_frames": 154,
+          "reason": "selected",
+          "selected": true,
+          "track_ids": [
+            3
+          ]
+        },
+        {
+          "fragments": [
+            4
+          ],
+          "in_core_frames": 0,
+          "reason": "insufficient_dwell",
+          "selected": false,
+          "track_ids": [
+            6
+          ]
+        },
+        {
+          "fragments": [
+            5
+          ],
+          "in_core_frames": 0,
+          "reason": "insufficient_dwell",
+          "selected": false,
+          "track_ids": [
+            8
+          ]
+        },
+        {
+          "fragments": [
+            6
+          ],
+          "in_core_frames": 0,
+          "reason": "insufficient_dwell",
+          "selected": false,
+          "track_ids": [
+            11
+          ]
+        },
+        {
+          "fragments": [
+            7
+          ],
+          "in_core_frames": 0,
+          "reason": "insufficient_dwell",
+          "selected": false,
+          "track_ids": [
+            13
+          ]
+        },
+        {
+          "fragments": [
+            8
+          ],
+          "in_core_frames": 0,
+          "reason": "insufficient_dwell",
+          "selected": false,
+          "track_ids": [
+            14
+          ]
+        },
+        {
+          "fragments": [
+            9
+          ],
+          "in_core_frames": 0,
+          "reason": "insufficient_dwell",
+          "selected": false,
+          "track_ids": [
+            16
+          ]
+        }
+      ],
+      "links": [],
+      "outside_observations": 1273,
+      "required_frames": 133.75,
+      "selected_groups": 3,
+      "selected_invalid_footpoints": 0,
+      "selected_outside_corridor": 4,
+      "valid_footpoints": 2325,
+      "within_corridor": 1052
+    },
+    "tracking": {
+      "arrays": {
+        "bytes": 35736,
+        "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930/tracks/strongsort_pp_pose__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz",
+        "sha256": "ec83cecd95f06355b68c1ebbccbce3ba39ee1b45830be4d140d0f55aa9de4de7"
+      },
+      "deterministic_repeat_equal": true,
+      "elapsed_seconds": 1.1005186149850488,
+      "encoder": "clipreid_vitb16_market1501",
+      "gsi": {
+        "bytes": 36500,
+        "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930/tracks/strongsort_pp_pose__clipreid_vitb16_market1501/video_002/clip_013/cam0.gsi.npz",
+        "sha256": "f162fc21ae157982d4b12f2d1df9e11766124cc223d26687a93b7592acf118fa"
+      },
+      "identity_sha256": "19adc209d32e2e8712b9c9caada462b7f922be1eb019e3790ddd20bc64e620fc",
+      "interpolated_boxes": 50,
+      "link_candidates": [],
+      "links": {},
+      "method": "strongsort_pp_pose__clipreid_vitb16_market1501",
+      "online": {
+        "bytes": 35736,
+        "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930/tracks/strongsort_pp_pose__clipreid_vitb16_market1501/video_002/clip_013/cam0.online.npz",
+        "sha256": "ec83cecd95f06355b68c1ebbccbce3ba39ee1b45830be4d140d0f55aa9de4de7"
+      },
+      "source_detection_rows": true,
+      "status": "ok",
+      "track_count": 9
+    },
+    "unlabelled_selected_boxes": 1
+  }
+}

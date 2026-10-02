@@ -127,6 +127,14 @@ class CourtRegionSelection:
     candidates: tuple[dict[str, object], ...]
 
 
+class CourtRegionUnavailable(ValueError):
+    """Executed region search found no supported geometry; model errors differ."""
+
+    def __init__(self, candidates: tuple[dict[str, object], ...]) -> None:
+        self.candidates = candidates
+        super().__init__(f"No Court region meets model support/geometry requirements: {list(candidates)}")
+
+
 def select_court_region(
     predictor: CourtPredictor, image: NDArray[np.uint8], config: CourtRegionSearchConfig,
 ) -> CourtRegionSelection:
@@ -170,6 +178,6 @@ def select_court_region(
         if qualifies:
             accepted.append((count, score, region))
     if not accepted:
-        raise ValueError(f"No Court region meets model support/geometry requirements: {candidates}")
+        raise CourtRegionUnavailable(tuple(candidates))
     chosen = max(accepted, key=lambda item: (item[0], item[1]))
     return CourtRegionSelection(chosen[2], tuple(candidates))

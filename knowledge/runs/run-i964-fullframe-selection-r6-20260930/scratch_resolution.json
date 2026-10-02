@@ -1,0 +1,27 @@
+{
+  "preserved_script": "wide_losses.py",
+  "sha256": "0baa3898192393a76a2f4e479bc8b609d0f429c16b40ca5501604951b53acb25",
+  "reason": "Original post-hoc wide-loss attribution script; labels never enter selection. Other .run6 files were scratch logs and published issue/PR body drafts, removed after checking the committed run evidence and posted comments.",
+  "removed_files": [
+    "coco_hashes.json",
+    "knowledge-final-check.txt",
+    "knowledge-in-progress-check.txt",
+    "knowledge-queue-check.txt",
+    "milestone1.md",
+    "milestone2-corrected.json",
+    "milestone2.md",
+    "milestone3.md",
+    "pr-body.md",
+    "report.log",
+    "results-comment.md",
+    "review-guide.md",
+    "select-1.log",
+    "select-2.log",
+    "select-3.log",
+    "select-4.log",
+    "video-v2.log",
+    "video.log",
+    "wide-audit.log",
+    "wide-losses.log"
+  ]
+}

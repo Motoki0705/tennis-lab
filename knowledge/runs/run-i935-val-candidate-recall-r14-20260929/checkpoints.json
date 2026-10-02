@@ -1,0 +1,38 @@
+[
+  {
+    "label": "ft-e13",
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt",
+    "sha256": "cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892",
+    "bytes": 250620009,
+    "epoch": 13,
+    "image_size": [
+      288,
+      512
+    ],
+    "num_frames": 8
+  },
+  {
+    "label": "mixed-e0",
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i934_mixed_ft/s42-r6-20260928/logs/version_0/checkpoints/ball-detection-epoch=00.ckpt",
+    "sha256": "7b9a202b7753edc9edc200271edfad1b09bdee59073bdbaffb2709cbf942aa9b",
+    "bytes": 250636971,
+    "epoch": 0,
+    "image_size": [
+      288,
+      512
+    ],
+    "num_frames": 8
+  },
+  {
+    "label": "mixed-e11",
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i934_mixed_ft/s42-r6-20260928/logs/version_0/checkpoints/last.ckpt",
+    "sha256": "6a9c0ef21a19241638ae279131f9b7211c47c7fb6ddb4b0753fe762d9026961f",
+    "bytes": 250637099,
+    "epoch": 11,
+    "image_size": [
+      288,
+      512
+    ],
+    "num_frames": 8
+  }
+]

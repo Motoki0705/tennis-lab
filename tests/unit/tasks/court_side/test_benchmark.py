@@ -14,6 +14,7 @@ from src.tasks.court_side.benchmark import (
     judge,
     local_calibration,
     make_trial,
+    make_trials,
     select_thresholds,
 )
 from src.tasks.court_side.hypothesis import CourtSideConfig
@@ -79,3 +80,19 @@ def test_threshold_selection_prefers_no_wrong_decision_then_fewer_stops() -> Non
     assert (selected.min_frames, selected.max_cost, selected.min_support, selected.min_margin) == (4, .5, .5, .1)
     assert not any(row["safe"] for row in table if row["config"].min_frames == 2)
     assert judge([t for t in trials if t.condition == "short"], replace(CONFIG, min_frames=8)).stopped == {"insufficient_frames": 4}
+
+
+def test_explicit_confidence_masks_only_remove_observations_and_preserve_rng() -> None:
+    original_rng, filtered_rng = np.random.default_rng(1), np.random.default_rng(1)
+    original = make_trials(scene(), CLEAN, (CONFIG,), original_rng)[0]
+    pairs = make_trials(scene(), CLEAN, (CONFIG, CONFIG), filtered_rng,
+                        observation_masks=(np.ones((3, 120), bool), np.zeros((3, 120), bool)))
+    assert pairs[0].evidence.hypotheses == original.evidence.hypotheses
+    assert pairs[0].evidence.frames == original.evidence.frames
+    assert pairs[1].evidence.frames == 0 and pairs[1].evidence.hypotheses == ()
+    assert filtered_rng.bit_generator.state == original_rng.bit_generator.state
+    with pytest.raises(ValueError, match="camera/frame"):
+        make_trials(scene(), CLEAN, (CONFIG,), np.random.default_rng(1),
+                    observation_masks=(np.ones((2, 120), bool),))
+    with pytest.raises(ValueError, match="per scoring config"):
+        make_trials(scene(), CLEAN, (CONFIG,), np.random.default_rng(1), observation_masks=())

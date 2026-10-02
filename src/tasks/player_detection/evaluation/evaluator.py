@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
 from typing import cast
 
@@ -12,6 +13,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.submodules.models.dino.architecture import (
+    COCO_PERSON_CLASS_ID,
     build_dino,
     dino_4scale_swin_args,
     load_dino_state_dict,
@@ -24,12 +26,20 @@ from src.tasks.player_detection.data.detection_dataset import (
     collate_detection,
     select_detection_frames,
 )
-from src.tasks.player_detection.data.store import PlayerFrameStore, split_names
+from src.tasks.player_detection.data.store import (
+    INDEX_FILE,
+    METADATA_FILE,
+    SHARDS_DIR,
+    PlayerFrameStore,
+    shard_name,
+    split_names,
+)
 from src.tasks.player_detection.evaluation.metrics import PlayerDetectionMetrics
 from src.tasks.player_detection.models.dino_detector import (
     FrameDetections,
     decode_player_detections,
 )
+from src.utils.checksum import dual_sha256
 
 
 def draw_overlay(
@@ -66,6 +76,21 @@ def evaluate_checkpoints(config: EvaluateConfig) -> dict[str, dict[str, float]]:
         else set()
     )
     config.output_dir.mkdir(parents=True, exist_ok=True)
+    selected_clips = sorted({store.clip_of(int(frame)).index for frame in selection.frames})
+    input_files = [INDEX_FILE, METADATA_FILE, *[f"{SHARDS_DIR}/{shard_name(clip)}" for clip in selected_clips]]
+    provenance = {
+        "schema": "player_detection_evaluation_v1",
+        "checkpoints": {name: {"path": str(path), "sha256": dual_sha256(path)}
+                        for name, path in config.checkpoints.items()},
+        "dataset": {"path": str(config.dataset_dir),
+                    "sha256": {name: dual_sha256(config.dataset_dir / name) for name in input_files}},
+        "input_size": asdict(config.input_size), "selection": asdict(config.selection),
+        "evaluation": asdict(config.evaluation), "split": config.split, "frame_stride": config.frame_stride,
+        "device": config.device, "matmul_precision": torch.get_float32_matmul_precision(),
+        "cuda_matmul_allow_tf32": torch.backends.cuda.matmul.allow_tf32,
+        "cudnn_allow_tf32": torch.backends.cudnn.allow_tf32,
+    }
+    (config.output_dir / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
     summary: dict[str, dict[str, float]] = {}
     for name, checkpoint in config.checkpoints.items():
         model, _ = build_dino(config.repository, dino_4scale_swin_args(device, use_checkpoint=False))
@@ -83,12 +108,17 @@ def evaluate_checkpoints(config: EvaluateConfig) -> dict[str, dict[str, float]]:
             for position, item in enumerate(loader):
                 batch = cast(DetectionBatch, item)  # collate_detection output
                 outputs = model([image.to(device) for image in batch.images])
+                above = (outputs["pred_logits"][..., COCO_PERSON_CLASS_ID].sigmoid() >= config.evaluation.score_threshold).sum(-1)
+                if bool((above > config.evaluation.max_detections).any()):
+                    raise ValueError("max_detections truncates predictions above the operating threshold; increase it")
                 detections = decode_player_detections(
                     outputs, batch.original_sizes, max_detections=config.evaluation.max_detections
                 )
                 metrics.update(detections, batch.boxes_xyxy_px)
                 boxes_out.append(detections[0].boxes_xyxy)
                 scores_out.append(detections[0].scores)
+                if (position + 1) % 100 == 0:
+                    print(f"[{name}] {position + 1}/{len(dataset)} frames", flush=True)
                 if position in overlay_positions:
                     frame = batch.frames[0]
                     cv2.imwrite(

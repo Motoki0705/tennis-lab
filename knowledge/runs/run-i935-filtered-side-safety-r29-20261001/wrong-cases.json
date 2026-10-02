@@ -1,0 +1,395 @@
+[
+  {
+    "condition": "false_0.10",
+    "scene": "scene_007784",
+    "expected": [
+      false,
+      true,
+      false
+    ],
+    "actual": [
+      false,
+      true,
+      true
+    ],
+    "margin": 0.1585860742446728,
+    "original": {
+      "scene": "scene_007784",
+      "condition": "false_0.10",
+      "path": "original",
+      "expected": [
+        false,
+        true,
+        false
+      ],
+      "frames": 58,
+      "pair_frames": {
+        "cam_2-cam_1": 37,
+        "cam_2-cam_3": 25,
+        "cam_1-cam_3": 42
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.41629549020402606,
+          "support": 0.6551724137931034,
+          "frames": 58
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.7478313996205513,
+          "support": 0.25862068965517243,
+          "frames": 58
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.8520885275555202,
+          "support": 0.13793103448275862,
+          "frames": 58
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 0.9372426364723044,
+          "support": 0.06896551724137931,
+          "frames": 58
+        }
+      ]
+    },
+    "filtered": {
+      "scene": "scene_007784",
+      "condition": "false_0.10",
+      "path": "filtered",
+      "expected": [
+        false,
+        true,
+        false
+      ],
+      "frames": 25,
+      "pair_frames": {
+        "cam_2-cam_1": 17,
+        "cam_2-cam_3": 0,
+        "cam_1-cam_3": 8
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.27427479718700115,
+          "support": 0.84,
+          "frames": 25
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.43286087143167395,
+          "support": 0.68,
+          "frames": 25
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.8095765986183712,
+          "support": 0.24,
+          "frames": 25
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 0.9681626728630439,
+          "support": 0.08,
+          "frames": 25
+        }
+      ]
+    }
+  },
+  {
+    "condition": "false_0.20",
+    "scene": "scene_006930",
+    "expected": [
+      false,
+      true,
+      false
+    ],
+    "actual": [
+      false,
+      false,
+      false
+    ],
+    "margin": 0.16840211536502098,
+    "original": {
+      "scene": "scene_006930",
+      "condition": "false_0.20",
+      "path": "original",
+      "expected": [
+        false,
+        true,
+        false
+      ],
+      "frames": 72,
+      "pair_frames": {
+        "cam_1-cam_3": 23,
+        "cam_1-cam_0": 44,
+        "cam_3-cam_0": 47
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.6981283579230585,
+          "support": 0.375,
+          "frames": 72
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.7423917111052213,
+          "support": 0.3194444444444444,
+          "frames": 72
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.7842920595384578,
+          "support": 0.2638888888888889,
+          "frames": 72
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 0.95470422274881,
+          "support": 0.013888888888888888,
+          "frames": 72
+        }
+      ]
+    },
+    "filtered": {
+      "scene": "scene_006930",
+      "condition": "false_0.20",
+      "path": "filtered",
+      "expected": [
+        false,
+        true,
+        false
+      ],
+      "frames": 22,
+      "pair_frames": {
+        "cam_1-cam_3": 0,
+        "cam_1-cam_0": 8,
+        "cam_3-cam_0": 14
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.3346858297241709,
+          "support": 0.8181818181818182,
+          "frames": 22
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.5030879450891919,
+          "support": 0.6363636363636364,
+          "frames": 22
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.8315978846349791,
+          "support": 0.18181818181818182,
+          "frames": 22
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 1.0,
+          "support": 0.0,
+          "frames": 22
+        }
+      ]
+    }
+  },
+  {
+    "condition": "window_150f",
+    "scene": "scene_006770",
+    "expected": [
+      false,
+      true,
+      true
+    ],
+    "actual": [
+      false,
+      false,
+      true
+    ],
+    "margin": 0.23877135166861438,
+    "original": {
+      "scene": "scene_006770",
+      "condition": "window_150f",
+      "path": "original",
+      "expected": [
+        false,
+        true,
+        true
+      ],
+      "frames": 78,
+      "pair_frames": {
+        "cam_1-cam_2": 61,
+        "cam_1-cam_3": 67,
+        "cam_2-cam_3": 58
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.3621063887672511,
+          "support": 0.6410256410256411,
+          "frames": 78
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 0.5541862161371451,
+          "support": 0.46153846153846156,
+          "frames": 78
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.875494780033923,
+          "support": 0.11538461538461539,
+          "frames": 78
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.8903338450597837,
+          "support": 0.11538461538461539,
+          "frames": 78
+        }
+      ]
+    },
+    "filtered": {
+      "scene": "scene_006770",
+      "condition": "window_150f",
+      "path": "filtered",
+      "expected": [
+        false,
+        true,
+        true
+      ],
+      "frames": 27,
+      "pair_frames": {
+        "cam_1-cam_2": 2,
+        "cam_1-cam_3": 17,
+        "cam_2-cam_3": 8
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 0.09187286691810301,
+          "support": 1.0,
+          "frames": 27
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.3306442185867174,
+          "support": 0.7037037037037037,
+          "frames": 27
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.6651616935866861,
+          "support": 0.4074074074074074,
+          "frames": 27
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.9766866754715083,
+          "support": 0.1111111111111111,
+          "frames": 27
+        }
+      ]
+    }
+  }
+]

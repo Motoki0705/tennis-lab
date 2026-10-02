@@ -13,6 +13,7 @@ from src.tasks.ball_detection.inference.checkpoint import (
     load_ball_checkpoint,
 )
 from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
+from src.utils.configuration import PathResolver
 
 
 class CheckpointBallHeatmapPredictor:
@@ -38,12 +39,14 @@ class CheckpointBallHeatmapPredictor:
         device: torch.device,
         strict: bool,
         weights_only: bool,
+        resolver: PathResolver | None = None,
     ) -> CheckpointBallHeatmapPredictor:
         """Load one checkpoint and verify its model-I/O pair."""
         loaded = load_ball_checkpoint(
             checkpoint_path,
             strict=strict,
             weights_only=weights_only,
+            resolver=resolver,
         )
         return cls(loaded, device=device)
 

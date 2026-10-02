@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [4 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_person_audit_rejects_invented_rows_or_synthetic_observation[False] 
+tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_person_audit_rejects_invented_rows_or_synthetic_observation[True] 
+tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_partial_read_checks_bytes_and_does_not_write 
+tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_partial_read_rejects_superseded_dependency 
+[gw3] [ 25%] PASSED tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_person_audit_rejects_invented_rows_or_synthetic_observation[True] 
+[gw1] [ 50%] PASSED tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_person_audit_rejects_invented_rows_or_synthetic_observation[False] 
+[gw0] [ 75%] PASSED tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_partial_read_checks_bytes_and_does_not_write 
+[gw2] [100%] PASSED tests/integration/tennis_scene/test_pipeline_stop_collection.py::test_partial_read_rejects_superseded_dependency 
+
+============================== 4 passed in 12.39s ==============================

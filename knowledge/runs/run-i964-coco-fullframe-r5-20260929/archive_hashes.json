@@ -1,0 +1,86 @@
+[
+  {
+    "key": "video_000/clip_000/cam0",
+    "sha256": "2e7428b24bc7ddbbd154c275339bba6e835891d2441c64a68d05b3e6fc3f73c5",
+    "bytes": 5901115,
+    "frames": 1010,
+    "detections": 335055
+  },
+  {
+    "key": "video_000/clip_000/cam1",
+    "sha256": "8ec70a5331f2e9d12914c281d4453c0685ca3dd91f63a3a3b713b07f9ea8253c",
+    "bytes": 4671084,
+    "frames": 1010,
+    "detections": 263351
+  },
+  {
+    "key": "video_000/clip_000/cam2",
+    "sha256": "e638b144dc8ab19d9d18329680841dd9eed58a63701198cd8c6fad1d659fc20c",
+    "bytes": 3738382,
+    "frames": 1010,
+    "detections": 213045
+  },
+  {
+    "key": "video_000/clip_007/cam0",
+    "sha256": "c78f62352d85800129aa94452980a9db97ccb07b0a5b3af0d737226d6d72770a",
+    "bytes": 3736357,
+    "frames": 652,
+    "detections": 212014
+  },
+  {
+    "key": "video_000/clip_007/cam1",
+    "sha256": "9f9237c19c25394f603fe91fb95af9ab3c411b1d6e600e37a3d68d4283b156b0",
+    "bytes": 2774324,
+    "frames": 652,
+    "detections": 156520
+  },
+  {
+    "key": "video_000/clip_007/cam2",
+    "sha256": "0f4f9c82d392c49f9a3335818d24a27e4c89d923757fc298f073866a98c16aa3",
+    "bytes": 2667523,
+    "frames": 652,
+    "detections": 151931
+  },
+  {
+    "key": "video_001/clip_001/cam0",
+    "sha256": "0f6ed7a73d5b9094de6484ff82ababff87ba309d94512e8ec55d3fd9153291d0",
+    "bytes": 7312068,
+    "frames": 1300,
+    "detections": 414917
+  },
+  {
+    "key": "video_001/clip_001/cam1",
+    "sha256": "ce84b569a2abb5b4e67d534e81d13d2d10775b58c5aff40a91e7151a31938e18",
+    "bytes": 6850327,
+    "frames": 1300,
+    "detections": 385778
+  },
+  {
+    "key": "video_001/clip_001/cam2",
+    "sha256": "1004a3463c65d5573553252c5a2c411d16d1f8ec2dda019e35f04c8425be9aa8",
+    "bytes": 5722170,
+    "frames": 1300,
+    "detections": 325075
+  },
+  {
+    "key": "video_002/clip_013/cam0",
+    "sha256": "ade0a1ab9e381420ee2c4b5e5ca2be7715adefa2f1b7cfae4772a734f3696770",
+    "bytes": 2823579,
+    "frames": 535,
+    "detections": 160315
+  },
+  {
+    "key": "video_002/clip_013/cam1",
+    "sha256": "6c70044e802d1fab47e9aaadc6cc659d56044012f40a0c2eb8e1d782b756be6e",
+    "bytes": 2153882,
+    "frames": 535,
+    "detections": 121394
+  },
+  {
+    "key": "video_002/clip_013/cam2",
+    "sha256": "373a7dac22f226975236a3604e97633d29f0d0beb0fd5dbca6e7319620bd055e",
+    "bytes": 1565171,
+    "frames": 535,
+    "detections": 89136
+  }
+]

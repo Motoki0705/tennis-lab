@@ -346,7 +346,8 @@ def _compose_with_nht_config_root(root: Path) -> DictConfig:
     source_video = data_root / "synthetic_data_generation/raw/B00.mp4"
     source_video.parent.mkdir(parents=True)
     source_video.write_bytes(b"configuration fixture")
-    backbone = root / "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    checkpoint_root = root.parent / "ckpt"
+    backbone = checkpoint_root / "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
     backbone.parent.mkdir(parents=True, exist_ok=True)
     backbone.write_bytes(b"configuration fixture")
     OmegaConf.update(
@@ -362,6 +363,7 @@ def _compose_with_nht_config_root(root: Path) -> DictConfig:
         merge=False,
     )
     OmegaConf.update(config, "nht.pipeline_config_path", "pipeline.yaml", merge=False)
+    OmegaConf.update(config, "roots.checkpoint_root", str(checkpoint_root.resolve()), merge=False)
     return config
 
 

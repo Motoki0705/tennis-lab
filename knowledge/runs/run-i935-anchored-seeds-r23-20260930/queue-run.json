@@ -1,0 +1,16 @@
+{
+  "run_id": "1790762149588430733_2215834_i935-anchored-seeds43-44-r23-20260930",
+  "name": "i935-anchored-seeds43-44-r23-20260930",
+  "command": "timeout --signal=TERM --kill-after=15s 3585s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 MAX_JOBS=2 TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/analyze/precision/i935-seeds43-44-r23-20260930-compiler PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/run_variants.py --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-anchored-seeds-r23-20260930/plan.json",
+  "provider": "codex",
+  "session": "01a0f19b-2842-7dc0-9b5a-c6e2a4e311f4",
+  "issue": "935",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "d40173f160032612ef117fdf6cfc6b87050f19af",
+  "branch": "campaign930/i935-13-covariance-calibration",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+  "captured_at": "2026-09-30T18:56:45+09:00"
+}

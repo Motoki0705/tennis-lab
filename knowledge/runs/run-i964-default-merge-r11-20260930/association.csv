@@ -1,0 +1,3 @@
+variant,encoder,decided_clips,total_clips,pair_f1,tp,fp,fn,group_accuracy,matched_label_boxes,label_boxes,undecided
+strongsort_pp_pose_merge_off__clipreid_vitb16_market1501,clipreid_vitb16_market1501,4,4,0.9571191537903142,18459,6,1648,0.763255947262826,25055,25147,
+strongsort_pp_pose_merge_on__clipreid_vitb16_market1501,clipreid_vitb16_market1501,4,4,0.9571191537903142,18459,6,1648,0.763255947262826,25054,25147,

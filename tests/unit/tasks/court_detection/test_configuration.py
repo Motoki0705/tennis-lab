@@ -199,6 +199,11 @@ def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None
     assert isinstance(runtime.model, CourtModelConfig)
     assert runtime.model.name == "court_hierarchical"
     assert runtime.model.encoder.name == "dinov3"
+    assert runtime.shared.resolver.roots.checkpoint_root.name == "ckpt"
+    assert runtime.model.encoder.checkpoint_path == (
+        runtime.shared.resolver.roots.checkpoint_root / "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )
+    assert runtime.model.encoder.repository_path == runtime.shared.resolver.roots.external_asset_root / "dinov3"
     assert runtime.model.decoder.name == "dpt"
     assert runtime.model.decoder.size == "large"
     assert runtime.model.decoder.channels == 512
@@ -216,6 +221,26 @@ def test_default_model_is_hierarchical_with_dinov3_transformer_and_dpt() -> None
         "line": (256, 2),
         "semantic_line": (256, 2),
     }
+
+
+@pytest.mark.parametrize('field', ['resume', 'init_weights'])
+def test_existing_training_checkpoint_is_independent_of_pretrained_assets(
+    tmp_path: Path, field: str,
+) -> None:
+    backbone = tmp_path / 'ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth'
+    previous = tmp_path / 'outputs/court_detection/previous/checkpoints/last.ckpt'
+    for path, content in ((backbone, b'pretrained backbone'), (previous, b'previous training state')):
+        path.parent.mkdir(parents=True)
+        path.write_bytes(content)
+    config = _compose('synthetic_court', f'paths.project_root={tmp_path}',
+        f'run.{field}={{role:artifact,path:court_detection/previous/checkpoints/last.ckpt}}')
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.model.encoder.checkpoint_path == backbone
+    assert getattr(runtime.shared.run, field) == previous
+    assert runtime.shared.resolver.roots.checkpoint_root == tmp_path / 'ckpt'
+    assert runtime.shared.resolver.roots.artifact_root == tmp_path / 'outputs'
+    assert backbone.read_bytes() == b'pretrained backbone'
+    assert previous.read_bytes() == b'previous training state'
 
 
 def test_current_line_schema_uses_wide_physical_target() -> None:

@@ -1,0 +1,8 @@
+{
+  "pytest": "64 passed in 13.39s; -n 4; CUDA_VISIBLE_DEVICES empty; related unit/integration/evaluation/training",
+  "ruff": "passed, 7 Python files",
+  "mypy": "passed, 7 Python files, --follow-imports=skip",
+  "real_data_preflight": "passed; exact config/window/partition diff in preflight.json",
+  "knowledge": "0 errors, 215 existing warnings",
+  "gpu": "not run yet"
+}

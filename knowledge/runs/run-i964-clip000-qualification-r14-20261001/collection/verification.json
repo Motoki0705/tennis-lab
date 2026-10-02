@@ -1,0 +1,7 @@
+{
+  "pytest": "4 passed, pytest -n 4",
+  "ruff": "pass",
+  "mypy": "2 source files pass",
+  "knowledge": "430 nodes, 0 errors",
+  "command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_stop_collection.py --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001 --queue /home/kamimura/projects/tennis-lab/.training_queue --job 1790790062674261667_32446_i964-clip000-qualification-r14-20261001 --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-clip000-qualification-r14-20261001/collection"
+}

@@ -1,0 +1,1 @@
+{'status': 'ok', 'mode': 'CPU input/recipe check only; no inference', 'cameras': ('cam0', 'cam1', 'cam2'), 'frames': 1010, 'nodes': 28, 'seconds': 91.28513204300543}

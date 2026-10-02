@@ -1,7 +1,7 @@
-<!-- knowledge-review: 9e8dc960969aa81a1576962ae53a1d83d982e7ded8c6479e9db306debbf33746 on 2026-10-02 -->
+<!-- knowledge-review: 6ab03ce7febc7bf970211f3c909cf3b3d2fa5aae6366f724d1d1eb091f75550e on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -22,8 +22,107 @@
 対象689clipの処理とレビューは継続中。従来#964のコート選別は過去の比較として維持し、
 今回のposeデータ生成方針とは区別する。次は全対象のcoverage・保留・ID切替の実例を監査する。
 
+## 2026-09-30の人物source・コート選別（#964）
+
+[#937のFT検出器比較](nodes/player_detection/000004-run-i964-detectors-val-meiji-r1-20260929.md)では、
+重み選択に使ったchat validationでprecisionが改善した。Meijiの参照は旧COCO boxに基づくため、
+そこでの数字は旧boxとの一致率であり検出recallではない。FTの不一致はcam0の小さい遠側人物に集中し、
+閾値0.3での不一致をそのまま検出失敗とは扱えない。ユーザーは2Dを全人物の候補生成へ、選手判定をコート座標での滞在時間へ移すと決めた。
+[遠側GPU診断](nodes/player_detection/000005-run-i964-far-r3-20260929.md)はこの方針変更でcancelled。保存済み23archiveのhashを確認し、CPU比較へ再利用する。
+1080/1920は11/12 camera-clipに限り、高解像度・tileは追加実行しない。選別精度と動画をrun 6で確認した。
+CLIP-ReID/SOLIDER/KPRと複数trackerの固定dev比較はrun 9までに実施した。既定採用と新clipの調整後一回の未見評価は未完了。
+既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
+
+共通人物特徴の[初回smoke](nodes/person_tracking/000001-run-i964-features-smoke-r2-20260929.md)は、
+ViTPoseの回帰heatmap peakを確率とみなす検査で停止した。実入力のCPU再現で有限の1超scoreを確認し、
+生値を保持する契約へ修正した。[GPU再実行](nodes/person_tracking/000002-run-i964-features-smoke-r3-20260929.md)は
+同じ入力の1超scoreを保持して3camera×120frameを完走し、同じ#937検出のUltralytics BoT-SORT baselineも完走した。
+これは機能smokeに限り、追跡品質の比較ではない。
+[保存済みデータのCPU選別診断](nodes/person_tracking/000003-run-i964-court-selection-cpu-r4-20260929.md)では、
+高い旧box一致率でもcamera-local滞在選別で遠側の観測を失い、FT低閾値/unionは隣コート人物も残した。
+CLIP付きの第2確認も全clipでは決定できず、この基準のまま既定に採用しない。
+続く[原因分離と断片連結](nodes/person_tracking/000004-run-i964-court-selection-r5-20260929.md)では、
+確認できる隣コートunitは選手との混在ではなく横余白で採用されていた。主コート内の滞在coreと外側境界を分け、
+足元連続性と利用可能なCLIPで断片を連結すると、隣コートを除外しFT/unionのcam0 far保持を改善できた。
+単frameの足元跳びで分割する初回案は投影ノイズで過分割になり不採用。時間窓と1秒以内のgapに修正したが、
+他camera/旧経路の選手保持低下とコート内へ投影される非選手が残るため、既定へは採用しない。
+[全画面COCOのqueue job](nodes/player_detection/000006-run-i964-coco-fullframe-r5-20260929.md)は12 camera-clip完了し、全archiveのhash一致を確認した。
+[run 6](nodes/person_tracking/000005-run-i964-fullframe-selection-r6-20260930.md)では選択済み断片の全観測を保持するよう修正し、
+元データ固定のauditでwide観測の大半を回復し隣コート除外を維持した。ROI前7条件のCPU比較を完了し、
+ユーザーはCOCO全画面 .30を選択し、[run 7](nodes/person_tracking/000006-run-i964-default-solider-cpu-r7-20260930.md)でpipeline既定とコート選別/v3接続へ反映した。
+unionはwide/cam0遠側に利点があるが他cameraの保持を落とす。低閾値COCOはraw候補と断片を増やした。
+参照がCOCOに有利である制約は変わらない。SOLIDER推論portは実重みの2 dev cropで上流CPU forwardと一致し、run 7時点では精度比較の前段に留まった。
+[特徴job回収](nodes/person_tracking/000007-run-i964-coco-person-features-r7-20260930.md)で全24 NPZ・各40,531rowのhash/値/出自一致を確認した。
+[事前固定した2方式×2encoder比較](nodes/person_tracking/000008-run-i964-tracker-matrix-r8-20260930.md)では候補内でDeep OC-SORT+pose/CLIPを推薦する。
+新検出+旧追跡はLab連結曖昧により1camera停止（11/12完走）、候補は全camera完走した。停止を予測空として扱う固定規則の下で
+推薦候補の選手coverageは増えたが、IDF1は微減しcam1遠側とfragmentが悪化したため、既定採用を自動で進めない。
+BoT候補は非選手残存と1clipの対応停止が多い。camera間encoderをSOLIDERへ替えても今回の固定尺度で最終対応は変わらなかった。
+[KPRの実2crop CPU parity](nodes/person_tracking/000009-run-i964-kpr-cpu-parity-r8-20260930.md)はpositive/negative両promptで上流と差0。
+KPRの[全12 archive回収](nodes/person_tracking/000010-run-i964-kpr-native-features-r8-20260930.md)では、40,531rowの元検出・pose・出自が一致し、native parts/visibilityのshape・有限値・normを確認した。この回収は特徴整合性の確認であり、精度比較は次のrun 9に分けた。
+[run 9のoffline linking・native KPR比較](nodes/person_tracking/000011-run-i964-tracker-linking-r9-20260930.md)では、
+追加したStrongSORT++/CLIPが固定raw-ID主指標の候補内推薦となった。全12camera完走しDeep OC-SORTのcam1遠側/断片化を改善するが、
+追加group IDF1とcamera間pair F1では新検出+旧追跡に届かないため、既定採用の合格とはしない。
+旧Labの候補への適用は3cameraで曖昧停止。KPRはnative距離で評価し、trackerのgroup指標には利点がある一方、
+camera間では固定CLIP尺度の転用が大半で曖昧停止となった。重み条件未確認のAFLinkを含め最終採用はユーザー判断を要する。
+cam1遠側の欠測には全件元検出があり、重複検出由来の競合IDと別人trackへの移行/選別除外が主因だった。
+小cropの外観/pose不良だけでは説明できない。全pipeline完走・調整凍結後の未見一回評価は後続とする。
+
+[ユーザー指定の2 hybridを固定比較したrun 10](nodes/person_tracking/000012-run-i964-tracker-hybrids-r10-20260930.md)では、
+StrongSORT++＋pose/CLIPがraw/group IDF1の候補内推薦となった。poseなしよりswitchと選手保持は改善したが、
+fragmentは増え、cam1遠側の改善も小さい。camera間pair F1はDeep+pose/CLIPより低く、下流での一律な勝利ではない。
+Deep+poseへAFLink/GSIを足すとrawは改善するがgroupは悪化し、pair F1の差は僅かだった。
+旧9条件の全144層と決定済みpair指標を完全再現し、変えたStrongSORTのオンライン出力もpose重み0で一致した。
+GSI syntheticは別maskのままで評価の実観測へ入れていない。費用付き重複box対策は未実装の提案に留めた。
+この時点では既定判断を保留した。次のrun 11でユーザー決定を反映した。
+
+[run 11](nodes/person_tracking/000013-run-i964-default-merge-r11-20260930.md)で、ユーザーが選んだ
+**StrongSORT++＋pose/CLIP**を標準pipelineと#935向け共通入口の既定へ接続した。
+元検出row/pose/CLIPを選別後も保持し、GSIを実観測へ昇格しない。AFLink公開重みは利用条件が未確認のまま
+当面使用し、継続利用か自前再学習かを後日判断する。重複boxのgreedy IoU>=.8統合は明示optionで既定off。
+同じ4 dev×3cameraで26boxを削減したが、raw/group IDF1・pair F1・switch/fragment・選手保持は変わらず、
+今回の証拠ではmerge offの維持を推薦する。全26件の前後画像/ラベル監査で別人削除は認めなかったが、
+完全GTや未見の安全性は保証しない。offのrun 10完全一致とschema/共通経路テストは確認済み。
+#935実producerへの積み直し、独立した無ラベルclipでの#933再較正、clip_000全pipeline、
+設定凍結後の予約未見一回は費用付き計画だけを残し、今回実行していない。
 
 ## 2026-09-27のcamera間人物対応（#933）
+
+[run 12の事前protocol](nodes/player_association/000003-run-i964-recalibration-r12-20260930.md)は、
+新既定StrongSORT++＋pose/CLIP、ユーザー確定のmerge offを固定し、無ラベル6clipで
+尺度/判定しきい値を較正してからdevを一度採点する計画。
+[run14のfit](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)は支持/安定性条件を満たし、
+LOVO正例recall85.93%、全動画の負例誤結合0でAを選択した。A/B同点、Cはrecall不足。
+video_001/clip_020の停止を母数へ含み、同動画recall54.97%という弱点も残る。
+新尺度を名前付きの非既定YAMLとしてcommit/pushした後、devを一度だけ採点した。
+旧/新とも4/4決定、pair F1=.957119、group accuracy=.763256で、全12cameraのID配列が同一。
+旧尺度の再計算もrun11に一致した。今回の再較正でdev低下は改善せず、旧尺度が主因という説明は裏付けられない。
+dev後の再fit/再選択は行わない。
+[clip_000資格確認](nodes/tennis_scene/000026-run-i964-clip000-qualification-r14-20261001.md)は、
+run15に失敗を回収した。19/28nodeと153配列はhash/型/依存・人物元row/box/poseを照合できたが、
+court_sideがcam2反転のmargin .118504 < .15で停止した。scene export・全長動画は未生成。
+資源制限ではなくball根拠の曖昧性。[同じruleのCPU診断](nodes/court_side/000003-run-i964-clip000-side-diagnosis-r15-20261001.md)で
+全score/元point gateの再現を確認した。275frame中89はcam2に情報を持たず、全3viewのsupportは5/52。
+同じ校正/規則のball反実仮想はobserved注釈margin .604826、e9 cache top-1 .381587、
+e9＋現行score/gate .406997でFFTに決まる。e9は720p JPEG/採用窓も異なり、元MP4本番への一般化は未確認。
+ball labelはclip_000の診断専用で使用し、production import・人物label再採点・未見の開封は0。
+閾値/既定は変更していない。診断nodeに、#935と接続する入力整合/ball証拠改善と、
+#932で別評価が要るball-only集約/rig蓄積の費用・不確実性を提示した。どの対策も選択せず、全pipeline受入は未達。
+旧#933の結論は旧trackに限定したまま維持する。2026-10-01のユーザー判断により、
+[run16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)で候補Aを既定にし、
+人物設定と資産hashを未見開封前に凍結する。clip_000完走を最後の未完項目として残し、
+予約3clipを同じ注釈ball由来side規約で一回だけ評価する予定だが、事前検査で
+video_001/clip_003のcourt/side参照欠測と、現componentの見積り約157分（2時間grant超過）が判明した。
+run16のGPU投入・人物推論/採点は0。run17では欠測の明示的な停止扱いと3時間枠が承認され、
+同ノードの実行addendumとパス契約修正の準備追記でCPU検査を完了し、全9camera/11,124frameを1jobへ登録した。
+全cameraの人物処理/動画と停止clipの母数を保持し、
+人物freezeとft-e13/court_sideは維持する。未見の採点は保存出力から次runに一回だけ行う。
+[run 13の回収](nodes/player_association/000004-run-i964-recalibration-resume-r13-20261001.md)で、
+特徴jobの時間切れと9/18cameraの完全性を確認した。lock待ちはtimeoutに含まれず、
+旧見積りは不足していた。run 14で再開jobの成功と全18cameraのhash/元rowを検証した。
+新規9cameraは約76分、peak GPU4.26GBで完了した。実fitと固定後のdev一回は上記run14で完了した。
+準備中に旧devの小crop外観maskとproductionの差（9/40,531row）が判明した。
+既定を維持して9行を明示mask投影し、2cameraのCPU再追跡と元row/GSI検証を完了した。
+run 11は保存特徴からの再現として有効だが、画像入口との完全同一性の証明とはしない。
 
 幾何（box下端の足元距離の対数尤度比）とCLIP-ReIDの外観をMILP（`cluster_multiview`）で統合し、コートの各sideで在場の長いidentityを選手に選ぶ対応付けを
 [Meijiの人手ラベル4 clipで評価](nodes/player_association/000002-run-i933-association-meiji.md)した（sideは注釈ballの判定）。
@@ -166,7 +265,7 @@ observed 28,806 frameのrecallが44.49%から68.00%へ、閾値なしtop-K recal
 一方、採用検出のp95は346.08から386.30 source pxへ悪化し、cam2では低scoreも含むraw p95も悪化した。
 欠損低減と誤検出抑制は両立しておらず、2026-09-28時点のdeployはft-e13を維持する。
 AI補助注釈・単一video/seed、手首距離既知36.90%という制約があり、3D品質や他sourceの忘却は未検証。
-次はvalidationでのscore較正とcam2の誤検出診断、他sourceの固定split評価、#935での候補選択を検証する。
+後続のvalidation候補選択は[Ball Refiner](#ball-refiner)へ引き継ぐ。score較正・誤検出抑制・独立testでの確認は残る。
 
 現行deployはfine-tuning版を維持します。[`run-i618-convnext-v2-scratch`](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md) はTrackNet test F1 `0.7692`、距離 `2.01 px`でoffline評価では上ですが、実clip coverageが`92.0% → 91.1%`へ下がり、`179.9 px`のteleportを1件発生させました。したがって、単一のF1最高値より実動画上の安定性を優先しています。
 
@@ -175,6 +274,84 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 [Meijiの全scene診断](nodes/tennis_scene/000009-run-tennis-scene-meiji-raw-ball-baseline-20260923.md)ではscene/7動画の構造・decodeは成立したが、Ball欠損と非物理的3D軌道が大きかった。[保存前処理の照合](nodes/ball_detection/000018-run-ball-checkpoint-normalization-meiji-20260923.md)で、公開RGB APIとcheckpointのImageNet正規化の接続漏れを確認した。修正はdataset前処理と実model入力が完全一致し、Meiji選定窓の大誤検出は減ったが、recall改善は一様でなくTrackNet 8frameの4px一致数は5→4だった。前処理復元と精度向上を同一視せず、次は修正後の全区間GPU・3D・動画を再評価する。
 
 [修正版の単発scene](nodes/tennis_scene/000010-run-tennis-scene-meiji-corrected-pipeline-20260923.md)と[独立dataset生成](nodes/tennis_scene/000011-run-tennis-scene-meiji-corrected-dataset-20260923.md)は完了し、両sceneの構造と全14動画の全frame decode、既存SLCS reader受理を確認した。Courtは全区間で成立したが、Ball欠損は62.5/33.9/34.0%、3D ballの負高さ50frame・最大412m/s、PLCS/GVHMR整合残差が残る。窓境界不整合の証拠はなく、2D観測/pose mask急変が異常と同時にある。scene公開の成立を高品質教師や3D精度保証とみなさず、次は観測の同一性・可視性の安定性と独立3D評価を分けて検証する。
+
+### Ball Refiner
+
+[#935の教師・既存文脈監査](nodes/ball_refiner/000001-run-i935-data-audit-r2.md)で、
+全storeのsplitを保持し、observed位置教師と明示的out_of_frameの存在負例を分けられた。
+空frameと推定・unknownはamodal負例にしない。確定負例はchatに偏り、Meijiだけでは存在較正を判断できない。
+既存Meiji pose/courtは一部しか揃っていないため、文脈なしpilotを先に準備し、full比較前に生成を完了させる。
+未生成をmask欠損へ置き換えず、camera-local KP14と明示的なViTPose score変換を使う。
+[凍結ft-e13証拠cache](nodes/ball_refiner/000002-run-i935-evidence-ft-e13-trainval-r3-20260928.md)はtrain/val全frameの生成・checksum/PTS/局所patch読込まで成功した。
+[文脈なし時間MDN pilot](nodes/ball_refiner/000003-run-i935-detector-only-ft-e13-s42-r4-20260928.md)は12 epoch・3,000更新を完走した。
+同じ選択用validationの観測frameでは、detector argmaxより平均・p95誤差が減る一方、中央値・20px recallが悪化した。
+学習接続の成立と精度改善を区別し、detector deploy継続の判断は変えない。
+[未較正分布の診断](nodes/ball_refiner/000004-run-i935-calibration-hdr-ft-e13-r5-20260928.md)では、
+較正側の6時刻clip群でも平均誤差の改善と中央値/20px recallの退行が同時に見られた。
+人工証拠欠損で領域は広がるが、90/95% HDRのcoverageは約81/86%に留まり、分布の裾の過信が残る。
+この6群のbootstrapは探索的で、実RGB遮蔽や独立testへの一般化の証拠ではない。
+次は補正を別run・較正側のみでfitし、同一母数の文脈生成・ablationと点精度の退行も検証する。
+[元動画pipelineの接続監査](nodes/ball_refiner/000005-run-i935-pipeline-ft-e13-r7-20260928.md)では、
+270 frameの全GMM保存と別プロセスのload-onlyが成立し、同じ検出証拠からのCPU再計算も小さな数値差で一致した。
+専用recipeの接続証拠であり、未較正pilotのdeploy採用や、JPEG学習cacheとの精度同等性を示さない。
+最終test・RGB遮蔽対照・full文脈/ablation・標準sceneの3D入力切替は未検証。存在較正はMeijiの正例だけから結論しない。
+[3sourceの文脈pilot](nodes/ball_refiner/000006-run-i935-context-fullframe-pilot-r9-20260928.md)は、
+import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0だった。
+[run専用再ビルドの再試行](nodes/ball_refiner/000007-run-i935-context-fullframe-pilot-r10-20260928.md)では
+3source・561frameのCUDA生成と別プロセス読込が成功した。
+画像監査で観客・隣接court人物の混入とchatの視点変化・累計60trackを確認し、chatのcourtは実行済み欠損だった。
+有効poseの存在をプレー中の人物のrecallや文脈の有効性と同一視しない。
+[最長3sourceの分割probe](nodes/ball_refiner/000011-group-i935-context-shards-r12-probe.md)も全frameの生成・読込が成功し、18分以内で完走した。
+Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあり、chatのcourt欠損も続く。保存成功を文脈品質の保証としない。
+2026-09-29の[#964のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5889433860)で人物契約が変わるため、
+旧全clip生成は停止した。r13 shardsは保持して学習には使わず、#964完了まではperson/pose生成・延長・学習を行わない。
+[最初のvalidation比較](nodes/ball_refiner/000012-run-i935-val-candidate-recall-r14-20260929.md)はCUDA device index不足で推論前に失敗したが、
+[修正版の3checkpoint比較](nodes/ball_refiner/000013-run-i935-val-candidate-recall-r15-20260929.md)は完了した。
+Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6のepoch 0選択とは逆転した。
+全camera・chat val・TrackNet game9の候補recallもe11が最大だが、候補内での順位誤りとTrackNet top-1の退行は残る。
+[全epoch保存の混合FT再学習](nodes/ball_refiner/000014-run-i935-mixed-ft-val-recall-s42-r16-20260929.md)はepoch 10中にCUDA unknown errorで失敗した。
+保存済みepoch 0–9のMeiji val recall@8を照合し、2026-09-29のユーザー判断どおり単独最大のepoch 9を選択した。
+peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害として扱うが、根本原因を断定しない。
+候補recallはepoch 4以降の上積みが小さく、epoch 10–11の再開・延長は行わない。threshold F1との順位逆転も再現した。
+[epoch 9の新cache回収](nodes/ball_refiner/000015-run-i935-evidence-mixed-e9-trainval-r17-20260930.md)で全329 clip / 145,767 frameのhash・読込が一致し、Meiji候補recallはbf16 validationとcamera別でも0.13 pp未満の差だった。
+[同条件pilot再学習の回収](nodes/ball_refiner/000016-run-i935-detector-only-mixed-e9-s42-r18-20260930.md)は12epoch/3,000更新、560 paired NPZのhash・母数・全既存集計が一致した。
+新pilotはMeiji全cameraで旧pilotよりobservedの裾誤差を抑え、新detector単体に対してもp95を改善するが、中央値の精密定位は劣る。
+TrackNetの観測位置は退行し、chatは中央値が悪化して裾だけ改善。Meiji較正側のgap HDR95 coverageも約86%に留まり、較正済みとは扱わない。
+detectorの一様gap密度によるcoverage=1は全画面領域の自明な結果なので、coverageと面積を併記し、位置誤差を公平な比較とする。
+存在/位置の教師がない層はN/A。
+[典型frameの精度診断](nodes/ball_refiner/000017-run-i935-precision-variants-s42-r20-20260930.md)では、
+正しいdetector候補からrefiner平均が系統的に右へずれ、同じ偏りが他sourceの中央値退行にも現れた。
+絶対座標headの平均はほぼ候補peak上になく、epochで偏りの向きが反転するため、
+格子解像度やsigma床だけよりも平均parameterizationと未収束/揺れる最適化が主要な候補となる。
+run20 directiveに従いcourt-only先行案を保留し、同一recipeの長期化と候補を保持する平均の比較を先に行う。
+run20のGPU比較は116秒で監視walkのFileNotFoundErrorにより停止し、checkpoint/val結果は得られなかった。
+モデル精度による棄却とは扱わず、[消失競合を修正した同条件retry](nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)で
+事前宣言した3案を比較し、全108checkpointと420val NPZを回収した。
+候補残差12kはdetectorより各source/camera/halfの位置誤差を改善し、長期化だけより典型精度がよい。
+一方、detector誤り件数で選んだ厳しい270frameでは20px成功率が退行し、個別の失敗は残る。
+ただしcalibration halfの観測HDR90/95は0.80/0.85、人工gapでも0.84/0.88で過信が残る。
+[2026-09-30のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5908081470)で候補残差headを基準設計に採用した。
+[共分散だけのclip交差検証](nodes/ball_refiner/000019-run-i935-covariance-loco-s42-r23-20260930.md)では、
+calibration halfのOOF observed HDR90/95が0.80/0.85から0.86/0.89へ改善しNLLも下がった。
+ただし面積は約1.8倍、HDR50は過大被覆、人工gap/他sourceのNLLは悪化し、裾の過信も残る。
+配布用倍率1.8125と全K4 residual bankを明示hashで保存し、#936の旧bankは対照として残す。
+bank作成frameは配布倍率のfitと重複するため、OOF性能と区別する。
+[seed44再試行](nodes/ball_refiner/000021-run-i935-seed44-retry-r24-20260930.md)は資源上限内で完了したが、[事前10比較](nodes/ball_refiner/000023-run-i935-seed-reproduction-r25-20260930.md)は9/10で不合格。seed44の人工gap NLLだけがabsolute_12kより悪い。位置分位点は両追加seedでe9 top-1を上回るが、これを全条件の再現成功とは扱わない。
+[e9/anchored seed42/固定倍率の明示pipeline option](nodes/ball_refiner/000022-run-i935-pipeline-candidate-r24-20260930.md)の[元動画check](nodes/ball_refiner/000024-run-i935-source-check-retry-r25-20260930.md)では、3camera各270frameのexecuteとfresh-process loadが完了し、全保存配列はbit一致した。終了コード1は全phase後のstrict field診断であり、実行失敗ではない。
+[固定BゲートのGT比較](nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)はpooled p90が+46.34 px悪化して許容+5 pxを超えたため不合格。中央値とNLLは許容内だが、run26時点では既定ft-e13＋旧refinerを維持した。[全810frameの切り分け](nodes/ball_refiner/000026-run-i935-source-tail-audit-r27-20261001.md)はframe/PTS・窓・正規化のbugを支持せず、中間720p縮小とJPEGによる入力差が候補・成分選択に増幅されることを支持する。同じCPU/pipelineでcam2を再encodeするとp90と最大成分選択がcacheへ戻った。pooled差は連続block bootstrapで0を除外できず、短い末尾区間に依存するため一般化は未確認。固定gateを変更せず、入力経路の整合・MP4証拠の再学習・既定維持の選択肢と費用を提示し、対策の選択は保留した。
+[追加ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5912616143)どおり、seedの9/10 FAILを保持したまま再現は十分と扱う。今回Bを止める理由はsource精度のp90であり、seed失敗やstrict診断へ置き換えない。固定倍率の三seed診断にはgap/TrackNet NLLの悪化とcalibration halfの過信が残る。
+[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。[run29](nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)で既定切替・標準scene refinerを追加し、clip_000を除く保存済みMeiji valで存在確率と全GMMの90%包含楕円面積の規則を固定した。保持frameの誤差は低下したがcache入力での選定結果であり、mp4への一般化は未確認。当時のconsumer配線は同じ欠測maskをside・幾何・三角測量へ渡していた（現在は後述の2026-10-02方針で廃止）。[固定filterの安全bench](nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md)は元の全28条件を再現した上で誤判定0→3件、停止率18.58→24.91%となりFAIL。経験的confidence blockを独立に付けた合成回帰試験でE2Eではないが、directiveに従いclip_000 qualificationは投入せず、閾値を変えない。証拠のない区間の改善と文脈ablation、test評価も未完了。
+
+### 3D Ball Refiner
+
+[確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
+Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを
+小さい計算時間で得たため、次の合成生成用の暫定実装に選ぶ。2D標本化→三角測量→KDEのCは
+多峰条件でNLLが悪く、粒子増量だけでは解消しなかった。presenceの周辺化はcamera間独立と
+不在cameraの幾何を捨てる近似で、low presenceの100% coverageを較正改善とは呼ばない。
+狭い既知prior・小Kの結果であり、実Meiji精度や3D diffusionの優位は未検証。
+次は240Hz物理原系列から60000/1001Hzへ再標本化するCPU smokeと、広いcourt prior・
+長欠損・camera摂動での健全性を確認し、#935較正後に劣化を固定する。
 
 ### Player Detection
 
@@ -276,3 +453,19 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 
 このsummaryは、pipeline checkpointが変わったとき、同一契約で再現された重要な結果が追加されたとき、評価契約が変わったとき、またはdiagnostic領域に初めてheld-out baselineができたときに更新します。新runが1件追加されるたびに追記するのではなく、研究上の結論または優先順位が変わった場合に更新します。
+
+[run30のMeiji限定context計画](nodes/ball_refiner/000029-run-i935-meiji-context-r30-20261001.md)で
+#964凍結人物経路と全17点、clip単位のhash検証付き再開、他sourceの明示的な文脈不在を実装した。
+CPUの契約/再開/共有tracking検証と実資産preflightは成功し、108clipの生成jobを共有queueへ登録し、回収待ち。
+文脈による精度改善・ablationは未確認。
+[同runの相関安全bench](nodes/court_side/000005-run-i935-correlated-safety-r30-20261001.md)は、
+実GMM残差とconfidenceを同一rowで移植しても2/11,200誤判定でFAIL。選別で実残差は小さくなり停止も減るが、
+元の静的偽点等のstressは残る。run29の3件は全入力を再現し、2件は特定cameraの真点消失・偽点だけの残存、
+1件は精度のよい点でも識別に必要なpair支持を失うことを確認した。当時はqualificationを保留した。
+[2026-10-02のフィルタ廃止](nodes/court_side/000006-run-i935-unfiltered-production-safety-20261002.md)で、ユーザー判断に従い
+全frameの最大weight成分平均を下流へ渡す契約へ戻した。全GMM・採用重み・共分散倍率・ball-only/margin .15を保持する。
+CPUの契約回帰は検証し、安全bench全11,200件は元dataset欠測で未実施。旧run30の未選別0wrongを新測定に読み替えず、
+過去FAILとclip停止・全scene未検証を残す。ユーザーは既存結果・今回回帰・最新CIに基づく従来stackのmergeを許可した。
+merge方針の変更は品質合格の新観測ではない。
+
+人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価run16は完了した。clip_000全pipelineは当時未検証で、今回のmerge許可後も新たな品質測定は行っていない。
