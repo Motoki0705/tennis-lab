@@ -1,4 +1,4 @@
-<!-- knowledge-review: effa06a40d385788e3868c4919509c557064e64b0adf7e9a9ff97f61d87c271b on 2026-10-02 -->
+<!-- knowledge-review: 23f481e74a3928e86a279b233717f1f3b3f105180a8c684fe608f1254668f187 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・未見評価とpose蓄積の結論を統合。実験結果・採否の変更なし）
@@ -274,6 +274,15 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 [Meijiの全scene診断](nodes/tennis_scene/000009-run-tennis-scene-meiji-raw-ball-baseline-20260923.md)ではscene/7動画の構造・decodeは成立したが、Ball欠損と非物理的3D軌道が大きかった。[保存前処理の照合](nodes/ball_detection/000018-run-ball-checkpoint-normalization-meiji-20260923.md)で、公開RGB APIとcheckpointのImageNet正規化の接続漏れを確認した。修正はdataset前処理と実model入力が完全一致し、Meiji選定窓の大誤検出は減ったが、recall改善は一様でなくTrackNet 8frameの4px一致数は5→4だった。前処理復元と精度向上を同一視せず、次は修正後の全区間GPU・3D・動画を再評価する。
 
 [修正版の単発scene](nodes/tennis_scene/000010-run-tennis-scene-meiji-corrected-pipeline-20260923.md)と[独立dataset生成](nodes/tennis_scene/000011-run-tennis-scene-meiji-corrected-dataset-20260923.md)は完了し、両sceneの構造と全14動画の全frame decode、既存SLCS reader受理を確認した。Courtは全区間で成立したが、Ball欠損は62.5/33.9/34.0%、3D ballの負高さ50frame・最大412m/s、PLCS/GVHMR整合残差が残る。窓境界不整合の証拠はなく、2D観測/pose mask急変が異常と同時にある。scene公開の成立を高品質教師や3D精度保証とみなさず、次は観測の同一性・可視性の安定性と独立3D評価を分けて検証する。
+
+### Ball Refiner
+
+[#935の教師・既存文脈監査](nodes/ball_refiner/000001-run-i935-data-audit-r2.md)で、
+全storeのsplitを保持し、observed位置教師と明示的out_of_frameの存在負例を分けられた。
+空frameと推定・unknownはamodal負例にしない。確定負例はchatに偏り、Meijiだけでは存在較正を判断できない。
+既存Meiji pose/courtは一部しか揃っていないため、文脈なしpilotを先に準備し、full比較前に生成を完了させる。
+未生成をmask欠損へ置き換えず、camera-local KP14と明示的なViTPose score変換を使う。
+モデルの実学習・精度/coverage・ablationは未検証で、detector deploy継続の判断は変えない。
 
 ### Player Detection
 
