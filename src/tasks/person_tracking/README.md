@@ -2,6 +2,8 @@
 
 #964のcamera内追跡。検出rowごとの特徴を保存し、同じ検出・pose・外観を複数の追跡方式で使う。
 標準pipelineの人物sourceとコート選別は[pipeline README](../../tennis_scene/pipeline/README.md)を参照。
+[選手poseのGPTレビュー](../../tennis_scene/chat_annotation/player_pose/README.md)も、
+`features.py` / `sequence.py` の共通処理からコート選別前のraw追跡を利用する。
 既定はユーザーが採用した **StrongSORT++＋pose/CLIP**。run 10の固定設定を使用する。
 AFLinkは論文再実装と公開重みを当面使うが、**重みの独立した利用条件は未確認**。
 継続利用か自前再学習かは後日判断する。出自・hash・再配布しない方針は[NOTICE](strongsort_NOTICE.md)を参照。

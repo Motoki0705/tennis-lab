@@ -14,12 +14,17 @@ import cv2
 import numpy as np
 
 from src.synthetic_data_generation.alignment.validation import load_alignment_result
+from src.synthetic_data_generation.dataset.court.sample_store import (
+    open_court_store,
+    read_court_labels,
+    read_court_manifest,
+    read_court_rgb,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     court_schema_from_dataset_schema,
 )
 from src.synthetic_data_generation.visualization.overlays import render_court_overlay
 from src.synthetic_data_generation.visualization.sources import CourtSourceFrame
-from src.utils.data.float32_store import read_float32
 from src.utils.schema.court import (
     COURT_SKELETON,
     STANDARD_COURT_CONFIG,
@@ -65,6 +70,10 @@ class ReviewService:
             p = contained_file(root, relative)
             st = p.stat()
             identities.append((relative, st.st_ino, st.st_size, st.st_mtime_ns))
+        index = root / "datasets/court/samples/index.npz"
+        if index.is_file():
+            st = index.stat()
+            identities.append(("samples/index.npz", st.st_ino, st.st_size, st.st_mtime_ns))
         return hashlib.sha256(repr(identities).encode()).hexdigest()[:20]
 
     def scenes(self) -> list[dict[str, str]]:
@@ -86,7 +95,7 @@ class ReviewService:
 
     def _load(self, scene: str, revision: str) -> dict[str, Any]:
         root = self.scene_root(scene)
-        dataset = read_object(contained_file(root, "datasets/court/dataset.json"))
+        dataset = read_court_manifest(root / "datasets/court")
         court_schema_from_dataset_schema(dataset["schema"])
         if dataset["status"] != "completed" or dataset["scene_id"] != scene:
             raise ValueError(
@@ -160,6 +169,7 @@ class ReviewService:
             "summary": summary,
             "samples": sample_index,
             "schema": dataset["schema"],
+            "image_store": open_court_store(root / "datasets/court") if "storage" in dataset else None,
         }
 
     def overlay(self, scene: str, revision: str, sample: str, width: int) -> bytes:
@@ -173,7 +183,7 @@ class ReviewService:
         data = self.load(scene, revision)
         entry = data["samples"][sample]
         root = self.scene_root(scene) / "datasets/court"
-        rgb = read_float32(contained_file(root, entry["rgb"]))
+        rgb = read_court_rgb(root, entry, store=data["image_store"]).astype(np.float32) / 255.0
         if (
             rgb.dtype != np.float32
             or rgb.shape != (entry["height"], entry["width"], 3)
@@ -181,7 +191,7 @@ class ReviewService:
             or np.any((rgb < 0) | (rgb > 1))
         ):
             raise ValueError("Invalid RGB array.")
-        label = read_object(contained_file(root, entry["labels"]))
+        label = read_court_labels(root, entry, dataset_schema=data["schema"])
         if (
             label["sample_id"] != sample
             or label["projection"] != entry["projection"]

@@ -9,6 +9,7 @@ Each model exposes ``load()`` / ``unload()`` / ``predict(request) -> result``:
 """
 
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models.dino.extension import validate_dino_extension
 from src.submodules.models.dino.person_detector import (
     DinoPersonDetector,
     PersonDetectionRequest,
@@ -59,6 +60,7 @@ __all__ = [
     "PersonDetectionResult",
     "Pose2DFrameSequenceRequest",
     "Pose2DRequest",
+    "Pose2DFrameSequenceRequest",
     "Pose2DResult",
     "SmplCoco17Reconstructor",
     "SmplVertexReconstructor",
@@ -68,4 +70,5 @@ __all__ = [
     "YoloPersonTracker",
     "filter_detections_by_footpoint",
     "select_and_complete_tracks",
+    "validate_dino_extension",
 ]
