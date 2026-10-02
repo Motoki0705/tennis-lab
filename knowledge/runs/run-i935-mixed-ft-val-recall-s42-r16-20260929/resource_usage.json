@@ -1,0 +1,10 @@
+{
+  "status": "failed",
+  "seconds": 21536.395536181983,
+  "peak_cuda_allocated_bytes": 6934148608,
+  "peak_cuda_reserved_bytes": 7103053824,
+  "pytorch_allocator_limit_bytes": 8589934592,
+  "queue_job": "1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929",
+  "test_after_fit": false,
+  "epoch_limit": 12
+}

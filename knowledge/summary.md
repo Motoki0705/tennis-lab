@@ -1,4 +1,4 @@
-<!-- knowledge-review: cb8030329441ba57aa5e1b66ddbae168c5161394d82a5c6032505105d9c3451a on 2026-10-02 -->
+<!-- knowledge-review: eb069fd037f63105050acdc8adc1b3ab897e43a1d0f873de0b76821d23387da7 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・未見評価とpose蓄積の結論を統合。実験結果・採否の変更なし）
@@ -265,7 +265,7 @@ observed 28,806 frameのrecallが44.49%から68.00%へ、閾値なしtop-K recal
 一方、採用検出のp95は346.08から386.30 source pxへ悪化し、cam2では低scoreも含むraw p95も悪化した。
 欠損低減と誤検出抑制は両立しておらず、2026-09-28時点のdeployはft-e13を維持する。
 AI補助注釈・単一video/seed、手首距離既知36.90%という制約があり、3D品質や他sourceの忘却は未検証。
-次はvalidationでのscore較正とcam2の誤検出診断、他sourceの固定split評価、#935での候補選択を検証する。
+後続のvalidation候補選択は[Ball Refiner](#ball-refiner)へ引き継ぐ。score較正・誤検出抑制・独立testでの確認は残る。
 
 現行deployはfine-tuning版を維持します。[`run-i618-convnext-v2-scratch`](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md) はTrackNet test F1 `0.7692`、距離 `2.01 px`でoffline評価では上ですが、実clip coverageが`92.0% → 91.1%`へ下がり、`179.9 px`のteleportを1件発生させました。したがって、単一のF1最高値より実動画上の安定性を優先しています。
 
@@ -303,8 +303,19 @@ import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0�
 有効poseの存在をプレー中の人物のrecallや文脈の有効性と同一視しない。
 [最長3sourceの分割probe](nodes/ball_refiner/000011-group-i935-context-shards-r12-probe.md)も全frameの生成・読込が成功し、18分以内で完走した。
 Meijiのcourt有効点には目視のずれ・対象コートの曖昧さがあり、chatのcourt欠損も続く。保存成功を文脈品質の保証としない。
-次は同一identityを凍結して残り326clipを生成し、全被覆だけを統合する。timeout/品質の悪いclipも黙って除外しない。
-文脈の採否は同一母数のfull/ablationで判断し、現時点のdeploy判断は変えない。
+2026-09-29の[#964のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5889433860)で人物契約が変わるため、
+旧全clip生成は停止した。r13 shardsは保持して学習には使わず、#964完了まではperson/pose生成・延長・学習を行わない。
+[最初のvalidation比較](nodes/ball_refiner/000012-run-i935-val-candidate-recall-r14-20260929.md)はCUDA device index不足で推論前に失敗したが、
+[修正版の3checkpoint比較](nodes/ball_refiner/000013-run-i935-val-candidate-recall-r15-20260929.md)は完了した。
+Meiji video_000の候補recall@8はmixed-e11が最大で、閾値F1によるr6のepoch 0選択とは逆転した。
+全camera・chat val・TrackNet game9の候補recallもe11が最大だが、候補内での順位誤りとTrackNet top-1の退行は残る。
+[全epoch保存の混合FT再学習](nodes/ball_refiner/000014-run-i935-mixed-ft-val-recall-s42-r16-20260929.md)はepoch 10中にCUDA unknown errorで失敗した。
+保存済みepoch 0–9のMeiji val recall@8を照合し、2026-09-29のユーザー判断どおり単独最大のepoch 9を選択した。
+peak allocatedは8 GiB cap未満で、directiveに従いWSL2/driver層の障害として扱うが、根本原因を断定しない。
+候補recallはepoch 4以降の上積みが小さく、epoch 10–11の再開・延長は行わない。threshold F1との順位逆転も再現した。
+[epoch 9の新cache回収](nodes/ball_refiner/000015-run-i935-evidence-mixed-e9-trainval-r17-20260930.md)で全329 clip / 145,767 frameのhash・読込が一致し、Meiji候補recallはbf16 validationとcamera別でも0.13 pp未満の差だった。
+旧ft-e13より候補recallが高いこととrefinerの改善は別なので、次は旧pilotのrecipeを維持してcacheだけを変え、同一val frameで位置・分布を比較する。testは使わない。
+#964完了までperson/poseを使用しない。比較だけでdeployを変更せず、文脈の採否も同一母数のfull/ablationで判断する。
 
 ### Player Detection
 

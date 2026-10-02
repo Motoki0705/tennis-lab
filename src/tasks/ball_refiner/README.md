@@ -338,6 +338,40 @@ planはモデルを構築しないCPU処理だが、実際のDINO拡張のCPU事
 
 ## 検出器の局所証拠
 
+### validationによる検出器選定
+
+`scripts/compare_detectors.py`は、[候補recallによる選定判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5886001394)
+に従いft-e13・混合e0・混合e11を比較する。Meiji video_000のobserved frameに対する
+recall@8（距離≤20 source px）を主指標とし、TrackNet game9・chat valとcamera別の値を報告する。
+testを指定する入口はない。正解が単一のobserved球であるframeだけを分母とし、unknown・推定・複数球を混ぜない。
+recall@1、候補外率、正解候補があるのにtop-1が誤りである率を同じ分母で出す。
+同scoreはdecoder順のまま扱い、strict scoreで上回る率と同率による順位誤りの件数もJSONへ残す。
+同率首位ではft-e13→e0→e11の順に現行/早いcheckpointを優先する。
+
+比較は下記cacheと同じ`infer_clip_evidence`を呼ぶ。K=8/NMS=5/patch=5/subpixelと
+窓規則・stride・画像サイズを`--cache-manifest`で固定し、checkpointのsha256を明示して照合する。
+全val clipを1frame一度だけ採点し、各checkpointのsource座標候補/教師/mask/採用窓をNPZへ保存する。
+checkpoint・store・JPEGの不変性を検証し、途中成果は`status=running`、全件成功後だけ`complete`とする。
+これは比較成果物であり、新しい学習cacheを生成しない。pose/person/courtの入力も読まない。
+
+```bash
+# CUDAは共有queue経由。すべて絶対path、sha256はこの順に明示する。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.compare_detectors \
+  --store <ball-store> --cache-manifest <existing-evidence>/manifest.json \
+  --ft-e13 <ft-e13.ckpt> --mixed-e0 <epoch00.ckpt> --mixed-e11 <last.ckpt> \
+  --expected-sha256 <ft-e13-sha256> <e0-sha256> <e11-sha256> \
+  --output <new-comparison-directory> --device cuda --batch-size 2 \
+  --cuda-allocator-limit-gib 6 --cpu-threads 4
+```
+
+`--dry-run`はモデルを作らずCPUでsplit/identityを検証する。allocator上限はPyTorchだけの制限であり、
+CUDA context等のためにVRAM予算の余裕を別に確保する。OOM時のbatch/精度変更やCPU切替はしない。
+`comparison.md`と`manifest.json`に表・hash・選定結果・e11>e0の判定を残す。
+e11がe0を上回った場合は結果を報告し、全epoch保存による再学習は別判断とする。
+今後のdetector学習は[毎epochの候補recallとcheckpoint保存](../ball_detection/README.md#毎epochの候補recallとcheckpoint)に従う。
+
+### cache生成契約
+
 `data/evidence_inference.py`はJPEGを逐次decodeし、各実frameのtop-Kとnative patchを返す。
 重複窓は中心への距離が最小のもの、同点なら早い開始位置を採用し、
 argmax・候補・patch・境界maskを同じ窓からまとめて保持する。
