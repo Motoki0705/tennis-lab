@@ -7,8 +7,9 @@
 
 - `refiner_2d/`: cameraごとに独立して、検出証拠・COCO17の肘/手首・静的court・時間窓から
   1球の位置分布と存在確率を推定する。GMMの各成分は同じ球の位置仮説で、複数球ではない。
-- データ生成・評価は今後このtask直下へ置き、#936と共有する。モデル入力には他camera、
-  camera ID、正解座標、三角測量、未来のwindow外情報を渡さない。
+- データ生成・評価はこのtask直下へ置き、#936と共有する。モデル入力には他camera、
+  camera ID、正解座標、三角測量を渡さない。検出器の時間的な参照範囲は
+  [証拠cache](#検出器の局所証拠)へ記録し、refinerのattention窓長と区別する。
 - pipeline component・学習runner・実データ評価は後続PRで実装する。
   既存pipelineの三角測量はまだ切り替わっていない。最終的な#936の入力はrefinerの全分布のみとし、
   detectorの点推定へ戻す経路は設けない。court_sideの幾何的な仮説検定は別の利用者である。
@@ -225,4 +226,51 @@ CPUの`data/audit.py`と次の入口で全source/splitの教師数とMeiji全cam
 ```
 
 実データ監査の結果と生成不足の判断は[knowledge](../../../knowledge/nodes/ball_refiner/000001-run-i935-data-audit-r2.md)を参照。
-この読込層だけではdetector証拠cache・学習DataLoader・runnerはまだ生成されない。
+学習DataLoader・runnerは後続PRで接続する。
+
+## 検出器の局所証拠
+
+`data/evidence_inference.py`はJPEGを逐次decodeし、各実frameのtop-Kとnative patchを返す。
+重複窓は中心への距離が最小のもの、同点なら早い開始位置を採用し、
+argmax・候補・patch・境界maskを同じ窓からまとめて保持する。
+`data/evidence.py`はsource正規化uv、元frame/PTS、採用窓、native格子の整合を検証する。
+短いclipをRGB反復で延長せず、明示的にエラーにする。
+
+`data/evidence_cache.py`はcheckpointをstrict復元し、入力正規化・画像サイズ・候補設定を固定して
+`ball_refiner_detector_evidence.v1`を生成する。全source/splitを明示的に指定し、
+教師の有無ではframe/clipを選別しない。元storeは変更しない。
+checkpoint、storeのmetadata/index、実際にdecodeしたJPEG shardを推論の前後でhashし、
+元media/annotationのhashはstoreに記録された値として引き継ぐ。
+生成codeのhash、frame/PTS・sourceサイズ・採用窓も保存する。
+元動画/注釈ファイルを再hashした証拠とは扱わない。
+
+clipの完了ごとにNPZのchecksumと進捗manifestを公開する。
+全clipが完了して入力不変を再確認した後だけ`status=complete`になる。
+既存出力への追記・上書きは拒否し、中断cacheは調査用に残す。
+`EvidenceCache(directory, store).load(clip_id)`は、全clipの被覆、storeのhash、
+各NPZのchecksum・座標単位・frame/PTS・実秒・patch格子を照合する。
+未生成clip、破損、未完了cacheを空証拠へ置き換えない。
+
+ft-e13の検出器は8frameを参照するため、33frameのrefiner入力が参照するRGBは
+33frameを超えうる。`ClipEvidence.rgb_support(start, stop)`は採用された検出窓の和集合を
+含む元RGBの半開区間を返す。このcacheはcamera-clip内だけで生成し、
+group/split境界をまたがない。全比較条件で同じcache・RGB参照範囲を使う。
+RGB遮蔽の再生成時にもこの出自を用い、遮蔽範囲と検出器への入力条件を明示する。
+
+cacheは局所probability patchだけを保存し、dense heatmapを保存しない。
+検出器単体の画素密度評価には別途dense heatmapの生成が必要になる。
+pose/courtは`not_generated`と記録する。このcacheだけで文脈あり学習を行わず、
+文脈なし基準では`use_pose=false, use_court=false`を明示する。
+
+以下をworktreeから共有training queueへ投入する（パスは実環境の絶対pathを指定）。
+結果を使う学習runnerは後続PRで実装する。
+
+```bash
+.venv/bin/python -m src.tasks.ball_refiner.scripts.generate_evidence \
+  --store <絶対data-root>/ball_detection/ball-mix-v1 \
+  --checkpoint <絶対checkpoint-root>/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt \
+  --output <絶対data-root>/ball_refiner/detector-ft-e13-v1 \
+  --sources tracknet meiji chat_annotation --splits train val \
+  --device cuda --stride 4 --batch-size 4 \
+  --max-candidates 8 --nms-kernel 5 --patch-size 5 --subpixel-refine
+```
