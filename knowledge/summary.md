@@ -1,4 +1,4 @@
-<!-- knowledge-review: 3ded76384bf9a32073c7849cccaf6c190b22215d2cef6af9847c4e8f4dc94647 on 2026-10-01 -->
+<!-- knowledge-review: 3e390441f9ded7353ab2246eeb1f8685f40118a236e204fa23fc2d03632b8bd6 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-01（人物資産・参照rootの統合後も人物評価と#935の品質保留を維持。重みの配置変更は採否を変えない）
@@ -329,7 +329,7 @@ bank作成frameは配布倍率のfitと重複するため、OOF性能と区別�
 [e9/anchored seed42/固定倍率の明示pipeline option](nodes/ball_refiner/000022-run-i935-pipeline-candidate-r24-20260930.md)の[元動画check](nodes/ball_refiner/000024-run-i935-source-check-retry-r25-20260930.md)では、3camera各270frameのexecuteとfresh-process loadが完了し、全保存配列はbit一致した。終了コード1は全phase後のstrict field診断であり、実行失敗ではない。
 [固定BゲートのGT比較](nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)はpooled p90が+46.34 px悪化して許容+5 pxを超えたため不合格。中央値とNLLは許容内だが、run26時点では既定ft-e13＋旧refinerを維持した。[全810frameの切り分け](nodes/ball_refiner/000026-run-i935-source-tail-audit-r27-20261001.md)はframe/PTS・窓・正規化のbugを支持せず、中間720p縮小とJPEGによる入力差が候補・成分選択に増幅されることを支持する。同じCPU/pipelineでcam2を再encodeするとp90と最大成分選択がcacheへ戻った。pooled差は連続block bootstrapで0を除外できず、短い末尾区間に依存するため一般化は未確認。固定gateを変更せず、入力経路の整合・MP4証拠の再学習・既定維持の選択肢と費用を提示し、対策の選択は保留した。
 [追加ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5912616143)どおり、seedの9/10 FAILを保持したまま再現は十分と扱う。今回Bを止める理由はsource精度のp90であり、seed失敗やstrict診断へ置き換えない。固定倍率の三seed診断にはgap/TrackNet NLLの悪化とcalibration halfの過信が残る。
-[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。[run29](nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)で既定切替・標準scene refinerを追加し、clip_000を除く保存済みMeiji valで存在確率と全GMMの90%包含楕円面積の規則を固定した。保持frameの誤差は低下したがcache入力での選定結果であり、mp4への一般化は未確認。consumer配線は完了し、同じ欠測maskをside・幾何・三角測量へ渡す。[固定filterの安全bench](nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md)は元の全28条件を再現した上で誤判定0→3件、停止率18.58→24.91%となりFAIL。経験的confidence blockを独立に付けた合成回帰試験でE2Eではないが、directiveに従いclip_000 qualificationは投入せず、閾値を変えない。証拠のない区間の改善と文脈ablation、test評価も未完了。
+[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。[run29](nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)で既定切替・標準scene refinerを追加し、clip_000を除く保存済みMeiji valで存在確率と全GMMの90%包含楕円面積の規則を固定した。保持frameの誤差は低下したがcache入力での選定結果であり、mp4への一般化は未確認。当時のconsumer配線は同じ欠測maskをside・幾何・三角測量へ渡していた（現在は後述の2026-10-02方針で廃止）。[固定filterの安全bench](nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md)は元の全28条件を再現した上で誤判定0→3件、停止率18.58→24.91%となりFAIL。経験的confidence blockを独立に付けた合成回帰試験でE2Eではないが、directiveに従いclip_000 qualificationは投入せず、閾値を変えない。証拠のない区間の改善と文脈ablation、test評価も未完了。
 
 ### Player Detection
 
@@ -439,7 +439,11 @@ CPUの契約/再開/共有tracking検証と実資産preflightは成功し、108c
 [同runの相関安全bench](nodes/court_side/000005-run-i935-correlated-safety-r30-20261001.md)は、
 実GMM残差とconfidenceを同一rowで移植しても2/11,200誤判定でFAIL。選別で実残差は小さくなり停止も減るが、
 元の静的偽点等のstressは残る。run29の3件は全入力を再現し、2件は特定cameraの真点消失・偽点だけの残存、
-1件は精度のよい点でも識別に必要なpair支持を失うことを確認した。閾値は変えずqualificationは保留し、
-追加支持ruleか独立実出力benchかの選択は未決。
+1件は精度のよい点でも識別に必要なpair支持を失うことを確認した。当時はqualificationを保留した。
+[2026-10-02のフィルタ廃止](nodes/court_side/000006-run-i935-unfiltered-production-safety-20261002.md)で、ユーザー判断に従い
+全frameの最大weight成分平均を下流へ渡す契約へ戻した。全GMM・採用重み・共分散倍率・ball-only/margin .15を保持する。
+CPUの契約回帰は検証し、安全bench全11,200件は元dataset欠測で未実施。旧run30の未選別0wrongを新測定に読み替えず、
+過去FAILとclip停止・全scene未検証を残す。ユーザーは既存結果・今回回帰・最新CIに基づく従来stackのmergeを許可した。
+merge方針の変更は品質合格の新観測ではない。
 
 人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価を完了し、clip_000全pipeline検証だけ#935 stackに残す。
