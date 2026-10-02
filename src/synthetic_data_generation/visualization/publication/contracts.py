@@ -10,9 +10,9 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Self, cast
 
-PUBLICATION_REQUEST_SCHEMA = "synthetic_publication_request_v1"
-PUBLICATION_MANIFEST_SCHEMA = "synthetic_publication_manifest_v1"
-PUBLICATION_BUNDLE_SCHEMA = "synthetic_publication_bundle_v1"
+PUBLICATION_REQUEST_SCHEMA = "synthetic_publication_request_v2"
+PUBLICATION_MANIFEST_SCHEMA = "synthetic_publication_manifest_v2"
+PUBLICATION_BUNDLE_SCHEMA = "synthetic_publication_bundle_v2"
 CAMERA_DRAWING_POLICY_SCHEMA = "publication_camera_drawing_policy_v1"
 CAPTURED_CAMERA_SELECTION_POLICY = "endpoint_inclusive_evenly_spaced"
 STATIC_RIG_SELECTION_POLICY = "complete_static_rig"
@@ -30,14 +30,9 @@ class PublicationArtifactName(StrEnum):
     """Fixed complete artifact inventory for one publication bundle."""
 
     DATASET_COURT = "dataset-court.gif"
-    DATASET_BLCS = "dataset-blcs.gif"
-    DATASET_PLCS = "dataset-plcs.gif"
     ALIGNMENT_PROGRESSION = "alignment-progression.gif"
     ALIGNMENT_HEATMAP_COURT = "alignment-heatmap-court.png"
     CAPTURED_CAMERA_TRAJECTORY = "captured-camera-trajectory.png"
-    BLCS_CAMERA_LAYOUT = "blcs-camera-layout.png"
-    PLCS_CAMERA_LAYOUT = "plcs-camera-layout.png"
-    CAMERA_LAYOUT_COMPARISON = "camera-layout-comparison.png"
     PUBLICATION_OVERVIEW = "publication-overview.png"
 
 
@@ -63,10 +58,7 @@ class PublicationDrawingSettings:
     frustum_depth_metres: float
     line_width: float
     font_size: int
-    history_frames: int
     maximum_rendered_captured_cameras: int
-    coincident_centre_tolerance_metres: float
-    coincident_forward_angle_tolerance_degrees: float
     maximum_artifact_bytes: int
     maximum_bundle_bytes: int
 
@@ -84,16 +76,11 @@ class PublicationDrawingSettings:
             ):
                 raise ValueError(f"drawing.{name} must be two integers in [64, 8192].")
         for name, minimum, maximum in (
-            ("gif_duration_ms", 10, 10_000),
+            ("gif_duration_ms", 10, 10000),
             ("font_size", 6, 96),
-            ("history_frames", 0, 120),
-            (
-                "maximum_rendered_captured_cameras",
-                2,
-                MAXIMUM_RENDERED_CAPTURED_CAMERAS,
-            ),
-            ("maximum_artifact_bytes", 1_024, 100_000_000),
-            ("maximum_bundle_bytes", 10_240, 500_000_000),
+            ("maximum_rendered_captured_cameras", 2, MAXIMUM_RENDERED_CAPTURED_CAMERAS),
+            ("maximum_artifact_bytes", 1024, 100000000),
+            ("maximum_bundle_bytes", 10240, 500000000),
         ):
             value = getattr(self, name)
             if (
@@ -102,12 +89,7 @@ class PublicationDrawingSettings:
                 or not minimum <= value <= maximum
             ):
                 raise ValueError(f"drawing.{name} must lie in [{minimum}, {maximum}].")
-        for name in (
-            "frustum_depth_metres",
-            "line_width",
-            "coincident_centre_tolerance_metres",
-            "coincident_forward_angle_tolerance_degrees",
-        ):
+        for name in ("frustum_depth_metres", "line_width"):
             value = getattr(self, name)
             if (
                 isinstance(value, bool)
@@ -116,15 +98,6 @@ class PublicationDrawingSettings:
                 or float(value) <= 0.0
             ):
                 raise ValueError(f"drawing.{name} must be positive and finite.")
-        if self.coincident_centre_tolerance_metres > 1.0:
-            raise ValueError(
-                "drawing.coincident_centre_tolerance_metres must not exceed 1 metre."
-            )
-        if self.coincident_forward_angle_tolerance_degrees > 180.0:
-            raise ValueError(
-                "drawing.coincident_forward_angle_tolerance_degrees must not exceed "
-                "180 degrees."
-            )
         if self.maximum_bundle_bytes < self.maximum_artifact_bytes:
             raise ValueError(
                 "drawing.maximum_bundle_bytes must be at least maximum_artifact_bytes."
@@ -133,16 +106,6 @@ class PublicationDrawingSettings:
             self, "frustum_depth_metres", float(self.frustum_depth_metres)
         )
         object.__setattr__(self, "line_width", float(self.line_width))
-        object.__setattr__(
-            self,
-            "coincident_centre_tolerance_metres",
-            float(self.coincident_centre_tolerance_metres),
-        )
-        object.__setattr__(
-            self,
-            "coincident_forward_angle_tolerance_degrees",
-            float(self.coincident_forward_angle_tolerance_degrees),
-        )
 
     def to_dict(self) -> dict[str, object]:
         """Return the exact JSON-safe resolved drawing settings."""
@@ -155,16 +118,7 @@ class PublicationDrawingSettings:
             "frustum_depth_metres": self.frustum_depth_metres,
             "line_width": self.line_width,
             "font_size": self.font_size,
-            "history_frames": self.history_frames,
-            "maximum_rendered_captured_cameras": (
-                self.maximum_rendered_captured_cameras
-            ),
-            "coincident_centre_tolerance_metres": (
-                self.coincident_centre_tolerance_metres
-            ),
-            "coincident_forward_angle_tolerance_degrees": (
-                self.coincident_forward_angle_tolerance_degrees
-            ),
+            "maximum_rendered_captured_cameras": self.maximum_rendered_captured_cameras,
             "maximum_artifact_bytes": self.maximum_artifact_bytes,
             "maximum_bundle_bytes": self.maximum_bundle_bytes,
         }
@@ -180,14 +134,6 @@ class PublicationRequest:
     artifact_names: tuple[PublicationArtifactName, ...]
     court_trajectory_id: str
     court_frame_indices: tuple[int, ...]
-    blcs_logical_scene_id: str
-    blcs_camera_id: str
-    blcs_frame_indices: tuple[int, ...]
-    blcs_camera_ids: tuple[str, ...]
-    plcs_logical_scene_id: str
-    plcs_camera_id: str
-    plcs_frame_indices: tuple[int, ...]
-    plcs_camera_ids: tuple[str, ...]
     captured_camera_ids: tuple[str, ...]
     drawing: PublicationDrawingSettings
 
@@ -218,22 +164,12 @@ class PublicationRequest:
             raise ValueError(
                 "artifact_names must list the fixed complete publication inventory in order."
             )
-        for name in (
-            "court_trajectory_id",
-            "blcs_logical_scene_id",
-            "blcs_camera_id",
-            "plcs_logical_scene_id",
-            "plcs_camera_id",
-        ):
+        for name in ("court_trajectory_id",):
             _identifier(getattr(self, name), name=name)
-        for name in ("court_frame_indices", "blcs_frame_indices", "plcs_frame_indices"):
+        for name in ("court_frame_indices",):
             _frame_indices(getattr(self, name), name=name)
-        for name in ("blcs_camera_ids", "plcs_camera_ids", "captured_camera_ids"):
+        for name in ("captured_camera_ids",):
             _identifiers(getattr(self, name), name=name)
-        if self.blcs_camera_id not in self.blcs_camera_ids:
-            raise ValueError("blcs_camera_id must belong to blcs_camera_ids.")
-        if self.plcs_camera_id not in self.plcs_camera_ids:
-            raise ValueError("plcs_camera_id must belong to plcs_camera_ids.")
         if not isinstance(self.drawing, PublicationDrawingSettings):
             raise TypeError("drawing must be PublicationDrawingSettings.")
         object.__setattr__(self, "scene_root", scene_root)
@@ -252,7 +188,7 @@ class PublicationRequest:
 
     def dataset_root(self, domain: str) -> Path:
         """Return one fixed dataset owner without accepting aliases."""
-        if domain not in {"court", "blcs", "plcs"}:
+        if domain not in {"court"}:
             raise ValueError(f"Unsupported publication dataset domain: {domain!r}.")
         return self.scene_root / "datasets" / domain
 
@@ -268,20 +204,6 @@ class PublicationRequest:
                 "dataset_root": "datasets/court",
                 "trajectory_id": self.court_trajectory_id,
                 "frame_indices": list(self.court_frame_indices),
-            },
-            "blcs": {
-                "dataset_root": "datasets/blcs",
-                "logical_scene_id": self.blcs_logical_scene_id,
-                "camera_id": self.blcs_camera_id,
-                "frame_indices": list(self.blcs_frame_indices),
-                "camera_ids": list(self.blcs_camera_ids),
-            },
-            "plcs": {
-                "dataset_root": "datasets/plcs",
-                "logical_scene_id": self.plcs_logical_scene_id,
-                "camera_id": self.plcs_camera_id,
-                "frame_indices": list(self.plcs_frame_indices),
-                "camera_ids": list(self.plcs_camera_ids),
             },
             "captured": {
                 "scene_json": "reconstruction/export/scene.json",
@@ -434,7 +356,7 @@ class PublicationManifest:
             raise ValueError(
                 "Manifest artifacts do not match the complete fixed inventory."
             )
-        expected_owners = {"court", "blcs", "plcs", "alignment", "reconstruction"}
+        expected_owners = {"court", "alignment", "reconstruction"}
         if set(self.source_owners) != expected_owners:
             raise ValueError("Manifest source owner inventory is missing or foreign.")
         for owner_name, owner_value in self.source_owners.items():

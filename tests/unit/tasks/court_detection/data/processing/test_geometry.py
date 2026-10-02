@@ -110,7 +110,7 @@ def _raw_pose_sample(*, image: Image.Image | None = None) -> CourtRawSample:
                 point_visible=torch.ones(14, dtype=torch.bool),
             ),
         ),
-        dense_target_refs={},
+
         metadata=CourtSampleMetadata(
             source_kind="synthetic_court",
             source_schema="canonical_court_dataset_v3",
