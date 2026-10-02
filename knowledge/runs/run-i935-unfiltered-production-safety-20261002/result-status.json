@@ -1,0 +1,22 @@
+{
+  "status": "not_executed_missing_input",
+  "attempted_cases": 0,
+  "required_cases": 11200,
+  "missing_dataset": "/home/kamimura/projects/tennis-lab/data/blcs/single_object_camera_view_v2",
+  "expected_test_txt_sha256": "f645b41113eade43675f40e57e07d490de40fe9e60898a93839360ebdfcc67da",
+  "historical_reference": "knowledge/runs/run-i935-correlated-safety-r30-20261001/result/report.json",
+  "historical_totals_not_new_measurement": {
+    "original": {
+      "wrong": 0,
+      "stop_rate": 0.18580357142857143
+    },
+    "joint_unfiltered": {
+      "wrong": 0,
+      "stop_rate": 0.35348214285714274
+    },
+    "joint_filtered": {
+      "wrong": 2,
+      "stop_rate": 0.2842857142857143
+    }
+  }
+}
