@@ -20,8 +20,8 @@ def _manifest() -> DatasetManifest:
     indices = tuple(range(3))
     return DatasetManifest(
         scene_id="scene-a",
-        domain=DatasetDomain.BLCS,
-        schema="blcs_dataset_v1",
+        domain=DatasetDomain.COURT,
+        schema="canonical_court_dataset_v1",
         frame_inventory=FrameInventory(3, indices, indices, indices),
         target_courts=(
             TargetCourtBinding(
@@ -45,7 +45,9 @@ def test_dataset_manifest_round_trip_recomputes_frame_equality() -> None:
 
 
 @pytest.mark.parametrize("field", ["planned", "rendered", "labelled"])
-def test_dataset_manifest_rejects_incomplete_persisted_frame_summary(field: str) -> None:
+def test_dataset_manifest_rejects_incomplete_persisted_frame_summary(
+    field: str,
+) -> None:
     payload = copy.deepcopy(_manifest().to_dict())
     raw_inventory = payload["frame_inventory"]
     assert isinstance(raw_inventory, dict)

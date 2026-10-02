@@ -25,11 +25,7 @@ from src.tasks.base.data import (
     TemporalWindow,
 )
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.training import (
-    BaseLightningModule,
-    ChunkRotationCallback,
-    TrackingMetricConfig,
-)
+from src.tasks.base.training import BaseLightningModule, ChunkRotationCallback
 
 __all__ = [
     "ArtifactStoreConfig",
@@ -55,5 +51,4 @@ __all__ = [
     "SceneDatasetConfig",
     "TemporalWindow",
     "TrainingRuntimeConfig",
-    "TrackingMetricConfig",
 ]

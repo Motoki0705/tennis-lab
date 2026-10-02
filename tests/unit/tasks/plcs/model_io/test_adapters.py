@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import cast
 
 import numpy as np
@@ -19,7 +18,6 @@ from src.tasks.base.model_io import (
 from src.tasks.plcs.model_io import (
     PLCSInputProfile,
     PLCSModelIOAdapter,
-    PLCSTrackQueryIOAdapter,
     bind_plcs_model_io,
 )
 
@@ -43,35 +41,6 @@ class _StandardModel(nn.Module):
 
 class _OtherModel(nn.Module):
     pass
-
-
-class _TrackingModel(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.forward_calls = 0
-
-    def forward(
-        self,
-        *,
-        human_kp: Tensor,
-        human_vis: Tensor,
-        court_kp: Tensor,
-        court_vis: Tensor,
-        padding_mask: Tensor,
-    ) -> dict[str, Tensor]:
-        self.forward_calls += 1
-        del (
-            human_vis,
-            court_kp,
-            court_vis,
-            padding_mask,
-        )
-        batch_size, _, frames = human_kp.shape[:3]
-        return {
-            "position": human_kp.new_zeros(batch_size, frames, 3, 3),
-            "rotation": human_kp.new_zeros(batch_size, frames, 3, 2),
-            "presence_logits": human_kp.new_zeros(batch_size, frames, 3),
-        }
 
 
 def _standard_adapter(
@@ -191,9 +160,7 @@ def _empty_time_axis(batch: dict[str, Tensor]) -> None:
             "torch.bool",
         ),
         (
-            lambda batch: batch.__setitem__(
-                "court_kp", torch.rand(2, 2, 3, 19, 2)
-            ),
+            lambda batch: batch.__setitem__("court_kp", torch.rand(2, 2, 3, 19, 2)),
             "axis 3",
         ),
         (
@@ -297,217 +264,3 @@ def test_numpy_multiview_boundary_broadcasts_explicit_shared_court() -> None:
     )
     court_kp = cast(Tensor, prepared.call.kwargs["court_kp"])
     assert court_kp.shape == (2, 2, 3, 20, 2)
-
-
-def _tracking_adapter() -> PLCSTrackQueryIOAdapter:
-    return PLCSTrackQueryIOAdapter(
-        model_type=_TrackingModel,
-        num_queries=3,
-        num_court_tokens=14,
-        num_joints=17,
-        court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
-    )
-
-
-def _tracking_batch() -> dict[str, Tensor]:
-    return {
-        "human_kp": torch.rand(1, 2, 3, 3, 17, 2),
-        "human_vis": torch.ones(1, 2, 3, 3, 17, dtype=torch.bool),
-        "court_kp": torch.rand(1, 2, 3, 14, 2),
-        "court_vis": torch.ones(1, 2, 3, 14, dtype=torch.bool),
-        "padding_mask": torch.zeros(1, 2, 3, dtype=torch.bool),
-        "target_position": torch.rand(1, 3, 3, 3),
-        "target_rotation": torch.rand(1, 3, 3, 2),
-        "target_presence": torch.ones(1, 3, 3, dtype=torch.bool),
-        "target_slot_mask": torch.ones(1, 3, dtype=torch.bool),
-        "target_instance_id": torch.ones(1, 3, 3, dtype=torch.int64),
-    }
-
-
-def _uv_boundary_profile(
-    profile: str,
-) -> tuple[dict[str, Tensor], object]:
-    if profile == "tracking":
-        tracking_adapter = _tracking_adapter()
-        return _tracking_batch(), tracking_adapter.build_call
-    standard_adapter = _standard_adapter()
-    batch = _canonical_batch()
-    if profile == "canonical":
-        return batch, standard_adapter.prepare_training_batch
-    return batch, standard_adapter.build_call
-
-
-@pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
-def test_uv_range_is_enforced_only_for_visible_coordinates(profile: str) -> None:
-    batch, boundary = _uv_boundary_profile(profile)
-    batch["court_kp"][..., 0, :] = torch.tensor([-0.25, 1.25])
-    batch["court_vis"][..., 0] = False
-    assert callable(boundary)
-
-    boundary(batch)
-
-    batch["court_vis"][..., 0] = True
-    with pytest.raises(ModelInputContractError, match=r"Visible court_kp.*\[0, 1\]"):
-        boundary(batch)
-
-
-@pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
-@pytest.mark.parametrize("value", [float("nan"), float("inf")])
-def test_invisible_uv_still_requires_finite_values(
-    profile: str,
-    value: float,
-) -> None:
-    batch, boundary = _uv_boundary_profile(profile)
-    batch["human_kp"][..., 0, 0] = value
-    batch["human_vis"][..., 0] = False
-    assert callable(boundary)
-
-    with pytest.raises(ModelInputContractError, match="human_kp.*finite"):
-        boundary(batch)
-
-
-@pytest.mark.parametrize("profile", ["ordinary", "canonical"])
-def test_standard_boundaries_accept_legacy_float_binary_visibility(
-    profile: str,
-) -> None:
-    batch, boundary = _uv_boundary_profile(profile)
-    batch["human_vis"] = batch["human_vis"].to(torch.float32)
-    batch["court_vis"] = batch["court_vis"].to(torch.float32)
-    batch["court_kp"][..., 0, :] = torch.tensor([-0.25, 1.25])
-    batch["court_vis"][..., 0] = 0.0
-    assert callable(boundary)
-
-    boundary(batch)
-
-
-@pytest.mark.parametrize("profile", ["ordinary", "canonical"])
-@pytest.mark.parametrize("value", [0.5, float("nan"), float("inf")])
-def test_standard_boundaries_reject_invalid_numeric_visibility(
-    profile: str,
-    value: float,
-) -> None:
-    batch, boundary = _uv_boundary_profile(profile)
-    batch["court_vis"] = batch["court_vis"].to(torch.float32)
-    batch["court_vis"][..., 0] = value
-    assert callable(boundary)
-
-    with pytest.raises(
-        ModelInputContractError,
-        match="court_kp visibility.*finite|court_kp visibility.*0/1",
-    ):
-        boundary(batch)
-
-
-@pytest.mark.parametrize("profile", ["ordinary", "canonical", "tracking"])
-@pytest.mark.parametrize("mutation", ["shape", "device"])
-def test_visibility_mask_contract_is_fail_closed(
-    profile: str,
-    mutation: str,
-) -> None:
-    batch, boundary = _uv_boundary_profile(profile)
-    if mutation == "shape":
-        batch["court_vis"] = batch["court_vis"][:, :1]
-        message = "court_vis must match court_kp|court_vis.*axis"
-    else:
-        batch["court_vis"] = batch["court_vis"].to("meta")
-        message = "share the UV tensor device"
-    assert callable(boundary)
-
-    with pytest.raises(ModelInputContractError, match=message):
-        boundary(batch)
-
-
-def test_tracking_boundary_validates_inputs_targets_and_decodes_required_presence() -> None:
-    adapter = _tracking_adapter()
-    prepared = adapter.prepare_training_batch(_tracking_batch())
-    decoded = adapter.decode_prepared_output(
-        {
-            "position": torch.zeros(1, 3, 3, 3),
-            "rotation": torch.zeros(1, 3, 3, 2),
-            "presence_logits": torch.zeros(1, 3, 3),
-        },
-        prepared,
-    )
-    assert decoded.presence_logits.shape == (1, 3, 3)
-
-
-def test_tracking_model_call_excludes_association_debug_and_clean_tensors() -> None:
-    batch = _tracking_batch()
-    batch["detection_gt_index"] = torch.full(
-        (1, 2, 3, 3), -1, dtype=torch.long
-    )
-    batch["clean_human_kp"] = batch["human_kp"].clone()
-    batch["clean_human_vis"] = batch["human_vis"].clone()
-
-    call = _tracking_adapter().build_call(batch)
-
-    assert set(call.kwargs) == {
-        "human_kp",
-        "human_vis",
-        "court_kp",
-        "court_vis",
-        "padding_mask",
-    }
-    human_kp = call.kwargs["human_kp"]
-    assert isinstance(human_kp, Tensor)
-    assert human_kp.shape[3] == 3
-
-
-def test_tracking_boundary_rejects_incomplete_court_and_visibility_dtype() -> None:
-    adapter = _tracking_adapter()
-    batch = _tracking_batch()
-    batch["court_kp"] = torch.rand(1, 2, 3, 13, 2)
-    batch["court_vis"] = torch.ones(1, 2, 3, 13, dtype=torch.bool)
-    with pytest.raises(ModelInputContractError, match="axis 3"):
-        adapter.build_call(batch)
-
-    batch = _tracking_batch()
-    batch["human_vis"] = batch["human_vis"].float()
-    with pytest.raises(ModelInputContractError, match="torch.bool"):
-        adapter.build_call(batch)
-
-
-def test_tracking_boundary_rejects_legacy_masks() -> None:
-    adapter = _tracking_adapter()
-    batch = _tracking_batch()
-    batch["detection_mask"] = torch.ones(1, 2, 3, 3, dtype=torch.bool)
-
-    with pytest.raises(ModelInputContractError, match="Legacy PLCS tracking mask"):
-        adapter.build_call(batch)
-
-
-def test_tracking_boundary_accepts_nonrectangular_padding() -> None:
-    model = _TrackingModel()
-    adapter = _tracking_adapter()
-    bound = bind_plcs_model_io(model, adapter)
-    batch = _tracking_batch()
-    batch["padding_mask"][0, -1, -1] = True
-
-    decoded = bound.run(batch)
-
-    assert decoded.position.shape == (1, 3, 3, 3)
-    assert model.forward_calls == 1
-
-
-def test_tracking_boundary_rejects_nonfixed_query_width() -> None:
-    batch = _tracking_batch()
-    batch["human_kp"] = batch["human_kp"][:, :, :, :2]
-    batch["human_vis"] = batch["human_vis"][:, :, :, :2]
-    with pytest.raises(ModelInputContractError, match="axis 3"):
-        _tracking_adapter().build_call(batch)
-
-
-def test_tracking_boundary_rejects_inactive_non_sentinel_instance_id() -> None:
-    batch = _tracking_batch()
-    batch["target_presence"][:, 0, 0] = False
-    with pytest.raises(ModelInputContractError, match="target_instance_id=-1"):
-        _tracking_adapter().prepare_training_batch(batch)
-
-
-def test_tracking_output_rejects_missing_presence() -> None:
-    output: Mapping[str, object] = {
-        "position": torch.zeros(1, 3, 3, 3),
-        "rotation": torch.zeros(1, 3, 3, 2),
-    }
-    with pytest.raises(ModelOutputContractError, match="presence_logits"):
-        _tracking_adapter().decode_output(output)

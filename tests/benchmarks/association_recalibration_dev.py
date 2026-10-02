@@ -177,7 +177,7 @@ def run(args: argparse.Namespace) -> None:
             try:
                 association = associate(groups, records[0]['video']['fps'], config)
             except AssociationUndecided as error:
-                ids = [np.full(g.observed.shape, -1, np.int64) for g in groups]
+                ids = tuple(np.full(g.observed.shape, -1, np.int64) for g in groups)
                 result.update(status='undecided', reason=error.reason, diagnostics=error.diagnostics)
             else:
                 ids = association.player_ids
