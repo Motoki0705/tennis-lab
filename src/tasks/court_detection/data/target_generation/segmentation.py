@@ -1,4 +1,4 @@
-"""Source-neutral precomputation of Court cell-segmentation targets."""
+"""In-memory rasterization of Court cell-segmentation targets."""
 
 from __future__ import annotations
 
@@ -50,17 +50,16 @@ def generate_segmentation_target(
     height: int,
     width: int,
     instances: tuple[CourtInstance2D, ...],
+    rasterizers: tuple[CourtPlaneRasterizer | None, ...] | None = None,
 ) -> UInt8Array:
     """Render all court instances into one uint8 0..6 label map."""
     if height <= 0 or width <= 0 or not instances:
         raise ValueError("Court segmentation generation requires image geometry.")
     output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
-    for instance in instances:
-        rasterizer = CourtPlaneRasterizer.from_instance(
-            instance,
-            width=width,
-            height=height,
-        )
+    projectors = rasterizers if rasterizers is not None else tuple(CourtPlaneRasterizer.from_instance(instance, width=width, height=height) for instance in instances)
+    if len(projectors) != len(instances):
+        raise ValueError("Court rasterizer count disagrees with instances.")
+    for rasterizer in projectors:
         if rasterizer is None:
             continue
         instance_mask: UInt8Array = np.zeros_like(output)

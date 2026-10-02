@@ -17,19 +17,6 @@ from src.utils.configuration import ConfigurationTypeError, SemanticConfiguratio
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
 _TRAINING_PROFILES = (
-    ("multiview_sequence_camera_view_v2", "train_axial_reference", (),
-     "blcs/single_object_camera_view_v2", "default", (3, 4),
-     "camera_view_v2", "blcs_multiview_axial_reference"),
-    (
-        "singleview_sequence",
-        "train",
-        ("data=singleview_sequence", "model=single"),
-        "blcs/single_object",
-        "default",
-        (1, 1),
-        "physical_v1",
-        "blcs",
-    ),
     (
         "multiview_sequence",
         "train",
@@ -41,16 +28,6 @@ _TRAINING_PROFILES = (
         "blcs_multiview_axial",
     ),
     (
-        "singleview_chunked_sequence",
-        "train_chunked",
-        ("model=single", "data=singleview_chunked_sequence"),
-        "blcs/single_object",
-        "chunked",
-        (1, 1),
-        "physical_v1",
-        "blcs",
-    ),
-    (
         "multiview_chunked_sequence",
         "train_chunked",
         (),
@@ -59,66 +36,6 @@ _TRAINING_PROFILES = (
         (3, 5),
         "physical_v1",
         "blcs_multiview_axial",
-    ),
-    (
-        "tracking",
-        "train_tracking",
-        (),
-        "blcs/multi_object",
-        "default",
-        (3, 5),
-        "physical_v1",
-        "blcs_track_query",
-    ),
-    (
-        "tracking_chunked",
-        "train_tracking_chunked",
-        (),
-        "blcs/multi_object",
-        "chunked",
-        (3, 5),
-        "physical_v1",
-        "blcs_track_query",
-    ),
-    (
-        "singleview_sequence_broadcast",
-        "train",
-        ("data=singleview_sequence_broadcast", "model=single"),
-        "blcs/single_object_broadcast",
-        "default",
-        (1, 1),
-        "physical_v1",
-        "blcs",
-    ),
-    (
-        "multiview_sequence_broadcast",
-        "train",
-        ("data=multiview_sequence_broadcast",),
-        "blcs/single_object_broadcast",
-        "default",
-        (2, 2),
-        "physical_v1",
-        "blcs_multiview_axial",
-    ),
-    (
-        "tracking_broadcast",
-        "train_tracking",
-        ("data=tracking_broadcast",),
-        "blcs/multi_object_broadcast",
-        "default",
-        (2, 2),
-        "physical_v1",
-        "blcs_track_query",
-    ),
-    (
-        "tracking_camera_view_v2",
-        "train_tracking",
-        ("data=tracking_camera_view_v2",),
-        "blcs/multi_object_camera_view_v2",
-        "default",
-        (3, 5),
-        "camera_view_v2",
-        "blcs_track_query_reference",
     ),
 )
 
@@ -129,27 +46,15 @@ def test_generation_default_uses_canonical_single_object_path() -> None:
 
     runtime, _resolver = parse_generation_run(config)
 
-    assert runtime.output_dir == (_CONFIG_DIR.parents[3] / "data/blcs/single_object").resolve()
+    assert (
+        runtime.output_dir
+        == (_CONFIG_DIR.parents[3] / "data/blcs/single_object").resolve()
+    )
 
 
 @pytest.mark.parametrize(
     ("generation", "camera", "output_dir", "camera_layout"),
-    (
-        ("single_object", "default", "blcs/single_object", "fixed"),
-        ("multi_object", "default", "blcs/multi_object", "fixed"),
-        (
-            "single_object",
-            "broadcast",
-            "blcs/single_object_broadcast",
-            "broadcast",
-        ),
-        (
-            "multi_object",
-            "broadcast",
-            "blcs/multi_object_broadcast",
-            "broadcast",
-        ),
-    ),
+    (("single_object", "default", "blcs/single_object", "fixed"),),
 )
 def test_generation_variants_resolve_canonical_dataset_paths(
     tmp_path: Path,
@@ -181,17 +86,7 @@ def test_generation_variants_resolve_canonical_dataset_paths(
     ("config_name", "scene_dir", "chunks_dir"),
     (
         ("train", "blcs/single_object", None),
-        (
-            "train_chunked",
-            "blcs/single_object",
-            "blcs/single_object/chunks",
-        ),
-        ("train_tracking", "blcs/multi_object", None),
-        (
-            "train_tracking_chunked",
-            "blcs/multi_object",
-            "blcs/multi_object/chunks",
-        ),
+        ("train_chunked", "blcs/single_object", "blcs/single_object/chunks"),
     ),
 )
 def test_training_profiles_use_canonical_dataset_paths(
@@ -284,45 +179,19 @@ def test_all_public_data_profiles_compose_and_validate(
 
 
 def test_blcs_public_data_profiles_cover_all_datasets() -> None:
-    profiles = tuple(
-        sorted(
-            path.stem
-            for path in (_CONFIG_DIR / "data").glob("*.yaml")
-            if not path.name.startswith("_")
-        )
-    )
-
-    assert profiles == tuple(sorted(row[0] for row in _TRAINING_PROFILES))
-    assert len(profiles) == 11
-
-    assert {row[3] for row in _TRAINING_PROFILES} == {
-        "blcs/single_object",
-        "blcs/single_object_camera_view_v2",
-        "blcs/multi_object",
-        "blcs/single_object_broadcast",
-        "blcs/multi_object_broadcast",
-        "blcs/multi_object_camera_view_v2",
+    profiles = {
+        path.stem
+        for path in (_CONFIG_DIR / "data").glob("*.yaml")
+        if not path.name.startswith("_")
     }
-
-
-def test_camera_view_data_profile_selects_reference_contract_atomically() -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=["data=tracking_camera_view_v2"],
-        )
-
-    assert config.court_keypoints.selector == "camera_view_v2"
-    assert config.model.name == "blcs_track_query_reference"
-    validate_training_boundary(config)
+    assert profiles == {"multiview_sequence", "multiview_chunked_sequence"}
+    assert profiles == {row[0] for row in _TRAINING_PROFILES}
+    assert {row[3] for row in _TRAINING_PROFILES} == {"blcs/single_object"}
 
 
 @pytest.mark.parametrize(
     ("selector", "contract_id"),
-    [
-        ("physical_v1", "physical_courtkp20_v1"),
-        ("camera_view_v2", "camera_view_courtkp20_rzpi_v1"),
-    ],
+    [("physical_v1", "physical_courtkp20_v1")],
 )
 def test_generation_composes_explicit_court_keypoint_selector(
     selector: str,
@@ -359,10 +228,7 @@ def test_single_object_generation_rejects_nonpositive_physics_budget(
         config = compose(
             config_name="generate_dataset",
             overrides=[
-                (
-                    "generation.maximum_physics_attempts_per_scene="
-                    f"{maximum_attempts}"
-                ),
+                (f"generation.maximum_physics_attempts_per_scene={maximum_attempts}"),
             ],
         )
 
@@ -381,45 +247,3 @@ def test_generation_rejects_unknown_or_untyped_court_selector() -> None:
             config.court_keypoints.selector = invalid
         with pytest.raises((SemanticConfigurationError, ConfigurationTypeError)):
             validate_generation_boundary(config)
-
-
-@pytest.mark.parametrize(
-    "config_name", ("generate_dataset", "train_tracking_chunked")
-)
-def test_multi_object_generation_has_explicit_bounded_physics_budget(
-    config_name: str,
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name=config_name,
-            overrides=["generation=multi_object"],
-        )
-
-    assert config.generation.maximum_physics_attempts_per_object == 64
-    if config_name == "generate_dataset":
-        validate_generation_boundary(config)
-    else:
-        validate_training_boundary(config)
-
-
-@pytest.mark.parametrize("maximum_attempts", (0, -1))
-def test_multi_object_generation_rejects_nonpositive_physics_budget(
-    maximum_attempts: int,
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="generate_dataset",
-            overrides=[
-                "generation=multi_object",
-                (
-                    "generation.maximum_physics_attempts_per_object="
-                    f"{maximum_attempts}"
-                ),
-            ],
-        )
-
-    with pytest.raises(
-        SemanticConfigurationError,
-        match="maximum_physics_attempts_per_object must be positive",
-    ):
-        validate_generation_boundary(config)

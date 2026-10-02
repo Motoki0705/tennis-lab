@@ -21,16 +21,9 @@ from src.utils.projection.camera_projector import project_points
 
 DATA_ROOT = Path("/home/kamimura/projects/tennis-lab/data")
 SCENE = "scene_000000"
-FORMS = (
-    "single_object",
-    "multi_object",
-    "single_object_broadcast",
-    "multi_object_broadcast",
-    "multi_object_camera_view_v2",
-    "single_object_camera_view_v2",
-)
+FORMS = ("single_object",)
 
-pytestmark = pytest.mark.skipif(
+_data_availability = pytest.mark.skipif(
     not (DATA_ROOT / "blcs").is_dir(), reason="BLCS dataset is unavailable"
 )
 
@@ -50,9 +43,7 @@ def project(record: Any, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         camera, torch.as_tensor(np.asarray(points), dtype=torch.float32)
     )
     uv = (uv / torch.tensor([camera.w, camera.h], dtype=torch.float32)).numpy()
-    in_bounds = (
-        (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
-    )
+    in_bounds = (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
     return uv, (in_front.numpy() & in_bounds)
 
 
@@ -66,9 +57,7 @@ def test_court_keypoints_reproject_exactly(form: str) -> None:
         uv, visible = project(record, keypoints)
         saved = np.load(directory / f"cam_{index}_court_kp_uv.npy")
         saved_vis = np.load(directory / f"cam_{index}_court_kp_vis.npy")
-        order = np.asarray(
-            meta["court_keypoint_views"][index]["semantic_to_physical"]
-        )
+        order = np.asarray(meta["court_keypoint_views"][index]["semantic_to_physical"])
         physical = np.empty_like(uv)
         physical[order] = saved
         physical_vis = np.empty_like(visible)
@@ -97,14 +86,19 @@ def test_ball_reprojects_exactly(form: str) -> None:
 
 
 def test_api_shapes_and_errors() -> None:
-    service = BLCSDatasetReviewService(DATA_ROOT, forms=["single_object", "multi_object"])
+    service = BLCSDatasetReviewService(
+        DATA_ROOT, forms=["single_object", "multi_object"]
+    )
     client = TestClient(create_dataset_app(service))
 
     catalog = client.get("/api/catalog").json()
     assert catalog["task"] == "blcs"
     assert catalog["entity"] == "ball"
     assert catalog["skeleton"] is None
-    assert {form["name"] for form in catalog["forms"]} == {"single_object", "multi_object"}
+    assert {form["name"] for form in catalog["forms"]} == {
+        "single_object",
+        "multi_object",
+    }
 
     scenes = client.get("/api/scenes", params={"form": "single_object"}).json()
     assert scenes["form"] == "single_object"
@@ -157,3 +151,6 @@ def test_api_shapes_and_errors() -> None:
     assert escaped.status_code in {404, 422}
     assert client.get("/api/scenes", params={"form": "../escape"}).status_code == 422
     assert client.get("/static/unknown.js").status_code == 404
+
+
+pytestmark = [pytest.mark.local_data, _data_availability]

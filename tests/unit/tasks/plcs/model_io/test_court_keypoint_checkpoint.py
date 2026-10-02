@@ -10,7 +10,6 @@ from omegaconf import OmegaConf
 from torch import nn
 
 from src.tasks.base.generate_dataset import (
-    CourtKeypointContractMismatchError,
     MissingCourtKeypointMetadataError,
     build_court_view_record,
     build_reference_frame_provenance,
@@ -42,25 +41,18 @@ def _ready() -> dict[str, object]:
 
 
 def test_checkpoint_marker_and_saved_selector_must_match_exactly() -> None:
-    v2 = resolve_court_keypoint_contract("camera_view_v2")
+    physical = resolve_court_keypoint_contract("physical_v1")
     checkpoint: dict[str, object] = {}
-    write_plcs_checkpoint_court_keypoints(checkpoint, v2)
-    config = OmegaConf.create({"court_keypoints": {"selector": "camera_view_v2"}})
+    write_plcs_checkpoint_court_keypoints(checkpoint, physical)
+    config = OmegaConf.create({"court_keypoints": {"selector": "physical_v1"}})
     resolved, restored = prepare_plcs_checkpoint_court_keypoint_config(
-        checkpoint,
-        config,
-        v2,
+        checkpoint, config, physical
     )
-    assert resolved.court_keypoints.selector == "camera_view_v2"
-    assert restored == v2
-
-    wrong_config = OmegaConf.create({"court_keypoints": {"selector": "physical_v1"}})
-    with pytest.raises(CourtKeypointContractMismatchError):
-        prepare_plcs_checkpoint_court_keypoint_config(
-            checkpoint,
-            wrong_config,
-            v2,
-        )
+    assert resolved.court_keypoints.selector == "physical_v1"
+    assert restored == physical
+    wrong = OmegaConf.create({"court_keypoints": {"selector": "camera_view_v2"}})
+    with pytest.raises(ValueError, match="physical_v1"):
+        prepare_plcs_checkpoint_court_keypoint_config(checkpoint, wrong, physical)
 
 
 def test_metadata_free_checkpoint_requires_explicit_physical_runtime() -> None:

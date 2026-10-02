@@ -46,8 +46,6 @@ def _handlers() -> CanonicalStageHandlers:
         reconstruction=_Handler(StageName.RECONSTRUCTION),
         alignment=_Handler(StageName.ALIGNMENT),
         court_dataset=_Handler(StageName.COURT_DATASET),
-        blcs_dataset=_Handler(StageName.BLCS_DATASET),
-        plcs_dataset=_Handler(StageName.PLCS_DATASET),
         report=_Handler(StageName.REPORT),
     )
 
@@ -75,24 +73,13 @@ def test_registry_binds_complete_lifecycle_inputs_and_derived_descendants(
         StageName.REPORT,
     )
     alignment = registry.definition(StageName.ALIGNMENT)
-    assert set(alignment.descendants) == {
-        StageName.COURT_DATASET,
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
-        StageName.REPORT,
-    }
+    assert set(alignment.descendants) == {StageName.COURT_DATASET, StageName.REPORT}
     assert callable(alignment.preflight)
     assert callable(alignment.execute)
     assert callable(alignment.validate)
     assert alignment.required_inputs
     assert alignment.required_outputs
     assert alignment.summary_type is StageExecutionSummary
-    assert registry.definition(StageName.PLCS_DATASET).required_outputs == (
-        Path("dataset.json"),
-        Path("backgrounds"),
-        Path("scenes"),
-        Path("diagnostics"),
-    )
 
 
 def test_alignment_terminal_selects_exactly_three_stages(tmp_path: Path) -> None:
@@ -135,25 +122,6 @@ def test_execution_plan_rejects_cursor_after_terminal_stage(tmp_path: Path) -> N
         )
 
 
-def test_execution_plan_rejects_cursor_outside_explicit_targets(tmp_path: Path) -> None:
-    source = tmp_path / "video.mp4"
-    source.write_bytes(b"video")
-    request = ScenePipelineRequest(
-        scene_id="scene-a",
-        source_video=source,
-        targets=frozenset({DatasetTarget.COURT}),
-        from_stage=StageName.PLCS_DATASET,
-        through_stage=StageName.REPORT,
-        config_schema="scene_pipeline_v1",
-    )
-
-    with pytest.raises(ValueError, match="not selected by request targets"):
-        canonical_registry(_handlers()).execution_for_request(
-            request,
-            reusable_stages=(),
-        )
-
-
 def test_execution_plan_uses_cursor_descendants_for_execution(tmp_path: Path) -> None:
     source = tmp_path / "video.mp4"
     source.write_bytes(b"video")
@@ -175,8 +143,6 @@ def test_execution_plan_uses_cursor_descendants_for_execution(tmp_path: Path) ->
         StageName.INGEST,
         StageName.RECONSTRUCTION,
         StageName.ALIGNMENT,
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
     )
     assert tuple(definition.name for definition in plan.invalidated) == (
         StageName.COURT_DATASET,
@@ -217,82 +183,11 @@ def test_execution_plan_keeps_unselected_descendants_for_stale_cleanup(
     assert {definition.name for definition in plan.invalidated} == {
         StageName.ALIGNMENT,
         StageName.COURT_DATASET,
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
         StageName.REPORT,
     }
     assert tuple(definition.name for definition in plan.execution) == (
         StageName.ALIGNMENT,
         StageName.COURT_DATASET,
-        StageName.REPORT,
-    )
-
-
-def test_execution_plan_repairs_invalidated_plcs_before_report_from_blcs(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "video.mp4"
-    source.write_bytes(b"video")
-    request = ScenePipelineRequest(
-        scene_id="scene-a",
-        source_video=source,
-        targets=frozenset(DatasetTarget),
-        from_stage=StageName.BLCS_DATASET,
-        through_stage=StageName.REPORT,
-        config_schema="scene_pipeline_v1",
-    )
-
-    plan = canonical_registry(_handlers()).execution_for_request(
-        request,
-        reusable_stages=(
-            StageName.INGEST,
-            StageName.RECONSTRUCTION,
-            StageName.ALIGNMENT,
-            StageName.COURT_DATASET,
-            StageName.BLCS_DATASET,
-        ),
-    )
-
-    assert tuple(definition.name for definition in plan.execution) == (
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
-        StageName.REPORT,
-    )
-    assert tuple(definition.name for definition in plan.retained_ancestors) == (
-        StageName.INGEST,
-        StageName.RECONSTRUCTION,
-        StageName.ALIGNMENT,
-        StageName.COURT_DATASET,
-    )
-
-
-def test_execution_plan_repairs_invalidated_blcs_before_report_from_plcs(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "video.mp4"
-    source.write_bytes(b"video")
-    request = ScenePipelineRequest(
-        scene_id="scene-a",
-        source_video=source,
-        targets=frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS}),
-        from_stage=StageName.PLCS_DATASET,
-        through_stage=StageName.REPORT,
-        config_schema="scene_pipeline_v1",
-    )
-
-    plan = canonical_registry(_handlers()).execution_for_request(
-        request,
-        reusable_stages=(
-            StageName.INGEST,
-            StageName.RECONSTRUCTION,
-            StageName.ALIGNMENT,
-            StageName.PLCS_DATASET,
-        ),
-    )
-
-    assert tuple(definition.name for definition in plan.execution) == (
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
         StageName.REPORT,
     )
 
@@ -304,21 +199,6 @@ def test_execution_plan_repairs_invalidated_blcs_before_report_from_plcs(
             frozenset({DatasetTarget.COURT}),
             StageName.COURT_DATASET,
             (StageName.COURT_DATASET, StageName.REPORT),
-        ),
-        (
-            frozenset({DatasetTarget.BLCS}),
-            StageName.BLCS_DATASET,
-            (StageName.BLCS_DATASET, StageName.REPORT),
-        ),
-        (
-            frozenset({DatasetTarget.PLCS}),
-            StageName.PLCS_DATASET,
-            (StageName.PLCS_DATASET, StageName.REPORT),
-        ),
-        (
-            frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS}),
-            StageName.BLCS_DATASET,
-            (StageName.BLCS_DATASET, StageName.REPORT),
         ),
     ),
 )

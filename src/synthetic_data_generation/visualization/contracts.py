@@ -15,8 +15,6 @@ class DatasetVisualizationDomain(StrEnum):
     """Canonical generated-dataset domains supported by the visualizer."""
 
     COURT = "court"
-    BLCS = "blcs"
-    PLCS = "plcs"
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,18 +64,11 @@ class DatasetVisualizationConfiguration:
             self.logical_scene_id, name="logical_scene_id"
         )
         camera_id = _optional_identifier(self.camera_id, name="camera_id")
-        if self.domain is DatasetVisualizationDomain.COURT:
-            if trajectory_id is None:
-                raise ValueError("Court visualization requires trajectory_id.")
-            if logical_scene_id is not None or camera_id is not None:
-                raise ValueError(
-                    "Court visualization does not accept logical_scene_id or camera_id."
-                )
-        elif trajectory_id is not None:
-            raise ValueError("BLCS/PLCS visualization does not accept trajectory_id.")
-        elif logical_scene_id is None or camera_id is None:
+        if trajectory_id is None:
+            raise ValueError("Court visualization requires trajectory_id.")
+        if logical_scene_id is not None or camera_id is not None:
             raise ValueError(
-                "BLCS/PLCS visualization requires logical_scene_id and camera_id."
+                "Court visualization does not accept logical_scene_id or camera_id."
             )
         fps = float(self.fps)
         if not math.isfinite(fps) or not 0.0 < fps <= 240.0:

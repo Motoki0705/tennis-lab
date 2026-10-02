@@ -1,25 +1,9 @@
-"""Generate a BLCS dataset with Hydra-managed configuration.
-
-Usage:
-    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset
-    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset generation=multi_object run.output_dir=blcs/multi_object
-    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset camera=broadcast run.output_dir=blcs/single_object_broadcast
-    .venv/bin/python -m src.tasks.blcs.scripts.generate_dataset generation=multi_object camera=broadcast run.output_dir=blcs/multi_object_broadcast
-
-Notes:
-    - Hydra loads configuration from `src/tasks/blcs/configs/generate_dataset.yaml`.
-    - The script generates scenes, writes splits, and persists dataset metadata.
-    - The default output is `data/blcs/single_object`; overrides are relative to `paths.data_root`.
-    - Parallel scene generation uses ProcessPoolExecutor and currently supports CPU workers.
-    - Rejected stochastic full-physics proposals are retried within explicit finite budgets.
-    - `generation` changes only object cardinality; both modes use the same simulator and writer.
-"""
+"""Generate the physical-v1 BLCS single-object dataset."""
 
 from __future__ import annotations
 
 import logging
 import sys
-from typing import cast
 
 from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
@@ -65,10 +49,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     seed_everything(seed)
 
     generation_mode = str(cfg.generation.mode)
-    if generation_mode not in {"single_object", "multi_object"}:
+    if generation_mode != "single_object":
         raise ValueError(
             f"Unsupported generation.mode='{generation_mode}'. "
-            "Supported: ['single_object', 'multi_object']"
+            "Supported: ['single_object']"
         )
 
     train_ratio = run.train_ratio
@@ -101,24 +85,8 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         num_workers=num_workers,
         start_index=0,
         seed=seed,
-        multi_object=generation_mode == "multi_object",
-        timeline_config=(
-            cast(
-                dict[str, object],
-                OmegaConf.to_container(cfg.generation.timeline, resolve=True),
-            )
-            if generation_mode == "multi_object"
-            else None
-        ),
-        maximum_physics_attempts_per_scene=(
-            int(cfg.generation.maximum_physics_attempts_per_scene)
-            if generation_mode == "single_object"
-            else None
-        ),
-        maximum_physics_attempts_per_object=(
-            int(cfg.generation.maximum_physics_attempts_per_object)
-            if generation_mode == "multi_object"
-            else None
+        maximum_physics_attempts_per_scene=int(
+            cfg.generation.maximum_physics_attempts_per_scene
         ),
         chunksize=run.chunksize,
     )
@@ -160,17 +128,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     logger.info("Output: %s", output_dir)
     logger.info("Total scenes: %s", total_scenes)
     logger.info("=" * 60)
-
-    if generation_mode == "multi_object":
-        from src.tasks.base.generate_dataset.lifecycle_audit import (
-            audit_full_source_dataset,
-        )
-
-        audit_full_source_dataset(
-            output_dir,
-            max_concurrent=4,
-            require_uniform=num_scenes >= 100,
-        )
 
     return 0
 

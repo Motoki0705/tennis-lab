@@ -1,7 +1,7 @@
-<!-- knowledge-review: 82aa8159997296ea20be15205f2d18b21625de80ce38d11cc13593a1b402ae9e on 2026-10-02 -->
+<!-- knowledge-review: a3b6f8905855fd297c59da781bba829f6115e2e8cce2d3b73b8c0f4015e7f1c5 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-01（人物資産・参照rootの統合後も人物評価と#935の品質保留を維持。重みの配置変更は採否を変えない）
+更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,17 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-02のボール検出用pose蓄積
+
+ユーザー指定でball-mix-v2の存在率40%以下をpose対象から外し、コートによる人物選別を
+使わず、全画面COCO DINO＋既存StrongSORT++/pose/CLIPのrawトラックをGPTで選別する。
+[GPU動作確認](nodes/player_pose_annotation/000001-run-ball-mix-v2-player-pose-gpu-smoke-20261002.md)と
+[最初の実clip](nodes/player_pose_annotation/000002-run-player-pose-v2-pilot-00034-20261002.md)は完走した。
+初回は20rawトラックから2選手を採用し、欠損を補わずframe/PTSと入力hashを検証した。
+この1clipの機能確認から、全clipのID精度・移動カメラへの頑健性は主張しない。
+対象689clipの処理とレビューは継続中。従来#964のコート選別は過去の比較として維持し、
+今回のposeデータ生成方針とは区別する。次は全対象のcoverage・保留・ID切替の実例を監査する。
 
 ## 2026-09-30の人物source・コート選別（#964）
 
