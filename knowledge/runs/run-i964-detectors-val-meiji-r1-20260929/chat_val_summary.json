@@ -1,0 +1,33 @@
+{
+  "dataset": "/home/kamimura/projects/tennis-lab/data/player_detection/chat-player-v1",
+  "split": "val",
+  "frame_stride": 1,
+  "selection_stats": {
+    "split_frames": 8175,
+    "dropped_unreviewed": 0,
+    "dropped_unresolved_player": 804,
+    "dropped_no_visible_box": 0,
+    "dropped_by_stride": 0,
+    "dropped_small_instances": 0,
+    "instances": 14742,
+    "frames": 7371
+  },
+  "metrics": {
+    "coco_person": {
+      "map": 0.4261105954647064,
+      "map_50": 0.7801627516746521,
+      "map_75": 0.4052041172981262,
+      "precision": 0.24001468300442239,
+      "recall": 0.9314204314204314,
+      "f1": 0.3816764186738197
+    },
+    "player_ft": {
+      "map": 0.5178632736206055,
+      "map_50": 0.9452608227729797,
+      "map_75": 0.4981183409690857,
+      "precision": 0.9575064862211626,
+      "recall": 0.9262650929317596,
+      "f1": 0.9416267282694893
+    }
+  }
+}

@@ -206,3 +206,8 @@ def test_visualize_tasks_accepts_gvhmr_alignment_on_its_own(
     )
 
     assert runtime.tasks == ("gvhmr_alignment",)
+
+
+def test_default_person_capacity_covers_doubles_with_buffer(tmp_path: Path) -> None:
+    runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path), bind_inputs=False)
+    assert runtime.max_tracks_per_camera == 6

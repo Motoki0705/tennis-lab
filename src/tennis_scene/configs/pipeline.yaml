@@ -57,7 +57,9 @@ court_kp:
     ambiguity_displacement_ratio: 0.03
 people_models:
   detector: dino
-  dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
+  # PR #937: epoch 3 selected by validation mAP, exported to DINO format.
+  # The Lightning .ckpt is a training artifact, not an inference checkpoint.
+  dino_checkpoint: player_detection/chat-player-v1-e8-best-pr937.pth
   dino_repository: DINO
   yolo_checkpoint: GVHMR/inputs/checkpoints/yolo/yolov8x.pt
   vitpose_checkpoint: GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
@@ -108,7 +110,7 @@ person_observations:
   # merged to fit). Non-player tracks (ball persons, the neighbouring court) are excluded later by
   # player_association, so the cap must leave room for them: 12 Meiji clips reached up to 11
   # tracks in one camera (#933, i933-observe-v1).
-  max_tracks_per_camera: 16
+  max_tracks_per_camera: 6
 ball_detection:
   enabled: true
   checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt

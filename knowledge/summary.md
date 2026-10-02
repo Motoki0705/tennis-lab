@@ -1,7 +1,8 @@
-<!-- knowledge-review: 9e8dc960969aa81a1576962ae53a1d83d982e7ded8c6479e9db306debbf33746 on 2026-10-02 -->
+<!-- knowledge-review: 70ae1a87f9c57736918049b57a6d5ddf0cf8fd5ffb53c7e753640396d018483b on 2026-10-02 -->
+
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-09-28（#934の3 source混合FT、実clipの検出証拠保存、Meiji holdoutの層別比較とdeploy維持の判断を反映）
+更新日: 2026-10-02（pose蓄積と#964の検出器比較を統合。実験結果・採否の変更なし）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -21,6 +22,15 @@
 この1clipの機能確認から、全clipのID精度・移動カメラへの頑健性は主張しない。
 対象689clipの処理とレビューは継続中。従来#964のコート選別は過去の比較として維持し、
 今回のposeデータ生成方針とは区別する。次は全対象のcoverage・保留・ID切替の実例を監査する。
+
+## 2026-09-29の選手検出切替（#964）
+
+[#937のFT検出器比較](nodes/player_detection/000004-run-i964-detectors-val-meiji-r1-20260929.md)では、
+重み選択に使ったchat validationでprecisionが改善した。Meijiの参照は旧COCO boxに基づくため、
+そこでの数字は旧boxとの一致率であり検出recallではない。FTの不一致はcam0の小さい遠側人物に集中し、
+多くはIoU=0で、単なるbox形状差と決めつけられない。ユーザー指定のFT切替を保ち、追跡比較ではcoverageを併記する。
+CLIP-ReID/SOLIDER/KPRと複数trackerの比較、新clipの調整後一回の未見評価は未完了。
+既存のcamera間対応の結論は旧検出・旧追跡での結果として維持し、新経路へはまだ一般化しない。
 
 
 ## 2026-09-27のcamera間人物対応（#933）
