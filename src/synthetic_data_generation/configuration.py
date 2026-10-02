@@ -13,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -29,23 +29,6 @@ from src.synthetic_data_generation.alignment.settings import (
     GroundPlaneSettings,
     LineProjectionSettings,
 )
-from src.synthetic_data_generation.composition.contracts import (
-    GaussianAsset,
-    GaussianAssetRole,
-    GaussianCoordinateFrame,
-    GaussianCoordinates,
-    GaussianUnit,
-)
-from src.synthetic_data_generation.dataset.blcs.contracts import (
-    BLCSBallGaussianSettings,
-    BLCSBallMeshAsset,
-    BLCSBallRendering,
-    BLCSCompositionAssets,
-)
-from src.synthetic_data_generation.dataset.blcs.source import (
-    BLCSTrajectorySourceSettings,
-)
-from src.synthetic_data_generation.dataset.camera_profiles import CameraProfileConfig
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenterKind,
     OrbitCoverageMode,
@@ -58,13 +41,6 @@ from src.synthetic_data_generation.dataset.court.contracts import (
 )
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
-)
-from src.synthetic_data_generation.dataset.plcs.production import (
-    PLCSProductionMode,
-    validate_plcs_production_contract,
-)
-from src.synthetic_data_generation.dataset.plcs.rendering.contracts import (
-    PLCSForegroundCompositor,
 )
 from src.synthetic_data_generation.dataset.runtime import DatasetPerformanceBudget
 from src.synthetic_data_generation.pipeline.contracts import (
@@ -79,12 +55,6 @@ from src.synthetic_data_generation.reconstruction.contracts import (
     NHTTrainingRuntime,
 )
 from src.synthetic_data_generation.rendering.nht.contracts import NHT_RENDER_COMMAND
-from src.tasks.blcs.generate_dataset.source_api import (
-    BLCSGeneratorConfiguration,
-    BLCSTimelineSpec,
-    build_blcs_generator_configuration,
-)
-from src.tasks.plcs.generate_dataset.sampling.motion_source import MotionCategory
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -99,14 +69,7 @@ from src.utils.hydra import register_boundary_validator
 from src.utils.paths import PROJECT_ROOT
 
 if TYPE_CHECKING:
-    import torch
-
-    from src.synthetic_data_generation.dataset.plcs.composition import AvatarAppearance
-    from src.synthetic_data_generation.dataset.plcs.handler import (
-        PLCSObjectRequest,
-        PLCSStageParameters,
-    )
-    from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
+    pass
 
 SCENE_PIPELINE_BOUNDARY = "synthetic.scene_pipeline"
 SCENE_PIPELINE_SCHEMA = "canonical_scene_pipeline_v1"
@@ -120,12 +83,6 @@ _COURT_METADATA_FIELDS = frozenset(
         "target_court",
         "transform",
     }
-)
-_BLCS_METADATA_FIELDS = _COURT_METADATA_FIELDS | frozenset(
-    {"source_frame", "source_trajectory"}
-)
-_PLCS_METADATA_FIELDS = _COURT_METADATA_FIELDS | frozenset(
-    {"motion_source", "source_frame"}
 )
 
 ConfigMapping = Mapping[str, object]
@@ -326,24 +283,6 @@ def _ordered_range(
 def _require_true(value: bool, *, path: str) -> None:
     if not value:
         raise SemanticConfigurationError(f"{path} must be true for production.")
-
-
-def _camera_profile(value: object) -> CameraProfileConfig:
-    profile = CameraProfileConfig.from_mapping(_mapping(value, path="camera"))
-    for slot in profile.slots:
-        if slot.height_m[0] <= 0.0:
-            raise SemanticConfigurationError(
-                f"camera slot {slot.slot_id!r} height must be positive."
-            )
-        if not 0.0 < slot.hfov_degrees[0] <= slot.hfov_degrees[1] < 180.0:
-            raise SemanticConfigurationError(
-                f"camera slot {slot.slot_id!r} HFOV must stay within (0, 180)."
-            )
-        if slot.look_at_height_m[0] < 0.0:
-            raise SemanticConfigurationError(
-                f"camera slot {slot.slot_id!r} look-at height must be non-negative."
-            )
-    return profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -1491,830 +1430,6 @@ class CourtDatasetConfiguration:
 
 
 @dataclass(frozen=True, slots=True)
-class FullFrameChunkPolicy:
-    """Full source/global timeline and transactional chunk policy."""
-
-    frame_selection: str
-    chunk_size_frames: int
-    require_contiguous_frame_indices: bool
-    require_exact_frame_inventory: bool
-    reuse_shards_within_stage_attempt: bool
-    discard_shards_on_rerun: bool
-
-    @classmethod
-    def from_mapping(cls, value: object, *, path: str) -> FullFrameChunkPolicy:
-        raw = _exact(
-            value,
-            path=path,
-            keys={
-                "frame_selection",
-                "chunk_size_frames",
-                "require_contiguous_frame_indices",
-                "require_exact_frame_inventory",
-                "reuse_shards_within_stage_attempt",
-                "discard_shards_on_rerun",
-            },
-        )
-        result = cls(
-            frame_selection=_text(raw, "frame_selection", path=path),
-            chunk_size_frames=_integer(raw, "chunk_size_frames", path=path, minimum=1),
-            require_contiguous_frame_indices=_flag(
-                raw, "require_contiguous_frame_indices", path=path
-            ),
-            require_exact_frame_inventory=_flag(
-                raw, "require_exact_frame_inventory", path=path
-            ),
-            reuse_shards_within_stage_attempt=_flag(
-                raw, "reuse_shards_within_stage_attempt", path=path
-            ),
-            discard_shards_on_rerun=_flag(raw, "discard_shards_on_rerun", path=path),
-        )
-        if result.frame_selection != "all_source_frames":
-            raise SemanticConfigurationError(
-                f"{path}.frame_selection must select all source frames."
-            )
-        for name in (
-            "require_contiguous_frame_indices",
-            "require_exact_frame_inventory",
-            "reuse_shards_within_stage_attempt",
-            "discard_shards_on_rerun",
-        ):
-            _require_true(cast(bool, getattr(result, name)), path=f"{path}.{name}")
-        return result
-
-
-def _fixed_integer_tuple(
-    mapping: ConfigMapping,
-    key: str,
-    *,
-    path: str,
-    length: int,
-) -> tuple[int, ...]:
-    values = _sequence(
-        _value(mapping, key, (list, tuple), path=path),
-        path=f"{path}.{key}",
-    )
-    if len(values) != length or any(type(item) is not int for item in values):
-        raise ConfigurationTypeError(
-            f"{path}.{key} must contain exactly {length} integer values."
-        )
-    return tuple(cast(int, item) for item in values)
-
-
-def _blcs_source_settings(value: object) -> BLCSTrajectorySourceSettings:
-    from src.synthetic_data_generation.dataset.blcs.source import (
-        BLCSTrajectorySourceSettings,
-    )
-
-    path = "dataset.blcs.trajectory_source"
-    raw = _exact(
-        value,
-        path=path,
-        keys={
-            "scene_count",
-            "split_scene_counts",
-            "multi_object",
-            "maximum_physics_attempts_per_object",
-            "timeline",
-            "device",
-        },
-    )
-    split_path = f"{path}.split_scene_counts"
-    split_raw = _exact(
-        raw["split_scene_counts"],
-        path=split_path,
-        keys={"train", "validation", "test"},
-    )
-    counts = {
-        split: _integer(split_raw, split, path=split_path, minimum=0)
-        for split in ("train", "validation", "test")
-    }
-    timeline_path = f"{path}.timeline"
-    timeline_raw = _exact(
-        raw["timeline"],
-        path=timeline_path,
-        keys={
-            "min_tracks",
-            "max_tracks",
-            "max_concurrent",
-            "min_reuse_gap_frames",
-            "min_scene_frames",
-            "planning_iterations",
-        },
-    )
-    timeline = BLCSTimelineSpec.from_mapping(timeline_raw)
-    return BLCSTrajectorySourceSettings(
-        scene_count=_integer(raw, "scene_count", path=path, minimum=1),
-        split_scene_counts=counts,
-        multi_object=_flag(raw, "multi_object", path=path),
-        maximum_physics_attempts_per_object=_integer(
-            raw,
-            "maximum_physics_attempts_per_object",
-            path=path,
-            minimum=1,
-        ),
-        timeline=timeline,
-        device=_text(raw, "device", path=path),
-    )
-
-
-def _blcs_generator_config(value: object) -> BLCSGeneratorConfiguration:
-    path = "dataset.blcs.generator"
-    raw = _exact(
-        value,
-        path=path,
-        keys={"physics", "rally", "camera", "targeted_velocity", "court"},
-    )
-    try:
-        return build_blcs_generator_configuration(raw)
-    except (TypeError, ValueError) as error:
-        raise SemanticConfigurationError(f"{path}: {error}") from error
-
-
-def _gaussian_asset(value: object, *, path: str) -> GaussianAsset:
-    raw = _exact(
-        value,
-        path=path,
-        keys={
-            "schema",
-            "asset_id",
-            "asset_class",
-            "role",
-            "coordinates",
-            "gaussian_count",
-            "feature_dim",
-            "floating_dtype",
-            "appearance_model",
-            "appearance_space",
-            "tensor_encoding",
-        },
-    )
-    coordinates_path = f"{path}.coordinates"
-    coordinates_raw = _exact(
-        raw["coordinates"],
-        path=coordinates_path,
-        keys={"frame", "unit", "convention"},
-    )
-    try:
-        role = GaussianAssetRole(_text(raw, "role", path=path))
-        frame = GaussianCoordinateFrame(
-            _text(coordinates_raw, "frame", path=coordinates_path)
-        )
-        unit = GaussianUnit(_text(coordinates_raw, "unit", path=coordinates_path))
-    except ValueError as error:
-        raise SemanticConfigurationError(
-            f"{path} contains an unknown Gaussian enum."
-        ) from error
-    dtype = _text(raw, "floating_dtype", path=path)
-    if dtype not in {"float32", "float64"}:
-        raise SemanticConfigurationError(f"{path}.floating_dtype is unsupported.")
-    return GaussianAsset(
-        schema=_text(raw, "schema", path=path),
-        asset_id=_text(raw, "asset_id", path=path),
-        asset_class=_text(raw, "asset_class", path=path),
-        role=role,
-        coordinates=GaussianCoordinates(
-            frame=frame,
-            unit=unit,
-            convention=_text(coordinates_raw, "convention", path=coordinates_path),
-        ),
-        gaussian_count=_integer(raw, "gaussian_count", path=path, minimum=1),
-        feature_dim=_integer(raw, "feature_dim", path=path, minimum=1),
-        floating_dtype=cast(Literal["float32", "float64"], dtype),
-        appearance_model=_text(raw, "appearance_model", path=path),
-        appearance_space=_text(raw, "appearance_space", path=path),
-        tensor_encoding=_text(raw, "tensor_encoding", path=path),
-    )
-
-
-def _blcs_assets(
-    value: object,
-    *,
-    resolver: PathResolver,
-) -> BLCSCompositionAssets:
-    path = "dataset.blcs.assets"
-    raw = _exact(
-        value,
-        path=path,
-        keys={"rendering", "mesh", "ball", "settings"},
-    )
-    try:
-        rendering = BLCSBallRendering(_text(raw, "rendering", path=path))
-    except ValueError as error:
-        raise SemanticConfigurationError(
-            f"{path}.rendering must be gaussian or mesh."
-        ) from error
-    mesh_path = f"{path}.mesh"
-    mesh_raw = _exact(
-        raw["mesh"],
-        path=mesh_path,
-        keys={
-            "path",
-            "maximum_file_bytes",
-            "maximum_source_vertices",
-            "maximum_source_faces",
-            "maximum_faces",
-        },
-    )
-    configured_mesh_path = mesh_raw["path"]
-    mesh: BLCSBallMeshAsset | None
-    if rendering is BLCSBallRendering.GAUSSIAN:
-        if configured_mesh_path is not None:
-            raise SemanticConfigurationError(
-                f"{mesh_path}.path must be null when {path}.rendering=gaussian."
-            )
-        mesh = None
-    else:
-        if not isinstance(configured_mesh_path, str):
-            raise ConfigurationTypeError(
-                f"{mesh_path}.path must be a data-root-relative string for mesh rendering."
-            )
-        relative_mesh_path = configured_mesh_path
-        resolved_mesh_path = resolver.resolve(PathRole.DATA, relative_mesh_path)
-        mesh = BLCSBallMeshAsset(
-            path=resolved_mesh_path,
-            data_root_relative_path=relative_mesh_path,
-            maximum_file_bytes=_integer(
-                mesh_raw,
-                "maximum_file_bytes",
-                path=mesh_path,
-                minimum=1,
-            ),
-            maximum_source_vertices=_integer(
-                mesh_raw,
-                "maximum_source_vertices",
-                path=mesh_path,
-                minimum=4,
-            ),
-            maximum_source_faces=_integer(
-                mesh_raw,
-                "maximum_source_faces",
-                path=mesh_path,
-                minimum=4,
-            ),
-            maximum_faces=_integer(
-                mesh_raw,
-                "maximum_faces",
-                path=mesh_path,
-                minimum=4,
-            ),
-        )
-    settings_path = f"{path}.settings"
-    settings_raw = _exact(
-        raw["settings"],
-        path=settings_path,
-        keys={
-            "radius_m",
-            "radial_scale_m",
-            "tangential_scale_m",
-            "opacity",
-            "base_color_linear_rgb",
-            "seam_color_linear_rgb",
-            "seam_width_radians",
-            "visibility_threshold",
-        },
-    )
-
-    def color(key: str) -> tuple[float, float, float]:
-        values = _number_sequence(settings_raw, key, path=settings_path)
-        if len(values) != 3:
-            raise ConfigurationTypeError(
-                f"{settings_path}.{key} must contain exactly three values."
-            )
-        return values[0], values[1], values[2]
-
-    return BLCSCompositionAssets(
-        ball=_gaussian_asset(raw["ball"], path=f"{path}.ball"),
-        settings=BLCSBallGaussianSettings(
-            radius_m=_number(settings_raw, "radius_m", path=settings_path),
-            radial_scale_m=_number(
-                settings_raw,
-                "radial_scale_m",
-                path=settings_path,
-            ),
-            tangential_scale_m=_number(
-                settings_raw,
-                "tangential_scale_m",
-                path=settings_path,
-            ),
-            opacity=_number(settings_raw, "opacity", path=settings_path),
-            base_color_linear_rgb=color("base_color_linear_rgb"),
-            seam_color_linear_rgb=color("seam_color_linear_rgb"),
-            seam_width_radians=_number(
-                settings_raw,
-                "seam_width_radians",
-                path=settings_path,
-            ),
-            visibility_threshold=_number(
-                settings_raw,
-                "visibility_threshold",
-                path=settings_path,
-            ),
-        ),
-        rendering=rendering,
-        mesh=mesh,
-    )
-
-
-@dataclass(frozen=True, slots=True)
-class BLCSDatasetConfiguration:
-    """Complete BLCS physics, semantic asset, render, and timeline authority."""
-
-    timeline: FullFrameChunkPolicy
-    trajectory_source: BLCSTrajectorySourceSettings
-    generator: BLCSGeneratorConfiguration
-    assets: BLCSCompositionAssets
-    render_timeout_seconds: float
-    performance: DatasetPerformanceBudget
-    metadata_fields: tuple[str, ...]
-
-    @classmethod
-    def from_mapping(
-        cls,
-        value: object,
-        *,
-        resolver: PathResolver,
-    ) -> BLCSDatasetConfiguration:
-        raw = _exact(
-            value,
-            path="dataset.blcs",
-            keys={
-                "timeline",
-                "trajectory_source",
-                "generator",
-                "assets",
-                "render_timeout_seconds",
-                "performance",
-                "metadata_fields",
-            },
-        )
-        metadata = _text_sequence(raw, "metadata_fields", path="dataset.blcs")
-        if not _BLCS_METADATA_FIELDS.issubset(metadata):
-            raise SemanticConfigurationError(
-                "dataset.blcs.metadata_fields omits required provenance."
-            )
-        source = _blcs_source_settings(raw["trajectory_source"])
-        generator = _blcs_generator_config(raw["generator"])
-        assets = _blcs_assets(raw["assets"], resolver=resolver)
-        timeout = _number(raw, "render_timeout_seconds", path="dataset.blcs")
-        if timeout <= 0.0:
-            raise SemanticConfigurationError(
-                "dataset.blcs.render_timeout_seconds must be positive."
-            )
-        performance = _performance_budget(
-            raw["performance"],
-            path="dataset.blcs.performance",
-        )
-        timeline = FullFrameChunkPolicy.from_mapping(
-            raw["timeline"], path="dataset.blcs.timeline"
-        )
-        if (
-            not performance.require_cuda
-            or performance.execution_device != "cuda:0"
-            or performance.maximum_nht_invocations != source.scene_count
-            or performance.maximum_batch_frames != 1
-            or performance.maximum_published_fraction_of_dense_reference > 0.2
-        ):
-            raise SemanticConfigurationError(
-                "BLCS production performance requires CUDA, one NHT call per "
-                "trajectory, single-frame joint rasterization, and <=20% dense publication."
-            )
-        return cls(
-            timeline=timeline,
-            trajectory_source=source,
-            generator=generator,
-            assets=assets,
-            render_timeout_seconds=timeout,
-            performance=performance,
-            metadata_fields=metadata,
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class PLCSObjectConfiguration:
-    """One config-owned ACCAD category and global-timeline placement."""
-
-    category: MotionCategory
-    start_frame: int
-    anchor_position_court_m: tuple[float, float, float]
-    yaw_radians: float
-
-    @classmethod
-    def from_mapping(cls, value: object, *, index: int) -> PLCSObjectConfiguration:
-        path = f"dataset.plcs.objects[{index}]"
-        raw = _exact(
-            value,
-            path=path,
-            keys={"category", "start_frame", "anchor_position_court_m", "yaw_radians"},
-        )
-        anchor = _number_sequence(
-            raw,
-            "anchor_position_court_m",
-            path=path,
-            minimum_length=3,
-        )
-        if len(anchor) != 3:
-            raise ConfigurationTypeError(
-                f"{path}.anchor_position_court_m must contain exactly three values."
-            )
-        try:
-            category = MotionCategory(_text(raw, "category", path=path))
-        except ValueError as error:
-            raise SemanticConfigurationError(
-                f"{path}.category is not a production motion category."
-            ) from error
-        return cls(
-            category=category,
-            start_frame=_integer(raw, "start_frame", path=path, minimum=0),
-            anchor_position_court_m=anchor,
-            yaw_radians=_number(raw, "yaw_radians", path=path),
-        )
-
-    def to_runtime_request(self) -> PLCSObjectRequest:
-        """Construct the handler value without creating a configuration import cycle."""
-        from src.synthetic_data_generation.dataset.plcs.handler import PLCSObjectRequest
-
-        return PLCSObjectRequest(
-            category=self.category,
-            start_frame=self.start_frame,
-            anchor_position_court_m=self.anchor_position_court_m,
-            yaw_radians=self.yaw_radians,
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class LinearRGBPaletteSettings:
-    """Explicit deterministic avatar appearance source in renderer colour space."""
-
-    source: Literal["palette"]
-    assignment: Literal["object_index_modulo_palette"]
-    gaussian_fill: Literal["uniform"]
-    appearance_model: Literal["rgb"]
-    appearance_space: Literal["linear_rgb"]
-    colors: tuple[tuple[float, float, float], ...]
-
-    @classmethod
-    def from_mapping(cls, value: object) -> LinearRGBPaletteSettings:
-        path = "dataset.plcs.appearance"
-        raw = _exact(
-            value,
-            path=path,
-            keys={
-                "source",
-                "assignment",
-                "gaussian_fill",
-                "appearance_model",
-                "appearance_space",
-                "colors",
-            },
-        )
-        source = _text(raw, "source", path=path)
-        assignment = _text(raw, "assignment", path=path)
-        gaussian_fill = _text(raw, "gaussian_fill", path=path)
-        appearance_model = _text(raw, "appearance_model", path=path)
-        appearance_space = _text(raw, "appearance_space", path=path)
-        if (
-            source != "palette"
-            or assignment != "object_index_modulo_palette"
-            or gaussian_fill != "uniform"
-            or appearance_model != "rgb"
-            or appearance_space != "linear_rgb"
-        ):
-            raise SemanticConfigurationError(
-                "PLCS appearance must use the explicit uniform object-index palette "
-                "in linear RGB."
-            )
-        raw_colors = _sequence(
-            _value(raw, "colors", (list, tuple), path=path),
-            path=f"{path}.colors",
-        )
-        if not raw_colors:
-            raise SemanticConfigurationError(
-                "dataset.plcs.appearance.colors must not be empty."
-            )
-        colors: list[tuple[float, float, float]] = []
-        for index, raw_color in enumerate(raw_colors):
-            values = _sequence(raw_color, path=f"{path}.colors[{index}]")
-            if len(values) != 3 or any(
-                type(item) not in (int, float) for item in values
-            ):
-                raise ConfigurationTypeError(
-                    f"{path}.colors[{index}] must contain three numeric values."
-                )
-            color = cast(
-                tuple[float, float, float],
-                tuple(float(cast("int | float", item)) for item in values),
-            )
-            if any(
-                not math.isfinite(channel) or not 0.0 <= channel <= 1.0
-                for channel in color
-            ):
-                raise SemanticConfigurationError(
-                    f"{path}.colors[{index}] must contain finite values in [0, 1]."
-                )
-            colors.append(color)
-        if len(colors) != len(set(colors)):
-            raise SemanticConfigurationError("PLCS palette colors must be unique.")
-        return cls(
-            source="palette",
-            assignment="object_index_modulo_palette",
-            gaussian_fill="uniform",
-            appearance_model="rgb",
-            appearance_space="linear_rgb",
-            colors=tuple(colors),
-        )
-
-    def color_for_object(self, object_index: int) -> tuple[float, float, float]:
-        """Return the sole deterministic palette assignment for one object."""
-        if (
-            isinstance(object_index, bool)
-            or not isinstance(object_index, int)
-            or object_index < 0
-        ):
-            raise ValueError("PLCS appearance object_index must be non-negative.")
-        return self.colors[object_index % len(self.colors)]
-
-    def preflight(self, *, gaussian_count: int) -> None:
-        """Validate the explicit uniform palette source before stage mutation."""
-        if (
-            isinstance(gaussian_count, bool)
-            or not isinstance(gaussian_count, int)
-            or gaussian_count <= 0
-        ):
-            raise ValueError("PLCS appearance gaussian_count must be positive.")
-
-    def load_avatar_appearance(
-        self,
-        *,
-        clip: PLCSMotionClip,
-        object_id: str,
-        gaussian_count: int,
-        seed: int,
-        device: torch.device,
-    ) -> AvatarAppearance:
-        """Build one explicit uniform linear-RGB feature set with no fallback."""
-        import torch
-
-        from src.synthetic_data_generation.dataset.plcs.composition import (
-            AvatarAppearance,
-        )
-        from src.tasks.plcs.generate_dataset.sampling.motion_source import (
-            PLCSMotionClip,
-        )
-
-        self.preflight(gaussian_count=gaussian_count)
-        if not isinstance(clip, PLCSMotionClip):
-            raise TypeError("PLCS palette source requires a PLCSMotionClip.")
-        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
-            raise ValueError("PLCS appearance seed must be non-negative.")
-        prefix, separator, suffix = object_id.rpartition("-")
-        if (
-            prefix != "player"
-            or separator != "-"
-            or len(suffix) != 3
-            or not suffix.isdigit()
-        ):
-            raise ValueError(
-                "PLCS palette source requires the canonical player-NNN object ID."
-            )
-        object_index = int(suffix) - 1
-        if object_index < 0:
-            raise ValueError("PLCS palette object numbering starts at one.")
-        typed_device = torch.device(device)
-        color = torch.tensor(
-            self.color_for_object(object_index),
-            dtype=torch.float32,
-            device=typed_device,
-        )
-        return AvatarAppearance(
-            features=color.expand(gaussian_count, 3).clone(),
-            appearance_model=self.appearance_model,
-            appearance_space=self.appearance_space,
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class PLCSDatasetConfiguration:
-    """Complete PLCS motion, SMPL-H, appearance, raster, and render authority."""
-
-    timeline: FullFrameChunkPolicy
-    motion_categories: tuple[str, ...]
-    require_articulated_motion: bool
-    production_mode: PLCSProductionMode
-    accad_root: Path
-    split: str
-    scene_splits: Mapping[str, str]
-    objects: tuple[PLCSObjectConfiguration, ...]
-    smplh_model_root: Path
-    gaussian_count: int
-    smplh_batch_size: int
-    device: str
-    appearance: LinearRGBPaletteSettings
-    foreground_compositor: PLCSForegroundCompositor
-    render_timeout_seconds: float
-    performance: DatasetPerformanceBudget
-    metadata_fields: tuple[str, ...]
-
-    @classmethod
-    def from_mapping(
-        cls,
-        value: object,
-        *,
-        resolver: PathResolver,
-    ) -> PLCSDatasetConfiguration:
-        raw = _exact(
-            value,
-            path="dataset.plcs",
-            keys={
-                "timeline",
-                "motion_categories",
-                "require_articulated_motion",
-                "production_mode",
-                "accad_root",
-                "split",
-                "scene_splits",
-                "objects",
-                "smplh_model_root",
-                "gaussian_count",
-                "smplh_batch_size",
-                "device",
-                "appearance",
-                "foreground_rasterizer",
-                "render_timeout_seconds",
-                "performance",
-                "metadata_fields",
-            },
-        )
-        categories = _text_sequence(raw, "motion_categories", path="dataset.plcs")
-        try:
-            production_mode = PLCSProductionMode(
-                _text(raw, "production_mode", path="dataset.plcs")
-            )
-        except ValueError as error:
-            raise SemanticConfigurationError(
-                "dataset.plcs.production_mode is unsupported."
-            ) from error
-        articulated = _flag(raw, "require_articulated_motion", path="dataset.plcs")
-        _require_true(articulated, path="dataset.plcs.require_articulated_motion")
-        metadata = _text_sequence(raw, "metadata_fields", path="dataset.plcs")
-        if not _PLCS_METADATA_FIELDS.issubset(metadata):
-            raise SemanticConfigurationError(
-                "dataset.plcs.metadata_fields omits required provenance."
-            )
-        scene_splits_raw = _mapping(
-            raw["scene_splits"], path="dataset.plcs.scene_splits"
-        )
-        if not scene_splits_raw:
-            raise SemanticConfigurationError(
-                "dataset.plcs.scene_splits must not be empty."
-            )
-        scene_splits: dict[str, str] = {}
-        for scene_id in sorted(scene_splits_raw):
-            split_value = scene_splits_raw[scene_id]
-            if (
-                not scene_id
-                or scene_id != scene_id.strip()
-                or type(split_value) is not str
-                or split_value not in {"train", "validation", "test"}
-            ):
-                raise SemanticConfigurationError(
-                    "dataset.plcs.scene_splits must map trimmed scene IDs to "
-                    "train, validation, or test."
-                )
-            scene_splits[scene_id] = split_value
-        raw_objects = _sequence(
-            _value(raw, "objects", (list, tuple), path="dataset.plcs"),
-            path="dataset.plcs.objects",
-        )
-        objects = tuple(
-            PLCSObjectConfiguration.from_mapping(item, index=index)
-            for index, item in enumerate(raw_objects)
-        )
-        try:
-            validate_plcs_production_contract(
-                mode=production_mode,
-                configured_motion_categories=categories,
-                object_motion_categories=(item.category.value for item in objects),
-                object_start_frames=(item.start_frame for item in objects),
-            )
-        except (TypeError, ValueError) as error:
-            raise SemanticConfigurationError(
-                f"dataset.plcs production contract is invalid: {error}"
-            ) from error
-        raster_path = "dataset.plcs.foreground_rasterizer"
-        raster_raw = _exact(
-            raw["foreground_rasterizer"],
-            path=raster_path,
-            keys={
-                "sigma_extent",
-                "minimum_pixel_variance",
-                "near_plane",
-                "visibility_threshold",
-                "maximum_alpha",
-            },
-        )
-        compositor = PLCSForegroundCompositor(
-            sigma_extent=_number(raster_raw, "sigma_extent", path=raster_path),
-            minimum_pixel_variance=_number(
-                raster_raw, "minimum_pixel_variance", path=raster_path
-            ),
-            near_plane=_number(raster_raw, "near_plane", path=raster_path),
-            visibility_threshold=_number(
-                raster_raw, "visibility_threshold", path=raster_path
-            ),
-            maximum_alpha=_number(raster_raw, "maximum_alpha", path=raster_path),
-        )
-        split = _text(raw, "split", path="dataset.plcs")
-        if split not in {"train", "validation", "test"}:
-            raise SemanticConfigurationError(
-                "dataset.plcs.split must be train, validation, or test."
-            )
-        timeout = _number(raw, "render_timeout_seconds", path="dataset.plcs")
-        if timeout <= 0.0:
-            raise SemanticConfigurationError(
-                "dataset.plcs.render_timeout_seconds must be positive."
-            )
-        performance = _performance_budget(
-            raw["performance"],
-            path="dataset.plcs.performance",
-        )
-        timeline = FullFrameChunkPolicy.from_mapping(
-            raw["timeline"], path="dataset.plcs.timeline"
-        )
-        if (
-            not performance.require_cuda
-            or not performance.execution_device.startswith("cuda")
-            or performance.maximum_nht_invocations != 1
-            or performance.maximum_batch_frames > timeline.chunk_size_frames
-            or performance.maximum_batch_frames
-            != _integer(
-                raw,
-                "smplh_batch_size",
-                path="dataset.plcs",
-                minimum=1,
-            )
-            or performance.execution_device
-            != _text(
-                raw,
-                "device",
-                path="dataset.plcs",
-            )
-            or performance.maximum_published_fraction_of_dense_reference > 0.25
-        ):
-            raise SemanticConfigurationError(
-                "PLCS production performance requires CUDA, one NHT background "
-                "call, bounded frame batches, and <=25% dense publication."
-            )
-        return cls(
-            timeline=timeline,
-            motion_categories=categories,
-            require_articulated_motion=articulated,
-            production_mode=production_mode,
-            accad_root=resolver.resolve(
-                PathRole.DATA,
-                _text(raw, "accad_root", path="dataset.plcs"),
-            ),
-            split=split,
-            scene_splits=scene_splits,
-            objects=objects,
-            smplh_model_root=resolver.resolve(
-                PathRole.CHECKPOINT,
-                _text(raw, "smplh_model_root", path="dataset.plcs"),
-            ),
-            gaussian_count=_integer(
-                raw, "gaussian_count", path="dataset.plcs", minimum=1
-            ),
-            smplh_batch_size=_integer(
-                raw, "smplh_batch_size", path="dataset.plcs", minimum=1
-            ),
-            device=_text(raw, "device", path="dataset.plcs"),
-            appearance=LinearRGBPaletteSettings.from_mapping(raw["appearance"]),
-            foreground_compositor=compositor,
-            render_timeout_seconds=timeout,
-            performance=performance,
-            metadata_fields=metadata,
-        )
-
-    def build_stage_parameters(self, *, seed: int) -> PLCSStageParameters:
-        """Construct handler parameters while keeping its import one-way."""
-        from src.synthetic_data_generation.dataset.plcs.handler import (
-            PLCSStageParameters,
-        )
-
-        return PLCSStageParameters(
-            seed=seed,
-            production_mode=self.production_mode,
-            split=self.split,
-            scene_splits=self.scene_splits,
-            objects=tuple(item.to_runtime_request() for item in self.objects),
-            smplh_model_root=self.smplh_model_root,
-            gaussian_count=self.gaussian_count,
-            smplh_batch_size=self.smplh_batch_size,
-            device=self.device,
-        )
-
-
-@dataclass(frozen=True, slots=True)
 class ScenePipelineConfiguration:
     """Resolved canonical request and every config-owned stage/domain policy."""
 
@@ -2323,12 +1438,9 @@ class ScenePipelineConfiguration:
     workspace: SceneWorkspace
     request: ScenePipelineRequest
     stages: PipelineStageSettings
-    camera: CameraProfileConfig
     nht: NHTCommandPaths
     alignment: AlignmentConfiguration
     court: CourtDatasetConfiguration
-    blcs: BLCSDatasetConfiguration
-    plcs: PLCSDatasetConfiguration
 
     @classmethod
     def from_config(cls, value: object) -> ScenePipelineConfiguration:
@@ -2340,7 +1452,6 @@ class ScenePipelineConfiguration:
                 "roots",
                 "request",
                 "pipeline",
-                "camera",
                 "nht",
                 "alignment",
                 "dataset",
@@ -2390,39 +1501,19 @@ class ScenePipelineConfiguration:
             through_stage=through_stage,
             config_schema=stages.config_schema,
         )
-        dataset = _exact(
-            root["dataset"], path="dataset", keys={"court", "blcs", "plcs"}
-        )
-        plcs = PLCSDatasetConfiguration.from_mapping(
-            dataset["plcs"],
-            resolver=resolver,
-        )
-        if DatasetTarget.PLCS in request.active_targets and (
-            request.scene_id not in plcs.scene_splits
-            or plcs.scene_splits[request.scene_id] != plcs.split
-        ):
-            raise SemanticConfigurationError(
-                "dataset.plcs.scene_splits must explicitly bind request.scene_id "
-                "to dataset.plcs.split."
-            )
+        dataset = _exact(root["dataset"], path="dataset", keys={"court"})
         return cls(
             profile=_text(root, "profile", path="configuration"),
             resolver=resolver,
             workspace=SceneWorkspace.resolve(resolver, request.scene_id),
             request=request,
             stages=stages,
-            camera=_camera_profile(root["camera"]),
             nht=NHTCommandPaths.from_mapping(root["nht"], resolver=resolver),
             alignment=AlignmentConfiguration.from_mapping(
                 root["alignment"],
                 resolver=resolver,
             ),
             court=CourtDatasetConfiguration.from_mapping(dataset["court"]),
-            blcs=BLCSDatasetConfiguration.from_mapping(
-                dataset["blcs"],
-                resolver=resolver,
-            ),
-            plcs=plcs,
         )
 
 
@@ -2435,18 +1526,13 @@ register_boundary_validator(SCENE_PIPELINE_BOUNDARY, validate_scene_pipeline_bou
 
 __all__ = [
     "AlignmentConfiguration",
-    "BLCSDatasetConfiguration",
     "CourtDatasetConfiguration",
     "CourtDatasetSchemaVersion",
     "CourtSamplingPolicy",
     "CourtTrajectoryPolicy",
     "CourtViewPolicy",
-    "FullFrameChunkPolicy",
-    "LinearRGBPaletteSettings",
     "NHTCommandPaths",
     "PipelineStageSettings",
-    "PLCSObjectConfiguration",
-    "PLCSDatasetConfiguration",
     "SCENE_PIPELINE_BOUNDARY",
     "SCENE_PIPELINE_SCHEMA",
     "ScenePipelineConfiguration",

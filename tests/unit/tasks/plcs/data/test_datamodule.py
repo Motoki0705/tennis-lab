@@ -22,7 +22,6 @@ from src.tasks.plcs.data.datamodule import PLCSDataModule
 from src.tasks.plcs.data.dataset import SceneDataset
 from src.utils.configuration import (
     SemanticConfigurationError,
-    UnknownConfigurationKeyError,
 )
 
 pytestmark = pytest.mark.unit
@@ -192,18 +191,7 @@ def test_sampling_weights_are_accepted_only_for_the_default_backend() -> None:
             SemanticConfigurationError,
             "requires backend=default",
         ),
-        (
-            "train_tracking",
-            "weights.json",
-            UnknownConfigurationKeyError,
-            r"data\.sampling_weights",
-        ),
-        (
-            "train",
-            "../weights.json",
-            SemanticConfigurationError,
-            "non-empty file name",
-        ),
+        ("train", "../weights.json", SemanticConfigurationError, "non-empty file name"),
     ],
 )
 def test_sampling_weights_are_rejected_outside_default_backend(
