@@ -1,0 +1,57 @@
+defaults:
+  - model: refiner_2d
+  - _self_
+
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: data
+  external_asset_root: third_party
+
+model:
+  use_pose: false
+  use_court: false
+
+data:
+  store: ball_detection/ball-mix-v1
+  evidence: ball_refiner/detector-ft-e13-trainval-r3-20260928
+  sources: [tracknet, meiji, chat_annotation]
+  window_length: 33
+  stride: 16
+  partition_seed: 42
+  short_clip_policy: exclude_and_report
+
+training:
+  batch_size: 32
+  epochs: 12
+  steps_per_epoch: 250
+  max_steps: 3000
+  num_workers: 0
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  gap_probability: 0.5
+  gap_lengths: [1, 4, 8, 16]
+
+compile:
+  enabled: true
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+
+run:
+  output_dir: ${tennis_output:ball_refiner,train,detector_only,${tennis_run_id:}}
+  device: cuda
+  seed: 42
+  dry_run: false
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

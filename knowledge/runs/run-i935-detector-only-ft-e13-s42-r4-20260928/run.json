@@ -1,0 +1,16 @@
+{
+  "run_id": "1790595233258585469_522451_i935-detector-only-ft-e13-s42-r4-20260928",
+  "name": "i935-detector-only-ft-e13-s42-r4-20260928",
+  "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-4-training OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-4-training/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.train paths.data_root=/home/kamimura/projects/tennis-lab/data paths.cache_root=/home/kamimura/projects/tennis-lab/data paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt paths.output_root=/home/kamimura/projects/tennis-lab/outputs run.output_dir=ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928",
+  "provider": "codex",
+  "session": "01a0e7b2-7de1-75c2-a2fe-c844567c4de0",
+  "issue": "935",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "afc2c0fd76d3891162162ce558d5ea969b579bab",
+  "branch": "campaign930/i935-4-training",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-4-training",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-4-training",
+  "captured_at": "2026-09-28T20:33:53+09:00"
+}
