@@ -665,6 +665,7 @@ def _repository_consumer_files() -> tuple[Path, ...]:
         "scripts",
         ".spin",
         "experiments",
+        "tests/benchmarks",
     )
     suffixes = {".json", ".py", ".pyi", ".sh", ".toml", ".yaml", ".yml"}
     return tuple(
@@ -1610,7 +1611,7 @@ class ActiveAdapters:
 
 def test_static_src_import_modules_exist() -> None:
     missing: list[str] = []
-    for path in _repository_consumer_python_files():
+    for path in _repository_reference_python_files():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             modules: tuple[str, ...] = ()

@@ -316,12 +316,12 @@ def _assert_projection_round_trip(
         assert target_camera_point[2] > 0
 
 
-@pytest.mark.parametrize("selector", ["physical_v1", "camera_view_v2"])
+@pytest.mark.parametrize("selector", ["physical_v1"])
 def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     tmp_path: Path,
     selector: str,
 ) -> None:
-    """Exercise both CourtKP contracts with the fixed isotropic normalization."""
+    """Exercise the supported physical CourtKP contract and isotropic normalization."""
     torch.manual_seed(799)
     contract = resolve_court_keypoint_contract(selector)
 
@@ -482,21 +482,21 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     assert torch.isfinite(physical_plcs).all()
 
 
-def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
+def test_single_camera_keeps_the_physical_court_frame(
     tmp_path: Path,
 ) -> None:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
-    half_turn = torch.diag(torch.tensor([-1.0, -1.0, 1.0]))
+    contract = resolve_court_keypoint_contract("physical_v1")
+    half_turn = torch.eye(3)
     physical_position = torch.tensor(
         [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]],
         dtype=torch.float32,
     )
     expected_position = normalize_court_position(physical_position @ half_turn.T)
-    expected_center = torch.tensor([-0.5, -12.0, -5.0])
+    expected_center = torch.tensor(_CENTERS[0])
 
     blcs_root = tmp_path / "blcs_single"
     _write_blcs_dataset(blcs_root, contract)
-    blcs_config = _blcs_config("camera_view_v2")
+    blcs_config = _blcs_config("physical_v1")
     blcs_config.data.num_views_range = [1, 1]
     blcs_sample = cast(
         "dict[str, Any]",
@@ -511,12 +511,12 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
         "CourtReferenceFrameProvenance",
         blcs_sample["court_reference_provenance"],
     )
-    assert blcs_provenance.reference_camera_id == "cam_0"
-    assert blcs_provenance.reference_camera_local_index == 0
+    assert blcs_provenance.reference_camera_id is None
+    assert blcs_provenance.reference_camera_local_index is None
     assert blcs_sample["court_kp"].shape == (1, 2, 20, 2)
     torch.testing.assert_close(
         blcs_sample["court_kp"][0, 0],
-        torch.from_numpy(_PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]),
+        torch.from_numpy(_PHYSICAL_COURT_UV),
     )
     torch.testing.assert_close(blcs_sample["position_3d"], expected_position)
     torch.testing.assert_close(blcs_sample["camera_C"][0], expected_center)
@@ -524,7 +524,7 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
 
     plcs_root = tmp_path / "plcs_single"
     _write_plcs_dataset(plcs_root, contract)
-    plcs_config = _plcs_config("camera_view_v2")
+    plcs_config = _plcs_config("physical_v1")
     plcs_config.data.num_views_range = [1, 1]
     plcs_sample = SceneDataset(
         scene_dir=plcs_root,
@@ -536,18 +536,17 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
         "CourtReferenceFrameProvenance",
         plcs_sample["court_reference_provenance"],
     )
-    assert plcs_provenance.reference_camera_id == "camera_0"
-    assert plcs_provenance.reference_camera_local_index == 0
-    assert plcs_sample["selected_camera_ids"] == ("camera_0",)
+    assert plcs_provenance.reference_camera_id is None
+    assert plcs_provenance.reference_camera_local_index is None
     assert plcs_sample["court_kp"].shape == (1, 2, 20, 2)
     torch.testing.assert_close(
         plcs_sample["court_kp"][0, 0],
-        torch.from_numpy(_PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]),
+        torch.from_numpy(_PHYSICAL_COURT_UV),
     )
     torch.testing.assert_close(plcs_sample["position"], expected_position)
     torch.testing.assert_close(
         plcs_sample["rotation"],
-        torch.tensor([[-1.0, 0.0], [-1.0, 0.0]]),
+        torch.tensor([[1.0, 0.0], [1.0, 0.0]]),
     )
     torch.testing.assert_close(
         plcs_sample["human_kp_3d"][:, 0],

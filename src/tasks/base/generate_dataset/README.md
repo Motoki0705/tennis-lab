@@ -9,7 +9,8 @@ shapes and targets.
 
 Standalone BLCS/PLCS generation, training, and inference accept only
 `court_keypoints=physical_v1`. The shared camera-view representation below is
-retained for other consumers such as the tennis-scene camera-geometry pipeline. The selector resolves to exact semantic and
+retained for other consumers such as the tennis-scene camera-geometry pipeline.
+The selector resolves to exact semantic and
 model-target IDs; IDs are never inferred from a 20- or 14-point shape.
 
 | Selector | Semantic contract ID | Model target-frame ID |
@@ -51,17 +52,13 @@ camera ID, finite physical camera centre, permutation, and canonical rotation
 must all parse and match exactly. Missing, unknown, mixed, malformed, or
 cross-level mismatched records fail before arrays are consumed.
 
-## Model reference semantics
+## Shared reference-frame geometry
 
 Camera-view v2 selects exactly one stable camera ID after the view subset is
-known. Its local index is resolved independently of view order. All neural
-inputs retain the detector's camera-local channel order, including the first
-14 channels for tracking. Changing the reference must leave observation tensors
-byte-for-byte unchanged. No side labels, camera poses, or reference transforms
-are required to construct a forward call: the five observation tensors and
-`reference_view_index` suffice. Geometry provenance is teacher/output metadata.
-New v2 checkpoints carry `court_observation_order: camera_local_v1`; older
-aligned checkpoints are rejected and must be retrained.
+known. Its local index is resolved independently of view order. Camera-local
+observations retain the detector's channel order when the reference changes.
+These geometry helpers remain available to shared consumers; standalone
+BLCS/PLCS models use the physical court frame and do not select a reference.
 
 The reference rotation `S_r` is then applied consistently:
 
@@ -143,25 +140,24 @@ PLCS and BLCS generation accept `camera.fixed_camera_indices`: an ordered,
 nonempty list of unique fixed-rig positions (0–5), or `null` for the full rig.
 Positions 0–3 are the fence corners in order `(-x,+y)`, `(+x,+y)`, `(+x,-y)`,
 `(-x,-y)`; positions 4–5 are the baseline midpoints. `camera=corners` selects
-`[0,1,2,3]`. An explicit fixed-rig set is invalid for the broadcast layout.
+`[0,1,2,3]`. Both tasks use the fixed camera layout.
 Writers assign local stable IDs in the generated order: `camera_0`, … for
 PLCS and `cam_0`, … for BLCS. The saved generation config records the source
 rig positions.
 
-Scene and tracking datasets independently accept `data.camera_candidates`: an
+Scene datasets independently accept `data.camera_candidates`: an
 ordered list of local indices in the **saved** rig, or `null` for all saved
 cameras. `data.num_views_range` samples without replacement within this set.
 Duplicate, negative, out-of-range and undersized explicit sets fail; a fixed
 evaluation reference outside the set also fails. This selection never implies a reference camera:
 reference selection follows the stable-ID contract above.
 
-`generate_dataset_camera_view_v2` is the single-object four-corner generation
-recipe in both tasks. It writes `data/{plcs,blcs}/single_object_camera_view_v2`
-using the shared metadata contract, with 10,000 scenes per task. PLCS uses
-`run.split_group=motion_source` to keep all scenes from one AMASS source file
-in one split; realized scene counts approximate the requested 80/10/10 ratio.
+The single-object generation entrypoint in each task uses physical-v1 semantics.
+The four-corner rig is selected through the existing `camera=corners` profile.
+PLCS additionally accepts `run.split_group=motion_source` to keep scenes from
+one AMASS source file within one split.
 
 ```bash
-.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
-.venv/bin/python -m src.tasks.blcs.scripts.generate_dataset --config-name generate_dataset_camera_view_v2
+.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset camera=corners
+.venv/bin/python -m src.tasks.blcs.scripts.generate_dataset camera=corners
 ```
