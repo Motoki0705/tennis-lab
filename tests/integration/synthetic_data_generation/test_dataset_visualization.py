@@ -14,12 +14,10 @@ import pytest
 from numpy.typing import NDArray
 
 import src.synthetic_data_generation.visualization.renderer as renderer_module
-from src.synthetic_data_generation.dataset.blcs.contracts import BLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SEMANTIC_CLASS_NAMES_V2,
     CourtDatasetSchemaVersion,
 )
-from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
 from src.synthetic_data_generation.dataset.runtime import (
     LogicalRenderSample,
     RenderSampleKey,
@@ -29,11 +27,7 @@ from src.synthetic_data_generation.visualization import (
     DatasetVisualizationRequest,
     visualize_dataset,
 )
-from src.synthetic_data_generation.visualization.sources import (
-    BLCSSourceFrame,
-    CourtSourceFrame,
-    PLCSSourceFrame,
-)
+from src.synthetic_data_generation.visualization.sources import CourtSourceFrame
 from src.utils.video.reader import probe_video_info
 
 
@@ -184,92 +178,6 @@ class _FakeCourtV3(_FakeCourtV2):
                 trajectory_frame_index=frame.trajectory_frame_index,
                 projection=frame.projection,
                 schema_version=CourtDatasetSchemaVersion.V3,
-            )
-
-
-class _FakeBLCS:
-    dataset_schema = BLCS_DATASET_SCHEMA
-    dataset_scene_id = "scene-0"
-    width = 128
-    height = 96
-    source_fps = 60.0
-    object_ids = ("ball-0",)
-    court_kp: NDArray[np.float32] = np.zeros((20, 2), dtype=np.float32)
-    court_vis: NDArray[np.bool_] = np.zeros((20,), dtype=np.bool_)
-    frame_order = tuple(
-        {"source_frame_index": index, "global_frame_index": index} for index in range(3)
-    )
-
-    def __init__(self, root: Path, *, logical_scene_id: str, camera_id: str) -> None:
-        assert root.name == "blcs"
-        assert logical_scene_id == "logical-0"
-        assert camera_id == "camera-0"
-
-    def frames(self) -> Iterator[BLCSSourceFrame]:
-        for index in range(3):
-            yield BLCSSourceFrame(
-                render=_logical_render(index),
-                source_frame_index=index,
-                global_frame_index=index,
-                metadata={
-                    "objects": [
-                        {
-                            "object_id": "ball-0",
-                            "instance_id": 1,
-                            "present": True,
-                            "geometric_visible": True,
-                            "rendered_visible": True,
-                        }
-                    ],
-                    "semantic_arrays": {
-                        "ball_uv": [[40.0 + index * 8, 62.0]],
-                        "present": [True],
-                        "geometric_visible": [True],
-                        "rendered_visible": [True],
-                        "instance_ids": [1],
-                    },
-                },
-            )
-
-
-class _FakePLCS:
-    dataset_schema = PLCS_DATASET_SCHEMA
-    dataset_scene_id = "scene-0"
-    width = 128
-    height = 96
-    object_ids = ("person-0",)
-    frame_order = tuple({"frame_index": index} for index in range(3))
-
-    def __init__(self, root: Path, *, logical_scene_id: str, camera_id: str) -> None:
-        assert root.name == "plcs"
-        assert logical_scene_id == "logical-0"
-        assert camera_id == "camera-0"
-
-    def frames(self) -> Iterator[PLCSSourceFrame]:
-        for index in range(3):
-            keypoints: NDArray[np.float32] = np.zeros((1, 17, 2), dtype=np.float32)
-            keypoints[0, 5] = (0.4, 0.4)
-            keypoints[0, 6] = (0.6, 0.4)
-            visible: NDArray[np.bool_] = np.zeros((1, 17), dtype=np.bool_)
-            visible[0, 5:7] = True
-            yield PLCSSourceFrame(
-                render=_logical_render(index),
-                frame_index=index,
-                label={
-                    "objects": [
-                        {
-                            "object_id": "person-0",
-                            "instance_id": 1,
-                            "present": True,
-                            "visible_pixel_count": 24,
-                        }
-                    ]
-                },
-                human_kp=keypoints,
-                human_vis=visible,
-                court_kp=np.zeros((20, 2), dtype=np.float32),
-                court_vis=np.zeros((20,), dtype=np.bool_),
-                present=np.ones((1,), dtype=np.bool_),
             )
 
 
@@ -564,48 +472,3 @@ def test_video_publication_failure_rolls_back_owned_metadata(
     assert not output.exists()
     assert not output.with_suffix(".json").exists()
     assert not tuple(tmp_path.glob(".publication-failed.mp4.*.staging*"))
-
-
-@pytest.mark.parametrize(
-    ("domain", "fake_name", "fake_type"),
-    [
-        (DatasetVisualizationDomain.BLCS, "BLCSVisualizationSource", _FakeBLCS),
-        (DatasetVisualizationDomain.PLCS, "PLCSVisualizationSource", _FakePLCS),
-    ],
-)
-def test_compact_view_streams_three_frames_to_mp4_and_deterministic_metadata(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    domain: DatasetVisualizationDomain,
-    fake_name: str,
-    fake_type: type[_FakeBLCS] | type[_FakePLCS],
-) -> None:
-    monkeypatch.setattr(renderer_module, fake_name, fake_type)
-    output = tmp_path / f"{domain.value}.mp4"
-    request = DatasetVisualizationRequest(
-        domain=domain,
-        dataset_root=_root(tmp_path, domain.value),
-        output_video=output,
-        trajectory_id=None,
-        logical_scene_id="logical-0",
-        camera_id="camera-0",
-        fps=12.0,
-        crf=20,
-        history_frames=3,
-    )
-
-    result = visualize_dataset(request)
-
-    info = probe_video_info(output)
-    assert info.frame_count == 3
-    assert (info.width, info.height) == (128, 96)
-    payload = json.loads(result.metadata_path.read_text(encoding="utf-8"))
-    assert payload["domain"] == domain.value
-    assert payload["frame_count"] == 3
-    assert payload["selection"] == {
-        "camera_id": "camera-0",
-        "logical_scene_id": "logical-0",
-        "trajectory_id": None,
-    }
-    assert "created_at" not in payload
-    assert not tuple(tmp_path.glob(f".{domain.value}.mp4.*.staging*"))

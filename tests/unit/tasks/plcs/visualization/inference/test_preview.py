@@ -22,14 +22,7 @@ _DATA_CANDIDATES = (
 )
 DATA_ROOT = next((path for path in _DATA_CANDIDATES if path.is_dir()), None)
 
-FORMS = (
-    "single_object",
-    "single_object_broadcast",
-    "single_object_camera_view_v2",
-    "multi_object",
-    "multi_object_broadcast",
-    "multi_object_camera_view_v2",
-)
+FORMS = ("single_object",)
 EXPECTED_CAMERAS = {
     "single_object": 6,
     "single_object_broadcast": 2,
@@ -203,3 +196,6 @@ def test_preview_window_slices_ground_truth_on_real_scene() -> None:
         != windowed["tracks"][0]["position"]["shape"]
     )
     assert any("のみを表示" in warning for warning in windowed["warnings"])
+
+
+pytestmark = pytest.mark.local_data

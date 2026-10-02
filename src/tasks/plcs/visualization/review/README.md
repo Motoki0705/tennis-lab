@@ -38,7 +38,7 @@
 `poses`（156 = 52関節 × 3軸角）は AMASS の並び
 `[global_orient, body, left_hand, right_hand]` のまま使い、pose mean は加えない。
 形状ブレンド → ルート相対の剛体変換 → `trans` 加算という、repo の SMPL-H
-linear blend skinning（`src/synthetic_data_generation/dataset/plcs/smplh.py`）と
+linear blend skinning（`src/tasks/plcs/motion/smplh_model.py`）と
 同じ手順で `(T, 52, 3)` の世界関節を得る。座標系は `PLCSCoordinateContract`
 （`plcs_amass_smplh_z_up_v1`：右手系・+Z up・メートル）で、`trans` を加えるため
 ビューは世界座標をそのまま見る。

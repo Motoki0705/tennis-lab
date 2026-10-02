@@ -127,17 +127,6 @@ def test_reference_metadata_parser_rejects_missing_or_inconsistent_fields(
         plcs_reference_metadata_from_batch(batch)
 
 
-def test_non_track_query_reference_metadata_does_not_infer_a_rope_contract() -> None:
-    batch = _reference_metadata().to_batch_fields()
-    batch.pop("track_query_reference")
-
-    metadata = plcs_reference_metadata_from_batch(batch)
-
-    assert metadata is not None
-    assert metadata.track_query_contract is None
-    assert metadata.reference_camera_ids == ("camera_right", "camera_right")
-
-
 def test_reference_metadata_rejects_transform_not_owned_by_selection() -> None:
     metadata = _reference_metadata()
     wrong = metadata.reference_from_physical.clone()

@@ -24,13 +24,7 @@ from src.tasks.base.model_io import (
     TrackQueryReferenceContractMetadata,
 )
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
-from src.tasks.blcs.training.tracking_lightning_module import (
-    BLCSTrackingLightningModule,
-)
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
-from src.tasks.plcs.training.tracking_lightning_module import (
-    PLCSTrackingLightningModule,
-)
 from src.utils.schema.court import (
     COURT_COORD_SCALE_X,
     COURT_COORD_SCALE_XYZ,
@@ -285,16 +279,6 @@ def test_raw_checkpoint_validation_happens_without_inference(
             _checkpoint_container(),
         ),
         (
-            BLCSTrackingLightningModule,
-            SimpleNamespace(
-                court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT,
-                track_query_reference_contract=(
-                    _CANONICAL_TRACK_QUERY_REFERENCE_CONTRACT
-                ),
-            ),
-            _tracking_checkpoint_container(),
-        ),
-        (
             PLCSLightningModule,
             SimpleNamespace(
                 plcs_runtime=SimpleNamespace(
@@ -303,18 +287,6 @@ def test_raw_checkpoint_validation_happens_without_inference(
                 )
             ),
             _checkpoint_container(),
-        ),
-        (
-            PLCSTrackingLightningModule,
-            SimpleNamespace(
-                plcs_runtime=SimpleNamespace(
-                    court_keypoint_contract=_PHYSICAL_V1_COURT_KEYPOINT_CONTRACT
-                ),
-                track_query_reference_contract=(
-                    _CANONICAL_TRACK_QUERY_REFERENCE_CONTRACT
-                ),
-            ),
-            _tracking_checkpoint_container(),
         ),
     ],
 )
@@ -347,7 +319,6 @@ def test_task_lightning_save_hooks_write_the_exact_contract(
                 )
             ),
         ),
-        (PLCSTrackingLightningModule, object()),
     ],
 )
 def test_task_lightning_load_hooks_reject_old_checkpoints(
