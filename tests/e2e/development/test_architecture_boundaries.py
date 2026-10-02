@@ -218,6 +218,15 @@ COURT_INFERENCE_REMOVED_MODULES = (
     "src.tasks.court_detection.inference.mask_predictor",
     "src.tasks.court_detection.inference.semantic_lines",
 )
+# Dense Court teachers are generated in memory from sparse geometry. The old
+# offline entrypoints and their disk-store helpers must not be reintroduced.
+COURT_OFFLINE_TARGET_REMOVED_MODULES = (
+    "src.tasks.court_detection.scripts.generate_masks",
+    "src.tasks.court_detection.scripts.generate_line_masks",
+    "src.tasks.court_detection.scripts.materialize_targets",
+    "src.tasks.court_detection.data.target_generation.materializer",
+    "src.tasks.court_detection.data.target_generation.store",
+)
 TENNIS_SCENE_REMOVED_MODULES = (
     "src.tennis_scene.pipeline.components.blcs",
     "src.tennis_scene.pipeline.components.plcs",
@@ -1434,6 +1443,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
         *REMOVED_MODULES,
         *BALL_STORE_REMOVED_MODULES,
         *COURT_INFERENCE_REMOVED_MODULES,
+        *COURT_OFFLINE_TARGET_REMOVED_MODULES,
         *TENNIS_SCENE_REMOVED_MODULES,
         *SINGLE_OBJECT_REMOVED_MODULES,
     )
