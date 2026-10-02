@@ -64,7 +64,10 @@ from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court import COURT_KP_NAMES, GROUND_COURT_KP_NAMES
 
 _TENNIS_SOURCE_PRESET: Path = (
-    PROJECT_ROOT / "src" / "tasks" / "court_detection"
+    PROJECT_ROOT
+    / "src"
+    / "tasks"
+    / "court_detection"
     / "configs"
     / "data"
     / "source"
@@ -257,7 +260,9 @@ class CourtDatasetCatalog:
             project_root=self.project_root,
             data_root=self.data_root,
         )
-        self._tennis_root = self.data_root / "court_detection" / "tennis_court_detector-v1"
+        self._tennis_root = (
+            self.data_root / "court_detection" / "tennis_court_detector-v1"
+        )
         self._synthetic_workspace = self.data_root / _SYNTHETIC_SOURCE_RELATIVE
         self._entries: tuple[CourtDatasetEntry, ...] | None = None
         self._scan_signature: tuple[tuple[str, int], ...] | None = None
@@ -471,7 +476,9 @@ class CourtDatasetCatalog:
                 f"Synthetic Court scene {scene_id!r} が string schema を publish していません。"
             )
         definition = court_schema_from_dataset_schema(published)
-        scope = "all_courts" if definition.version.value == "v1" else "target_court"
+        if definition.version.value != "v3":
+            raise ValueError("Only Synthetic Court V3 datasets are supported.")
+        scope = "target_court"
         config = SyntheticCourtSourceConfig.from_mapping(
             {
                 "kind": "synthetic_court",
@@ -575,6 +582,8 @@ class CourtDatasetCatalog:
                     raise ValueError("dataset.json does not publish a string schema.")
                 definition = court_schema_from_dataset_schema(schema)
                 published = schema
+                if definition.version.value != "v3":
+                    raise ValueError("Only Synthetic Court V3 datasets are supported.")
                 if manifest.get("status") != "completed":
                     raise ValueError(
                         f"Synthetic Court scene {scene_id!r} は completed stage ではありません。"
@@ -620,17 +629,14 @@ class CourtDatasetCatalog:
     def _synthetic_split_counts(self, scene_id: str, version: str) -> dict[str, int]:
         """Count accepted samples per configured split from the published manifest.
 
-        The split names published by each schema version are mapped explicitly
-        (v1 uses ``val``; v2/v3 publish ``validation``), and the result is
+        V3's ``validation`` split maps explicitly to ``val``. The result is
         asserted against ``len(records())`` in the review unit tests so the
         cheap catalog count cannot silently drift from the canonical contract.
         """
         manifest = self._synthetic_manifest(scene_id)
-        split_map = (
-            {"train": "train", "val": "val", "test": "test"}
-            if version == "v1"
-            else {"train": "train", "validation": "val", "test": "test"}
-        )
+        if version != "v3":
+            raise ValueError("Only Synthetic Court V3 datasets are supported.")
+        split_map = {"train": "train", "validation": "val", "test": "test"}
         samples = manifest.get("samples")
         if not isinstance(samples, list) or not samples:
             raise ValueError(

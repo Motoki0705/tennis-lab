@@ -43,7 +43,10 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtTrainingResult,
 )
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.model_io.mixed_adapter import (
+    MixedCourtPoseModelIOAdapter,
+)
+from src.tasks.court_detection.models.dinov3_dpt import CourtHierarchicalModel
 from src.tasks.court_detection.training.metrics import (
     CourtDetectionMetrics,
     CourtPoseGeometryMetrics,
@@ -77,14 +80,17 @@ class CourtDetectionLightningModule(BaseLightningModule):
             resolved_bundle = deserialize_target_bundle(target_bundle_state)
         else:
             resolved_bundle = target_bundle
-            if target_bundle_state is not None and deserialize_target_bundle(target_bundle_state) != resolved_bundle:
+            if (
+                target_bundle_state is not None
+                and deserialize_target_bundle(target_bundle_state) != resolved_bundle
+            ):
                 raise ValueError(
                     "Court target bundle disagrees with its checkpoint snapshot."
                 )
         bundle_snapshot = serialize_target_bundle(resolved_bundle)
         self.save_hyperparameters({"target_bundle_state": bundle_snapshot})
         self.target_bundle = resolved_bundle
-        self.pose_variant = bool(getattr(getattr(runtime.loss, "pose", None), "enabled", False))
+        self.pose_variant = runtime.loss.pose.enabled
         self.qualitative_fps = runtime.qualitative_fps
         self.qualitative_style = runtime.render_style
 
@@ -94,13 +100,18 @@ class CourtDetectionLightningModule(BaseLightningModule):
         )
         self.model = model_pair.model
         self.model_io = cast(CourtModelIOAdapter, model_pair.adapter)
+        if self.pose_variant:
+            self.model_io = MixedCourtPoseModelIOAdapter(
+                self.model_io.spec,
+                loss_config=runtime.loss,
+                execution_boundary=self.model_io.execution_boundary,
+            )
+            self.model_io.validate_model_pair(self.model)
         self.consistency_instrumented = (
             isinstance(self.model_io, CourtPoseModelIOAdapter)
             and self.model_io.consistency_instrumented
         )
-        self.qualitative_renderers: dict[
-            CourtTargetKind, CourtQualitativeRenderer
-        ] = (
+        self.qualitative_renderers: dict[CourtTargetKind, CourtQualitativeRenderer] = (
             {}
             if self.pose_variant
             else {
@@ -111,9 +122,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 for kind in resolved_bundle.kinds
             }
         )
-        self._stage_metrics: dict[
-            str, dict[CourtTargetKind, CourtDetectionMetrics]
-        ] = {
+        self._stage_metrics: dict[str, dict[CourtTargetKind, CourtDetectionMetrics]] = {
             stage: {
                 kind: CourtDetectionMetrics(
                     kind,
@@ -157,62 +166,81 @@ class CourtDetectionLightningModule(BaseLightningModule):
         batch: Mapping[str, object],
         stage: str,
     ) -> CourtTrainingResult | CourtPoseTrainingResult:
-        if isinstance(self.model_io, CourtPoseModelIOAdapter):
-            pose_call = self.model_io.prepare_training_batch(batch)
-            output = cast(CourtModelOutput, self.model(*pose_call.model_call.model_args))
-            progress_fraction = (
-                self._progress_fraction(stage)
-                if self.model_io.consistency_instrumented
-                else None
+        raw_model_io = cast(object, self.model_io)
+        if not isinstance(raw_model_io, MixedCourtPoseModelIOAdapter):
+            return self._dense_step(batch, stage)
+        model_io = raw_model_io
+
+        pose_call = model_io.prepare_training_batch(batch)
+        output = cast(
+            CourtModelOutput,
+            self.model(*pose_call.model_call.model_args),
+        )
+        progress_fraction = (
+            self._progress_fraction(stage)
+            if model_io.consistency_instrumented
+            else None
+        )
+        result = model_io.training_result(
+            output,
+            pose_call,
+            progress_fraction=progress_fraction,
+        )
+        self._log_training_result(stage, result)
+        if stage == "train":
+            self._record_matrix_loss_result(result)
+
+        image_size = batch.get("image_size")
+        if not isinstance(image_size, Tensor):
+            raise ValueError("Court batch image_size must be a Tensor.")
+        for kind in self.target_bundle.kinds:
+            self._stage_metrics[stage][kind].update(
+                result.output.dense_logits[kind],
+                pose_call.targets[kind],
+                image_size=image_size,
             )
-            pose_result = self.model_io.training_result(
-                output,
-                pose_call,
-                progress_fraction=progress_fraction,
-            )
-            self._log_training_result(stage, pose_result)
-            if stage == "train":
-                self._record_matrix_loss_result(pose_result)
-            image_size = batch.get("image_size")
-            if not isinstance(image_size, Tensor):
-                raise ValueError("Court batch image_size must be a Tensor.")
-            for kind in self.target_bundle.kinds:
-                self._stage_metrics[stage][kind].update(
-                    pose_result.output.dense_logits[kind],
-                    pose_call.targets[kind],
-                    image_size=image_size,
+
+        mask = model_io.pose_supervision_mask(pose_call)
+        if not bool(mask.any()):
+            return result
+        target_pose = pose_call.targets.get("pose")
+        if not isinstance(target_pose, CourtPoseTargetBatch):
+            raise ValueError("Supervised mixed Court batch lacks a pose target.")
+        self._pose_metrics[stage].update(result.decoded_pose, target_pose)
+
+        geometry_tracker = self._pose_geometry_metrics.get(stage)
+        if geometry_tracker is not None:
+            kp_target = pose_call.targets.get("kp")
+            if not isinstance(kp_target, Mapping):
+                raise ValueError(
+                    "Pose metrics require the canonical singleton KP target."
                 )
-            self._pose_metrics[stage].update(
-                pose_result.decoded_pose,
-                cast(CourtPoseTargetBatch, pose_call.targets["pose"]),
-            )
-            geometry_tracker = self._pose_geometry_metrics.get(stage)
-            if geometry_tracker is not None:
-                kp_target = pose_call.targets.get("kp")
-                if not isinstance(kp_target, Mapping):
-                    raise ValueError(
-                        "Pose metrics require the canonical singleton KP target."
-                    )
-                target_pose = cast(CourtPoseTargetBatch, pose_call.targets["pose"])
-                image_size = cast(Tensor, pose_call.targets["image_size"])
-                ground_truth_points = cast(Tensor, kp_target["points_xy"]).squeeze(2)
-                point_visible = cast(Tensor, kp_target["point_visible"]).squeeze(2)
-                if pose_result.consistency is not None:
-                    geometry_tracker.update(
-                        pose_result.consistency,
-                        ground_truth_points_normalized=ground_truth_points,
-                        point_visible=point_visible,
-                        image_size=image_size,
-                    )
-                else:
-                    geometry_tracker.update_pose_prediction(
-                        pose_result.decoded_pose,
-                        target_pose,
-                        ground_truth_points_normalized=ground_truth_points,
-                        point_visible=point_visible,
-                        image_size=image_size,
-                    )
-            return pose_result
+            full_image_size = pose_call.targets.get("image_size")
+            if not isinstance(full_image_size, Tensor):
+                raise ValueError("Pose metrics require a typed image_size target.")
+            ground_truth_points = cast(Tensor, kp_target["points_xy"])[mask].squeeze(2)
+            point_visible = cast(Tensor, kp_target["point_visible"])[mask].squeeze(2)
+            supervised_image_size = full_image_size[mask]
+            if result.consistency is not None:
+                geometry_tracker.update(
+                    result.consistency,
+                    ground_truth_points_normalized=ground_truth_points,
+                    point_visible=point_visible,
+                    image_size=supervised_image_size,
+                )
+            else:
+                geometry_tracker.update_pose_prediction(
+                    result.decoded_pose,
+                    target_pose,
+                    ground_truth_points_normalized=ground_truth_points,
+                    point_visible=point_visible,
+                    image_size=supervised_image_size,
+                )
+        return result
+
+    def _dense_step(
+        self, batch: Mapping[str, object], stage: str
+    ) -> CourtTrainingResult:
         legacy_call = self.model_io.prepare_training_batch(batch)
         logits = cast(CourtLogits, self.model(*legacy_call.model_call.model_args))
         result = cast(
@@ -422,21 +450,17 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 if float(result.dense_effective_weights[kind]) <= 0.0:
                     continue
                 terms[f"{kind}_direct"] = raw_loss
-                terms[f"{kind}_configured_weight"] = (
-                    result.dense_configured_weights[kind]
-                )
-                terms[f"{kind}_effective_weight"] = (
-                    result.dense_effective_weights[kind]
-                )
+                terms[f"{kind}_configured_weight"] = result.dense_configured_weights[
+                    kind
+                ]
+                terms[f"{kind}_effective_weight"] = result.dense_effective_weights[kind]
                 terms[f"{kind}_weighted"] = result.weighted_dense_losses[kind]
             for name, raw_loss in result.pose_losses.items():
                 terms[f"{name}_direct"] = raw_loss
-                terms[f"{name}_configured_weight"] = (
-                    result.pose_configured_weights[name]
-                )
-                terms[f"{name}_effective_weight"] = result.pose_effective_weights[
+                terms[f"{name}_configured_weight"] = result.pose_configured_weights[
                     name
                 ]
+                terms[f"{name}_effective_weight"] = result.pose_effective_weights[name]
                 terms[f"{name}_weighted"] = result.weighted_pose_losses[name]
             consistency = result.consistency
             if consistency is not None:
@@ -450,9 +474,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
                         "consistency_configured_weight": (
                             consistency.configured_weight
                         ),
-                        "consistency_effective_weight": (
-                            consistency.effective_weight
-                        ),
+                        "consistency_effective_weight": (consistency.effective_weight),
                         "consistency_auxiliary_weighted": (
                             consistency.weighted_auxiliary_loss
                         ),
@@ -463,9 +485,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 if float(result.effective_weights[kind]) <= 0.0:
                     continue
                 terms[f"{kind}_direct"] = raw_loss
-                terms[f"{kind}_configured_weight"] = result.configured_weights[
-                    kind
-                ]
+                terms[f"{kind}_configured_weight"] = result.configured_weights[kind]
                 terms[f"{kind}_effective_weight"] = result.effective_weights[kind]
                 terms[f"{kind}_weighted"] = result.weighted_losses[kind]
         for term_name, tensor in terms.items():
@@ -499,8 +519,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
                     f"{stage}/{name}",
                     value,
                     prog_bar=(
-                        stage == "val"
-                        and metric_name in {"miou", "mean_dist", "dice"}
+                        stage == "val" and metric_name in {"miou", "mean_dist", "dice"}
                     ),
                     sync_dist=False,
                 )
@@ -531,9 +550,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
 
     def on_train_batch_start(self, batch: object, batch_idx: int) -> None:
         super().on_train_batch_start(batch, batch_idx)
-        if not (
-            self.consistency_instrumented or self._matrix_evidence_enabled()
-        ):
+        if not (self.consistency_instrumented or self._matrix_evidence_enabled()):
             return
         if self.device.type == "cuda":
             torch.cuda.synchronize(self.device)
@@ -548,9 +565,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
     ) -> None:
         _ = (outputs, batch, batch_idx)
         if (
-            not (
-                self.consistency_instrumented or self._matrix_evidence_enabled()
-            )
+            not (self.consistency_instrumented or self._matrix_evidence_enabled())
             or self._train_batch_started_at is None
         ):
             return
@@ -573,7 +588,9 @@ class CourtDetectionLightningModule(BaseLightningModule):
             )
         else:
             peak_rss = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-            peak_memory_bytes = peak_rss if sys.platform == "darwin" else peak_rss * 1024
+            peak_memory_bytes = (
+                peak_rss if sys.platform == "darwin" else peak_rss * 1024
+            )
         if self._matrix_evidence_enabled():
             self._matrix_step_time_ms += elapsed_ms
             self._matrix_step_count += 1
@@ -584,14 +601,11 @@ class CourtDetectionLightningModule(BaseLightningModule):
         self._train_batch_started_at = None
 
     def on_after_backward(self) -> None:
-        if not (
-            self.consistency_instrumented or self._matrix_evidence_enabled()
-        ):
+        if not (self.consistency_instrumented or self._matrix_evidence_enabled()):
             return
         model = cast(CourtHierarchicalModel, self.model)
         branch_parameters = {
-            str(kind): tuple(head.parameters())
-            for kind, head in model.heads.items()
+            str(kind): tuple(head.parameters()) for kind, head in model.heads.items()
         }
         if hasattr(model, "pose_head"):
             branch_parameters["pose"] = tuple(model.pose_head.parameters())
@@ -664,9 +678,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
         ):
             raise RuntimeError("Court matrix manifest evidence identity is incomplete.")
         manifest_body = {
-            key: value
-            for key, value in manifest.items()
-            if key != "manifest_sha256"
+            key: value for key, value in manifest.items() if key != "manifest_sha256"
         }
         if self._canonical_json_sha256(manifest_body) != manifest_sha256:
             raise RuntimeError("Court matrix manifest SHA-256 is invalid.")
@@ -733,7 +745,9 @@ class CourtDetectionLightningModule(BaseLightningModule):
             )
         if self._matrix_step_count <= 0 or self._matrix_peak_memory_bytes <= 0:
             raise RuntimeError("Court matrix timing or memory evidence is missing.")
-        parameter_count = sum(parameter.numel() for parameter in self.model.parameters())
+        parameter_count = sum(
+            parameter.numel() for parameter in self.model.parameters()
+        )
         if parameter_count <= 0:
             raise RuntimeError("Court matrix model parameter count must be positive.")
         schema, phase, manifest_sha256, entry_id = self._matrix_evidence_identity()
@@ -753,13 +767,16 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 "peak_memory_bytes": self._matrix_peak_memory_bytes,
             },
         }
-        payload = json.dumps(
-            evidence,
-            ensure_ascii=False,
-            sort_keys=True,
-            indent=2,
-            allow_nan=False,
-        ).encode("utf-8") + b"\n"
+        payload = (
+            json.dumps(
+                evidence,
+                ensure_ascii=False,
+                sort_keys=True,
+                indent=2,
+                allow_nan=False,
+            ).encode("utf-8")
+            + b"\n"
+        )
         repro_dir = self._matrix_repro_dir()
         evidence_path = repro_dir / "court_matrix_evidence.json"
         with tempfile.NamedTemporaryFile(
@@ -913,10 +930,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
                     artifact_dir=artifact_dir,
                     name=f"court_{kind}_batch{batch_index:02d}",
                     tb_writer=tb_writer,
-                    tag=(
-                        f"qualitative/court_detection/{kind}/"
-                        f"batch{batch_index:02d}"
-                    ),
+                    tag=(f"qualitative/court_detection/{kind}/batch{batch_index:02d}"),
                     global_step=global_step,
                     fps=self.qualitative_fps,
                 )
@@ -927,8 +941,7 @@ def _move_to_device(value: object, *, device: torch.device) -> object:
         return value.to(device)
     if isinstance(value, Mapping):
         return {
-            key: _move_to_device(item, device=device)
-            for key, item in value.items()
+            key: _move_to_device(item, device=device) for key, item in value.items()
         }
     if isinstance(value, list):
         return [_move_to_device(item, device=device) for item in value]

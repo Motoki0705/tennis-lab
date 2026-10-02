@@ -71,8 +71,9 @@ def test_all_split_file_stamps_survive_catalog_reload(
                 catalog.verify_sample_files(entry, record.sample_id)
 
 
-def test_unknown_published_schema_disables_only_that_scene(
-    review_project: Path,
+@pytest.mark.parametrize("version", ["v1", "v2", "v9"])
+def test_unsupported_published_schema_disables_only_that_scene(
+    review_project: Path, version: str,
 ) -> None:
     manifest = (
         review_project
@@ -85,14 +86,15 @@ def test_unknown_published_schema_disables_only_that_scene(
         / "dataset.json"
     )
     payload = json.loads(manifest.read_text(encoding="utf-8"))
-    payload["schema"] = "canonical_court_dataset_v9"
+    payload["schema"] = f"canonical_court_dataset_{version}"
     manifest.write_text(json.dumps(payload), encoding="utf-8")
 
     catalog = _service(review_project).datasets
     entry = _entry(catalog, "synthetic_court/B00/val")
 
     assert entry.available is False
-    assert entry.reason is not None and "v9" in entry.reason
+    assert entry.reason is not None
+    assert version in entry.reason or "Only Synthetic Court V3" in entry.reason
     # The Tennis dataset is unaffected by the synthetic schema failure.
     assert _entry(catalog, "tennis_court_detector/val").available is True
 

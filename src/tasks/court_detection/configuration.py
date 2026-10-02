@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import warnings
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,9 +45,9 @@ ConfigMapping: TypeAlias = Mapping[str, object]
 CourtSourceKind: TypeAlias = Literal["tennis_court_detector", "synthetic_court"]
 CourtSourceSplit: TypeAlias = Literal["train", "val", "test"]
 CourtTargetKind: TypeAlias = Literal["kp", "seg", "line", "semantic_line"]
-SyntheticCourtSchemaVersion: TypeAlias = Literal["v1", "v2", "v3"]
-CourtScope: TypeAlias = Literal["all_courts", "target_court"]
-CourtDecoderName: TypeAlias = Literal["fpn", "unet", "dpt"]
+SyntheticCourtSchemaVersion: TypeAlias = Literal["v3"]
+CourtScope: TypeAlias = Literal["target_court"]
+CourtDecoderName: TypeAlias = Literal["dpt"]
 CourtDPTSize: TypeAlias = Literal["tiny", "small", "base", "large"]
 CourtConsistencyGradientFlow: TypeAlias = Literal[
     "both",
@@ -524,6 +523,12 @@ class SyntheticCourtSourceConfig:
     workspace_root: Path
     scene_ids: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        if self.schema != "v3" or self.court_scope != "target_court":
+            raise SemanticConfigurationError(
+                "Synthetic Court input requires V3 with court_scope='target_court'."
+            )
+
     @classmethod
     def from_mapping(
         cls, value: object, *, resolver: PathResolver
@@ -545,20 +550,14 @@ class SyntheticCourtSourceConfig:
                 "data.source.kind must be 'synthetic_court'."
             )
         schema = _string(mapping, "schema", path="data.source")
-        if schema not in {"v1", "v2", "v3"}:
+        if schema != "v3":
             raise SemanticConfigurationError(
-                "data.source.schema must be explicitly 'v1', 'v2', or 'v3'."
+                "data.source.schema must be 'v3'; legacy V1/V2 are unsupported."
             )
         court_scope = _string(mapping, "court_scope", path="data.source")
-        if court_scope not in {"all_courts", "target_court"}:
+        if court_scope != "target_court":
             raise SemanticConfigurationError(
-                "data.source.court_scope must be 'all_courts' or "
-                "'target_court'."
-            )
-        if schema == "v1" and court_scope == "target_court":
-            raise SemanticConfigurationError(
-                "data.source.court_scope='target_court' requires "
-                "data.source.schema='v2' or 'v3'."
+                "data.source.court_scope must be 'target_court'."
             )
         raw_ids = _sequence(mapping, "scene_ids", path="data.source")
         scene_ids_list: list[str] = []
@@ -723,23 +722,6 @@ class CourtDataConfig:
             require_config_mapping(mapping, "processing", path="data"),
             resolver=resolver,
         )
-        if (
-            isinstance(source, SyntheticCourtSourceConfig)
-            and source.court_scope == "all_courts"
-            and any(
-                target.kind == "seg"
-                or target.kind == "semantic_line"
-                or (
-                    target.kind == "line"
-                    and target.target_schema == LINE_TARGET_SCHEMA
-                )
-                for target in processing.targets
-            )
-        ):
-            raise SemanticConfigurationError(
-                "Current single-court SEG/LINE targets require "
-                "data.source.court_scope='target_court'."
-            )
         return cls(
             source=source,
             processing=processing,
@@ -811,24 +793,8 @@ class CourtEncoderConfig:
     ) -> CourtEncoderConfig:
         mapping = as_config_mapping(value, path="model.encoder")
         name = _string(mapping, "name", path="model.encoder")
-        if name == "default":
-            _exact(mapping, {"name"}, path="model.encoder")
-            return cls(
-                name=name,
-                repository_path=None,
-                checkpoint_path=None,
-                backbone_name=None,
-                strict=None,
-                train_mode=None,
-                last_n_blocks=None,
-                out_indices=None,
-                layer_mode=None,
-                lora=None,
-            )
         if name != "dinov3":
-            raise SemanticConfigurationError(
-                "model.encoder.name must be 'default' or 'dinov3'."
-            )
+            raise SemanticConfigurationError("model.encoder.name must be 'dinov3'.")
         keys = {
             "name",
             "backbone_name",
@@ -891,78 +857,39 @@ class CourtDecoderConfig:
     def from_mapping(cls, value: object) -> CourtDecoderConfig:
         mapping = as_config_mapping(value, path="model.decoder")
         name = _string(mapping, "name", path="model.decoder")
-        expected = (
-            {"name", "size", "channels", "reassemble_factors"}
-            if name == "dpt"
-            else {"name", "channels"}
+        if name != "dpt":
+            raise SemanticConfigurationError("model.decoder.name must be dpt.")
+        _exact(
+            mapping,
+            {"name", "size", "channels", "reassemble_factors"},
+            path="model.decoder",
         )
-        if name not in {"fpn", "unet", "dpt"}:
+        channels = _integer(mapping, "channels", path="model.decoder")
+        size_value = _string(mapping, "size", path="model.decoder")
+        if size_value not in DPT_CHANNELS_BY_SIZE:
             raise SemanticConfigurationError(
-                "model.decoder.name must be fpn, unet, or dpt."
+                "model.decoder.size must be tiny, small, base, or large."
             )
-        _exact(mapping, expected, path="model.decoder")
-        raw_channels = require_config_value(
-            mapping, "channels", (int, list, tuple), path="model.decoder"
-        )
-        channels: int | tuple[int, ...]
-        if type(raw_channels) is int:
-            channels = raw_channels
-        else:
-            sequence = cast("Sequence[object]", raw_channels)
-            if any(type(item) is not int for item in sequence):
-                raise ConfigurationTypeError(
-                    "model.decoder.channels must contain integers."
-                )
-            channels = tuple(cast("int", item) for item in sequence)
-        if name == "dpt" and type(channels) is not int:
-            raise SemanticConfigurationError("DPT decoder.channels must be an integer.")
-        if name != "dpt" and not isinstance(channels, tuple):
+        size = cast("CourtDPTSize", size_value)
+        expected_channels = DPT_CHANNELS_BY_SIZE[size]
+        if channels != expected_channels:
             raise SemanticConfigurationError(
-                "FPN/U-Net decoder.channels must be a sequence."
+                "DPT decoder.channels must match its strict size preset: "
+                f"size={size!r} requires channels={expected_channels}."
             )
-        if (isinstance(channels, int) and channels <= 0) or (
-            isinstance(channels, tuple)
-            and (len(channels) != 4 or any(channel <= 0 for channel in channels))
-        ):
+        factors = _float_tuple(mapping, "reassemble_factors", 4, path="model.decoder")
+        if any(factor <= 0.0 for factor in factors):
             raise SemanticConfigurationError(
-                "model.decoder.channels must define positive channel counts."
+                "model.decoder.reassemble_factors must be positive."
             )
-        if name == "dpt":
-            size_value = _string(mapping, "size", path="model.decoder")
-            if size_value not in DPT_CHANNELS_BY_SIZE:
-                raise SemanticConfigurationError(
-                    "model.decoder.size must be tiny, small, base, or large."
-                )
-            size = cast("CourtDPTSize", size_value)
-            expected_channels = DPT_CHANNELS_BY_SIZE[size]
-            if channels != expected_channels:
-                raise SemanticConfigurationError(
-                    "DPT decoder.channels must match its strict size preset: "
-                    f"size={size!r} requires channels={expected_channels}."
-                )
-            factors = _float_tuple(
-                mapping, "reassemble_factors", 4, path="model.decoder"
-            )
-            if any(factor <= 0.0 for factor in factors):
-                raise SemanticConfigurationError(
-                    "model.decoder.reassemble_factors must be positive."
-                )
-        else:
-            size = None
-            factors = None
-        return cls(
-            name=cast("CourtDecoderName", name),
-            size=size,
-            channels=channels,
-            reassemble_factors=factors,
-        )
+        return cls(name="dpt", size=size, channels=channels, reassemble_factors=factors)
 
 
 @dataclass(frozen=True, slots=True)
 class CourtTransformerEncoderConfig:
-    """Optional spatial transformer refinement over the DINO feature grid."""
+    """Required spatial Transformer over the DINO feature grid."""
 
-    name: Literal["none", "transformer"]
+    name: Literal["transformer"]
     enabled: bool
     dim: int | None
     depth: int | None
@@ -981,30 +908,9 @@ class CourtTransformerEncoderConfig:
         path = "model.transformer_encoder"
         mapping = as_config_mapping(value, path=path)
         name = _string(mapping, "name", path=path)
-        if name == "none":
-            _exact(mapping, {"name", "enabled"}, path=path)
-            if _bool(mapping, "enabled", path=path):
-                raise SemanticConfigurationError(
-                    "model.transformer_encoder.name='none' requires enabled=false."
-                )
-            return cls(
-                name="none",
-                enabled=False,
-                dim=None,
-                depth=None,
-                num_heads=None,
-                head_dim=None,
-                ffn_dim=None,
-                rope_dim=None,
-                rope_theta=None,
-                dropout=None,
-                attention_type=None,
-                n_kv_heads=None,
-                ffn_type=None,
-            )
         if name != "transformer":
             raise SemanticConfigurationError(
-                "model.transformer_encoder.name must be 'none' or 'transformer'."
+                "model.transformer_encoder.name must be 'transformer'."
             )
         _exact(
             mapping,
@@ -1057,8 +963,7 @@ class CourtTransformerEncoderConfig:
             n_kv_heads=n_kv_heads,
             ffn_type=cast("FFNType", ffn_type),
         )
-        # This branch has just populated every optional field above; the
-        # dataclass keeps them nullable for its explicit ``name='none'`` case.
+        # The parser requires every field before checking dimensional relations.
         dim = cast(int, result.dim)
         depth = cast(int, result.depth)
         num_heads = cast(int, result.num_heads)
@@ -1141,7 +1046,7 @@ class CourtDenseHeadBranchConfig:
 class CourtDenseHeadConfig:
     """Strict configuration for all task-specific dense residual heads."""
 
-    name: Literal["linear", "residual"]
+    name: Literal["residual"]
     normalization_groups: int | None
     branches: Mapping[CourtTargetKind, CourtDenseHeadBranchConfig]
 
@@ -1150,19 +1055,14 @@ class CourtDenseHeadConfig:
         path = "model.dense_head"
         mapping = as_config_mapping(value, path=path)
         name = _string(mapping, "name", path=path)
-        if name == "linear":
-            _exact(mapping, {"name"}, path=path)
-            return cls(
-                name="linear",
-                normalization_groups=None,
-                branches=MappingProxyType({}),
-            )
         if name != "residual":
             raise SemanticConfigurationError(
-                "model.dense_head.name must be 'linear' or 'residual'."
+                "model.dense_head.name must be 'residual'."
             )
         required = {"name", "normalization_groups", "kp", "seg", "line"}
-        expected = required | ({"semantic_line"} if "semantic_line" in mapping else set())
+        expected = required | (
+            {"semantic_line"} if "semantic_line" in mapping else set()
+        )
         _exact(mapping, expected, path=path)
         normalization_groups = _integer(mapping, "normalization_groups", path=path)
         if normalization_groups <= 0:
@@ -1210,16 +1110,7 @@ class CourtModelConfig:
             "decoder",
             "dense_head",
         }
-        legacy_linear = set(mapping) == expected - {"dense_head"}
-        if legacy_linear:
-            warnings.warn(
-                "Legacy Court model configuration has no model.dense_head; "
-                "loading its checkpoint-compatible linear 1x1 head.",
-                UserWarning,
-                stacklevel=2,
-            )
-        else:
-            _exact(mapping, expected, path="model")
+        _exact(mapping, expected, path="model")
         name = _string(mapping, "name", path="model")
         if name != "court_hierarchical":
             raise SemanticConfigurationError("model.name must be 'court_hierarchical'.")
@@ -1236,16 +1127,8 @@ class CourtModelConfig:
             decoder=CourtDecoderConfig.from_mapping(
                 require_config_mapping(mapping, "decoder", path="model")
             ),
-            dense_head=(
-                CourtDenseHeadConfig(
-                    name="linear",
-                    normalization_groups=None,
-                    branches=MappingProxyType({}),
-                )
-                if legacy_linear
-                else CourtDenseHeadConfig.from_mapping(
-                    require_config_mapping(mapping, "dense_head", path="model")
-                )
+            dense_head=CourtDenseHeadConfig.from_mapping(
+                require_config_mapping(mapping, "dense_head", path="model")
             ),
         )
         if result.in_channels <= 0:
@@ -1410,7 +1293,9 @@ class CourtLossConfig:
     def from_mapping(cls, value: object) -> CourtLossConfig:
         mapping = as_config_mapping(value, path="loss")
         required = {"seg", "kp", "line", "pose", "consistency"}
-        expected = required | ({"semantic_line"} if "semantic_line" in mapping else set())
+        expected = required | (
+            {"semantic_line"} if "semantic_line" in mapping else set()
+        )
         _exact(mapping, expected, path="loss")
         seg = require_config_mapping(mapping, "seg", path="loss")
         kp = require_config_mapping(mapping, "kp", path="loss")
@@ -1563,23 +1448,36 @@ class CourtInferenceConfig:
     patch_size: int
 
     @classmethod
-    def from_config(cls, value: object, *, resolver: PathResolver) -> CourtInferenceConfig:
+    def from_config(
+        cls, value: object, *, resolver: PathResolver
+    ) -> CourtInferenceConfig:
         config = as_config_mapping(value, path="checkpoint.config")
         data = require_config_mapping(config, "data", path="checkpoint.config")
         augmentation = require_config_mapping(data, "augmentation", path="data")
         short_side = _integer(augmentation, "val_short_side", path="data.augmentation")
         if short_side <= 0:
             raise SemanticConfigurationError("Validation image size must be positive")
-        loss = CourtLossConfig.from_mapping(require_config_mapping(config, "loss", path="checkpoint.config"))
+        loss = CourtLossConfig.from_mapping(
+            require_config_mapping(config, "loss", path="checkpoint.config")
+        )
         patch_size = _integer(augmentation, "patch_size", path="data.augmentation")
         if patch_size <= 0:
             raise SemanticConfigurationError("Validation patch size must be positive")
-        if loss.pose.enabled and not _bool(augmentation, "preserve_fx_fy", path="data.augmentation"):
-            raise SemanticConfigurationError("Pose inference requires preserve_fx_fy=true")
+        if loss.pose.enabled and not _bool(
+            augmentation, "preserve_fx_fy", path="data.augmentation"
+        ):
+            raise SemanticConfigurationError(
+                "Pose inference requires preserve_fx_fy=true"
+            )
         return cls(
-            CourtModelConfig.from_mapping(require_config_mapping(config, "model", path="checkpoint.config"), resolver=resolver),
+            CourtModelConfig.from_mapping(
+                require_config_mapping(config, "model", path="checkpoint.config"),
+                resolver=resolver,
+            ),
             loss,
-            short_side, loss.pose.enabled, patch_size,
+            short_side,
+            loss.pose.enabled,
+            patch_size,
         )
 
 
@@ -1597,7 +1495,8 @@ class CourtTrainingConfig:
         config = as_config_mapping(value, path="configuration")
         _exact(
             config,
-            {"paths", "run", "training", "data", "model", "loss", "render_style"},
+            {"paths", "run", "training", "data", "model", "loss", "render_style"}
+            | ({"mixed"} if "mixed" in config else set()),
             path="configuration",
         )
         run_mapping = require_config_mapping(config, "run", path="configuration")
@@ -1853,10 +1752,6 @@ class CourtTrainingConfig:
         )
 
 
-def validate_train_boundary(config: DictConfig) -> None:
-    CourtTrainingConfig.from_config(config)
-
-
 def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
     if not config.preserve_fx_fy:
         raise SemanticConfigurationError(
@@ -1928,5 +1823,4 @@ __all__ = [
     "SyntheticCourtSchemaVersion",
     "TennisCourtDetectorSourceConfig",
     "validate_paths_boundary",
-    "validate_train_boundary",
 ]

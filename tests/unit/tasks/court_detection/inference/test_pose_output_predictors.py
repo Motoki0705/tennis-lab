@@ -18,8 +18,8 @@ from src.tasks.court_detection.inference.predictor import (
 )
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import CourtModelSpec
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.tasks.court_detection.models.pose_head import (
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtHierarchicalModel,
     CourtModelOutput,
     CourtRawPoseOutput,
 )
@@ -64,7 +64,7 @@ class _StaticPoseModel(CourtHierarchicalModel):
 
     def forward(
         self,
-        image: torch.Tensor,
+        x: torch.Tensor,
         feature_1: torch.Tensor | None = None,
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
@@ -81,14 +81,14 @@ class _StaticPoseModel(CourtHierarchicalModel):
                 patch_valid_mask,
             )
         )
-        batch_size, _, height, width = image.shape
+        batch_size, _, height, width = x.shape
         return CourtModelOutput(
             dense_logits={
-                "kp": image.new_zeros((batch_size, 1, height, width)),
-                "seg": image.new_zeros((batch_size, 2, height, width)),
-                "line": image.new_zeros((batch_size, 1, height, width)),
+                "kp": x.new_zeros((batch_size, 1, height, width)),
+                "seg": x.new_zeros((batch_size, 2, height, width)),
+                "line": x.new_zeros((batch_size, 1, height, width)),
             },
-            pose=CourtRawPoseOutput(image.new_zeros((batch_size, 10))),
+            pose=CourtRawPoseOutput(x.new_zeros((batch_size, 10))),
         )
 
 

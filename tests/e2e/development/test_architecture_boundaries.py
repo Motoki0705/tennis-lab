@@ -214,6 +214,24 @@ BALL_STORE_REMOVED_MODULES = (
     "src.tasks.ball_detection.data.youtube_datamodule",
     "src.tasks.ball_detection.data.mixed_tracknet_datamodule",
 )
+COURT_SINGLE_MODEL_REMOVED_MODULES = (
+    "src.tasks.court_detection.models.encoders",
+    "src.tasks.court_detection.models.decoder",
+    "src.tasks.court_detection.models.hierarchical_model",
+    "src.tasks.court_detection.models.transformer_encoder",
+    "src.tasks.court_detection.models.dense_head",
+    "src.tasks.court_detection.models.pose_head",
+    "src.tasks.court_detection.scripts.train_mixed",
+    "src.tasks.court_detection.scripts.preview_heatmaps",
+    "src.tasks.court_detection.scripts.annotate_youtube_keypoints",
+    "src.tasks.court_detection.scripts.prepare_youtube_dataset",
+    "src.tasks.court_detection.generate_dataset",
+    "src.tasks.court_detection.generate_dataset.annotation_session",
+    "src.tasks.court_detection.data.inputs.tennis_store_migration",
+    "src.tasks.court_detection.training.runner_mixed",
+    "src.tasks.court_detection.training.lightning_module_mixed",
+    "src.tasks.court_detection.visualization.youtube_target_preview",
+)
 COURT_INFERENCE_REMOVED_MODULES = (
     "src.tasks.court_detection.inference.mask_predictor",
     "src.tasks.court_detection.inference.semantic_lines",
@@ -306,56 +324,60 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
     (
-        "src.tasks.court_detection.models.hierarchical_model.CourtHierarchicalModel.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
+        "Python assert",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._decode_with_transformer",
+        "Python raise",
+    ): 2,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._feature_forward_values",
         "Python raise",
     ): 1,
     (
-        "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",
         "Python raise",
     ): 1,
     (
-        "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",
         "Python shape/value validation branch",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder._validate_input",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_input",
         "Python raise",
     ): 6,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder._validate_input",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_input",
         "Python shape/value validation branch",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder._validate_patch_valid_mask",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_patch_valid_mask",
         "Python raise",
     ): 4,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder._validate_patch_valid_mask",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_patch_valid_mask",
         "Python shape/value validation branch",
     ): 2,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.build_patch_positions",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.build_patch_positions",
         "Python raise",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.build_patch_positions",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.build_patch_positions",
         "Python shape/value validation branch",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.build_patch_positions",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.build_patch_positions",
         "runtime implementation/type selection via type",
     ): 2,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
         "forward validation helper self._validate_input",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
         "forward validation helper self._validate_patch_valid_mask",
-    ): 1,
-    (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.forward",
-        "Python raise",
     ): 1,
     (
         "src.utils.models.architectures.transformer_sequence_discriminator.TransformerSequenceDiscriminator.forward",
@@ -495,29 +517,27 @@ TRANSFORMER_SEQUENCE_DISCRIMINATOR_PATH = (
     "TransformerSequenceDiscriminator.forward",
 )
 COURT_POSE_HEAD_PATH = (
-    "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
+    "src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",
 )
 COURT_HIERARCHICAL_PATH = (
-    "src.tasks.court_detection.models.hierarchical_model."
-    "CourtHierarchicalModel.forward",
+    "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
 )
 COURT_TRANSFORMER_PATH = (
-    "src.tasks.court_detection.models.transformer_encoder."
-    "CourtTransformerEncoder.forward",
+    "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
 )
 COURT_TRANSFORMER_INPUT_VALIDATION_PATH = (
     *COURT_TRANSFORMER_PATH,
-    "src.tasks.court_detection.models.transformer_encoder."
+    "src.tasks.court_detection.models.dinov3_dpt."
     "CourtTransformerEncoder._validate_input",
 )
 COURT_TRANSFORMER_PATCH_VALIDATION_PATH = (
     *COURT_TRANSFORMER_PATH,
-    "src.tasks.court_detection.models.transformer_encoder."
+    "src.tasks.court_detection.models.dinov3_dpt."
     "CourtTransformerEncoder._validate_patch_valid_mask",
 )
 COURT_TRANSFORMER_PATCH_POSITIONS_PATH = (
     *COURT_TRANSFORMER_PATH,
-    "src.tasks.court_detection.models.transformer_encoder.build_patch_positions",
+    "src.tasks.court_detection.models.dinov3_dpt.build_patch_positions",
 )
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
     (
@@ -569,31 +589,36 @@ EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
         "Python shape/value validation branch": 5,
         "runtime implementation/type selection via isinstance": 2,
     },
-    ("src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",): {
+    ("src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",): {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
     },
+    ("src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",): {
+        "Python assert": 1
+    },
     (
-        "src.tasks.court_detection.models.hierarchical_model.CourtHierarchicalModel.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._decode_with_transformer",
+    ): {"Python raise": 2},
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._feature_forward_values",
     ): {"Python raise": 1},
-    (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.forward",
-    ): {
-        "Python raise": 1,
+    ("src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",): {
         "forward validation helper self._validate_input": 1,
         "forward validation helper self._validate_patch_valid_mask": 1,
     },
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.forward",
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder._validate_input",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_input",
     ): {"Python raise": 6, "Python shape/value validation branch": 1},
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.forward",
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder._validate_patch_valid_mask",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_patch_valid_mask",
     ): {"Python raise": 4, "Python shape/value validation branch": 2},
     (
-        "src.tasks.court_detection.models.transformer_encoder.CourtTransformerEncoder.forward",
-        "src.tasks.court_detection.models.transformer_encoder.build_patch_positions",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.build_patch_positions",
     ): {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
@@ -1443,6 +1468,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
         *REMOVED_MODULES,
         *BALL_STORE_REMOVED_MODULES,
         *COURT_INFERENCE_REMOVED_MODULES,
+        *COURT_SINGLE_MODEL_REMOVED_MODULES,
         *COURT_OFFLINE_TARGET_REMOVED_MODULES,
         *TENNIS_SCENE_REMOVED_MODULES,
         *SINGLE_OBJECT_REMOVED_MODULES,

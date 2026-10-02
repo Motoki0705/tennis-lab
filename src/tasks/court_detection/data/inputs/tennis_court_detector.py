@@ -6,8 +6,7 @@ import hashlib
 import json
 import math
 import re
-from collections.abc import Mapping, Sequence
-from pathlib import Path
+from collections.abc import Sequence
 from typing import cast
 
 import torch
@@ -32,16 +31,26 @@ _TCD_CHANNEL_NAMES = GROUND_COURT_KP_NAMES
 _TCD_FLIP_PERMUTATION = (1, 0, 3, 2, 6, 7, 4, 5, 9, 8, 11, 10, 12, 13)
 _TCD_REQUIRED_RECORD_KEYS = frozenset({"id", "kps"})
 _TCD_OPTIONAL_RECORD_KEYS = frozenset({"metric"})
-_TCD_SAMPLE_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
+_TCD_SAMPLE_ID_PATTERN = re.compile("[A-Za-z0-9_-]+")
 
 
-class LegacyTennisCourtDetectorInput:
+class TennisCourtDetectorInput:
     """Convert upstream ordered-14 annotations into canonical raw samples."""
 
-    def __init__(
-        self,
-        config: TennisCourtDetectorSourceConfig,
-    ) -> None:
+    def __init__(self, config: TennisCourtDetectorSourceConfig) -> None:
+        descriptor = json.loads((config.root / "dataset.json").read_text())
+        if (
+            not isinstance(descriptor, dict)
+            or set(descriptor) != {"schema", "storage"}
+            or descriptor["schema"] != "tennis_court_detector_store_v1"
+        ):
+            raise ValueError("Expected a published TennisCourtDetector JPEG store.")
+        self.image_store = ImageRecordStore(config.root, descriptor["storage"])
+        if (
+            self.image_store.metadata.get("source_schema")
+            != "tennis_court_detector_annotations_v1"
+        ):
+            raise ValueError("TennisCourtDetector store changed its annotation schema.")
         self.config = config
         self.root = config.root
         self._spec = CourtInputSpec(
@@ -138,10 +147,6 @@ class LegacyTennisCourtDetectorInput:
             ),
         )
 
-    def _load_image(self, record: CourtSampleRecord) -> Image.Image:
-        with Image.open(record.image_path) as handle:
-            return handle.convert("RGB")
-
     def _load_records(self) -> dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]]:
         records: dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]] = {}
         excluded_counts = dict.fromkeys(self.config.excluded_sample_ids, 0)
@@ -155,10 +160,7 @@ class LegacyTennisCourtDetectorInput:
                 previous_split = sample_splits.get(record.sample_id)
                 if previous_split is not None:
                     raise ValueError(
-                        "TennisCourtDetector sample IDs must be unique across "
-                        "configured splits; "
-                        f"{record.sample_id!r} appears in {previous_split!r} "
-                        f"and {split!r}."
+                        f"TennisCourtDetector sample IDs must be unique across configured splits; {record.sample_id!r} appears in {previous_split!r} and {split!r}."
                     )
                 sample_splits[record.sample_id] = split
                 if record.sample_id in excluded_counts:
@@ -173,89 +175,9 @@ class LegacyTennisCourtDetectorInput:
         }
         if invalid_exclusions:
             raise ValueError(
-                "Every TennisCourtDetector excluded_sample_id must match exactly "
-                f"one annotation record; got {invalid_exclusions}."
+                f"Every TennisCourtDetector excluded_sample_id must match exactly one annotation record; got {invalid_exclusions}."
             )
         return records
-
-    def _read_source_split(
-        self, split: CourtSourceSplit, source_split: str
-    ) -> tuple[CourtSampleRecord, ...]:
-        annotation_path = self.root / f"data_{source_split}.json"
-        if not annotation_path.is_file():
-            raise FileNotFoundError(
-                f"TennisCourtDetector annotation is missing: {annotation_path}"
-            )
-        parsed = json.loads(annotation_path.read_text(encoding="utf-8"))
-        if not isinstance(parsed, list) or not parsed:
-            raise ValueError(
-                f"TennisCourtDetector {annotation_path.name} must be a non-empty list."
-            )
-        result: list[CourtSampleRecord] = []
-        seen: set[str] = set()
-        for index, value in enumerate(parsed):
-            if not isinstance(value, Mapping):
-                raise ValueError(
-                    f"TennisCourtDetector record {index} must be a mapping."
-                )
-            keys = set(value)
-            if not _TCD_REQUIRED_RECORD_KEYS.issubset(keys) or not keys.issubset(
-                _TCD_REQUIRED_RECORD_KEYS | _TCD_OPTIONAL_RECORD_KEYS
-            ):
-                raise ValueError(
-                    f"TennisCourtDetector record {index} must contain id and kps, "
-                    "with only optional metric metadata."
-                )
-            sample_id = self._parse_sample_id(value["id"], record_index=index)
-            if sample_id in seen:
-                raise ValueError(
-                    "TennisCourtDetector sample IDs must be unique within a split."
-                )
-            seen.add(sample_id)
-            keypoints = self._parse_keypoints(value["kps"], sample_id=sample_id)
-            annotation_metric = (
-                self._parse_annotation_metric(value["metric"], sample_id=sample_id)
-                if "metric" in value
-                else None
-            )
-            image_path = self._resolve_image(sample_id)
-            with Image.open(image_path) as handle:
-                width, height = handle.size
-                handle.verify()
-            source_target_digest = hashlib.sha256(
-                json.dumps(
-                    {
-                        "source_schema": self.spec.source_schema,
-                        "source_sample_id": sample_id,
-                        "width": width,
-                        "height": height,
-                        "keypoints": keypoints,
-                        "annotation_metric": annotation_metric,
-                    },
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    allow_nan=False,
-                ).encode("utf-8")
-            ).hexdigest()
-            result.append(
-                CourtSampleRecord(
-                    sample_id=sample_id,
-                    split=split,
-                    image_path=image_path,
-                    annotation_path=annotation_path,
-                    payload={
-                        "source_schema": self.spec.source_schema,
-                        "source_sample_id": sample_id,
-                        "source_target_sha256": source_target_digest,
-                        "width": width,
-                        "height": height,
-                        "source_split": source_split,
-                        "keypoints": keypoints,
-                        "annotation_metric": annotation_metric,
-                    },
-                )
-            )
-        return tuple(result)
 
     @staticmethod
     def _parse_sample_id(value: object, *, record_index: int) -> str:
@@ -265,9 +187,7 @@ class LegacyTennisCourtDetectorInput:
             or _TCD_SAMPLE_ID_PATTERN.fullmatch(value) is None
         ):
             raise ValueError(
-                f"TennisCourtDetector record {record_index} id must be a portable "
-                "filename stem containing only ASCII letters, digits, underscores, "
-                "and hyphens."
+                f"TennisCourtDetector record {record_index} id must be a portable filename stem containing only ASCII letters, digits, underscores, and hyphens."
             )
         return value
 
@@ -315,85 +235,77 @@ class LegacyTennisCourtDetectorInput:
             )
         return tuple(points)
 
-    def _resolve_image(self, sample_id: str) -> Path:
-        images = self.root / "images"
-        source_root = self.root.resolve(strict=True)
-        image_root = images.resolve(strict=True)
-        if not image_root.is_relative_to(source_root):
-            raise ValueError(
-                "TennisCourtDetector images directory must remain beneath the "
-                "configured source root."
-            )
-        candidates: list[Path] = [
-            images / f"{sample_id}.png",
-            images / f"{sample_id}.jpg",
-            images / f"{sample_id}.jpeg",
-        ]
-        existing: list[Path] = []
-        for path in candidates:
-            if path.is_symlink():
-                raise ValueError(
-                    f"TennisCourtDetector image must not be a symlink: {path}"
-                )
-            if not path.is_file():
-                continue
-            resolved = path.resolve(strict=True)
-            if not resolved.is_relative_to(image_root):
-                raise ValueError(
-                    "TennisCourtDetector image must remain beneath the images root."
-                )
-            existing.append(resolved)
-        if len(existing) != 1:
-            raise FileNotFoundError(
-                f"TennisCourtDetector {sample_id} requires exactly one image; found {existing}."
-            )
-        return existing[0]
-
-
-class TennisCourtDetectorInput(LegacyTennisCourtDetectorInput):
-    """Read the published JPEG/KP14 store; upstream files are migration inputs."""
-
-    def __init__(self, config: TennisCourtDetectorSourceConfig) -> None:
-        descriptor = json.loads((config.root / "dataset.json").read_text())
-        if not isinstance(descriptor, dict) or set(descriptor) != {"schema", "storage"} or descriptor["schema"] != "tennis_court_detector_store_v1":
-            raise ValueError("Expected a published TennisCourtDetector JPEG store.")
-        self.image_store = ImageRecordStore(config.root, descriptor["storage"])
-        if self.image_store.metadata.get("source_schema") != "tennis_court_detector_annotations_v1":
-            raise ValueError("TennisCourtDetector store changed its annotation schema.")
-        super().__init__(config)
-
-    def _read_source_split(self, split: CourtSourceSplit, source_split: str) -> tuple[CourtSampleRecord, ...]:
+    def _read_source_split(
+        self, split: CourtSourceSplit, source_split: str
+    ) -> tuple[CourtSampleRecord, ...]:
         records: list[CourtSampleRecord] = []
         seen: set[str] = set()
         for row in range(len(self.image_store)):
             value = self.image_store.record(row)
-            if set(value) != {"id", "kps", "metric", "split", "width", "height"} or value["split"] not in {"train", "val"}:
+            if set(value) != {
+                "id",
+                "kps",
+                "metric",
+                "split",
+                "width",
+                "height",
+            } or value["split"] not in {"train", "val"}:
                 raise ValueError("Invalid TennisCourtDetector sparse record.")
             if value["split"] != source_split:
                 continue
             sample_id = self._parse_sample_id(value["id"], record_index=row)
             if sample_id in seen:
-                raise ValueError("TennisCourtDetector sample IDs must be unique within a split.")
+                raise ValueError(
+                    "TennisCourtDetector sample IDs must be unique within a split."
+                )
             seen.add(sample_id)
             points = self._parse_keypoints(value["kps"], sample_id=sample_id)
-            metric = None if value["metric"] is None else self._parse_annotation_metric(value["metric"], sample_id=sample_id)
-            if any(type(value[key]) is not int or value[key] < 2 for key in ("width", "height")):
-                raise ValueError("TennisCourtDetector store dimensions must be positive.")
-            digest = hashlib.sha256(json.dumps(value, sort_keys=True, allow_nan=False).encode()).hexdigest()
-            records.append(CourtSampleRecord(
-                sample_id=sample_id, split=split,
-                image_path=self.image_store.paths[int(self.image_store.arrays["shard"][row])],
-                annotation_path=self.root / "index.npz",
-                payload={"source_schema": self.spec.source_schema, "source_sample_id": sample_id,
-                         "source_target_sha256": digest, "width": value["width"], "height": value["height"],
-                         "source_split": source_split, "keypoints": points, "annotation_metric": metric, "image_index": row},
-            ))
+            metric = (
+                None
+                if value["metric"] is None
+                else self._parse_annotation_metric(value["metric"], sample_id=sample_id)
+            )
+            if any(
+                type(value[key]) is not int or value[key] < 2
+                for key in ("width", "height")
+            ):
+                raise ValueError(
+                    "TennisCourtDetector store dimensions must be positive."
+                )
+            digest = hashlib.sha256(
+                json.dumps(value, sort_keys=True, allow_nan=False).encode()
+            ).hexdigest()
+            records.append(
+                CourtSampleRecord(
+                    sample_id=sample_id,
+                    split=split,
+                    image_path=self.image_store.paths[
+                        int(self.image_store.arrays["shard"][row])
+                    ],
+                    annotation_path=self.root / "index.npz",
+                    payload={
+                        "source_schema": self.spec.source_schema,
+                        "source_sample_id": sample_id,
+                        "source_target_sha256": digest,
+                        "width": value["width"],
+                        "height": value["height"],
+                        "source_split": source_split,
+                        "keypoints": points,
+                        "annotation_metric": metric,
+                        "image_index": row,
+                    },
+                )
+            )
         if not records:
-            raise ValueError(f"TennisCourtDetector store has no {source_split!r} split.")
+            raise ValueError(
+                f"TennisCourtDetector store has no {source_split!r} split."
+            )
         return tuple(records)
 
     def _load_image(self, record: CourtSampleRecord) -> Image.Image:
-        return Image.fromarray(self.image_store.rgb(cast(int, record.payload["image_index"])))
+        return Image.fromarray(
+            self.image_store.rgb(cast(int, record.payload["image_index"]))
+        )
 
 
-__all__ = ["LegacyTennisCourtDetectorInput", "TennisCourtDetectorInput"]
+__all__ = ["TennisCourtDetectorInput"]

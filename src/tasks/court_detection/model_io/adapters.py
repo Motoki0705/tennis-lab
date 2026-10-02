@@ -51,8 +51,10 @@ from src.tasks.court_detection.model_io.keypoint_decoder import (
     CourtKeypointDecoderConfig,
     decode_court_keypoint_logits,
 )
-from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtDINOv3Encoder,
+    CourtHierarchicalModel,
+)
 from src.tasks.court_detection.training.losses import (
     BinaryDiceLoss,
     DiceLoss,
@@ -69,8 +71,7 @@ _NORMALIZED_IMAGE_MIN = tuple(
     -mean / std for mean, std in zip(IMAGENET_MEAN, IMAGENET_STD, strict=True)
 )
 _NORMALIZED_IMAGE_MAX = tuple(
-    (1.0 - mean) / std
-    for mean, std in zip(IMAGENET_MEAN, IMAGENET_STD, strict=True)
+    (1.0 - mean) / std for mean, std in zip(IMAGENET_MEAN, IMAGENET_STD, strict=True)
 )
 
 
@@ -134,7 +135,7 @@ class CourtDINOv3ExecutionBoundary:
             raise CourtModelIOError(
                 "Court DINOv3 execution boundary is not bound to its model."
             )
-        encoder = cast(CourtDINOv3Encoder, model.encoder)
+        encoder = model.encoder
         patch_size = encoder.patch_size
         pad_h = (-call.height) % patch_size
         pad_w = (-call.width) % patch_size
@@ -214,7 +215,7 @@ class CourtDINOv3ExecutionBoundary:
             raise CourtModelIOError(
                 "Court content_size_hw and images must share device."
             )
-        encoder = cast(CourtDINOv3Encoder, model.encoder)
+        encoder = model.encoder
         deepest = call.model_args[-1]
         patch_height, patch_width = deepest.shape[-2:]
         valid_height = torch.div(
@@ -257,7 +258,9 @@ class CourtModelIOAdapter(nn.Module):
     ) -> None:
         super().__init__()
         if spec.in_channels != 3:
-            raise CourtModelIOError("Court model input must use exactly three RGB channels.")
+            raise CourtModelIOError(
+                "Court model input must use exactly three RGB channels."
+            )
         if spec.short_side <= 0:
             raise CourtModelIOError("Court preprocessing short_side must be positive.")
         self.spec = spec
@@ -446,7 +449,9 @@ class CourtModelIOAdapter(nn.Module):
         progress_fraction: float | None = None,
     ) -> CourtTrainingResult | CourtPoseTrainingResult:
         _ = progress_fraction
-        dense_logits = logits.dense_logits if isinstance(logits, CourtModelOutput) else logits
+        dense_logits = (
+            logits.dense_logits if isinstance(logits, CourtModelOutput) else logits
+        )
         self.validate_logits(dense_logits, call.model_call)
         raw_losses: dict[CourtTargetKind, Tensor] = {}
         configured_weights: dict[CourtTargetKind, Tensor] = {}
@@ -461,10 +466,9 @@ class CourtModelIOAdapter(nn.Module):
                 raw_loss = self.kp_loss(value, heatmap)
             elif kind == "seg":
                 labels = cast(Tensor, target)
-                raw_loss = (
-                    self.loss_config.seg_ce_weight * F.cross_entropy(value, labels)
-                    + self.loss_config.seg_dice_weight * self.seg_dice(value, labels)
-                )
+                raw_loss = self.loss_config.seg_ce_weight * F.cross_entropy(
+                    value, labels
+                ) + self.loss_config.seg_dice_weight * self.seg_dice(value, labels)
             elif kind == "line":
                 binary = cast(Tensor, target)
                 pos_weight = value.new_tensor([self.loss_config.line_pos_weight])
@@ -475,8 +479,7 @@ class CourtModelIOAdapter(nn.Module):
                         binary,
                         pos_weight=pos_weight,
                     )
-                    + self.loss_config.line_dice_weight
-                    * self.line_dice(value, binary)
+                    + self.loss_config.line_dice_weight * self.line_dice(value, binary)
                 )
             elif kind == "semantic_line":
                 labels = cast(Tensor, target)
@@ -486,10 +489,9 @@ class CourtModelIOAdapter(nn.Module):
                     raise CourtModelIOError(
                         "Semantic-line loss weights changed after construction."
                     )
-                raw_loss = (
-                    ce_weight * F.cross_entropy(value, labels)
-                    + dice_weight * self.semantic_line_dice(value, labels)
-                )
+                raw_loss = ce_weight * F.cross_entropy(
+                    value, labels
+                ) + dice_weight * self.semantic_line_dice(value, labels)
             weight = raw_loss.new_tensor(dense_weight)
             raw_losses[kind] = raw_loss
             configured_weights[kind] = weight
@@ -732,9 +734,7 @@ class CourtModelIOAdapter(nn.Module):
             value.shape != (call.batch_size, call.height, call.width)
             or value.dtype != torch.long
         ):
-            raise CourtModelIOError(
-                f"Court {kind} target must be int64 (B,H,W)."
-            )
+            raise CourtModelIOError(f"Court {kind} target must be int64 (B,H,W).")
         if bool(torch.any((value < 0) | (value >= channels))):
             raise CourtModelIOError(f"Court {kind} labels are out of range.")
         return value
@@ -748,9 +748,7 @@ class CourtModelIOAdapter(nn.Module):
         if not isinstance(value, Tensor):
             raise CourtModelIOError("Court line target must be a Tensor.")
         if value.shape != (call.batch_size, 1, call.height, call.width):
-            raise CourtModelIOError(
-                "Court line target must have shape (B,1,H,W)."
-            )
+            raise CourtModelIOError("Court line target must have shape (B,1,H,W).")
         if not value.is_floating_point():
             raise CourtModelIOError("Court line target must be floating.")
         _require_unit_interval(value, name="Court line target")
@@ -764,12 +762,12 @@ class CourtModelIOAdapter(nn.Module):
             or value.dtype != torch.long
         ):
             raise CourtModelIOError("Court image_size must be int64 (B,2).")
-        if value.device != call.images.device or bool(torch.any(value <= 0)) or bool(
-            torch.any(value > value.new_tensor([call.height, call.width]))
+        if (
+            value.device != call.images.device
+            or bool(torch.any(value <= 0))
+            or bool(torch.any(value > value.new_tensor([call.height, call.width])))
         ):
-            raise CourtModelIOError(
-                "Court image_size is outside padded image bounds."
-            )
+            raise CourtModelIOError("Court image_size is outside padded image bounds.")
         return value
 
     @staticmethod
@@ -828,7 +826,9 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
         execution_boundary: CourtModelExecutionBoundary | None = None,
     ) -> None:
         dense_config = cast(CourtLossConfig, getattr(loss_config, "dense", loss_config))
-        super().__init__(spec, loss_config=dense_config, execution_boundary=execution_boundary)
+        super().__init__(
+            spec, loss_config=dense_config, execution_boundary=execution_boundary
+        )
         self.pose_loss_config: CourtLossConfig = cast(CourtLossConfig, loss_config)
         consistency = self.pose_loss_config.consistency
         self.consistency_instrumented = bool(
@@ -882,7 +882,9 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
 
     def prepare_training_batch(self, batch: Mapping[str, object]) -> CourtTrainingCall:
         call = super().prepare_training_batch(batch)
-        pose_enabled = bool(getattr(getattr(self.pose_loss_config, "pose", None), "enabled", True))
+        pose_enabled = bool(
+            getattr(getattr(self.pose_loss_config, "pose", None), "enabled", True)
+        )
         pose_value = batch.get("pose_target")
         if pose_enabled or pose_value is not None:
             pose_target = self._validate_pose_target(
@@ -916,11 +918,15 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
             if isinstance(kp_target, Mapping) and "physical_indices" in kp_target:
                 physical = cast(Tensor, kp_target["physical_indices"])
                 if consistency_enabled and physical.shape[1:] != (14, 1):
-                    raise CourtModelIOError("Pose KP target must be singleton (B,14,1).")
+                    raise CourtModelIOError(
+                        "Pose KP target must be singleton (B,14,1)."
+                    )
                 if consistency_enabled and not torch.equal(
                     physical[:, :, 0], pose_target.semantic_to_physical
                 ):
-                    raise CourtModelIOError("KP physical order disagrees with pose authority.")
+                    raise CourtModelIOError(
+                        "KP physical order disagrees with pose authority."
+                    )
             enriched_targets: dict[CourtTrainingTargetKind, object] = {
                 **call.targets,
                 "pose": pose_target,
@@ -949,7 +955,9 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
         dense_targets: dict[CourtTrainingTargetKind, object] = {
             kind: call.targets[kind] for kind in self.spec.target_bundle.kinds
         }
-        dense_call = CourtTrainingCall(call.model_call, MappingProxyType(dense_targets), call.batch)
+        dense_call = CourtTrainingCall(
+            call.model_call, MappingProxyType(dense_targets), call.batch
+        )
         dense_result = cast(
             CourtTrainingResult,
             super().training_result(checked.dense_logits, dense_call),
@@ -989,13 +997,19 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
         consistency = self.pose_loss_config.consistency
         if consistency.enabled:
             if not isinstance(image_size, Tensor):
-                raise CourtModelIOError("Consistency requires a typed image_size target.")
+                raise CourtModelIOError(
+                    "Consistency requires a typed image_size target."
+                )
             if progress_fraction is None:
-                raise CourtModelIOError("Enabled consistency requires progress_fraction.")
+                raise CourtModelIOError(
+                    "Enabled consistency requires progress_fraction."
+                )
             kp_target = cast(Mapping[str, Tensor], dense_targets.get("kp"))
             kp_logits = checked.dense_logits.get("kp")
             if kp_logits is None or kp_target["points_xy"].shape[2:] != (1, 2):
-                raise CourtModelIOError("Consistency requires singleton KP14 supervision.")
+                raise CourtModelIOError(
+                    "Consistency requires singleton KP14 supervision."
+                )
             raw_content_size = call.batch.get("content_size_hw")
             if raw_content_size is None:
                 raise CourtModelIOError(
@@ -1095,7 +1109,9 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
             raise CourtModelIOError("Court image_size must be int64 (B,2).")
         if image_size.device != logits.device:
             raise CourtModelIOError("Court image_size and logits must share device.")
-        if bool(torch.any(image_size <= 0)) or bool(torch.any(image_size > image_size.new_tensor([height, width]))):
+        if bool(torch.any(image_size <= 0)) or bool(
+            torch.any(image_size > image_size.new_tensor([height, width]))
+        ):
             raise CourtModelIOError("Court image_size is outside logits bounds.")
         valid_size = image_size
         if content_size_hw is not None:
@@ -1115,11 +1131,19 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
                     "Court content_size_hw is outside image_size bounds."
                 )
             valid_size = content_size_hw
-        valid_y = torch.arange(height, device=logits.device)[None, :] < valid_size[:, 0:1]
-        valid_x = torch.arange(width, device=logits.device)[None, :] < valid_size[:, 1:2]
-        return (valid_y[:, :, None] & valid_x[:, None, :])[:, None].expand(batch_size, channels, height, width)
+        valid_y = (
+            torch.arange(height, device=logits.device)[None, :] < valid_size[:, 0:1]
+        )
+        valid_x = (
+            torch.arange(width, device=logits.device)[None, :] < valid_size[:, 1:2]
+        )
+        return (valid_y[:, :, None] & valid_x[:, None, :])[:, None].expand(
+            batch_size, channels, height, width
+        )
 
-    def test_payload(self, batch: Mapping[str, object], output: object) -> CourtPosePrediction:
+    def test_payload(
+        self, batch: Mapping[str, object], output: object
+    ) -> CourtPosePrediction:
         checked = self.validate_output(output)
         assert checked.pose is not None
         dense: dict[CourtTargetKind, object] = {}
@@ -1129,9 +1153,20 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
                 index = flat.argmax(dim=-1)
                 height, width = value.shape[-2:]
                 dense[kind] = {
-                    "keypoints_normalized": torch.stack(((index % width).to(value.dtype) / float(max(width - 1, 1)), torch.div(index, width, rounding_mode="floor").to(value.dtype) / float(max(height - 1, 1))), dim=-1).unsqueeze(2),
+                    "keypoints_normalized": torch.stack(
+                        (
+                            (index % width).to(value.dtype) / float(max(width - 1, 1)),
+                            torch.div(index, width, rounding_mode="floor").to(
+                                value.dtype
+                            )
+                            / float(max(height - 1, 1)),
+                        ),
+                        dim=-1,
+                    ).unsqueeze(2),
                     "scores": torch.sigmoid(flat.amax(dim=-1)).unsqueeze(2),
-                    "valid": torch.ones((*index.shape, 1), dtype=torch.bool, device=value.device),
+                    "valid": torch.ones(
+                        (*index.shape, 1), dtype=torch.bool, device=value.device
+                    ),
                     "heatmaps": value,
                 }
             elif kind in {"seg", "semantic_line"}:
@@ -1139,46 +1174,82 @@ class CourtPoseModelIOAdapter(CourtModelIOAdapter):
             else:
                 dense[kind] = {"probability": torch.sigmoid(value), "logits": value}
         _ = batch
-        return CourtPosePrediction(pose=decode_pose10d_strict(checked.pose.values), dense=MappingProxyType(dense))
+        return CourtPosePrediction(
+            pose=decode_pose10d_strict(checked.pose.values),
+            dense=MappingProxyType(dense),
+        )
 
     @staticmethod
-    def _validate_pose_target(value: object, *, batch_size: int) -> CourtPoseTargetBatch:
-        expected = {"translation_m", "rotation", "log_focal", "intrinsics", "semantic_to_physical", "raw_pose10d"}
+    def _validate_pose_target(
+        value: object, *, batch_size: int
+    ) -> CourtPoseTargetBatch:
+        expected = {
+            "translation_m",
+            "rotation",
+            "log_focal",
+            "intrinsics",
+            "semantic_to_physical",
+            "raw_pose10d",
+        }
         if not isinstance(value, Mapping) or set(value) != expected:
             raise CourtModelIOError("Court pose target fields changed.")
-        target = CourtPoseTargetBatch(**{name: _mapping_tensor(value, name) for name in expected})
-        if target.translation_m.shape != (batch_size, 3) or target.rotation.shape != (batch_size, 3, 3) or target.log_focal.shape != (batch_size,) or target.intrinsics.shape != (batch_size, 3, 3):
+        target = CourtPoseTargetBatch(
+            **{name: _mapping_tensor(value, name) for name in expected}
+        )
+        if (
+            target.translation_m.shape != (batch_size, 3)
+            or target.rotation.shape != (batch_size, 3, 3)
+            or target.log_focal.shape != (batch_size,)
+            or target.intrinsics.shape != (batch_size, 3, 3)
+        ):
             raise CourtModelIOError("Court pose target batch shapes are invalid.")
-        if target.semantic_to_physical.shape != (batch_size, 14) or target.semantic_to_physical.dtype != torch.long:
+        if (
+            target.semantic_to_physical.shape != (batch_size, 14)
+            or target.semantic_to_physical.dtype != torch.long
+        ):
             raise CourtModelIOError("Court pose semantic order must be int64 (B,14).")
-        expected_physical = torch.arange(14, device=target.semantic_to_physical.device).expand(batch_size, 14)
-        if not torch.equal(torch.sort(target.semantic_to_physical, dim=1).values, expected_physical):
-            raise CourtModelIOError("Court pose semantic order must be a 0..13 bijection.")
+        expected_physical = torch.arange(
+            14, device=target.semantic_to_physical.device
+        ).expand(batch_size, 14)
+        if not torch.equal(
+            torch.sort(target.semantic_to_physical, dim=1).values, expected_physical
+        ):
+            raise CourtModelIOError(
+                "Court pose semantic order must be a 0..13 bijection."
+            )
         if target.raw_pose10d.shape != (batch_size, 10):
             raise CourtModelIOError("Court raw pose target must be (B,10).")
-        for name, tensor in (("translation", target.translation_m), ("rotation", target.rotation), ("log-focal", target.log_focal), ("intrinsics", target.intrinsics), ("raw pose", target.raw_pose10d)):
+        for name, tensor in (
+            ("translation", target.translation_m),
+            ("rotation", target.rotation),
+            ("log-focal", target.log_focal),
+            ("intrinsics", target.intrinsics),
+            ("raw pose", target.raw_pose10d),
+        ):
             _require_finite(tensor, name=f"Court pose target {name}")
         validate_proper_rotation(target.rotation)
         for intrinsics in target.intrinsics:
             validate_square_intrinsics(intrinsics)
-        reconstructed = torch.cat((target.translation_m, target.rotation[:, :2].reshape(batch_size, 6), target.log_focal.unsqueeze(-1)), dim=-1)
-        if not bool(torch.allclose(target.raw_pose10d, reconstructed, atol=1.0e-6, rtol=0.0)):
+        reconstructed = torch.cat(
+            (
+                target.translation_m,
+                target.rotation[:, :2].reshape(batch_size, 6),
+                target.log_focal.unsqueeze(-1),
+            ),
+            dim=-1,
+        )
+        if not bool(
+            torch.allclose(target.raw_pose10d, reconstructed, atol=1.0e-6, rtol=0.0)
+        ):
             raise CourtModelIOError("Court raw pose target order/content changed.")
         return target
 
 
 def _prepare_image_call(images: Tensor, *, in_channels: int) -> CourtModelCall:
     if images.ndim != 4 or images.dtype != torch.float32:
-        raise CourtModelIOError(
-            "Court images must be float32 with shape (B,3,H,W)."
-        )
+        raise CourtModelIOError("Court images must be float32 with shape (B,3,H,W).")
     batch_size, channels, height, width = images.shape
-    if (
-        batch_size <= 0
-        or height <= 0
-        or width <= 0
-        or channels != in_channels
-    ):
+    if batch_size <= 0 or height <= 0 or width <= 0 or channels != in_channels:
         raise CourtModelIOError("Court image dimensions/channels are invalid.")
     _require_finite(images, name="Court images")
     lower = images.new_tensor(_NORMALIZED_IMAGE_MIN).view(1, 3, 1, 1)

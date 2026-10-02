@@ -28,8 +28,10 @@ from src.tasks.court_detection.inference.checkpoint import (
     load_court_pair,
 )
 from src.tasks.court_detection.model_io.contracts import CourtModelIOError
-from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtDINOv3Encoder,
+    CourtHierarchicalModel,
+)
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from tests.unit.tasks.court_detection.inference.test_pose_output_predictors import (
     _bundle,
@@ -56,9 +58,7 @@ def test_saved_encoder_assets_use_the_explicit_external_asset_root(
     tmp_path: Path,
 ) -> None:
     config = OmegaConf.to_container(
-        _compose(
-            "synthetic_court", "model/encoder=dinov3", f"paths.project_root={tmp_path}"
-        ),
+        _compose("synthetic_court", f"paths.project_root={tmp_path}"),
         resolve=True,
     )
     assert isinstance(config, dict)

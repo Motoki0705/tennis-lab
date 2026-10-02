@@ -2,24 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from types import MappingProxyType
 from typing import cast
 
-import numpy as np
 import torch
 from PIL import Image
 
-from src.synthetic_data_generation.dataset.court.components.labels import (
-    PHYSICAL_INDICES_BY_CLASS,
-    SEMANTIC_CLASS_NAMES,
-)
-from src.synthetic_data_generation.dataset.court.contracts import (
-    COURT_DATASET_SCHEMA,
-    COURT_SAMPLE_SCHEMA,
-)
 from src.tasks.court_detection.configuration import (
-    SyntheticCourtSourceConfig,
     TennisCourtDetectorSourceConfig,
 )
 from src.tasks.court_detection.data.collate import court_detection_collate
@@ -36,9 +25,8 @@ from src.tasks.court_detection.data.contracts import (
     CourtTransformedSample,
 )
 from src.tasks.court_detection.data.inputs.contract import CourtInput
-from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
-    LegacyTennisCourtDetectorInput as TennisCourtDetectorInput,
+    TennisCourtDetectorInput,
 )
 from src.tasks.court_detection.data.processing.geometry import CourtProcessingGeometry
 from src.tasks.court_detection.data.processing.pipeline import (
@@ -49,6 +37,7 @@ from src.tasks.court_detection.data.processing.targets import (
     KeypointTargetBuilder,
 )
 from src.utils.data.heatmaps import generate_gaussian_heatmaps
+from tests.unit.tasks.court_detection.data.inputs.fixtures import write_tennis_records
 
 
 def test_heatmap_default_preserves_one_map_per_point_and_max_reduces() -> None:
@@ -144,15 +133,13 @@ def test_v3_target_court_point_capacity_and_float32_survive_collate() -> None:
 
 def test_tennis_court_detector_input_emits_ordered_14_by_1_channels(tmp_path) -> None:
     root = tmp_path / "tcd"
-    (root / "images").mkdir(parents=True)
-    Image.new("RGB", (32, 24)).save(root / "images" / "sample.png")
-    Image.new("RGB", (32, 24)).save(root / "images" / "validation.png")
     keypoints = [[float(index + 1), float(index + 2)] for index in range(14)]
-    (root / "data_train.json").write_text(
-        json.dumps([{"id": "sample", "kps": keypoints}]), encoding="utf-8"
-    )
-    (root / "data_val.json").write_text(
-        json.dumps([{"id": "validation", "kps": keypoints}]), encoding="utf-8"
+    write_tennis_records(
+        root,
+        [
+            {"id": "sample", "kps": keypoints, "split": "train"},
+            {"id": "validation", "kps": keypoints, "split": "val"},
+        ],
     )
     input_layer = TennisCourtDetectorInput(
         TennisCourtDetectorSourceConfig(
@@ -163,7 +150,6 @@ def test_tennis_court_detector_input_emits_ordered_14_by_1_channels(tmp_path) ->
             ),
             excluded_sample_ids=(),
         ),
-
     )
 
     sample = input_layer.load(input_layer.records("train")[0])
@@ -174,158 +160,14 @@ def test_tennis_court_detector_input_emits_ordered_14_by_1_channels(tmp_path) ->
     assert sample.court_instances[0].physical_indices.tolist() == list(range(14))
 
 
-def _projection() -> dict[str, object]:
-    courts: list[dict[str, object]] = []
-    for court_index in range(2):
-        classes: list[dict[str, object]] = []
-        for class_id, class_name in enumerate(SEMANTIC_CLASS_NAMES):
-            points: list[dict[str, object]] = []
-            for point_index, physical_index in enumerate(
-                PHYSICAL_INDICES_BY_CLASS[class_id]
-            ):
-                renderer_visible = not (
-                    court_index == 0 and class_id == 0 and point_index == 0
-                )
-                points.append(
-                    {
-                        "physical_index": physical_index,
-                        "uv": [
-                            float((physical_index + court_index) % 8),
-                            float((physical_index + court_index) % 6),
-                        ],
-                        "camera_depth_m": 10.0,
-                        "scene_xyz_m": [0.0, 0.0, 0.0],
-                        "in_front": True,
-                        "in_frame": True,
-                        "renderer_visible": renderer_visible,
-                    }
-                )
-            classes.append(
-                {
-                    "class_id": class_id,
-                    "class_name": class_name,
-                    "renderer_visible": any(
-                        point["renderer_visible"] for point in points
-                    ),
-                    "points": points,
-                }
-            )
-        courts.append(
-            {
-                "court_instance_id": f"court-{court_index}",
-                "coverage_mode": "full",
-                "classes": classes,
-            }
-        )
-    return {
-        "camera_id": "camera-0",
-        "resolution": [8, 6],
-        "coverage_modes": ["full"],
-        "visible_class_names": list(SEMANTIC_CLASS_NAMES),
-        "visible_point_count": 27,
-        "courts": courts,
-    }
-
-
-def test_synthetic_input_consumes_manifest_paths_and_renderer_visibility(
-    tmp_path,
+def test_processing_pipeline_samples_geometry_once_for_all_targets(
+    tmp_path, monkeypatch
 ) -> None:
-    root = tmp_path / "B00" / "datasets" / "court"
-    sample_dir = root / "samples" / "sample-0"
-    sample_dir.mkdir(parents=True)
-    np.save(sample_dir / "rgb.npy", np.zeros((6, 8, 3), dtype=np.float32))
-    projection = _projection()
-    camera = {"camera_id": "camera-0"}
-    metadata = {"source": "test"}
-    labels = {
-        "schema": COURT_SAMPLE_SCHEMA,
-        "sample_index": 0,
-        "sample_id": "sample-0",
-        "trajectory_group_id": "group-0",
-        "trajectory_id": "trajectory-0",
-        "view_id": "view-0",
-        "trajectory_frame_index": 0,
-        "split": "train",
-        "camera": camera,
-        "projection": projection,
-        "metadata": metadata,
-    }
-    (sample_dir / "labels.json").write_text(
-        json.dumps(labels),
-        encoding="utf-8",
-    )
-    record = {
-        "sample_index": 0,
-        "sample_id": "sample-0",
-        "trajectory_group_id": "group-0",
-        "trajectory_id": "trajectory-0",
-        "view_id": "view-0",
-        "trajectory_frame_index": 0,
-        "split": "train",
-        "shard_id": "shard-0",
-        "width": 8,
-        "height": 6,
-        "camera": camera,
-        "projection": projection,
-        "directory": "samples/sample-0",
-        "rgb": "samples/sample-0/rgb.npy",
-        "rgb_preview": "samples/sample-0/rgb.png",
-        "alpha": "samples/sample-0/alpha.npy",
-        "alpha_preview": "samples/sample-0/alpha.png",
-        "depth": "samples/sample-0/depth.npy",
-        "depth_coordinate_space": "camera",
-        "labels": "samples/sample-0/labels.json",
-        "metadata": metadata,
-    }
-    manifest = {
-        "schema": COURT_DATASET_SCHEMA,
-        "status": "completed",
-        "scene_id": "B00",
-        "profile": "test",
-        "seed": 1,
-        "sampling_policy": {},
-        "metadata_fields": [],
-        "trajectory_groups": [],
-        "samples": [record],
-        "rejected_samples": [],
-        "metrics": {},
-        "diagnostics": {},
-    }
-    (root / "dataset.json").write_text(
-        json.dumps(manifest),
-        encoding="utf-8",
-    )
-    input_layer = SyntheticCourtInput(
-        SyntheticCourtSourceConfig(
-            kind="synthetic_court",
-            schema="v1",
-            court_scope="all_courts",
-            workspace_root=tmp_path,
-            scene_ids=("B00",),
-        ),
-
-    )
-
-    sample = input_layer.load(input_layer.records("train")[0])
-
-    assert sample.sample_id == "B00:sample-0"
-    assert sample.keypoint_channels is not None
-    assert sample.keypoint_channels.points_xy.shape == (7, 4, 2)
-    assert sample.keypoint_channels.points_xy.dtype == torch.float32
-    assert sample.keypoint_channels.point_visible.shape == (7, 4)
-    assert not bool(sample.keypoint_channels.point_visible[0, 0])
-    assert bool(sample.court_instances[0].point_visible[0])
-    assert len(sample.court_instances) == 2
-
-
-def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path, monkeypatch) -> None:
     record = CourtSampleRecord(
         sample_id="sample",
         split="train",
         image_path=tmp_path / "unused.png",
         annotation_path=tmp_path / "unused.json",
-
-
         payload={},
     )
     metadata = CourtSampleMetadata(
@@ -340,7 +182,6 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path, mon
         image=Image.new("RGB", (8, 8)),
         keypoint_channels=None,
         court_instances=(),
-
         metadata=metadata,
     )
 
@@ -356,6 +197,7 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path, mon
             from src.tasks.court_detection.data.processing.geometry import (
                 CourtGeometryPlan,
             )
+
             self.plan = CourtGeometryPlan(torch.eye(3), (8, 8), False)
 
         def sample(self, selected):
@@ -402,7 +244,10 @@ def test_processing_pipeline_samples_geometry_once_for_all_targets(tmp_path, mon
             self.seen.append(id(selected))
             return torch.tensor(1.0)
 
-    monkeypatch.setattr("src.tasks.court_detection.data.processing.pipeline.generate_online_targets", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        "src.tasks.court_detection.data.processing.pipeline.generate_online_targets",
+        lambda *args, **kwargs: {},
+    )
     geometry = _Geometry()
     first = _Builder("kp")
     second = _Builder("line")
