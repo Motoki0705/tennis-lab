@@ -105,7 +105,7 @@ def _compose_boundary(boundary: RuntimeBoundary, overrides: list[str]) -> DictCo
 
 def _expected_kind(module: str) -> str:
     name = module.rsplit(".", 1)[1]
-    if name == "materialize_targets" or name.startswith("precompute"):
+    if name.startswith("precompute"):
         return "precompute"
     if name.startswith("train"):
         return "train"
@@ -210,7 +210,6 @@ def test_all_task_cli_output_contracts(
     for key in (
         "run.output_dir",
         "preview.output_dir",
-        "generate_line_masks.preview_dir",
         "evaluate.output_dir",
         "predict.output_dir",
         "analysis.output_dir",

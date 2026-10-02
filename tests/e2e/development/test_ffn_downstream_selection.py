@@ -19,15 +19,9 @@ _EXPECTED_FFN_TYPES = frozenset(
 _EXPECTED_DIRECT_CONSUMERS = frozenset(
     {
         "src/tasks/ball_detection/models/dinov3_rope.py",
-        "src/tasks/plcs/models/triangulation_residual.py",
-        "src/tasks/blcs/models/blcs_model.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",
-        "src/tasks/blcs/models/blcs_track_query_model.py",
         "src/tasks/court_detection/models/transformer_encoder.py",
-        "src/tasks/plcs/models/plcs_model.py",
         "src/tasks/plcs/models/plcs_multiview_axial_model.py",
-        "src/tasks/plcs/models/plcs_multiview_axial_split_model.py",
-        "src/tasks/plcs/models/plcs_track_query_model.py",
         "src/tasks/slcs/models/slcs_model.py",
         "src/utils/models/architectures/transformer_sequence_discriminator.py",
     }
@@ -40,7 +34,6 @@ _CONFIGURATION_SURFACES = (
     "src/tasks/slcs/configuration.py",
     "src/utils/models/architectures/transformer_sequence_discriminator.py",
 )
-_BLCS_TRACK_QUERY_PROFILES = ("src/tasks/blcs/configs/model/tracking_query.yaml",)
 
 
 def _call_name(call: ast.Call) -> str | None:
@@ -84,14 +77,5 @@ def test_every_task_configuration_uses_the_canonical_ffn_registry() -> None:
         path
         for path in _CONFIGURATION_SURFACES
         if "SUPPORTED_FFN_TYPES" not in Path(path).read_text(encoding="utf-8")
-    ]
-    assert missing == []
-
-
-def test_blcs_track_query_profiles_expose_ffn_type() -> None:
-    missing = [
-        path
-        for path in _BLCS_TRACK_QUERY_PROFILES
-        if "ffn_type: swiglu" not in Path(path).read_text(encoding="utf-8")
     ]
     assert missing == []

@@ -1,0 +1,210 @@
+{
+  "clip_id": "tracknet/game3/Clip2",
+  "raw_tracks_sha256": "a01d1e4ca5d3ab9047f8c7b39ec9f428a9e1f4bcb32cd33ecbfd9531ec445ae1",
+  "status": "approved",
+  "reviewed_sheets": [
+    "frames-000000-000020.jpg",
+    "frames-000020-000029.jpg"
+  ],
+  "notes": "全29フレームと全20トラックのcrop一覧を確認し、426実観測を重複なく分類した。対象プレーに参加するのは手前のplayer_1と奥のplayer_2。選手の人物切替や重複検出は確認されなかった。非選手トラック19・20は観測欠落前後の人物同一性を強制せず区間を分割した。frame 0・1にも選手が見えるが実観測がないため追加していない。区間内の欠測にもboxや姿勢を補っていない。",
+  "segments": [
+    {
+      "raw_track_id": 1,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "player",
+      "player_id": "player_1",
+      "evidence_frames": [2, 6, 14, 18, 25, 28],
+      "reason": "手前の白い帽子・白いシャツ・濃色ショーツの選手。構えから左への移動、ラケットを使うリターンまで動作が連続し、服装も一貫している。"
+    },
+    {
+      "raw_track_id": 2,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "player",
+      "player_id": "player_2",
+      "evidence_frames": [2, 6, 10, 15, 22, 28],
+      "reason": "奥の青いシャツ・白いショーツの選手。サービス、着地、体勢を戻す動作が連続し、手前の選手に対してプレーしている。"
+    },
+    {
+      "raw_track_id": 3,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 8, 15, 28],
+      "reason": "コート脇で赤い上衣の人物が低くかがんで待機している。サービスやリターンに参加する動作はない。"
+    },
+    {
+      "raw_track_id": 4,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 10, 18, 28],
+      "reason": "奥の壁際で脚を開いて低く構える濃色服の人物。プレー中も壁際の同じ場所で待機している。"
+    },
+    {
+      "raw_track_id": 5,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 10, 18, 28],
+      "reason": "奥の壁際左側にいる赤い上衣・濃色の下衣の人物。立ち姿と位置が一貫し、プレー中も壁際で待機している。"
+    },
+    {
+      "raw_track_id": 6,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 8, 15, 28],
+      "reason": "右側の客席脇に座っている人物。コート外で着席したままで、対象プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 7,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 9, 17, 28],
+      "reason": "奥の選手の右後方、壁際で脚を開いて低く構える濃色服の人物。青いシャツの選手とは位置と服装が異なり、待機姿勢を保っている。"
+    },
+    {
+      "raw_track_id": 8,
+      "start_frame": 2,
+      "stop_frame": 28,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 9, 14, 20, 27],
+      "reason": "左側の客席付近にいる暗色の上着・明るいズボンの着席者。断続的な観測でも周辺での待機姿勢が続き、プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 9,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 8, 15, 28],
+      "reason": "奥の壁面に重なる細い検出で、cropは暗緑色の文字・背景状に見える。人物か背景物かは確定できないが、いずれもプレーする選手の身体や動作には対応しない。"
+    },
+    {
+      "raw_track_id": 10,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 8, 15, 28],
+      "reason": "コート外周にいる暗色の服の人物。同じ場所で待機し、プレーする選手とは位置と動作が異なる。"
+    },
+    {
+      "raw_track_id": 11,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 10, 18, 28],
+      "reason": "奥の壁際左側にいる白い胸元・濃色の上着の人物。同じ場所に座り続け、対象プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 15,
+      "start_frame": 2,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [2, 8, 15, 28],
+      "reason": "右側の客席にいる明るい服の人物の頭部・上半身。着席したままで対象プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 17,
+      "start_frame": 3,
+      "stop_frame": 27,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [3, 8, 17, 23, 26],
+      "reason": "左側の座席付近にいる着席者。断続的な観測でも客席側の姿勢が続き、プレーする選手への切替は見られない。"
+    },
+    {
+      "raw_track_id": 19,
+      "start_frame": 5,
+      "stop_frame": 6,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [5],
+      "reason": "客席で暗色の服を着て座っている人物。プレー非参加者であり、観測欠落後の人物との同一性は前提にしない。"
+    },
+    {
+      "raw_track_id": 19,
+      "start_frame": 16,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [16, 24, 28],
+      "reason": "客席の暗色服の着席者。観測再開後もプレー非参加者であり、frame 5の人物との同一性を強制せず区間を分けた。"
+    },
+    {
+      "raw_track_id": 20,
+      "start_frame": 5,
+      "stop_frame": 7,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [5, 6],
+      "reason": "左側の客席にいる人物。コート上のプレーには参加しておらず、観測欠落後の人物との同一性は前提にしない。"
+    },
+    {
+      "raw_track_id": 20,
+      "start_frame": 11,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [11, 18, 28],
+      "reason": "左側の客席にいる人物。観測再開時に見え方が変わるため前の区間と分けた。この区間も対象プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 21,
+      "start_frame": 7,
+      "stop_frame": 11,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [7, 8, 9, 10],
+      "reason": "右側のコート脇の椅子・機材付近にいる人物。周辺で待機しており、対象プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 23,
+      "start_frame": 8,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [8, 14, 20, 28],
+      "reason": "右側の客席にいる着席者の横顔・上半身。断続的な観測を通して客席側におり、プレー非参加者。"
+    },
+    {
+      "raw_track_id": 24,
+      "start_frame": 8,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [8, 14, 20, 28],
+      "reason": "右側の客席で赤い服を着て座っている人物。コート上の選手とは別で、対象プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 29,
+      "start_frame": 14,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [14, 21, 28],
+      "reason": "左側の客席にいる明るい服の人物の横顔・上半身。着席しており対象プレーには参加していない。"
+    },
+    {
+      "raw_track_id": 31,
+      "start_frame": 23,
+      "stop_frame": 29,
+      "role": "non_player",
+      "player_id": null,
+      "evidence_frames": [23, 28],
+      "reason": "左側の客席にいる白髪・暗色の服の着席者。対象プレーには参加していない。"
+    }
+  ]
+}
