@@ -203,6 +203,7 @@ def generate_semantic_line_target(
     baseline_width_metres: float = (
         SEMANTIC_LINE_TARGET_DEFINITION.baseline_width_metres
     ),
+    rasterizers: tuple[CourtPlaneRasterizer | None, ...] | None = None,
 ) -> UInt8Array:
     """Render one selected court as a camera-view categorical line mask.
 
@@ -225,11 +226,9 @@ def generate_semantic_line_target(
         baseline_width_metres=baseline_width_metres,
     )
     output: UInt8Array = np.zeros((height, width), dtype=np.uint8)
-    rasterizer = CourtPlaneRasterizer.from_instance(
-        instances[0],
-        width=width,
-        height=height,
-    )
+    if rasterizers is not None and len(rasterizers) != 1:
+        raise ValueError("Semantic LINE requires exactly one rasterizer.")
+    rasterizer = rasterizers[0] if rasterizers is not None else CourtPlaneRasterizer.from_instance(instances[0], width=width, height=height)
     if rasterizer is None:
         return output
     for class_index, line in metric_lines:
