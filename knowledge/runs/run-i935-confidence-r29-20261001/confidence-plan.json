@@ -1,0 +1,36 @@
+{
+  "source": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-anchored-12k-s42-r21-20260930",
+  "include": "meiji/video_000/clip_001..011, observed condition, all frames; score only target_reason=OBSERVED",
+  "exclude": [
+    "clip_000",
+    "video_001",
+    "TrackNet",
+    "chat",
+    "artificial evidence gaps"
+  ],
+  "scale": 1.8125148752087792,
+  "point": "maximum-weight component mean, first component on ties",
+  "area": "90% conservative second-moment ellipse around selected point: 20*pi*sqrt(det(sum_k w_k*(Sigma_k+(mu_k-m)(mu_k-m)^T))); source px^2; conditional on presence; not HDR",
+  "presence_grid": [
+    0.5,
+    0.7,
+    0.8,
+    0.9,
+    0.95,
+    0.99
+  ],
+  "area_grid_px2": [
+    1000,
+    3000,
+    10000,
+    30000,
+    100000,
+    300000,
+    1000000,
+    3000000,
+    10000000
+  ],
+  "acceptance": "each camera >=30 kept observed labels, kept median <=5px and p90<=20px, kept all-frame fraction >=5%; at least 8 >=2-camera frames in every eligible clip",
+  "selection": "maximize all-camera kept frames among eligible grid points; ties stricter area then greater presence; no feasible point means fail and no clip000 queue",
+  "gpu_jobs": 0
+}

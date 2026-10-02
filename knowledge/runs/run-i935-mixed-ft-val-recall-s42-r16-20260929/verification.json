@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-30",
+  "pytest": {
+    "args": [
+      "-n",
+      "4",
+      "-q",
+      "tests/unit/tasks/ball_detection/training/test_candidate_recall.py",
+      "tests/unit/tasks/ball_refiner/data/test_evidence.py",
+      "tests/integration/tasks/ball_refiner/test_evidence_cache.py"
+    ],
+    "passed": 39,
+    "seconds": 29.37,
+    "exit_code": 0
+  },
+  "ruff": {
+    "files": [
+      "collect_retrain.py",
+      "rebuild_cache.py"
+    ],
+    "exit_code": 0
+  },
+  "mypy": {
+    "files": [
+      "collect_retrain.py",
+      "rebuild_cache.py"
+    ],
+    "follow_imports": "skip",
+    "exit_code": 0
+  },
+  "knowledge_validation": {
+    "base_ref": "origin/campaign930/i935-9-context-shards",
+    "check_summary": true,
+    "errors": 0,
+    "warnings": 215
+  },
+  "cpu_preflight": "cache_preflight.json",
+  "selected_checkpoint_and_all_epochs": "selection.json",
+  "unverified": [
+    "new GPU evidence cache output",
+    "context-free pilot on rebuilt cache",
+    "Meiji video_001 test",
+    "person/pose ablations"
+  ],
+  "diff_check": {
+    "excluded": "queue.log",
+    "reason": "Exact original log retained, including seven trailing-space lines from Lightning model summary"
+  }
+}

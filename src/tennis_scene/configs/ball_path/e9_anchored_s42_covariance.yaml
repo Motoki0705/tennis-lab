@@ -1,0 +1,8 @@
+# @package _global_
+ball_detection:
+  checkpoint: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+ball_refiner:
+  path: e9_anchored_s42_covariance
+  bundle: ball_refiner/i935-anchored-12k-s42
+  calibration_artifact: ball_refiner/i935-anchored-12k-s42/covariance-calibration-r23.json
+  batch_size: 32

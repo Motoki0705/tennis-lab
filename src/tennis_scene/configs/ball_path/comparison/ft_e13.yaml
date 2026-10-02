@@ -1,0 +1,9 @@
+# @package _global_
+# Historical comparison; the standard scene uses the calibrated e9 path.
+ball_detection:
+  checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+ball_refiner:
+  path: bundle
+  bundle: ball_refiner/i935-detector-only-ft-e13-r7-20260928
+  calibration_artifact: null
+  batch_size: 32

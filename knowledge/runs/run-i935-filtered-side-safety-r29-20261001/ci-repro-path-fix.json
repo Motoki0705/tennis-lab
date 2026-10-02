@@ -1,0 +1,7 @@
+{
+  "failed_head": "62f29991d713d7e256ba594714faffc178303fef",
+  "check": "https://github.com/Motoki0705/tennis-lab/actions/runs/36801902814/job/110177865266",
+  "reason": "kg_repro_paths does not recognize $code_root as a checkout variable",
+  "fix": "Use the documented $task_repo_root spelling and cd to it; inference, confidence, side and benchmark code unchanged",
+  "safety_gate": "FAIL; qualification not queued"
+}

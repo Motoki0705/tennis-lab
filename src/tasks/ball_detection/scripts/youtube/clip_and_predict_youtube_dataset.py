@@ -73,6 +73,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         return status
     if mode == "predict":
         prediction = workflow.prediction
+        checkpoint = runtime_paths.checkpoint_input(prediction, "checkpoint", path="workflow.prediction")
         image_size = tuple(int(value) for value in prediction.image_size)
         imagenet_mean = tuple(float(value) for value in prediction.imagenet_mean)
         imagenet_std = tuple(float(value) for value in prediction.imagenet_std)
@@ -85,7 +86,8 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             video_id=video_id,
             staging_dir=staging_dir,
             config=CandidatePredictionConfig(
-                checkpoint=runtime_paths.checkpoint(str(prediction.checkpoint)),
+                checkpoint=checkpoint.path,
+                checkpoint_role=checkpoint.role,
                 device=str(prediction.device),
                 sequence_length=int(prediction.sequence_length),
                 window_stride=int(prediction.window_stride),

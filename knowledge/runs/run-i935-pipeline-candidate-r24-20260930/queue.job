@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i935-e9-anchored-source3cam-r24-20260930
+# added: 2026-09-30T19:55:53+09:00
+# provider: codex
+# session: 01a0f1dc-49b9-7c82-bcfb-fe29dda6b9e1
+# issue: 935
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain
+export TENNIS_RUN_ID=1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930 --name i935-e9-anchored-source3cam-r24-20260930 --provider codex --session 01a0f1dc-49b9-7c82-bcfb-fe29dda6b9e1 --issue 935 --cmd timeout\ --signal=TERM\ --kill-after=15s\ 1185s\ env\ PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain\ OMP_NUM_THREADS=2\ MKL_NUM_THREADS=2\ OPENBLAS_NUM_THREADS=2\ TORCHINDUCTOR_COMPILE_THREADS=2\ MAX_JOBS=2\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-e9-anchored-s42-r24-20260930/compiler\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python\ -u\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py\ --plan\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/plan.json
+timeout --signal=TERM --kill-after=15s 1185s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 MAX_JOBS=2 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-e9-anchored-s42-r24-20260930/compiler /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/plan.json

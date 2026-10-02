@@ -128,7 +128,8 @@ def _distractor(rng: np.random.Generator) -> NDArray[np.float64]:
 
 
 def make_trials(scene: SyntheticScene, p: Perturbation, configs: Sequence[CourtSideConfig],
-                rng: np.random.Generator) -> tuple[Trial, ...]:
+                rng: np.random.Generator, *,
+                observation_masks: Sequence[NDArray[np.bool_] | None] | None = None) -> tuple[Trial, ...]:
     """One perturbed observation of ``scene``, scored under each scoring config."""
     views = len(scene.cameras)
     if p.cameras > views:
@@ -173,9 +174,15 @@ def make_trials(scene: SyntheticScene, p: Perturbation, configs: Sequence[CourtS
             uv[row, mask] = point + rng.normal(0, p.pixel_sigma_px * pixel_scale, (int(mask.sum()), 2))
             visible[row, mask] = True
     trials = []
-    for config in configs:
+    if observation_masks is not None and len(observation_masks) != len(configs):
+        raise ValueError("One explicit observation mask per scoring config is required")
+    for index, config in enumerate(configs):
+        mask = None if observation_masks is None else observation_masks[index]
+        if mask is not None and (mask.shape != visible.shape or mask.dtype != np.bool_):
+            raise ValueError("Observation filter must be a boolean mask on the original camera/frame axes")
+        used_visible = visible if mask is None else visible & mask
         scaled = replace(config, reprojection_px=config.reprojection_px * pixel_scale, min_motion_px=config.min_motion_px * pixel_scale)
-        evidence = collect_side_evidence(local, local[reference].camera_id, uv.astype(np.float32), visible, scaled)
+        evidence = collect_side_evidence(local, local[reference].camera_id, uv.astype(np.float32), used_visible, scaled)
         trials.append(Trial(scene.scene_id, p.name, expected, evidence))
     return tuple(trials)
 

@@ -29,12 +29,12 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 動画 → court_detection → court_calibration
 動画 → person_detection → person_tracking
 track＋court → player_selection → pose_estimation
-動画 → ball_detection
-ball＋court → court_side（ballだけのhalf-turn仮説検定）
+動画 → ball_detection → ball_refiner_2d → ball_points
+ball_points＋court → court_side（ballだけのhalf-turn仮説検定）
 選別group＋court＋side（＋動画のcrop） → player_association
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
-単一球観測＋camera → ball_triangulation
+ball_points＋camera → ball_triangulation
 人物対応＋2D観測＋camera → body_view_selection → gvhmr
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
@@ -113,14 +113,14 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 
 モデル実行では `evidence` は必須。注釈importと無効な検出器は `None` を明示し、
 `score_semantics` で区別する。refinerは証拠なしを実検出とみなしてはならない。
-下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refiner分布から確率的三角測量への接続は#936）。
+下流のside・幾何・三角測量は、refiner由来の `ball_points` だけを使う。検出器の点への戻り道は無い（確率的三角測量への接続は#936）。
 v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
 
 ## 2D ball refinerの専用recipe
 
 `ball_refiner_recipe.ball_refiner_definition`は各cameraの
 `ball_detection → ball_refiner_2d`だけを共通ComponentRunner/ClipStoreへ登録する。
-未較正の文脈なしpilotを明示的に試す入口で、標準sceneの既定値は変更しない。
+標準sceneも同じrecipeを使い、各cameraのball_detection直後に全GMMを保存する。
 文脈ありcheckpoint、確率的三角測量、3Dへの切替は後続の対象。
 推論bundleの作成・入力契約は[task README](../../tasks/ball_refiner/README.md#推論bundleの書き出し)を参照。
 
@@ -130,7 +130,7 @@ recipe構築時に検出器checkpointのhashと全前処理/候補/窓設定を�
 検出点の閾値・trajectory gateはrefiner入力に使わず、注釈import・証拠なしは停止する。
 sourceとcheckpointのhashは実行前後にも照合する。RGBの媒体差はbundleへ明記する。
 
-出力は`ball_distribution_2d` schema v1、型は`components/ball_refiner.py:BallRefiner2DOutput`。
+未較正`bundle` optionの出力は`ball_distribution_2d` schema v1、型は`components/ball_refiner.py:BallRefiner2DOutput`。
 `prediction.distribution`に平均・Cholesky因子・混合logit・存在logitを全frame保存し、
 full covariance・混合weight・存在確率は元の精度で復元できる。単位はsourceのW−1/H−1で正規化したuv。
 sourceサイズ、frame/PTS/time base/実秒、detectorとrefiner両方の採用窓、未較正であることも保存する。
@@ -145,11 +145,58 @@ code・bundle・設定・source・依存artifactの不一致や配列のchecksum
 # CUDAは共有training queue経由。storeは既存の標準sceneとは分けた明示的なpathにする。
 .venv/bin/python -m src.tasks.ball_refiner.scripts.run_pipeline \
   --video <絶対data-root>/clip/cam0.mp4 --camera-id cam0 \
-  --bundle <絶対checkpoint-root>/ball_refiner/<bundle-id> \
-  --detector-checkpoint <絶対checkpoint-root>/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt \
+  --ball-path e9_anchored_s42_covariance \
+  --bundle <絶対checkpoint-root>/ball_refiner/i935-anchored-12k-s42 \
+  --detector-checkpoint <絶対checkpoint-root>/ball_detection/i935-mixed-ft-s42-epoch09.ckpt \
+  --calibration-artifact <絶対checkpoint-root>/ball_refiner/i935-anchored-12k-s42/covariance-calibration-r23.json \
   --store <絶対artifact-root>/ball_refiner/<run-id>/cam0 \
   --device cuda --source execute --detector-batch-size 4 --refiner-batch-size 32
 ```
+
+### ボール経路の既定と明示option
+
+上のCLIは採用済みの較正経路を明示する。未較正bundleの比較は
+`--ball-path bundle`を指定し、較正artifactを渡さず対応するbundle/検出器を明示する。
+資産の固定SHA256は[名前付きoption](../../tasks/ball_refiner/pipeline_options.py)が正本。
+検出器e9、anchored_12k seed42のepoch41（checkpoint `985308b0…`）から書き出したbundle、
+共分散倍率artifact `197f9e64…`（Σに1.8125148752倍）を要求する。
+欠落・hash不一致・別checkpoint用の倍率はexecute/loadとも定義構築時に停止する。
+manifestは重み・全入力設定・元checkpointを束縛し、倍率artifactは実行前後にも照合する。
+
+このoptionの成果物は`ball_distribution_2d` **schema v2**、
+`CalibratedBallRefiner2DOutput`。全成分のCholeskyに倍率の平方根だけを掛け、
+平均・混合logit・存在logit・frame/PTS/採用窓は維持する。
+倍率、元checkpoint SHA256、artifact SHA256を保存し、load-onlyでは再補正しない。
+既存`bundle` optionは未較正schema v1を維持し、未知optionや暗黙の倍率1は許可しない。
+標準sceneの既定は `ball_path=e9_anchored_s42_covariance`。旧ft-e13＋旧refinerは
+`ball_path=comparison/ft_e13` で明示する。checkpoint-root内の配布名は `configs/ball_path/` が正本。
+採用済みの実体は`ckpt/`に置き、学習runやexport元へのsymlinkで代用しない。
+資産が無ければ停止し、旧重みを自動選択しない。動画は直接decodeし、JPEG化・再学習・倍率再fitはしない。
+元動画3cameraのexecute/fresh-loadは通過したが、
+[固定Bゲート](../../../knowledge/nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)の
+GT位置誤差p90が不合格だったため、run26時点では既定を維持した。
+[2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)
+に従ってe9を既定化した。2026-10-02のユーザー判断でconfidenceフィルタを廃止した。
+過去の安全bench FAILと全scene qualificationの未達は、採用方針の変更だけで合格とは扱わない。
+seedの事前判定FAILと、
+それを保持して再現は十分と扱う追加ユーザー判断も同記録から辿れる。
+
+## refinerの点consumer
+
+`ball_points` は保存済み全GMMの最大weight成分の平均点を全frameでsource画素へ変換する。
+同率は先頭成分を採用し、存在確率や共分散の面積で棄却しない。
+`BallPointsOutput` / schema `ball_points` v2は点と診断用の存在確率を保存し、
+下流の観測mask・重みは全frameで1とする。有限値・camera・frame軸・sourceサイズを検証する。
+
+`court_side`・`camera_alignment`・`ball_triangulation` は同じcameraごとのv2 artifactに依存する。
+court_sideのball-only/margin .15と既存の幾何的停止条件は維持する。
+全GMMは別のartifactとして保存し、#936向けの全成分・共分散・存在確率とPTS/推論窓の出自を保持する。
+
+旧confidence maskを含む`ball_points` v1は実行時loadでschema不一致として拒否する。
+標準経路を再実行して全GMMからv2を生成する。既存GMMの明示的な再利用も、
+保存されたコード・入力・設定のidentity一致が必要で、変更前の版を無言で読み替えない。
+旧artifactの履歴はgalleryで閲覧できる。旧ball_detectionsを点consumerへload/importすることも拒否する。
+ball_detectionを無効化する場合はball/refiner/points chain全体のloadを明示する必要がある。
 
 ## 成果物
 

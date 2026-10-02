@@ -24,7 +24,7 @@ from src.tasks.ball_refiner.refiner_2d.model_io import Refiner2DAdapter
 
 
 def config(**changes) -> Refiner2DConfig:
-    path = Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"
+    path = Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/comparison/absolute.yaml"
     values = dict(OmegaConf.load(path))
     values.update(hidden_dim=16, attention_heads=2, court_keypoints=5, patch_size=3, dropout=0.0, pose_dropout=0.0)
     return replace(
@@ -36,7 +36,7 @@ def config(**changes) -> Refiner2DConfig:
 def test_yaml_is_the_complete_config_authority() -> None:
     from src.utils.configuration.contracts import inspect_typed_adapter
 
-    path = Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"
+    path = Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/comparison/absolute.yaml"
     values = dict(OmegaConf.load(path))
     cfg = Refiner2DConfig(**values)
     inspect_typed_adapter(Refiner2DConfig)  # rejects Python defaults

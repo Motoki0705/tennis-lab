@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from fractions import Fraction
 
 import numpy as np
@@ -27,12 +28,15 @@ WINDOW_SELECTION = "nearest_window_centre_then_earlier_start"
 def infer_clip_evidence(
     store: BallFrameStore, clip: ClipRecord, predictor: HoldoutPredictor, *,
     image_size_hw: tuple[int, int], stride: int, batch_size: int, config: BallCandidateConfig,
+    heatmap_sink: Callable[[int, torch.Tensor], None] | None = None,
 ) -> ClipEvidence:
     """Keep all candidate fields from the same selected detector window.
 
     The detector's own temporal window can exceed the later refiner window.
     Its length/stride and per-frame origin are explicit in the cache. No RGB
     padding, score selection, GT selection, candidate gate or temporal fill.
+    The optional CPU heatmap sink receives each improved window choice; later
+    calls for a frame replace earlier ones, using the same rule as all evidence.
     """
     length, n = predictor.configured_frames, clip.frame_count
     if store.clip_by_id(clip.clip_id) != clip:
@@ -79,6 +83,8 @@ def infer_clip_evidence(
                     continue  # ties retain the earlier start; windows are ordered
                 distances[frame] = distance
                 starts[frame], slots[frame] = window.start_index, t
+                if heatmap_sink is not None:
+                    heatmap_sink(frame, prediction.heatmaps[b, t])
                 argmax_uv[frame] = (prediction.coords[b, t] * factor).numpy()
                 argmax_score[frame] = prediction.confidence[b, t].item()
                 for name in ("coords", "scores", "valid", "cells", "patches", "patch_valid"):

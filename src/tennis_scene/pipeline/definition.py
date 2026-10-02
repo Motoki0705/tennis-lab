@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from functools import lru_cache, partial
 from typing import TYPE_CHECKING, Any
 
@@ -10,7 +11,8 @@ from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
 from src.tennis_scene.pipeline.artifacts import json_value
-from src.tennis_scene.pipeline.components.ball_detection import BallDetectionModule
+from src.tennis_scene.pipeline.ball_refiner_recipe import ball_refiner_definition
+from src.tennis_scene.pipeline.components.ball_points import BallPointsModule
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementModule
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionModule,
@@ -35,13 +37,15 @@ from src.tennis_scene.pipeline.components.triangulation import (
     PlayerTriangulationModule,
 )
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource
+from src.tennis_scene.pipeline.input_assembly.ball_points import (
+    BallPointsInputAssembler,
+)
 from src.tennis_scene.pipeline.input_assembly.body import (
     BodyPlacementInputAssembler,
     BodyViewSelectionInputAssembler,
     GVHMRInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
-    BallDetectionInputAssembler,
     CourtCalibrationInputAssembler,
     CourtDetectionInputAssembler,
     PersonDetectionInputAssembler,
@@ -129,9 +133,25 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     for camera in ids:
         add(f"court_detection/{camera}", CourtKPModule(cfg.court_kp), CourtDetectionInputAssembler(), {},
             lambda: {"config": cfg.processing_settings["court_kp"], "checkpoint": file_identity(cfg.court_kp.checkpoint)}, camera=camera)
-        add(f"ball_detection/{camera}", BallDetectionModule(cfg.ball_detection, enabled=cfg.enabled["ball_detection"]), BallDetectionInputAssembler(), {},
-            lambda: {"config": cfg.processing_settings["ball_detection"],
-                     "assets": asset_identities(cfg.enabled["ball_detection"], {"checkpoint": cfg.ball_detection.checkpoint})}, camera=camera)
+    if not cfg.enabled["ball_detection"] and cfg.cache_source != "load":
+        if cfg.component_sources["court_side"] != "load" and "court_side" not in overrides:
+            raise ValueError("court_side decides sides from the ball alone; it requires ball_detection.enabled or execution.court_side=load")
+        if any(cfg.component_sources[key] != "load" for key in ("ball_detection", "ball_refiner_2d", "ball_points")):
+            raise ValueError("Disabled ball detection requires explicit load for the entire refiner/point chain")
+    ball_nodes = ball_refiner_definition(
+        source, detector_config=cfg.ball_detection, bundle_directory=cfg.ball_refiner.bundle,
+        batch_size=cfg.ball_refiner.batch_size, code_identity=code_identity, execution_source=cfg.cache_source,
+        ball_path=cfg.ball_refiner.path, calibration_artifact=cfg.ball_refiner.calibration_artifact,
+    )
+    for node in ball_nodes:
+        component = overrides.get(node.name, node.component)
+        mode = "load" if cfg.cache_source == "load" else cfg.component_sources[node.io.name]
+        nodes.append(replace(node, component=component, io=component.io, source=mode))
+        if node.io.name == "ball_refiner_2d":
+            add(f"ball_points/{node.context.camera_id}",
+                BallPointsModule(distribution_version=component.io.version),
+                BallPointsInputAssembler(), {"distribution": node.name},
+                lambda: {"point": "maximum_weight_mean"}, camera=node.context.camera_id)
     add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins), CourtCalibrationInputAssembler(),
         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
     for camera in ids:
@@ -158,13 +178,11 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             {"selection": f"player_selection/{camera}"}, lambda: {"assets": asset_identities(people_enabled, {"checkpoint": cfg.people.vitpose_checkpoint}),
              "runtime": cfg.people.runtime.vitpose, "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge}, camera=camera)
     poses = {f"pose_{c}": f"pose_estimation/{c}" for c in ids}
-    balls = {f"ball_{c}": f"ball_detection/{c}" for c in ids}
+    balls = {f"ball_{c}": f"ball_points/{c}" for c in ids}
     observations = {"calibration": "court_calibration", **poses}
-    if not cfg.enabled["ball_detection"] and "court_side" not in overrides and cfg.cache_source != "load" and cfg.component_sources["court_side"] != "load":
-        raise ValueError("court_side decides sides from the ball alone; it requires ball_detection.enabled or execution.court_side=load")
-    add("court_side", CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames), CourtSideInputAssembler(cfg.ball_detection.score_threshold),
+    add("court_side", CourtSideModule(ids, cfg.court_side, max_frames=cfg.sampling_max_frames), CourtSideInputAssembler(0.0),
         {"calibration": "court_calibration", **balls}, lambda: {"config": cfg.court_side, "max_frames": cfg.sampling_max_frames,
-        "ball_threshold": cfg.ball_detection.score_threshold})
+        "ball_threshold": 0.0})
     add("player_association", PlayerAssociationModule(ids, association, sampling=sampling, device=cfg.device, enabled=people_enabled,
         encoder=encoder),
         PlayerAssociationInputAssembler(), {"calibration": "court_calibration", "side": "court_side", **{f"tracks_{c}": f"player_selection/{c}" for c in ids}},
@@ -173,17 +191,17 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     identified = {**observations, "identities": "player_association"}
     add("camera_alignment", CameraAlignmentModule(ids, cfg.camera_geometry, player_reprojection_px=cfg.player_reprojection_px,
         ball_reprojection_px=cfg.ball_reprojection_px, joint_confidence=cfg.joint_confidence, max_frames=cfg.sampling_max_frames),
-        CameraAlignmentInputAssembler(cfg.human_vis_threshold, cfg.ball_detection.score_threshold), {**identified, **balls, "side": "court_side"},
+        CameraAlignmentInputAssembler(cfg.human_vis_threshold, 0.0), {**identified, **balls, "side": "court_side"},
         lambda: {"config": cfg.camera_geometry, "player_reprojection": cfg.player_reprojection_px, "ball_reprojection": cfg.ball_reprojection_px,
-         "joint_confidence": cfg.joint_confidence, "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "ball_threshold": cfg.ball_detection.score_threshold})
+         "joint_confidence": cfg.joint_confidence, "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "ball_threshold": 0.0})
     reconstructed = {**identified, "alignment": "camera_alignment"}
     add("player_triangulation", PlayerTriangulationModule(ids, reprojection_px=cfg.player_reprojection_px,
         joint_confidence=cfg.joint_confidence, enabled=cfg.enabled["player_reconstruction"]),
         PlayerTriangulationInputAssembler(cfg.human_vis_threshold), reconstructed, lambda: cfg.processing_settings["player_reconstruction"])
     add("ball_triangulation", BallTriangulationModule(ids, reprojection_px=cfg.ball_reprojection_px,
         min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
-        BallTriangulationInputAssembler(cfg.ball_detection.score_threshold), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
-        lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": cfg.ball_detection.score_threshold})
+        BallTriangulationInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
+        lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
     add("body_view_selection", BodyViewSelectionModule(ids, max_frames=cfg.sampling_max_frames, enabled=body_enabled),
         BodyViewSelectionInputAssembler(cfg.human_vis_threshold), reconstructed,
         lambda: {"policy": "coverage_confidence_camera_id", "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "enabled": body_enabled})
@@ -204,7 +222,11 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     people, body = cfg.enabled["person_observations"], cfg.enabled["gvhmr"]
     return {
         "court": cfg.court_kp.checkpoint,
-        **({"ball": cfg.ball_detection.checkpoint} if cfg.enabled["ball_detection"] else {}),
+        "ball": cfg.ball_detection.checkpoint,
+        "ball_refiner_manifest": cfg.ball_refiner.bundle / "manifest.json",
+        "ball_refiner_weights": cfg.ball_refiner.bundle / "weights.pt",
+        **({"ball_refiner_calibration": cfg.ball_refiner.calibration_artifact}
+           if cfg.ball_refiner.calibration_artifact is not None else {}),
         **({"detector": cfg.people.detector_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **({"tracking_encoder": cfg.tracking_encoder_weights, "aflink": cfg.aflink_checkpoint} if people else {}),

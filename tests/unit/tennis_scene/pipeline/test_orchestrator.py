@@ -46,6 +46,12 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     assert nodes["player_selection/cam0"].settings["rule"]["min_presence_fraction"] == .25
     assert order.index("court_side") < order.index("player_association") < order.index("player_triangulation")
     assert order.index("person_tracking/cam2") < order.index("player_association")
+    assert order.index("ball_detection/cam0") < order.index("ball_refiner_2d/cam0") < order.index("ball_points/cam0") < order.index("court_side")
+    for consumer in ("court_side", "camera_alignment", "ball_triangulation"):
+        assert nodes[consumer].bindings["ball_cam0"] == "ball_points/cam0"
+        assert nodes[consumer].io.inputs["ball_cam0"].schema == "ball_points"
+        assert nodes[consumer].io.inputs["ball_cam0"].version == 2
+        assert nodes[consumer].assembler.ball_threshold == 0
     assert order.index("court_side") < order.index("camera_alignment")
     assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")
 
@@ -107,7 +113,7 @@ def test_a_side_without_ball_detection_fails_when_the_definition_is_built(tmp_pa
     ballless = replace(cfg, enabled={**cfg.enabled, "ball_detection": False, "ball_reconstruction": False})
     with pytest.raises(ValueError, match="court_side decides sides from the ball alone"):
         standard_definition(ballless, source, code_identity="test")
-    loaded = replace(ballless, component_sources={**cfg.component_sources, "court_side": "load"})
+    loaded = replace(ballless, component_sources={**cfg.component_sources, **dict.fromkeys(("court_side", "ball_detection", "ball_refiner_2d", "ball_points"), "load")})
     assert any(node.name == "court_side" and node.source == "load" for node in standard_definition(loaded, source, code_identity="test"))
 
 

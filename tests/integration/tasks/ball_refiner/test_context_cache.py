@@ -108,7 +108,7 @@ def test_context_roundtrip_preserves_raw_peaks_pts_and_source_pixel_mapping(evid
         torch.from_numpy(pose.uv)[None], torch.from_numpy(pose.confidence)[None], torch.from_numpy(pose.valid)[None],
         torch.from_numpy(court.uv)[None], torch.from_numpy(court.confidence)[None], torch.from_numpy(court.valid)[None],
     )
-    values = dict(OmegaConf.load(Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"))
+    values = dict(OmegaConf.load(Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/comparison/absolute.yaml"))
     values.update(hidden_dim=16, attention_heads=2, dropout=0.0)
     pair = build_ball_refiner_2d(Refiner2DConfig(**values))
     loss = refiner_2d_nll(pair.run(batch), project_store_targets(evidence.store, clip).target(0, clip.frame_count)).loss
@@ -116,7 +116,7 @@ def test_context_roundtrip_preserves_raw_peaks_pts_and_source_pixel_mapping(evid
     assert torch.isfinite(loss) and all(torch.isfinite(p.grad).all() for p in pair.model.parameters() if p.grad is not None)
 
 
-@pytest.mark.parametrize("change", ["building", "rgb", "evidence", "store", "missing", "duplicate", "path", "shard", "pts", "receipt", "checksum", "keys", "negative_peak", "filled_pose", "duplicate_id", "no_detection", "outside_court"])
+@pytest.mark.parametrize("change", ["building", "rgb", "evidence", "store", "missing", "duplicate", "path", "shard", "pts", "receipt", "checksum", "keys", "nonfinite_peak", "filled_pose", "duplicate_id", "no_detection", "outside_court"])
 def test_context_rejects_incomplete_corrupt_or_misaligned_data(evidence, tmp_path, change):
     directory = generate_context_cache(evidence, output=tmp_path / "context", producer=FakeProducer(), clip_ids=None)
     manifest_path = directory / "manifest.json"
@@ -148,8 +148,8 @@ def test_context_rejects_incomplete_corrupt_or_misaligned_data(evidence, tmp_pat
             arrays = {key: archive[key] for key in archive.files}
         if change == "pts":
             arrays["pts"] += 100
-        elif change == "negative_peak":
-            arrays["keypoints"][0, 0, 0, 2] = -1
+        elif change == "nonfinite_peak":
+            arrays["keypoints"][0, 0, 0, 2] = np.nan
         elif change == "filled_pose":
             arrays["keypoints"][2, 0] = arrays["keypoints"][1, 0]
         elif change == "duplicate_id":

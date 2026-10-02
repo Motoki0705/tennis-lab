@@ -5,7 +5,10 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
-from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
+from src.tasks.ball_refiner.refiner_2d.config import (
+    CandidateAnchoredConfig,
+    Refiner2DConfig,
+)
 from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
 from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 from src.tasks.ball_refiner.refiner_2d.model import Refiner2DModel
@@ -51,6 +54,8 @@ class Refiner2DAdapter:
         b, t, n, _ = coords.shape
         if min(b, t, n) <= 0:
             raise ValueError("Batch, time and candidate axes must be nonempty")
+        if isinstance(self.config, CandidateAnchoredConfig) and n < self.config.anchored_components:
+            raise ValueError('Candidate axis is smaller than anchored_components')
         if (
             n != candidates.config.max_candidates
             or candidates.config.patch_size != self.config.patch_size
