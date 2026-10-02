@@ -40,7 +40,7 @@ class CameraAlignmentOutput:
 def observation_ports(camera_ids: tuple[str, ...]) -> dict[str, InputPort]:
     return {"calibration": InputPort("local_court_calibration"), "identities": IDENTITIES_PORT,
         **{f"pose_{c}": InputPort("person_poses") for c in camera_ids},
-        **{f"ball_{c}": InputPort("ball_detections", version=2) for c in camera_ids}}
+        **{f"ball_{c}": InputPort("ball_points", version=2) for c in camera_ids}}
 
 
 class CameraAlignmentModule:

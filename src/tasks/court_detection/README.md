@@ -49,6 +49,19 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 ## Model and runtime
 
+DINOv3の外部sourceは `paths.external_asset_root`、学習済み重みは `paths.checkpoint_root` から読む。
+相対パスの正本は `configs/model/encoder/dinov3.yaml`。旧source配下の重みへのfallbackは行わない。
+checkpoint内に保存された旧 `dinov3/checkpoints/<filename>` は、推論境界で同名の
+`dinov3/<filename>` へ明示変換し、警告と `backbone_asset_migration` に記録する。
+呼び出し側のresolverを優先し、省略時の旧layoutはprojectの `ckpt/` を使う。
+checkpoint本体・保存architectureは変更しない。新配置の資産が無ければ停止する。
+
+学習でも `paths.checkpoint_root=ckpt` を使う。既存の学習出力から再開・初期化するときは
+`run.resume={role:artifact,path:court_detection/.../last.ckpt}` または
+`run.init_weights={role:artifact,path:court_detection/.../model.ckpt}` を明示する。
+これらは `paths.artifact_root=outputs` を参照し、DINOv3の初期weightは引き続きckptから読む。
+文字列だけの指定はcheckpoint root相対で、resumeとinit_weightsは同時に指定しない。
+
 - `models/hierarchical_model.py`: shared encoder/decoder trunkと、`CourtTargetBundleSpec`から導出したhead群。
 - `model_io/`: bundle全体の入力、loss、typed prediction契約。KP predictionは `[channel, peak, xy]`、score、validityを明示します。
 - `training/`: targetごとのloss/metricを一つのbundleとして集約します。
@@ -75,7 +88,7 @@ Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は
 
 LINEだけの利用・raw head評価は `predict(rgb, heads=("line",), postprocess="none")` のように明示します。`CourtKeypointPredictor`・`CourtLinePredictor`・`CourtSegPredictor`・`CourtSemanticLinePredictor`も`predictor.py`の同じ前処理・forwardを使います。存在しないheadは要求時に拒否します。既定のb863はKP/SEG/LINE＋pose＋semantic LINE（12ch）を持ちます。
 
-KP schemaがcamera-viewの場合、Hもそのchannel順のコート座標です。複数cameraの物理point identityへは自動変換しません。下流接続の向き設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。UIのraw score・heatmap・head metricには補正座標を混ぜません。 `visualization=semantic_line`には対応headを持つ`visualization.checkpoint`の明示指定が必要です。従来の`outputs/`内の重みには併せて`paths=default`を指定します（KP/SEG/LINEの既定rootは`ckpt/`）。
+KP schemaがcamera-viewの場合、Hもそのchannel順のコート座標です。複数cameraの物理point identityへは自動変換しません。下流接続の向き設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。UIのraw score・heatmap・head metricには補正座標を混ぜません。 `visualization=semantic_line`には対応headを持つ`visualization.checkpoint`の明示指定が必要です。`outputs/`内のモデルは `visualization.checkpoint={role:artifact,path:court_detection/.../model.ckpt}` で選びます。事前学習backboneは引き続き`paths.checkpoint_root`から読みます。Pythonの推論入口では同じresolverと`checkpoint_role=PathRole.ARTIFACT`を渡します。
 
 実checkpointの確認は `python -m src.tasks.court_detection.scripts.audit_hybrid_inference --checkpoint <absolute.ckpt> --image <image> --output-dir <new-directory>` で、KP/LINE/H・画像・診断・実行時間を保存できます。複数画像は`--image`を繰り返し指定します。`--scene-root`は既存ownerのハッシュを前後照合する読み取り専用オプションです。Hの生成可否とLINE支持率はGT精度ではありません。
 

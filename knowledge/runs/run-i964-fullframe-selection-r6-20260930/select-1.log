@@ -1,0 +1,39 @@
+selected ft_base_0.01 video_000/clip_000/cam0: 123 tracks -> 2 groups; CLIP 49 new/0 cached
+selected ft_base_0.01 video_000/clip_000/cam1: 48 tracks -> 3 groups; CLIP 78 new/0 cached
+selected ft_base_0.01 video_000/clip_000/cam2: 17 tracks -> 2 groups; CLIP 33 new/0 cached
+completed ft_base_0.01 video_000/clip_000: association undecided ambiguous_players
+selected ft_base_0.01 video_000/clip_007/cam0: 57 tracks -> 2 groups; CLIP 32 new/0 cached
+selected ft_base_0.01 video_000/clip_007/cam1: 85 tracks -> 2 groups; CLIP 70 new/0 cached
+selected ft_base_0.01 video_000/clip_007/cam2: 34 tracks -> 2 groups; CLIP 80 new/0 cached
+completed ft_base_0.01 video_000/clip_007: association ok 
+selected ft_base_0.01 video_001/clip_001/cam0: 189 tracks -> 4 groups; CLIP 99 new/0 cached
+selected ft_base_0.01 video_001/clip_001/cam1: 85 tracks -> 2 groups; CLIP 113 new/0 cached
+selected ft_base_0.01 video_001/clip_001/cam2: 218 tracks -> 2 groups; CLIP 32 new/0 cached
+completed ft_base_0.01 video_001/clip_001: association ok 
+selected ft_base_0.01 video_002/clip_013/cam0: 30 tracks -> 3 groups; CLIP 40 new/0 cached
+selected ft_base_0.01 video_002/clip_013/cam1: 19 tracks -> 2 groups; CLIP 82 new/0 cached
+selected ft_base_0.01 video_002/clip_013/cam2: 7 tracks -> 2 groups; CLIP 32 new/0 cached
+completed ft_base_0.01 video_002/clip_013: association ok 
+	Command being timed: "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_fullframe.py --phase select --max-clips 4 --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-fullframe-r6-20260929"
+	User time (seconds): 482.77
+	System time (seconds): 42.07
+	Percent of CPU this job got: 220%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:58.00
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1741088
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 51
+	Minor (reclaiming a frame) page faults: 13814203
+	Voluntary context switches: 3668
+	Involuntary context switches: 20326
+	Swaps: 0
+	File system inputs: 963360
+	File system outputs: 24400
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

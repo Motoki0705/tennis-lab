@@ -1,0 +1,18 @@
+{
+  "attempts": [
+    {
+      "mode": "reencoded",
+      "output": "isolation/cam2-reencoded",
+      "failed_before_detector_inference": true,
+      "reason": "runtime dataclass includes device; YAML builder takes a separate device argument"
+    },
+    {
+      "mode": "reencoded",
+      "output": "isolation/cpu-v2/cam2-reencoded",
+      "failed_before_detector_inference": true,
+      "reason": "YAML builder requires the enabled stage flag omitted by runtime dataclass"
+    }
+  ],
+  "fix": "copy the same settings, remove device from mapping and pass cpu explicitly, add enabled=True; successful CPU run in cpu-v3",
+  "gpu_jobs": 0
+}

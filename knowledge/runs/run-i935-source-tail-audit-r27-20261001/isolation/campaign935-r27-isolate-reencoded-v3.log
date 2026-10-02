@@ -1,0 +1,18 @@
+{"mode": "reencoded", "windows": 4, "total_windows": 67, "seconds": 13.297931589011569, "available_ram": 18603343872}
+{"mode": "reencoded", "windows": 8, "total_windows": 67, "seconds": 25.934120072983205, "available_ram": 18476113920}
+{"mode": "reencoded", "windows": 12, "total_windows": 67, "seconds": 38.950959298003, "available_ram": 18127630336}
+{"mode": "reencoded", "windows": 16, "total_windows": 67, "seconds": 50.775158626027405, "available_ram": 18127630336}
+{"mode": "reencoded", "windows": 20, "total_windows": 67, "seconds": 62.81985623802757, "available_ram": 18127630336}
+{"mode": "reencoded", "windows": 24, "total_windows": 67, "seconds": 74.57557912397897, "available_ram": 18012459008}
+{"mode": "reencoded", "windows": 28, "total_windows": 67, "seconds": 86.9908446649788, "available_ram": 17714077696}
+{"mode": "reencoded", "windows": 32, "total_windows": 67, "seconds": 97.79329903400503, "available_ram": 17603342336}
+{"mode": "reencoded", "windows": 36, "total_windows": 67, "seconds": 109.62596797500737, "available_ram": 17587224576}
+{"mode": "reencoded", "windows": 40, "total_windows": 67, "seconds": 122.03768667503027, "available_ram": 17333112832}
+{"mode": "reencoded", "windows": 44, "total_windows": 67, "seconds": 134.92638401302975, "available_ram": 17227104256}
+{"mode": "reencoded", "windows": 48, "total_windows": 67, "seconds": 147.636675139016, "available_ram": 17227104256}
+{"mode": "reencoded", "windows": 52, "total_windows": 67, "seconds": 160.65194907499244, "available_ram": 17141288960}
+{"mode": "reencoded", "windows": 56, "total_windows": 67, "seconds": 173.95419258001493, "available_ram": 17141288960}
+{"mode": "reencoded", "windows": 60, "total_windows": 67, "seconds": 186.42439602297964, "available_ram": 17141288960}
+{"mode": "reencoded", "windows": 64, "total_windows": 67, "seconds": 198.6270865169936, "available_ram": 17141288960}
+{"mode": "reencoded", "windows": 67, "total_windows": 67, "seconds": 207.743525650003, "available_ram": 17141288960}
+{"complete": "reencoded", "comparison": {"source_cuda": {"all_rank_native_cells_equal_frames": 0, "same_rank_native_cells": 294, "score_max_abs": 0.512169361114502, "same_rank_position_max_abs_px": 1919.0}, "cache_cuda": {"all_rank_native_cells_equal_frames": 265, "same_rank_native_cells": 2150, "score_max_abs": 0.0029655322432518005, "same_rank_position_max_abs_px": 641.672119140625}}, "seconds": 210.25697894999757}

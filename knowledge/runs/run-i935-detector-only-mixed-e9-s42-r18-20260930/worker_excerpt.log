@@ -1,0 +1,2 @@
+[worker] 2026-09-30T10:23:43+09:00 running: 1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930.log)
+[worker] 2026-09-30T11:00:29+09:00 done: 1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930.job resource=all slot=all

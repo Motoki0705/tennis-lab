@@ -1,0 +1,20 @@
+{
+  "commit": "a5e8dc5f7bb4f23a8601ba1f3d5483f850eeda99",
+  "branch": "campaign930/i936-1-probabilistic-triangulation",
+  "data": "synthetic Gaussian locations and GMMs; no real ball coordinates",
+  "source_sha256_at_commit": {
+    "src/utils/geometry/probabilistic_triangulation/distributions.py": "f37a2868d76c28584c94af40f9a4705b547be1f970086425d3cd6753535055aa",
+    "src/utils/geometry/probabilistic_triangulation/solver.py": "b3c4daab764490f57c179d0a53cc6a42fa6109470d7fab957e3682a52e0e8cba",
+    "src/tasks/ball_refiner/refiner_3d/triangulation.py": "021079056380b0c2cc11f3d089b8db513c6cfb2617e49c5f6d96880acec979d6",
+    "src/tasks/ball_refiner/refiner_3d/comparison.py": "16297d41b71a3bf8544c50e35695db20c2fa20a6cf33b7da8acb91aeae001070",
+    "src/tasks/ball_refiner/scripts/compare_triangulation.py": "879c750284ddf8462b24b0d69375d54a54f051f0112c65714b2050f14f66c375",
+    "src/tasks/ball_refiner/refiner_3d/fixtures/meiji_video_002_clip_010.json": "6db3a7e4c9e2c313d34838623e9dfd9e52e41b27148cdadc77d222e6c6a22380"
+  },
+  "cpu_native_threads": 1,
+  "gpu_used": false,
+  "main_wall_seconds": 204.91,
+  "main_peak_rss_kib": 959512,
+  "higher_budget_wall_seconds": 98.35,
+  "higher_budget_peak_rss_kib": 994984,
+  "note": "Later float32 weight-roundoff normalization is tested separately; these immutable measurements use the stated commit."
+}

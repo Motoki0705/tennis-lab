@@ -9,14 +9,17 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
 | モジュール | 役割 |
 |---|---|
 | `association/associate.py` | `associate()`: track を ID switch 候補で区間に切り、区間の組の score から identity を MILP で解き、コートの各 side で在場の長い identity を選手に選ぶ。曖昧なら `AssociationUndecided`（理由と全 score を持つ）で停止する |
-| `association/config.py` | `configs/association.yaml` の読み込み（全項目必須、未知の項目は停止）。`players_per_side`（シングルス/ダブルス）は clip の性質なので呼び出し側が渡す |
+| `association/config.py` | 選択したYAMLの読み込み（全項目必須、未知の項目は停止）。`players_per_side`（シングルス/ダブルス）は clip の性質なので呼び出し側が渡す |
 | `geometry/footpoints.py` | 足元点 = box 下端の中点を z=0 へ逆投影（足首は使わない。理由は docstring） |
 | `geometry/affinity.py` | 足元距離の中央値の対数尤度比（同一人物 = Rayleigh、別人 = 領域内一様） |
 | `geometry/switches.py` | track 内の足元の跳びから ID switch の候補 frame を出す |
 | `geometry/region.py` | プレー領域（ダブルスコート＋余白） |
 | `appearance/encoders.py`・`sampling.py` | Re-ID encoder（既定 CLIP-ReID）と重みの場所、crop の選び方と track ごとの embedding（`embed_tracks`） |
+| `appearance/solider.py` | SOLIDER-REIDの厳密なcheckpoint読み込みと推論adapter。移植元・変更・MIT表示は[notice](appearance/solider_vendor/NOTICE.md) |
+| `appearance/kpr.py`・`parts.py` | KPR Market/SOLIDERの推論portとnative可視part距離。6×512のnative partsとvisibilityを保持し、全体cosineへの暗黙変換はしない。HL3・移植差分は[notice](appearance/kpr_vendor/NOTICE.md) |
 | `appearance/affinity.py` | 区間の平均 embedding の cosine の対数尤度比（camera 間の組だけ） |
 | `evaluation/` | 評価ラベルと指標（下記） |
+| `calibration/` | run 12で事前固定した擬似pair-window・階層重み・尺度fit・leave-one-video-out検証。支持不足/不収束/不安定/3候補不合格ではconfigを返さず証拠を残す |
 
 データから決める値（`geometry.sigma_m`、`appearance.slope`・`center`）は、ラベルの無い Meiji clip の擬似ラベルで当てはめる
 （`tests/benchmarks/player_association_clips.py --phase calibrate`。評価ラベルの clip は使わない）。
@@ -42,21 +45,23 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
    対象外の人物も track として残す（v1 の観測は `person_observations.max_tracks_per_camera=16`）。
 2. `--phase sheets` の track 一覧（等間隔 crop）と、tracklet の連結点・切り替わりが疑われる区間の密な crop、全体画像を目視し、
    track（必要なら frame 区間）ごとに人物を決めて review YAML に書く。
-3. `--phase labels --review <yaml> --labels-dir <dir>` で box ラベルに変換する。review されていない track、存在しない track、
+3. `--phase labels --review <yaml>` で box ラベルに変換する。review されていない track、存在しない track、
    区間の抜け・重なり、box を持たない人物はすべてエラーで停止する（検証から黙って落ちる box を作らない）。
 
 ラベルに含まれるのは、観測 run の tracker が出した box だけである。tracker が一度も box を出さなかった人物は、ラベルにも無い。
 
 ### Meiji 3cam のラベル（v1）
 
-review とラベルは [`tests/benchmarks/labels/player_association/meiji_3cam/`](../../../tests/benchmarks/labels/player_association/meiji_3cam/review.yaml) にある。
+review とラベルは各clipの `annotations/player_association/{review.yaml,labels.json}` に置く。
+Meijiのdatasetは `data/tennis_multivew/processed/meiji_3cam/dataset`。
+[`evaluation/dataset_labels.py`](evaluation/dataset_labels.py)が保存先と探索を所有し、git内の旧ラベルへ戻る経路はない。
 観測 run は `outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927`（#933）。
 clip ごとの選定理由と人物の説明は review YAML の `selection`・`people` を正とする。
 
 - 3本の動画にまたがる4 clip: `video_000/clip_000`（人手の対応が既にある clip）、`video_000/clip_007`、`video_001/clip_001`、`video_002/clip_013`。
 - 全 clip がシングルス。Meiji にはダブルスとボールボーイが無い。ダブルス・同色ウェアは合成データでのみ検証する。
 - 本物の ID switch は `video_001/clip_001` cam0 の1件だけ。ID switch の検知は、この1件と合成データで評価する。
-- 学習や擬似ラベルに使わない（test 専用）。
+- 学習や擬似ラベルには使わない。規則設計・評価に既に使った開発評価であり、未見testではない。
 
 ## 指標（`evaluation/metrics.py`）
 
@@ -70,3 +75,15 @@ clip ごとの選定理由と人物の説明は review YAML の `selection`・`p
 | ID switch P/R | 予測 track 上の、ラベル人物の変化（正解）と予測 ID の変化（予測）を ±`switch_tolerance` frame で1対1に照合 |
 
 ラベルと照合できなかった予測 box は coverage として別に報告し、対応の誤りには数えない。
+
+既定は [association_i964_r14_lovo_a.yaml](configs/association_i964_r14_lovo_a.yaml)（2026-10-01のユーザー判断）。
+pipelineと引数省略の `load_association_config` は同じ候補Aを読む。
+標準pipelineはこの採用設定だけを読む。旧尺度は比較APIの
+`load_association_config(LEGACY_CONFIG, players_per_side=...)`または既存benchmarkで明示する。
+他encoderとgeometry-onlyも比較APIで使用できる。A/B/Cは閾値候補であり、同じsolverを共有する。
+欠損時は停止し、旧設定へ戻さない。
+LOVO採否・devで旧/新IDが一致した結果と限界は [run14の証拠](../../../knowledge/nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)を参照。
+
+重みは `encoder_weights()` を正本として `ckpt/player_association/`、DINOv3は `ckpt/dinov3/` から読む。
+`third_party/dinov3/` にはsource codeを置く。CLIPはtracking・選手選別・associationで同じ重みを使い、
+別rootや旧配置のweightへ暗黙に戻らない。

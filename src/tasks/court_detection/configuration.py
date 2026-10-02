@@ -865,7 +865,7 @@ class CourtEncoderConfig:
                 _string(mapping, "repository_path", path="model.encoder"),
             ),
             checkpoint_path=resolver.resolve_symlink_entry(
-                PathRole.EXTERNAL_ASSET,
+                PathRole.CHECKPOINT,
                 _string(mapping, "checkpoint_path", path="model.encoder"),
             ),
             backbone_name=_string(mapping, "backbone_name", path="model.encoder"),

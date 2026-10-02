@@ -1,0 +1,82 @@
+{
+  "report.md": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/report.md",
+    "sha256": "8767d991d9d4656388aed3154f73cbf97cf8917d6f7b07795ae941f7ae88fc04",
+    "bytes": 21600
+  },
+  "sources.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/sources.json",
+    "sha256": "f72da1b89dfcc3ee74b1dccee8d9559512cf450fece8c52fb750054f630ce6db",
+    "bytes": 353568
+  },
+  "sources.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/sources.csv",
+    "sha256": "1210e935ca02ec3632f16559f10b30e387852d5cf4ca33d1b306923136a143b4",
+    "bytes": 88901
+  },
+  "tracks.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/tracks.json",
+    "sha256": "85bdfc0fd29bbf1e4c696b3669055db6f6de2659ff1ebfee6cf323f8d98f3ade",
+    "bytes": 16114
+  },
+  "selection.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection.json",
+    "sha256": "99d9be85dc20377d474f60a9fff22fdc039a21d9fc61c13cf245c9fae706660c",
+    "bytes": 464770
+  },
+  "selection.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection.csv",
+    "sha256": "0ed9e1fac9f51db5fba22bed367aa7f3b7522e654682c95868a0e714ac420b87",
+    "bytes": 4611
+  },
+  "selection_per_clip.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection_per_clip.csv",
+    "sha256": "a171dd07baa0d361f0bb4674b42d36eb3393bf05f624c37cc24250a444c6cb91",
+    "bytes": 10025
+  },
+  "selection_per_camera.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection_per_camera.csv",
+    "sha256": "a09057523ee631b1c452635a179e229649fc40b5748019f8a80943e2267a6282",
+    "bytes": 23047
+  },
+  "selection_identities.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection_identities.csv",
+    "sha256": "cd8cbcda8279dfeb65282970924b15dd21182f78fbe1187317b47e09cca3e606",
+    "bytes": 9129
+  },
+  "court_consistency.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/court_consistency.json",
+    "sha256": "894327b1ea29ba33eedcc374fc41f7430c78f873cf86256ee25b269df4b0ed2b",
+    "bytes": 16264
+  },
+  "court_consistency.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/court_consistency.csv",
+    "sha256": "b20478a6a2a7484c19dfebd1ee855db1e2004a2ac81400183e53f022bba6dda1",
+    "bytes": 7557
+  },
+  "video.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/video.json",
+    "sha256": "6c6e8d5d0316e37d73d41b4a1529f84bb86f305a085351aec0d629fad54dc499",
+    "bytes": 1624
+  },
+  "input_audit.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/input_audit.json",
+    "sha256": "b3b7e1c858c38220b37046b2740d49417d0e305f41e021c7f971e07012957e8b",
+    "bytes": 1874
+  },
+  "selection_preview.jpg": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection_preview.jpg",
+    "sha256": "19046df74d66c7fa0e9a64d6a78389888f5b967b94e057b3cde8b655b56385af",
+    "bytes": 256736
+  },
+  "selection_units.jsonl.gz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection_units.jsonl.gz",
+    "sha256": "7f47a9a92f2a60959573db54d28b205f97ade7f80ea7c852ce2279aad239ca84",
+    "bytes": 557368
+  },
+  "selection_3cam.mp4": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929/selection_3cam.mp4",
+    "sha256": "3a3429a9edcd4374786a3f4e2a1478e731485a78c18fe1d9dad4c0140273003a",
+    "bytes": 2554772
+  }
+}

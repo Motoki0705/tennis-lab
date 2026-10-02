@@ -1,0 +1,16 @@
+{
+  "run_id": "1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001",
+  "name": "i964-recalibration-features-resume-r13-20261001",
+  "command": "timeout -k 10s 16180s bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/association_recalibration_features.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r13-20261001/features",
+  "provider": "codex",
+  "session": "01a0f2cc-fffc-7281-bf10-abff6aa0ccf2",
+  "issue": "964",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "6ef1059bb2ea5242fe90223f43fa73a8c0fbfa47",
+  "branch": "campaign930/i964-2-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "captured_at": "2026-10-01T00:52:50+09:00"
+}

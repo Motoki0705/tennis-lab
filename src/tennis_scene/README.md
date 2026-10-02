@@ -5,23 +5,23 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 
 ## 標準経路
 
-1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正と人物検出ROIを作る。
-2. DINO＋BoT-SORT＋ViTPoseでcamera-local人物trackと2D poseを収集し、各camera/frameの単一球を検出。
+1. 各cameraのframe 0だけをKP＋LINE共同推定し、固定コートの初期校正を作る。
+2. 全画面の人物検出にpose・外観特徴を付けて追跡し、コート座標で選手を選別する。各camera/frameの検出証拠をrefinerへ渡し、全GMMと全frameの最大weight成分平均点を保存する。
 3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
-5. 人物の同一ID観測と、各カメラの単一球の実観測を三角測量。
+5. 人物の同一ID観測と、各カメラのrefiner点を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
 
 Court・人物・球の手動入力は要求しません。
 
-対応範囲は同期・同FPS・同解像度の3〜5 view、各camera累計`person_observations.max_tracks_per_camera` track、
+対応範囲は同期・同FPS・同解像度の3〜5 view、各camera選別後`person_observations.max_tracks_per_camera` group、
 シングルスまたはダブルス（`player_association.players_per_side`）、球は各camera/frame高々1検出です。
 camera alignmentと身体viewの選択は、clip全体を約30fpsの格子で1回処理し、格子が
 `frame_sampling.max_frames`を超えるclipは切り詰めずに拒否します。
 reference未指定時は校正可能camera IDの辞書順先頭を選びます。IDはclip内でのみ有効です。
 
-設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)です。既定値は実clip（Meiji）で完走した構成です。
+設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)、人物経路の既定と契約は[pipeline README](pipeline/README.md)を参照してください。
 既定の配布名は配置規約であり、重みを自動取得・自動選定する処理はありません。
 有効な機能が参照するcheckpointが欠けていれば、実行前のdefinition構築時に停止します。
 
@@ -53,7 +53,7 @@ Court・ball検出器のpixel格子正規化（W-1/H-1）は`src.utils.geometry.
 CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
-無観測の人物にIDは割り当てません。ボールにはID推論・候補選択モデルを置きません。
+無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、単眼refinerの分布から最大weight成分の平均点を使います。
 
 sideはball観測だけで決め、最低evidence、referenceとの接続性、絶対的な幾何品質、次点とのmarginを要求します。
 決まらないclipは理由付きで停止します。`camera_alignment`は人物観測も加えて絶対的な幾何品質を再検証します。校正はframe 0で採用されたHomographyの投影点に対する

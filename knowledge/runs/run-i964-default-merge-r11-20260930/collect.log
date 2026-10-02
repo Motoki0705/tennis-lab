@@ -1,0 +1,199 @@
+{
+  "run10_off_pair_metrics_exact": true,
+  "run10_off_raw_group_all_strata_exact": true,
+  "shared_production_entrypoint": "track_sequence",
+  "strata": 32,
+  "status": "ok",
+  "execution_commit": "923856b71a5c54aa8aca32abd6046c490c32de54",
+  "code_files_match_commit": 104,
+  "summary": {
+    "strongsort_pp_pose_merge_off__clipreid_vitb16_market1501": {
+      "camera_conditions": 12,
+      "raw_observations": 40169,
+      "selected_observations": 19725,
+      "synthetic": 1375,
+      "aflink_merges": 6
+    },
+    "strongsort_pp_pose_merge_on__clipreid_vitb16_market1501": {
+      "camera_conditions": 12,
+      "raw_observations": 40166,
+      "selected_observations": 19725,
+      "synthetic": 1365,
+      "aflink_merges": 7
+    }
+  },
+  "off_on_changes": [
+    {
+      "clip": "video_000/clip_000",
+      "camera": "cam0",
+      "arrays_equal_off_on": {
+        "track_ids": true,
+        "boxes": true,
+        "observed": true,
+        "origins": true
+      },
+      "dropped_rows_emitted_in_off": 0,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_000/clip_000",
+      "camera": "cam1",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": true,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 1,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_000/clip_000",
+      "camera": "cam2",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": true,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 4,
+      "selected_source_row_change_frames": [
+        112,
+        128,
+        492
+      ]
+    },
+    {
+      "clip": "video_000/clip_007",
+      "camera": "cam0",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": false,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 1,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_000/clip_007",
+      "camera": "cam1",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": true,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 1,
+      "selected_source_row_change_frames": [
+        325
+      ]
+    },
+    {
+      "clip": "video_000/clip_007",
+      "camera": "cam2",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": true,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 1,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_001/clip_001",
+      "camera": "cam0",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": true,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 2,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_001/clip_001",
+      "camera": "cam1",
+      "arrays_equal_off_on": {
+        "track_ids": true,
+        "boxes": true,
+        "observed": true,
+        "origins": true
+      },
+      "dropped_rows_emitted_in_off": 0,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_001/clip_001",
+      "camera": "cam2",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": false,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 2,
+      "selected_source_row_change_frames": [
+        417
+      ]
+    },
+    {
+      "clip": "video_002/clip_013",
+      "camera": "cam0",
+      "arrays_equal_off_on": {
+        "track_ids": true,
+        "boxes": true,
+        "observed": true,
+        "origins": true
+      },
+      "dropped_rows_emitted_in_off": 0,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_002/clip_013",
+      "camera": "cam1",
+      "arrays_equal_off_on": {
+        "track_ids": true,
+        "boxes": true,
+        "observed": true,
+        "origins": true
+      },
+      "dropped_rows_emitted_in_off": 0,
+      "selected_source_row_change_frames": []
+    },
+    {
+      "clip": "video_002/clip_013",
+      "camera": "cam2",
+      "arrays_equal_off_on": {
+        "track_ids": false,
+        "boxes": false,
+        "observed": true,
+        "origins": false
+      },
+      "dropped_rows_emitted_in_off": 3,
+      "selected_source_row_change_frames": [
+        162,
+        244,
+        245
+      ]
+    }
+  ],
+  "merge_count": 26,
+  "label_second_person_candidates": 0,
+  "video": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review.mp4",
+    "sha256": "118452c6bb2922e50e5111a1ea20c37390e9693084d83701630fe99decab5a85",
+    "bytes": 3019489,
+    "frames_read": 345,
+    "windows_rule_verified": true,
+    "screenshot_frames": [
+      26,
+      145,
+      172,
+      303
+    ]
+  },
+  "output_bytes": 12065072
+}

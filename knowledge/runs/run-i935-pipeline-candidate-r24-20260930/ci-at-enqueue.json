@@ -1,0 +1,46 @@
+{
+  "headRefOid": "28bdcd3fcbe774f99f526481b038749bd581a6a1",
+  "isDraft": true,
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "detailsUrl": "https://github.com/Motoki0705/tennis-lab/actions/runs/36705200326/job/109854105937",
+      "name": "Python",
+      "startedAt": "2026-09-30T10:55:11Z",
+      "status": "IN_PROGRESS",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T10:55:09Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Motoki0705/tennis-lab/actions/runs/36705200339/job/109853701279",
+      "name": "knowledge",
+      "startedAt": "2026-09-30T10:53:56Z",
+      "status": "COMPLETED",
+      "workflowName": "Knowledge library"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T10:54:35Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Motoki0705/tennis-lab/actions/runs/36705198245/job/109853696220",
+      "name": "label",
+      "startedAt": "2026-09-30T10:53:55Z",
+      "status": "COMPLETED",
+      "workflowName": "Pull request labeler"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T10:56:03Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Motoki0705/tennis-lab/actions/runs/36705200339/job/109853701575",
+      "name": "knowledge-webui",
+      "startedAt": "2026-09-30T10:53:56Z",
+      "status": "COMPLETED",
+      "workflowName": "Knowledge library"
+    }
+  ]
+}

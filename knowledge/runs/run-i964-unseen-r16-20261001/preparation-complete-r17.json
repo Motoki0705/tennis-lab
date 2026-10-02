@@ -1,0 +1,27 @@
+{
+  "status": "prepared_not_enqueued",
+  "code_commit": "141b6d64b816aa4db20cdbb01d2c5ca9d31dc237",
+  "plan": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/plan.json",
+    "sha256": "b1bc4ca6bf423726d3f88d20fcfdddfb67d9af3459bf95b1aa5e10a28d41ab7a"
+  },
+  "resumed_opening": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/resumed-opening-r17b.json",
+    "sha256": "99aa7c0add7cd18e5620375c12976e1ddfddc4a223bb4dea26286ca7fcf3a63f"
+  },
+  "clips": 3,
+  "cameras": 9,
+  "camera_frames": 11124,
+  "metadata_and_media_hashes_checked": true,
+  "freeze_and_original_receipts_unchanged": true,
+  "labels_opened": false,
+  "label_file_presence": [
+    false,
+    false,
+    false
+  ],
+  "inference_attempts": 0,
+  "scoring_batches": 0,
+  "output_files": 14,
+  "output_bytes": 61648
+}

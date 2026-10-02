@@ -19,6 +19,13 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import minimize
 
+from src.tasks.player_association.appearance.parts import (
+    NativeParts,
+    mean_parts,
+    part_distance,
+)
+from src.tasks.player_association.appearance.sampling import TrackAppearance
+
 
 @dataclass(frozen=True)
 class AppearanceAffinityConfig:
@@ -51,6 +58,28 @@ def appearance_score(cosine: float, config: AppearanceAffinityConfig) -> float:
     if not -1 - 1e-6 <= cosine <= 1 + 1e-6:
         raise ValueError(f"Cosine similarity out of range: {cosine}")
     return float(np.clip(config.slope * (cosine - config.center), -config.max_abs_score, config.max_abs_score))
+
+
+def segment_appearance(sampled: TrackAppearance, start: int, end: int) -> NDArray[np.float64] | NativeParts | None:
+    if sampled.parts is None:
+        return segment_embedding(sampled.frames, sampled.embeddings, start, end)
+    rows = np.flatnonzero((sampled.frames >= start) & (sampled.frames < end))
+    return mean_parts(sampled.parts.take(rows)) if len(rows) else None
+
+
+def appearance_evidence(left: NDArray[np.float64] | NativeParts, right: NDArray[np.float64] | NativeParts,
+                        config: AppearanceAffinityConfig) -> dict[str, float | str]:
+    if isinstance(left, NativeParts) and isinstance(right, NativeParts):
+        distance, valid = part_distance(left, right)
+        if not valid[0, 0]:
+            return {'appearance': 0., 'appearance_missing': 'no_common_visible_parts'}
+        similarity = float(np.clip(1 - distance[0, 0], -1, 1))
+        return {'part_distance': float(distance[0, 0]), 'part_similarity': similarity,
+                'appearance': appearance_score(similarity, config)}
+    if isinstance(left, NativeParts) or isinstance(right, NativeParts):
+        raise ValueError('Cannot compare native parts to a whole-image embedding')
+    cosine = float(np.clip(left @ right, -1, 1))
+    return {'cosine': cosine, 'appearance': appearance_score(cosine, config)}
 
 
 def fit_cosine_log_likelihood_ratio(positive: NDArray[np.float64], negative: NDArray[np.float64]) -> tuple[float, float]:

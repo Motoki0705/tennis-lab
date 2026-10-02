@@ -1,0 +1,33 @@
+{
+  "tests": {
+    "fit_and_gate": 16,
+    "dev_gates": 4,
+    "qualification": 5,
+    "total": 25,
+    "workers": 4
+  },
+  "ruff": "passed",
+  "mypy": "passed",
+  "shell_syntax": "passed",
+  "cli_help": "passed",
+  "preflight": {
+    "assets": 15,
+    "nodes": 28,
+    "cameras": 3,
+    "frames_each": 1010,
+    "inference_executed": false
+  },
+  "production_input_gate": {
+    "status": "ok",
+    "seconds": 91.28513204300543,
+    "gpu_inference_executed": false
+  },
+  "defaults_diff_since_run13": "",
+  "validator_requested": 0,
+  "validator_attempted": 0,
+  "validator_completed": 0,
+  "disk_bytes_before_gpu": {
+    "fit_dev_outputs": 2220354,
+    "qualification_preflight": 174130
+  }
+}

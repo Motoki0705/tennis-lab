@@ -1,0 +1,462 @@
+{
+  "status": "complete",
+  "seed": 1729,
+  "repeats": 10000,
+  "method": "paired non-wrapping moving blocks drawn on each complete 270-frame timeline, then observed mask applied; linear p90; percentile intervals",
+  "limitations": "single 4.5s clip, nonstationary tail, endpoint underrepresentation of non-wrapping blocks; synchronized-camera sensitivity included; not population-general confidence or a p value",
+  "pooled_original_delta_px": 46.341093119428365,
+  "results": [
+    {
+      "block_frames": 8,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -16.415478005343125,
+          90.42573727154414
+        ],
+        "median_px": 23.290251125078107,
+        "std_px": 26.84138603830211,
+        "fraction_at_or_below_zero": 0.1186,
+        "fraction_at_or_below_gate_tolerance_5": 0.1886,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        541,
+        750
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -66.41971598409447,
+            3.201176803180856
+          ],
+          "median_px": -33.10410313074381,
+          "std_px": 18.785104662403846,
+          "fraction_at_or_below_zero": 0.913,
+          "fraction_at_or_below_gate_tolerance_5": 0.9882,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -57.944343676798,
+            106.30204022434944
+          ],
+          "median_px": 8.046566011895749,
+          "std_px": 32.140959196442715,
+          "fraction_at_or_below_zero": 0.2498,
+          "fraction_at_or_below_gate_tolerance_5": 0.3965,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            17.946175272391486,
+            156.3195118641486
+          ],
+          "median_px": 78.65144010495288,
+          "std_px": 37.36143265770177,
+          "fraction_at_or_below_zero": 0.0003,
+          "fraction_at_or_below_gate_tolerance_5": 0.0034,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 8,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -20.811220616354568,
+          85.91543527284401
+        ],
+        "median_px": 21.081985045472493,
+        "std_px": 27.177510098043143,
+        "fraction_at_or_below_zero": 0.1534,
+        "fraction_at_or_below_gate_tolerance_5": 0.238,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        471,
+        786
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -66.41971598409447,
+            3.201176803180856
+          ],
+          "median_px": -33.10410313074381,
+          "std_px": 18.785104662403846,
+          "fraction_at_or_below_zero": 0.913,
+          "fraction_at_or_below_gate_tolerance_5": 0.9882,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -56.819663206004904,
+            106.51510546166082
+          ],
+          "median_px": 8.240667545998818,
+          "std_px": 31.89358343138664,
+          "fraction_at_or_below_zero": 0.2407,
+          "fraction_at_or_below_gate_tolerance_5": 0.3904,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            18.124479681131692,
+            156.3495160469695
+          ],
+          "median_px": 78.5976490594872,
+          "std_px": 37.593966480526,
+          "fraction_at_or_below_zero": 0.0007,
+          "fraction_at_or_below_gate_tolerance_5": 0.0047,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 16,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -28.87963087481119,
+          83.56861258241292
+        ],
+        "median_px": 13.884197614110743,
+        "std_px": 27.37969213210566,
+        "fraction_at_or_below_zero": 0.223,
+        "fraction_at_or_below_gate_tolerance_5": 0.3193,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        527,
+        780
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -74.16548027833117,
+            3.6976283652995208
+          ],
+          "median_px": -32.11354277084739,
+          "std_px": 21.1846540951161,
+          "fraction_at_or_below_zero": 0.8717,
+          "fraction_at_or_below_gate_tolerance_5": 0.987,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -59.83418777808129,
+            104.89027285340504
+          ],
+          "median_px": 4.9897006809605955,
+          "std_px": 31.757945604361502,
+          "fraction_at_or_below_zero": 0.2787,
+          "fraction_at_or_below_gate_tolerance_5": 0.5001,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            4.265921563443969,
+            154.17740441236643
+          ],
+          "median_px": 66.51277479365496,
+          "std_px": 38.51381393908412,
+          "fraction_at_or_below_zero": 0.0034,
+          "fraction_at_or_below_gate_tolerance_5": 0.0276,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 16,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -34.50529361909971,
+          79.0304681261701
+        ],
+        "median_px": 10.862117918156649,
+        "std_px": 27.114383921309432,
+        "fraction_at_or_below_zero": 0.2859,
+        "fraction_at_or_below_gate_tolerance_5": 0.3822,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        411,
+        791
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -74.16548027833117,
+            3.6976283652995208
+          ],
+          "median_px": -32.11354277084739,
+          "std_px": 21.1846540951161,
+          "fraction_at_or_below_zero": 0.8717,
+          "fraction_at_or_below_gate_tolerance_5": 0.987,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -59.15321000547214,
+            101.67752396837895
+          ],
+          "median_px": 4.700191272785787,
+          "std_px": 30.401147413073623,
+          "fraction_at_or_below_zero": 0.2859,
+          "fraction_at_or_below_gate_tolerance_5": 0.509,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            4.810214015815067,
+            153.90349483534888
+          ],
+          "median_px": 66.37066138194564,
+          "std_px": 38.02412963279279,
+          "fraction_at_or_below_zero": 0.0033,
+          "fraction_at_or_below_gate_tolerance_5": 0.026,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 33,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -42.93266106219317,
+          62.03988603096164
+        ],
+        "median_px": 4.179232744236412,
+        "std_px": 25.4221187159542,
+        "fraction_at_or_below_zero": 0.4143,
+        "fraction_at_or_below_gate_tolerance_5": 0.5195,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        539,
+        788
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -78.80564782085979,
+            2.82335648485045
+          ],
+          "median_px": -35.305288614280514,
+          "std_px": 21.056647950165654,
+          "fraction_at_or_below_zero": 0.919,
+          "fraction_at_or_below_gate_tolerance_5": 0.9908,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -59.20528879635235,
+            35.7020931832393
+          ],
+          "median_px": 3.261120005683218,
+          "std_px": 21.2930617437354,
+          "fraction_at_or_below_zero": 0.248,
+          "fraction_at_or_below_gate_tolerance_5": 0.5557,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            1.1585234124219603,
+            124.7075568042806
+          ],
+          "median_px": 50.70555252519609,
+          "std_px": 35.66276227570167,
+          "fraction_at_or_below_zero": 0.011,
+          "fraction_at_or_below_gate_tolerance_5": 0.0971,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 33,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -42.97799149948525,
+          49.34110469547662
+        ],
+        "median_px": 2.390211225641636,
+        "std_px": 21.71112523642476,
+        "fraction_at_or_below_zero": 0.4427,
+        "fraction_at_or_below_gate_tolerance_5": 0.5525,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        426,
+        803
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -78.80564782085979,
+            2.82335648485045
+          ],
+          "median_px": -35.305288614280514,
+          "std_px": 21.056647950165654,
+          "fraction_at_or_below_zero": 0.919,
+          "fraction_at_or_below_gate_tolerance_5": 0.9908,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -57.592570851563984,
+            34.951756262148265
+          ],
+          "median_px": 3.241806278367119,
+          "std_px": 21.26849637962762,
+          "fraction_at_or_below_zero": 0.2568,
+          "fraction_at_or_below_gate_tolerance_5": 0.5551,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            1.1489851474459154,
+            126.21502668426923
+          ],
+          "median_px": 50.44361010862605,
+          "std_px": 35.8548292337844,
+          "fraction_at_or_below_zero": 0.0117,
+          "fraction_at_or_below_gate_tolerance_5": 0.0938,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 66,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -47.22259954547177,
+          41.46831843607657
+        ],
+        "median_px": -3.0427390843761133,
+        "std_px": 22.072566777009445,
+        "fraction_at_or_below_zero": 0.6484,
+        "fraction_at_or_below_gate_tolerance_5": 0.7437,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        572,
+        786
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -81.26531418314076,
+            -3.4408043078870905
+          ],
+          "median_px": -45.449910369810745,
+          "std_px": 17.826461398359903,
+          "fraction_at_or_below_zero": 0.9828,
+          "fraction_at_or_below_gate_tolerance_5": 0.9964,
+          "zero_excluded": true
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -61.220497326136176,
+            29.18249092256321
+          ],
+          "median_px": 1.17994941035582,
+          "std_px": 19.054267730550258,
+          "fraction_at_or_below_zero": 0.1802,
+          "fraction_at_or_below_gate_tolerance_5": 0.6954,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            0.4393282453428359,
+            129.72657146191568
+          ],
+          "median_px": 24.846327829351807,
+          "std_px": 37.74481741931044,
+          "fraction_at_or_below_zero": 0.016,
+          "fraction_at_or_below_gate_tolerance_5": 0.228,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 66,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "percentile_95_interval_px": [
+          -44.41447124467268,
+          41.47318092354106
+        ],
+        "median_px": -1.3349280701758346,
+        "std_px": 18.961315892392772,
+        "fraction_at_or_below_zero": 0.6258,
+        "fraction_at_or_below_gate_tolerance_5": 0.7189,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        509,
+        794
+      ],
+      "cameras": {
+        "cam0": {
+          "percentile_95_interval_px": [
+            -81.26531418314076,
+            -3.4408043078870905
+          ],
+          "median_px": -45.449910369810745,
+          "std_px": 17.826461398359903,
+          "fraction_at_or_below_zero": 0.9828,
+          "fraction_at_or_below_gate_tolerance_5": 0.9964,
+          "zero_excluded": true
+        },
+        "cam1": {
+          "percentile_95_interval_px": [
+            -66.94173915145221,
+            28.8823078567682
+          ],
+          "median_px": 1.1799054601029837,
+          "std_px": 19.468534328029357,
+          "fraction_at_or_below_zero": 0.1753,
+          "fraction_at_or_below_gate_tolerance_5": 0.697,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "percentile_95_interval_px": [
+            0.5704965491465969,
+            129.72657146191568
+          ],
+          "median_px": 25.74737391901528,
+          "std_px": 37.560676241213926,
+          "fraction_at_or_below_zero": 0.012,
+          "fraction_at_or_below_gate_tolerance_5": 0.2222,
+          "zero_excluded": true
+        }
+      }
+    }
+  ],
+  "tail": {
+    "camera": "cam2",
+    "inclusive_frames": [
+      217,
+      265
+    ],
+    "observed": 49,
+    "cache_above_original_pooled_source_p90": 5,
+    "source_above_original_pooled_source_p90": 24,
+    "source_above_original_pooled_cache_p90": 27,
+    "cache_above_original_pooled_cache_p90": 8,
+    "cached_p90_px": 134.77176366106818,
+    "source_p90_px": 189.06469345007136,
+    "pooled_p90_if_only_these_source_errors_replaced_by_cache": 72.25487401559883,
+    "pooled_delta_if_only_these_source_errors_replaced_by_cache": -22.097731383903067,
+    "pooled_delta_excluding_these_frames_from_both": -20.892339059345332,
+    "cached_free_winner": 14,
+    "source_free_winner": 39,
+    "warning": "post-hoc attribution only; not a rescored acceptance gate or a causal model intervention"
+  }
+}

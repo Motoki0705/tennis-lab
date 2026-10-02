@@ -35,7 +35,9 @@ models:
   - id: convnext-tracknet
     enabled: true
     category: architecture-controlled
-    checkpoint: ball_detection/convnext/logs/version_0/checkpoints/last.ckpt
+    checkpoint:
+      role: artifact
+      path: ball_detection/convnext/logs/version_0/checkpoints/last.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet]
     strict: true
@@ -46,7 +48,9 @@ models:
   - id: convnext-v2-ft
     enabled: true
     category: architecture-controlled
-    checkpoint: ball_detection/convnext_v2_ft/logs/version_0/checkpoints/ball-detection-epoch=13.ckpt
+    checkpoint:
+      role: artifact
+      path: ball_detection/convnext_v2_ft/logs/version_0/checkpoints/ball-detection-epoch=13.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet]
     strict: true
@@ -57,7 +61,9 @@ models:
   - id: convnext-v2-scratch
     enabled: true
     category: architecture-controlled
-    checkpoint: ball_detection/convnext_v2_scratch/logs/version_0/checkpoints/ball-detection-epoch=25.ckpt
+    checkpoint:
+      role: artifact
+      path: ball_detection/convnext_v2_scratch/logs/version_0/checkpoints/ball-detection-epoch=25.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet]
     strict: true
@@ -67,7 +73,9 @@ models:
   - id: dinov3-tracknet
     enabled: false
     category: architecture-controlled
-    checkpoint: ball_detection/dinov3_rope_tracknet/checkpoints/last.ckpt
+    checkpoint:
+      role: artifact
+      path: ball_detection/dinov3_rope_tracknet/checkpoints/last.ckpt
     expected_model_name: dinov3_rope
     datasets: [tracknet]
     strict: true

@@ -1,0 +1,53 @@
+{
+  "run": 17,
+  "unique_tests_passed": 28,
+  "pytest_workers": 4,
+  "test_runs": [
+    {
+      "stage": "split entry and existing selection",
+      "passed": 16,
+      "seconds": 14.85
+    },
+    {
+      "stage": "split, freeze/resume gates, resource guard and selection",
+      "passed": 27,
+      "seconds": 11.92
+    },
+    {
+      "stage": "added no-calibration scoring case; changed suite only",
+      "passed": 11,
+      "seconds": 15.56
+    }
+  ],
+  "files": [
+    "tests/integration/tasks/person_tracking/test_unseen.py",
+    "tests/integration/tasks/person_tracking/test_unseen_freeze.py",
+    "tests/integration/tasks/person_tracking/test_unseen_resume.py",
+    "tests/integration/tasks/person_tracking/test_feature_guard.py",
+    "tests/unit/tennis_scene/pipeline/components/test_player_selection.py"
+  ],
+  "commands": "OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m pytest -n 4 <files>",
+  "lint": "ruff check passed for all five changed Python files; mypy --follow-imports=skip passed",
+  "shell": "bash -n tests/benchmarks/person_unseen.sh passed",
+  "knowledge": {
+    "nodes": 432,
+    "errors": 0,
+    "advisory_warnings": 215,
+    "base_ref": "origin/campaign930/i964-1-player-detection"
+  },
+  "unchanged_vs_a5797faf": [
+    "src/**",
+    "freeze.json",
+    "opening.json",
+    "preflight-stop.json"
+  ],
+  "initial_test_failures": "2 synthetic fixtures omitted required players_per_side; corrected, all passed afterwards",
+  "real_unseen_labels_opened": false,
+  "real_unseen_inference_attempts": 0,
+  "scoring_batches": 0,
+  "validator": {
+    "requested": 0,
+    "attempted": 0,
+    "completed": 0
+  }
+}

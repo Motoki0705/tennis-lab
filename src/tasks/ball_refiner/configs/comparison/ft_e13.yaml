@@ -1,0 +1,13 @@
+# @package _global_
+# Historical detector-only pilot; select explicitly with --config-name comparison/ft_e13.
+defaults:
+  - /train
+  - override /model: comparison/absolute
+  - _self_
+
+data:
+  evidence: ball_refiner/detector-ft-e13-trainval-r3-20260928
+
+training:
+  epochs: 12
+  max_steps: 3000
