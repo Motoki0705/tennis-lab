@@ -18,14 +18,6 @@ from src.tasks.base.visualization.review.catalog import (
 )
 
 DATA_ROOT = Path("/home/kamimura/projects/tennis-lab/data")
-EXPECTED_FORMS = {
-    "single_object",
-    "multi_object",
-    "single_object_broadcast",
-    "multi_object_broadcast",
-    "single_object_camera_view_v2",
-    "multi_object_camera_view_v2",
-}
 
 
 def _write_form(
@@ -210,6 +202,11 @@ def test_form_paths_cannot_escape(tmp_path: Path) -> None:
             catalog.scenes(escape)
 
 
+@pytest.mark.local_data
+@pytest.mark.skipif(
+    not (DATA_ROOT / "blcs" / "single_object").is_dir(),
+    reason="Local BLCS single_object dataset is unavailable",
+)
 def test_real_blcs_forms_are_detected() -> None:
     catalog = DatasetCatalog(DATA_ROOT, "blcs")
     assert {form.name for form in catalog.forms()} == {"single_object"}
