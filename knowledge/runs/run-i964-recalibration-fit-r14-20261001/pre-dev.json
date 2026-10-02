@@ -1,0 +1,16 @@
+{
+  "status": "accepted",
+  "source_commit": "6bafe87c635eaaf2d1136300c469a9dcc1031fdf",
+  "fit_invocations": 1,
+  "final_fit_count": 1,
+  "dev_labels_opened": false,
+  "dev_scoring_batches": 0,
+  "default_changed": false,
+  "proposed_config": {
+    "path": "src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml",
+    "sha256": "3f18419c49567f697e43fd18c78d6df78ffcd6c654bef5cac0ddc88193a74789"
+  },
+  "protocol_url": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5910654476",
+  "sigma_fold_max_min": 1.2809875713417094,
+  "slope_fold_max_min": 1.1282858155157847
+}

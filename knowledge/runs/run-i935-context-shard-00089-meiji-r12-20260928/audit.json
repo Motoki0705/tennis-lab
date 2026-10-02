@@ -1,0 +1,182 @@
+{
+  "status": "cpu_audit_complete",
+  "context_manifest_sha256": "a8cd3f7b8ecbf1fab6cc568bc9d0e5230d0e77706f61ee6d712e94908c0fe14d",
+  "pose_threshold": 0.15,
+  "clips": [
+    {
+      "clip_id": "meiji/video_000/clip_002/cam0",
+      "source": "meiji",
+      "frames": 1355,
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "cumulative_tracks": 22,
+      "detections_per_frame": {
+        "count": 1355,
+        "min": 3.0,
+        "median": 5.0,
+        "p95": 5.0,
+        "max": 7.0,
+        "mean": 4.757933579335793
+      },
+      "observed_tracks_per_frame": {
+        "count": 1355,
+        "min": 3.0,
+        "median": 5.0,
+        "p95": 5.0,
+        "max": 6.0,
+        "mean": 4.715129151291513
+      },
+      "track_observed_frame_counts": {
+        "count": 22,
+        "min": 2.0,
+        "median": 133.0,
+        "p95": 1180.9999999999995,
+        "max": 1355.0,
+        "mean": 290.40909090909093
+      },
+      "one_frame_tracks": 0,
+      "frames_without_valid_arms": 0,
+      "valid_arm_slots": 20638,
+      "outside_image_valid_arm_slots": 0,
+      "court_valid_points": 14,
+      "court_points_stored_px": [
+        [
+          664.6697998046875,
+          245.27249145507812
+        ],
+        [
+          810.6201171875,
+          230.19122314453125
+        ],
+        [
+          380.07379150390625,
+          341.2113952636719
+        ],
+        [
+          682.8028564453125,
+          359.5628662109375
+        ],
+        [
+          680.0513916015625,
+          243.68309020996094
+        ],
+        [
+          402.947509765625,
+          342.5980224609375
+        ],
+        [
+          789.107666015625,
+          232.4141387939453
+        ],
+        [
+          622.4179077148438,
+          355.90234375
+        ],
+        [
+          650.678955078125,
+          254.16786193847656
+        ],
+        [
+          775.269287109375,
+          242.66595458984375
+        ],
+        [
+          522.5106811523438,
+          299.91876220703125
+        ],
+        [
+          705.5084228515625,
+          294.3467102050781
+        ],
+        [
+          707.720703125,
+          248.90188598632812
+        ],
+        [
+          600.9227905273438,
+          297.5312194824219
+        ]
+      ],
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 1355,
+        "court_keypoints": 14,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 119240,
+        "pose_confidence_saturated_slots": 0,
+        "pose_confidence_raw_max": 0.9513605833053589
+      },
+      "seconds": {
+        "court": 17.783084688009694,
+        "detection_tracking": 415.6237424669671,
+        "pose": 353.66595111001516
+      },
+      "sample_selection": "five uniformly spaced source frame indices; no label access",
+      "sample_frames": [
+        {
+          "frame_index": 0,
+          "pts": 0,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        {
+          "frame_index": 338,
+          "pts": 16900000,
+          "observed_track_ids": [
+            1,
+            20,
+            21
+          ]
+        },
+        {
+          "frame_index": 677,
+          "pts": 33850000,
+          "observed_track_ids": [
+            1,
+            20,
+            28,
+            31
+          ]
+        },
+        {
+          "frame_index": 1015,
+          "pts": 50750000,
+          "observed_track_ids": [
+            1,
+            20,
+            49,
+            50
+          ]
+        },
+        {
+          "frame_index": 1354,
+          "pts": 67700000,
+          "observed_track_ids": [
+            1,
+            20,
+            43,
+            49,
+            50
+          ]
+        }
+      ],
+      "sheet": "clip-00101-context.jpg",
+      "sheet_sha256": "ca4d7ecfaa426787d3fdb7b2f18153d5c1e0e077fe5136ebe42eb28a3862924f",
+      "context_npz_sha256": "60f95ec6d40f7c9569408567f0a2966cc358f1eaa44d6d4044cfa8380e175c64",
+      "jpeg_shard_sha256": "523642ccb0a85eb4d6a453196e3defcb1735d1124273f62dd0170c9d7627065f"
+    }
+  ]
+}

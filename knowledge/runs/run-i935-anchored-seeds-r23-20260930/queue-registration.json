@@ -1,0 +1,11 @@
+{
+  "job_id": "1790762149588430733_2215834_i935-anchored-seeds43-44-r23-20260930",
+  "state_at_handoff": "running",
+  "worker_pid": 2227543,
+  "queue_directory": "/home/kamimura/projects/tennis-lab/.training_queue",
+  "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1790762149588430733_2215834_i935-anchored-seeds43-44-r23-20260930.log",
+  "repro": "/home/kamimura/projects/tennis-lab/.training_queue/repro/1790762149588430733_2215834_i935-anchored-seeds43-44-r23-20260930",
+  "source_code_commit": "d40173f160032612ef117fdf6cfc6b87050f19af",
+  "results_collected": false,
+  "scope": "one allocation, two sequential seeds; no wait for training"
+}

@@ -11,6 +11,11 @@ import pytest
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.player_association.association.config import (
+    DEFAULT_CONFIG,
+    LEGACY_CONFIG,
+    load_association_config,
+)
 from src.tennis_scene.configuration import (
     PipelineRuntimeConfig,
     parse_clip_studio_config,
@@ -35,12 +40,15 @@ def _composed(config_name: str, overrides: list[str]) -> Iterator[DictConfig]:
 def _pipeline_config(root: Path, *overrides: str) -> DictConfig:
     """Compose the shipped pipeline config with a temporary project root.
 
-    The association config is project-owned and read while the runtime config
-    is built, so the temporary root receives the shipped copy.
+    Project-owned association configs are read while the
+    runtime config is built, so the temporary root receives the shipped copies.
     """
-    association = "src/tasks/player_association/configs/association.yaml"
-    (root / association).parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(PROJECT_ROOT / association, root / association)
+    for source in (
+        DEFAULT_CONFIG, LEGACY_CONFIG,
+    ):
+        target = root / source.relative_to(PROJECT_ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
     with _composed(
         "pipeline",
         [
@@ -175,7 +183,7 @@ def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     assert runtime.enabled["player_reconstruction"] and "blcs_association" not in runtime.enabled
 
 
-@pytest.mark.parametrize("override", ["+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])
+@pytest.mark.parametrize("override", ["+ball_confidence=legacy.yaml", "+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])
 def test_automatic_pipeline_rejects_removed_manual_and_3d_settings(tmp_path: Path, override: str) -> None:
     with pytest.raises(UnknownConfigurationKeyError):
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
@@ -206,3 +214,38 @@ def test_visualize_tasks_accepts_gvhmr_alignment_on_its_own(
     )
 
     assert runtime.tasks == ("gvhmr_alignment",)
+
+
+def test_default_person_capacity_covers_doubles_with_buffer(tmp_path: Path) -> None:
+    runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path), bind_inputs=False)
+    assert runtime.max_tracks_per_camera == 6
+
+
+def test_pipeline_and_task_default_use_fitted_association(tmp_path: Path) -> None:
+    runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path), bind_inputs=False)
+    fitted = load_association_config(players_per_side=1)
+    assert runtime.player_association == fitted
+    assert fitted.geometry.sigma_m == 0.7381677290433
+    assert fitted.appearance is not None
+    assert fitted.appearance.slope == 36.70286491794044
+    assert fitted.appearance.center == 0.8298172161822686
+    assert (fitted.min_margin, fitted.max_runner_up_ratio) == (1.0, 0.5)
+
+
+def test_legacy_association_is_available_only_through_comparison_api(tmp_path: Path) -> None:
+    override = f"+player_association.config={LEGACY_CONFIG.relative_to(PROJECT_ROOT)}"
+    with pytest.raises(UnknownConfigurationKeyError, match="config"):
+        PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override), bind_inputs=False)
+    legacy = load_association_config(LEGACY_CONFIG, players_per_side=1)
+    assert legacy.geometry.sigma_m == 1.05
+    assert legacy.appearance is not None
+    assert (legacy.appearance.slope, legacy.appearance.center) == (62.7, 0.847)
+    assert legacy != load_association_config(players_per_side=1)
+
+
+def test_missing_fitted_config_does_not_load_available_legacy(tmp_path: Path) -> None:
+    config = _pipeline_config(tmp_path)
+    (tmp_path / DEFAULT_CONFIG.relative_to(PROJECT_ROOT)).unlink()
+    assert (tmp_path / LEGACY_CONFIG.relative_to(PROJECT_ROOT)).is_file()
+    with pytest.raises(FileNotFoundError):
+        PipelineRuntimeConfig.from_config(config, bind_inputs=False)

@@ -1,0 +1,22 @@
+{
+  "remaining_cameras": 9,
+  "remaining_frames": 6672,
+  "measured_completed_frames": 10269,
+  "measured_completed_seconds": 6582.0,
+  "mean_seconds_per_frame": 0.6409582237803096,
+  "worst_camera_seconds_per_frame": 0.8141634980988594,
+  "linear_mean_remaining_seconds": 4276.473269062226,
+  "conservative_remaining_seconds": 12610.617490494298,
+  "method": "Worst per-camera seconds/frame times 6672 remaining frames, add 300 s build/startup, multiply by 2.2 for overnight contention. Short-clip model startup overhead is covered by the margin.",
+  "expected_seconds": [
+    4800,
+    12600
+  ],
+  "wall_grant_seconds": 16200,
+  "timeout_seconds": 16180,
+  "kill_grace_seconds": 10,
+  "expected_peak_gpu_bytes": 6000000000,
+  "gpu_stop_bytes": 9500000000,
+  "expected_new_disk_bytes": 500000000,
+  "disk_budget_bytes": 5000000000
+}

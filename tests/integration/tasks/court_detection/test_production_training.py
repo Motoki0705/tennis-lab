@@ -11,11 +11,13 @@ import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
     TennisCourtDetectorInput,
 )
+from src.tasks.court_detection.inference.checkpoint import CourtInferenceSpec
 from src.tasks.court_detection.model_io.contracts import CourtPoseTrainingResult
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
@@ -60,7 +62,17 @@ def test_published_two_source_batch_trains_all_five_outputs(
                 "data.augmentation.val_short_side=64",
             ],
         )
-    config.model = OmegaConf.create(checkpoint["hyper_parameters"]["config"]["model"])
+    runtime = CourtTrainingConfig.from_config(config)
+    hyper = checkpoint["hyper_parameters"]
+    saved_spec = CourtInferenceSpec.from_checkpoint_config(
+        hyper["config"], hyper["target_bundle_state"], resolver=runtime.shared.resolver
+    )
+    config.model = OmegaConf.create(saved_spec.architecture)
+    backbone_path = saved_spec.model.encoder.checkpoint_path
+    assert backbone_path is not None
+    config.model.encoder.checkpoint_path = str(
+        backbone_path.relative_to(runtime.shared.resolver.roots.checkpoint_root)
+    )
 
     # Validate one actual image per available split, without scanning all JPEGs.
     def first_record(self: Any, split: str) -> Any:

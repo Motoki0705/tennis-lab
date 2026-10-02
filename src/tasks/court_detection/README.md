@@ -54,6 +54,19 @@ LINE幅は通常線7.5 cm・baseline 15 cmです。各schemaの末尾の版番�
 各dense headはhidden 256・residual depth 2です。数値設定を変更でき、
 checkpointの読み込みでは保存された値を使用します。
 
+DINOv3の外部sourceは `paths.external_asset_root`、学習済み重みは `paths.checkpoint_root` から読む。
+相対パスの正本は `configs/model/dinov3_dpt.yaml`。旧source配下の重みへのfallbackは行わない。
+checkpoint内に保存された旧 `dinov3/checkpoints/<filename>` は、推論境界で同名の
+`dinov3/<filename>` へ明示変換し、警告と `backbone_asset_migration` に記録する。
+呼び出し側のresolverを優先し、省略時の旧layoutはprojectの `ckpt/` を使う。
+checkpoint本体・保存architectureは変更しない。新配置の資産が無ければ停止する。
+
+学習でも `paths.checkpoint_root=ckpt` を使う。既存の学習出力から再開・初期化するときは
+`run.resume={role:artifact,path:court_detection/.../last.ckpt}` または
+`run.init_weights={role:artifact,path:court_detection/.../model.ckpt}` を明示する。
+これらは `paths.artifact_root=outputs` を参照し、DINOv3の初期weightは引き続きckptから読む。
+文字列だけの指定はcheckpoint root相対で、resumeとinit_weightsは同時に指定しない。
+
 ## 学習
 
 入口は`src.tasks.court_detection.scripts.train`だけです。
@@ -107,6 +120,9 @@ YouTubeの取得・20点注釈・専用previewは、このタスクの提供範�
 `CourtPredictor.load_from_checkpoint`は保存モデル構成・target bundle・解像度を読み、
 全モデル重みを`strict=True`でロードします。過去の別アーキテクチャへのfallbackはありません。
 学習専用のsource/run設定は推論のために補完しません。
+`outputs/`内のモデルは`visualization.checkpoint={role:artifact,path:court_detection/.../model.ckpt}`で指定します。
+Python APIでは同じresolverと`checkpoint_role=PathRole.ARTIFACT`を渡し、
+事前学習backboneは`paths.checkpoint_root`から読みます。
 
 `CourtPredictor.predict(rgb, postprocess="hybrid")`はraw headとhomographyを分けて返します。
 ordered KP14とLINEでHを推定し、失敗理由を返します。別Hへの代替はありません。

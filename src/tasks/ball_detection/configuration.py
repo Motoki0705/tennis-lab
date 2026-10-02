@@ -6,13 +6,19 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from string import Formatter
 from types import MappingProxyType
 from typing import Any, Literal, cast
 from urllib.parse import urlsplit
 
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.base.configuration import BaseRunConfig, BaseTrainingConfig
+from src.tasks.base.configuration import (
+    BaseRunConfig,
+    BaseTrainingConfig,
+    CheckpointInput,
+    resolve_checkpoint_input,
+)
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -259,6 +265,12 @@ class BallRuntimePaths:
     def checkpoint(self, relative: str) -> Path:
         resolved: Path = self.resolver.resolve(PathRole.CHECKPOINT, relative)
         return resolved
+
+    def checkpoint_input(self, mapping: ConfigMapping, key: str, *, path: str) -> CheckpointInput:
+        declared = resolve_checkpoint_input(mapping, key, path=path, resolver=self.resolver)
+        if declared is None:
+            raise SemanticConfigurationError(f"{path}.{key}: checkpoint input is required.")
+        return declared
 
     def output(self, relative: str) -> Path:
         resolved: Path = self.resolver.resolve(PathRole.OUTPUT, relative)
@@ -642,7 +654,7 @@ def validate_model(
         )
         if paths is not None:
             paths.external_asset(repository_path)
-            paths.external_asset(checkpoint_path)
+            paths.checkpoint(checkpoint_path)
     return model
 
 
@@ -1087,6 +1099,36 @@ def validate_data(
     return data
 
 
+def validate_candidate_settings(value: object) -> ConfigMapping:
+    """The campaign candidate metric is fixed; no compatibility defaults."""
+    expected: dict[str, int | float | bool] = {
+        "max_candidates": 8, "nms_kernel": 5, "patch_size": 5,
+        "subpixel_refine": True, "radius_source_px": 20.0,
+    }
+    settings = exact_mapping(value, path="training.validation_candidates", required=set(expected))
+    for key, required in expected.items():
+        actual = typed(settings, key, (int, float) if type(required) is float else type(required),
+                       path="training.validation_candidates")
+        if actual != required:
+            raise SemanticConfigurationError(f"training.validation_candidates.{key} must be {required!r}")
+    return settings
+
+
+def validate_epoch_candidate_policy(config: DictConfig) -> None:
+    """Every detector training entry must validate and retain every epoch."""
+    training = as_mapping(config.training, path="training")
+    validate_candidate_settings(typed(training, "validation_candidates", (dict, DictConfig), path="training"))
+    checkpoint = as_mapping(training["checkpoint"], path="training.checkpoint")
+    trainer = as_mapping(training["trainer"], path="training.trainer")
+    if checkpoint["enabled"] is not True or checkpoint["save_top_k"] != -1:
+        raise SemanticConfigurationError("Ball training must keep every epoch: checkpoint.enabled=true, save_top_k=-1")
+    if trainer["check_val_every_n_epoch"] != 1:
+        raise SemanticConfigurationError("Ball candidate recall must be validated every epoch")
+    fields = {field for _, field, _, _ in Formatter().parse(checkpoint["filename"])}
+    if "epoch" not in fields:
+        raise SemanticConfigurationError("Ball checkpoint.filename must include {epoch} to retain every epoch")
+
+
 def validate_training(config: DictConfig) -> None:
     """Validate a complete normal/staged training composition."""
     root = exact_mapping(
@@ -1150,6 +1192,7 @@ def validate_training(config: DictConfig) -> None:
         "qualitative_logging",
         "qualitative_rendering",
         "gan",
+        "validation_candidates",
     }
     if "staged" in training:
         training_fields.add("staged")
@@ -1341,6 +1384,7 @@ def validate_training(config: DictConfig) -> None:
     # Task-owned maps are exact-closed before the shared projections parse them.
     BaseRunConfig.from_mapping(run, resolver=paths.resolver)
     BaseTrainingConfig.from_validated_task_mapping(training)
+    validate_epoch_candidate_policy(config)
 
 
 def _validate_metrics(metrics: ConfigMapping) -> None:
@@ -1474,7 +1518,7 @@ def validate_visualization(config: DictConfig) -> None:
             "gif",
         },
     )
-    for key in ("store_dir", "clip_id", "checkpoint", "save"):
+    for key in ("store_dir", "clip_id", "save"):
         typed(vis, key, str, path="visualization")
     fps = _required_number(vis, "fps", path="visualization")
     _positive(fps, path="visualization.fps")
@@ -1500,7 +1544,7 @@ def validate_visualization(config: DictConfig) -> None:
     )
     paths.output(cast(str, run["output_dir"]))
     paths.data(cast(str, vis["store_dir"]))
-    paths.checkpoint(cast(str, vis["checkpoint"]))
+    paths.checkpoint_input(vis, "checkpoint", path="visualization")
     paths.artifact(cast(str, vis["save"]))
 
 
@@ -1642,8 +1686,7 @@ def validate_eval(config: DictConfig) -> None:
             "weights_only",
         },
     )
-    for key in ("output_dir", "checkpoint_path"):
-        typed(run, key, str, path="run")
+    typed(run, "output_dir", str, path="run")
     typed(run, "seed", int, path="run")
     _positive(
         cast(int, typed(run, "gpus", int, path="run")),
@@ -1653,7 +1696,7 @@ def validate_eval(config: DictConfig) -> None:
     for key in ("strict", "weights_only"):
         typed(run, key, bool, path="run")
     paths.output(cast(str, run["output_dir"]))
-    paths.checkpoint(cast(str, run["checkpoint_path"]))
+    paths.checkpoint_input(run, "checkpoint_path", path="run")
     DetailedEvaluationConfig.from_config(config)
 
 
@@ -1680,8 +1723,10 @@ def _validate_eval_training_mapping(value: object) -> ConfigMapping:
             "qualitative_logging",
             "qualitative_rendering",
             "gan",
+            "validation_candidates",
         },
     )
+    validate_candidate_settings(training["validation_candidates"])
     exact_mapping(
         training["trainer"],
         path="training.trainer",
@@ -2306,7 +2351,7 @@ def validate_youtube_boundary(config: DictConfig) -> None:
             prediction,
             path="workflow.prediction",
             fields={
-                "checkpoint": str,
+                "checkpoint": (str, dict, DictConfig),
                 "device": str,
                 "sequence_length": int,
                 "window_stride": int,
@@ -2389,7 +2434,7 @@ def validate_youtube_boundary(config: DictConfig) -> None:
             _validate_trimmed_string(
                 prediction["device"], path="workflow.prediction.device"
             )
-        paths.checkpoint(cast(str, prediction["checkpoint"]))
+        paths.checkpoint_input(prediction, "checkpoint", path="workflow.prediction")
         return
     if "discovery" not in workflow:
         workflow = exact_mapping(

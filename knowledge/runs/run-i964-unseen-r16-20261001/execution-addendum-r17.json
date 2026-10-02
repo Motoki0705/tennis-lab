@@ -1,0 +1,96 @@
+{
+  "schema": "i964_unseen_resume_v1",
+  "created_at": "2026-09-30T23:49:41.089362+00:00",
+  "issue": 964,
+  "run": 17,
+  "authorization": "Run 17 ORCHESTRATOR DIRECTIVE: one job, resource=all, 3 h, <=10 GB peak VRAM, <=3 GB output; accept missing side as stopped/all -1 while retaining all person cameras and videos.",
+  "freeze": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/freeze.json",
+    "sha256": "3137317b290a05bb3f4c39e2cdcce728200c173a96907e77e3fbf7c66df55b9d"
+  },
+  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "report": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001",
+  "previous_opening": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/opening.json",
+    "sha256": "b5113c99bf67503297eb47a9c2ca2373e5ac532aeb807c2b98de1027552799e1"
+  },
+  "previous_stop": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/preflight-stop.json",
+    "sha256": "14eff8cc73b44d79964db81c4b9ba7c1a247cc33fcafdfb6381967848af5cebd"
+  },
+  "allowed_missing_sides": [
+    "video_001/clip_003"
+  ],
+  "budget": {
+    "allocator_bytes": 7516192768,
+    "build_jobs": 2,
+    "cpu_threads": 4,
+    "disk_limit_bytes": 2800000000,
+    "kill_after_seconds": 10,
+    "minimum_available_ram_bytes": 6442450944,
+    "outer_timeout_seconds": 10790,
+    "resource": "all",
+    "vram_stop_bytes": 9000000000,
+    "wall_seconds": 10770
+  },
+  "limits": {
+    "job_count": 1,
+    "wall_including_kill_seconds": 10800,
+    "peak_vram_bytes": 10000000000,
+    "output_bytes": 3000000000,
+    "run_disk_bytes": 5000000000
+  },
+  "estimate": {
+    "wall_minutes": [
+      150,
+      180
+    ],
+    "peak_vram_gb": [
+      4.3,
+      8.0
+    ],
+    "output_gb": [
+      1.0,
+      3.0
+    ],
+    "basis": "preflight-stop.json runtime_evidence: 147.83 min person + 9.13 min court; build/hash/video extra; projections, not unseen measurements"
+  },
+  "preparation": {
+    "original_files": "freeze.json, opening.json and preflight-stop.json remain byte-identical",
+    "new_receipt": "resumed-opening-r17.json",
+    "only_allowed_existing_output": [
+      "opening.json"
+    ],
+    "inference_attempts_before_resume": 0,
+    "scoring_batches_before_resume": 0,
+    "labels_opened": false
+  },
+  "execution": {
+    "clips": [
+      "video_000/clip_002",
+      "video_001/clip_003",
+      "video_002/clip_003"
+    ],
+    "cameras": [
+      "cam0",
+      "cam1",
+      "cam2"
+    ],
+    "camera_frames": 11124,
+    "full_length": true,
+    "person": "all six full-frame person nodes run before court for each clip; same frozen source/settings/assets",
+    "court": "same frozen detector nodes once per camera, then the same calibrate_local_courts per camera; no court_side or ball execution",
+    "selection": "same linked selection rule on local calibration; no half-turn when side is absent; uncalibrated views have existing camera_not_calibrated empty selection, with raw tracks retained",
+    "association": "candidate A; missing side or calibration explicitly stopped with all IDs -1 for the entire clip; include in scoring denominator",
+    "videos": "full-length synchronized three-camera video for every clip, including stopped association; no labels",
+    "scoring": "next run only after complete.json and finished queue job; one scoring batch from saved predictions; no retune or reinference"
+  },
+  "unchanged": [
+    "person configuration and source",
+    "all model weights",
+    "all clips/frames",
+    "ball path",
+    "court detection and court_side algorithms/settings"
+  ],
+  "prior_decisions": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5921567001"
+}

@@ -1,0 +1,21 @@
+{
+  "status": "ok",
+  "command": [
+    "bash",
+    "-euo",
+    "pipefail",
+    "-c",
+    "\n        bash \"$1/tests/benchmarks/build_dino_extension.sh\" \"$2\" \"$3/dino_extension\"\n        exec \"$1/.venv/bin/python\" \"$1/tests/benchmarks/person_unseen.py\" --phase execute --report \"$3\"\n    ",
+    "unseen",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+    "/home/kamimura/projects/tennis-lab",
+    "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001"
+  ],
+  "sample_interval_s": 2.0,
+  "measurement": "NVML via nvidia-smi, entire GPU 0; conservative for an all job",
+  "peak_gpu_bytes": 4784652288,
+  "min_host_available_bytes": 17417633792,
+  "output_bytes": 596913476,
+  "wall_seconds": 7129.402337034,
+  "exit_code": 0
+}

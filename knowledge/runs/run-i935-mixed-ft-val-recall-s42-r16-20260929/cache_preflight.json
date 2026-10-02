@@ -1,0 +1,49 @@
+{
+  "status": "passed",
+  "cuda_used": false,
+  "checkpoint_strict_cpu_load": true,
+  "reference_manifest_sha256": "cc9e094dad26903c692de9acd75996d890ea877799556454fc4db6757d59a15f",
+  "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+  "clips": 329,
+  "frames": 145767,
+  "jpeg_shards_rehashed": 329,
+  "checkpoint_input_contract": {
+    "model_config": {
+      "name": "conv_next_unet",
+      "input_mode": "mdd",
+      "in_channels": 2,
+      "num_classes": 1,
+      "num_frames": 8,
+      "input_layout": "bcthw",
+      "dims": [
+        64,
+        128,
+        256,
+        512
+      ],
+      "depth": 2,
+      "drop_path_prob": 0.0,
+      "mdd_a": 0.2,
+      "mdd_b": 0.15
+    },
+    "image_size_hw": [
+      288,
+      512
+    ],
+    "image_normalization": {
+      "enabled": true,
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ]
+    },
+    "window_length": 8
+  },
+  "ram_available_bytes": 27980173312
+}

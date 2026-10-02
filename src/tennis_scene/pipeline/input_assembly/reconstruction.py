@@ -27,7 +27,7 @@ from src.tennis_scene.pipeline.input_assembly.observations import (
 @dataclass(frozen=True)
 class CourtSideInputAssembler:
     ball_threshold: float
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> CourtSideInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
@@ -38,10 +38,10 @@ class CourtSideInputAssembler:
 
 @dataclass(frozen=True)
 class PlayerAssociationInputAssembler:
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PlayerAssociationInput:
-        tracks = tuple(artifacts[f"tracks_{camera}"] for camera in context.source.camera_ids)
+        tracks = tuple(artifacts[f"tracks_{camera}"].tracks for camera in context.source.camera_ids)
         return PlayerAssociationInput(context.source, artifacts["calibration"], artifacts["side"], tracks)
 
 
@@ -49,7 +49,7 @@ class PlayerAssociationInputAssembler:
 class CameraAlignmentInputAssembler:
     human_threshold: float
     ball_threshold: float
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> CameraAlignmentInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
@@ -74,7 +74,7 @@ class PlayerTriangulationInputAssembler:
 @dataclass(frozen=True)
 class BallTriangulationInputAssembler:
     ball_threshold: float
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> TriangulationInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]

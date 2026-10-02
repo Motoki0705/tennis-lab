@@ -213,8 +213,11 @@ class BallDetectionModule(BasePipelineModule):
         )
         if not 1 <= stride <= sequence_length:
             raise ValueError(f"window_stride must be in [1, {sequence_length}] to cover every frame, got {stride}")
-        if self.config.overlap_aggregation not in {"last_window_wins", "max_score"}:
-            raise ValueError("overlap_aggregation must be 'last_window_wins' or 'max_score'")
+        centre_policy = self.config.overlap_aggregation == "nearest_window_centre_then_earlier_start"
+        if self.config.overlap_aggregation not in {"last_window_wins", "max_score", "nearest_window_centre_then_earlier_start"}:
+            raise ValueError("Unknown ball overlap_aggregation policy")
+        if centre_policy and (video.num_frames < sequence_length or self.config.tail_policy != "backfill"):
+            raise ValueError("Centre selection requires backfill with real frames; short-clip padding is forbidden")
 
         transform = BgrToTensorTransform(
             image_size=self.config.image_size,
@@ -252,7 +255,14 @@ class BallDetectionModule(BasePipelineModule):
                 for time_index, frame_index in enumerate(window.frame_indices):
                     new = SelectedBallFrame(prediction, window_index, time_index, window.start_index)
                     old = selected.get(frame_index)
-                    if self.config.overlap_aggregation == "last_window_wins" or old is None or new.score >= old.score:
+                    if old is None:
+                        take = True
+                    elif centre_policy:
+                        take = (abs(2 * time_index - (sequence_length - 1)), window.start_index) < (
+                            abs(2 * old.time_index - (sequence_length - 1)), old.window_start)
+                    else:
+                        take = self.config.overlap_aggregation == "last_window_wins" or new.score >= old.score
+                    if take:
                         selected[frame_index] = new
 
         if set(selected) != set(range(video.num_frames)):

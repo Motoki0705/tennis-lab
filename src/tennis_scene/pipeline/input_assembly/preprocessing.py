@@ -9,11 +9,11 @@ from typing import Any
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionInput
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationInput,
-    CourtCalibrationOutput,
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtDetectionInput
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionInput
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingInput
+from src.tennis_scene.pipeline.components.player_selection import PlayerSelectionInput
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationInput
 from src.tennis_scene.pipeline.contracts import AssemblyContext
 
@@ -48,14 +48,12 @@ class CourtCalibrationInputAssembler:
 
 @dataclass(frozen=True)
 class PersonDetectionInputAssembler:
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PersonDetectionInput:
         if context.camera_id is None:
             raise ValueError("Person detection requires a camera scope")
-        calibration: CourtCalibrationOutput = artifacts["calibration"]
-        polygon = calibration.footpoint_polygons[context.camera_id]
-        return PersonDetectionInput(context.source.video(context.camera_id), polygon)
+        return PersonDetectionInput(context.source.video(context.camera_id))
 
 
 @dataclass(frozen=True)
@@ -70,9 +68,19 @@ class PersonTrackingInputAssembler:
 
 @dataclass(frozen=True)
 class PoseEstimationInputAssembler:
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PoseEstimationInput:
         if context.camera_id is None:
             raise ValueError("Pose requires a camera scope")
-        return PoseEstimationInput(context.source.video(context.camera_id), artifacts["tracks"])
+        return PoseEstimationInput(context.source.video(context.camera_id), artifacts["selection"].tracks)
+
+
+@dataclass(frozen=True)
+class PlayerSelectionInputAssembler:
+    version: int = 1
+
+    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> PlayerSelectionInput:
+        if context.camera_id is None:
+            raise ValueError("Player selection requires a camera scope")
+        return PlayerSelectionInput(context.source.video(context.camera_id), artifacts["calibration"], artifacts["tracks"])

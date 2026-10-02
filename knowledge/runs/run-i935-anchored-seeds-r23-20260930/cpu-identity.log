@@ -1,0 +1,1 @@
+{"phase": "after", "windows": 60, "tensors": 480, "checkpoint_sha256": {"r18": "aec4ddbbd7f184adab52c019c176ebf252d91d1e7396ce80ee3cd576ea5aa6db", "anchored_12k": "985308b02d4b1b33c3bcfb40dbf2a846b900e730ee6d5dfc07c3a0ed561cd36c"}}

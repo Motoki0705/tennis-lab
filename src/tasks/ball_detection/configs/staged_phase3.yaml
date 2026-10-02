@@ -20,4 +20,6 @@ training:
 
 run:
   output_dir: ${tennis_output:ball_detection,train,staged,phase3}
-  init_weights: ball_detection/train/staged/phase2/logs/run/checkpoints/last.ckpt
+  init_weights:
+    role: artifact
+    path: ball_detection/train/staged/phase2/logs/run/checkpoints/last.ckpt

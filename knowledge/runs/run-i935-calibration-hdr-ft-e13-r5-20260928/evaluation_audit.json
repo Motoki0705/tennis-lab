@@ -1,0 +1,1358 @@
+{
+  "status": "passed",
+  "scope": "validation diagnostic; no calibration fitting, no test, no RGB occlusion, no real amodal GT",
+  "run_state": {
+    "camera_clips": 18,
+    "partition": "calibration",
+    "prediction_files": 36,
+    "status": "complete"
+  },
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928/manifest.json": "cc9e094dad26903c692de9acd75996d890ea877799556454fc4db6757d59a15f",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/best.json": "c666ee0addf5a6e7d9c6b5e463df5008632699ad52fab2f76ec80cd040e6843c",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/config.yaml": "2f0bb497987b5c1585013bda653ce3586a4107ad20b2569ab8b3efef3ed66a41",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/data_manifest.json": "ee87787b89d1a13d20e4b8772fcb702204c5973badb2620267a0d81143c91ac3",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/epoch-009.pt": "ed659e142dd228949ec772bcfdf9db0f4c682081778853c15088f7202a848c76",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/run_state.json": "7f893c666db09b07e3944f646dc39cd032b09c1b0aa1e0e3f197bf4636ca116e"
+  },
+  "prediction_sha256": {
+    "predictions/clip-00098-observed.npz": "e00db53ea4309c53a52fcb0df4a5572c7d55865553a4b574fa327938de0c9026",
+    "predictions/clip-00098-evidence_gap.npz": "03b716f69d5f384d01f967b50da3c5dfb7ec1a5733101e6e9011576b1fe3c617",
+    "predictions/clip-00099-observed.npz": "4687a2507898fc00985feda91a7199c5482a8c33214ba6945ef222873da48483",
+    "predictions/clip-00099-evidence_gap.npz": "59eeb682ad82a5f677dcad5cb0af6d395f5ef67f965586f64810a8e4723dff33",
+    "predictions/clip-00100-observed.npz": "19851e1b5891710842034ab1207745f00e669ea50187cc00e323f7cd54832443",
+    "predictions/clip-00100-evidence_gap.npz": "44f0087cc8a3810bae36a7184bf7e5d253b883ba7d4a5fca778c7908751aaef5",
+    "predictions/clip-00101-observed.npz": "a28743c9f33f69742c2000398ada78b2ae9ec9c3e12a49a31a81b58e5da3231a",
+    "predictions/clip-00101-evidence_gap.npz": "a64491b73cdbacbdadb29aa7299c5461ce94a802480d3b5b5f5abb129cf38ad5",
+    "predictions/clip-00102-observed.npz": "334d4d207c2377e5ff560653fae970397cd373373e57e7036af70a9888cb2f74",
+    "predictions/clip-00102-evidence_gap.npz": "b8eecaa19f123bf9f1d5967938c3b973bc612d29e88193749dd0a2b5b3e3a124",
+    "predictions/clip-00103-observed.npz": "e1f82937a810bdf2d7e9cdea5a15f267160f7bfbdc3664e3fa045453dab41eb9",
+    "predictions/clip-00103-evidence_gap.npz": "71fa8e5d4c1592d6a6a42c53f64901a2c9322b97a3a5f5698321f989b3ff05e8",
+    "predictions/clip-00104-observed.npz": "048589c6bb8118e067be9212be04b49151f3a040c14e3f30ef552a435837eeee",
+    "predictions/clip-00104-evidence_gap.npz": "e6015310c8bf369831eda7cf83cd25982546b9bdec84640f8e995ee116a1a85b",
+    "predictions/clip-00105-observed.npz": "d86a5c74ec08d75fa04ed39f60db122aa7a05492ec3a58c1a9c9f77a24fd5c20",
+    "predictions/clip-00105-evidence_gap.npz": "1a3e9f15be8a02907889c5acdd3d1f0404c1151188857d23f2d7e6aa4be5c2a6",
+    "predictions/clip-00106-observed.npz": "5617ef543cc84a6dfc6622a65e244e053f51d9281eae09dbc61142f42270130c",
+    "predictions/clip-00106-evidence_gap.npz": "28943ba98bacc170e6a257810e2a99a81f15334b0bbb11720c8977b0eae9e217",
+    "predictions/clip-00113-observed.npz": "ed3228e24d35d2abc424e7464b635dc90f8769e45c3a1d55a42e94165d5213da",
+    "predictions/clip-00113-evidence_gap.npz": "2d822b58f302285378f4daf66c36e336dbb4f405bb365872c2d053216467c149",
+    "predictions/clip-00114-observed.npz": "0c4d5c8c754cc9ffd200be10c182314e344d5bbc6e4cc697c10397af755645f9",
+    "predictions/clip-00114-evidence_gap.npz": "7c4b121e4b652cb0d494f7ab09afc871308d2c73d38767d6bb8b0934c7dba8d5",
+    "predictions/clip-00115-observed.npz": "cfc6aab17adc1fb30b31b66196372444c88128daf3391836a18df80b0cfc97ef",
+    "predictions/clip-00115-evidence_gap.npz": "91b54924c2161b79e75f48b14e03e0e6c433396132a0d2d51df956f46c502204",
+    "predictions/clip-00116-observed.npz": "55d0798cda3071e4d61c1ede9d04bc1660f7b1e4b92b80463ba7ea1660409846",
+    "predictions/clip-00116-evidence_gap.npz": "d91840b4f1391b9061dc0bc3d036b25257fd7e2e1a68ee3b1e0d4b7e1d83a19f",
+    "predictions/clip-00117-observed.npz": "897775c00ccbc54eaa6a91b568c2a1042058de05f572e7171b2418465095869a",
+    "predictions/clip-00117-evidence_gap.npz": "68da7259109d8f0d6f5132698af304a7042007559e3da0d16f8d706582204579",
+    "predictions/clip-00118-observed.npz": "9b47b19b86efb503f43e9ec971c9970b40f755319cbc1c19aac72d36ee206a9e",
+    "predictions/clip-00118-evidence_gap.npz": "6eeba3f845e50452c822222fc9b6875396a52702315b8391f394cb5d39e8b7c6",
+    "predictions/clip-00125-observed.npz": "0f7aafff698b02d5799544a75de9d175d086148975e763bf6c191e8c056ceeb2",
+    "predictions/clip-00125-evidence_gap.npz": "65ba61342637ba2a23fcdd27cfcfde3cadee6fd091b4a371cf7824bd74bf4925",
+    "predictions/clip-00126-observed.npz": "dbd9bb47d29c68f7c4eebf793c988e8d08c32aa6ac470c3799cbf2d5726be1e5",
+    "predictions/clip-00126-evidence_gap.npz": "12725e8e92259461a79535a9c6b3e45ec67a931769f513ba5c8efe78785442f4",
+    "predictions/clip-00127-observed.npz": "eef5ec621b2d87b918429270988e7c55c2657a1e82294b9bb5b2f64db8351036",
+    "predictions/clip-00127-evidence_gap.npz": "85144b0e0578ad2297d0e5f193935912304abcd84bd8addec0e6ac7b2fd51b13"
+  },
+  "recomputed_metrics": {
+    "observed": {
+      "frames": 12068,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 135.49748920716215,
+          "ci_low": 98.51658230094773,
+          "ci_high": 181.3722020822142
+        },
+        "median_error_px": {
+          "value": 46.17137336730957,
+          "ci_low": 27.103193283081055,
+          "ci_high": 88.43791360855094
+        },
+        "p95_error_px": {
+          "value": 568.0451568603515,
+          "ci_low": 429.4869842529297,
+          "ci_high": 635.7091064453125
+        },
+        "recall_20px": {
+          "value": 0.32905203844879016,
+          "ci_low": 0.25472036757843347,
+          "ci_high": 0.39966322571198476
+        },
+        "position_nll_uv": {
+          "value": -3.6247918792606373,
+          "ci_low": -4.289831744952331,
+          "ci_high": -2.893063998094946
+        },
+        "position_nll_px": {
+          "value": 10.918557383265762,
+          "ci_low": 10.253517514642226,
+          "ci_high": 11.650285266634311
+        },
+        "mean_total_variance_px2": {
+          "value": 19180.730631655402,
+          "ci_low": 17241.97469450498,
+          "ci_high": 20704.0960018839
+        },
+        "coverage_mass_0.5": {
+          "value": 0.48989061982101423,
+          "ci_low": 0.3919764795144158,
+          "ci_high": 0.5791819194652236
+        },
+        "area_px2_mass_0.5": {
+          "value": 11592.310286233851,
+          "ci_low": 10300.372435391319,
+          "ci_high": 12743.043013866198
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 289.5012217091309,
+          "ci_low": 257.1725312877534,
+          "ci_high": 317.7575735169267
+        },
+        "coverage_mass_0.9": {
+          "value": 0.8126450116009281,
+          "ci_low": 0.7194098209804249,
+          "ci_high": 0.8931701972242513
+        },
+        "area_px2_mass_0.9": {
+          "value": 77283.46423014154,
+          "ci_low": 71499.81887338706,
+          "ci_high": 82671.3760157498
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 2509.53698210119,
+          "ci_low": 2370.9948109585907,
+          "ci_high": 2655.6050615794647
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8594630427577064,
+          "ci_low": 0.7689923987899561,
+          "ci_high": 0.9324753974261922
+        },
+        "area_px2_mass_0.95": {
+          "value": 123292.01123187381,
+          "ci_low": 115570.32542334052,
+          "ci_high": 130560.59456706651
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 4971.164015032349,
+          "ci_low": 4752.135857297945,
+          "ci_high": 5191.101656988554
+        },
+        "detector_mean_error_px": {
+          "value": 187.25864182257058,
+          "ci_low": 164.95536744467037,
+          "ci_high": 201.885305013556
+        },
+        "detector_median_error_px": {
+          "value": 22.4045888222074,
+          "ci_low": 10.808761021282084,
+          "ci_high": 94.93728957706422
+        },
+        "detector_p95_error_px": {
+          "value": 649.9563949276061,
+          "ci_low": 614.1274324853816,
+          "ci_high": 666.7938718019028
+        },
+        "detector_recall_20px": {
+          "value": 0.4943652635067948,
+          "ci_low": 0.440720199340889,
+          "ci_high": 0.552243075410654
+        },
+        "paired_mean_error_delta_px": {
+          "value": -51.76115261540847,
+          "ci_low": -79.74417544452565,
+          "ci_high": -12.678345254995318
+        }
+      }
+    },
+    "evidence_gap": {
+      "frames": 2584,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 156.13453637681692,
+          "ci_low": 118.40119934113922,
+          "ci_high": 200.14393942856051
+        },
+        "median_error_px": {
+          "value": 91.60045623779297,
+          "ci_low": 74.06815338134766,
+          "ci_high": 127.33252716064453
+        },
+        "p95_error_px": {
+          "value": 522.3872192382812,
+          "ci_low": 378.97558593749994,
+          "ci_high": 628.681884765625
+        },
+        "recall_20px": {
+          "value": 0.04063467492260062,
+          "ci_low": 0.026119402985074626,
+          "ci_high": 0.05664263645726056
+        },
+        "position_nll_uv": {
+          "value": -2.3340171296834287,
+          "ci_low": -2.8891518271171557,
+          "ci_high": -1.7357647819924102
+        },
+        "position_nll_px": {
+          "value": 12.209332143928245,
+          "ci_low": 11.654197447273775,
+          "ci_high": 12.807584483610093
+        },
+        "mean_total_variance_px2": {
+          "value": 23234.136284512264,
+          "ci_low": 20680.205410981514,
+          "ci_high": 25276.78767479876
+        },
+        "coverage_mass_0.5": {
+          "value": 0.46555727554179566,
+          "ci_low": 0.37948939852877545,
+          "ci_high": 0.545728417915763
+        },
+        "area_px2_mass_0.5": {
+          "value": 25793.668645673573,
+          "ci_low": 23553.183034051028,
+          "ci_high": 27681.86189046895
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 621.8130786384646,
+          "ci_low": 564.6348064627183,
+          "ci_high": 666.8153410865975
+        },
+        "coverage_mass_0.9": {
+          "value": 0.8080495356037152,
+          "ci_low": 0.7183037646040675,
+          "ci_high": 0.8842655278037467
+        },
+        "area_px2_mass_0.9": {
+          "value": 125970.66762141643,
+          "ci_low": 116378.28587258402,
+          "ci_high": 133517.4526583782
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 3347.9933114872997,
+          "ci_low": 3148.4974153535986,
+          "ci_high": 3495.7595286283376
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8591331269349846,
+          "ci_low": 0.7861968993867411,
+          "ci_high": 0.9236999147485081
+        },
+        "area_px2_mass_0.95": {
+          "value": 184194.54754848618,
+          "ci_low": 172267.01841226968,
+          "ci_high": 193425.62025957598
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 6153.293638362149,
+          "ci_low": 5840.827689672249,
+          "ci_high": 6375.699053899362
+        }
+      }
+    },
+    "observed_at_gap_length_1": {
+      "frames": 95,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 136.8118027586686,
+          "ci_low": 88.9900015827588,
+          "ci_high": 187.8945128287909
+        },
+        "median_error_px": {
+          "value": 52.929771423339844,
+          "ci_low": 22.56988525390625,
+          "ci_high": 87.58358764648438
+        },
+        "p95_error_px": {
+          "value": 590.968359375,
+          "ci_low": 305.36231689453115,
+          "ci_high": 655.209228515625
+        },
+        "recall_20px": {
+          "value": 0.2631578947368421,
+          "ci_low": 0.19841105863833136,
+          "ci_high": 0.34210526315789475
+        },
+        "position_nll_uv": {
+          "value": -3.6822532352648283,
+          "ci_low": -4.515334725935579,
+          "ci_high": -2.9494302857992856
+        },
+        "position_nll_px": {
+          "value": 10.861096025768079,
+          "ci_low": 10.028014555826026,
+          "ci_high": 11.593918980124378
+        },
+        "mean_total_variance_px2": {
+          "value": 17626.324285567433,
+          "ci_low": 13598.852601396276,
+          "ci_high": 20917.684661865234
+        },
+        "coverage_mass_0.5": {
+          "value": 0.4105263157894737,
+          "ci_low": 0.33653846153846156,
+          "ci_high": 0.5079365079365079
+        },
+        "area_px2_mass_0.5": {
+          "value": 11236.208542267643,
+          "ci_low": 8015.369592317703,
+          "ci_high": 13565.14092806235
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 285.374446483612,
+          "ci_low": 201.02341054145796,
+          "ci_high": 348.7591091574356
+        },
+        "coverage_mass_0.9": {
+          "value": 0.8105263157894737,
+          "ci_low": 0.717948717948718,
+          "ci_high": 0.9142857142857143
+        },
+        "area_px2_mass_0.9": {
+          "value": 73566.76959548272,
+          "ci_low": 61526.97678313022,
+          "ci_high": 83537.14749603329
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 2375.1017696851673,
+          "ci_low": 2014.1090166633267,
+          "ci_high": 2710.004522792157
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8631578947368421,
+          "ci_low": 0.7747747747747747,
+          "ci_high": 0.9381443298969072
+        },
+        "area_px2_mass_0.95": {
+          "value": 117670.04798489201,
+          "ci_low": 100529.00583608227,
+          "ci_high": 131808.8009168363
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 4771.667281301612,
+          "ci_low": 4162.545657734313,
+          "ci_high": 5308.244821426118
+        },
+        "detector_mean_error_px": {
+          "value": 157.6326688617859,
+          "ci_low": 98.52040844887563,
+          "ci_high": 202.8595212186632
+        },
+        "detector_median_error_px": {
+          "value": 11.559446764170811,
+          "ci_low": 7.513344392293054,
+          "ci_high": 49.68668150353911
+        },
+        "detector_p95_error_px": {
+          "value": 603.0078112131458,
+          "ci_low": 385.2051968192003,
+          "ci_high": 774.3384182373585
+        },
+        "detector_recall_20px": {
+          "value": 0.5578947368421052,
+          "ci_low": 0.4594594594594595,
+          "ci_high": 0.6962025316455697
+        },
+        "paired_mean_error_delta_px": {
+          "value": -20.820866103117307,
+          "ci_low": -60.44767224820119,
+          "ci_high": 12.050009525868104
+        }
+      }
+    },
+    "observed_at_gap_length_4": {
+      "frames": 388,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 152.94633376106773,
+          "ci_low": 115.53049532721626,
+          "ci_high": 197.09866348339744
+        },
+        "median_error_px": {
+          "value": 63.79293632507324,
+          "ci_low": 41.162384033203125,
+          "ci_high": 151.4896240234375
+        },
+        "p95_error_px": {
+          "value": 555.9324310302734,
+          "ci_low": 456.73893432617206,
+          "ci_high": 633.3587493896484
+        },
+        "recall_20px": {
+          "value": 0.28350515463917525,
+          "ci_low": 0.21684942896586348,
+          "ci_high": 0.33498914311641165
+        },
+        "position_nll_uv": {
+          "value": -3.2374584779681004,
+          "ci_low": -3.846202845877594,
+          "ci_high": -2.517848160715751
+        },
+        "position_nll_px": {
+          "value": 11.305890804713535,
+          "ci_low": 10.69714642739042,
+          "ci_high": 12.02550114525689
+        },
+        "mean_total_variance_px2": {
+          "value": 20236.939455012685,
+          "ci_low": 18009.50790586644,
+          "ci_high": 22425.15819794626
+        },
+        "coverage_mass_0.5": {
+          "value": 0.39690721649484534,
+          "ci_low": 0.29846938775510207,
+          "ci_high": 0.4935400516795866
+        },
+        "area_px2_mass_0.5": {
+          "value": 10597.180074176591,
+          "ci_low": 8502.438746308024,
+          "ci_high": 12638.781191127493
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 265.87117598456456,
+          "ci_low": 216.44315506477403,
+          "ci_high": 315.95306893816587
+        },
+        "coverage_mass_0.9": {
+          "value": 0.7474226804123711,
+          "ci_low": 0.6397694524495677,
+          "ci_high": 0.8344988344988346
+        },
+        "area_px2_mass_0.9": {
+          "value": 76770.89153330777,
+          "ci_low": 65487.035537078424,
+          "ci_high": 89374.81472806957
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 2600.8536146302604,
+          "ci_low": 2302.246764657643,
+          "ci_high": 2966.5270933234083
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8118556701030928,
+          "ci_low": 0.7287234042553191,
+          "ci_high": 0.8753246753246753
+        },
+        "area_px2_mass_0.95": {
+          "value": 124387.7537593967,
+          "ci_low": 109463.15306615009,
+          "ci_high": 141414.52352264273
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 5143.531402940262,
+          "ci_low": 4668.2666567676215,
+          "ci_high": 5733.974155205078
+        },
+        "detector_mean_error_px": {
+          "value": 196.6402800983909,
+          "ci_low": 180.88934113473775,
+          "ci_high": 208.15939432386926
+        },
+        "detector_median_error_px": {
+          "value": 92.27277195355902,
+          "ci_low": 25.116814223958087,
+          "ci_high": 141.37543079290288
+        },
+        "detector_p95_error_px": {
+          "value": 634.8501823134753,
+          "ci_low": 600.5354566573628,
+          "ci_high": 678.3549413257867
+        },
+        "detector_recall_20px": {
+          "value": 0.45618556701030927,
+          "ci_low": 0.40617577197149646,
+          "ci_high": 0.4909090909090909
+        },
+        "paired_mean_error_delta_px": {
+          "value": -43.69394633732314,
+          "ci_low": -78.71841100982847,
+          "ci_high": -2.514335536087114
+        }
+      }
+    },
+    "observed_at_gap_length_8": {
+      "frames": 699,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 137.9967051967872,
+          "ci_low": 90.24072756493631,
+          "ci_high": 196.77098059822728
+        },
+        "median_error_px": {
+          "value": 44.62646484375,
+          "ci_low": 25.203445434570312,
+          "ci_high": 97.72319793701172
+        },
+        "p95_error_px": {
+          "value": 561.7882568359377,
+          "ci_low": 409.3837394714356,
+          "ci_high": 645.625732421875
+        },
+        "recall_20px": {
+          "value": 0.32761087267525035,
+          "ci_low": 0.25117364984831325,
+          "ci_high": 0.3963494132985658
+        },
+        "position_nll_uv": {
+          "value": -3.5402241811817126,
+          "ci_low": -4.338476552155614,
+          "ci_high": -2.600111170039514
+        },
+        "position_nll_px": {
+          "value": 11.003125065215498,
+          "ci_low": 10.204872686004638,
+          "ci_high": 11.943238082142098
+        },
+        "mean_total_variance_px2": {
+          "value": 20714.90838055481,
+          "ci_low": 18867.420742810136,
+          "ci_high": 22119.814726425277
+        },
+        "coverage_mass_0.5": {
+          "value": 0.5522174535050072,
+          "ci_low": 0.45557122708039494,
+          "ci_high": 0.6458897169062527
+        },
+        "area_px2_mass_0.5": {
+          "value": 13538.860123049388,
+          "ci_low": 11539.870630790387,
+          "ci_high": 15883.567798946458
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 339.2681377440123,
+          "ci_low": 288.5324952385294,
+          "ci_high": 394.545816358259
+        },
+        "coverage_mass_0.9": {
+          "value": 0.8369098712446352,
+          "ci_low": 0.7449442500288996,
+          "ci_high": 0.9120879120879121
+        },
+        "area_px2_mass_0.9": {
+          "value": 86542.63477750718,
+          "ci_low": 81251.35555182434,
+          "ci_high": 91810.90132214519
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 2716.7773846241557,
+          "ci_low": 2637.596443418073,
+          "ci_high": 2779.94315174787
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8640915593705293,
+          "ci_low": 0.7743055555555556,
+          "ci_high": 0.937888198757764
+        },
+        "area_px2_mass_0.95": {
+          "value": 135018.36443071812,
+          "ci_low": 129557.77252012749,
+          "ci_high": 139519.36168776616
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 5264.957005683281,
+          "ci_low": 5003.759111742803,
+          "ci_high": 5412.352414929009
+        },
+        "detector_mean_error_px": {
+          "value": 200.77336327118152,
+          "ci_low": 178.25190335955227,
+          "ci_high": 226.9122593787921
+        },
+        "detector_median_error_px": {
+          "value": 41.04511906845185,
+          "ci_low": 11.470335631236562,
+          "ci_high": 135.5870586774546
+        },
+        "detector_p95_error_px": {
+          "value": 642.4446300151549,
+          "ci_low": 604.0435300450051,
+          "ci_high": 786.3621278912369
+        },
+        "detector_recall_20px": {
+          "value": 0.47639484978540775,
+          "ci_low": 0.4270833333333333,
+          "ci_high": 0.5332464146023468
+        },
+        "paired_mean_error_delta_px": {
+          "value": -62.776658074394334,
+          "ci_low": -107.47915168971316,
+          "ci_high": 1.4016469888468788
+        }
+      }
+    },
+    "observed_at_gap_length_16": {
+      "frames": 1402,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 119.49421379059426,
+          "ci_low": 73.27111477560612,
+          "ci_high": 167.84608880938484
+        },
+        "median_error_px": {
+          "value": 35.41865539550781,
+          "ci_low": 21.075315666198733,
+          "ci_high": 78.09390258789062
+        },
+        "p95_error_px": {
+          "value": 564.2771087646491,
+          "ci_low": 318.09344482421875,
+          "ci_high": 628.1319885253906
+        },
+        "recall_20px": {
+          "value": 0.3594864479315264,
+          "ci_low": 0.2368839427662957,
+          "ci_high": 0.4761182714177407
+        },
+        "position_nll_uv": {
+          "value": -3.9259390643480288,
+          "ci_low": -4.8227866916591005,
+          "ci_high": -3.0021093194288033
+        },
+        "position_nll_px": {
+          "value": 10.617410199618373,
+          "ci_low": 9.720562575577171,
+          "ci_high": 11.54123995473036
+        },
+        "mean_total_variance_px2": {
+          "value": 16620.00535394122,
+          "ci_low": 13794.443879351355,
+          "ci_high": 18873.20950419108
+        },
+        "coverage_mass_0.5": {
+          "value": 0.5349500713266762,
+          "ci_low": 0.37297734627831713,
+          "ci_high": 0.6884531590413944
+        },
+        "area_px2_mass_0.5": {
+          "value": 10138.58902095609,
+          "ci_low": 8124.965102869502,
+          "ci_high": 11885.296140573035
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 253.36795404982277,
+          "ci_low": 205.13830859984054,
+          "ci_high": 296.70728548708274
+        },
+        "coverage_mass_0.9": {
+          "value": 0.854493580599144,
+          "ci_low": 0.7321571772253408,
+          "ci_high": 0.9554285714285714
+        },
+        "area_px2_mass_0.9": {
+          "value": 68142.9891104141,
+          "ci_low": 57513.39134649523,
+          "ci_high": 77189.54758288126
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 2216.7797049713568,
+          "ci_low": 1890.3222372810558,
+          "ci_high": 2488.5157282017008
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8794579172610556,
+          "ci_low": 0.7618283881315157,
+          "ci_high": 0.9745318352059925
+        },
+        "area_px2_mass_0.95": {
+          "value": 109170.52417811322,
+          "ci_low": 93900.41885105449,
+          "ci_high": 121495.26250388613
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 4438.150830527191,
+          "ci_low": 3904.9163391191164,
+          "ci_high": 4840.473147889788
+        },
+        "detector_mean_error_px": {
+          "value": 166.9333509028817,
+          "ci_low": 132.56891844236097,
+          "ci_high": 190.75297539908908
+        },
+        "detector_median_error_px": {
+          "value": 12.525701143074873,
+          "ci_low": 7.701526579231528,
+          "ci_high": 58.051056448133835
+        },
+        "detector_p95_error_px": {
+          "value": 629.9501096893571,
+          "ci_low": 543.0109508065455,
+          "ci_high": 686.7312063752314
+        },
+        "detector_recall_20px": {
+          "value": 0.5385164051355207,
+          "ci_low": 0.4528301886792453,
+          "ci_high": 0.6328534031413613
+        },
+        "paired_mean_error_delta_px": {
+          "value": -47.439137112287455,
+          "ci_low": -75.66265874690404,
+          "ci_high": -11.42632691477416
+        }
+      }
+    },
+    "evidence_gap_at_gap_length_1": {
+      "frames": 95,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 141.39149591546308,
+          "ci_low": 97.57485722206734,
+          "ci_high": 207.1041376568022
+        },
+        "median_error_px": {
+          "value": 81.79953002929688,
+          "ci_low": 53.540435791015625,
+          "ci_high": 118.1224479675293
+        },
+        "p95_error_px": {
+          "value": 493.6535308837891,
+          "ci_low": 253.23568725585938,
+          "ci_high": 637.780383300781
+        },
+        "recall_20px": {
+          "value": 0.05263157894736842,
+          "ci_low": 0.023255813953488372,
+          "ci_high": 0.08433734939759036
+        },
+        "position_nll_uv": {
+          "value": -2.681305826337714,
+          "ci_low": -3.2121732557813325,
+          "ci_high": -2.028080929266779
+        },
+        "position_nll_px": {
+          "value": 11.862043481124076,
+          "ci_low": 11.331176022688547,
+          "ci_high": 12.515268401095742
+        },
+        "mean_total_variance_px2": {
+          "value": 22664.996998355262,
+          "ci_low": 18605.077030066288,
+          "ci_high": 25804.466402666283
+        },
+        "coverage_mass_0.5": {
+          "value": 0.5894736842105263,
+          "ci_low": 0.49585639548108273,
+          "ci_high": 0.7070707070707071
+        },
+        "area_px2_mass_0.5": {
+          "value": 25751.38367275921,
+          "ci_low": 20739.73125426082,
+          "ci_high": 29056.108954293188
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 625.0240070458955,
+          "ci_low": 497.62752566313134,
+          "ci_high": 709.8150922285282
+        },
+        "coverage_mass_0.9": {
+          "value": 0.8315789473684211,
+          "ci_low": 0.6952380952380952,
+          "ci_high": 0.949161102550933
+        },
+        "area_px2_mass_0.9": {
+          "value": 123541.26181123682,
+          "ci_low": 108376.00691401181,
+          "ci_high": 134423.34815777862
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 3248.8318881768364,
+          "ci_low": 2991.5362552556157,
+          "ci_high": 3437.6974216171593
+        },
+        "coverage_mass_0.95": {
+          "value": 0.9052631578947369,
+          "ci_low": 0.8095238095238095,
+          "ci_high": 0.989247311827957
+        },
+        "area_px2_mass_0.95": {
+          "value": 179876.00701630852,
+          "ci_low": 161635.35493289324,
+          "ci_high": 192477.85388283202
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 5937.895297855644,
+          "ci_low": 5583.9777432327055,
+          "ci_high": 6218.369373325014
+        }
+      }
+    },
+    "evidence_gap_at_gap_length_4": {
+      "frames": 388,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 165.2830096197497,
+          "ci_low": 113.64343315193511,
+          "ci_high": 221.82751232245238
+        },
+        "median_error_px": {
+          "value": 95.38079071044922,
+          "ci_low": 67.84609985351562,
+          "ci_high": 189.61051177978516
+        },
+        "p95_error_px": {
+          "value": 491.7093505859371,
+          "ci_low": 327.6533508300781,
+          "ci_high": 588.6416625976562
+        },
+        "recall_20px": {
+          "value": 0.05154639175257732,
+          "ci_low": 0.023250787480731862,
+          "ci_high": 0.07541899441340782
+        },
+        "position_nll_uv": {
+          "value": -2.155927533557466,
+          "ci_low": -2.748997795181373,
+          "ci_high": -1.6103890345930174
+        },
+        "position_nll_px": {
+          "value": 12.38742172595152,
+          "ci_low": 11.794351471794975,
+          "ci_high": 12.932960227904466
+        },
+        "mean_total_variance_px2": {
+          "value": 23870.61328880074,
+          "ci_low": 21717.91117701037,
+          "ci_high": 25927.408205211672
+        },
+        "coverage_mass_0.5": {
+          "value": 0.4639175257731959,
+          "ci_low": 0.36715270561163904,
+          "ci_high": 0.5908045977011495
+        },
+        "area_px2_mass_0.5": {
+          "value": 25969.68946683849,
+          "ci_low": 23190.31273949079,
+          "ci_high": 27910.058222683325
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 627.3378080980037,
+          "ci_low": 559.7930890043314,
+          "ci_high": 674.5977176092035
+        },
+        "coverage_mass_0.9": {
+          "value": 0.7319587628865979,
+          "ci_low": 0.6162046908315565,
+          "ci_high": 0.8423772609819121
+        },
+        "area_px2_mass_0.9": {
+          "value": 126517.05136548648,
+          "ci_low": 116842.5245335758,
+          "ci_high": 136977.7697179522
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 3336.1444163593333,
+          "ci_low": 3086.8087535033346,
+          "ci_high": 3605.979191282069
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8092783505154639,
+          "ci_low": 0.7224433106575964,
+          "ci_high": 0.8910614525139665
+        },
+        "area_px2_mass_0.95": {
+          "value": 183853.24012953107,
+          "ci_low": 171679.9542915801,
+          "ci_high": 196482.8308964965
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 6097.0311180749095,
+          "ci_low": 5651.734738451655,
+          "ci_high": 6472.849653275553
+        }
+      }
+    },
+    "evidence_gap_at_gap_length_8": {
+      "frames": 699,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 155.24677480580297,
+          "ci_low": 114.1645142868042,
+          "ci_high": 207.40719437102476
+        },
+        "median_error_px": {
+          "value": 88.37152099609375,
+          "ci_low": 73.01130008697511,
+          "ci_high": 114.77409229278564
+        },
+        "p95_error_px": {
+          "value": 556.4245788574219,
+          "ci_low": 362.4550106430057,
+          "ci_high": 628.6712646484375
+        },
+        "recall_20px": {
+          "value": 0.05150214592274678,
+          "ci_low": 0.018121911037891267,
+          "ci_high": 0.08411214953271028
+        },
+        "position_nll_uv": {
+          "value": -2.300865626109175,
+          "ci_low": -2.939593072721221,
+          "ci_high": -1.5702852938964869
+        },
+        "position_nll_px": {
+          "value": 12.242483646572916,
+          "ci_low": 11.603756195323381,
+          "ci_high": 12.973063985253596
+        },
+        "mean_total_variance_px2": {
+          "value": 23903.66579488555,
+          "ci_low": 22169.147304026825,
+          "ci_high": 25271.476708855516
+        },
+        "coverage_mass_0.5": {
+          "value": 0.4978540772532189,
+          "ci_low": 0.4219063674384774,
+          "ci_high": 0.5651629072681704
+        },
+        "area_px2_mass_0.5": {
+          "value": 25674.787820921323,
+          "ci_low": 23793.691099280142,
+          "ci_high": 27300.825178818206
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 619.9162392154009,
+          "ci_low": 572.7125548208064,
+          "ci_high": 658.3262811710053
+        },
+        "coverage_mass_0.9": {
+          "value": 0.8226037195994278,
+          "ci_low": 0.7326388888888888,
+          "ci_high": 0.9100496944710298
+        },
+        "area_px2_mass_0.9": {
+          "value": 129918.95290427534,
+          "ci_low": 122641.09418169355,
+          "ci_high": 136804.7018699483
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 3493.006809517382,
+          "ci_low": 3342.7890806896544,
+          "ci_high": 3676.3278187392216
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8569384835479256,
+          "ci_low": 0.7881944444444444,
+          "ci_high": 0.9206349206349206
+        },
+        "area_px2_mass_0.95": {
+          "value": 190447.98709376232,
+          "ci_low": 181944.44015599333,
+          "ci_high": 198822.24078279478
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 6396.452197598133,
+          "ci_low": 6112.670394821083,
+          "ci_high": 6654.89073508405
+        }
+      }
+    },
+    "evidence_gap_at_gap_length_16": {
+      "frames": 1402,
+      "temporal_camera_groups": [
+        "meiji/video_000/clip_001",
+        "meiji/video_000/clip_002",
+        "meiji/video_000/clip_003",
+        "meiji/video_000/clip_006",
+        "meiji/video_000/clip_007",
+        "meiji/video_000/clip_010"
+      ],
+      "metrics": {
+        "mean_error_px": {
+          "value": 155.0443270784642,
+          "ci_low": 115.20931660060064,
+          "ci_high": 196.35013260971812
+        },
+        "median_error_px": {
+          "value": 93.66863250732422,
+          "ci_low": 71.26593017578125,
+          "ci_high": 127.26902770996094
+        },
+        "p95_error_px": {
+          "value": 521.9342041015625,
+          "ci_low": 364.95446014404274,
+          "ci_high": 630.5133911132813
+        },
+        "recall_20px": {
+          "value": 0.03138373751783167,
+          "ci_low": 0.017190278601066984,
+          "ci_high": 0.0528169014084507
+        },
+        "position_nll_uv": {
+          "value": -2.3762990398925017,
+          "ci_low": -2.917933535826552,
+          "ci_high": -1.7615998805710555
+        },
+        "position_nll_px": {
+          "value": 12.167050235791825,
+          "ci_low": 11.625415753951753,
+          "ci_high": 12.781749404441058
+        },
+        "mean_total_variance_px2": {
+          "value": 22762.74828648805,
+          "ci_low": 19743.333167189125,
+          "ci_high": 25212.243996366833
+        },
+        "coverage_mass_0.5": {
+          "value": 0.44151212553495006,
+          "ci_low": 0.33661119515885024,
+          "ci_high": 0.5426358781477382
+        },
+        "area_px2_mass_0.5": {
+          "value": 25807.091391976493,
+          "ci_low": 23430.245512134574,
+          "ci_high": 27872.84129306806
+        },
+        "area_mc_standard_error_px2_mass_0.5": {
+          "value": 621.0122637509569,
+          "ci_low": 561.0091657216251,
+          "ci_high": 671.0216256568342
+        },
+        "coverage_mass_0.9": {
+          "value": 0.8202567760342369,
+          "ci_low": 0.7375735759560444,
+          "ci_high": 0.895432185022529
+        },
+        "area_px2_mass_0.9": {
+          "value": 124015.56437359154,
+          "ci_low": 112850.77928822843,
+          "ci_high": 131433.43863260647
+        },
+        "area_mc_standard_error_px2_mass_0.9": {
+          "value": 3285.691793228467,
+          "ci_low": 3029.899408896081,
+          "ci_high": 3430.9252294446565
+        },
+        "coverage_mass_0.95": {
+          "value": 0.8708987161198288,
+          "ci_low": 0.7963111467522053,
+          "ci_high": 0.9337231968810916
+        },
+        "area_px2_mass_0.95": {
+          "value": 181463.830278132,
+          "ci_low": 166541.31576721597,
+          "ci_high": 190902.7775465352
+        },
+        "area_mc_standard_error_px2_mass_0.95": {
+          "value": 6062.227209912516,
+          "ci_low": 5622.296954638656,
+          "ci_high": 6314.957340575152
+        }
+      }
+    }
+  },
+  "presence_and_position_summaries": {
+    "observed": {
+      "position_frames": 12068,
+      "presence_frames": 12068,
+      "positive_frames": 12068,
+      "negative_frames": 0,
+      "position_nll_uv": -3.6247918792606373,
+      "position_nll_px": 10.918557383265762,
+      "mean_error_px": 135.49748920716215,
+      "median_error_px": 46.17137145996094,
+      "p95_error_px": 568.045166015625,
+      "recall_20px": 0.32905203844879016,
+      "presence_bce": 0.009028264941567544,
+      "presence_brier": 0.00016047907674902933,
+      "mean_total_variance_px2": 19180.730631655402
+    },
+    "evidence_gap": {
+      "position_frames": 2584,
+      "presence_frames": 2584,
+      "positive_frames": 2584,
+      "negative_frames": 0,
+      "position_nll_uv": -2.3340171296834287,
+      "position_nll_px": 12.209332143928245,
+      "mean_error_px": 156.13453637681692,
+      "median_error_px": 91.60045623779297,
+      "p95_error_px": 522.3871459960938,
+      "recall_20px": 0.04063467492260062,
+      "presence_bce": 0.0106869124351127,
+      "presence_brier": 0.0001285420011019551,
+      "mean_total_variance_px2": 23234.136284512264
+    }
+  },
+  "cpu_checkpoint_replay": {
+    "observed": {
+      "clip_id": "meiji/video_000/clip_010/cam0",
+      "frames": 270,
+      "max_abs_difference": {
+        "means": 3.5703182220458984e-05,
+        "scale_tril": 7.614493370056152e-06,
+        "mixture_logits": 0.00013366341590881348,
+        "presence_logits": 0.00020837783813476562
+      },
+      "max_mean_coordinate_difference_px": 0.038523733615875244
+    },
+    "evidence_gap": {
+      "clip_id": "meiji/video_000/clip_010/cam0",
+      "frames": 270,
+      "max_abs_difference": {
+        "means": 3.838539123535156e-05,
+        "scale_tril": 7.927417755126953e-06,
+        "mixture_logits": 0.00017651915550231934,
+        "presence_logits": 0.0002779960632324219
+      },
+      "max_mean_coordinate_difference_px": 0.04746824502944946
+    }
+  },
+  "cpu_hdr_replay": {
+    "predictions/clip-00098-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00098-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00099-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00099-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00100-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00100-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00101-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00101-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00102-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00102-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00103-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00103-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00104-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00104-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00105-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00105-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00106-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00106-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00113-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00113-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00114-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00114-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00115-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00115-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00116-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00116-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00117-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00117-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00118-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00118-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00125-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00125-evidence_gap.npz": {
+      "scored_frames": 31,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00126-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00126-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00127-observed.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    },
+    "predictions/clip-00127-evidence_gap.npz": {
+      "scored_frames": 32,
+      "samples": 2048,
+      "cpu_chunk_size": 7
+    }
+  },
+  "limitations": [
+    "HDR replay uses the first 32 scored frames per artifact, not every MC estimate",
+    "six temporal groups in one validation video; not independent test",
+    "bootstrap holds MC thresholds fixed; area SE excludes threshold uncertainty",
+    "no detector density, RGB occlusion, real amodal GT, context ablation or pipeline check",
+    "no raw media/JPEG/annotation rehash"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "run_id": "1790790062674261667_32446_i964-clip000-qualification-r14-20261001",
+  "name": "i964-clip000-qualification-r14-20261001",
+  "command": "timeout -k 10s 5380s bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_qualification.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001",
+  "provider": "codex",
+  "session": "01a0f34a-563b-75e3-be1f-3354c2608e8f",
+  "issue": "964",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "d189770794ab7f97c745a82d6d998067629e6b28",
+  "branch": "campaign930/i964-2-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "captured_at": "2026-10-01T03:21:28+09:00"
+}

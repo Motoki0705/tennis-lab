@@ -71,3 +71,5 @@ cameraとreferenceをランダムに選び、`camera_view_v2` のcamera-local校
 
 出力は `court_side/evaluate/<experiment>/<run-id>/` の `conditions.json`、`evidence.jsonl`、`thresholds.json`、`report.json`。
 結果と採用した閾値の根拠は `knowledge/` のrun記録にある。
+
+#935の固定confidence filterを加えた回帰試験は [knowledge court_side/000004](../../../knowledge/nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md) を参照。追加欠測で誤判定が発生し、全pipeline qualificationは保留した。閾値を緩めて通過させていない。

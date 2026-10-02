@@ -1,0 +1,112 @@
+{
+  "fit.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/fit.json",
+    "bytes": 453741,
+    "sha256": "149a9c61681f91b28fecc443ba1a3b9956af88aedeb2ecb011e6483c2e34620d"
+  },
+  "selection.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/selection.json",
+    "bytes": 68388,
+    "sha256": "d9a26f5f5015c29e9ee0f357969cbd401f9beabb9d43c4d69aeae903131539f3"
+  },
+  "association.yaml": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/association.yaml",
+    "bytes": 551,
+    "sha256": "3f18419c49567f697e43fd18c78d6df78ffcd6c654bef5cac0ddc88193a74789"
+  },
+  "identity.json": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/identity.json",
+    "bytes": 1656,
+    "sha256": "0c7f593dbbe77e55fa4d16c2f7c9134d693891f9763def4ec551cb8f88f7ca1f"
+  },
+  "tracks/video_002/clip_009/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_002/clip_009/cam0.npz",
+    "bytes": 49852,
+    "sha256": "77983218ab277090c83da54c30a1662b0bb7f68847ace3766a5d5122a936594f"
+  },
+  "tracks/video_002/clip_009/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_002/clip_009/cam1.npz",
+    "bytes": 32376,
+    "sha256": "41e1776b690ffcd76a62a1dc34af89fb68fb133e4b264ff4281ba6bfba1c8467"
+  },
+  "tracks/video_002/clip_009/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_002/clip_009/cam2.npz",
+    "bytes": 36844,
+    "sha256": "b23ba3271778396c2b5e36edf96c578fb03f31f04f50e0805ef1065329bed96d"
+  },
+  "tracks/video_002/clip_002/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_002/clip_002/cam0.npz",
+    "bytes": 19565,
+    "sha256": "984e19c76ac7787fae2af3dcea3fb46f66c993143c9a6ee82e31ba1e395f731b"
+  },
+  "tracks/video_002/clip_002/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_002/clip_002/cam1.npz",
+    "bytes": 12304,
+    "sha256": "7ff91f49ac321d487d8cf63b74f55c163e52f831a165321259f5e98b063de5d2"
+  },
+  "tracks/video_002/clip_002/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_002/clip_002/cam2.npz",
+    "bytes": 13796,
+    "sha256": "6a7e5fb681beac6bd0dc1e6b17ead8502e662510288f08c1f9567e2024e79f73"
+  },
+  "tracks/video_001/clip_000/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_001/clip_000/cam0.npz",
+    "bytes": 104800,
+    "sha256": "0a60afc6c3630fe48d34463f741e96ad9c36bcf02ce5b1f9f1e0b661d880c84b"
+  },
+  "tracks/video_001/clip_000/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_001/clip_000/cam1.npz",
+    "bytes": 65002,
+    "sha256": "95197200d635284b84813894c6897a4868b20e62abcc74d5c6663f37bf6620cc"
+  },
+  "tracks/video_001/clip_000/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_001/clip_000/cam2.npz",
+    "bytes": 90714,
+    "sha256": "38f6d745a2861d5a11cc34443d9d96682545aa27c4bb92661217a9a5797aa436"
+  },
+  "tracks/video_001/clip_020/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_001/clip_020/cam0.npz",
+    "bytes": 75309,
+    "sha256": "a748d8143578bf78a99ee73ddf4343ce4199dc4743c0f49e1dc091d6ecf0ca54"
+  },
+  "tracks/video_001/clip_020/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_001/clip_020/cam1.npz",
+    "bytes": 36846,
+    "sha256": "c7146586d1def2564a391d7af7ba1f9912f30db91b2d3a37c028ec57733113de"
+  },
+  "tracks/video_001/clip_020/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_001/clip_020/cam2.npz",
+    "bytes": 64638,
+    "sha256": "1a0f2b950ae7d1e2b757b527b44f4d8c5fd27120683607678b3fdcd10b6e1756"
+  },
+  "tracks/video_000/clip_011/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_000/clip_011/cam0.npz",
+    "bytes": 88997,
+    "sha256": "844b73d23b2120f15a267505bec45f04453d03ddbc05a112fc246cad0ef53646"
+  },
+  "tracks/video_000/clip_011/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_000/clip_011/cam1.npz",
+    "bytes": 65000,
+    "sha256": "a58636c355022a86ba75d7f431a961a8a789e35f747bfea5f90c343b4add0347"
+  },
+  "tracks/video_000/clip_011/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_000/clip_011/cam2.npz",
+    "bytes": 71525,
+    "sha256": "030277257223a89c5b434ff5b01483a1d6e4ea9f3916201ce0c51e289951ec33"
+  },
+  "tracks/video_000/clip_003/cam0.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_000/clip_003/cam0.npz",
+    "bytes": 74088,
+    "sha256": "587430b8607f35214b6628ac49e84933a27dbb9d9c0d2f0beee9d25fc48fb2b5"
+  },
+  "tracks/video_000/clip_003/cam1.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_000/clip_003/cam1.npz",
+    "bytes": 32239,
+    "sha256": "63beb10b0e7a0f07d8500229ade9dc7ac6a9582f890f93c797681952fce0dc13"
+  },
+  "tracks/video_000/clip_003/cam2.npz": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r14-20261001/fit/tracks/video_000/clip_003/cam2.npz",
+    "bytes": 68031,
+    "sha256": "20f935132f35db3089f4acf032174e85a480ee2821a5de65e8f3a2bbc86a0586"
+  }
+}

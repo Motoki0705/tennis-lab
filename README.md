@@ -73,6 +73,7 @@
 ### どこに何があるか（タスク）
 
 - Ball Detection: 画像上の2Dボール位置（`src/tasks/ball_detection`）
+- Ball Refiner: 単眼のボール位置分布と存在確率（[学習設計・モデル契約](src/tasks/ball_refiner/README.md)）
 - Court Detection: 14点コートキーポイント（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
@@ -97,6 +98,7 @@ Video
 
 - `src/`: タスク実装（各タスクは `configs/` + `scripts/` + `training/` などを持つ）
 - `third_party/`: 外部モジュール（例: GVHMR）。vendor codeは隔離
+- `ckpt/`: 採用checkpoint・外部モデル重み・body modelの実体（git管理外）
 - `data/`: データセット/入力（大きなデータやモデルはコミットしない）
 - `outputs/`: 学習ログ・チェックポイント・生成物（大きなartifactはコミットしない）
 - `assets/`: README用の軽量デモ素材（GIF/PNGなど）

@@ -2,6 +2,74 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+## 人物対応の再較正準備
+
+`association_recalibration_features.py --phase plan --repo <main root> --report <new output>` は
+[run 12 protocol](../../knowledge/runs/run-i964-recalibration-r12-20260930/protocol.md)に従ってmetadataだけで
+無ラベルclipを選び、dev/予約未見との元動画区間の非重複と特徴/重みidentityを固定する。
+`association_recalibration_features.sh <main root> <output>` を共有queueの1job
+（外側 `timeout -k 10s 7190s`）で呼ぶ。DINO全画面→ViTPose/CLIP、元row保持、
+NPZ roundtrip、allocator7GiB、GPU全体9.5GB/RAM/disk監視による停止を含む。fit/採点はしない。
+`association_recalibration_audit.py --repo <main root> --plan <plan.json> --preflight <preflight.json> --report <new output>`
+は既存dev特徴/track/較正courtの再利用をCPU検査する。小cropの明示的なmask投影と出自を別archiveへ保存する。
+
+run 13の再開は同じ入口の `--phase resume-plan --source-report <失敗run> --report <新規directory>`。
+科学的な入力identityを維持し、明示した全長完了cameraのhash・provenance・元rowを再検証する。
+未完了cameraは新しいdirectoryで最初から再計算する。旧出力は保持し、黙った再試行はしない。
+今回許可された外側timeoutは `timeout -k 10s 16180s`（build込み4.5時間以内）。
+
+`association_recalibration_dev_tracks.py --reuse <run12/reuse.json> --report <新規directory>` は
+承認済み9行のmask投影を照合し、該当2cameraをCPU再追跡する。ラベル/採点入口を持たない。
+`association_recalibration_fit.py --repo <main root> --features <完了feature root> --reuse <run12/reuse.json> --report <新規directory>`
+は全18cameraの完了・hash検証後にのみCPUで既定追跡/選別と較正を行う。
+提案YAMLと証拠は出力先だけに保存し、既定設定を変更しない。実データfitはrun13では未実行。
+
+`pipeline_preflight.py --repo <main root> --clip <structured clip> --report <new output>` は
+全execute構成のcheckpoint/依存schemaをCPUで検査し、CUDA用の解決済みYAMLを出す。
+推論・成果物生成・精度評価の成功とは扱わない。較正後は `--association-config <project-relative YAML>` を渡す。
+次runのfull-pipelineの実行条件は[qualification plan](../../knowledge/runs/run-i964-recalibration-r12-20260930/qualification-plan.md)を正本とする。
+
+## 人物追跡方式のCPU比較
+
+`person_tracking_merge.py --phase track` → `evaluate` → `audit` は
+[run 11事前定義](../../knowledge/runs/run-i964-default-merge-r11-20260930/protocol-addendum.md)の
+StrongSORT++＋pose/CLIP、重複box統合off/onのCPU比較。productionと同じ`track_sequence`を呼び、
+offの元row/ID/box/GSI・raw/group/pair指標をrun 10と照合する。全drop記録と別人候補のラベル監査を保存する。
+
+`person_tracking_matrix.py` の `--phase track` → `evaluate` → `report` は
+同じ `--repo <main root> --features <run-7 feature root> --report <新規出力先>` を使う。
+単一CPU process・torch4/OpenCV1 thread、入力/出力hashと実行identityを固定しcamera単位で再開できる。
+比較範囲・主副指標・既知の偏り・パラメータ・推薦規則の正本は
+[事前commitしたrun-8プロトコル](../../knowledge/runs/run-i964-tracker-matrix-r8-20260930/protocol.md)。
+baselineのLab連結が停止した場合も停止として保存し、候補追跡で補完しない。
+`person_tracking_matrix_video.py --report <同出力先>`は固定した最大差5秒窓を3camera動画にする。
+
+`person_tracking_linking.py --phase base` → `kpr` → `report` は
+[run 9 addendum](../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)の追加比較。
+`--repo`、`--features`、`--kpr`（回収済native特徴root）、`--aflink`（公開重み）、
+`--previous`（run 8 matrix）、`--report`（新規出力先）を明示する。
+既存6条件のraw主指標一致を確認し、downstream group指標を追加する。
+`person_strongsort_parity.py --upstream <別途取得した固定版> --weight <AFLink重み> --report <JSON>`は
+ラベルを使わず合成trackletでAFLinkの前処理・学習済み推論の数値互換を確認する。
+`person_tracking_linking_report.py --report <run 9 root>`は全表・対応表と推薦規則の結果を出す。
+`person_tracking_hybrids.py`は[run 10 addendum](../../knowledge/runs/run-i964-tracker-hybrids-r10-20260930/protocol-addendum.md)の2条件を実行する。
+run 9と同じ引数を使い、`--previous`にはrun 9確定出力を指定する。
+`--phase reproduce`（旧9条件の再採点）→`regression`（poseなしStrongSORTの配列一致）→
+`track`（新2条件）→`evaluate`で全11条件を保存する。
+表は`person_tracking_linking_report.py --report <run 10 root> --run 10`で生成する。
+動画は共通入口の`--baseline <Deep/CLIP名> --candidate <事前規則で選んだ新条件名>`で比較対象を明示する。
+`person_tracking_cam1_diagnosis.py --matrix <run 8 root> --report <診断出力先>`は固定3窓を選び、
+camera内の全割当/元検出と診断専用のpose/appearance除去を保存する。
+`person_tracking_cam1_video.py --diagnosis <diagnosis.json> --matrix <run 8 root> --output <mp4>`は
+全景・遠側拡大・各対応コストを表示し、動画全frameを読み戻す。
+
+`person_kpr_parity.py --upstream <公式repoの固定checkout> --repo <main root> --features <run-7 root> --report <JSON>`
+は同じ実dev cropで上流とportのstate key・prompt・native outputをCPU照合する。
+`person_kpr_features.py --phase plan --repo <main root> --features <run-7 root> --parity <成功JSON> --report <新規出力先>`
+で入力を固定し、同じrepo/reportの`--phase extract`を共有queueから1件だけ実行する。
+KPRは各検出の6×512特徴・可視性と元row/box/score/poseを保存し、同frameの他検出poseをnegative promptにする。
+検出/pose再推論やtracking/評価は行わず、完了manifestと全値の保存読戻しを記録する。
+
 ## Meiji ball holdout
 
 `ball_detection_holdout.py` はball frame storeのMeiji test全体で、ft-e13と
@@ -43,6 +111,43 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
 ## Pipeline診断
 
+- `court_side_clip000_diagnosis.py --qualification <failed run> --output <new directory>` は
+  clip_000のball gateとcourt_side停止をCPU再現し、観測view別の元cost平均を分解する。
+  production phaseはlabelを開かず、規則・閾値・storeを書き換えない。
+  `court_side_clip000_counterfactuals.py --qualification <failed run> --e9-cache <cache> --output <new directory>`
+  は同じdev clipのball注釈（observedのみ）とe9 top-1を診断専用で代入し、全仮説と品質を保存する。
+  e9 cacheの媒体・採用窓差を保持し、本番のside成果物をpublishしない。
+
+- `pipeline_stop_collection.py --report <qualification root> --queue <shared queue> --job <id> --output <new directory>`
+  はclip_000のcourt_side停止をCPUで回収する。保存済み全artifactのhash/型/依存と人物元row・box・pose、
+  GSI非観測を読み取り専用で照合する。runner再開・label参照・scene完走検証は行わない。
+
+- `pipeline_preflight.py`でroot/重み/source/全execute recipeをCPU検査し、名前付きassociationは
+  `--association-config <project-relative YAML>`で指定する。
+  `pipeline_qualification.sh <main root> <report>`はhash付きplan/preflightを持つ新規出力へ
+  全componentを実行し、別のCPUプロセスで全artifactの依存/hash/型・sceneの全配列・GSI非観測を検証する。
+  全長3cameraと最終sceneのコート平面を1動画に描き、全frameを読み戻す。人手label/importは使わない。
+  resource=allの共有queueと外側timeoutを必須とし、buildから動画までresource guardで監視する。
+
+- `association_recalibration_dev.py`: run12 protocolのfit証拠と名前付きconfigが指定commit/originへ
+  push済みであることを検証し、run13の投影済みdev trackを旧/新尺度で一度だけ採点するCPU入口。
+  `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、
+  未決定は理由と全ID=-1の採点を残す。設定選択・再fit・既定変更は行わない。
+
+- `ball_refiner_context_shard.sh`: [固定計画によるclip分割](../../src/tasks/ball_refiner/README.md#clip単位の分割生成と統合)の
+  queue入口。引数は `<asset_root> <detector_cache> <plan.json> <scene.yaml> <extension_dir> <shard_index> <new_context> <new_report>`。
+  planを作った共通DINO拡張を使い、1clip全frameの生成と別プロセスの保存後検証を行う。
+  plan・scene・build設定・検証結果をreportとqueue reproへ保存する。
+  時間制限はqueue commandの外側で指定し、失敗時も元cache/reportを保持する。
+
+- `ball_refiner_context_pilot.sh`: #935の固定3source文脈生成pilot。引数は絶対pathの
+  `<asset_root> <detector_cache> <new_context_cache> <new_report>`。trainのTrackNet 35・Meiji 151・chat 375frameを
+  全frame処理する。run専用DINO拡張を再ビルドし、scene設定のcompose、CPU事前検査、生成、別プロセス読込検証を行う。
+  必ず共有training queueへ投入する。新しいcache/reportを要求し、失敗した出力を上書きしない。
+  `ball_refiner_context.py`は保存後のNPZ/frame/PTS・JPEG hash・元解像度への座標変換をCPUで検査し、
+  指定clipの完全一致、pose/courtの有効数・score変換・実行記録を`context-verification.json`へ保存する。
+  この検査は人物選別・pose/courtの精度・ablationの改善を証明しない。
+
 - `ball_detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
   実clip検証。既定pipelineのball nodeだけを全cameraで実行し、native heatmap・候補・patchを
   `--report/store` に保存する。checksum/型/shapeを検証してdiskからload-onlyで再開し、
@@ -83,11 +188,19 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   PYTHONPATH=. .venv/bin/python tests/benchmarks/court_side_clips.py --repo $R \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT
   ```
+- `player_detection_clips.py`: 標準pipelineのcourt ROI付き人物検出を、既定の選手重みと明示したCOCO重みで比較する（GPU、共有training queue経由）。
+  `--repo`・`--dataset`・`--report`を必須とし、両variantのcomponent storeと`comparison.json`を出力する。
+  ラベルに無い予測をFPとせず、旧boxとの一致率・既知非選手への反応・未照合件数を分ける。指標の正本は
+  [`partial_labels.py`](../../src/tasks/player_detection/evaluation/partial_labels.py)。chat-player-v1 valのAP比較は既存の
+  [`player_detection.scripts.evaluate`](../../src/tasks/player_detection/README.md)を`evaluate.split=val`で実行する。
+  一括実行用のqueue入口は`player_detection_comparison.sh <元repo> <新しいreport directory>`。
+  DINO拡張をrun内でbuildし、検出器の設定をpipeline.yamlから読んで両評価へ渡す。
+
 - `player_association_clips.py`: camera間の人物対応を、ラベル付きclipで評価するための観測。`observe`（GPU、共有training queue経由）は
   court検出・校正と、人物検出・tracking・poseをcameraごとに`--report/stores/<clip>`へ実行する（ball・身体・再構成は無効）。
   trackingが停止したcameraは停止理由と証跡を、完走したcameraは全trackの観測frame数を`observe.json`に残す。
   `--phase sheets`（CPU）は保存済みtrackから、camera別に全trackの等間隔crop（frame番号付き）を`--report/sheets/<clip>/<camera>.jpg`へ描く（ラベル作成の確認用）。
-  `--phase labels`（CPU）はreview YAMLの人物割り当てを、trackerに依存しないboxラベルへ変換する（`--review`、`--labels-dir`）。
+  `--phase labels`（CPU）はreview YAMLの人物割り当てを、trackerに依存しないboxラベルへ変換する（`--review`、保存先はdataset内）。
   ラベルの形式・作成手順・Meiji 3cam のラベルは[player_association](../../src/tasks/player_association/README.md#評価ラベル)を参照。
 
   ```bash
@@ -99,7 +212,7 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
 
   `--phase calibrate`（CPU）は、ラベルの無い観測済みclipの擬似ラベル（camera間のtrackの組を足元距離で分ける）から、
   幾何の`sigma_m`と外観の`slope`・`center`を当てはめて`calibration.json`へ書く（ラベル付きclipを指定すると停止する）。
-  `--phase evaluate`（CPU）は、ラベル付きclipを`--config`（既定`src/tasks/player_association/configs/association.yaml`、
+  `--phase evaluate`（CPU）は、ラベル付きclipを`--config`（既定は[player_association README](../../src/tasks/player_association/README.md)の候補A、
   `--geometry-only`で外観なし）で対応付けて採点し、`evaluate.json`とclipごとのコート平面の図（`figures/<clip>.png`）を書く。
   どちらもsideを`court_side_clips.py`の注釈ballによる判定（`--sides`）から読み、trackの外観を`--report/appearance`にcacheする。
 
@@ -108,6 +221,126 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   SIDES=$R/outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json
   PYTHONPATH=. .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R --phase evaluate \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --observe $OBS --sides $SIDES \
-      --labels-dir tests/benchmarks/labels/player_association/meiji_3cam --device cpu \
+      --device cpu \
       --report $R/outputs/player_association/evaluate/meiji_association/<run-id>
   ```
+
+- `player_detection_disagreements.py`（CPU）は保存済み`--comparison`とdataset内ラベルから、
+  未一致の旧boxをIoU・box高・camera・近遠（画像内のbox下端順位）別に集計し、
+  `--report`へ旧box/新検出の短い比較動画を書く。旧COCO box由来の偏りがあるため検出recallとは呼ばない。
+
+- `player_association_reserve.py --repo <元repo> --report <新規出力先>`（CPU）は、人物処理の設計・評価・
+  擬似ラベル校正の履歴とclip metadataだけを読み、各動画から600frame以上の最長の未使用clipを予約する。
+  datasetの`annotations/player_association/unseen_protocol.json`を更新し、旧予約・選定/除外理由・hashをreportへ保存する。
+  映像をdecodeせず、ラベルを作らない。未ラベル・調整未完了・評価試行0の予約だけを変更できる。
+
+- `player_detection_far_diagnosis.py --phase preflight --repo <元repo> --comparison <run1/meiji/comparison.json> --report <新規出力先>`
+  はrun 3の履歴再現用。2026-09-29のユーザー判断でGPU jobは中止し、高解像度・tileの追加実行は行わない。
+  新しいCPU比較は下記`person_selection_cpu.py`を使う。
+  は、既存4開発clip・動画/ラベル/重みhash・固定court ROIと未見予約の非重複をCPUで確認する。
+  その後`player_detection_far_diagnosis.sh <元repo> <comparison.json> <report>`を1つのGPU queue jobで実行する。
+  #937の既定resizeでscore 0.01まで保存し閾値曲線を作る。native 1080、1080/1440/1800/2160/2880/4320の
+  probeで全3cameraを通った最大試行サイズ、画像上半分の重複tile＋既定、旧COCOのROI内小box（高さ64px以下）unionを比較する。
+  最大値はこのGPU/float32での試行結果で、モデル固有の上限とは称さない。OOMはprobeの証拠として記録し、通常推論の失敗は停止する。
+  `diagnosis.{json,csv,md}`にcamera×近遠×variantの旧box一致率・追加既知非選手単位・hit率・ms/frame、
+  `missed_old_scores.jsonl.gz`に全未一致選手単位の最高score（IoU≥0.3、ROI前後）、
+  `old_vs_best_variants.mp4`に旧boxと開発一致率上位2条件の24秒比較を出す。
+  `--phase summarize`は全raw archiveのhashを検証しCPUだけで再集計する（出力済みrunは別directoryへ複製してから使う）。
+  ms/frameはscore 0.01の共通forward＋ROI/unionで、動画decode/load/warmup/保存は除く。未ラベル予測数も別記する。
+  pipeline設定・重み・既定thresholdの変更、方式の最終比較、未見clipの評価は行わない。
+
+- `person_coco_fullframe.py --phase preflight --repo <元repo> --comparison <run1/meiji/comparison.json> --report <新規出力先>`
+  は4 dev clip × 3cameraだけをhash検証する。`timeout 5400 bash tests/benchmarks/person_coco_fullframe.sh <元repo> <comparison.json> <report>`
+  を共有GPU queueへ1件登録すると、旧COCO DINOの800/1333、score 0.01の全画面box・scoreをROI前に保存する。
+  torch allocatorは6 GiBに制限。camera単位のarchive/hash・進捗・peak allocated/reservedを残し、途中runを上書きしない。
+  ROI後の旧storeと区別し、最終のソース比較とCPU閾値sweepは別runで行う。
+
+- `person_selection_refinement.py --previous <run4-report> --report <新規出力先>` はCPUのみで
+  FT 0.01 / 保存済みunion / 旧経路のtrackとCLIPを再利用する。`court_linking.py`の領域と断片連結を適用し、
+  旧基準・領域だけ・領域＋連結の3段の人物unit/identity、camera×近遠、clip別表を保存する。
+  `diagnosis.json`は旧選別で残った隣コートunitのtrack構成・座標・旧/新領域内外を記録する。
+  COCO/unionのROI保存差はまだ残るので、全画面COCO完了後の公平な最終比較には代えない。
+  camera間対応は再実行せず、person_identities v3の安全策とCLIP既定は変更しない。
+  `person_selection_failure_video.py --report <同report>` は2つの隣コート失敗例をFT/union各4秒、
+  3camera同期映像・cam0拡大・コート足元図で16秒にまとめる。ラベルは事後の失敗例指定に限る。
+
+- `person_selection_cpu.py --repo <元repo> --report <新規出力先> --phase sources --progress <run3/progress.json>`
+  は中止済みrun 3のft_base 12件・ft_1080 11件をhash検証し、保存済みCOCOと比較する。閾値
+  0.01/0.02/0.05/0.1/0.3のcamera×近遠表、共通11件の表、ROI内外人数を`sources.{json,csv}`へ書く。
+  参照はCOCO由来の旧boxでCOCOに有利。COCOはROI後しか保存されておらず、ROI外の人数は不明。
+  FT/COCOの推論時間は計測範囲が違うためJSONの`runtime_scope`を必ず読む。
+  同じreportで`--phase tracks`はFT base 0.01・COCO・unionをCPU Ultralytics BoT-SORTへ渡す。
+  元scoreは保持し、追跡段の追加score gate/fusionと人物全体の上限は無効。検出row対応を検証し、raw/Kalman両boxを保存する。
+  `--phase select`は足元の既存校正・領域・presence fractionで選手候補を選び、上限6を適用する。
+  既定CLIP-ReIDもCPUで実行し、#933の区間分割・短い曖昧区間除外・handoffを含むcamera間対応を第2確認に使う。
+  未決定は理由を残し、成功結果へ戻さない。旧検出＋旧追跡の保存済み出力もbaselineとして同じ選別に通す。
+  `--phase video`はunionのdev clip_000から、全人物を灰色、選手を予測identity色で示す12秒3camera動画を作る。
+  `--phase report`はidentity/camera別の表と日本語`report.md`を作り、対応後の足元のcamera間距離（z=0）を第2確認として記録する。
+  pipeline既定やencoder比較は変更しない。全人物のpose/外観が未保存のBoT-SORT-style derivativeはこの診断では未評価。
+
+- `person_selection_fullframe.py --phase sources --ft-progress <run3/progress.json> --coco-inference <COCO/inference.json> --report <新規出力先>`
+  はFT .01/.02/.05、全画面COCO .05/.10/.30、両者 .30のunionを同じ800/1333・ROI前の条件で比較するCPU診断。
+  全24 raw archiveのhash・全12 camera-clip・入力/校正/未見予約の一致を検証する。
+  `--phase tracks --max-cameras 1`は同じscore gateなしBoT-SORTを再生し、camera境界の完了hashから再開する。
+  旧ROI後COCOを補完や代用に使わない。
+  `--phase select --repo <元repo> --max-clips 1` はcameraごとにCLIP/選別を保存し、1 source×clipずつ進める。
+  `--phase report` は全7×4結果のhash・全選択断片の観測保持・上限を検証して、camera×近遠・identity・wideの表を書く。
+  領域/CLIP/fragment/handoffの定義は[`court_linking.py`](../../src/tasks/person_tracking/court_linking.py)を正本とする。
+  `person_selection_fullframe_video.py --report <同report> --source <選んだsource>` は各clipの最大誤り窓とwide/隣コート窓を
+  3camera同期で描き、全frame読戻し・hash・窓の選定基準を保存する。ラベルは事後の可視化にのみ使う。
+
+- `person_tracking_dev_features.py --phase plan --repo <元repo> --sources <run6/sources.json> --report <新規出力先>`
+  はCOCO全画面0.30の4 dev clip×3cameraだけをhash検証し、重み/入力/未見予約を固定する（CPU）。
+  `--phase extract --repo <元repo> --report <同出力先>` は共有queueの1 jobでViTPose＋CLIP→SOLIDERを抽出する。
+  全人物rowを保持し、SOLIDERには保存済みposeを使う。モデル選択・追跡比較・GT照合を実行しない。
+  allocator上限7 GiB、pose batch4、appearance batch8、外側timeout5400秒を必須とする。
+  KPRは別のnative-part特徴入口を使うため対象外。成功は`features.json`、進捗/失敗は`features.progress.json`、NPZはencoder/clip/camera別。
+  既存の成功/失敗出力は上書きしない。
+
+## 凍結後の人物未見評価
+
+`person_unseen_freeze.py --repo <main root> --report <唯一の出力先> --target <git内freeze.json>` は
+予約映像を開かず人物設定・全資産hashを固定する。manifestをcommit/pushした後だけ、
+`person_unseen.py --phase plan --freeze <freeze.json> --freeze-commit <commit> --report <出力先>` が
+指定3clipのmetadata/media hash・devと同じ注釈ball由来side・9 court/person nodeを検証する。
+run17では[execution addendum](../../knowledge/runs/run-i964-unseen-r16-20261001/execution-addendum-r17.json)を
+push後、planへ `--addendum <JSON> --addendum-commit <commit>` を付けて準備を明示的に再開する。
+元freeze/opening/停止receiptのhash、未推論、未採点、既存出力がopeningだけであることを検証する。
+run17のパス束縛エラー後は、別の `--preparation-addendum <JSON> --preparation-commit <commit>` が必須。
+[準備追記](../../knowledge/runs/run-i964-unseen-r16-20261001/preparation-addendum-r17b.json)は
+元の2つのopeningと今回の停止receiptを保持し、人物推論前のこの失敗に限って再開を許す。
+予算とside欠測の扱いはaddendumを正本とし、freezeを書き換えない。
+`timeout -k 10s 10790s bash tests/benchmarks/person_unseen.sh <main root> <出力先>` を
+共有queueのresource=allの1jobとして登録する。推論失敗・途中出力を再利用して再試行しない。
+GPU側は人物ラベルを読まず、元row/pose/CLIP/GSIをcomponent storeへ保存し、devと同じ
+raw外観→選別/linked group→候補Aの対応、全長3camera動画を出す。
+各clipの全cameraの人物処理を保存してから、cameraごとに既存court検出/局所校正を行う。
+side欠測では対応だけを停止し、全ID=-1と理由を保存する。選別はsideなしの局所cameraで同じ規則を使う。
+court検出に支持候補が無いcameraは明示停止し、既存選別と同じ理由付き空結果を保存する。
+raw人物は全cameraで保持し、校正欠測clipも採点母数に含む。checkpoint/契約エラーはジョブを停止する。
+推論途中でもattempt/progress/各node receiptを残す。採点は次runに
+`person_unseen_score.py --report <同出力先> --labels <clip IDからlabels.jsonへのJSON mapping>` で一回だけ実行する。
+raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を保存する。
+対象・指標・限界・凍結の根拠は[run16](../../knowledge/nodes/player_association/000006-run-i964-unseen-r16-20261001.md)を参照。
+
+`person_unseen_labels.py --phase views --report <未見出力> --output <新規dir>`はraw artifactと元映像だけからblindラベル用cropを作る。`details`は`--requests <JSON>`のtrack/frame範囲を拡大し、`labels`はoutput内のclip別review.yamlを既存schemaへ変換する。ラベルを確定・push後にのみ既存の一回scorerを使う。
+
+`person_unseen_review_video.py --report <採点済み未見出力>`はsingle score receiptのラベルhashを検証し、保存raw box/IDとラベルを全長3cameraで比較する。IDの表示名は採点済み対応表を使い、camera間で異なる置換を拒否する。box単位の4色と曖昧色を表示し、再推論・再採点はしない。
+
+- `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [旧選定記録](../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md) を参照。
+
+- `court_side_confidence.py`: #932の元held-out全28条件の集計を再現し、固定confidenceの連続blockを追加した対比較をCPUで実行。元/filteredの全仮説を保存。実refinerとの誤差相関は再現していない。結果と限界は [安全bench](../../knowledge/nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md) を参照。
+
+## Meiji contextと相関court_side安全bench
+
+`ball_refiner_meiji_context.sh` は [Meiji cache入口](../../src/tasks/ball_refiner/README.md#meijiの凍結人物経路による文脈cache)を
+固定plan・共有GPU queue・資源guard・12時間上限で実行する。引数はscriptのusageを参照。
+`court_side_correlated.py` は実測GMM残差とconfidenceを同一rowで移植した28条件を比較する。
+`court_side_wrong_cases.py` はrun29の3誤判定のcamera/点/支持frameを元RNGから再現する。
+方法と判定規則は[run30事前登録](../../knowledge/runs/run-i935-correlated-safety-r30-20261001/protocol.md)が正本。
+
+`court_side_unfiltered.py --dataset <元dataset> --bank <固定bank> --original <元#932report> --previous <r30report> --output <新規dir>`
+は同じ28条件×400scene、seed1/30001とhash付き入力で、productionの`BallPointsModule`を各cameraに実行する。
+元#932とr30の未選別集計を条件ごとに照合し、全22,400判定を保存するCPU回帰bench。
+フィルタ廃止後も過去の比較を再現するため、上記confidence系benchは
+`legacy_ball_confidence.py`と`legacy_ball_confidence.yaml`を使う。これらはproductionの設定・依存ではない。

@@ -1,0 +1,47 @@
+{
+  "cache": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928",
+  "manifest_sha256": "cc9e094dad26903c692de9acd75996d890ea877799556454fc4db6757d59a15f",
+  "status": "complete",
+  "counts": {
+    "tracknet/train": {
+      "clips": 74,
+      "frames": 16118,
+      "frames_without_candidates": 0,
+      "valid_candidates": 128944
+    },
+    "tracknet/val": {
+      "clips": 9,
+      "frames": 1573,
+      "frames_without_candidates": 0,
+      "valid_candidates": 12584
+    },
+    "meiji/val": {
+      "clips": 36,
+      "frames": 26961,
+      "frames_without_candidates": 0,
+      "valid_candidates": 215688
+    },
+    "meiji/train": {
+      "clips": 72,
+      "frames": 25905,
+      "frames_without_candidates": 0,
+      "valid_candidates": 207240
+    },
+    "chat_annotation/train": {
+      "clips": 113,
+      "frames": 63600,
+      "frames_without_candidates": 0,
+      "valid_candidates": 508800
+    },
+    "chat_annotation/val": {
+      "clips": 25,
+      "frames": 11610,
+      "frames_without_candidates": 0,
+      "valid_candidates": 92880
+    }
+  },
+  "clips": 329,
+  "frames": 145767,
+  "verified": "EvidenceCache.load: every NPZ checksum, contract, frame, PTS and seconds",
+  "not_verified": "Original media/annotations and JPEG shards not rehashed in this recovery audit; no accuracy measurement"
+}

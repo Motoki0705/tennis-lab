@@ -47,10 +47,10 @@ plt.switch_backend("Agg")
 
 RenderResult = tuple[list[str], list[tuple[str, str]]]
 Renderer = Callable[[Any, str, str, dict[str, Any]], RenderResult]
-RENDERERS: dict[str, tuple[str, int, Renderer]] = {}
+RENDERERS: dict[str, tuple[str, int | tuple[int, ...], Renderer]] = {}
 
 
-def renders(component: str, schema: str, version: int) -> Callable[[Renderer], Renderer]:
+def renders(component: str, schema: str, version: int | tuple[int, ...]) -> Callable[[Renderer], Renderer]:
     """Register the renderer of one component output schema/version."""
     def register(function: Renderer) -> Renderer:
         if component not in STANDARD_COMPONENTS:
@@ -270,7 +270,8 @@ class Review:
     def payload(self, node: str) -> tuple[dict[str, Any], dict[str, Any]]:
         reference = self.references[node]
         schema, version, _ = RENDERERS[node.split("/")[0]]
-        if (reference["schema"], reference["version"]) != (schema, version):
+        versions = (version,) if isinstance(version, int) else version
+        if reference["schema"] != schema or reference["version"] not in versions:
             raise ValueError(f"{node} is {reference['schema']} v{reference['version']}; the gallery renders {schema} v{version}")
         descriptor = self.descriptor(node)
         location = (self.root / reference["path"]).resolve().parent
@@ -395,7 +396,61 @@ class Review:
             ])
         return [image, timeline], details
 
-    @renders("person_detection", "person_detections", 1)
+    @renders("ball_refiner_2d", "ball_distribution_2d", (1, 2))
+    def render_ball_refiner(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        distribution = value["prediction"]["distribution"]
+        means = _array(distribution["means"])[0] * (np.asarray(value["source_size_wh"]) - 1)
+        logits: np.ndarray = _array(distribution["mixture_logits"])[0].astype(np.float64)
+        weights = np.exp(logits - logits.max(axis=-1, keepdims=True))
+        weights /= weights.sum(axis=-1, keepdims=True)
+        presence = 1 / (1 + np.exp(-np.clip(_array(distribution["presence_logits"])[0].astype(np.float64), -700, 700)))
+
+        def draw(image: np.ndarray, frame: int) -> None:
+            for component, point in enumerate(means[frame]):
+                pixel = tuple(np.rint(point).astype(int))
+                color = COLORS_BGR[component % len(COLORS_BGR)]
+                cv2.circle(image, pixel, 12, color, 3)
+                _text(image, f"k{component}: {weights[frame, component]:.2f}", (pixel[0] + 15, pixel[1]), color)
+            _text(image, f"presence {presence[frame]:.3f}", (60, 110))
+
+        image = self.sheet(node, camera, draw)
+        self.movie(node, camera, draw)
+        details = [("GMM components", str(means.shape[1])), ("frames", str(len(means))),
+                   ("calibration", str(value["calibration"])),
+                   ("shown hypotheses", "all component means and weights")]
+        if self.references[node]["version"] == 2:
+            details.extend([("covariance calibration", json.dumps(value["covariance_calibration"], sort_keys=True)),
+                            ("calibration artifact SHA256", value["calibration_artifact_sha256"])])
+        return [image], details
+
+    @renders("ball_points", "ball_points", (1, 2))
+    def render_ball_points(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        positions = _array(value["uv_px"])
+        presence = _array(value["presence_probability"])
+        legacy = self.references[node]["version"] == 1
+        observed: np.ndarray = _array(value["observed"]).astype(bool) if legacy else np.ones(len(positions), bool)
+
+        def draw(image: np.ndarray, frame: int) -> None:
+            if observed[frame]:
+                pixel = tuple(np.rint(positions[frame]).astype(int))
+                cv2.circle(image, pixel, 15, (30, 220, 255), 4)
+            label = "legacy accepted" if legacy and observed[frame] else "legacy missing" if legacy else "refiner point"
+            area = f", area={_array(value['area_px2'])[frame]:.1f} px2" if legacy else ""
+            _text(image, f"{label}: p={presence[frame]:.3f}{area}", (60, 110))
+
+        image = self.sheet(node, camera, draw)
+        self.movie(node, camera, draw)
+        if legacy:
+            codes = _array(value["rejection_codes"])
+            details = [("accepted frames", str(_count(observed))), ("missing frames", str(_count(~observed))),
+                       ("presence rejection", str(_count(codes & 1))), ("area rejection", str(_count(codes & 2))),
+                       ("historical confidence rule", json.dumps(value["rule"], sort_keys=True))]
+        else:
+            details = [("frames", str(len(positions))), ("point", "maximum-weight component mean; all frames"),
+                       ("presence", "diagnostic only; no point rejection")]
+        return [image], details
+
+    @renders("person_detection", "person_detections", 2)
     def render_person_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         offsets, boxes, scores = (_array(value[key]) for key in ("frame_offsets", "boxes_xyxy", "confidence"))
         def draw(image: np.ndarray, frame: int) -> None:
@@ -412,10 +467,10 @@ class Review:
         timeline = _save_plot(self.output / "images" / f"{camera}_detections_timeline.png", plot)
         return [image, timeline], [("detections", str(len(scores))), ("max in one frame", str(int(counts.max())))]
 
-    @renders("person_tracking", "person_tracks", 3)
+    @renders("person_tracking", "person_tracks", 5)
     def render_person_tracking(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         boxes, observed, ids = (_array(value[key]) for key in ("boxes_xyxy", "observed", "track_ids"))
-        confirmed = self.player_labels(camera, ids)
+        confirmed = self.player_labels(camera, ids) if node.startswith("player_selection/") else None
         def draw(image: np.ndarray, frame: int) -> None:
             for row, track_id in enumerate(ids):
                 box = boxes[row, frame]
@@ -423,10 +478,6 @@ class Review:
                 color = (150, 150, 150) if global_id == -1 else COLORS_BGR[row % len(COLORS_BGR)]
                 label = f"track {track_id}" if global_id is None else (f"excluded track {track_id}" if global_id < 0 else f"player {global_id} / track {track_id}")
                 if not observed[row, frame]:
-                    frames = np.flatnonzero(observed[row])
-                    if len(frames) and frames[0] < frame < frames[-1]:
-                        _dashed_box(image, box, color)
-                        _text(image, f"{label} interp", tuple(np.rint(box[:2]).astype(int)), color)
                     continue
                 cv2.rectangle(image, tuple(np.rint(box[:2]).astype(int)), tuple(np.rint(box[2:]).astype(int)), color, 4)
                 _text(image, label, tuple(np.rint(box[:2]).astype(int)), color)
@@ -439,7 +490,7 @@ class Review:
                 ax.scatter(frames, np.full(len(frames), row), marker="|", s=25, color=COLORS_MPL[row % len(COLORS_MPL)])
             ax.set(xlabel="source frame", ylabel="stable camera ID", yticks=np.arange(len(ids)), yticklabels=[str(v) for v in ids], title=f"{camera} observed tracks")
             ax.grid(axis="x", alpha=.2)
-        timeline = _save_plot(self.output / "images" / f"{camera}_tracks_timeline.png", plot)
+        timeline = _save_plot(self.output / "images" / f"{node.replace(chr(47), chr(95))}_tracks_timeline.png", plot)
         details = [(f"ID {track_id}", f"{_count(observed[row])} observed frames; source tracklets {value['source_track_ids'][row]}") for row, track_id in enumerate(ids)]
         if confirmed is not None:
             details += [(f"track {track_id} player", _player_summary(np.where(observed[row], confirmed[int(track_id)], -1)))
@@ -451,6 +502,14 @@ class Review:
                             f"gap {item['missing_frames']} frames; {overlap}location {item['center_distance_diagonals']:.2f} box diagonals; "
                             f"clothing ΔLab {item['appearance_lab_distance']:.1f}"))
         return [image, timeline], details
+
+    @renders("player_selection", "selected_player_tracks", 2)
+    def render_player_selection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        images, details = self.render_person_tracking(node, camera, value["tracks"])
+        details.append(("retained raw observations", str(_count(value["selected"]))))
+        details.append(("group observations", str(_count(value["tracks"]["observed"]))))
+        details.append(("selection evidence", str(value["diagnostics"])))
+        return images, details
 
     @renders("pose_estimation", "person_poses", 1)
     def render_pose_estimation(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
@@ -512,7 +571,7 @@ class Review:
             ax.imshow(np.ma.masked_less(table, 0), aspect="auto", interpolation="nearest", cmap=palette, vmin=0, vmax=9)
             ax.set(yticks=np.arange(len(labels)), yticklabels=labels, xlabel="source frame", title="Player carried by each camera-local track")
         images = [_save_plot(self.output / "images" / "player_association_table.png", plot, figsize=(10, 6))]
-        required = ["court_calibration", "court_side", *(f"person_tracking/{camera_id}" for camera_id in self.camera_ids)]
+        required = ["court_calibration", "court_side", *(f"player_selection/{camera_id}" for camera_id in self.camera_ids)]
         if all(parent in self.references and not self.stale_dependencies(parent) for parent in required):
             ground_image, comparisons = self.ground_distance_matrix()
             images.append(ground_image)
@@ -533,7 +592,8 @@ class Review:
             camera_id = view["camera"]["camera_id"]
             camera = PinholeCamera(camera_id, *(_array(view["camera"][key]).astype(np.float64)
                                                 for key in ("intrinsic", "rotation", "translation"))).half_turned(turns[camera_id])
-            tracking, _ = self.payload(f"person_tracking/{camera_id}")
+            selection, _ = self.payload(f"player_selection/{camera_id}")
+            tracking = selection["tracks"]
             boxes, observed = _array(tracking["boxes_xyxy"]), _array(tracking["observed"])
             for row, track_id in enumerate(_array(tracking["track_ids"])):
                 box = boxes[row]

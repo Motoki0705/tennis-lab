@@ -1,0 +1,38 @@
+{
+  "candidate": "strongsort_pp__clipreid_vitb16_market1501",
+  "video": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-linking-r9-20260930-v3/review.mp4",
+  "windows": [
+    {
+      "clip": "video_000/clip_000",
+      "start": 710,
+      "end": 1010,
+      "differing_player_units": 227,
+      "baseline": "new_old",
+      "candidate": "strongsort_pp__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_000/clip_007",
+      "start": 352,
+      "end": 652,
+      "differing_player_units": 759,
+      "baseline": "new_old",
+      "candidate": "strongsort_pp__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_001/clip_001",
+      "start": 963,
+      "end": 1263,
+      "differing_player_units": 553,
+      "baseline": "new_old",
+      "candidate": "strongsort_pp__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_002/clip_013",
+      "start": 0,
+      "end": 300,
+      "differing_player_units": 84,
+      "baseline": "new_old",
+      "candidate": "strongsort_pp__clipreid_vitb16_market1501"
+    }
+  ]
+}

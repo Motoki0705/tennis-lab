@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i964-unseen-r17-20261001
+# added: 2026-10-01T09:13:57+09:00
+# provider: codex
+# session: 01a0f4ae-9a60-7860-b8a1-37d447baff64
+# issue: 964
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking
+export TENNIS_RUN_ID=1790813637388753719_162393_i964-unseen-r17-20261001
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790813637388753719_162393_i964-unseen-r17-20261001
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790813637388753719_162393_i964-unseen-r17-20261001 --name i964-unseen-r17-20261001 --provider codex --session 01a0f4ae-9a60-7860-b8a1-37d447baff64 --issue 964 --cmd timeout\ -k\ 10s\ 10790s\ bash\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_unseen.sh\ /home/kamimura/projects/tennis-lab\ /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001
+timeout -k 10s 10790s bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_unseen.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001

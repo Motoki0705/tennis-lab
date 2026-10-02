@@ -1,0 +1,89 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790738050136194711_2100742_i935-precision-variants-s42-r20-20260930 (commit=0d3fd3f8a249 provider=codex session=01a0f031-959b-7442-9c47-56b11c1a9426)
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+W0930 12:14:51.937000 2101078 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1953] [0/0] Not enough SMs to use max_autotune_gemm mode
+{"epoch": 0, "step": 50, "batch_nll": -1.3097859621047974}
+{"epoch": 0, "step": 100, "batch_nll": -1.0740387439727783}
+{"epoch": 0, "step": 150, "batch_nll": -1.7544196844100952}
+{"epoch": 0, "step": 200, "batch_nll": -1.3909647464752197}
+{"epoch": 0, "step": 250, "batch_nll": -1.7837803363800049}
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/run_variants.py", line 203, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/run_variants.py", line 175, in main
+    training = run_training(OmegaConf.load(variant['training_config']))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/training/runner.py", line 160, in run_training
+    report, predictions = evaluate_selection(pair, selection, config, device)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/training/evaluation.py", line 104, in evaluate_selection
+    prediction = predict_clip(pair, clip, config, device=device, gap=mask)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/training/evaluation.py", line 34, in predict_clip
+    return predict_sequence(
+           ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/inference.py", line 76, in predict_sequence
+    prediction = pair.run(input_to(batch, device))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/base/model_io/contracts.py", line 116, in run
+    return self.decode_output(self.execute_call(call))
+                              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/base/model_io/contracts.py", line 106, in execute_call
+    self.model(*call.args, **dict(call.kwargs)),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 1183, in compile_wrapper
+    raise e.remove_dynamo_frames() from None  # see TORCHDYNAMO_VERBOSE=1
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1079, in _compile_fx_inner
+    raise InductorError(e, currentframe()).with_traceback(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1059, in _compile_fx_inner
+    mb_compiled_graph = fx_codegen_and_compile(
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1847, in fx_codegen_and_compile
+    return scheme.codegen_and_compile(gm, example_inputs, inputs_to_check, graph_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1608, in codegen_and_compile
+    compiled_module = graph.compile_to_module()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/graph.py", line 2669, in compile_to_module
+    return self._compile_to_module()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/graph.py", line 2679, in _compile_to_module
+    mod = self._compile_to_module_lines(wrapper_code)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/graph.py", line 2754, in _compile_to_module_lines
+    mod = PyCodeCache.load_by_key_path(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/codecache.py", line 4622, in load_by_key_path
+    mod = _reload_python_module(key, path, set_sys_modules=set_sys_modules)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/runtime/compile_tasks.py", line 35, in _reload_python_module
+    exec(code, mod.__dict__, mod.__dict__)
+  File "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/analyze/precision/i935-variants-s42-r20-20260930-compiler/6r/c6rflmth2oghppol75j27t7gct2xabjgywzp44dslv3eptipfslz.py", line 1773, in <module>
+    async_compile.wait(globals())
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/async_compile.py", line 818, in wait
+    self._wait_futures(scope)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/async_compile.py", line 848, in _wait_futures
+    kernel = result.result(timeout=wait_timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/codecache.py", line 5306, in result
+    return self.result_fn()
+           ^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/async_compile.py", line 498, in get_result
+    kernel, elapsed_us = task.result()
+                         ^^^^^^^^^^^^^
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/concurrent/futures/_base.py", line 451, in result
+    self._condition.wait(timeout)
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/threading.py", line 327, in wait
+    waiter.acquire()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/run_variants.py", line 134, in terminate
+    raise RuntimeError(f'Queue timeout/resource signal {signum}: {monitor["failure"]}')
+torch._inductor.exc.InductorError: RuntimeError: Queue timeout/resource signal 15: FileNotFoundError(2, 'No such file or directory')
+
+Set TORCHDYNAMO_VERBOSE=1 for the internal stack trace (please do this especially if you're reporting a bug to PyTorch). For even more developer context, set TORCH_LOGS="+dynamo"
+
+exit_code=1

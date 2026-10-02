@@ -1,0 +1,29 @@
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: /home/kamimura/projects/tennis-lab/outputs
+  output_root: /home/kamimura/projects/tennis-lab/outputs
+  cache_root: data
+  external_asset_root: third_party
+evaluate:
+  training_run: ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928
+  partition: calibration
+  levels:
+  - 0.5
+  - 0.9
+  - 0.95
+  samples: 2048
+  seed: 1729
+  chunk_size: 32
+  bootstrap_repetitions: 2000
+  bootstrap_confidence: 0.95
+compile:
+  enabled: true
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+run:
+  output_dir: ball_refiner/evaluate/detector_only/i935-ft-e13-calibration-r5-20260928
+  device: cuda

@@ -1,0 +1,56 @@
+old_old/video_000/clip_000: raw=1.000000 group=1.000000
+old_old/video_000/clip_007: raw=0.927021 group=0.927292
+old_old/video_001/clip_001: raw=0.842683 group=0.979248
+old_old/video_002/clip_013: raw=0.994647 group=0.946159
+new_old/video_000/clip_000: raw=1.000000 group=1.000000
+new_old/video_000/clip_007: raw=0.750987 group=0.751303
+new_old/video_001/clip_001: raw=0.842683 group=0.979248
+new_old/video_002/clip_013: raw=0.994647 group=0.946159
+botsort_pose__clipreid_vitb16_market1501/video_000/clip_000: raw=0.890396 group=0.904976
+botsort_pose__clipreid_vitb16_market1501/video_000/clip_007: raw=0.759401 group=0.888556
+botsort_pose__clipreid_vitb16_market1501/video_001/clip_001: raw=0.810133 group=0.853240
+botsort_pose__clipreid_vitb16_market1501/video_002/clip_013: raw=0.884227 group=0.900631
+botsort_pose__solider_swin_base_msmt17/video_000/clip_000: raw=0.890396 group=0.904976
+botsort_pose__solider_swin_base_msmt17/video_000/clip_007: raw=0.774499 group=0.864421
+botsort_pose__solider_swin_base_msmt17/video_001/clip_001: raw=0.819366 group=0.862123
+botsort_pose__solider_swin_base_msmt17/video_002/clip_013: raw=0.884227 group=0.900631
+deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_000: raw=0.863648 group=0.914580
+deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_007: raw=0.873963 group=0.909553
+deep_ocsort_pose__clipreid_vitb16_market1501/video_001/clip_001: raw=0.932479 group=0.960687
+deep_ocsort_pose__clipreid_vitb16_market1501/video_002/clip_013: raw=0.896246 group=0.894662
+deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_000: raw=0.863648 group=0.914580
+deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_007: raw=0.875017 group=0.910573
+deep_ocsort_pose__solider_swin_base_msmt17/video_001/clip_001: raw=0.862668 group=0.961394
+deep_ocsort_pose__solider_swin_base_msmt17/video_002/clip_013: raw=0.897468 group=0.895886
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_000/clip_000/cam0: ok 9 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_000/clip_000/cam1: ok 7 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_000/clip_000/cam2: ok 7 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_000/clip_007/cam0: failed 0 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_000/clip_007/cam1: ok 5 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_000/clip_007/cam2: ok 12 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_001/clip_001/cam0: failed 0 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_001/clip_001/cam1: ok 6 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_001/clip_001/cam2: failed 0 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_002/clip_013/cam0: ok 8 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_002/clip_013/cam1: ok 4 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501 video_002/clip_013/cam2: ok 5 tracks
+deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000: raw=0.900582 group=0.914580
+deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007: raw=0.702436 group=0.702436
+deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001: raw=0.454665 group=0.454665
+deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013: raw=0.941232 group=0.939648
+strongsort_pp__clipreid_vitb16_market1501 video_000/clip_000/cam0: ok 12 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_000/clip_000/cam1: ok 6 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_000/clip_000/cam2: ok 7 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_000/clip_007/cam0: failed 0 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_000/clip_007/cam1: ok 4 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_000/clip_007/cam2: ok 10 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_001/clip_001/cam0: failed 0 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_001/clip_001/cam1: ok 8 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_001/clip_001/cam2: failed 0 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_002/clip_013/cam0: ok 9 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_002/clip_013/cam1: ok 4 tracks
+strongsort_pp__clipreid_vitb16_market1501 video_002/clip_013/cam2: ok 4 tracks
+strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000: raw=0.960899 group=0.998825
+strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007: raw=0.752066 group=0.752066
+strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001: raw=0.455917 group=0.455917
+strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013: raw=0.972025 group=0.941995
