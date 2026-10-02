@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -57,7 +58,12 @@ def test_gallery_is_written_outside_the_store(tmp_path: Path, monkeypatch: pytes
 def test_gallery_keeps_legacy_filtered_point_history_readable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     review = Review.__new__(Review)
     review.references = {"ball_points/cam0": {"version": 1}}
-    monkeypatch.setattr(Review, "sheet", lambda self, node, camera, draw: tmp_path / "history.png")
+    def sheet(self: Review, node: str, camera: str, draw: Callable[[np.ndarray, int], None]) -> Path:
+        for frame in range(2):
+            draw(np.zeros((720, 1280, 3), np.uint8), frame)
+        return tmp_path / "history.png"
+
+    monkeypatch.setattr(Review, "sheet", sheet)
     monkeypatch.setattr(Review, "movie", lambda self, node, camera, draw: None)
     _, details = review.render_ball_points("ball_points/cam0", "cam0", {
         "uv_px": np.array([[100., 100.], [0., 0.]]), "observed": np.array([True, False]),
