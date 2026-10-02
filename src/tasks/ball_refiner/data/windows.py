@@ -11,42 +11,18 @@ from numpy.typing import NDArray
 from torch.utils.data import Dataset, Sampler
 
 from src.tasks.ball_detection.data.store import ClipRecord
-from src.tasks.ball_detection.model_io.contracts import BallCandidates
 from src.tasks.ball_refiner.data.evidence import ClipEvidence
+from src.tasks.ball_refiner.data.inputs import CANDIDATE_FIELDS as CANDIDATE_FIELDS
+from src.tasks.ball_refiner.data.inputs import (
+    collate_inputs,
+    detector_only_input,
+    input_to,
+)
 from src.tasks.ball_refiner.data.targets import ClipTargets
+from src.tasks.ball_refiner.data.temporal import window_owners as window_owners
+from src.tasks.ball_refiner.data.temporal import window_starts
 from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
 from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput, Refiner2DTarget
-
-CANDIDATE_FIELDS = ("coords", "scores", "valid", "cells", "patches", "patch_valid")
-
-
-def window_starts(frames: int, length: int, stride: int) -> tuple[int, ...]:
-    """Backfill the tail with real frames; a short clip is an explicit error."""
-    if length < 1 or not 1 <= stride <= length or frames < length:
-        raise ValueError("Windows require frames >= length >= stride >= 1; no padding")
-    starts = list(range(0, frames - length + 1, stride))
-    if starts[-1] != frames - length:
-        starts.append(frames - length)
-    return tuple(starts)
-
-
-def window_owners(frames: int, starts: Sequence[int], length: int) -> NDArray[np.int64]:
-    """One prediction per frame: nearest centre, ties resolved by earlier start."""
-    owners: NDArray[np.int64] = np.full(frames, -1, dtype=np.int64)
-    distances = np.full(frames, np.inf)
-    if not starts or list(starts) != sorted(set(starts)):
-        raise ValueError("Window starts must be nonempty, sorted and unique")
-    for index, start in enumerate(starts):
-        if start < 0 or start + length > frames:
-            raise ValueError("Window exceeds the source timeline")
-        rows = np.arange(start, start + length)
-        distance = np.abs(rows - (start + (length - 1) / 2))
-        take = distance < distances[rows]
-        owners[rows[take]] = index
-        distances[rows[take]] = distance[take]
-    if (owners < 0).any():
-        raise ValueError("Window policy leaves source frames uncovered")
-    return owners
 
 
 @dataclass(frozen=True)
@@ -77,46 +53,17 @@ class RefinerBatch:
     target: Refiner2DTarget
 
     def to(self, device: torch.device) -> RefinerBatch:
-        source = self.inputs
-        candidates = BallCandidates(
-            **{name: getattr(source.candidates, name).to(device) for name in CANDIDATE_FIELDS},
-            config=source.candidates.config,
-        )
-        inputs = Refiner2DInput(candidates=candidates, **{
-            field.name: getattr(source, field.name).to(device)
-            for field in fields(source) if field.name != "candidates"
-        })
         target = Refiner2DTarget(**{
             field.name: getattr(self.target, field.name).to(device) for field in fields(self.target)
         })
-        return RefinerBatch(inputs, target)
+        return RefinerBatch(input_to(self.inputs, device), target)
 
 
 def detector_only_window(
     clip: LoadedClip, start: int, length: int, config: Refiner2DConfig,
 ) -> WindowSample:
-    """An explicit ablation, never a fallback for missing generated context."""
-    if config.use_pose or config.use_court or not config.use_detector:
-        raise ValueError("Detector-only dataset requires use_detector=true, use_pose/use_court=false")
-    if not 0 <= start < start + length <= clip.record.frame_count:
-        raise ValueError("Window must contain only real source frames")
-    evidence = clip.evidence
-    if config.patch_size != evidence.candidates.config.patch_size:
-        raise ValueError("Model and evidence patch sizes differ")
-    candidates = BallCandidates(**{
-        name: getattr(evidence.candidates, name)[:, start:start + length].clone()
-        for name in CANDIDATE_FIELDS
-    }, config=evidence.candidates.config)
-    inputs = Refiner2DInput(
-        candidates=candidates,
-        timestamps_seconds=torch.from_numpy(evidence.timestamps_seconds[start:start + length].copy())[None],
-        pose_uv=torch.zeros(1, length, 0, 4, 2),
-        pose_confidence=torch.zeros(1, length, 0, 4),
-        pose_valid=torch.zeros(1, length, 0, 4, dtype=torch.bool),
-        court_uv=torch.zeros(1, config.court_keypoints, 2),
-        court_confidence=torch.zeros(1, config.court_keypoints),
-        court_valid=torch.zeros(1, config.court_keypoints, dtype=torch.bool),
-    )
+    """Attach labels only at the training boundary."""
+    inputs = detector_only_input(clip.evidence, start, length, config)
     return WindowSample(inputs, clip.targets.target(start, start + length), clip.record.clip_id, start)
 
 
@@ -124,28 +71,7 @@ def collate_windows(samples: Sequence[WindowSample]) -> RefinerBatch:
     """Pad only the unordered person axis; differing temporal lengths fail."""
     if not samples:
         raise ValueError("Cannot collate an empty batch")
-    inputs = [sample.inputs for sample in samples]
-    length = inputs[0].timestamps_seconds.shape[1]
-    config = inputs[0].candidates.config
-    if any(x.timestamps_seconds.shape != (1, length) or x.candidates.config != config for x in inputs):
-        raise ValueError("Collation requires matching real time windows and candidate settings")
-    people = max(x.pose_uv.shape[2] for x in inputs)
-    pose: dict[str, torch.Tensor] = {}
-    for name in ("pose_uv", "pose_confidence", "pose_valid"):
-        values = []
-        for item in inputs:
-            value = getattr(item, name)
-            padded = value.new_zeros((1, length, people, *value.shape[3:]))
-            padded[:, :, :value.shape[2]] = value
-            values.append(padded)
-        pose[name] = torch.cat(values)
-    candidates = BallCandidates(**{
-        name: torch.cat([getattr(x.candidates, name) for x in inputs]) for name in CANDIDATE_FIELDS
-    }, config=config)
-    batch = Refiner2DInput(candidates=candidates, **pose, **{
-        name: torch.cat([getattr(x, name) for x in inputs])
-        for name in ("timestamps_seconds", "court_uv", "court_confidence", "court_valid")
-    })
+    batch = collate_inputs([sample.inputs for sample in samples])
     target = Refiner2DTarget(**{
         field.name: torch.cat([getattr(x.target, field.name) for x in samples])
         for field in fields(Refiner2DTarget)
