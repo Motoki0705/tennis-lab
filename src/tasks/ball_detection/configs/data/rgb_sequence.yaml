@@ -7,7 +7,7 @@ defaults:
 
 source: store
 # DATA-root-relative store version.
-data_dir: ${tennis_dataset:ball_detection,ball-mix-v1}
+data_dir: ${tennis_dataset:ball_detection,ball-mix-v2}
 # Store sources used for train, val and test.
 sources: [tracknet, meiji, chat_annotation]
 

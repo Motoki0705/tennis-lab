@@ -133,12 +133,12 @@ class BallStoreDataset(BallDetectionDataset):
     def source_of(self, index: int) -> str:
         return str(self.store.clips[self.windows[index].clip].source)
 
-    def read_window(self, index: int, num_frames: int) -> WindowFrames:
+    def read_window(self, index: int) -> WindowFrames:
         window = self.windows[index]
         clip = self.store.clips[window.clip]
         first = self.store.row_of(clip, window.start)
         frames = []
-        for row in range(first, first + num_frames):
+        for row in range(first, first + self.num_frames):
             supervised = bool(self.supervision.supervised[row])
             points: tuple[tuple[float, float], ...] = ()
             if supervised:

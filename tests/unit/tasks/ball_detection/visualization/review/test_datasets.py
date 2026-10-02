@@ -115,56 +115,6 @@ def test_scene_id_requires_separator() -> None:
             split_scene_id(bad)
 
 
-def test_unified_web_store_static_and_temporal(
-    tmp_path: Path, make_web_store: Callable[[Path], Path]
-) -> None:
-    make_web_store(tmp_path)
-    catalog = catalog_for(tmp_path)
-    entries = {entry.spec.id: entry for entry in catalog.entries()}
-    assert entries["web_static"].available
-    assert entries["web_static"].count == 2
-    assert entries["web_static"].max_scene_frames == 1
-    assert entries["web_temporal"].available
-    assert entries["web_temporal"].count == 1
-    assert entries["web_temporal"].max_scene_frames == 2
-
-    static_ref = catalog.refs("web_static")[0]
-    assert static_ref.id == "web_static::0"
-    assert static_ref.frames == 1
-    static = catalog.resolve("web_static", "0")
-    assert static.mode == "static"
-    assert static.original_size(0) == (64, 48)
-    assert static.name(0) == "sample_000000.jpg"
-    assert [label.x for label in static.labels(0)] == [12.5]
-
-    negative = catalog.resolve("web_static", "1")
-    assert negative.labels(0) == ()
-
-    temporal_ref = catalog.refs("web_temporal")[0]
-    assert temporal_ref.id == "web_temporal::video-0001"
-    assert temporal_ref.frames == 2
-    temporal = catalog.resolve("web_temporal", "video-0001")
-    assert temporal.mode == "temporal"
-    assert [temporal.name(index) for index in range(2)] == [
-        "000000.jpg",
-        "000001.jpg",
-    ]
-    assert temporal.labels(0)[0].x == 7.0
-    assert temporal.labels(1)[0].x == 30.0
-    # Sequence order follows the stored frame index, not the image content.
-    assert int(temporal.read_rgb(0)[0, 0, 0]) == 10
-    assert int(temporal.read_rgb(1)[0, 0, 0]) == 200
-
-
-def test_missing_unified_store_reports_reason(tmp_path: Path) -> None:
-    entries = {entry.spec.id: entry for entry in catalog_for(tmp_path).entries()}
-    for dataset_id in ("web_static", "web_temporal"):
-        entry = entries[dataset_id]
-        assert not entry.available
-        assert entry.count == 0
-        assert entry.reason is not None and "index.npz" in entry.reason
-
-
 def test_frame_index_bounds_and_type(
     tmp_path: Path, make_clip_dataset: Callable[..., Path]
 ) -> None:

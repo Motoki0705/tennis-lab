@@ -38,7 +38,7 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 ## パスと注意点
 
-- `--data-root`は**`data`**です。実体は`data/ball_detection/<version>`、`data/tennis/web/unified`です。
+- `--data-root`は**`data`**です。実体は`data/ball_detection/<version>`です。
 - Web unifiedが未配置なら理由付きで無効になります。このUIで変換は行いません。
 - temporalの窓長はモデル・クリップ長に制約されます。staticは同じ画像の正規反復入力を1フレームの結果へ集約します。
 - 未レビュー・未確定・推定ラベルのフレームは採点対象外です。一致検出がない平均距離はN/Aで、誤差0ではありません。
