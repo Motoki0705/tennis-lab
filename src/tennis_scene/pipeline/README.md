@@ -107,10 +107,49 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 出力は元frameを1度だけ持つ。strideが窓より長い、またはdropした末尾などで全frameを
 覆えない設定は停止し、未処理のframeを負例や空heatmapとして埋めない。
 
+`nearest_window_centre_then_earlier_start`はrefiner学習cacheと同じ、中心距離が最小の窓、
+同点なら早い開始位置を採用する明示的なpolicy。このpolicyは`tail_policy=backfill`を要求し、
+短clipのRGB反復を拒否する。既定の`max_score`は変更しない。
+
 モデル実行では `evidence` は必須。注釈importと無効な検出器は `None` を明示し、
 `score_semantics` で区別する。refinerは証拠なしを実検出とみなしてはならない。
-下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refinerへの切替は#935）。
+下流のside・幾何・三角測量は当面、既存の単一点観測を使う（refiner分布から確率的三角測量への接続は#936）。
 v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
+
+## 2D ball refinerの専用recipe
+
+`ball_refiner_recipe.ball_refiner_definition`は各cameraの
+`ball_detection → ball_refiner_2d`だけを共通ComponentRunner/ClipStoreへ登録する。
+未較正の文脈なしpilotを明示的に試す入口で、標準sceneの既定値は変更しない。
+文脈ありcheckpoint、確率的三角測量、3Dへの切替は後続の対象。
+推論bundleの作成・入力契約は[task README](../../tasks/ball_refiner/README.md#推論bundleの書き出し)を参照。
+
+recipe構築時に検出器checkpointのhashと全前処理/候補/窓設定を照合し、実際のpredictorでも
+正規化と窓長を検証する。assemblerはcamera・全frame・sourceサイズ・中心距離の採用窓を照合し、
+元動画をPyAVでdecodeして得たPTS/time baseを実秒へ変換する。PTSをFPSから捏造しない。
+検出点の閾値・trajectory gateはrefiner入力に使わず、注釈import・証拠なしは停止する。
+sourceとcheckpointのhashは実行前後にも照合する。RGBの媒体差はbundleへ明記する。
+
+出力は`ball_distribution_2d` schema v1、型は`components/ball_refiner.py:BallRefiner2DOutput`。
+`prediction.distribution`に平均・Cholesky因子・混合logit・存在logitを全frame保存し、
+full covariance・混合weight・存在確率は元の精度で復元できる。単位はsourceのW−1/H−1で正規化したuv。
+sourceサイズ、frame/PTS/time base/実秒、detectorとrefiner両方の採用窓、未較正であることも保存する。
+全欠損frameも同じ契約で保存し、点や最大成分への縮約・補間・detectorへのfallbackはしない。
+
+以下は1cameraの実行入口。他cameraとの対応・ラベル・学習storeは要求しない。
+legacyな単一点のgateやprefetch設定はsceneのpipeline.yaml、refinerが必要な入力条件はbundleが正本。
+実行後に同じ引数の`--source execute`を`--source load`へ変えると、モデルを呼ばず全GMMを復元する。
+code・bundle・設定・source・依存artifactの不一致や配列のchecksum不一致は停止する。
+
+```bash
+# CUDAは共有training queue経由。storeは既存の標準sceneとは分けた明示的なpathにする。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.run_pipeline \
+  --video <絶対data-root>/clip/cam0.mp4 --camera-id cam0 \
+  --bundle <絶対checkpoint-root>/ball_refiner/<bundle-id> \
+  --detector-checkpoint <絶対checkpoint-root>/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt \
+  --store <絶対artifact-root>/ball_refiner/<run-id>/cam0 \
+  --device cuda --source execute --detector-batch-size 4 --refiner-batch-size 32
+```
 
 ## 成果物
 

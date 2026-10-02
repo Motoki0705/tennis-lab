@@ -943,11 +943,13 @@ def build_ball_detection_config(
             "ball_detection.tail_policy must be 'drop' or 'backfill'."
         )
     overlap_aggregation = cast(str, ball["overlap_aggregation"])
-    if overlap_aggregation not in {"last_window_wins", "max_score"}:
+    if overlap_aggregation not in {"last_window_wins", "max_score", "nearest_window_centre_then_earlier_start"}:
         raise SemanticConfigurationError(
             "ball_detection.overlap_aggregation must be 'last_window_wins' "
-            "or 'max_score'."
+            ", 'max_score' or 'nearest_window_centre_then_earlier_start'."
         )
+    if overlap_aggregation == "nearest_window_centre_then_earlier_start" and tail_policy != "backfill":
+        raise SemanticConfigurationError("Centre selection requires tail_policy=backfill.")
     gate_residual = float(cast(float | int, gate["max_residual_px"]))
     gate_support = cast(int, gate["k_support"])
     gate_gap = cast(int, gate["max_support_gap"])
