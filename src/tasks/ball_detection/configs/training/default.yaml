@@ -1,3 +1,7 @@
+defaults:
+  - _validation_candidates
+  - _self_
+
 # ---- Training loop settings ----
 trainer:
   max_epochs: 20
@@ -39,9 +43,9 @@ allow_tf32: true
 checkpoint:
   enabled: true
   filename: "ball-detection-{epoch:02d}"
-  monitor: val/loss
-  mode: min
-  save_top_k: 2
+  monitor: val/candidate_recall_at_8_20px
+  mode: max
+  save_top_k: -1
   save_last: true
 
 early_stopping:

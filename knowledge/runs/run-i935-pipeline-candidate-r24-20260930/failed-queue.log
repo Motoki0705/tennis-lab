@@ -1,0 +1,13 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930 (commit=521eea03985a provider=codex session=01a0f1dc-49b9-7c82-bcfb-fe29dda6b9e1)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 302, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 298, in main
+    run(args.plan, plan)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 203, in run
+    checked = preflight(plan)
+              ^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 59, in preflight
+    raise FileExistsError(plan["report"])
+FileExistsError: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-e9-anchored-s42-r24-20260930
+exit_code=1

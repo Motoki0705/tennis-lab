@@ -1,0 +1,18 @@
+{"mode": "resize_only", "windows": 4, "total_windows": 67, "seconds": 13.719403375987895, "available_ram": 18726821888}
+{"mode": "resize_only", "windows": 8, "total_windows": 67, "seconds": 27.23815176897915, "available_ram": 18656202752}
+{"mode": "resize_only", "windows": 12, "total_windows": 67, "seconds": 40.05375795799773, "available_ram": 18625474560}
+{"mode": "resize_only", "windows": 16, "total_windows": 67, "seconds": 52.27363690600032, "available_ram": 18356752384}
+{"mode": "resize_only", "windows": 20, "total_windows": 67, "seconds": 64.62814213801175, "available_ram": 18351411200}
+{"mode": "resize_only", "windows": 24, "total_windows": 67, "seconds": 77.02387492597336, "available_ram": 18351411200}
+{"mode": "resize_only", "windows": 28, "total_windows": 67, "seconds": 89.00657199299894, "available_ram": 18351411200}
+{"mode": "resize_only", "windows": 32, "total_windows": 67, "seconds": 100.87035656598164, "available_ram": 18351411200}
+{"mode": "resize_only", "windows": 36, "total_windows": 67, "seconds": 112.49651736899978, "available_ram": 18332020736}
+{"mode": "resize_only", "windows": 40, "total_windows": 67, "seconds": 124.85672235896345, "available_ram": 17769984000}
+{"mode": "resize_only", "windows": 44, "total_windows": 67, "seconds": 137.62118989700684, "available_ram": 16713670656}
+{"mode": "resize_only", "windows": 48, "total_windows": 67, "seconds": 151.14709325699368, "available_ram": 16713670656}
+{"mode": "resize_only", "windows": 52, "total_windows": 67, "seconds": 164.59690362599213, "available_ram": 16713670656}
+{"mode": "resize_only", "windows": 56, "total_windows": 67, "seconds": 177.95057012001052, "available_ram": 16713670656}
+{"mode": "resize_only", "windows": 60, "total_windows": 67, "seconds": 189.81362394598546, "available_ram": 16713670656}
+{"mode": "resize_only", "windows": 64, "total_windows": 67, "seconds": 200.99431099899812, "available_ram": 16713670656}
+{"mode": "resize_only", "windows": 67, "total_windows": 67, "seconds": 210.05303088901564, "available_ram": 16713670656}
+{"complete": "resize_only", "comparison": {"source_cuda": {"all_rank_native_cells_equal_frames": 0, "same_rank_native_cells": 291, "score_max_abs": 0.45381349325180054, "same_rank_position_max_abs_px": 1919.0}, "cache_cuda": {"all_rank_native_cells_equal_frames": 0, "same_rank_native_cells": 380, "score_max_abs": 0.309440940618515, "same_rank_position_max_abs_px": 1918.4998779296875}}, "seconds": 212.6682437499985}

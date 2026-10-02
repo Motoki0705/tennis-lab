@@ -1,0 +1,26 @@
+{
+  "base_commit": "f92abc034f65a67ec9f98010c87b771b155805cb",
+  "recorded_at": "2026-09-30T17:06:59.451938+00:00",
+  "code_sha256": {
+    "knowledge/runs/run-i935-source-tail-audit-r27-20261001/summarize_isolation.py": "033e7a9d985ca9ca6b66eb3da4fc40437906446f9e9d980511ac2519da63924a",
+    "knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolate_inputs.py": "426cb827453ca3570348d89d77c747a796acf7ba2d909c4b1765ab472c59b2f0",
+    "knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_frames.py": "4e1697bae9f0d8ad20f2c7de6ddb253d34a11d38913fa54ef32de70cea520fdd",
+    "knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_pixels.py": "b515139dc9406e64237ba68b1e51c2b87f06be2562660af2c7dc6efca238be59",
+    "knowledge/runs/run-i935-source-tail-audit-r27-20261001/audit_noise.py": "6b038da8069a1134f92ec7185e3775176eaef6327f2e014683e8177fc809d5f0",
+    "tests/unit/tasks/ball_refiner/evaluation/test_source_tail_audit.py": "ea50fb89706328923f552e7e54e36434eccbb23785feb492c966e51760627c1f"
+  },
+  "validation": {
+    "pytest": {
+      "command": ".venv/bin/python -m pytest -n 4 tests/unit/tasks/ball_refiner/evaluation/test_source_tail_audit.py tests/unit/tasks/ball_refiner/evaluation/test_source_b_gate.py -q",
+      "passed": 13
+    },
+    "ruff": "5 diagnostic scripts and test passed",
+    "mypy": "same 6 files --follow-imports=skip passed",
+    "knowledge_errors": 0
+  },
+  "gpu_jobs": [],
+  "production_src_changes": 0,
+  "default_changed": false,
+  "gate_changed": false,
+  "covariance_multiplier_changed": false
+}

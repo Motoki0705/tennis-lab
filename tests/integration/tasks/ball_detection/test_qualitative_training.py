@@ -49,6 +49,7 @@ def test_mixed_profile_renders_normalized_validation_and_saves_checkpoint(
                 "data.pin_memory=false",
                 "data.train_sampling.windows_per_epoch=6",
                 "model.num_frames=2",
+                "data.eval_stride=2",
                 "model.dims=[4,8,16,32]",
                 "model.depth=1",
                 "training.trainer.max_epochs=1",
@@ -78,7 +79,7 @@ def test_mixed_profile_renders_normalized_validation_and_saves_checkpoint(
         value for key, value in saved["callbacks"].items()
         if key.startswith("ModelCheckpoint")
     )
-    assert state["monitor"] == "val/f1"
+    assert state["monitor"] == "val/meiji/candidate_recall_at_8_20px"
     assert torch.isfinite(state["best_model_score"])
     assert Path(state["best_model_path"]).is_file()
     assert not (tmp_path / "outputs/qualitative-smoke/predictions").exists()

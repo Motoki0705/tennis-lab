@@ -1,0 +1,886 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790739175028391561_2386039_i935-precision-variants-s42-r21-20260930 (commit=1cce88fbb8ab provider=codex session=01a0f051-7014-7073-9545-54d0bcb32d36)
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+W0930 12:33:35.760000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1953] [0/0] Not enough SMs to use max_autotune_gemm mode
+{"epoch": 0, "step": 50, "batch_nll": -1.309786081314087}
+{"epoch": 0, "step": 100, "batch_nll": -1.0740387439727783}
+{"epoch": 0, "step": 150, "batch_nll": -1.7544208765029907}
+{"epoch": 0, "step": 200, "batch_nll": -1.3909507989883423}
+{"epoch": 0, "step": 250, "batch_nll": -1.7949573993682861}
+{"epoch": 0, "step": 250, "selection_nll_uv": -2.352213241825229, "best_epoch": 0}
+{"epoch": 1, "step": 300, "batch_nll": -2.380619764328003}
+{"epoch": 1, "step": 350, "batch_nll": -3.013091564178467}
+{"epoch": 1, "step": 400, "batch_nll": -1.6979180574417114}
+{"epoch": 1, "step": 450, "batch_nll": -4.021873950958252}
+{"epoch": 1, "step": 500, "batch_nll": -2.887434482574463}
+{"epoch": 1, "step": 500, "selection_nll_uv": -3.5266914494953285, "best_epoch": 1}
+{"epoch": 2, "step": 550, "batch_nll": -3.873720407485962}
+{"epoch": 2, "step": 600, "batch_nll": -3.8855020999908447}
+{"epoch": 2, "step": 650, "batch_nll": -3.873986005783081}
+{"epoch": 2, "step": 700, "batch_nll": -3.5687732696533203}
+{"epoch": 2, "step": 750, "batch_nll": -3.248243808746338}
+{"epoch": 2, "step": 750, "selection_nll_uv": -4.390552559092515, "best_epoch": 2}
+{"epoch": 3, "step": 800, "batch_nll": -4.745364665985107}
+{"epoch": 3, "step": 850, "batch_nll": -4.561568737030029}
+{"epoch": 3, "step": 900, "batch_nll": -4.4764885902404785}
+{"epoch": 3, "step": 950, "batch_nll": -4.597220420837402}
+{"epoch": 3, "step": 1000, "batch_nll": -3.1219887733459473}
+{"epoch": 3, "step": 1000, "selection_nll_uv": -3.1575001803522618, "best_epoch": 2}
+{"epoch": 4, "step": 1050, "batch_nll": -4.752917289733887}
+{"epoch": 4, "step": 1100, "batch_nll": -4.7044172286987305}
+{"epoch": 4, "step": 1150, "batch_nll": -3.301964282989502}
+{"epoch": 4, "step": 1200, "batch_nll": -4.699386119842529}
+{"epoch": 4, "step": 1250, "batch_nll": -2.408404588699341}
+{"epoch": 4, "step": 1250, "selection_nll_uv": -3.6441126238921475, "best_epoch": 2}
+{"epoch": 5, "step": 1300, "batch_nll": -3.1856577396392822}
+{"epoch": 5, "step": 1350, "batch_nll": -3.699890613555908}
+{"epoch": 5, "step": 1400, "batch_nll": -3.9129228591918945}
+{"epoch": 5, "step": 1450, "batch_nll": -4.7807488441467285}
+{"epoch": 5, "step": 1500, "batch_nll": -2.1812245845794678}
+{"epoch": 5, "step": 1500, "selection_nll_uv": -0.37499152987894163, "best_epoch": 2}
+{"epoch": 6, "step": 1550, "batch_nll": -3.625260591506958}
+{"epoch": 6, "step": 1600, "batch_nll": -3.8226895332336426}
+{"epoch": 6, "step": 1650, "batch_nll": -4.583641529083252}
+{"epoch": 6, "step": 1700, "batch_nll": -4.446977138519287}
+{"epoch": 6, "step": 1750, "batch_nll": -3.7210912704467773}
+{"epoch": 6, "step": 1750, "selection_nll_uv": -4.274303348969664, "best_epoch": 2}
+{"epoch": 7, "step": 1800, "batch_nll": -5.204258918762207}
+{"epoch": 7, "step": 1850, "batch_nll": -4.753325939178467}
+{"epoch": 7, "step": 1900, "batch_nll": -3.607316017150879}
+{"epoch": 7, "step": 1950, "batch_nll": -4.493217468261719}
+{"epoch": 7, "step": 2000, "batch_nll": -4.725282192230225}
+{"epoch": 7, "step": 2000, "selection_nll_uv": -4.29671743279064, "best_epoch": 2}
+{"epoch": 8, "step": 2050, "batch_nll": -5.105493068695068}
+{"epoch": 8, "step": 2100, "batch_nll": -5.177872180938721}
+{"epoch": 8, "step": 2150, "batch_nll": -4.914759635925293}
+{"epoch": 8, "step": 2200, "batch_nll": -5.063675403594971}
+{"epoch": 8, "step": 2250, "batch_nll": -5.326509952545166}
+{"epoch": 8, "step": 2250, "selection_nll_uv": -4.1994381745120055, "best_epoch": 2}
+{"epoch": 9, "step": 2300, "batch_nll": -4.40991735458374}
+{"epoch": 9, "step": 2350, "batch_nll": -5.411373138427734}
+{"epoch": 9, "step": 2400, "batch_nll": -4.642625331878662}
+{"epoch": 9, "step": 2450, "batch_nll": -3.909041166305542}
+{"epoch": 9, "step": 2500, "batch_nll": -4.868260383605957}
+{"epoch": 9, "step": 2500, "selection_nll_uv": -4.351404017000311, "best_epoch": 2}
+{"epoch": 10, "step": 2550, "batch_nll": -5.587469577789307}
+{"epoch": 10, "step": 2600, "batch_nll": -4.823155879974365}
+{"epoch": 10, "step": 2650, "batch_nll": -4.958669662475586}
+{"epoch": 10, "step": 2700, "batch_nll": -5.488759517669678}
+{"epoch": 10, "step": 2750, "batch_nll": -3.5740725994110107}
+{"epoch": 10, "step": 2750, "selection_nll_uv": -3.0180297889568553, "best_epoch": 2}
+{"epoch": 11, "step": 2800, "batch_nll": -4.585237503051758}
+{"epoch": 11, "step": 2850, "batch_nll": -5.3096394538879395}
+{"epoch": 11, "step": 2900, "batch_nll": -5.616944789886475}
+{"epoch": 11, "step": 2950, "batch_nll": -5.332942485809326}
+{"epoch": 11, "step": 3000, "batch_nll": -6.052670001983643}
+{"epoch": 11, "step": 3000, "selection_nll_uv": -5.084613028463755, "best_epoch": 11}
+{"epoch": 12, "step": 3050, "batch_nll": -5.412509918212891}
+{"epoch": 12, "step": 3100, "batch_nll": -2.5739831924438477}
+{"epoch": 12, "step": 3150, "batch_nll": -5.160764694213867}
+{"epoch": 12, "step": 3200, "batch_nll": -5.366560935974121}
+{"epoch": 12, "step": 3250, "batch_nll": -4.9149017333984375}
+{"epoch": 12, "step": 3250, "selection_nll_uv": -4.27421531187744, "best_epoch": 11}
+{"epoch": 13, "step": 3300, "batch_nll": -4.570998668670654}
+{"epoch": 13, "step": 3350, "batch_nll": -5.195078372955322}
+{"epoch": 13, "step": 3400, "batch_nll": -3.0350844860076904}
+{"epoch": 13, "step": 3450, "batch_nll": -4.006702423095703}
+{"epoch": 13, "step": 3500, "batch_nll": -4.644576549530029}
+{"epoch": 13, "step": 3500, "selection_nll_uv": -4.84490131598989, "best_epoch": 11}
+{"epoch": 14, "step": 3550, "batch_nll": -4.681759357452393}
+{"epoch": 14, "step": 3600, "batch_nll": -5.684695720672607}
+{"epoch": 14, "step": 3650, "batch_nll": -5.867398738861084}
+{"epoch": 14, "step": 3700, "batch_nll": -4.603599548339844}
+{"epoch": 14, "step": 3750, "batch_nll": -5.7747883796691895}
+{"epoch": 14, "step": 3750, "selection_nll_uv": -4.101014130657251, "best_epoch": 11}
+{"epoch": 15, "step": 3800, "batch_nll": -4.673569202423096}
+{"epoch": 15, "step": 3850, "batch_nll": -5.612823009490967}
+{"epoch": 15, "step": 3900, "batch_nll": -5.163448333740234}
+{"epoch": 15, "step": 3950, "batch_nll": -5.0533270835876465}
+{"epoch": 15, "step": 4000, "batch_nll": -5.018914222717285}
+{"epoch": 15, "step": 4000, "selection_nll_uv": -4.7938200710799475, "best_epoch": 11}
+{"epoch": 16, "step": 4050, "batch_nll": -4.927483081817627}
+{"epoch": 16, "step": 4100, "batch_nll": -5.672308921813965}
+{"epoch": 16, "step": 4150, "batch_nll": -5.20502233505249}
+{"epoch": 16, "step": 4200, "batch_nll": -4.956404209136963}
+{"epoch": 16, "step": 4250, "batch_nll": -5.640740871429443}
+{"epoch": 16, "step": 4250, "selection_nll_uv": -4.970143916080405, "best_epoch": 11}
+{"epoch": 17, "step": 4300, "batch_nll": -5.63831901550293}
+{"epoch": 17, "step": 4350, "batch_nll": -3.735950469970703}
+{"epoch": 17, "step": 4400, "batch_nll": -5.328117847442627}
+{"epoch": 17, "step": 4450, "batch_nll": -5.249354362487793}
+{"epoch": 17, "step": 4500, "batch_nll": -4.929591655731201}
+{"epoch": 17, "step": 4500, "selection_nll_uv": -4.513978771421041, "best_epoch": 11}
+{"epoch": 18, "step": 4550, "batch_nll": -5.9641218185424805}
+{"epoch": 18, "step": 4600, "batch_nll": -6.185446262359619}
+{"epoch": 18, "step": 4650, "batch_nll": -5.156593322753906}
+{"epoch": 18, "step": 4700, "batch_nll": -5.779892921447754}
+{"epoch": 18, "step": 4750, "batch_nll": -5.4173197746276855}
+{"epoch": 18, "step": 4750, "selection_nll_uv": -5.263836344020541, "best_epoch": 18}
+{"epoch": 19, "step": 4800, "batch_nll": -5.950441360473633}
+{"epoch": 19, "step": 4850, "batch_nll": -5.513813018798828}
+{"epoch": 19, "step": 4900, "batch_nll": -6.202341556549072}
+{"epoch": 19, "step": 4950, "batch_nll": -4.227880477905273}
+{"epoch": 19, "step": 5000, "batch_nll": -5.054069995880127}
+{"epoch": 19, "step": 5000, "selection_nll_uv": -4.560822877415517, "best_epoch": 18}
+{"epoch": 20, "step": 5050, "batch_nll": -5.147558689117432}
+{"epoch": 20, "step": 5100, "batch_nll": -2.983051300048828}
+{"epoch": 20, "step": 5150, "batch_nll": -4.885090351104736}
+{"epoch": 20, "step": 5200, "batch_nll": -5.321266174316406}
+{"epoch": 20, "step": 5250, "batch_nll": -4.746597766876221}
+{"epoch": 20, "step": 5250, "selection_nll_uv": -3.750585255897776, "best_epoch": 18}
+{"epoch": 21, "step": 5300, "batch_nll": -5.356740474700928}
+{"epoch": 21, "step": 5350, "batch_nll": -3.5399951934814453}
+{"epoch": 21, "step": 5400, "batch_nll": -4.782451152801514}
+{"epoch": 21, "step": 5450, "batch_nll": -3.2573490142822266}
+{"epoch": 21, "step": 5500, "batch_nll": -5.744997978210449}
+{"epoch": 21, "step": 5500, "selection_nll_uv": -4.961732689109892, "best_epoch": 18}
+{"epoch": 22, "step": 5550, "batch_nll": -6.017946243286133}
+{"epoch": 22, "step": 5600, "batch_nll": -5.794682025909424}
+{"epoch": 22, "step": 5650, "batch_nll": -5.24342155456543}
+{"epoch": 22, "step": 5700, "batch_nll": -5.649951934814453}
+{"epoch": 22, "step": 5750, "batch_nll": -6.346738815307617}
+{"epoch": 22, "step": 5750, "selection_nll_uv": -5.167383593862255, "best_epoch": 18}
+{"epoch": 23, "step": 5800, "batch_nll": -2.7485568523406982}
+{"epoch": 23, "step": 5850, "batch_nll": -6.4617133140563965}
+{"epoch": 23, "step": 5900, "batch_nll": -5.651900768280029}
+{"epoch": 23, "step": 5950, "batch_nll": -3.147925853729248}
+{"epoch": 23, "step": 6000, "batch_nll": -5.144092559814453}
+{"epoch": 23, "step": 6000, "selection_nll_uv": -5.003416325627558, "best_epoch": 18}
+{"epoch": 24, "step": 6050, "batch_nll": -6.140369892120361}
+{"epoch": 24, "step": 6100, "batch_nll": -5.385452747344971}
+{"epoch": 24, "step": 6150, "batch_nll": -5.3092193603515625}
+{"epoch": 24, "step": 6200, "batch_nll": -5.8894147872924805}
+{"epoch": 24, "step": 6250, "batch_nll": -6.479548454284668}
+{"epoch": 24, "step": 6250, "selection_nll_uv": -5.519855536223137, "best_epoch": 24}
+{"epoch": 25, "step": 6300, "batch_nll": -2.375761032104492}
+{"epoch": 25, "step": 6350, "batch_nll": -6.161518096923828}
+{"epoch": 25, "step": 6400, "batch_nll": -5.2798895835876465}
+{"epoch": 25, "step": 6450, "batch_nll": -6.301916599273682}
+{"epoch": 25, "step": 6500, "batch_nll": -2.0211546421051025}
+{"epoch": 25, "step": 6500, "selection_nll_uv": -3.9714234108517443, "best_epoch": 24}
+{"epoch": 26, "step": 6550, "batch_nll": -5.862702369689941}
+{"epoch": 26, "step": 6600, "batch_nll": -6.706324100494385}
+{"epoch": 26, "step": 6650, "batch_nll": -2.5317234992980957}
+{"epoch": 26, "step": 6700, "batch_nll": -5.870238304138184}
+{"epoch": 26, "step": 6750, "batch_nll": -5.653554439544678}
+{"epoch": 26, "step": 6750, "selection_nll_uv": -4.79192957518501, "best_epoch": 24}
+{"epoch": 27, "step": 6800, "batch_nll": -5.496029853820801}
+{"epoch": 27, "step": 6850, "batch_nll": -5.091883659362793}
+{"epoch": 27, "step": 6900, "batch_nll": -5.903237819671631}
+{"epoch": 27, "step": 6950, "batch_nll": -6.742825984954834}
+{"epoch": 27, "step": 7000, "batch_nll": -6.175563335418701}
+{"epoch": 27, "step": 7000, "selection_nll_uv": -5.563636997389358, "best_epoch": 27}
+{"epoch": 28, "step": 7050, "batch_nll": -6.213550567626953}
+{"epoch": 28, "step": 7100, "batch_nll": -3.836465835571289}
+{"epoch": 28, "step": 7150, "batch_nll": -4.111420154571533}
+{"epoch": 28, "step": 7200, "batch_nll": -3.1519484519958496}
+{"epoch": 28, "step": 7250, "batch_nll": -6.041983604431152}
+{"epoch": 28, "step": 7250, "selection_nll_uv": -5.064274524181569, "best_epoch": 27}
+{"epoch": 29, "step": 7300, "batch_nll": -3.4197168350219727}
+{"epoch": 29, "step": 7350, "batch_nll": -6.148563385009766}
+{"epoch": 29, "step": 7400, "batch_nll": -5.787733554840088}
+{"epoch": 29, "step": 7450, "batch_nll": -5.995232105255127}
+{"epoch": 29, "step": 7500, "batch_nll": -3.6742377281188965}
+{"epoch": 29, "step": 7500, "selection_nll_uv": -4.688215753042478, "best_epoch": 27}
+{"epoch": 30, "step": 7550, "batch_nll": -5.308326244354248}
+{"epoch": 30, "step": 7600, "batch_nll": -6.669986724853516}
+{"epoch": 30, "step": 7650, "batch_nll": -4.6059417724609375}
+{"epoch": 30, "step": 7700, "batch_nll": -6.539665222167969}
+{"epoch": 30, "step": 7750, "batch_nll": -5.7549262046813965}
+{"epoch": 30, "step": 7750, "selection_nll_uv": -5.162677588766567, "best_epoch": 27}
+{"epoch": 31, "step": 7800, "batch_nll": -6.703527927398682}
+{"epoch": 31, "step": 7850, "batch_nll": -5.556572914123535}
+{"epoch": 31, "step": 7900, "batch_nll": -5.605634689331055}
+{"epoch": 31, "step": 7950, "batch_nll": -5.537333011627197}
+{"epoch": 31, "step": 8000, "batch_nll": -6.132380485534668}
+{"epoch": 31, "step": 8000, "selection_nll_uv": -5.487391093667608, "best_epoch": 27}
+{"epoch": 32, "step": 8050, "batch_nll": -5.304738521575928}
+{"epoch": 32, "step": 8100, "batch_nll": -5.231257438659668}
+{"epoch": 32, "step": 8150, "batch_nll": -5.675741672515869}
+{"epoch": 32, "step": 8200, "batch_nll": -3.7793502807617188}
+{"epoch": 32, "step": 8250, "batch_nll": -6.103018760681152}
+{"epoch": 32, "step": 8250, "selection_nll_uv": -5.392867712285572, "best_epoch": 27}
+{"epoch": 33, "step": 8300, "batch_nll": -5.825255870819092}
+{"epoch": 33, "step": 8350, "batch_nll": -4.80016565322876}
+{"epoch": 33, "step": 8400, "batch_nll": -6.484326362609863}
+{"epoch": 33, "step": 8450, "batch_nll": -4.388727188110352}
+{"epoch": 33, "step": 8500, "batch_nll": -5.9877848625183105}
+{"epoch": 33, "step": 8500, "selection_nll_uv": -5.489343931514834, "best_epoch": 27}
+{"epoch": 34, "step": 8550, "batch_nll": -5.069237232208252}
+{"epoch": 34, "step": 8600, "batch_nll": -5.360421180725098}
+{"epoch": 34, "step": 8650, "batch_nll": -6.134786128997803}
+{"epoch": 34, "step": 8700, "batch_nll": -6.532869338989258}
+{"epoch": 34, "step": 8750, "batch_nll": -4.139503479003906}
+{"epoch": 34, "step": 8750, "selection_nll_uv": -5.050149226111394, "best_epoch": 27}
+{"epoch": 35, "step": 8800, "batch_nll": -6.564679145812988}
+{"epoch": 35, "step": 8850, "batch_nll": -5.71612024307251}
+{"epoch": 35, "step": 8900, "batch_nll": -5.062519550323486}
+{"epoch": 35, "step": 8950, "batch_nll": -4.302259922027588}
+{"epoch": 35, "step": 9000, "batch_nll": -6.4321608543396}
+{"epoch": 35, "step": 9000, "selection_nll_uv": -4.86199506788336, "best_epoch": 27}
+{"epoch": 36, "step": 9050, "batch_nll": -6.848537921905518}
+{"epoch": 36, "step": 9100, "batch_nll": -7.054757595062256}
+{"epoch": 36, "step": 9150, "batch_nll": -5.831569671630859}
+{"epoch": 36, "step": 9200, "batch_nll": -4.617181301116943}
+{"epoch": 36, "step": 9250, "batch_nll": -6.640485763549805}
+{"epoch": 36, "step": 9250, "selection_nll_uv": -5.294341291870552, "best_epoch": 27}
+{"epoch": 37, "step": 9300, "batch_nll": -5.116608142852783}
+{"epoch": 37, "step": 9350, "batch_nll": -2.687350034713745}
+{"epoch": 37, "step": 9400, "batch_nll": -5.199084281921387}
+{"epoch": 37, "step": 9450, "batch_nll": -6.035719871520996}
+{"epoch": 37, "step": 9500, "batch_nll": -6.873556613922119}
+{"epoch": 37, "step": 9500, "selection_nll_uv": -5.058934864569422, "best_epoch": 27}
+{"epoch": 38, "step": 9550, "batch_nll": -5.420843124389648}
+{"epoch": 38, "step": 9600, "batch_nll": -6.13741397857666}
+{"epoch": 38, "step": 9650, "batch_nll": -5.781730651855469}
+{"epoch": 38, "step": 9700, "batch_nll": -5.207164287567139}
+{"epoch": 38, "step": 9750, "batch_nll": -6.156684875488281}
+{"epoch": 38, "step": 9750, "selection_nll_uv": -5.032861159585227, "best_epoch": 27}
+{"epoch": 39, "step": 9800, "batch_nll": -6.6589884757995605}
+{"epoch": 39, "step": 9850, "batch_nll": -4.5798115730285645}
+{"epoch": 39, "step": 9900, "batch_nll": -5.865893363952637}
+{"epoch": 39, "step": 9950, "batch_nll": -4.356832027435303}
+{"epoch": 39, "step": 10000, "batch_nll": -6.36242151260376}
+{"epoch": 39, "step": 10000, "selection_nll_uv": -5.418800458173896, "best_epoch": 27}
+{"epoch": 40, "step": 10050, "batch_nll": -5.670963764190674}
+{"epoch": 40, "step": 10100, "batch_nll": -5.85270881652832}
+{"epoch": 40, "step": 10150, "batch_nll": -5.764786243438721}
+{"epoch": 40, "step": 10200, "batch_nll": -5.599299430847168}
+{"epoch": 40, "step": 10250, "batch_nll": -6.768685817718506}
+{"epoch": 40, "step": 10250, "selection_nll_uv": -5.475581047619636, "best_epoch": 27}
+{"epoch": 41, "step": 10300, "batch_nll": -6.582084655761719}
+{"epoch": 41, "step": 10350, "batch_nll": -3.0848820209503174}
+{"epoch": 41, "step": 10400, "batch_nll": -5.9270501136779785}
+{"epoch": 41, "step": 10450, "batch_nll": -4.977752208709717}
+{"epoch": 41, "step": 10500, "batch_nll": -4.784318447113037}
+{"epoch": 41, "step": 10500, "selection_nll_uv": -3.8808482383669882, "best_epoch": 27}
+{"epoch": 42, "step": 10550, "batch_nll": -5.69724702835083}
+{"epoch": 42, "step": 10600, "batch_nll": -5.9526143074035645}
+{"epoch": 42, "step": 10650, "batch_nll": -5.113961219787598}
+{"epoch": 42, "step": 10700, "batch_nll": -6.1304521560668945}
+{"epoch": 42, "step": 10750, "batch_nll": -3.2943179607391357}
+{"epoch": 42, "step": 10750, "selection_nll_uv": -4.585914037474884, "best_epoch": 27}
+{"epoch": 43, "step": 10800, "batch_nll": -6.5282511711120605}
+{"epoch": 43, "step": 10850, "batch_nll": -6.632785320281982}
+{"epoch": 43, "step": 10900, "batch_nll": -5.584421157836914}
+{"epoch": 43, "step": 10950, "batch_nll": -6.703457355499268}
+{"epoch": 43, "step": 11000, "batch_nll": -5.832355499267578}
+{"epoch": 43, "step": 11000, "selection_nll_uv": -5.243551689170217, "best_epoch": 27}
+{"epoch": 44, "step": 11050, "batch_nll": -6.318053722381592}
+{"epoch": 44, "step": 11100, "batch_nll": -5.022252559661865}
+{"epoch": 44, "step": 11150, "batch_nll": -5.074341297149658}
+{"epoch": 44, "step": 11200, "batch_nll": -6.638162612915039}
+{"epoch": 44, "step": 11250, "batch_nll": -5.535651206970215}
+{"epoch": 44, "step": 11250, "selection_nll_uv": -5.208833038255331, "best_epoch": 27}
+{"epoch": 45, "step": 11300, "batch_nll": -5.673752307891846}
+{"epoch": 45, "step": 11350, "batch_nll": -5.3537726402282715}
+{"epoch": 45, "step": 11400, "batch_nll": -4.364454746246338}
+{"epoch": 45, "step": 11450, "batch_nll": -6.5622406005859375}
+{"epoch": 45, "step": 11500, "batch_nll": -6.002716064453125}
+{"epoch": 45, "step": 11500, "selection_nll_uv": -4.802610766988501, "best_epoch": 27}
+{"epoch": 46, "step": 11550, "batch_nll": -5.762601852416992}
+{"epoch": 46, "step": 11600, "batch_nll": -6.6684489250183105}
+{"epoch": 46, "step": 11650, "batch_nll": -6.911825656890869}
+{"epoch": 46, "step": 11700, "batch_nll": -5.8902058601379395}
+{"epoch": 46, "step": 11750, "batch_nll": -6.5601806640625}
+{"epoch": 46, "step": 11750, "selection_nll_uv": -5.791544028672945, "best_epoch": 46}
+{"epoch": 47, "step": 11800, "batch_nll": -6.362043380737305}
+{"epoch": 47, "step": 11850, "batch_nll": -4.032732009887695}
+{"epoch": 47, "step": 11900, "batch_nll": -5.695837497711182}
+{"epoch": 47, "step": 11950, "batch_nll": -5.101523399353027}
+{"epoch": 47, "step": 12000, "batch_nll": -6.7739152908325195}
+{"epoch": 47, "step": 12000, "selection_nll_uv": -5.253981473958065, "best_epoch": 46}
+Published pilot /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-absolute-12k-s42-r21-20260930
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+W0930 12:46:59.568000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] torch._dynamo hit config.recompile_limit (8)
+W0930 12:46:59.568000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    function: 'forward' (/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/refiner_2d/model.py:111)
+W0930 12:46:59.568000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    last reason: 0/7: tensor 'pose_valid' size mismatch at index 0. expected 16, actual 5
+W0930 12:46:59.568000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W0930 12:46:59.568000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
+{"cached_comparison_clip": "tracknet/game9/Clip1"}
+{"cached_comparison_clip": "tracknet/game9/Clip2"}
+{"cached_comparison_clip": "tracknet/game9/Clip3"}
+{"cached_comparison_clip": "tracknet/game9/Clip4"}
+{"cached_comparison_clip": "tracknet/game9/Clip5"}
+{"cached_comparison_clip": "tracknet/game9/Clip6"}
+{"cached_comparison_clip": "tracknet/game9/Clip7"}
+{"cached_comparison_clip": "tracknet/game9/Clip8"}
+{"cached_comparison_clip": "tracknet/game9/Clip9"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam2"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000001212-000001537"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000002128-000002453"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003044-000003369"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003960-000004285"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000000423-000000748"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000001592-000001917"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000002761-000003086"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000003930-000004255"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000005099-000005424"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000001246-000001896"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000004388-000005038"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000007529-000008179"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000010671-000011321"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000013813-000014463"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000000360-000000685"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000001403-000001728"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000002446-000002771"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000003490-000003815"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000004533-000004858"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000000971-000001360"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000003300-000003689"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000005630-000006019"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000007960-000008349"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000010290-000010679"}
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+{"epoch": 0, "step": 50, "batch_nll": -6.813726902008057}
+{"epoch": 0, "step": 100, "batch_nll": -6.280849933624268}
+{"epoch": 0, "step": 150, "batch_nll": -7.249560356140137}
+{"epoch": 0, "step": 200, "batch_nll": -7.435248851776123}
+{"epoch": 0, "step": 250, "batch_nll": -7.074953079223633}
+{"epoch": 0, "step": 250, "selection_nll_uv": -4.709412586514318, "best_epoch": 0}
+{"epoch": 1, "step": 300, "batch_nll": -7.386041641235352}
+{"epoch": 1, "step": 350, "batch_nll": -7.044907569885254}
+{"epoch": 1, "step": 400, "batch_nll": -7.135860443115234}
+{"epoch": 1, "step": 450, "batch_nll": -7.390745639801025}
+{"epoch": 1, "step": 500, "batch_nll": -6.944983959197998}
+{"epoch": 1, "step": 500, "selection_nll_uv": -4.980016305328909, "best_epoch": 1}
+{"epoch": 2, "step": 550, "batch_nll": -7.6933488845825195}
+{"epoch": 2, "step": 600, "batch_nll": -7.200401306152344}
+{"epoch": 2, "step": 650, "batch_nll": -7.714268207550049}
+{"epoch": 2, "step": 700, "batch_nll": -7.349915981292725}
+{"epoch": 2, "step": 750, "batch_nll": -6.564620494842529}
+{"epoch": 2, "step": 750, "selection_nll_uv": -5.0411140681027975, "best_epoch": 2}
+{"epoch": 3, "step": 800, "batch_nll": -8.202363014221191}
+{"epoch": 3, "step": 850, "batch_nll": -7.662254333496094}
+{"epoch": 3, "step": 900, "batch_nll": -7.8573222160339355}
+{"epoch": 3, "step": 950, "batch_nll": -7.349327087402344}
+{"epoch": 3, "step": 1000, "batch_nll": -7.254202365875244}
+{"epoch": 3, "step": 1000, "selection_nll_uv": -5.133748126755796, "best_epoch": 3}
+{"epoch": 4, "step": 1050, "batch_nll": -7.8161516189575195}
+{"epoch": 4, "step": 1100, "batch_nll": -7.69831657409668}
+{"epoch": 4, "step": 1150, "batch_nll": -7.8447747230529785}
+{"epoch": 4, "step": 1200, "batch_nll": -7.821416854858398}
+{"epoch": 4, "step": 1250, "batch_nll": -7.663632392883301}
+{"epoch": 4, "step": 1250, "selection_nll_uv": -5.534608531571417, "best_epoch": 4}
+{"epoch": 5, "step": 1300, "batch_nll": -8.491623878479004}
+{"epoch": 5, "step": 1350, "batch_nll": -8.273221015930176}
+{"epoch": 5, "step": 1400, "batch_nll": -8.104253768920898}
+{"epoch": 5, "step": 1450, "batch_nll": -8.199344635009766}
+{"epoch": 5, "step": 1500, "batch_nll": -8.150373458862305}
+{"epoch": 5, "step": 1500, "selection_nll_uv": -5.668467264947301, "best_epoch": 5}
+{"epoch": 6, "step": 1550, "batch_nll": -7.856576919555664}
+{"epoch": 6, "step": 1600, "batch_nll": -8.00345230102539}
+{"epoch": 6, "step": 1650, "batch_nll": -7.464826583862305}
+{"epoch": 6, "step": 1700, "batch_nll": -7.3785576820373535}
+{"epoch": 6, "step": 1750, "batch_nll": -7.298826694488525}
+{"epoch": 6, "step": 1750, "selection_nll_uv": -5.592846622585042, "best_epoch": 5}
+{"epoch": 7, "step": 1800, "batch_nll": -8.414597511291504}
+{"epoch": 7, "step": 1850, "batch_nll": -7.632853984832764}
+{"epoch": 7, "step": 1900, "batch_nll": -7.9103899002075195}
+{"epoch": 7, "step": 1950, "batch_nll": -7.552741050720215}
+{"epoch": 7, "step": 2000, "batch_nll": -7.489639759063721}
+{"epoch": 7, "step": 2000, "selection_nll_uv": -5.701367988079318, "best_epoch": 7}
+{"epoch": 8, "step": 2050, "batch_nll": -7.408557891845703}
+{"epoch": 8, "step": 2100, "batch_nll": -7.813785552978516}
+{"epoch": 8, "step": 2150, "batch_nll": -7.8030900955200195}
+{"epoch": 8, "step": 2200, "batch_nll": -8.302029609680176}
+{"epoch": 8, "step": 2250, "batch_nll": -8.530534744262695}
+{"epoch": 8, "step": 2250, "selection_nll_uv": -6.1113046338912955, "best_epoch": 8}
+{"epoch": 9, "step": 2300, "batch_nll": -7.872779369354248}
+{"epoch": 9, "step": 2350, "batch_nll": -8.347041130065918}
+{"epoch": 9, "step": 2400, "batch_nll": -7.237764358520508}
+{"epoch": 9, "step": 2450, "batch_nll": -8.419764518737793}
+{"epoch": 9, "step": 2500, "batch_nll": -7.625061511993408}
+{"epoch": 9, "step": 2500, "selection_nll_uv": -6.201657535213698, "best_epoch": 9}
+{"epoch": 10, "step": 2550, "batch_nll": -8.569106101989746}
+{"epoch": 10, "step": 2600, "batch_nll": -7.902353286743164}
+{"epoch": 10, "step": 2650, "batch_nll": -7.890024185180664}
+{"epoch": 10, "step": 2700, "batch_nll": -8.438789367675781}
+{"epoch": 10, "step": 2750, "batch_nll": -8.09587574005127}
+{"epoch": 10, "step": 2750, "selection_nll_uv": -6.241657996189835, "best_epoch": 10}
+{"epoch": 11, "step": 2800, "batch_nll": -7.753791332244873}
+{"epoch": 11, "step": 2850, "batch_nll": -7.758237838745117}
+{"epoch": 11, "step": 2900, "batch_nll": -8.261484146118164}
+{"epoch": 11, "step": 2950, "batch_nll": -7.39893913269043}
+{"epoch": 11, "step": 3000, "batch_nll": -7.788469314575195}
+{"epoch": 11, "step": 3000, "selection_nll_uv": -5.539956405477124, "best_epoch": 10}
+Published pilot /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-anchored-3k-s42-r21-20260930
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+W0930 12:52:41.197000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] torch._dynamo hit config.recompile_limit (8)
+W0930 12:52:41.197000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    function: 'forward' (/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/refiner_2d/model.py:111)
+W0930 12:52:41.197000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    last reason: 0/7: tensor 'pose_valid' size mismatch at index 0. expected 16, actual 5
+W0930 12:52:41.197000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W0930 12:52:41.197000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
+{"cached_comparison_clip": "tracknet/game9/Clip1"}
+{"cached_comparison_clip": "tracknet/game9/Clip2"}
+{"cached_comparison_clip": "tracknet/game9/Clip3"}
+{"cached_comparison_clip": "tracknet/game9/Clip4"}
+{"cached_comparison_clip": "tracknet/game9/Clip5"}
+{"cached_comparison_clip": "tracknet/game9/Clip6"}
+{"cached_comparison_clip": "tracknet/game9/Clip7"}
+{"cached_comparison_clip": "tracknet/game9/Clip8"}
+{"cached_comparison_clip": "tracknet/game9/Clip9"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam2"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000001212-000001537"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000002128-000002453"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003044-000003369"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003960-000004285"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000000423-000000748"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000001592-000001917"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000002761-000003086"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000003930-000004255"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000005099-000005424"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000001246-000001896"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000004388-000005038"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000007529-000008179"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000010671-000011321"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000013813-000014463"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000000360-000000685"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000001403-000001728"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000002446-000002771"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000003490-000003815"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000004533-000004858"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000000971-000001360"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000003300-000003689"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000005630-000006019"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000007960-000008349"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000010290-000010679"}
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+{"epoch": 0, "step": 50, "batch_nll": -6.813726902008057}
+{"epoch": 0, "step": 100, "batch_nll": -6.280849933624268}
+{"epoch": 0, "step": 150, "batch_nll": -7.249560356140137}
+{"epoch": 0, "step": 200, "batch_nll": -7.435248851776123}
+{"epoch": 0, "step": 250, "batch_nll": -7.074953079223633}
+{"epoch": 0, "step": 250, "selection_nll_uv": -4.709412586514318, "best_epoch": 0}
+{"epoch": 1, "step": 300, "batch_nll": -7.386041641235352}
+{"epoch": 1, "step": 350, "batch_nll": -7.044907569885254}
+{"epoch": 1, "step": 400, "batch_nll": -7.135860443115234}
+{"epoch": 1, "step": 450, "batch_nll": -7.390745639801025}
+{"epoch": 1, "step": 500, "batch_nll": -6.944983959197998}
+{"epoch": 1, "step": 500, "selection_nll_uv": -4.980016305328909, "best_epoch": 1}
+{"epoch": 2, "step": 550, "batch_nll": -7.6933488845825195}
+{"epoch": 2, "step": 600, "batch_nll": -7.200401306152344}
+{"epoch": 2, "step": 650, "batch_nll": -7.714268207550049}
+{"epoch": 2, "step": 700, "batch_nll": -7.349915981292725}
+{"epoch": 2, "step": 750, "batch_nll": -6.564620494842529}
+{"epoch": 2, "step": 750, "selection_nll_uv": -5.0411140681027975, "best_epoch": 2}
+{"epoch": 3, "step": 800, "batch_nll": -8.202363014221191}
+{"epoch": 3, "step": 850, "batch_nll": -7.662254333496094}
+{"epoch": 3, "step": 900, "batch_nll": -7.8573222160339355}
+{"epoch": 3, "step": 950, "batch_nll": -7.349327087402344}
+{"epoch": 3, "step": 1000, "batch_nll": -7.254202365875244}
+{"epoch": 3, "step": 1000, "selection_nll_uv": -5.133748126755796, "best_epoch": 3}
+{"epoch": 4, "step": 1050, "batch_nll": -7.8161516189575195}
+{"epoch": 4, "step": 1100, "batch_nll": -7.69831657409668}
+{"epoch": 4, "step": 1150, "batch_nll": -7.8447747230529785}
+{"epoch": 4, "step": 1200, "batch_nll": -7.821416854858398}
+{"epoch": 4, "step": 1250, "batch_nll": -7.663632392883301}
+{"epoch": 4, "step": 1250, "selection_nll_uv": -5.534608531571417, "best_epoch": 4}
+{"epoch": 5, "step": 1300, "batch_nll": -8.491623878479004}
+{"epoch": 5, "step": 1350, "batch_nll": -8.273221015930176}
+{"epoch": 5, "step": 1400, "batch_nll": -8.104253768920898}
+{"epoch": 5, "step": 1450, "batch_nll": -8.199344635009766}
+{"epoch": 5, "step": 1500, "batch_nll": -8.150373458862305}
+{"epoch": 5, "step": 1500, "selection_nll_uv": -5.668467264947301, "best_epoch": 5}
+{"epoch": 6, "step": 1550, "batch_nll": -7.856576919555664}
+{"epoch": 6, "step": 1600, "batch_nll": -8.00345230102539}
+{"epoch": 6, "step": 1650, "batch_nll": -7.464826583862305}
+{"epoch": 6, "step": 1700, "batch_nll": -7.3785576820373535}
+{"epoch": 6, "step": 1750, "batch_nll": -7.298826694488525}
+{"epoch": 6, "step": 1750, "selection_nll_uv": -5.592846622585042, "best_epoch": 5}
+{"epoch": 7, "step": 1800, "batch_nll": -8.414597511291504}
+{"epoch": 7, "step": 1850, "batch_nll": -7.632853984832764}
+{"epoch": 7, "step": 1900, "batch_nll": -7.9103899002075195}
+{"epoch": 7, "step": 1950, "batch_nll": -7.552741050720215}
+{"epoch": 7, "step": 2000, "batch_nll": -7.489639759063721}
+{"epoch": 7, "step": 2000, "selection_nll_uv": -5.701367988079318, "best_epoch": 7}
+{"epoch": 8, "step": 2050, "batch_nll": -7.408557891845703}
+{"epoch": 8, "step": 2100, "batch_nll": -7.813785552978516}
+{"epoch": 8, "step": 2150, "batch_nll": -7.8030900955200195}
+{"epoch": 8, "step": 2200, "batch_nll": -8.302029609680176}
+{"epoch": 8, "step": 2250, "batch_nll": -8.530534744262695}
+{"epoch": 8, "step": 2250, "selection_nll_uv": -6.1113046338912955, "best_epoch": 8}
+{"epoch": 9, "step": 2300, "batch_nll": -7.872779369354248}
+{"epoch": 9, "step": 2350, "batch_nll": -8.347041130065918}
+{"epoch": 9, "step": 2400, "batch_nll": -7.237764358520508}
+{"epoch": 9, "step": 2450, "batch_nll": -8.419764518737793}
+{"epoch": 9, "step": 2500, "batch_nll": -7.625061511993408}
+{"epoch": 9, "step": 2500, "selection_nll_uv": -6.201657535213698, "best_epoch": 9}
+{"epoch": 10, "step": 2550, "batch_nll": -8.569106101989746}
+{"epoch": 10, "step": 2600, "batch_nll": -7.902353286743164}
+{"epoch": 10, "step": 2650, "batch_nll": -7.890024185180664}
+{"epoch": 10, "step": 2700, "batch_nll": -8.438789367675781}
+{"epoch": 10, "step": 2750, "batch_nll": -8.09587574005127}
+{"epoch": 10, "step": 2750, "selection_nll_uv": -6.241657996189835, "best_epoch": 10}
+{"epoch": 11, "step": 2800, "batch_nll": -7.753791332244873}
+{"epoch": 11, "step": 2850, "batch_nll": -7.758237838745117}
+{"epoch": 11, "step": 2900, "batch_nll": -8.261484146118164}
+{"epoch": 11, "step": 2950, "batch_nll": -7.39893913269043}
+{"epoch": 11, "step": 3000, "batch_nll": -7.788469314575195}
+{"epoch": 11, "step": 3000, "selection_nll_uv": -5.539956405477124, "best_epoch": 10}
+{"epoch": 12, "step": 3050, "batch_nll": -8.065998077392578}
+{"epoch": 12, "step": 3100, "batch_nll": -8.370736122131348}
+{"epoch": 12, "step": 3150, "batch_nll": -7.813167095184326}
+{"epoch": 12, "step": 3200, "batch_nll": -8.224088668823242}
+{"epoch": 12, "step": 3250, "batch_nll": -7.531034469604492}
+{"epoch": 12, "step": 3250, "selection_nll_uv": -6.329480327155491, "best_epoch": 12}
+{"epoch": 13, "step": 3300, "batch_nll": -8.386296272277832}
+{"epoch": 13, "step": 3350, "batch_nll": -8.37630558013916}
+{"epoch": 13, "step": 3400, "batch_nll": -7.813624382019043}
+{"epoch": 13, "step": 3450, "batch_nll": -7.5617170333862305}
+{"epoch": 13, "step": 3500, "batch_nll": -8.422564506530762}
+{"epoch": 13, "step": 3500, "selection_nll_uv": -5.814857849777823, "best_epoch": 12}
+{"epoch": 14, "step": 3550, "batch_nll": -8.156354904174805}
+{"epoch": 14, "step": 3600, "batch_nll": -8.352027893066406}
+{"epoch": 14, "step": 3650, "batch_nll": -7.910980701446533}
+{"epoch": 14, "step": 3700, "batch_nll": -7.240481376647949}
+{"epoch": 14, "step": 3750, "batch_nll": -8.394311904907227}
+{"epoch": 14, "step": 3750, "selection_nll_uv": -6.481852500866207, "best_epoch": 14}
+{"epoch": 15, "step": 3800, "batch_nll": -7.200492858886719}
+{"epoch": 15, "step": 3850, "batch_nll": -7.978733539581299}
+{"epoch": 15, "step": 3900, "batch_nll": -7.578768253326416}
+{"epoch": 15, "step": 3950, "batch_nll": -8.015800476074219}
+{"epoch": 15, "step": 4000, "batch_nll": -7.944011211395264}
+{"epoch": 15, "step": 4000, "selection_nll_uv": -6.126828218096784, "best_epoch": 14}
+{"epoch": 16, "step": 4050, "batch_nll": -7.868016719818115}
+{"epoch": 16, "step": 4100, "batch_nll": -8.167354583740234}
+{"epoch": 16, "step": 4150, "batch_nll": -8.39333438873291}
+{"epoch": 16, "step": 4200, "batch_nll": -8.249686241149902}
+{"epoch": 16, "step": 4250, "batch_nll": -8.404881477355957}
+{"epoch": 16, "step": 4250, "selection_nll_uv": -6.7885888043327025, "best_epoch": 16}
+{"epoch": 17, "step": 4300, "batch_nll": -8.367938995361328}
+{"epoch": 17, "step": 4350, "batch_nll": -8.378320693969727}
+{"epoch": 17, "step": 4400, "batch_nll": -8.867618560791016}
+{"epoch": 17, "step": 4450, "batch_nll": -8.709355354309082}
+{"epoch": 17, "step": 4500, "batch_nll": -8.49288272857666}
+{"epoch": 17, "step": 4500, "selection_nll_uv": -6.583927944643282, "best_epoch": 16}
+{"epoch": 18, "step": 4550, "batch_nll": -8.563288688659668}
+{"epoch": 18, "step": 4600, "batch_nll": -8.62502670288086}
+{"epoch": 18, "step": 4650, "batch_nll": -8.859787940979004}
+{"epoch": 18, "step": 4700, "batch_nll": -8.464465141296387}
+{"epoch": 18, "step": 4750, "batch_nll": -8.21291446685791}
+{"epoch": 18, "step": 4750, "selection_nll_uv": -6.686472974604899, "best_epoch": 16}
+{"epoch": 19, "step": 4800, "batch_nll": -8.980491638183594}
+{"epoch": 19, "step": 4850, "batch_nll": -8.586236953735352}
+{"epoch": 19, "step": 4900, "batch_nll": -8.501179695129395}
+{"epoch": 19, "step": 4950, "batch_nll": -8.614242553710938}
+{"epoch": 19, "step": 5000, "batch_nll": -7.862321853637695}
+{"epoch": 19, "step": 5000, "selection_nll_uv": -6.157559828016432, "best_epoch": 16}
+{"epoch": 20, "step": 5050, "batch_nll": -7.365492820739746}
+{"epoch": 20, "step": 5100, "batch_nll": -8.267106056213379}
+{"epoch": 20, "step": 5150, "batch_nll": -8.821894645690918}
+{"epoch": 20, "step": 5200, "batch_nll": -8.742177963256836}
+{"epoch": 20, "step": 5250, "batch_nll": -8.268595695495605}
+{"epoch": 20, "step": 5250, "selection_nll_uv": -6.522319876629332, "best_epoch": 16}
+{"epoch": 21, "step": 5300, "batch_nll": -8.405946731567383}
+{"epoch": 21, "step": 5350, "batch_nll": -8.368936538696289}
+{"epoch": 21, "step": 5400, "batch_nll": -7.658367156982422}
+{"epoch": 21, "step": 5450, "batch_nll": -8.500178337097168}
+{"epoch": 21, "step": 5500, "batch_nll": -8.601428985595703}
+{"epoch": 21, "step": 5500, "selection_nll_uv": -6.761180260803447, "best_epoch": 16}
+{"epoch": 22, "step": 5550, "batch_nll": -8.180740356445312}
+{"epoch": 22, "step": 5600, "batch_nll": -8.714285850524902}
+{"epoch": 22, "step": 5650, "batch_nll": -7.567650318145752}
+{"epoch": 22, "step": 5700, "batch_nll": -8.506487846374512}
+{"epoch": 22, "step": 5750, "batch_nll": -8.820674896240234}
+{"epoch": 22, "step": 5750, "selection_nll_uv": -6.852360367094976, "best_epoch": 22}
+{"epoch": 23, "step": 5800, "batch_nll": -8.331412315368652}
+{"epoch": 23, "step": 5850, "batch_nll": -8.84611701965332}
+{"epoch": 23, "step": 5900, "batch_nll": -8.715007781982422}
+{"epoch": 23, "step": 5950, "batch_nll": -8.367998123168945}
+{"epoch": 23, "step": 6000, "batch_nll": -8.354134559631348}
+{"epoch": 23, "step": 6000, "selection_nll_uv": -6.867008960827047, "best_epoch": 23}
+{"epoch": 24, "step": 6050, "batch_nll": -8.522956848144531}
+{"epoch": 24, "step": 6100, "batch_nll": -8.480552673339844}
+{"epoch": 24, "step": 6150, "batch_nll": -8.606328964233398}
+{"epoch": 24, "step": 6200, "batch_nll": -8.623321533203125}
+{"epoch": 24, "step": 6250, "batch_nll": -8.744954109191895}
+{"epoch": 24, "step": 6250, "selection_nll_uv": -6.535499173359441, "best_epoch": 23}
+{"epoch": 25, "step": 6300, "batch_nll": -8.212933540344238}
+{"epoch": 25, "step": 6350, "batch_nll": -8.27258586883545}
+{"epoch": 25, "step": 6400, "batch_nll": -7.563622951507568}
+{"epoch": 25, "step": 6450, "batch_nll": -8.410730361938477}
+{"epoch": 25, "step": 6500, "batch_nll": -8.05121898651123}
+{"epoch": 25, "step": 6500, "selection_nll_uv": -6.574187618455786, "best_epoch": 23}
+{"epoch": 26, "step": 6550, "batch_nll": -8.602437019348145}
+{"epoch": 26, "step": 6600, "batch_nll": -8.838749885559082}
+{"epoch": 26, "step": 6650, "batch_nll": -8.729818344116211}
+{"epoch": 26, "step": 6700, "batch_nll": -8.470419883728027}
+{"epoch": 26, "step": 6750, "batch_nll": -8.053420066833496}
+{"epoch": 26, "step": 6750, "selection_nll_uv": -6.713288802807709, "best_epoch": 23}
+{"epoch": 27, "step": 6800, "batch_nll": -8.377516746520996}
+{"epoch": 27, "step": 6850, "batch_nll": -8.41125774383545}
+{"epoch": 27, "step": 6900, "batch_nll": -8.715584754943848}
+{"epoch": 27, "step": 6950, "batch_nll": -8.516390800476074}
+{"epoch": 27, "step": 7000, "batch_nll": -8.420675277709961}
+{"epoch": 27, "step": 7000, "selection_nll_uv": -6.813269672049482, "best_epoch": 23}
+{"epoch": 28, "step": 7050, "batch_nll": -8.085868835449219}
+{"epoch": 28, "step": 7100, "batch_nll": -8.78724193572998}
+{"epoch": 28, "step": 7150, "batch_nll": -8.075868606567383}
+{"epoch": 28, "step": 7200, "batch_nll": -8.179308891296387}
+{"epoch": 28, "step": 7250, "batch_nll": -8.870163917541504}
+{"epoch": 28, "step": 7250, "selection_nll_uv": -6.705345349348429, "best_epoch": 23}
+{"epoch": 29, "step": 7300, "batch_nll": -9.116949081420898}
+{"epoch": 29, "step": 7350, "batch_nll": -8.817279815673828}
+{"epoch": 29, "step": 7400, "batch_nll": -8.462358474731445}
+{"epoch": 29, "step": 7450, "batch_nll": -8.496499061584473}
+{"epoch": 29, "step": 7500, "batch_nll": -8.539496421813965}
+{"epoch": 29, "step": 7500, "selection_nll_uv": -6.81313545396395, "best_epoch": 23}
+{"epoch": 30, "step": 7550, "batch_nll": -8.447098731994629}
+{"epoch": 30, "step": 7600, "batch_nll": -8.86469554901123}
+{"epoch": 30, "step": 7650, "batch_nll": -8.053256034851074}
+{"epoch": 30, "step": 7700, "batch_nll": -8.472758293151855}
+{"epoch": 30, "step": 7750, "batch_nll": -8.313216209411621}
+{"epoch": 30, "step": 7750, "selection_nll_uv": -6.88905415177142, "best_epoch": 30}
+{"epoch": 31, "step": 7800, "batch_nll": -8.685038566589355}
+{"epoch": 31, "step": 7850, "batch_nll": -7.374407768249512}
+{"epoch": 31, "step": 7900, "batch_nll": -8.775793075561523}
+{"epoch": 31, "step": 7950, "batch_nll": -8.89118766784668}
+{"epoch": 31, "step": 8000, "batch_nll": -8.572022438049316}
+{"epoch": 31, "step": 8000, "selection_nll_uv": -6.762141465916825, "best_epoch": 30}
+{"epoch": 32, "step": 8050, "batch_nll": -8.82394027709961}
+{"epoch": 32, "step": 8100, "batch_nll": -8.43375015258789}
+{"epoch": 32, "step": 8150, "batch_nll": -7.796242713928223}
+{"epoch": 32, "step": 8200, "batch_nll": -8.392504692077637}
+{"epoch": 32, "step": 8250, "batch_nll": -8.665166854858398}
+{"epoch": 32, "step": 8250, "selection_nll_uv": -6.9194337852586765, "best_epoch": 32}
+{"epoch": 33, "step": 8300, "batch_nll": -9.16098690032959}
+{"epoch": 33, "step": 8350, "batch_nll": -7.698329925537109}
+{"epoch": 33, "step": 8400, "batch_nll": -8.990859031677246}
+{"epoch": 33, "step": 8450, "batch_nll": -8.199919700622559}
+{"epoch": 33, "step": 8500, "batch_nll": -8.673280715942383}
+{"epoch": 33, "step": 8500, "selection_nll_uv": -6.8327223362262215, "best_epoch": 32}
+{"epoch": 34, "step": 8550, "batch_nll": -8.627111434936523}
+{"epoch": 34, "step": 8600, "batch_nll": -8.711469650268555}
+{"epoch": 34, "step": 8650, "batch_nll": -8.832907676696777}
+{"epoch": 34, "step": 8700, "batch_nll": -8.746444702148438}
+{"epoch": 34, "step": 8750, "batch_nll": -7.868539810180664}
+{"epoch": 34, "step": 8750, "selection_nll_uv": -6.787191249771851, "best_epoch": 32}
+{"epoch": 35, "step": 8800, "batch_nll": -8.692704200744629}
+{"epoch": 35, "step": 8850, "batch_nll": -8.586616516113281}
+{"epoch": 35, "step": 8900, "batch_nll": -8.559650421142578}
+{"epoch": 35, "step": 8950, "batch_nll": -8.559313774108887}
+{"epoch": 35, "step": 9000, "batch_nll": -8.6974458694458}
+{"epoch": 35, "step": 9000, "selection_nll_uv": -6.872053656780987, "best_epoch": 32}
+{"epoch": 36, "step": 9050, "batch_nll": -9.090436935424805}
+{"epoch": 36, "step": 9100, "batch_nll": -9.12401008605957}
+{"epoch": 36, "step": 9150, "batch_nll": -8.173055648803711}
+{"epoch": 36, "step": 9200, "batch_nll": -8.792834281921387}
+{"epoch": 36, "step": 9250, "batch_nll": -8.90373420715332}
+{"epoch": 36, "step": 9250, "selection_nll_uv": -6.935659451887781, "best_epoch": 36}
+{"epoch": 37, "step": 9300, "batch_nll": -8.63677978515625}
+{"epoch": 37, "step": 9350, "batch_nll": -8.029219627380371}
+{"epoch": 37, "step": 9400, "batch_nll": -8.595372200012207}
+{"epoch": 37, "step": 9450, "batch_nll": -8.32636547088623}
+{"epoch": 37, "step": 9500, "batch_nll": -9.275734901428223}
+{"epoch": 37, "step": 9500, "selection_nll_uv": -6.84322111839675, "best_epoch": 36}
+{"epoch": 38, "step": 9550, "batch_nll": -8.42203426361084}
+{"epoch": 38, "step": 9600, "batch_nll": -8.601266860961914}
+{"epoch": 38, "step": 9650, "batch_nll": -8.39926815032959}
+{"epoch": 38, "step": 9700, "batch_nll": -8.474132537841797}
+{"epoch": 38, "step": 9750, "batch_nll": -8.556489944458008}
+{"epoch": 38, "step": 9750, "selection_nll_uv": -6.763638399712324, "best_epoch": 36}
+{"epoch": 39, "step": 9800, "batch_nll": -8.937520027160645}
+{"epoch": 39, "step": 9850, "batch_nll": -8.168542861938477}
+{"epoch": 39, "step": 9900, "batch_nll": -9.1870698928833}
+{"epoch": 39, "step": 9950, "batch_nll": -8.6016845703125}
+{"epoch": 39, "step": 10000, "batch_nll": -9.017245292663574}
+{"epoch": 39, "step": 10000, "selection_nll_uv": -6.831890000287787, "best_epoch": 36}
+{"epoch": 40, "step": 10050, "batch_nll": -8.572084426879883}
+{"epoch": 40, "step": 10100, "batch_nll": -8.26494026184082}
+{"epoch": 40, "step": 10150, "batch_nll": -8.556550979614258}
+{"epoch": 40, "step": 10200, "batch_nll": -8.367137908935547}
+{"epoch": 40, "step": 10250, "batch_nll": -8.682137489318848}
+{"epoch": 40, "step": 10250, "selection_nll_uv": -6.861342390999367, "best_epoch": 36}
+{"epoch": 41, "step": 10300, "batch_nll": -8.70289421081543}
+{"epoch": 41, "step": 10350, "batch_nll": -8.672123908996582}
+{"epoch": 41, "step": 10400, "batch_nll": -9.031874656677246}
+{"epoch": 41, "step": 10450, "batch_nll": -8.96003246307373}
+{"epoch": 41, "step": 10500, "batch_nll": -8.309372901916504}
+{"epoch": 41, "step": 10500, "selection_nll_uv": -6.964021810908394, "best_epoch": 41}
+{"epoch": 42, "step": 10550, "batch_nll": -8.527076721191406}
+{"epoch": 42, "step": 10600, "batch_nll": -8.650845527648926}
+{"epoch": 42, "step": 10650, "batch_nll": -8.43895435333252}
+{"epoch": 42, "step": 10700, "batch_nll": -8.685113906860352}
+{"epoch": 42, "step": 10750, "batch_nll": -8.769092559814453}
+{"epoch": 42, "step": 10750, "selection_nll_uv": -6.804732216885269, "best_epoch": 41}
+{"epoch": 43, "step": 10800, "batch_nll": -8.533565521240234}
+{"epoch": 43, "step": 10850, "batch_nll": -8.336886405944824}
+{"epoch": 43, "step": 10900, "batch_nll": -8.5938138961792}
+{"epoch": 43, "step": 10950, "batch_nll": -9.065674781799316}
+{"epoch": 43, "step": 11000, "batch_nll": -8.854848861694336}
+{"epoch": 43, "step": 11000, "selection_nll_uv": -6.76109495035022, "best_epoch": 41}
+{"epoch": 44, "step": 11050, "batch_nll": -8.450203895568848}
+{"epoch": 44, "step": 11100, "batch_nll": -9.070171356201172}
+{"epoch": 44, "step": 11150, "batch_nll": -8.714966773986816}
+{"epoch": 44, "step": 11200, "batch_nll": -8.769569396972656}
+{"epoch": 44, "step": 11250, "batch_nll": -8.832763671875}
+{"epoch": 44, "step": 11250, "selection_nll_uv": -6.867010589571337, "best_epoch": 41}
+{"epoch": 45, "step": 11300, "batch_nll": -8.36833667755127}
+{"epoch": 45, "step": 11350, "batch_nll": -8.222559928894043}
+{"epoch": 45, "step": 11400, "batch_nll": -8.560720443725586}
+{"epoch": 45, "step": 11450, "batch_nll": -9.172303199768066}
+{"epoch": 45, "step": 11500, "batch_nll": -8.9583740234375}
+{"epoch": 45, "step": 11500, "selection_nll_uv": -6.342339757441433, "best_epoch": 41}
+{"epoch": 46, "step": 11550, "batch_nll": -8.564655303955078}
+{"epoch": 46, "step": 11600, "batch_nll": -8.846403121948242}
+{"epoch": 46, "step": 11650, "batch_nll": -8.905075073242188}
+{"epoch": 46, "step": 11700, "batch_nll": -8.724578857421875}
+{"epoch": 46, "step": 11750, "batch_nll": -8.717808723449707}
+{"epoch": 46, "step": 11750, "selection_nll_uv": -6.885180360529299, "best_epoch": 41}
+{"epoch": 47, "step": 11800, "batch_nll": -8.421907424926758}
+{"epoch": 47, "step": 11850, "batch_nll": -9.017769813537598}
+{"epoch": 47, "step": 11900, "batch_nll": -8.649382591247559}
+{"epoch": 47, "step": 11950, "batch_nll": -8.350445747375488}
+{"epoch": 47, "step": 12000, "batch_nll": -8.998367309570312}
+{"epoch": 47, "step": 12000, "selection_nll_uv": -6.711832184063015, "best_epoch": 41}
+Published pilot /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-anchored-12k-s42-r21-20260930
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+W0930 13:04:46.373000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] torch._dynamo hit config.recompile_limit (8)
+W0930 13:04:46.373000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    function: 'forward' (/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/refiner_2d/model.py:111)
+W0930 13:04:46.373000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    last reason: 0/7: tensor 'pose_valid' size mismatch at index 0. expected 16, actual 5
+W0930 13:04:46.373000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W0930 13:04:46.373000 2387592 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
+{"cached_comparison_clip": "tracknet/game9/Clip1"}
+{"cached_comparison_clip": "tracknet/game9/Clip2"}
+{"cached_comparison_clip": "tracknet/game9/Clip3"}
+{"cached_comparison_clip": "tracknet/game9/Clip4"}
+{"cached_comparison_clip": "tracknet/game9/Clip5"}
+{"cached_comparison_clip": "tracknet/game9/Clip6"}
+{"cached_comparison_clip": "tracknet/game9/Clip7"}
+{"cached_comparison_clip": "tracknet/game9/Clip8"}
+{"cached_comparison_clip": "tracknet/game9/Clip9"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam2"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000001212-000001537"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000002128-000002453"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003044-000003369"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003960-000004285"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000000423-000000748"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000001592-000001917"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000002761-000003086"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000003930-000004255"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000005099-000005424"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000001246-000001896"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000004388-000005038"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000007529-000008179"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000010671-000011321"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000013813-000014463"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000000360-000000685"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000001403-000001728"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000002446-000002771"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000003490-000003815"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000004533-000004858"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000000971-000001360"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000003300-000003689"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000005630-000006019"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000007960-000008349"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000010290-000010679"}

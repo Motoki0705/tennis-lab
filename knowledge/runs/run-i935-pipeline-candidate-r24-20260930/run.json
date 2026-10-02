@@ -1,0 +1,16 @@
+{
+  "run_id": "1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930",
+  "name": "i935-e9-anchored-source3cam-r24-20260930",
+  "command": "timeout --signal=TERM --kill-after=15s 1185s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 MAX_JOBS=2 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-e9-anchored-s42-r24-20260930/compiler /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/plan.json",
+  "provider": "codex",
+  "session": "01a0f1dc-49b9-7c82-bcfb-fe29dda6b9e1",
+  "issue": "935",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "521eea03985a96a715a26cdbdbdac90995aebfb6",
+  "branch": "campaign930/i935-14-pipeline-candidate",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+  "captured_at": "2026-09-30T21:55:32+09:00"
+}

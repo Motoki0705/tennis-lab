@@ -1,0 +1,370 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790765753424020525_1202525_i935-anchored-seed44-r24-20260930 (commit=521eea03985a provider=codex session=01a0f1dc-49b9-7c82-bcfb-fe29dda6b9e1)
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+W0930 21:37:52.810000 3033182 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1953] [0/0] Not enough SMs to use max_autotune_gemm mode
+{"epoch": 0, "step": 50, "batch_nll": -7.4637041091918945}
+{"epoch": 0, "step": 100, "batch_nll": -7.285911560058594}
+{"epoch": 0, "step": 150, "batch_nll": -7.513469219207764}
+{"epoch": 0, "step": 200, "batch_nll": -6.504458427429199}
+{"epoch": 0, "step": 250, "batch_nll": -7.211215972900391}
+{"epoch": 0, "step": 250, "selection_nll_uv": -4.7111617055715795, "best_epoch": 0}
+{"epoch": 1, "step": 300, "batch_nll": -7.2369890213012695}
+{"epoch": 1, "step": 350, "batch_nll": -7.156834602355957}
+{"epoch": 1, "step": 400, "batch_nll": -6.9106340408325195}
+{"epoch": 1, "step": 450, "batch_nll": -7.572413444519043}
+{"epoch": 1, "step": 500, "batch_nll": -7.629129886627197}
+{"epoch": 1, "step": 500, "selection_nll_uv": -4.899121180550933, "best_epoch": 1}
+{"epoch": 2, "step": 550, "batch_nll": -7.199606895446777}
+{"epoch": 2, "step": 600, "batch_nll": -6.860963821411133}
+{"epoch": 2, "step": 650, "batch_nll": -6.6351237297058105}
+{"epoch": 2, "step": 700, "batch_nll": -7.393242359161377}
+{"epoch": 2, "step": 750, "batch_nll": -7.378327369689941}
+{"epoch": 2, "step": 750, "selection_nll_uv": -5.004503424082294, "best_epoch": 2}
+{"epoch": 3, "step": 800, "batch_nll": -7.365755081176758}
+{"epoch": 3, "step": 850, "batch_nll": -7.505659103393555}
+{"epoch": 3, "step": 900, "batch_nll": -8.190543174743652}
+{"epoch": 3, "step": 950, "batch_nll": -6.90035343170166}
+{"epoch": 3, "step": 1000, "batch_nll": -7.727146625518799}
+{"epoch": 3, "step": 1000, "selection_nll_uv": -5.075711576112069, "best_epoch": 3}
+{"epoch": 4, "step": 1050, "batch_nll": -7.8323469161987305}
+{"epoch": 4, "step": 1100, "batch_nll": -8.114235877990723}
+{"epoch": 4, "step": 1150, "batch_nll": -7.384525775909424}
+{"epoch": 4, "step": 1200, "batch_nll": -7.596592903137207}
+{"epoch": 4, "step": 1250, "batch_nll": -7.0968852043151855}
+{"epoch": 4, "step": 1250, "selection_nll_uv": -5.1552462675877, "best_epoch": 4}
+{"epoch": 5, "step": 1300, "batch_nll": -7.0565361976623535}
+{"epoch": 5, "step": 1350, "batch_nll": -7.7587103843688965}
+{"epoch": 5, "step": 1400, "batch_nll": -7.624973773956299}
+{"epoch": 5, "step": 1450, "batch_nll": -7.667342662811279}
+{"epoch": 5, "step": 1500, "batch_nll": -7.5395612716674805}
+{"epoch": 5, "step": 1500, "selection_nll_uv": -5.513817729280255, "best_epoch": 5}
+{"epoch": 6, "step": 1550, "batch_nll": -7.822382926940918}
+{"epoch": 6, "step": 1600, "batch_nll": -8.028509140014648}
+{"epoch": 6, "step": 1650, "batch_nll": -8.0642728805542}
+{"epoch": 6, "step": 1700, "batch_nll": -8.160834312438965}
+{"epoch": 6, "step": 1750, "batch_nll": -7.8067498207092285}
+{"epoch": 6, "step": 1750, "selection_nll_uv": -5.545000649865243, "best_epoch": 6}
+{"epoch": 7, "step": 1800, "batch_nll": -7.345401763916016}
+{"epoch": 7, "step": 1850, "batch_nll": -7.749208927154541}
+{"epoch": 7, "step": 1900, "batch_nll": -7.917476177215576}
+{"epoch": 7, "step": 1950, "batch_nll": -7.684942722320557}
+{"epoch": 7, "step": 2000, "batch_nll": -7.952703475952148}
+{"epoch": 7, "step": 2000, "selection_nll_uv": -5.959085073025923, "best_epoch": 7}
+{"epoch": 8, "step": 2050, "batch_nll": -8.175722122192383}
+{"epoch": 8, "step": 2100, "batch_nll": -8.06041431427002}
+{"epoch": 8, "step": 2150, "batch_nll": -7.60437536239624}
+{"epoch": 8, "step": 2200, "batch_nll": -8.082024574279785}
+{"epoch": 8, "step": 2250, "batch_nll": -7.422814846038818}
+{"epoch": 8, "step": 2250, "selection_nll_uv": -6.334201107794043, "best_epoch": 8}
+{"epoch": 9, "step": 2300, "batch_nll": -7.548215389251709}
+{"epoch": 9, "step": 2350, "batch_nll": -7.777052879333496}
+{"epoch": 9, "step": 2400, "batch_nll": -7.929161548614502}
+{"epoch": 9, "step": 2450, "batch_nll": -7.845674514770508}
+{"epoch": 9, "step": 2500, "batch_nll": -7.647311687469482}
+{"epoch": 9, "step": 2500, "selection_nll_uv": -5.9493405922449725, "best_epoch": 8}
+{"epoch": 10, "step": 2550, "batch_nll": -8.082127571105957}
+{"epoch": 10, "step": 2600, "batch_nll": -8.671099662780762}
+{"epoch": 10, "step": 2650, "batch_nll": -8.269477844238281}
+{"epoch": 10, "step": 2700, "batch_nll": -8.018219947814941}
+{"epoch": 10, "step": 2750, "batch_nll": -8.264073371887207}
+{"epoch": 10, "step": 2750, "selection_nll_uv": -5.914082280307993, "best_epoch": 8}
+{"epoch": 11, "step": 2800, "batch_nll": -7.955306053161621}
+{"epoch": 11, "step": 2850, "batch_nll": -8.197601318359375}
+{"epoch": 11, "step": 2900, "batch_nll": -7.6743083000183105}
+{"epoch": 11, "step": 2950, "batch_nll": -7.733031749725342}
+{"epoch": 11, "step": 3000, "batch_nll": -8.016011238098145}
+{"epoch": 11, "step": 3000, "selection_nll_uv": -5.939617820344105, "best_epoch": 8}
+{"epoch": 12, "step": 3050, "batch_nll": -8.495658874511719}
+{"epoch": 12, "step": 3100, "batch_nll": -8.291435241699219}
+{"epoch": 12, "step": 3150, "batch_nll": -8.1185941696167}
+{"epoch": 12, "step": 3200, "batch_nll": -7.751026153564453}
+{"epoch": 12, "step": 3250, "batch_nll": -7.8149895668029785}
+{"epoch": 12, "step": 3250, "selection_nll_uv": -6.353355765965166, "best_epoch": 12}
+{"epoch": 13, "step": 3300, "batch_nll": -8.06566047668457}
+{"epoch": 13, "step": 3350, "batch_nll": -8.309874534606934}
+{"epoch": 13, "step": 3400, "batch_nll": -8.006109237670898}
+{"epoch": 13, "step": 3450, "batch_nll": -8.360577583312988}
+{"epoch": 13, "step": 3500, "batch_nll": -8.84006118774414}
+{"epoch": 13, "step": 3500, "selection_nll_uv": -6.265561011405298, "best_epoch": 12}
+{"epoch": 14, "step": 3550, "batch_nll": -8.325897216796875}
+{"epoch": 14, "step": 3600, "batch_nll": -8.256111145019531}
+{"epoch": 14, "step": 3650, "batch_nll": -8.195952415466309}
+{"epoch": 14, "step": 3700, "batch_nll": -8.396384239196777}
+{"epoch": 14, "step": 3750, "batch_nll": -8.096508026123047}
+{"epoch": 14, "step": 3750, "selection_nll_uv": -6.509673290003072, "best_epoch": 14}
+{"epoch": 15, "step": 3800, "batch_nll": -8.247774124145508}
+{"epoch": 15, "step": 3850, "batch_nll": -8.44153881072998}
+{"epoch": 15, "step": 3900, "batch_nll": -7.627464771270752}
+{"epoch": 15, "step": 3950, "batch_nll": -8.082846641540527}
+{"epoch": 15, "step": 4000, "batch_nll": -8.604132652282715}
+{"epoch": 15, "step": 4000, "selection_nll_uv": -6.319259897649934, "best_epoch": 14}
+{"epoch": 16, "step": 4050, "batch_nll": -7.956026554107666}
+{"epoch": 16, "step": 4100, "batch_nll": -8.271924018859863}
+{"epoch": 16, "step": 4150, "batch_nll": -8.508231163024902}
+{"epoch": 16, "step": 4200, "batch_nll": -7.8845391273498535}
+{"epoch": 16, "step": 4250, "batch_nll": -7.809455871582031}
+{"epoch": 16, "step": 4250, "selection_nll_uv": -6.48754649029184, "best_epoch": 14}
+{"epoch": 17, "step": 4300, "batch_nll": -8.627755165100098}
+{"epoch": 17, "step": 4350, "batch_nll": -7.475312232971191}
+{"epoch": 17, "step": 4400, "batch_nll": -7.718807697296143}
+{"epoch": 17, "step": 4450, "batch_nll": -8.060694694519043}
+{"epoch": 17, "step": 4500, "batch_nll": -8.236598014831543}
+{"epoch": 17, "step": 4500, "selection_nll_uv": -6.610441009822585, "best_epoch": 17}
+{"epoch": 18, "step": 4550, "batch_nll": -8.232926368713379}
+{"epoch": 18, "step": 4600, "batch_nll": -8.144674301147461}
+{"epoch": 18, "step": 4650, "batch_nll": -8.555010795593262}
+{"epoch": 18, "step": 4700, "batch_nll": -8.1978759765625}
+{"epoch": 18, "step": 4750, "batch_nll": -8.58722972869873}
+{"epoch": 18, "step": 4750, "selection_nll_uv": -6.501090639957638, "best_epoch": 17}
+{"epoch": 19, "step": 4800, "batch_nll": -7.846866130828857}
+{"epoch": 19, "step": 4850, "batch_nll": -8.339628219604492}
+{"epoch": 19, "step": 4900, "batch_nll": -7.5525078773498535}
+{"epoch": 19, "step": 4950, "batch_nll": -8.147995948791504}
+{"epoch": 19, "step": 5000, "batch_nll": -7.529014587402344}
+{"epoch": 19, "step": 5000, "selection_nll_uv": -6.523784006852068, "best_epoch": 17}
+{"epoch": 20, "step": 5050, "batch_nll": -8.190391540527344}
+{"epoch": 20, "step": 5100, "batch_nll": -8.798162460327148}
+{"epoch": 20, "step": 5150, "batch_nll": -8.14489459991455}
+{"epoch": 20, "step": 5200, "batch_nll": -7.112447261810303}
+{"epoch": 20, "step": 5250, "batch_nll": -8.312240600585938}
+{"epoch": 20, "step": 5250, "selection_nll_uv": -6.699526840648154, "best_epoch": 20}
+{"epoch": 21, "step": 5300, "batch_nll": -8.406098365783691}
+{"epoch": 21, "step": 5350, "batch_nll": -8.193973541259766}
+{"epoch": 21, "step": 5400, "batch_nll": -8.39953899383545}
+{"epoch": 21, "step": 5450, "batch_nll": -8.179062843322754}
+{"epoch": 21, "step": 5500, "batch_nll": -8.806327819824219}
+{"epoch": 21, "step": 5500, "selection_nll_uv": -6.422558144221972, "best_epoch": 20}
+{"epoch": 22, "step": 5550, "batch_nll": -8.52371597290039}
+{"epoch": 22, "step": 5600, "batch_nll": -8.73715591430664}
+{"epoch": 22, "step": 5650, "batch_nll": -8.435582160949707}
+{"epoch": 22, "step": 5700, "batch_nll": -7.986274242401123}
+{"epoch": 22, "step": 5750, "batch_nll": -7.787774562835693}
+{"epoch": 22, "step": 5750, "selection_nll_uv": -6.500684294331436, "best_epoch": 20}
+{"epoch": 23, "step": 5800, "batch_nll": -8.505932807922363}
+{"epoch": 23, "step": 5850, "batch_nll": -8.885187149047852}
+{"epoch": 23, "step": 5900, "batch_nll": -8.757455825805664}
+{"epoch": 23, "step": 5950, "batch_nll": -7.946599006652832}
+{"epoch": 23, "step": 6000, "batch_nll": -8.320181846618652}
+{"epoch": 23, "step": 6000, "selection_nll_uv": -6.726563714018843, "best_epoch": 23}
+{"epoch": 24, "step": 6050, "batch_nll": -8.69721794128418}
+{"epoch": 24, "step": 6100, "batch_nll": -8.769186019897461}
+{"epoch": 24, "step": 6150, "batch_nll": -8.63278579711914}
+{"epoch": 24, "step": 6200, "batch_nll": -8.564311981201172}
+{"epoch": 24, "step": 6250, "batch_nll": -8.219669342041016}
+{"epoch": 24, "step": 6250, "selection_nll_uv": -6.468949379133174, "best_epoch": 23}
+{"epoch": 25, "step": 6300, "batch_nll": -8.048002243041992}
+{"epoch": 25, "step": 6350, "batch_nll": -8.632857322692871}
+{"epoch": 25, "step": 6400, "batch_nll": -8.755529403686523}
+{"epoch": 25, "step": 6450, "batch_nll": -8.355889320373535}
+{"epoch": 25, "step": 6500, "batch_nll": -8.465554237365723}
+{"epoch": 25, "step": 6500, "selection_nll_uv": -6.729863077615275, "best_epoch": 25}
+{"epoch": 26, "step": 6550, "batch_nll": -8.84335708618164}
+{"epoch": 26, "step": 6600, "batch_nll": -8.6795015335083}
+{"epoch": 26, "step": 6650, "batch_nll": -8.852095603942871}
+{"epoch": 26, "step": 6700, "batch_nll": -8.140159606933594}
+{"epoch": 26, "step": 6750, "batch_nll": -8.677216529846191}
+{"epoch": 26, "step": 6750, "selection_nll_uv": -6.464446475029066, "best_epoch": 25}
+{"epoch": 27, "step": 6800, "batch_nll": -8.575581550598145}
+{"epoch": 27, "step": 6850, "batch_nll": -8.726283073425293}
+{"epoch": 27, "step": 6900, "batch_nll": -8.518230438232422}
+{"epoch": 27, "step": 6950, "batch_nll": -8.010929107666016}
+{"epoch": 27, "step": 7000, "batch_nll": -8.166013717651367}
+{"epoch": 27, "step": 7000, "selection_nll_uv": -6.831016830050384, "best_epoch": 27}
+{"epoch": 28, "step": 7050, "batch_nll": -7.7458930015563965}
+{"epoch": 28, "step": 7100, "batch_nll": -8.841540336608887}
+{"epoch": 28, "step": 7150, "batch_nll": -8.564620018005371}
+{"epoch": 28, "step": 7200, "batch_nll": -8.342437744140625}
+{"epoch": 28, "step": 7250, "batch_nll": -8.778038024902344}
+{"epoch": 28, "step": 7250, "selection_nll_uv": -6.494625133109671, "best_epoch": 27}
+{"epoch": 29, "step": 7300, "batch_nll": -8.099546432495117}
+{"epoch": 29, "step": 7350, "batch_nll": -8.697571754455566}
+{"epoch": 29, "step": 7400, "batch_nll": -8.473566055297852}
+{"epoch": 29, "step": 7450, "batch_nll": -8.663475036621094}
+{"epoch": 29, "step": 7500, "batch_nll": -8.191496849060059}
+{"epoch": 29, "step": 7500, "selection_nll_uv": -6.6915209996744265, "best_epoch": 27}
+{"epoch": 30, "step": 7550, "batch_nll": -8.166441917419434}
+{"epoch": 30, "step": 7600, "batch_nll": -8.057905197143555}
+{"epoch": 30, "step": 7650, "batch_nll": -8.58106803894043}
+{"epoch": 30, "step": 7700, "batch_nll": -8.904911041259766}
+{"epoch": 30, "step": 7750, "batch_nll": -8.534355163574219}
+{"epoch": 30, "step": 7750, "selection_nll_uv": -6.723611964508942, "best_epoch": 27}
+{"epoch": 31, "step": 7800, "batch_nll": -8.777779579162598}
+{"epoch": 31, "step": 7850, "batch_nll": -8.924382209777832}
+{"epoch": 31, "step": 7900, "batch_nll": -9.067710876464844}
+{"epoch": 31, "step": 7950, "batch_nll": -8.595359802246094}
+{"epoch": 31, "step": 8000, "batch_nll": -8.904241561889648}
+{"epoch": 31, "step": 8000, "selection_nll_uv": -5.6699240021529125, "best_epoch": 27}
+{"epoch": 32, "step": 8050, "batch_nll": -8.446920394897461}
+{"epoch": 32, "step": 8100, "batch_nll": -8.959283828735352}
+{"epoch": 32, "step": 8150, "batch_nll": -8.329812049865723}
+{"epoch": 32, "step": 8200, "batch_nll": -8.692719459533691}
+{"epoch": 32, "step": 8250, "batch_nll": -8.20568561553955}
+{"epoch": 32, "step": 8250, "selection_nll_uv": -6.8193114669546215, "best_epoch": 27}
+{"epoch": 33, "step": 8300, "batch_nll": -7.937487602233887}
+{"epoch": 33, "step": 8350, "batch_nll": -8.281299591064453}
+{"epoch": 33, "step": 8400, "batch_nll": -7.853050231933594}
+{"epoch": 33, "step": 8450, "batch_nll": -8.528824806213379}
+{"epoch": 33, "step": 8500, "batch_nll": -8.948486328125}
+{"epoch": 33, "step": 8500, "selection_nll_uv": -6.748517665634461, "best_epoch": 27}
+{"epoch": 34, "step": 8550, "batch_nll": -8.717290878295898}
+{"epoch": 34, "step": 8600, "batch_nll": -8.112744331359863}
+{"epoch": 34, "step": 8650, "batch_nll": -8.705047607421875}
+{"epoch": 34, "step": 8700, "batch_nll": -8.792479515075684}
+{"epoch": 34, "step": 8750, "batch_nll": -8.699545860290527}
+{"epoch": 34, "step": 8750, "selection_nll_uv": -6.693782159352749, "best_epoch": 27}
+{"epoch": 35, "step": 8800, "batch_nll": -8.347953796386719}
+{"epoch": 35, "step": 8850, "batch_nll": -8.01364803314209}
+{"epoch": 35, "step": 8900, "batch_nll": -8.205891609191895}
+{"epoch": 35, "step": 8950, "batch_nll": -8.79848575592041}
+{"epoch": 35, "step": 9000, "batch_nll": -8.477076530456543}
+{"epoch": 35, "step": 9000, "selection_nll_uv": -6.723767647955983, "best_epoch": 27}
+{"epoch": 36, "step": 9050, "batch_nll": -8.299983978271484}
+{"epoch": 36, "step": 9100, "batch_nll": -8.725793838500977}
+{"epoch": 36, "step": 9150, "batch_nll": -9.344401359558105}
+{"epoch": 36, "step": 9200, "batch_nll": -8.78817367553711}
+{"epoch": 36, "step": 9250, "batch_nll": -8.730289459228516}
+{"epoch": 36, "step": 9250, "selection_nll_uv": -6.669543192615104, "best_epoch": 27}
+{"epoch": 37, "step": 9300, "batch_nll": -8.563210487365723}
+{"epoch": 37, "step": 9350, "batch_nll": -8.021498680114746}
+{"epoch": 37, "step": 9400, "batch_nll": -9.177443504333496}
+{"epoch": 37, "step": 9450, "batch_nll": -8.437697410583496}
+{"epoch": 37, "step": 9500, "batch_nll": -8.081449508666992}
+{"epoch": 37, "step": 9500, "selection_nll_uv": -6.498770785099705, "best_epoch": 27}
+{"epoch": 38, "step": 9550, "batch_nll": -8.76060962677002}
+{"epoch": 38, "step": 9600, "batch_nll": -8.308459281921387}
+{"epoch": 38, "step": 9650, "batch_nll": -9.04543685913086}
+{"epoch": 38, "step": 9700, "batch_nll": -9.05260944366455}
+{"epoch": 38, "step": 9750, "batch_nll": -8.841547966003418}
+{"epoch": 38, "step": 9750, "selection_nll_uv": -6.734208116546965, "best_epoch": 27}
+{"epoch": 39, "step": 9800, "batch_nll": -8.393120765686035}
+{"epoch": 39, "step": 9850, "batch_nll": -8.463196754455566}
+{"epoch": 39, "step": 9900, "batch_nll": -8.55505084991455}
+{"epoch": 39, "step": 9950, "batch_nll": -8.780838966369629}
+{"epoch": 39, "step": 10000, "batch_nll": -8.779402732849121}
+{"epoch": 39, "step": 10000, "selection_nll_uv": -6.812713822788791, "best_epoch": 27}
+{"epoch": 40, "step": 10050, "batch_nll": -8.475926399230957}
+{"epoch": 40, "step": 10100, "batch_nll": -8.625591278076172}
+{"epoch": 40, "step": 10150, "batch_nll": -8.17115306854248}
+{"epoch": 40, "step": 10200, "batch_nll": -8.75030517578125}
+{"epoch": 40, "step": 10250, "batch_nll": -8.91175365447998}
+{"epoch": 40, "step": 10250, "selection_nll_uv": -6.682572831102219, "best_epoch": 27}
+{"epoch": 41, "step": 10300, "batch_nll": -8.883056640625}
+{"epoch": 41, "step": 10350, "batch_nll": -8.635607719421387}
+{"epoch": 41, "step": 10400, "batch_nll": -8.595858573913574}
+{"epoch": 41, "step": 10450, "batch_nll": -8.184951782226562}
+{"epoch": 41, "step": 10500, "batch_nll": -8.573567390441895}
+{"epoch": 41, "step": 10500, "selection_nll_uv": -6.74418925810483, "best_epoch": 27}
+{"epoch": 42, "step": 10550, "batch_nll": -8.625365257263184}
+{"epoch": 42, "step": 10600, "batch_nll": -8.853368759155273}
+{"epoch": 42, "step": 10650, "batch_nll": -8.764690399169922}
+{"epoch": 42, "step": 10700, "batch_nll": -9.307269096374512}
+{"epoch": 42, "step": 10750, "batch_nll": -8.985297203063965}
+{"epoch": 42, "step": 10750, "selection_nll_uv": -6.79767007773693, "best_epoch": 27}
+{"epoch": 43, "step": 10800, "batch_nll": -8.596400260925293}
+{"epoch": 43, "step": 10850, "batch_nll": -9.140212059020996}
+{"epoch": 43, "step": 10900, "batch_nll": -8.034666061401367}
+{"epoch": 43, "step": 10950, "batch_nll": -8.690845489501953}
+{"epoch": 43, "step": 11000, "batch_nll": -8.493941307067871}
+{"epoch": 43, "step": 11000, "selection_nll_uv": -6.673670415477407, "best_epoch": 27}
+{"epoch": 44, "step": 11050, "batch_nll": -8.427051544189453}
+{"epoch": 44, "step": 11100, "batch_nll": -9.398821830749512}
+{"epoch": 44, "step": 11150, "batch_nll": -8.539952278137207}
+{"epoch": 44, "step": 11200, "batch_nll": -8.920936584472656}
+{"epoch": 44, "step": 11250, "batch_nll": -8.55201530456543}
+{"epoch": 44, "step": 11250, "selection_nll_uv": -6.696583325859457, "best_epoch": 27}
+{"epoch": 45, "step": 11300, "batch_nll": -8.857547760009766}
+{"epoch": 45, "step": 11350, "batch_nll": -8.755973815917969}
+{"epoch": 45, "step": 11400, "batch_nll": -8.035002708435059}
+{"epoch": 45, "step": 11450, "batch_nll": -8.683353424072266}
+{"epoch": 45, "step": 11500, "batch_nll": -8.783475875854492}
+{"epoch": 45, "step": 11500, "selection_nll_uv": -6.789205857079912, "best_epoch": 27}
+{"epoch": 46, "step": 11550, "batch_nll": -9.062034606933594}
+{"epoch": 46, "step": 11600, "batch_nll": -8.162753105163574}
+{"epoch": 46, "step": 11650, "batch_nll": -9.18068790435791}
+{"epoch": 46, "step": 11700, "batch_nll": -8.434346199035645}
+{"epoch": 46, "step": 11750, "batch_nll": -8.663497924804688}
+{"epoch": 46, "step": 11750, "selection_nll_uv": -6.822094722519628, "best_epoch": 27}
+{"epoch": 47, "step": 11800, "batch_nll": -8.46706485748291}
+{"epoch": 47, "step": 11850, "batch_nll": -8.90937614440918}
+{"epoch": 47, "step": 11900, "batch_nll": -8.666001319885254}
+{"epoch": 47, "step": 11950, "batch_nll": -9.06965160369873}
+{"epoch": 47, "step": 12000, "batch_nll": -8.011733055114746}
+{"epoch": 47, "step": 12000, "selection_nll_uv": -6.68124940131143, "best_epoch": 27}
+Published pilot /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-anchored-12k-s44-r24-20260930
+[torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
+W0930 21:54:39.547000 3033182 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] torch._dynamo hit config.recompile_limit (8)
+W0930 21:54:39.547000 3033182 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    function: 'forward' (/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/refiner_2d/model.py:113)
+W0930 21:54:39.547000 3033182 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8]    last reason: 0/7: tensor 'pose_valid' size mismatch at index 0. expected 16, actual 5
+W0930 21:54:39.547000 3033182 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W0930 21:54:39.547000 3033182 /home/kamimura/projects/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py:1994] [0/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
+{"cached_comparison_clip": "tracknet/game9/Clip1"}
+{"cached_comparison_clip": "tracknet/game9/Clip2"}
+{"cached_comparison_clip": "tracknet/game9/Clip3"}
+{"cached_comparison_clip": "tracknet/game9/Clip4"}
+{"cached_comparison_clip": "tracknet/game9/Clip5"}
+{"cached_comparison_clip": "tracknet/game9/Clip6"}
+{"cached_comparison_clip": "tracknet/game9/Clip7"}
+{"cached_comparison_clip": "tracknet/game9/Clip8"}
+{"cached_comparison_clip": "tracknet/game9/Clip9"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_000/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_001/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_002/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_003/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_004/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_005/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_006/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_007/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_008/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_009/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_010/cam2"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam0"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam1"}
+{"cached_comparison_clip": "meiji/video_000/clip_011/cam2"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000001212-000001537"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000002128-000002453"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003044-000003369"}
+{"cached_comparison_clip": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000003960-000004285"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000000423-000000748"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000001592-000001917"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000002761-000003086"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000003930-000004255"}
+{"cached_comparison_clip": "chat_annotation/2oR5yi5qT0g__296dd3b150ebdb78__f000005099-000005424"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000001246-000001896"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000004388-000005038"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000007529-000008179"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000010671-000011321"}
+{"cached_comparison_clip": "chat_annotation/4v4ui5hGz5c__6c42c9382ed25ac9__f000013813-000014463"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000000360-000000685"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000001403-000001728"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000002446-000002771"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000003490-000003815"}
+{"cached_comparison_clip": "chat_annotation/5J0aqAsLbCY__d13ca6db9749846d__f000004533-000004858"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000000971-000001360"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000003300-000003689"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000005630-000006019"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000007960-000008349"}
+{"cached_comparison_clip": "chat_annotation/qGRakQq4Cvw__0efff489a7942937__f000010290-000010679"}

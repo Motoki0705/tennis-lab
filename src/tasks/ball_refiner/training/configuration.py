@@ -10,7 +10,7 @@ from typing import Any, cast
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.ball_detection.data.store import SOURCES
-from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
+from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig, parse_model_config
 from src.tasks.base.configuration import CompileConfig
 from src.utils.configuration import (
     ConfigField,
@@ -84,7 +84,7 @@ class PilotConfig:
             raise TypeError("Pilot config must be a mapping")
         validated = cast(dict[str, Any], dict(PILOT_SCHEMA.validate(raw)))
         data, run, training = validated["data"], validated["run"], dict(validated["training"])
-        model = Refiner2DConfig(**validated["model"])
+        model = parse_model_config(validated["model"])
         if model.use_pose or model.use_court or not model.use_detector:
             raise ValueError("Pilot requires explicit detector-only configuration; context is not generated")
         compilation = CompileConfig.from_mapping(validated["compile"])

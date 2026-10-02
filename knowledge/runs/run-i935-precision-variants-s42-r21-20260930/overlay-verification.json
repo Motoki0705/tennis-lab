@@ -1,0 +1,139 @@
+{
+  "status": "verified",
+  "gpu": false,
+  "results": [
+    {
+      "clip": "meiji/video_000/clip_010",
+      "video": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/outputs/campaign935-r22-video/clip010/clip_010-frames-0000-0269-anchored-vs-r18.mp4",
+      "sha256": "7fa4f483b73bb6f9955f70775b216714a956244084b5412f5b580745b76dd14a",
+      "frames": 270,
+      "start": 0,
+      "bytes": 4308380,
+      "posters_sha256": {
+        "overlay-clip010-frame-0135.jpg": "9f9db24e77c1020219080ae35b735b1fcdc115084d0c4a4f92a1b357042b2752",
+        "overlay-clip010-frame-0146.jpg": "0649173f0b19fda1d3e6343c48b7f81675394bce8b81727f4b65d905f7a3ca59"
+      },
+      "metadata_sha256": "5e59ef6d66775e65022dd1091ae46148de5a71f2341171deb5d4621262dd1e2b",
+      "encoding_checks": [
+        {
+          "source_frame": 0,
+          "footer_mae": 0.45594187937937936,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 31,
+          "footer_mae": 0.448438282032032,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 33,
+          "footer_mae": 0.4487769019019019,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 38,
+          "footer_mae": 0.4483037725225225,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 40,
+          "footer_mae": 0.44911317567567566,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 106,
+          "footer_mae": 0.4502838776276276,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 108,
+          "footer_mae": 0.4506858420920921,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 135,
+          "footer_mae": 0.45004770395395394,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 222,
+          "footer_mae": 0.45011339464464467,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 233,
+          "footer_mae": 0.4506006006006006,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 269,
+          "footer_mae": 0.39294763513513514,
+          "bright_pixels_lost_fraction": 0.0
+        }
+      ]
+    },
+    {
+      "clip": "meiji/video_000/clip_001",
+      "video": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/outputs/campaign935-r22-video/hard/clip_001-frames-0400-0669-anchored-vs-r18.mp4",
+      "sha256": "ce22d23c24eb105455b7f815d0061aca0eeb4b3b3032fb60262ecc26ffd01f06",
+      "frames": 270,
+      "start": 400,
+      "bytes": 4544309,
+      "posters_sha256": {
+        "overlay-hard-frame-0400.jpg": "159f3a36c014574ddb544d1fcc19dfe1048122c0ee39fc5c32ca95fcdcd976ce",
+        "overlay-hard-frame-0402.jpg": "39c037b7307361fd13407f5b4987ac33563d563637a68bce6e62c69b52e2ddef",
+        "overlay-hard-frame-0535.jpg": "bfd8715e30b814b604e87f96bc007b6c7641ff3bf6e10c2c59d7e1c09a5425fe"
+      },
+      "metadata_sha256": "946ab20e0a63b1dfbb176c3b1c7d0397122d95aba1604570c6ae9f8d1821191f",
+      "encoding_checks": [
+        {
+          "source_frame": 400,
+          "footer_mae": 0.4588549486986987,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 402,
+          "footer_mae": 0.45415180805805805,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 411,
+          "footer_mae": 0.4620925613113113,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 415,
+          "footer_mae": 0.45077030155155157,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 418,
+          "footer_mae": 0.45062640765765766,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 436,
+          "footer_mae": 0.4503972722722723,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 475,
+          "footer_mae": 0.4856622247247247,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 535,
+          "footer_mae": 0.4509329642142142,
+          "bright_pixels_lost_fraction": 0.0
+        },
+        {
+          "source_frame": 669,
+          "footer_mae": 0.39300159534534534,
+          "bright_pixels_lost_fraction": 0.0
+        }
+      ]
+    }
+  ],
+  "render_output_bytes": 33789612,
+  "poster_rule": "clip010 middle + frame146 estimated occlusion/artificial gap; hard interval start, first recorded remaining-failure frame, and middle"
+}

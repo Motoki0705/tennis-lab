@@ -1,0 +1,9 @@
+{
+  "status": "complete",
+  "seconds": 2962.9155960429925,
+  "peak_cuda_allocated_bytes": 1466511360,
+  "peak_cuda_reserved_bytes": 1786773504,
+  "pytorch_allocator_limit_bytes": 6442450944,
+  "queue_job": "1790725512433633211_3869834_i935-evidence-mixed-e9-trainval-r17-20260930",
+  "output": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930"
+}
