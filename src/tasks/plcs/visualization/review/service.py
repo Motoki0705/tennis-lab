@@ -2,7 +2,7 @@
 
 Every answer is derived read-only from the raw ``data/ACCAD/**/*_poses.npz``
 archives. Joint positions use the repository's SMPL-H recipe
-(:mod:`src.synthetic_data_generation.dataset.plcs.smplh`): shape blend, then
+(:mod:`src.tasks.plcs.motion.smplh_model`): shape blend, then
 root-relative rigid joint transforms, then the AMASS root translation. The
 result is the source frame of :class:`PLCSCoordinateContract`
 (``plcs_amass_smplh_z_up_v1``: right-handed, ``+Z`` up, metres), which is the
@@ -29,10 +29,10 @@ from smplx.lbs import (  # type: ignore[import-untyped]
     vertices2joints,
 )
 
-from src.synthetic_data_generation.dataset.plcs.coordinates import (
+from src.tasks.plcs.motion.coordinates import (
     PLCSCoordinateContract,
 )
-from src.synthetic_data_generation.dataset.plcs.smplh import (
+from src.tasks.plcs.motion.smplh_model import (
     SMPLHModelData,
     load_smplh_model,
 )
@@ -151,9 +151,7 @@ def world_joint_positions(
     if frame_count == 0:
         raise ValueError("A motion must contain at least one frame.")
     if trans.shape != (frame_count, 3):
-        raise ValueError(
-            f"trans must have shape [{frame_count},3], got {trans.shape}."
-        )
+        raise ValueError(f"trans must have shape [{frame_count},3], got {trans.shape}.")
     if betas.shape != (model.beta_count,):
         raise ValueError(
             f"betas must have shape [{model.beta_count}] to match the SMPL-H "
