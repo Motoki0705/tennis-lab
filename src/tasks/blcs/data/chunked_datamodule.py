@@ -49,7 +49,7 @@ class ChunkedBLCSDataModule(BLCSDataModuleHooks, BaseChunkedDataModule):
             generation_workers=self.generation_workers,
             generation_chunksize=int(config.data.chunk.generation_chunksize),
             generation_seed=int(config.run.seed),
-            multi_object=False,
-            timeline_config=None,
-            maximum_physics_attempts_per_object=None,
+            maximum_physics_attempts_per_scene=int(
+                config.generation.maximum_physics_attempts_per_scene
+            ),
         )

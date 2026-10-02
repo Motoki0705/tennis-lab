@@ -20,7 +20,6 @@ from src.tasks.base.generate_dataset.dataset_samples import (
     DatasetSampleSpec,
     RenderedDatasetSample,
     SelectedDatasetSample,
-    assign_tercile,
     bounded_playback_fps,
     evenly_spaced_frame_indices,
     load_scene_visibility_summaries,
@@ -29,8 +28,6 @@ from src.tasks.base.generate_dataset.dataset_samples import (
     save_animation_gif,
     select_stratified_samples,
     take_temporal_sample,
-    tercile_boundaries,
-    track_lifecycle_metrics,
     validate_sample_frame_indices,
 )
 from src.tasks.base.visualization.style import SceneStyleConfig
@@ -118,49 +115,18 @@ def _build_candidates(
     tuple[str, str, str],
     Mapping[str, object],
 ]:
+    if spec.mode != "single" or spec.court_keypoint_contract.selector != "physical_v1":
+        raise ValueError(
+            "Dataset samples require single_object with physical_v1 court keypoints."
+        )
     stats = _load_scene_stats(spec)
-    if spec.mode == "single":
-        candidates = tuple(
-            DatasetSampleCandidate(
-                scene_id=scene.scene_id,
-                primary_group=scene.start_region,
-                duration_value=float(scene.num_frames),
-                visibility_value=float(np.mean(scene.camera_visibilities)),
-                auxiliary_value=float(scene.rally_length),
-                camera_visibilities=scene.camera_visibilities,
-                metrics=_metrics(scene),
-            )
-            for scene in stats
-        )
-        return (
-            candidates,
-            _SINGLE_PRIMARY_ORDER,
-            {
-                "primary_axis": (
-                    "first non-serve from_cell region "
-                    "(deuce/ad/behind-baseline; serve target fallback)"
-                ),
-                "duration_axis": "num_frames terciles within start region",
-                "visibility_tie_break": "mean camera ball visibility Latin-square quantile",
-                "auxiliary_tie_break": "rally_length",
-            },
-        )
-
-    track_boundaries = tercile_boundaries(
-        [float(scene.track_count) for scene in stats],
-        metric_name="BLCS track_count",
-    )
     candidates = tuple(
         DatasetSampleCandidate(
             scene_id=scene.scene_id,
-            primary_group=assign_tercile(
-                float(scene.track_count),
-                track_boundaries,
-                labels=_MULTI_PRIMARY_ORDER,
-            ),
-            duration_value=float(scene.total_active_frames),
+            primary_group=scene.start_region,
+            duration_value=float(scene.num_frames),
             visibility_value=float(np.mean(scene.camera_visibilities)),
-            auxiliary_value=float(scene.nested_shot_count),
+            auxiliary_value=float(scene.rally_length),
             camera_visibilities=scene.camera_visibilities,
             metrics=_metrics(scene),
         )
@@ -168,13 +134,15 @@ def _build_candidates(
     )
     return (
         candidates,
-        _MULTI_PRIMARY_ORDER,
+        _SINGLE_PRIMARY_ORDER,
         {
-            "primary_axis": "track_count global terciles",
-            "primary_boundaries": list(track_boundaries),
-            "duration_axis": "total_active_frames terciles within track-count band",
+            "primary_axis": (
+                "first non-serve from_cell region "
+                "(deuce/ad/behind-baseline; serve target fallback)"
+            ),
+            "duration_axis": "num_frames terciles within start region",
             "visibility_tie_break": "mean camera ball visibility Latin-square quantile",
-            "auxiliary_tie_break": "nested shot count",
+            "auxiliary_tie_break": "rally_length",
         },
     )
 
@@ -245,25 +213,11 @@ def _load_scene_stats(spec: DatasetSampleSpec) -> tuple[_BLCSSceneStats, ...]:
             for index, raw in enumerate(cast("Sequence[object]", raw_tracks))
         )
         present_path = scene_dir / "ball_present.npy"
-        if spec.mode == "single":
-            if tracks or present_path.exists():
-                raise ValueError(
-                    f"{scene_dir}: configured single scene has tracking data."
-                )
-            track_count = 1
-            total_active_frames = num_frames
-            max_concurrent = 1
-        else:
-            if not tracks or not present_path.is_file():
-                raise ValueError(
-                    f"{scene_dir}: configured multi scene lacks tracking data."
-                )
-            track_count = len(tracks)
-            total_active_frames, max_concurrent = track_lifecycle_metrics(
-                tracks,
-                num_frames=num_frames,
-                location=str(meta_path),
-            )
+        if tracks or present_path.exists():
+            raise ValueError(f"{scene_dir}: configured single scene has tracking data.")
+        track_count = 1
+        total_active_frames = num_frames
+        max_concurrent = 1
         camera_visibilities, court_visibilities = visibility[scene_id]
         results.append(
             _BLCSSceneStats(

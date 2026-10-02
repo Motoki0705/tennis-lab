@@ -255,7 +255,10 @@ def extract(repo: Path, report: Path) -> None:
             progress['current'] = {'key': key, 'stage': 'detector'}
             write_json_atomic(target, progress)
             camera_start = time.monotonic()
-            video = SourceVideo(**{k: Path(v) if k == 'path' else v for k, v in meta.items()})
+            if set(meta) != set(SourceVideo.__dataclass_fields__):
+                raise ValueError('Planned video metadata must match SourceVideo fields')
+            video = SourceVideo(camera_id=meta['camera_id'], path=Path(meta['path']), sha256=meta['sha256'],
+                                num_frames=meta['num_frames'], fps=meta['fps'], width=meta['width'], height=meta['height'])
             detections = PersonDetectionModule(cfg.people, merge_duplicates=False).process(PersonDetectionInput(video))
             path = report / 'detections' / f'{key}.npz'
             path.parent.mkdir(parents=True, exist_ok=True)

@@ -13,7 +13,7 @@ against the labels. GPU execution goes through the shared training queue.
 With ``--dataset`` the clip belongs to a structured dataset: the store is the
 clip's ``annotations/tennis_scene`` and the production
 ``generate_pseudo_annotations`` publishes ``annotation.json``; the dataset
-readers (SLCS, PLCS residual) then read the publication back. ``--seed-from``
+reader (SLCS) then reads the publication back. ``--seed-from``
 first creates that clip from a source clip (media hard-linked, import inputs
 copied) in a dataset directory that must not contain it yet.
 """
@@ -106,15 +106,11 @@ def score_association(runner: ComponentRunner, labels: ClipLabels, camera_ids: t
 
 
 def verify_dataset_readers(clip: Path) -> dict[str, Any]:
-    """Read the publication back through every dataset reader."""
-    from src.tasks.plcs.inference.residual_clip_io import load_real_clip
+    """Read the scene publication back through the supported SLCS reader."""
     from src.tasks.slcs.data.annotation import load_slcs_annotation
 
     scene = load_slcs_annotation(ClipManifest.load(clip))
-    residual = load_real_clip(clip)
-    return {"slcs": {"schema_version": scene.schema_version, "num_frames": scene.num_frames},
-            "plcs_residual": {"player_ids": [item.metadata["player_id"] for item in residual],
-                              "calibration_frame_index": residual[0].metadata["calibration_frame_index"]}}
+    return {"slcs": {"schema_version": scene.schema_version, "num_frames": scene.num_frames}}
 
 
 def main() -> None:
