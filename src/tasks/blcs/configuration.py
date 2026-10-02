@@ -16,13 +16,10 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
-from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
 from src.tasks.base.generate_dataset import (
     CourtKeypointContract,
     resolve_court_keypoint_contract,
 )
-from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
-from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
     parse_scene_style,
@@ -232,35 +229,18 @@ def parse_court_keypoint_contract(config: object) -> CourtKeypointContract:
     _exact(section, {"selector"}, path="court_keypoints")
     selector = _value(section, "selector", str, path="court_keypoints")
     try:
-        return resolve_court_keypoint_contract(cast("str", selector))
+        if selector != "physical_v1":
+            raise SemanticConfigurationError(
+                "BLCS only supports physical_v1 court keypoints."
+            )
+        return resolve_court_keypoint_contract(selector)
     except ValueError as error:
         raise SemanticConfigurationError(str(error)) from error
 
 
 @dataclass(frozen=True, slots=True)
-class SingleModelConfig:
-    name: Literal["blcs"]
-    input_profile: Literal["single"]
-    hidden_dim: int
-    num_layers: int
-    num_heads: int
-    ffn_dim: int
-    ffn_type: FFNType
-    dropout: float
-    max_seq_len: int
-    invisible_init_std: float
-    rope_dim: int
-    rope_theta: float
-    rope_theta_time: float
-    rope_theta_camera: float
-    rope_theta_type: float
-    predict_velocity: bool
-    num_court_tokens: int
-
-
-@dataclass(frozen=True, slots=True)
 class AxialModelConfig:
-    name: Literal["blcs_multiview_axial", "blcs_multiview_axial_reference"]
+    name: Literal["blcs_multiview_axial"]
     input_profile: Literal["multiview"]
     hidden_dim: int
     num_layers: int
@@ -284,76 +264,7 @@ class AxialModelConfig:
     time_global_stage_mask: tuple[bool, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class TrackQueryMHCConfig:
-    coefficient_dim: int
-    sinkhorn_iters: int
-    eps: float
-    residual_identity_bias: float
-    update_scale_init: float
-
-
-@dataclass(frozen=True, slots=True)
-class TrackQueryCSWAConfig:
-    compression_ratio: int
-    window_radius: int
-    backend: Literal["reference", "cuda"]
-
-
-@dataclass(frozen=True, slots=True)
-class TrackQueryModelConfig:
-    name: Literal["blcs_track_query"]
-    hidden_dim: int
-    num_heads: int
-    num_stages: int
-    ffn_dim: int
-    ffn_type: FFNType
-    num_queries: int
-    rope_dim: int
-    dropout: float
-    invisible_init_std: float
-    mhc: TrackQueryMHCConfig
-    cswa: TrackQueryCSWAConfig
-
-
-@dataclass(frozen=True, slots=True)
-class TrackQueryReferenceModelConfig:
-    """Reference-conditioned v2 track-query architecture contract."""
-
-    name: Literal["blcs_track_query_reference"]
-    hidden_dim: int
-    num_heads: int
-    num_stages: int
-    ffn_dim: int
-    ffn_type: FFNType
-    num_queries: int
-    rope_dim: int
-    dropout: float
-    invisible_init_std: float
-    target_frame_contract: Literal["reference_camera_court_rzpi_v1"]
-    track_query_rope_contract: Literal["time_camera_reference_selector_v1"]
-    reference_selector_mode: Literal["reference"]
-    mhc: TrackQueryMHCConfig
-    cswa: TrackQueryCSWAConfig
-
-
-BLCSModelConfig: TypeAlias = (
-    SingleModelConfig
-    | AxialModelConfig
-    | TrackQueryModelConfig
-    | TrackQueryReferenceModelConfig
-)
-
-_TRACK_QUERY_MODEL_CONFIG_TYPES = (
-    TrackQueryModelConfig,
-    TrackQueryReferenceModelConfig,
-)
-_TRACK_QUERY_MODEL_NAMES = frozenset(
-    {
-        "blcs_track_query",
-        "blcs_track_query_reference",
-    }
-)
+BLCSModelConfig: TypeAlias = AxialModelConfig
 
 
 def _io(mapping: Mapping[str, object]) -> str:
@@ -375,98 +286,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
     model = _model_mapping(config)
     name = cast("str", _value(model, "name", str, path="model"))
     result: BLCSModelConfig
-    if name == "blcs":
-        keys = {
-            "name",
-            "io",
-            "hidden_dim",
-            "num_layers",
-            "num_heads",
-            "ffn_dim",
-            "ffn_type",
-            "dropout",
-            "max_seq_len",
-            "invisible_init_std",
-            "rope_dim",
-            "rope_theta",
-            "rope_theta_time",
-            "rope_theta_camera",
-            "rope_theta_type",
-            "predict_velocity",
-            "num_court_tokens",
-        }
-        _exact(model, keys, path="model")
-        _validate_types(
-            model,
-            {
-                "name": str,
-                "io": dict,
-                "hidden_dim": int,
-                "num_layers": int,
-                "num_heads": int,
-                "ffn_dim": int,
-                "ffn_type": str,
-                "dropout": (float, int),
-                "max_seq_len": int,
-                "invisible_init_std": (float, int),
-                "rope_dim": int,
-                "rope_theta": (float, int),
-                "rope_theta_time": (float, int),
-                "rope_theta_camera": (float, int),
-                "rope_theta_type": (float, int),
-                "predict_velocity": bool,
-                "num_court_tokens": int,
-            },
-            path="model",
-        )
-        profile = _io(model)
-        if profile != "single" or model["ffn_type"] not in SUPPORTED_FFN_TYPES:
-            raise SemanticConfigurationError(
-                "Invalid single-view model profile or ffn_type."
-            )
-        result = SingleModelConfig(
-            name="blcs",
-            input_profile="single",
-            hidden_dim=int(model["hidden_dim"]),
-            num_layers=int(model["num_layers"]),
-            num_heads=int(model["num_heads"]),
-            ffn_dim=cast("int", model["ffn_dim"]),
-            ffn_type=cast("FFNType", model["ffn_type"]),
-            dropout=float(model["dropout"]),
-            max_seq_len=int(model["max_seq_len"]),
-            invisible_init_std=float(model["invisible_init_std"]),
-            rope_dim=cast("int", model["rope_dim"]),
-            rope_theta=float(model["rope_theta"]),
-            rope_theta_time=float(model["rope_theta_time"]),
-            rope_theta_camera=float(model["rope_theta_camera"]),
-            rope_theta_type=float(model["rope_theta_type"]),
-            predict_velocity=bool(model["predict_velocity"]),
-            num_court_tokens=int(model["num_court_tokens"]),
-        )
-        _validate_transformer_dimensions(
-            hidden_dim=result.hidden_dim,
-            num_heads=result.num_heads,
-            ffn_dim=result.ffn_dim,
-            rope_dim=result.rope_dim,
-            dropout=result.dropout,
-            path="model",
-        )
-        if result.num_layers < 0:
-            raise SemanticConfigurationError("model.num_layers must be non-negative.")
-        if result.max_seq_len <= 0 or result.num_court_tokens <= 0:
-            raise SemanticConfigurationError(
-                "model.max_seq_len and model.num_court_tokens must be positive."
-            )
-        _non_negative(result.invisible_init_std, path="model.invisible_init_std")
-        for key, value in (
-            ("rope_theta", result.rope_theta),
-            ("rope_theta_time", result.rope_theta_time),
-            ("rope_theta_camera", result.rope_theta_camera),
-            ("rope_theta_type", result.rope_theta_type),
-        ):
-            _positive(value, path=f"model.{key}")
-        return result
-    if name in {"blcs_multiview_axial", "blcs_multiview_axial_reference"}:
+    if name == "blcs_multiview_axial":
         keys = {
             "name",
             "io",
@@ -491,27 +311,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "time_layers_per_stage",
             "time_global_stage_mask",
         }
-        if name == "blcs_multiview_axial_reference":
-            from src.tasks.blcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
-
-            for key in (
-                "target_frame_contract",
-                "axial_rope_contract",
-                "reference_selector_mode",
-            ):
-                keys.add(key)
-                if model.get(key) != AXIAL_REFERENCE_CONTRACT[key]:
-                    raise SemanticConfigurationError(
-                        f"Invalid axial reference model.{key}."
-                    )
-            if int(model["rope_dim"]) < 6:
-                raise SemanticConfigurationError(
-                    "Axial reference requires rope_dim >= 6."
-                )
-            if parse_court_keypoint_contract(config).selector != "camera_view_v2":
-                raise SemanticConfigurationError(
-                    "Axial reference requires camera_view_v2."
-                )
         _exact(model, keys, path="model")
         _validate_types(
             model,
@@ -551,7 +350,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             )
         result = AxialModelConfig(
             name=cast(
-                "Literal['blcs_multiview_axial', 'blcs_multiview_axial_reference']",
+                "Literal['blcs_multiview_axial']",
                 name,
             ),
             input_profile="multiview",
@@ -634,211 +433,6 @@ def parse_model_config(config: object) -> BLCSModelConfig:
         _non_negative(result.invisible_init_std, path="model.invisible_init_std")
         _positive(result.rope_theta_time, path="model.rope_theta_time")
         _positive(result.rope_theta_camera, path="model.rope_theta_camera")
-        return result
-    if name in _TRACK_QUERY_MODEL_NAMES:
-        is_reference = name == "blcs_track_query_reference"
-        base_keys = {
-            "name",
-            "hidden_dim",
-            "num_heads",
-            "num_stages",
-            "ffn_dim",
-            "ffn_type",
-            "num_queries",
-            "rope_dim",
-            "dropout",
-            "invisible_init_std",
-            "mhc",
-            "cswa",
-        }
-        if is_reference:
-            base_keys |= {
-                "target_frame_contract",
-                "track_query_rope_contract",
-                "reference_selector_mode",
-            }
-        _exact(model, base_keys, path="model")
-        _validate_types(
-            model,
-            {
-                "name": str,
-                "hidden_dim": int,
-                "num_heads": int,
-                "num_stages": int,
-                "ffn_dim": int,
-                "ffn_type": str,
-                "num_queries": int,
-                "rope_dim": int,
-                "dropout": (float, int),
-                "invisible_init_std": (float, int),
-            },
-            path="model",
-        )
-        raw_ffn_type = cast("str", model["ffn_type"])
-        if raw_ffn_type not in SUPPORTED_FFN_TYPES:
-            raise SemanticConfigurationError(
-                f"model.ffn_type must be one of {sorted(SUPPORTED_FFN_TYPES)!r}."
-            )
-        if is_reference:
-            _validate_types(
-                model,
-                {
-                    "target_frame_contract": str,
-                    "track_query_rope_contract": str,
-                    "reference_selector_mode": str,
-                },
-                path="model",
-            )
-            if model["target_frame_contract"] != "reference_camera_court_rzpi_v1":
-                raise SemanticConfigurationError(
-                    "model.target_frame_contract must be "
-                    "'reference_camera_court_rzpi_v1' for BLCS reference v2."
-                )
-            if (
-                model["track_query_rope_contract"]
-                != "time_camera_reference_selector_v1"
-            ):
-                raise SemanticConfigurationError(
-                    "model.track_query_rope_contract must be "
-                    "'time_camera_reference_selector_v1' for BLCS reference v2."
-                )
-            if model["reference_selector_mode"] != "reference":
-                raise SemanticConfigurationError(
-                    "model.reference_selector_mode must be 'reference'."
-                )
-        raw_mhc = as_config_mapping(model["mhc"], path="model.mhc")
-        mhc_keys = {
-            "coefficient_dim",
-            "sinkhorn_iters",
-            "eps",
-            "residual_identity_bias",
-            "update_scale_init",
-        }
-        _exact(raw_mhc, mhc_keys, path="model.mhc")
-        _validate_types(
-            raw_mhc,
-            {
-                "coefficient_dim": int,
-                "sinkhorn_iters": int,
-                "eps": (float, int),
-                "residual_identity_bias": (float, int),
-                "update_scale_init": (float, int),
-            },
-            path="model.mhc",
-        )
-        mhc = TrackQueryMHCConfig(
-            coefficient_dim=cast("int", raw_mhc["coefficient_dim"]),
-            sinkhorn_iters=cast("int", raw_mhc["sinkhorn_iters"]),
-            eps=float(cast("float | int", raw_mhc["eps"])),
-            residual_identity_bias=float(
-                cast("float | int", raw_mhc["residual_identity_bias"])
-            ),
-            update_scale_init=float(cast("float | int", raw_mhc["update_scale_init"])),
-        )
-        if mhc.coefficient_dim <= 0 or mhc.sinkhorn_iters <= 0:
-            raise SemanticConfigurationError(
-                "model.mhc.coefficient_dim and sinkhorn_iters must be positive."
-            )
-        _positive(mhc.eps, path="model.mhc.eps")
-        _non_negative(
-            mhc.residual_identity_bias,
-            path="model.mhc.residual_identity_bias",
-        )
-        _finite(mhc.update_scale_init, path="model.mhc.update_scale_init")
-
-        raw_cswa = as_config_mapping(model["cswa"], path="model.cswa")
-        cswa_keys = {"compression_ratio", "window_radius", "backend"}
-        _exact(raw_cswa, cswa_keys, path="model.cswa")
-        _validate_types(
-            raw_cswa,
-            {
-                "compression_ratio": int,
-                "window_radius": int,
-                "backend": str,
-            },
-            path="model.cswa",
-        )
-        backend = cast("str", raw_cswa["backend"])
-        if backend not in {"reference", "cuda"}:
-            raise SemanticConfigurationError(
-                "model.cswa.backend must be 'reference' or 'cuda'."
-            )
-        cswa = TrackQueryCSWAConfig(
-            compression_ratio=cast("int", raw_cswa["compression_ratio"]),
-            window_radius=cast("int", raw_cswa["window_radius"]),
-            backend=cast("Literal['reference', 'cuda']", backend),
-        )
-        if cswa.compression_ratio < 2:
-            raise SemanticConfigurationError(
-                "model.cswa.compression_ratio must be at least 2."
-            )
-        if cswa.window_radius < 0:
-            raise SemanticConfigurationError(
-                "model.cswa.window_radius must be non-negative."
-            )
-        if is_reference:
-            result = TrackQueryReferenceModelConfig(
-                name="blcs_track_query_reference",
-                hidden_dim=int(model["hidden_dim"]),
-                num_heads=int(model["num_heads"]),
-                num_stages=int(model["num_stages"]),
-                ffn_dim=cast("int", model["ffn_dim"]),
-                ffn_type=cast("FFNType", model["ffn_type"]),
-                num_queries=int(model["num_queries"]),
-                rope_dim=cast("int", model["rope_dim"]),
-                dropout=float(model["dropout"]),
-                invisible_init_std=float(model["invisible_init_std"]),
-                target_frame_contract=cast(
-                    "Literal['reference_camera_court_rzpi_v1']",
-                    model["target_frame_contract"],
-                ),
-                track_query_rope_contract=cast(
-                    "Literal['time_camera_reference_selector_v1']",
-                    model["track_query_rope_contract"],
-                ),
-                reference_selector_mode=cast(
-                    "Literal['reference']", model["reference_selector_mode"]
-                ),
-                mhc=mhc,
-                cswa=cswa,
-            )
-        else:
-            result = TrackQueryModelConfig(
-                name="blcs_track_query",
-                hidden_dim=int(model["hidden_dim"]),
-                num_heads=int(model["num_heads"]),
-                num_stages=int(model["num_stages"]),
-                ffn_dim=cast("int", model["ffn_dim"]),
-                ffn_type=cast("FFNType", model["ffn_type"]),
-                num_queries=int(model["num_queries"]),
-                rope_dim=cast("int", model["rope_dim"]),
-                dropout=float(model["dropout"]),
-                invisible_init_std=float(model["invisible_init_std"]),
-                mhc=mhc,
-                cswa=cswa,
-            )
-        _validate_transformer_dimensions(
-            hidden_dim=result.hidden_dim,
-            num_heads=result.num_heads,
-            ffn_dim=result.ffn_dim,
-            rope_dim=result.rope_dim,
-            dropout=result.dropout,
-            path="model",
-        )
-        if is_reference and result.rope_dim < 6:
-            raise SemanticConfigurationError(
-                "model.rope_dim must be at least 6 for all three reference-v2 axes."
-            )
-        if (
-            result.num_stages <= 0
-            or result.num_stages % 4 != 0
-            or result.num_queries <= 0
-        ):
-            raise SemanticConfigurationError(
-                "model.num_stages must be a positive multiple of 4 and "
-                "model.num_queries must be positive."
-            )
-        _non_negative(result.invisible_init_std, path="model.invisible_init_std")
         return result
     raise SemanticConfigurationError(f"Unsupported model.name={name!r}.")
 
@@ -1619,10 +1213,8 @@ def validate_generator_sections(
     if len(cast("Sequence[object]", camera["image_size"])) != 2:
         raise SemanticConfigurationError("camera.image_size must contain two values.")
     _numeric_sequence(camera["fixed_look_at"], path="camera.fixed_look_at", length=3)
-    if camera["layout"] not in {"fixed", "broadcast"}:
-        raise SemanticConfigurationError(
-            "camera.layout must be 'fixed' or 'broadcast'."
-        )
+    if camera["layout"] != "fixed":
+        raise SemanticConfigurationError("camera.layout must be 'fixed'.")
     image_size = _int_sequence(camera["image_size"], path="camera.image_size")
     if any(value <= 0 for value in image_size):
         raise SemanticConfigurationError("camera.image_size values must be positive.")
@@ -1795,9 +1387,9 @@ def validate_generator_sections(
         )
         min_balls = cast("int", generation["min_balls"])
         max_balls = cast("int", generation["max_balls"])
-        if min_balls <= 0 or max_balls < min_balls:
+        if min_balls != 1 or max_balls != 1:
             raise SemanticConfigurationError(
-                "generation ball counts must satisfy 1 <= min_balls <= max_balls."
+                "single_object requires min_balls=max_balls=1."
             )
         maximum_attempts = cast(
             "int",
@@ -1812,46 +1404,8 @@ def validate_generator_sections(
             raise SemanticConfigurationError(
                 "generation.maximum_physics_attempts_per_scene must be positive."
             )
-    elif mode == "multi_object":
-        _exact(
-            generation,
-            {"mode", "maximum_physics_attempts_per_object", "timeline"},
-            path="generation",
-        )
-        maximum_attempts = cast(
-            "int",
-            _value(
-                generation,
-                "maximum_physics_attempts_per_object",
-                int,
-                path="generation",
-            ),
-        )
-        if maximum_attempts <= 0:
-            raise SemanticConfigurationError(
-                "generation.maximum_physics_attempts_per_object must be positive."
-            )
-        timeline = require_config_mapping(generation, "timeline", path="generation")
-        keys = {
-            "min_tracks",
-            "max_tracks",
-            "max_concurrent",
-            "min_reuse_gap_frames",
-            "min_scene_frames",
-            "planning_iterations",
-        }
-        _exact(timeline, keys, path="generation.timeline")
-        _validate_types(
-            timeline, {key: int for key in keys}, path="generation.timeline"
-        )
-        try:
-            TimelineConfig.from_mapping(cast("Mapping[str, Any]", timeline))
-        except (TypeError, ValueError) as error:
-            raise SemanticConfigurationError(str(error)) from error
     else:
-        raise SemanticConfigurationError(
-            "generation.mode must be 'single_object' or 'multi_object'."
-        )
+        raise SemanticConfigurationError("generation.mode must be 'single_object'.")
 
 
 def _validate_standard_loss_config(loss: Mapping[str, object]) -> None:
@@ -1904,67 +1458,24 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     """Validate BLCS-specific model and the seven-root contract before training."""
     root = as_config_mapping(config, path="configuration")
     model = parse_model_config(config)
-    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
-        allowed = {
-            "paths",
-            "court_keypoints",
-            "model",
-            "data",
-            "training",
-            "loss",
-            "tracking_metrics",
-            "run",
-        }
-        data = require_config_mapping(root, "data", path="configuration")
-        backend = cast("str", _value(data, "backend", str, path="data"))
-        if backend == "chunked":
-            allowed |= {
-                "generation",
-                "physics",
-                "rally",
-                "camera",
-                "targeted_velocity",
-                "generator",
-            }
-    else:
-        allowed = {
-            "paths",
-            "court_keypoints",
-            "model",
-            "data",
-            "training",
-            "loss",
-            "metrics",
-            "run",
-            "physics",
-            "rally",
-            "camera",
-            "targeted_velocity",
-            "generator",
-        }
+    allowed = {
+        "paths",
+        "court_keypoints",
+        "model",
+        "data",
+        "training",
+        "loss",
+        "metrics",
+        "run",
+        "physics",
+        "rally",
+        "camera",
+        "targeted_velocity",
+        "generator",
+        "generation",
+    }
     _exact(root, allowed, path="configuration")
-    court_keypoint_contract = parse_court_keypoint_contract(config)
-    if isinstance(
-        model,
-        TrackQueryReferenceModelConfig,
-    ):
-        if court_keypoint_contract.selector != "camera_view_v2":
-            raise SemanticConfigurationError(
-                "BLCS reference track-query models require "
-                "court_keypoints.selector='camera_view_v2'."
-            )
-        if model.target_frame_contract != court_keypoint_contract.target_frame_id:
-            raise SemanticConfigurationError(
-                "BLCS reference model target-frame and CourtKP20 contracts "
-                "must match exactly."
-            )
-    elif isinstance(model, TrackQueryModelConfig):
-        if court_keypoint_contract.selector != "physical_v1":
-            raise SemanticConfigurationError(
-                "Canonical BLCS track-query models require "
-                "court_keypoints.selector='physical_v1'; select an explicit "
-                "reference-v2 model for camera_view_v2."
-            )
+    parse_court_keypoint_contract(config)
     build_path_resolver(config)
     data = require_config_mapping(root, "data", path="configuration")
     backend = cast("str", _value(data, "backend", str, path="data"))
@@ -1979,19 +1490,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "seq_len_range",
         "augmentation",
     }
-    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
-        data_keys.update({"association", "lifecycle", "evaluation_reference_camera_id"})
-        lifecycle = require_config_mapping(data, "lifecycle", path="data")
-        _exact(
-            lifecycle,
-            {"pack_to_query_slots", "min_reuse_gap_frames"},
-            path="data.lifecycle",
-        )
-        association = ObservationTrackingConfig.from_mapping(
-            require_config_mapping(data, "association", path="data")
-        )
-    else:
-        data_keys.add("num_court_kp")
+    data_keys.add("num_court_kp")
     if backend == "chunked":
         data_keys |= {"generator_device", "chunk"}
         _value(data, "generator_device", str, path="data")
@@ -2031,30 +1530,8 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
                 raise SemanticConfigurationError(f"data.chunk.{key} must be positive.")
         validate_generator_sections(
             config,
-            include_generation=model.name in _TRACK_QUERY_MODEL_NAMES,
+            include_generation=True,
         )
-        if isinstance(
-            model,
-            (TrackQueryModelConfig, TrackQueryReferenceModelConfig),
-        ):
-            generation = require_config_mapping(
-                root, "generation", path="configuration"
-            )
-            if generation["mode"] != "multi_object":
-                raise SemanticConfigurationError(
-                    "Chunked BLCS tracking requires generation.mode='multi_object'."
-                )
-            timeline = require_config_mapping(generation, "timeline", path="generation")
-            if cast("int", timeline["max_concurrent"]) > model.num_queries:
-                raise SemanticConfigurationError(
-                    "generation.timeline.max_concurrent cannot exceed model.num_queries."
-                )
-            lifecycle_gap = cast("int", lifecycle["min_reuse_gap_frames"])
-            if cast("int", timeline["min_reuse_gap_frames"]) < lifecycle_gap:
-                raise SemanticConfigurationError(
-                    "generation.timeline.min_reuse_gap_frames cannot be smaller than "
-                    "data.lifecycle.min_reuse_gap_frames."
-                )
     if "camera_candidates" in data:
         data_keys.add("camera_candidates")
         candidates = camera_candidate_indices(data["camera_candidates"])
@@ -2063,16 +1540,6 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         ):
             raise SemanticConfigurationError(
                 "data.camera_candidates cannot provide num_views_range."
-            )
-    if model.name == "blcs_multiview_axial_reference":
-        data_keys.add("evaluation_reference_camera_id")
-        evaluation_reference = data.get("evaluation_reference_camera_id")
-        if (
-            not isinstance(evaluation_reference, str)
-            or not evaluation_reference.strip()
-        ):
-            raise SemanticConfigurationError(
-                "Axial reference requires evaluation_reference_camera_id."
             )
     _exact(data, data_keys, path="data")
     data_types: dict[str, type[object]] = {
@@ -2086,18 +1553,7 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
         "seq_len_range": list,
         "augmentation": dict,
     }
-    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
-        data_types["evaluation_reference_camera_id"] = str
     _validate_types(data, data_types, path="data")
-    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
-        evaluation_reference_camera_id = cast(
-            "str", data["evaluation_reference_camera_id"]
-        )
-        if not evaluation_reference_camera_id.strip():
-            raise SemanticConfigurationError(
-                "data.evaluation_reference_camera_id must be a non-empty stable "
-                "camera identity."
-            )
     if backend not in {"default", "chunked"}:
         raise SemanticConfigurationError("data.backend must be 'default' or 'chunked'.")
     if data["camera_mode"] not in {"random", "first"}:
@@ -2120,66 +1576,25 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             raise SemanticConfigurationError(
                 f"data.{name} must be a positive ordered range."
             )
-    if model.name == "blcs_multiview_axial_reference" and not (
-        3 <= num_views_range[0] <= num_views_range[1] <= 4
-    ):
-        raise SemanticConfigurationError("Axial reference requires 3 or 4 views.")
     batch_size = cast("int", data["batch_size"])
     num_workers = cast("int", data["num_workers"])
     if batch_size <= 0 or num_workers < 0:
         raise SemanticConfigurationError(
             "data.batch_size must be positive and data.num_workers non-negative."
         )
-    if (
-        isinstance(model, (SingleModelConfig, AxialModelConfig))
-        and seq_len_range[1] > model.max_seq_len
-    ):
+    if seq_len_range[1] > model.max_seq_len:
         raise SemanticConfigurationError(
             "data.seq_len_range cannot exceed model.max_seq_len."
         )
-    if (
-        isinstance(model, AxialModelConfig)
-        and num_views_range[1] > model.max_num_cameras
-    ):
+    if num_views_range[1] > model.max_num_cameras:
         raise SemanticConfigurationError(
             "data.num_views_range cannot exceed model.max_num_cameras."
         )
-    if isinstance(model, SingleModelConfig) and num_views_range != (1, 1):
+    num_court_kp = cast("int", _value(data, "num_court_kp", int, path="data"))
+    if num_court_kp <= 0 or num_court_kp != model.num_court_tokens:
         raise SemanticConfigurationError(
-            "Single-view BLCS models require data.num_views_range=[1, 1]."
+            "data.num_court_kp must be positive and equal model.num_court_tokens."
         )
-    if isinstance(model, _TRACK_QUERY_MODEL_CONFIG_TYPES):
-        _validate_types(
-            lifecycle,
-            {
-                "pack_to_query_slots": bool,
-                "min_reuse_gap_frames": int,
-            },
-            path="data.lifecycle",
-        )
-        if lifecycle["pack_to_query_slots"] is not True:
-            raise SemanticConfigurationError(
-                "BLCS track-query training requires "
-                "data.lifecycle.pack_to_query_slots=true."
-            )
-        if cast("int", lifecycle["min_reuse_gap_frames"]) < 0:
-            raise SemanticConfigurationError(
-                "data.lifecycle.min_reuse_gap_frames must be non-negative."
-            )
-        if association.min_common_keypoints != 1:
-            raise SemanticConfigurationError(
-                "BLCS point tracking requires data.association.min_common_keypoints=1."
-            )
-        if association.cost_reduction != "mean":
-            raise SemanticConfigurationError(
-                "BLCS point tracking requires data.association.cost_reduction='mean'."
-            )
-    else:
-        num_court_kp = cast("int", _value(data, "num_court_kp", int, path="data"))
-        if num_court_kp <= 0 or num_court_kp != model.num_court_tokens:
-            raise SemanticConfigurationError(
-                "data.num_court_kp must be positive and equal model.num_court_tokens."
-            )
     from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 
     augmentation = require_config_mapping(data, "augmentation", path="data")
@@ -2295,104 +1710,23 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
             cast("float", discriminator[key]),
             path=f"training.gan.discriminator.{key}",
         )
-    if model.name in _TRACK_QUERY_MODEL_NAMES:
-        loss = require_config_mapping(root, "loss", path="configuration")
-        _exact(
-            loss,
-            {
-                "position_weight",
-                "position_axis_weights",
-                "presence_weight",
-                "presence_inactive_weight",
-                "presence_active_weight",
-                "presence_transition_weight",
-                "transition_radius",
-                "smoothness_weight",
-                "gravity_weight",
-                "gravity_mps2",
-                "frame_dt_seconds",
-                "match_position_weight",
-                "match_presence_weight",
-            },
-            path="loss",
-        )
-        _validate_types(
-            loss,
-            {
-                "position_weight": float,
-                "position_axis_weights": list,
-                "presence_weight": float,
-                "presence_inactive_weight": float,
-                "presence_active_weight": float,
-                "presence_transition_weight": float,
-                "transition_radius": int,
-                "smoothness_weight": float,
-                "gravity_weight": float,
-                "gravity_mps2": float,
-                "frame_dt_seconds": float,
-                "match_position_weight": float,
-                "match_presence_weight": float,
-            },
-            path="loss",
-        )
-        for key in (
-            "position_weight",
-            "presence_weight",
-            "presence_inactive_weight",
-            "presence_active_weight",
-            "presence_transition_weight",
-            "smoothness_weight",
-            "gravity_weight",
-            "match_position_weight",
-            "match_presence_weight",
-        ):
-            _non_negative(cast("float", loss[key]), path=f"loss.{key}")
-        axis_weights = _numeric_sequence(
-            loss["position_axis_weights"],
-            path="loss.position_axis_weights",
-            length=3,
-        )
-        if any(weight <= 0.0 for weight in axis_weights):
-            raise SemanticConfigurationError(
-                "loss.position_axis_weights values must be positive."
-            )
-        if cast("int", loss["transition_radius"]) < 0:
-            raise SemanticConfigurationError(
-                "loss.transition_radius must be non-negative."
-            )
-        if (
-            cast("float", loss["match_position_weight"]) == 0.0
-            and cast("float", loss["match_presence_weight"]) == 0.0
-        ):
-            raise SemanticConfigurationError(
-                "At least one tracking match cost weight must be positive."
-            )
-        _positive(cast("float", loss["gravity_mps2"]), path="loss.gravity_mps2")
-        _positive(
-            cast("float", loss["frame_dt_seconds"]),
-            path="loss.frame_dt_seconds",
-        )
-        TrackingMetricConfig.from_mapping(
-            require_config_mapping(root, "tracking_metrics", path="configuration")
-        )
-    else:
-        _validate_standard_loss_config(
-            require_config_mapping(root, "loss", path="configuration")
-        )
-        metrics = require_config_mapping(root, "metrics", path="configuration")
-        _exact(
-            metrics,
-            {"position_threshold_m", "endpoint_threshold_m"},
-            path="metrics",
-        )
-        _validate_types(
-            metrics,
-            {"position_threshold_m": float, "endpoint_threshold_m": float},
-            path="metrics",
-        )
-        for key in ("position_threshold_m", "endpoint_threshold_m"):
-            _positive(cast("float", metrics[key]), path=f"metrics.{key}")
-        validate_generator_sections(config, include_generation=False)
+    _validate_standard_loss_config(
+        require_config_mapping(root, "loss", path="configuration")
+    )
+    metrics = require_config_mapping(root, "metrics", path="configuration")
+    _exact(
+        metrics,
+        {"position_threshold_m", "endpoint_threshold_m"},
+        path="metrics",
+    )
+    _validate_types(
+        metrics,
+        {"position_threshold_m": float, "endpoint_threshold_m": float},
+        path="metrics",
+    )
+    for key in ("position_threshold_m", "endpoint_threshold_m"):
+        _positive(cast("float", metrics[key]), path=f"metrics.{key}")
+    validate_generator_sections(config, include_generation=False)
     return model
 
 
@@ -2646,11 +1980,6 @@ __all__ = [
     "GenerationRunConfig",
     "PreviewConfig",
     "QualitativeRenderingConfig",
-    "SingleModelConfig",
-    "TrackQueryCSWAConfig",
-    "TrackQueryMHCConfig",
-    "TrackQueryModelConfig",
-    "TrackQueryReferenceModelConfig",
     "build_path_resolver",
     "parse_court_keypoint_contract",
     "parse_generation_run",

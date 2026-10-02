@@ -38,9 +38,9 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 ## パスと注意点
 
-- `--data-root`は**`data`**です。TennisCourtDetectorは`data/court`、合成データは`data/synthetic_data_generation/scenes`から解決します。
+- `--data-root`は**`data`**です。TennisCourtDetectorは`data/court_detection/tennis_court_detector-v1`、合成データは`data/synthetic_data_generation/scenes`から解決します。
 - 必須configや`target_bundle_state`がない旧checkpointは非対応理由を表示します。
-- GTマスクが未生成・古い場合は、そのレイヤーだけ警告になります。更新後は画面右上でカタログを再読み込みします。
+- GTマスクはKPからオンザフライ生成します。datasetを更新した場合はカタログを再読み込みします。
 - 別の保存先を使う場合は各root引数を実際の絶対パスに置き換えます。
 - ポートが使用中なら`--port`を空き番号へ変更し、その番号のURLを開きます。終了はCtrl+Cです。
 

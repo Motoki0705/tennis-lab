@@ -12,17 +12,13 @@
 - `data/source=synthetic_court_v1`: `schema: v1`を明示したcanonical v1回帰source。physical pointを7 semantic multi-peak channelへまとめます。
 - `data/processing=kp|seg|line|semantic_line|kp_seg|kp_line|seg_line|all`: 選択したtargetを同じ幾何変換で生成します。`all`が4-head構成です。
 
-Synthetic schema v2/v3では`data.source.court_scope=target_court`を既定とし、sampleの`target_court.binding.court_instance_id`とexact matchする1面だけを4つのdense教師で共有します。`all_courts`を明示するとKP channelとcourt instance inventoryの両方が全accepted courtを保持しますが、現行のsingle-court dense schemaではmaterializationを拒否します。scopeはderived target pathとsource geometry digestにも含まれるため、旧all-court maskをsingle-court教師として再利用しません。target bindingを持たないv1で`target_court`を指定した場合はtyped configuration validationで拒否されます。
+Synthetic schema v2/v3では`data.source.court_scope=target_court`を既定とし、sampleの`target_court.binding.court_instance_id`とexact matchする1面だけを4つのdense教師で共有します。`all_courts`を明示するとKP channelとcourt instance inventoryの両方が全accepted courtを保持しますが、現行のsingle-court dense schemaでは複数コートからのdense生成を拒否します。scopeはsource geometry digestにも含まれます。target bindingを持たないv1で`target_court`を指定した場合はtyped configuration validationで拒否されます。
 
-source固有のmanifest・annotation・path解決は `data/inputs/`、target固有の構築は `data/processing/targets.py` が所有します。`data/processing/geometry.py` はRGBと全targetに適用する幾何変換をsampleごとに一度だけ決定します。seg/line/semantic_lineはDataset内で生成せず、`data/target_generation/` で事前生成します。
+source固有のmanifest・annotation・path解決は `data/inputs/`、target固有の構築は `data/processing/targets.py` が所有します。`data/processing/geometry.py` はRGBと全targetに適用する幾何変換をsampleごとに一度だけ決定します。seg/line/semantic_lineは`data/target_generation/online.py`で、augmentation後の学習解像度へオンザフライ生成します。元画像pixelのKP14から推定したHを幾何変換し、全dense headで共有します。画面外KPの座標と可視性は分けて保持し、元画像外・paddingには教師を外挿しません。
 
 TennisCourtDetector presetは、14点中8点しか一意でなくcourt planeを構成できない`QszoUKyCOHo_600`を`excluded_sample_ids`で明示的にquarantineします。設定したIDがannotation内のちょうど1件に一致しなければsource初期化時に停止するため、データ更新後も古い除外を静かに引き継ぎません。
 
 ```bash
-# categorical/binaryのdense targetをsource外のderived storeへ生成
-python -m src.tasks.court_detection.scripts.materialize_targets \
-  data/source=tennis_court_detector data/processing=all
-
 # synthetic sourceの4-head学習
 python -m src.tasks.court_detection.scripts.train \
   data/source=synthetic_court data/processing=all \
@@ -33,19 +29,23 @@ python -m src.tasks.court_detection.scripts.train \
   data/source=synthetic_court data.source.court_scope=target_court \
   data/processing=kp
 
-# legacy synthetic v2のdense targetを学習前にsource外へ事前生成
-python -m src.tasks.court_detection.scripts.materialize_targets \
-  data/source=synthetic_court_v2 data/processing=seg_line
-
 # KP-only DINOv3 + DPT + LoRA
 python -m src.tasks.court_detection.scripts.train \
   data/source=synthetic_court data/processing=kp \
   model/encoder=dinov3 model/decoder=dpt training=lora
 ```
 
-`synthetic_court`の`dataset.json`やsample fileはmaterializationで変更しません。生成物はsource root外の `data.processing.derived_target_root` 以下へ、source kind・sample key・target schemaを含む安定pathで保存します。Dataset/DataModuleはmaskを生成せず、requested dense targetのPNG・provenance metadata・digestが欠落またはstaleならDataLoader worker起動前に停止します。
+学習入力はJPEG shardと疎なKPラベルです。TennisCourtDetectorは
+`data/court_detection/tennis_court_detector-v1/`、Syntheticは各sceneの既存
+`datasets/court/` ownerを使用します。後者の保存契約は
+[Synthetic Court](../../synthetic_data_generation/dataset/court/README.md#jpeg-shard-publication)
+を参照してください。TennisCourtDetectorも既存JPEGを再圧縮せずshardへ収容し、
+KP14・split・注釈metricを圧縮indexへ保存します。PNG入力は品質95のJPEGへ変換します。
+dense PNGを保存せず、
+学習時もreview時も同じgeometryと物理線幅から生成します。旧マスクの読み込みへの
+fallbackはありません。checkpointのdense target specは`precomputed=false`になります。
 
-Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は [`src/synthetic_data_generation/dataset/court/README.md`](../../synthetic_data_generation/dataset/court/README.md) です。このREADMEではconsumer設定、事前生成、学習手順だけを管理します。
+Synthetic schema v1/v2/v3の生成・publication・semantic contractの正本は [`src/synthetic_data_generation/dataset/court/README.md`](../../synthetic_data_generation/dataset/court/README.md) です。このREADMEではconsumer設定、オンザフライ教師生成、学習手順だけを管理します。
 
 ## Model and runtime
 
@@ -77,7 +77,7 @@ checkpoint本体・保存architectureは変更しない。新配置の資産が�
 | 既定でb863を使う入口 | 領域探索 | 理由 |
 |---|---|---|
 | `tennis_scene` の `court_detection`（`court_kp.region_search.enabled: true`） | 使う（各cameraのframe 0） | 固定カメラの広角映像ではコートが画像の一部で、画像全体の推論はMeiji cam0で校正に失敗する（[region search記録](../../../knowledge/nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)） |
-| `configs/visualization/{kp,line,seg}.yaml` | 使わない | 入力はコート中心の静止画（`court/images`）で、raw headを画像全体について描画する |
+| `configs/visualization/{kp,line,seg}.yaml` | 使わない | 入力はコート中心の静止画（TennisCourtDetectorのJPEG store）で、raw headを画像全体について描画する |
 | `synthetic_data_generation` の `alignment.evidence.line_model` | 使わない | 合成動画のraw LINE確率だけを使い、KP・Hを推定しない |
 
 領域探索を使うかは各入口の設定・コードが明示し、失敗時に画像全体の推論へ切り替えません。
@@ -143,7 +143,6 @@ Synthetic V3の座標・camera authority・KP semanticの定義は、このconsu
 ## Utilities and scripts
 
 - `src/utils/data/heatmaps.py`: single-peakとall-court multi-peakを共通に扱うdomain-neutral Gaussian heatmap utility。
-- `scripts/materialize_targets.py`: source-neutralなseg/line/semantic-line offline materialization。
 - `scripts/preview_heatmaps.py`: configured sourceのKP channel/visibilityを使うheatmap preview。
 - `scripts/preview_augmentation.py`: 選択target全部を共有geometry上で確認するaugmentation preview。
 - `scripts/train.py`: Hydra学習entry point。
@@ -167,7 +166,7 @@ python -m src.tasks.court_detection.scripts.preview_augmentation \
   preview.split=train preview.max_samples=4
 ```
 
-KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行single-court LINE schema `court_line_binary_75mm_150mm_single_court_v3` は通常線7.5 cm、baseline 15 cmです。semantic schemaは同じ物理幅を使い、`background / far・near baseline / left・right doubles sideline / left・right singles sideline / far・near service line / center service line / far・near center mark`のcamera-view 12クラスです。交点は生成順で一意に上書きし、水平反転時は左右sideline classだけを交換します。旧all-court schema `court_line_binary_75mm_150mm_v2` と旧5 cm / 10 cm schema `court_line_binary_v1` は別schemaとしてのみ読み取り可能で、現行教師とderived target pathを共有しません。SEGも現行`court_cell_segmentation_single_court_v2`と旧all-court `court_cell_segmentation_v1`を区別します。
+KP Gaussianの `sigma_ratio` は画像対角長に対するsigmaで、学習値は `data.processing.targets` のKP entryが所有します。既定 `0.01` は256x256でsigma約3.62 px、FWHM直径約8.53 pxです。現行single-court LINE schema `court_line_binary_75mm_150mm_single_court_v3` は通常線7.5 cm、baseline 15 cmです。semantic schemaは同じ物理幅を使い、`background / far・near baseline / left・right doubles sideline / left・right singles sideline / far・near service line / center service line / far・near center mark`のcamera-view 12クラスです。交点は生成順で一意に上書きし、水平反転時は左右sideline classだけを交換します。旧all-court schema `court_line_binary_75mm_150mm_v2` と旧5 cm / 10 cm schema `court_line_binary_v1` は別schemaとして扱い、現行教師とは物理線幅の契約を区別します。SEGも現行`court_cell_segmentation_single_court_v2`と旧all-court `court_cell_segmentation_v1`を区別します。
 
 KP metricは教師のpoint capacityが1なら各channelの有効画像領域に対してglobal argmaxを1点だけ抽出します。旧all-court形式の`P>1`教師だけがmulti-peak NMSを使用し、この選択はpose lossやLoRAの有無には依存しません。
 
@@ -233,10 +232,8 @@ source契約とcheckpoint互換契約だけを管理します。
 ### GT表示とlayerの扱い
 
 GTは`kp`/`seg`/`line`/`semantic_line`をoriginal image pixelの座標・解像度で返します。
-dense layerは`data/court_detection/derived_targets/`の事前生成物をcanonical builder経由で
-読み、provenance metadataとdigestを検証します。欠落・stale・別sourceのmaskはそのlayerだけを
-理由付きでwarningにし、KP/RGBのreviewは継続します。検証に失敗したmaskを代替表示することは
-ありません。2Dラベルから未観測の3Dコートやcamera poseを構成しません。
+dense layerは保存されたKP geometryからcanonical builder経由で生成します。
+shard/indexの破損や幾何契約の不一致は理由付きで拒否します。2Dラベルから未観測の3Dコートやcamera poseを構成しません。
 
 ### checkpoint互換契約
 
@@ -266,7 +263,6 @@ original pixel・original解像度で重ねます。metricsは教師schemaが一
 .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection/visualization
 ```
 
-fixtureでcanonical source契約（syntheticのschema解決、除外sample、derived provenanceの
-missing/stale、traversal拒否）、checkpoint互換（bundle無し・不正bundle・古いconfig・stale
+fixtureでcanonical source契約（syntheticのschema解決、除外sample、online target生成、traversal拒否）、checkpoint互換（bundle無し・不正bundle・古いconfig・stale
 sidecar・root外symlink拒否）、original pixel/mask size、mock inferenceの応答契約を検証します。
 `local_data`マークの2件は実データ（TennisCourtDetectorとSynthetic B00）のGT smokeです。
