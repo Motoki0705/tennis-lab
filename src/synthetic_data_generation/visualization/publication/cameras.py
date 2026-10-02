@@ -12,12 +12,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
-from src.synthetic_data_generation.dataset.blcs.assembler import (
-    validate_blcs_dataset_envelope,
-)
-from src.synthetic_data_generation.dataset.blcs.contracts import BLCS_DATASET_SCHEMA
-from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
-from src.synthetic_data_generation.dataset.plcs.validation import validate_plcs_dataset
 from src.synthetic_data_generation.reconstruction.scene_export import (
     NHT_CAMERAS_SCHEMA,
     validate_standard_scene_export,
@@ -43,8 +37,8 @@ class PublicationCameraCollection:
     camera_to_metric_scene: NDArray[np.float64]
 
     def __post_init__(self) -> None:
-        if self.owner not in {"reconstruction", "blcs", "plcs"}:
-            raise ValueError("Camera owner must be reconstruction, blcs, or plcs.")
+        if self.owner not in {"reconstruction"}:
+            raise ValueError("Camera owner must be reconstruction.")
         if not self.schema or not self.scene_id:
             raise ValueError("Camera schema and scene_id must be non-empty.")
         cameras = tuple(self.cameras)
@@ -117,206 +111,6 @@ def load_captured_cameras(
         camera_ids=tuple(camera_ids),
         cameras=export.cameras,
         camera_to_metric_scene=transforms,
-    )
-
-
-def load_blcs_cameras(
-    root: Path,
-    *,
-    scene_id: str,
-    logical_scene_id: str,
-    camera_ids: tuple[str, ...],
-) -> PublicationCameraCollection:
-    """Load the canonical nested BLCS trajectory-plan camera schema exactly."""
-    validate_blcs_dataset_envelope(root)
-    manifest = _exact(
-        _load_json(root / "dataset.json"),
-        name="BLCS dataset",
-        keys={
-            "schema",
-            "scene_id",
-            "domain",
-            "frame_inventory",
-            "target_courts",
-            "metadata",
-            "diagnostics",
-            "performance",
-            "trajectories",
-            "samples",
-        },
-    )
-    if (
-        manifest["schema"] != BLCS_DATASET_SCHEMA
-        or manifest["domain"] != "blcs"
-        or manifest["scene_id"] != scene_id
-    ):
-        raise ValueError("BLCS owner schema/domain/scene identity is inconsistent.")
-    trajectories = tuple(
-        _exact(
-            value,
-            name="BLCS trajectory",
-            keys={
-                "trajectory_id",
-                "split",
-                "source_frame_count",
-                "global_frame_offset",
-                "frame_inventory",
-                "target_court",
-                "candidate_id",
-                "transform",
-                "camera_profile",
-                "camera_seed",
-                "camera_ids",
-                "attempt_token",
-                "chunk_count",
-                "chunk_directories",
-                "background_store",
-                "plan_json",
-                "plan_npz",
-            },
-        )
-        for value in _sequence(manifest["trajectories"], name="BLCS trajectories")
-    )
-    matching = tuple(
-        value for value in trajectories if value["trajectory_id"] == logical_scene_id
-    )
-    if len(matching) != 1:
-        raise KeyError(f"Unknown BLCS logical scene: {logical_scene_id!r}.")
-    trajectory = matching[0]
-    declared_ids = tuple(
-        _text(value, name="BLCS camera_id")
-        for value in _sequence(trajectory["camera_ids"], name="BLCS camera_ids")
-    )
-    if declared_ids != tuple(camera_ids):
-        raise ValueError(
-            "blcs_camera_ids differ from the complete canonical camera order."
-        )
-    plan_path = _contained_file(
-        root, _text(trajectory["plan_json"], name="BLCS plan_json")
-    )
-    plan = _exact(
-        _load_json(plan_path),
-        name="BLCS plan",
-        keys={
-            "trajectory_id",
-            "split",
-            "fps",
-            "source_frame_count",
-            "global_frame_offset",
-            "global_frame_indices",
-            "tracks",
-            "target_court",
-            "camera_profile",
-            "camera_seed",
-            "cameras",
-            "chunks",
-            "composition",
-            "source_metadata",
-        },
-    )
-    if plan["trajectory_id"] != logical_scene_id:
-        raise ValueError("BLCS plan identity differs from the requested logical scene.")
-    cameras = _nested_scene_cameras(plan["cameras"], name="BLCS plan cameras")
-    if tuple(item.camera_id for item in cameras) != declared_ids:
-        raise ValueError("BLCS plan and owner camera order differs.")
-    return PublicationCameraCollection(
-        owner="blcs",
-        schema=BLCS_DATASET_SCHEMA,
-        scene_id=scene_id,
-        logical_scene_id=logical_scene_id,
-        camera_ids=declared_ids,
-        cameras=cameras,
-        camera_to_metric_scene=np.stack(
-            [item.camera_to_scene.matrix() for item in cameras]
-        ),
-    )
-
-
-def load_plcs_cameras(
-    root: Path,
-    *,
-    scene_id: str,
-    logical_scene_id: str,
-    camera_ids: tuple[str, ...],
-) -> PublicationCameraCollection:
-    """Load the canonical nested PLCS logical-scene camera schema exactly."""
-    validate_plcs_dataset(root)
-    manifest = _exact(
-        _load_json(root / "dataset.json"),
-        name="PLCS dataset",
-        keys={
-            "schema",
-            "scene_id",
-            "domain",
-            "frame_inventory",
-            "target_courts",
-            "metadata",
-            "diagnostics",
-            "storage",
-        },
-    )
-    if (
-        manifest["schema"] != PLCS_DATASET_SCHEMA
-        or manifest["domain"] != "plcs"
-        or manifest["scene_id"] != scene_id
-    ):
-        raise ValueError("PLCS owner schema/domain/scene identity is inconsistent.")
-    metadata = _exact(
-        manifest["metadata"],
-        name="PLCS metadata",
-        keys={
-            "coordinate_contract",
-            "court_coordinate_normalization",
-            "seed",
-            "logical_scene_count",
-            "aggregate_global_frame_count",
-            "aggregate_source_frame_count",
-            "required_motion_categories",
-            "accepted_court_instance_ids",
-            "logical_scenes",
-        },
-    )
-    logical_scenes = tuple(
-        _exact(
-            value,
-            name="PLCS logical scene",
-            keys={
-                "scene_id",
-                "split",
-                "aggregate_frame_offset",
-                "frame_inventory",
-                "mode",
-                "target_court",
-                "camera_profile",
-                "cameras",
-                "motion_sources",
-                "tracks",
-                "continuity",
-            },
-        )
-        for value in _sequence(metadata["logical_scenes"], name="PLCS logical_scenes")
-    )
-    matching = tuple(
-        value for value in logical_scenes if value["scene_id"] == logical_scene_id
-    )
-    if len(matching) != 1:
-        raise KeyError(f"Unknown PLCS logical scene: {logical_scene_id!r}.")
-    cameras = _nested_scene_cameras(matching[0]["cameras"], name="PLCS cameras")
-    declared_ids = tuple(item.camera_id for item in cameras)
-    if declared_ids != tuple(camera_ids):
-        raise ValueError(
-            "plcs_camera_ids differ from the complete canonical camera order."
-        )
-    return PublicationCameraCollection(
-        owner="plcs",
-        schema=PLCS_DATASET_SCHEMA,
-        scene_id=scene_id,
-        logical_scene_id=logical_scene_id,
-        camera_ids=declared_ids,
-        cameras=cameras,
-        camera_to_metric_scene=np.stack(
-            [item.camera_to_scene.matrix() for item in cameras]
-        ),
     )
 
 
@@ -398,7 +192,5 @@ def _text(value: object, *, name: str) -> str:
 __all__ = [
     "METRIC_CAMERA_COORDINATE_CONVENTION",
     "PublicationCameraCollection",
-    "load_blcs_cameras",
     "load_captured_cameras",
-    "load_plcs_cameras",
 ]

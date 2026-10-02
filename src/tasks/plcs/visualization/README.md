@@ -12,7 +12,7 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
   --port 8772
 ```
 
-[閲覧UIを開く](http://127.0.0.1:8772)。左の形式・シーンを選択すると、checkpoint・GPUなしでGTが表示されます。single/multi × 通常/broadcast/camera_view_v2の6形式に対応します。
+[閲覧UIを開く](http://127.0.0.1:8772)。左の形式・シーンを選択すると、checkpoint・GPUなしでGTが表示されます。対象はphysical_v1のsingle_objectです。
 
 ## 推論
 

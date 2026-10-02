@@ -35,8 +35,7 @@ from src.utils.schema.court import (
 )
 
 CAMERA_COVERAGE_METRIC_SCHEMA = "publication_camera_coverage_v2"
-CAMERA_RIG_COMPARISON_METRIC_SCHEMA = "publication_camera_rig_comparison_v1"
-OVERVIEW_LAYOUT_SCHEMA = "publication_overview_layout_v1"
+OVERVIEW_LAYOUT_SCHEMA = "publication_overview_layout_v2"
 _BLUE = "#0072B2"
 _ORANGE = "#D55E00"
 _GREEN = "#009E73"
@@ -107,101 +106,6 @@ def camera_render_indices(
         (2 * index * numerator_scale + denominator) // (2 * denominator)
         for index in range(rendered_count)
     )
-
-
-def camera_rig_comparison_metrics(
-    blcs: PublicationCameraCollection,
-    plcs: PublicationCameraCollection,
-    *,
-    centre_tolerance_metres: float,
-    forward_angle_tolerance_degrees: float,
-) -> Mapping[str, object]:
-    """Compare strict ordered-ID static poses without changing either pose."""
-    _validate_rendering_semantics(blcs, CameraRenderingSemantics.STATIC_RIG)
-    _validate_rendering_semantics(plcs, CameraRenderingSemantics.STATIC_RIG)
-    if blcs.camera_ids != plcs.camera_ids:
-        raise ValueError(
-            "BLCS/PLCS comparison requires identical ordered camera IDs for pose matching."
-        )
-    for value, name, maximum in (
-        (centre_tolerance_metres, "centre_tolerance_metres", 1.0),
-        (
-            forward_angle_tolerance_degrees,
-            "forward_angle_tolerance_degrees",
-            180.0,
-        ),
-    ):
-        if (
-            isinstance(value, bool)
-            or not isinstance(value, (int, float))
-            or not np.isfinite(float(value))
-            or not 0.0 < float(value) <= maximum
-        ):
-            raise ValueError(f"{name} must be finite and lie in (0, {maximum}].")
-    blcs_poses = blcs.camera_to_metric_scene
-    plcs_poses = plcs.camera_to_metric_scene
-    centre_distances = np.linalg.norm(
-        blcs_poses[:, :3, 3] - plcs_poses[:, :3, 3], axis=1
-    )
-    blcs_forward = blcs_poses[:, :3, 2]
-    plcs_forward = plcs_poses[:, :3, 2]
-    forward_angles = camera_forward_angle_differences_degrees(
-        blcs_forward, plcs_forward
-    )
-    coincident = (centre_distances <= float(centre_tolerance_metres)) & (
-        forward_angles <= float(forward_angle_tolerance_degrees)
-    )
-    coincident_count = int(np.count_nonzero(coincident))
-    camera_count = len(blcs.camera_ids)
-    return {
-        "schema": CAMERA_RIG_COMPARISON_METRIC_SCHEMA,
-        "pose_matching": "strict_ordered_camera_id",
-        "camera_count": camera_count,
-        "coincident_camera_count": coincident_count,
-        "coincident_camera_fraction": float(coincident_count / camera_count),
-        "maximum_centre_distance_metres": float(np.max(centre_distances)),
-        "maximum_forward_angle_difference_degrees": float(np.max(forward_angles)),
-        "centre_tolerance_metres": float(centre_tolerance_metres),
-        "forward_angle_tolerance_degrees": float(forward_angle_tolerance_degrees),
-    }
-
-
-def camera_forward_angle_differences_degrees(
-    first: NDArray[np.float64],
-    second: NDArray[np.float64],
-) -> NDArray[np.float64]:
-    """Return stable row-wise angles for finite non-zero forward vectors."""
-    first_array = np.asarray(first, dtype=np.float64)
-    second_array = np.asarray(second, dtype=np.float64)
-    if (
-        first_array.ndim != 2
-        or first_array.shape[1:] != (3,)
-        or first_array.shape != second_array.shape
-        or len(first_array) == 0
-    ):
-        raise ValueError("Forward vectors must be matching non-empty (N, 3) arrays.")
-    if not np.isfinite(first_array).all() or not np.isfinite(second_array).all():
-        raise ValueError("Forward vectors must contain only finite values.")
-    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
-        first_norms = np.linalg.norm(first_array, axis=1)
-        second_norms = np.linalg.norm(second_array, axis=1)
-    if (
-        not np.isfinite(first_norms).all()
-        or not np.isfinite(second_norms).all()
-        or np.any(first_norms <= 0.0)
-        or np.any(second_norms <= 0.0)
-    ):
-        raise ValueError("Forward vectors must have finite positive norms.")
-    identical = np.all(first_array == second_array, axis=1)
-    first_unit = first_array / first_norms[:, None]
-    second_unit = second_array / second_norms[:, None]
-    cross_norms = np.linalg.norm(np.cross(first_unit, second_unit), axis=1)
-    dots = np.clip(np.sum(first_unit * second_unit, axis=1), -1.0, 1.0)
-    angles = np.degrees(np.arctan2(cross_norms, dots))
-    if not np.isfinite(angles).all():
-        raise ValueError("Forward-angle computation produced a non-finite result.")
-    angles[identical] = 0.0
-    return angles
 
 
 def render_camera_figure(
@@ -299,116 +203,10 @@ def render_camera_figure(
     _save_canvas_png(canvas, output, size=size)
 
 
-def render_camera_comparison_figure(
-    blcs: PublicationCameraCollection,
-    plcs: PublicationCameraCollection,
-    layout: MultiCourtLayout,
-    output: Path,
-    *,
-    size: tuple[int, int],
-    frustum_depth_metres: float,
-    line_width: float,
-    font_size: int,
-    centre_tolerance_metres: float,
-    forward_angle_tolerance_degrees: float,
-) -> Mapping[str, object]:
-    """Render BLCS and PLCS camera geometries on one shared metric axis."""
-    comparison_metrics = camera_rig_comparison_metrics(
-        blcs,
-        plcs,
-        centre_tolerance_metres=centre_tolerance_metres,
-        forward_angle_tolerance_degrees=forward_angle_tolerance_degrees,
-    )
-    figure = Figure(figsize=(size[0] / 100.0, size[1] / 100.0), dpi=100)
-    canvas = FigureCanvasAgg(figure)
-    axis = figure.add_subplot(1, 1, 1, projection="3d")
-    court_segments = _metric_court_segments(layout)
-    axis.add_collection3d(
-        Line3DCollection(court_segments, colors=_BLACK, linewidths=line_width + 0.7)
-    )
-    all_points = [court_segments.reshape(-1, 3)]
-    for collection, color, label, line_style, marker in (
-        (blcs, _BLUE, "BLCS", "solid", "o"),
-        (plcs, _MAGENTA, "PLCS", "dashed", "x"),
-    ):
-        frusta = camera_coverage_segments(
-            collection.intrinsics,
-            collection.image_sizes,
-            collection.camera_to_metric_scene,
-            depth=frustum_depth_metres,
-        )
-        directions = camera_view_direction_segments(
-            collection.camera_to_metric_scene,
-            length=frustum_depth_metres * 0.65,
-        )
-        centres = camera_trajectory_points(collection.camera_to_metric_scene)
-        all_points.extend((frusta.reshape(-1, 3), centres))
-        axis.add_collection3d(
-            Line3DCollection(
-                frusta.reshape(-1, 2, 3),
-                colors=color,
-                linewidths=line_width,
-                alpha=0.55,
-                linestyles=line_style,
-            )
-        )
-        axis.add_collection3d(
-            Line3DCollection(
-                directions,
-                colors=color,
-                linewidths=line_width + 0.2,
-                linestyles=line_style,
-            )
-        )
-        axis.scatter(
-            centres[:, 0],
-            centres[:, 1],
-            centres[:, 2],
-            c=color,
-            s=26,
-            label=f"{label} ({len(collection.camera_ids)} cameras)",
-            depthshade=False,
-            marker=marker,
-        )
-    _set_metric_3d_bounds(axis, np.concatenate(all_points))
-    axis.set_title(
-        "BLCS vs PLCS static camera rigs — shared metric scene / OpenCV axes",
-        fontsize=font_size + 2,
-    )
-    axis.set_xlabel("scene x (m)", fontsize=font_size)
-    axis.set_ylabel("scene y (m)", fontsize=font_size)
-    axis.set_zlabel("scene z (m)", fontsize=font_size)
-    axis.legend(loc="upper left", fontsize=font_size)
-    coincident_count = _integer_metric(comparison_metrics, "coincident_camera_count")
-    camera_count = _integer_metric(comparison_metrics, "camera_count")
-    maximum_centre_distance = _numeric_metric(
-        comparison_metrics, "maximum_centre_distance_metres"
-    )
-    maximum_forward_angle = _numeric_metric(
-        comparison_metrics, "maximum_forward_angle_difference_degrees"
-    )
-    axis.text2D(
-        0.02,
-        0.02,
-        f"{coincident_count}/{camera_count} coincident "
-        f"(centre <= {centre_tolerance_metres:g} m; "
-        f"forward angle <= {forward_angle_tolerance_degrees:g} deg)\n"
-        f"max centre distance {maximum_centre_distance:.6g} m; "
-        f"max forward-angle difference {maximum_forward_angle:.6g} deg",
-        transform=axis.transAxes,
-        fontsize=max(6, font_size - 1),
-        color=_BLACK,
-    )
-    axis.view_init(elev=28, azim=-55)
-    figure.subplots_adjust(left=0.02, right=0.96, bottom=0.03, top=0.91)
-    _save_canvas_png(canvas, output, size=size)
-    return comparison_metrics
-
-
 def overview_panel_bounds(
     size: tuple[int, int],
 ) -> tuple[tuple[str, tuple[int, int, int, int]], ...]:
-    """Return the fixed six-panel pixel bounds, all strictly within the canvas."""
+    """Return the fixed three-panel pixel bounds, all strictly within the canvas."""
     width, height = size
     if width < 600 or height < 400:
         raise ValueError("Overview size must be at least 600x400 pixels.")
@@ -418,15 +216,8 @@ def overview_panel_bounds(
     footer = max(58, height // 11)
     gap_y = max(12, height // 80)
     panel_width = (width - 2 * margin_x - 2 * gap_x) // 3
-    panel_height = (height - header - footer - gap_y) // 2
-    labels = (
-        "Court dataset",
-        "BLCS dataset",
-        "PLCS dataset",
-        "Alignment evidence",
-        "Captured cameras",
-        "BLCS / PLCS cameras",
-    )
+    panel_height = height - header - footer
+    labels = ("Court dataset", "Alignment evidence", "Captured cameras")
     bounds: list[tuple[str, tuple[int, int, int, int]]] = []
     for index, label in enumerate(labels):
         row, column = divmod(index, 3)
@@ -461,11 +252,8 @@ def render_publication_overview(
         raise FileExistsError(f"Publication staging artifact already exists: {output}")
     panel_sources = (
         bundle_root / "dataset-court.gif",
-        bundle_root / "dataset-blcs.gif",
-        bundle_root / "dataset-plcs.gif",
         bundle_root / "alignment-heatmap-court.png",
         bundle_root / "captured-camera-trajectory.png",
-        bundle_root / "camera-layout-comparison.png",
     )
     if any(path.is_symlink() or not path.is_file() for path in panel_sources):
         raise FileNotFoundError("Overview requires every upstream rendered panel.")
@@ -517,8 +305,6 @@ def render_publication_overview(
         f"{_numeric_metric(alignment_metrics, 'projected_evidence_nearest_court_q95_metres'):.3f} m.  "
         "Cameras: captured "
         f"{_integer_metric(camera_metrics['reconstruction'], 'camera_count')}, "
-        f"BLCS {_integer_metric(camera_metrics['blcs'], 'camera_count')}, "
-        f"PLCS {_integer_metric(camera_metrics['plcs'], 'camera_count')}."
     )
     metric_bbox = draw.textbbox((0, 0), metric_line, font=metric_font)
     if metric_bbox[2] > size[0] - 24:
@@ -651,14 +437,10 @@ def _save_canvas_png(
 
 __all__ = [
     "CAMERA_COVERAGE_METRIC_SCHEMA",
-    "CAMERA_RIG_COMPARISON_METRIC_SCHEMA",
     "OVERVIEW_LAYOUT_SCHEMA",
     "camera_collection_metrics",
-    "camera_forward_angle_differences_degrees",
     "camera_render_indices",
-    "camera_rig_comparison_metrics",
     "overview_panel_bounds",
-    "render_camera_comparison_figure",
     "render_camera_figure",
     "render_publication_overview",
 ]

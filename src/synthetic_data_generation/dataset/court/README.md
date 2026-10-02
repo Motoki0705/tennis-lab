@@ -8,55 +8,45 @@ authority for the camera-view KP14 semantics and their migration policy.
 
 See [Court Review](review/README.md) for the local 3D trajectory and image-label browser.
 
-## Lossless storage publication and compaction
+## JPEG shard publication
 
-The geometric/label schemas remain v1/v2/v3. A manifest array path explicitly
-selects either the original `.npy` storage or `.f32.npz`
-(`float32_byte_planes_v1`). The latter preserves every float32 bit using byte
-shuffling plus DEFLATE; it is not float16 or uint8 quantization. Codec, shape,
-byte-plane layout and decoded SHA-256 are checked. Header-only validation reads
-archive metadata and the payload header; full validation decodes and checks all
-pixels. There is no filename guessing or substitute-image fallback.
+Generation evaluates the original renderer RGB, alpha and depth before accepting
+samples. The assembler then publishes RGB as JPEG quality 95 (using exactly
+`np.round(rgb * 255).astype(np.uint8)`), with the original dimensions. Alpha,
+depth and duplicate preview images are not retained after the generation gates.
+No renderer runs during training.
 
-`dataset/court/storage.py` creates a disjoint compact owner, keeps source data
-intact, checks every restored array, updates the publication byte evidence, and
-runs the complete canonical validator before atomically publishing. RGB/alpha
-PNGs and the existing label/diagnostic contracts are retained. An interrupted
-attempt stays under a marked sibling staging path; `--resume` requires the exact
-source-manifest fingerprint and rechecks all reused arrays. The ordinary scene
-writer lock protects the source during migration.
+The fixed owner still contains `dataset.json`, `samples/` and `diagnostics/`.
+`dataset.json` explicitly declares `court_image_store_v1` and the unchanged
+v1/v2/v3 geometry schema. `samples/shards/*.bin` concatenate independent JPEGs;
+`samples/index.npz` stores byte offsets, lengths,
+checksums and losslessly compressed sparse JSON records. KP coordinates, physical
+IDs, geometry/renderer visibility, camera intrinsics and pose, target binding,
+trajectory groups, splits and generation QA results remain authoritative there.
+There is one copy of each sparse sample record, rather than separate copies in
+both a manifest and per-image labels. The index is pickle-free and DEFLATE
+compressed; readers decode only the requested JPEG from a worker-local mmap.
 
-```bash
-.venv/bin/python -m src.synthetic_data_generation.scripts.compact_court_storage \
-  --data-root "$PWD/data" \
-  --output-root "$PWD/outputs" \
-  --source "$PWD/data/synthetic_data_generation/scenes/B00/datasets/court" \
-  --destination "$PWD/outputs/court-storage/compact-scenes/B00/datasets/court" \
-  --report "$PWD/outputs/court-storage/compact-b00.json"
-```
+`sample_store.py` is the shared storage boundary for training, visualization,
+3D review and the canonical validator. `read_court_manifest` exposes the logical
+geometry manifest, `read_court_labels` exposes sparse labels, and
+`read_court_rgb` returns stored uint8 RGB. Storage versions are dispatched by
+explicit schema, never by guessing files or substituting preview images.
 
-The production Court assembler now writes `.f32.npz` for every accepted RGB,
-alpha and metric-depth array. It evaluates NHT's original arrays first, converts
-depth to metres, compresses accepted samples and removes the attempt-local NPYs
-before publication. Rejected images are discarded. Labels and split geometry
-remain unchanged. NHT's public temporary render output retains its NPY contract.
+Pose supervision and 3D review retain their geometry contracts. Full validation
+of a packed publication checks shard/image hashes, all JPEG dimensions and the
+sparse geometry/semantic/visibility inventories. Recomputing renderer visibility
+from alpha/depth is a **generation-time** check: those rasters are deliberately
+absent after publication. Historical generation performance remains recorded;
+published byte counts describe the current packed owner.
 
-Court training, dense-target materialization, Review, publication visualization,
-and dataset validation read the manifest-selected codec through
-`src/utils/data/float32_store.py`. The training reader restores the original
-float32 RGB, then applies its existing `np.round(rgb * 255).astype(np.uint8)`;
-preview PNG rounding is not substituted. Ordinary DataLoader workers perform
-CPU decompression (the existing default is four workers), with no training-time
-renderer or CUDA context. Missing files, unknown codecs and corrupt payloads
-fail explicitly. Header-only checks avoid decoding complete images; full checks
-also validate SHA-256 and pixels.
-
-The compaction command above migrates already published NPY owners. Integrate
-these readers before replacing an existing production owner, and restart
-existing readers so they do not retain a stale manifest. Geometry digests and split assignments do
-not change. A separately rooted copy needs its own configured derived-target
-store; an eventual replacement under the original data root retains the existing
-geometry-based target keys.
+Existing float32 owners can be imported once with
+`migration.migrate_court_store(source, destination)`. It validates the old
+alpha/depth evidence before using the same writer as generation, decodes every
+new JPEG and compares all sparse records and splits. It neither re-renders nor
+deletes its source. After validation, replace the fixed owner and remove the old
+copy; the migration report belongs outside that owner. Legacy float32 readers
+remain available only for explicitly versioned old publications and migration.
 
 ## Purpose
 
@@ -492,7 +482,7 @@ court, not only for the sample's target court.
 
 Because no valid v2 class permutation exists in that case, its rejected sample
 record keeps the resolved sample-level `target_court` and stores
-`projection: null`. No `labels.json` is published for a rejected proposal.
+`projection: null`. Rejected proposals have no stored image.
 
 In v2 only, left/right remains the court-local X convention. Only near/far
 changes with the camera position. This Y-only permutation is preserved solely
@@ -639,13 +629,13 @@ Dispatch rules are strict:
 - The global `canonical_scene_pipeline_v1` and `multi_court_layout_v1` schemas
   do not change because their contracts are unaffected.
 
-The v2/v3 `dataset.json` and per-sample `labels.json` add the sample-level resolved
+The v2/v3 logical manifest and sparse sample labels add the sample-level resolved
 target-court record. `trajectory_groups[].target_court` is replaced in v2/v3 by
 the explicit target-court policy. The v1 field layout remains unchanged.
 
 The report adapter aggregates unique target bindings from v2/v3 samples instead
 of trajectory groups. Semantic manifests, accepted records, rejected records,
-and label files must agree exactly on each sample's target binding.
+and logical sample labels must agree exactly on each sample's target binding.
 
 ### V3 regeneration and checkpoint policy
 

@@ -1,7 +1,7 @@
 """Generate one validated PNG/GIF publication bundle for a canonical synthetic scene.
 
 Usage:
-    python -m src.synthetic_data_generation.scripts.generate_publication_visualizations publication.scene_id=B00 publication.court.trajectory_id=<id> publication.court.frame_indices='[0,<last>]' publication.blcs.logical_scene_id=<id> publication.blcs.camera_id=<id> publication.blcs.frame_indices='[0,<last>]' publication.blcs.camera_ids='[<ids>]' publication.plcs.logical_scene_id=<id> publication.plcs.camera_id=<id> publication.plcs.frame_indices='[0,<last>]' publication.plcs.camera_ids='[<ids>]' publication.captured.camera_ids='[<ids>]'
+    python -m src.synthetic_data_generation.scripts.generate_publication_visualizations publication.scene_id=B00 publication.court.trajectory_id=<id> publication.court.frame_indices='[0,<last>]' publication.captured.camera_ids='[<ids>]'
 
 Notes:
     - Hydra loads `src/synthetic_data_generation/configs/generate_publication_visualizations.yaml`.

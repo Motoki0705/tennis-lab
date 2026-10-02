@@ -108,6 +108,7 @@ def test_missing_side_preserves_selection_and_raw_tracks_without_associating(
     from dataclasses import replace
     from types import SimpleNamespace
 
+    from src.tasks.player_association.appearance.sampling import TrackAppearance
     from src.tasks.player_association.association.config import load_association_config
     from tests.unit.tasks.person_tracking.test_court_candidates import camera_tracks
 
@@ -119,7 +120,9 @@ def test_missing_side_preserves_selection_and_raw_tracks_without_associating(
     runner = SimpleNamespace(output=lambda _: raw)
     cfg = SimpleNamespace(player_association=load_association_config(players_per_side=1), max_tracks_per_camera=6)
     cameras = {c: replace(tracks.camera, camera_id=c) for c in unseen.CAMERAS if c != missing_camera}
-    monkeypatch.setattr(unseen, 'evidence_appearance', lambda *a: tracks.appearance)
+    appearances = [TrackAppearance(np.empty(0, np.int64), np.empty((0, 0), np.float32))
+                   for _ in tracks.track_ids]
+    monkeypatch.setattr(unseen, 'evidence_appearance', lambda *a: appearances)
 
     def forbidden(*args: Any) -> None:
         pytest.fail('Missing side or calibration must never call association')
