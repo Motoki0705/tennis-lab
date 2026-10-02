@@ -42,6 +42,7 @@
 ### training/
 - **`lightning_module.py`**: `BallDetectionLightningModule`。Focal損失によるヒートマップ学習、GAN併用可。
 - **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。
+- **`candidate_recall.py`**: native heatmapから毎epochのvalidation候補recallを集計。source座標・単一observed教師・重複frameの窓選択を検証する。
 - **`runner.py`**: `BallDetectionTrainingRunner`。datamodule/lightning_module構築と、2D detectorのweights-only初期化。3D court metadataを要求せず、module全体の重みをstrictに復元する（GAN有効時のdiscriminatorも含む）。不完全な重み転送は拒否する。
 - **`staged_calibration.py`**: `probe_batch_size_by_t()`。`T` ごとのOOM較正でバッチサイズを決定。
 - **`staged_lightning_module.py`**: `StagedBallDetectionLightningModule`。手動最適化による可変T勾配蓄積学習。
@@ -52,6 +53,7 @@
 - **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction`（点・score・native heatmap・候補の局所特徴）を返す。
 
 ### evaluation/
+- **`candidate_recall.py`**: 閾値なし候補集合のsource画素recall、候補外、順位誤りの加算可能な件数。[refinerのvalidation選定](../ball_refiner/README.md#validationによる検出器選定)で利用する。
 - **`contracts.py`**: 評価マニフェスト(`ball_detection_evaluation_manifest_v1`)の型付き契約。
 - **`configuration.py`**: checkpoint設定読み出しとモデル名整合性検証。
 - **`dataset_provenance.py`**: データセットの provenance(ハッシュ・ソース)記録。
@@ -233,3 +235,38 @@ Meijiのsplitはstoreのmetadataに従い、教師方針は `data.supervision` �
 validationの窓はcheckpoint選択用であり、全frameのholdout評価とは区別する。
 `test_after_fit=false` により最終epochの自動testを止め、選択済みcheckpointとft-e13を
 同じ全frame・同じ復号条件で別途比較する。比較完了まではdeployを更新しない。
+
+### 毎epochの候補recallとcheckpoint
+
+通常・GAN・LoRA・staged学習は共通の `ValidationCandidateRecall` を使う。
+設定の正本は `configs/training/_validation_candidates.yaml`。
+loss用に補間する前のnative sigmoid heatmapから、閾値なしK=8/NMS=5/patch=5/subpixelで復号し、
+距離≤20 source pxのrecallを記録する。保存画像の端点座標をstoreのwidth-ratio scaleで割って
+元動画画素へ戻す。F1のconfidence閾値・NMS・保存画像の4 px条件はこの指標に使わない。
+
+教師はtrainingのsupervision設定と独立した、レビュー済みの単一observed球だけ。
+複数instance（observed＋out_of_frameも含む）、推定位置、未レビュー、不在は分母に入れない。
+Webではdistractorを除く単一可視targetを使い、保存画像をsourceとする。
+datasetは未増強の教師・frame行ID・source scaleを必ずbatchへ渡し、欠落時には停止する。
+検証は正規化以外の画像増強を使わない。
+
+同じframeを複数の窓・static反復・distributed samplerで読んでも、中心への距離が最小、
+同点なら早い開始位置・早い時刻の出力を1回だけ数える。DDPもframe recordを集めてから
+重複を除き、epoch全体のhit/observed件数を割る。batch平均・rank平均ではない。
+通常storeのvalidationはラベルによらない窓と実frameの末尾backfillで全frameを覆い、
+短いclip・窓間の隙間は拒否する。混合FTのstrideは選定比較と同じ4。
+stagedの固定T prefixとWebのsamplingは各data設定どおりで、評価対象はloaderが供給した一意frame。
+これらの窓集合やvalidation精度設定が違うrunを、全frame/float32の選定比較と同一条件と扱わない。
+
+`val/candidate_recall_at_8_20px` に全source合算を、
+`val/<source>/candidate_recall_at_8_20px` にsource別を記録する。
+camera IDのあるsourceには `val/<source>/<camera>/...` も残す。
+recall@1、候補外率、順位誤り率とstrict-score版、分母・hit件数も同じprefixで記録する。
+分母0のgroupには件数だけを出し、recallを0で補わない。通常のvalidation epoch全体に
+observedがなければ停止する（sanity checkでは未定義の率を記録しない）。
+
+全学習profileは `save_top_k=-1` で各epochを保持し、独立した `last.ckpt` も更新する。
+候補recallをmonitorし、混合FTではMeijiだけをmonitorする。
+毎epochの検証を省く設定・checkpoint無効化・有限top-k・epochを含まないfilenameは起動時に拒否する。
+checkpoint削除を伴うqueueの `--prune-ckpt` は使わない。
+既存checkpointの推論契約はそのままで、今後の学習にはこの明示設定を使う。

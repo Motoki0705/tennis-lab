@@ -1,0 +1,7 @@
+# Fixed validation contract shared by normal, GAN, LoRA and staged training.
+validation_candidates:
+  max_candidates: 8
+  nms_kernel: 5
+  patch_size: 5
+  subpixel_refine: true
+  radius_source_px: 20.0

@@ -1,0 +1,36 @@
+{
+  "status": "preflight_estimate_not_training_result",
+  "baseline_run": "run-i934-mixed-ft-s42-r6",
+  "validation_windows": 9989,
+  "validation_batches": 2498,
+  "old_total_hours": 5.745147954755359,
+  "old_validation_mean_seconds": 256.2021243373553,
+  "old_validation_max_scaled_by_windows_seconds": 579.1522445517638,
+  "new_candidate_cpu_p90_seconds_per_epoch": 59.55776819016319,
+  "per_epoch_misc_allowance_seconds": 15,
+  "checkpoint_write_allowance_seconds": 30,
+  "estimated_validation_seconds_per_epoch": 653.710012741927,
+  "central_hours": 7.078507582770599,
+  "conservative_hours_with_10pct_headroom": 7.786358341047659,
+  "hard_wall_seconds": 28800,
+  "timeout_seconds": 28785,
+  "kill_after_seconds": 15,
+  "peak_vram_expected_gb_range": [
+    4,
+    8
+  ],
+  "pytorch_allocator_cap_gib": 8,
+  "peak_vram_grant_gb": 12,
+  "checkpoint_count_including_last": 13,
+  "checkpoint_bytes_from_r6": 250637099,
+  "expected_checkpoint_bytes": 3258282287,
+  "expected_total_output_gb": 3.6,
+  "disk_budget_gb": 15,
+  "method": "Keep measured r6 training and preprocessing cost; scale maximum old validation time by window-count ratio; add CPU synthetic candidate p90, epoch aggregation allowance, checkpoint write allowance, and 10% total headroom. No speedup assumed from batch/AMP changes: both equal r6.",
+  "limitations": [
+    "CPU synthetic decode is a cost probe, not a GPU benchmark or measured accuracy.",
+    "r15 serial float32 inference (batch 2) is a different path from r6 bf16 batch 4 with four loader workers; its 684/1170/1628-second model times are not treated as per-epoch Lightning validation times.",
+    "The estimate is not a guarantee; external timeout terminates at 8h and no retry or epoch extension is authorized.",
+    "Peak VRAM is an estimate; 8 GiB allocator cap leaves room for CUDA context/driver outside PyTorch."
+  ]
+}
