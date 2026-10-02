@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
 import torch
+from numpy.typing import NDArray
 from tqdm import tqdm
 
 from src.submodules.configuration import require_absolute_path
-from src.submodules.models._base.crops import iter_person_crops
+from src.submodules.models._base.crops import iter_frame_person_crops, iter_person_crops
 from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
@@ -37,13 +38,33 @@ class Pose2DRequest:
 
 
 @dataclass(frozen=True)
+class Pose2DFrameSequenceRequest:
+    """Top-down poses from an explicit, possibly one-shot BGR frame stream.
+
+    ``frames_bgr`` yields strictly increasing integer IDs and uint8 images.
+    ``frame_indices`` is an ordered CPU int64 tensor with one ID per box;
+    repeated IDs allow several people in one image. ``bbx_xys`` uses the
+    decoded image's pixel coordinates. Only requested frames are cropped,
+    and every request row produces one COCO-17 result in the same order.
+    """
+
+    frames_bgr: Iterable[tuple[int, NDArray[np.uint8]]]
+    bbx_xys: torch.Tensor
+    frame_indices: torch.Tensor
+
+
+@dataclass(frozen=True)
 class Pose2DResult:
-    """COCO-17 keypoints ``(F, 17, 3)`` as (x, y, confidence) in pixels."""
+    """COCO-17 ``(F, 17, 3)``: pixel x/y and raw regression heatmap peak.
+
+    The last channel is a confidence score, not a probability: the linear
+    heatmap head does not bound it to [0,1]. No sigmoid/clipping is applied.
+    """
 
     keypoints: torch.Tensor
 
 
-class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
+class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceRequest, Pose2DResult]):
     """ViTPose-H top-down 2D pose estimator on tracked person crops."""
 
     def __init__(
@@ -89,11 +110,15 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
     def _unload_impl(self) -> None:
         self._pose = None
 
-    def _predict_impl(self, request: Pose2DRequest) -> Pose2DResult:
+    def _predict_impl(self, request: Pose2DRequest | Pose2DFrameSequenceRequest) -> Pose2DResult:
         if self._pose is None:
             raise RuntimeError("ViTPose model did not load before prediction.")
         batches: Iterator[tuple[torch.Tensor, torch.Tensor]]
-        if request.frame_indices is None:
+        if isinstance(request, Pose2DFrameSequenceRequest):
+            batches = iter_frame_person_crops(
+                request.frames_bgr, request.bbx_xys, request.frame_indices, batch_size=self.batch_size,
+            )
+        elif request.frame_indices is None:
             imgs, bbx_xys = get_batch(str(request.video_path), request.bbx_xys, img_ds=0.5)
             batches = ((imgs[j:j + self.batch_size], bbx_xys[j:j + self.batch_size]) for j in range(0, len(imgs), self.batch_size))
         else:
