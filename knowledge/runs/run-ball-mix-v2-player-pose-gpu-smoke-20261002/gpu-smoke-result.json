@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "detected_people": 17,
+  "pose_shape": [
+    17,
+    17,
+    3
+  ],
+  "embedding_shape": [
+    17,
+    1280
+  ],
+  "court_executed": false
+}

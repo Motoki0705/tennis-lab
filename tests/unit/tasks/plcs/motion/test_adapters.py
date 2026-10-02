@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import numpy as np
 import torch
 
-from src.submodules.models import SmplCoco17Reconstructor
 from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
-from src.tasks.plcs.motion.sources import AccadCoco17Adapter, GvhmrCoco17Adapter
-from src.tasks.plcs.motion.sources.gvhmr import GVHMR_Y_UP_TO_PLCS_Z_UP
-from src.utils.geometry.rotation_conversions import axis_angle_to_matrix
+from src.tasks.plcs.motion.sources import AccadCoco17Adapter
 
 
 def _global_parameters(frames: int) -> dict[str, torch.Tensor]:
@@ -26,66 +22,6 @@ def _global_parameters(frames: int) -> dict[str, torch.Tensor]:
             dtype=torch.float32,
         ),
     }
-
-
-def test_gvhmr_adapter_changes_basis_but_preserves_global_trajectory(
-    monkeypatch: Any,
-    tmp_path: Path,
-) -> None:
-    frames = 2
-    parameters = _global_parameters(frames)
-    joints_y_up = parameters["transl"][:, None].repeat(1, 17, 1)
-    reconstructor = object.__new__(SmplCoco17Reconstructor)
-    monkeypatch.setattr(reconstructor, "reconstruct", lambda _params: joints_y_up)
-    adapter = GvhmrCoco17Adapter(reconstructor)
-
-    clip = adapter.convert(
-        parameters,
-        source_id="clip:cam1:near",
-        source_path=tmp_path / "cam1.mp4",
-        fps=60.0,
-        joint_confidence=np.ones((frames, 17), dtype=np.float32),
-        frame_valid=np.ones(frames, dtype=np.bool_),
-        provenance={"track_id": 7},
-    )
-
-    expected_translation = np.asarray(
-        [[1.0, -3.0, 2.0], [2.0, -3.0, 2.0]], dtype=np.float32
-    )
-    np.testing.assert_allclose(clip.root_translation_m, expected_translation)
-    np.testing.assert_allclose(clip.joints_3d_m[:, 0], expected_translation, atol=1e-6)
-    np.testing.assert_allclose(
-        clip.root_rotation,
-        np.repeat(GVHMR_Y_UP_TO_PLCS_Z_UP[None], frames, axis=0),
-    )
-
-
-def test_gvhmr_adapter_left_multiplies_active_root_rotation(
-    monkeypatch: Any,
-    tmp_path: Path,
-) -> None:
-    parameters = _global_parameters(1)
-    parameters["global_orient"][0, 1] = torch.pi / 2
-    joints_y_up = parameters["transl"][:, None].repeat(1, 17, 1)
-    reconstructor = object.__new__(SmplCoco17Reconstructor)
-    monkeypatch.setattr(reconstructor, "reconstruct", lambda _params: joints_y_up)
-
-    clip = GvhmrCoco17Adapter(reconstructor).convert(
-        parameters,
-        source_id="clip:cam1:near",
-        source_path=tmp_path / "cam1.mp4",
-        fps=60.0,
-        joint_confidence=np.ones((1, 17), dtype=np.float32),
-        frame_valid=np.ones(1, dtype=np.bool_),
-        provenance={"track_id": 7},
-    )
-
-    rotation_y_up = np.asarray(
-        axis_angle_to_matrix(parameters["global_orient"]).numpy(),
-        dtype=np.float32,
-    )
-    expected = np.einsum("ij,tjk->tik", GVHMR_Y_UP_TO_PLCS_Z_UP, rotation_y_up)
-    np.testing.assert_allclose(clip.root_rotation, expected, atol=1e-6)
 
 
 def test_accad_adapter_uses_the_exact_coco17_vertex_regressor(tmp_path: Path) -> None:

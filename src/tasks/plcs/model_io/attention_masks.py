@@ -21,6 +21,4 @@ def prepare_axial_attention_masks(padding_mask: Tensor) -> tuple[Tensor, Tensor]
     return camera_mask, time_mask
 
 
-__all__ = [
-    "prepare_axial_attention_masks",
-]
+__all__ = ["prepare_axial_attention_masks"]
