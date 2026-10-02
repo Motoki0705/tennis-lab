@@ -1,0 +1,21 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790684462632181317_494060_i935-val-candidate-recall-r14-20260929 (commit=c93d37f4e3af provider=codex session=01a0ed08-f6de-7432-8d27-e607e35868df)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_refiner/scripts/compare_detectors.py", line 84, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_refiner/scripts/compare_detectors.py", line 76, in main
+    result = compare_detectors(
+             ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/src/tasks/ball_refiner/evaluation/detector_selection.py", line 240, in compare_detectors
+    torch.cuda.set_per_process_memory_fraction(min(1.0, cuda_allocator_limit_gib * 2**30 / total), target)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/lib/python3.11/site-packages/torch/cuda/memory.py", line 191, in set_per_process_memory_fraction
+    device = _get_device_index(device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/lib/python3.11/site-packages/torch/cuda/_utils.py", line 586, in _get_device_index
+    return _torch_get_device_index(device, optional, allow_cpu)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/lib/python3.11/site-packages/torch/_utils.py", line 910, in _get_device_index
+    raise ValueError(
+ValueError: Expected a torch.device with a specified index or an integer, but got:cuda
+exit_code=1

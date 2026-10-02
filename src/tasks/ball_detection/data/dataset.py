@@ -37,6 +37,8 @@ class WindowFrame:
     image_bgr: NDArray[np.uint8]
     points: tuple[tuple[float, float], ...]
     supervised: bool
+    frame_id: int
+    observed_xy: tuple[float, float] | None
 
     def __post_init__(self) -> None:
         if not self.supervised and self.points:
@@ -51,6 +53,10 @@ class WindowFrames:
     original_size: tuple[int, int]
     window_id: str
     source: str
+    namespace: str
+    camera: str
+    source_scale: float
+    window_start: int
 
 
 class BallDetectionDataset(Dataset[BallDetectionSample], ABC):
@@ -191,6 +197,17 @@ class BallDetectionDataset(Dataset[BallDetectionSample], ABC):
             "heatmap_size": torch.tensor([heatmap_w, heatmap_h], dtype=torch.float32),
             "window_id": window.window_id,
             "source": window.source,
+            # These raw references are used only in unaugmented validation,
+            # independently of the training supervision/augmentation policy.
+            "candidate_reference": {
+                "xy": torch.tensor([frame.observed_xy if frame.observed_xy is not None else (0.0, 0.0) for frame in window.frames], dtype=torch.float32),
+                "observed": torch.tensor([frame.observed_xy is not None for frame in window.frames], dtype=torch.bool),
+                "frame_id": torch.tensor([frame.frame_id for frame in window.frames], dtype=torch.int64),
+                "window_start": torch.tensor(window.window_start, dtype=torch.int64),
+                "source_scale": torch.tensor(window.source_scale, dtype=torch.float32),
+                "namespace": window.namespace,
+                "camera": window.camera,
+            },
         }
         return sample
 

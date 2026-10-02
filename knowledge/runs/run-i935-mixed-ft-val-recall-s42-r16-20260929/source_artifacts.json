@@ -1,0 +1,32 @@
+[
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/config.yaml",
+    "bundle_file": "resolved-config.yaml",
+    "sha256": "619dd2d88d07a8b3298317120b254d3c055b3c4a243a1fd682fba0f2a356b141",
+    "bytes": 5572
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/resource_usage.json",
+    "bundle_file": "resource_usage.json",
+    "sha256": "956f77ab4c19012e1a55aef0efa250e1d5089e3ac997566dede978f5d282c2c9",
+    "bytes": 326
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929.log",
+    "bundle_file": "queue.log",
+    "sha256": "a08d33aed0c3eaf203a1a2af24c945e806c09a115813d6074d1951026b7609c4",
+    "bytes": 23478
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.training_queue/failed/1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929.job",
+    "bundle_file": "failed.job",
+    "sha256": "cd310ea7720399b14205f1a7b355f0356b6da21c6873b90fb03670de1fc1fe88",
+    "bytes": 8036
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/events.out.tfevents.1790693228.kamimura.1396943.0",
+    "bundle_file": "events.out.tfevents.1790693228.kamimura.1396943.0",
+    "sha256": "774cc091470b5ee8f5b42aef1ce8a16ecc650c2665dce78f41b184e7c8f84251",
+    "bytes": 23721842
+  }
+]

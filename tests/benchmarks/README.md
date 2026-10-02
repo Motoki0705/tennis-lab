@@ -326,3 +326,21 @@ raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を
 `person_unseen_labels.py --phase views --report <未見出力> --output <新規dir>`はraw artifactと元映像だけからblindラベル用cropを作る。`details`は`--requests <JSON>`のtrack/frame範囲を拡大し、`labels`はoutput内のclip別review.yamlを既存schemaへ変換する。ラベルを確定・push後にのみ既存の一回scorerを使う。
 
 `person_unseen_review_video.py --report <採点済み未見出力>`はsingle score receiptのラベルhashを検証し、保存raw box/IDとラベルを全長3cameraで比較する。IDの表示名は採点済み対応表を使い、camera間で異なる置換を拒否する。box単位の4色と曖昧色を表示し、再推論・再採点はしない。
+
+- `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [旧選定記録](../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md) を参照。
+
+- `court_side_confidence.py`: #932の元held-out全28条件の集計を再現し、固定confidenceの連続blockを追加した対比較をCPUで実行。元/filteredの全仮説を保存。実refinerとの誤差相関は再現していない。結果と限界は [安全bench](../../knowledge/nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md) を参照。
+
+## Meiji contextと相関court_side安全bench
+
+`ball_refiner_meiji_context.sh` は [Meiji cache入口](../../src/tasks/ball_refiner/README.md#meijiの凍結人物経路による文脈cache)を
+固定plan・共有GPU queue・資源guard・12時間上限で実行する。引数はscriptのusageを参照。
+`court_side_correlated.py` は実測GMM残差とconfidenceを同一rowで移植した28条件を比較する。
+`court_side_wrong_cases.py` はrun29の3誤判定のcamera/点/支持frameを元RNGから再現する。
+方法と判定規則は[run30事前登録](../../knowledge/runs/run-i935-correlated-safety-r30-20261001/protocol.md)が正本。
+
+`court_side_unfiltered.py --dataset <元dataset> --bank <固定bank> --original <元#932report> --previous <r30report> --output <新規dir>`
+は同じ28条件×400scene、seed1/30001とhash付き入力で、productionの`BallPointsModule`を各cameraに実行する。
+元#932とr30の未選別集計を条件ごとに照合し、全22,400判定を保存するCPU回帰bench。
+フィルタ廃止後も過去の比較を再現するため、上記confidence系benchは
+`legacy_ball_confidence.py`と`legacy_ball_confidence.yaml`を使う。これらはproductionの設定・依存ではない。

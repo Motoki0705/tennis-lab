@@ -1,0 +1,12 @@
+{
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-check-retry-r25-20260930/plan.json": "d71f8f2b023dbb567af4567f8a63f1bea1109f6d1218a00b1db9abdf79fbc5cc",
+  "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/metadata.json": "b7796c1d9a99c2b44496264f54102729bea1ff26dd2550ef2b470780a93ef4c0",
+  "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/index.npz": "a078912bc31c207b5be807b453bfba203da30b2ec2815993eebe98f896cb7523",
+  "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+  "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_010/media/cam0.mp4": "0ac292acd91aa8f0fda4082c0ec3c85c3240b958b89f65fc5c3cafb170f8f26b",
+  "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00125.bin": "15e74370e37efe11987e3edbf6d768fe06031bc2d683634e6ffff8550adc6180",
+  "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_010/media/cam1.mp4": "f0a5aea865e1fe6053daa3f0a08c67f4810451b2c2007a12aca0d4b700a1b834",
+  "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00126.bin": "034690b46c611017ce389bf0ad5b63a2c7e0ceef84bd6a960ec388cc6d6fc65a",
+  "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_010/media/cam2.mp4": "e1b7b18bfb48a43bd865f4ae8aa1c324fe20a5a54c6730466ee1342ae5fd1170",
+  "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00127.bin": "f8ff43bff615cdc2e21f9e0885bdb946027171af083e1edcffffccf1bcfd566b"
+}

@@ -13,8 +13,8 @@
   [証拠cache](#検出器の局所証拠)へ記録し、refinerのattention窓長と区別する。
 - 文脈なしの基準学習は[学習pilot](#文脈なし学習pilot)から実行する。
   [専用pipeline recipe](../../tennis_scene/pipeline/README.md#2d-ball-refinerの専用recipe)は
-  未較正の文脈なしpilotを明示的に実行・保存する。文脈あり学習・最終holdout評価は後続PRで実装する。
-  既存pipelineの三角測量はまだ切り替わっていない。最終的な#936の入力はrefinerの全分布のみとし、
+  文脈なしrefinerの全分布を単独で実行・保存する。文脈あり学習・最終holdout評価は後続PRで実装する。
+  標準pipelineの点consumerは最大weight成分の平均点を全frameで使用する。最終的な#936の入力はrefinerの全分布のみとし、
   detectorの点推定へ戻す経路は設けない。court_sideの幾何的な仮説検定は別の利用者である。
 
 ## 2DモデルのAPI
@@ -32,7 +32,7 @@
 | `data/temporal.py` | 実frameだけの窓と中心距離による採用規則 |
 | `inference.py` | camera全frameのGMM推論と、各frameを採用した窓の出自 |
 
-`configs/model/refiner_2d.yaml`を合成して全fieldを`Refiner2DConfig(**values)`へ渡す。
+`configs/model/refiner_2d.yaml`をHydraで合成し、全fieldを`parse_model_config(values)`へ渡す。
 省略値をPython側で補完しない。既定のcourt軸はpipelineのcamera-local KP14に合わせる。
 `build_ball_refiner_2d(config)`は共通の`BoundModelIO`を返す。
 `pair.run(Refiner2DInput(...))`で検証→forward→復号し、
@@ -72,6 +72,70 @@ modelを呼び出し側でdeviceへ配置し、入力batchだけを順に転送�
 各frameの採用窓を示す。混合成分を平均せず、推論前のmodelのtrain/eval状態を終了・例外時に復元する。
 学習時のvalidationもこの共通経路を使う。pipeline登録・永続保存は上記の専用recipeを参照。
 
+### 候補残差平均と絶対平均の明示的な設定
+
+既存の全fieldだけを持つ`Refiner2DConfig`は絶対uv回帰のまま保持する。
+`parse_model_config`はこれに`mean_parameterization: candidate_residual_v1`、
+`anchored_components`、`max_offset_uv`を**全て明示した別schema**も受け付ける。
+省略補完せず、未知の方式・一部だけの追加設定・候補軸不足はエラー。
+既存checkpoint/bundleは保存済みのschemaから復元する。
+既定YAMLは採用した候補残差headを指定し、絶対平均headは
+`model=comparison/absolute`で明示する。次元・分散範囲等は同じ設定を合成して共有する。
+
+この方式はscore上位候補に、`max_offset_uv * tanh(raw)`という学習可能な残差を加える。
+内部の同score成分割当だけはy→xの昇順で一意化し、候補集合の並べ替えに依存させない。
+detectorのtop-1/recall集計とcheckpoint選択の既存同率規則には影響しない。
+平均は[0,1]内へclipし、既存decoderへ渡すlogitの有限性に限り1e-6の端点余裕を取る。
+該当候補が無効なframeは、その成分の学習した絶対uvを使う明示的な欠損分岐とする。
+全gapでも全成分を返し、少なくとも1成分は全frameで自由な絶対uvとする。
+候補基準成分の平均headのみweightをゼロ初期化し、初期残差を0にする。
+共分散・weight・presenceの学習、BallGMM2Dの保存契約、joint NLLは共通。
+実験数値はknowledgeを正本とする。絶対平均headは旧checkpointの復元と対照実験で
+使用しているため、明示的な選択肢として保持する。
+
+### 採用設計: 候補残差head（anchored_12k）
+
+**[2026-09-30のユーザー判断A–D](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5908081470)により採用。**
+上記の方式をscore上位3候補＋有界残差（`max_offset_uv=0.02`）と1自由成分、
+K=4、文脈なし、12,000更新の学習予算でball refinerの基準設計とする。
+検出器は既に候補recallで固定したepoch9を使い、33frame/stride16、
+source平衡・joint NLL・Meiji選択側のobserved/gap等重みNLLによるcheckpoint選択を維持する。
+12,000更新の最終checkpointを無条件採用する意味ではない。
+欠損時の絶対平均分岐・自由成分・full covariance・presenceとBallGMM2D契約も上記のまま。
+seed42に加えて43・44で再現性を確認し、再現しない条件も報告する。
+
+根拠・反証・較正の限界は[knowledge 000018](../../../knowledge/nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)、
+採用判断の正本は上記issueコメントを参照。
+共分散だけを倍率で補正し、平均・混合重み・存在確率は固定する。clip単位の交差検証で
+HDR50/90/95のcoverage、位置NLL、面積を併記し、明示したhash付き較正artifactを保存する。
+#936へは補正後の全GMM残差bankを渡し、旧bank/合成dataは対照として保持する。
+pipelineの既定値は[専用recipeのB判定](../../tennis_scene/pipeline/README.md#ボール経路の既定と明示option)に従う。
+[2026-10-01の判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で
+e9を既定化した。2026-10-02のユーザー判断によりconfidenceフィルタは廃止し、
+全frameの最大weight成分平均を使う（[点consumer契約](../../tennis_scene/pipeline/README.md#refinerの点consumer)）。
+#964完了前に文脈生成へ進める。現在の生成予算・未完事項は
+[knowledge 000027](../../../knowledge/nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)を参照。
+
+`refiner_2d/calibration.py`はcheckpoint SHA256とartifact SHA256を必須とする明示的な読込API。
+`CovarianceCalibration.apply()`はΣをs倍（Choleskyを√s倍）し、全成分の平均とlogitを保持する。
+artifactの自動探索・倍率1への省略補完はしない。pipelineの明示的な較正optionと保存schemaは
+[専用recipe](../../tennis_scene/pipeline/README.md#2d-ball-refinerの専用recipe)を参照。
+`evaluation/calibration_fit.py`が位置NLLのfit、`evaluation/covariance_calibration.py`が
+保存済みval出力のhash/教師/PTS照合・clip交差検証・層別比較を担当する。
+calibration halfでは全cameraをまとめたleave-one-clip-out、その他のvalでは
+calibration half全体でfitした倍率を使う。checkpoint選択済みhalfを独立評価と呼ばない。
+出力の`bank_input/`は配布用倍率をfitしたframeにも適用する明示的なin-sample bank材料で、
+OOF評価NPZとは別に保存する。実測と採用判断はknowledgeに記録する。
+
+```bash
+# CPU専用。inputはrun_cached_comparisonのcomplete出力。
+# bounds/gridは実験前に宣言し、artifactは元のcheckpointと同じdirectoryへ新規保存する。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.calibrate_covariance \
+  --predictions <絶対保存済みval-directory> --output <絶対新規output-directory> \
+  --calibration-artifact <絶対checkpoint-directory>/covariance-calibration.json \
+  --bounds 0.25 64 --grid-points 129 --cpu-threads 2
+```
+
 教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
 存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
 `position_nll_sum / position_weight`を使い、位置教師0件ならN/Aとする。
@@ -79,9 +143,17 @@ modelを呼び出し側でdeviceへ配置し、入力batchだけを順に転送�
 検証例は[unit](../../../tests/unit/tasks/ball_refiner/refiner_2d)と
 [integration](../../../tests/integration/tasks/ball_refiner/test_refiner_2d.py)を参照。
 
-## 学習戦略（#935、暫定設計）
+## 点consumer
 
-無人campaignの指示に従った暫定案であり、ユーザーの合意済みとは扱わない。
+点への変換・保存・旧artifactの扱いは[scene pipelineの契約](../../tennis_scene/pipeline/README.md#refinerの点consumer)を参照。
+過去のconfidence規則・選定結果・限界は
+[knowledge 000028](../../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)に保持する。
+再現用コードは`tests/benchmarks/legacy_ball_confidence.py`だけに置き、productionは使用しない。
+
+## 学習戦略（#935）
+
+文脈なし基準と較正・追加seedの方針は上記の採用設計に従う。
+以下の文脈・RGB遮蔽・amodal追加実験は未完了の計画であり、採用済み性能とは扱わない。
 決定・変更履歴は[#935](https://github.com/Motoki0705/tennis-lab/issues/935)の
 【要判断】コメントを正本とする。以下は実験前の計画で、性能結果ではない。
 
@@ -124,8 +196,8 @@ Meijiはtrain video_002 / val video_000 / test video_001で、#934・#936と共�
 同じ収録の別camera・overlap窓を別splitに入れない。testは最終設定固定後の一回比較とし、
 既に#934で見たtestの再利用であることも明示する。
 
-detectorはft-e13を凍結した基準から開始する。混合FT epoch 0は比較候補として別cacheに固定し、
-選択はvalidationで行う。checkpoint、前処理、動画/注釈hash、frame/PTS、sourceサイズ、
+detectorは候補recallによるvalidation選択で混合FT epoch9に固定済み。
+ft-e13は歴史的対照として明示optionに残す。checkpoint、前処理、動画/注釈hash、frame/PTS、sourceサイズ、
 窓集約、候補設定をcache manifestへ保存する。検出証拠は
 [#934の契約](../ball_detection/README.md#検出証拠の出力契約)を使い、score閾値やtrajectory gateで捨てない。
 
@@ -226,8 +298,9 @@ poseは同一mediaのdense frame indexによってstoreのPTSに束縛し、時�
 実行済みだが検出なしのmaskとは別である。入力不整合・破損はエラーになる。
 
 poseにはCOCO17の肘・手首を使い、補間boxを観測としない。
-ViTPoseのscoreは非負のheatmap peakで1を超えうるため、refinerの有界特徴へ
-`min(score,1)`で写す。変換名・上限に達したslot数・元の最大値をprovenanceに記録する。
+この既存pipeline readerは非負のheatmap peakを要求し、1を超える値をrefinerの有界特徴へ
+`min(score,1)`で写す。負の生peakも保持する新cacheの契約は次節を参照する。
+変換名・上限に達したslot数・元の最大値をprovenanceに記録する。
 これは確率較正ではない。有限な画像外の関節位置は保持する。
 courtは`camera_view_v2`のKP14、frame 0のみを受け付ける。
 
@@ -244,7 +317,33 @@ CPUの`data/audit.py`と次の入口で全source/splitの教師数とMeiji全cam
 実データ監査の結果と生成不足の判断は[knowledge](../../../knowledge/nodes/ball_refiner/000001-run-i935-data-audit-r2.md)を参照。
 文脈なしDataLoaderは下記のpilotへ接続する。文脈あり入力の未生成は補完しない。
 
-### 全sourceのJPEG文脈cache
+### Meijiの凍結人物経路による文脈cache
+
+`data/meiji_context_inference.py` は #964 の凍結人物設定・重み・共有実装を検証し、
+同じJPEGの全画面DINO → `FeatureExtractor`（全17関節＋CLIP）→ `track_sequence` →
+frame 0のcourt校正と共通court選別を呼ぶ。選別したgroupの実観測だけを保存し、
+GSI補間をpose観測にしない。各frameの未検出・選別なし・court校正失敗を区別する。
+負の値を含む有限な生heatmap peakを保持し、モデル入力への変換時だけ[0,1]にclipして
+負値と飽和の件数を記録する。非有限値やmodel/runtime例外は失敗として停止する。
+
+`scripts/meiji_context.py plan|generate` は既存cacheと別の入口。
+Meiji train/video_002・val/video_000の108 camera-clip / 52,866 frameを固定する。
+TrackNet/chatは計画と完成manifestで `absent_by_policy` とし、未生成を観測へ変換しない。
+`--store --evidence --scene-config --freeze --output` は全て絶対path。
+`plan` はCPUだけで新しいoutput内に `plan.json` を作り、hashを出力する。
+`generate --plan-sha256 <hash>` は同じ引数を指定して共有queueで実行する。
+CUDA allocatorは7GiB、モデルstageを分離し、外側の監視jobで全GPU使用量も制限する。
+
+`data/meiji_context.py` がclip単位の完了receiptを保存する。再開時は計画・入力JPEG・
+code・重み・完成NPZのhashとframe/PTSを照合する。失敗/中断clipは記録を保持し、
+明示的な次回実行で新しいattemptへ全clipを再計算する。途中結果はreaderへ公開しない。
+全clip完了後は同じ `ContextCache` 契約へ統合し、coverageと出自を付ける。
+このcache作成は文脈モデルの学習・clip_000 scene qualificationを実行しない。
+2系列の繰り返しcross-attentionと同予算の旧融合比較は
+[ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5913365577)に従う後続作業。
+
+### 旧全sourceのJPEG文脈cache（BoT-SORT比較用）
+
 
 `scripts/generate_context.py`はdetector cacheと**同一のJPEG shard**を使い、
 TrackNet・Meiji・chat_annotationの各clipを独立に処理する。camera_id=Noneもそのまま保存し、
@@ -339,6 +438,40 @@ planはモデルを構築しないCPU処理だが、実際のDINO拡張のCPU事
 
 ## 検出器の局所証拠
 
+### validationによる検出器選定
+
+`scripts/compare_detectors.py`は、[候補recallによる選定判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5886001394)
+に従いft-e13・混合e0・混合e11を比較する。Meiji video_000のobserved frameに対する
+recall@8（距離≤20 source px）を主指標とし、TrackNet game9・chat valとcamera別の値を報告する。
+testを指定する入口はない。正解が単一のobserved球であるframeだけを分母とし、unknown・推定・複数球を混ぜない。
+recall@1、候補外率、正解候補があるのにtop-1が誤りである率を同じ分母で出す。
+同scoreはdecoder順のまま扱い、strict scoreで上回る率と同率による順位誤りの件数もJSONへ残す。
+同率首位ではft-e13→e0→e11の順に現行/早いcheckpointを優先する。
+
+比較は下記cacheと同じ`infer_clip_evidence`を呼ぶ。K=8/NMS=5/patch=5/subpixelと
+窓規則・stride・画像サイズを`--cache-manifest`で固定し、checkpointのsha256を明示して照合する。
+全val clipを1frame一度だけ採点し、各checkpointのsource座標候補/教師/mask/採用窓をNPZへ保存する。
+checkpoint・store・JPEGの不変性を検証し、途中成果は`status=running`、全件成功後だけ`complete`とする。
+これは比較成果物であり、新しい学習cacheを生成しない。pose/person/courtの入力も読まない。
+
+```bash
+# CUDAは共有queue経由。すべて絶対path、sha256はこの順に明示する。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.compare_detectors \
+  --store <ball-store> --cache-manifest <existing-evidence>/manifest.json \
+  --ft-e13 <ft-e13.ckpt> --mixed-e0 <epoch00.ckpt> --mixed-e11 <last.ckpt> \
+  --expected-sha256 <ft-e13-sha256> <e0-sha256> <e11-sha256> \
+  --output <new-comparison-directory> --device cuda --batch-size 2 \
+  --cuda-allocator-limit-gib 6 --cpu-threads 4
+```
+
+`--dry-run`はモデルを作らずCPUでsplit/identityを検証する。allocator上限はPyTorchだけの制限であり、
+CUDA context等のためにVRAM予算の余裕を別に確保する。OOM時のbatch/精度変更やCPU切替はしない。
+`comparison.md`と`manifest.json`に表・hash・選定結果・e11>e0の判定を残す。
+e11がe0を上回った場合は結果を報告し、全epoch保存による再学習は別判断とする。
+今後のdetector学習は[毎epochの候補recallとcheckpoint保存](../ball_detection/README.md#毎epochの候補recallとcheckpoint)に従う。
+
+### cache生成契約
+
 `data/evidence_inference.py`はJPEGを逐次decodeし、各実frameのtop-Kとnative patchを返す。
 重複窓は中心への距離が最小のもの、同点なら早い開始位置を採用し、
 argmax・候補・patch・境界maskを同じ窓からまとめて保持する。
@@ -360,7 +493,7 @@ clipの完了ごとにNPZのchecksumと進捗manifestを公開する。
 各NPZのchecksum・座標単位・frame/PTS・実秒・patch格子を照合する。
 未生成clip、破損、未完了cacheを空証拠へ置き換えない。
 
-ft-e13の検出器は8frameを参照するため、33frameのrefiner入力が参照するRGBは
+採用e9の検出器は8frameを参照するため、33frameのrefiner入力が参照するRGBは
 33frameを超えうる。`ClipEvidence.rgb_support(start, stop)`は採用された検出窓の和集合を
 含む元RGBの半開区間を返す。このcacheはcamera-clip内だけで生成し、
 group/split境界をまたがない。全比較条件で同じcache・RGB参照範囲を使う。
@@ -377,8 +510,8 @@ pose/courtは`not_generated`と記録する。このcacheだけで文脈あり�
 ```bash
 .venv/bin/python -m src.tasks.ball_refiner.scripts.generate_evidence \
   --store <絶対data-root>/ball_detection/ball-mix-v1 \
-  --checkpoint <絶対checkpoint-root>/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt \
-  --output <絶対data-root>/ball_refiner/detector-ft-e13-v1 \
+  --checkpoint <絶対checkpoint-root>/ball_detection/i935-mixed-ft-s42-epoch09.ckpt \
+  --output <絶対data-root>/ball_refiner/<new-e9-cache-id> \
   --sources tracknet meiji chat_annotation --splits train val \
   --device cuda --stride 4 --batch-size 4 \
   --max-candidates 8 --nms-kernel 5 --patch-size 5 --subpixel-refine
@@ -387,6 +520,9 @@ pose/courtは`not_generated`と記録する。このcacheだけで文脈あり�
 ## 文脈なし学習pilot
 
 `scripts/train.py`はHydraの[train.yaml](configs/train.yaml)を厳密に検証する。
+通常の入口は採用済みe9 cache・候補残差head・12,000更新予算を合成する。
+同じe9 cache/予算での絶対平均比較は`model=comparison/absolute`、
+旧ft-e13・3,000更新pilotの再現は`--config-name comparison/ft_e13`で選ぶ。
 `use_detector=true, use_pose=false, use_court=false`だけを受け付け、未生成の文脈を
 fullモデルの欠損観測に読み替えない。設定の省略・未知key・不正値は停止する。
 role rootは絶対pathで指定し、`data.store`/`data.evidence`/`run.output_dir`は各root内の相対pathにする。
@@ -477,6 +613,32 @@ checksumとMonte Carlo seedをmanifestへ残す。clip完了ごとに進捗を�
   run.output_dir=ball_refiner/evaluate/detector_only/<evaluation-run-id>
 ```
 
+## 新旧pilotの同一validation比較
+
+`evaluation/pilot_comparison.py::run_comparison`は完了した2つのpilotを復元し、
+全sourceのval（Meiji video_000、TrackNet game9、chat val）で同一frameを比較する。
+学習recipe・split・教師/frame/PTSの一致を要求し、旧pilotは旧cache、新pilotは新cacheを使う。
+source/camera別、Meiji選択側/較正側別に、観測、人工証拠gap、occlusion_estimated参考値、
+interpolated参考値、確定不存在、unknownを分ける。推定ラベルをobserved GTへ昇格させない。
+各指標の母数とN/Aを明示し、frameごとの全GMM・指標・教師理由・入力hashを保存する。
+不存在はrefinerの存在Bernoulli NLLだけが定義され、条件付き位置NLL/coverageはN/A。
+unknownは存在の負例にしない。detector scoreからamodal存在確率を捏造しない。
+
+`evaluation/paired_metrics.py`でGMMのNLLとHDRを既存診断と同じ方法で算出する。
+detectorはnative heatmapを同じJPEG/窓/精度で再推論し、cacheの採用窓・argmaxと照合する。
+`infer_clip_evidence`のheatmap sinkは中心距離が改善するたびに上書きし、最終値を候補と同じ窓に揃える。
+密度はsource UVに写したnative格子の中点を境界とする区分定数分布で、画像端まで積分し、
+明示した一定の一様成分を混合する。全ゼロheatmapは一様分布と定義する。
+HDRは同密度cellを全て含むので平坦分布のcoverageは保守的に100%となる。
+人工gapではdetectorの空間証拠が無く、一様分布・点推定なしと明記する。
+これはRGB遮蔽再推論ではなく、未較正の有限画像密度とR²のGMMとの比較である。
+温度・一様成分率・分散scaleをこの評価でfitしない。設定・実行計画・結果はknowledgeへ記録する。
+
+`visualization/overlay.py`は保存済みGMMの各成分のfull covarianceを表示画素へ変換し、
+2σ楕円を成分weightのalphaで描く。混合平均は点markerとして描き、成分間分散を各楕円へ混ぜない。
+各成分の2σ楕円はGMMの95% HDRではない。storeのsource→JPEG変換率も座標変換に含める。
+具体的なval動画の再現script・入力hash・frame/PTS・読み方は対応するknowledge runへ保存する。
+
 ## 推論bundleの書き出し
 
 `deployment.py`の`export_pilot_bundle`は、完了したpilotのbest checkpointとconfig・data manifest・
@@ -487,6 +649,9 @@ refinerの窓長・strideを束ねる。既存directoryへの上書きと未完�
 
 `load_inference_bundle`はchecksumと全設定fieldを検証し、モデル構築は`load_model()`まで行わない。
 weightは`weights_only=True`で読み、有限値とstrictなstate dict復元を要求する。
+採用bundle・検出器・較正artifactの実体はCHECKPOINT root（既定`ckpt/`）へ配置する。
+配布名と固定SHAは[pipelineの名前付き経路](../../tennis_scene/pipeline/README.md#ボール経路の既定と明示option)が参照する正本に従う。
+学習runの元checkpointや較正記録は出自として保持し、推論からそのpathを読まない。
 現在のbundle schemaは`use_detector=true, use_pose=false, use_court=false`の未較正pilot専用であり、
 文脈ありcheckpointを空pose/courtで実行しない。存在確率・共分散に補正を加えない。
 

@@ -1,0 +1,23 @@
+{
+  "source_commit": "3b6fd412a77f5a2eef1cd015d1b89a8a72ea3a2a",
+  "device": "cpu",
+  "cuda_visible_devices": "",
+  "workers": 2,
+  "tests_passed": 693,
+  "seconds": 176.3,
+  "command": ".venv/bin/python -m pytest -q --no-cov -n 2 tests/unit/tennis_scene/pipeline tests/unit/tennis_scene/test_configuration.py tests/unit/tennis_scene/scripts/test_visualize_component_store.py tests/unit/tasks/ball_refiner tests/integration/tasks/ball_refiner tests/unit/tasks/court_side tests/unit/utils/configuration/test_contracts.py tests/unit/utils/test_output_layout.py",
+  "thread_env": {
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1"
+  },
+  "versions": {
+    "mcp": "2.2.0",
+    "torch": "2.13.0",
+    "pytest": "9.1.1",
+    "ruff": "0.16.8",
+    "mypy": "2.3.1"
+  },
+  "safety_benchmark_cases_executed": 0,
+  "upstream_commit": "bd0bbb933412c99133c28430a38d7c28256468aa"
+}

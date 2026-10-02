@@ -5,10 +5,9 @@ defaults:
   - override model: conv_next_unet
   - _self_
 
-paths:
-  checkpoint_root: ckpt
-
 data:
+  # Match the fixed refiner candidate-cache window stride.
+  eval_stride: 4
   batch_size: 4
   num_workers: 4
   heatmap_size: [72, 128]
@@ -20,8 +19,8 @@ data:
       meiji: 1.0
       chat_annotation: 1.0
 
-# Preserve ft-e13's native-grid decode during checkpoint selection.
-# These are stored-image pixels; full holdout reporting uses source pixels.
+# Legacy thresholded F1 still uses stored pixels. Checkpoint monitoring uses
+# the separate fixed native-grid candidate metric in training.validation_candidates.
 metrics:
   nms_kernel: 3
 
@@ -34,9 +33,8 @@ training:
   compile:
     enabled: false
   checkpoint:
-    monitor: val/f1
+    monitor: val/meiji/candidate_recall_at_8_20px
     mode: max
-    save_top_k: 1
   qualitative_logging:
     every_n_epochs: 4
 

@@ -1,0 +1,36 @@
+{
+  "run": 22,
+  "gpu_jobs_enqueued": 0,
+  "defaults_changed": false,
+  "test_video_001_used": false,
+  "other_lane_branches_modified": false,
+  "tests": {
+    "model_architecture": {
+      "passed": 44,
+      "log": "pytest-r22-ci-fix.log"
+    },
+    "overlay": {
+      "passed": 6,
+      "log": "pytest-r22-overlay.log"
+    },
+    "workers": 4
+  },
+  "checks": {
+    "ruff": "passed on all changed/new Python files",
+    "mypy": "passed with --follow-imports=skip",
+    "knowledge_base": "origin/campaign930/i935-11-pilot-retrain",
+    "knowledge_errors": 0,
+    "repro_missing": 0,
+    "repro_unverifiable": 0
+  },
+  "cpu_identity": "cpu-identity.json",
+  "video_verification": "overlay-verification.json",
+  "ci_fix_commit": "8b71ac6f47e6cf7557cd6aee6f04939a24e1fb26",
+  "ci_fix_run": "https://github.com/Motoki0705/tennis-lab/actions/runs/36667977105",
+  "limitations": [
+    "CPU bit identity only; no GPU replay",
+    "MC HDR not recomputed; saved arrays and reductions audited",
+    "Uncalibrated single-seed val; no downstream new asset run",
+    "Proposals A-D not enacted"
+  ]
+}

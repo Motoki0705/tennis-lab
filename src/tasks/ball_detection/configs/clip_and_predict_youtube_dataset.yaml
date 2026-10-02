@@ -29,7 +29,9 @@ workflow:
     skip_large: 50
 
   prediction:
-    checkpoint: ball_detection/stunet/logs/version_2/checkpoints/last.ckpt
+    checkpoint:
+      role: artifact
+      path: ball_detection/stunet/logs/version_2/checkpoints/last.ckpt
     device: cuda
     sequence_length: 8
     window_stride: 1

@@ -17,7 +17,7 @@ model:
 
 data:
   store: ball_detection/ball-mix-v1
-  evidence: ball_refiner/detector-ft-e13-trainval-r3-20260928
+  evidence: ball_refiner/detector-mixed-e9-trainval-r17-20260930
   sources: [tracknet, meiji, chat_annotation]
   window_length: 33
   stride: 16
@@ -26,9 +26,9 @@ data:
 
 training:
   batch_size: 32
-  epochs: 12
+  epochs: 48
   steps_per_epoch: 250
-  max_steps: 3000
+  max_steps: 12000
   num_workers: 0
   learning_rate: 0.0003
   weight_decay: 0.01
