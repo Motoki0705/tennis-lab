@@ -39,7 +39,10 @@ def load_baseline(record: dict[str, Any]) -> PersonDetectionOutput:
     reference = store.active(f"person_detection/{record['camera']}")
     if reference is None or json_value(reference) != record['baseline_reference']:
         raise ValueError('Baseline reference changed')
-    return store.load(reference, ArtifactCodec(PersonDetectionOutput))
+    baseline = store.load(reference, ArtifactCodec(PersonDetectionOutput))
+    if not isinstance(baseline, PersonDetectionOutput):
+        raise TypeError('Baseline artifact must contain person detections')
+    return baseline
 
 
 def frame_variants(plan: dict[str, Any], record: dict[str, Any], archives: dict[str, DetectionArchive],

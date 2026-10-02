@@ -1,22 +1,5 @@
 defaults:
-  - court_keypoints: physical_v1
-  - paths: default
-  - model: multiview_axial_base
-  - data: multiview_chunked_sequence
-  - training: default
-  - loss: default
-  - metrics: default
-  - run: train
-  - physics: default
-  - rally: default
-  - camera: default
-  - targeted_velocity: default
-  - generator: default
+  - train_chunked
+  - override training: gan_base
+  - override loss: default
   - _self_
-
-hydra:
-  run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
-  output_subdir: null
-  job:
-    chdir: false

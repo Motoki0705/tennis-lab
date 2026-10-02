@@ -60,6 +60,7 @@ __all__ = [
     "PersonDetectionResult",
     "Pose2DFrameSequenceRequest",
     "Pose2DRequest",
+    "Pose2DFrameSequenceRequest",
     "Pose2DResult",
     "SmplCoco17Reconstructor",
     "SmplVertexReconstructor",

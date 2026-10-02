@@ -232,12 +232,12 @@ def assess(args: argparse.Namespace) -> None:
                     appearances[CLIP], sampling = cached_appearance(raw, core, record['video'], clip_encoder,
                         plan['models'][CLIP]['sha256'], args.report / 'baseline_crop_cache')
                     saved['sampling'] = sampling
-                tracks = replace(raw, appearance=appearances[CLIP])
+                tracks = replace(raw, appearance=tuple(appearances[CLIP]))
                 mask, selection = select_linked_candidates(tracks, record['video']['fps'], LinkingConfig(), config.footpoints)
                 group, group_origins = linked_timeline(tracks, selection)
                 groups[CLIP].append(group)
                 if SOLIDER in appearances:
-                    groups[SOLIDER].append(linked_timeline(replace(raw, appearance=appearances[SOLIDER]), selection)[0])
+                    groups[SOLIDER].append(linked_timeline(replace(raw, appearance=tuple(appearances[SOLIDER])), selection)[0])
                 local, unknown = tracking_units(tracks, mask, labels)
                 units.extend(local)
                 originals.append(tracks)

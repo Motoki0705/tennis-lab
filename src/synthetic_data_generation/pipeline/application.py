@@ -58,8 +58,6 @@ def build_stage_registry(
         ),
         alignment=alignment,
         court_dataset=DeferredStageHandler(lambda: _build_court_handler(runtime)),
-        blcs_dataset=DeferredStageHandler(lambda: _build_blcs_handler(runtime)),
-        plcs_dataset=DeferredStageHandler(lambda: _build_plcs_handler(runtime)),
         report=DeferredStageHandler(lambda: _build_report_handler(runtime)),
     )
     return canonical_registry(handlers)
@@ -86,93 +84,6 @@ def _build_court_handler(
                 environment=dict(nht.environment),
                 timeout_seconds=nht.render_timeout_seconds,
             ),
-        ),
-    )
-
-
-def _build_blcs_handler(
-    runtime: ScenePipelineConfiguration,
-) -> StageHandler[StageExecutionSummary]:
-    from src.synthetic_data_generation.dataset.blcs.contracts import BLCSBallRendering
-    from src.synthetic_data_generation.dataset.blcs.handler import (
-        BLCSDatasetStageHandler,
-    )
-    from src.synthetic_data_generation.dataset.blcs.rendering import (
-        BLCSMeshNHTRenderer,
-        BLCSNHTRenderer,
-    )
-    from src.synthetic_data_generation.dataset.blcs.source import (
-        PhysicsBLCSTrajectoryProvider,
-    )
-    from src.synthetic_data_generation.rendering.nht import (
-        NHTComposedRenderClient,
-        NHTRenderClient,
-    )
-
-    nht = runtime.nht
-    return cast(
-        StageHandler[StageExecutionSummary],
-        BLCSDatasetStageHandler(
-            workspace=runtime.workspace,
-            configuration=runtime.blcs,
-            camera_configuration=runtime.camera,
-            seed=runtime.stages.seed,
-            assets=runtime.blcs.assets,
-            trajectory_provider=PhysicsBLCSTrajectoryProvider(
-                generator_config=runtime.blcs.generator,
-                settings=runtime.blcs.trajectory_source,
-            ),
-            renderer=(
-                BLCSNHTRenderer(
-                    assets=runtime.blcs.assets,
-                    client=NHTComposedRenderClient(),
-                    executable=nht.render_executable,
-                    environment=dict(nht.environment),
-                    timeout_seconds=runtime.blcs.render_timeout_seconds,
-                    execution_device=runtime.blcs.performance.execution_device,
-                    maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
-                )
-                if runtime.blcs.assets.rendering is BLCSBallRendering.GAUSSIAN
-                else BLCSMeshNHTRenderer(
-                    assets=runtime.blcs.assets,
-                    client=NHTRenderClient(),
-                    executable=nht.render_executable,
-                    environment=dict(nht.environment),
-                    timeout_seconds=runtime.blcs.render_timeout_seconds,
-                    execution_device=runtime.blcs.performance.execution_device,
-                    maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
-                )
-            ),
-        ),
-    )
-
-
-def _build_plcs_handler(
-    runtime: ScenePipelineConfiguration,
-) -> StageHandler[StageExecutionSummary]:
-    from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageHandler
-    from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
-    from src.synthetic_data_generation.rendering.nht import NHTRenderClient
-    from src.tasks.plcs.generate_dataset.sampling.motion_source import (
-        ACCADMotionLibrary,
-    )
-
-    nht = runtime.nht
-    return cast(
-        StageHandler[StageExecutionSummary],
-        PLCSStageHandler(
-            configuration=runtime.plcs,
-            camera_configuration=runtime.camera,
-            motion_library=ACCADMotionLibrary.from_root(runtime.plcs.accad_root),
-            avatar_appearance_source=runtime.plcs.appearance,
-            renderer=NHTPLCSRenderer(
-                client=NHTRenderClient(),
-                compositor=runtime.plcs.foreground_compositor,
-                executable=nht.render_executable,
-                environment=dict(nht.environment),
-                timeout_seconds=runtime.plcs.render_timeout_seconds,
-            ),
-            parameters=runtime.plcs.build_stage_parameters(seed=runtime.stages.seed),
         ),
     )
 

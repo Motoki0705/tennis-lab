@@ -51,6 +51,7 @@ def owner(
         "samples": {"sample-1": sample},
         "schema": "canonical_court_dataset_v3",
         "summary": {"id": "B00"},
+        "image_store": None,
     }
     monkeypatch.setattr(service, "_cached_load", lambda scene, revision: data)
     return service, sample, service.revision("B00")
@@ -85,7 +86,7 @@ def test_nan_rgb_is_an_explicit_error(
         service.root / "B00/datasets/court/rgb.npy",
         np.full((40, 80, 3), np.nan, dtype=np.float32),
     )
-    with pytest.raises(ValueError, match="Invalid RGB"):
+    with pytest.raises(ValueError, match="RGB must be finite"):
         service.overlay("B00", revision, "sample-1", 40)
 
 
