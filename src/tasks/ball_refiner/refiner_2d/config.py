@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -61,3 +62,30 @@ class Refiner2DConfig:
         for name in ("use_detector", "use_pose", "use_court"):
             if type(getattr(self, name)) is not bool:
                 raise ValueError(f"{name} must be a boolean")
+
+
+@dataclass(frozen=True)
+class CandidateAnchoredConfig(Refiner2DConfig):
+    """Explicit experimental schema; the existing absolute schema is unchanged."""
+
+    mean_parameterization: str
+    anchored_components: int
+    max_offset_uv: float
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.mean_parameterization != 'candidate_residual_v1':
+            raise ValueError('Unsupported mean_parameterization')
+        if type(self.anchored_components) is not int or not 0 < self.anchored_components < self.components:
+            raise ValueError('Require anchored components and at least one free component')
+        if not math.isfinite(self.max_offset_uv) or not 0 < self.max_offset_uv < .5:
+            raise ValueError('max_offset_uv must lie in (0, .5)')
+        if not self.use_detector:
+            raise ValueError('Candidate residual means require detector evidence')
+
+
+def parse_model_config(values: dict[str, Any]) -> Refiner2DConfig:
+    """Recognize two complete schemas without adding absent fields/defaults."""
+    if 'mean_parameterization' in values:
+        return CandidateAnchoredConfig(**values)
+    return Refiner2DConfig(**values)

@@ -1,0 +1,83 @@
+{
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/analyze/precision/i935-variants-s42-r20-20260930": {
+    "exists": true,
+    "file_count": 3,
+    "bytes": 146701,
+    "preserved_in_place": true,
+    "files": {
+      "plan.json": {
+        "bytes": 143356,
+        "sha256": "f05ad9f4b3ad41a5efd7d8af814918b45666b8c1cfe351e34d14c8cf0e3e20e9"
+      },
+      "preflight.json": {
+        "bytes": 2016,
+        "sha256": "76b61a9b7d622088ccb1a48aeb42c4f8338324f3dcf139a84c541ccb05465a76"
+      },
+      "resource_usage.json": {
+        "bytes": 1329,
+        "sha256": "743134cddcb15c0e4f3def3a7d19cf04d02f8a318c1db6f69436481d7f7851ef"
+      }
+    }
+  },
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/analyze/precision/i935-variants-s42-r20-20260930-compiler": {
+    "exists": true,
+    "file_count": 4151,
+    "bytes": 148348348,
+    "preserved_in_place": true
+  },
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-absolute-12k-s42-r20-20260930": {
+    "exists": false,
+    "file_count": 0,
+    "bytes": 0,
+    "preserved_in_place": true,
+    "files": {}
+  },
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-anchored-12k-s42-r20-20260930": {
+    "exists": false,
+    "file_count": 0,
+    "bytes": 0,
+    "preserved_in_place": true,
+    "files": {}
+  },
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-anchored-3k-s42-r20-20260930": {
+    "exists": false,
+    "file_count": 0,
+    "bytes": 0,
+    "preserved_in_place": true,
+    "files": {}
+  },
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-absolute-12k-s42-r20-20260930": {
+    "exists": true,
+    "file_count": 3,
+    "bytes": 40487,
+    "preserved_in_place": true,
+    "files": {
+      "config.yaml": {
+        "bytes": 1310,
+        "sha256": "a5f298461dadc50803b508e5f8073933300f902a227a151213230b385b707365"
+      },
+      "data_manifest.json": {
+        "bytes": 39127,
+        "sha256": "6cab28c806b8048ebcde6bb96b794ae37890ef577a2e8edf1ad545bb7c1b58db"
+      },
+      "run_state.json": {
+        "bytes": 50,
+        "sha256": "4cbd4380cfe1c530b240e1666ee3ab8ef746659210142ed271f07d964b3633ea"
+      }
+    }
+  },
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-anchored-12k-s42-r20-20260930": {
+    "exists": false,
+    "file_count": 0,
+    "bytes": 0,
+    "preserved_in_place": true,
+    "files": {}
+  },
+  "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-anchored-3k-s42-r20-20260930": {
+    "exists": false,
+    "file_count": 0,
+    "bytes": 0,
+    "preserved_in_place": true,
+    "files": {}
+  }
+}

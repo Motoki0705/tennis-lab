@@ -1,0 +1,16 @@
+{
+  "run_id": "1790738050136194711_2100742_i935-precision-variants-s42-r20-20260930",
+  "name": "i935-precision-variants-s42-r20-20260930",
+  "command": "timeout --signal=TERM --kill-after=15s 3585s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 MAX_JOBS=2 TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/analyze/precision/i935-variants-s42-r20-20260930-compiler PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/run_variants.py --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r20-20260930/plan.json",
+  "provider": "codex",
+  "session": "01a0f031-959b-7442-9c47-56b11c1a9426",
+  "issue": "935",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "0d3fd3f8a2498da33edbaf04656c1dee81185c3b",
+  "branch": "campaign930/i935-12-precision-diagnosis",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",
+  "captured_at": "2026-09-30T12:14:20+09:00"
+}

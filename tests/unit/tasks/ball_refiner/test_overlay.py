@@ -1,8 +1,11 @@
 """Geometry regressions for uncertainty overlays, independent of video codecs."""
 
+from typing import Literal
+
 import numpy as np
 import pytest
 
+from src.tasks.ball_refiner.visualization import overlay
 from src.tasks.ball_refiner.visualization.overlay import component_geometry
 
 
@@ -34,3 +37,31 @@ def test_ellipses_preserve_source_covariance_and_component_weights() -> None:
 def test_invalid_covariance_is_rejected_without_a_visual_fallback(bad: np.ndarray) -> None:
     with pytest.raises(ValueError):
         component_geometry(np.zeros((1, 2)), bad, np.zeros(1), (100, 100))
+
+
+@pytest.mark.parametrize("summary", ["mixture", "top_component"])
+def test_marker_summary_keeps_component_opacity(
+    summary: Literal["mixture", "top_component"], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    means = np.array([[.2, .3], [.8, .7]])
+    factors = np.tile(np.eye(2) * .01, (2, 1, 1))
+    weights = np.array([.25, .75])
+    marked: list[np.ndarray] = []
+    alphas: list[float] = []
+
+    def capture_marker(image: np.ndarray, point: np.ndarray, color: tuple[int, int, int], symbol: int) -> None:
+        marked.append(point.copy())
+
+    original = overlay.cv2.addWeighted
+
+    def capture_blend(layer: np.ndarray, alpha: float, image: np.ndarray, beta: float, gamma: float, *, dst: np.ndarray) -> None:
+        alphas.append(alpha)
+        original(layer, alpha, image, beta, gamma, dst=dst)
+
+    monkeypatch.setattr(overlay, "mark", capture_marker)
+    monkeypatch.setattr(overlay.cv2, "addWeighted", capture_blend)
+    overlay.draw_mixture(np.zeros((100, 100, 3), np.uint8), means, factors, np.log(weights),
+                         (100, 100), point_summary=summary)
+    expected = means[1] if summary == "top_component" else (means * weights[:, None]).sum(0)
+    np.testing.assert_allclose(marked, expected[None] * 100)
+    np.testing.assert_allclose(alphas, weights)
