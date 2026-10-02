@@ -14,7 +14,6 @@ from src.tasks.base.configuration import (
 )
 from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.plcs.configuration import PLCSModelConfig
-from src.tasks.plcs.model_io.axial_reference import validate_axial_reference_checkpoint
 from src.tasks.plcs.model_io.factory import PLCSBoundModelIO, build_plcs_model_io
 from src.utils.schema.court_normalization import validate_court_coordinate_normalization
 
@@ -66,7 +65,6 @@ def load_plcs_pair(
 ) -> PLCSBoundModelIO:
     runtime = PLCSInferenceConfig.from_config(config, contract)
     validate_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
-    validate_axial_reference_checkpoint(checkpoint, model_name=runtime.model.name)
     pair = build_plcs_model_io(runtime)
     weights = {
         key.removeprefix("model."): value

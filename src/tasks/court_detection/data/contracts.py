@@ -30,9 +30,6 @@ class CourtInputCapability(StrEnum):
 
     KEYPOINT_CHANNELS = "keypoint_channels"
     COURT_INSTANCES = "court_instances"
-    SEGMENTATION_REFERENCE = "segmentation_reference"
-    LINE_REFERENCE = "line_reference"
-    SEMANTIC_LINE_REFERENCE = "semantic_line_reference"
     V3_TARGET_COURT_POSE = "v3_target_court_pose"
 
 
@@ -150,14 +147,12 @@ class CourtPoseAuthority:
 
 @dataclass(frozen=True, slots=True)
 class CourtSampleRecord:
-    """A validated source record with authoritative paths and derived refs."""
+    """A validated source record with authoritative image and annotation paths."""
 
     sample_id: str
     split: CourtSourceSplit
     image_path: Path
     annotation_path: Path
-    derived_key: str
-    dense_target_refs: Mapping[CourtDenseTargetKind, Path]
     payload: Mapping[str, object]
 
     def __post_init__(self) -> None:
@@ -165,11 +160,6 @@ class CourtSampleRecord:
             raise ValueError("Court sample_id must be non-empty and trimmed.")
         if self.split not in {"train", "val", "test"}:
             raise ValueError(f"Unsupported Court split: {self.split!r}.")
-        if not self.derived_key:
-            raise ValueError("Court derived target key must be non-empty.")
-        object.__setattr__(
-            self, "dense_target_refs", MappingProxyType(dict(self.dense_target_refs))
-        )
         object.__setattr__(self, "payload", MappingProxyType(dict(self.payload)))
 
 
@@ -264,16 +254,12 @@ class CourtRawSample:
     image: Image.Image
     keypoint_channels: CourtKeypointChannels | None
     court_instances: tuple[CourtInstance2D, ...]
-    dense_target_refs: Mapping[CourtDenseTargetKind, Path]
     metadata: CourtSampleMetadata
     pose_authority: CourtPoseAuthority | None = None
 
     def __post_init__(self) -> None:
         if self.image.mode != "RGB":
             raise ValueError("Court raw images must be RGB PIL images.")
-        object.__setattr__(
-            self, "dense_target_refs", MappingProxyType(dict(self.dense_target_refs))
-        )
 
 
 @dataclass(frozen=True, slots=True)
