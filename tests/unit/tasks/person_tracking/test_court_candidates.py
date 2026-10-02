@@ -116,9 +116,9 @@ def test_appearance_vetoes_geometrically_close_fragments() -> None:
     tracks = camera_tracks([(0., 5.)] * 2, seen)
     features = [TrackAppearance(np.array([frame], np.int64), np.array([vector], np.float32))
                 for frame, vector in [(5, [1., 0.]), (20, [0., 1.])]]
-    selected, diag = select_linked_candidates(replace(tracks, appearance=features), 30., LinkingConfig(), FootpointConfig())
+    selected, diag = select_linked_candidates(replace(tracks, appearance=tuple(features)), 30., LinkingConfig(), FootpointConfig())
     assert not selected.any() and not diag['links']
-    compatible = replace(tracks, appearance=[features[0], replace(features[1], embeddings=features[0].embeddings)])
+    compatible = replace(tracks, appearance=(features[0], replace(features[1], embeddings=features[0].embeddings)))
     assert select_linked_candidates(compatible, 30., LinkingConfig(), FootpointConfig())[0].sum() == 30
 
 
