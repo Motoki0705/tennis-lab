@@ -321,5 +321,50 @@ NLL/存在値の集計はframeの和・分母を使い、batch平均の平均に
 
 GPU実行は共有queueへ投入する。`run.dry_run=true`はCPUでcache/教師/分割/除外母数を検査し、
 モデル・optimizerは作らない。新規の出力先を使う。
-このpilotは学習接続の確認であり、HDR coverage・bootstrap・実遮蔽GT・RGB対照・文脈ablation・
-最終holdoutの採否を完了したとは扱わない。Meijiの確定負例不足も残る。
+このpilotは学習接続の確認であり、実遮蔽GT・RGB対照・文脈ablation・最終holdoutの採否を
+完了したとは扱わない。保存checkpointの分布診断は次節から別runで行う。Meijiの確定負例不足も残る。
+
+## 固定checkpointのvalidation分布診断
+
+`scripts/evaluate_pilot.py`は完了したpilotの`best.json`を読み、checkpoint・モデル設定・
+data manifest・入力cache/storeのhashとvalidation分割を照合してから推論する。
+設定は[評価YAML](configs/evaluate_pilot.yaml)が正本。
+`evaluate.partition`で選択側または較正側を明示し、testの指定は拒否する。
+較正側の**診断**であり、この入口では分散scaleや温度をfitしない。
+入力runはARTIFACT、結果は別のOUTPUT配下へ保存する。入力データrootは学習runの保存設定を使う。
+
+| ファイル | 責務 |
+|---|---|
+| `evaluation/hdr.py` | 全GMMの密度閾値・coverage・領域面積とMonte Carlo標準誤差 |
+| `evaluation/bootstrap.py` | 同時刻camera群を保ったframe加重のpercentile bootstrap |
+| `evaluation/configuration.py` | 評価設定・役割別path・許可するvalidation用途の検証 |
+| `evaluation/runner.py` | 固定checkpoint復元、元frameの分布保存、観測/人工gap長ごとの診断 |
+
+HDRはGaussianの画面外tailを含むR²上の条件付き領域で、存在確率で縮めない。
+混合からsampleした点のlog密度の分位点を閾値とし、別の独立sampleで
+`E_p[1(p(X) >= threshold) / p(X)]`から面積を求める。
+成分ごとの楕円の和ではない。面積はsource画素のJacobianを掛けてpx²で報告する。
+計算はfloat64、固定数のCPU一様乱数をframe順に割り当て、chunkサイズで乱数列を変えない。
+保存するframeごとの面積のMonte Carlo標準誤差は**推定した閾値に条件付けた値**で、閾値推定の誤差を含まない。
+集計欄はそのframeごとの標準誤差の平均であり、平均面積の標準誤差ではない。
+
+bootstrapは`meiji/video/clip`を復元抽出し、各群の全camera・全frameを一緒に含める。
+frame母数で加重し、clip平均の平均にしない。少なくとも2群を要求し、frame単位の独立標本へ
+読み替えない。bootstrapでは推定済みHDRを固定し、Monte Carloの乱数を引き直さない。
+群数が少ないintervalは探索的であり、母集団でのcoverageを保証しない。
+観測条件だけで元argmaxとの点誤差・paired平均誤差差を比べ、gap条件に未遮蔽detectorを
+同じ入力条件の基準として置かない。dense heatmapの密度比較は未実装。
+
+全観測と人工gap内の観測を分け、gap長ごとには**同じ元frame**の無欠損/欠損予測を集計する。
+clipごとの全GMM・frame/PTS・gap mask、採点frame、誤差・NLL・HDR閾値/coverage/面積をNPZへ保存し、
+checksumとMonte Carlo seedをmanifestへ残す。clip完了ごとに進捗を公開し、最終入力hash確認後にのみ
+`status=complete`を公開する。中断/既存runへの上書きや自動resumeは行わない。
+
+```bash
+# GPU実行は共有training queueへ投入する。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.evaluate_pilot \
+  paths.artifact_root=<絶対repo-root>/outputs paths.output_root=<絶対repo-root>/outputs \
+  evaluate.training_run=ball_refiner/train/detector_only/<training-run-id> \
+  evaluate.partition=calibration \
+  run.output_dir=ball_refiner/evaluate/detector_only/<evaluation-run-id>
+```
