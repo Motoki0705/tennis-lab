@@ -71,6 +71,39 @@ modelを呼び出し側でdeviceへ配置し、入力batchだけを順に転送�
 各frameの採用窓を示す。混合成分を平均せず、推論前のmodelのtrain/eval状態を終了・例外時に復元する。
 学習時のvalidationもこの共通経路を使う。pipeline登録・永続保存は上記の専用recipeを参照。
 
+### 候補残差平均の明示的な実験設定
+
+既存の全fieldだけを持つ`Refiner2DConfig`は絶対uv回帰のまま保持する。
+`parse_model_config`はこれに`mean_parameterization: candidate_residual_v1`、
+`anchored_components`、`max_offset_uv`を**全て明示した別schema**も受け付ける。
+省略補完せず、未知の方式・一部だけの追加設定・候補軸不足はエラー。
+既存checkpoint/bundleのconfigや既定YAMLは変更しない。
+
+この方式はscore上位候補に、`max_offset_uv * tanh(raw)`という学習可能な残差を加える。
+内部の同score成分割当だけはy→xの昇順で一意化し、候補集合の並べ替えに依存させない。
+detectorのtop-1/recall集計とcheckpoint選択の既存同率規則には影響しない。
+平均は[0,1]内へclipし、既存decoderへ渡すlogitの有限性に限り1e-6の端点余裕を取る。
+該当候補が無効なframeは、その成分の学習した絶対uvを使う明示的な欠損分岐とする。
+全gapでも全成分を返し、少なくとも1成分は全frameで自由な絶対uvとする。
+候補基準成分の平均headのみweightをゼロ初期化し、初期残差を0にする。
+共分散・weight・presenceの学習、BallGMM2Dの保存契約、joint NLLは共通。
+実験数値・採否はknowledgeを正本とし、この方式をpipeline defaultへ昇格しない。
+
+### proposed: 候補残差headを次の基準設計にする案
+
+**ユーザー判断前の提案であり、現在はexperimentalのまま。**
+上記の方式をscore上位3候補＋有界残差（`max_offset_uv=0.02`）と1自由成分、
+K=4、文脈なし、12,000更新の学習予算で次のrefiner基準設計にする案を提示する。
+検出器は既に候補recallで固定したepoch9を使い、33frame/stride16、
+source平衡・seed・joint NLL・Meiji選択側のobserved/gap等重みNLLによるcheckpoint選択を維持する。
+12,000更新の最終checkpointを無条件採用する意味ではない。
+欠損時の絶対平均分岐・自由成分・full covariance・presenceとBallGMM2D契約も上記のまま。
+
+根拠・反証・較正の限界は[knowledge 000018](../../../knowledge/nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)、
+ユーザーへ提示する設計採用・component切替・裾較正・#936への受渡しの選択肢は
+[提案A–D](../../../knowledge/runs/run-i935-precision-variants-s42-r21-20260930/proposals.md)を参照。
+設計採用とpipelineのasset/default切替は別判断で、現行YAML・asset参照は変更しない。
+
 教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
 存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
 `position_nll_sum / position_weight`を使い、位置教師0件ならN/Aとする。

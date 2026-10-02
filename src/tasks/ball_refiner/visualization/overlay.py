@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
 import cv2
 import numpy as np
@@ -72,9 +72,14 @@ def mark(image: Image, point: FloatArray, color: tuple[int, int, int], symbol: i
 
 
 def draw_mixture(image: Image, means: FloatArray, factors: FloatArray, logits: FloatArray,
-                 scale_xy: tuple[float, float]) -> None:
-    """Blend each outline with alpha=its mixture weight, then draw the mean."""
+                 scale_xy: tuple[float, float], *,
+                 point_summary: Literal["mixture", "top_component"] = "mixture") -> None:
+    """Blend component outlines with alpha=weight and draw an explicit summary."""
     mean, ellipses = component_geometry(means, factors, logits, scale_xy)
+    if point_summary == "top_component":
+        mean = np.asarray(ellipses[int(logits.argmax())].center, np.float64)
+    elif point_summary != "mixture":
+        raise ValueError("Unknown point summary")
     # Stable component order; blending is visualization only, not a density union.
     for ellipse in ellipses:
         layer = image.copy()
