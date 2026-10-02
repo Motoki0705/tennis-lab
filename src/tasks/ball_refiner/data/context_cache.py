@@ -12,7 +12,7 @@ from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord, shar
 from src.tasks.ball_refiner.data.cache_identity import clip_record, store_hashes
 from src.tasks.ball_refiner.data.context_arrays import ContextArrays, GeneratedContext
 from src.tasks.ball_refiner.data.evidence_cache import EvidenceCache
-from src.tennis_scene.pipeline.artifacts import write_json_atomic
+from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
 from src.utils.checksum import dual_sha256
 
 SCHEMA = "ball_refiner_context.v1"
@@ -41,9 +41,30 @@ def _assert_timeline(result: ContextArrays, store: BallFrameStore, clip: ClipRec
         raise ValueError(f"Valid court points must be inside the stored image: {clip.clip_id}")
 
 
+def context_cache_identity(evidence: EvidenceCache) -> dict[str, Any]:
+    """Snapshot the exact input and generator shared by monolithic/sharded builds."""
+    store = evidence.store
+    hashes = store_hashes(store.directory)
+    if hashes != evidence.manifest["store"]["sha256"]:
+        raise ValueError("Store changed after opening detector evidence")
+    evidence_path = evidence.directory / "manifest.json"
+    digest = dual_sha256(evidence_path)
+    if json.loads(evidence_path.read_text()) != evidence.manifest or dual_sha256(evidence_path) != digest:
+        raise ValueError("Detector manifest changed after opening evidence")
+    return {
+        "schema": SCHEMA, "rgb_condition": RGB_CONDITION, "coordinate_system": COORDINATES,
+        "generator_sha256": {name: dual_sha256(Path(__file__).with_name(name)) for name in (
+            "context_cache.py", "context_arrays.py", "cache_identity.py",
+        )},
+        "store": {"directory": str(store.directory), "sha256": hashes},
+        "evidence": {"directory": str(evidence.directory), "manifest_sha256": digest},
+    }
+
+
 def generate_context_cache(
     evidence: EvidenceCache, *, output: Path, producer: ContextProducer,
     clip_ids: tuple[str, ...] | None,
+    expected_identity: dict[str, Any] | None = None,
 ) -> Path:
     """Publish every completed clip, then mark complete after final hash checks.
 
@@ -61,23 +82,12 @@ def generate_context_cache(
         raise ValueError("Context selection must name unique clips from the detector cache")
     selected = tuple(clip_id for clip_id in evidence.clip_ids if clip_id in set(selected))
     store = evidence.store
-    store_identity = store_hashes(store.directory)
-    if store_identity != evidence.manifest["store"]["sha256"]:
-        raise ValueError("Store changed after opening detector evidence")
-    evidence_path = evidence.directory / "manifest.json"
-    evidence_hash = dual_sha256(evidence_path)
-    if json.loads(evidence_path.read_text()) != evidence.manifest:
-        raise ValueError("Detector manifest changed after opening evidence")
+    identity = {**context_cache_identity(evidence), "model_identity": json_value(producer.identity())}
+    if expected_identity is not None and identity != expected_identity:
+        raise ValueError("Context generation identity differs from the pinned shard plan")
     detector_records = {record["clip"]["clip_id"]: record for record in evidence.manifest["clips"]}
-    identity = producer.identity()
     manifest: dict[str, Any] = {
-        "schema": SCHEMA, "status": "building", "rgb_condition": RGB_CONDITION,
-        "coordinate_system": COORDINATES, "model_identity": identity,
-        "generator_sha256": {name: dual_sha256(Path(__file__).with_name(name)) for name in (
-            "context_cache.py", "context_arrays.py", "cache_identity.py",
-        )},
-        "store": {"directory": str(store.directory), "sha256": store_identity},
-        "evidence": {"directory": str(evidence.directory), "manifest_sha256": evidence_hash},
+        **identity, "status": "building",
         "selection": {"clip_ids": list(selected), "scope": "all_evidence" if clip_ids is None else "explicit_subset"},
         "clips": [],
     }
@@ -107,8 +117,7 @@ def generate_context_cache(
         shard = store.directory / "shards" / shard_name(record["clip"]["index"])
         if dual_sha256(shard) != record["jpeg_shard_sha256"]:
             raise ValueError("A completed clip's JPEG shard changed before publication")
-    if (store_hashes(store.directory) != store_identity or dual_sha256(evidence_path) != evidence_hash
-            or producer.identity() != identity):
+    if {**context_cache_identity(evidence), "model_identity": json_value(producer.identity())} != identity:
         raise ValueError("Context store, detector manifest, model assets or code changed during generation")
     manifest["status"] = "complete"
     write_json_atomic(output / "manifest.json", manifest)

@@ -1,0 +1,2 @@
+[worker] 2026-09-28T23:59:30+09:00 running: 1790607540292509890_751990_i935-context-shard-00059-tracknet-r12-20260928.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790607540292509890_751990_i935-context-shard-00059-tracknet-r12-20260928.log)
+[worker] 2026-09-29T00:15:37+09:00 done: 1790607540292509890_751990_i935-context-shard-00059-tracknet-r12-20260928.job resource=all slot=all
