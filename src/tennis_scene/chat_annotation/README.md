@@ -7,6 +7,9 @@ MP4と、Chatへ貼り付ける短いリクエスト本文を作る。対象は�
 [PROTOCOL.md](resources/PROTOCOL.md)、機械契約は
 [runtime/contracts.py](runtime/contracts.py)を参照する。対象別REQUESTには機械契約から生成したJSON Schemaを含める。
 
+ローカルのCodex CLIによるボール注釈・並列実行・採用判定・再アノテーションの運用は
+[local_agent](local_agent/README.md) を参照する。
+
 ## 実行
 
 ### Web UI — 未確認動画の整理と品質確認

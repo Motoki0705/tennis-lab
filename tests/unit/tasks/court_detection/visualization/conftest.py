@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.court_detection.data.target_generation.materializer import (
-    CourtTargetMaterializer,
+from src.tasks.court_detection.data.inputs.tennis_store_migration import (
+    migrate_tennis_store,
 )
 from src.tasks.court_detection.visualization.review import datasets
 from src.tasks.court_detection.visualization.review.datasets import (
@@ -55,13 +55,14 @@ def review_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     its explicit ``excluded_sample_ids``) instead of a real-data-only path.
     """
     data_root = tmp_path / "data"
-    _write_source(data_root / "court", _record(kps=_planar_kp14()))
+    _write_source(data_root / "upstream", _record(kps=_planar_kp14()))
+    migrate_tennis_store(data_root / "upstream", data_root / "court_detection/tennis_court_detector-v1", excluded_sample_ids=())
     preset = tmp_path / "tennis_court_detector.yaml"
     preset.write_text(
         "\n".join(
             (
                 "kind: tennis_court_detector",
-                "root: court",
+                "root: court_detection/tennis_court_detector-v1",
                 "split_mapping:",
                 "  train: train",
                 "  val: val",
@@ -95,23 +96,7 @@ def catalog(review_project: Path) -> CourtDatasetCatalog:
 
 @pytest.fixture
 def materialized_catalog(catalog: CourtDatasetCatalog) -> CourtDatasetCatalog:
-    """Materialize the exact dense targets the canonical builders consume.
-
-    Only the Tennis source is materialized: the synthetic fixture's hand-written
-    camera-view UV layout is not a physical projection, so the rasterizer
-    correctly refuses it.  Real synthetic dense ground truth (with the
-    provenance-verified derived store) is covered by the ``local_data`` smoke
-    test instead.
-    """
-    for entry in catalog.entries():
-        if not entry.available or entry.source_kind != "tennis_court_detector":
-            continue
-        layer = catalog.input_for(entry)
-        materializer = CourtTargetMaterializer(
-            input_layer=layer,
-            target_store=catalog.target_store,
-        )
-        materializer.materialize(splits=(entry.split,), target_kinds=DENSE_KINDS)
+    """Compatibility fixture name: masks are now generated without disk targets."""
     return catalog
 
 
