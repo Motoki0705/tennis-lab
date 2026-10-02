@@ -25,6 +25,12 @@ from src.synthetic_data_generation.dataset.court.assembler import (
     CourtArrayValidationMode,
     validate_court_dataset,
 )
+from src.synthetic_data_generation.dataset.court.sample_store import (
+    open_court_store,
+    read_court_labels,
+    read_court_manifest,
+    read_court_rgb,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
     court_schema_from_dataset_schema,
@@ -97,10 +103,8 @@ class CourtVisualizationSource:
             root,
             array_validation=CourtArrayValidationMode.FULL,
         )
-        manifest = _object(
-            _load_json(_contained_file(root, "dataset.json")),
-            name="Court dataset",
-        )
+        manifest = read_court_manifest(root)
+        self._image_store = open_court_store(root) if "storage" in manifest else None
         self.dataset_schema = _text(manifest.get("schema"), name="Court schema")
         self.schema_definition = court_schema_from_dataset_schema(self.dataset_schema)
         self.dataset_scene_id = _text(manifest.get("scene_id"), name="Court scene_id")
@@ -198,23 +202,12 @@ class CourtVisualizationSource:
     def frames(self) -> Iterator[CourtSourceFrame]:
         """Stream each NHT RGB array and corresponding label in manifest order."""
         for record in self._records:
-            rgb = _float32_rgb(
-                _contained_file(
-                    self.root,
-                    _text(record.get("rgb"), name="Court rgb path"),
-                ),
-                width=self.width,
-                height=self.height,
+            rgb = (
+                read_court_rgb(self.root, record, store=self._image_store).astype(np.float32) / 255.0
+                if self._image_store is not None
+                else _float32_rgb(_contained_file(self.root, _text(record.get("rgb"), name="Court rgb path")), width=self.width, height=self.height)
             )
-            label = _object(
-                _load_json(
-                    _contained_file(
-                        self.root,
-                        _text(record.get("labels"), name="Court labels path"),
-                    )
-                ),
-                name="Court labels",
-            )
+            label = read_court_labels(self.root, record, dataset_schema=self.dataset_schema)
             label_schema = label.get("schema")
             if (
                 not isinstance(label_schema, str)
@@ -1197,7 +1190,7 @@ def _float32_rgb(path: Path, *, width: int, height: int) -> NDArray[np.float32]:
         raise ValueError(f"NHT RGB frame has an invalid contract: {path}")
     if not np.isfinite(value).all() or np.any(value < 0.0) or np.any(value > 1.0):
         raise ValueError(f"NHT RGB frame is non-finite or outside [0,1]: {path}")
-    return cast(NDArray[np.float32], value)
+    return value
 
 
 __all__ = [
