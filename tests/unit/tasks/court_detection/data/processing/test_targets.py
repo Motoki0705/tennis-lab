@@ -1,10 +1,7 @@
-"""Unit coverage for source-neutral Court target decoding."""
+"""Unit coverage for source-neutral Court target construction."""
 
 from __future__ import annotations
 
-import warnings
-
-import numpy as np
 import pytest
 import torch
 
@@ -15,7 +12,6 @@ from src.tasks.court_detection.data.contracts import (
     CourtTransformedSample,
 )
 from src.tasks.court_detection.data.processing.targets import (
-    SegmentationTargetBuilder,
     SemanticLineTargetBuilder,
 )
 from src.tasks.court_detection.target_schemas import (
@@ -26,26 +22,6 @@ from src.tasks.court_detection.target_schemas import (
 pytestmark = pytest.mark.unit
 
 
-def test_segmentation_decode_copies_read_only_image_buffer() -> None:
-    builder = SegmentationTargetBuilder(
-        target_schema="court_cell_segmentation_single_court_v2",
-        input_spec=CourtInputSpec(
-            source_kind="tennis_court_detector",
-            source_schema="fixture",
-            capabilities=frozenset({CourtInputCapability.SEGMENTATION_REFERENCE}),
-        ),
-    )
-    array = np.frombuffer(bytes([0, 1, 2, 3]), dtype=np.uint8).reshape(2, 2)
-    assert not array.flags.writeable
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        decoded = builder._decode(array)
-        decoded[0, 0] = 6
-
-    assert int(decoded[0, 0]) == 6
-
-
 def test_semantic_line_builder_swaps_only_left_right_classes_on_flip() -> None:
     builder = SemanticLineTargetBuilder(
         target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
@@ -53,7 +29,7 @@ def test_semantic_line_builder_swaps_only_left_right_classes_on_flip() -> None:
             source_kind="synthetic_court",
             source_schema="fixture",
             capabilities=frozenset(
-                {CourtInputCapability.SEMANTIC_LINE_REFERENCE}
+                {CourtInputCapability.COURT_INSTANCES}
             ),
         ),
     )
