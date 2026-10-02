@@ -12,9 +12,6 @@ from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
 from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
-from src.tasks.ball_detection.training.staged_runner import (
-    StagedBallDetectionTrainingRunner,
-)
 
 _CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/ball_detection/configs"
 
@@ -32,11 +29,8 @@ def _config(tmp_path: Path) -> DictConfig:
         )
 
 
-@pytest.mark.parametrize(
-    "runner_type", [BallDetectionTrainingRunner, StagedBallDetectionTrainingRunner],
-)
 def test_init_loads_all_legacy_2d_weights_without_court_metadata(
-    tmp_path: Path, runner_type: type[BallDetectionTrainingRunner],
+    tmp_path: Path,
 ) -> None:
     config = _config(tmp_path)
     original = BallDetectionLightningModule(config)
@@ -48,7 +42,7 @@ def test_init_loads_all_legacy_2d_weights_without_court_metadata(
     )
     restored = BallDetectionLightningModule(config)
     assert any(not torch.equal(state[k], v) for k, v in restored.state_dict().items())
-    runner = runner_type()
+    runner = BallDetectionTrainingRunner()
     runner.maybe_load_init_weights(runner.validate_runtime_config(config), restored)
     for key, value in restored.state_dict().items():
         torch.testing.assert_close(value, state[key], rtol=0, atol=0)

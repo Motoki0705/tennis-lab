@@ -27,7 +27,7 @@
 
 ```bash
 PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
-    --store <元repo>/data/ball_detection/ball-mix-v1 \
+    --store <元repo>/data/ball_detection/ball-mix-v2 \
     --poses <元repo>/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores \
     --baseline <ft-e13 checkpoint> --treatment <validation選択checkpoint> \
     --report <新規出力先> --phase preflight --device cpu

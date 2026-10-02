@@ -103,9 +103,7 @@ run:
 `resume`と`init_weights`の同時指定、未知role・余分なkey・絶対path・root外への参照は拒否する。
 共通の`resolve_checkpoint_input`は解決済みpathとroleを保持する。推論consumerも元モデルのARTIFACT参照を維持し、別途読む事前学習重みのCHECKPOINT rootを書き換えない。
 別の学習出力を読むときは `paths.artifact_root` を明示し、ファイルの自動探索・コピーは行わない。
-staged ball trainingは `train/staged/phase1`〜`phase4` を明示的なrun-idとして使い、
-前phaseのcheckpointを次phaseが参照する。別のstaged実験では4つの出力と入力参照を
-同じ新しい実験名に揃える。
+
 
 データ内容・split・座標契約・教師checkpoint・生成seedを変える場合は新しい
 dataset-versionを作る。SLCSのscene起点生成では、既存sceneを検証し、入力・設定が一致する特徴・splitを再利用する。旧BLCS/PLCS generatorや
@@ -126,22 +124,20 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 
 | タスク・入口 | 成果物・生成データのrootと設定 |
 |---|---|
-| 全5タスク `train`、派生train、ball `train_staged`、court `train_mixed` | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
+| 全5タスク `train`、派生train、court `train_mixed` | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
 | ball `eval` | OUTPUT / `run.output_dir` |
 | ball/court `visualize` | GIFはARTIFACT / `visualization.save`、HydraログはOUTPUT / `run.output_dir`。相対run階層は共通 |
 | ball `evaluate_manifest` | OUTPUT / manifest内 `output_dir`。CLIログは `evaluate/manifest/<run-id>/hydra`、比較成果物はmanifestが独立に生成するrun-id。再開には同じmanifest出力を明示 |
 | ball/court/BLCS/PLCS `preview_augmentation`、ball/court `preview_heatmaps` | OUTPUT / `preview.output_dir` |
 | BLCS/PLCS `visualize`（`visualization.mode=predict`を含む） | OUTPUT / `visualization.save`。GIFとHydraログは同じmode・run-id |
 | PLCS `analysis/*` | OUTPUT / `run.output_dir`（angle_velocity、dataset_distribution、loss_dominance、rotation_error_samples） |
-| ball `analyze_web_bbox_ratio` | OUTPUT / `analyze.output_dir` |
 | SLCS `evaluate`、`predict_clip`、`analyze_predictions` | OUTPUT / `evaluate.output_dir`、`predict.output_dir`、`analysis.output_dir` |
 | `src.tasks.slcs.scripts.evaluate_run` | 明示的な絶対 `--output-root` / `--output slcs/evaluate/<experiment>/<run-id>`。選定receipt・条件別config/予測/metricsを保存。入力 `--training-run` も同じrootからの相対train階層 |
 | BLCS/PLCS `generate_dataset` | DATA / `run.output_dir`。dataset-versionは固定、生成ログだけ独立run |
 | BLCS `evaluate_real` | OUTPUT / `run.output_dir`（evaluate run）。入力重みはCHECKPOINT / `evaluation.checkpoint`。固定test splitの結果・入力hash・展開済み設定を保存 |
 | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
 | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |
-| ball `convert_web_dataset` | DATA / `convert.output_dir`。既存共有dataset `tennis/web/unified` を維持 |
-| ball/court YouTube準備・annotation、ball SSL画像抽出・clip予測 | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
+| court YouTube準備・annotation | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
 | SLCS `generate_dataset` | DATA / `data.dataset_root` のsceneを検証し、同datasetへDINO特徴とsplitを追記。HydraログはOUTPUTのgenerate run |
 | SLCS `make_splits` | DATA / `data.split_file` |
 | SLCS `precompute_dino_tokens` | DATA / `data.dataset_root` 内のmanifestが示すclipの特徴ファイル。ログはprecompute run |

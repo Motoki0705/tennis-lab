@@ -412,7 +412,7 @@ def test_every_strict_schema_field_rejects_an_invalid_exact_type() -> None:
     "symbol",
     [
         "src.tasks.base.configuration.TrainingRuntimeConfig",
-        "src.tasks.ball_detection.configuration.BallYoutubePathContract",
+        "src.tasks.ball_detection.configuration.BallRuntimePaths",
         "src.tasks.blcs.configuration.AxialModelConfig",
         "src.tasks.court_detection.configuration.CourtTrainingConfig",
         "src.tasks.plcs.configuration.PLCSTrainingConfig",

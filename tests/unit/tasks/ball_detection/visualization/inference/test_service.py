@@ -11,10 +11,6 @@ import torch
 from fastapi.testclient import TestClient
 
 from src.tasks.ball_detection.visualization.inference.loader import load_ball_model
-from src.tasks.ball_detection.visualization.inference.peaks import (
-    decode_frame_peaks,
-    peaks_to_points,
-)
 from src.tasks.ball_detection.visualization.inference.service import (
     PREVIEW_FRAME_LIMIT,
     DetectionRequestError,
@@ -28,15 +24,12 @@ def build_service(
     *,
     make_clip_dataset: Callable[..., Path],
     make_tiny_checkpoint: Callable[..., Path],
-    make_web_store: Callable[[Path], Path] | None = None,
     clips: int = 2,
     frames: int = 6,
     num_frames: int = 2,
 ) -> DetectionService:
     data_root = tmp_path / "data"
     make_clip_dataset(data_root / "ball_detection" / "test-v1" / "tracknet", clips=clips, frames=frames)
-    if make_web_store is not None:
-        make_web_store(data_root)
     make_tiny_checkpoint(
         tmp_path / "outputs" / "ball_detection" / "run-local.ckpt", num_frames=num_frames
     )
@@ -65,9 +58,7 @@ def test_catalog_reports_sources_and_compatibility(
     assert datasets["store/test-v1"]["available"] is True
     assert datasets["store/test-v1"]["count"] == 2
     assert datasets["store/test-v1"]["mode"] == "temporal"
-    assert datasets["web_static"]["available"] is False
-    assert "reason" in datasets["web_static"]
-    assert any("web_static" in warning for warning in catalog["warnings"])
+    assert set(datasets) == {"store/test-v1"}
 
     checkpoint = catalog["checkpoints"][0]
     assert checkpoint["id"] == "run-local.ckpt"
@@ -123,7 +114,7 @@ def test_scenes_paging_search_and_checkpoint_filter(
 
     with pytest.raises(DetectionRequestError, match="Unknown dataset"):
         service.scenes("missing")
-    with pytest.raises(DetectionRequestError, match="cannot run on dataset"):
+    with pytest.raises(DetectionRequestError, match="Unknown dataset"):
         service.scenes("web_static", checkpoint="run-local.ckpt")
     with pytest.raises(DetectionRequestError, match="offset"):
         service.scenes("store/test-v1", offset=-1)
@@ -289,44 +280,6 @@ def test_infer_runs_real_tiny_model_and_returns_scaled_points(
     }
     assert 0.0 <= metrics["f1"] <= 1.0
     assert result["warnings"] == []
-
-
-def test_infer_static_scene_repeats_frame_and_labels_it(
-    tmp_path: Path,
-    make_clip_dataset: Callable[..., Path],
-    make_tiny_checkpoint: Callable[..., Path],
-    make_web_store: Callable[[Path], Path],
-) -> None:
-    service = build_service(
-        tmp_path,
-        make_clip_dataset=make_clip_dataset,
-        make_tiny_checkpoint=make_tiny_checkpoint,
-        make_web_store=make_web_store,
-    )
-    assert service.catalog()["checkpoints"][0]["compatible_datasets"] == [
-        "store/test-v1",
-        "web_static",
-        "web_temporal",
-    ]
-    scene = "web_static::0"
-    preview = service.preview(scene, start=0, count=1)
-    assert preview["frames"] == 1
-    assert preview["items"][0]["gt"]["points"][0]["x"] == 12.5
-
-    result = service.infer("run-local.ckpt", scene, start=0, count=2, device="cpu")
-    assert result["metrics"]["window"] == {
-        "mode": "static_repeat",
-        "start": 0,
-        "end": 0,
-        "count": 2,
-        "repeat": 2,
-        "checkpoint_frames": 2,
-    }
-    assert any("canonical" in warning for warning in result["warnings"])
-    # Repeating one frame is the store's own static sampling mode; asking for a
-    # shorter window is refused instead of being padded quietly.
-    with pytest.raises(DetectionRequestError, match="count must"):
-        service.validate("run-local.ckpt", scene, start=0, count=1, device="cpu")
 
 
 def test_infer_uses_checkpoint_image_size_and_accepts_tiny_windows(
@@ -616,73 +569,6 @@ def test_non_finite_label_is_rejected_instead_of_emitting_nan(tmp_path: Path) ->
 
 
 # ------------------------------------------------------ 6) static aggregation
-
-
-def test_static_repeat_aggregates_to_one_unique_frame(
-    tmp_path: Path,
-    make_clip_dataset: Callable[..., Path],
-    make_tiny_checkpoint: Callable[..., Path],
-    make_web_store: Callable[[Path], Path],
-) -> None:
-    service = build_service(
-        tmp_path,
-        make_clip_dataset=make_clip_dataset,
-        make_tiny_checkpoint=make_tiny_checkpoint,
-        make_web_store=make_web_store,
-    )
-    result = service.infer("run-local.ckpt", "web_static::0", count=2, device="cpu")
-    assert [item["index"] for item in result["items"]] == [0]
-    assert result["metrics"]["scored_frames"] == [0]
-    assert result["metrics"]["excluded_frames"] == []
-    # The window metadata still records the repetition the model consumed.
-    assert result["metrics"]["window"]["repeat"] == 2
-    assert result["metrics"]["window"]["count"] == 2
-    assert any("Averaged" in text for text in result["warnings"])
-
-    # The single prediction is the decode of the window's mean probability map,
-    # recomputed here from the same public loader and peak decoder.
-    import cv2
-
-    from src.tasks.ball_detection.visualization.review.datasets import (
-        BallDatasetCatalog,
-    )
-
-    info = service.checkpoints()["run-local.ckpt"]
-    loaded = load_ball_model(info.path, device="cpu")
-    assert loaded.image_size_hw is not None
-    height, width = loaded.image_size_hw
-    scene = BallDatasetCatalog(service.data_root).resolve("web_static", "0")
-    rgb = scene.read_rgb(0)
-    resized = cv2.resize(rgb, (width, height), interpolation=cv2.INTER_LINEAR)
-    frame = resized.astype(np.float32) / 255.0
-    window = (
-        torch.from_numpy(np.stack([frame, frame]))
-        .permute(0, 3, 1, 2)
-        .unsqueeze(0)
-        .contiguous()
-    )
-    with torch.no_grad():
-        call = loaded.adapter.prepare_model_call(window)
-        probability = loaded.adapter.probability_heatmaps(
-            loaded.model(*call.model_args), call
-        )[0]
-    mean_heatmap = probability.mean(dim=0, keepdim=True)
-    peaks = decode_frame_peaks(
-        mean_heatmap,
-        original_size=(64, 48),
-        threshold=0.5,
-        nms_kernel=info.metrics.nms_kernel,
-        max_peaks=info.metrics.max_predictions_per_frame,
-        subpixel_refine=info.metrics.subpixel_refine,
-    )
-    expected = peaks_to_points(peaks[0])
-    produced = result["items"][0]["pred"]["points"]
-    assert len(produced) == len(expected)
-    for actual, wanted in zip(produced, expected, strict=True):
-        assert actual["label"] == wanted["label"]
-        assert actual["x"] == pytest.approx(wanted["x"], abs=1e-4)
-        assert actual["y"] == pytest.approx(wanted["y"], abs=1e-4)
-        assert actual["score"] == pytest.approx(wanted["score"], abs=1e-6)
 
 
 def test_reviewed_unresolved_and_estimated_labels_are_displayed_but_not_scored(

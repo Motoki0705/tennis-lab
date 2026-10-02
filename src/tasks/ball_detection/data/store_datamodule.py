@@ -52,8 +52,7 @@ class BallStoreDataModule(pl.LightningDataModule):
     """Mixed-source training and evaluation on one ball frame store version.
 
     ``data.train_sampling: null`` draws every train window once per epoch in a
-    shuffled order (natural source proportions); the staged datamodule
-    requires this mode because its own sampler orders the windows.
+    shuffled order (natural source proportions).
     """
 
     def __init__(self, config: DictConfig) -> None:
