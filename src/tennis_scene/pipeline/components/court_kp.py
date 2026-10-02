@@ -48,6 +48,14 @@ class CourtDetectionInput:
     video: SourceVideo
 
 
+@dataclass(frozen=True)
+class CourtImagePrediction:
+    points_px: NDArray[np.float32]
+    valid: NDArray[np.bool_]
+    diagnostics: dict[str, Any]
+    region_selection: dict[str, Any] | None
+
+
 @dataclass(frozen=True, slots=True)
 class CourtKPConfig:
     """Court detector checkpoint and its hybrid KP+LINE postprocess."""
@@ -140,26 +148,39 @@ class CourtKPModule(BasePipelineModule):
             if tuple(packet.original_size) != (video.width, video.height):
                 raise ValueError(f"Court frame size {packet.original_size} disagrees with source {(video.width, video.height)}")
             rgb = cast("NDArray[np.uint8]", cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB))
-            region, selection = self._select_region(rgb)
-            points_px, visible, frame_diagnostic = self._predict_frame_geometry(rgb, region=region)
+            prediction = self.predict_image(rgb)
             assert self._predictor is not None
             checkpoint = self._predictor.checkpoint_identity
         finally:
             self.unload()
-        keypoints = normalize_grid_keypoints(points_px, video.width, video.height)
+        keypoints = normalize_grid_keypoints(prediction.points_px, video.width, video.height)
         result = CourtKPResult(
-            keypoints[None, None].astype(np.float32), visible[None, None].astype(np.float32), np.array([0], np.int32),
+            keypoints[None, None].astype(np.float32), prediction.valid[None, None].astype(np.float32), np.array([0], np.int32),
             {"schema": "court_kp_hybrid_v1", "checkpoint": checkpoint,
              "postprocess": asdict(self.config.postprocess), "region_search": asdict(self.config.region_search),
              "output_keypoint_contract": KEYPOINT_CONTRACT,
-             "cameras": [{"camera_id": video.camera_id, "video_path": str(video.path), "region_selection": selection,
-                          "frames": [{"frame_index": 0, **frame_diagnostic}]}],
+             "cameras": [{"camera_id": video.camera_id, "video_path": str(video.path), "region_selection": prediction.region_selection,
+                          "frames": [{"frame_index": 0, **prediction.diagnostics}]}],
              "temporal_policy": "static_first_frame", "observed_frame_indices": [0], "source_frame_count": video.num_frames},
         )
         valid, errors = result.validate()
         if not valid:
             raise ValueError(f"Invalid CourtKP result: {errors}")
         return result
+
+    def predict_image(self, rgb: NDArray[np.uint8]) -> CourtImagePrediction:
+        """Run the same camera-local geometry on an explicit RGB image.
+
+        Keeps the predictor loaded for a caller processing several images;
+        callers must unload in a finally block. No video/source identity is
+        invented for JPEG stores. Region/model errors propagate unchanged.
+        """
+        if rgb.dtype != np.uint8 or rgb.ndim != 3 or rgb.shape[-1] != 3 or min(rgb.shape[:2]) <= 1:
+            raise ValueError("Court image must be uint8 RGB (H,W,3)")
+        self.load()
+        region, selection = self._select_region(rgb)
+        points, valid, diagnostic = self._predict_frame_geometry(rgb, region=region)
+        return CourtImagePrediction(points, valid, diagnostic, selection)
 
     def _select_region(self, rgb: NDArray[np.uint8]) -> tuple[Region | None, dict[str, Any] | None]:
         if not self.config.region_search.enabled:

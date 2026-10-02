@@ -1,0 +1,1055 @@
+{
+  "status": "verified_context_load",
+  "context_manifest_sha256": "d20516d29f6b80272dc7c5dc8a5900f8064b46dbe8067d7833469a7475b0e742",
+  "pose_threshold": 0.15,
+  "clips": [
+    {
+      "clip_id": "tracknet/game5/Clip14",
+      "frames": 35,
+      "tracks": 19,
+      "pose_valid_frames": 35,
+      "pose_valid_slots": 2270,
+      "court_valid_points": 14,
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 35,
+        "court_keypoints": 14,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 2660,
+        "pose_confidence_saturated_slots": 0,
+        "pose_confidence_raw_max": 0.9836678504943848
+      },
+      "execution": {
+        "court_diagnostics": {
+          "geometry": {
+            "candidate_count": 777,
+            "homography_court_metres_to_image_pixels": [
+              [
+                50.38931537589795,
+                26.417322572359623,
+                645.5706668024238
+              ],
+              [
+                0.051951281152364824,
+                -3.516835151963995,
+                209.0015788516776
+              ],
+              [
+                0.00027543510800922475,
+                0.040741004112794764,
+                1.0
+              ]
+            ],
+            "homography_frame": "checkpoint_KP14_template_metres",
+            "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+            "line_support": {
+              "forward_rms_px": 7.017226541730223,
+              "forward_support": 0.9333333333333333,
+              "reverse_rms_px": 2.153584247352199,
+              "reverse_support": 1.0,
+              "segment_support": [
+                0.55,
+                0.95,
+                0.975,
+                0.95,
+                0.975,
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "supported_segments": 9.0,
+              "visible_segments": 9.0
+            },
+            "native_size_hw": [
+              288,
+              512
+            ],
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "output_keypoint_contract": "camera_view_v2",
+            "postprocess_image_size_hw": [
+              720,
+              1280
+            ],
+            "raw_keypoints_px": [
+              [
+                461.304931640625,
+                113.95488739013672
+              ],
+              [
+                825.12646484375,
+                114.53001403808594
+              ],
+              [
+                115.60317993164062,
+                483.88201904296875
+              ],
+              [
+                1162.9365234375,
+                482.8501892089844
+              ],
+              [
+                503.44256591796875,
+                114.1219482421875
+              ],
+              [
+                235.28402709960938,
+                484.33984375
+              ],
+              [
+                783.344482421875,
+                114.15632629394531
+              ],
+              [
+                1043.8731689453125,
+                483.8508605957031
+              ],
+              [
+                482.9425048828125,
+                145.861083984375
+              ],
+              [
+                812.1685180664062,
+                145.9705352783203
+              ],
+              [
+                361.8711853027344,
+                312.8572082519531
+              ],
+              [
+                925.3219604492188,
+                312.54693603515625
+              ],
+              [
+                644.0042114257812,
+                144.99952697753906
+              ],
+              [
+                643.7047729492188,
+                312.88641357421875
+              ]
+            ],
+            "raw_scores": [
+              0.959290087223053,
+              0.9683679938316345,
+              0.9769903421401978,
+              0.9779174327850342,
+              0.9657009840011597,
+              0.9755574464797974,
+              0.9737805128097534,
+              0.9761853814125061,
+              0.9819943308830261,
+              0.9736829996109009,
+              0.9814543128013611,
+              0.970975935459137,
+              0.9882304668426514,
+              0.9914160370826721
+            ],
+            "raw_valid": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "region_xyxy": [
+              0,
+              0,
+              1280,
+              720
+            ],
+            "residuals_px": [
+              1.4837215868570712,
+              6.980274920009641,
+              8.850515600950011,
+              12.61566229692571,
+              4.038507780785168,
+              6.64611874724135,
+              2.6828220364972912,
+              2.147240595066334,
+              2.1846744353102023,
+              3.017366041857855,
+              2.8109452317562926,
+              1.7391309194435327,
+              3.633125733497842,
+              0.9044138220865426
+            ],
+            "selected_keypoints": [
+              0,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              13
+            ],
+            "status": "ok"
+          },
+          "region_selection": {
+            "candidates": [
+              {
+                "accepted": true,
+                "area_ratio": 0.2916686633890724,
+                "convex": true,
+                "inlier_score": 11.706636428833008,
+                "inliers": 12,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  0,
+                  1280,
+                  720
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": true,
+                "area_ratio": 0.2919607234374339,
+                "convex": true,
+                "inlier_score": 11.498154640197754,
+                "inliers": 12,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  0,
+                  1280,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.29604006160557944,
+                "convex": true,
+                "inlier_score": 4.875998497009277,
+                "inliers": 5,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  180,
+                  1280,
+                  720
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": true,
+                "area_ratio": 0.29287822792332413,
+                "convex": true,
+                "inlier_score": 9.668015480041504,
+                "inliers": 10,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  0,
+                  960,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.2982090901821931,
+                "convex": true,
+                "inlier_score": 3.9321341514587402,
+                "inliers": 4,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  180,
+                  960,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": true,
+                "region_xyxy": [
+                  0,
+                  360,
+                  960,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": true,
+                "area_ratio": 0.28514816918376273,
+                "convex": true,
+                "inlier_score": 9.66162109375,
+                "inliers": 10,
+                "inside_content": true,
+                "region_xyxy": [
+                  160,
+                  0,
+                  1120,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.29705249063883066,
+                "convex": true,
+                "inlier_score": 4.906598091125488,
+                "inliers": 5,
+                "inside_content": true,
+                "region_xyxy": [
+                  160,
+                  180,
+                  1120,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": true,
+                "region_xyxy": [
+                  160,
+                  360,
+                  1120,
+                  720
+                ],
+                "status": "insufficient_line_support"
+              },
+              {
+                "accepted": true,
+                "area_ratio": 0.2991792102467395,
+                "convex": true,
+                "inlier_score": 9.625821113586426,
+                "inliers": 10,
+                "inside_content": true,
+                "region_xyxy": [
+                  320,
+                  0,
+                  1280,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.2986488999515482,
+                "convex": true,
+                "inlier_score": 3.918376922607422,
+                "inliers": 4,
+                "inside_content": true,
+                "region_xyxy": [
+                  320,
+                  180,
+                  1280,
+                  540
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.014366421282680272,
+                "convex": true,
+                "inlier_score": 0.603646993637085,
+                "inliers": 4,
+                "inside_content": true,
+                "region_xyxy": [
+                  320,
+                  360,
+                  1280,
+                  720
+                ],
+                "status": "ok"
+              }
+            ],
+            "frame_index": 0,
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "region_xyxy": [
+              0,
+              0,
+              1280,
+              720
+            ]
+          }
+        },
+        "court_frame_indices": [
+          0
+        ],
+        "person_detection_frames": 35,
+        "person_region_policy": "full_frame",
+        "pose_crops": 576,
+        "seconds": {
+          "court": 30.293007272004616,
+          "detection_tracking": 15.761707864992786,
+          "pose": 39.14279790798901
+        },
+        "status": "complete",
+        "tracking_frames": 35
+      }
+    },
+    {
+      "clip_id": "meiji/video_002/clip_011/cam0",
+      "frames": 151,
+      "tracks": 3,
+      "pose_valid_frames": 151,
+      "pose_valid_slots": 1604,
+      "court_valid_points": 14,
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 151,
+        "court_keypoints": 14,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 1812,
+        "pose_confidence_saturated_slots": 0,
+        "pose_confidence_raw_max": 0.9559057354927063
+      },
+      "execution": {
+        "court_diagnostics": {
+          "geometry": {
+            "candidate_count": 180,
+            "homography_court_metres_to_image_pixels": [
+              [
+                2.6330311534095063,
+                33.509652283558424,
+                664.9101587340514
+              ],
+              [
+                -7.239884136623306,
+                6.846311719975068,
+                266.8249965457041
+              ],
+              [
+                -0.023418932811225236,
+                0.03890545156867571,
+                1.0
+              ]
+            ],
+            "homography_frame": "checkpoint_KP14_template_metres",
+            "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+            "line_support": {
+              "forward_rms_px": 4.364547941075819,
+              "forward_support": 0.7944444444444445,
+              "reverse_rms_px": 2.0352013146732415,
+              "reverse_support": 0.9380543929940222,
+              "segment_support": [
+                0.55,
+                0.975,
+                0.575,
+                0.95,
+                0.425,
+                1.0,
+                0.675,
+                1.0,
+                1.0
+              ],
+              "supported_segments": 8.0,
+              "visible_segments": 9.0
+            },
+            "native_size_hw": [
+              255,
+              512
+            ],
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "output_keypoint_contract": "camera_view_v2",
+            "postprocess_image_size_hw": [
+              360,
+              722
+            ],
+            "raw_keypoints_px": [
+              [
+                657.9083251953125,
+                244.72821044921875
+              ],
+              [
+                809.0416259765625,
+                238.4939727783203
+              ],
+              [
+                419.747314453125,
+                340.1467590332031
+              ],
+              [
+                627.9305419921875,
+                346.46551513671875
+              ],
+              [
+                673.8096923828125,
+                249.1257781982422
+              ],
+              [
+                804.0606689453125,
+                249.94908142089844
+              ],
+              [
+                787.8959350585938,
+                238.63128662109375
+              ],
+              [
+                628.9415893554688,
+                350.88323974609375
+              ],
+              [
+                635.3159790039062,
+                251.35784912109375
+              ],
+              [
+                775.7745971679688,
+                250.31993103027344
+              ],
+              [
+                521.6060180664062,
+                296.2498779296875
+              ],
+              [
+                703.3187866210938,
+                295.4527893066406
+              ],
+              [
+                702.1242065429688,
+                246.03269958496094
+              ],
+              [
+                600.0337829589844,
+                294.8863830566406
+              ]
+            ],
+            "raw_scores": [
+              0.8496301770210266,
+              0.8961524367332458,
+              0.11279094219207764,
+              0.17004351317882538,
+              0.6842572689056396,
+              0.09424260258674622,
+              0.8684325814247131,
+              0.20354971289634705,
+              0.7725147604942322,
+              0.8068817257881165,
+              0.30143678188323975,
+              0.8423709869384766,
+              0.9294326901435852,
+              0.8375102877616882
+            ],
+            "raw_valid": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "region_xyxy": [
+              159,
+              0,
+              881,
+              360
+            ],
+            "residuals_px": [
+              1.5939189937238654,
+              7.335320253631736,
+              41.1480402165827,
+              59.86808219565505,
+              6.761215567952906,
+              410.4486858028948,
+              5.789809467962444,
+              1.9068729680379608,
+              10.39910878715401,
+              7.49797791139514,
+              3.499456964221618,
+              1.3559286995421236,
+              3.3084876472069293,
+              2.0743687704309206
+            ],
+            "selected_keypoints": [
+              0,
+              7,
+              10,
+              11,
+              12,
+              13
+            ],
+            "status": "ok"
+          },
+          "region_selection": {
+            "candidates": [
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  0,
+                  0,
+                  1280,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  0,
+                  1121,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  0,
+                  1121,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  180,
+                  1121,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": true,
+                "area_ratio": 0.027775983495929114,
+                "convex": true,
+                "inlier_score": 6.4127726554870605,
+                "inliers": 9,
+                "inside_content": true,
+                "region_xyxy": [
+                  159,
+                  0,
+                  881,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  180,
+                  881,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  360,
+                  881,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.02776722136350347,
+                "convex": true,
+                "inlier_score": 4.50376033782959,
+                "inliers": 6,
+                "inside_content": true,
+                "region_xyxy": [
+                  279,
+                  0,
+                  1001,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  279,
+                  180,
+                  1001,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  279,
+                  360,
+                  1001,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.027878748415935458,
+                "convex": true,
+                "inlier_score": 4.969178676605225,
+                "inliers": 7,
+                "inside_content": true,
+                "region_xyxy": [
+                  399,
+                  0,
+                  1121,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  399,
+                  180,
+                  1121,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  399,
+                  360,
+                  1121,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              }
+            ],
+            "frame_index": 0,
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "region_xyxy": [
+              159,
+              0,
+              881,
+              360
+            ]
+          }
+        },
+        "court_frame_indices": [
+          0
+        ],
+        "person_detection_frames": 151,
+        "person_region_policy": "full_frame",
+        "pose_crops": 450,
+        "seconds": {
+          "court": 12.602317848009989,
+          "detection_tracking": 48.00078818801558,
+          "pose": 31.124090141034685
+        },
+        "status": "complete",
+        "tracking_frames": 151
+      }
+    },
+    {
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "frames": 375,
+      "tracks": 60,
+      "pose_valid_frames": 375,
+      "pose_valid_slots": 10634,
+      "court_valid_points": 0,
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 375,
+        "court_keypoints": 0,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 90000,
+        "pose_confidence_saturated_slots": 25,
+        "pose_confidence_raw_max": 1.024472951889038
+      },
+      "execution": {
+        "court_diagnostics": {
+          "candidates": [
+            {
+              "accepted": false,
+              "area_ratio": 0.32606489806228334,
+              "convex": true,
+              "inlier_score": 4.9429521560668945,
+              "inliers": 6,
+              "inside_content": false,
+              "region_xyxy": [
+                0,
+                0,
+                1280,
+                720
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.32536922535299606,
+              "convex": true,
+              "inlier_score": 4.685671329498291,
+              "inliers": 6,
+              "inside_content": false,
+              "region_xyxy": [
+                0,
+                0,
+                1280,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.3238689086426863,
+              "convex": true,
+              "inlier_score": 4.720212459564209,
+              "inliers": 6,
+              "inside_content": false,
+              "region_xyxy": [
+                0,
+                180,
+                1280,
+                720
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                0,
+                960,
+                360
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                180,
+                960,
+                540
+              ],
+              "status": "insufficient_line_support"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                360,
+                960,
+                720
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                160,
+                0,
+                1120,
+                360
+              ],
+              "status": "insufficient_line_support"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.3293151806106885,
+              "convex": true,
+              "inlier_score": 3.978480815887451,
+              "inliers": 5,
+              "inside_content": false,
+              "region_xyxy": [
+                160,
+                180,
+                1120,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                160,
+                360,
+                1120,
+                720
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                320,
+                0,
+                1280,
+                360
+              ],
+              "status": "insufficient_line_support"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                320,
+                180,
+                1280,
+                540
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                320,
+                360,
+                1280,
+                720
+              ],
+              "status": "no_jointly_supported_candidate"
+            }
+          ],
+          "status": "no_supported_region"
+        },
+        "court_frame_indices": [
+          0
+        ],
+        "person_detection_frames": 375,
+        "person_region_policy": "full_frame",
+        "pose_crops": 2788,
+        "seconds": {
+          "court": 20.1208780320012,
+          "detection_tracking": 116.70000295201316,
+          "pose": 156.7083635199815
+        },
+        "status": "complete",
+        "tracking_frames": 375
+      }
+    }
+  ]
+}

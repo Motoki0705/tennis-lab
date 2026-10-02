@@ -40,7 +40,7 @@ model family packageは内部実装であり、同じsymbolを再exportしませ
 - `TrackRequest.num_tracks=None, interactive=False`は全trackを返し、検出0件も空結果にする。`observed_mask`はbbox補間と実検出を区別する。
 - `BotSortAssociator`、`filter_detections_by_footpoint`、`select_and_complete_tracks`は旧経路の明示比較にも使うroot APIです。標準sceneの人物経路とIO契約は[scene pipeline README](../tennis_scene/pipeline/README.md)を参照してください。
 - `Pose2DRequest` / `ImageFeatureRequest`の`frame_indices`を指定すると、明示したsource frameを逐次decodeし、全動画をRAMへ展開せずcrop batchを作る。
-- `Pose2DFrameSequenceRequest`はdecode済みBGR列と検出ごとのbox/frame IDを受け、同一frameの複数人物を同じpose処理へ渡す。
+- `Pose2DFrameSequenceRequest`は明示したBGR画像列とframe ID・boxを受け、動画と同じcrop/正規化/復号でViTPoseを実行する。JPEG storeやRGB増強を動画へ再圧縮せず接続できる。同一frameの複数人物を受理し、要求frameの欠落・順序不整合・画像サイズ変更は停止する。最後の要求frameまでだけを読み、全clipの入力hash/PTS検証は呼び出し側が担当する。
 
 ```python
 from src.submodules.models import DinoPersonTracker, TrackRequest
@@ -95,6 +95,12 @@ DINOは上流ソースを変更せず `third_party/DINO/` のgit submoduleから
 
 DINO利用時はsubmoduleを初期化し、custom CUDA opをルート `setup.py` からビルドします。
 PyTorch互換修正は `build/` 内の生成ソースだけに適用し、submodule自体は変更しません。
+
+`validate_dino_extension()`は明示したimport pathの拡張にCPUテンソルを渡し、
+forward/backwardが上流のCPU非対応エラーへ到達することを確認します。import可能でも
+古いPyTorch APIで停止するバイナリは拒否します。CUDA kernelの動作・精度は別途queueで検証します。
+run専用のビルドには[build_dino_extension.sh](../../tests/benchmarks/build_dino_extension.sh)を使い、
+出力の`lib/`を`PYTHONPATH`へ明示してください。共有の古いビルドへの自動切替はしません。
 
 ```bash
 git submodule update --init third_party/DINO

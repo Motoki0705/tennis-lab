@@ -70,7 +70,7 @@ def test_cache_roundtrip_and_refiner_optimizer_step(cache_inputs):
     assert manifest["detector"]["sha256"] == dual_sha256(cache_inputs["checkpoint"])
     assert manifest["clips"][0]["jpeg_shard_sha256"] == dual_sha256(store.directory / "shards/clip-00000.bin")
     assert manifest["context"] == {"pose": "not_generated", "court": "not_generated"}
-    assert set(manifest["generator_sha256"]) == {"evidence.py", "evidence_inference.py", "evidence_cache.py"}
+    assert set(manifest["generator_sha256"]) == {"evidence.py", "evidence_inference.py", "evidence_cache.py", "cache_identity.py"}
     config_path = Path(__file__).resolve().parents[4] / "src/tasks/ball_refiner/configs/model/refiner_2d.yaml"
     values = dict(OmegaConf.load(config_path))
     values.update(hidden_dim=16, attention_heads=2, dropout=0.0, use_pose=False, use_court=False)
