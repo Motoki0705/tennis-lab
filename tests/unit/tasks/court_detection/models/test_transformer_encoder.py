@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from src.tasks.court_detection.models.transformer_encoder import (
+from src.tasks.court_detection.models.dinov3_dpt import (
     CourtTransformerEncoder,
     build_patch_positions,
 )
@@ -15,20 +15,9 @@ from src.utils.models.components.ffn_layers import DeepSeekV4SwiGLU
 
 
 @pytest.mark.parametrize("depth", [None, 0])
-def test_none_or_zero_depth_is_a_parameter_free_identity(depth: int | None) -> None:
-    encoder = CourtTransformerEncoder(dim=16, depth=depth, num_heads=4, rope_dim=4)
-    features = torch.randn(2, 16, 2, 3)
-
-    output = encoder(features)
-
-    torch.testing.assert_close(output.spatial, features)
-    assert output.pose_query is None
-    assert sum(parameter.numel() for parameter in encoder.parameters()) == 0
-    with pytest.raises(ValueError, match="identity Transformer"):
-        encoder(
-            features,
-            patch_valid_mask=torch.ones(2, 2, 3, dtype=torch.bool),
-        )
+def test_none_or_zero_depth_is_rejected(depth: int | None) -> None:
+    with pytest.raises(ValueError, match="depth must be positive"):
+        CourtTransformerEncoder(dim=16, depth=depth, num_heads=4, rope_dim=4)
 
 
 def test_depth_and_non_square_grid_preserve_spatial_shape_and_return_query() -> None:

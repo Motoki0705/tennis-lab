@@ -7,7 +7,7 @@
 # It only takes effect with the DINOv3 backbone model, e.g.:
 #
 #   python -m src.tasks.court_detection.scripts.train \
-#       model/encoder=dinov3 model/decoder=dpt training=lora
+#       training=lora
 #
 # The base backbone weights stay frozen; only the low-rank adapters train.
 model:

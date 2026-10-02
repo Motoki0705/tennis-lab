@@ -147,7 +147,7 @@ def test_scope_specific_checkpoint_bundle_mismatch_is_rejected() -> None:
         (
             "synthetic_symmetric_kp7:gaussian_max_v1",
             "synthetic_camera_relative_kp14:gaussian_max_v1",
-            "synthetic_court_v2",
+            "synthetic_court",
         ),
         (
             "synthetic_symmetric_kp7:gaussian_max_v1",
@@ -157,7 +157,7 @@ def test_scope_specific_checkpoint_bundle_mismatch_is_rejected() -> None:
         (
             "synthetic_camera_relative_kp14:gaussian_max_v1",
             "synthetic_symmetric_kp7:gaussian_max_v1",
-            "synthetic_court_v1",
+            "synthetic_court",
         ),
         (
             "synthetic_camera_relative_kp14:gaussian_max_v1",
@@ -167,12 +167,12 @@ def test_scope_specific_checkpoint_bundle_mismatch_is_rejected() -> None:
         (
             "synthetic_camera_view_kp14_v3:gaussian_max_v1",
             "synthetic_symmetric_kp7:gaussian_max_v1",
-            "synthetic_court_v1",
+            "synthetic_court",
         ),
         (
             "synthetic_camera_view_kp14_v3:gaussian_max_v1",
             "synthetic_camera_relative_kp14:gaussian_max_v1",
-            "synthetic_court_v2",
+            "synthetic_court",
         ),
     ],
 )
@@ -208,9 +208,7 @@ def test_test_prediction_payload_flattens_every_selected_head(
     bundle = _bundle()
     module = object.__new__(CourtDetectionLightningModule)
     torch.nn.Module.__init__(module)
-    module.config = {
-        "run": {"output_dir": "court_detection/train/test-payload/run-1"}
-    }
+    module.config = {"run": {"output_dir": "court_detection/train/test-payload/run-1"}}
     module.path_resolver = PathResolver(
         RuntimePathRoots(
             project_root=tmp_path,
@@ -300,7 +298,9 @@ def test_test_prediction_payload_requires_supervised_kp_targets() -> None:
         "seg": torch.zeros(2, 3, 4, 5),
         "line": torch.zeros(2, 1, 4, 5),
     }
-    batch: dict[str, object] = {"image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long)}
+    batch: dict[str, object] = {
+        "image_size": torch.tensor([[4, 5], [4, 5]], dtype=torch.long)
+    }
 
     with pytest.raises(CourtModelIOError, match="targets mapping"):
         module.test_prediction_payload(batch, {"logits": logits})
@@ -379,9 +379,7 @@ def test_pose_loss_logs_keep_raw_weighted_and_effective_terms_separate(
 
     for name in raw_losses:
         assert logged[f"train/loss_{name}"] == float(raw_losses[name])
-        assert logged[f"train/loss_{name}_weighted"] == float(
-            weighted_losses[name]
-        )
+        assert logged[f"train/loss_{name}_weighted"] == float(weighted_losses[name])
         assert logged[f"train/{name}_configured_weight"] == float(
             configured_weights[name]
         )

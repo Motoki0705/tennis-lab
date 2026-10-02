@@ -20,7 +20,7 @@ _EXPECTED_DIRECT_CONSUMERS = frozenset(
     {
         "src/tasks/ball_detection/models/dinov3_rope.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",
-        "src/tasks/court_detection/models/transformer_encoder.py",
+        "src/tasks/court_detection/models/dinov3_dpt.py",
         "src/tasks/plcs/models/plcs_multiview_axial_model.py",
         "src/tasks/slcs/models/slcs_model.py",
         "src/utils/models/architectures/transformer_sequence_discriminator.py",

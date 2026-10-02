@@ -151,12 +151,8 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.preview_heatmaps": "ball.preview",
     "src.tasks.ball_detection.scripts.train": "ball.train",
     "src.tasks.ball_detection.scripts.visualize": "ball.visualize",
-    "src.tasks.court_detection.scripts.annotate_youtube_keypoints": "court_detection.annotate_youtube_keypoints",
-    "src.tasks.court_detection.scripts.prepare_youtube_dataset": "court_detection.prepare_youtube_dataset",
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
-    "src.tasks.court_detection.scripts.preview_heatmaps": "court_detection.preview_heatmaps",
     "src.tasks.court_detection.scripts.train": "court_detection.train",
-    "src.tasks.court_detection.scripts.train_mixed": "court_detection.train_mixed",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
     "src.tasks.player_detection.scripts.generate_dataset": "player_detection.generate_dataset",
     "src.tasks.player_detection.scripts.train": "player_detection.train",
@@ -208,12 +204,8 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.ball_detection.scripts.preview_heatmaps": "src.tasks.ball_detection.configuration.validate_preview",
     "src.tasks.ball_detection.scripts.train": "src.tasks.ball_detection.configuration.validate_training",
     "src.tasks.ball_detection.scripts.visualize": "src.tasks.ball_detection.configuration.validate_visualization",
-    "src.tasks.court_detection.scripts.annotate_youtube_keypoints": "src.tasks.court_detection.scripts.annotate_youtube_keypoints._validate_boundary",
-    "src.tasks.court_detection.scripts.prepare_youtube_dataset": "src.tasks.court_detection.scripts.prepare_youtube_dataset._validate_boundary",
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
-    "src.tasks.court_detection.scripts.preview_heatmaps": "src.tasks.court_detection.scripts.preview_heatmaps._validate_boundary",
-    "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.configuration.validate_train_boundary",
-    "src.tasks.court_detection.scripts.train_mixed": "src.tasks.court_detection.training.runner_mixed.validate_mixed_train_boundary",
+    "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.training.runner.validate_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
     "src.tasks.player_detection.scripts.generate_dataset": "src.tasks.player_detection.configuration.validate_generate_boundary",
     "src.tasks.player_detection.scripts.train": "src.tasks.player_detection.configuration.validate_train_boundary",
@@ -633,23 +625,9 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.train"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.visualize"),
     _runtime_boundary(
-        "court_detection",
-        "src.tasks.court_detection.scripts.annotate_youtube_keypoints",
-    ),
-    _runtime_boundary(
-        "court_detection",
-        "src.tasks.court_detection.scripts.prepare_youtube_dataset",
-    ),
-    _runtime_boundary(
         "court_detection", "src.tasks.court_detection.scripts.preview_augmentation"
     ),
-    _runtime_boundary(
-        "court_detection", "src.tasks.court_detection.scripts.preview_heatmaps"
-    ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.train"),
-    _runtime_boundary(
-        "court_detection", "src.tasks.court_detection.scripts.train_mixed"
-    ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),
     _runtime_boundary(
         "player_detection", "src.tasks.player_detection.scripts.generate_dataset"

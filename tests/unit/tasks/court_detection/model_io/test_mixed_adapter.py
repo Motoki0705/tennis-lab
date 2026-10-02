@@ -18,7 +18,7 @@ from src.tasks.court_detection.model_io.contracts import (
 from src.tasks.court_detection.model_io.mixed_adapter import (
     MixedCourtPoseModelIOAdapter,
 )
-from src.tasks.court_detection.models.pose_head import CourtRawPoseOutput
+from src.tasks.court_detection.models.dinov3_dpt import CourtRawPoseOutput
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
 pytestmark = pytest.mark.unit

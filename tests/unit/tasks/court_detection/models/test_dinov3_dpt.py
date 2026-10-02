@@ -19,7 +19,6 @@ from src.tasks.court_detection.configuration import (
 )
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
-    CourtTargetKind,
     CourtTargetSpec,
 )
 from src.tasks.court_detection.model_io.adapters import (
@@ -31,11 +30,13 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelIOError,
     CourtModelSpec,
 )
-from src.tasks.court_detection.models import hierarchical_model as model_module
-from src.tasks.court_detection.models.decoder import CourtDPTDecoder
-from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.tasks.court_detection.models.pose_head import CourtModelOutput
+from src.tasks.court_detection.models import dinov3_dpt as model_module
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtDINOv3Encoder,
+    CourtDPTDecoder,
+    CourtHierarchicalModel,
+    CourtModelOutput,
+)
 from src.utils.models.loading import DINOv3BackboneAdapter
 from src.utils.models.lora import LoRAConfig
 
@@ -144,13 +145,15 @@ class _CountingCourtDINOModel(CourtHierarchicalModel):
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
         patch_valid_mask: torch.Tensor | None = None,
-    ) -> dict[CourtTargetKind, torch.Tensor]:
+    ) -> CourtModelOutput:
         self.calls += 1
         assert patch_valid_mask is None
         assert all(
             value is not None for value in (feature_1, feature_2, feature_3, feature_4)
         )
-        return {"kp": x.new_zeros(x.shape[0], 7, x.shape[-2], x.shape[-1])}
+        return CourtModelOutput(
+            {"kp": x.new_zeros(x.shape[0], 7, x.shape[-2], x.shape[-1])}
+        )
 
 
 def _loss_config(*, pose: bool = False) -> CourtLossConfig:

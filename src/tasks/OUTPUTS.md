@@ -124,11 +124,12 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 
 | タスク・入口 | 成果物・生成データのrootと設定 |
 |---|---|
-| 全5タスク `train`、派生train、court `train_mixed` | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
+| 全5タスク `train`、派生train | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
+| ball/court `preview_augmentation`、ball `preview_heatmaps` | ARTIFACT / `preview.output_dir` |
+| BLCS/PLCS `preview_augmentation` | OUTPUT / `preview.output_dir` |
 | ball `eval` | OUTPUT / `run.output_dir` |
 | ball/court `visualize` | GIFはARTIFACT / `visualization.save`、HydraログはOUTPUT / `run.output_dir`。相対run階層は共通 |
 | ball `evaluate_manifest` | OUTPUT / manifest内 `output_dir`。CLIログは `evaluate/manifest/<run-id>/hydra`、比較成果物はmanifestが独立に生成するrun-id。再開には同じmanifest出力を明示 |
-| ball/court/BLCS/PLCS `preview_augmentation`、ball/court `preview_heatmaps` | OUTPUT / `preview.output_dir` |
 | BLCS/PLCS `visualize`（`visualization.mode=predict`を含む） | OUTPUT / `visualization.save`。GIFとHydraログは同じmode・run-id |
 | PLCS `analysis/*` | OUTPUT / `run.output_dir`（angle_velocity、dataset_distribution、loss_dominance、rotation_error_samples） |
 | SLCS `evaluate`、`predict_clip`、`analyze_predictions` | OUTPUT / `evaluate.output_dir`、`predict.output_dir`、`analysis.output_dir` |
@@ -137,7 +138,6 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 | BLCS `evaluate_real` | OUTPUT / `run.output_dir`（evaluate run）。入力重みはCHECKPOINT / `evaluation.checkpoint`。固定test splitの結果・入力hash・展開済み設定を保存 |
 | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
 | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |
-| court YouTube準備・annotation | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
 | SLCS `generate_dataset` | DATA / `data.dataset_root` のsceneを検証し、同datasetへDINO特徴とsplitを追記。HydraログはOUTPUTのgenerate run |
 | SLCS `make_splits` | DATA / `data.split_file` |
 | SLCS `precompute_dino_tokens` | DATA / `data.dataset_root` 内のmanifestが示すclipの特徴ファイル。ログはprecompute run |

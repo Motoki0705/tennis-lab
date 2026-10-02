@@ -1,3 +1,0 @@
-# Default lightweight court encoder (trainable from scratch).
-# Selected at model.encoder via the hierarchical defaults list.
-name: default
