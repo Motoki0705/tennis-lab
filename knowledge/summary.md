@@ -1,4 +1,4 @@
-<!-- knowledge-review: 8959bcfb1d9e09a973b51a56b682589e149660da5c296d378bdef93b85173ee6 on 2026-10-02 -->
+<!-- knowledge-review: 21f036d242c197859f204923e526fd497ef458e754017caa43d7fbcba4e44ce2 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・未見評価とpose蓄積の結論を統合。実験結果・採否の変更なし）
@@ -295,6 +295,14 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 270 frameの全GMM保存と別プロセスのload-onlyが成立し、同じ検出証拠からのCPU再計算も小さな数値差で一致した。
 専用recipeの接続証拠であり、未較正pilotのdeploy採用や、JPEG学習cacheとの精度同等性を示さない。
 最終test・RGB遮蔽対照・full文脈/ablation・標準sceneの3D入力切替は未検証。存在較正はMeijiの正例だけから結論しない。
+[3sourceの文脈pilot](nodes/ball_refiner/000006-run-i935-context-fullframe-pilot-r9-20260928.md)は、
+import可能な古いDINO拡張のbackend dispatchで停止し、完了clipは0だった。
+[run専用再ビルドの再試行](nodes/ball_refiner/000007-run-i935-context-fullframe-pilot-r10-20260928.md)では
+3source・561frameのCUDA生成と別プロセス読込が成功した。
+画像監査で観客・隣接court人物の混入とchatの視点変化・累計60trackを確認し、chatのcourtは実行済み欠損だった。
+有効poseの存在をプレー中の人物のrecallや文脈の有効性と同一視しない。
+次は同一identity・全被覆を要求する分割生成と、累計track数を切り捨てない入力設計を整える。
+文脈の採否は同一母数のfull/ablationで判断し、現時点のdeploy判断は変えない。
 
 ### Player Detection
 

@@ -243,6 +243,61 @@ CPUの`data/audit.py`と次の入口で全source/splitの教師数とMeiji全cam
 実データ監査の結果と生成不足の判断は[knowledge](../../../knowledge/nodes/ball_refiner/000001-run-i935-data-audit-r2.md)を参照。
 文脈なしDataLoaderは下記のpilotへ接続する。文脈あり入力の未生成は補完しない。
 
+### 全sourceのJPEG文脈cache
+
+`scripts/generate_context.py`はdetector cacheと**同一のJPEG shard**を使い、
+TrackNet・Meiji・chat_annotationの各clipを独立に処理する。camera_id=Noneもそのまま保存し、
+架空のcamera IDや動画を作らない。各clipのframe/PTS・stored/source寸法・元media/注釈hashを保持する。
+元media/注釈hashはstoreの記録の継承であり、元動画を再decodeした証拠ではない。
+
+| ファイル | 責務 |
+|---|---|
+| `data/cache_identity.py` | detector/context共通のstore hash・clip identity・source/split選択 |
+| `data/context_inference.py` | 全画面DINO→BoT-SORT→ViTPose、frame 0のcourt推論 |
+| `data/context_arrays.py` | 全frame・生COCO17 peak・観測mask・KP14とモデル座標への変換 |
+| `data/context_cache.py` | detectorのJPEG hashへの束縛、immutableな生成・検証・読込 |
+
+人物検出は全frameで全画面を処理する明示的な実験方針であり、court ROIがない場合の代替処理ではない。
+標準sceneのROI方針は変更しない。観客・他court人物も含みうるため、pilotで人数と品質を監査する。
+BoT-SORTのraw IDを保持し、scene用のtracklet結合・player選別は適用しない。既存のbox補間・平滑化を
+cropに使うが、ViTPoseは実観測frameだけで実行する。累計track上限超は停止し、切捨て・ID再利用をしない。
+ViTPoseへのJPEG列入力は[submodulesのフレーム列API](../../submodules/README.md)を使う。
+モデル入力はIDを含まない人物集合。生COCO17全17点を保存し、読込後に肘/手首4点を選ぶ。
+
+courtは標準componentと同じ画像推論・領域探索をframe 0で実行する。支持される領域がない場合は
+`CourtRegionUnavailable`の候補診断とall-false maskを記録する（実行済みの失敗）。
+読込・画像・model/runtime例外は捕捉せず、cacheを完成扱いにしない。
+全clipの人物検出/追跡frame数・pose crop数・court実行frameを保存し、未実行を検出0件に読み替えない。
+
+cacheは`ball_refiner_context.v1`。既存出力への追記/上書き・自動resumeは拒否する。
+clip完了ごとのNPZ checksum/進捗と、全clip終了後のJPEG/store/model/code再hashを保存する。
+`status=complete`だけが読込可能。検出器の既存cacheとはmanifest hash・JPEG hash・frame/PTSを照合する。
+この版は無加工JPEGだけを扱い、RGB遮蔽実験にはdetectorと文脈双方の別cacheが必要である。
+`ContextCache(...).require_clips(...)`で学習対象の全clip被覆を要求し、pilot subsetをfull比較へ流用しない。
+`load(...).arrays.model_context(...)`がstored画素/scaleをsourceのW−1/H−1で正規化する。
+poseの画像外座標を保持し、raw peakの1超は上記と同じ明示的な変換・件数記録を使う。
+
+モデル設定はsceneのYAML・strict adapterを共有する。`--scene-config`は
+`src.tennis_scene.scripts.run_pipeline --cfg job --resolve`で出力した完全な設定を指定し、
+checkpoint/external_asset等のrootは実環境の絶対pathへoverrideしておく。
+生成はcourt/peopleだけを実行し、sceneの動画入力・三角測量・GVHMRは実行しない。
+`--dry-run`はCPUで設定・資産hash・選択clipを検査し、モデルを構築せず結果を標準出力へ出す。
+生成開始時と完了時も含め、DINO拡張は[submodulesのCPU事前検査](../../submodules/README.md#上流コードの扱い)を必須とし、
+実際にimportしたバイナリのpath/hashを保存する。GPU実行の成否はこの事前検査だけでは確定しない。
+
+```bash
+# CUDAは共有queue経由。--clip-idを繰り返すと明示的なpilot subset、
+# 省略するとdetector cacheの全clip（教師の有無では選ばない）。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.generate_context \
+  --scene-config <絶対artifact-root>/scene-context.yaml \
+  --store <絶対data-root>/ball_detection/ball-mix-v1 \
+  --evidence <絶対cache-root>/ball_refiner/<detector-cache-id> \
+  --output <絶対cache-root>/ball_refiner/<new-context-cache-id> \
+  --max-tracks 64
+```
+
+文脈あり学習runner・bundle接続、全sourceの生成完了・精度/ablationは別途検証する。
+
 ## 検出器の局所証拠
 
 `data/evidence_inference.py`はJPEGを逐次decodeし、各実frameのtop-Kとnative patchを返す。
