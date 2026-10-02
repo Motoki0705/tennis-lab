@@ -22,7 +22,6 @@ from src.tasks.base.training.metric_logging import (
 )
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 
 __all__ = [
     "BaseLightningModule",
@@ -37,7 +36,6 @@ __all__ = [
     "MetricLoggingContract",
     "QualitativeLoggingCallback",
     "StageMetricContract",
-    "TrackingMetricConfig",
     "WeightedMetricAccumulator",
     "compile_modules",
     "evaluation_only_metric_logging_contract",

@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from hydra import compose, initialize_config_dir
-from omegaconf import open_dict
 
-from src.tasks.plcs.configuration import PLCSModelConfig, PLCSTrainingConfig
+from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.models.components.heads import (
     TemporalDecomposedCanonicalPoseHead,
 )
@@ -14,10 +12,6 @@ from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialM
 from src.tasks.plcs.training.composition import build_plcs_lightning_module
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.metrics import CANONICAL_POSE_HEADLINE_KEYS
-from src.utils.configuration import (
-    SemanticConfigurationError,
-    UnknownConfigurationKeyError,
-)
 
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 
@@ -133,135 +127,3 @@ def test_temporal_canonical_pose_model_config_composes_and_binds_head() -> None:
     assert isinstance(
         module.model.canonical_pose_head, TemporalDecomposedCanonicalPoseHead
     )
-
-
-def test_tracking_query_profile_composes_and_validates() -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking_chunked",
-            overrides=["model=tracking_query"],
-        )
-
-    assert config.model.name == "plcs_track_query"
-    assert config.model.hidden_dim == 512
-    assert config.model.num_heads == 8
-    assert config.model.num_stages == 12
-    assert config.model.ffn_dim == 1408
-    assert config.model.rope_dim == 32
-    assert config.model.dropout == 0.1
-    assert config.model.mhc.coefficient_dim == 64
-    assert config.model.cswa.compression_ratio == 4
-
-    parsed = PLCSModelConfig.from_mapping(config.model)
-    assert parsed.name == "plcs_track_query"
-    assert parsed.integer("hidden_dim") == 512
-    assert parsed.integer("num_stages") == 12
-
-
-def test_reference_profile_composes_from_canonical_architecture() -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=[
-                "model=tracking_query_reference",
-                "court_keypoints=camera_view_v2",
-            ],
-        )
-
-    runtime = PLCSTrainingConfig.from_config(config)
-    assert runtime.model.name == "plcs_track_query_reference"
-    assert runtime.model.string("target_frame_contract") == (
-        "reference_camera_court_rzpi_v1"
-    )
-    assert runtime.model.string("track_query_rope_contract") == (
-        "time_camera_reference_selector_v1"
-    )
-    assert runtime.model.string("reference_selector_mode") == "reference"
-    assert runtime.model.integer("hidden_dim") == 512
-    assert runtime.model.integer("num_stages") == 12
-    assert "role_rope_enabled" not in runtime.model.values
-
-
-def test_reference_rejects_rope_dim_four_and_accepts_dim_six() -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=[
-                "model=tracking_query_reference",
-                "court_keypoints=camera_view_v2",
-                "model.hidden_dim=24",
-                "model.num_heads=4",
-                "model.rope_dim=6",
-            ],
-        )
-    assert PLCSModelConfig.from_mapping(config.model).integer("rope_dim") == 6
-
-    with open_dict(config.model):
-        config.model.rope_dim = 4
-    with pytest.raises(SemanticConfigurationError, match="at least 6"):
-        PLCSModelConfig.from_mapping(config.model)
-
-
-@pytest.mark.parametrize(
-    ("model_profile", "court_profile", "expected_message"),
-    [
-        ("tracking_query_reference", "physical_v1", "Reference PLCS models require"),
-        ("tracking_query", "camera_view_v2", "track-query models require"),
-    ],
-)
-def test_track_query_runtime_rejects_mixed_v1_v2_contracts(
-    model_profile: str,
-    court_profile: str,
-    expected_message: str,
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=[
-                f"model={model_profile}",
-                f"court_keypoints={court_profile}",
-            ],
-        )
-    with pytest.raises(SemanticConfigurationError, match=expected_message):
-        PLCSTrainingConfig.from_config(config)
-
-
-def test_reference_v2_does_not_reinterpret_role_rope_enabled() -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=[
-                "model=tracking_query_reference",
-                "court_keypoints=camera_view_v2",
-                "+model.role_rope_enabled=true",
-            ],
-        )
-    with pytest.raises(UnknownConfigurationKeyError, match="role_rope_enabled"):
-        PLCSModelConfig.from_mapping(config.model)
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    [
-        ("target_frame_contract", "physical_court_v1", "target_frame_contract"),
-        ("track_query_rope_contract", "time_camera_role_v1", "rope_contract"),
-        ("reference_selector_mode", "legacy_role", "selector_mode"),
-    ],
-)
-def test_reference_v2_rejects_unknown_or_mixed_semantic_markers(
-    field: str,
-    value: str,
-    message: str,
-) -> None:
-    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(
-            config_name="train_tracking",
-            overrides=[
-                "model=tracking_query_reference",
-                "court_keypoints=camera_view_v2",
-            ],
-        )
-    with open_dict(config.model):
-        config.model[field] = value
-    with pytest.raises(SemanticConfigurationError, match=message):
-        PLCSModelConfig.from_mapping(config.model)

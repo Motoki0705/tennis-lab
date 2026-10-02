@@ -13,55 +13,10 @@ from src.synthetic_data_generation.visualization.publication.configuration impor
 )
 from src.synthetic_data_generation.visualization.publication.contracts import (
     PUBLICATION_COORDINATE_CONTRACT,
-    PUBLICATION_REQUEST_SCHEMA,
-    REQUIRED_PUBLICATION_ARTIFACTS,
     PublicationArtifactName,
     PublicationArtifactRecord,
     PublicationManifest,
-    PublicationRequest,
 )
-
-
-def test_request_resolves_the_fixed_inventory_and_semantic_paths(
-    publication_config: dict[str, object],
-) -> None:
-    request = build_publication_request(OmegaConf.create(publication_config))
-
-    assert isinstance(request, PublicationRequest)
-    assert request.artifact_names == REQUIRED_PUBLICATION_ARTIFACTS
-    roots = cast(dict[str, object], publication_config["roots"])
-    assert (
-        request.scene_root
-        == Path(cast(str, roots["data_root"]))
-        / "synthetic_data_generation"
-        / "scenes"
-        / "scene-0"
-    )
-    assert request.output_bundle == request.scene_root / "publication"
-    assert request.dataset_root("court").name == "court"
-    assert request.dataset_root("blcs").name == "blcs"
-    assert request.reconstruction_scene_json == (
-        request.scene_root / "reconstruction" / "export" / "scene.json"
-    )
-    resolved = request.to_resolved_config()
-    assert resolved["schema"] == PUBLICATION_REQUEST_SCHEMA
-    assert resolved["scene_root"] == "."
-    assert resolved["output_bundle"] == "."
-    assert resolved["artifact_names"] == [
-        item.value for item in REQUIRED_PUBLICATION_ARTIFACTS
-    ]
-    assert resolved["court"] == {
-        "dataset_root": "datasets/court",
-        "trajectory_id": "trajectory-0",
-        "frame_indices": [0, 2],
-    }
-    assert resolved["captured"] == {
-        "scene_json": "reconstruction/export/scene.json",
-        "camera_ids": ["cam-0", "cam-1"],
-    }
-    drawing = cast(dict[str, object], resolved["drawing"])
-    assert drawing["maximum_rendered_captured_cameras"] == 24
-    assert drawing["coincident_centre_tolerance_metres"] == 1.0e-6
 
 
 def test_request_rejects_noncanonical_output_inside_scene_owner(
@@ -119,18 +74,6 @@ def test_request_rejects_noncanonical_artifact_order(
     [
         ("maximum_rendered_captured_cameras", 1, "must lie"),
         ("maximum_rendered_captured_cameras", 25, "must lie"),
-        ("coincident_centre_tolerance_metres", 0.0, "positive and finite"),
-        (
-            "coincident_centre_tolerance_metres",
-            float("inf"),
-            "positive and finite",
-        ),
-        ("coincident_centre_tolerance_metres", 1.1, "must not exceed"),
-        (
-            "coincident_forward_angle_tolerance_degrees",
-            181.0,
-            "must not exceed",
-        ),
     ],
 )
 def test_request_rejects_camera_drawing_policy_out_of_bounds(

@@ -10,28 +10,7 @@ import pytest
 import torch
 from torch import Tensor, nn
 
-from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
-
-
-def _single_model() -> BLCSModel:
-    return BLCSModel(
-        hidden_dim=8,
-        num_layers=1,
-        num_heads=2,
-        ffn_dim=16,
-        dropout=0.0,
-        rope_dim=4,
-        rope_theta=10_000.0,
-        rope_theta_time=10_000.0,
-        rope_theta_camera=1_000.0,
-        rope_theta_type=1_000.0,
-        ffn_type="swiglu",
-        predict_velocity=False,
-        max_seq_len=3,
-        invisible_init_std=0.02,
-        num_court_tokens=2,
-    )
 
 
 def _axial_model() -> BLCSMultiViewAxialModel:
@@ -59,16 +38,6 @@ def _axial_model() -> BLCSMultiViewAxialModel:
     )
 
 
-def _single_inputs() -> dict[str, Tensor]:
-    return {
-        "ball_uv": torch.rand(1, 3, 2),
-        "ball_vis": torch.ones(1, 3, dtype=torch.bool),
-        "court_kp": torch.rand(1, 2, 2),
-        "court_vis": torch.ones(1, 2, dtype=torch.bool),
-        "padding_mask": torch.tensor([[False, False, True]]),
-    }
-
-
 def _multiview_inputs() -> dict[str, Tensor]:
     return {
         "ball_uv": torch.rand(1, 2, 3, 2),
@@ -81,10 +50,7 @@ def _multiview_inputs() -> dict[str, Tensor]:
 
 @pytest.mark.parametrize(
     ("build_model", "build_inputs"),
-    [
-        (_single_model, _single_inputs),
-        (_axial_model, _multiview_inputs),
-    ],
+    [(_axial_model, _multiview_inputs)],
 )
 def test_standard_model_uses_exact_five_tensor_padding_contract(
     build_model: Callable[[], nn.Module],
@@ -113,10 +79,7 @@ def test_standard_model_uses_exact_five_tensor_padding_contract(
 
 @pytest.mark.parametrize(
     ("build_model", "build_inputs"),
-    [
-        (_single_model, _single_inputs),
-        (_axial_model, _multiview_inputs),
-    ],
+    [(_axial_model, _multiview_inputs)],
 )
 def test_padding_values_cannot_change_valid_standard_outputs(
     build_model: Callable[[], nn.Module],

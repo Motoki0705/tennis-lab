@@ -1,5 +1,5 @@
 kind: tennis_court_detector
-root: court
+root: court_detection/tennis_court_detector-v1
 split_mapping:
   train: train
   val: val

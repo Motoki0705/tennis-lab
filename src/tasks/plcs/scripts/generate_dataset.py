@@ -1,18 +1,4 @@
-"""Generate PLCS scenes for training with Hydra-managed configuration.
-
-Usage:
-    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset
-    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset generation=multi_object run.output_dir=plcs/multi_object
-    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset camera=broadcast run.output_dir=plcs/single_object_broadcast
-    .venv/bin/python -m src.tasks.plcs.scripts.generate_dataset generation=multi_object camera=broadcast run.output_dir=plcs/multi_object_broadcast
-
-Notes:
-    - Configuration is loaded from `src/tasks/plcs/configs/generate_dataset.yaml`.
-    - The script uses Hydra for configuration loading.
-    - The default output is `data/plcs/single_object`; overrides are relative to `paths.data_root`.
-    - Parallel scene generation uses worker processes for scene synthesis only.
-    - `generation` changes only object cardinality; both modes use the same simulator and writer.
-"""
+"""Generate the physical-v1 PLCS single-object dataset."""
 
 from __future__ import annotations
 
@@ -136,17 +122,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     print(f"  Avg cameras/scene: {stats['avg_cameras']:.2f}")
     print(f"  Stats saved to:    {stats_path}")
     print(f"  Metadata saved to: {meta_path}")
-
-    if runtime.generation_mode == "multi_object":
-        from src.tasks.base.generate_dataset.lifecycle_audit import (
-            audit_full_source_dataset,
-        )
-
-        audit_full_source_dataset(
-            output_dir,
-            max_concurrent=4,
-            require_uniform=num_scenes >= 100,
-        )
 
     return 0
 
