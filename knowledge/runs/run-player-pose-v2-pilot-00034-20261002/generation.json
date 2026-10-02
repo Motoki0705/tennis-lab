@@ -1,0 +1,95 @@
+{
+  "status": "complete",
+  "clip_id": "tracknet/game3/Clip2",
+  "frame_count": 29,
+  "raw_tracks": 20,
+  "court_policy": "disabled",
+  "tracking_profile": {
+    "method": "strongsort_pp_pose",
+    "encoder": "clipreid_vitb16_market1501",
+    "features": {
+      "bbox_enlarge": 1.2,
+      "min_appearance_height_px": 16.0,
+      "appearance_batch_size": 64
+    },
+    "online_config": {
+      "max_age": 30,
+      "n_init": 3,
+      "max_cost": 0.45,
+      "max_iou_distance": 0.7,
+      "motion_gate": 9.4877,
+      "appearance_weight": 0.98,
+      "ema_alpha": 0.9,
+      "pose_weight": 0.15
+    },
+    "offline_profile": "i964_run9_aflink_gsi"
+  },
+  "source_track_ids": [
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7
+    ],
+    [
+      8
+    ],
+    [
+      9
+    ],
+    [
+      10
+    ],
+    [
+      11
+    ],
+    [
+      15
+    ],
+    [
+      17
+    ],
+    [
+      19
+    ],
+    [
+      20
+    ],
+    [
+      21
+    ],
+    [
+      23
+    ],
+    [
+      24
+    ],
+    [
+      29
+    ],
+    [
+      31
+    ]
+  ],
+  "link_candidates": [],
+  "synthetic_poses_used": false,
+  "files": {
+    "tracks.npz": "a01d1e4ca5d3ab9047f8c7b39ec9f428a9e1f4bcb32cd33ecbfd9531ec445ae1",
+    "input.json": "2a257145acd820547a8663f078bc366019f150610e70464554a05699e41a56f2"
+  }
+}

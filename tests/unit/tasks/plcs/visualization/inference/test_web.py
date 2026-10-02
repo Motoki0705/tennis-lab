@@ -138,7 +138,7 @@ def test_catalog_returns_families_and_checkpoints(
     assert len(body["checkpoints"]) == 1
     entry = body["checkpoints"][0]
     assert entry["id"] == "run_a/logs/version_0/checkpoints/best.ckpt"
-    assert entry["families"] == ["single_object", "single_object_broadcast"]
+    assert entry["families"] == ["single_object"]
     assert entry["supported"] is True
     assert str(checkpoint_root) == body["checkpoint_root"]
 

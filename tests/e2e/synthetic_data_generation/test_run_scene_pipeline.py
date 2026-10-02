@@ -31,19 +31,14 @@ def test_cli_resolves_one_full_b00_request_without_legacy_pipeline_fields() -> N
     assert payload["request"] == {
         "scene_id": "B00",
         "source_video": "synthetic_data_generation/raw/B00.mp4",
-        "targets": ["court", "blcs", "plcs"],
+        "targets": ["court"],
         "from_stage": "ingest",
         "through_stage": "report",
     }
     assert payload["pipeline"]["config_schema"] == "canonical_scene_pipeline_v1"
-    assert payload["camera"]["expected_camera_count"] == 6
+    assert "camera" not in payload
+    assert set(payload["dataset"]) == {"court"}
     assert payload["dataset"]["court"]["sampling"]["proposal_budget"] == 4800
-    assert payload["dataset"]["blcs"]["timeline"]["frame_selection"] == (
-        "all_source_frames"
-    )
-    assert payload["dataset"]["plcs"]["production_mode"] == (
-        "multi_object_global_timeline"
-    )
     serialized = completed.stdout
     for forbidden in (
         "artifact_ref",
@@ -84,7 +79,7 @@ def test_cli_composes_each_additional_scene_profile_with_matching_source_video(
     assert payload["request"] == {
         "scene_id": scene_id,
         "source_video": f"synthetic_data_generation/raw/{scene_id}.mp4",
-        "targets": ["court", "blcs", "plcs"],
+        "targets": ["court"],
         "from_stage": "ingest",
         "through_stage": "report",
     }

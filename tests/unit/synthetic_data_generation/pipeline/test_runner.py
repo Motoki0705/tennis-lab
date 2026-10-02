@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from copy import deepcopy
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
@@ -11,11 +10,6 @@ from typing import cast
 import pytest
 import yaml
 
-from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
-from src.synthetic_data_generation.dataset.plcs.coordinates import (
-    PLCS_COORDINATE_CONTRACT,
-    PLCSSourceSupportPlane,
-)
 from src.synthetic_data_generation.pipeline import (
     CanonicalStageHandlers,
     DatasetTarget,
@@ -36,9 +30,6 @@ from src.synthetic_data_generation.pipeline.publication import (
 from src.synthetic_data_generation.pipeline.registry import StageRegistry
 from src.synthetic_data_generation.pipeline.run_manifest import MutableRunManifest
 from src.utils.configuration import PathResolver, RuntimePathRoots
-from src.utils.schema.court_normalization import (
-    court_coordinate_normalization_metadata,
-)
 
 
 @dataclass
@@ -75,11 +66,6 @@ class _FakeHandler:
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(self.payload, encoding="utf-8")
-        if context.stage.name is StageName.PLCS_DATASET:
-            (destination / "dataset.json").write_text(
-                json.dumps(_plcs_publication(self.payload)),
-                encoding="utf-8",
-            )
         if context.stage.name is StageName.RECONSTRUCTION:
             export = destination / "export"
             for name in ("scene.json", "cameras.json", "points_scene.npy"):
@@ -110,34 +96,6 @@ def _workspace(tmp_path: Path) -> SceneWorkspace:
         external_asset_root=(tmp_path / "external").resolve(),
     )
     return SceneWorkspace.resolve(PathResolver(roots), "scene-a")
-
-
-def _plcs_publication(payload: str) -> dict[str, object]:
-    return {
-        "schema": PLCS_DATASET_SCHEMA,
-        "domain": "plcs",
-        "fixture_payload": payload,
-        "metadata": {
-            "coordinate_contract": PLCS_COORDINATE_CONTRACT.to_dict(),
-            "court_coordinate_normalization": (
-                court_coordinate_normalization_metadata()
-            ),
-            "logical_scenes": [
-                {
-                    "tracks": [
-                        {
-                            "support_plane": (
-                                PLCSSourceSupportPlane.from_surface_minimum(
-                                    initial_root_translation_z_m=0.0,
-                                    support_local_z_m=0.0,
-                                ).to_dict()
-                            )
-                        }
-                    ]
-                }
-            ],
-        },
-    }
 
 
 def _request(
@@ -175,8 +133,6 @@ def _registry(
         reconstruction=by_stage[StageName.RECONSTRUCTION],
         alignment=by_stage[StageName.ALIGNMENT],
         court_dataset=by_stage[StageName.COURT_DATASET],
-        blcs_dataset=by_stage[StageName.BLCS_DATASET],
-        plcs_dataset=by_stage[StageName.PLCS_DATASET],
         report=by_stage[StageName.REPORT],
     )
     return canonical_registry(handlers), by_stage
@@ -247,8 +203,6 @@ def test_runner_generates_only_explicit_target_and_report(tmp_path: Path) -> Non
     manifest = runner.run(request)
 
     assert manifest.stages[StageName.COURT_DATASET].status is StageStatus.COMPLETED
-    assert manifest.stages[StageName.BLCS_DATASET].status is StageStatus.SKIPPED
-    assert manifest.stages[StageName.PLCS_DATASET].status is StageStatus.SKIPPED
     assert not (runner.workspace.root / "datasets/blcs/dataset.json").exists()
     assert not (runner.workspace.root / "datasets/plcs/dataset.json").exists()
     persisted = json.loads(
@@ -263,13 +217,7 @@ def test_alignment_terminal_runs_only_its_dependency_closure(
 ) -> None:
     execution_order: list[StageName] = []
     construction_calls = {
-        stage: 0
-        for stage in (
-            StageName.COURT_DATASET,
-            StageName.BLCS_DATASET,
-            StageName.PLCS_DATASET,
-            StageName.REPORT,
-        )
+        stage: 0 for stage in (StageName.COURT_DATASET, StageName.REPORT)
     }
 
     def deferred(stage: StageName) -> DeferredStageHandler:
@@ -281,14 +229,9 @@ def test_alignment_terminal_runs_only_its_dependency_closure(
 
     handlers = CanonicalStageHandlers(
         ingest=_FakeHandler("alignment-only", execution_order=execution_order),
-        reconstruction=_FakeHandler(
-            "alignment-only",
-            execution_order=execution_order,
-        ),
+        reconstruction=_FakeHandler("alignment-only", execution_order=execution_order),
         alignment=_FakeHandler("alignment-only", execution_order=execution_order),
         court_dataset=deferred(StageName.COURT_DATASET),
-        blcs_dataset=deferred(StageName.BLCS_DATASET),
-        plcs_dataset=deferred(StageName.PLCS_DATASET),
         report=deferred(StageName.REPORT),
     )
     runner = _runner(tmp_path, canonical_registry(handlers))
@@ -313,208 +256,6 @@ def test_alignment_terminal_runs_only_its_dependency_closure(
     )
     assert not (runner.workspace.root / "datasets").exists()
     assert not (runner.workspace.root / "report").exists()
-
-
-def test_incompatible_cursor_is_rejected_without_workspace_mutation(
-    tmp_path: Path,
-) -> None:
-    first_registry, _ = _registry(payload="first")
-    first = _runner(tmp_path, first_registry)
-    first.run(_request(tmp_path))
-    before = {
-        path.relative_to(first.workspace.root): path.read_bytes()
-        for path in first.workspace.root.rglob("*")
-        if path.is_file()
-    }
-    run_json_before = first.workspace.run_manifest_path.read_bytes()
-    court_before = (first.workspace.root / "datasets/court/dataset.json").read_bytes()
-    report_before = (first.workspace.root / "report/report.json").read_bytes()
-    second_registry, handlers = _registry(payload="forbidden")
-    second = _runner(tmp_path, second_registry)
-
-    with pytest.raises(ValueError, match="not selected by request targets"):
-        second.run(_request(tmp_path, from_stage=StageName.PLCS_DATASET))
-
-    after = {
-        path.relative_to(second.workspace.root): path.read_bytes()
-        for path in second.workspace.root.rglob("*")
-        if path.is_file()
-    }
-    assert after == before
-    assert second.workspace.run_manifest_path.read_bytes() == run_json_before
-    assert (
-        second.workspace.root / "datasets/court/dataset.json"
-    ).read_bytes() == court_before
-    assert (second.workspace.root / "report/report.json").read_bytes() == report_before
-    assert all(handler.preflight_calls == 0 for handler in handlers.values())
-    assert all(handler.execute_calls == 0 for handler in handlers.values())
-
-
-def test_dataset_cursor_does_not_rerun_selected_sibling_datasets(
-    tmp_path: Path,
-) -> None:
-    all_targets = frozenset(DatasetTarget)
-    first_registry, _ = _registry(payload="first")
-    first = _runner(tmp_path, first_registry)
-    first.run(_request(tmp_path, targets=all_targets))
-    blcs = first.workspace.root / "datasets/blcs/dataset.json"
-    plcs = first.workspace.root / "datasets/plcs/dataset.json"
-    plcs_manifest = _plcs_publication("first")
-    second_registry, handlers = _registry(payload="second")
-    second = _runner(tmp_path, second_registry)
-
-    manifest = second.run(
-        _request(
-            tmp_path,
-            from_stage=StageName.COURT_DATASET,
-            targets=all_targets,
-        )
-    )
-
-    assert manifest.stages[StageName.COURT_DATASET].attempt == 2
-    assert manifest.stages[StageName.REPORT].attempt == 2
-    for sibling in (StageName.BLCS_DATASET, StageName.PLCS_DATASET):
-        assert manifest.stages[sibling].status is StageStatus.COMPLETED
-        assert manifest.stages[sibling].attempt == 1
-        assert handlers[sibling].preflight_calls == 0
-        assert handlers[sibling].execute_calls == 0
-    assert blcs.read_text(encoding="utf-8") == "first"
-    assert json.loads(plcs.read_text(encoding="utf-8")) == plcs_manifest
-
-
-@pytest.mark.parametrize(
-    "mutation",
-    ("v4-schema", "missing-coordinate-contract", "invalid-support-schema"),
-)
-def test_completed_plcs_with_stale_coordinate_contract_is_atomically_rebuilt(
-    tmp_path: Path,
-    mutation: str,
-) -> None:
-    targets = frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS})
-    first_registry, _ = _registry(payload="first")
-    first = _runner(tmp_path, first_registry)
-    first.run(_request(tmp_path, targets=targets))
-    owner = first.workspace.root / "datasets" / "plcs"
-    manifest = _plcs_publication("first")
-    stale = deepcopy(manifest)
-    if mutation == "v4-schema":
-        stale["schema"] = "tennis_plcs_compact_dataset_v4"
-    elif mutation == "missing-coordinate-contract":
-        metadata = cast(dict[str, object], stale["metadata"])
-        del metadata["coordinate_contract"]
-    else:
-        metadata = cast(dict[str, object], stale["metadata"])
-        logical_scenes = cast(list[object], metadata["logical_scenes"])
-        logical_scene = cast(dict[str, object], logical_scenes[0])
-        tracks = cast(list[object], logical_scene["tracks"])
-        track = cast(dict[str, object], tracks[0])
-        support = cast(dict[str, object], track["support_plane"])
-        support["schema"] = "plcs_initial_foot_joint_support_v1"
-    (owner / "dataset.json").write_text(json.dumps(stale), encoding="utf-8")
-    execution_order: list[StageName] = []
-    repair_registry, handlers = _registry(
-        payload="replacement",
-        execution_order=execution_order,
-    )
-
-    repaired = _runner(tmp_path, repair_registry).run(
-        _request(
-            tmp_path,
-            from_stage=StageName.BLCS_DATASET,
-            targets=targets,
-        )
-    )
-
-    assert repaired.stages[StageName.BLCS_DATASET].attempt == 2
-    assert repaired.stages[StageName.PLCS_DATASET].attempt == 2
-    assert execution_order == [
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
-        StageName.REPORT,
-    ]
-    assert handlers[StageName.PLCS_DATASET].execute_calls == 1
-    assert json.loads((owner / "dataset.json").read_text(encoding="utf-8")) == (
-        _plcs_publication("replacement")
-    )
-    assert not first.workspace.transaction_root.exists()
-
-
-def test_blcs_cursor_repairs_invalidated_plcs_before_report(tmp_path: Path) -> None:
-    all_targets = frozenset(DatasetTarget)
-    first_registry, _ = _registry(payload="first")
-    first = _runner(tmp_path, first_registry)
-    first.run(_request(tmp_path, targets=all_targets))
-    manifest = MutableRunManifest.load(first.workspace.run_manifest_path)
-    manifest.stages[StageName.BLCS_DATASET].attempt = 2
-    manifest.invalidate(StageName.PLCS_DATASET)
-    manifest.stages[StageName.PLCS_DATASET].attempt = 0
-    manifest.invalidate(StageName.REPORT)
-    manifest.save(first.workspace.run_manifest_path)
-    first.workspace.invalidate_outputs(
-        first_registry.definition(StageName.PLCS_DATASET)
-    )
-    first.workspace.invalidate_outputs(first_registry.definition(StageName.REPORT))
-    execution_order: list[StageName] = []
-    repair_registry, handlers = _registry(
-        payload="repair",
-        execution_order=execution_order,
-    )
-    repair = _runner(tmp_path, repair_registry)
-
-    repaired = repair.run(
-        _request(
-            tmp_path,
-            from_stage=StageName.BLCS_DATASET,
-            targets=all_targets,
-        )
-    )
-
-    assert execution_order == [
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
-        StageName.REPORT,
-    ]
-    assert repaired.stages[StageName.BLCS_DATASET].attempt == 3
-    assert repaired.stages[StageName.PLCS_DATASET].attempt == 1
-    assert repaired.stages[StageName.REPORT].status is StageStatus.COMPLETED
-    assert handlers[StageName.COURT_DATASET].execute_calls == 0
-    assert json.loads(
-        (repair.workspace.root / "datasets/plcs/dataset.json").read_text(
-            encoding="utf-8"
-        )
-    ) == _plcs_publication("repair")
-
-
-def test_missing_completed_sibling_publication_is_rebuilt(tmp_path: Path) -> None:
-    targets = frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS})
-    first_registry, _ = _registry(payload="first")
-    first = _runner(tmp_path, first_registry)
-    first.run(_request(tmp_path, targets=targets))
-    missing = first.workspace.root / "datasets/plcs/dataset.json"
-    missing.unlink()
-    execution_order: list[StageName] = []
-    repair_registry, _ = _registry(
-        payload="repair",
-        execution_order=execution_order,
-    )
-
-    repaired = _runner(tmp_path, repair_registry).run(
-        _request(
-            tmp_path,
-            from_stage=StageName.BLCS_DATASET,
-            targets=targets,
-        )
-    )
-
-    assert execution_order == [
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
-        StageName.REPORT,
-    ]
-    assert repaired.stages[StageName.PLCS_DATASET].attempt == 2
-    assert json.loads(missing.read_text(encoding="utf-8")) == _plcs_publication(
-        "repair"
-    )
 
 
 def test_stale_completed_descendants_are_rebuilt_from_invalid_prerequisite(
@@ -544,54 +285,12 @@ def test_stale_completed_descendants_are_rebuilt_from_invalid_prerequisite(
     assert execution_order == [
         StageName.ALIGNMENT,
         StageName.COURT_DATASET,
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
         StageName.REPORT,
     ]
     assert repaired.stages[StageName.INGEST].attempt == 1
     assert repaired.stages[StageName.RECONSTRUCTION].attempt == 1
     assert repaired.stages[StageName.ALIGNMENT].attempt == 2
     assert all(repaired.stages[target.stage].attempt == 2 for target in DatasetTarget)
-
-
-def test_repaired_sibling_failure_keeps_report_invalidated_and_no_partial_output(
-    tmp_path: Path,
-) -> None:
-    targets = frozenset({DatasetTarget.BLCS, DatasetTarget.PLCS})
-    first_registry, _ = _registry(payload="first")
-    first = _runner(tmp_path, first_registry)
-    first.run(_request(tmp_path, targets=targets))
-    manifest = MutableRunManifest.load(first.workspace.run_manifest_path)
-    plcs_record = manifest.stages[StageName.PLCS_DATASET]
-    plcs_record.status = StageStatus.FAILED
-    plcs_record.summary = {}
-    plcs_record.error = "RuntimeError: prior failed PLCS replacement"
-    manifest.invalidate(StageName.REPORT)
-    manifest.save(first.workspace.run_manifest_path)
-    first.workspace.invalidate_outputs(first_registry.definition(StageName.REPORT))
-    repair_registry, handlers = _registry(payload="partial")
-    handlers[StageName.PLCS_DATASET].fail_execute = True
-    repair = _runner(tmp_path, repair_registry)
-
-    with pytest.raises(RuntimeError, match="execute failed for plcs_dataset"):
-        repair.run(
-            _request(
-                tmp_path,
-                from_stage=StageName.BLCS_DATASET,
-                targets=targets,
-            )
-        )
-
-    failed = MutableRunManifest.load(repair.workspace.run_manifest_path)
-    assert failed.stages[StageName.BLCS_DATASET].status is StageStatus.COMPLETED
-    assert failed.stages[StageName.PLCS_DATASET].status is StageStatus.FAILED
-    assert failed.stages[StageName.REPORT].status is StageStatus.INVALIDATED
-    assert json.loads(
-        (repair.workspace.root / "datasets/plcs/dataset.json").read_text(
-            encoding="utf-8"
-        )
-    ) == _plcs_publication("first")
-    assert not repair.workspace.transaction_root.exists()
 
 
 def test_alignment_subset_rerun_cleans_unselected_stale_descendants(
@@ -611,12 +310,6 @@ def test_alignment_subset_rerun_cleans_unselected_stale_descendants(
         )
     )
 
-    for target in (DatasetTarget.BLCS, DatasetTarget.PLCS):
-        record = manifest.stages[target.stage]
-        assert record.status is StageStatus.SKIPPED
-        assert record.attempt == 1
-        assert handlers[target.stage].execute_calls == 0
-        assert not (second.workspace.root / "datasets" / target.value).exists()
     assert manifest.stages[StageName.ALIGNMENT].attempt == 2
     assert manifest.stages[StageName.COURT_DATASET].attempt == 2
     assert manifest.stages[StageName.REPORT].attempt == 2
@@ -956,8 +649,6 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
         StageName.RECONSTRUCTION: first.workspace.root
         / "reconstruction/export/scene.json",
         StageName.ALIGNMENT: first.workspace.root / "alignment/alignment.json",
-        StageName.BLCS_DATASET: first.workspace.root / "datasets/blcs/dataset.json",
-        StageName.PLCS_DATASET: first.workspace.root / "datasets/plcs/dataset.json",
     }
     before = {stage: path.read_bytes() for stage, path in retained_paths.items()}
 
@@ -1004,8 +695,6 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
         StageName.INGEST,
         StageName.RECONSTRUCTION,
         StageName.ALIGNMENT,
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
     ):
         assert handlers[retained_stage].execute_calls == 0
     assert {
@@ -1105,15 +794,6 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
             StageName.ALIGNMENT,
             frozenset({DatasetTarget.COURT}),
         ),
-        (
-            {
-                "backend": "public-cli",
-                "training_python_path": "/runtime/python",
-                "trainer_path": "/runtime/nht/train.py",
-            },
-            StageName.COURT_DATASET,
-            frozenset({DatasetTarget.COURT, DatasetTarget.BLCS}),
-        ),
     ),
     ids=(
         "existing-nht-value-mutated",
@@ -1122,7 +802,6 @@ def test_court_only_cursor_allows_only_court_config_change_and_reuses_upstream(
         "added-path-is-blank",
         "added-path-is-not-a-string",
         "wrong-cursor",
-        "wrong-target-set",
     ),
 )
 def test_legacy_nht_path_additions_are_rejected_outside_exact_court_authority(
