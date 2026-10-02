@@ -71,7 +71,7 @@ modelを呼び出し側でdeviceへ配置し、入力batchだけを順に転送�
 各frameの採用窓を示す。混合成分を平均せず、推論前のmodelのtrain/eval状態を終了・例外時に復元する。
 学習時のvalidationもこの共通経路を使う。pipeline登録・永続保存は上記の専用recipeを参照。
 
-### 候補残差平均の明示的な実験設定
+### 候補残差平均と絶対平均の明示的な設定
 
 既存の全fieldだけを持つ`Refiner2DConfig`は絶対uv回帰のまま保持する。
 `parse_model_config`はこれに`mean_parameterization: candidate_residual_v1`、
@@ -87,22 +87,46 @@ detectorのtop-1/recall集計とcheckpoint選択の既存同率規則には影�
 全gapでも全成分を返し、少なくとも1成分は全frameで自由な絶対uvとする。
 候補基準成分の平均headのみweightをゼロ初期化し、初期残差を0にする。
 共分散・weight・presenceの学習、BallGMM2Dの保存契約、joint NLLは共通。
-実験数値・採否はknowledgeを正本とし、この方式をpipeline defaultへ昇格しない。
+実験数値はknowledgeを正本とする。絶対平均headは旧checkpointの復元と対照実験で
+使用しているため、明示的な選択肢として保持する。
 
-### proposed: 候補残差headを次の基準設計にする案
+### 採用設計: 候補残差head（anchored_12k）
 
-**ユーザー判断前の提案であり、現在はexperimentalのまま。**
+**[2026-09-30のユーザー判断A–D](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5908081470)により採用。**
 上記の方式をscore上位3候補＋有界残差（`max_offset_uv=0.02`）と1自由成分、
-K=4、文脈なし、12,000更新の学習予算で次のrefiner基準設計にする案を提示する。
+K=4、文脈なし、12,000更新の学習予算でball refinerの基準設計とする。
 検出器は既に候補recallで固定したepoch9を使い、33frame/stride16、
-source平衡・seed・joint NLL・Meiji選択側のobserved/gap等重みNLLによるcheckpoint選択を維持する。
+source平衡・joint NLL・Meiji選択側のobserved/gap等重みNLLによるcheckpoint選択を維持する。
 12,000更新の最終checkpointを無条件採用する意味ではない。
 欠損時の絶対平均分岐・自由成分・full covariance・presenceとBallGMM2D契約も上記のまま。
+seed42に加えて43・44で再現性を確認し、再現しない条件も報告する。
 
 根拠・反証・較正の限界は[knowledge 000018](../../../knowledge/nodes/ball_refiner/000018-run-i935-precision-variants-s42-r21-20260930.md)、
-ユーザーへ提示する設計採用・component切替・裾較正・#936への受渡しの選択肢は
-[提案A–D](../../../knowledge/runs/run-i935-precision-variants-s42-r21-20260930/proposals.md)を参照。
-設計採用とpipelineのasset/default切替は別判断で、現行YAML・asset参照は変更しない。
+採用判断の正本は上記issueコメントを参照。
+共分散だけを倍率で補正し、平均・混合重み・存在確率は固定する。clip単位の交差検証で
+HDR50/90/95のcoverage、位置NLL、面積を併記し、明示したhash付き較正artifactを保存する。
+#936へは補正後の全GMM残差bankを渡し、旧bank/合成dataは対照として保持する。
+pipelineの既定値は、較正・追加seed確認・元動画3cameraのexecute/load検証が揃ってから
+変更する。それまでは既存YAML・asset参照を維持する。#964完了前にperson/pose/court文脈を追加しない。
+
+`refiner_2d/calibration.py`はcheckpoint SHA256とartifact SHA256を必須とする明示的な読込API。
+`CovarianceCalibration.apply()`はΣをs倍（Choleskyを√s倍）し、全成分の平均とlogitを保持する。
+artifactの自動探索・倍率1への省略補完はしない。現在のpipeline/bundleはこのAPIをまだ呼ばない。
+`evaluation/calibration_fit.py`が位置NLLのfit、`evaluation/covariance_calibration.py`が
+保存済みval出力のhash/教師/PTS照合・clip交差検証・層別比較を担当する。
+calibration halfでは全cameraをまとめたleave-one-clip-out、その他のvalでは
+calibration half全体でfitした倍率を使う。checkpoint選択済みhalfを独立評価と呼ばない。
+出力の`bank_input/`は配布用倍率をfitしたframeにも適用する明示的なin-sample bank材料で、
+OOF評価NPZとは別に保存する。実測と採用判断はknowledgeに記録する。
+
+```bash
+# CPU専用。inputはrun_cached_comparisonのcomplete出力。
+# bounds/gridは実験前に宣言し、artifactは元のcheckpointと同じdirectoryへ新規保存する。
+.venv/bin/python -m src.tasks.ball_refiner.scripts.calibrate_covariance \
+  --predictions <絶対保存済みval-directory> --output <絶対新規output-directory> \
+  --calibration-artifact <絶対checkpoint-directory>/covariance-calibration.json \
+  --bounds 0.25 64 --grid-points 129 --cpu-threads 2
+```
 
 教師の`weight`はjoint項に共通のframe重み。lossは位置NLLの和と存在BCEの和を足し、
 存在既知frameの重みの和で割る。位置の条件付きNLLを報告するときは
@@ -111,9 +135,10 @@ source平衡・seed・joint NLL・Meiji選択側のobserved/gap等重みNLLに�
 検証例は[unit](../../../tests/unit/tasks/ball_refiner/refiner_2d)と
 [integration](../../../tests/integration/tasks/ball_refiner/test_refiner_2d.py)を参照。
 
-## 学習戦略（#935、暫定設計）
+## 学習戦略（#935）
 
-無人campaignの指示に従った暫定案であり、ユーザーの合意済みとは扱わない。
+文脈なし基準と較正・追加seedの方針は上記の採用設計に従う。
+以下の文脈・RGB遮蔽・amodal追加実験は未完了の計画であり、採用済み性能とは扱わない。
 決定・変更履歴は[#935](https://github.com/Motoki0705/tennis-lab/issues/935)の
 【要判断】コメントを正本とする。以下は実験前の計画で、性能結果ではない。
 
@@ -156,8 +181,8 @@ Meijiはtrain video_002 / val video_000 / test video_001で、#934・#936と共�
 同じ収録の別camera・overlap窓を別splitに入れない。testは最終設定固定後の一回比較とし、
 既に#934で見たtestの再利用であることも明示する。
 
-detectorはft-e13を凍結した基準から開始する。混合FT epoch 0は比較候補として別cacheに固定し、
-選択はvalidationで行う。checkpoint、前処理、動画/注釈hash、frame/PTS、sourceサイズ、
+detectorは候補recallによるvalidation選択で混合FT epoch9に固定済み。
+ft-e13は歴史的対照と現行pipelineの既定に残す。checkpoint、前処理、動画/注釈hash、frame/PTS、sourceサイズ、
 窓集約、候補設定をcache manifestへ保存する。検出証拠は
 [#934の契約](../ball_detection/README.md#検出証拠の出力契約)を使い、score閾値やtrajectory gateで捨てない。
 

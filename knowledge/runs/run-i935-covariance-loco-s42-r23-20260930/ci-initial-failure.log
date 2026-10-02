@@ -1,0 +1,359 @@
+Python	Test	﻿2026-09-30T09:32:39.9245421Z ##[group]Run .venv/bin/python -m spin test -q --no-cov --dist=worksteal --ignore=tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py
+Python	Test	2026-09-30T09:32:39.9246296Z [36;1m.venv/bin/python -m spin test -q --no-cov --dist=worksteal --ignore=tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py[0m
+Python	Test	2026-09-30T09:32:39.9298558Z shell: /usr/bin/bash -e {0}
+Python	Test	2026-09-30T09:32:39.9298723Z env:
+Python	Test	2026-09-30T09:32:39.9298855Z   PYTEST_XDIST_AUTO_NUM_WORKERS: 2
+Python	Test	2026-09-30T09:32:39.9299010Z   OMP_NUM_THREADS: 1
+Python	Test	2026-09-30T09:32:39.9299138Z   MKL_NUM_THREADS: 1
+Python	Test	2026-09-30T09:32:39.9299265Z   OPENBLAS_NUM_THREADS: 1
+Python	Test	2026-09-30T09:32:39.9299449Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+Python	Test	2026-09-30T09:32:39.9299660Z   UV_PYTHON: 3.11
+Python	Test	2026-09-30T09:32:39.9299808Z   UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+Python	Test	2026-09-30T09:32:39.9300032Z ##[endgroup]
+Python	Test	2026-09-30T09:32:39.9692658Z Excluding pytest markers: not local_data and not cuda
+Python	Test	2026-09-30T09:32:39.9693678Z $ /home/runner/work/tennis-lab/tennis-lab/.venv/bin/python -m pytest -m 'not local_data and not cuda' -q --no-cov --dist=worksteal --ignore=tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py
+Python	Test	2026-09-30T09:33:27.0871579Z ============================= test session starts ==============================
+Python	Test	2026-09-30T09:33:27.0872356Z platform linux -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0
+Python	Test	2026-09-30T09:33:27.0872986Z rootdir: /home/runner/work/tennis-lab/tennis-lab
+Python	Test	2026-09-30T09:33:27.0873349Z configfile: pyproject.toml
+Python	Test	2026-09-30T09:33:27.0873586Z testpaths: tests
+Python	Test	2026-09-30T09:33:27.0873880Z plugins: hydra-core-1.3.7, anyio-4.13.0, cov-7.1.0, xdist-3.8.0
+Python	Test	2026-09-30T09:33:27.0874266Z created: 2/2 workers
+Python	Test	2026-09-30T09:33:27.0874474Z 2 workers [6726 items]
+Python	Test	2026-09-30T09:33:27.0874620Z 
+Python	Test	2026-09-30T09:33:27.6876853Z .........s.............................................................. [  1%]
+Python	Test	2026-09-30T09:33:27.8419232Z ........................................................................ [  2%]
+Python	Test	2026-09-30T09:33:28.4993312Z ........................................................................ [  3%]
+Python	Test	2026-09-30T09:33:31.5278727Z ........................................................................ [  4%]
+Python	Test	2026-09-30T09:33:33.6661879Z ........................................................................ [  5%]
+Python	Test	2026-09-30T09:33:34.8271555Z ........................................................................ [  6%]
+Python	Test	2026-09-30T09:34:10.9024298Z ........................................................................ [  7%]
+Python	Test	2026-09-30T09:34:12.7445734Z ........................................................................ [  8%]
+Python	Test	2026-09-30T09:34:13.9214853Z ........................................................................ [  9%]
+Python	Test	2026-09-30T09:34:14.9431003Z ........................................................................ [ 10%]
+Python	Test	2026-09-30T09:34:15.8403045Z ........................................................................ [ 11%]
+Python	Test	2026-09-30T09:34:29.2455905Z ........................................................................ [ 12%]
+Python	Test	2026-09-30T09:34:33.5714926Z ........................................................................ [ 13%]
+Python	Test	2026-09-30T09:34:35.0435150Z ............................................s..sssssss.................. [ 14%]
+Python	Test	2026-09-30T09:34:36.8564373Z ....sssssss...............................sssssssssssss................. [ 16%]
+Python	Test	2026-09-30T09:34:39.4235136Z ........................................................................ [ 17%]
+Python	Test	2026-09-30T09:34:44.6359318Z ........................................................................ [ 18%]
+Python	Test	2026-09-30T09:34:46.3792116Z ........................................................................ [ 19%]
+Python	Test	2026-09-30T09:34:46.7810814Z ........................................................................ [ 20%]
+Python	Test	2026-09-30T09:34:50.2266701Z ........................................................................ [ 21%]
+Python	Test	2026-09-30T09:34:51.9262118Z ........................................................................ [ 22%]
+Python	Test	2026-09-30T09:34:53.2066595Z ........................................................................ [ 23%]
+Python	Test	2026-09-30T09:34:53.4378159Z ........................................................................ [ 24%]
+Python	Test	2026-09-30T09:35:06.7956600Z ........................................................................ [ 25%]
+Python	Test	2026-09-30T09:35:14.9731048Z ........................................................................ [ 26%]
+Python	Test	2026-09-30T09:35:30.7963769Z ................................................................F....... [ 27%]
+Python	Test	2026-09-30T09:35:52.6492811Z ................F....................................................... [ 28%]
+Python	Test	2026-09-30T09:36:06.0265175Z ........................................................................ [ 29%]
+Python	Test	2026-09-30T09:36:35.8006892Z ........................................................................ [ 31%]
+Python	Test	2026-09-30T09:36:36.0001004Z ........................................................................ [ 32%]
+Python	Test	2026-09-30T09:36:36.2091062Z ........................................................................ [ 33%]
+Python	Test	2026-09-30T09:36:36.4230062Z ........................................................................ [ 34%]
+Python	Test	2026-09-30T09:36:36.6345918Z ........................................................................ [ 35%]
+Python	Test	2026-09-30T09:36:36.7586408Z ........................................................................ [ 36%]
+Python	Test	2026-09-30T09:36:36.8763578Z ........................................................................ [ 37%]
+Python	Test	2026-09-30T09:36:37.0308832Z ........................................................................ [ 38%]
+Python	Test	2026-09-30T09:36:37.3558477Z ............................................................ssssssssssss [ 39%]
+Python	Test	2026-09-30T09:36:37.4576024Z sssssssssssssssssssssssssss............................................. [ 40%]
+Python	Test	2026-09-30T09:36:38.1446456Z ..................................................................ssssss [ 41%]
+Python	Test	2026-09-30T09:36:38.2620234Z ssssssssssssssssssssssssssss............................................ [ 42%]
+Python	Test	2026-09-30T09:36:38.4489609Z ........................................................................ [ 43%]
+Python	Test	2026-09-30T09:36:38.6319196Z ........................................................................ [ 44%]
+Python	Test	2026-09-30T09:36:39.7793196Z ........................................................................ [ 46%]
+Python	Test	2026-09-30T09:36:39.9244235Z ........................................................................ [ 47%]
+Python	Test	2026-09-30T09:36:40.0809208Z ........................................................................ [ 48%]
+Python	Test	2026-09-30T09:36:40.4266374Z ........................................................................ [ 49%]
+Python	Test	2026-09-30T09:36:40.7306902Z ........................................................................ [ 50%]
+Python	Test	2026-09-30T09:36:45.5093710Z ........................................................................ [ 51%]
+Python	Test	2026-09-30T09:36:50.3370309Z ........................................................................ [ 52%]
+Python	Test	2026-09-30T09:36:51.0164788Z ........................................................................ [ 53%]
+Python	Test	2026-09-30T09:37:24.7180392Z ........................................................................ [ 54%]
+Python	Test	2026-09-30T09:37:26.0982504Z ........................................................................ [ 55%]
+Python	Test	2026-09-30T09:37:30.6545051Z ........................................................................ [ 56%]
+Python	Test	2026-09-30T09:37:31.8425443Z ........................................................................ [ 57%]
+Python	Test	2026-09-30T09:37:32.4193633Z ........................................................................ [ 58%]
+Python	Test	2026-09-30T09:37:32.5776286Z ........................................................................ [ 59%]
+Python	Test	2026-09-30T09:37:33.9519367Z ........................................................................ [ 61%]
+Python	Test	2026-09-30T09:37:42.6210511Z ........................................................................ [ 62%]
+Python	Test	2026-09-30T09:37:42.7496564Z ........................................................................ [ 63%]
+Python	Test	2026-09-30T09:37:46.9520980Z ........................................................................ [ 64%]
+Python	Test	2026-09-30T09:37:50.2248129Z ........................................................................ [ 65%]
+Python	Test	2026-09-30T09:37:50.5275981Z ........................................................................ [ 66%]
+Python	Test	2026-09-30T09:37:50.7527977Z ........................................................................ [ 67%]
+Python	Test	2026-09-30T09:37:58.8671635Z ..............................................................ssssssss.. [ 68%]
+Python	Test	2026-09-30T09:37:59.0303886Z ........s............................................................... [ 69%]
+Python	Test	2026-09-30T09:37:59.5512322Z ........................................................................ [ 70%]
+Python	Test	2026-09-30T09:37:59.8432515Z ........................................................................ [ 71%]
+Python	Test	2026-09-30T09:38:00.6494993Z ........................................................................ [ 72%]
+Python	Test	2026-09-30T09:38:00.8880988Z ........................................................................ [ 73%]
+Python	Test	2026-09-30T09:38:01.6534450Z .......................................sssssssssssss.................... [ 74%]
+Python	Test	2026-09-30T09:38:02.3719525Z ........................................................................ [ 76%]
+Python	Test	2026-09-30T09:38:04.5239560Z ........................................................................ [ 77%]
+Python	Test	2026-09-30T09:38:04.9463379Z ........................................................................ [ 78%]
+Python	Test	2026-09-30T09:38:43.8455034Z ..................................sss................................... [ 79%]
+Python	Test	2026-09-30T09:38:56.0993286Z ........................................................................ [ 80%]
+Python	Test	2026-09-30T09:38:58.8507585Z ........................................................................ [ 81%]
+Python	Test	2026-09-30T09:39:06.4424102Z ........................................................................ [ 82%]
+Python	Test	2026-09-30T09:39:25.7749053Z ........................................................................ [ 83%]
+Python	Test	2026-09-30T09:39:29.3946028Z ........................................................................ [ 84%]
+Python	Test	2026-09-30T09:39:29.6446696Z ........................................................................ [ 85%]
+Python	Test	2026-09-30T09:39:29.9668912Z ..............................ss.......................................s [ 86%]
+Python	Test	2026-09-30T09:39:30.2964656Z ss...................................................................... [ 87%]
+Python	Test	2026-09-30T09:39:32.5006626Z ........................................................................ [ 88%]
+Python	Test	2026-09-30T09:39:34.0626713Z ...............................................s........................ [ 89%]
+Python	Test	2026-09-30T09:39:34.7338664Z ........................................................................ [ 90%]
+Python	Test	2026-09-30T09:39:37.6918093Z ........................................................................ [ 92%]
+Python	Test	2026-09-30T09:40:04.4679835Z ........................................................................ [ 93%]
+Python	Test	2026-09-30T09:40:18.6715292Z ........................................................................ [ 94%]
+Python	Test	2026-09-30T09:40:30.9464749Z ........................................................................ [ 95%]
+Python	Test	2026-09-30T09:40:38.6576510Z ........................................................................ [ 96%]
+Python	Test	2026-09-30T09:40:40.4386830Z ........................................................................ [ 97%]
+Python	Test	2026-09-30T09:40:40.7436201Z ........................................................................ [ 98%]
+Python	Test	2026-09-30T09:40:45.8253775Z ........................................................................ [ 99%]
+Python	Test	2026-09-30T09:40:54.6072332Z ..............................                                           [100%]
+Python	Test	2026-09-30T09:40:54.6072955Z =================================== FAILURES ===================================
+Python	Test	2026-09-30T09:40:54.6073384Z ________________ test_repository_source_satisfies_current_audit ________________
+Python	Test	2026-09-30T09:40:54.6073850Z [gw1] linux -- Python 3.11.16 /home/runner/work/tennis-lab/tennis-lab/.venv/bin/python
+Python	Test	2026-09-30T09:40:54.6074151Z 
+Python	Test	2026-09-30T09:40:54.6074314Z     def test_repository_source_satisfies_current_audit() -> None:
+Python	Test	2026-09-30T09:40:54.6074649Z         report = inspect_source((PROJECT_ROOT / "src").resolve())
+Python	Test	2026-09-30T09:40:54.6074944Z     
+Python	Test	2026-09-30T09:40:54.6075133Z >       assert report.passed
+Python	Test	2026-09-30T09:40:54.6075372Z E       AssertionError: assert False
+Python	Test	2026-09-30T09:40:54.6076342Z E        +  where False = AuditReport(findings=(), boundary_issues=(BoundaryAuditIssue(boundary_id='src.tasks.ball_refiner.scripts.calibrate_cov...asks', validator_callable='src.tennis_scene.configuration.validate_visualize_tasks_boundary', subprocess_invokers=()))).passed
+Python	Test	2026-09-30T09:40:54.6077271Z 
+Python	Test	2026-09-30T09:40:54.6077443Z tests/unit/utils/configuration/test_audit.py:22: AssertionError
+Python	Test	2026-09-30T09:40:54.6077892Z _____ test_all_inventoried_runtime_boundaries_expose_truthful_authorities ______
+Python	Test	2026-09-30T09:40:54.6078392Z [gw1] linux -- Python 3.11.16 /home/runner/work/tennis-lab/tennis-lab/.venv/bin/python
+Python	Test	2026-09-30T09:40:54.6078625Z 
+Python	Test	2026-09-30T09:40:54.6078788Z     def test_all_inventoried_runtime_boundaries_expose_truthful_authorities() -> None:
+Python	Test	2026-09-30T09:40:54.6079097Z         boundary_ids = {contract.boundary_id for contract in BOUNDARY_CONTRACTS}
+Python	Test	2026-09-30T09:40:54.6079320Z         expected_ids = {
+Python	Test	2026-09-30T09:40:54.6079485Z             f"{boundary.module}:{boundary.callable_name}"
+Python	Test	2026-09-30T09:40:54.6079697Z             for boundary in DEFAULT_AUDIT_INVENTORY.boundaries
+Python	Test	2026-09-30T09:40:54.6079883Z         }
+Python	Test	2026-09-30T09:40:54.6079989Z     
+Python	Test	2026-09-30T09:40:54.6080109Z >       assert boundary_ids == expected_ids
+Python	Test	2026-09-30T09:40:54.6080366Z E       AssertionError: assert {'src.submodu...nt:main', ...} == {'src.submodu...nt:main', ...}
+Python	Test	2026-09-30T09:40:54.6080612Z E         
+Python	Test	2026-09-30T09:40:54.6080735Z E         Extra items in the left set:
+Python	Test	2026-09-30T09:40:54.6080939Z E         'src.tasks.ball_refiner.scripts.calibrate_covariance:main'
+Python	Test	2026-09-30T09:40:54.6081132Z E         
+Python	Test	2026-09-30T09:40:54.6081243Z E         Full diff:
+Python	Test	2026-09-30T09:40:54.6081364Z E           {
+Python	Test	2026-09-30T09:40:54.6081510Z E               'src.submodules.scripts.demo_gvhmr:main',
+Python	Test	2026-09-30T09:40:54.6081754Z E               'src.synthetic_data_generation.scripts.compact_court_storage:main',
+Python	Test	2026-09-30T09:40:54.6082027Z E               'src.synthetic_data_generation.scripts.edit_alignment:main',
+Python	Test	2026-09-30T09:40:54.6082322Z E               'src.synthetic_data_generation.scripts.generate_publication_visualizations:main',
+Python	Test	2026-09-30T09:40:54.6082634Z E               'src.synthetic_data_generation.scripts.review_court_dataset:main',
+Python	Test	2026-09-30T09:40:54.6082916Z E               'src.synthetic_data_generation.scripts.run_appearance_variant:main',
+Python	Test	2026-09-30T09:40:54.6083202Z E               'src.synthetic_data_generation.scripts.run_scene_pipeline:main',
+Python	Test	2026-09-30T09:40:54.6083471Z E               'src.synthetic_data_generation.scripts.visualize_dataset:main',
+Python	Test	2026-09-30T09:40:54.6083734Z E               'src.tasks.ball_detection.scripts.analyze_web_bbox_ratio:main',
+Python	Test	2026-09-30T09:40:54.6083989Z E               'src.tasks.ball_detection.scripts.convert_web_dataset:main',
+Python	Test	2026-09-30T09:40:54.6084227Z E               'src.tasks.ball_detection.scripts.eval:main',
+Python	Test	2026-09-30T09:40:54.6084454Z E               'src.tasks.ball_detection.scripts.evaluate_manifest:main',
+Python	Test	2026-09-30T09:40:54.6084700Z E               'src.tasks.ball_detection.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:54.6084942Z E               'src.tasks.ball_detection.scripts.inference_ui:main',
+Python	Test	2026-09-30T09:40:54.6085365Z E               'src.tasks.ball_detection.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:54.6085716Z E               'src.tasks.ball_detection.scripts.preview_heatmaps:main',
+Python	Test	2026-09-30T09:40:54.6085958Z E               'src.tasks.ball_detection.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:54.6086188Z E               'src.tasks.ball_detection.scripts.train:main',
+Python	Test	2026-09-30T09:40:54.6086407Z E               'src.tasks.ball_detection.scripts.train_staged:main',
+Python	Test	2026-09-30T09:40:54.6086636Z E               'src.tasks.ball_detection.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:54.6086894Z E               'src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball:main',
+Python	Test	2026-09-30T09:40:54.6087210Z E               'src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset:main',
+Python	Test	2026-09-30T09:40:54.6087532Z E               'src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images:main',
+Python	Test	2026-09-30T09:40:54.6087841Z E               'src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset:main',
+Python	Test	2026-09-30T09:40:54.6088113Z E               'src.tasks.ball_refiner.scripts.audit_data:main',
+Python	Test	2026-09-30T09:40:54.6088797Z E         +     'src.tasks.ball_refiner.scripts.calibrate_covariance:main',
+Python	Test	2026-09-30T09:40:54.6089049Z E               'src.tasks.ball_refiner.scripts.compare_detectors:main',
+Python	Test	2026-09-30T09:40:54.6089283Z E               'src.tasks.ball_refiner.scripts.context_shards:main',
+Python	Test	2026-09-30T09:40:54.6089515Z E               'src.tasks.ball_refiner.scripts.evaluate_pilot:main',
+Python	Test	2026-09-30T09:40:54.6089745Z E               'src.tasks.ball_refiner.scripts.export_pilot:main',
+Python	Test	2026-09-30T09:40:54.6089975Z E               'src.tasks.ball_refiner.scripts.generate_context:main',
+Python	Test	2026-09-30T09:40:54.6090209Z E               'src.tasks.ball_refiner.scripts.generate_evidence:main',
+Python	Test	2026-09-30T09:40:54.6090442Z E               'src.tasks.ball_refiner.scripts.run_pipeline:main',
+Python	Test	2026-09-30T09:40:54.6090661Z E               'src.tasks.ball_refiner.scripts.train:main',
+Python	Test	2026-09-30T09:40:54.6090881Z E               'src.tasks.base.scripts.inference_worker:main',
+Python	Test	2026-09-30T09:40:54.6091138Z E               'src.tasks.blcs.generate_dataset.api_server.__main__:main',
+Python	Test	2026-09-30T09:40:54.6091372Z E               'src.tasks.blcs.scripts.evaluate_real:main',
+Python	Test	2026-09-30T09:40:54.6091605Z E               'src.tasks.blcs.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:54.6091849Z E               'src.tasks.blcs.scripts.generate_dataset_samples:main',
+Python	Test	2026-09-30T09:40:54.6092074Z E               'src.tasks.blcs.scripts.inference_ui:main',
+Python	Test	2026-09-30T09:40:54.6092310Z E               'src.tasks.blcs.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:54.6092547Z E               'src.tasks.blcs.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:54.6092749Z E               'src.tasks.blcs.scripts.train:main',
+Python	Test	2026-09-30T09:40:54.6092949Z E               'src.tasks.blcs.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:54.6093218Z E               'src.tasks.court_detection.scripts.annotate_youtube_keypoints:main',
+Python	Test	2026-09-30T09:40:54.6093502Z E               'src.tasks.court_detection.scripts.audit_hybrid_inference:main',
+Python	Test	2026-09-30T09:40:54.6093770Z E               'src.tasks.court_detection.scripts.generate_line_masks:main',
+Python	Test	2026-09-30T09:40:54.6094037Z E               'src.tasks.court_detection.scripts.generate_masks:main',
+Python	Test	2026-09-30T09:40:54.6094314Z E               'src.tasks.court_detection.scripts.inference_ui:main',
+Python	Test	2026-09-30T09:40:54.6094579Z E               'src.tasks.court_detection.scripts.materialize_targets:main',
+Python	Test	2026-09-30T09:40:54.6094864Z E               'src.tasks.court_detection.scripts.prepare_youtube_dataset:main',
+Python	Test	2026-09-30T09:40:54.6095140Z E               'src.tasks.court_detection.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:54.6095430Z E               'src.tasks.court_detection.scripts.preview_heatmaps:main',
+Python	Test	2026-09-30T09:40:54.6095674Z E               'src.tasks.court_detection.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:54.6096012Z E               'src.tasks.court_detection.scripts.train:main',
+Python	Test	2026-09-30T09:40:54.6096271Z E               'src.tasks.court_detection.scripts.train_mixed:main',
+Python	Test	2026-09-30T09:40:54.6096609Z E               'src.tasks.court_detection.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:54.6096855Z E               'src.tasks.court_side.scripts.benchmark_synthetic:main',
+Python	Test	2026-09-30T09:40:54.6097088Z E               'src.tasks.player_detection.scripts.evaluate:main',
+Python	Test	2026-09-30T09:40:54.6097331Z E               'src.tasks.player_detection.scripts.export_checkpoint:main',
+Python	Test	2026-09-30T09:40:54.6097620Z E               'src.tasks.player_detection.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:54.6097872Z E               'src.tasks.player_detection.scripts.preview_dataset:main',
+Python	Test	2026-09-30T09:40:54.6098112Z E               'src.tasks.player_detection.scripts.train:main',
+Python	Test	2026-09-30T09:40:54.6098608Z E               'src.tasks.plcs.scripts.analysis.analyze_angle_velocity:main',
+Python	Test	2026-09-30T09:40:54.6098926Z E               'src.tasks.plcs.scripts.analysis.analyze_dataset_distribution:main',
+Python	Test	2026-09-30T09:40:54.6099208Z E               'src.tasks.plcs.scripts.analysis.analyze_loss_dominance:main',
+Python	Test	2026-09-30T09:40:54.6099500Z E               'src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples:main',
+Python	Test	2026-09-30T09:40:54.6099806Z E               'src.tasks.plcs.scripts.extract_gvhmr_motions:main',
+Python	Test	2026-09-30T09:40:54.6100032Z E               'src.tasks.plcs.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:54.6100264Z E               'src.tasks.plcs.scripts.generate_dataset_samples:main',
+Python	Test	2026-09-30T09:40:54.6100542Z E               'src.tasks.plcs.scripts.infer_triangulation_residual:main',
+Python	Test	2026-09-30T09:40:54.6100796Z E               'src.tasks.plcs.scripts.migrate_residual_checkpoint:main',
+Python	Test	2026-09-30T09:40:54.6101066Z E               'src.tasks.plcs.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:54.6101295Z E               'src.tasks.plcs.scripts.review_accad_motion:main',
+Python	Test	2026-09-30T09:40:54.6101518Z E               'src.tasks.plcs.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:54.6101770Z E               'src.tasks.plcs.scripts.serve_inference_ui:main',
+Python	Test	2026-09-30T09:40:54.6101981Z E               'src.tasks.plcs.scripts.train:main',
+Python	Test	2026-09-30T09:40:54.6102200Z E               'src.tasks.plcs.scripts.train_triangulation_residual:main',
+Python	Test	2026-09-30T09:40:54.6102434Z E               'src.tasks.plcs.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:54.6102679Z E               'src.tasks.slcs.scripts.analyze_predictions:main',
+Python	Test	2026-09-30T09:40:54.6102894Z E               'src.tasks.slcs.scripts.evaluate:main',
+Python	Test	2026-09-30T09:40:54.6103113Z E               'src.tasks.slcs.scripts.evaluate_run:main',
+Python	Test	2026-09-30T09:40:54.6103343Z E               'src.tasks.slcs.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:54.6103554Z E               'src.tasks.slcs.scripts.make_splits:main',
+Python	Test	2026-09-30T09:40:54.6103776Z E               'src.tasks.slcs.scripts.precompute_dino_tokens:main',
+Python	Test	2026-09-30T09:40:54.6104036Z E               'src.tasks.slcs.scripts.predict_clip:main',
+Python	Test	2026-09-30T09:40:54.6104250Z E               'src.tasks.slcs.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:54.6104452Z E               'src.tasks.slcs.scripts.train:main',
+Python	Test	2026-09-30T09:40:54.6104670Z E               'src.tennis_scene.chat_annotation.scripts.annotate:main',
+Python	Test	2026-09-30T09:40:54.6104947Z E               'src.tennis_scene.chat_annotation.scripts.prepare:main',
+Python	Test	2026-09-30T09:40:54.6105221Z E               'src.tennis_scene.chat_annotation.scripts.serve_artifacts:main',
+Python	Test	2026-09-30T09:40:55.1381037Z E               'src.tennis_scene.chat_annotation.scripts.sync_done:main',
+Python	Test	2026-09-30T09:40:55.1381517Z E               'src.tennis_scene.scripts.clip_studio:main',
+Python	Test	2026-09-30T09:40:55.1381879Z E               'src.tennis_scene.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:55.1382230Z E               'src.tennis_scene.scripts.run_pipeline:main',
+Python	Test	2026-09-30T09:40:55.1382551Z E               'src.tennis_scene.scripts.visualization:main',
+Python	Test	2026-09-30T09:40:55.1383396Z E               'src.tennis_scene.scripts.visualize_component_store:main',
+Python	Test	2026-09-30T09:40:55.1383780Z E               'src.tennis_scene.scripts.visualize_tasks:main',
+Python	Test	2026-09-30T09:40:55.1384217Z E           }
+Python	Test	2026-09-30T09:40:55.1384326Z 
+Python	Test	2026-09-30T09:40:55.1384516Z tests/unit/utils/configuration/test_contracts.py:125: AssertionError
+Python	Test	2026-09-30T09:40:55.1384925Z =========================== short test summary info ============================
+Python	Test	2026-09-30T09:40:55.1385618Z FAILED tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit - AssertionError: assert False
+Python	Test	2026-09-30T09:40:55.1386895Z  +  where False = AuditReport(findings=(), boundary_issues=(BoundaryAuditIssue(boundary_id='src.tasks.ball_refiner.scripts.calibrate_cov...asks', validator_callable='src.tennis_scene.configuration.validate_visualize_tasks_boundary', subprocess_invokers=()))).passed
+Python	Test	2026-09-30T09:40:55.1388963Z FAILED tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities - AssertionError: assert {'src.submodu...nt:main', ...} == {'src.submodu...nt:main', ...}
+Python	Test	2026-09-30T09:40:55.1389790Z   
+Python	Test	2026-09-30T09:40:55.1389977Z   Extra items in the left set:
+Python	Test	2026-09-30T09:40:55.1390285Z   'src.tasks.ball_refiner.scripts.calibrate_covariance:main'
+Python	Test	2026-09-30T09:40:55.1390597Z   
+Python	Test	2026-09-30T09:40:55.1390761Z   Full diff:
+Python	Test	2026-09-30T09:40:55.1390937Z     {
+Python	Test	2026-09-30T09:40:55.1391147Z         'src.submodules.scripts.demo_gvhmr:main',
+Python	Test	2026-09-30T09:40:55.1391525Z         'src.synthetic_data_generation.scripts.compact_court_storage:main',
+Python	Test	2026-09-30T09:40:55.1391939Z         'src.synthetic_data_generation.scripts.edit_alignment:main',
+Python	Test	2026-09-30T09:40:55.1392404Z         'src.synthetic_data_generation.scripts.generate_publication_visualizations:main',
+Python	Test	2026-09-30T09:40:55.1392873Z         'src.synthetic_data_generation.scripts.review_court_dataset:main',
+Python	Test	2026-09-30T09:40:55.1393325Z         'src.synthetic_data_generation.scripts.run_appearance_variant:main',
+Python	Test	2026-09-30T09:40:55.1393769Z         'src.synthetic_data_generation.scripts.run_scene_pipeline:main',
+Python	Test	2026-09-30T09:40:55.1394188Z         'src.synthetic_data_generation.scripts.visualize_dataset:main',
+Python	Test	2026-09-30T09:40:55.1394602Z         'src.tasks.ball_detection.scripts.analyze_web_bbox_ratio:main',
+Python	Test	2026-09-30T09:40:55.1395011Z         'src.tasks.ball_detection.scripts.convert_web_dataset:main',
+Python	Test	2026-09-30T09:40:55.1395358Z         'src.tasks.ball_detection.scripts.eval:main',
+Python	Test	2026-09-30T09:40:55.1395711Z         'src.tasks.ball_detection.scripts.evaluate_manifest:main',
+Python	Test	2026-09-30T09:40:55.1396102Z         'src.tasks.ball_detection.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:55.1396465Z         'src.tasks.ball_detection.scripts.inference_ui:main',
+Python	Test	2026-09-30T09:40:55.1396832Z         'src.tasks.ball_detection.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:55.1397203Z         'src.tasks.ball_detection.scripts.preview_heatmaps:main',
+Python	Test	2026-09-30T09:40:55.1397556Z         'src.tasks.ball_detection.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:55.1397887Z         'src.tasks.ball_detection.scripts.train:main',
+Python	Test	2026-09-30T09:40:55.1398332Z         'src.tasks.ball_detection.scripts.train_staged:main',
+Python	Test	2026-09-30T09:40:55.1398662Z         'src.tasks.ball_detection.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:55.1399049Z         'src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball:main',
+Python	Test	2026-09-30T09:40:55.1399520Z         'src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset:main',
+Python	Test	2026-09-30T09:40:55.1400009Z         'src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images:main',
+Python	Test	2026-09-30T09:40:55.1400469Z         'src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset:main',
+Python	Test	2026-09-30T09:40:55.1400914Z         'src.tasks.ball_refiner.scripts.audit_data:main',
+Python	Test	2026-09-30T09:40:55.1401256Z   +     'src.tasks.ball_refiner.scripts.calibrate_covariance:main',
+Python	Test	2026-09-30T09:40:55.1401616Z         'src.tasks.ball_refiner.scripts.compare_detectors:main',
+Python	Test	2026-09-30T09:40:55.1402261Z         'src.tasks.ball_refiner.scripts.context_shards:main',
+Python	Test	2026-09-30T09:40:55.1402598Z         'src.tasks.ball_refiner.scripts.evaluate_pilot:main',
+Python	Test	2026-09-30T09:40:55.1403133Z         'src.tasks.ball_refiner.scripts.export_pilot:main',
+Python	Test	2026-09-30T09:40:55.1403466Z         'src.tasks.ball_refiner.scripts.generate_context:main',
+Python	Test	2026-09-30T09:40:55.1403812Z         'src.tasks.ball_refiner.scripts.generate_evidence:main',
+Python	Test	2026-09-30T09:40:55.1404150Z         'src.tasks.ball_refiner.scripts.run_pipeline:main',
+Python	Test	2026-09-30T09:40:55.1404459Z         'src.tasks.ball_refiner.scripts.train:main',
+Python	Test	2026-09-30T09:40:55.1404762Z         'src.tasks.base.scripts.inference_worker:main',
+Python	Test	2026-09-30T09:40:55.1405096Z         'src.tasks.blcs.generate_dataset.api_server.__main__:main',
+Python	Test	2026-09-30T09:40:55.1405430Z         'src.tasks.blcs.scripts.evaluate_real:main',
+Python	Test	2026-09-30T09:40:55.1405738Z         'src.tasks.blcs.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:55.1406068Z         'src.tasks.blcs.scripts.generate_dataset_samples:main',
+Python	Test	2026-09-30T09:40:55.1406394Z         'src.tasks.blcs.scripts.inference_ui:main',
+Python	Test	2026-09-30T09:40:55.1406714Z         'src.tasks.blcs.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:55.1407033Z         'src.tasks.blcs.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:55.1407321Z         'src.tasks.blcs.scripts.train:main',
+Python	Test	2026-09-30T09:40:55.1407599Z         'src.tasks.blcs.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:55.1407946Z         'src.tasks.court_detection.scripts.annotate_youtube_keypoints:main',
+Python	Test	2026-09-30T09:40:55.1408467Z         'src.tasks.court_detection.scripts.audit_hybrid_inference:main',
+Python	Test	2026-09-30T09:40:55.1408851Z         'src.tasks.court_detection.scripts.generate_line_masks:main',
+Python	Test	2026-09-30T09:40:55.1409217Z         'src.tasks.court_detection.scripts.generate_masks:main',
+Python	Test	2026-09-30T09:40:55.1409565Z         'src.tasks.court_detection.scripts.inference_ui:main',
+Python	Test	2026-09-30T09:40:55.1409923Z         'src.tasks.court_detection.scripts.materialize_targets:main',
+Python	Test	2026-09-30T09:40:55.1410317Z         'src.tasks.court_detection.scripts.prepare_youtube_dataset:main',
+Python	Test	2026-09-30T09:40:55.1410719Z         'src.tasks.court_detection.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:55.1411092Z         'src.tasks.court_detection.scripts.preview_heatmaps:main',
+Python	Test	2026-09-30T09:40:55.1411448Z         'src.tasks.court_detection.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:55.1411775Z         'src.tasks.court_detection.scripts.train:main',
+Python	Test	2026-09-30T09:40:55.1412094Z         'src.tasks.court_detection.scripts.train_mixed:main',
+Python	Test	2026-09-30T09:40:55.1412426Z         'src.tasks.court_detection.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:55.1412759Z         'src.tasks.court_side.scripts.benchmark_synthetic:main',
+Python	Test	2026-09-30T09:40:55.1413093Z         'src.tasks.player_detection.scripts.evaluate:main',
+Python	Test	2026-09-30T09:40:55.1413446Z         'src.tasks.player_detection.scripts.export_checkpoint:main',
+Python	Test	2026-09-30T09:40:55.1413815Z         'src.tasks.player_detection.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:55.1414186Z         'src.tasks.player_detection.scripts.preview_dataset:main',
+Python	Test	2026-09-30T09:40:55.1414528Z         'src.tasks.player_detection.scripts.train:main',
+Python	Test	2026-09-30T09:40:55.1414884Z         'src.tasks.plcs.scripts.analysis.analyze_angle_velocity:main',
+Python	Test	2026-09-30T09:40:55.1415294Z         'src.tasks.plcs.scripts.analysis.analyze_dataset_distribution:main',
+Python	Test	2026-09-30T09:40:55.1415708Z         'src.tasks.plcs.scripts.analysis.analyze_loss_dominance:main',
+Python	Test	2026-09-30T09:40:55.1416138Z         'src.tasks.plcs.scripts.analysis.visualize_rotation_error_samples:main',
+Python	Test	2026-09-30T09:40:55.1416540Z         'src.tasks.plcs.scripts.extract_gvhmr_motions:main',
+Python	Test	2026-09-30T09:40:55.1416865Z         'src.tasks.plcs.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:55.1417197Z         'src.tasks.plcs.scripts.generate_dataset_samples:main',
+Python	Test	2026-09-30T09:40:55.1417579Z         'src.tasks.plcs.scripts.infer_triangulation_residual:main',
+Python	Test	2026-09-30T09:40:55.1418345Z         'src.tasks.plcs.scripts.migrate_residual_checkpoint:main',
+Python	Test	2026-09-30T09:40:55.1418718Z         'src.tasks.plcs.scripts.preview_augmentation:main',
+Python	Test	2026-09-30T09:40:55.1419188Z         'src.tasks.plcs.scripts.review_accad_motion:main',
+Python	Test	2026-09-30T09:40:55.1419528Z         'src.tasks.plcs.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:55.1419860Z         'src.tasks.plcs.scripts.serve_inference_ui:main',
+Python	Test	2026-09-30T09:40:55.1420177Z         'src.tasks.plcs.scripts.train:main',
+Python	Test	2026-09-30T09:40:55.1420517Z         'src.tasks.plcs.scripts.train_triangulation_residual:main',
+Python	Test	2026-09-30T09:40:55.1420869Z         'src.tasks.plcs.scripts.visualize:main',
+Python	Test	2026-09-30T09:40:55.1421196Z         'src.tasks.slcs.scripts.analyze_predictions:main',
+Python	Test	2026-09-30T09:40:55.1421522Z         'src.tasks.slcs.scripts.evaluate:main',
+Python	Test	2026-09-30T09:40:55.1421828Z         'src.tasks.slcs.scripts.evaluate_run:main',
+Python	Test	2026-09-30T09:40:55.1422159Z         'src.tasks.slcs.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:55.1422481Z         'src.tasks.slcs.scripts.make_splits:main',
+Python	Test	2026-09-30T09:40:55.1422817Z         'src.tasks.slcs.scripts.precompute_dino_tokens:main',
+Python	Test	2026-09-30T09:40:55.1423169Z         'src.tasks.slcs.scripts.predict_clip:main',
+Python	Test	2026-09-30T09:40:55.1423490Z         'src.tasks.slcs.scripts.review_dataset:main',
+Python	Test	2026-09-30T09:40:55.1423793Z         'src.tasks.slcs.scripts.train:main',
+Python	Test	2026-09-30T09:40:55.1424121Z         'src.tennis_scene.chat_annotation.scripts.annotate:main',
+Python	Test	2026-09-30T09:40:55.1424507Z         'src.tennis_scene.chat_annotation.scripts.prepare:main',
+Python	Test	2026-09-30T09:40:55.1424905Z         'src.tennis_scene.chat_annotation.scripts.serve_artifacts:main',
+Python	Test	2026-09-30T09:40:55.1425306Z         'src.tennis_scene.chat_annotation.scripts.sync_done:main',
+Python	Test	2026-09-30T09:40:55.1425658Z         'src.tennis_scene.scripts.clip_studio:main',
+Python	Test	2026-09-30T09:40:55.1425980Z         'src.tennis_scene.scripts.generate_dataset:main',
+Python	Test	2026-09-30T09:40:55.1426311Z         'src.tennis_scene.scripts.run_pipeline:main',
+Python	Test	2026-09-30T09:40:55.1426632Z         'src.tennis_scene.scripts.visualization:main',
+Python	Test	2026-09-30T09:40:55.1426985Z         'src.tennis_scene.scripts.visualize_component_store:main',
+Python	Test	2026-09-30T09:40:55.1427340Z         'src.tennis_scene.scripts.visualize_tasks:main',
+Python	Test	2026-09-30T09:40:55.1427621Z     }
+Python	Test	2026-09-30T09:40:55.1427899Z ===== 2 failed, 6591 passed, 133 skipped, 83 warnings in 493.26s (0:08:13) =====
+Python	Test	2026-09-30T09:40:56.3927348Z ##[error]Process completed with exit code 1.
