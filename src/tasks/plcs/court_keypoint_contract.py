@@ -85,6 +85,8 @@ class PLCSCourtKeypointRuntimeConfig:
             raise ConfigurationTypeError(
                 "court_keypoints must contain exactly one string field: selector."
             )
+        if section["selector"] != "physical_v1":
+            raise ValueError("PLCS only supports physical_v1 court keypoints.")
         return cls(resolve_court_keypoint_contract(section["selector"]))
 
 

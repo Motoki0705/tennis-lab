@@ -26,6 +26,7 @@ from src.tasks.person_tracking.linked_timeline import linked_timeline
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
 from src.tasks.player_association.appearance.sampling import (
     CropSamplingConfig,
+    TrackAppearance,
     embed_tracks,
 )
 from src.tasks.player_association.association.associate import CameraTracks
@@ -98,11 +99,11 @@ class PlayerSelectionModule:
         sampling = replace(self.sampling, min_height_px=self.sampling.min_height_px * scale,
                            border_px=self.sampling.border_px * scale)
         footpoints = replace(self.footpoints, bottom_border_px=self.footpoints.bottom_border_px * scale)
-        appearances = None
+        appearances: tuple[TrackAppearance, ...] | None = None
         appearance_record: dict[str, Any] = {'enabled': self.encoder is not None}
         if raw.evidence is not None and self.encoder_name == raw.evidence.encoder:
-            appearances = evidence_appearance(raw.boxes_xyxy, raw.observed, raw.evidence,
-                                              (video.width, video.height), sampling)
+            appearances = tuple(evidence_appearance(raw.boxes_xyxy, raw.observed, raw.evidence,
+                                              (video.width, video.height), sampling))
             appearance_record.update(encoder=raw.evidence.encoder, sampling=asdict(sampling),
                                      source='tracked_detection_features')
         elif self.encoder is not None and raw.observed.any():

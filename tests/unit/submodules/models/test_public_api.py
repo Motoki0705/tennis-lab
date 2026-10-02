@@ -33,6 +33,7 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "YoloPersonTracker",
         "filter_detections_by_footpoint",
         "select_and_complete_tracks",
+        "validate_dino_extension",
     }
     assert set(models.__all__) == expected
     for name in expected:
@@ -46,6 +47,7 @@ def test_nested_packages_do_not_reexport_root_api() -> None:
             "DinoPersonDetector",
             "PersonDetectionRequest",
             "PersonDetectionResult",
+            "validate_dino_extension",
         ),
         "src.submodules.models.gvhmr": ("GvhmrMeshRecovery", "GvhmrRequest"),
         "src.submodules.models.hmr2": ("Hmr2FeatureExtractor", "ImageFeatureRequest"),

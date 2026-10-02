@@ -55,6 +55,12 @@ from src.synthetic_data_generation.dataset.court.diagnostics import (
 from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
 )
+from src.synthetic_data_generation.dataset.court.sample_store import (
+    LEGACY_SAMPLE_FILES,
+    finish_court_store,
+    open_court_store,
+    read_court_manifest,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
     CourtSchemaDefinition,
@@ -86,10 +92,13 @@ from src.synthetic_data_generation.scene_contract import (
     SceneCamera,
 )
 from src.utils.data.float32_store import (
-    SUFFIX,
     inspect_float32,
     read_float32,
-    write_float32,
+)
+from src.utils.data.image_record_store import (
+    ImageRecordStore,
+    ImageRecordWriter,
+    encode_rgb_jpeg,
 )
 from src.utils.io import load_json, save_json_atomic
 
@@ -214,6 +223,7 @@ def assemble_court_dataset(
     if samples_root.exists():
         raise ValueError("Court samples output already exists in staging.")
     samples_root.mkdir(parents=True, exist_ok=False)
+    image_writer = ImageRecordWriter(samples_root)
     group_by_id = {group.trajectory_group_id: group for group in plan.groups}
     evaluated: list[_EvaluatedSample] = []
     accepted_records: list[dict[str, object]] = []
@@ -248,7 +258,6 @@ def assemble_court_dataset(
             continue
         group = group_by_id[sample.trajectory_group_id]
         view = next(value for value in group.views if value.view_id == sample.view_id)
-        label_path = destination / "labels.json"
         metadata = _sample_metadata(
             sample,
             group=group,
@@ -256,23 +265,6 @@ def assemble_court_dataset(
             profile=plan.profile,
             metadata_fields=configuration.metadata_fields,
         )
-        label_payload = {
-            "schema": definition.sample_schema,
-            "sample_index": sample.sample_index,
-            "sample_id": sample.sample_id,
-            "trajectory_group_id": sample.trajectory_group_id,
-            "trajectory_id": sample.trajectory_id,
-            "view_id": sample.view_id,
-            "trajectory_frame_index": sample.trajectory_frame_index,
-            "split": sample.split.value,
-            "camera": sample.camera.to_dict(),
-            "projection": evaluated_item.projection.to_dict(),
-            "metadata": metadata,
-        }
-        if isinstance(sample, PlannedCourtSampleV2):
-            label_payload["target_court"] = sample.target_court.to_dict()
-        save_json_atomic(label_payload, label_path)
-        relative_directory = destination.relative_to(staging_root).as_posix()
         accepted_record: dict[str, object] = {
             "sample_index": sample.sample_index,
             "sample_id": sample.sample_id,
@@ -286,19 +278,13 @@ def assemble_court_dataset(
             "height": sample.camera.height,
             "camera": sample.camera.to_dict(),
             "projection": evaluated_item.projection.to_dict(),
-            "directory": relative_directory,
-            "rgb": f"{relative_directory}/rgb{SUFFIX}",
-            "rgb_preview": f"{relative_directory}/rgb.png",
-            "alpha": f"{relative_directory}/alpha{SUFFIX}",
-            "alpha_preview": f"{relative_directory}/alpha.png",
-            "depth": f"{relative_directory}/depth{SUFFIX}",
-            "depth_coordinate_space": "metric_scene_metres",
-            "labels": f"{relative_directory}/labels.json",
             "metadata": metadata,
         }
         if isinstance(sample, PlannedCourtSampleV2):
             accepted_record["target_court"] = sample.target_court.to_dict()
-        accepted_records.append(accepted_record)
+        image_index = image_writer.append((destination / "rgb.jpg").read_bytes(), accepted_record)
+        accepted_records.append({**accepted_record, "image_index": image_index})
+        shutil.rmtree(destination)
     accepted = tuple(item for item in evaluated if item.accepted)
     post_render_rejected = tuple(item for item in evaluated if not item.accepted)
     planned_by_id = {sample.sample_id: sample for sample in plan.samples}
@@ -381,7 +367,11 @@ def assemble_court_dataset(
         "metrics": metrics,
         "diagnostics": list(diagnostic_paths),
     }
-    save_json_atomic(manifest, staging_root / "dataset.json")
+    finish_court_store(staging_root, image_writer, manifest)
+    for split in ("train", "validation", "test"):
+        directory = samples_root / split
+        if directory.exists():
+            shutil.rmtree(directory)
     semantic_manifest = build_court_semantic_manifest(manifest)
     save_json_atomic(
         semantic_manifest,
@@ -485,17 +475,14 @@ def _evaluate_staged_sample(
     if visible.visible_point_count == 0:
         reasons.append("no_renderer_visible_semantic_point")
     if not reasons:
-        depth_metric = arrays.metric_depth(
+        arrays.metric_depth(
             nht_scene_units_per_metre=metric_adapter.nht_scene_units_per_metre,
         )
-        # Only accepted samples are compressed. Depth is already in metric units.
-        # Raw NHT files are attempt-local and removed before publication.
-        for path, value in (
-            (rendered.rgb_path, arrays.rgb),
-            (rendered.alpha_path, arrays.alpha),
-            (rendered.depth_path, depth_metric),
-        ):
-            write_float32(path.with_suffix(SUFFIX), value)
+        # Generation QA uses the original renderer rasters. Only uint8 RGB and
+        # the resulting sparse visibility labels enter the published owner.
+        rgb = np.round(arrays.rgb * 255.0).astype(np.uint8)
+        (rendered.source_directory / "rgb.jpg").write_bytes(encode_rgb_jpeg(rgb))
+        for path in (rendered.rgb_path, rendered.alpha_path, rendered.depth_path, rendered.rgb_preview_path, rendered.alpha_preview_path):
             path.unlink()
     return _EvaluatedSample(
         rendered=rendered,
@@ -826,7 +813,8 @@ def validate_court_dataset(
     manifest_path = root / "dataset.json"
     if manifest_path.is_symlink() or not manifest_path.is_file():
         raise FileNotFoundError(f"Court dataset manifest is missing: {manifest_path}")
-    raw = load_json(manifest_path)
+    raw = read_court_manifest(root)
+    image_store = open_court_store(root) if "storage" in raw else None
     keys = {
         "schema",
         "status",
@@ -841,6 +829,9 @@ def validate_court_dataset(
         "metrics",
         "diagnostics",
     }
+    if image_store is not None:
+        keys.add("storage")
+        image_store.validate(decode=False)
     if not isinstance(raw, Mapping) or set(raw) != keys:
         raise ValueError("Court dataset manifest schema is invalid.")
     _require_finite_json(raw, name="dataset")
@@ -964,11 +955,14 @@ def validate_court_dataset(
         }
         if _uses_resolved_target_version(definition.version):
             expected_sample_keys.add("target_court")
+        if image_store is not None:
+            expected_sample_keys.difference_update(LEGACY_SAMPLE_FILES)
+            expected_sample_keys.add("image_index")
         if set(record) != expected_sample_keys:
             raise ValueError(
                 "Court sample record contains missing or unexpected fields."
             )
-        if record["depth_coordinate_space"] != "metric_scene_metres":
+        if image_store is None and record["depth_coordinate_space"] != "metric_scene_metres":
             raise ValueError("Court sample depth must use metric scene metres.")
         sample_id, sample_index = _validate_semantic_sample_record(
             record,
@@ -997,6 +991,7 @@ def validate_court_dataset(
             record,
             array_validation=array_validation,
             definition=definition,
+            image_store=image_store,
         )
     if set(accepted_by_group) != set(group_ids):
         raise ValueError("A production trajectory has zero accepted frames.")
@@ -1356,9 +1351,20 @@ def _validate_published_sample(
     *,
     array_validation: CourtArrayValidationMode,
     definition: CourtSchemaDefinition,
+    image_store: ImageRecordStore | None = None,
 ) -> None:
     width = _record_integer(record, "width", minimum=2)
     height = _record_integer(record, "height", minimum=2)
+    if image_store is not None:
+        row = _record_integer(record, "image_index", minimum=0)
+        if image_store.record(row) != {key: value for key, value in record.items() if key != "image_index"}:
+            raise ValueError("Court sample and packed index disagree.")
+        if array_validation is CourtArrayValidationMode.FULL and image_store.rgb(row).shape != (height, width, 3):
+            raise ValueError("Court JPEG dimensions disagree with its camera.")
+        # Geometric, semantic and visibility-count checks are performed by the
+        # surrounding validator. Alpha/depth visibility was established at the
+        # generation gate; its discarded raster evidence cannot be recomputed.
+        return
     arrays = (
         ("rgb", (height, width, 3), True, False),
         ("alpha", (height, width, 1), True, False),

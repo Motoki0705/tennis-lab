@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 visualization:
-  # court | blcs | plcs
+  # Court Detection only
   domain: court
   # Data-root-relative canonical owner: scenes/<scene_id>/datasets/<domain>.
   dataset_root: ???
@@ -12,7 +12,7 @@ visualization:
   output_video: synthetic_data_generation/dataset-visualization.mp4
   # Required only for court.
   trajectory_id: null
-  # Required only for blcs/plcs.
+  # Must remain null for Court visualization.
   logical_scene_id: null
   camera_id: null
   # Explicit playback authority; datasets do not all persist an output fps.

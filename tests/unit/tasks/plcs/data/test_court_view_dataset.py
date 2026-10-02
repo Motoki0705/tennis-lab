@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.tasks.base.data import ObservationTrackingConfig, ReferenceViewSelectionError
+from src.tasks.base.data import ReferenceViewSelectionError
 from src.tasks.base.data.scene_dataset import Scene, SceneDatasetConfig
 from src.tasks.base.generate_dataset import (
     DatasetCourtKeypointContract,
@@ -20,7 +20,6 @@ from src.tasks.base.generate_dataset import (
 from src.tasks.plcs.court_keypoint_contract import choose_reference_selection
 from src.tasks.plcs.data.dataset import SceneDataset
 from src.tasks.plcs.data.frame_rate_augmentation import PLCSFrameRateSampler
-from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
 from src.utils.schema.court_normalization import normalize_court_position
 
 
@@ -182,68 +181,6 @@ def test_object_uv_is_invariant_under_reference_transform() -> None:
         physical_index = int(camera_id.rsplit("_", 1)[1])
         expected = torch.full((2, 17, 2), 0.3 + physical_index * 0.1)
         torch.testing.assert_close(sample["human_kp"][local_index], expected)
-
-
-def test_tracking_preserves_local_first14_and_keeps_canonical_pose_local() -> None:
-    standard, scene = _dataset_and_scene()
-    dataset = object.__new__(PLCSTrackingDataset)
-    dataset.rng = np.random.default_rng(0)
-    dataset.augment = False
-    dataset.reference_camera_id = "camera_1"
-    dataset.track_query_reference_document = None
-    dataset.court_keypoint_contract = standard.court_keypoint_contract
-    dataset.court_keypoint_validation = standard.court_keypoint_validation
-    dataset.num_queries = 1
-    dataset.min_reuse_gap_frames = 0
-    dataset.observation_tracking_config = ObservationTrackingConfig.from_mapping(
-        {
-            "max_distance": 0.08,
-            "max_missed_frames": 8,
-            "min_reuse_gap_frames": 4,
-            "use_velocity_prediction": True,
-            "min_common_keypoints": 4,
-            "cost_reduction": "median",
-            "overflow_policy": "error",
-        }
-    )
-    dataset.frame_rate_sampler = standard.frame_rate_sampler
-    dataset.config = SceneDatasetConfig(
-        scene_dir=Path("/dataset"),
-        split_file=Path("train.txt"),
-        seq_len_range=(2, 2),
-        num_views_range=(2, 2),
-        camera_mode="random",
-        crop_mode="center",
-        min_num_frames=2,
-        min_num_cameras=2,
-    )
-
-    sample = dataset.augment_sample(dataset.build_sample(scene))
-    provenance = sample["court_reference_provenance"]
-    selection = sample["reference_view_selection"]
-    assert selection.provenance is provenance
-    assert sample["reference_view_index"].dtype == torch.int64
-    assert int(sample["reference_view_index"]) == (
-        sample["selected_camera_ids"].index("camera_1")
-    )
-    assert int(sample["reference_camera_id"]) == 1
-    assert sample["view_camera_ids"].tolist() in ([0, 1], [1, 0])
-    torch.testing.assert_close(
-        sample["physical_from_reference"],
-        sample["reference_from_physical"].T,
-    )
-    assert sample["court_kp"].shape == (2, 2, 14, 2)
-    assert not torch.equal(sample["court_kp"][0], sample["court_kp"][1])
-    torch.testing.assert_close(
-        sample["target_canonical_pose_3d"][:, 0],
-        torch.from_numpy(scene.data["canonical_pose_3d"]),
-    )
-    physical_world = torch.from_numpy(scene.data["human_kp_3d"])
-    expected_world = court_points_physical_to_target(physical_world, provenance)
-    torch.testing.assert_close(
-        sample["target_human_kp_3d"][:, 0],
-        expected_world,
-    )
 
 
 def test_evaluation_reference_selection_fails_closed_for_multiview() -> None:

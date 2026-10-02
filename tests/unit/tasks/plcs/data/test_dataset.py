@@ -13,12 +13,9 @@ from src.tasks.base.generate_dataset import (
 )
 from src.tasks.plcs.court_keypoint_contract import court_keypoint_contract_document
 from src.tasks.plcs.data.dataset import collate_plcs_batch
-from src.tasks.plcs.data.tracking_dataset import collate_plcs_tracking_batch
 
 
-def _sample(
-    *, views: int, frames: int, reprojection: bool = False
-) -> dict[str, Any]:
+def _sample(*, views: int, frames: int, reprojection: bool = False) -> dict[str, Any]:
     contract = resolve_court_keypoint_contract("physical_v1")
     sample: dict[str, Any] = {
         "human_kp": torch.rand(views, frames, 17, 2),
@@ -52,9 +49,7 @@ def _sample(
 
 
 def test_collate_uses_true_only_for_added_view_and_time_padding() -> None:
-    batch = collate_plcs_batch(
-        [_sample(views=1, frames=2), _sample(views=2, frames=3)]
-    )
+    batch = collate_plcs_batch([_sample(views=1, frames=2), _sample(views=2, frames=3)])
     padding_mask = batch["padding_mask"]
 
     assert padding_mask.dtype == torch.bool
@@ -187,32 +182,3 @@ def test_collate_rejects_mixed_reference_schema() -> None:
 
     with pytest.raises(ValueError, match="missing/mixed reference schema"):
         collate_plcs_batch([physical, reference])
-
-
-def test_tracking_collate_preserves_reference_selection_and_padding() -> None:
-    samples: list[dict[str, Any]] = []
-    for views, selected_ids, reference_id in (
-        (1, ("camera_b",), "camera_b"),
-        (2, ("camera_a", "camera_b"), "camera_b"),
-    ):
-        sample: dict[str, Any] = {
-            "human_kp": torch.zeros(views, 2, 1, 17, 2),
-            "padding_mask": torch.zeros(views, 2, dtype=torch.bool),
-            "target_position": torch.zeros(2, 1, 3),
-            "court_keypoint_metadata": {},
-            "court_reference_provenance": build_physical_court_provenance(),
-            "selected_camera_ids": selected_ids,
-        }
-        _attach_reference(
-            sample,
-            complete_ids=("camera_a", "camera_b"),
-            selected_ids=selected_ids,
-            reference_id=reference_id,
-        )
-        samples.append(sample)
-
-    result = collate_plcs_tracking_batch(samples)
-
-    assert result["view_camera_ids"].tolist() == [[1, -1], [0, 1]]
-    assert result["reference_view_index"].tolist() == [0, 1]
-    assert result["reference_camera_id_string"] == ("camera_b", "camera_b")

@@ -10,17 +10,13 @@ import torch
 import yaml
 
 from src.tasks.plcs.visualization.inference.checkpoints import (
-    OBJECTNESS_MULTI,
     OBJECTNESS_SINGLE,
     allowed_scene_families,
     describe_checkpoint,
-    is_reference_model,
     load_checkpoint_config,
-    objectness_for_model,
     resolve_checkpoint,
     resolve_checkpoint_path,
     scan_checkpoints,
-    scene_family_of,
 )
 
 
@@ -58,31 +54,14 @@ def _write_sidecar(checkpoint: Path, config: dict[str, object]) -> None:
 
 
 def test_allowed_families_follow_selector_and_object_count() -> None:
-    assert allowed_scene_families("plcs_multiview_axial_split", "physical_v1") == (
+    assert allowed_scene_families("plcs_multiview_axial", "physical_v1") == (
         "single_object",
-        "single_object_broadcast",
     )
-    assert allowed_scene_families("plcs_multiview_axial_split", "camera_view_v2") == (
-        "single_object_camera_view_v2",
+    assert (
+        allowed_scene_families("plcs_multiview_axial_reference", "camera_view_v2") == ()
     )
-    assert allowed_scene_families("plcs_track_query", "physical_v1") == (
-        "multi_object",
-        "multi_object_broadcast",
-    )
-    assert allowed_scene_families("plcs_track_query_reference", "camera_view_v2") == (
-        "multi_object_camera_view_v2",
-    )
+    assert allowed_scene_families("plcs_track_query", "physical_v1") == ()
     assert allowed_scene_families("unknown_model", "physical_v1") == ()
-
-
-def test_model_classification_helpers() -> None:
-    assert objectness_for_model("plcs_track_query") == OBJECTNESS_MULTI
-    assert objectness_for_model("plcs_multiview_axial") == OBJECTNESS_SINGLE
-    assert objectness_for_model("nope") is None
-    assert is_reference_model("plcs_multiview_axial_reference")
-    assert not is_reference_model("plcs_multiview_axial_split")
-    assert scene_family_of("plcs/single_object") == "single_object"
-    assert scene_family_of(None) is None
 
 
 def test_sidecar_metadata_narrows_families_without_reading_weights(
@@ -92,10 +71,10 @@ def test_sidecar_metadata_narrows_families_without_reading_weights(
     _write_sidecar(
         checkpoint,
         _config(
-            model_name="plcs_multiview_axial_split",
-            selector="camera_view_v2",
+            model_name="plcs_multiview_axial",
+            selector="physical_v1",
             input_profile="multiview",
-            scene_dir="plcs/single_object_camera_view_v2",
+            scene_dir="plcs/single_object",
             max_views=4,
             max_seq_len=256,
         ),
@@ -103,66 +82,32 @@ def test_sidecar_metadata_narrows_families_without_reading_weights(
     info = describe_checkpoint(tmp_path, "run_a/logs/version_0/checkpoints/best.ckpt")
     assert info.supported
     assert info.metadata_source == "hparams_yaml"
-    assert info.model_name == "plcs_multiview_axial_split"
-    assert info.selector == "camera_view_v2"
+    assert info.model_name == "plcs_multiview_axial"
+    assert info.selector == "physical_v1"
     assert info.objects == OBJECTNESS_SINGLE
     assert not info.reference
     assert info.max_views == 4
     assert info.max_seq_len == 256
-    assert info.families == ("single_object_camera_view_v2",)
-    assert info.trained_scene_dir == "plcs/single_object_camera_view_v2"
+    assert info.families == ("single_object",)
+    assert info.trained_scene_dir == "plcs/single_object"
     assert info.id == "run_a/logs/version_0/checkpoints/best.ckpt"
-
-
-def test_trained_family_is_preferred_first(tmp_path: Path) -> None:
-    checkpoint = tmp_path / "run_b" / "logs" / "version_0" / "checkpoints" / "b.ckpt"
-    _write_sidecar(
-        checkpoint,
-        _config(
-            model_name="plcs_multiview_axial",
-            selector="physical_v1",
-            input_profile="multiview",
-            scene_dir="plcs/single_object_broadcast",
-        ),
-    )
-    info = describe_checkpoint(tmp_path, "run_b/logs/version_0/checkpoints/b.ckpt")
-    assert info.families == ("single_object_broadcast", "single_object")
-
-
-def test_track_query_checkpoint_is_supported_as_multi_object(tmp_path: Path) -> None:
-    checkpoint = tmp_path / "run_c" / "logs" / "version_0" / "checkpoints" / "c.ckpt"
-    _write_sidecar(
-        checkpoint,
-        _config(
-            model_name="plcs_track_query",
-            selector="physical_v1",
-            input_profile=None,
-            scene_dir="plcs/multi_object",
-        ),
-    )
-    info = describe_checkpoint(tmp_path, "run_c/logs/version_0/checkpoints/c.ckpt")
-    assert info.supported
-    assert info.unsupported_reason is None
-    assert info.input_profile == "track_query"
-    assert info.objects == OBJECTNESS_MULTI
-    assert info.families == ("multi_object", "multi_object_broadcast")
 
 
 def test_archive_fallback_reads_saved_config(tmp_path: Path) -> None:
     checkpoint = tmp_path / "run_d" / "checkpoints" / "d.ckpt"
     checkpoint.parent.mkdir(parents=True)
     config = _config(
-        model_name="plcs_multiview_axial_reference",
-        selector="camera_view_v2",
+        model_name="plcs_multiview_axial",
+        selector="physical_v1",
         input_profile="multiview",
-        scene_dir="plcs/single_object_camera_view_v2",
+        scene_dir="plcs/single_object",
         max_views=4,
         max_seq_len=256,
     )
     torch.save(
         {
             "hyper_parameters": {"config": config},
-            "court_keypoints": {"selector": "camera_view_v2"},
+            "court_keypoints": {"selector": "physical_v1"},
             "state_dict": {"w": torch.zeros(2)},
         },
         checkpoint,
@@ -170,26 +115,9 @@ def test_archive_fallback_reads_saved_config(tmp_path: Path) -> None:
     info = describe_checkpoint(tmp_path, "run_d/checkpoints/d.ckpt")
     assert info.metadata_source == "checkpoint"
     assert info.supported
-    assert info.reference
-    assert info.model_name == "plcs_multiview_axial_reference"
-    assert info.families == ("single_object_camera_view_v2",)
-
-
-def test_reference_model_with_physical_selector_is_unsupported(tmp_path: Path) -> None:
-    checkpoint = tmp_path / "run_e" / "logs" / "version_0" / "checkpoints" / "e.ckpt"
-    _write_sidecar(
-        checkpoint,
-        _config(
-            model_name="plcs_multiview_axial_reference",
-            selector="physical_v1",
-            input_profile="multiview",
-            scene_dir="plcs/single_object",
-        ),
-    )
-    info = describe_checkpoint(tmp_path, "run_e/logs/version_0/checkpoints/e.ckpt")
-    assert not info.supported
-    assert info.unsupported_reason is not None
-    assert "camera_view_v2" in info.unsupported_reason
+    assert not info.reference
+    assert info.model_name == "plcs_multiview_axial"
+    assert info.families == ("single_object",)
 
 
 def test_scan_returns_every_checkpoint_sorted(tmp_path: Path) -> None:
@@ -225,16 +153,16 @@ def test_checkpoint_payload_is_json_serializable(tmp_path: Path) -> None:
     _write_sidecar(
         checkpoint,
         _config(
-            model_name="plcs",
+            model_name="plcs_multiview_axial",
             selector="physical_v1",
-            input_profile="frame",
+            input_profile="multiview",
             scene_dir="plcs/single_object",
         ),
     )
     info = describe_checkpoint(tmp_path, "run_f/logs/version_0/checkpoints/f.ckpt")
     document = json.loads(json.dumps(info.to_dict()))
-    assert document["model_name"] == "plcs"
-    assert document["families"] == ["single_object", "single_object_broadcast"]
+    assert document["model_name"] == "plcs_multiview_axial"
+    assert document["families"] == ["single_object"]
 
 
 def test_checkpoint_body_is_canonical_over_a_stale_sidecar(tmp_path: Path) -> None:
@@ -255,9 +183,9 @@ def test_checkpoint_body_is_canonical_over_a_stale_sidecar(tmp_path: Path) -> No
         yaml.safe_dump(
             {
                 "config": _config(
-                    model_name="plcs",
+                    model_name="plcs_track_query",
                     selector="physical_v1",
-                    input_profile="frame",
+                    input_profile="multiview",
                     scene_dir="plcs/single_object",
                 )
             }
@@ -276,10 +204,10 @@ def test_matching_sidecar_keeps_checkpoint_as_the_metadata_source(
     checkpoint = tmp_path / "run_h" / "checkpoints" / "h.ckpt"
     checkpoint.parent.mkdir(parents=True)
     config = _config(
-        model_name="plcs_multiview_axial_split",
-        selector="camera_view_v2",
+        model_name="plcs_multiview_axial",
+        selector="physical_v1",
         input_profile="multiview",
-        scene_dir="plcs/single_object_camera_view_v2",
+        scene_dir="plcs/single_object",
         max_views=4,
         max_seq_len=256,
     )
@@ -318,7 +246,7 @@ def test_extra_checkpoint_root_is_prefixed_and_describable(tmp_path: Path) -> No
         extra_roots=[extra],
     )
     assert info.supported
-    assert info.families == ("single_object", "single_object_broadcast")
+    assert info.families == ("single_object",)
     owning_root, path = resolve_checkpoint(
         primary,
         "ckpt/plcs/axial/logs/version_0/checkpoints/best.ckpt",
@@ -341,7 +269,7 @@ def test_load_checkpoint_config_rejects_a_contradicted_sidecar(
     body = _config(
         model_name="plcs_track_query",
         selector="physical_v1",
-        input_profile=None,
+        input_profile="multiview",
         scene_dir="plcs/multi_object",
     )
     torch.save(
@@ -353,9 +281,9 @@ def test_load_checkpoint_config_rejects_a_contradicted_sidecar(
             {
                 "config": _config(
                     model_name="plcs_track_query_reference",
-                    selector="camera_view_v2",
-                    input_profile=None,
-                    scene_dir="plcs/multi_object_camera_view_v2",
+                    selector="physical_v1",
+                    input_profile="multiview",
+                    scene_dir="plcs/multi_object_physical_v1",
                 )
             }
         ),
