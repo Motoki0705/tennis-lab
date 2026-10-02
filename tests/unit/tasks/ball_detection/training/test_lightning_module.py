@@ -15,15 +15,12 @@ from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
-from src.tasks.ball_detection.training.staged_lightning_module import (
-    StagedBallDetectionLightningModule,
-)
 from src.tasks.base.training.metric_logging import WeightedMetricAccumulator
 
 pytestmark = pytest.mark.unit
 
 
-def test_metric_logging_contract_covers_all_ball_metrics_and_staged_inherits_it() -> (
+def test_metric_logging_contract_covers_all_ball_metrics() -> (
     None
 ):
     contract = BallDetectionLightningModule.metric_logging_contract
@@ -35,7 +32,6 @@ def test_metric_logging_contract_covers_all_ball_metrics_and_staged_inherits_it(
             "f1",
             "mean_distance_px",
         )
-    assert StagedBallDetectionLightningModule.metric_logging_contract is contract
 
 
 def test_test_artifact_path_uses_ball_metric_logging_contract() -> None:

@@ -19,7 +19,7 @@ from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
 _ASSET_ROOT = Path("/home/kamimura/projects/tennis-lab")
 _CHECKPOINT = _ASSET_ROOT / "ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt"
-_STORE = _ASSET_ROOT / "data/ball_detection/ball-mix-v1"
+_STORE = _ASSET_ROOT / "data/ball_detection/ball-mix-v2"
 
 pytestmark = [
     pytest.mark.local_data,

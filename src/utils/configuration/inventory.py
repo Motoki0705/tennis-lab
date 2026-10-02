@@ -144,20 +144,13 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
     "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
-    "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "ball.web_tool",
-    "src.tasks.ball_detection.scripts.convert_web_dataset": "ball.web_tool",
     "src.tasks.ball_detection.scripts.eval": "ball.eval",
     "src.tasks.ball_detection.scripts.evaluate_manifest": "ball.evaluate_manifest",
     "src.tasks.ball_detection.scripts.generate_dataset": "ball_detection.generate_dataset",
     "src.tasks.ball_detection.scripts.preview_augmentation": "ball.preview",
     "src.tasks.ball_detection.scripts.preview_heatmaps": "ball.preview",
     "src.tasks.ball_detection.scripts.train": "ball.train",
-    "src.tasks.ball_detection.scripts.train_staged": "ball.train_staged",
     "src.tasks.ball_detection.scripts.visualize": "ball.visualize",
-    "src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball": "ball.annotation",
-    "src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset": "ball.youtube",
-    "src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images": "ball.youtube",
-    "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset": "ball.youtube",
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.train": "court_detection.train",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
@@ -204,20 +197,13 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "src.synthetic_data_generation.visualization.publication.configuration.validate_publication_boundary",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary",
     "src.synthetic_data_generation.scripts.visualize_dataset": "src.synthetic_data_generation.visualization.configuration.validate_dataset_visualization_boundary",
-    "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio": "src.tasks.ball_detection.configuration.validate_web_tool",
-    "src.tasks.ball_detection.scripts.convert_web_dataset": "src.tasks.ball_detection.configuration.validate_web_tool",
     "src.tasks.ball_detection.scripts.eval": "src.tasks.ball_detection.configuration.validate_eval",
     "src.tasks.ball_detection.scripts.evaluate_manifest": "src.tasks.ball_detection.configuration.validate_manifest_boundary",
     "src.tasks.ball_detection.scripts.generate_dataset": "src.tasks.ball_detection.generate_dataset.frame_store.config.validate_generate_boundary",
     "src.tasks.ball_detection.scripts.preview_augmentation": "src.tasks.ball_detection.configuration.validate_preview",
     "src.tasks.ball_detection.scripts.preview_heatmaps": "src.tasks.ball_detection.configuration.validate_preview",
     "src.tasks.ball_detection.scripts.train": "src.tasks.ball_detection.configuration.validate_training",
-    "src.tasks.ball_detection.scripts.train_staged": "src.tasks.ball_detection.configuration.validate_training",
     "src.tasks.ball_detection.scripts.visualize": "src.tasks.ball_detection.configuration.validate_visualization",
-    "src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball": "src.tasks.ball_detection.configuration.validate_annotation_boundary",
-    "src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset": "src.tasks.ball_detection.configuration.validate_youtube_boundary",
-    "src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images": "src.tasks.ball_detection.configuration.validate_youtube_boundary",
-    "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset": "src.tasks.ball_detection.configuration.validate_youtube_boundary",
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.training.runner.validate_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
@@ -617,12 +603,6 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.visualize_dataset",
     ),
-    _runtime_boundary(
-        "ball_detection", "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio"
-    ),
-    _runtime_boundary(
-        "ball_detection", "src.tasks.ball_detection.scripts.convert_web_dataset"
-    ),
     _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.eval"),
     _runtime_boundary(
         "ball_detection", "src.tasks.ball_detection.scripts.generate_dataset"
@@ -637,26 +617,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "ball_detection", "src.tasks.ball_detection.scripts.preview_heatmaps"
     ),
     _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.train"),
-    _runtime_boundary(
-        "ball_detection", "src.tasks.ball_detection.scripts.train_staged"
-    ),
     _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.visualize"),
-    _runtime_boundary(
-        "ball_detection",
-        "src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball",
-    ),
-    _runtime_boundary(
-        "ball_detection",
-        "src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset",
-    ),
-    _runtime_boundary(
-        "ball_detection",
-        "src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images",
-    ),
-    _runtime_boundary(
-        "ball_detection",
-        "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset",
-    ),
     _runtime_boundary("blcs", "src.tasks.blcs.generate_dataset.api_server.__main__"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.generate_dataset"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.generate_dataset_samples"),

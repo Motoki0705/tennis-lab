@@ -240,7 +240,6 @@ publishされます。後続jobへ渡すときはartifactをdownload・展開し
 | job | accelerator | 固定entrypoint / 用途 |
 | --- | --- | --- |
 | `ball_detection` | GPU | `src.tasks.ball_detection.scripts.train` / 統一storeの混合学習 |
-| `ball_detection_staged` | GPU | `src.tasks.ball_detection.scripts.train_staged` / default TrackNet-only staged phase学習 |
 | `court_detection` | GPU | `src.tasks.court_detection.scripts.train` / 実画像＋Synthetic V3による4 dense出力＋pose学習 |
 | `blcs_generate_dataset` | CPU | `src.tasks.blcs.scripts.generate_dataset` / single-object dataset生成 |
 | `blcs` | GPU | `src.tasks.blcs.scripts.train` / standard学習 |

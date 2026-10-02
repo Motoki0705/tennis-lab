@@ -105,9 +105,8 @@ def test_mixed_loader_split_isolation_and_masked_targets(tmp_path: Path) -> None
     assert sample["heatmaps"][1].sum() == 0
     torch.testing.assert_close(sample["coords"][0, 0], torch.tensor([10.0, 20.0]))
     assert sample["images"].shape == (2, 3, 48, 64)
-    prefix = module.val_dataset[0, 1]
-    assert prefix["images"].shape[0] == 1
-    assert prefix["supervised"].tolist() == [True]
+    with pytest.raises(TypeError, match="integer"):
+        module.val_dataset[0, 1]  # type: ignore[index]
     # Dataset pickling must reopen shards in workers; a loader with workers has identical eval batches.
     cfg.data.num_workers = 2
     worker_module = BallStoreDataModule(cfg)

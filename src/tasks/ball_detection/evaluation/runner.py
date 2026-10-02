@@ -189,9 +189,7 @@ class EvaluationPipeline:
             PathRole.DATA, str(data_config.data_dir)
         )
         # The split assignment lives in these files, so they fingerprint the split.
-        if source == "web":
-            split_artifacts = [data_dir / "manifest.json"]
-        elif source == "store":
+        if source == "store":
             split_artifacts = [data_dir / METADATA_FILE, data_dir / INDEX_FILE]
         else:
             raise ValueError(f"No split fingerprint for data.source={source!r}.")

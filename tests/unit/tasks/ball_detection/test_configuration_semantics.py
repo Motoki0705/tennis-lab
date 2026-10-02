@@ -1,8 +1,7 @@
-"""Semantic constraints for the DINO SSL execution boundary."""
+"""Strict configuration for store-only ball detection."""
 
 from __future__ import annotations
 
-from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -15,18 +14,12 @@ from src.tasks.ball_detection.configuration import (
     validate_eval,
     validate_training,
     validate_visualization,
-    validate_youtube_boundary,
 )
+from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.evaluation.contracts import load_evaluation_manifest
 from src.tasks.base.configuration import BaseRunConfig
 from src.utils.configuration import ConfigurationError, PathRole
 from src.utils.paths import PROJECT_ROOT
-
-
-def _config() -> DictConfig:
-    config_dir = PROJECT_ROOT / "src/tasks/ball_detection/configs"
-    with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
-        return compose(config_name="prepare_dinov3_ssl_images")
 
 
 def _compose(config_name: str, *, overrides: list[str] | None = None) -> DictConfig:
@@ -35,46 +28,32 @@ def _compose(config_name: str, *, overrides: list[str] | None = None) -> DictCon
         return compose(config_name=config_name, overrides=overrides or [])
 
 
-@pytest.mark.parametrize(
-    ("path", "invalid"),
-    [
-        ("workflow.discovery.queries", []),
-        ("workflow.discovery.queries", [" "]),
-        ("workflow.discovery.max_results_per_query", 0),
-        ("workflow.discovery.min_duration_sec", -1),
-        ("workflow.discovery.max_duration_sec", -1),
-        ("workflow.discovery.min_duration_sec", 4000),
-        ("workflow.processing.max_new_videos", 0),
-        ("workflow.storage.max_root_gb", 0),
-        ("workflow.frames.frames_per_video", 0),
-        ("workflow.frames.output_ext", "gif"),
-        ("workflow.frames.jpeg_quality", 0),
-        ("workflow.frames.jpeg_quality", 101),
-        ("workflow.gate.backend", "legacy"),
-        ("workflow.gate.vllm.base_url", " "),
-        ("workflow.gate.vllm.model", ""),
-        ("workflow.gate.vllm.timeout_sec", 0),
-        ("workflow.gate.vllm.max_tokens", 0),
-        ("workflow.gate.vllm.accept_labels", []),
-        ("workflow.gate.vllm.prompt", ""),
-        ("workflow.gate.vllm.server.command", []),
-        ("workflow.gate.vllm.server.health_url", ""),
-        ("workflow.gate.vllm.server.startup_timeout_sec", 0),
-        ("workflow.gate.vllm.server.poll_interval_sec", 0),
-        ("workflow.gate.vllm.server.request_timeout_sec", 0),
-        ("workflow.gate.vllm.server.shutdown_timeout_sec", 0),
-    ],
-)
-def test_dino_ssl_rejects_invalid_semantic_boundary_values(
-    path: str,
-    invalid: object,
-) -> None:
-    config = deepcopy(_config())
-    with open_dict(config):
-        OmegaConf.update(config, path, invalid, merge=False)
+@pytest.mark.parametrize("config_name", ["train", "train_meiji_mixed"])
+def test_training_defaults_to_v2_store(config_name: str) -> None:
+    config = _compose(config_name)
+    validate_training(config)
+    assert config.data.source == "store"
+    assert config.data.data_dir == "ball_detection/ball-mix-v2"
+    assert list(config.data.sources) == ["tracknet", "meiji", "chat_annotation"]
 
+
+@pytest.mark.parametrize("source", ["web", "staged", "tracknet", "youtube", "mixed_tracknet"])
+def test_removed_sources_are_rejected_before_opening_data(source: str) -> None:
+    config = _compose("train")
+    config.data.source = source
+    with pytest.raises(ConfigurationError, match="expected 'store'"):
+        validate_training(config)
+    with pytest.raises(ConfigurationError, match="expected 'store'"):
+        build_ball_detection_datamodule(config)
+
+
+@pytest.mark.parametrize("section, key", [("data", "t_max"), ("training", "staged")])
+def test_variable_length_training_settings_are_rejected(section: str, key: str) -> None:
+    config = _compose("train")
+    with open_dict(config):
+        config[section][key] = 8 if key == "t_max" else {}
     with pytest.raises(ConfigurationError):
-        validate_youtube_boundary(config)
+        validate_training(config)
 
 
 @pytest.mark.parametrize(
@@ -150,8 +129,7 @@ def test_training_does_not_default_missing_candidate_settings() -> None:
 @pytest.mark.parametrize(
     ("name", "overrides"),
     [("train", []), ("train", ["training=gan"]), ("train", ["training=lora"]),
-     ("train_meiji_mixed", []), ("train_staged", []),
-     ("staged_phase1", []), ("staged_phase2", []), ("staged_phase3", []), ("staged_phase4", [])],
+     ("train_meiji_mixed", [])],
 )
 def test_all_training_profiles_keep_every_epoch_with_the_same_candidate_metric(
     name: str, overrides: list[str],
@@ -165,15 +143,6 @@ def test_all_training_profiles_keep_every_epoch_with_the_same_candidate_metric(
     assert config.training.checkpoint.monitor == (
         "val/meiji/candidate_recall_at_8_20px" if name == "train_meiji_mixed" else "val/candidate_recall_at_8_20px"
     )
-
-
-def test_web_training_rejects_removed_temporal_only_key() -> None:
-    config = _compose("train", overrides=["data=web_frames"])
-    with open_dict(config):
-        config.data.temporal_only = True
-
-    with pytest.raises(ConfigurationError):
-        validate_training(config)
 
 
 def test_derived_output_rejects_parent_escape() -> None:
@@ -191,35 +160,31 @@ def test_visualization_rejects_absolute_clip_path() -> None:
         validate_visualization(config)
 
 
-@pytest.mark.parametrize("field", ["source_id", "url", "split"])
-def test_youtube_source_rejects_empty_required_fields(field: str) -> None:
-    config = _compose("prepare_youtube_dataset")
-    config.workflow.sources[0][field] = ""
-
-    with pytest.raises(ConfigurationError):
-        validate_youtube_boundary(config)
-
-
-@pytest.mark.parametrize("name", ["train", "train_staged", "staged_phase1", "staged_phase2", "staged_phase3", "staged_phase4"])
-def test_training_keeps_backbone_assets_and_prior_phase_runs_in_separate_roots(tmp_path: Path, name: str) -> None:
-    overrides = [f"paths.project_root={tmp_path}", f"paths.artifact_root={tmp_path / 'previous-runs'}"]
-    if name == "train":
-        overrides.append("model=dinov3_rope")
-    config = _compose(name, overrides=overrides)
+@pytest.mark.parametrize("initialize_from_run", [False, True])
+def test_training_keeps_backbone_assets_and_initial_weights_in_separate_roots(
+    tmp_path: Path, initialize_from_run: bool,
+) -> None:
+    overrides = [
+        f"paths.project_root={tmp_path}",
+        f"paths.artifact_root={tmp_path / 'previous-runs'}",
+        "model=dinov3_rope",
+    ]
+    if initialize_from_run:
+        overrides.append("run.init_weights={role:artifact,path:ball_detection/train/previous/checkpoints/last.ckpt}")
+    config = _compose("train", overrides=overrides)
     validate_training(config)
     paths = BallRuntimePaths.from_config(config)
     assert paths.checkpoint(str(config.model.backbone.checkpoint_path)) == (
         tmp_path / "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
     )
     run = BaseRunConfig.from_mapping(config.run, resolver=paths.resolver)
-    if name in {"staged_phase2", "staged_phase3", "staged_phase4"}:
-        previous = int(name[-1]) - 1
-        assert run.init_weights == tmp_path / f"previous-runs/ball_detection/train/staged/phase{previous}/logs/run/checkpoints/last.ckpt"
+    if initialize_from_run:
+        assert run.init_weights == tmp_path / "previous-runs/ball_detection/train/previous/checkpoints/last.ckpt"
     else:
         assert run.init_weights is None
 
 
-@pytest.mark.parametrize("name", ["eval", "visualize", "evaluate_manifest", "clip_and_predict_youtube_dataset"])
+@pytest.mark.parametrize("name", ["eval", "visualize", "evaluate_manifest"])
 def test_historical_checkpoint_inputs_preserve_the_independent_backbone_root(tmp_path: Path, name: str) -> None:
     config = _compose(name, overrides=[f"paths.project_root={tmp_path}", f"paths.artifact_root={tmp_path / 'previous-runs'}"])
     paths = BallRuntimePaths.from_config(config)
@@ -230,10 +195,8 @@ def test_historical_checkpoint_inputs_preserve_the_independent_backbone_root(tmp
     else:
         if name == "eval":
             section, key, location = config.run, "checkpoint_path", "run"
-        elif name == "visualize":
-            section, key, location = config.visualization, "checkpoint", "visualization"
         else:
-            section, key, location = config.workflow.prediction, "checkpoint", "workflow.prediction"
+            section, key, location = config.visualization, "checkpoint", "visualization"
         reference = paths.checkpoint_input(section, key, path=location)
         assert reference.role is PathRole.ARTIFACT
         assert reference.path.is_relative_to(tmp_path / "previous-runs")
