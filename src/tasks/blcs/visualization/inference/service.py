@@ -21,29 +21,13 @@ from typing import Any, Final, cast
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
-from torch import Tensor
 
 from src.tasks.base.generate_dataset import (
     CourtKeypointContract,
-    CourtReferenceFrameProvenance,
     resolve_court_keypoint_contract,
 )
 from src.tasks.blcs.inference.predictor import BLCSPredictor
-from src.tasks.blcs.inference.tracking_predictor import BLCSTrackingPredictor
-from src.tasks.blcs.model_io import (
-    BLCSTrackQueryPrediction,
-    blcs_reference_metadata_from_batch,
-    blcs_track_query_prediction_to_physical,
-    blcs_trajectory_prediction_to_physical,
-)
-from src.tasks.blcs.visualization.inference.tracking import (
-    DEFAULT_POSITION_THRESHOLD_M,
-    TrackingInput,
-    build_tracking_input,
-    position_threshold_from_config,
-    tracking_metrics,
-    tracking_prediction_payload,
-)
+from src.tasks.blcs.model_io import blcs_trajectory_prediction_to_physical
 from src.tasks.blcs.visualization.io.scene import SceneBundle, load_scene_bundle
 from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.device import DeviceSelectionError, resolve_device
@@ -63,29 +47,9 @@ from src.utils.schema.court import (
 PHYSICAL_SELECTOR: Final = "physical_v1"
 CAMERA_VIEW_SELECTOR: Final = "camera_view_v2"
 CAMERA_VIEW_SUFFIX: Final = "_camera_view_v2"
-TRAJECTORY_MODEL_NAMES: Final[frozenset[str]] = frozenset(
-    {"blcs", "blcs_multiview_axial", "blcs_multiview_axial_reference"}
-)
-TRACKING_MODEL_NAMES: Final[frozenset[str]] = frozenset(
-    {"blcs_track_query", "blcs_track_query_reference"}
-)
-AXIAL_REFERENCE_MODEL_NAME: Final = "blcs_multiview_axial_reference"
-SINGLE_OBJECT_FORMS: Final[tuple[str, ...]] = (
-    "single_object",
-    "single_object_broadcast",
-)
-SINGLE_REFERENCE_FORMS: Final[tuple[str, ...]] = ("single_object_camera_view_v2",)
-MULTI_OBJECT_FORMS: Final[tuple[str, ...]] = (
-    "multi_object",
-    "multi_object_broadcast",
-)
-MULTI_REFERENCE_FORMS: Final[tuple[str, ...]] = ("multi_object_camera_view_v2",)
-KNOWN_FORMS: Final[tuple[str, ...]] = (
-    SINGLE_OBJECT_FORMS
-    + SINGLE_REFERENCE_FORMS
-    + MULTI_OBJECT_FORMS
-    + MULTI_REFERENCE_FORMS
-)
+TRAJECTORY_MODEL_NAMES: Final = frozenset({"blcs_multiview_axial"})
+SINGLE_OBJECT_FORMS: Final[tuple[str, ...]] = ("single_object",)
+KNOWN_FORMS: Final = SINGLE_OBJECT_FORMS
 SPLITS: Final[tuple[str, ...]] = ("all", "train", "val", "test")
 LIMIT_MIN: Final = 1
 LIMIT_MAX: Final = 2000
@@ -164,45 +128,22 @@ def _lookup(container: object, *keys: str) -> object | None:
 
 def _model_family(name: str) -> str:
     """Classify one checkpoint ``model.name`` into its inference family."""
-    if name in TRACKING_MODEL_NAMES:
-        return "tracking"
     if name in TRAJECTORY_MODEL_NAMES:
         return "trajectory"
     raise ValueError(f"Unsupported BLCS checkpoint model name {name!r}.")
 
 
 def _validate_model_selector(name: str, selector: str) -> bool:
-    """Validate the Court selector against the model and report reference usage.
-
-    ``model.name`` is authoritative: only ``*_reference`` models consume a
-    reference camera, so those checkpoints must select ``camera_view_v2`` while
-    every other model must select ``physical_v1``. Parsing this from
-    ``model.name`` plus ``court_keypoints.selector`` rather than trusting the
-    ``data.scene_dir`` basename keeps a mismatched checkpoint from silently
-    importing the wrong Court contract.
-    """
-    if selector not in {PHYSICAL_SELECTOR, CAMERA_VIEW_SELECTOR}:
+    if name != "blcs_multiview_axial" or selector != PHYSICAL_SELECTOR:
         raise ValueError(
-            f"Unsupported court_keypoints.selector {selector!r}; expected "
-            f"{PHYSICAL_SELECTOR!r} or {CAMERA_VIEW_SELECTOR!r}."
+            "BLCS inference requires the axial model and physical_v1 court keypoints."
         )
-    reference = name.endswith("_reference")
-    expected_selector = CAMERA_VIEW_SELECTOR if reference else PHYSICAL_SELECTOR
-    if selector != expected_selector:
-        raise ValueError(
-            f"Checkpoint model.name {name!r} requires court_keypoints.selector "
-            f"{expected_selector!r}, got {selector!r}."
-        )
-    return reference
+    return False
 
 
 def forms_for_model(name: str, selector: str) -> tuple[str, ...]:
-    """Return the dataset forms a checkpoint may run from its model contract."""
-    family = _model_family(name)
-    reference = _validate_model_selector(name, selector)
-    if family == "tracking":
-        return MULTI_REFERENCE_FORMS if reference else MULTI_OBJECT_FORMS
-    return SINGLE_REFERENCE_FORMS if reference else SINGLE_OBJECT_FORMS
+    _validate_model_selector(name, selector)
+    return SINGLE_OBJECT_FORMS
 
 
 def _validate_scene_dir_form(scene_dir: str | None, forms: tuple[str, ...]) -> None:
@@ -210,7 +151,7 @@ def _validate_scene_dir_form(scene_dir: str | None, forms: tuple[str, ...]) -> N
     if scene_dir is None:
         return
     basename = Path(scene_dir).name
-    if basename in KNOWN_FORMS and basename not in forms:
+    if basename not in forms:
         raise ValueError(
             f"Checkpoint data.scene_dir {scene_dir!r} contradicts model.name and "
             f"court_keypoints.selector; expected one of {list(forms)!r}."
@@ -228,14 +169,11 @@ def derive_checkpoint_metadata(config: object) -> dict[str, Any]:
         raise ValueError("Checkpoint config.court_keypoints.selector must be a string.")
     family = _model_family(name)
     reference = _validate_model_selector(name, selector)
-    object_mode = "multi" if family == "tracking" else "single"
-    if family == "tracking":
-        input_profile = "tracking"
-    else:
-        raw_profile = _lookup(container, "model", "io", "input_profile")
-        if not isinstance(raw_profile, str) or not raw_profile:
-            raise ValueError("Checkpoint config.model.io.input_profile is required.")
-        input_profile = raw_profile
+    object_mode = "single"
+    raw_profile = _lookup(container, "model", "io", "input_profile")
+    if not isinstance(raw_profile, str) or not raw_profile:
+        raise ValueError("Checkpoint config.model.io.input_profile is required.")
+    input_profile = raw_profile
     max_seq_len = _as_int(_lookup(container, "model", "max_seq_len"), default=None)
     if family == "trajectory" and max_seq_len is None:
         raise ValueError("Checkpoint config.model.max_seq_len is required.")
@@ -258,18 +196,13 @@ def derive_checkpoint_metadata(config: object) -> dict[str, Any]:
         )
     num_queries: int | None = None
     max_num_cameras: int | None = None
-    if family == "tracking":
-        num_queries = _as_int(_lookup(container, "model", "num_queries"), default=None)
-        if num_queries is None or num_queries <= 0:
-            raise ValueError("Tracking checkpoints require model.num_queries.")
-    else:
-        max_num_cameras = _as_int(
-            _lookup(container, "model", "max_num_cameras"), default=None
-        )
-        if input_profile == "multiview" and (
-            max_num_cameras is None or max_num_cameras <= 0
-        ):
-            raise ValueError("Multiview checkpoints require model.max_num_cameras.")
+    max_num_cameras = _as_int(
+        _lookup(container, "model", "max_num_cameras"), default=None
+    )
+    if input_profile == "multiview" and (
+        max_num_cameras is None or max_num_cameras <= 0
+    ):
+        raise ValueError("Multiview checkpoints require model.max_num_cameras.")
     scene_dir = _lookup(container, "data", "scene_dir")
     scene_dir_value = scene_dir if isinstance(scene_dir, str) and scene_dir else None
     _validate_scene_dir_form(scene_dir_value, forms_for_model(name, selector))
@@ -331,7 +264,7 @@ class InferenceService:
         self._checkpoint_meta_cache: dict[tuple[str, int, int], dict[str, Any]] = {}
         self._predictors: OrderedDict[
             tuple[str, int, str],
-            BLCSPredictor | BLCSTrackingPredictor,
+            BLCSPredictor,
         ] = OrderedDict()
         self._predictor_cache_size = max(1, predictor_cache_size)
         self._scenes: OrderedDict[tuple[str, str, str], SceneBundle] = OrderedDict()
@@ -866,8 +799,6 @@ class InferenceService:
         )
         entry = request.entry
         scene = request.scene
-        if entry["model_family"] == "tracking":
-            return self._infer_tracking(request, started=started)
         prediction = self._run_windows(
             self._predictor(entry, request.device_key),
             scene,
@@ -933,115 +864,6 @@ class InferenceService:
             "warnings": list(request.warnings) if warnings is None else list(warnings),
         }
 
-    def _infer_tracking(
-        self,
-        request: _ResolvedInference,
-        *,
-        started: float,
-    ) -> dict[str, Any]:
-        """Run one canonical tracking window and score it against matched GT."""
-        entry = request.entry
-        gt = self._gt_payload(request.scene)
-        scene_frames = int(gt["frames"])
-        window_start = 0
-        window_length = min(request.window, scene_frames)
-        if window_length <= 0:
-            raise ValueError("Scene must contain at least one frame.")
-        warnings = list(request.warnings)
-        if window_length < scene_frames:
-            warnings.append(
-                f"Tracked the first {window_length} of {scene_frames} frames."
-            )
-        config = self._checkpoint_config(Path(str(entry["path"])))
-        tracking_input = build_tracking_input(
-            scene_dir=self._require_form(request.form),
-            scene_id=request.scene_id,
-            config=config,
-            reference_camera_id=request.reference_camera_id,
-            camera_indices=request.cameras,
-            window_start=window_start,
-            window_length=window_length,
-            seed=self._seed_for(config),
-        )
-        if tracking_input.window_length != window_length or (
-            int(tracking_input.ground_truth.shape[0]) != window_length
-        ):
-            raise RuntimeError(
-                "The canonical tracking dataset did not produce the requested "
-                f"window of {window_length} frames."
-            )
-        prediction = self._run_tracking(entry, request.device_key, tracking_input)
-        frames = int(prediction.position.shape[1])
-        if frames != window_length:
-            raise RuntimeError(
-                f"Tracking prediction produced {frames} frames for a window of "
-                f"{window_length}."
-            )
-        if prediction.position.shape[0] != 1:
-            raise RuntimeError("Tracking inference must decode exactly one scene.")
-        gt_tracks = int(gt["tracks"])
-        gt_positions = np.asarray(gt["positions"], dtype=np.float64).reshape(
-            scene_frames,
-            gt_tracks,
-            3,
-        )
-        gt_active = np.asarray(gt["active"], dtype=bool).reshape(
-            scene_frames,
-            gt_tracks,
-        )
-        predicted_position = (
-            prediction.position[0].detach().cpu().numpy().astype(np.float64)
-        )
-        predicted_present = prediction.presence[0].detach().cpu().numpy().astype(bool)
-        metrics = tracking_metrics(
-            predicted_position=predicted_position,
-            predicted_present=predicted_present,
-            target_position=gt_positions[:frames],
-            target_present=gt_active[:frames],
-            position_threshold_m=position_threshold_from_config(
-                config,
-                default=DEFAULT_POSITION_THRESHOLD_M,
-            ),
-        )
-        elapsed_ms = int(round((time.perf_counter() - started) * 1000.0))
-        return self._prediction_response(
-            request,
-            prediction=tracking_prediction_payload(
-                prediction.position,
-                prediction.presence,
-            ),
-            metrics=metrics,
-            gt=gt,
-            frames=scene_frames,
-            elapsed_ms=elapsed_ms,
-            warnings=warnings,
-        )
-
-    def _run_tracking(
-        self,
-        entry: Mapping[str, Any],
-        device_key: str,
-        tracking_input: TrackingInput,
-    ) -> BLCSTrackQueryPrediction:
-        """Execute one validated tracking batch on the tracking predictor."""
-        predictor = self._tracking_predictor(entry, device_key)
-        batch = tracking_input.batch
-        reference_metadata = blcs_reference_metadata_from_batch(batch)
-        model_batch = {
-            key: cast("Tensor", batch[key])
-            for key in ("ball_uv", "ball_vis", "court_kp", "court_vis", "padding_mask")
-        }
-        prediction = predictor.predict_batch(
-            model_batch,
-            denormalize=True,
-            court_reference_provenance=cast(
-                "tuple[CourtReferenceFrameProvenance, ...]",
-                batch["court_reference_provenance"],
-            ),
-            reference_metadata=reference_metadata,
-        )
-        return blcs_track_query_prediction_to_physical(prediction)
-
     def _resolve_checkpoint(self, reference: str) -> dict[str, Any]:
         form_ids = set(self._form_paths())
         for entry in self._checkpoints(form_ids):
@@ -1099,12 +921,6 @@ class InferenceService:
         capacity = entry.get("max_num_cameras")
         if capacity is not None and len(selected) > int(capacity):
             raise ValueError(f"Checkpoint accepts at most {capacity} cameras.")
-        if entry["model_name"] == AXIAL_REFERENCE_MODEL_NAME and not (
-            3 <= len(selected) <= 4
-        ):
-            raise ValueError(
-                "Axial reference checkpoints require 3 or 4 selected cameras."
-            )
         if not entry["reference"]:
             if reference_camera_id is not None:
                 raise ValueError(
@@ -1131,22 +947,11 @@ class InferenceService:
             raise TypeError("Checkpoint does not compose a trajectory predictor.")
         return predictor
 
-    def _tracking_predictor(
-        self,
-        entry: Mapping[str, Any],
-        device_key: str,
-    ) -> BLCSTrackingPredictor:
-        """Load and cache the tracking predictor bound to one checkpoint."""
-        predictor = self._load_predictor(entry, device_key)
-        if not isinstance(predictor, BLCSTrackingPredictor):
-            raise TypeError("Checkpoint does not compose a tracking predictor.")
-        return predictor
-
     def _load_predictor(
         self,
         entry: Mapping[str, Any],
         device_key: str,
-    ) -> BLCSPredictor | BLCSTrackingPredictor:
+    ) -> BLCSPredictor:
         key = (str(entry["path"]), int(entry["mtime_ns"]), device_key)
         with self._lock:
             cached = self._predictors.get(key)
@@ -1155,22 +960,12 @@ class InferenceService:
                 return cached
         resolver = self._resolver_for(str(entry["root"]))
         checkpoint_path = Path(str(entry["path"]))
-        if entry["model_family"] == "tracking":
-            predictor: BLCSPredictor | BLCSTrackingPredictor = (
-                BLCSTrackingPredictor.load_from_checkpoint(
-                    checkpoint_path=checkpoint_path,
-                    resolver=resolver,
-                    device=device_key,
-                    court_keypoints=None,
-                )
-            )
-        else:
-            predictor = BLCSPredictor.load_from_checkpoint(
-                checkpoint_path=checkpoint_path,
-                resolver=resolver,
-                device=device_key,
-                court_keypoints=None,
-            )
+        predictor = BLCSPredictor.load_from_checkpoint(
+            checkpoint_path=checkpoint_path,
+            resolver=resolver,
+            device=device_key,
+            court_keypoints=None,
+        )
         with self._lock:
             self._predictors[key] = predictor
             while len(self._predictors) > self._predictor_cache_size:

@@ -87,9 +87,7 @@ def build_visualization_request(config: DictConfig) -> DatasetVisualizationReque
     try:
         domain = DatasetVisualizationDomain(domain_text)
     except ValueError as error:
-        raise ValueError(
-            "visualization.domain must be court, blcs, or plcs."
-        ) from error
+        raise ValueError("visualization.domain must be court.") from error
     dataset_root = resolver.resolve(
         PathRole.DATA,
         _required_text(raw["dataset_root"], name="visualization.dataset_root"),

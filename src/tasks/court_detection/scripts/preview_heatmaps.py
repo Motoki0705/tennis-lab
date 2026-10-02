@@ -36,9 +36,6 @@ from src.tasks.court_detection.configuration import (
 )
 from src.tasks.court_detection.data.contracts import CourtSourceSplit
 from src.tasks.court_detection.data.inputs.factory import build_court_input
-from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
-)
 from src.utils.configuration import PathRole
 from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
 from src.utils.hydra import hydra_main, register_boundary_validator
@@ -146,8 +143,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir, data = _runtime(cfg)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    store = CourtDerivedTargetStore(data.processing.derived_target_root)
-    input_layer = build_court_input(data.source, target_store=store)
+    input_layer = build_court_input(data.source)
     records = input_layer.records(cast("CourtSourceSplit", str(cfg.preview.split)))
     sample_indices = resolve_sample_indices(cfg, len(records))
 

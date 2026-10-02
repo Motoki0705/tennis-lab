@@ -36,13 +36,10 @@ BUILTIN_ACCELERATORS = {
     "ball_detection_staged": "gpu",
     "blcs": "gpu",
     "blcs_generate_dataset": "cpu",
-    "blcs_tracking": "gpu",
     "court_detection": "gpu",
-    "court_detection_materialize_targets": "cpu",
     "court_detection_mixed": "gpu",
     "plcs": "gpu",
     "plcs_generate_dataset": "cpu",
-    "plcs_tracking": "gpu",
     "slcs": "gpu",
     "slcs_make_splits": "cpu",
     "slcs_precompute_dino_tokens": "gpu",
@@ -1010,7 +1007,7 @@ def test_dry_run_constructs_drive_and_secret_safe_commands(
     result = _run_cli(
         tmp_path,
         "run",
-        "court_detection_materialize_targets",
+        "blcs_generate_dataset",
         "--run-id",
         RUN_ID,
         "--drive-mode",
@@ -1707,7 +1704,7 @@ def test_exec_zero_with_failed_remote_status_is_runtime_failure_and_cleans_up(
     result = _run_cli(
         tmp_path,
         "run",
-        "court_detection_materialize_targets",
+        "blcs_generate_dataset",
         "--run-id",
         RUN_ID,
         "--drive-mode",
@@ -1804,7 +1801,7 @@ def test_rclone_status_and_download_work_directly_after_session_stop(
     run = _run_cli(
         tmp_path,
         "run",
-        "court_detection_materialize_targets",
+        "blcs_generate_dataset",
         "--run-id",
         RUN_ID,
         "--drive-mode",
@@ -1875,7 +1872,7 @@ def test_rclone_download_rejects_publication_without_completed_status(
     run = _run_cli(
         tmp_path,
         "run",
-        "court_detection_materialize_targets",
+        "blcs_generate_dataset",
         "--run-id",
         RUN_ID,
         "--drive-mode",
@@ -1911,7 +1908,7 @@ def test_keep_on_failure_retains_session_but_always_removes_rclone_secret(
     result = _run_cli(
         tmp_path,
         "run",
-        "court_detection_materialize_targets",
+        "blcs_generate_dataset",
         "--run-id",
         RUN_ID,
         "--drive-mode",

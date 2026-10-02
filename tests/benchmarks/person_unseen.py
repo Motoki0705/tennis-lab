@@ -225,7 +225,7 @@ def predict(runner: ComponentRunner, source: ClipSource, cfg: PipelineRuntimeCon
     turns = side['view_half_turns']
     raw_cameras, groups, mappings = [], [], []
     arrays: dict[str, np.ndarray] = {}
-    selection_audit = {}
+    selection_audit: dict[str, dict[str, object]] = {}
     scale = source.pixel_threshold_scale
     config = replace(cfg.player_association, footpoints=replace(cfg.player_association.footpoints,
                       bottom_border_px=cfg.player_association.footpoints.bottom_border_px * scale))
@@ -254,7 +254,7 @@ def predict(runner: ComponentRunner, source: ClipSource, cfg: PipelineRuntimeCon
         # invented: the unturned local camera may select, but cannot enter association.
         local_camera = cameras[camera] if turns is None else cameras[camera].half_turned(turns[index])
         raw = CameraTracks(local_camera, source.size, tracked.track_ids,
-                           tracked.boxes_xyxy, tracked.observed, appearance)
+                           tracked.boxes_xyxy, tracked.observed, tuple(appearance))
         mask, selection = select_linked_candidates(raw, source.fps, LinkingConfig(max_candidates=cfg.max_tracks_per_camera),
                                                    config.footpoints)
         group, mapping = linked_timeline(raw, selection)

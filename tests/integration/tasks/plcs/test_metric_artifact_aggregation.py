@@ -196,16 +196,6 @@ def _optional_y_sign_artifact(
     )
 
 
-def test_reference_strata_artifact_is_invariant_to_batch_partition() -> None:
-    batch_size_two = _diagnostic_artifact(((0, 1), (2, 3)))
-    batch_size_one = _diagnostic_artifact(((0,), (1,), (2,), (3,)))
-
-    assert batch_size_two == pytest.approx(batch_size_one)
-    assert batch_size_two["reference_index_0_position_error_m"] == pytest.approx(3.0)
-    assert batch_size_two["reference_index_1_position_error_m"] == pytest.approx(10.0)
-    assert "heading_error_deg" not in batch_size_two
-
-
 def test_y_sign_artifact_uses_eligible_frame_sufficient_statistics() -> None:
     batch_size_two = _y_sign_diagnostic_artifact(((0, 1),))
     batch_size_one = _y_sign_diagnostic_artifact(((0,), (1,)))

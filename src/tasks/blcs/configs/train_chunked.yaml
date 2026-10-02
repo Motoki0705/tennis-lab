@@ -12,6 +12,7 @@ defaults:
   - camera: default
   - targeted_velocity: default
   - generator: default
+  - generation: single_object
   - _self_
 
 hydra:
