@@ -86,6 +86,10 @@ from src.synthetic_data_generation.dataset.court.handler import (
 from src.synthetic_data_generation.dataset.court.rendering.nht import (
     CourtNHTRenderer,
 )
+from src.synthetic_data_generation.dataset.court.sample_store import (
+    read_court_manifest,
+    read_court_rgb,
+)
 from src.synthetic_data_generation.dataset.plcs.articulation import (
     MotionArticulationReport,
 )
@@ -475,7 +479,7 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
         0.4
     )
     assert _first_rgb_value(first.workspace.root / "datasets/court") == pytest.approx(
-        0.3
+        0.3, abs=1.0 / 255
     )
     assert _first_rgb_value(first.workspace.root / "datasets/blcs") == pytest.approx(
         0.3
@@ -513,7 +517,7 @@ def test_real_domain_handlers_publish_and_recover_through_fake_nht_only(
         for stage in StageName
     )
     assert _first_rgb_value(first.workspace.root / "datasets/court") == pytest.approx(
-        0.3
+        0.3, abs=1.0 / 255
     )
     assert _first_rgb_value(first.workspace.root / "datasets/blcs") == pytest.approx(
         0.45
@@ -776,7 +780,7 @@ def _assert_published_domains(
     }
     for target, (schema, required_diagnostic) in expected.items():
         root = workspace.root / "datasets" / target.value
-        payload = _json(root / "dataset.json")
+        payload = read_court_manifest(root) if target is DatasetTarget.COURT else _json(root / "dataset.json")
         assert payload["schema"] == schema
         if target is DatasetTarget.COURT:
             metrics = cast(dict[str, object], payload["metrics"])
@@ -792,7 +796,7 @@ def _assert_published_domains(
         diagnostics = cast(list[str], payload["diagnostics"])
         assert required_diagnostic in diagnostics
         assert all((root / relative).is_file() for relative in diagnostics)
-        assert _first_rgb_value(root) == pytest.approx(rgb_value)
+        assert _first_rgb_value(root) == pytest.approx(rgb_value, abs=1.0 / 255 if target is DatasetTarget.COURT else 1e-6)
         assert "stale_attempt" not in payload
         assert not (root / "staging").exists()
     report = _json(workspace.root / "report/report.json")
@@ -818,8 +822,8 @@ def _assert_published_domains(
 
 def _first_rgb_value(root: Path) -> float:
     if root.name == "court":
-        samples = cast(list[dict[str, object]], _json(root / "dataset.json")["samples"])
-        path = root / cast(str, samples[0]["rgb"])
+        samples = read_court_manifest(root)["samples"]
+        return float(read_court_rgb(root, samples[0]).reshape(-1)[0]) / 255.0
     else:
         path = next(iter(sorted(root.rglob("rgb.npy"))))
     return float(read_float32(path).reshape(-1)[0])

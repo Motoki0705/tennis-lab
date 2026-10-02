@@ -90,6 +90,11 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/dataset/court/storage.py"): frozenset(
         {"fingerprint", "sha256"}
     ),
+    # One-time JPEG migration reports the source manifest's digest. Source
+    # changes are checked by byte equality; the digest never selects an owner.
+    Path("src/synthetic_data_generation/dataset/court/migration.py"): frozenset(
+        {"sha256"}
+    ),
     Path("src/synthetic_data_generation/alignment/heatmaps.py"): frozenset({"sha256"}),
     Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
         {"sha256"}
