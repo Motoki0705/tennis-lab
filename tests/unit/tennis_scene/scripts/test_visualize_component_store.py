@@ -38,7 +38,7 @@ def test_gallery_renders_every_declared_component_without_writing_the_store(tmp_
     assert [n.split("/")[0] for n in names] == sorted((n.split("/")[0] for n in names), key=STANDARD_COMPONENTS.index)
     assert {entry["status"] for entry in manifest["components"].values()} == {"rendered"}
     assert manifest["components"]["player_association"]["details"]["origin"] == "component"
-    assert "player 0" in manifest["components"]["person_tracking/cam0"]["details"]["track 0 player"]
+    assert "player 0" in manifest["components"]["player_selection/cam0"]["details"]["track 0 player"]
     assert index.read_text().count("<section") == len(names)
 
 

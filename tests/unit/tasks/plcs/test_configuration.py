@@ -46,6 +46,13 @@ def test_generation_output_is_explicitly_data_root_relative() -> None:
 
     assert runtime.OUTPUT_ROLE is PathRole.DATA
     assert runtime.output_dir == (PROJECT_ROOT / "data/plcs/single_object").resolve()
+    assert runtime.external_assets.smplh_model_path == (PROJECT_ROOT / "ckpt/body_models/smplh").resolve()
+
+
+def test_body_model_root_is_independent_of_training_checkpoint_root() -> None:
+    runtime = PLCSTrainingConfig.from_config(_training_config())
+    assert runtime.shared.resolver.roots.checkpoint_root == (PROJECT_ROOT / "outputs").resolve()
+    assert runtime.shared.resolver.roots.external_asset_root == (PROJECT_ROOT / "ckpt").resolve()
 
 
 def test_analysis_output_is_explicitly_output_root_relative() -> None:

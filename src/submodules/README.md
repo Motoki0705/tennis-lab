@@ -3,8 +3,8 @@
 `third_party/GVHMR` が提供していた前処理モデル群（person tracking / 2D pose /
 画像特徴）と GVHMR 本体を、メインの `.venv` で完結して動くように移植した
 パッケージです。`src/tennis_scene` の GVHMR コンポーネントはここに依存し、
-`third_party/GVHMR` のコードには依存しません（学習済み重みのみ `ckpt/` の
-symlink 経由で参照します）。
+`third_party/GVHMR` のコードには依存しません。学習済み重みとbody modelは
+`ckpt/` に実体を配置し、checkpoint rootから参照します。
 
 DINO person検出は `third_party/DINO` の公式git submoduleを型付きwrapperから
 利用します。上流コードは `src/submodules` へコピーしません。
@@ -38,8 +38,9 @@ model family packageは内部実装であり、同じsymbolを再exportしませ
 - `GvhmrRequest`は`(F,17,3)` keypoints、`(F,3)` boxes、`(F,1024)` features、frame/device/dtypeと正の画像・bbox寸法を構築時とvendor entry直前に検証する。
 - request / result はモデルごとの frozen dataclass。
 - `TrackRequest.num_tracks=None, interactive=False`は全trackを返し、検出0件も空結果にする。`observed_mask`はbbox補間と実検出を区別する。
-- 分離したscene pipelineは`BotSortAssociator`、`filter_detections_by_footpoint`、`select_and_complete_tracks`をroot APIから使い、保存済み人物検出を再推論せず追跡へ渡す。
+- `BotSortAssociator`、`filter_detections_by_footpoint`、`select_and_complete_tracks`は旧経路の明示比較にも使うroot APIです。標準sceneの人物経路とIO契約は[scene pipeline README](../tennis_scene/pipeline/README.md)を参照してください。
 - `Pose2DRequest` / `ImageFeatureRequest`の`frame_indices`を指定すると、明示したsource frameを逐次decodeし、全動画をRAMへ展開せずcrop batchを作る。
+- `Pose2DFrameSequenceRequest`はdecode済みBGR列と検出ごとのbox/frame IDを受け、同一frameの複数人物を同じpose処理へ渡す。
 
 ```python
 from src.submodules.models import DinoPersonTracker, TrackRequest
@@ -73,12 +74,18 @@ pytorch3d 不要）を使用します。
 
 | 資産 | 場所 | 備考 |
 |---|---|---|
-| YOLO / ViTPose / HMR2 / GVHMR 重み | `ckpt/{yolo,vitpose,hmr2,gvhmr}/` | `third_party/GVHMR/inputs/checkpoints` への symlink |
+| YOLO / ViTPose / HMR2 / GVHMR 重み | `ckpt/{yolo,vitpose,hmr2,gvhmr}/` | モデル重みの実体。外部sourceの場所と分離 |
 | DINO 4-scale Swin-L | `ckpt/dino/checkpoint0029_4scale_swin.pth` | COCO person (class id 1) のみ使用 |
 | DINO source | `third_party/DINO/` | IDEA-Research/DINOをgit submoduleとして固定 |
 | SMPL-X 本体 (`SMPLX_NEUTRAL.npz`) | `ckpt/body_models/smplx/` | 要ライセンス登録: https://smpl-x.is.tue.mpg.de/ |
 | regressor 等の小物 `.pt` | `vendor/gvhmr/body_model/data/` | リポジトリに同梱 |
-| SMPL faces（レンダリング用） | `data/smplh/neutral/model.npz` など | SMPL と SMPL-H は同一トポロジー |
+| SMPL-H（facesをレンダリングに使用） | `ckpt/body_models/smplh/{neutral,male,female}/model.npz` | SMPL と SMPL-H は同一トポロジー |
+| SMPL-H（ACCAD adapter用） | `ckpt/body_models/smplh/SMPLH_{MALE,FEMALE}.pkl` | 既存PKLを変換せず配置 |
+
+scene pipeline、GVHMR demo、PLCS motion extractionは同じ `paths.checkpoint_root` を使います。
+`paths.external_asset_root` はDINO等の外部source専用です。旧配置から移す際は原本を保持し、
+コピー元/先のSHA-256一致を確認してからckptへ配置します。旧パスを探索するfallbackはありません。
+SMPL-X/SMPL-H本体と外部重みはgitへ追加しません。
 
 ## 上流コードの扱い
 

@@ -19,18 +19,19 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 
 ## 処理単位
 
-`court_detection`・`person_detection`・`person_tracking`・`pose_estimation`・`ball_detection`はcameraごとに独立する。
+`court_detection`・`person_detection`・`person_tracking`・`player_selection`・`pose_estimation`・`ball_detection`はcameraごとに独立する。
 `court_detection`は各cameraのframe 0だけをKP＋LINE共同推定し、`court_observations` schema v2で保存する。
 `court_calibration`はこの1frameから初期校正・ROIを作り、固定cameraのコート座標を全frameへ明示的にbroadcastする。
 `observed_frame_indices=[0]`と`temporal_policy`を保存し、他frameでモデルを実行したとは扱わない。
-校正できなかったcameraはROIを持たず、そのcameraの人物検出は実行しない（ROIなしの検出はしない）。
+人物検出は校正成否に依存せず全画面で実行する。未校正cameraの選手選別は理由付きの空結果を保存する。
 
 ```text
 動画 → court_detection → court_calibration
-動画＋ROI → person_detection → person_tracking → pose_estimation
+動画 → person_detection → person_tracking
+track＋court → player_selection → pose_estimation
 動画 → ball_detection
 ball＋court → court_side（ballだけのhalf-turn仮説検定）
-track＋court＋side（＋動画のcrop） → player_association
+選別group＋court＋side（＋動画のcrop） → player_association
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
 単一球観測＋camera → ball_triangulation
@@ -38,23 +39,46 @@ track＋court＋side（＋動画のcrop） → player_association
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
 
-人物detectorはDINO/YOLOを選べる。既定のDINOは[#937の選手検出器](../../tasks/player_detection/README.md)で、
-検出対象は主コートの選手であり、全人物を網羅する観測ではない。汎用COCO版との比較には
-`people_models.dino_checkpoint=dino/checkpoint0029_4scale_swin.pth`を明示する。
+人物検出の既定は**COCO DINOの全画面、score ≥ 0.30、入力800/1333**（#964の2026-09-30判断）。
+ROI gateを置かず、選手以外も2D候補として保存する。#937は
+`people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth`を明示した場合に使用できる。
 指定重みが無い・DINO形式でない場合は停止し、別の重みを選び直さない。
-`person_detections` v1の配列契約は同じで、checkpointのSHA-256がartifact identityと下流の依存参照を変える。
-古い検出器で作ったpose・学習用文脈は、新しい検出器の成果物として再利用できない。
-trackingは保存済みbboxをBoT-SORTへ渡し、detectorを呼ばない。
-ViTPoseも保存済みtrackから実観測frameを選ぶ。各cameraの累計IDは`person_observations.max_tracks_per_camera`以下で、超えたclipは停止する。ID/slotの再利用や暗黙統合は行わない。
-BoT-SORTの追跡IDが短い欠落で分裂した場合は、時間差・bbox位置と大きさ・服装色がすべて近く、候補が一意のtrackletだけを結合する
-（閾値は`TrackletLinkPolicy`で、成果物identityに含む）。
-1frameだけ重なるID交代も、重なったbboxが同じ人物を囲む包含関係にある場合だけ結合し、重複観測は古いIDのboxを採用する。
-元のID、欠落/重複frame数、照合距離を`person_tracks` v3に残す。複数候補や累計track数の上限超では明示的に停止する。
+`person_detections` v2のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
+旧ROI検出・pose・文脈を新しい経路の成果物として再利用できない。
+
+標準追跡は`person_tracking.method=strongsort_pp_pose`だけを受け付ける。StrongSORT++＋pose/CLIPのrun 10固定profileを
+productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で処理する。
+`person_tracks` v5は元検出box/row・pose・CLIPを持ち、AFLinkで結んだ元IDも保存する。
+GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
+選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
+重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
+
+`person_tracking.aflink_checkpoint`はcheckpoint root相対の`person_tracking/AFLink_epoch20.pth`。
+公開重みをcheckpoint root内へ配置し、この設定でroot相対の場所を明示する。
+共通PathResolverに従い、絶対パスやroot外へのsymlinkは受け付けない。hashはAFLink readerが検証する。
+**AFLink重みの利用条件は未確認**で、当面使用するユーザー判断と後日の再学習判断は
+[出自/制約の正本](../../tasks/person_tracking/strongsort_NOTICE.md)を参照。
+
+`people_models.merge_duplicate_person_boxes=false`が既定。trueでは検出直後、追跡/特徴生成前に
+IoU>=.8をgreedyに統合する。高scoreを残し、同点は元row順。boxを平均せず、推移的な連結もしない。
+v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はframe・keep/drop row・両score・IoU。
+旧検出v1/追跡v4/選別v1はloadせず再生成する。cache identityには統合設定と各重みを含める。
+
+`player_selection` は校正z=0の足元から選手候補を選ぶ。固定規則の正本は
+[`court_linking.py`](../../tasks/person_tracking/court_linking.py)のdocstringと`LinkingConfig`。
+連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
+CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
+`selected_player_tracks` v2の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
+元boxは参照先`person_tracks`に保存され、`raw_track_ids`で対応する。
+poseと既存v3人物対応へ渡す`tracks`は1 group/frameの時系列で、handoff重複だけを小さい元ID優先でまとめる。
+`origin_rows`と連結診断に出自を保存する。group IDとraw tracker IDを混同しない。
+追跡前のViTPose/CLIPを元rowでgroup軸へ移し替える。欠落を実観測として補間しない。
 
 `player_association`（`components/identity.py`、`person_identities` schema version 3）は
 [src/tasks/player_association](../../tasks/player_association/README.md)の対応付けを、校正済みcameraのtrackのboxと
-`court_side`が決めたsideに適用する。方式のパラメータは`player_association.config`（task側のYAML）、
-シングルス/ダブルスは`player_association.players_per_side`で明示する。外観を使う設定ではRe-IDの重みを資産identityに含める。
+`court_side`が決めたsideに適用する。方式のパラメータはtaskの採用済みdefault YAMLを読み、
+シングルス/ダブルスは`player_association.players_per_side`で明示する。CLIPの重みを資産identityに含める。
+比較用の旧尺度・別encoderはtaskの比較APIから使用する。
 player IDはframeごとで（`player_ids` (V, D, T)）、1本のtrackがID switchの前後で別の人物を持てる。
 決まらないclipは`ReconstructionUnavailable`（reason `player_association_<停止理由>`、全scoreと途中の決定）で停止する。
 

@@ -1,4 +1,4 @@
-"""Read an :class:`AssociationConfig` from a mapping (``configs/association.yaml``).
+"""Read an :class:`AssociationConfig` from a mapping (the fitted default or an explicit option).
 
 Every field must be present and no unknown field is accepted, so a renamed or
 forgotten parameter stops the load instead of taking a default. The file holds
@@ -23,7 +23,8 @@ from src.tasks.player_association.geometry.region import PlayRegionConfig
 from src.tasks.player_association.geometry.switches import SwitchConfig
 from src.utils.paths import PROJECT_ROOT
 
-DEFAULT_CONFIG = PROJECT_ROOT / "src/tasks/player_association/configs/association.yaml"
+LEGACY_CONFIG = PROJECT_ROOT / "src/tasks/player_association/configs/association.yaml"
+DEFAULT_CONFIG = PROJECT_ROOT / "src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml"
 
 
 def _build(kind: type, values: Any, where: str) -> Any:

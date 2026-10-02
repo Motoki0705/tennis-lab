@@ -19,6 +19,7 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.player_association.appearance.encoders import AppearanceEncoder
+from src.tasks.player_association.appearance.parts import NativeParts
 from src.utils.geometry.bbox import pairwise_iou
 from src.utils.video import OpenCVVideoFrameReader
 
@@ -41,6 +42,11 @@ class TrackAppearance:
 
     frames: NDArray[np.int64]  # (K,)
     embeddings: NDArray[np.float32]  # (K, E)
+    parts: NativeParts | None = None
+
+    def __post_init__(self) -> None:
+        if self.parts is not None and (len(self.parts.embeddings) != len(self.frames) or self.embeddings.shape != (len(self.frames), 0)):
+            raise ValueError('Native track appearance must align frames and cannot have a whole-image proxy')
 
 
 @dataclass(frozen=True)

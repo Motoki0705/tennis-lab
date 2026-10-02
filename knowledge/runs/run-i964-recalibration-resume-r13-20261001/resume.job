@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i964-recalibration-features-resume-r13-20261001
+# added: 2026-10-01T00:06:16+09:00
+# provider: codex
+# session: 01a0f2cc-fffc-7281-bf10-abff6aa0ccf2
+# issue: 964
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking
+export TENNIS_RUN_ID=1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790780776987996070_272352_i964-recalibration-features-resume-r13-20261001 --name i964-recalibration-features-resume-r13-20261001 --provider codex --session 01a0f2cc-fffc-7281-bf10-abff6aa0ccf2 --issue 964 --cmd timeout\ -k\ 10s\ 16180s\ bash\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/association_recalibration_features.sh\ /home/kamimura/projects/tennis-lab\ /home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r13-20261001/features
+timeout -k 10s 16180s bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/association_recalibration_features.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r13-20261001/features
