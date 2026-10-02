@@ -152,7 +152,8 @@ as the final authority for downstream datasets.
 ## Court detection dataset
 
 This system generates only Court Detection datasets. The versioned contract,
-labels and storage layout are documented in [dataset/court/README.md](dataset/court/README.md).
+labels and storage layout are documented in the
+[Court Detection dataset v1/v2/v3 contract](dataset/court/README.md).
 BLCS/PLCS RGB generation, dynamic foreground composition and their configuration
 selectors have been removed. `request.targets=[court]` is the only dataset target.
 
