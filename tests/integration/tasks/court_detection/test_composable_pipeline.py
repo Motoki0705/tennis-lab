@@ -33,13 +33,10 @@ from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.contracts import CourtTargetKind
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.data.inputs.factory import build_court_input
+from src.tasks.court_detection.data.inputs.tennis_store_migration import (
+    migrate_tennis_store,
+)
 from src.tasks.court_detection.data.mixed import MixedCourtDetectionDataModule
-from src.tasks.court_detection.data.target_generation.materializer import (
-    CourtTargetMaterializer,
-)
-from src.tasks.court_detection.data.target_generation.store import (
-    CourtDerivedTargetStore,
-)
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
 from src.tasks.court_detection.training.runner_mixed import (
@@ -473,27 +470,11 @@ def _source_files(root: Path) -> dict[str, str]:
     }
 
 
-def _materialize(config: DictConfig) -> None:
-    runtime = CourtTrainingConfig.from_config(config)
-    store = CourtDerivedTargetStore(runtime.data.processing.derived_target_root)
-    input_layer = build_court_input(runtime.data.source, target_store=store)
-    CourtTargetMaterializer(
-        input_layer=input_layer,
-        target_store=store,
-    ).materialize(
-        splits=input_layer.available_splits,
-        target_kinds=(
-            ("seg", "line")
-            if config.data.source.get("schema") == "v1"
-            else ("seg", "line", "semantic_line")
-        ),
-    )
-
-
 @pytest.fixture
 def court_roots(tmp_path: Path) -> Path:
     data_root = tmp_path / "data"
-    _write_tennis_court_detector(data_root / "court")
+    _write_tennis_court_detector(data_root / "upstream")
+    migrate_tennis_store(data_root / "upstream", data_root / "court_detection/tennis_court_detector-v1", excluded_sample_ids=())
     _write_synthetic_court(data_root / "synthetic_data_generation" / "scenes")
     singleton_root = data_root / "synthetic_data_generation" / "scenes"
     _write_synthetic_court_singleton(singleton_root, schema="v2")
@@ -504,20 +485,6 @@ def court_roots(tmp_path: Path) -> Path:
 def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
     court_roots: Path,
 ) -> None:
-    synthetic = _compose(
-        court_roots,
-        source="synthetic_court",
-        processing="all",
-        court_scope="target_court",
-    )
-    tennis = _compose(
-        court_roots,
-        source="tennis_court_detector",
-        processing="all",
-    )
-    _materialize(synthetic)
-    _materialize(tennis)
-
     config = _compose_mixed(court_roots)
     standard, mixed = resolve_mixed_training_config(config)
     datamodule = MixedCourtDetectionDataModule(standard, mixed_config=mixed)
@@ -570,7 +537,6 @@ def test_real_single_target_dataset_dataloader_paths(
     channels: int,
 ) -> None:
     config = _compose(court_roots, source=source, processing=processing)
-    _materialize(config)
     datamodule = CourtDetectionDataModule(config)
     datamodule.setup("validate")
 
@@ -595,7 +561,6 @@ def test_real_three_target_dataset_dataloader_contract(
     kp_channels: int,
 ) -> None:
     config = _compose(court_roots, source=source, processing="all")
-    _materialize(config)
     datamodule = CourtDetectionDataModule(config)
     datamodule.setup("validate")
 
@@ -629,15 +594,8 @@ def test_v3_target_court_scope_aligns_kp_seg_and_line_to_one_court(
     )
     all_runtime = CourtTrainingConfig.from_config(all_config)
     target_runtime = CourtTrainingConfig.from_config(target_config)
-    all_store = CourtDerivedTargetStore(all_runtime.data.processing.derived_target_root)
-    target_store = CourtDerivedTargetStore(
-        target_runtime.data.processing.derived_target_root
-    )
-    all_input = build_court_input(all_runtime.data.source, target_store=all_store)
-    target_input = build_court_input(
-        target_runtime.data.source,
-        target_store=target_store,
-    )
+    all_input = build_court_input(all_runtime.data.source)
+    target_input = build_court_input(target_runtime.data.source)
 
     all_record = all_input.records("val")[0]
     target_record = target_input.records("val")[0]
@@ -651,7 +609,6 @@ def test_v3_target_court_scope_aligns_kp_seg_and_line_to_one_court(
         target_input.spec.keypoint_schema
         == "synthetic_camera_view_kp14_v3_target_court"
     )
-    assert target_record.dense_target_refs != all_record.dense_target_refs
     assert (
         target_record.payload["source_target_sha256"]
         != all_record.payload["source_target_sha256"]
@@ -677,8 +634,7 @@ def test_v3_target_court_scope_aligns_kp_seg_and_line_to_one_court(
     )
 
     derived_root = court_roots / "data/court_detection/derived_targets"
-    _materialize(target_config)
-    assert _source_files(derived_root)
+    assert not derived_root.exists()
 
     all_datamodule = CourtDetectionDataModule(all_config)
     target_datamodule = CourtDetectionDataModule(target_config)
@@ -800,7 +756,6 @@ def test_real_two_target_v3_dataset_dataloader_contract(
         source="synthetic_court",
         processing=processing,
     )
-    _materialize(config)
     datamodule = CourtDetectionDataModule(config)
     datamodule.setup("validate")
 
@@ -810,7 +765,7 @@ def test_real_two_target_v3_dataset_dataloader_contract(
 
 
 @pytest.mark.parametrize("processing", ["seg", "line", "seg_line"])
-def test_missing_dense_targets_fail_during_setup_before_worker_start(
+def test_dense_targets_are_generated_in_workers_without_disk_targets(
     court_roots: Path,
     processing: str,
 ) -> None:
@@ -822,10 +777,10 @@ def test_missing_dense_targets_fail_during_setup_before_worker_start(
     config.data.num_workers = 2
     datamodule = CourtDetectionDataModule(config)
 
-    with pytest.raises(FileNotFoundError, match="Precomputed Court"):
-        datamodule.setup("validate")
-
-    assert datamodule.val_dataset is None
+    datamodule.setup("validate")
+    batch = next(iter(datamodule.val_dataloader()))
+    assert set(batch["targets"]) == {target.kind for target in CourtTrainingConfig.from_config(config).data.processing.targets}
+    assert not (court_roots / "data/court_detection/derived_targets").exists()
 
 
 @pytest.mark.parametrize(
@@ -836,30 +791,22 @@ def test_missing_dense_targets_fail_during_setup_before_worker_start(
         "synthetic_court",
     ],
 )
-def test_materialization_preserves_both_source_trees(
+def test_online_targets_preserve_source_trees_without_writing_masks(
     court_roots: Path,
     source: str,
 ) -> None:
     config = _compose(court_roots, source=source, processing="all")
     source_root = (
-        court_roots / "data/court"
+        court_roots / "data/court_detection/tennis_court_detector-v1"
         if source == "tennis_court_detector"
         else court_roots / "data/synthetic_data_generation/scenes"
     )
     before = _source_files(source_root)
-
-    _materialize(config)
-
+    datamodule = CourtDetectionDataModule(config)
+    datamodule.setup("validate")
+    next(iter(datamodule.val_dataloader()))
     assert _source_files(source_root) == before
-    derived_kind = (
-        "tennis_court_detector"
-        if source == "tennis_court_detector"
-        else "synthetic_court"
-    )
-    derived = court_roots / "data/court_detection/derived_targets" / derived_kind
-    expected_file_count = 6 if source == "tennis_court_detector" else 9
-    assert len(tuple(derived.rglob("*.png"))) == expected_file_count
-    assert len(tuple(derived.rglob("*.json"))) == expected_file_count
+    assert not (court_roots / "data/court_detection/derived_targets").exists()
 
 
 def test_shared_geometry_keeps_kp_and_line_correspondence(
@@ -870,7 +817,6 @@ def test_shared_geometry_keeps_kp_and_line_correspondence(
         source="tennis_court_detector",
         processing="all",
     )
-    _materialize(config)
     datamodule = CourtDetectionDataModule(config)
     datamodule.setup("validate")
     batch = next(iter(datamodule.val_dataloader()))
@@ -905,7 +851,6 @@ def test_datamodule_bound_three_head_forward_loss_backward(
     kp_channels: int,
 ) -> None:
     config = _compose(court_roots, source=source, processing="all")
-    _materialize(config)
     datamodule = CourtDetectionDataModule(config)
     datamodule.setup("validate")
     batch = next(iter(datamodule.val_dataloader()))

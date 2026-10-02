@@ -5,16 +5,14 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from dataclasses import fields as dataclass_fields
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, ClassVar, Literal, TypeAlias, TypeVar, cast
+from typing import ClassVar, TypeAlias, cast
 
 from omegaconf import DictConfig, OmegaConf
 
 import src.tasks.plcs.configuration_contracts as configuration_contracts
 from src.tasks.base.configuration import (
-    BaseTrainingConfig,
     ChunkDataConfig,
     SceneVisualizationConfig,
     TrainingRuntimeConfig,
@@ -22,23 +20,11 @@ from src.tasks.base.configuration import (
     require_config_mapping,
     require_config_value,
 )
-from src.tasks.base.data.observation_tracking import ObservationTrackingConfig
 from src.tasks.base.generate_dataset import CourtKeypointContract
-from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
     parse_scene_style,
     parse_view_3d,
-)
-
-# The residual profile has its own strict physical-COCO17 configuration contract.
-from src.tasks.plcs.configuration_contracts import (
-    ResidualAugmentationConfig,
-    ResidualConfig,
-    ResidualDataConfig,
-    ResidualInitializerConfig,
-    ResidualLossConfig,
-    ResidualModelConfig,
 )
 from src.tasks.plcs.court_keypoint_contract import PLCSCourtKeypointRuntimeConfig
 from src.utils.configuration import (
@@ -202,21 +188,6 @@ _MODEL_COMMON = {
     "invisible_init_std",
 }
 _MODEL_FIELDS: dict[str, frozenset[str]] = {
-    "plcs": frozenset(
-        _MODEL_COMMON
-        | {
-            "io",
-            "num_register_tokens",
-            "use_kp_id_embedding",
-            "use_rope",
-            "rope_dim",
-            "rope_theta",
-            "rope_theta_time",
-            "rope_theta_camera",
-            "rope_theta_type",
-            "predict_canonical_pose",
-        }
-    ),
     "plcs_multiview_axial": frozenset(
         _MODEL_COMMON
         | {
@@ -229,125 +200,8 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "predict_canonical_pose",
             "canonical_pose_readout",
         }
-    ),
-    "plcs_multiview_axial_split": frozenset(
-        _MODEL_COMMON
-        | {
-            "io",
-            "max_views",
-            "max_seq_len",
-            "rope_dim",
-            "rope_theta_time",
-            "rope_theta_camera",
-            "predict_canonical_pose",
-            "canonical_pose_readout",
-            "num_task_layers",
-            "rot_num_task_layers",
-            "pose_num_task_layers",
-            "canonical_on_rotation_branch",
-            "aux_position_on_rotation_branch",
-            "detach_pose_branch",
-        }
-    ),
-    "plcs_multiview_axial_camtoken": frozenset(
-        _MODEL_COMMON
-        | {
-            "io",
-            "max_views",
-            "max_seq_len",
-            "rope_dim",
-            "rope_theta_time",
-            "rope_theta_camera",
-            "predict_canonical_pose",
-            "canonical_pose_readout",
-        }
-    ),
-    "plcs_track_query": frozenset(
-        {
-            "name",
-            "hidden_dim",
-            "num_heads",
-            "ffn_dim",
-            "num_queries",
-            "num_stages",
-            "num_joints",
-            "rope_dim",
-            "rope_theta",
-            "ffn_type",
-            "dropout",
-            "invisible_init_std",
-            "mhc",
-            "cswa",
-        }
-    ),
-    "plcs_track_query_reference": frozenset(
-        {
-            "name",
-            "hidden_dim",
-            "num_heads",
-            "ffn_dim",
-            "num_queries",
-            "num_stages",
-            "num_joints",
-            "rope_dim",
-            "rope_theta",
-            "ffn_type",
-            "dropout",
-            "invisible_init_std",
-            "target_frame_contract",
-            "track_query_rope_contract",
-            "reference_selector_mode",
-            "mhc",
-            "cswa",
-        }
-    ),
+    )
 }
-
-_MODEL_FIELDS["plcs_multiview_axial_reference"] = _MODEL_FIELDS[
-    "plcs_multiview_axial"
-] | frozenset(
-    {
-        "target_frame_contract",
-        "axial_rope_contract",
-        "reference_selector_mode",
-    }
-)
-
-_MODEL_FIELDS["plcs_multiview_axial_foot_residual"] = _MODEL_FIELDS[
-    "plcs_multiview_axial_split"
-]
-
-_TRACK_QUERY_MODEL_NAMES = frozenset(
-    {
-        "plcs_track_query",
-        "plcs_track_query_reference",
-    }
-)
-_REFERENCE_TRACK_QUERY_MODEL_NAMES = frozenset(
-    {
-        "plcs_track_query_reference",
-    }
-)
-
-
-@dataclass(frozen=True, slots=True)
-class PLCSTrackQueryMHCConfig:
-    """Strict manifold-constrained hyper-connection configuration."""
-
-    coefficient_dim: int
-    sinkhorn_iters: int
-    eps: float
-    residual_identity_bias: float
-    update_scale_init: float
-
-
-@dataclass(frozen=True, slots=True)
-class PLCSTrackQueryCSWAConfig:
-    """Strict compressed sliding-window attention configuration."""
-
-    compression_ratio: int
-    window_radius: int
-    backend: Literal["reference", "cuda"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -357,8 +211,6 @@ class PLCSModelConfig:
     name: str
     input_profile: str | None
     values: Mapping[str, object]
-    track_query_mhc: PLCSTrackQueryMHCConfig | None
-    track_query_cswa: PLCSTrackQueryCSWAConfig | None
 
     @classmethod
     def from_mapping(cls, value: object) -> PLCSModelConfig:
@@ -385,20 +237,11 @@ class PLCSModelConfig:
                 allowed={"input_profile"},
             )
             input_profile = _string(io, "input_profile", path="model.io")
-            if input_profile not in {"frame", "multiview"}:
+            if input_profile != "multiview":
                 raise SemanticConfigurationError(
-                    "model.io.input_profile must be 'frame' or 'multiview'."
+                    "model.io.input_profile must be 'multiview'."
                 )
-        expected_profile = {
-            "plcs": "frame",
-            "plcs_multiview_axial": "multiview",
-            "plcs_multiview_axial_reference": "multiview",
-            "plcs_multiview_axial_split": "multiview",
-            "plcs_multiview_axial_foot_residual": "multiview",
-            "plcs_multiview_axial_camtoken": "multiview",
-            "plcs_track_query": None,
-            "plcs_track_query_reference": None,
-        }[name]
+        expected_profile = "multiview"
         if input_profile != expected_profile:
             raise SemanticConfigurationError(
                 f"model.name={name!r} requires model.io.input_profile="
@@ -437,22 +280,6 @@ class PLCSModelConfig:
                 "model.rope_dim must be non-negative, even, and no larger than "
                 f"the attention head dimension ({head_dim})."
             )
-        if name == "plcs_multiview_axial_reference":
-            from src.tasks.plcs.axial_reference_contract import AXIAL_REFERENCE_CONTRACT
-
-            for key in (
-                "target_frame_contract",
-                "axial_rope_contract",
-                "reference_selector_mode",
-            ):
-                if mapping[key] != AXIAL_REFERENCE_CONTRACT[key]:
-                    raise SemanticConfigurationError(
-                        f"model.{key} does not match the axial reference contract."
-                    )
-            if rope_dim < 6:
-                raise SemanticConfigurationError(
-                    "Axial reference requires rope_dim >= 6."
-                )
         number_fields = {
             "rope_theta",
             "rope_theta_time",
@@ -504,121 +331,10 @@ class PLCSModelConfig:
             raise SemanticConfigurationError(
                 f"model.num_joints must equal the canonical COCO joint count ({NUM_HUMAN_KP})."
             )
-        track_query_mhc: PLCSTrackQueryMHCConfig | None = None
-        track_query_cswa: PLCSTrackQueryCSWAConfig | None = None
-        if name in _TRACK_QUERY_MODEL_NAMES:
-            num_stages = _integer(mapping, "num_stages", path="model")
-            if num_stages % 4 != 0:
-                raise SemanticConfigurationError(
-                    "model.num_stages must be a positive multiple of 4."
-                )
-
-            raw_mhc = _exact(
-                mapping["mhc"],
-                path="model.mhc",
-                required={
-                    "coefficient_dim",
-                    "sinkhorn_iters",
-                    "eps",
-                    "residual_identity_bias",
-                    "update_scale_init",
-                },
-                allowed={
-                    "coefficient_dim",
-                    "sinkhorn_iters",
-                    "eps",
-                    "residual_identity_bias",
-                    "update_scale_init",
-                },
-            )
-            track_query_mhc = PLCSTrackQueryMHCConfig(
-                coefficient_dim=_integer(raw_mhc, "coefficient_dim", path="model.mhc"),
-                sinkhorn_iters=_integer(raw_mhc, "sinkhorn_iters", path="model.mhc"),
-                eps=_number(raw_mhc, "eps", path="model.mhc"),
-                residual_identity_bias=_number(
-                    raw_mhc, "residual_identity_bias", path="model.mhc"
-                ),
-                update_scale_init=_number(
-                    raw_mhc, "update_scale_init", path="model.mhc"
-                ),
-            )
-            if (
-                track_query_mhc.coefficient_dim <= 0
-                or track_query_mhc.sinkhorn_iters <= 0
-            ):
-                raise SemanticConfigurationError(
-                    "model.mhc.coefficient_dim and model.mhc.sinkhorn_iters "
-                    "must be positive."
-                )
-            _positive(track_query_mhc.eps, path="model.mhc.eps")
-            _positive(
-                track_query_mhc.residual_identity_bias,
-                path="model.mhc.residual_identity_bias",
-                allow_zero=True,
-            )
-
-            raw_cswa = _exact(
-                mapping["cswa"],
-                path="model.cswa",
-                required={"compression_ratio", "window_radius", "backend"},
-                allowed={"compression_ratio", "window_radius", "backend"},
-            )
-            backend = _string(raw_cswa, "backend", path="model.cswa")
-            if backend not in {"reference", "cuda"}:
-                raise SemanticConfigurationError(
-                    "model.cswa.backend must be 'reference' or 'cuda'."
-                )
-            track_query_cswa = PLCSTrackQueryCSWAConfig(
-                compression_ratio=_integer(
-                    raw_cswa, "compression_ratio", path="model.cswa"
-                ),
-                window_radius=_integer(raw_cswa, "window_radius", path="model.cswa"),
-                backend=cast("Literal['reference', 'cuda']", backend),
-            )
-            if track_query_cswa.compression_ratio < 2:
-                raise SemanticConfigurationError(
-                    "model.cswa.compression_ratio must be at least 2."
-                )
-            if track_query_cswa.window_radius < 0:
-                raise SemanticConfigurationError(
-                    "model.cswa.window_radius must be non-negative."
-                )
-            if name in _REFERENCE_TRACK_QUERY_MODEL_NAMES:
-                target_frame_contract = _string(
-                    mapping, "target_frame_contract", path="model"
-                )
-                if target_frame_contract != "reference_camera_court_rzpi_v1":
-                    raise SemanticConfigurationError(
-                        "model.target_frame_contract must be "
-                        "'reference_camera_court_rzpi_v1' for reference track-query models."
-                    )
-                track_query_rope_contract = _string(
-                    mapping, "track_query_rope_contract", path="model"
-                )
-                if track_query_rope_contract != "time_camera_reference_selector_v1":
-                    raise SemanticConfigurationError(
-                        "model.track_query_rope_contract must be "
-                        "'time_camera_reference_selector_v1' for reference "
-                        "track-query models."
-                    )
-                selector_mode = _string(
-                    mapping, "reference_selector_mode", path="model"
-                )
-                if selector_mode != "reference":
-                    raise SemanticConfigurationError(
-                        "model.reference_selector_mode must be 'reference'."
-                    )
-                if rope_dim < 6:
-                    raise SemanticConfigurationError(
-                        "Reference track-query model.rope_dim must be at least 6 "
-                        "so every spatial axis receives a rotary pair."
-                    )
         return cls(
             name=name,
             input_profile=input_profile,
             values=MappingProxyType(dict(mapping)),
-            track_query_mhc=track_query_mhc,
-            track_query_cswa=track_query_cswa,
         )
 
     def integer(self, key: str) -> int:
@@ -830,19 +546,11 @@ class PLCSDataConfig:
     ) -> PLCSDataConfig:
         initial = _plain(value, path="data")
         backend = _string(initial, "backend", path="data")
-        tracking = model.name in _TRACK_QUERY_MODEL_NAMES
         allowed = set(_DATA_COMMON)
-        if tracking:
-            allowed.update({"association", "lifecycle"})
-        else:
-            allowed.update({"mode", "num_court_kp", "sampling_weights"})
-            if model.input_profile == "multiview":
-                allowed.add("min_cameras")
-            configured_mode = _string(initial, "mode", path="data")
-            if model.input_profile == "frame" and configured_mode == "frame":
-                allowed.discard("seq_stride")
-            else:
-                allowed.add("seq_stride")
+        allowed.update({"mode", "num_court_kp", "sampling_weights"})
+        if model.input_profile == "multiview":
+            allowed.add("min_cameras")
+        allowed.add("seq_stride")
         if backend == "chunked":
             allowed.update({"generator_device", "chunk"})
         elif backend != "default":
@@ -861,12 +569,6 @@ class PLCSDataConfig:
                     "min_cameras",
                     "evaluation_reference_camera_id",
                 }
-                | (
-                    {"evaluation_reference_camera_id"}
-                    if model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES
-                    or model.name == "plcs_multiview_axial_reference"
-                    else set()
-                )
             ),
             allowed=allowed,
         )
@@ -928,12 +630,6 @@ class PLCSDataConfig:
                 raise SemanticConfigurationError(
                     f"data.{key} must be a positive ordered range."
                 )
-        if model.name == "plcs_multiview_axial_reference" and not (
-            3 <= num_views_range[0] <= num_views_range[1] <= 4
-        ):
-            raise SemanticConfigurationError(
-                "Axial reference data requires 3 or 4 cameras."
-            )
         if "max_views" in model.values and num_views_range[1] > model.integer(
             "max_views"
         ):
@@ -957,49 +653,17 @@ class PLCSDataConfig:
             and _integer(mapping, "seq_stride", path="data") <= 0
         ):
             raise SemanticConfigurationError("data.seq_stride must be positive.")
-        if not tracking:
-            mode = _string(mapping, "mode", path="data")
-            allowed_modes = (
-                {"multiview_sequence"}
-                if model.input_profile == "multiview"
-                else {"frame", "sequence"}
+        mode = _string(mapping, "mode", path="data")
+        allowed_modes = (
+            {"multiview_sequence"}
+            if model.input_profile == "multiview"
+            else {"frame", "sequence"}
+        )
+        if mode not in allowed_modes:
+            raise SemanticConfigurationError(
+                f"data.mode={mode!r} is incompatible with "
+                f"model.io.input_profile={model.input_profile!r}."
             )
-            if mode not in allowed_modes:
-                raise SemanticConfigurationError(
-                    f"data.mode={mode!r} is incompatible with "
-                    f"model.io.input_profile={model.input_profile!r}."
-                )
-        if tracking:
-            lifecycle_fields = {
-                "pack_to_query_slots",
-                "min_reuse_gap_frames",
-            }
-            lifecycle = _exact(
-                mapping["lifecycle"],
-                path="data.lifecycle",
-                required=lifecycle_fields,
-                allowed=lifecycle_fields,
-            )
-            if not _boolean(lifecycle, "pack_to_query_slots", path="data.lifecycle"):
-                raise SemanticConfigurationError(
-                    "data.lifecycle.pack_to_query_slots must be true for fixed-Q "
-                    "PLCS tracking."
-                )
-            _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle")
-            if _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle") < 0:
-                raise SemanticConfigurationError(
-                    "data.lifecycle.min_reuse_gap_frames must be non-negative."
-                )
-            association = ObservationTrackingConfig.from_mapping(mapping["association"])
-            if association.cost_reduction != "median":
-                raise SemanticConfigurationError(
-                    "PLCS data.association.cost_reduction must be 'median'."
-                )
-            if not 4 <= association.min_common_keypoints <= NUM_HUMAN_KP:
-                raise SemanticConfigurationError(
-                    "PLCS data.association.min_common_keypoints must be within "
-                    f"[4, {NUM_HUMAN_KP}]."
-                )
         if "sampling_weights" in mapping:
             if backend != "default":
                 raise SemanticConfigurationError(
@@ -1018,10 +682,9 @@ class PLCSDataConfig:
                 "data.batch_size must be positive; num_workers and adapter_camera_index must be non-negative."
             )
         num_court_tokens: int | None = None
-        if not tracking:
-            num_court_tokens = _integer(mapping, "num_court_kp", path="data")
-            if num_court_tokens <= 0:
-                raise SemanticConfigurationError("data.num_court_kp must be positive.")
+        num_court_tokens = _integer(mapping, "num_court_kp", path="data")
+        if num_court_tokens <= 0:
+            raise SemanticConfigurationError("data.num_court_kp must be positive.")
         evaluation_reference_camera_id = (
             _string(mapping, "evaluation_reference_camera_id", path="data")
             if "evaluation_reference_camera_id" in mapping
@@ -1060,7 +723,6 @@ class PLCSTrainingConfig:
     paths: configuration_contracts.PLCSPathConfig
     model: PLCSModelConfig
     data: PLCSDataConfig
-    tracking_metrics: TrackingMetricConfig | None
     qualitative_style: SceneStyleConfig
     qualitative_view_3d: CameraController
     qualitative_fps: float
@@ -1095,7 +757,6 @@ class PLCSTrainingConfig:
                 "paths",
                 "external_assets",
                 "qualitative",
-                "tracking_metrics",
                 "camera",
                 "motion_sources",
                 "generation",
@@ -1109,24 +770,6 @@ class PLCSTrainingConfig:
         court_keypoint_contract = PLCSCourtKeypointRuntimeConfig.from_config(
             value
         ).contract
-        if (
-            model.name in _REFERENCE_TRACK_QUERY_MODEL_NAMES
-            or model.name == "plcs_multiview_axial_reference"
-        ):
-            if court_keypoint_contract.selector != "camera_view_v2":
-                raise SemanticConfigurationError(
-                    "Reference PLCS models require "
-                    "court_keypoints.selector='camera_view_v2'."
-                )
-        elif (
-            model.name in _TRACK_QUERY_MODEL_NAMES
-            and court_keypoint_contract.selector != "physical_v1"
-        ):
-            raise SemanticConfigurationError(
-                "Canonical track-query models require "
-                "court_keypoints.selector='physical_v1'; select an explicit "
-                "reference model for camera_view_v2."
-            )
         data = PLCSDataConfig.from_mapping(
             require_config_mapping(root, "data", path="configuration"),
             resolver=paths.resolver,
@@ -1142,7 +785,7 @@ class PLCSTrainingConfig:
             "paths",
             "external_assets",
             "qualitative",
-            "tracking_metrics" if model.name in _TRACK_QUERY_MODEL_NAMES else "metrics",
+            "metrics",
         }
         if data.backend == "chunked":
             exact_root_fields.update({"camera", "motion_sources", "generation"})
@@ -1236,41 +879,9 @@ class PLCSTrainingConfig:
                 configuration_contracts.PLCSGenerationComponents.from_config(root)
             )
             generation_mode = generation_components.mode
-            if model.name in _TRACK_QUERY_MODEL_NAMES:
-                if generation_mode != "multi_object":
-                    raise SemanticConfigurationError(
-                        "Chunked PLCS tracking requires generation.mode='multi_object'."
-                    )
-                generation = require_config_mapping(
-                    root, "generation", path="configuration"
-                )
-                timeline = require_config_mapping(
-                    generation, "timeline", path="generation"
-                )
-                if _integer(
-                    timeline, "max_concurrent", path="generation.timeline"
-                ) > model.integer("num_queries"):
-                    raise SemanticConfigurationError(
-                        "generation.timeline.max_concurrent cannot exceed "
-                        "model.num_queries."
-                    )
-                data_mapping = require_config_mapping(
-                    root, "data", path="configuration"
-                )
-                lifecycle = require_config_mapping(
-                    data_mapping, "lifecycle", path="data"
-                )
-                if _integer(
-                    timeline, "min_reuse_gap_frames", path="generation.timeline"
-                ) < _integer(lifecycle, "min_reuse_gap_frames", path="data.lifecycle"):
-                    raise SemanticConfigurationError(
-                        "generation.timeline.min_reuse_gap_frames cannot be smaller "
-                        "than data.lifecycle.min_reuse_gap_frames."
-                    )
-            elif generation_mode != "single_object":
+            if generation_mode != "single_object":
                 raise SemanticConfigurationError(
-                    "Chunked non-tracking PLCS training requires "
-                    "generation.mode='single_object'."
+                    "Chunked PLCS training requires generation.mode='single_object'."
                 )
         qualitative = _exact(
             require_config_mapping(root, "qualitative", path="configuration"),
@@ -1288,70 +899,24 @@ class PLCSTrainingConfig:
         MCMCConfig.from_dict(
             dict(require_config_mapping(training_mapping, "mcmc", path="training"))
         )
-        tracking_metric_config: TrackingMetricConfig | None = None
-        if model.name not in _TRACK_QUERY_MODEL_NAMES:
-            from src.tasks.plcs.training.losses import PLCSLossConfig
+        from src.tasks.plcs.training.losses import PLCSLossConfig
 
-            PLCSLossConfig.from_dict(
-                dict(require_config_mapping(root, "loss", path="configuration"))
-            )
-            metrics_fields = {
-                "position_threshold_m",
-                "angle_threshold_deg",
-                "velocity_threshold_m",
-            }
-            metrics = _exact(
-                require_config_mapping(root, "metrics", path="configuration"),
-                path="metrics",
-                required=metrics_fields,
-                allowed=metrics_fields,
-            )
-            for key in metrics_fields:
-                _positive(_number(metrics, key, path="metrics"), path=f"metrics.{key}")
-        else:
-            tracking_metric_config = TrackingMetricConfig.from_mapping(
-                require_config_mapping(root, "tracking_metrics", path="configuration")
-            )
-            tracking_loss_fields = {
-                "position_weight",
-                "rotation_weight",
-                "presence_weight",
-                "presence_inactive_weight",
-                "presence_active_weight",
-                "presence_transition_weight",
-                "transition_radius",
-                "track_smoothness_weight",
-                "match_position_weight",
-                "match_rotation_weight",
-                "match_presence_weight",
-            }
-            tracking_loss = _exact(
-                require_config_mapping(root, "loss", path="configuration"),
-                path="loss",
-                required=tracking_loss_fields,
-                allowed=tracking_loss_fields,
-            )
-            for key in tracking_loss_fields - {"transition_radius"}:
-                _positive(
-                    _number(tracking_loss, key, path="loss"),
-                    path=f"loss.{key}",
-                    allow_zero=True,
-                )
-            if _integer(tracking_loss, "transition_radius", path="loss") < 0:
-                raise SemanticConfigurationError(
-                    "loss.transition_radius must be non-negative."
-                )
-            if all(
-                _number(tracking_loss, key, path="loss") == 0.0
-                for key in {
-                    "match_position_weight",
-                    "match_rotation_weight",
-                    "match_presence_weight",
-                }
-            ):
-                raise SemanticConfigurationError(
-                    "At least one tracking match cost weight must be positive."
-                )
+        PLCSLossConfig.from_dict(
+            dict(require_config_mapping(root, "loss", path="configuration"))
+        )
+        metrics_fields = {
+            "position_threshold_m",
+            "angle_threshold_deg",
+            "velocity_threshold_m",
+        }
+        metrics = _exact(
+            require_config_mapping(root, "metrics", path="configuration"),
+            path="metrics",
+            required=metrics_fields,
+            allowed=metrics_fields,
+        )
+        for key in metrics_fields:
+            _positive(_number(metrics, key, path="metrics"), path=f"metrics.{key}")
         if shared.training.gan.enabled:
             discriminator_fields = {
                 "name",
@@ -1450,17 +1015,12 @@ class PLCSTrainingConfig:
                 raise SemanticConfigurationError(
                     "training.gan.discriminator.max_seq_len must be positive."
                 )
-        if model.name in _TRACK_QUERY_MODEL_NAMES and model.input_profile is not None:
-            raise SemanticConfigurationError(
-                "Tracking models must not define model.io."
-            )
         return cls(
             shared=shared,
             court_keypoint_contract=court_keypoint_contract,
             paths=paths,
             model=model,
             data=data,
-            tracking_metrics=tracking_metric_config,
             qualitative_style=qualitative_style,
             qualitative_view_3d=qualitative_view_3d,
             qualitative_fps=qualitative_fps,
@@ -2272,162 +1832,3 @@ __all__ = [
     "PLCSTrainingConfig",
     "validate_augmentation",
 ]
-
-
-ResidualT = TypeVar("ResidualT")
-
-
-def _residual_section(cls: type[ResidualT], value: Any) -> ResidualT:
-    import math
-    from typing import get_type_hints
-
-    raw = dict(value)
-    expected = {f.name for f in dataclass_fields(cls)}  # type: ignore[arg-type]
-    if set(raw) != expected:
-        raise ValueError(
-            f"{cls.__name__}: missing={expected - set(raw)}, unknown={set(raw) - expected}"
-        )
-    hints = get_type_hints(cls)
-    for key, val in raw.items():
-        hint = hints[key]
-        if hint is float:
-            if type(val) not in (int, float) or not math.isfinite(val):
-                raise ValueError(f"{cls.__name__}.{key} must be finite numeric")
-            raw[key] = float(val)
-        elif type(val) is not hint:
-            raise ValueError(f"{cls.__name__}.{key} must have type {hint}")
-    return cls(**raw)
-
-
-def validate_residual_config(config: DictConfig) -> ResidualConfig:
-    root = OmegaConf.to_container(config, resolve=True)
-    if not isinstance(root, dict):
-        raise ValueError("Residual config must be a mapping")
-    keys = {
-        "model",
-        "data",
-        "initializer",
-        "augmentation",
-        "loss",
-        "training",
-        "run",
-        "paths",
-        "court_keypoints",
-    }
-    if set(root) != keys:
-        raise ValueError(f"Residual config keys differ: {set(root) ^ keys}")
-    runtime = TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
-    BaseTrainingConfig.from_mapping(root["training"])
-    result = ResidualConfig(
-        _residual_section(ResidualModelConfig, root["model"]),
-        _residual_section(ResidualDataConfig, root["data"]),
-        _residual_section(ResidualInitializerConfig, root["initializer"]),
-        _residual_section(ResidualAugmentationConfig, root["augmentation"]),
-        _residual_section(ResidualLossConfig, root["loss"]),
-        runtime,
-    )
-    model, data, noise = result.model, result.data, result.augmentation
-    if model.name != "plcs_triangulation_residual":
-        raise ValueError("Expected the PLCS triangulation residual model")
-    if model.ffn_type not in SUPPORTED_FFN_TYPES:
-        raise ValueError(f"Unsupported ffn_type={model.ffn_type}")
-    if (
-        model.hidden_dim <= 0
-        or model.num_heads <= 0
-        or model.hidden_dim % model.num_heads
-        or (model.hidden_dim // model.num_heads) % 2
-    ):
-        raise ValueError("Even head dimension and divisible hidden_dim required")
-    if (
-        model.num_layers < 1
-        or model.ffn_dim < model.hidden_dim
-        or not 0 <= model.dropout < 1
-        or model.rope_base <= 0
-    ):
-        raise ValueError("Invalid residual architecture settings")
-    if (
-        data.batch_size < 1
-        or data.num_workers < 0
-        or data.sequence_length < 4
-        or data.target_fps <= 0
-    ):
-        raise ValueError("Invalid loader or time sampling settings")
-    if not 2 <= data.min_views <= data.max_views or data.cache_scenes < 0:
-        raise ValueError("Residual triangulation needs 2 or more cameras")
-    if min(data.train_limit, data.val_limit, data.test_limit) < 0:
-        raise ValueError("Scene limits must be nonnegative; 0 means complete split")
-    if (
-        not 0 <= result.initializer.min_score <= 1
-        or result.initializer.refinement_steps < 0
-    ):
-        raise ValueError("Invalid triangulation settings")
-    for field in dataclass_fields(noise):
-        value = getattr(noise, field.name)
-        if not isinstance(value, str) and (
-            value < 0 or (field.name.endswith("probability") and value > 1)
-        ):
-            raise ValueError(f"Invalid corruption setting {field.name}")
-    if (
-        noise.clean_probability + noise.hard_probability > 1
-        or not 0 < noise.focal_scale_min <= noise.focal_scale_max
-    ):
-        raise ValueError("Invalid corruption mixture/focal range")
-    if (
-        any(getattr(result.loss, f.name) < 0 for f in dataclass_fields(result.loss))
-        or result.loss.huber_delta_m <= 0
-    ):
-        raise ValueError("Loss weights must be nonnegative and Huber delta positive")
-    if result.loss.root_weight == 0 or result.loss.relative_weight == 0:
-        raise ValueError("Both requested residual heads need direct supervision")
-    if runtime.training.gan.enabled or runtime.training.qualitative_logging.enabled:
-        raise ValueError(
-            "GAN and legacy qualitative rendering are not part of this profile"
-        )
-    if runtime.training.checkpoint.monitor != "val/world_mpjpe_m":
-        raise ValueError("Select checkpoints using held-out world 3D error")
-    if dict(config.court_keypoints) != {"selector": "physical_v1"}:
-        raise ValueError("Residual inputs/outputs use the physical court contract")
-    _validate_residual_augmentation(noise, data)
-    return result
-
-
-def _validate_residual_augmentation(
-    config: ResidualAugmentationConfig, data: ResidualDataConfig
-) -> None:
-    if config.camera_preset != "four_corners_front_pair":
-        raise ValueError("Residual requires four corners and the near-fence front pair")
-    if not 2 <= config.evaluation_views <= data.max_views <= 6:
-        raise ValueError(
-            "Residual evaluation/train view counts must fit the six-camera rig"
-        )
-    if config.error_mode not in {
-        "mixed",
-        "clean",
-        "calibration",
-        "observation",
-        "temporal",
-        "persistent",
-        "combined",
-    }:
-        raise ValueError("Unknown residual corruption experiment")
-    for field in dataclass_fields(config):
-        value = getattr(config, field.name)
-        if not isinstance(value, str) and (
-            value < 0 or (field.name.endswith("probability") and value > 1)
-        ):
-            raise ValueError(f"Invalid augmentation setting {field.name}")
-    if not 6 <= config.calibration_min_points <= 14:
-        raise ValueError(
-            "This calibration profile needs 6..14 noncollinear court points"
-        )
-    if not 0 < config.persistent_min_seconds <= config.persistent_max_seconds:
-        raise ValueError("Persistent event durations must be positive and ordered")
-
-
-def _validate_residual_boundary(config: DictConfig) -> None:
-    validate_residual_config(config)
-
-
-register_boundary_validator(
-    "plcs.triangulation_residual.train", _validate_residual_boundary
-)

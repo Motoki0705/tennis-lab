@@ -18,8 +18,8 @@ from src.tasks.plcs.generate_dataset.config import PLCSGenerationConfig
 from src.tasks.plcs.scripts import generate_dataset as generate_dataset_script
 
 
-@pytest.mark.parametrize("selector", ["physical_v1", "camera_view_v2"])
-@pytest.mark.parametrize("camera", ["default", "broadcast"])
+@pytest.mark.parametrize("selector", ["physical_v1"])
+@pytest.mark.parametrize("camera", ["default", "corners"])
 def test_cli_can_publish_resolved_selector_without_loading_assets(
     selector: str,
     camera: str,
@@ -73,7 +73,7 @@ def test_cli_keeps_physical_v1_as_the_public_default() -> None:
     assert "court_coordinate_normalization:" not in result.stdout
 
 
-@pytest.mark.parametrize("selector", ["physical_v1", "camera_view_v2"])
+@pytest.mark.parametrize("selector", ["physical_v1"])
 def test_cli_publishes_root_contract_before_first_scene(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -148,3 +148,17 @@ def test_cli_publishes_root_contract_before_first_scene(
         "save_meta_json",
         "save_split_info",
     ]
+
+
+@pytest.mark.parametrize("override", ["generation=multi_object", "camera=broadcast", "court_keypoints=camera_view_v2"])
+def test_cli_rejects_retired_generation_profiles(override: str) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "src.tasks.plcs.scripts.generate_dataset", override, "--cfg", "job"],
+        cwd=Path(__file__).resolve().parents[4],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode != 0
+    assert "Could not find" in result.stderr

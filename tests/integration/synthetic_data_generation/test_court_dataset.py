@@ -50,6 +50,12 @@ from src.synthetic_data_generation.dataset.court.performance import (
     CourtPerformanceEvidence,
 )
 from src.synthetic_data_generation.dataset.court.rendering.nht import CourtNHTRenderer
+from src.synthetic_data_generation.dataset.court.sample_store import (
+    open_court_store,
+    read_court_labels,
+    read_court_manifest,
+    read_court_rgb,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SEMANTIC_CLASS_NAMES_V2,
 )
@@ -73,7 +79,6 @@ from src.synthetic_data_generation.scene_contract import (
     RigidTransform,
     SceneCamera,
 )
-from src.utils.data.float32_store import read_float32
 from src.utils.io import load_json
 from src.utils.paths import PROJECT_ROOT
 
@@ -142,8 +147,8 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
     assert first_plan.to_dict() == second_plan.to_dict()
     require_equal_court_semantic_manifests(first_manifest, second_manifest)
     assert first_manifest == second_manifest
-    first_dataset = _json_mapping(load_json(first_root / "dataset.json"))
-    second_dataset = _json_mapping(load_json(second_root / "dataset.json"))
+    first_dataset = read_court_manifest(first_root)
+    second_dataset = read_court_manifest(second_root)
     first_performance = CourtPerformanceEvidence.from_dict(
         load_json(first_root / "diagnostics/performance.json")
     )
@@ -165,8 +170,8 @@ def test_same_seed_public_renderer_runs_publish_equal_semantic_manifests(
 
     first_record = _first_accepted_record(first_dataset)
     second_record = _first_accepted_record(second_dataset)
-    first_rgb = read_float32(_record_path(first_root, first_record, "rgb"))
-    second_rgb = read_float32(_record_path(second_root, second_record, "rgb"))
+    first_rgb = read_court_rgb(first_root, first_record)
+    second_rgb = read_court_rgb(second_root, second_record)
     assert not np.array_equal(first_rgb, second_rgb)
     _assert_repeat_semantic_mutations_fail(first_manifest)
 
@@ -230,7 +235,7 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
     )
 
     assert type(plan) is plan_type
-    dataset = _json_mapping(load_json(dataset_root / "dataset.json"))
+    dataset = read_court_manifest(dataset_root)
     report = validate_court_dataset(
         dataset_root,
         expected_plan=plan,
@@ -264,9 +269,7 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
     assert any(len(targets) > 1 for targets in targets_by_complex_group.values())
 
     first_record = _json_mapping(accepted[0])
-    labels = _json_mapping(
-        load_json(_record_path(dataset_root, first_record, "labels"))
-    )
+    labels = read_court_labels(dataset_root, first_record, dataset_schema=dataset_schema)
     assert labels["schema"] == sample_schema
     assert labels["target_court"] == first_record["target_court"]
     projection = _json_mapping(labels["projection"])
@@ -366,21 +369,14 @@ def test_singleton_public_renderer_publishes_exact_targets_labels_and_diagnostic
     finally:
         dataset_path.write_text(original_dataset_text, encoding="utf-8")
 
-    label_path = _record_path(dataset_root, first_record, "labels")
-    original_label_text = label_path.read_text(encoding="utf-8")
-    mixed_label = json.loads(original_label_text)
-    mixed_label["schema"] = (
-        "canonical_court_sample_v3" if selector == "v2" else "canonical_court_sample_v2"
-    )
-    label_path.write_text(json.dumps(mixed_label), encoding="utf-8")
+    mixed = json.loads(original_dataset_text)
+    mixed["geometry_schema"] = "canonical_court_dataset_v3" if selector == "v2" else "canonical_court_dataset_v2"
+    dataset_path.write_text(json.dumps(mixed))
     try:
-        with pytest.raises(ValueError, match="labels schema"):
-            validate_court_dataset(
-                dataset_root,
-                array_validation=CourtArrayValidationMode.HEADERS_ONLY,
-            )
+        with pytest.raises(ValueError, match="descriptor and packed metadata disagree"):
+            validate_court_dataset(dataset_root, array_validation=CourtArrayValidationMode.HEADERS_ONLY)
     finally:
-        label_path.write_text(original_label_text, encoding="utf-8")
+        dataset_path.write_text(original_dataset_text)
 
 
 def _layout() -> MultiCourtLayout:
@@ -943,15 +939,14 @@ def test_generated_compressed_publication_semantics_and_visualization(
         rgb_value=0.3,
         court_selector="v3",
     )
-    manifest = load_json(root / "dataset.json")
+    manifest = read_court_manifest(root)
     assert not list((root / "samples").rglob("*.npy"))
     assert load_json(root / COURT_SEMANTIC_MANIFEST_PATH) == semantic
-    for record in manifest["samples"]:
-        for field in ("rgb", "alpha", "depth"):
-            assert record[field].endswith(".f32.npz")
-            array = read_float32(root / record[field])
-            assert array.dtype == np.float32
-            assert np.isfinite(array).all()
+    store = open_court_store(root)
+    assert len(store) == len(manifest["samples"])
+    assert {path.suffix for path in (root / "samples").rglob("*") if path.is_file()} == {".bin", ".npz"}
+    assert not {"rgb", "alpha", "depth", "rgb_preview", "labels"}.intersection(manifest["samples"][0])
+    assert store.rgb(0).dtype == np.uint8
     validate_court_dataset(root, array_validation=CourtArrayValidationMode.HEADERS_ONLY)
     visualizer = CourtVisualizationSource(
         root, trajectory_id=manifest["samples"][0]["trajectory_id"]

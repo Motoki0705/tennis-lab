@@ -25,6 +25,13 @@ from src.synthetic_data_generation.dataset.court.contracts import (
     COURT_DATASET_SCHEMA,
     COURT_SAMPLE_SCHEMA,
 )
+from src.synthetic_data_generation.dataset.court.sample_store import (
+    LEGACY_SAMPLE_FILES,
+    open_court_store,
+    read_court_labels,
+    read_court_manifest,
+    read_court_rgb,
+)
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_DATASET_SCHEMA_V2,
     COURT_DATASET_SCHEMA_V3,
@@ -44,15 +51,8 @@ from src.tasks.court_detection.data.contracts import (
     CourtSampleRecord,
     CourtSourceSplit,
 )
-from src.tasks.court_detection.data.target_generation.store import (
-    SEGMENTATION_TARGET_SCHEMA,
-    CourtDerivedTargetStore,
-)
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    SEMANTIC_LINE_TARGET_SCHEMA,
-)
 from src.utils.data.float32_store import read_float32
+from src.utils.data.image_record_store import ImageRecordStore
 from src.utils.schema.court import (
     CAMERA_VIEW_HALF_TURN_INDEX,
     COURT_KP_NAMES,
@@ -155,13 +155,9 @@ class SyntheticCourtInput:
     def __init__(
         self,
         config: SyntheticCourtSourceConfig,
-        *,
-        target_store: CourtDerivedTargetStore,
-        line_target_schema: str = LINE_TARGET_SCHEMA,
     ) -> None:
         self.config = config
-        self.target_store = target_store
-        self.line_target_schema = line_target_schema
+        self._image_stores: dict[Path, ImageRecordStore] = {}
         flip_permutation: tuple[int, ...]
         if config.schema == "v1":
             source_schema = COURT_DATASET_SCHEMA
@@ -195,9 +191,6 @@ class SyntheticCourtInput:
                 {
                     CourtInputCapability.KEYPOINT_CHANNELS,
                     CourtInputCapability.COURT_INSTANCES,
-                    CourtInputCapability.SEGMENTATION_REFERENCE,
-                    CourtInputCapability.LINE_REFERENCE,
-                    CourtInputCapability.SEMANTIC_LINE_REFERENCE,
                     *(
                         {CourtInputCapability.V3_TARGET_COURT_POSE}
                         if config.schema == "v3"
@@ -277,7 +270,6 @@ class SyntheticCourtInput:
             image=image,
             keypoint_channels=channels,
             court_instances=instances,
-            dense_target_refs=record.dense_target_refs,
             metadata=CourtSampleMetadata(
                 source_kind="synthetic_court",
                 source_schema=self.spec.source_schema,
@@ -331,8 +323,11 @@ class SyntheticCourtInput:
                 raise ValueError(
                     "Synthetic Court dataset.json must be an ordinary file."
                 )
-            manifest = self._read_json(manifest_path, name="Synthetic Court dataset")
-            if set(manifest) != _DATASET_KEYS:
+            manifest = read_court_manifest(root)
+            compact = "storage" in manifest
+            if compact:
+                self._image_stores[root] = open_court_store(root)
+            if set(manifest) != _DATASET_KEYS | ({"storage"} if compact else set()):
                 raise ValueError("Synthetic Court dataset.json fields changed.")
             if manifest["schema"] != self.spec.source_schema:
                 raise ValueError(
@@ -422,6 +417,10 @@ class SyntheticCourtInput:
         manifest_digest: str,
     ) -> CourtSampleRecord:
         expected_keys = set(_BASE_SAMPLE_RECORD_KEYS)
+        compact = root in self._image_stores
+        if compact:
+            expected_keys.difference_update(LEGACY_SAMPLE_FILES)
+            expected_keys.add("image_index")
         if self.config.schema in {"v2", "v3"}:
             expected_keys.add("target_court")
         if not isinstance(value, Mapping) or set(value) != expected_keys:
@@ -468,12 +467,16 @@ class SyntheticCourtInput:
                 raise ValueError(
                     "Synthetic Court v2 camera disagrees with sample identity/resolution."
                 )
-        published_directory = self._resolve_published_directory(
-            root, value["directory"]
-        )
-
         paths: dict[str, Path] = {}
-        for field in _PUBLISHED_FILE_FIELDS:
+        published_directory = root if compact else self._resolve_published_directory(root, value["directory"])
+        if compact:
+            row = self._nonnegative_integer(value["image_index"], name="image_index")
+            store = self._image_stores[root]
+            if store.record(row) != {key: item for key, item in value.items() if key != "image_index"}:
+                raise ValueError("Synthetic Court packed record differs from its manifest.")
+            paths["rgb"] = store.paths[int(store.arrays["shard"][row])]
+            paths["labels"] = root / "samples" / "index.npz"
+        for field in (() if compact else _PUBLISHED_FILE_FIELDS):
             path = self._resolve_published_path(root, value[field], name=field)
             if self.config.schema in {"v2", "v3"} and not path.is_file():
                 raise FileNotFoundError(
@@ -491,7 +494,7 @@ class SyntheticCourtInput:
             raise FileNotFoundError(
                 "Synthetic Court manifest-published RGB/labels are missing."
             )
-        if self.config.schema in {"v2", "v3"} and value[
+        if not compact and self.config.schema in {"v2", "v3"} and value[
             "depth_coordinate_space"
         ] != (
             "metric_scene_metres"
@@ -531,30 +534,11 @@ class SyntheticCourtInput:
         source_target_digest = hashlib.sha256(digest_bytes).hexdigest()
 
         stable_id = f"{scene_id}:{source_sample_id}"
-        derived_key = f"{self.config.court_scope}/{scene_id}/{source_sample_id}"
         return CourtSampleRecord(
             sample_id=stable_id,
             split=split,
             image_path=paths["rgb"],
             annotation_path=paths["labels"],
-            derived_key=derived_key,
-            dense_target_refs={
-                "seg": self.target_store.path_for(
-                    source_kind="synthetic_court",
-                    derived_key=derived_key,
-                    target_schema=SEGMENTATION_TARGET_SCHEMA,
-                ),
-                "line": self.target_store.path_for(
-                    source_kind="synthetic_court",
-                    derived_key=derived_key,
-                    target_schema=self.line_target_schema,
-                ),
-                "semantic_line": self.target_store.path_for(
-                    source_kind="synthetic_court",
-                    derived_key=derived_key,
-                    target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
-                ),
-            },
             payload={
                 "source_schema": self.spec.source_schema,
                 "court_scope": self.config.court_scope,
@@ -615,7 +599,8 @@ class SyntheticCourtInput:
         return candidate
 
     def _load_labels(self, record: CourtSampleRecord) -> dict[str, object]:
-        labels = self._read_json(record.annotation_path, name="Synthetic Court labels")
+        manifest_record = cast(Mapping[str, object], record.payload["manifest_record"])
+        labels: dict[str, object] = read_court_labels(cast(Path, record.payload["dataset_root"]), manifest_record, dataset_schema=self.spec.source_schema)
         expected_keys = set(_BASE_LABEL_KEYS)
         expected_schema = COURT_SAMPLE_SCHEMA
         if self.config.schema in {"v2", "v3"}:
@@ -642,6 +627,9 @@ class SyntheticCourtInput:
         return labels
 
     def _load_rgb(self, record: CourtSampleRecord) -> Image.Image:
+        root = cast(Path, record.payload["dataset_root"])
+        if root in self._image_stores:
+            return Image.fromarray(read_court_rgb(root, cast(Mapping[str, object], record.payload["manifest_record"]), store=self._image_stores[root]))
         rgb = read_float32(record.image_path)
         if self.config.schema in {"v2", "v3"}:
             expected = (
@@ -666,7 +654,7 @@ class SyntheticCourtInput:
                     raise ValueError("Synthetic Court float RGB must be in [0,1].")
                 rgb_u8 = np.round(rgb * 255.0).astype(np.uint8)
             elif rgb.dtype == np.uint8:
-                rgb_u8 = rgb
+                rgb_u8 = rgb.astype(np.uint8, copy=False)
             else:
                 raise TypeError(
                     "Synthetic Court v1 RGB must use float32/float64 or uint8."
