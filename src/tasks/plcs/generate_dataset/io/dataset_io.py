@@ -261,6 +261,12 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         Returns:
             Path: Path to saved scene directory.
         """
+        if (
+            scene.num_persons != 1
+            or scene.person_present is not None
+            or scene.track_instances
+        ):
+            raise ValueError("PLCS writer only accepts one person per scene.")
         dirname = str(scene.meta["scene_id"])
         scene_path: Path = self.scenes_dir / dirname
         root_metadata = self._validate_existing_root_contract()
@@ -317,9 +323,6 @@ class PLCSDatasetWriter(BaseDatasetWriter):
             "num_cameras": len(scene.cameras),
             "num_persons": scene.num_persons,
         }
-
-        if scene.person_present is not None:
-            arrays["person_present"] = np.asarray(scene.person_present, dtype=bool)
 
         # Store pre-computed COCO17 world joints when available
         if scene.human_kp_3d is not None:

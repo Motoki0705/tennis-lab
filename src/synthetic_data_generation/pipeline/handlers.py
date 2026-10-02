@@ -307,7 +307,10 @@ def _validate_domain_manifest(target: DatasetTarget, path: Path) -> DatasetManif
             path.parent,
             array_validation=CourtArrayValidationMode.HEADERS_ONLY,
         )
-        payload = _read_json(path)
+        from src.synthetic_data_generation.dataset.court.sample_store import (
+            read_court_manifest,
+        )
+        payload = read_court_manifest(path.parent)
         return _court_report_manifest(
             payload,
             report=report,
@@ -315,29 +318,6 @@ def _validate_domain_manifest(target: DatasetTarget, path: Path) -> DatasetManif
                 payload.get("schema")
             ).version,
         )
-    if target is DatasetTarget.BLCS:
-        from src.synthetic_data_generation.dataset.blcs.assembler import (
-            validate_blcs_dataset,
-        )
-
-        return validate_blcs_dataset(path.parent).manifest
-    if target is DatasetTarget.PLCS:
-        from src.synthetic_data_generation.dataset.plcs.validation import (
-            validate_plcs_dataset,
-        )
-
-        validate_plcs_dataset(path.parent)
-        payload = _read_json(path)
-        common_keys = (
-            "scene_id",
-            "domain",
-            "schema",
-            "frame_inventory",
-            "target_courts",
-            "metadata",
-            "diagnostics",
-        )
-        return DatasetManifest.from_dict({key: payload[key] for key in common_keys})
     raise ValueError(f"Unsupported report dataset target: {target!r}.")
 
 

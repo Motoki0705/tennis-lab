@@ -35,7 +35,7 @@ def test_default_config_parses_style_and_view() -> None:
     assert runtime.mode == "visualize"
     assert (
         runtime.scene_path
-        == _PROJECT_ROOT / "data/blcs/single_object/scenes/scene_000000"
+        == (_PROJECT_ROOT / "data/blcs/single_object/scenes/scene_000000").resolve()
     )
     assert runtime.animation_view == "3d"
     assert runtime.style.theme == "dark"
@@ -49,7 +49,7 @@ def test_multiview_config_uses_canonical_single_object_scene() -> None:
 
     assert (
         runtime.scene_path
-        == _PROJECT_ROOT / "data/blcs/single_object/scenes/scene_000000"
+        == (_PROJECT_ROOT / "data/blcs/single_object/scenes/scene_000000").resolve()
     )
 
 
