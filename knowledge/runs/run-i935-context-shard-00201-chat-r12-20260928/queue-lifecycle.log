@@ -1,0 +1,2 @@
+[worker] 2026-09-29T00:29:26+09:00 running: 1790607540611769143_752035_i935-context-shard-00201-chat-r12-20260928.job resource=all slot=all (log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790607540611769143_752035_i935-context-shard-00201-chat-r12-20260928.log)
+[worker] 2026-09-29T00:42:30+09:00 done: 1790607540611769143_752035_i935-context-shard-00201-chat-r12-20260928.job resource=all slot=all

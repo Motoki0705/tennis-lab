@@ -13,7 +13,7 @@ from src.tasks.ball_refiner.refiner_2d.config import Refiner2DConfig
 from src.tasks.ball_refiner.refiner_2d.contracts import Refiner2DInput
 
 CANDIDATE_FIELDS = ("coords", "scores", "valid", "cells", "patches", "patch_valid")
-TEMPORAL_FIELDS = ("timestamps_seconds", "pose_uv", "pose_confidence", "pose_valid")
+POSE_FIELDS = ("pose_uv", "pose_confidence", "pose_valid")
 STATIC_FIELDS = ("court_uv", "court_confidence", "court_valid")
 
 
@@ -29,16 +29,23 @@ def input_to(inputs: Refiner2DInput, device: torch.device) -> Refiner2DInput:
 
 
 def slice_input(inputs: Refiner2DInput, start: int, stop: int) -> Refiner2DInput:
-    """Copy one camera's real frames; the static court never gains a time axis."""
+    """Copy real frames and retain every person with a valid joint in this window.
+
+    Cumulative clip track IDs are provenance, not a model size limit. Only fully
+    masked columns disappear; active people are never ranked or truncated.
+    """
     times = inputs.timestamps_seconds
     if times.ndim != 2 or times.shape[0] != 1 or not 0 <= start < stop <= times.shape[1]:
         raise ValueError("Input slice requires one camera and a nonempty real frame range")
     candidates = BallCandidates(**{
         name: getattr(inputs.candidates, name)[:, start:stop].clone() for name in CANDIDATE_FIELDS
     }, config=inputs.candidates.config)
+    valid = inputs.pose_valid[:, start:stop]
+    active = valid.any(dim=(0, 1, 3))
     return Refiner2DInput(candidates=candidates, **{
-        name: getattr(inputs, name)[:, start:stop].clone() for name in TEMPORAL_FIELDS
-    }, **{name: getattr(inputs, name).clone() for name in STATIC_FIELDS})
+        name: getattr(inputs, name)[:, start:stop, active].clone() for name in POSE_FIELDS
+    }, timestamps_seconds=times[:, start:stop].clone(),
+        **{name: getattr(inputs, name).clone() for name in STATIC_FIELDS})
 
 
 def detector_only_input(

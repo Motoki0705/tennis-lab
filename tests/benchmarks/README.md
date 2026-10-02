@@ -134,6 +134,12 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、
   未決定は理由と全ID=-1の採点を残す。設定選択・再fit・既定変更は行わない。
 
+- `ball_refiner_context_shard.sh`: [固定計画によるclip分割](../../src/tasks/ball_refiner/README.md#clip単位の分割生成と統合)の
+  queue入口。引数は `<asset_root> <detector_cache> <plan.json> <scene.yaml> <extension_dir> <shard_index> <new_context> <new_report>`。
+  planを作った共通DINO拡張を使い、1clip全frameの生成と別プロセスの保存後検証を行う。
+  plan・scene・build設定・検証結果をreportとqueue reproへ保存する。
+  時間制限はqueue commandの外側で指定し、失敗時も元cache/reportを保持する。
+
 - `ball_refiner_context_pilot.sh`: #935の固定3source文脈生成pilot。引数は絶対pathの
   `<asset_root> <detector_cache> <new_context_cache> <new_report>`。trainのTrackNet 35・Meiji 151・chat 375frameを
   全frame処理する。run専用DINO拡張を再ビルドし、scene設定のcompose、CPU事前検査、生成、別プロセス読込検証を行う。

@@ -5,11 +5,13 @@ from __future__ import annotations
 import importlib.metadata
 import time
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
 import torch
+from omegaconf import DictConfig, OmegaConf
 
 from src.submodules.models import (
     BotSortAssociator,
@@ -24,11 +26,21 @@ from src.submodules.models import (
 from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
 from src.tasks.ball_refiner.data.context_arrays import ContextArrays, GeneratedContext
 from src.tasks.court_detection.inference.regions import CourtRegionUnavailable
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.checksum import dual_sha256
 from src.utils.paths import PROJECT_ROOT
+
+
+def load_context_producer(scene_config: Path, *, max_tracks: int) -> StoredJPEGContextProducer:
+    """Use the scene's strict config adapters without binding video inputs."""
+    config = OmegaConf.load(scene_config)
+    if not isinstance(config, DictConfig):
+        raise TypeError("scene_config must contain the complete composed scene configuration")
+    scene = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+    return StoredJPEGContextProducer(people=scene.people, court=scene.court_kp, max_tracks=max_tracks)
 
 
 class StoredJPEGContextProducer:
