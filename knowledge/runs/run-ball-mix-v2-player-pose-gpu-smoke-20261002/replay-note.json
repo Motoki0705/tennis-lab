@@ -1,0 +1,5 @@
+{
+  "original_queue_command_preserved_in": "run.json and queue-captured-repro.sh",
+  "operator_rebuilt_for_replay": true,
+  "original_source_code_changed": false
+}
