@@ -1,4 +1,4 @@
-<!-- knowledge-review: a3b6f8905855fd297c59da781bba829f6115e2e8cce2d3b73b8c0f4015e7f1c5 on 2026-10-02 -->
+<!-- knowledge-review: 794cf2b5130fe6094f3e403f50aa95f29f9d80b52e90e53765839591466bafe4 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
