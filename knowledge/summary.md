@@ -1,4 +1,4 @@
-<!-- knowledge-review: 794cf2b5130fe6094f3e403f50aa95f29f9d80b52e90e53765839591466bafe4 on 2026-10-02 -->
+<!-- knowledge-review: 6ab03ce7febc7bf970211f3c909cf3b3d2fa5aae6366f724d1d1eb091f75550e on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
@@ -341,6 +341,17 @@ bank作成frameは配布倍率のfitと重複するため、OOF性能と区別�
 [固定BゲートのGT比較](nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)はpooled p90が+46.34 px悪化して許容+5 pxを超えたため不合格。中央値とNLLは許容内だが、run26時点では既定ft-e13＋旧refinerを維持した。[全810frameの切り分け](nodes/ball_refiner/000026-run-i935-source-tail-audit-r27-20261001.md)はframe/PTS・窓・正規化のbugを支持せず、中間720p縮小とJPEGによる入力差が候補・成分選択に増幅されることを支持する。同じCPU/pipelineでcam2を再encodeするとp90と最大成分選択がcacheへ戻った。pooled差は連続block bootstrapで0を除外できず、短い末尾区間に依存するため一般化は未確認。固定gateを変更せず、入力経路の整合・MP4証拠の再学習・既定維持の選択肢と費用を提示し、対策の選択は保留した。
 [追加ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5912616143)どおり、seedの9/10 FAILを保持したまま再現は十分と扱う。今回Bを止める理由はsource精度のp90であり、seed失敗やstrict診断へ置き換えない。固定倍率の三seed診断にはgap/TrackNet NLLの悪化とcalibration halfの過信が残る。
 [2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。[run29](nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)で既定切替・標準scene refinerを追加し、clip_000を除く保存済みMeiji valで存在確率と全GMMの90%包含楕円面積の規則を固定した。保持frameの誤差は低下したがcache入力での選定結果であり、mp4への一般化は未確認。当時のconsumer配線は同じ欠測maskをside・幾何・三角測量へ渡していた（現在は後述の2026-10-02方針で廃止）。[固定filterの安全bench](nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md)は元の全28条件を再現した上で誤判定0→3件、停止率18.58→24.91%となりFAIL。経験的confidence blockを独立に付けた合成回帰試験でE2Eではないが、directiveに従いclip_000 qualificationは投入せず、閾値を変えない。証拠のない区間の改善と文脈ablation、test評価も未完了。
+
+### 3D Ball Refiner
+
+[確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
+Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを
+小さい計算時間で得たため、次の合成生成用の暫定実装に選ぶ。2D標本化→三角測量→KDEのCは
+多峰条件でNLLが悪く、粒子増量だけでは解消しなかった。presenceの周辺化はcamera間独立と
+不在cameraの幾何を捨てる近似で、low presenceの100% coverageを較正改善とは呼ばない。
+狭い既知prior・小Kの結果であり、実Meiji精度や3D diffusionの優位は未検証。
+次は240Hz物理原系列から60000/1001Hzへ再標本化するCPU smokeと、広いcourt prior・
+長欠損・camera摂動での健全性を確認し、#935較正後に劣化を固定する。
 
 ### Player Detection
 
