@@ -24,14 +24,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtSampleRecord,
     CourtSourceSplit,
 )
-from src.tasks.court_detection.data.target_generation.store import (
-    SEGMENTATION_TARGET_SCHEMA,
-    CourtDerivedTargetStore,
-)
-from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    SEMANTIC_LINE_TARGET_SCHEMA,
-)
+from src.utils.data.image_record_store import ImageRecordStore
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
 _TCD_KP_SCHEMA = "tennis_court_detector_kp14"
@@ -42,20 +35,15 @@ _TCD_OPTIONAL_RECORD_KEYS = frozenset({"metric"})
 _TCD_SAMPLE_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
-class TennisCourtDetectorInput:
+class LegacyTennisCourtDetectorInput:
     """Convert upstream ordered-14 annotations into canonical raw samples."""
 
     def __init__(
         self,
         config: TennisCourtDetectorSourceConfig,
-        *,
-        target_store: CourtDerivedTargetStore,
-        line_target_schema: str = LINE_TARGET_SCHEMA,
     ) -> None:
         self.config = config
         self.root = config.root
-        self.target_store = target_store
-        self.line_target_schema = line_target_schema
         self._spec = CourtInputSpec(
             source_kind="tennis_court_detector",
             source_schema="tennis_court_detector_annotations_v1",
@@ -63,9 +51,6 @@ class TennisCourtDetectorInput:
                 {
                     CourtInputCapability.KEYPOINT_CHANNELS,
                     CourtInputCapability.COURT_INSTANCES,
-                    CourtInputCapability.SEGMENTATION_REFERENCE,
-                    CourtInputCapability.LINE_REFERENCE,
-                    CourtInputCapability.SEMANTIC_LINE_REFERENCE,
                 }
             ),
             keypoint_schema=_TCD_KP_SCHEMA,
@@ -94,8 +79,7 @@ class TennisCourtDetectorInput:
             raise ValueError(
                 "TennisCourtDetector record belongs to another input schema."
             )
-        with Image.open(record.image_path) as handle:
-            image = handle.convert("RGB")
+        image = self._load_image(record)
         width, height = image.size
         if (width, height) != (
             record.payload.get("width"),
@@ -136,7 +120,6 @@ class TennisCourtDetectorInput:
             image=image,
             keypoint_channels=channels,
             court_instances=(instance,),
-            dense_target_refs=record.dense_target_refs,
             metadata=CourtSampleMetadata(
                 source_kind="tennis_court_detector",
                 source_schema=self.spec.source_schema,
@@ -154,6 +137,10 @@ class TennisCourtDetectorInput:
                 },
             ),
         )
+
+    def _load_image(self, record: CourtSampleRecord) -> Image.Image:
+        with Image.open(record.image_path) as handle:
+            return handle.convert("RGB")
 
     def _load_records(self) -> dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]]:
         records: dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]] = {}
@@ -250,31 +237,12 @@ class TennisCourtDetectorInput:
                     allow_nan=False,
                 ).encode("utf-8")
             ).hexdigest()
-            derived_key = f"{source_split}/{sample_id}"
             result.append(
                 CourtSampleRecord(
                     sample_id=sample_id,
                     split=split,
                     image_path=image_path,
                     annotation_path=annotation_path,
-                    derived_key=derived_key,
-                    dense_target_refs={
-                        "seg": self.target_store.path_for(
-                            source_kind="tennis_court_detector",
-                            derived_key=derived_key,
-                            target_schema=SEGMENTATION_TARGET_SCHEMA,
-                        ),
-                        "line": self.target_store.path_for(
-                            source_kind="tennis_court_detector",
-                            derived_key=derived_key,
-                            target_schema=self.line_target_schema,
-                        ),
-                        "semantic_line": self.target_store.path_for(
-                            source_kind="tennis_court_detector",
-                            derived_key=derived_key,
-                            target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
-                        ),
-                    },
                     payload={
                         "source_schema": self.spec.source_schema,
                         "source_sample_id": sample_id,
@@ -382,4 +350,50 @@ class TennisCourtDetectorInput:
         return existing[0]
 
 
-__all__ = ["TennisCourtDetectorInput"]
+class TennisCourtDetectorInput(LegacyTennisCourtDetectorInput):
+    """Read the published JPEG/KP14 store; upstream files are migration inputs."""
+
+    def __init__(self, config: TennisCourtDetectorSourceConfig) -> None:
+        descriptor = json.loads((config.root / "dataset.json").read_text())
+        if not isinstance(descriptor, dict) or set(descriptor) != {"schema", "storage"} or descriptor["schema"] != "tennis_court_detector_store_v1":
+            raise ValueError("Expected a published TennisCourtDetector JPEG store.")
+        self.image_store = ImageRecordStore(config.root, descriptor["storage"])
+        if self.image_store.metadata.get("source_schema") != "tennis_court_detector_annotations_v1":
+            raise ValueError("TennisCourtDetector store changed its annotation schema.")
+        super().__init__(config)
+
+    def _read_source_split(self, split: CourtSourceSplit, source_split: str) -> tuple[CourtSampleRecord, ...]:
+        records: list[CourtSampleRecord] = []
+        seen: set[str] = set()
+        for row in range(len(self.image_store)):
+            value = self.image_store.record(row)
+            if set(value) != {"id", "kps", "metric", "split", "width", "height"} or value["split"] not in {"train", "val"}:
+                raise ValueError("Invalid TennisCourtDetector sparse record.")
+            if value["split"] != source_split:
+                continue
+            sample_id = self._parse_sample_id(value["id"], record_index=row)
+            if sample_id in seen:
+                raise ValueError("TennisCourtDetector sample IDs must be unique within a split.")
+            seen.add(sample_id)
+            points = self._parse_keypoints(value["kps"], sample_id=sample_id)
+            metric = None if value["metric"] is None else self._parse_annotation_metric(value["metric"], sample_id=sample_id)
+            if any(type(value[key]) is not int or value[key] < 2 for key in ("width", "height")):
+                raise ValueError("TennisCourtDetector store dimensions must be positive.")
+            digest = hashlib.sha256(json.dumps(value, sort_keys=True, allow_nan=False).encode()).hexdigest()
+            records.append(CourtSampleRecord(
+                sample_id=sample_id, split=split,
+                image_path=self.image_store.paths[int(self.image_store.arrays["shard"][row])],
+                annotation_path=self.root / "index.npz",
+                payload={"source_schema": self.spec.source_schema, "source_sample_id": sample_id,
+                         "source_target_sha256": digest, "width": value["width"], "height": value["height"],
+                         "source_split": source_split, "keypoints": points, "annotation_metric": metric, "image_index": row},
+            ))
+        if not records:
+            raise ValueError(f"TennisCourtDetector store has no {source_split!r} split.")
+        return tuple(records)
+
+    def _load_image(self, record: CourtSampleRecord) -> Image.Image:
+        return Image.fromarray(self.image_store.rgb(cast(int, record.payload["image_index"])))
+
+
+__all__ = ["LegacyTennisCourtDetectorInput", "TennisCourtDetectorInput"]

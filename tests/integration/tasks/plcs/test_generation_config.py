@@ -16,27 +16,6 @@ _DATA_CONFIG_DIR = _CONFIG_DIR / "data"
 # profiles.  Each row documents the root training boundary needed to validate
 # the profile and its externally visible dataset/view/model contracts.
 _TRAINING_PROFILES = (
-    # profile, root config, extra overrides, scene, backend, views, court, model
-    (
-        "singleview_frame",
-        "train",
-        ("model=frame",),
-        "plcs/single_object",
-        "default",
-        (1, 1),
-        "physical_v1",
-        "plcs",
-    ),
-    (
-        "singleview_sequence",
-        "train",
-        ("model=frame",),
-        "plcs/single_object",
-        "default",
-        (1, 1),
-        "physical_v1",
-        "plcs",
-    ),
     (
         "multiview_sequence",
         "train",
@@ -48,26 +27,6 @@ _TRAINING_PROFILES = (
         "plcs_multiview_axial",
     ),
     (
-        "multiview_sequence_camera_view_v2",
-        "train",
-        (),
-        "plcs/single_object_camera_view_v2",
-        "default",
-        (3, 4),
-        "camera_view_v2",
-        "plcs_multiview_axial_reference",
-    ),
-    (
-        "singleview_chunked_sequence",
-        "train_chunked",
-        ("model=frame",),
-        "plcs/single_object",
-        "chunked",
-        (1, 1),
-        "physical_v1",
-        "plcs",
-    ),
-    (
         "multiview_chunked_sequence",
         "train_chunked",
         (),
@@ -76,66 +35,6 @@ _TRAINING_PROFILES = (
         (3, 5),
         "physical_v1",
         "plcs_multiview_axial",
-    ),
-    (
-        "tracking",
-        "train_tracking",
-        (),
-        "plcs/multi_object",
-        "default",
-        (3, 5),
-        "physical_v1",
-        "plcs_track_query",
-    ),
-    (
-        "tracking_chunked",
-        "train_tracking_chunked",
-        (),
-        "plcs/multi_object",
-        "chunked",
-        (3, 5),
-        "physical_v1",
-        "plcs_track_query",
-    ),
-    (
-        "singleview_sequence_broadcast",
-        "train",
-        ("model=frame",),
-        "plcs/single_object_broadcast",
-        "default",
-        (1, 1),
-        "physical_v1",
-        "plcs",
-    ),
-    (
-        "multiview_sequence_broadcast",
-        "train",
-        (),
-        "plcs/single_object_broadcast",
-        "default",
-        (2, 2),
-        "physical_v1",
-        "plcs_multiview_axial",
-    ),
-    (
-        "tracking_broadcast",
-        "train_tracking",
-        (),
-        "plcs/multi_object_broadcast",
-        "default",
-        (2, 2),
-        "physical_v1",
-        "plcs_track_query",
-    ),
-    (
-        "tracking_camera_view_v2",
-        "train_tracking",
-        (),
-        "plcs/multi_object_camera_view_v2",
-        "default",
-        (3, 5),
-        "camera_view_v2",
-        "plcs_track_query_reference",
     ),
 )
 
@@ -210,46 +109,12 @@ def test_public_data_profiles_compose_and_validate_contracts(
 
 
 def test_public_profiles_cover_each_plcs_dataset_once_or_more() -> None:
-    scene_dirs = {row[3] for row in _TRAINING_PROFILES}
-    assert scene_dirs == {
-        "plcs/single_object",
-        "plcs/multi_object",
-        "plcs/single_object_broadcast",
-        "plcs/multi_object_broadcast",
-        "plcs/multi_object_camera_view_v2",
-        "plcs/single_object_camera_view_v2",
-    }
-
-
-def test_camera_view_profile_selects_reference_contract_without_overrides() -> None:
-    config, runtime = _compose_training_profile(
-        "train_tracking", "tracking_camera_view_v2", ()
-    )
-
-    assert config.model.name == "plcs_track_query_reference"
-    assert config.court_keypoints.selector == "camera_view_v2"
-    assert runtime.model.name == "plcs_track_query_reference"
-    assert runtime.court_keypoint_contract.selector == "camera_view_v2"
+    assert {row[3] for row in _TRAINING_PROFILES} == {"plcs/single_object"}
 
 
 @pytest.mark.parametrize(
     ("generation", "camera", "output_dir", "camera_layout"),
-    (
-        ("single_object", "default", "plcs/single_object", "fixed"),
-        ("multi_object", "default", "plcs/multi_object", "fixed"),
-        (
-            "single_object",
-            "broadcast",
-            "plcs/single_object_broadcast",
-            "broadcast",
-        ),
-        (
-            "multi_object",
-            "broadcast",
-            "plcs/multi_object_broadcast",
-            "broadcast",
-        ),
-    ),
+    (("single_object", "default", "plcs/single_object", "fixed"),),
 )
 def test_generation_variants_resolve_canonical_dataset_paths(
     tmp_path: Path,
@@ -281,17 +146,7 @@ def test_generation_variants_resolve_canonical_dataset_paths(
     ("config_name", "scene_dir", "chunks_dir"),
     (
         ("train", "plcs/single_object", None),
-        (
-            "train_chunked",
-            "plcs/single_object",
-            "plcs/single_object/chunks",
-        ),
-        ("train_tracking", "plcs/multi_object", None),
-        (
-            "train_tracking_chunked",
-            "plcs/multi_object",
-            "plcs/multi_object/chunks",
-        ),
+        ("train_chunked", "plcs/single_object", "plcs/single_object/chunks"),
     ),
 )
 def test_training_profiles_use_canonical_dataset_paths(
@@ -312,7 +167,7 @@ def test_training_profiles_use_canonical_dataset_paths(
         assert config.data.chunk.chunks_dir == chunks_dir
 
 
-@pytest.mark.parametrize("court_selector", ["physical_v1", "camera_view_v2"])
+@pytest.mark.parametrize("court_selector", ["physical_v1"])
 def test_generation_composes_court_keypoint_contract(
     court_selector: str,
 ) -> None:
@@ -336,7 +191,7 @@ def test_generation_rejects_unknown_typed_selector() -> None:
             config_name="generate_dataset",
             overrides=["court_keypoints.selector=unknown"],
         )
-    with pytest.raises(ValueError, match="Unknown court keypoint selector"):
+    with pytest.raises(ValueError, match="physical_v1"):
         PLCSGenerationConfig.from_config(config)
 
 
@@ -350,8 +205,8 @@ def test_generation_rejects_unknown_selector_field() -> None:
         PLCSGenerationConfig.from_config(config)
 
 
-@pytest.mark.parametrize("config_name", ["train", "train_tracking"])
-@pytest.mark.parametrize("court_selector", ["physical_v1", "camera_view_v2"])
+@pytest.mark.parametrize("config_name", ["train"])
+@pytest.mark.parametrize("court_selector", ["physical_v1"])
 def test_training_composes_court_keypoint_contract(
     config_name: str,
     court_selector: str,

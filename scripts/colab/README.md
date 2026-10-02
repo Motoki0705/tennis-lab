@@ -87,11 +87,6 @@ bash scripts/colab/run.sh jobs --json
 bash scripts/colab/run.sh run ball_detection \
   --drive-mode rclone --download-to ./colab-artifacts
 
-# 生成・前処理jobも同じ認証方式を使える
-bash scripts/colab/run.sh run court_detection_materialize_targets \
-  --drive-mode rclone --rclone-config ~/.config/rclone/rclone.conf \
-  --download-to ./colab-artifacts
-
 bash scripts/colab/run.sh status <run-id>
 bash scripts/colab/run.sh progress <run-id> --watch
 bash scripts/colab/run.sh logs <run-id> --tail 40
@@ -248,13 +243,10 @@ publishされます。後続jobへ渡すときはartifactをdownload・展開し
 | `ball_detection_staged` | GPU | `src.tasks.ball_detection.scripts.train_staged` / default TrackNet-only staged phase学習 |
 | `court_detection` | GPU | `src.tasks.court_detection.scripts.train` / synthetic Court KP学習 |
 | `court_detection_mixed` | GPU | `src.tasks.court_detection.scripts.train_mixed` / synthetic + real mixed学習 |
-| `court_detection_materialize_targets` | CPU | `src.tasks.court_detection.scripts.materialize_targets` / SEG・LINE target生成 |
 | `blcs_generate_dataset` | CPU | `src.tasks.blcs.scripts.generate_dataset` / single-object dataset生成 |
 | `blcs` | GPU | `src.tasks.blcs.scripts.train` / standard学習 |
-| `blcs_tracking` | GPU | `src.tasks.blcs.scripts.train --config-name train_tracking` / tracking-query学習 |
 | `plcs_generate_dataset` | CPU | `src.tasks.plcs.scripts.generate_dataset` / single-object dataset生成 |
 | `plcs` | GPU | `src.tasks.plcs.scripts.train` / standard学習 |
-| `plcs_tracking` | GPU | `src.tasks.plcs.scripts.train --config-name train_tracking` / tracking-query学習 |
 | `slcs_make_splits` | CPU | `src.tasks.slcs.scripts.make_splits` / recording単位split生成 |
 | `slcs_precompute_dino_tokens` | GPU | `src.tasks.slcs.scripts.precompute_dino_tokens` / DINOv3 token生成 |
 | `slcs` | GPU | `src.tasks.slcs.scripts.train` / temporal scene-localization学習 |
@@ -281,9 +273,8 @@ job名に対応する `data/{blcs,plcs}/...` または `data/tennis_scene_datase
 しません。
 
 生成物を次段へ渡す場合もrun artifactを検証してcanonical Drive pathへpromoteします。
-代表的な依存は `blcs_generate_dataset` → `blcs`、`plcs_generate_dataset` → `plcs`、
-`court_detection_materialize_targets` → `court_detection_mixed` です。mixed学習はpromote
-済みの `data/court_detection/derived_targets/` を必須inputとしてstageします。
+代表的な依存は `blcs_generate_dataset` → `blcs`、`plcs_generate_dataset` → `plcs` です。
+Courtのmixed学習はpromote済みのJPEG/KP storeを直接stageします。
 
 ## job TOMLを追加する
 
