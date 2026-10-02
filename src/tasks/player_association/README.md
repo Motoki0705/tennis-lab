@@ -42,21 +42,23 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
    対象外の人物も track として残す（v1 の観測は `person_observations.max_tracks_per_camera=16`）。
 2. `--phase sheets` の track 一覧（等間隔 crop）と、tracklet の連結点・切り替わりが疑われる区間の密な crop、全体画像を目視し、
    track（必要なら frame 区間）ごとに人物を決めて review YAML に書く。
-3. `--phase labels --review <yaml> --labels-dir <dir>` で box ラベルに変換する。review されていない track、存在しない track、
+3. `--phase labels --review <yaml>` で box ラベルに変換する。review されていない track、存在しない track、
    区間の抜け・重なり、box を持たない人物はすべてエラーで停止する（検証から黙って落ちる box を作らない）。
 
 ラベルに含まれるのは、観測 run の tracker が出した box だけである。tracker が一度も box を出さなかった人物は、ラベルにも無い。
 
 ### Meiji 3cam のラベル（v1）
 
-review とラベルは [`tests/benchmarks/labels/player_association/meiji_3cam/`](../../../tests/benchmarks/labels/player_association/meiji_3cam/review.yaml) にある。
+review とラベルは各clipの `annotations/player_association/{review.yaml,labels.json}` に置く。
+Meijiのdatasetは `data/tennis_multivew/processed/meiji_3cam/dataset`。
+[`evaluation/dataset_labels.py`](evaluation/dataset_labels.py)が保存先と探索を所有し、git内の旧ラベルへ戻る経路はない。
 観測 run は `outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927`（#933）。
 clip ごとの選定理由と人物の説明は review YAML の `selection`・`people` を正とする。
 
 - 3本の動画にまたがる4 clip: `video_000/clip_000`（人手の対応が既にある clip）、`video_000/clip_007`、`video_001/clip_001`、`video_002/clip_013`。
 - 全 clip がシングルス。Meiji にはダブルスとボールボーイが無い。ダブルス・同色ウェアは合成データでのみ検証する。
 - 本物の ID switch は `video_001/clip_001` cam0 の1件だけ。ID switch の検知は、この1件と合成データで評価する。
-- 学習や擬似ラベルに使わない（test 専用）。
+- 学習や擬似ラベルには使わない。規則設計・評価に既に使った開発評価であり、未見testではない。
 
 ## 指標（`evaluation/metrics.py`）
 

@@ -1,0 +1,1150 @@
+{
+  "scope": "pipeline_court_roi",
+  "interpretation": "agreement with biased old COCO boxes; not detection recall",
+  "near_far_definition": "image-space bottom rank of exactly two labelled players; otherwise unknown",
+  "comparison": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/comparison.json",
+  "comparison_sha256": "1e3514d9a42c7d86aea78579cdde5479d444c60614f9ec509d1554baab2ed415",
+  "totals": {
+    "coco_person": {
+      "units": 20558,
+      "unmatched": 1,
+      "old_box_agreement": 0.9999513571359082,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        51.10000000000002,
+        51.10000000000002,
+        51.10000000000002
+      ],
+      "zero_overlap": 0
+    },
+    "player_ft": {
+      "units": 20558,
+      "unmatched": 3517,
+      "old_box_agreement": 0.8289230469890068,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        3359,
+        13,
+        0,
+        34,
+        109,
+        2
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        448,
+        2989,
+        62,
+        18,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        31.5,
+        34.60000000000002,
+        57.59999999999999
+      ],
+      "zero_overlap": 3354
+    }
+  },
+  "player_ft_groups": {
+    "camera/cam0": {
+      "units": 6767,
+      "unmatched": 2659,
+      "old_box_agreement": 0.6070636914437713,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        2655,
+        0,
+        0,
+        0,
+        4,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        448,
+        2209,
+        2,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        31.099999999999966,
+        33.700000000000045,
+        36.7
+      ],
+      "zero_overlap": 2655
+    },
+    "near_far/near": {
+      "units": 10067,
+      "unmatched": 28,
+      "old_box_agreement": 0.9972186351445317,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        21,
+        1,
+        0,
+        4,
+        2,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        1,
+        9,
+        18,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        87.80999999999997,
+        179.45,
+        210.62000000000003
+      ],
+      "zero_overlap": 21
+    },
+    "clip/video_000/clip_000": {
+      "units": 5966,
+      "unmatched": 1008,
+      "old_box_agreement": 0.8310425745893396,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        972,
+        0,
+        0,
+        14,
+        22,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        53,
+        939,
+        16,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        32.5,
+        35.30000000000001,
+        57.900000000000034
+      ],
+      "zero_overlap": 972
+    },
+    "camera_near_far/cam0/near": {
+      "units": 3270,
+      "unmatched": 2,
+      "old_box_agreement": 0.999388379204893,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        0,
+        2,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        88.48999999999997,
+        92.04999999999998,
+        95.61
+      ],
+      "zero_overlap": 0
+    },
+    "near_far/far": {
+      "units": 10067,
+      "unmatched": 3489,
+      "old_box_agreement": 0.6534220721168174,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        3338,
+        12,
+        0,
+        30,
+        107,
+        2
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        448,
+        2988,
+        53,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        31.5,
+        34.599999999999966,
+        57.400000000000034
+      ],
+      "zero_overlap": 3333
+    },
+    "camera_near_far/cam0/far": {
+      "units": 3270,
+      "unmatched": 2657,
+      "old_box_agreement": 0.1874617737003058,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        2655,
+        0,
+        0,
+        0,
+        2,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        448,
+        2209,
+        0,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        31.099999999999966,
+        33.700000000000045,
+        36.69999999999999
+      ],
+      "zero_overlap": 2655
+    },
+    "near_far/unknown": {
+      "units": 424,
+      "unmatched": 0,
+      "old_box_agreement": 1.0,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": null,
+      "zero_overlap": 0
+    },
+    "camera_near_far/cam0/unknown": {
+      "units": 227,
+      "unmatched": 0,
+      "old_box_agreement": 1.0,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": null,
+      "zero_overlap": 0
+    },
+    "camera/cam1": {
+      "units": 6927,
+      "unmatched": 789,
+      "old_box_agreement": 0.8860978778692075,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        666,
+        12,
+        0,
+        29,
+        80,
+        2
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        743,
+        46,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        49.40000000000002,
+        56.599999999999966,
+        61.39999999999998
+      ],
+      "zero_overlap": 661
+    },
+    "camera_near_far/cam1/near": {
+      "units": 3430,
+      "unmatched": 0,
+      "old_box_agreement": 1.0,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": null,
+      "zero_overlap": 0
+    },
+    "camera_near_far/cam1/far": {
+      "units": 3430,
+      "unmatched": 789,
+      "old_box_agreement": 0.7699708454810495,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        666,
+        12,
+        0,
+        29,
+        80,
+        2
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        743,
+        46,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        49.40000000000002,
+        56.599999999999966,
+        61.39999999999998
+      ],
+      "zero_overlap": 661
+    },
+    "camera_near_far/cam1/unknown": {
+      "units": 67,
+      "unmatched": 0,
+      "old_box_agreement": 1.0,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": null,
+      "zero_overlap": 0
+    },
+    "camera/cam2": {
+      "units": 6864,
+      "unmatched": 69,
+      "old_box_agreement": 0.9899475524475525,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        38,
+        1,
+        0,
+        5,
+        25,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        37,
+        14,
+        18,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        56.60000000000001,
+        62.69999999999999,
+        199.87999999999997
+      ],
+      "zero_overlap": 38
+    },
+    "camera_near_far/cam2/far": {
+      "units": 3367,
+      "unmatched": 43,
+      "old_box_agreement": 0.9872289872289872,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        17,
+        0,
+        0,
+        1,
+        25,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        36,
+        7,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        56.27999999999999,
+        58.0,
+        64.78000000000003
+      ],
+      "zero_overlap": 17
+    },
+    "camera_near_far/cam2/near": {
+      "units": 3367,
+      "unmatched": 26,
+      "old_box_agreement": 0.9922779922779923,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        21,
+        1,
+        0,
+        4,
+        0,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        1,
+        7,
+        18,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        90.79999999999995,
+        179.95,
+        210.90000000000003
+      ],
+      "zero_overlap": 21
+    },
+    "clip/video_000/clip_007": {
+      "units": 3775,
+      "unmatched": 685,
+      "old_box_agreement": 0.8185430463576159,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        656,
+        0,
+        0,
+        5,
+        24,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        121,
+        543,
+        4,
+        17,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        30.03999999999999,
+        34.89999999999998,
+        57.5
+      ],
+      "zero_overlap": 656
+    },
+    "camera_near_far/cam2/unknown": {
+      "units": 130,
+      "unmatched": 0,
+      "old_box_agreement": 1.0,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": null,
+      "zero_overlap": 0
+    },
+    "clip/video_001/clip_001": {
+      "units": 7624,
+      "unmatched": 1370,
+      "old_box_agreement": 0.8203043022035676,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        1338,
+        13,
+        0,
+        1,
+        16,
+        2
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        171,
+        1159,
+        39,
+        1,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        31.58999999999997,
+        33.799999999999955,
+        56.5
+      ],
+      "zero_overlap": 1333
+    },
+    "clip/video_002/clip_013": {
+      "units": 3193,
+      "unmatched": 454,
+      "old_box_agreement": 0.8578139680551206,
+      "best_iou_bins": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        1.000001
+      ],
+      "best_iou_histogram": [
+        393,
+        0,
+        0,
+        14,
+        47,
+        0
+      ],
+      "height_px_bins": [
+        0.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,
+        100000.0
+      ],
+      "height_px_histogram": [
+        103,
+        348,
+        3,
+        0,
+        0
+      ],
+      "unmatched_height_px_p10_p50_p90": [
+        30.19999999999999,
+        36.849999999999994,
+        57.40000000000002
+      ],
+      "zero_overlap": 393
+    }
+  },
+  "examples": [
+    {
+      "frame": 495,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 33.400000000000034,
+      "old_box": [
+        1089.7,
+        320.9,
+        1113.2,
+        354.3
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_000/clip_000",
+      "camera": "cam0",
+      "start_frame": 435,
+      "end_frame": 555,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+      "source_sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39"
+    },
+    {
+      "frame": 775,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 52.5,
+      "old_box": [
+        560.3,
+        450.0,
+        592.9,
+        502.5
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_000/clip_000",
+      "camera": "cam1",
+      "start_frame": 715,
+      "end_frame": 835,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+      "source_sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+    },
+    {
+      "frame": 221,
+      "person": 0,
+      "matched": false,
+      "best_iou": 0.4850166960457319,
+      "box_height_px": 53.39999999999998,
+      "old_box": [
+        988.8,
+        338.1,
+        1012.7,
+        391.5
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_000/clip_000",
+      "camera": "cam2",
+      "start_frame": 161,
+      "end_frame": 281,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+      "source_sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+    },
+    {
+      "frame": 348,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 34.599999999999966,
+      "old_box": [
+        1065.9,
+        320.8,
+        1082.9,
+        355.4
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_000/clip_007",
+      "camera": "cam0",
+      "start_frame": 288,
+      "end_frame": 408,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam0.mp4",
+      "source_sha256": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9"
+    },
+    {
+      "frame": 457,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 42.599999999999966,
+      "old_box": [
+        527.1,
+        456.3,
+        550.8,
+        498.9
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_000/clip_007",
+      "camera": "cam1",
+      "start_frame": 397,
+      "end_frame": 517,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam1.mp4",
+      "source_sha256": "3c6fd4ff6429584ddd4f6ea5ab633a097cf0655fe28eefac2fb36254a18a872b"
+    },
+    {
+      "frame": 185,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 191.39999999999998,
+      "old_box": [
+        1856.0,
+        627.9,
+        1920.0,
+        819.3
+      ],
+      "near_far": "near",
+      "variant": "player_ft",
+      "clip": "video_000/clip_007",
+      "camera": "cam2",
+      "start_frame": 125,
+      "end_frame": 245,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam2.mp4",
+      "source_sha256": "72b4c445c7adffbd27895fadd7ea00974aab4f7eb27032a46e3cdff97b039d05"
+    },
+    {
+      "frame": 562,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 32.30000000000001,
+      "old_box": [
+        1180.2,
+        311.9,
+        1192.6,
+        344.2
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_001/clip_001",
+      "camera": "cam0",
+      "start_frame": 502,
+      "end_frame": 622,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/media/cam0.mp4",
+      "source_sha256": "2af67b3720887e9b75918f6c09be893709d9ad383a9d2846dd832df90cb2a478"
+    },
+    {
+      "frame": 977,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 58.80000000000001,
+      "old_box": [
+        529.6,
+        449.2,
+        560.6,
+        508.0
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_001/clip_001",
+      "camera": "cam1",
+      "start_frame": 917,
+      "end_frame": 1037,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/media/cam1.mp4",
+      "source_sha256": "945838cf381c7a93f3cd0ff03457ebe44f6a6ef64dc9b9abb760934bbcf434e2"
+    },
+    {
+      "frame": 182,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 93.69999999999993,
+      "old_box": [
+        0.2,
+        920.7,
+        62.1,
+        1014.4
+      ],
+      "near_far": "near",
+      "variant": "player_ft",
+      "clip": "video_001/clip_001",
+      "camera": "cam2",
+      "start_frame": 122,
+      "end_frame": 242,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/media/cam2.mp4",
+      "source_sha256": "b123b6429cc7e4037ee90c6c89d15b915227568f0e07922f98214e080321ce95"
+    },
+    {
+      "frame": 166,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 35.19999999999999,
+      "old_box": [
+        1113.9,
+        319.2,
+        1134.0,
+        354.4
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_002/clip_013",
+      "camera": "cam0",
+      "start_frame": 106,
+      "end_frame": 226,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/media/cam0.mp4",
+      "source_sha256": "4f2e7cd91ff9f661feaeb9d3b987336c48dcec55ec99e41f9f7d55b1f646acc3"
+    },
+    {
+      "frame": 180,
+      "person": 1,
+      "matched": false,
+      "best_iou": 0.0,
+      "box_height_px": 50.700000000000045,
+      "old_box": [
+        587.1,
+        457.4,
+        619.7,
+        508.1
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_002/clip_013",
+      "camera": "cam1",
+      "start_frame": 120,
+      "end_frame": 240,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/media/cam1.mp4",
+      "source_sha256": "12ad6a441ee2381324df1e2d412d73742a7f6d677d8cfe62b9d0323527111075"
+    },
+    {
+      "frame": 147,
+      "person": 0,
+      "matched": false,
+      "best_iou": 0.4788169288842463,
+      "box_height_px": 60.099999999999966,
+      "old_box": [
+        981.8,
+        334.6,
+        1002.3,
+        394.7
+      ],
+      "near_far": "far",
+      "variant": "player_ft",
+      "clip": "video_002/clip_013",
+      "camera": "cam2",
+      "start_frame": 87,
+      "end_frame": 207,
+      "source_video": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/media/cam2.mp4",
+      "source_sha256": "1ab899862573d0c4c72d0b1e0d8583eb2fc0200b1df57d2b43441113c88abf8c"
+    }
+  ],
+  "video": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r2-20260929/unmatched/unmatched_old_vs_new.mp4",
+  "video_sha256": "f2cba6206d474edf491a8a9fcfb523538563e0252ec0409281903039bf866959"
+}

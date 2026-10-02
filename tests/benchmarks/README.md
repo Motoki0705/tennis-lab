@@ -83,11 +83,19 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   PYTHONPATH=. .venv/bin/python tests/benchmarks/court_side_clips.py --repo $R \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT
   ```
+- `player_detection_clips.py`: 標準pipelineのcourt ROI付き人物検出を、既定の選手重みと明示したCOCO重みで比較する（GPU、共有training queue経由）。
+  `--repo`・`--dataset`・`--report`を必須とし、両variantのcomponent storeと`comparison.json`を出力する。
+  ラベルに無い予測をFPとせず、旧boxとの一致率・既知非選手への反応・未照合件数を分ける。指標の正本は
+  [`partial_labels.py`](../../src/tasks/player_detection/evaluation/partial_labels.py)。chat-player-v1 valのAP比較は既存の
+  [`player_detection.scripts.evaluate`](../../src/tasks/player_detection/README.md)を`evaluate.split=val`で実行する。
+  一括実行用のqueue入口は`player_detection_comparison.sh <元repo> <新しいreport directory>`。
+  DINO拡張をrun内でbuildし、検出器の設定をpipeline.yamlから読んで両評価へ渡す。
+
 - `player_association_clips.py`: camera間の人物対応を、ラベル付きclipで評価するための観測。`observe`（GPU、共有training queue経由）は
   court検出・校正と、人物検出・tracking・poseをcameraごとに`--report/stores/<clip>`へ実行する（ball・身体・再構成は無効）。
   trackingが停止したcameraは停止理由と証跡を、完走したcameraは全trackの観測frame数を`observe.json`に残す。
   `--phase sheets`（CPU）は保存済みtrackから、camera別に全trackの等間隔crop（frame番号付き）を`--report/sheets/<clip>/<camera>.jpg`へ描く（ラベル作成の確認用）。
-  `--phase labels`（CPU）はreview YAMLの人物割り当てを、trackerに依存しないboxラベルへ変換する（`--review`、`--labels-dir`）。
+  `--phase labels`（CPU）はreview YAMLの人物割り当てを、trackerに依存しないboxラベルへ変換する（`--review`、保存先はdataset内）。
   ラベルの形式・作成手順・Meiji 3cam のラベルは[player_association](../../src/tasks/player_association/README.md#評価ラベル)を参照。
 
   ```bash
@@ -108,6 +116,10 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   SIDES=$R/outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json
   PYTHONPATH=. .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R --phase evaluate \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --observe $OBS --sides $SIDES \
-      --labels-dir tests/benchmarks/labels/player_association/meiji_3cam --device cpu \
+      --device cpu \
       --report $R/outputs/player_association/evaluate/meiji_association/<run-id>
   ```
+
+- `player_detection_disagreements.py`（CPU）は保存済み`--comparison`とdataset内ラベルから、
+  未一致の旧boxをIoU・box高・camera・近遠（画像内のbox下端順位）別に集計し、
+  `--report`へ旧box/新検出の短い比較動画を書く。旧COCO box由来の偏りがあるため検出recallとは呼ばない。
