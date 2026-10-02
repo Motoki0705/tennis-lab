@@ -122,6 +122,10 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         PersonTrackingModule,
         PersonTrackingOutput,
     )
+    from src.tennis_scene.pipeline.components.player_selection import (
+        PlayerSelectionModule,
+        PlayerSelectionOutput,
+    )
     from src.tennis_scene.pipeline.components.pose_estimation import (
         PoseEstimationModule,
     )
@@ -146,6 +150,11 @@ def camera_stages(court: CourtKPResult, people: ObjectObservations, balls: tuple
         fixed(f"person_tracking/{camera}", PersonTrackingModule.io, PersonTrackingOutput(camera,
             np.arange(count, dtype=np.int64), boxes, people.observed[v].T,
             tuple((i,) for i in range(count)), ()))
+        tracks = stages[f"person_tracking/{camera}"].result
+        origins = np.broadcast_to(np.arange(count, dtype=np.int64)[:, None], (count, frames)).copy()
+        origins[~tracks.observed] = -1
+        fixed(f"player_selection/{camera}", PlayerSelectionModule.io,
+              PlayerSelectionOutput(camera, tracks.track_ids, tracks.observed, tracks, origins, {}))
         poses = people.select_views((v,))
         pose_boxes = np.zeros((*poses.observed.shape, 3), np.float32)
         pose_boxes[..., 2] = 100
@@ -223,14 +232,16 @@ def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch:
     np.testing.assert_array_equal(load_scene_result(output).ball_3d, scene.ball_3d)
 
 
-def test_a_clip_without_ball_evidence_stops_at_the_side_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_constant_refiner_points_stop_at_the_side_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # An empty detector yields a constant synthetic refiner mean at (0,0).
+    # All frames reach geometry; the unchanged motion test counts one support.
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch, empty=True)
     with pytest.raises(ReconstructionUnavailable, match="insufficient_frames") as stopped:
         pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
-    assert stopped.value.reason == "court_side_insufficient_frames" and stopped.value.diagnostics["frames"] == 0
+    assert stopped.value.reason == "court_side_insufficient_frames" and stopped.value.diagnostics["frames"] == 1
     assert pipeline.last_runner is not None and pipeline.last_runner.statuses["court_side"] == "failed"
     assert pipeline.last_receipt is not None and pipeline.last_receipt["error_reason"] == "court_side_insufficient_frames"
-    assert pipeline.last_receipt["error_diagnostics"]["pair_frames"] == {"cam0-cam1": 0, "cam0-cam2": 0, "cam1-cam2": 0}
+    assert pipeline.last_receipt["error_diagnostics"]["pair_frames"] == {"cam0-cam1": 1, "cam0-cam2": 1, "cam1-cam2": 1}
 
 
 def test_single_ball_missing_views_remain_invalid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -333,3 +344,54 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     pipeline.config = replace(pipeline.config, player_placement=replace(config.player_placement, temporal_weight=.2))
     with pytest.raises(ValueError, match="identity"):
         pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
+
+
+def test_all_consumers_keep_low_presence_broad_refiner_points_and_reload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import torch
+
+    from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
+    from src.tennis_scene.pipeline.components.ball_points import BallPointsOutput
+    from src.tennis_scene.pipeline.components.ball_refiner import BallRefiner2DOutput
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+    from tests.support.tennis_scene.ball_refiner import FixtureRefiner
+
+    original = FixtureRefiner.process
+
+    def uncertain(self: FixtureRefiner, detections: BallDetectionOutput) -> BallRefiner2DOutput:
+        result = original(self, detections)
+        gmm = result.prediction.distribution
+        broad = BallGMM2D(gmm.means, gmm.scale_tril * 100000., gmm.mixture_logits,
+                          torch.full_like(gmm.presence_logits, -1000.))
+        return replace(result, prediction=replace(result.prediction, distribution=broad))
+
+    monkeypatch.setattr(FixtureRefiner, "process", uncertain)
+    pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch)
+    scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
+    assert scene.ball_3d_valid.all()  # side, camera alignment and triangulation all consumed the points.
+    runner = pipeline.last_runner
+    assert runner is not None
+    for camera in ("cam0", "cam1", "cam2"):
+        points = runner.store.load(runner.references[f"ball_points/{camera}"], ArtifactCodec(BallPointsOutput))
+        assert (points.presence_probability == 0).all()
+        np.testing.assert_allclose(points.uv_px, stages[f"ball_detection/{camera}"].result.uv_px, rtol=1e-6)
+        assert runner.references[f"ball_points/{camera}"].version == 2
+    pipeline.config = replace(pipeline.config, cache_source="load")
+    loaded = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
+    np.testing.assert_array_equal(loaded.ball_3d, scene.ball_3d)
+    assert pipeline.last_runner is not None and set(pipeline.last_runner.statuses.values()) == {"loaded"}
+
+
+def test_load_rejects_historical_filtered_ball_points(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+
+    pipeline, paths, _ = setup_pipeline(tmp_path, monkeypatch)
+    store_root = tmp_path / "store"
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=store_root)
+    runner = pipeline.last_runner
+    assert runner is not None
+    # An archived v1 reference is rejected by its declared schema before payload decoding.
+    runner.store.publish("ball_points/cam0", {"historical_filtered": True}, ArtifactCodec(dict),
+                         schema="ball_points", version=1, identity={"legacy": True}, dependencies={}, provenance={"origin": "import"})
+    pipeline.config = replace(pipeline.config, cache_source="load")
+    with pytest.raises(ValueError, match="Loaded component contract mismatch: ball_points/cam0"):
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=store_root)

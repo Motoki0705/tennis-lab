@@ -1,0 +1,10 @@
+{
+  "torch": "2.13.0+cu130",
+  "extension": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-8-context-cache/outputs/campaign_930/i935/run10/dino_extension/lib/MultiScaleDeformableAttention.so",
+  "sha256": "fa66b079b4427a003dd416df8031a2ea81548870e2e37515c8e59a8dfe1bacff",
+  "cpu_dispatch": {
+    "forward": "Not implemented on the CPU",
+    "backward": "Not implemented on the CPU"
+  },
+  "cuda_initialized": false
+}

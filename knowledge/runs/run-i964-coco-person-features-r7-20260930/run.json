@@ -1,0 +1,16 @@
+{
+  "run_id": "1790728513515020890_17831_i964-coco-person-features-r7-20260930",
+  "name": "i964-coco-person-features-r7-20260930",
+  "command": "timeout --signal=TERM --kill-after=15s 5385s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_tracking_dev_features.py --phase extract --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/dev_features/i964-features-r7-20260930",
+  "provider": "codex",
+  "session": "01a0ef7d-19ed-7173-994c-c83934301564",
+  "issue": "964",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "62033eda245c42d70ba0956585274bf1a82f4ff7",
+  "branch": "campaign930/i964-2-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "captured_at": "2026-09-30T09:35:21+09:00"
+}

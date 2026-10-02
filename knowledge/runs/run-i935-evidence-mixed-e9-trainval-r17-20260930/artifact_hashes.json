@@ -1,0 +1,1655 @@
+{
+  "manifest_sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+  "checkpoint_sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+  "files": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00000.npz",
+      "sha256": "ecfb5036086da9daa2697882538ec9f4a6042cba5fea908990f964d7cf1b639c",
+      "bytes": 149515
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00001.npz",
+      "sha256": "e161633c887f6189fa6415b2ee4d009da43882ea86c0de65de160b201de42295",
+      "bytes": 102631
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00002.npz",
+      "sha256": "cc9fe03f5857d304434ece36c879a009522ffac5c30baae301bb10fcd99f754e",
+      "bytes": 51709
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00003.npz",
+      "sha256": "7468d581ea694a4d3b0e56128e1a8a8d63ff51da3917c36a422abd45b5e0ee87",
+      "bytes": 84015
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00004.npz",
+      "sha256": "979e0fc6398868ee9322182c8f3795b9a3fd28a8899abcfd0c1db6ef2e3b18cc",
+      "bytes": 118386
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00005.npz",
+      "sha256": "f21c4a21231bbd288d6620d5460f290bf05f6eafb3ef56507840300a47542f5c",
+      "bytes": 62239
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00006.npz",
+      "sha256": "c6fe2c6675c6835fa5cefaee081b19029404b61c43ae48f089a4de5e75f8c85e",
+      "bytes": 322065
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00007.npz",
+      "sha256": "7f2a780d1d5201c28c5e6b083960f87027bc3c02449e5e99b05e44d9b3f613a8",
+      "bytes": 34994
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00008.npz",
+      "sha256": "91db5762ae6b9b7c53a709a489d43bd5ca99e9f636650d6c6b579e8e8ecba28f",
+      "bytes": 82508
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00009.npz",
+      "sha256": "d887fd18e59d5202b0f8f26feaecb39a8138293393be0280903755658ae43d3a",
+      "bytes": 78448
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00010.npz",
+      "sha256": "fe85a8e276a152d716813ce66792d0d07493c0dbfd0033da2b31aca778d76f34",
+      "bytes": 99543
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00011.npz",
+      "sha256": "3986df7c4c762ae237274453f9b94ac027dbb596fd3ab55ace2dbebbda7e2cec",
+      "bytes": 102484
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00012.npz",
+      "sha256": "812e0c0c5c80c7affdea6e6241c7b72718c6c911315ba447a08b3e72c3225dca",
+      "bytes": 179895
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00025.npz",
+      "sha256": "68006f523d1e527d79351aadbe59940109c1d419604e5db96dfe916b1f9bd97e",
+      "bytes": 266185
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00026.npz",
+      "sha256": "98273fc89005f999edbc68f827e49f768594ed0e2934e9ec713546af3233905d",
+      "bytes": 144656
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00027.npz",
+      "sha256": "b7955bab3975f1b363912a8016b1ded7674715e6dd11e0c212ba796331a64832",
+      "bytes": 30350
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00028.npz",
+      "sha256": "a5b1412e6eaff87ce3849242528004ec974a955614d7620bac6f56e2b99db96f",
+      "bytes": 39372
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00029.npz",
+      "sha256": "f83cba9b00345cb620efa4962099c194173513b6ef23e8abe7289ca88d26586d",
+      "bytes": 143937
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00030.npz",
+      "sha256": "89510a6fdebd7687574b612c306fd531e1cc7f25593c8ff01b291dd931a13078",
+      "bytes": 391095
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00031.npz",
+      "sha256": "aab727f9d703e256111b1492ddea109a883790431e624f83256bd2ba2924e856",
+      "bytes": 151706
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00032.npz",
+      "sha256": "14abb628f7c66c48db3126658a2de9a8551aad437518c5cd487fe27ecce1e57d",
+      "bytes": 462881
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00033.npz",
+      "sha256": "21e99b9d4433e1d118fb323a9c11f4418236978a349b1539ba8f2ce9ad2ac29d",
+      "bytes": 143606
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00034.npz",
+      "sha256": "cba344682883ae8b0dc859093ea04c5723b4df865cec43462841e0d640eb8feb",
+      "bytes": 26109
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00035.npz",
+      "sha256": "0ed7d3ff64edf79a1fb539f159b1cdf8950dd097063e7a02e63eb6cf5a403488",
+      "bytes": 320855
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00036.npz",
+      "sha256": "86c2d1f56f35fa8fb02b248f5903dee6fe7f6652e768a1ad65eea30a288f3f0a",
+      "bytes": 323936
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00037.npz",
+      "sha256": "5865d8fbe817f3190b3d4d7c3145b1646ff2e7b41981df0f1c21a49804b1af32",
+      "bytes": 107531
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00038.npz",
+      "sha256": "80ee05086f619f01bff0155ca0af4b376a79cbcda7076f4ec3331c16001228c5",
+      "bytes": 188403
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00039.npz",
+      "sha256": "718ca29d55aefe15630c31a7fdb79609557e5b2578744a30eb00be1e3adf573e",
+      "bytes": 251080
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00040.npz",
+      "sha256": "c76eae5c9939fc1adbf2926c9a1899ea0d8f93a6bbcf62bd38323dacf3ec3885",
+      "bytes": 39973
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00041.npz",
+      "sha256": "96353b6e59cdd6891537dbd4729b805b04384ed06f0d52b82e880207a14bca51",
+      "bytes": 110617
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00042.npz",
+      "sha256": "228a56850f905c1b751d0dd8311fa2b19440ce5dc906a0dd356d7f58baa14605",
+      "bytes": 451570
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00043.npz",
+      "sha256": "7c4d82a8479429e842ab2fa52c9bc74bcbc71b426a27f59d2871572a8e107fb2",
+      "bytes": 363575
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00044.npz",
+      "sha256": "50dc5efd156fcace9940f2826584dfed26c8621a4eb6c12a48a62081fe1fab54",
+      "bytes": 85257
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00045.npz",
+      "sha256": "a42145a6aca1026da7ac94a44148f86780b5dfc251180dbfd84df96c24c92b77",
+      "bytes": 79615
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00046.npz",
+      "sha256": "033dd3e74e796e95c06bf220f540240dcdd68a17935d9f57b8b0cad54872b27b",
+      "bytes": 178723
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00047.npz",
+      "sha256": "bcf95a2f53949e884048d6080e6d07c5af96a285e62629e6cc17b74b5bc04480",
+      "bytes": 178859
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00048.npz",
+      "sha256": "713ce10c9ff4da8b4b1b4a7f2d848349b99753014471a1bc78d192fd7f1c85c2",
+      "bytes": 361640
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00049.npz",
+      "sha256": "6fa598ce10284abb67bd5130abaf6dfd64285affb088f4a02ffbe27b59879247",
+      "bytes": 147763
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00050.npz",
+      "sha256": "21d4e29a02c1f480b4909d362842cfd2d85b46b58340d9174d45ee083b2e780a",
+      "bytes": 49388
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00051.npz",
+      "sha256": "278a516f3ca536e1e1fa43a2f707da6feef98e2c2027da4ce4403c0de250e006",
+      "bytes": 64048
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00052.npz",
+      "sha256": "b3902010446cdaab3a1d3445c5b491821f8213d3d9611591d0eb477f4de825f9",
+      "bytes": 186976
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00053.npz",
+      "sha256": "5ac23dc94c96332fcb1687acdd19174d00b581b776c561e8adea9e107e4e99ec",
+      "bytes": 92709
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00054.npz",
+      "sha256": "4b9204ce1a137a352a3a1b544ca6262f7918756a6aa3bc57a414c5e1fde91648",
+      "bytes": 183145
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00055.npz",
+      "sha256": "d292c6d608ad5177dc23994f11b28ee5c0ec4b04e1ea733712ed88af4fde2a9f",
+      "bytes": 156962
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00056.npz",
+      "sha256": "a54818af54fb9287f1d84711cb7c13c0025bdbbf74380dd387cb4db39268cfd8",
+      "bytes": 95242
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00057.npz",
+      "sha256": "ff9619b53b6cd937856b8bdacd30e85fa636f7ecc9519d51d01912f759e71120",
+      "bytes": 147408
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00058.npz",
+      "sha256": "bdc8a4c80ebdb11c71547d70933452858013c13c64686c097b6b2ff363f0f118",
+      "bytes": 85263
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00059.npz",
+      "sha256": "a3b1cea3306440bcb62055de526127abf2dad010a7e4443ac3fea1d75b2ffc90",
+      "bytes": 31695
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00060.npz",
+      "sha256": "ea66d84f905f2819749c8ddee2176faebee8005c7fd6c3bf82bd01dc61b21625",
+      "bytes": 139493
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00061.npz",
+      "sha256": "a88f90367f054c2c6c302d344ef6905de79e8a1d251978ff4ad29fd698d651c6",
+      "bytes": 36141
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00062.npz",
+      "sha256": "44f921c9a1d3a5b4de49eb462c7b8f39ab00078a4e38e0ab78afa726caaad955",
+      "bytes": 31834
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00063.npz",
+      "sha256": "50b17a525e992a84d7b75fe54b533a705537b182db4c71eabc85712c3cd2d388",
+      "bytes": 145370
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00064.npz",
+      "sha256": "0b428b9e05025a6c2f3b8d91d85ca0f9daf99ab19d1e2b904cc8f837696d4333",
+      "bytes": 432587
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00065.npz",
+      "sha256": "87f92d79c69667b5d4c45b6dbc9fea3e10a61cdd1e29aceb9adc97fefc472842",
+      "bytes": 409744
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00066.npz",
+      "sha256": "c83fe82bab610cd45a85c0edefe929948e1af98e7015a845096c1b4d58930d1a",
+      "bytes": 404233
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00067.npz",
+      "sha256": "bde5adcdbe11475b9e3dfefef2b88c263f43009396565ff4687aa8c98d505bfc",
+      "bytes": 211128
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00068.npz",
+      "sha256": "8f6b77688425ea407d927f8c00b66883c0ff2160f3d82252727dfacbc81d2dbd",
+      "bytes": 98544
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00069.npz",
+      "sha256": "3afcb7545ea996503dddad78165cd6b548db953b4f0740aec6c0b40913569bbe",
+      "bytes": 150972
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00070.npz",
+      "sha256": "066e7e288212062e2427a5afba4b7b3123dff7f0f38651ef1a248843cc07d8fb",
+      "bytes": 39661
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00071.npz",
+      "sha256": "7e5b5fe0dcac553c17173609a361b3c90c12b0f8a2efab43659094c233c897d4",
+      "bytes": 666969
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00072.npz",
+      "sha256": "b6f0e5fe7fbcd100d64c731197ef23f8f153956d5ab7a3ef6efad42b8f447583",
+      "bytes": 158058
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00073.npz",
+      "sha256": "abf7f64886885261714ff1e98fd0e6d6afb8991dd51002fe4f3bd324fc2c56fd",
+      "bytes": 84270
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00074.npz",
+      "sha256": "48b526c9d9955fd3f5bf05b15807580bde5237f4492d57a9bdc1794203e978d7",
+      "bytes": 102260
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00075.npz",
+      "sha256": "e4823cef5c3e692fc25e5352c99afae26a822a1b015c4194fa873b232c4e1103",
+      "bytes": 46161
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00076.npz",
+      "sha256": "a31bbe61c1e69589488c01540809c68f51d36d976ad660d759be463f7d37fef3",
+      "bytes": 79002
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00077.npz",
+      "sha256": "e88879b3929a88ab585cd81bcdae5092721f78d3eff54faf8ef2f8109c53a4ee",
+      "bytes": 90222
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00078.npz",
+      "sha256": "274a95c9e5f2159e7bac747454f45af6463c3978cc57f8f91d81808fb1617bc8",
+      "bytes": 74503
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00079.npz",
+      "sha256": "b98c7f1bcf6da231d22a9d42b883c9ded4afb38bc19b12f0cf8607a8a99188ac",
+      "bytes": 308243
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00080.npz",
+      "sha256": "21db4b10e32d9a5b44eea32dedcc62584e0ca713fd28b37f47fa1f5b0e02cdac",
+      "bytes": 96392
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00081.npz",
+      "sha256": "8ce3ba6546202c9c5cd78c110fbcddc6583197028c643657b60d5590b732b7f6",
+      "bytes": 74278
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00082.npz",
+      "sha256": "9a71f298735d36f908c7db46c1189972373c58e6538ecfdf4ddb2cf594ecccd2",
+      "bytes": 103845
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00083.npz",
+      "sha256": "8106a893c1955a956a32ee32d298a5f9e6178440d7040f7581f56079ead71147",
+      "bytes": 301266
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00084.npz",
+      "sha256": "c53939516969cec0d0efc02eb4f52023d08f7aac93f721b6bcdf4b9e550b7346",
+      "bytes": 247205
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00085.npz",
+      "sha256": "c643e7183cc0b388be0d624e3ceb0b4ebaf88c7e9ca41f326319b69e5bc419bb",
+      "bytes": 168129
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00086.npz",
+      "sha256": "8641786948092e190fca4272f7fd137ec9734c6480af32d7f8137fb10c5b9554",
+      "bytes": 60272
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00087.npz",
+      "sha256": "8afbaf4c36cbcb513463cf4c24b03180a7d42e08156bf71d011c072e0a02bc89",
+      "bytes": 193866
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00088.npz",
+      "sha256": "a8b48a4b8118c625970f394741de1da1c10b5cc2a731f681c55d62c9ba3e11c6",
+      "bytes": 252723
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00089.npz",
+      "sha256": "2d56e35bbe6ccf5e7f3efc2a183624bacb06448107b7e3b124d7e80f984e4c5e",
+      "bytes": 82829
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00090.npz",
+      "sha256": "b0b6f7b6e901e3a9e9f1a30dad81dd1359a2d71b59a409d4d90fc8854c74d4f9",
+      "bytes": 200517
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00091.npz",
+      "sha256": "1838ced3a3d692e90a00759008e274a1bc190a5ec87a3c6add3e84d57b8d298d",
+      "bytes": 87597
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00092.npz",
+      "sha256": "5e0fdfaf12ed2688fe31c8f29048b7d2e76e839ea227a43824640636850b4337",
+      "bytes": 64849
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00093.npz",
+      "sha256": "663f378f4fafc46ecf37d41d89386f779c7ff52e52c48d200654369429241cc1",
+      "bytes": 41581
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00094.npz",
+      "sha256": "b3b44ca41bcc86c18809823bf634079b1a4cdd6db2ec5df1d72635dcc77ce61b",
+      "bytes": 157221
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00095.npz",
+      "sha256": "39b10ac03b442af6ffb4b90df490ca40b5a2223e988f64a7d7c99aaec6a8861d",
+      "bytes": 824978
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00096.npz",
+      "sha256": "c81533bba0565af38da9a2631c8445fdd36a1925dd6fc9b3ebf3086e8fa4a48e",
+      "bytes": 771686
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00097.npz",
+      "sha256": "886275b0c7350262233db92b91aee49452d68c823718d3e12305a32b9bb6ae0c",
+      "bytes": 817911
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00098.npz",
+      "sha256": "f022e2c834182d88b7b7b4ada72802ffebe423ec19a89c7b95d1d6796cfd0eae",
+      "bytes": 840717
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00099.npz",
+      "sha256": "20a14db9132e8fe3eb0af974c964248ad3ae799c46b91e984c712c10f4f8975e",
+      "bytes": 813420
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00100.npz",
+      "sha256": "308b1cf8ad832065fc8519e0d26d83781095a859aeb791b59196c5c1107695af",
+      "bytes": 812973
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00101.npz",
+      "sha256": "68bc53afb63011c2e613464673967d5056a44a984700887ce3dba568378fdb76",
+      "bytes": 1109277
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00102.npz",
+      "sha256": "f7f7a3d23f3aa6b174eacc02ae5fa6db017414b8d0a3cd0deeb12764fef2be49",
+      "bytes": 1090502
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00103.npz",
+      "sha256": "0e0b98d3f0ef8f31e97086ad55e027fe63de70e3306ea9e24500aee99ddf3957",
+      "bytes": 1109722
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00104.npz",
+      "sha256": "a3e57ab423efb4688b2cf47627e05d1944e8e86d30c413718bd937902e256b29",
+      "bytes": 853898
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00105.npz",
+      "sha256": "66e445546df3ce3b2d1be6b36016c8c1b642530d91c1cffdc22624f9028d8f78",
+      "bytes": 801782
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00106.npz",
+      "sha256": "601851071b702b161bcf3ffd5b8b95765dc1afe69a4dce4b7afcc18ddd644e8a",
+      "bytes": 862699
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00107.npz",
+      "sha256": "af9e858eac865dc02bda3bceece69d96acb3624655e86c62159b9513f060efb0",
+      "bytes": 284677
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00108.npz",
+      "sha256": "7a733fb5a814eb2d4fd02cd13c83586e69d93f0313a67a5ded6f9b98568c2449",
+      "bytes": 275201
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00109.npz",
+      "sha256": "d4bf536bda3f571632abaf5033902b1a12e1b00eccdaa221c33b16fad02aea57",
+      "bytes": 289492
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00110.npz",
+      "sha256": "4d18f3e61cfdb1e7a12b5b102e82cb9e83ff186d5f2798833575f11fa136b577",
+      "bytes": 259247
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00111.npz",
+      "sha256": "80af3d92182832b2f336033751b88a772ac1cf004da1a2841bb18bf2daf4f7b5",
+      "bytes": 250258
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00112.npz",
+      "sha256": "30ba1008cb7c174cc6f658780dde10ed75817aae7f2751f81be10cbcb8add634",
+      "bytes": 256700
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00113.npz",
+      "sha256": "5f0ac8003a2b5d591f34b99d2597ed39a83ae9671e763ab50080cea6454fc392",
+      "bytes": 370860
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00114.npz",
+      "sha256": "8708cbceca6358cd817e0ff06a50998061d3761fe729d8bfe8f9db434b03008a",
+      "bytes": 357350
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00115.npz",
+      "sha256": "d28b56b17dbff5224bf071c230daab6bceae9771483e920c473eda50b040bd10",
+      "bytes": 377149
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00116.npz",
+      "sha256": "1b22af9b3b7aa5f1d2d50b73da79f520a8b1d50dae52d3d1fb42746327cea53a",
+      "bytes": 536409
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00117.npz",
+      "sha256": "c24d654c22ea4ba4b1c9c1d3b04708d6c696515e593d7932df2a1e9bbc68f204",
+      "bytes": 518144
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00118.npz",
+      "sha256": "c54be0a3a7f986f190f872db8198d3b19a3de290cf8226fd85e658659e3b0a31",
+      "bytes": 537678
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00119.npz",
+      "sha256": "d2f968634cb067e2272fd9febe9e7e7b326d9aab2f51cd52ce79607f40f810d8",
+      "bytes": 398364
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00120.npz",
+      "sha256": "75281ff3758ca72552ae14bcff1cb44087fe4a29ba26b9a485637920aa7686ad",
+      "bytes": 371048
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00121.npz",
+      "sha256": "a1b0cc1870d1144aa5462707febbd9358b40dec98d66b1cc717e974bc55a3b20",
+      "bytes": 382771
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00122.npz",
+      "sha256": "b99c3223effc4386a9188136be65174ab01cd593df281e76db0519dea74814a9",
+      "bytes": 617138
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00123.npz",
+      "sha256": "375eaa24af694902991e81feeae6104a9d9b581ba2854cfeeb3bc8aa503d926e",
+      "bytes": 597762
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00124.npz",
+      "sha256": "7b41542940937bc7fbc4ec9c35b24a43ba4acd8a4baf333c845d33f883e793a3",
+      "bytes": 603788
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00125.npz",
+      "sha256": "42e9986b23d91365656c35025ae4e4d81d5df4d81e300ebc0a5ffa1f9920249c",
+      "bytes": 222103
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00126.npz",
+      "sha256": "b786495c384ca975c1ba0bb1ba2988c7c9625d88232e992b5d50a7b85b980fe7",
+      "bytes": 208407
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00127.npz",
+      "sha256": "7a7e2107019f636704627975c153ce4d6c2202ccf15997f0c768a294fee99813",
+      "bytes": 222419
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00128.npz",
+      "sha256": "6d9f6feec454e944e43a0cb4ce351c2aa6e6bebfe42e63f8d554d844ff2030a1",
+      "bytes": 1036925
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00129.npz",
+      "sha256": "08171f5c445c079414e6bfc6b7efe46acef4d94d3afdd70c1f3cb7aa6b6c4245",
+      "bytes": 1002142
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00130.npz",
+      "sha256": "3dbb5a8f309c7e8889cc160c140c2232b23fe78e84a2196d57c634b83299fac0",
+      "bytes": 1035034
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00194.npz",
+      "sha256": "2969f03004254f4a2fdaf4289e32c581b4fe216b08a11f096f22f59990c7e8bc",
+      "bytes": 262252
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00195.npz",
+      "sha256": "d84be2daddefa87ac05f2f364a30dcf31e621fa0256d96a5be976de29843f81c",
+      "bytes": 259212
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00196.npz",
+      "sha256": "c0958b1bb89a4d9f0b0a80663aa3c484ab6107bf2413941173ef345bee588d86",
+      "bytes": 254327
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00197.npz",
+      "sha256": "fc903b068734092e33e8b05bb417b4da6a1066e2c7d26c40a186204d0805fff1",
+      "bytes": 393766
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00198.npz",
+      "sha256": "cd2af62109f514739c05318afe26341b7fb076677d2c6b37d8c1f1e28d61b312",
+      "bytes": 379876
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00199.npz",
+      "sha256": "ef4a45282a27d7232b275d854779c8257dc5c14d1e2a31757761a749f17b3a66",
+      "bytes": 380853
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00200.npz",
+      "sha256": "f7288e9e6323f667d8233842d559b087276afe1eedb3fa67927fca268b960a81",
+      "bytes": 208593
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00201.npz",
+      "sha256": "d0ab0b30846e85f4c5766190832fb46c1c50d12c6d837ea79b37aed127013bef",
+      "bytes": 203880
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00202.npz",
+      "sha256": "0ca9bfc8dce80d58c40eeb371f243448f9a61d6504cc5b30bfa0fbdabc022f4f",
+      "bytes": 207359
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00203.npz",
+      "sha256": "b095de7432434dbb0db1e6df21db644be11a197739640df0e696b55cf666d03d",
+      "bytes": 611280
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00204.npz",
+      "sha256": "58c90d60fae326c852956cd1dc9a81fb1ae7c0fc8d4b472dbc2ba6f1ed6c2501",
+      "bytes": 583689
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00205.npz",
+      "sha256": "2612993543ac132c84d9e632401e89302df0eee7aefcb8f3fb3d8e6cc9eea507",
+      "bytes": 607855
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00206.npz",
+      "sha256": "1d9f9a17430d3c0806355b424ec439e6ea2a329ade8945fc38f30de113085f66",
+      "bytes": 196649
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00207.npz",
+      "sha256": "14cde15032ef257af622d5421a62adc0126c357877e4fe609c6a7187eafed242",
+      "bytes": 190997
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00208.npz",
+      "sha256": "bd4aec80f6860ba981177ba327c253cdbe5d07fc41f1eb5e30e8672e11623a1a",
+      "bytes": 190369
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00209.npz",
+      "sha256": "741b3116552febdb11d63f4e0a7e326595862d2fd4076255f2fd236e32aae4ae",
+      "bytes": 199225
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00210.npz",
+      "sha256": "88b6fc7bd5467048e16e67bf94596e4d0726f37da312e31d9f3a7d3d0aed54cd",
+      "bytes": 186086
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00211.npz",
+      "sha256": "f11c448c47fa8b0b8e1f9853745b431120c913edb847ce32d4ff8dc94549d775",
+      "bytes": 195606
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00212.npz",
+      "sha256": "39f8ae0a296c0d738a77ed055187be27638b7991d39e2c82442cd6674b29835c",
+      "bytes": 208748
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00213.npz",
+      "sha256": "dc7810565572e633e52e3c5d52341ffed5b60e4796e713ef34dc1ff7e0370894",
+      "bytes": 200805
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00214.npz",
+      "sha256": "03b20508790ba2e23672103d927308e6081ce34cb1f57873bc327b2bca3513e5",
+      "bytes": 208634
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00215.npz",
+      "sha256": "ee23c72557b3671e97147f58c8cf8e0ca2942822493466318a745968b9dfc330",
+      "bytes": 282643
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00216.npz",
+      "sha256": "1d19b805a52779ad2794cf8ea91989ba9fc11f0f3f6693d6be4d4dff7c85bbd5",
+      "bytes": 274201
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00217.npz",
+      "sha256": "a4d61f13ff21b8688de988429ca57aff27fafee0226b642a82d3c42beff8a645",
+      "bytes": 277370
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00218.npz",
+      "sha256": "b49bc2d3c097549a9c858cf40ebf787479cc3a9ef443ae004546991487f87008",
+      "bytes": 201767
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00219.npz",
+      "sha256": "b2d4eafdc01afb8308ace7ef2acf3b6e42293fc498c1a3bda618ddf577d57cc9",
+      "bytes": 192113
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00220.npz",
+      "sha256": "02f3f5fcd8b3b94ea19a94b8b99f9d88407448b692a4afd64f8a2acababde06c",
+      "bytes": 195954
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00221.npz",
+      "sha256": "13b7126fa7ad4d7bab6dc65506c083aa2af803db8bb95fa1e04fcd2563aa24d7",
+      "bytes": 543389
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00222.npz",
+      "sha256": "464fee4821e2f1c5204e750f50e0978a28da8b29059d6f6c63e0943cb9daef36",
+      "bytes": 517276
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00223.npz",
+      "sha256": "ef88d53a793657712221d7b41f18414b5dc09eea50c9adbe2730cc71699cba58",
+      "bytes": 534925
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00224.npz",
+      "sha256": "3336926f47cf7d10c829a6dff4e333530b5317344ad6d3915559bb56556866b7",
+      "bytes": 358629
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00225.npz",
+      "sha256": "327368d09b320049b6c5685302b546a75959a904003b5294763b1f646a0b835e",
+      "bytes": 345458
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00226.npz",
+      "sha256": "e2b4addeafa7446735499c375c8e1d14893702129cb2406ed45a86be1a127438",
+      "bytes": 361949
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00227.npz",
+      "sha256": "63afceb929a4d8d9bfa421c0061d2141457535f6c43dadd122b910aa61435c57",
+      "bytes": 127387
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00228.npz",
+      "sha256": "d5506cf0fe52fb5e945ae01ec15b4b8a2df5f2e69e0acf946a2067e7ffa57ded",
+      "bytes": 126768
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00229.npz",
+      "sha256": "c8beb899869d2d83fff03af2810668d4dca229a15fb13e942ba684296cb1cbee",
+      "bytes": 124250
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00230.npz",
+      "sha256": "07ccc2009ca52791fb68eabafa42e23e785d85d679e5b51dbd5b2f43ef87a5b7",
+      "bytes": 259886
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00231.npz",
+      "sha256": "54ab890f7c7717225e9789185565e1cedc0b3803e2b20afb5f17bf1a91e4f6ac",
+      "bytes": 253861
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00232.npz",
+      "sha256": "4a0f2aeb141f17530456301ab64233a95a777032dcd936f3d8edaf7e70dbd579",
+      "bytes": 251709
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00233.npz",
+      "sha256": "0368ab2307d6f8bf7e98ee04ca24db893ac0a51e94380ff7710aac1b3d78eb45",
+      "bytes": 432435
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00234.npz",
+      "sha256": "3f0ae5375ac227da390924758be598ab309e42bbce78329e419417dd4883939a",
+      "bytes": 426716
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00235.npz",
+      "sha256": "e74b5d0711c1b801dfdda43c7cb8bef0ff6f3471d883ac7a489617f31c53e8c0",
+      "bytes": 425711
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00236.npz",
+      "sha256": "c279de05a4a0991e7add30bcb2cc318632d0f0a1154917ef6f50b4d8a790568e",
+      "bytes": 200219
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00237.npz",
+      "sha256": "62a5f2fc92d25709c5a2e915ae0685b269eedc835003fa9e077f396e77334cc3",
+      "bytes": 192286
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00238.npz",
+      "sha256": "2d9a21cfe92305ca8d2a80fb6c85204cbdef438f011a2567ecf0836b98bcca09",
+      "bytes": 195102
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00239.npz",
+      "sha256": "2fb01f05f7380bf4e453f699f2c21b0ccb0f4233e29aa98b0ef45f5f3d8c9268",
+      "bytes": 197258
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00240.npz",
+      "sha256": "14ed4d217a56c95570dd375dfa02a86a695ab99a377ef7942e30fe6e144ca7e3",
+      "bytes": 193023
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00241.npz",
+      "sha256": "9b85e5fbc895fe3d2057c54857714c69d5bd8d45d9e90355f3895ddb637f4bff",
+      "bytes": 192668
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00242.npz",
+      "sha256": "f0123c91f5e809636a708056849410e9c411311145a8c6f5faa618a77204ea22",
+      "bytes": 136299
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00243.npz",
+      "sha256": "0089f6f0761eda008a40801f22f1c45fbd27d6bc5e76661e87fa708202c7c5d5",
+      "bytes": 138491
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00244.npz",
+      "sha256": "c637b9665b94f555cd0267e69fdb84906ef4afb9ce7333280fce7389a4c82aed",
+      "bytes": 127752
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00245.npz",
+      "sha256": "d97bf24a2a8ee21cad4aab2ba31d78a217076175d9d314beb2b4a9e61d0a1902",
+      "bytes": 728435
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00246.npz",
+      "sha256": "3c053cdb99b9024a5dbff7029b8a793a119bbe05d48e104a58ad80f76bcbcce6",
+      "bytes": 709234
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00247.npz",
+      "sha256": "49a1a3d769f52baffdf2b5a249c58589baf0471765a74617d294ca9b718324c4",
+      "bytes": 721583
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00248.npz",
+      "sha256": "557cc9b046b6a7fe84de13773fbf41b4630c691d8a01481096a89b09a68f2085",
+      "bytes": 206259
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00249.npz",
+      "sha256": "860010c0bee6b06aa7ee71bdc70b1647b6521cdc0bd8d8f9a9afcb8f61b25615",
+      "bytes": 209147
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00250.npz",
+      "sha256": "cd4e25ade6eca39db1560523be928738eacb12e4fd4d6e246347236e5e3fd9ab",
+      "bytes": 201997
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00251.npz",
+      "sha256": "bc639f3d6eaa7b1d696874863d8095dd6effa57dcd7c6e60187aa07801d300d8",
+      "bytes": 429927
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00252.npz",
+      "sha256": "611fd9106436a63d43293a4c6037a762a27b23af0def9f1cd7bb8c3552c0e614",
+      "bytes": 428496
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00253.npz",
+      "sha256": "d8fa5dfbecae7d44835912229d1b1246c59de5a91afe55c8839fdb6c9cf95d3d",
+      "bytes": 438488
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00254.npz",
+      "sha256": "e4f6f5e502b8e2b5c975b067f59668355a9ac47e0f5e9c9c19aaa5c146868f2e",
+      "bytes": 307917
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00255.npz",
+      "sha256": "5357b07d3262cf42bfd01e9069faa33731f91108a19524f51a9e49f9ea4f4045",
+      "bytes": 302503
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00256.npz",
+      "sha256": "964345578474febeac3e3d974a5a21cc845ed68b6aa2a8bd14d60b5c480297c6",
+      "bytes": 307786
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00257.npz",
+      "sha256": "7d9b206e0946c753d861af8198788536a21c4ad6cabc46ebde3d164b5304de80",
+      "bytes": 186772
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00258.npz",
+      "sha256": "76f4ad0b5045c5dd6d80a013b29952e72213da1755583a9a447e380e3ede6adc",
+      "bytes": 187462
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00259.npz",
+      "sha256": "0fa02fd23e54622357a882c9b747ea9934247f947dfa2fcab9230d0566f6cb61",
+      "bytes": 175481
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00260.npz",
+      "sha256": "6f127eaada88203d7b58094356bd46795890f7b567d3b567ee92671c555ad691",
+      "bytes": 228479
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00261.npz",
+      "sha256": "a032dc2f74578284dc0a6a3b1d82d26845578070a31e0bb93182cf6caafaeffc",
+      "bytes": 226943
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00262.npz",
+      "sha256": "4aee72cfe65a35e3befe08514518cf24a863556a69c0464ad43882ef8d6c8493",
+      "bytes": 223277
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00263.npz",
+      "sha256": "ad3e44989d2e14b75617d3727a4eed6406c3c51dcdfb900a63514327c19ef56d",
+      "bytes": 187521
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00264.npz",
+      "sha256": "0e9165060bba60fb9d43a0f70bf05bbdd55b468745a98d066dc7dea9b214504d",
+      "bytes": 191794
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00265.npz",
+      "sha256": "f1d63e1fabb034dd19be8ed8039f8ac1f16df8da4f4894d83ef743ca17b2e83f",
+      "bytes": 180860
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00266.npz",
+      "sha256": "bf7c902602141a39781c85283451e49dc9eafe0e6b30ce8a005b6931a57755fe",
+      "bytes": 311413
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00267.npz",
+      "sha256": "84009b3a29363b0da5a96993fd0fe60096818bc6cbbf072aa958fcb6f38ec045",
+      "bytes": 311845
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00268.npz",
+      "sha256": "d1fad79558588aa958157a46b54b3111faac7aee5b6ecafa6b6933852febf491",
+      "bytes": 311717
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00269.npz",
+      "sha256": "aaddbc5d67ac95903e48190d495ed5bd3874f0ffa349c653ccf4fe7ef5d754a5",
+      "bytes": 312018
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00270.npz",
+      "sha256": "f0b9b3f06d61371b123a08dba54b5b1f7c91126859608fa78b005f5b28087de6",
+      "bytes": 311103
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00276.npz",
+      "sha256": "9489887bf4923bea15498f4da373d79f863b1f1c8bb4af25895cb4f914837871",
+      "bytes": 711198
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00277.npz",
+      "sha256": "6d2e0e4794e8463273c4e109eb5f21e5ae3cdf28c5c86f3bca25a7b242d16910",
+      "bytes": 742675
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00278.npz",
+      "sha256": "c35f3069eece2f62f126befd8ecdc2edc3ebe8634217605ef1879caba3b55bc6",
+      "bytes": 744989
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00279.npz",
+      "sha256": "229fdcf06348db411cea8af7509e3af6acf640552e45c58f886a47302f4db116",
+      "bytes": 734636
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00280.npz",
+      "sha256": "3d89c72f8f3a83aca02afa45704b031ad8fd11d1bf1375f990a5755af02be282",
+      "bytes": 746925
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00281.npz",
+      "sha256": "b997335e9b61c91fa497298600b3cbd6f3471edf5a64d33a77b8dd2d98ff6f32",
+      "bytes": 748950
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00282.npz",
+      "sha256": "08d81b79f1e6d332b3cbf8430e7eb903f1f8c67f70eaa7bb24f1fd1a4c9e3ef0",
+      "bytes": 748695
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00283.npz",
+      "sha256": "195c432242bde6e0fcd2606919a206a72e5c3a341cafc1ec00b9f082cce37d17",
+      "bytes": 732082
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00284.npz",
+      "sha256": "060a4985e6bf42abbef140f0152df940760cb097dc1c7bc67ad19d2e8c19ab91",
+      "bytes": 735554
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00285.npz",
+      "sha256": "cd4fe71c3a28a3a28cb7819be98ff119429062c3affa1f75f623c70c661b3728",
+      "bytes": 744491
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00286.npz",
+      "sha256": "dd85f9e7201a70d064a4c2413203557d3b83b1e2911c1f43e8acaffc039bf5df",
+      "bytes": 681304
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00287.npz",
+      "sha256": "65feeb4c46a9edc4a1c0703bb84e905012323b9aeb15db88fd88b94ac0417dad",
+      "bytes": 657833
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00288.npz",
+      "sha256": "fe5df3103c7626c35387511d9714afc9580d4a5ce842d9a55365708ef0ae0a0b",
+      "bytes": 660395
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00289.npz",
+      "sha256": "0053f4248fa3ba2fceac45b1fa4ed8d12ba7018dbbc4297ca3016f640fba7528",
+      "bytes": 684292
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00290.npz",
+      "sha256": "470ddbe1933db6a880cb1893fda9db239ed92e16d77d21fe5af495d85e6bff3d",
+      "bytes": 735265
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00291.npz",
+      "sha256": "44ca2c896ffa72c4403ddefc46c551577c79910e747bc6f3c97b8cfa2aeb7b4c",
+      "bytes": 374270
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00292.npz",
+      "sha256": "be1cd44bf0b4b9321918bc9af8326d679d82c953e6711090072719f50785db6b",
+      "bytes": 357747
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00293.npz",
+      "sha256": "3bfd1f9ce87857adba00d426a2a100c5fcd468a2013f9272051fa5596d0e99f2",
+      "bytes": 375150
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00294.npz",
+      "sha256": "ccfcb5cf1e80a3a791bef7057bd5a13cc861486cadf8702343cf83212bd4db9e",
+      "bytes": 374333
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00295.npz",
+      "sha256": "2ea394534094572a58f8394c1f0067c972dd85e4435cd73c9b3b03ed69c5d30a",
+      "bytes": 369710
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00296.npz",
+      "sha256": "39fb0beb4bcafdcc9f5a19777138662e426ed24aa0a6e1ec151b2c912ac1493c",
+      "bytes": 312874
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00297.npz",
+      "sha256": "6a5354f95f0d26372f5dd8b4f78bb6a5da1b6a9b0483fc8717422528335f8c7f",
+      "bytes": 314280
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00298.npz",
+      "sha256": "7d41b62e3ce32b56501f98a559d99d6ca67358266d567d783799f31242a15957",
+      "bytes": 313373
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00299.npz",
+      "sha256": "8ed38cc9e8826dd2787a8e6604f07370f49f85bd0f8313f9c1342b0261e7573a",
+      "bytes": 312696
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00300.npz",
+      "sha256": "a95b2b92574809aef996f7c334ca81ec8d245c88ae049bdb8f4def12f10df8aa",
+      "bytes": 311308
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00301.npz",
+      "sha256": "e47c42da7997ddce9009de51e82a718738ddc9edeccabd1ff423970bb619c291",
+      "bytes": 284955
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00302.npz",
+      "sha256": "7f7a495ed171260476e520da3360bbd6fc9404b0b41e741442362e0d016db3a2",
+      "bytes": 291481
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00303.npz",
+      "sha256": "daa5cc0ec5c9070f6f9e1bc67449e291c3a038a2de2645df16cac858be6a70db",
+      "bytes": 301925
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00304.npz",
+      "sha256": "2ade7c8fc3ba380e2cd1007269bc20ab40b4630f092762d85ca42592dae2d04d",
+      "bytes": 276203
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00305.npz",
+      "sha256": "3cbb58293262bca03b44de16bb0f9d304766ee47c70ad93194170b3b46e43c65",
+      "bytes": 310396
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00306.npz",
+      "sha256": "c0188508b70219b5fa525b5554d539fae79ed07115dac29a73d0b819910ec3ed",
+      "bytes": 725801
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00307.npz",
+      "sha256": "e81242213eb10dff5ca29ce433ae41caa6aa8912317e1a97c4b20cccde7fdb21",
+      "bytes": 702168
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00308.npz",
+      "sha256": "c2a156efdaba71cf51f967726a3644cfbfcf20ed8f7c548ea47887eda77d6bbd",
+      "bytes": 716321
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00309.npz",
+      "sha256": "82f44e08de07a498ae480ba710683c036d5eec74a8882b7e6c41a34da139f40b",
+      "bytes": 732580
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00310.npz",
+      "sha256": "b4b8daeef2f3ec5658b9905d48a3c75882703c383fb77005f996db14403656e5",
+      "bytes": 699246
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00311.npz",
+      "sha256": "eee9e9ac6ae60f675405cdaf7e5ce13c1d12467523ee666042ca1ff9746f0304",
+      "bytes": 295408
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00312.npz",
+      "sha256": "a388a8cfcdf6b015564c889b8cf52d4f5eff5ae30e9786838a84948973b42545",
+      "bytes": 291960
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00313.npz",
+      "sha256": "87549f84f68b12a7ccb82edb4ef56f376a8383391d52b69d6190e6b3901fe1b8",
+      "bytes": 289259
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00314.npz",
+      "sha256": "58d890c5ab2f9816bafd1bf28b8daab0d2bce1b720296c6d04d20460307dede6",
+      "bytes": 287303
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00315.npz",
+      "sha256": "4b28a541916d6e20855d138c1989fd0a42da8ce1bda6181423845cdbdf976c81",
+      "bytes": 310496
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00316.npz",
+      "sha256": "8b186b1801ac0a3e970b46f3e77090e197303c608c441f45f38a7ac4672ece09",
+      "bytes": 569621
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00317.npz",
+      "sha256": "8c9f5d202d38ee24b02731909605a9b9e1ecb8b071fb3b63d5f8ab463db35bdb",
+      "bytes": 590554
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00318.npz",
+      "sha256": "1682a88b91cc7b6f115939dfc232c362a452401722c2e9f165ed616ba70a6bd9",
+      "bytes": 563142
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00319.npz",
+      "sha256": "9d8c45625f10bc0ecc7168a357452b36983cdf6cb429564fa1bf79bae1664c03",
+      "bytes": 595701
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00320.npz",
+      "sha256": "9f25641d0116ade7d2abe1fb86b7655ca160e47a40601e19a350f492604fa692",
+      "bytes": 607985
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00321.npz",
+      "sha256": "189b353100400a05916eacc097fd9f893bcf087513edfd365202931c7bcbe394",
+      "bytes": 709184
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00322.npz",
+      "sha256": "5953300ec033e0f3a565fb7bb5c53da7025a0ccec19d2eed20e52959d8b672aa",
+      "bytes": 725041
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00323.npz",
+      "sha256": "6d1959c1b7a86e732f4a4b3f719aca04c1d839245fa57286183e47f7a091a334",
+      "bytes": 732843
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00324.npz",
+      "sha256": "16936e4b3508ea2d7d0e98d65b403a25fb7f9d1ff5e2744125c4095053df2d52",
+      "bytes": 723145
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00325.npz",
+      "sha256": "67a70d65a4d94d37f2cb3b023c6d0a119aeaa0448c950061773cf1511ec1a153",
+      "bytes": 728767
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00326.npz",
+      "sha256": "62a69cba346eb54dd2d6a908808d73f80cd803077599e306e20c1f0b72b4496a",
+      "bytes": 275709
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00327.npz",
+      "sha256": "9479ea971ebc0c72839b5fc134f5fa7bf033fde28c0685f45b40b5ea393a4555",
+      "bytes": 279488
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00328.npz",
+      "sha256": "be618244f079eac6e2bb59b65f82571c00659ca427cedd9782e4ba7c6d80e85c",
+      "bytes": 274981
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00329.npz",
+      "sha256": "47f59afefcb576b54015f09b627c87d68178947240847ff0d9c388b2c298ae1c",
+      "bytes": 284051
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00330.npz",
+      "sha256": "cd414285b4c6a9016c70311c2fd132c0fa6405243115d13e181717164e75076c",
+      "bytes": 309029
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00336.npz",
+      "sha256": "b0fcb2f2f6356416079c37308d5adb07766ee10dffd6864554dbd8a33d326dc5",
+      "bytes": 740682
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00337.npz",
+      "sha256": "a6620ea8c230a7d126005bb44ed0595472c10e9336f0f19fbc8e6a89b8e6e69e",
+      "bytes": 727966
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00338.npz",
+      "sha256": "bfc6fb2d8df636af6c74754a499b398568aa3e1a7ba4532dec932194437047cf",
+      "bytes": 735640
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00339.npz",
+      "sha256": "b99c1ccdeb9f9f012368bbd401ac627890eb7ff998ac74fa7723960613e26349",
+      "bytes": 725719
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00340.npz",
+      "sha256": "38fed4db289294c33f582f9b64846222afc63ed1846e736be01752bbbc3b6711",
+      "bytes": 738790
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00341.npz",
+      "sha256": "0f69ca9449d86364eac948bd655c0cde68ff2d2b658d7bab24856e7320516c4e",
+      "bytes": 280525
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00342.npz",
+      "sha256": "812635ef8371c5c479a841c37e9427014ac949db5f776d540fc94bbf40c0019d",
+      "bytes": 300496
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00343.npz",
+      "sha256": "0fea85b18c2c546970e21dea36c3b8629dcac37c08727948e39cb9e0b328b26e",
+      "bytes": 300600
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00344.npz",
+      "sha256": "b60978f748bacc94a78ce1865e7c52f0aa285b20ac47a29096cbd996c7d16a69",
+      "bytes": 299065
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00345.npz",
+      "sha256": "bf8c6ce51aec2da170a0cb25ec29c57785d6f6c4a20ed05bb47f2ada0ca73616",
+      "bytes": 307509
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00346.npz",
+      "sha256": "058c95152067ebb66055febb0052717e32fd03fd6d1ac08f47469d0d406d13c5",
+      "bytes": 691106
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00347.npz",
+      "sha256": "d8b7a989fa5e3739c403922a559bd043aab602439b4cd2baff5971e7969c2e5f",
+      "bytes": 701208
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00348.npz",
+      "sha256": "0d15f70c0272d780a394d6decb83cc900737d628e0f49555b89048e360addc26",
+      "bytes": 716165
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00349.npz",
+      "sha256": "2da6974cbb48da859882b899a3fe0d4df5f5081ae9b03a2a0ed6b014fb2c034c",
+      "bytes": 686975
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00350.npz",
+      "sha256": "436cd717e0901b19b942073500d0a5408c1ab27128b7891a2f6aa49c3cac7e8d",
+      "bytes": 724268
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00351.npz",
+      "sha256": "231e97770fc2dce46a40b6db1481d6a9a1e555b800f69ee0cdff45a4d75f672e",
+      "bytes": 293948
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00352.npz",
+      "sha256": "28137f83e3f26ca383a8279b608f0ab2b4d0dea4163747753d3182df35f09a45",
+      "bytes": 306888
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00353.npz",
+      "sha256": "2f8d86585c459ebd4fd37f6f2a7918db1230d8f94f1e7f38f3a189d882e4aad7",
+      "bytes": 271828
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00354.npz",
+      "sha256": "adc850d6ba7d6ae17bd1424e6ae7dc836d94f0654f14d28814120bd1edf128e8",
+      "bytes": 286729
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00355.npz",
+      "sha256": "feb38f4e866a47969da6fb5fd545c0c7d752c274836536b3198982c0c4005cc9",
+      "bytes": 309432
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00356.npz",
+      "sha256": "84ccaf62d1ca2009d5526bd0713bc0d743f8da53aa20edd8d3b48c3c77870898",
+      "bytes": 724793
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00357.npz",
+      "sha256": "d57e4498a35fada644b6aaacb7eecdead226bddf648d4a18d056dd258d9754fc",
+      "bytes": 733729
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00358.npz",
+      "sha256": "1cc6143980be39510edbe8e49e380a37fb9f1166d090b0d11e11d48cbe995cfa",
+      "bytes": 734930
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00359.npz",
+      "sha256": "9a226cddb41f0d89790c8e4e32da0d84019b3749864d6c7c3855e50d178e959a",
+      "bytes": 707190
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00360.npz",
+      "sha256": "b0108c9520430a4e3ad1443debb30ca7c1ae0a9016f57db7fb27e465e177f24a",
+      "bytes": 738057
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00366.npz",
+      "sha256": "2336618090b20a6055dad40b7151a1e419ab27a9e628f02829adf9858bf1b1e3",
+      "bytes": 296145
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00367.npz",
+      "sha256": "4e98a62c7d401324955ce4dc36b0af2034e0b1e68f114b3c0fac32bd35a7237e",
+      "bytes": 296676
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00368.npz",
+      "sha256": "e7a0968e4913bccc8aa7fa8016cecc5b59aea60089fa658da0dd88fe07dbfae7",
+      "bytes": 297072
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00369.npz",
+      "sha256": "02232fff24399b5b187038874e3ced2e0a1327ebb6cdba66d77ba225f77621a2",
+      "bytes": 294460
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00370.npz",
+      "sha256": "55e8aec812fdaba6e75a3310b52b101c4c9f22843debbf7a992e10202cdcd811",
+      "bytes": 305306
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00371.npz",
+      "sha256": "d3011f3fa488bff6777c25ed5036ccc58e426d50cf1abde0136676d1343e5887",
+      "bytes": 295373
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00372.npz",
+      "sha256": "c82b84a97b1885478c4dcd39a2902ecee8cda1861a8e9e5b24ced7d775162cd8",
+      "bytes": 283412
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00373.npz",
+      "sha256": "5563b8fe69da77ec1ab0dafd5fa72d0eccc3034a3ef89a4fa904ba365ad0900c",
+      "bytes": 292736
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00374.npz",
+      "sha256": "603d22207ba7088e52e3468fe3771f54c4069d98ba5be8bf7e4b6afcd1545c80",
+      "bytes": 289205
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00375.npz",
+      "sha256": "be8a974b7bf21c302f29e8bd85a3eccfd86e623d54ac71f1352b1c1d80bbdc63",
+      "bytes": 311022
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00381.npz",
+      "sha256": "0da77281a560a7e4f953e59d98bd0a4c3e4983c287aca047a2f549cd4270f223",
+      "bytes": 311702
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00382.npz",
+      "sha256": "8864268fedd0dd8bbecff77b096ad8905cc12979ebd3e3911de396aa90d7d166",
+      "bytes": 311383
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00383.npz",
+      "sha256": "0a1286cbe18021d3006b23490d773a6454e1e2a4c928d0971d34241c3d7f3ee1",
+      "bytes": 310219
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00384.npz",
+      "sha256": "4a8e9cca220f936c3a6df66b78375b6df5b320b841684e5af6b5a837228cd9e2",
+      "bytes": 281686
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00385.npz",
+      "sha256": "7cd30990e090804e898ededc8730b3c25b202b54dc9dc99a271cde111b002207",
+      "bytes": 288775
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00386.npz",
+      "sha256": "c9a35be69d8ef912042e24765fae06837eff7681b6181e5883a8bcb80b4a4dcc",
+      "bytes": 293293
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00387.npz",
+      "sha256": "3bc1550e8e2b23a96752ba27f87230ff051836c54becc7277cd5d1d5bc845f23",
+      "bytes": 309067
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00388.npz",
+      "sha256": "245628e81f6b01a73bb5ac6b7cd31b584f0e1986a207d9920b57b329eb416d46",
+      "bytes": 301683
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00394.npz",
+      "sha256": "8643a3c1952650a50d8501a38adad2e2e7240139dc463f26f8c21e0c9c74ac78",
+      "bytes": 290761
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00395.npz",
+      "sha256": "04f72f6ed35bc1929c645af2c906e21cb0b8c90ce05a0affd76df808a2c17e34",
+      "bytes": 286485
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00396.npz",
+      "sha256": "008f108b856a90d8abb262ea3adec52bb528cd0fcdff7fb65622924a840bb01d",
+      "bytes": 284124
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00397.npz",
+      "sha256": "b1702e69c3e595c797c22b7c49522af9d73b90db81f28098dcf809025888701b",
+      "bytes": 286762
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00398.npz",
+      "sha256": "1b09fb9a68ddcc83dbc9e37b3bab575bad015cb04d8a22abc2df77bc08e99b69",
+      "bytes": 299838
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00399.npz",
+      "sha256": "37726ce9940a8a623ccac6b7501874b89969d644925b8d301493fb68c11e2cf1",
+      "bytes": 263845
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00400.npz",
+      "sha256": "473d7e71a06ecc947c6cf150dd13752a4656fd2aca50f04e3013efac7bd51b13",
+      "bytes": 305659
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00401.npz",
+      "sha256": "a34599b6dc899cab0d64f49e97805fa19d15ccd2c25e6ed4fb00b40c33b2d62f",
+      "bytes": 306857
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00402.npz",
+      "sha256": "3c8ac65d959ad714a9c37c2766e5d6bf636d454798f389198b4d0bb4795b6814",
+      "bytes": 285815
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00403.npz",
+      "sha256": "d796c8e230042c598f0a64e3965540a1376bcc18ca6f280a7e441792c9bcd1d5",
+      "bytes": 306692
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00404.npz",
+      "sha256": "a9ae15efae661291c280581240aa1efe458b0ff9d181902cf610607eec073206",
+      "bytes": 288125
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00405.npz",
+      "sha256": "be9c7c0e5b98cc2f33c8f1e8042a0ae470962cb0918c9c499543557d6e26bda3",
+      "bytes": 295099
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00406.npz",
+      "sha256": "270a1e387fc685facf98ada8014fd9dd973e1c542494d46793012efb4e3b261d",
+      "bytes": 283810
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00407.npz",
+      "sha256": "ee7ba7c2a85419e6fa13a7e253c6fd558e785356aeeca20ead566e10a9125d85",
+      "bytes": 292166
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00408.npz",
+      "sha256": "1d6d37d2b97f85d98303eadfe773192b37fdaaf53bd9452abac45c4c568835f1",
+      "bytes": 306204
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00409.npz",
+      "sha256": "79dfb870b364eef35e6214a6ac7e277ec0c53627beebf7e29a6f1f5b7a8de584",
+      "bytes": 299549
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00410.npz",
+      "sha256": "6070619c9f626fb51b9ac8cb0fbb28d8a561c275965278acb8f53bfe52fe6699",
+      "bytes": 299842
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00411.npz",
+      "sha256": "178a6c2f56851ce510ee27dc76e2463fb6675bd8185ffeb2cf1a5217aac0c790",
+      "bytes": 302492
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00412.npz",
+      "sha256": "550ce03c37565a71107c3753cf3de0d88bb3029ca664d21054318d89abfa4592",
+      "bytes": 284345
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00413.npz",
+      "sha256": "f7fccce6b3bd5478caf1ffff06dc84957296d4a9ae3ef22ffc766c6eba73c58d",
+      "bytes": 307044
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00414.npz",
+      "sha256": "d1f372aa155c50a9650b1ca0a304da1520e5e394af2d165f78bef6ce967ffe6a",
+      "bytes": 312619
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00415.npz",
+      "sha256": "d41e7ae2b76eb4519b5b374756105b380672ec24e24562ce30e1e533599e6c73",
+      "bytes": 312706
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00416.npz",
+      "sha256": "a7d4e25f4e1eebf296b48c0b1fe202d0c904e14a10a7daec0663915bd63bccee",
+      "bytes": 313294
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00417.npz",
+      "sha256": "32e28a5302fce636e21f32f82b74b61bb6e2d10bad06bbf614587880f40eb658",
+      "bytes": 313156
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00418.npz",
+      "sha256": "287c5986ad2d27b4d62a204d3b74046affc88138e05780a80cb4027c24adb27f",
+      "bytes": 312364
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00419.npz",
+      "sha256": "4da2507dcdcb3d1756031043ef624c43a400f02e99f363727b67819908fe0607",
+      "bytes": 367770
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00420.npz",
+      "sha256": "999d8b0b17e98b6aba6bea611331a8dfe9a4362d45dbfc289acf82195b89e93c",
+      "bytes": 359943
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00421.npz",
+      "sha256": "bd8daa7b5391e0889d2fc280610866276e92edda5e6679d5d2d6244c8526399b",
+      "bytes": 363458
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00422.npz",
+      "sha256": "1ca695eb0dcc944df2a64399ad9d6c6f55db32846e5e67e10cba42c1aa2f1e03",
+      "bytes": 367981
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00423.npz",
+      "sha256": "13f5471b20dd557ab9af01c5c872686d65cf306496fc0ba9fc16b9ba19a25e2c",
+      "bytes": 363263
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00424.npz",
+      "sha256": "99d85905a70c33648c3f951983ea7333cd2cb5f9a4b828455e8067d010d4f223",
+      "bytes": 286059
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00425.npz",
+      "sha256": "d108d52bdf069da4490afdf0e40a8c268d4d976a96f8eb9a9ad868fde68fe767",
+      "bytes": 312087
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00426.npz",
+      "sha256": "401f897a76c64912d1fbe7c0538e3c9c0c4387b898d1737c783ed7c68e5eeed1",
+      "bytes": 287890
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00427.npz",
+      "sha256": "fde1ad62e8ca4f9bb4c1612675c6e7bdb4263c32a1e46390fe69d429df5fbcda",
+      "bytes": 285037
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/clips/clip-00428.npz",
+      "sha256": "306688ea97fbb60c022a3a15611c07cf172d1e4ab8d70bb140a16f4a73069ea6",
+      "bytes": 309117
+    }
+  ],
+  "files_bytes": 116274650,
+  "validated_clips": 329,
+  "validated_frames": 145767,
+  "plan_sha256": "68048bed0b162f01935f2fc5d1c750bee2b8c071f57a9033b6c7c61386f9a3de"
+}

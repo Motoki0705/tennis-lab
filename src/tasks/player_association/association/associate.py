@@ -49,9 +49,10 @@ from numpy.typing import NDArray
 
 from src.tasks.player_association.appearance.affinity import (
     AppearanceAffinityConfig,
-    appearance_score,
-    segment_embedding,
+    appearance_evidence,
+    segment_appearance,
 )
+from src.tasks.player_association.appearance.parts import NativeParts
 from src.tasks.player_association.appearance.sampling import TrackAppearance
 from src.tasks.player_association.geometry.affinity import (
     GeometryAffinityConfig,
@@ -205,13 +206,13 @@ def associate(cameras: Sequence[CameraTracks], fps: float, config: AssociationCo
     item_points = [np.where(_window(valid[s.camera][s.row], s)[:, None], points[s.camera][s.row], 0.) for s in items]
     item_valid = [_window(valid[s.camera][s.row], s) for s in items]
     item_observed = [_window(cameras[s.camera].observed[s.row], s) for s in items]
-    embeddings: list[NDArray[np.float64] | None] = [None] * count
+    embeddings: list[NDArray[np.float64] | NativeParts | None] = [None] * count
     if config.appearance is not None:
         for k, segment in enumerate(items):
             appearance = cameras[segment.camera].appearance
             assert appearance is not None
             sampled = appearance[segment.row]
-            embeddings[k] = segment_embedding(sampled.frames, sampled.embeddings, segment.start, segment.end)
+            embeddings[k] = segment_appearance(sampled, segment.start, segment.end)
     scores = np.zeros((count, count))
     allowed: NDArray[np.bool_] = np.ones((count, count), bool)
     evidence: list[dict[str, Any]] = []
@@ -232,9 +233,9 @@ def associate(cameras: Sequence[CameraTracks], fps: float, config: AssociationCo
                 score = geometry_score(distance, fps, config.geometry)
                 record.update(shared_frames=distance.shared_frames, median_m=None if distance.shared_frames == 0 else distance.median_m,
                               geometry=score)
-                if config.appearance is not None and embeddings[a] is not None and embeddings[b] is not None:
-                    cosine = float(np.clip(embeddings[a] @ embeddings[b], -1., 1.))  # type: ignore[operator]
-                    record.update(cosine=cosine, appearance=appearance_score(cosine, config.appearance))
+                left, right = embeddings[a], embeddings[b]
+                if config.appearance is not None and left is not None and right is not None:
+                    record.update(appearance_evidence(left, right, config.appearance))
                     score += record["appearance"]
                 scores[a, b] = scores[b, a] = score
             if len(record) > 2:

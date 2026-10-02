@@ -500,7 +500,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
     pl.seed_everything(int(cfg.run.seed))
 
-    checkpoint_path = paths.checkpoint(str(cfg.run.checkpoint_path))
+    checkpoint_path = paths.checkpoint_input(cfg.run, "checkpoint_path", path="run").path
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
@@ -514,6 +514,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         device=device,
         strict=bool(cfg.run.strict),
         weights_only=bool(cfg.run.weights_only),
+        resolver=paths.resolver,
     )
     if BallImageNormalization.from_config(cfg) != module.image_normalization:
         raise ValueError("Evaluation normalization must match the saved checkpoint preprocessing.")

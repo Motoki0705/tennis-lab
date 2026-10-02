@@ -1,0 +1,1583 @@
+{
+  "schema": "i935.joint_confidence_safety.v1",
+  "status": "FAIL",
+  "rule": {
+    "min_presence": 0.9,
+    "max_area_px2": 30000.0
+  },
+  "thresholds": {
+    "reprojection_px": 20.0,
+    "min_motion_px": 5.0,
+    "min_frames": 8,
+    "max_cost": 0.8,
+    "min_support": 0.2,
+    "min_margin": 0.15,
+    "height_range_m": [
+      -0.2,
+      20.0
+    ],
+    "max_abs_xy_m": 40.0,
+    "min_ray_angle_deg": 1.0
+  },
+  "conditions": {
+    "nominal": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 375,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 20,
+          "no_consistent_hypothesis": 5
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0625
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 383,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 7,
+          "disconnected_views": 8,
+          "insufficient_frames": 1,
+          "no_consistent_hypothesis": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0425
+      }
+    },
+    "missing_0.00": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 370,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 18,
+          "no_consistent_hypothesis": 12
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.075
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 389,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 8,
+          "disconnected_views": 3
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0275
+      }
+    },
+    "missing_0.30": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 369,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 29,
+          "no_consistent_hypothesis": 2
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0775
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 376,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 9,
+          "disconnected_views": 14,
+          "insufficient_frames": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.06
+      }
+    },
+    "missing_0.50": {
+      "original": {
+        "trials": 400,
+        "correct": 390,
+        "wrong": 0,
+        "stopped": {
+          "disconnected_views": 10
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.025
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 361,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 28,
+          "disconnected_views": 10,
+          "no_consistent_hypothesis": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0975
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 347,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 5,
+          "disconnected_views": 39,
+          "insufficient_frames": 9
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.1325
+      }
+    },
+    "missing_0.70": {
+      "original": {
+        "trials": 400,
+        "correct": 308,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 1,
+          "disconnected_views": 71,
+          "insufficient_frames": 20
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.23
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 282,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 27,
+          "disconnected_views": 71,
+          "insufficient_frames": 20
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.295
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 225,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 2,
+          "disconnected_views": 115,
+          "insufficient_frames": 58
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.4375
+      }
+    },
+    "missing_0.85": {
+      "original": {
+        "trials": 400,
+        "correct": 12,
+        "wrong": 0,
+        "stopped": {
+          "disconnected_views": 257,
+          "insufficient_frames": 131
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.97
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 7,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 5,
+          "disconnected_views": 257,
+          "insufficient_frames": 131
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.9825
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 0,
+        "wrong": 0,
+        "stopped": {
+          "disconnected_views": 120,
+          "insufficient_frames": 280
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 1.0
+      }
+    },
+    "false_0.05": {
+      "original": {
+        "trials": 400,
+        "correct": 382,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 9,
+          "no_consistent_hypothesis": 9
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.045
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 302,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 54,
+          "no_consistent_hypothesis": 44
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.245
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 344,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 44,
+          "disconnected_views": 3,
+          "no_consistent_hypothesis": 9
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.14
+      }
+    },
+    "false_0.10": {
+      "original": {
+        "trials": 400,
+        "correct": 374,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 19,
+          "no_consistent_hypothesis": 7
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.065
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 276,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 84,
+          "no_consistent_hypothesis": 40
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.31
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 334,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 54,
+          "disconnected_views": 4,
+          "no_consistent_hypothesis": 8
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.165
+      }
+    },
+    "false_0.20": {
+      "original": {
+        "trials": 400,
+        "correct": 346,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 27,
+          "no_consistent_hypothesis": 27
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.135
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 144,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 95,
+          "no_consistent_hypothesis": 161
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.64
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 252,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 112,
+          "no_consistent_hypothesis": 36
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.37
+      }
+    },
+    "false_0.30": {
+      "original": {
+        "trials": 400,
+        "correct": 244,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 72,
+          "no_consistent_hypothesis": 84
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.39
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 53,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 45,
+          "no_consistent_hypothesis": 302
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.8675
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 138,
+        "wrong": 1,
+        "stopped": {
+          "ambiguous_margin": 177,
+          "disconnected_views": 4,
+          "no_consistent_hypothesis": 80
+        },
+        "wrong_rate": 0.0025,
+        "stop_rate": 0.6525
+      }
+    },
+    "false_0.50": {
+      "original": {
+        "trials": 400,
+        "correct": 55,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 29,
+          "no_consistent_hypothesis": 316
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.8625
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 4,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 9,
+          "no_consistent_hypothesis": 387
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.99
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 17,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 106,
+          "no_consistent_hypothesis": 277
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.9575
+      }
+    },
+    "false_shared_0.10": {
+      "original": {
+        "trials": 400,
+        "correct": 399,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0025
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 365,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 24,
+          "no_consistent_hypothesis": 11
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0875
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 381,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 16,
+          "disconnected_views": 2,
+          "no_consistent_hypothesis": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0475
+      }
+    },
+    "false_shared_0.30": {
+      "original": {
+        "trials": 400,
+        "correct": 388,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 10,
+          "no_consistent_hypothesis": 2
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.03
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 331,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 51,
+          "no_consistent_hypothesis": 18
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.1725
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 356,
+        "wrong": 1,
+        "stopped": {
+          "ambiguous_margin": 39,
+          "disconnected_views": 3,
+          "no_consistent_hypothesis": 1
+        },
+        "wrong_rate": 0.0025,
+        "stop_rate": 0.1075
+      }
+    },
+    "sync_1f": {
+      "original": {
+        "trials": 400,
+        "correct": 397,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 3
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0075
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 361,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 27,
+          "no_consistent_hypothesis": 12
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0975
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 379,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 14,
+          "disconnected_views": 7
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0525
+      }
+    },
+    "sync_2f": {
+      "original": {
+        "trials": 400,
+        "correct": 385,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 12,
+          "no_consistent_hypothesis": 3
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0375
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 285,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 84,
+          "no_consistent_hypothesis": 31
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.2875
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 349,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 46,
+          "disconnected_views": 3,
+          "no_consistent_hypothesis": 2
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.1275
+      }
+    },
+    "sync_4f": {
+      "original": {
+        "trials": 400,
+        "correct": 239,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 125,
+          "no_consistent_hypothesis": 36
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.4025
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 69,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 180,
+          "no_consistent_hypothesis": 151
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.8275
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 165,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 216,
+          "disconnected_views": 7,
+          "insufficient_frames": 3,
+          "no_consistent_hypothesis": 9
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.5875
+      }
+    },
+    "sync_8f": {
+      "original": {
+        "trials": 400,
+        "correct": 28,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 255,
+          "no_consistent_hypothesis": 117
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.93
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 10,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 127,
+          "no_consistent_hypothesis": 263
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.975
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 20,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 326,
+          "disconnected_views": 8,
+          "no_consistent_hypothesis": 46
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.95
+      }
+    },
+    "pixel_sigma_0px": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 374,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 18,
+          "no_consistent_hypothesis": 8
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.065
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 382,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 12,
+          "disconnected_views": 6
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.045
+      }
+    },
+    "pixel_sigma_5px": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 380,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 15,
+          "no_consistent_hypothesis": 5
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.05
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 391,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 4,
+          "disconnected_views": 5
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0225
+      }
+    },
+    "pixel_sigma_10px": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 358,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 34,
+          "no_consistent_hypothesis": 8
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.105
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 384,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 11,
+          "disconnected_views": 5
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.04
+      }
+    },
+    "calibration_x0": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 381,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 18,
+          "no_consistent_hypothesis": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0475
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 393,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 1,
+          "disconnected_views": 6
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0175
+      }
+    },
+    "calibration_x2": {
+      "original": {
+        "trials": 400,
+        "correct": 370,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 8,
+          "no_consistent_hypothesis": 22
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.075
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 293,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 53,
+          "no_consistent_hypothesis": 54
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.2675
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 337,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 52,
+          "disconnected_views": 5,
+          "no_consistent_hypothesis": 6
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.1575
+      }
+    },
+    "calibration_x4": {
+      "original": {
+        "trials": 400,
+        "correct": 182,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 67,
+          "no_consistent_hypothesis": 151
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.545
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 104,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 79,
+          "no_consistent_hypothesis": 217
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.74
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 152,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 158,
+          "disconnected_views": 9,
+          "no_consistent_hypothesis": 81
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.62
+      }
+    },
+    "window_30f": {
+      "original": {
+        "trials": 400,
+        "correct": 301,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 1,
+          "disconnected_views": 53,
+          "insufficient_frames": 45
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.2475
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 222,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 38,
+          "disconnected_views": 53,
+          "insufficient_frames": 45,
+          "no_consistent_hypothesis": 42
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.445
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 188,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 25,
+          "disconnected_views": 113,
+          "insufficient_frames": 74
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.53
+      }
+    },
+    "window_60f": {
+      "original": {
+        "trials": 400,
+        "correct": 378,
+        "wrong": 0,
+        "stopped": {
+          "disconnected_views": 16,
+          "insufficient_frames": 6
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.055
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 306,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 47,
+          "disconnected_views": 16,
+          "insufficient_frames": 6,
+          "no_consistent_hypothesis": 25
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.235
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 313,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 23,
+          "disconnected_views": 53,
+          "insufficient_frames": 11
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.2175
+      }
+    },
+    "window_150f": {
+      "original": {
+        "trials": 400,
+        "correct": 399,
+        "wrong": 0,
+        "stopped": {
+          "insufficient_frames": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0025
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 359,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 35,
+          "insufficient_frames": 1,
+          "no_consistent_hypothesis": 5
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.1025
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 385,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 11,
+          "disconnected_views": 3,
+          "insufficient_frames": 1
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0375
+      }
+    },
+    "cameras_4": {
+      "original": {
+        "trials": 400,
+        "correct": 400,
+        "wrong": 0,
+        "stopped": {},
+        "wrong_rate": 0.0,
+        "stop_rate": 0.0
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 334,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 56,
+          "no_consistent_hypothesis": 10
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.165
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 370,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 19,
+          "disconnected_views": 11
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.075
+      }
+    },
+    "combined": {
+      "original": {
+        "trials": 400,
+        "correct": 342,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 41,
+          "no_consistent_hypothesis": 17
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.145
+      },
+      "joint_unfiltered": {
+        "trials": 400,
+        "correct": 166,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 171,
+          "no_consistent_hypothesis": 63
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.585
+      },
+      "joint_filtered": {
+        "trials": 400,
+        "correct": 264,
+        "wrong": 0,
+        "stopped": {
+          "ambiguous_margin": 108,
+          "disconnected_views": 7,
+          "no_consistent_hypothesis": 21
+        },
+        "wrong_rate": 0.0,
+        "stop_rate": 0.34
+      }
+    }
+  },
+  "seed": 1,
+  "residual_seed": 30001,
+  "scenes": [
+    "scene_006043",
+    "scene_006046",
+    "scene_006049",
+    "scene_006054",
+    "scene_006065",
+    "scene_006071",
+    "scene_006118",
+    "scene_006126",
+    "scene_006149",
+    "scene_006180",
+    "scene_006201",
+    "scene_006209",
+    "scene_006211",
+    "scene_006216",
+    "scene_006224",
+    "scene_006226",
+    "scene_006227",
+    "scene_006232",
+    "scene_006246",
+    "scene_006252",
+    "scene_006267",
+    "scene_006274",
+    "scene_006275",
+    "scene_006284",
+    "scene_006291",
+    "scene_006304",
+    "scene_006311",
+    "scene_006325",
+    "scene_006371",
+    "scene_006381",
+    "scene_006389",
+    "scene_006396",
+    "scene_006455",
+    "scene_006482",
+    "scene_006484",
+    "scene_006498",
+    "scene_006512",
+    "scene_006528",
+    "scene_006537",
+    "scene_006543",
+    "scene_006547",
+    "scene_006548",
+    "scene_006561",
+    "scene_006565",
+    "scene_006570",
+    "scene_006572",
+    "scene_006592",
+    "scene_006594",
+    "scene_006596",
+    "scene_006615",
+    "scene_006622",
+    "scene_006624",
+    "scene_006625",
+    "scene_006653",
+    "scene_006658",
+    "scene_006669",
+    "scene_006678",
+    "scene_006684",
+    "scene_006690",
+    "scene_006691",
+    "scene_006693",
+    "scene_006717",
+    "scene_006730",
+    "scene_006735",
+    "scene_006744",
+    "scene_006745",
+    "scene_006755",
+    "scene_006770",
+    "scene_006790",
+    "scene_006797",
+    "scene_006798",
+    "scene_006807",
+    "scene_006812",
+    "scene_006818",
+    "scene_006865",
+    "scene_006868",
+    "scene_006873",
+    "scene_006882",
+    "scene_006883",
+    "scene_006888",
+    "scene_006906",
+    "scene_006912",
+    "scene_006916",
+    "scene_006924",
+    "scene_006930",
+    "scene_006932",
+    "scene_006939",
+    "scene_006965",
+    "scene_006971",
+    "scene_006991",
+    "scene_007007",
+    "scene_007018",
+    "scene_007019",
+    "scene_007022",
+    "scene_007025",
+    "scene_007041",
+    "scene_007043",
+    "scene_007062",
+    "scene_007066",
+    "scene_007078",
+    "scene_007102",
+    "scene_007110",
+    "scene_007119",
+    "scene_007123",
+    "scene_007135",
+    "scene_007136",
+    "scene_007140",
+    "scene_007141",
+    "scene_007144",
+    "scene_007149",
+    "scene_007172",
+    "scene_007177",
+    "scene_007178",
+    "scene_007179",
+    "scene_007195",
+    "scene_007206",
+    "scene_007213",
+    "scene_007216",
+    "scene_007238",
+    "scene_007239",
+    "scene_007242",
+    "scene_007244",
+    "scene_007245",
+    "scene_007251",
+    "scene_007253",
+    "scene_007260",
+    "scene_007269",
+    "scene_007305",
+    "scene_007316",
+    "scene_007342",
+    "scene_007350",
+    "scene_007359",
+    "scene_007373",
+    "scene_007381",
+    "scene_007385",
+    "scene_007397",
+    "scene_007428",
+    "scene_007433",
+    "scene_007434",
+    "scene_007438",
+    "scene_007449",
+    "scene_007451",
+    "scene_007454",
+    "scene_007460",
+    "scene_007461",
+    "scene_007478",
+    "scene_007483",
+    "scene_007486",
+    "scene_007491",
+    "scene_007508",
+    "scene_007517",
+    "scene_007527",
+    "scene_007532",
+    "scene_007541",
+    "scene_007560",
+    "scene_007564",
+    "scene_007569",
+    "scene_007573",
+    "scene_007579",
+    "scene_007611",
+    "scene_007612",
+    "scene_007613",
+    "scene_007616",
+    "scene_007618",
+    "scene_007619",
+    "scene_007633",
+    "scene_007651",
+    "scene_007657",
+    "scene_007668",
+    "scene_007679",
+    "scene_007690",
+    "scene_007692",
+    "scene_007699",
+    "scene_007700",
+    "scene_007705",
+    "scene_007708",
+    "scene_007711",
+    "scene_007736",
+    "scene_007744",
+    "scene_007749",
+    "scene_007752",
+    "scene_007753",
+    "scene_007758",
+    "scene_007777",
+    "scene_007784",
+    "scene_007787",
+    "scene_007800",
+    "scene_007811",
+    "scene_007814",
+    "scene_007827",
+    "scene_007843",
+    "scene_007886",
+    "scene_007905",
+    "scene_007921",
+    "scene_007933",
+    "scene_007935",
+    "scene_007939",
+    "scene_007941",
+    "scene_007953",
+    "scene_007956",
+    "scene_007962",
+    "scene_007973",
+    "scene_007988",
+    "scene_007994",
+    "scene_007999",
+    "scene_008004",
+    "scene_008005",
+    "scene_008022",
+    "scene_008031",
+    "scene_008041",
+    "scene_008042",
+    "scene_008056",
+    "scene_008085",
+    "scene_008090",
+    "scene_008098",
+    "scene_008099",
+    "scene_008115",
+    "scene_008117",
+    "scene_008165",
+    "scene_008167",
+    "scene_008179",
+    "scene_008199",
+    "scene_008201",
+    "scene_008229",
+    "scene_008238",
+    "scene_008270",
+    "scene_008279",
+    "scene_008280",
+    "scene_008288",
+    "scene_008289",
+    "scene_008308",
+    "scene_008317",
+    "scene_008318",
+    "scene_008320",
+    "scene_008327",
+    "scene_008337",
+    "scene_008346",
+    "scene_008348",
+    "scene_008375",
+    "scene_008379",
+    "scene_008423",
+    "scene_008431",
+    "scene_008445",
+    "scene_008464",
+    "scene_008479",
+    "scene_008486",
+    "scene_008494",
+    "scene_008502",
+    "scene_008518",
+    "scene_008540",
+    "scene_008548",
+    "scene_008561",
+    "scene_008565",
+    "scene_008595",
+    "scene_008617",
+    "scene_008645",
+    "scene_008666",
+    "scene_008669",
+    "scene_008689",
+    "scene_008698",
+    "scene_008701",
+    "scene_008702",
+    "scene_008727",
+    "scene_008728",
+    "scene_008742",
+    "scene_008751",
+    "scene_008779",
+    "scene_008785",
+    "scene_008786",
+    "scene_008797",
+    "scene_008808",
+    "scene_008817",
+    "scene_008818",
+    "scene_008821",
+    "scene_008824",
+    "scene_008830",
+    "scene_008834",
+    "scene_008835",
+    "scene_008837",
+    "scene_008847",
+    "scene_008849",
+    "scene_008856",
+    "scene_008864",
+    "scene_008883",
+    "scene_008889",
+    "scene_008890",
+    "scene_008900",
+    "scene_008903",
+    "scene_008922",
+    "scene_008928",
+    "scene_008935",
+    "scene_008938",
+    "scene_008947",
+    "scene_008976",
+    "scene_008977",
+    "scene_008998",
+    "scene_009007",
+    "scene_009012",
+    "scene_009016",
+    "scene_009017",
+    "scene_009024",
+    "scene_009031",
+    "scene_009038",
+    "scene_009042",
+    "scene_009043",
+    "scene_009044",
+    "scene_009048",
+    "scene_009052",
+    "scene_009064",
+    "scene_009066",
+    "scene_009068",
+    "scene_009075",
+    "scene_009083",
+    "scene_009086",
+    "scene_009096",
+    "scene_009105",
+    "scene_009106",
+    "scene_009125",
+    "scene_009132",
+    "scene_009143",
+    "scene_009157",
+    "scene_009173",
+    "scene_009189",
+    "scene_009195",
+    "scene_009197",
+    "scene_009211",
+    "scene_009221",
+    "scene_009224",
+    "scene_009226",
+    "scene_009240",
+    "scene_009242",
+    "scene_009246",
+    "scene_009254",
+    "scene_009260",
+    "scene_009272",
+    "scene_009292",
+    "scene_009295",
+    "scene_009304",
+    "scene_009323",
+    "scene_009324",
+    "scene_009333",
+    "scene_009355",
+    "scene_009372",
+    "scene_009379",
+    "scene_009397",
+    "scene_009409",
+    "scene_009431",
+    "scene_009440",
+    "scene_009446",
+    "scene_009459",
+    "scene_009485",
+    "scene_009488",
+    "scene_009489",
+    "scene_009497",
+    "scene_009502",
+    "scene_009512",
+    "scene_009527",
+    "scene_009534",
+    "scene_009543",
+    "scene_009560",
+    "scene_009562",
+    "scene_009571",
+    "scene_009577",
+    "scene_009598",
+    "scene_009611",
+    "scene_009618",
+    "scene_009638",
+    "scene_009641",
+    "scene_009649",
+    "scene_009652",
+    "scene_009654",
+    "scene_009674",
+    "scene_009738",
+    "scene_009741",
+    "scene_009747",
+    "scene_009748",
+    "scene_009763",
+    "scene_009771",
+    "scene_009774",
+    "scene_009778",
+    "scene_009785",
+    "scene_009801",
+    "scene_009813",
+    "scene_009827",
+    "scene_009844",
+    "scene_009848",
+    "scene_009851",
+    "scene_009859",
+    "scene_009863",
+    "scene_009870",
+    "scene_009872",
+    "scene_009874",
+    "scene_009885",
+    "scene_009891",
+    "scene_009927",
+    "scene_009929",
+    "scene_009954",
+    "scene_009957",
+    "scene_009973",
+    "scene_009989"
+  ],
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/calibration/i935-anchored-s42-r23-20260930/residual_bank/bank.npz": "0697fe921daf79c7960d616ed0437efecd3b7195f3f8a7dd6188048dd8ecc858",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/calibration/i935-anchored-s42-r23-20260930/residual_bank/calibration.json": "2c9cd7ba9a1d63addeaecb808441fbae0447ad21e4a3a279ed1694fcbf67ae01",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/configs/confidence/meiji_val_r29.yaml": "dd2c401064110c2fe80681ec9ffb254cc7d4623e5b7ef078ad1e8fee9b49f966",
+    "/home/kamimura/projects/tennis-lab/outputs/court_side/evaluate/synthetic_blcs_v2/i932-holdout-s1-400-20260927/report.json": "4acd537be4e9251dccdefe45323f53c4d8ee363bc456ea32c4582a8371247457",
+    "/home/kamimura/projects/tennis-lab/data/blcs/single_object_camera_view_v2/test.txt": "f645b41113eade43675f40e57e07d490de40fe9e60898a93839360ebdfcc67da"
+  },
+  "pass_rule": "zero filtered wrong decisions across all 11200; report stop rates",
+  "wrong_cases": [
+    {
+      "scene": "scene_007579",
+      "condition": "false_0.30",
+      "path": "joint_filtered",
+      "expected": [
+        false,
+        true,
+        false
+      ],
+      "cameras": [
+        "cam_2",
+        "cam_1",
+        "cam_3"
+      ],
+      "frames": 39,
+      "pair_frames": {
+        "cam_2-cam_1": 28,
+        "cam_2-cam_3": 21,
+        "cam_1-cam_3": 14
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.48385451741854724,
+          "support": 0.5641025641025641,
+          "frames": 39
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.7181433931808735,
+          "support": 0.28205128205128205,
+          "frames": 39
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 0.7232779964047381,
+          "support": 0.3333333333333333,
+          "frames": 39
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.9554902957554566,
+          "support": 0.05128205128205128,
+          "frames": 39
+        }
+      ]
+    },
+    {
+      "scene": "scene_007141",
+      "condition": "false_shared_0.30",
+      "path": "joint_filtered",
+      "expected": [
+        false,
+        false,
+        true
+      ],
+      "cameras": [
+        "cam_0",
+        "cam_1",
+        "cam_2"
+      ],
+      "frames": 38,
+      "pair_frames": {
+        "cam_0-cam_1": 23,
+        "cam_0-cam_2": 10,
+        "cam_1-cam_2": 23
+      },
+      "hypotheses": [
+        {
+          "view_half_turns": [
+            false,
+            false,
+            false
+          ],
+          "cost": 0.30885837984772957,
+          "support": 0.7368421052631579,
+          "frames": 38
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            true
+          ],
+          "cost": 0.5896007798195386,
+          "support": 0.5,
+          "frames": 38
+        },
+        {
+          "view_half_turns": [
+            false,
+            false,
+            true
+          ],
+          "cost": 0.6431155779297623,
+          "support": 0.3684210526315789,
+          "frames": 38
+        },
+        {
+          "view_half_turns": [
+            false,
+            true,
+            false
+          ],
+          "cost": 0.8955481305848956,
+          "support": 0.13157894736842105,
+          "frames": 38
+        }
+      ]
+    }
+  ],
+  "elapsed_seconds": 315.2561029329663,
+  "totals": {
+    "original": {
+      "wrong": 0,
+      "stop_rate": 0.18580357142857143
+    },
+    "joint_unfiltered": {
+      "wrong": 0,
+      "stop_rate": 0.35348214285714274
+    },
+    "joint_filtered": {
+      "wrong": 2,
+      "stop_rate": 0.2842857142857143
+    }
+  },
+  "point_error_px": {
+    "kept_total": {
+      "n": 3829464,
+      "median": 2.859344005584717,
+      "p90": 198.92257690429688
+    },
+    "dropped_total": {
+      "n": 1277940,
+      "median": 70.1630859375,
+      "p90": 364.6210632324219
+    },
+    "kept_empirical": {
+      "n": 3829464,
+      "median": 1.6001782417297363,
+      "p90": 9.97474479675293
+    },
+    "dropped_empirical": {
+      "n": 1277940,
+      "median": 58.73756790161133,
+      "p90": 271.1956787109375
+    }
+  }
+}

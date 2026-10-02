@@ -1,0 +1,39 @@
+completed unimodal: 16 trials
+completed ambiguous: 16 trials
+completed low_presence: 16 trials
+completed prior_only: 16 trials
+{'scenario': 'unimodal', 'method': 'A', 'trials': 16, 'mean_nll_m3': -1.8189007163633415, 'nll_standard_error': 0.4680648789022368, 'coverage90': 0.75, 'coverage95': 0.9375, 'median_ms': 1.8326134886592627, 'p95_ms': 3.237612501834519}
+{'scenario': 'unimodal', 'method': 'B', 'trials': 16, 'mean_nll_m3': -1.9170413927602576, 'nll_standard_error': 0.42123756066539014, 'coverage90': 0.8125, 'coverage95': 0.9375, 'median_ms': 62.26718102698214, 'p95_ms': 79.39821698528249}
+{'scenario': 'unimodal', 'method': 'C', 'trials': 16, 'mean_nll_m3': -1.5922447876363812, 'nll_standard_error': 0.6141529647729045, 'coverage90': 0.875, 'coverage95': 0.9375, 'median_ms': 1312.461023509968, 'p95_ms': 1791.017957017175}
+{'scenario': 'ambiguous', 'method': 'A', 'trials': 16, 'mean_nll_m3': -1.5138376165795266, 'nll_standard_error': 0.42890398895419796, 'coverage90': 0.75, 'coverage95': 0.8125, 'median_ms': 9.480048000114039, 'p95_ms': 15.572717515169643}
+{'scenario': 'ambiguous', 'method': 'B', 'trials': 16, 'mean_nll_m3': -1.5101120064390863, 'nll_standard_error': 0.4305891504690301, 'coverage90': 0.75, 'coverage95': 0.8125, 'median_ms': 91.36838853009976, 'p95_ms': 121.0297230136348}
+{'scenario': 'ambiguous', 'method': 'C', 'trials': 16, 'mean_nll_m3': 0.2084379712664072, 'nll_standard_error': 0.1820634706638111, 'coverage90': 0.9375, 'coverage95': 1.0, 'median_ms': 1452.6516780024394, 'p95_ms': 2105.045437987428}
+{'scenario': 'low_presence', 'method': 'A', 'trials': 16, 'mean_nll_m3': -1.4447282213892048, 'nll_standard_error': 0.17173873947961701, 'coverage90': 1.0, 'coverage95': 1.0, 'median_ms': 9.489669522736222, 'p95_ms': 18.93551752436906}
+{'scenario': 'low_presence', 'method': 'B', 'trials': 16, 'mean_nll_m3': -1.4245552793408347, 'nll_standard_error': 0.1739637371246198, 'coverage90': 1.0, 'coverage95': 1.0, 'median_ms': 426.9359435129445, 'p95_ms': 620.6926447484875}
+{'scenario': 'low_presence', 'method': 'C', 'trials': 16, 'mean_nll_m3': -0.7601026549217187, 'nll_standard_error': 0.10092510634890332, 'coverage90': 1.0, 'coverage95': 1.0, 'median_ms': 1287.2615644882899, 'p95_ms': 1638.9126740104984}
+{'scenario': 'prior_only', 'method': 'A', 'trials': 16, 'mean_nll_m3': 3.1178017458015725, 'nll_standard_error': 0.20492844582405714, 'coverage90': 1.0, 'coverage95': 1.0, 'median_ms': 0.5434720078483224, 'p95_ms': 0.8522912539774552}
+{'scenario': 'prior_only', 'method': 'B', 'trials': 16, 'mean_nll_m3': 3.1100533706634925, 'nll_standard_error': 0.2002635695578967, 'coverage90': 1.0, 'coverage95': 1.0, 'median_ms': 40.39162950357422, 'p95_ms': 56.04971772118006}
+{'scenario': 'prior_only', 'method': 'C', 'trials': 16, 'mean_nll_m3': 3.0937133464636655, 'nll_standard_error': 0.16339400776600904, 'coverage90': 1.0, 'coverage95': 1.0, 'median_ms': 103.51203801110387, 'p95_ms': 188.67126374971122}
+	Command being timed: "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python -m src.tasks.ball_refiner.scripts.compare_triangulation --fixture /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/fixtures/meiji_video_002_clip_010.json --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/knowledge/runs/run-i936-triangulation-abc-s936/higher-budget.json --trials 16 --particles 1024 --hdr-samples 1024 --initial-cells 24 --levels 6 --refine-cells 1024"
+	User time (seconds): 94.28
+	System time (seconds): 4.02
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:38.35
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 994984
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 659601
+	Voluntary context switches: 117
+	Involuntary context switches: 366
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 120
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

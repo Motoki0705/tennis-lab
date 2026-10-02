@@ -1,0 +1,8 @@
+{
+  "git": {
+    "commit": "37c41ce42c5e5b79110b07cee97088795b246f25"
+  },
+  "status": "not_executed_missing_input",
+  "device": "cpu",
+  "torch_threads": 1
+}

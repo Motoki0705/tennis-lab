@@ -1,0 +1,223 @@
+{
+  "status": "complete",
+  "video": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/visualize/paired/i935-clip010-r19-20260930/meiji-val-clip010-three-cameras-paired.mp4",
+  "sha256": "8da2dbdc0455cab3306704a6ca3e91d1e6940a2b10d9a4e8bebe5734896a8c01",
+  "bytes": 4552677,
+  "frames": 270,
+  "fps": "2997003/50000",
+  "size_wh": [
+    2880,
+    1374
+  ],
+  "seconds": 30.42656072298996,
+  "cpu_threads": {
+    "opencv": 1,
+    "torch": 1,
+    "encoder": 2
+  },
+  "gpu": false,
+  "cameras": [
+    {
+      "clip": "meiji/video_000/clip_010/cam0",
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "media_sha256_inherited": "0ac292acd91aa8f0fda4082c0ec3c85c3240b958b89f65fc5c3cafb170f8f26b",
+      "time_base": "1/2997003",
+      "pts_range": [
+        0,
+        13450000
+      ],
+      "reasons": {
+        "OBSERVED": 200,
+        "OUT_OF_FRAME": 0,
+        "UNREVIEWED": 0,
+        "NO_INSTANCE": 0,
+        "MULTIPLE_INSTANCES": 0,
+        "INTERPOLATED": 2,
+        "OCCLUSION_ESTIMATED": 6,
+        "UNRESOLVED": 62
+      },
+      "gap_frames": 58
+    },
+    {
+      "clip": "meiji/video_000/clip_010/cam1",
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "media_sha256_inherited": "f0a5aea865e1fe6053daa3f0a08c67f4810451b2c2007a12aca0d4b700a1b834",
+      "time_base": "1/2997003",
+      "pts_range": [
+        0,
+        13450000
+      ],
+      "reasons": {
+        "OBSERVED": 237,
+        "OUT_OF_FRAME": 0,
+        "UNREVIEWED": 0,
+        "NO_INSTANCE": 0,
+        "MULTIPLE_INSTANCES": 0,
+        "INTERPOLATED": 0,
+        "OCCLUSION_ESTIMATED": 1,
+        "UNRESOLVED": 32
+      },
+      "gap_frames": 58
+    },
+    {
+      "clip": "meiji/video_000/clip_010/cam2",
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "media_sha256_inherited": "e1b7b18bfb48a43bd865f4ae8aa1c324fe20a5a54c6730466ee1342ae5fd1170",
+      "time_base": "1/2997003",
+      "pts_range": [
+        0,
+        13450000
+      ],
+      "reasons": {
+        "OBSERVED": 217,
+        "OUT_OF_FRAME": 0,
+        "UNREVIEWED": 0,
+        "NO_INSTANCE": 0,
+        "MULTIPLE_INSTANCES": 0,
+        "INTERPOLATED": 5,
+        "OCCLUSION_ESTIMATED": 8,
+        "UNRESOLVED": 40
+      },
+      "gap_frames": 58
+    }
+  ],
+  "model_sha256": {
+    "new_pilot": "aec4ddbbd7f184adab52c019c176ebf252d91d1e7396ce80ee3cd576ea5aa6db",
+    "old_pilot": "ed659e142dd228949ec772bcfdf9db0f4c682081778853c15088f7202a848c76",
+    "new_detector": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+    "old_detector": "cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892",
+    "new_cache": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+    "old_cache": "cc9e094dad26903c692de9acd75996d890ea877799556454fc4db6757d59a15f"
+  },
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt": "cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/index.npz": "a078912bc31c207b5be807b453bfba203da30b2ec2815993eebe98f896cb7523",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/metadata.json": "b7796c1d9a99c2b44496264f54102729bea1ff26dd2550ef2b470780a93ef4c0",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00086.bin": "c5d88ae0f23fddec494cd9c35ade8efc603288323e9f46e55ac3c0634a056fd5",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00087.bin": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00088.bin": "1261445f42b9721b1fdd425fed90f43d9bdd257b3ff7063d6a928913606e7257",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00089.bin": "3e9f87a677684f582e7eadde14404a845bd148d5e66d5a9d61b328ef7c59470a",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00090.bin": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00091.bin": "658856a93a78b089cdbbc0acb29fc7afb706a73a1911d3fbcea7e75ac39ab6dc",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00092.bin": "1bb99381d9a518c167dc34672d84f2cc11c34737a211681fbbf0c0d1e168aab6",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00093.bin": "c8eb4d943246987185f78d4962ebb94e207053ac9bc593730a8d4e1959586539",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00094.bin": "d49957638dc570d11ff80f205afc45b7777a3dea28e7c792c29d291db766544b",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00095.bin": "a1473a9b39df5dc2418562d44799f12652cef1f9b45064a3f176d3f8049833e2",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00096.bin": "11a9719135aa76d0d5c9e3d968267234eba0a27f9ce2d32e0580f0b31e024bfd",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00097.bin": "d395d5df5b6a955c120fd52fbdd7b98e51b2b0a103472ce3ff52c207afd29421",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00098.bin": "076e95d900de8f54f87b5185c528006b5b859191ea4ba32962a5ecc1e3c9e312",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00099.bin": "f80a7cec8121c9ee5fd15b228d797c356a77f84feecb9382c3c7a97717e8da4d",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00100.bin": "18e7aa7ddaa878cecddd61a420e5843f22d4d65f19e8585e737e255fa9313248",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00101.bin": "523642ccb0a85eb4d6a453196e3defcb1735d1124273f62dd0170c9d7627065f",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00102.bin": "bdaf6550f5d435e0e5cab891cb166315154f9b2056938e12b5c14aaa61427a32",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00103.bin": "7d2a805da0db8758a7176f116e7d7937efd1039448a0d2b46e7d8ab349c8d067",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00104.bin": "34470df359a62d3442c8ae4b603d4f09cb38fd421551515e82a7a34bd81502e7",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00105.bin": "5b03c091833d4cf308a469888e0e57d829a3d8d3fd4abf05a36495c37c71d941",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00106.bin": "480313c67dbdc20f2cad1f96170fd9b540b72396a51889f79bc342db91ff8f45",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00107.bin": "e62c7559e04a6cb71d9f4846c26274bf9c9ba0242d7d4d73d341a0c371000e27",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00108.bin": "ebab42151cb081a9fdc54774a52a45ae90572235d5fced0e930c9d507fd0927a",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00109.bin": "d26c3fa62f5cde74e86cf0fa3516b69dd4cab6a3eaed92544e3d873a93fabd4a",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00110.bin": "a0a69abbf95681ca2e7038ab04a297617954c8d210e76902478ac013d3dbf2e1",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00111.bin": "938714aace4d5b2cb2b6d99c555677989a2e40ac2f51be1587dff2fd687d3b22",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00112.bin": "c75bc7bb587c31e904d4fdc23537262d9e9e6824d3b6479849d5910a48f1423f",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00113.bin": "7c17851ff0319d7d4fcc66cc28758d751a6807a01b2337a8f054efaeb90dec08",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00114.bin": "7394b7f503e9d31525f314863efca160e2d3182aff3128e7d490104c4c065ec5",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00115.bin": "c7a8bdd0ef8d89ba6003cced3c6ddf2d02fb739c173978cd926856800c2ca953",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00116.bin": "41c0495eaf3b48e6eb1bc69939c22d257b688f9ae2595dfb94ef7ed4dd78400d",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00117.bin": "79ef7d627d83e4d05b591f01cc0c56faae4bdd4138d455f979329e9e1e6a8026",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00118.bin": "e5cedc92a4f22af0b198619b3c657d48d18fdb4c536ce976eec82db4a433a2d4",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00119.bin": "1c3dd28d2191f6ab07285bce43eb0362568cf2ebe18f8e89118c8e4404331e3b",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00120.bin": "f4f3041589caab6129ee9846b6ab3aa01c61678f24f3af28bf3f25732a73a00b",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00121.bin": "ba69f6e690c532953f46046c2b628db13fbdbda8100a031a941c32a462bf4a93",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00122.bin": "3e5fed51f08ab721cf8903f54ec09c37a9d7c4c2193d286157eecee75cedf328",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00123.bin": "52cd96eb602d3fb186b101e2942ff541fef15f516c33a756b983fe528835ca4b",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00124.bin": "56d77c9365cc904a7852548410d6fe8065e3a38b1d4871aedfd97e523da0e9c5",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00125.bin": "15e74370e37efe11987e3edbf6d768fe06031bc2d683634e6ffff8550adc6180",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00126.bin": "034690b46c611017ce389bf0ad5b63a2c7e0ceef84bd6a960ec388cc6d6fc65a",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00127.bin": "f8ff43bff615cdc2e21f9e0885bdb946027171af083e1edcffffccf1bcfd566b",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00128.bin": "d435614e21636582a72a98d687e77a89a6a56e43c6342e9b0cde7eb557f2fffb",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00129.bin": "b1fe25cb4e7a360c3951229f6ea34be07627b6d323ceb78f98bfd4be84c787a3",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00130.bin": "7fccd4d7002cca76ab12c06c329e94e7c29e2f5ca5731a3ec2e17854d4bcb743",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00296.bin": "94af027f1f7765fb6f2213d154b273aac7bde2b9ba13e37a1ec72a0a8b958557",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00297.bin": "b0f276589b14f44e58744c24600ef764126dadebbb777c6a60880ae6cd490a7f",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00298.bin": "d03b20dd753beb225eaeff64a440c4bbdce2278e9da4bf9934bbe7b1f85b98da",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00299.bin": "62ea76c15b598ce5f82bbd23aba3ddb490ac5cdc0328e8ff6e21124346caecf3",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00300.bin": "371173c57807af2ad6aec31ca38ed4ee916741ef95cd209f4f5cda2cf348cbfb",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00301.bin": "797bafc66c3ccd870cb91c0ec6f22cc405e8a09fb5f73a82408249f096dbf901",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00302.bin": "32ce68806011f6a5b270042d3e09f2bc5c6a05f65f5cf8d1efca28e7e03893ba",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00303.bin": "ce1c5dfcedabb81f8d10798f90c98c03313ea41b92fce2759760b5d05c196425",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00304.bin": "d97e008c780f325893f91d11bcd97e8bb9991c8c287dee7b8e82cee1a16dba94",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00305.bin": "67e84f486f9a035ab0ef6fd67f1d273b0a7c550a45dd8389422bf2627ff1f765",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00316.bin": "6f7af17eaf90957e779fe2d4caabd30de9f5b6fb991fb4d03b0f2e1b1119fdd2",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00317.bin": "f4d5b71331c80c97d348b190810463e690801d515a68c8bdae8428f7d958a837",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00318.bin": "ff9214bcaf635862a6d5b8d6b268ef0cc4fc1e2f48173f9fe1bf916ea6eab880",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00319.bin": "3a07a7b6db1af1613955a3c38f84f01240b0568b60e0bb48328e83841f61a1bb",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00320.bin": "1d6f37ead2db2bc730702e4fdeafaeabdf6ac45052539a2d8be62aca2fde3183",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00326.bin": "eee0b9f84965e2df24c5dcf659c59911265245fcefc3cd4ec71cc855538168b7",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00327.bin": "97438ce1b9a9aadab7b0bd2e4da43c45dc0519460a49161113c42c0c8b2d6e14",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00328.bin": "099d8e63d24fa9d945307d68de7a5152f4edd9c328b2b99af816258b4834c649",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00329.bin": "8fae2f1c9840c98d6ededd2c6f0130a2569f2b0a5066ff4c5b318a5dc45ee54b",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00330.bin": "7fde6a98f9afd698497d3d5f4b77ff29fa39461d6a93d582db58522a317a2e12",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00419.bin": "66d337077802486fa7708563a91b83def8cc698075358bd01d74f30fabe0e3d9",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00420.bin": "1edef25beaf00c18eae2379590ddbe7a0ba927af38d93e6a3651710cadb619b0",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00421.bin": "6dbeb29767ae273a3689f26eca412451835a65d7fc3505ea01daada837c26797",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00422.bin": "1b253af92e6ad769da38d043d0ae6b6bd86978583021115b0658fa91713442fd",
+    "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1/shards/clip-00423.bin": "e00935d4f796aa8c50bb45ed3e450f637765f4ad05c2a2028d52dd58c6fa3cc8",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928/manifest.json": "cc9e094dad26903c692de9acd75996d890ea877799556454fc4db6757d59a15f",
+    "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i935_mixed_ft/s42-r16-20260929/logs/version_0/checkpoints/ball-detection-epoch=09.ckpt": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/best.json": "c666ee0addf5a6e7d9c6b5e463df5008632699ad52fab2f76ec80cd040e6843c",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/config.yaml": "2f0bb497987b5c1585013bda653ce3586a4107ad20b2569ab8b3efef3ed66a41",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/data_manifest.json": "ee87787b89d1a13d20e4b8772fcb702204c5973badb2620267a0d81143c91ac3",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/epoch-009.pt": "ed659e142dd228949ec772bcfdf9db0f4c682081778853c15088f7202a848c76",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-ft-e13-s42-r4-20260928/run_state.json": "7f893c666db09b07e3944f646dc39cd032b09c1b0aa1e0e3f197bf4636ca116e",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-mixed-e9-s42-r18-20260930/best.json": "148988a5160a6472fbcadab552dc7b015382efa24efa17b2e35584ce4f11dc75",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-mixed-e9-s42-r18-20260930/config.yaml": "1baf6eb61e4c131e51b8be357eebe8c921a0e6cf2c9e4e934ac57a82bc92ad13",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-mixed-e9-s42-r18-20260930/data_manifest.json": "6cab28c806b8048ebcde6bb96b794ae37890ef577a2e8edf1ad545bb7c1b58db",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-mixed-e9-s42-r18-20260930/epoch-010.pt": "aec4ddbbd7f184adab52c019c176ebf252d91d1e7396ce80ee3cd576ea5aa6db",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-mixed-e9-s42-r18-20260930/run_state.json": "35e89a41d190151ae0ceb7a437bb786656f1f9301746012765e99ea1f46d54f1",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/new_refiner/clip-00125-observed.npz": "ed3cb8b76788a1ffead024a1995156e8bf7beb7cea7e0314cc981986c4af8276",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/new_refiner/clip-00125-evidence_gap.npz": "767e67f3292acacd89f77c6aac1a2026ed036f501891185cab4f4c1c41f5087d",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/old_refiner/clip-00125-observed.npz": "4893287f0fd4fd57f096aefcb0c135bf54af3c4dac096467bd7c2be19107ac26",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/old_refiner/clip-00125-evidence_gap.npz": "e218b0e2baaa9648d09f8f9442760fe1e6c79ca6ff5a9d86037bf3721bf94042",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/new_refiner/clip-00126-observed.npz": "82c684a598963cd111e247385f39b205f91358c1681b3052fa50f139de276afd",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/new_refiner/clip-00126-evidence_gap.npz": "1d5731a646dc6d54b2eef516bcb59a512d71b7c4a2ec1537e73aac9e14b13e9f",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/old_refiner/clip-00126-observed.npz": "e2c34910c0052a706cc0afacfb976afafd1608cb0de7b337cc8209e767818cec",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/old_refiner/clip-00126-evidence_gap.npz": "62beede03998b91abdc163ac38e4fc44320b8cd8414829bbb28047be89af76a0",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/new_refiner/clip-00127-observed.npz": "e60ac5569a7a112425a89c44239155a04e0a78b989ee9afde38c30c21d32cf73",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/new_refiner/clip-00127-evidence_gap.npz": "651ff2e0253b39f9f8c0bc63caea2b6f807da1d398cd81fb51440533acf3cbff",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/old_refiner/clip-00127-observed.npz": "0ca624ce43871b35698849402dd960b2d3e8502e0c5d607bb9b8501c9ed6afcc",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/paired/i935-mixed-e9-vs-ft-e13-r18-20260930/old_refiner/clip-00127-evidence_gap.npz": "3ded03fb5f92348ae968b817e6647b73f76870e40c55854876e79e9c22732e29"
+  },
+  "point_semantics": "mixture means in overlay; maximum-weight component means in metric tables",
+  "ellipse_semantics": "each component Mahalanobis radius 2, alpha=weight; not mixture 95% HDR",
+  "detector_semantics": "candidate slot 0 in recorded decoder order, no tie reranking; no point in artificial gaps",
+  "timeline": "all three frame/PTS arrays identical; no resampling; source PTS in caption; native FPS",
+  "generator_sha256": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/render_overlay.py": "dc6e6e11e8e3d31875b8111231afd1bca64cd6441be2d74bf7e364ee6b41b0d2",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tasks/ball_refiner/visualization/overlay.py": "61da346b82bad6530168f79d4d76b6fdd4173d1f8b464bb2fa7a702336138e46"
+  },
+  "verification": "CPU decode checked 270 monotone PTS frames; inspected frames 0,40,80,120,160,164,240 including decoded frame164",
+  "output_directory_bytes": 14406591
+}

@@ -297,7 +297,7 @@ def test_tennis_scene_logs_and_outputs_have_named_run(
         assert Path(str(OmegaConf.select(cfg, key))).parts[:4] == log.parts[:4]
 
 
-def test_evaluation_manifest_resolves_output_and_checkpoint_roots(
+def test_evaluation_manifest_keeps_artifact_models_and_pretrained_roots_separate(
     tmp_path: Path,
 ) -> None:
     from src.tasks.ball_detection.evaluation.contracts import load_evaluation_manifest
@@ -324,9 +324,10 @@ def test_evaluation_manifest_resolves_output_and_checkpoint_roots(
     assert len(relative.parts) == 4
     assert relative.parts[:3] == ("ball_detection", "evaluate", "detector_comparison")
     assert all(
-        model.checkpoint.is_relative_to(tmp_path / "weights")
+        model.checkpoint.is_relative_to(tmp_path / "media")
         for model in manifest.models
     )
+    assert roots.checkpoint_root == tmp_path / "weights"
 
 
 def test_mixed_training_snapshot_preserves_roots_identity_and_sources(

@@ -1,0 +1,20 @@
+{
+  "status": "ok",
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/association_recalibration_features.py",
+    "--phase",
+    "extract",
+    "--repo",
+    "/home/kamimura/projects/tennis-lab",
+    "--report",
+    "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r13-20261001/features"
+  ],
+  "sample_interval_s": 2.0,
+  "measurement": "NVML via nvidia-smi, entire GPU 0; conservative for an all job",
+  "peak_gpu_bytes": 4262461440,
+  "min_host_available_bytes": 12220973056,
+  "output_bytes": 202065346,
+  "wall_seconds": 4552.987448319967,
+  "exit_code": 0
+}

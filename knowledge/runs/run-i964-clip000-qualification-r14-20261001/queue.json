@@ -1,0 +1,35 @@
+{
+  "job_id": "1790790062674261667_32446_i964-clip000-qualification-r14-20261001",
+  "name": "i964-clip000-qualification-r14-20261001",
+  "resource": "all",
+  "provider": "codex",
+  "session": "01a0f34a-563b-75e3-be1f-3354c2608e8f",
+  "issue": 964,
+  "queue": "/home/kamimura/projects/tennis-lab/.training_queue",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "job_file": {
+    "path": "/home/kamimura/projects/tennis-lab/.training_queue/jobs/1790790062674261667_32446_i964-clip000-qualification-r14-20261001.job",
+    "sha256": "19de667e3da75d5545dae2fc3a84ea9f8afb0283a0600811adcde8be5f83235b"
+  },
+  "state_at_registration": "jobs",
+  "code_commit": "bbb568f1b95daed4d22dbb49ce23322f802909c2",
+  "plan": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/plan.json",
+    "sha256": "c166fdf5a8d32ee4b102678a34696f5b0ca8680dd9b12a56d4def0aafbdd05a0"
+  },
+  "estimate_comment": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5916518263",
+  "gpu_jobs_enqueued_this_run": 1,
+  "worker_already_running_pid": 3216003,
+  "waited_for_gpu": false,
+  "next_collection": [
+    "execute.json",
+    "qualification.json",
+    "resource_guard.json",
+    "store/scene.json",
+    "three_camera_full.mp4",
+    "queue log/repro"
+  ],
+  "no_default_change": true,
+  "user_freeze": false,
+  "reserved_clips_opened": false
+}

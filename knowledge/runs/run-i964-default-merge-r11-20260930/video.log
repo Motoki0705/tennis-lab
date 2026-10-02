@@ -1,0 +1,38 @@
+{
+  "candidate": "strongsort_pp_pose_merge_on__clipreid_vitb16_market1501",
+  "video": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-default-merge-r11-20260930/review.mp4",
+  "windows": [
+    {
+      "clip": "video_000/clip_000",
+      "start": 0,
+      "end": 300,
+      "merged_boxes": 5,
+      "baseline": "strongsort_pp_pose_merge_off__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose_merge_on__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_000/clip_007",
+      "start": 31,
+      "end": 331,
+      "merged_boxes": 3,
+      "baseline": "strongsort_pp_pose_merge_off__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose_merge_on__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_001/clip_001",
+      "start": 346,
+      "end": 646,
+      "merged_boxes": 6,
+      "baseline": "strongsort_pp_pose_merge_off__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose_merge_on__clipreid_vitb16_market1501"
+    },
+    {
+      "clip": "video_002/clip_013",
+      "start": 0,
+      "end": 300,
+      "merged_boxes": 3,
+      "baseline": "strongsort_pp_pose_merge_off__clipreid_vitb16_market1501",
+      "candidate": "strongsort_pp_pose_merge_on__clipreid_vitb16_market1501"
+    }
+  ]
+}

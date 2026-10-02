@@ -1,0 +1,23 @@
+{
+  "job_id": "1790686649923407965_657085_i964-coco-fullframe-r5-20260929",
+  "job_files": [
+    "/home/kamimura/projects/tennis-lab/.training_queue/jobs/1790686649923407965_657085_i964-coco-fullframe-r5-20260929.job"
+  ],
+  "estimate": {
+    "runtime_minutes": [
+      60,
+      80
+    ],
+    "max_runtime_seconds": 5400,
+    "peak_vram_gb": [
+      4,
+      6
+    ],
+    "max_peak_vram_gb": 8,
+    "disk_gb_max": 0.3
+  },
+  "estimate_comment": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5890760583",
+  "cpu_rule_decision": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5891082937",
+  "plan_path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/coco_fullframe/i964-r5-20260929/plan.json",
+  "plan_sha256": "afb61d13f261bed4a6102f9897a6c0e3d58a58ea60f2c06b430f37e29bb69445"
+}

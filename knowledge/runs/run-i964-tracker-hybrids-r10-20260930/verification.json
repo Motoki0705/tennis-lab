@@ -1,0 +1,41 @@
+{
+  "status": "ok",
+  "execution_commit": "c34f5c703bb4fc211bf7527c58ab480ac01f91a2",
+  "code_files_match_commit": 54,
+  "camera_conditions_verified": 132,
+  "historical_strata_exact": 144,
+  "strongsort_online_exact": 24,
+  "new_online_repeats_equal": 24,
+  "deep_online_run9_exact": 12,
+  "gsi": {
+    "strongsort_pp__clipreid_vitb16_market1501": {
+      "aflink_merges": 2,
+      "all_synthetic": 1312,
+      "selected_track_synthetic": 247
+    },
+    "best_kpr__kpr_market_solider_parts": {
+      "aflink_merges": 28,
+      "all_synthetic": 824,
+      "selected_track_synthetic": 114
+    },
+    "strongsort_pp_pose__clipreid_vitb16_market1501": {
+      "aflink_merges": 6,
+      "all_synthetic": 1375,
+      "selected_track_synthetic": 236
+    },
+    "deep_ocsort_pose_aflink_gsi__clipreid_vitb16_market1501": {
+      "aflink_merges": 13,
+      "all_synthetic": 1219,
+      "selected_track_synthetic": 346
+    }
+  },
+  "best_new": "strongsort_pp_pose__clipreid_vitb16_market1501",
+  "video": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/tracker_matrix/i964-hybrids-r10-20260930/review.mp4",
+    "sha256": "a1c6f8b8d948cfa65fe5db121f3a9be29fe90702b36957b62e75b16bb79d9808",
+    "bytes": 2839677,
+    "frames_read": 300,
+    "windows_rule_verified": true
+  },
+  "output_bytes": 14964237
+}

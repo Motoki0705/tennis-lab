@@ -1,0 +1,18 @@
+{
+  "freeze": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/freeze.json",
+    "sha256": "3137317b290a05bb3f4c39e2cdcce728200c173a96907e77e3fbf7c66df55b9d"
+  },
+  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "execution_addendum": {
+    "file": {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/execution-addendum-r17.json",
+      "sha256": "8e3a25131d187782cffae0569c633d88477de9571b7727287670dd6d3bdc2f64"
+    },
+    "commit": "cdcc4517"
+  },
+  "time_unix": 1790812731.2933264,
+  "event": "pre-open gate passed; metadata/hash preparation begins",
+  "inference_attempts": 0,
+  "scoring_batches": 0
+}

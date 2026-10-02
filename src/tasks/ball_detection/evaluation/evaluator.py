@@ -32,6 +32,7 @@ from src.tasks.ball_detection.evaluation.dataset_provenance import (
 from src.tasks.ball_detection.evaluation.metrics import StratifiedBallMetrics
 from src.tasks.ball_detection.model_io.contracts import BallHeatmapPredictor
 from src.tasks.ball_detection.model_io.evaluation import CheckpointBallHeatmapPredictor
+from src.utils.configuration import PathResolver
 
 
 class JobEvaluator(Protocol):
@@ -56,7 +57,7 @@ class DefaultJobEvaluator:
         self.device = device
         self._checkpoint_configs: dict[Path, DictConfig] = {}
         self._checkpoint_hashes: dict[Path, str] = {}
-        self._adapter_key: tuple[Path, bool, bool] | None = None
+        self._adapter_key: tuple[Path, bool, bool, PathResolver] | None = None
         self._adapter: CheckpointBallHeatmapPredictor | None = None
 
     def evaluate(
@@ -86,7 +87,7 @@ class DefaultJobEvaluator:
                 "source provenance."
             )
 
-        adapter = self._prediction_adapter(model)
+        adapter = self._prediction_adapter(model, resolver=manifest.resolver)
         split_result = evaluate_dataloader(
             adapter=adapter,
             dataloader=dataloader,
@@ -123,8 +124,10 @@ class DefaultJobEvaluator:
     def _prediction_adapter(
         self,
         model: ModelSpec,
+        *,
+        resolver: PathResolver,
     ) -> CheckpointBallHeatmapPredictor:
-        key = (model.checkpoint, model.strict, model.weights_only)
+        key = (model.checkpoint, model.strict, model.weights_only, resolver)
         if self._adapter is None or self._adapter_key != key:
             self._adapter = None
             if self.device.type == "cuda":
@@ -134,6 +137,7 @@ class DefaultJobEvaluator:
                 device=self.device,
                 strict=model.strict,
                 weights_only=model.weights_only,
+                resolver=resolver,
             )
             self._adapter_key = key
         return self._adapter

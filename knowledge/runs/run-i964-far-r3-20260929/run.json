@@ -1,0 +1,16 @@
+{
+  "run_id": "1790672459832837010_3484559_i964-far-diagnosis-r3-20260929",
+  "name": "i964-far-diagnosis-r3-20260929",
+  "command": "bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/player_detection_far_diagnosis.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/comparison.json /home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929",
+  "provider": "codex",
+  "session": "01a0ec48-12c5-7920-b00e-3b2ecd8d82fa",
+  "issue": "964",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "53c292ecf6c5670d632528ce97e236d2a5e440f0",
+  "branch": "campaign930/i964-2-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "captured_at": "2026-09-29T18:02:48+09:00"
+}

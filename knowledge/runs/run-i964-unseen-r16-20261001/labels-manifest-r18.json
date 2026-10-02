@@ -1,0 +1,5 @@
+{
+  "video_000/clip_002": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_002/annotations/player_association/labels.json",
+  "video_001/clip_003": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_003/annotations/player_association/labels.json",
+  "video_002/clip_003": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_003/annotations/player_association/labels.json"
+}

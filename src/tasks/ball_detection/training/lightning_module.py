@@ -14,6 +14,10 @@ from src.tasks.ball_detection.model_io.contracts import BallTrainingCall
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
 from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
 from src.tasks.ball_detection.models import build_ball_detection_discriminator
+from src.tasks.ball_detection.training.candidate_recall import (
+    ValidationCandidateRecall,
+    candidate_log_values,
+)
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
@@ -118,6 +122,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.train_metrics, self.val_metrics, self.test_metrics = (
             _build_metrics(metrics_cfg) for _ in range(3)
         )
+        self.val_candidate_metrics = ValidationCandidateRecall(self.config.training.validation_candidates)
 
     def forward(self, *model_args: Tensor) -> Tensor:
         """Compute over a model-I/O boundary-prepared argument tuple."""
@@ -164,7 +169,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def _compute_supervised_result(
         self,
-        batch: dict[str, Tensor],
+        batch: dict[str, Any],
         stage: str,
     ) -> BallStepResult:
         """Compute forward pass, supervised loss, metrics, and GAN sequences."""
@@ -180,6 +185,10 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             self.loss_fn.elementwise(logits, target_heatmaps), call.supervised
         )
         pred_heatmaps = torch.sigmoid(logits)
+        if stage == "val":
+            self.val_candidate_metrics.update(
+                self.model_io.probability_heatmaps(raw_logits.detach(), call.model_call).float(), batch,
+            )
 
         self._metric_tracker_for_stage(stage).update(
             pred_heatmaps,
@@ -222,6 +231,17 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 prog_bar=(stage == "val" and name == "f1"),
             )
         tracker.reset()
+        if stage == "val":
+            sanity = self._trainer is not None and self.trainer.sanity_checking
+            reports = self.val_candidate_metrics.compute(require_observed=not sanity)
+            for name, value in candidate_log_values(reports).items():
+                self.log(name, value, on_step=False, on_epoch=True, sync_dist=False,
+                         prog_bar=name == "val/candidate_recall_at_8_20px")
+            self.val_candidate_metrics.reset()
+
+    def on_validation_epoch_start(self) -> None:
+        self.val_metrics.reset()
+        self.val_candidate_metrics.reset()
 
     def _log_stage_metrics(
         self, stage: str, loss: Tensor, metrics: dict[str, Any]

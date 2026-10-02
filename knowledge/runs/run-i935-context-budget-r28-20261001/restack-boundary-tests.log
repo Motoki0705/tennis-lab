@@ -1,0 +1,191 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [89 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[fps-60.0] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[size] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_execute_and_fresh_load_preserve_full_gmm_without_inference 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change4] 
+[gw0] [  1%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change4] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change5] 
+[gw0] [  2%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change5] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change6] 
+[gw0] [  3%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change6] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_refiner_rejects_annotation_import_without_evidence 
+[gw1] [  4%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_execute_and_fresh_load_preserve_full_gmm_without_inference 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change0] 
+[gw1] [  5%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change0] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change1] 
+[gw1] [  6%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change1] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change2] 
+[gw1] [  7%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change2] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change3] 
+[gw1] [  8%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change3] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[missing] 
+[gw1] [ 10%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[missing] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[corrupt] 
+[gw1] [ 11%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[corrupt] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[checkpoint] 
+[gw1] [ 12%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[checkpoint] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[bundle] 
+[gw1] [ 13%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[bundle] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[detector] 
+[gw1] [ 14%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[detector] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[omitted] 
+[gw1] [ 15%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[omitted] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_no_implicit_calibration_or_unknown_ball_path 
+[gw1] [ 16%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_no_implicit_calibration_or_unknown_ball_path 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[normal] 
+[gw0] [ 17%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_refiner_rejects_annotation_import_without_evidence 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[camera] 
+[gw0] [ 19%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[camera] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_export_rejects_overwrite_and_incomplete_training 
+[gw1] [ 20%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[normal] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[court_absent] 
+[gw0] [ 21%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_export_rejects_overwrite_and_incomplete_training 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[normalization-enabled] 
+[gw0] [ 22%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[normalization-enabled] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[candidates-patch_size] 
+[gw0] [ 23%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[candidates-patch_size] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_never_binds_another_camera 
+[gw0] [ 24%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_never_binds_another_camera 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_script_execute_and_load_without_training_store 
+[gw2] [ 25%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[size] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[window] 
+[gw2] [ 26%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[window] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[sha256-0000000000000000000000000000000000000000000000000000000000000000] 
+[gw2] [ 28%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[sha256-0000000000000000000000000000000000000000000000000000000000000000] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[num_frames-14] 
+[gw2] [ 29%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[num_frames-14] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[width-66] 
+[gw2] [ 30%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[width-66] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_identity_requires_extension_preflight_before_model_load 
+[gw2] [ 31%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_identity_requires_extension_preflight_before_model_load 
+tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit 
+[gw1] [ 32%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[court_absent] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[empty] 
+[gw1] [ 33%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_runs_full_timeline_and_only_observed_crops[empty] 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition 
+[gw1] [ 34%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights 
+[gw1] [ 35%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people 
+[gw2] [ 37%] PASSED tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit 
+tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose 
+[gw1] [ 38%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built 
+[gw1] [ 39%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies 
+[gw1] [ 40%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node 
+[gw1] [ 41%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0] 
+[gw1] [ 42%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0] 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1] 
+[gw1] [ 43%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1] 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2] 
+[gw1] [ 44%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides 
+[gw1] [ 46%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings 
+[gw2] [ 47%] PASSED tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose 
+[gw1] [ 48%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1] 
+[gw1] [ 49%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1] 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan] 
+[gw2] [ 50%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0] 
+[gw2] [ 51%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18] 
+[gw1] [ 52%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2] 
+[gw2] [ 53%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected 
+[gw2] [ 55%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected 
+[gw1] [ 56%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots 
+[gw2] [ 57%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape] 
+[gw2] [ 58%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated] 
+[gw3] [ 59%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[fps-60.0] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_saved_time_must_match_pts 
+[gw3] [ 60%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_saved_time_must_match_pts 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_array_is_rejected_by_fresh_store 
+[gw3] [ 61%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_array_is_rejected_by_fresh_store 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_changed_bundle_does_not_restore_existing_artifact 
+[gw3] [ 62%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_changed_bundle_does_not_restore_existing_artifact 
+[gw2] [ 64%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0] 
+[gw1] [ 65%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_bundle_is_rejected_before_model_load 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape] 
+[gw3] [ 66%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_bundle_is_rejected_before_model_load 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1] 
+[gw2] [ 67%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2] 
+[gw1] [ 68%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3] 
+[gw3] [ 69%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4] 
+[gw1] [ 70%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_detector_can_be_replaced_without_changing_the_runner 
+[gw1] [ 71%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_detector_can_be_replaced_without_changing_the_runner 
+tests/unit/submodules/models/test_public_api.py::test_models_root_owns_the_documented_public_symbols 
+[gw1] [ 73%] PASSED tests/unit/submodules/models/test_public_api.py::test_models_root_owns_the_documented_public_symbols 
+tests/unit/submodules/models/test_public_api.py::test_nested_packages_do_not_reexport_root_api 
+[gw1] [ 74%] PASSED tests/unit/submodules/models/test_public_api.py::test_nested_packages_do_not_reexport_root_api 
+tests/unit/submodules/models/test_public_api.py::test_removed_pass_through_and_yolo_helper_aliases_are_absent 
+[gw1] [ 75%] PASSED tests/unit/submodules/models/test_public_api.py::test_removed_pass_through_and_yolo_helper_aliases_are_absent 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu 
+[gw1] [ 76%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward] 
+[gw1] [ 77%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward] 
+[gw3] [ 78%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison 
+[gw1] [ 79%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward] 
+[gw2] [ 80%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides5] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward] 
+[gw1] [ 82%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward] 
+[gw1] [ 83%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward] 
+[gw1] [ 84%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward] 
+[gw1] [ 85%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing] 
+[gw1] [ 86%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu] 
+[gw1] [ 87%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error 
+[gw1] [ 88%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error 
+[gw2] [ 89%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides5] 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward] 
+[gw2] [ 91%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward] 
+[gw3] [ 92%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison 
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward] 
+[gw3] [ 93%] PASSED tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward] 
+[gw0] [ 94%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_script_execute_and_load_without_training_store 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_calibrated_option_execute_and_load_preserve_scaled_full_gmm 
+[gw0] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_calibrated_option_execute_and_load_preserve_scaled_full_gmm 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[bad_pose] 
+[gw0] [ 96%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[bad_pose] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[court_error] 
+[gw0] [ 97%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[court_error] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[track_capacity] 
+[gw0] [ 98%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_context_errors_are_not_converted_to_empty_observations[track_capacity] 
+tests/integration/tasks/ball_refiner/test_context_inference.py::test_producer_requires_explicit_dino_and_matching_devices 
+[gw0] [100%] PASSED tests/integration/tasks/ball_refiner/test_context_inference.py::test_producer_requires_explicit_dino_and_matching_devices 
+
+======================== 89 passed in 110.49s (0:01:50) ========================

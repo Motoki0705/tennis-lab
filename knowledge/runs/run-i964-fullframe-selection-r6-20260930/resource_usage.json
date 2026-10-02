@@ -1,0 +1,12 @@
+{
+  "main_report_bytes": 117932418,
+  "wide_audit_bytes": 4669638,
+  "knowledge_bundle_bytes": 11612041,
+  "disk_budget_bytes": 5000000000,
+  "gpu_jobs_launched": 0,
+  "minimum_observed_available_ram_gb": 18,
+  "initial_video_retained": "best_source_failures_3cam.mp4; final video adds rare non-player case and deduplicates repeated worst association window",
+  "max_pytest_workers": 4,
+  "max_torch_threads": 4,
+  "max_ffmpeg_threads": 4
+}

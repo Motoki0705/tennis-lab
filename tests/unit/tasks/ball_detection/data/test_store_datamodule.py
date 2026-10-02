@@ -1,5 +1,6 @@
 """Store labels, split isolation, windows and batch supervision are one contract."""
 
+import json
 from collections import Counter
 from pathlib import Path
 
@@ -128,6 +129,52 @@ def test_absent_source_and_empty_split_fail_explicitly(tmp_path: Path) -> None:
     cfg.data.train_sampling.source_weights = {"tracknet": 1.0}
     with pytest.raises(RuntimeError, match="No supervised val windows"):
         BallStoreDataModule(cfg).setup("validate")
+
+
+def test_validation_covers_tail_and_unknown_windows_without_padding(tmp_path: Path) -> None:
+    directory = write_store_clip(tmp_path / "store", "meiji/val/cam0",
+                                 [frame(i, ball("unresolved", None)) for i in range(9)], split="val")
+    store = BallFrameStore(directory)
+    supervision = resolve_frame_supervision(store, OBSERVED_ONLY)
+    selected = select_store_windows(store, supervision, store.clips, length=4, stride=3, validation=True)
+    assert [window.start for window in selected.windows] == [0, 3, 5]
+    assert selected.stats["tracknet"]["windows_without_supervision"] == 3
+    with pytest.raises(ValueError, match="gaps"):
+        select_store_windows(store, supervision, store.clips, length=4, stride=5, validation=True)
+    with pytest.raises(ValueError, match="shorter"):
+        select_store_windows(store, supervision, store.clips, length=10, stride=3, validation=True)
+
+
+def test_candidate_reference_uses_raw_single_observed_and_source_scale(tmp_path: Path) -> None:
+    from src.tasks.ball_detection.data.store_dataset import (
+        BallStoreDataset,
+        StoreWindow,
+    )
+
+    directory = write_store_clip(
+        tmp_path / "ball_detection/test-v1", "meiji/val/cam0",
+        [frame(0, ball()), frame(1, ball("interpolated")),
+         frame(2, ball(), ball("out_of_frame", None, track="b002")), frame(3, ball(), annotated=False)],
+        source="meiji", split="val",
+    )
+    metadata_path = directory / "metadata.json"
+    metadata = json.loads(metadata_path.read_text())
+    metadata["clips"][0].update(source_width=128, source_height=96, camera_id="cam0")
+    metadata_path.write_text(json.dumps(metadata))
+    store = BallFrameStore(directory)
+    # Even a policy that trains on estimated positions cannot admit them to
+    # candidate recall, or collapse one observed + one other instance.
+    policy = FrameSupervisionPolicy(frozenset({"observed", "interpolated"}),
+                                    frozenset({"out_of_frame"}), frozenset({"unresolved", "occlusion_estimated"}))
+    data = BallStoreDataset(store=store, supervision=resolve_frame_supervision(store, policy),
+                           windows=[StoreWindow(0, 0)], config=store_config(tmp_path, frames=4))
+    reference = data[0]["candidate_reference"]
+    assert reference["observed"].tolist() == [True, False, False, False]
+    assert reference["source_scale"].item() == 0.5
+    assert reference["camera"] == "cam0"
+    assert reference["namespace"] == "store"
+    assert reference["frame_id"].tolist() == [0, 1, 2, 3]
+    torch.testing.assert_close(reference["xy"][0], torch.tensor([10.0, 20.0]))
 
 
 @pytest.mark.parametrize(

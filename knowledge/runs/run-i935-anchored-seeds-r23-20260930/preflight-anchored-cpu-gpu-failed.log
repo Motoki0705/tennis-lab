@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/run_variants.py", line 212, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/run_variants.py", line 124, in main
+    checked = preflight(plan)
+              ^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-precision-variants-s42-r21-20260930/run_variants.py", line 109, in preflight
+    np.testing.assert_allclose(actual, saved[field.name], atol=3e-4 if 'logits' in field.name else 3e-5, rtol=3e-4)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 1711, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 919, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=0.0003, atol=0.0003
+
+Mismatched elements: 388 / 1240 (31.3%)
+Max absolute difference among violations: 0.00329864
+Max relative difference among violations: 1.1043881
+ ACTUAL: array([[-2.033664, -0.854537, -0.399654,  1.579278],
+       [-0.693338,  0.117557, -0.692157,  2.034652],
+       [-1.148723,  0.836328, -0.663951,  1.970715],...
+ DESIRED: array([[-2.03355 , -0.854021, -0.399556,  1.578992],
+       [-0.693851,  0.118193, -0.691308,  2.034047],
+       [-1.148673,  0.837228, -0.663318,  1.969519],...

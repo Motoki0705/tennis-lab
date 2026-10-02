@@ -1,0 +1,25 @@
+{
+  "outcome": "CONTINUE",
+  "gpu_jobs": [],
+  "clip000_run": false,
+  "context_cache_queued": false,
+  "qualification_blocker": "filtered safety bench: 3 wrong decisions / 11200; original 0",
+  "person_freeze": "3edefd77",
+  "stack_base": "32a35af427c95c8b281ee733517074ed33dc792a",
+  "commits": {
+    "default": "2a25cadf0",
+    "confidence": "16c112aa6",
+    "consumers": "609a9b14b"
+  },
+  "normal_tests": {
+    "passed": 185,
+    "xdist_workers": 4,
+    "seconds": 30.0
+  },
+  "disk_recorded_bytes": 3436264,
+  "notes": [
+    "No new production model, video or context cache copied/generated. Temporary CPU test fixtures excluded from recorded bundle size.",
+    "Default checkpoint distribution names are declared; named e9 assets are not yet installed at those new ckpt paths. Existing hash-bound originals remain in the run24 plan.",
+    "PRs 955-962,968,970,971 ready after current-head green CI and new guide. PRs 963,972,973 remain draft."
+  ]
+}

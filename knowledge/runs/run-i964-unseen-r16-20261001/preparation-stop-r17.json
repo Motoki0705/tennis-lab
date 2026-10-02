@@ -1,0 +1,42 @@
+{
+  "schema": "i964_unseen_preparation_stop_v1",
+  "time": "2026-10-01T00:00:47.357309+00:00",
+  "run": 17,
+  "status": "not_enqueued",
+  "source_commit": "cdcc4517",
+  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "opening": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/opening.json",
+    "sha256": "b5113c99bf67503297eb47a9c2ca2373e5ac532aeb807c2b98de1027552799e1"
+  },
+  "resumed_opening": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/resumed-opening-r17.json",
+    "sha256": "588759f93bcfbf550459d2942c7b953a20248c528bb14361d67ed2ac74ffbcaf"
+  },
+  "execution_addendum": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/execution-addendum-r17.json",
+    "sha256": "8e3a25131d187782cffae0569c633d88477de9571b7727287670dd6d3bdc2f64"
+  },
+  "failure": {
+    "phase": "first clip config binding",
+    "exception_type": "PathContractError",
+    "reason": "clip_config supplied absolute video_paths; the existing PathResolver requires data-root-relative paths",
+    "log": "Traceback (most recent call last):\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_unseen.py\", line 400, in <module>\n    plan(args.freeze.resolve(), args.freeze_commit, args.report.resolve(),\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_unseen.py\", line 148, in plan\n    runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=True)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/tennis_scene/configuration.py\", line 305, in from_config\n    video_paths = tuple(resolver.resolve(PathRole.DATA, cast(str, x)) for x in raw_videos)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/tennis_scene/configuration.py\", line 305, in <genexpr>\n    video_paths = tuple(resolver.resolve(PathRole.DATA, cast(str, x)) for x in raw_videos)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/utils/configuration/paths.py\", line 230, in resolve\n    return self.resolve_beneath(role, self.roots.root(role), *relative_parts)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/utils/configuration/paths.py\", line 246, in resolve_beneath\n    path_part = _validated_child_part(\n                ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/utils/configuration/paths.py\", line 101, in _validated_child_part\n    raise PathContractError(\nsrc.utils.configuration.errors.PathContractError: Derived data path parts must be relative; got '/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_002/media/cam0.mp4'.\n"
+  },
+  "inference_attempts": 0,
+  "scoring_batches": 0,
+  "reserved_person_labels_opened": false,
+  "reserved_media_decoded": false,
+  "opened": "freeze assets/hash and historical side evidence verified; first reserved clip.json only, before build_clip_source or media decode",
+  "files_at_failure": {
+    "opening.json": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/opening.json",
+      "sha256": "b5113c99bf67503297eb47a9c2ca2373e5ac532aeb807c2b98de1027552799e1"
+    },
+    "resumed-opening-r17.json": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/resumed-opening-r17.json",
+      "sha256": "588759f93bcfbf550459d2942c7b953a20248c528bb14361d67ed2ac74ffbcaf"
+    }
+  },
+  "queue_job": null
+}

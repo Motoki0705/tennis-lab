@@ -1,0 +1,52 @@
+{
+  "status": "complete",
+  "frame_count": 270,
+  "camera_id": "cam0",
+  "gmm_components": 4,
+  "source_sha256": "0ac292acd91aa8f0fda4082c0ec3c85c3240b958b89f65fc5c3cafb170f8f26b",
+  "time_base": "1/2997003",
+  "bundle_manifest_sha256": "64a33dbff138d6243f01d1b3aba4a9a32b5b4c21a2386a25c672d3a971a4b597",
+  "weights_sha256": "83d6e20104ee79cfe859363d31c7b8824e95751d0c472041dc592c89b17c1e6d",
+  "pipeline_output": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-ft-e13-pipeline-r7-20260928",
+  "bundle_directory": "/home/kamimura/projects/tennis-lab/ckpt/ball_refiner/i935-detector-only-ft-e13-r7-20260928",
+  "source_pts_match": true,
+  "active_dependency_lineage_match": true,
+  "fresh_process_load_same_artifacts": true,
+  "npz_all_arrays_exact_match": true,
+  "checked_artifact_array_count": 25,
+  "detector_and_refiner_window_ownership_match": true,
+  "cpu_batch_size": 7,
+  "cuda_batch_size": 32,
+  "cpu_vs_cuda_max_abs": {
+    "means": 3.49581241607666e-05,
+    "scale_tril": 7.3909759521484375e-06,
+    "mixture_logits": 0.00012762099504470825,
+    "presence_logits": 0.0001926422119140625,
+    "covariance": 2.1010637283325195e-06,
+    "weights": 3.08305025100708e-05,
+    "presence_probability": 3.337860107421875e-06
+  },
+  "cpu_vs_cuda_max_component_coordinate_error_px": 0.03771981596946716,
+  "cpu_vs_cuda_absolute_tolerances": {
+    "means": 5e-05,
+    "scale_tril": 5e-05,
+    "mixture_logits": 0.001,
+    "presence_logits": 0.001,
+    "covariance": 5e-05,
+    "weights": 0.0001,
+    "presence_probability": 0.0001,
+    "max_coordinate_error_px": 0.1
+  },
+  "predictions_sha256": "2f993221a454462b53137301cbf9b08423ebb59fc751a7496617e596919c91dc",
+  "execute_seconds": {
+    "ball_detection/cam0": 9.139573926047888,
+    "ball_refiner_2d/cam0": 0.7882919430267066
+  },
+  "load_seconds": {
+    "ball_detection/cam0": 0.06037775898585096,
+    "ball_refiner_2d/cam0": 0.005455200036522001
+  },
+  "calibration": "uncalibrated",
+  "accuracy_evaluated": false,
+  "scene_exported": false
+}

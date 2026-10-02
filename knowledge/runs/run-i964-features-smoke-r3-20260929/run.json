@@ -1,0 +1,16 @@
+{
+  "run_id": "1790672459796873770_3484542_i964-features-smoke-r3-20260929",
+  "name": "i964-features-smoke-r3-20260929",
+  "command": "env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_tracking_features.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/feature_smoke/i964-features-r3-20260929 --phase features --store /home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_000/clip_000 --max-frames 120 --device cuda && env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_tracking_features.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/feature_smoke/i964-features-r3-20260929 --phase track --method botsort_pose --device cpu && env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_tracking_features.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/feature_smoke/i964-features-r3-20260929 --phase track --method ultralytics_botsort --device cpu",
+  "provider": "codex",
+  "session": "01a0ec48-12c5-7920-b00e-3b2ecd8d82fa",
+  "issue": "964",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "53c292ecf6c5670d632528ce97e236d2a5e440f0",
+  "branch": "campaign930/i964-2-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "captured_at": "2026-09-29T18:01:00+09:00"
+}

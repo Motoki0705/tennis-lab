@@ -1,0 +1,427 @@
+{
+  "status": "verified_context_load",
+  "context_manifest_sha256": "a8cd3f7b8ecbf1fab6cc568bc9d0e5230d0e77706f61ee6d712e94908c0fe14d",
+  "pose_threshold": 0.15,
+  "clips": [
+    {
+      "clip_id": "meiji/video_000/clip_002/cam0",
+      "frames": 1355,
+      "tracks": 22,
+      "pose_valid_frames": 1355,
+      "pose_valid_slots": 20638,
+      "court_valid_points": 14,
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 1355,
+        "court_keypoints": 14,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 119240,
+        "pose_confidence_saturated_slots": 0,
+        "pose_confidence_raw_max": 0.9513605833053589
+      },
+      "execution": {
+        "court_diagnostics": {
+          "geometry": {
+            "candidate_count": 168,
+            "homography_court_metres_to_image_pixels": [
+              [
+                0.6632730918990577,
+                34.73766938296078,
+                668.1074255769427
+              ],
+              [
+                -8.16360754634777,
+                7.221864294787127,
+                266.9393904318978
+              ],
+              [
+                -0.025784271929254726,
+                0.0403380753924326,
+                1.0
+              ]
+            ],
+            "homography_frame": "checkpoint_KP14_template_metres",
+            "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+            "line_support": {
+              "forward_rms_px": 3.1306484526637406,
+              "forward_support": 0.8194444444444444,
+              "reverse_rms_px": 1.9209366159249834,
+              "reverse_support": 0.9528595322997634,
+              "segment_support": [
+                0.75,
+                0.875,
+                0.625,
+                0.875,
+                0.75,
+                0.9,
+                0.675,
+                1.0,
+                0.925
+              ],
+              "supported_segments": 9.0,
+              "visible_segments": 9.0
+            },
+            "native_size_hw": [
+              255,
+              512
+            ],
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "output_keypoint_contract": "camera_view_v2",
+            "postprocess_image_size_hw": [
+              360,
+              722
+            ],
+            "raw_keypoints_px": [
+              [
+                665.7885437011719,
+                244.74473571777344
+              ],
+              [
+                807.5709228515625,
+                233.63674926757812
+              ],
+              [
+                407.9969320297241,
+                339.6361389160156
+              ],
+              [
+                417.6491889953613,
+                347.2750549316406
+              ],
+              [
+                684.1293029785156,
+                240.1169891357422
+              ],
+              [
+                413.38390254974365,
+                336.3177795410156
+              ],
+              [
+                796.8873596191406,
+                234.36334228515625
+              ],
+              [
+                411.28307056427,
+                340.10076904296875
+              ],
+              [
+                644.9214324951172,
+                251.50912475585938
+              ],
+              [
+                779.7373962402344,
+                244.20407104492188
+              ],
+              [
+                524.4749145507812,
+                300.26702880859375
+              ],
+              [
+                705.1031188964844,
+                295.2435607910156
+              ],
+              [
+                705.4380493164062,
+                249.4547882080078
+              ],
+              [
+                598.2871398925781,
+                295.6420593261719
+              ]
+            ],
+            "raw_scores": [
+              0.8154622316360474,
+              0.6762513518333435,
+              0.14451365172863007,
+              0.14020973443984985,
+              0.4686658978462219,
+              0.2538434863090515,
+              0.6506175994873047,
+              0.12230779230594635,
+              0.8179908990859985,
+              0.5315853357315063,
+              0.8135400414466858,
+              0.9130970239639282,
+              0.8540992140769958,
+              0.9346281290054321
+            ],
+            "raw_valid": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "region_xyxy": [
+              399,
+              0,
+              1121,
+              360
+            ],
+            "residuals_px": [
+              1.2369716725332498,
+              4.6010111954015755,
+              27.9675278530967,
+              265.43822696943846,
+              5.417249597677444,
+              12.18030314941197,
+              8.020157803449983,
+              211.72532217781074,
+              6.3417604309956985,
+              4.72540097835021,
+              1.9948657234703484,
+              0.9841842305838849,
+              2.348678315905142,
+              3.242759390087731
+            ],
+            "selected_keypoints": [
+              0,
+              10,
+              11,
+              12,
+              13
+            ],
+            "status": "ok"
+          },
+          "region_selection": {
+            "candidates": [
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  0,
+                  0,
+                  1280,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  0,
+                  1121,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  0,
+                  1121,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  180,
+                  1121,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.02783587645425996,
+                "convex": true,
+                "inlier_score": 5.863113880157471,
+                "inliers": 7,
+                "inside_content": true,
+                "region_xyxy": [
+                  159,
+                  0,
+                  881,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  180,
+                  881,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  159,
+                  360,
+                  881,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.027789735020812712,
+                "convex": true,
+                "inlier_score": 5.2556071281433105,
+                "inliers": 7,
+                "inside_content": true,
+                "region_xyxy": [
+                  279,
+                  0,
+                  1001,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  279,
+                  180,
+                  1001,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  279,
+                  360,
+                  1001,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": true,
+                "area_ratio": 0.027788159503544293,
+                "convex": true,
+                "inlier_score": 6.825319766998291,
+                "inliers": 9,
+                "inside_content": true,
+                "region_xyxy": [
+                  399,
+                  0,
+                  1121,
+                  360
+                ],
+                "status": "ok"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  399,
+                  180,
+                  1121,
+                  540
+                ],
+                "status": "no_jointly_supported_candidate"
+              },
+              {
+                "accepted": false,
+                "area_ratio": 0.0,
+                "convex": false,
+                "inlier_score": 0.0,
+                "inliers": 0,
+                "inside_content": false,
+                "region_xyxy": [
+                  399,
+                  360,
+                  1121,
+                  720
+                ],
+                "status": "no_jointly_supported_candidate"
+              }
+            ],
+            "frame_index": 0,
+            "original_size_hw": [
+              720,
+              1280
+            ],
+            "region_xyxy": [
+              399,
+              0,
+              1121,
+              360
+            ]
+          }
+        },
+        "court_frame_indices": [
+          0
+        ],
+        "person_detection_frames": 1355,
+        "person_region_policy": "full_frame",
+        "pose_crops": 6389,
+        "seconds": {
+          "court": 17.783084688009694,
+          "detection_tracking": 415.6237424669671,
+          "pose": 353.66595111001516
+        },
+        "status": "complete",
+        "tracking_frames": 1355
+      }
+    }
+  ]
+}

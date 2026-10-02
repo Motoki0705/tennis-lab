@@ -1,0 +1,750 @@
+{
+  "artifacts": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/adjacent_failure_3cam.mp4",
+      "bytes": 5020134,
+      "sha256": "25e98ae199c92b5fb2112524ea8d3826ecafb5c2b40ea3ddf9a8c0dd4a5dd97a"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/adjacent_preview_1.jpg",
+      "bytes": 371453,
+      "sha256": "c74fa39ea38e6735dce4d7380e92a1e43121cc67db47bae590dd054ab1f7b101"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/adjacent_preview_2.jpg",
+      "bytes": 369885,
+      "sha256": "6b8a5792cd539c5822bc093f68e41aef29292f07bc7367905168d148a2175c9e"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/adjacent_preview_3.jpg",
+      "bytes": 382969,
+      "sha256": "6a9c347124156c525ef1f799a53407a5f988188e4db6515d87d812fbc852a538"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/adjacent_preview_4.jpg",
+      "bytes": 379809,
+      "sha256": "6da9865a6215c1c0d67259f4b79f5c56861038b26f572047701dc7f6fa34e236"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/adjacent_preview_inspection.png",
+      "bytes": 1590629,
+      "sha256": "1a8c995b534dd63a41f7ac08678b4fb16238ecf74bff71e64dddf7ec9a339af9"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/camera.csv",
+      "bytes": 28785,
+      "sha256": "97f299e4dbe262f4abc73a871250a5eabc8ecb15f5f7afa4211e452a37429721"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/clip.csv",
+      "bytes": 12442,
+      "sha256": "d153cdd8a9c21ced2540ddb78d322911eddbe3b5ac68f69292638a4a972aad31"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/diagnosis.csv",
+      "bytes": 8618,
+      "sha256": "56934bde8abde55902acb6ee5920a1b32653fba9249dd6841e6c4da40c74e635"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/diagnosis.json",
+      "bytes": 286259,
+      "sha256": "01f6a2b43c3621b79649b2d4bb99d60b32cc3d614935fc9b0e51833faa748553"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/identity.csv",
+      "bytes": 35727,
+      "sha256": "57f79f9ccb5f13bf0ba6c91dae7ffb2d3a6c05460aa5d2b5bd2acffe91c5adf2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_000/clip_000/cam0.npz",
+      "bytes": 820,
+      "sha256": "6d5222c1a52397863a883d9b7dcb3905cb6f333c67ca912bf045b712a6e83873"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_000/clip_000/cam1.npz",
+      "bytes": 686,
+      "sha256": "7ddda3b8aed558de2842331f58533cdef2306cbee518f4e4f13d0c4392b6bde2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_000/clip_000/cam2.npz",
+      "bytes": 606,
+      "sha256": "4df19eecde24aac86e423bf20fb4bf82e23c8b55b5faafc1b784c12bf7377b10"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_000/clip_007/cam0.npz",
+      "bytes": 688,
+      "sha256": "9cedfed83616d0287bdf85102b413f6e6822561d6fa6709198e751eea54f6d08"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_000/clip_007/cam1.npz",
+      "bytes": 656,
+      "sha256": "c77a8e4f06fb321eae44809f696a4717f1bb1ed4b503d6f29b375bceda6d6e16"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_000/clip_007/cam2.npz",
+      "bytes": 580,
+      "sha256": "f539c695c67f2c59804902a42e1e5b785ef32721dd431007b351dcd8013dd2bd"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_001/clip_001/cam0.npz",
+      "bytes": 1344,
+      "sha256": "4c40b770ede564374f27261cd03507e53351dadc5859f31cbf67346c4d043b36"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_001/clip_001/cam1.npz",
+      "bytes": 752,
+      "sha256": "b429ef6c44a34a574a7e4f17801c09fe5099b20bd4a4ebe7166dad47b4d63088"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_001/clip_001/cam2.npz",
+      "bytes": 1058,
+      "sha256": "4dd61ef1422a2552ca01ca5f631bfa5fd15958be5c421b0a90a35fad638fd3c7"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_002/clip_013/cam0.npz",
+      "bytes": 612,
+      "sha256": "0ed4cd376eee79c772a8234c9e75e10b8997e2f140cdcf6712dbb8f617905269"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_002/clip_013/cam1.npz",
+      "bytes": 534,
+      "sha256": "760cd72c353afcaaedd80125e115827dc1f46efe775321854ecf2bfb901b8e38"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/ft_base_0.01/video_002/clip_013/cam2.npz",
+      "bytes": 470,
+      "sha256": "c26fb3901f21dc471647712bc3778b431046766797b4c64ed158136cf5b4d93e"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_000/clip_000/cam0.npz",
+      "bytes": 524,
+      "sha256": "562493a8f762f6e374386ad524f10db3b31752e940a7f90d70a09aa3450bbc52"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_000/clip_000/cam1.npz",
+      "bytes": 460,
+      "sha256": "4f924b5dbb3698ed12389a98d43529441c8a62231cb2894a4e1b5d16f40a7227"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_000/clip_000/cam2.npz",
+      "bytes": 538,
+      "sha256": "16b07da6dedc73b1181f7ad72d124434636bae8d5cb070f95bbedadca550984b"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_000/clip_007/cam0.npz",
+      "bytes": 500,
+      "sha256": "91ffffe2915b7d44f5fd417d86a68817e01e35e948277160e3ccba4246e6d5e3"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_000/clip_007/cam1.npz",
+      "bytes": 486,
+      "sha256": "4152cdfeb3fc525372c1842bf59d4640644ee41120246cdf149c91cda20398c1"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_000/clip_007/cam2.npz",
+      "bytes": 530,
+      "sha256": "a7d4ca5da143da640a6022060564ed9474db3fca11e9cb39e6b221e7a98d1009"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_001/clip_001/cam0.npz",
+      "bytes": 564,
+      "sha256": "415584372c7eb9fc42afcbb863836960897d46bf7c907f5060a47443478a0e72"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_001/clip_001/cam1.npz",
+      "bytes": 522,
+      "sha256": "9d95cf3446beeccf43fea130c418c326dc4e41b3c4c658e3a8d9326c9aa83297"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_001/clip_001/cam2.npz",
+      "bytes": 569,
+      "sha256": "6616272d2a515b1e4b90d5d15d15b77dce2b6f28c36c2714bfa046cd8cb1d0f6"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_002/clip_013/cam0.npz",
+      "bytes": 456,
+      "sha256": "dccf7337a9cab844924da63466698f365aa1208555b9686fdc65a9d097530241"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_002/clip_013/cam1.npz",
+      "bytes": 486,
+      "sha256": "11bf7c91f0ff09f45678a7c420f08478103ab0b0d8a6afa89d20d4fee893ff56"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/old_pipeline/video_002/clip_013/cam2.npz",
+      "bytes": 462,
+      "sha256": "f1eae51251afa5db6e96728aed93590b73113958ca20964dd60c02e35f1c818f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_000/clip_000/cam0.npz",
+      "bytes": 626,
+      "sha256": "5b86131b6680a5c021340c7483709a1754a861b7cdaae98afc803d393dc260df"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_000/clip_000/cam1.npz",
+      "bytes": 512,
+      "sha256": "fef2e7441b62cf2f79644df40db1fe962260f9e44f2a771d290487d4399be316"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_000/clip_000/cam2.npz",
+      "bytes": 574,
+      "sha256": "6a964572587bff4b7ebf5cbd9eb45f1168d9cf224ab81c0d04e7a1d4ea6a80e2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_000/clip_007/cam0.npz",
+      "bytes": 516,
+      "sha256": "c6006119e30b00a4e5d4d45a3099c9a71a5cfda0f16d55914933345f2d0822ad"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_000/clip_007/cam1.npz",
+      "bytes": 498,
+      "sha256": "af9a90c1e3c79da0c596dac441398673c7058170b7dd521f545ade943673a211"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_000/clip_007/cam2.npz",
+      "bytes": 553,
+      "sha256": "8efa3dbc0eed485ecb5650f9d2569cbc33f0d603e275aaedbf46b21f920c5c04"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_001/clip_001/cam0.npz",
+      "bytes": 602,
+      "sha256": "810bf933f7b81665447af141163d972922e1107a8f88d4aacbc3b0d05e7a1a78"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_001/clip_001/cam1.npz",
+      "bytes": 534,
+      "sha256": "241b475163d77a6dcdc54cca1655fb95c979afd6cc7b4a3b69da109342286216"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_001/clip_001/cam2.npz",
+      "bytes": 562,
+      "sha256": "ea81e1c640da7e09e64eb0492889af654858b85e114f357e1e68ba4c4e284798"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_002/clip_013/cam0.npz",
+      "bytes": 484,
+      "sha256": "a46140058b43ab0c614616f24be32c11a20e0fed509cce340e89f1350f3f6017"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_002/clip_013/cam1.npz",
+      "bytes": 484,
+      "sha256": "8d39a82a4286d8190b7cbd508a823f72c36adc1bb0b8e849701049ce8881416f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection/union_0.30/video_002/clip_013/cam2.npz",
+      "bytes": 450,
+      "sha256": "e771e69d32c92afcb525c02360c93f0445f936cd577296be5e3421906e14ad62"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection.csv",
+      "bytes": 4974,
+      "sha256": "047e463b29c72ad1f9a69b3285bd3f64adcd1a9881de2090491095f931c3fe17"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection.json",
+      "bytes": 661129,
+      "sha256": "e168b05f102b458fece0ad504cb8d5d6aa7a95c5354e18c6bf71e6411f9a6596"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection.progress.json",
+      "bytes": 636493,
+      "sha256": "dfb7ba64e23ecf112c44afce0bee8f666d02f6f2e8ae801d574e06722ef6df40"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/selection_units.jsonl.gz",
+      "bytes": 723249,
+      "sha256": "249a47308b9c554d666b95ee0280184f393c315e98f78e59d219fc2e51825f5c"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929/video.json",
+      "bytes": 3205,
+      "sha256": "2d51c7a43e6e78a21673946b076ba53cdd8b3af3c752fe1cb7609efff9dae1da"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/adjacent_failure_3cam.mp4",
+      "bytes": 5013597,
+      "sha256": "6278458ccdd09cc60566a399b04d95755cf51aa452bc4a470a595a9c5ad94a2e"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/adjacent_preview_1.jpg",
+      "bytes": 371455,
+      "sha256": "c3645b6ca569b31f4bdc68ca5b732d1d58d30a45e5b2d68754a6faa302c59602"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/adjacent_preview_2.jpg",
+      "bytes": 369659,
+      "sha256": "e52adea5e1970675c86e61076d171e20bcea41c2fc4dd4779eb5a81ab135518f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/adjacent_preview_3.jpg",
+      "bytes": 382969,
+      "sha256": "6a9c347124156c525ef1f799a53407a5f988188e4db6515d87d812fbc852a538"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/adjacent_preview_4.jpg",
+      "bytes": 379809,
+      "sha256": "6da9865a6215c1c0d67259f4b79f5c56861038b26f572047701dc7f6fa34e236"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/camera.csv",
+      "bytes": 28834,
+      "sha256": "701d24271cfc6d0f39064a5dc04d0e5f824146ba7ff87aacb1333331f58b7e76"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/clip.csv",
+      "bytes": 12444,
+      "sha256": "48606cf8e4bfe5fd1cbb14148e7212c745ffa8a002c405c31b002c071578b037"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/diagnosis.csv",
+      "bytes": 8618,
+      "sha256": "56934bde8abde55902acb6ee5920a1b32653fba9249dd6841e6c4da40c74e635"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/diagnosis.json",
+      "bytes": 286259,
+      "sha256": "01f6a2b43c3621b79649b2d4bb99d60b32cc3d614935fc9b0e51833faa748553"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/identity.csv",
+      "bytes": 35761,
+      "sha256": "15484941eefd792ee163d1673f9b5d1c373fa3a24c84a9164d74b3d4a1e3a465"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_000/clip_000/cam0.npz",
+      "bytes": 728,
+      "sha256": "6b4b4a50e1b70189b61e93212d71984950a87eeaab6f6b09510e973cceedb79a"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_000/clip_000/cam1.npz",
+      "bytes": 692,
+      "sha256": "3db28d1be400ac780865012a4da0d783a9416a39691c528aa0bd8f7baea2adf9"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_000/clip_000/cam2.npz",
+      "bytes": 624,
+      "sha256": "0b3e738ecd20512e4d05ef06b1ef61f29208fabc866b138e83ef9efbc4a3f6b8"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_000/clip_007/cam0.npz",
+      "bytes": 546,
+      "sha256": "bc34c9d4fca0608103b5c695ad9489889553894013428774fb83da70c549ffaa"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_000/clip_007/cam1.npz",
+      "bytes": 623,
+      "sha256": "2b7f6eb333c8371e756250ec02c6fbe14cc0d74b9a828e51dfbe9aef694b45c6"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_000/clip_007/cam2.npz",
+      "bytes": 572,
+      "sha256": "88e50ea3acbd12ef6d41e0790f3adc03c10e26caef9e905a93acbe0e15f1e857"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_001/clip_001/cam0.npz",
+      "bytes": 1238,
+      "sha256": "678e8feb3d093950a0c75bfa5a01d7433f43a33af8ed26f7e66c4a4284669c3d"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_001/clip_001/cam1.npz",
+      "bytes": 705,
+      "sha256": "0b13afc6a04f904f5b58b2e8fe3877b29f9bb937d6a9c3c889ee8d01a7f5b520"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_001/clip_001/cam2.npz",
+      "bytes": 1060,
+      "sha256": "eafd7f0b54df48b6cec6371fb3219a44d452840d58e55e77e3e281f62ac83c80"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_002/clip_013/cam0.npz",
+      "bytes": 542,
+      "sha256": "3db5a8d3c32266d5a747d4c2f674dd2364b1c0b2ae40c4da8979a44533c5c466"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_002/clip_013/cam1.npz",
+      "bytes": 522,
+      "sha256": "f9f38f284c88def674fa57c93e635f6a774dc4e65a6828393b14f6a7bf7e52b2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/ft_base_0.01/video_002/clip_013/cam2.npz",
+      "bytes": 484,
+      "sha256": "cc7c19d8a41a468bda7d54919570a2b167e4f6dc5969bd35ba1f4b1b66000fcc"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_000/clip_000/cam0.npz",
+      "bytes": 502,
+      "sha256": "789ded554a93ae1f555089d839fe1b42af9e98870afeb8613c8fc7e9d4eb9426"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_000/clip_000/cam1.npz",
+      "bytes": 450,
+      "sha256": "45800a30741fe6a120f80cf550a7806c0e47834c05e8beca14dc284ad559dbeb"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_000/clip_000/cam2.npz",
+      "bytes": 498,
+      "sha256": "bafdff41e89b4b1f61569068933d4fcbc90026b99ec319e5302ec329469cdae1"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_000/clip_007/cam0.npz",
+      "bytes": 500,
+      "sha256": "91ffffe2915b7d44f5fd417d86a68817e01e35e948277160e3ccba4246e6d5e3"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_000/clip_007/cam1.npz",
+      "bytes": 480,
+      "sha256": "ccbacf86d32255d01b1b31ce9fcbf1defb254f51f6e8870fd740148fd15a27bb"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_000/clip_007/cam2.npz",
+      "bytes": 520,
+      "sha256": "c446c4877cce3dbe13731cb69b28540a6316072cf866b941cecd2634e6158d38"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_001/clip_001/cam0.npz",
+      "bytes": 562,
+      "sha256": "1d63bfc54291ffdfdb334c7dc9693a96a32fc53f3e1dcba3aab9a74ced8b385c"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_001/clip_001/cam1.npz",
+      "bytes": 509,
+      "sha256": "979d3dc1f33730f352b507d60d9bf977be094f1c4608b943fdbb5a34adcd33a1"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_001/clip_001/cam2.npz",
+      "bytes": 569,
+      "sha256": "6616272d2a515b1e4b90d5d15d15b77dce2b6f28c36c2714bfa046cd8cb1d0f6"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_002/clip_013/cam0.npz",
+      "bytes": 456,
+      "sha256": "dccf7337a9cab844924da63466698f365aa1208555b9686fdc65a9d097530241"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_002/clip_013/cam1.npz",
+      "bytes": 486,
+      "sha256": "13572a638897e8f4388a6ea78c93a363a475e10333ea3ece5230f88935d0f8d4"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/old_pipeline/video_002/clip_013/cam2.npz",
+      "bytes": 462,
+      "sha256": "f1eae51251afa5db6e96728aed93590b73113958ca20964dd60c02e35f1c818f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_000/clip_000/cam0.npz",
+      "bytes": 548,
+      "sha256": "a2ab2d707239396b2416249fc0b3c7ffcd427780e2adc6a7b801848cd7c91e35"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_000/clip_000/cam1.npz",
+      "bytes": 472,
+      "sha256": "da65390930a31567e22338210192784f01351bf7b8bd98ab2757760c9f6b7bd6"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_000/clip_000/cam2.npz",
+      "bytes": 582,
+      "sha256": "34c099a28f3b550b7f226ef8248108b101e471f732f6a83b996e39a2a06b6f66"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_000/clip_007/cam0.npz",
+      "bytes": 480,
+      "sha256": "13fb3af2c226a6961150688c447cb2b65f76a50a9c99a0a04dfc183013fae92c"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_000/clip_007/cam1.npz",
+      "bytes": 454,
+      "sha256": "9fd41cde3f81aec71cf9f3d9b59f690115adc723b296de09d73ff3b0d66856ee"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_000/clip_007/cam2.npz",
+      "bytes": 536,
+      "sha256": "edf352d2fe131bf08d96bd336b38715ea5e57bb5d91fc66afa3e1fe55f38ff98"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_001/clip_001/cam0.npz",
+      "bytes": 564,
+      "sha256": "ef237fb0f1e38c0032400c918ae4aa7ff97546ef80eccc5003478e3851711af3"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_001/clip_001/cam1.npz",
+      "bytes": 497,
+      "sha256": "7979176670bb08d1e8217946f5b40eedc197617f2782c8d9f13e94b006bd7f74"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_001/clip_001/cam2.npz",
+      "bytes": 573,
+      "sha256": "6805d32fe52bf5cd1864c9205cbccdf817dd4cde57806938f66ee9f958a71c14"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_002/clip_013/cam0.npz",
+      "bytes": 464,
+      "sha256": "54130b0e29517876fccc2753d0e9454e6d72f8abf68b98e319016f4969732bba"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_002/clip_013/cam1.npz",
+      "bytes": 464,
+      "sha256": "a8db0046d31c1d1d728264060f825d0677547c2e0b887a8ad24668e80012e2e9"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection/union_0.30/video_002/clip_013/cam2.npz",
+      "bytes": 462,
+      "sha256": "df33aab3b0c26ec4fade73b0f1da7c60e35d66a3b550a564689b753572092daa"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection.csv",
+      "bytes": 4966,
+      "sha256": "92655f2a8eb713e3d58f5356ecbe8272cff4d3d24ace0bcad54bdfa517ee7d50"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection.json",
+      "bytes": 624753,
+      "sha256": "7fed01a69900b4c55b2b013e1f10d88c6af685f8907b8f6d3e645714e44db9ab"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection.progress.json",
+      "bytes": 600125,
+      "sha256": "eb15f69edbd37d4c14b688ebbcc550c678938c93d88a1eada566e3958c9a03df"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/selection_units.jsonl.gz",
+      "bytes": 722928,
+      "sha256": "3470463a111b24b1b1753760ddb9a94ae39397eb1e6833ad05794ec7bec6ed0a"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929/video.json",
+      "bytes": 3175,
+      "sha256": "b6acfaf7432d4ed39a6dd6bd8c22ef9c02becae799bd2d36894684c069844ffb"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/adjacent_preview_1.jpg",
+      "bytes": 371453,
+      "sha256": "c74fa39ea38e6735dce4d7380e92a1e43121cc67db47bae590dd054ab1f7b101"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/camera.csv",
+      "bytes": 28792,
+      "sha256": "7e35df0f85bec0dcfbf9e1aeb2046bffda8317369081dd1bcba2f09f5a2a5e56"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/clip.csv",
+      "bytes": 12438,
+      "sha256": "bda91d8990c6a4e340781dbe914992e0c334cddd0bdb8bb045bb499f9a700a4e"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/diagnosis.csv",
+      "bytes": 8618,
+      "sha256": "56934bde8abde55902acb6ee5920a1b32653fba9249dd6841e6c4da40c74e635"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/diagnosis.json",
+      "bytes": 286259,
+      "sha256": "01f6a2b43c3621b79649b2d4bb99d60b32cc3d614935fc9b0e51833faa748553"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/identity.csv",
+      "bytes": 35732,
+      "sha256": "f347e9eb2ecfdde485b31fb9c48b14c17e998f73459a7c1fed8a6a1e05a12f01"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_000/clip_000/cam0.npz",
+      "bytes": 820,
+      "sha256": "6d5222c1a52397863a883d9b7dcb3905cb6f333c67ca912bf045b712a6e83873"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_000/clip_000/cam1.npz",
+      "bytes": 692,
+      "sha256": "3db28d1be400ac780865012a4da0d783a9416a39691c528aa0bd8f7baea2adf9"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_000/clip_000/cam2.npz",
+      "bytes": 606,
+      "sha256": "4df19eecde24aac86e423bf20fb4bf82e23c8b55b5faafc1b784c12bf7377b10"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_000/clip_007/cam0.npz",
+      "bytes": 688,
+      "sha256": "9cedfed83616d0287bdf85102b413f6e6822561d6fa6709198e751eea54f6d08"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_000/clip_007/cam1.npz",
+      "bytes": 656,
+      "sha256": "c77a8e4f06fb321eae44809f696a4717f1bb1ed4b503d6f29b375bceda6d6e16"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_000/clip_007/cam2.npz",
+      "bytes": 580,
+      "sha256": "f539c695c67f2c59804902a42e1e5b785ef32721dd431007b351dcd8013dd2bd"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_001/clip_001/cam0.npz",
+      "bytes": 1215,
+      "sha256": "b54d02a43d45f9e8962e43b86216e8ecf0012d990f6917bd6237afd3ed1f01d2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_001/clip_001/cam1.npz",
+      "bytes": 752,
+      "sha256": "b429ef6c44a34a574a7e4f17801c09fe5099b20bd4a4ebe7166dad47b4d63088"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_001/clip_001/cam2.npz",
+      "bytes": 1058,
+      "sha256": "4dd61ef1422a2552ca01ca5f631bfa5fd15958be5c421b0a90a35fad638fd3c7"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_002/clip_013/cam0.npz",
+      "bytes": 612,
+      "sha256": "0ed4cd376eee79c772a8234c9e75e10b8997e2f140cdcf6712dbb8f617905269"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_002/clip_013/cam1.npz",
+      "bytes": 536,
+      "sha256": "31b2650c1e015893d6581a055a7d9b8dc988d55b2874155d37cec75eb201f961"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/ft_base_0.01/video_002/clip_013/cam2.npz",
+      "bytes": 470,
+      "sha256": "c26fb3901f21dc471647712bc3778b431046766797b4c64ed158136cf5b4d93e"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_000/clip_000/cam0.npz",
+      "bytes": 502,
+      "sha256": "789ded554a93ae1f555089d839fe1b42af9e98870afeb8613c8fc7e9d4eb9426"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_000/clip_000/cam1.npz",
+      "bytes": 460,
+      "sha256": "4f924b5dbb3698ed12389a98d43529441c8a62231cb2894a4e1b5d16f40a7227"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_000/clip_000/cam2.npz",
+      "bytes": 538,
+      "sha256": "16b07da6dedc73b1181f7ad72d124434636bae8d5cb070f95bbedadca550984b"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_000/clip_007/cam0.npz",
+      "bytes": 500,
+      "sha256": "91ffffe2915b7d44f5fd417d86a68817e01e35e948277160e3ccba4246e6d5e3"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_000/clip_007/cam1.npz",
+      "bytes": 486,
+      "sha256": "4152cdfeb3fc525372c1842bf59d4640644ee41120246cdf149c91cda20398c1"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_000/clip_007/cam2.npz",
+      "bytes": 530,
+      "sha256": "a7d4ca5da143da640a6022060564ed9474db3fca11e9cb39e6b221e7a98d1009"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_001/clip_001/cam0.npz",
+      "bytes": 564,
+      "sha256": "415584372c7eb9fc42afcbb863836960897d46bf7c907f5060a47443478a0e72"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_001/clip_001/cam1.npz",
+      "bytes": 509,
+      "sha256": "e38eb4d3fead36748c39f8f92ec42eb76d48a926d303fe445240c3a2868c8adf"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_001/clip_001/cam2.npz",
+      "bytes": 569,
+      "sha256": "6616272d2a515b1e4b90d5d15d15b77dce2b6f28c36c2714bfa046cd8cb1d0f6"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_002/clip_013/cam0.npz",
+      "bytes": 456,
+      "sha256": "dccf7337a9cab844924da63466698f365aa1208555b9686fdc65a9d097530241"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_002/clip_013/cam1.npz",
+      "bytes": 486,
+      "sha256": "11bf7c91f0ff09f45678a7c420f08478103ab0b0d8a6afa89d20d4fee893ff56"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/old_pipeline/video_002/clip_013/cam2.npz",
+      "bytes": 462,
+      "sha256": "f1eae51251afa5db6e96728aed93590b73113958ca20964dd60c02e35f1c818f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_000/clip_000/cam0.npz",
+      "bytes": 612,
+      "sha256": "6fa6bb395f06240ca7dba9b2262b705d39048033319a69c1b6aedcfc39a797f4"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_000/clip_000/cam1.npz",
+      "bytes": 512,
+      "sha256": "fef2e7441b62cf2f79644df40db1fe962260f9e44f2a771d290487d4399be316"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_000/clip_000/cam2.npz",
+      "bytes": 574,
+      "sha256": "6a964572587bff4b7ebf5cbd9eb45f1168d9cf224ab81c0d04e7a1d4ea6a80e2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_000/clip_007/cam0.npz",
+      "bytes": 516,
+      "sha256": "c6006119e30b00a4e5d4d45a3099c9a71a5cfda0f16d55914933345f2d0822ad"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_000/clip_007/cam1.npz",
+      "bytes": 498,
+      "sha256": "af9a90c1e3c79da0c596dac441398673c7058170b7dd521f545ade943673a211"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_000/clip_007/cam2.npz",
+      "bytes": 553,
+      "sha256": "8efa3dbc0eed485ecb5650f9d2569cbc33f0d603e275aaedbf46b21f920c5c04"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_001/clip_001/cam0.npz",
+      "bytes": 602,
+      "sha256": "810bf933f7b81665447af141163d972922e1107a8f88d4aacbc3b0d05e7a1a78"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_001/clip_001/cam1.npz",
+      "bytes": 534,
+      "sha256": "241b475163d77a6dcdc54cca1655fb95c979afd6cc7b4a3b69da109342286216"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_001/clip_001/cam2.npz",
+      "bytes": 562,
+      "sha256": "ea81e1c640da7e09e64eb0492889af654858b85e114f357e1e68ba4c4e284798"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_002/clip_013/cam0.npz",
+      "bytes": 484,
+      "sha256": "a46140058b43ab0c614616f24be32c11a20e0fed509cce340e89f1350f3f6017"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_002/clip_013/cam1.npz",
+      "bytes": 484,
+      "sha256": "8d39a82a4286d8190b7cbd508a823f72c36adc1bb0b8e849701049ce8881416f"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection/union_0.30/video_002/clip_013/cam2.npz",
+      "bytes": 450,
+      "sha256": "e771e69d32c92afcb525c02360c93f0445f936cd577296be5e3421906e14ad62"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection.csv",
+      "bytes": 4974,
+      "sha256": "b831106da1baa75114697fc3017b58a14dddb4d43b23eaeeef15a646d5b68d70"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection.json",
+      "bytes": 687995,
+      "sha256": "15211a2dceb9eb59f07da4155d2bdf5ecda11fa45d4c4bce73505dd92f9c81ce"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection.progress.json",
+      "bytes": 663359,
+      "sha256": "97ee90c07911303187f2aa7a83cffeaf410a2abbdc724d45d7c23ce43dbb4cf5"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929/selection_units.jsonl.gz",
+      "bytes": 723217,
+      "sha256": "61f6e3df878edd7bf32047da0a7e5a78b003253976a92f2809ae0434f4fe07c0"
+    }
+  ],
+  "note": "Includes completed negative trials; partial abandoned intermediate videos are not evidence. Final selection NPZ masks and raw source backreferences are in selection.json."
+}
