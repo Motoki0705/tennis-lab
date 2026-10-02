@@ -19,7 +19,6 @@ from src.tasks.court_detection.configuration import (
 )
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
-    LINE_TARGET_SCHEMA_V1,
 )
 from src.utils.configuration import (
     ConfigurationTypeError,
@@ -35,7 +34,13 @@ def _compose(source: str, *overrides: str) -> DictConfig:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         return compose(
             config_name="train",
-            overrides=[f"data/source={source}", "data/processing=kp", *overrides],
+            overrides=[
+                "loss=default",
+                "data/augmentation=default",
+                f"data/source={source}",
+                "data/processing=kp",
+                *overrides,
+            ],
         )
 
 
@@ -43,9 +48,6 @@ def _pose_overrides() -> tuple[str, ...]:
     return (
         "data.source.court_scope=target_court",
         "data/augmentation=pose_safe",
-        "model/encoder=dinov3",
-        "model/transformer_encoder=default",
-        "model/decoder=dpt",
         "loss.pose.enabled=true",
         "loss.pose.translation_weight=1.0",
         "loss.pose.rotation_weight=1.0",
@@ -54,7 +56,9 @@ def _pose_overrides() -> tuple[str, ...]:
 
 
 @pytest.mark.parametrize("removed_value", [None, "court_detection/derived_targets"])
-def test_processing_rejects_removed_offline_target_root(removed_value: str | None) -> None:
+def test_processing_rejects_removed_offline_target_root(
+    removed_value: str | None,
+) -> None:
     config = _compose("tennis_court_detector")
     with open_dict(config.data.processing):
         config.data.processing.derived_target_root = removed_value
@@ -77,8 +81,6 @@ def _pose_only_overrides() -> tuple[str, ...]:
 @pytest.mark.parametrize(
     ("source", "schema"),
     [
-        ("synthetic_court_v1", "v1"),
-        ("synthetic_court_v2", "v2"),
         ("synthetic_court", "v3"),
     ],
 )
@@ -91,13 +93,12 @@ def test_hydra_explicitly_composes_each_synthetic_schema(
     assert isinstance(runtime.data.source, SyntheticCourtSourceConfig)
     assert runtime.data.source.schema == schema
     assert runtime.data.source.kind == "synthetic_court"
-    expected_scope = "all_courts" if schema == "v1" else "target_court"
-    assert runtime.data.source.court_scope == expected_scope
+    assert runtime.data.source.court_scope == "target_court"
 
 
 @pytest.mark.parametrize(
     ("source", "schema"),
-    [("synthetic_court_v2", "v2"), ("synthetic_court", "v3")],
+    [("synthetic_court", "v3")],
 )
 def test_hydra_composes_target_court_scope_for_singleton_schemas(
     source: str,
@@ -123,7 +124,7 @@ def test_synthetic_schema_cannot_be_omitted_or_guessed() -> None:
     unknown.data.source.schema = "auto"
     with pytest.raises(
         SemanticConfigurationError,
-        match="explicitly 'v1', 'v2', or 'v3'",
+        match="schema must be 'v3'",
     ):
         CourtTrainingConfig.from_config(unknown)
 
@@ -142,7 +143,7 @@ def test_synthetic_court_scope_is_required_and_strict() -> None:
     unknown.data.source.court_scope = "primary_court"
     with pytest.raises(
         SemanticConfigurationError,
-        match="court_scope must be 'all_courts' or 'target_court'",
+        match="court_scope must be 'target_court'",
     ):
         CourtTrainingConfig.from_config(unknown)
 
@@ -152,20 +153,7 @@ def test_synthetic_court_scope_is_required_and_strict() -> None:
         CourtTrainingConfig.from_config(wrong_type)
 
 
-def test_v1_rejects_target_court_scope_at_typed_configuration_boundary() -> None:
-    config = _compose(
-        "synthetic_court_v1",
-        "data.source.court_scope=target_court",
-    )
-
-    with pytest.raises(
-        SemanticConfigurationError,
-        match="target_court.*requires.*schema='v2'.*'v3'",
-    ):
-        CourtTrainingConfig.from_config(config)
-
-
-@pytest.mark.parametrize("source", ["synthetic_court_v1", "synthetic_court_v2", "synthetic_court"])
+@pytest.mark.parametrize("source", ["synthetic_court"])
 def test_current_dense_schemas_reject_all_court_source_scope(source: str) -> None:
     config = _compose(
         source,
@@ -175,7 +163,7 @@ def test_current_dense_schemas_reject_all_court_source_scope(source: str) -> Non
 
     with pytest.raises(
         SemanticConfigurationError,
-        match="single-court SEG/LINE targets require",
+        match="court_scope must be",
     ):
         CourtTrainingConfig.from_config(config)
 
@@ -241,46 +229,11 @@ def test_current_line_schema_uses_wide_physical_target() -> None:
     assert line.target_schema == LINE_TARGET_SCHEMA
 
 
-def test_legacy_line_schema_remains_loadable_for_checkpoint_inference() -> None:
-    config = _compose("synthetic_court", "data/processing=all")
-    config.data.processing.targets[2].target_schema = LINE_TARGET_SCHEMA_V1
-
-    runtime = CourtTrainingConfig.from_config(config)
-
-    line = next(
-        target for target in runtime.data.processing.targets if target.kind == "line"
-    )
-    assert line.target_schema == LINE_TARGET_SCHEMA_V1
-
-
-def test_legacy_model_config_explicitly_warns_and_restores_linear_head() -> None:
-    config = deepcopy(_compose("synthetic_court"))
-    with open_dict(config.model):
-        del config.model.dense_head
-
-    with pytest.warns(UserWarning, match="checkpoint-compatible linear"):
-        runtime = CourtTrainingConfig.from_config(config)
-
-    assert runtime.model.dense_head.name == "linear"
-
-
-def test_transformer_config_group_has_only_none_and_enabled_default_presets() -> None:
-    transformer_configs = _CONFIG_DIR / "model" / "transformer_encoder"
-
-    assert {path.name for path in transformer_configs.glob("*.yaml")} == {
-        "default.yaml",
-        "none.yaml",
-    }
-
-
 def test_dinov3_dpt_can_enable_transformer_refinement() -> None:
     runtime = CourtTrainingConfig.from_config(
         _compose(
             "synthetic_court",
             "data/processing=all",
-            "model/encoder=dinov3",
-            "model/transformer_encoder=default",
-            "model/decoder=dpt",
         )
     )
 
@@ -310,8 +263,6 @@ def test_dpt_size_presets_are_strict_and_regular(
     runtime = CourtTrainingConfig.from_config(
         _compose(
             "synthetic_court",
-            "model/encoder=dinov3",
-            f"model/decoder={preset}",
         )
     )
 
@@ -325,9 +276,6 @@ def test_transformer_depth_is_selected_from_config(depth: int) -> None:
     runtime = CourtTrainingConfig.from_config(
         _compose(
             "synthetic_court",
-            "model/encoder=dinov3",
-            "model/transformer_encoder=default",
-            "model/decoder=dpt",
             f"model.transformer_encoder.depth={depth}",
         )
     )
@@ -338,8 +286,6 @@ def test_transformer_depth_is_selected_from_config(depth: int) -> None:
 def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
     missing = _compose(
         "synthetic_court",
-        "model/encoder=dinov3",
-        "model/decoder=dpt",
     )
     with open_dict(missing.model.decoder):
         del missing.model.decoder.size
@@ -348,8 +294,6 @@ def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
 
     mismatched = _compose(
         "synthetic_court",
-        "model/encoder=dinov3",
-        "model/decoder=dpt",
     )
     mismatched.model.decoder.channels = 65
     with pytest.raises(SemanticConfigurationError, match="strict size preset"):
@@ -357,8 +301,6 @@ def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
 
     unknown = _compose(
         "synthetic_court",
-        "model/encoder=dinov3",
-        "model/decoder=dpt",
     )
     unknown.model.decoder.size = "micro"
     with pytest.raises(SemanticConfigurationError, match="tiny, small, base, or large"):
@@ -368,21 +310,16 @@ def test_dpt_size_rejects_arbitrary_or_mismatched_channels() -> None:
 def test_transformer_refinement_requires_dinov3_encoder() -> None:
     config = _compose(
         "synthetic_court",
-        "model/encoder=default",
-        "model/transformer_encoder=default",
-        "model/decoder=fpn",
+        "model.encoder.name=default",
     )
 
-    with pytest.raises(SemanticConfigurationError, match="DINOv3"):
+    with pytest.raises(SemanticConfigurationError, match="encoder.name"):
         CourtTrainingConfig.from_config(config)
 
 
 def test_transformer_encoder_rejects_inconsistent_head_dimension() -> None:
     config = _compose(
         "synthetic_court",
-        "model/encoder=dinov3",
-        "model/transformer_encoder=default",
-        "model/decoder=dpt",
     )
     config.model.transformer_encoder.head_dim = 32
 
@@ -418,7 +355,7 @@ def test_pose_supervision_requires_explicit_transformer_and_weights() -> None:
         "synthetic_court",
         "data.source.court_scope=target_court",
         "data/augmentation=pose_safe",
-        "model/transformer_encoder=none",
+        "model.transformer_encoder.enabled=false",
         "loss.pose.enabled=true",
         "loss.pose.translation_weight=1.0",
         "loss.pose.rotation_weight=1.0",
@@ -575,3 +512,25 @@ def test_consistency_requires_kp_and_enabled_pose_supervision() -> None:
     )
     with pytest.raises(SemanticConfigurationError, match="KP"):
         CourtTrainingConfig.from_config(no_kp)
+
+
+@pytest.mark.parametrize("schema", ["v1", "v2"])
+def test_legacy_synthetic_schema_is_rejected(schema: str) -> None:
+    config = _compose("synthetic_court")
+    config.data.source.schema = schema
+    with pytest.raises(SemanticConfigurationError, match="schema must be 'v3'"):
+        CourtTrainingConfig.from_config(config)
+
+
+def test_only_one_model_configuration_is_published() -> None:
+    assert [path.name for path in (_CONFIG_DIR / "model").rglob("*.yaml")] == [
+        "dinov3_dpt.yaml"
+    ]
+
+
+def test_missing_dense_head_never_restores_legacy_linear_architecture() -> None:
+    config = _compose("synthetic_court")
+    with open_dict(config.model):
+        del config.model.dense_head
+    with pytest.raises(MissingConfigurationKeyError, match="dense_head"):
+        CourtTrainingConfig.from_config(config)

@@ -1,9 +1,9 @@
 schema_version = 1
 output_storage = "drive"
 name = "court_detection"
-description = "Train the DINOv3 court keypoint model on the canonical synthetic scenes."
+description = "Train Court Detection on the fixed-ratio synthetic and real mix."
 accelerator = "gpu"
-timeout_seconds = 43200
+timeout_seconds = 86400
 setup = ["base", "submodules"]
 protected_override_keys = [
   "paths.data_root",
@@ -12,27 +12,32 @@ protected_override_keys = [
   "data/source",
   "data/processing",
   "data.source.workspace_root",
+  "mixed.sources.synthetic_court.workspace_root",
+  "mixed.sources.tennis_court_detector.root",
   "model.encoder.repository_path",
   "model.encoder.checkpoint_path",
   "run.output_dir",
   "run.artifact_store",
   "run.gpus",
 ]
-outputs = ["outputs/colab/court_detection"]
+outputs = ["outputs/colab/court_detection/mixed"]
 
 [command]
 module = "src.tasks.court_detection.scripts.train"
 args = [
-  "data/source=synthetic_court",
-  "data/processing=kp",
   "paths.output_root=outputs/colab",
-  "run.output_dir=court_detection",
+  "run.output_dir=court_detection/mixed",
   "run.gpus=1",
 ]
 
 [[inputs]]
 source = "data/synthetic_data_generation/scenes"
 destination = "data/synthetic_data_generation/scenes"
+writable = false
+
+[[inputs]]
+source = "data/court_detection/tennis_court_detector-v1"
+destination = "data/court_detection/tennis_court_detector-v1"
 writable = false
 
 [[inputs]]

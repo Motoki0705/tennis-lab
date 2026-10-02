@@ -15,9 +15,6 @@ from src.tasks.court_detection.configuration import TennisCourtDetectorSourceCon
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
     TennisCourtDetectorInput,
 )
-from src.tasks.court_detection.data.inputs.tennis_store_migration import (
-    migrate_tennis_store,
-)
 from src.tasks.court_detection.data.target_generation.online import (
     generate_online_targets,
 )
@@ -27,9 +24,12 @@ from src.tasks.court_detection.target_schemas import (
     SEMANTIC_LINE_TARGET_SCHEMA,
 )
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
+from tests.unit.tasks.court_detection.data.inputs.fixtures import (
+    pack_tennis_fixture,
+)
 
 
-def test_migration_preserves_jpeg_points_and_splits_without_source_files(
+def test_packed_store_preserves_jpeg_points_and_splits_without_source_files(
     tmp_path: Path,
 ) -> None:
     source, destination = tmp_path / "source", tmp_path / "packed"
@@ -46,8 +46,7 @@ def test_migration_preserves_jpeg_points_and_splits_without_source_files(
         (source / f"data_{split}.json").write_text(
             json.dumps([{"id": name, "kps": points, "metric": 0.25}])
         )
-    report = migrate_tennis_store(source, destination, excluded_sample_ids=())
-    assert report["jpeg_bytes_verified"] is True
+    pack_tennis_fixture(source, destination)
     shutil.rmtree(source)
     layer = TennisCourtDetectorInput(
         TennisCourtDetectorSourceConfig(

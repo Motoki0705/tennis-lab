@@ -22,10 +22,10 @@ def test_task_modules_use_the_shared_classes_directly() -> None:
     from src.tasks.ball_detection.models.spatiotemporal_unet import (
         Conv2dWiseWiseBlock as BallWiseWise,
     )
-    from src.tasks.court_detection.models.decoder import (
+    from src.tasks.court_detection.models.dinov3_dpt import (
         Conv2dWiseWiseBlock as DecoderWiseWise,
     )
-    from src.tasks.court_detection.models.encoders import (
+    from src.tasks.court_detection.models.dinov3_dpt import (
         Conv2dWiseWiseBlock as EncoderWiseWise,
     )
 

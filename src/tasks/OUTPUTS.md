@@ -126,11 +126,11 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 
 | タスク・入口 | 成果物・生成データのrootと設定 |
 |---|---|
-| 全5タスク `train`、派生train、ball `train_staged`、court `train_mixed` | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
+| 全5タスク `train`、派生train、ball `train_staged` | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
+| ball/court `preview_augmentation`、ball `preview_heatmaps` | ARTIFACT / `preview.output_dir` |
 | ball `eval` | OUTPUT / `run.output_dir` |
 | ball/court `visualize` | GIFはARTIFACT / `visualization.save`、HydraログはOUTPUT / `run.output_dir`。相対run階層は共通 |
 | ball `evaluate_manifest` | OUTPUT / manifest内 `output_dir`。CLIログは `evaluate/manifest/<run-id>/hydra`、比較成果物はmanifestが独立に生成するrun-id。再開には同じmanifest出力を明示 |
-| ball/court/BLCS/PLCS `preview_augmentation`、ball/court `preview_heatmaps` | OUTPUT / `preview.output_dir` |
 | BLCS/PLCS `visualize`（`visualization.mode=predict`を含む） | OUTPUT / `visualization.save`。GIFとHydraログは同じmode・run-id |
 | PLCS `analysis/*` | OUTPUT / `run.output_dir`（angle_velocity、dataset_distribution、loss_dominance、rotation_error_samples） |
 | ball `analyze_web_bbox_ratio` | OUTPUT / `analyze.output_dir` |

@@ -363,20 +363,6 @@ def test_task_local_boundaries_keep_task_local_configuration_authority(
     )
 
 
-def test_boundary_catalog_follows_package_reexport_to_actual_adapter() -> None:
-    boundary = next(
-        contract
-        for contract in BOUNDARY_CONTRACTS
-        if contract.boundary_id
-        == "src.tasks.court_detection.scripts.annotate_youtube_keypoints:main"
-    )
-
-    assert (
-        "src.tasks.court_detection.generate_dataset.annotation_session."
-        "AnnotationSessionConfig"
-    ) in boundary.authority_symbols
-
-
 @pytest.mark.parametrize(
     "domain",
     [

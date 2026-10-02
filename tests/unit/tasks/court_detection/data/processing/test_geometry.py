@@ -72,9 +72,6 @@ def _pose_safe_config():
                 "data.source.court_scope=target_court",
                 "data/processing=kp",
                 "data/augmentation=pose_safe",
-                "model/encoder=dinov3",
-                "model/transformer_encoder=default",
-                "model/decoder=dpt",
                 "loss.pose.enabled=true",
                 "loss.pose.translation_weight=1.0",
                 "loss.pose.rotation_weight=1.0",
@@ -110,7 +107,6 @@ def _raw_pose_sample(*, image: Image.Image | None = None) -> CourtRawSample:
                 point_visible=torch.ones(14, dtype=torch.bool),
             ),
         ),
-
         metadata=CourtSampleMetadata(
             source_kind="synthetic_court",
             source_schema="canonical_court_dataset_v3",

@@ -138,7 +138,7 @@ def _projection(
     *,
     court_order: tuple[str, str] = ("court-a", "court-b"),
     invisible_court_id: str | None = None,
-    schema: Literal["v2", "v3"] = "v2",
+    schema: Literal["v2", "v3"] = "v3",
 ) -> dict[str, object]:
     court_specs = {
         "court-a": (_IDENTITY_PHYSICAL, 0.0),
@@ -173,13 +173,13 @@ def _projection(
     }
 
 
-def _write_v2_dataset(
+def _write_v3_dataset(
     root: Path,
     *,
     court_order: tuple[str, str] = ("court-a", "court-b"),
     target_court_id: str = "court-b",
     invisible_court_id: str | None = None,
-    schema: Literal["v2", "v3"] = "v2",
+    schema: Literal["v2", "v3"] = "v3",
 ) -> tuple[Path, dict[str, object]]:
     dataset_root = root / "B00" / "datasets" / "court"
     records: list[dict[str, object]] = []
@@ -265,18 +265,17 @@ def _write_v2_dataset(
 def _input(
     root: Path,
     *,
-    schema: Literal["v1", "v2", "v3"] = "v2",
-    court_scope: Literal["all_courts", "target_court"] = "all_courts",
+    schema: Literal["v1", "v2", "v3"] = "v3",
+    court_scope: Literal["all_courts", "target_court"] = "target_court",
 ) -> SyntheticCourtInput:
     return SyntheticCourtInput(
         SyntheticCourtSourceConfig(
             kind="synthetic_court",
-            schema=schema,
-            court_scope=court_scope,
+            schema=cast(Literal["v3"], schema),
+            court_scope=cast(Literal["target_court"], court_scope),
             workspace_root=root,
             scene_ids=("B00",),
         ),
-
     )
 
 
@@ -287,54 +286,16 @@ def _rewrite(path: Path, mutate: Callable[[dict[str, object]], None]) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_v2_keeps_semantic_multi_peaks_separate_from_physical_instances(
-    tmp_path: Path,
-) -> None:
-    _write_v2_dataset(tmp_path)
-    input_layer = _input(tmp_path)
-
-    assert input_layer.available_splits == ("train", "val", "test")
-    assert input_layer.spec.source_schema == "canonical_court_dataset_v2"
-    assert input_layer.spec.keypoint_schema == "synthetic_camera_relative_kp14"
-    assert input_layer.spec.keypoint_channel_names == COURT_KP_NAMES[:14]
-    assert input_layer.spec.keypoint_flip_permutation == _FLIP
-
-    raw = input_layer.load(input_layer.records("train")[0])
-    assert raw.keypoint_channels is not None
-    channels = raw.keypoint_channels
-    assert channels.points_xy.shape == (14, 2, 2)
-    assert channels.points_xy.dtype == torch.float32
-    assert channels.physical_indices[:, 0].tolist() == list(range(14))
-    assert channels.physical_indices[:, 1].tolist() == list(_OPPOSITE_PHYSICAL)
-    assert not bool(channels.point_visible[0, 0])  # in_front=False
-    assert not bool(channels.point_visible[1, 0])  # renderer_visible=False
-    assert not bool(channels.point_visible[2, 0])  # in_frame=False
-    assert bool(channels.point_visible[0, 1])
-    assert len(raw.court_instances) == 2
-    for instance in raw.court_instances:
-        assert instance.physical_indices.tolist() == list(range(14))
-        assert instance.points_xy.dtype == torch.float32
-    second = raw.court_instances[1]
-    torch.testing.assert_close(second.points_xy[2], channels.points_xy[0, 1])
-
-    flipped = CourtProcessingGeometry._transform_channels(
-        channels,
-        matrix=torch.eye(3, dtype=torch.float64),
-        output_size_hw=(48, 64),
-        horizontal_flipped=True,
-    )
-    torch.testing.assert_close(flipped.points_xy[0], channels.points_xy[1])
-    torch.testing.assert_close(flipped.points_xy[4], channels.points_xy[6])
-
-
 def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
     tmp_path: Path,
 ) -> None:
-    _write_v2_dataset(tmp_path, schema="v3")
+    _write_v3_dataset(tmp_path, schema="v3")
     input_layer = _input(tmp_path, schema="v3")
 
     assert input_layer.spec.source_schema == "canonical_court_dataset_v3"
-    assert input_layer.spec.keypoint_schema == "synthetic_camera_view_kp14_v3"
+    assert (
+        input_layer.spec.keypoint_schema == "synthetic_camera_view_kp14_v3_target_court"
+    )
     assert input_layer.spec.keypoint_flip_permutation == _FLIP
     raw = input_layer.load(input_layer.records("train")[0])
     assert raw.keypoint_channels is not None
@@ -342,10 +303,9 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
     assert raw.pose_authority.camera.camera_id == "sample-train"
     assert raw.pose_authority.target_court.court_instance_id == "court-b"
     channels = raw.keypoint_channels
-    assert channels.points_xy.shape == (14, 2, 2)
+    assert channels.points_xy.shape == (14, 1, 2)
     assert channels.points_xy.dtype == torch.float64
-    assert channels.physical_indices[:, 0].tolist() == list(range(14))
-    assert channels.physical_indices[:, 1].tolist() == list(_CAMERA_VIEW_PHYSICAL)
+    assert channels.physical_indices[:, 0].tolist() == list(_CAMERA_VIEW_PHYSICAL)
     assert all(
         instance.points_xy.dtype == torch.float32 for instance in raw.court_instances
     )
@@ -374,7 +334,7 @@ def test_v3_uses_distinct_schema_full_half_turn_and_one_flip_only(
 def test_v3_parser_preserves_court_sample_001588_serialized_precision(
     tmp_path: Path,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    manifest_path, manifest = _write_v3_dataset(tmp_path, schema="v3")
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     projection = cast(dict[str, object], record["projection"])
     courts = cast(list[dict[str, object]], projection["courts"])
@@ -410,17 +370,14 @@ def test_v3_parser_preserves_court_sample_001588_serialized_precision(
 def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping(
     tmp_path: Path,
 ) -> None:
-    _write_v2_dataset(tmp_path, schema="v3")
-    all_input = _input(tmp_path, schema="v3")
+    _write_v3_dataset(tmp_path, schema="v3")
     target_input = _input(
         tmp_path,
         schema="v3",
         court_scope="target_court",
     )
 
-    all_raw = all_input.load(all_input.records("train")[0])
     target_raw = target_input.load(target_input.records("train")[0])
-    assert all_raw.keypoint_channels is not None
     assert target_raw.keypoint_channels is not None
     assert (
         target_input.spec.keypoint_schema
@@ -433,29 +390,25 @@ def test_v3_target_scope_preserves_distinct_bundle_identity_and_physical_mapping
     assert [instance.court_instance_id for instance in target_raw.court_instances] == [
         "court-b",
     ]
-    assert (
-        target_input.records("train")[0].payload["source_target_sha256"]
-        != all_input.records("train")[0].payload["source_target_sha256"]
-    )
 
 
 @pytest.mark.parametrize(
     ("artifact_schema", "selected_schema"),
-    [("v2", "v3"), ("v3", "v2")],
+    [("v2", "v3")],
 )
-def test_v2_v3_artifacts_are_never_cross_accepted(
+def test_v3_v3_artifacts_are_never_cross_accepted(
     tmp_path: Path,
     artifact_schema: Literal["v2", "v3"],
     selected_schema: Literal["v2", "v3"],
 ) -> None:
-    _write_v2_dataset(tmp_path, schema=artifact_schema)
+    _write_v3_dataset(tmp_path, schema=artifact_schema)
 
     with pytest.raises(ValueError, match="selected schema"):
         _input(tmp_path, schema=selected_schema)
 
 
 def test_v3_rejects_legacy_mapping(tmp_path: Path) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    manifest_path, manifest = _write_v3_dataset(tmp_path, schema="v3")
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     projection = cast(dict[str, object], record["projection"])
     courts = cast(list[dict[str, object]], projection["courts"])
@@ -476,7 +429,7 @@ def test_v3_rejects_legacy_mapping(tmp_path: Path) -> None:
 
 
 def test_v3_accepts_finite_lateral_projected_u_reversal(tmp_path: Path) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    manifest_path, manifest = _write_v3_dataset(tmp_path, schema="v3")
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     projection = cast(dict[str, object], record["projection"])
     courts = cast(list[dict[str, object]], projection["courts"])
@@ -497,13 +450,13 @@ def test_v3_accepts_finite_lateral_projected_u_reversal(tmp_path: Path) -> None:
 
     assert loaded.keypoint_channels is not None
     assert (
-        loaded.keypoint_channels.points_xy[2, 1, 0]
-        > (loaded.keypoint_channels.points_xy[3, 1, 0])
+        loaded.keypoint_channels.points_xy[2, 0, 0]
+        > (loaded.keypoint_channels.points_xy[3, 0, 0])
     )
 
 
 def test_v3_rejects_nonfinite_projected_uv(tmp_path: Path) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    manifest_path, manifest = _write_v3_dataset(tmp_path, schema="v3")
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     projection = cast(dict[str, object], record["projection"])
     courts = cast(list[dict[str, object]], projection["courts"])
@@ -536,7 +489,7 @@ def test_v3_rejects_missing_or_nonfinite_camera_and_court_transforms(
     mutation: Literal["missing", "nonfinite"],
     message: str,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path, schema="v3")
+    manifest_path, manifest = _write_v3_dataset(tmp_path, schema="v3")
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     if transform_owner == "camera":
         owner = cast(dict[str, object], record["camera"])
@@ -556,64 +509,14 @@ def test_v3_rejects_missing_or_nonfinite_camera_and_court_transforms(
         _input(tmp_path, schema="v3")
 
 
-def test_v2_target_scope_selects_exact_bound_court_and_keeps_dense_inventory(
-    tmp_path: Path,
-) -> None:
-    _write_v2_dataset(tmp_path)
-    all_input = _input(tmp_path)
-    target_input = _input(tmp_path, court_scope="target_court")
-
-    all_record = all_input.records("train")[0]
-    target_record = target_input.records("train")[0]
-    all_raw = all_input.load(all_record)
-    target_raw = target_input.load(target_record)
-    assert all_raw.keypoint_channels is not None
-    assert target_raw.keypoint_channels is not None
-
-    all_channels = all_raw.keypoint_channels
-    target_channels = target_raw.keypoint_channels
-    assert target_input.spec.source_schema == all_input.spec.source_schema
-    assert (
-        target_input.spec.keypoint_schema
-        == "synthetic_camera_relative_kp14_target_court"
-    )
-    assert target_channels.points_xy.shape == (14, 1, 2)
-    assert target_channels.point_visible.shape == (14, 1)
-    assert target_channels.physical_indices.shape == (14, 1)
-    torch.testing.assert_close(
-        target_channels.points_xy[:, 0], all_channels.points_xy[:, 1]
-    )
-    torch.testing.assert_close(
-        target_channels.point_visible[:, 0], all_channels.point_visible[:, 1]
-    )
-    torch.testing.assert_close(
-        target_channels.physical_indices[:, 0], all_channels.physical_indices[:, 1]
-    )
-    assert (
-        target_record.payload["source_target_sha256"]
-        != all_record.payload["source_target_sha256"]
-    )
-    assert [instance.court_instance_id for instance in target_raw.court_instances] == [
-        "court-b",
-    ]
-    torch.testing.assert_close(
-        target_raw.court_instances[0].points_xy,
-        all_raw.court_instances[1].points_xy,
-    )
-    torch.testing.assert_close(
-        target_raw.court_instances[0].point_visible,
-        all_raw.court_instances[1].point_visible,
-    )
-
-
-def test_v2_target_scope_is_independent_of_projection_order(tmp_path: Path) -> None:
+def test_v3_target_scope_is_independent_of_projection_order(tmp_path: Path) -> None:
     selected_points: list[torch.Tensor] = []
     for name, order in (
         ("target-first", ("court-b", "court-a")),
         ("target-last", ("court-a", "court-b")),
     ):
         root = tmp_path / name
-        _write_v2_dataset(root, court_order=order)
+        _write_v3_dataset(root, court_order=order)
         input_layer = _input(root, court_scope="target_court")
 
         raw = input_layer.load(input_layer.records("train")[0])
@@ -627,32 +530,27 @@ def test_v2_target_scope_is_independent_of_projection_order(tmp_path: Path) -> N
     torch.testing.assert_close(selected_points[0], selected_points[1])
 
 
-def test_v2_target_scope_keeps_all_invisible_target_without_fallback(
+def test_v3_target_scope_keeps_all_invisible_target_without_fallback(
     tmp_path: Path,
 ) -> None:
-    _write_v2_dataset(tmp_path, invisible_court_id="court-b")
-    all_input = _input(tmp_path)
+    _write_v3_dataset(tmp_path, invisible_court_id="court-b")
     target_input = _input(tmp_path, court_scope="target_court")
 
-    all_raw = all_input.load(all_input.records("train")[0])
     target_raw = target_input.load(target_input.records("train")[0])
-    assert all_raw.keypoint_channels is not None
     assert target_raw.keypoint_channels is not None
 
     target_channels = target_raw.keypoint_channels
     assert target_channels.points_xy.shape == (14, 1, 2)
     assert not bool(target_channels.point_visible.any())
-    torch.testing.assert_close(
-        target_channels.points_xy[:, 0],
-        all_raw.keypoint_channels.points_xy[:, 1],
+    assert target_channels.physical_indices[:, 0].tolist() == list(
+        _CAMERA_VIEW_PHYSICAL
     )
-    assert target_channels.physical_indices[:, 0].tolist() == list(_OPPOSITE_PHYSICAL)
 
 
-def test_v2_target_scope_flip_preserves_semantic_and_physical_identity(
+def test_v3_target_scope_flip_preserves_semantic_and_physical_identity(
     tmp_path: Path,
 ) -> None:
-    _write_v2_dataset(tmp_path)
+    _write_v3_dataset(tmp_path)
     input_layer = _input(tmp_path, court_scope="target_court")
     raw = input_layer.load(input_layer.records("train")[0])
     assert raw.keypoint_channels is not None
@@ -685,17 +583,17 @@ def test_v2_target_scope_flip_preserves_semantic_and_physical_identity(
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [
-        ("schema", "canonical_court_dataset_v3", "selected schema"),
+        ("schema", "canonical_court_dataset_v2", "selected schema"),
         ("status", "running", "completed"),
     ],
 )
-def test_v2_rejects_manifest_schema_and_publication_status(
+def test_v3_rejects_manifest_schema_and_publication_status(
     tmp_path: Path,
     field: str,
     value: object,
     message: str,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     manifest[field] = value
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
@@ -703,22 +601,22 @@ def test_v2_rejects_manifest_schema_and_publication_status(
         _input(tmp_path)
 
 
-def test_selected_v1_never_infers_v2_from_directory(tmp_path: Path) -> None:
-    _write_v2_dataset(tmp_path)
+def test_legacy_configuration_is_rejected_before_reading(tmp_path: Path) -> None:
+    _write_v3_dataset(tmp_path)
 
-    with pytest.raises(ValueError, match="selected schema"):
+    with pytest.raises(ValueError, match="requires V3"):
         _input(tmp_path, schema="v1")
 
 
-def test_v2_rejects_root_escape_and_symlinked_published_files(tmp_path: Path) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+def test_v3_rejects_root_escape_and_symlinked_published_files(tmp_path: Path) -> None:
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     records = cast(list[dict[str, object]], manifest["samples"])
     records[0]["rgb"] = "../outside.npy"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ValueError, match="safe relative|escapes"):
         _input(tmp_path)
 
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     records = cast(list[dict[str, object]], manifest["samples"])
     rgb_path = manifest_path.parent / cast(str, records[0]["rgb"])
     rgb_path.unlink()
@@ -729,11 +627,11 @@ def test_v2_rejects_root_escape_and_symlinked_published_files(tmp_path: Path) ->
         _input(tmp_path)
 
 
-def test_v2_rejects_manifest_root_symlink_escape_before_read(tmp_path: Path) -> None:
+def test_v3_rejects_manifest_root_symlink_escape_before_read(tmp_path: Path) -> None:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
     external_workspace = tmp_path / "external"
-    _write_v2_dataset(external_workspace)
+    _write_v3_dataset(external_workspace)
     (workspace_root / "B00").symlink_to(
         external_workspace / "B00", target_is_directory=True
     )
@@ -742,10 +640,10 @@ def test_v2_rejects_manifest_root_symlink_escape_before_read(tmp_path: Path) -> 
         _input(workspace_root)
 
 
-def test_v2_never_uses_preview_when_authoritative_rgb_is_missing(
+def test_v3_never_uses_preview_when_authoritative_rgb_is_missing(
     tmp_path: Path,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     (manifest_path.parent / cast(str, record["rgb"])).unlink()
 
@@ -762,8 +660,8 @@ def test_v2_never_uses_preview_when_authoritative_rgb_is_missing(
         np.zeros((47, 64, 3), dtype=np.float32),
     ],
 )
-def test_v2_rejects_noncanonical_rgb(tmp_path: Path, rgb: np.ndarray) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+def test_v3_rejects_noncanonical_rgb(tmp_path: Path, rgb: np.ndarray) -> None:
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     np.save(manifest_path.parent / cast(str, record["rgb"]), rgb)
     input_layer = _input(tmp_path)
@@ -773,12 +671,12 @@ def test_v2_rejects_noncanonical_rgb(tmp_path: Path, rgb: np.ndarray) -> None:
 
 
 @pytest.mark.parametrize(("value", "expected"), [(0.0, 0), (1.0, 255)])
-def test_v2_accepts_rgb_unit_interval_boundaries(
+def test_v3_accepts_rgb_unit_interval_boundaries(
     tmp_path: Path,
     value: float,
     expected: int,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     np.save(
         manifest_path.parent / cast(str, record["rgb"]),
@@ -792,10 +690,10 @@ def test_v2_accepts_rgb_unit_interval_boundaries(
     assert np.asarray(raw.image).max() == expected
 
 
-def test_v2_rejects_labels_manifest_drift_and_mixed_sample_schema(
+def test_v3_rejects_labels_manifest_drift_and_mixed_sample_schema(
     tmp_path: Path,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     labels_path = manifest_path.parent / cast(str, record["labels"])
     _rewrite(labels_path, lambda labels: labels.__setitem__("view_id", "changed"))
@@ -803,7 +701,7 @@ def test_v2_rejects_labels_manifest_drift_and_mixed_sample_schema(
     with pytest.raises(ValueError, match="view_id"):
         input_layer.load(input_layer.records("train")[0])
 
-    _write_v2_dataset(tmp_path)
+    _write_v3_dataset(tmp_path)
     _rewrite(
         labels_path,
         lambda labels: labels.__setitem__("schema", "canonical_court_sample_v1"),
@@ -822,11 +720,11 @@ def test_v2_rejects_labels_manifest_drift_and_mixed_sample_schema(
         "non_target_duplicate_physical",
     ],
 )
-def test_v2_rejects_invalid_target_and_physical_inventory(
+def test_v3_rejects_invalid_target_and_physical_inventory(
     tmp_path: Path,
     failure: str,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     records = cast(list[dict[str, object]], manifest["samples"])
     record = records[0]
     if failure == "absent_target":
@@ -863,11 +761,11 @@ def test_v2_rejects_invalid_target_and_physical_inventory(
 
 
 @pytest.mark.parametrize("failure", ["missing_binding", "invalid_binding_id"])
-def test_v2_target_scope_rejects_missing_or_invalid_binding(
+def test_v3_target_scope_rejects_missing_or_invalid_binding(
     tmp_path: Path,
     failure: str,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     labels_path = manifest_path.parent / cast(str, record["labels"])
     labels = json.loads(labels_path.read_text(encoding="utf-8"))
@@ -889,10 +787,10 @@ def test_v2_target_scope_rejects_missing_or_invalid_binding(
         _input(tmp_path, court_scope="target_court")
 
 
-def test_v2_target_scope_rejects_labels_manifest_binding_mismatch(
+def test_v3_target_scope_rejects_labels_manifest_binding_mismatch(
     tmp_path: Path,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     record = cast(list[dict[str, object]], manifest["samples"])[0]
     labels_path = manifest_path.parent / cast(str, record["labels"])
 
@@ -917,13 +815,13 @@ def test_v2_target_scope_rejects_labels_manifest_binding_mismatch(
     ],
     ids=("bad_homogeneous_bottom_row", "scaled_rotation", "determinant_minus_one"),
 )
-def test_v2_rejects_invalid_target_rigid_transform_during_construction(
+def test_v3_rejects_invalid_target_rigid_transform_during_construction(
     tmp_path: Path,
     matrix_index: int,
     replacement: float,
     message: str,
 ) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     records = cast(list[dict[str, object]], manifest["samples"])
     record = records[0]
     target = cast(dict[str, object], record["target_court"])
@@ -943,8 +841,8 @@ def test_v2_rejects_invalid_target_rigid_transform_during_construction(
         _input(tmp_path)
 
 
-def test_v2_rejects_split_leakage_and_empty_split(tmp_path: Path) -> None:
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+def test_v3_rejects_split_leakage_and_empty_split(tmp_path: Path) -> None:
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     records = cast(list[dict[str, object]], manifest["samples"])
     records[1]["trajectory_group_id"] = records[0]["trajectory_group_id"]
     labels_path = manifest_path.parent / cast(str, records[1]["labels"])
@@ -958,7 +856,7 @@ def test_v2_rejects_split_leakage_and_empty_split(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="leakage"):
         _input(tmp_path)
 
-    manifest_path, manifest = _write_v2_dataset(tmp_path)
+    manifest_path, manifest = _write_v3_dataset(tmp_path)
     records = cast(list[dict[str, object]], manifest["samples"])
     manifest["samples"] = records[:2]
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
@@ -966,13 +864,13 @@ def test_v2_rejects_split_leakage_and_empty_split(tmp_path: Path) -> None:
         _input(tmp_path)
 
 
-@pytest.mark.parametrize("schema", ["v2", "v3"])
+@pytest.mark.parametrize("schema", ["v3"])
 def test_compressed_storage_preserves_training_pixels_and_labels(
     tmp_path: Path, schema: Literal["v2", "v3"]
 ) -> None:
     from src.utils.data.float32_store import write_float32
 
-    manifest_path, manifest = _write_v2_dataset(tmp_path, schema=schema)
+    manifest_path, manifest = _write_v3_dataset(tmp_path, schema=schema)
     root = manifest_path.parent
     original = _input(tmp_path, schema=schema)
     before = original.load(original.records("train")[0])

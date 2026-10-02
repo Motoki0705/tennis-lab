@@ -18,7 +18,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelOutput,
     CourtModelSpec,
 )
-from src.tasks.court_detection.models.pose_head import CourtRawPoseOutput
+from src.tasks.court_detection.models.dinov3_dpt import CourtRawPoseOutput
 
 
 def _loss(
@@ -215,9 +215,7 @@ def test_consistency_result_keeps_configured_and_warmup_effective_weights() -> N
             consistency_warmup_fraction=0.5,
         ),
     )
-    raw_pose = torch.tensor(
-        [[0.0, -20.0, 10.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 4.0]]
-    )
+    raw_pose = torch.tensor([[0.0, -20.0, 10.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 4.0]])
     batch = {
         "image": torch.zeros(1, 3, 4, 5),
         "targets": {
@@ -255,10 +253,7 @@ def test_consistency_result_keeps_configured_and_warmup_effective_weights() -> N
     assert consistency is not None
     assert consistency.configured_weight.item() == 2.0
     assert consistency.effective_weight.item() == 1.0
-    assert (
-        consistency.configured_weight.item()
-        != consistency.effective_weight.item()
-    )
+    assert consistency.configured_weight.item() != consistency.effective_weight.item()
     torch.testing.assert_close(
         consistency.weighted_auxiliary_loss,
         consistency.auxiliary_loss * consistency.effective_weight,

@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.court_detection.training.lightning_module_mixed import (
-    MixedCourtDetectionLightningModule,
+from src.tasks.court_detection.training.lightning_module import (
+    CourtDetectionLightningModule,
 )
 from src.utils.configuration import PathResolver, RuntimePathRoots
 
@@ -19,8 +19,8 @@ def _module(
     tmp_path: Path,
     *,
     output_key: str,
-) -> MixedCourtDetectionLightningModule:
-    module = object.__new__(MixedCourtDetectionLightningModule)
+) -> CourtDetectionLightningModule:
+    module = object.__new__(CourtDetectionLightningModule)
     torch.nn.Module.__init__(module)
     module.path_resolver = PathResolver(
         RuntimePathRoots(
@@ -33,7 +33,7 @@ def _module(
             external_asset_root=tmp_path / "external",
         )
     )
-    module._test_prediction_output_key = Path(output_key)
+    module.config = {"run": {"output_dir": output_key}}
     return module
 
 
@@ -55,10 +55,10 @@ def test_non_queue_predictions_are_isolated_by_variant_output_dir(
     pose_dir = pose._test_predictions_dir()
 
     assert dense_dir == (
-        tmp_path / "artifacts/test_predictions/court_detection/mixed-source/dense-only"
+        tmp_path / "outputs/court_detection/mixed-source/dense-only/predictions"
     )
     assert pose_dir == (
-        tmp_path / "artifacts/test_predictions/court_detection/mixed-source/dense-pose"
+        tmp_path / "outputs/court_detection/mixed-source/dense-pose/predictions"
     )
     assert dense_dir != pose_dir
 

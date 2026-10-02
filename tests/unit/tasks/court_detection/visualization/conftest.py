@@ -7,16 +7,13 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.court_detection.data.inputs.tennis_store_migration import (
-    migrate_tennis_store,
-)
 from src.tasks.court_detection.visualization.review import datasets
 from src.tasks.court_detection.visualization.review.datasets import (
     CourtDatasetCatalog,
 )
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 from tests.unit.tasks.court_detection.data.inputs.test_synthetic_court import (
-    _write_v2_dataset,
+    _write_v3_dataset,
 )
 from tests.unit.tasks.court_detection.data.inputs.test_tennis_court_detector import (
     _record,
@@ -55,8 +52,10 @@ def review_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     its explicit ``excluded_sample_ids``) instead of a real-data-only path.
     """
     data_root = tmp_path / "data"
-    _write_source(data_root / "upstream", _record(kps=_planar_kp14()))
-    migrate_tennis_store(data_root / "upstream", data_root / "court_detection/tennis_court_detector-v1", excluded_sample_ids=())
+    _write_source(
+        data_root / "court_detection/tennis_court_detector-v1",
+        _record(kps=_planar_kp14()),
+    )
     preset = tmp_path / "tennis_court_detector.yaml"
     preset.write_text(
         "\n".join(
@@ -74,7 +73,7 @@ def review_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         encoding="utf-8",
     )
     monkeypatch.setattr(datasets, "_TENNIS_SOURCE_PRESET", preset)
-    _write_v2_dataset(
+    _write_v3_dataset(
         data_root / "synthetic_data_generation" / "scenes",
         schema="v3",
         court_order=("court-a", "court-b"),

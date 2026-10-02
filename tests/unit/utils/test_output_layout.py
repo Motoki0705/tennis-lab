@@ -334,13 +334,16 @@ def test_evaluation_manifest_resolves_output_and_checkpoint_roots(
 def test_mixed_training_snapshot_preserves_roots_identity_and_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
-    from src.tasks.court_detection.training.runner_mixed import (
-        MixedCourtDetectionTrainingRunner,
-        resolve_mixed_training_config,
+    from src.tasks.court_detection.training.runner import (
+        CourtDetectionTrainingRunner,
+        resolve_training_config,
     )
 
-    boundary = next(b for b in _TASK_BOUNDARIES if b.module.endswith(".train_mixed"))
+    boundary = next(
+        b
+        for b in _TASK_BOUNDARIES
+        if b.module == "src.tasks.court_detection.scripts.train"
+    )
     cfg = _compose_boundary(boundary, [f"paths.output_root={tmp_path / 'runs'}"])
     log = Path(cfg.hydra.run.dir)
     with open_dict(cfg):
@@ -349,19 +352,19 @@ def test_mixed_training_snapshot_preserves_roots_identity_and_sources(
     output_dir.mkdir(parents=True)
 
     def save_without_training(
-        runner: MixedCourtDetectionTrainingRunner, standard: DictConfig
+        runner: CourtDetectionTrainingRunner, standard: DictConfig
     ) -> None:
         runner.save_config(standard, output_dir)
 
     monkeypatch.setattr(CourtDetectionTrainingRunner, "run", save_without_training)
-    MixedCourtDetectionTrainingRunner().run(cfg)
+    CourtDetectionTrainingRunner().run(cfg)
     saved = cast(DictConfig, OmegaConf.load(output_dir / "config.yaml"))
     assert saved.run.output_dir == cfg.run.output_dir
     assert saved.mixed == cfg.mixed
     assert Path(saved.paths.output_root) == tmp_path / "runs"
     assert all(Path(str(root)).is_absolute() for root in saved.paths.values())
     assert "${" not in (output_dir / "config.yaml").read_text()
-    replay, mixed = resolve_mixed_training_config(saved)
+    replay, mixed = resolve_training_config(saved)
     assert replay.run.output_dir == cfg.run.output_dir
     assert mixed is not None
 

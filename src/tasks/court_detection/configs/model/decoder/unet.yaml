@@ -1,3 +1,0 @@
-# U-Net decoder. Select with `model/decoder=unet`.
-name: unet
-channels: [64, 128, 256, 512]

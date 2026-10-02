@@ -14,8 +14,6 @@ from src.tasks.court_detection.data.target_generation.semantic_line import (
 )
 from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_SCHEMA,
-    LINE_TARGET_SCHEMA_V1,
-    LINE_TARGET_SCHEMA_V2,
     SEMANTIC_LINE_CLASS_BY_NAME,
     line_target_definition,
 )
@@ -94,28 +92,29 @@ def test_semantic_line_target_matches_binary_coverage_and_camera_view_labels() -
     np.testing.assert_array_equal(half_turn > 0, binary > 0)
     far_baseline_midpoint = (64, 11)
     left_doubles_midpoint = (11, 128)
-    assert identity[far_baseline_midpoint[1], far_baseline_midpoint[0]] == (
-        SEMANTIC_LINE_CLASS_BY_NAME["far_baseline"]
+    assert (
+        identity[far_baseline_midpoint[1], far_baseline_midpoint[0]]
+        == (SEMANTIC_LINE_CLASS_BY_NAME["far_baseline"])
     )
-    assert half_turn[far_baseline_midpoint[1], far_baseline_midpoint[0]] == (
-        SEMANTIC_LINE_CLASS_BY_NAME["near_baseline"]
+    assert (
+        half_turn[far_baseline_midpoint[1], far_baseline_midpoint[0]]
+        == (SEMANTIC_LINE_CLASS_BY_NAME["near_baseline"])
     )
-    assert identity[left_doubles_midpoint[1], left_doubles_midpoint[0]] == (
-        SEMANTIC_LINE_CLASS_BY_NAME["left_doubles_sideline"]
+    assert (
+        identity[left_doubles_midpoint[1], left_doubles_midpoint[0]]
+        == (SEMANTIC_LINE_CLASS_BY_NAME["left_doubles_sideline"])
     )
-    assert half_turn[left_doubles_midpoint[1], left_doubles_midpoint[0]] == (
-        SEMANTIC_LINE_CLASS_BY_NAME["right_doubles_sideline"]
+    assert (
+        half_turn[left_doubles_midpoint[1], left_doubles_midpoint[0]]
+        == (SEMANTIC_LINE_CLASS_BY_NAME["right_doubles_sideline"])
     )
 
 
 def test_line_target_schemas_keep_physical_widths_immutable() -> None:
-    legacy = line_target_definition(LINE_TARGET_SCHEMA_V1)
-    all_court_wide = line_target_definition(LINE_TARGET_SCHEMA_V2)
     current = line_target_definition(LINE_TARGET_SCHEMA)
-
-    assert (legacy.line_width_metres, legacy.baseline_width_metres) == (0.05, 0.10)
-    assert (
-        all_court_wide.line_width_metres,
-        all_court_wide.baseline_width_metres,
-    ) == (0.075, 0.15)
     assert (current.line_width_metres, current.baseline_width_metres) == (0.075, 0.15)
+    import pytest
+
+    for schema in ("court_line_binary_v1", "court_line_binary_75mm_150mm_v2"):
+        with pytest.raises(ValueError, match="Unsupported Court line target schema"):
+            line_target_definition(schema)

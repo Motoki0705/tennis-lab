@@ -21,7 +21,10 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtSegmentationPrediction,
     CourtTrainingResult,
 )
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtHierarchicalModel,
+    CourtModelOutput,
+)
 
 
 def _bundle(*kinds: CourtTargetKind) -> CourtTargetBundleSpec:
@@ -117,13 +120,13 @@ class _CountingCourtModel(CourtHierarchicalModel):
 
     def forward(
         self,
-        images: torch.Tensor,
+        x: torch.Tensor,
         feature_1: torch.Tensor | None = None,
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
         patch_valid_mask: torch.Tensor | None = None,
-    ) -> dict[CourtTargetKind, torch.Tensor]:
+    ) -> CourtModelOutput:
         assert all(
             value is None
             for value in (
@@ -135,15 +138,17 @@ class _CountingCourtModel(CourtHierarchicalModel):
             )
         )
         self.calls += 1
-        return {
-            kind: self.bias.expand(
-                images.shape[0],
-                spec.output_channels,
-                images.shape[-2],
-                images.shape[-1],
-            )
-            for kind, spec in self.target_bundle_spec.targets.items()
-        }
+        return CourtModelOutput(
+            {
+                kind: self.bias.expand(
+                    x.shape[0],
+                    spec.output_channels,
+                    x.shape[-2],
+                    x.shape[-1],
+                )
+                for kind, spec in self.target_bundle_spec.targets.items()
+            }
+        )
 
 
 def _adapter(bundle: CourtTargetBundleSpec) -> CourtModelIOAdapter:
@@ -213,7 +218,9 @@ def test_multi_head_training_runs_shared_model_once_and_backpropagates() -> None
     assert model.bias.grad is not None
 
 
-def test_dense_loss_result_exposes_raw_configured_effective_and_weighted_terms() -> None:
+def test_dense_loss_result_exposes_raw_configured_effective_and_weighted_terms() -> (
+    None
+):
     bundle = _bundle("kp", "seg", "line", "semantic_line")
     adapter = CourtModelIOAdapter(
         CourtModelSpec(target_bundle=bundle, in_channels=3, short_side=32),
@@ -355,6 +362,7 @@ def test_decode_prediction_keeps_extra_peaks_only_when_requested() -> None:
         default.keypoints[:, 0],
         torch.tensor([[1.0, 1.0], [4.0, 4.0]]),
     )
+    assert isinstance(multi, CourtKeypointPrediction)
     assert multi.keypoints.shape == (2, 2, 2)
     assert multi.valid.tolist() == [[True, True], [True, False]]
     torch.testing.assert_close(
@@ -363,7 +371,8 @@ def test_decode_prediction_keeps_extra_peaks_only_when_requested() -> None:
     )
 
 
-def _kp_head_payload(payload: dict[str, object]) -> dict[str, object]:
+def _kp_head_payload(payload: object) -> dict[str, object]:
+    assert isinstance(payload, dict)
     predictions = payload["predictions"]
     assert isinstance(predictions, dict)
     kp_payload = predictions["kp"]
