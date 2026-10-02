@@ -1,0 +1,38 @@
+# StrongSORT++ paper-based inference implementation
+
+Du, Zhao, Song, Zhao, Su, Gong, Meng: [StrongSORT: Make DeepSORT Great Again](https://arxiv.org/html/2202.13514v2),
+arXiv:2202.13514v2 / IEEE TMM 2023, sections III–V, equations 2–15 and figure 3.
+The paper is CC BY 4.0. The implementation was written for this repository from
+the mathematical description, not copied from the GPL-3.0 reference code.
+Official numerical defaults were checked at `dyhBUPT/StrongSORT` commit
+`ee995076da5083e28d0da1f885297df62705ebd7`. Checkpoint key/shapes and synthetic
+reference outputs were used for interoperability checks. This is not a formal
+legal clean-room certification.
+
+The comparison substitutes the fixed COCO .30 detections and precomputed CLIP
+for YOLOX/BoT, disables ECC on the fixed cameras, and retains detection-row
+identity and real-observation masks. GSI output remains a separate reconstruction;
+it is never relabelled as a real detection. The run-9 condition adds no pose cost.
+The optional run-10 hybrid adds this repository's shared pose evidence to both
+association stages; it is an extension, not part of the StrongSORT paper.
+This is a specified adaptation, not a reproduction of the MOT benchmark scores.
+NSA follows paper equation 9 literally: the **covariance** is multiplied by
+`1-confidence`. A synthetic black-box check found that the reference code instead
+multiplies standard deviations before squaring. The precommitted paper formula is
+retained; this difference is not tuned on Meiji. Initialization and ordinary
+prediction agreed exactly with the reference in that check. Missed latent Kalman
+states may extrapolate through zero height before expiry, as in the reference;
+they are retained internally but never emitted as detections.
+All comparison settings have one source, the [run-9 addendum](../../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md).
+The two hybrid changes are specified in the [run-10 addendum](../../../knowledge/runs/run-i964-tracker-hybrids-r10-20260930/protocol-addendum.md).
+
+AFLink checkpoint: the official README's [Google Drive folder](https://drive.google.com/drive/folders/1Zk6TaSJPbpnqbz1w4kfhkKFCEzQbjfp_),
+file ID `1DFMUkL-dc-j8-fibcJIq-46Xoq_bFoO9`, `AFLink_epoch20.pth`, 4,348,705 bytes,
+SHA-256 `b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4`.
+The reference repository is GPL-3.0. Separate checkpoint licence terms could not
+be found in its README or the distribution folder. The weight is not distributed
+here or claimed to be MIT. Reimplementation does not resolve weight licensing.
+The [2026-09-30 user decision](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5908318161)
+authorizes using these weights provisionally in the default pipeline. Keeping them
+or retraining AFLink on project data remains a later decision; this is not a claim
+that production use or redistribution has been licensed by the weight publisher.
