@@ -1,4 +1,4 @@
-"""One candidate-recall path for standard, GAN and staged validation."""
+"""One candidate-recall path for standard and GAN validation."""
 
 from __future__ import annotations
 

@@ -12,8 +12,7 @@ window the checkpoint was trained with), the minimum number of frames the
 architecture accepts, and the checkpoint's saved ``metrics`` block (peak
 threshold, NMS, distance threshold, subpixel refinement).  The training
 ``data.source`` is deliberately *not* used to decide compatibility: a
-checkpoint trained on TrackNet still consumes any RGB source, and static web
-frames are consumed through the dataset's own canonical repetition mode.
+checkpoint trained on TrackNet still consumes RGB frames from every store source.
 """
 
 from __future__ import annotations

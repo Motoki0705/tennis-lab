@@ -18,7 +18,6 @@ from .service import (
     TITLE,
     DetectionRequestError,
     DetectionService,
-    WindowMode,
     WindowPlan,
 )
 
@@ -31,7 +30,6 @@ __all__ = [
     "FramePeaks",
     "LoadedBallModel",
     "Raster",
-    "WindowMode",
     "WindowPlan",
     "decode_frame_peaks",
     "load_ball_model",

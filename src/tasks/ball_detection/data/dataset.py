@@ -47,7 +47,7 @@ class WindowFrame:
 
 @dataclass(frozen=True, slots=True)
 class WindowFrames:
-    """The first ``num_frames`` frames of one window, read by a source dataset."""
+    """One fixed-length window, read by a source dataset."""
 
     frames: tuple[WindowFrame, ...]
     original_size: tuple[int, int]
@@ -95,33 +95,20 @@ class BallDetectionDataset(Dataset[BallDetectionSample], ABC):
     def __len__(self) -> int: ...
 
     @abstractmethod
-    def read_window(self, index: int, num_frames: int) -> WindowFrames:
-        """Read the first ``num_frames`` frames of window ``index``."""
+    def read_window(self, index: int) -> WindowFrames:
+        """Read ``model.num_frames`` frames of window ``index``."""
 
-    def __getitem__(self, index: int | tuple[int, int]) -> BallDetectionSample:
-        """Build one sample.
-
-        ``index`` is either an ``int`` (use ``self.num_frames`` frames) or a
-        ``(window_index, num_frames)`` tuple. The tuple form is emitted by the
-        variable-T batch sampler so one window source can yield clips of
-        different lengths ``T <= self.num_frames`` across batches.
-        """
-        if isinstance(index, tuple):
-            window_index, num_frames = int(index[0]), int(index[1])
-        else:
-            window_index, num_frames = int(index), self.num_frames
-        if not 1 <= num_frames <= self.num_frames:
-            raise ValueError(
-                f"requested num_frames={num_frames} must be in "
-                f"[1, {self.num_frames}] (the built window length)."
-            )
-        window = self.read_window(window_index, num_frames)
-        if len(window.frames) != num_frames:
+    def __getitem__(self, index: int) -> BallDetectionSample:
+        """Build one sample of exactly ``model.num_frames`` consecutive frames."""
+        if isinstance(index, bool) or not isinstance(index, int):
+            raise TypeError("Ball dataset index must be an integer.")
+        window = self.read_window(index)
+        if len(window.frames) != self.num_frames:
             raise RuntimeError(
                 f"{type(self).__name__}.read_window returned {len(window.frames)} "
-                f"frames for num_frames={num_frames}"
+                f"frames for model.num_frames={self.num_frames}"
             )
-        return self._make_sample(window, window_index)
+        return self._make_sample(window, index)
 
     def _make_sample(self, window: WindowFrames, window_index: int) -> BallDetectionSample:
         image_h, image_w = self.image_size

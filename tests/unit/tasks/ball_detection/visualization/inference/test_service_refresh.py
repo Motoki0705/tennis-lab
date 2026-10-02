@@ -89,9 +89,10 @@ def test_catalog_rescan_adds_new_checkpoint_and_clip(tmp_path: Path) -> None:
 def test_unavailable_reason_survives_repeated_catalog_calls(tmp_path: Path) -> None:
     service = service_for(tmp_path)
     write_tracknet_clip(tmp_path, "Clip1", frames=4)
+    (tmp_path / "data/ball_detection/test-v1/index.npz").unlink()
     first = {entry["id"]: entry for entry in service.catalog()["datasets"]}
-    assert first["web_static"]["available"] is False
-    assert "index.npz" in first["web_static"]["reason"]
+    assert first["store/test-v1"]["available"] is False
+    assert "index.npz" in first["store/test-v1"]["reason"]
 
     # A second call must not lose the reason when it hits the cached discovery.
     cached = {
@@ -99,11 +100,11 @@ def test_unavailable_reason_survives_repeated_catalog_calls(tmp_path: Path) -> N
     }
     again = {entry.spec.id: entry for entry in service.dataset_catalog.entries()}
     second = {entry["id"]: entry for entry in service.catalog()["datasets"]}
-    for dataset_id in ("web_static", "web_temporal"):
+    for dataset_id in ("store/test-v1",):
         assert cached[dataset_id].reason is not None
         assert again[dataset_id].reason == cached[dataset_id].reason
         assert second[dataset_id]["reason"] == first[dataset_id]["reason"]
-    assert any("web_static" in text for text in service.catalog()["warnings"])
+    assert any("store/test-v1" in text for text in service.catalog()["warnings"])
 
 
 def test_infer_rereads_replaced_checkpoint_metadata(
@@ -191,27 +192,6 @@ def test_shard_symlink_outside_root_disqualifies_store(tmp_path: Path) -> None:
     assert "resolves outside" in str(entries["store/test-v1"].reason)
     with pytest.raises(BallDatasetCatalogError):
         catalog.resolve("store/test-v1", "tracknet/game1/Clip1")
-
-
-def test_web_store_with_escaping_reference_is_rejected(tmp_path: Path) -> None:
-    from tests.unit.tasks.ball_detection.visualization.conftest import (
-        write_unified_store,
-    )
-
-    store = write_unified_store(tmp_path / "data")
-    import json
-
-    strings = json.loads((store / "index_strings.json").read_text(encoding="utf-8"))
-    strings["paths"] = ["../../../../etc/passwd"]
-    (store / "index_strings.json").write_text(json.dumps(strings), encoding="utf-8")
-
-    catalog = BallDatasetCatalog(tmp_path / "data")
-    entries = {entry.spec.id: entry for entry in catalog.entries()}
-    for dataset_id in ("web_static", "web_temporal"):
-        assert not entries[dataset_id].available
-        reason = entries[dataset_id].reason
-        assert reason is not None
-        assert "non-escaping" in reason
 
 
 # ------------------------------------------------- 3) strict early validation

@@ -146,8 +146,6 @@ def test_all_task_cli_output_contracts(
             "dataset=meiji_3cam",
             f"paths.data_root={tmp_path / 'dataset-root'}",
         ]
-    if "clip_and_predict_youtube_dataset" in boundary.module:
-        overrides += ["workflow.video_id=smoke-video"]
     if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
         overrides += ["evaluation.checkpoint=smoke/model.ckpt"]
     if boundary.module == "src.tasks.player_detection.scripts.export_checkpoint":
