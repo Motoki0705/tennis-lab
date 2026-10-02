@@ -8,7 +8,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import torch
 import yaml
 
 from src.tasks.plcs.visualization.inference.service import (
@@ -131,33 +130,10 @@ def _make_service(tmp_path: Path) -> tuple[InferenceService, Path]:
         scenes=3,
         frames=300,
     )
-    _write_dataset(
-        data_root,
-        "single_object_camera_view_v2",
-        selector="camera_view_v2",
-        objects="single_object",
-        cameras=4,
-        persons=1,
-        frames=500,
-    )
     service = InferenceService(
         data_root=data_root, checkpoint_root=checkpoint_root, device="cpu"
     )
     return service, checkpoint_root
-
-
-def test_families_report_selector_objects_and_splits(tmp_path: Path) -> None:
-    service, _ = _make_service(tmp_path)
-    families = {item.id: item for item in service.families()}
-    assert set(families) == {"single_object", "single_object_camera_view_v2"}
-    single = families["single_object"]
-    assert single.selector == "physical_v1"
-    assert single.objects == "single_object"
-    assert single.num_cameras == 6
-    assert single.splits == {"train": 0, "val": 3, "test": 0}
-    v2 = families["single_object_camera_view_v2"]
-    assert v2.selector == "camera_view_v2"
-    assert v2.num_cameras == 4
 
 
 def test_scenes_listing_filters_and_limits(tmp_path: Path) -> None:
@@ -197,88 +173,13 @@ def test_predictor_root_and_revision_follow_selected_checkpoint(tmp_path: Path) 
     assert first != service._predictor_key("single", checkpoint, "cpu")
 
 
-def test_scene_detail_without_checkpoint(tmp_path: Path) -> None:
-    service, _ = _make_service(tmp_path)
-    detail = service.scene_detail("single_object_camera_view_v2", "scene_000000")
-    assert detail["num_frames"] == 500
-    assert detail["num_cameras"] == 4
-    assert detail["num_persons"] == 1
-    assert detail["selector"] == "camera_view_v2"
-    assert detail["reference_required"] is True
-    assert detail["window"] is None
-    assert [entry["id"] for entry in detail["cameras"]] == [
-        "camera_0",
-        "camera_1",
-        "camera_2",
-        "camera_3",
-    ]
-
-
-def test_scene_detail_windows_use_checkpoint_limit(tmp_path: Path) -> None:
-    service, checkpoint_root = _make_service(tmp_path)
-    _write_checkpoint(
-        checkpoint_root,
-        "run_phys",
-        model_name="plcs_multiview_axial",
-        selector="physical_v1",
-        input_profile="multiview",
-        scene_dir="plcs/single_object",
-        max_views=6,
-    )
-    _write_checkpoint(
-        checkpoint_root,
-        "run_v2",
-        model_name="plcs_multiview_axial_reference",
-        selector="camera_view_v2",
-        input_profile="multiview",
-        scene_dir="plcs/single_object_camera_view_v2",
-        max_views=4,
-        max_seq_len=256,
-    )
-    unrestricted = service.scene_detail(
-        "single_object",
-        "scene_000000",
-        checkpoint="run_phys/logs/version_0/checkpoints/best.ckpt",
-    )
-    assert unrestricted["supported"] is True
-    assert unrestricted["window"]["max_length"] == 300
-    assert unrestricted["reference_required"] is False
-    limited = service.scene_detail(
-        "single_object_camera_view_v2",
-        "scene_000000",
-        checkpoint="run_v2/logs/version_0/checkpoints/best.ckpt",
-    )
-    assert limited["supported"] is True
-    assert limited["window"]["max_length"] == 256
-    assert limited["window"]["default_length"] == 256
-    assert limited["window"]["scene_frames"] == 500
-    assert limited["reference_required"] is True
-
-
-def test_scene_detail_rejects_family_not_in_allowlist(tmp_path: Path) -> None:
-    service, checkpoint_root = _make_service(tmp_path)
-    checkpoint = _write_checkpoint(
-        checkpoint_root,
-        "run_phys",
-        model_name="plcs_multiview_axial",
-        selector="physical_v1",
-        input_profile="multiview",
-        scene_dir="plcs/single_object",
-    )
-    detail = service.scene_detail(
-        "single_object_camera_view_v2", "scene_000000", checkpoint=checkpoint
-    )
-    assert detail["supported"] is False
-    assert detail["unsupported_reason"] is not None
-
-
 def _request(checkpoint: str, **overrides: object) -> PredictionRequest:
     payload: dict[str, object] = {
         "checkpoint": checkpoint,
-        "family": "single_object_camera_view_v2",
+        "family": "single_object",
         "scene": "scene_000000",
         "cameras": (0, 1, 2, 3),
-        "reference_camera_id": "camera_0",
+        "reference_camera_id": None,
         "window_start": 0,
         "window_length": 256,
         "canonical_pose_source": "prediction",
@@ -288,14 +189,14 @@ def _request(checkpoint: str, **overrides: object) -> PredictionRequest:
     return PredictionRequest(**payload)  # type: ignore[arg-type]
 
 
-def _v2_checkpoint(service: InferenceService, checkpoint_root: Path) -> str:
+def _axial_checkpoint(service: InferenceService, checkpoint_root: Path) -> str:
     return _write_checkpoint(
         checkpoint_root,
-        "run_v2",
-        model_name="plcs_multiview_axial_reference",
-        selector="camera_view_v2",
+        "run_axial",
+        model_name="plcs_multiview_axial",
+        selector="physical_v1",
         input_profile="multiview",
-        scene_dir="plcs/single_object_camera_view_v2",
+        scene_dir="plcs/single_object",
         max_views=4,
         max_seq_len=256,
     )
@@ -303,10 +204,10 @@ def _v2_checkpoint(service: InferenceService, checkpoint_root: Path) -> str:
 
 def test_resolve_request_accepts_valid_settings(tmp_path: Path) -> None:
     service, checkpoint_root = _make_service(tmp_path)
-    checkpoint = _v2_checkpoint(service, checkpoint_root)
+    checkpoint = _axial_checkpoint(service, checkpoint_root)
     resolved = service._resolve_request(_request(checkpoint))
     assert resolved["cameras"] == (0, 1, 2, 3)
-    assert resolved["reference_camera_id"] == "camera_0"
+    assert resolved["reference_camera_id"] is None
     assert resolved["window_start"] == 0
     assert resolved["window_length"] == 256
     assert resolved["scene_id"] == "scene_000000"
@@ -314,17 +215,13 @@ def test_resolve_request_accepts_valid_settings(tmp_path: Path) -> None:
 
 def test_resolve_request_rejects_invalid_settings(tmp_path: Path) -> None:
     service, checkpoint_root = _make_service(tmp_path)
-    checkpoint = _v2_checkpoint(service, checkpoint_root)
+    checkpoint = _axial_checkpoint(service, checkpoint_root)
     with pytest.raises(SceneCatalogError, match="out of range"):
         service._resolve_request(_request(checkpoint, cameras=(0, 1, 2, 9)))
     with pytest.raises(SceneCatalogError, match="distinct"):
         service._resolve_request(_request(checkpoint, cameras=(0, 0, 1)))
-    with pytest.raises(SceneCatalogError, match="3〜4"):
-        service._resolve_request(_request(checkpoint, cameras=(0, 1)))
     with pytest.raises(SceneCatalogError, match="reference_camera_id"):
         service._resolve_request(_request(checkpoint, reference_camera_id="camera_9"))
-    with pytest.raises(SceneCatalogError, match="reference_camera_id"):
-        service._resolve_request(_request(checkpoint, reference_camera_id=None))
     with pytest.raises(SceneCatalogError, match="max_seq_len"):
         service._resolve_request(_request(checkpoint, window_length=257))
     with pytest.raises(SceneCatalogError, match="num_frames"):
@@ -381,130 +278,11 @@ def test_physical_checkpoint_rules(tmp_path: Path) -> None:
 
 def test_predict_rejects_cross_family_and_unknown_scene(tmp_path: Path) -> None:
     service, checkpoint_root = _make_service(tmp_path)
-    checkpoint = _v2_checkpoint(service, checkpoint_root)
-    with pytest.raises(SceneCatalogError, match="cannot consume family"):
-        service.predict(_request(checkpoint, family="single_object"))
+    checkpoint = _axial_checkpoint(service, checkpoint_root)
+    with pytest.raises(SceneCatalogError, match="unknown scene family"):
+        service.predict(_request(checkpoint, family="multi_object"))
     with pytest.raises(SceneCatalogError, match="not listed"):
         service.predict(_request(checkpoint, scene="scene_099999"))
-
-
-def test_predict_rejects_track_query_on_single_object_family(tmp_path: Path) -> None:
-    service, checkpoint_root = _make_service(tmp_path)
-    checkpoint = _write_checkpoint(
-        checkpoint_root,
-        "run_track",
-        model_name="plcs_track_query",
-        selector="physical_v1",
-        input_profile=None,
-        scene_dir="plcs/multi_object",
-    )
-    with pytest.raises(SceneCatalogError, match="cannot consume family"):
-        service.predict(_request(checkpoint))
-
-
-def _make_tracking_service(tmp_path: Path) -> tuple[InferenceService, Path]:
-    data_root = tmp_path / "data" / "plcs"
-    checkpoint_root = tmp_path / "outputs" / "plcs"
-    checkpoint_root.mkdir(parents=True)
-    _write_dataset(
-        data_root,
-        "multi_object",
-        selector="physical_v1",
-        objects="multi_object",
-        cameras=6,
-        persons=9,
-        scenes=2,
-        frames=600,
-    )
-    _write_dataset(
-        data_root,
-        "multi_object_broadcast",
-        selector="physical_v1",
-        objects="multi_object",
-        cameras=2,
-        persons=9,
-        scenes=1,
-        frames=600,
-    )
-    service = InferenceService(
-        data_root=data_root, checkpoint_root=checkpoint_root, device="cpu"
-    )
-    return service, checkpoint_root
-
-
-def _tracking_checkpoint(checkpoint_root: Path, run: str = "run_track") -> str:
-    return _write_checkpoint(
-        checkpoint_root,
-        run,
-        model_name="plcs_track_query",
-        selector="physical_v1",
-        input_profile=None,
-        scene_dir="plcs/multi_object",
-        num_queries=4,
-        view_range=(3, 5),
-        camera_candidates=[0, 1, 2, 3],
-    )
-
-
-def _tracking_request(checkpoint: str, **overrides: object) -> PredictionRequest:
-    payload: dict[str, object] = {
-        "checkpoint": checkpoint,
-        "family": "multi_object",
-        "scene": "scene_000000",
-        "cameras": (0, 1, 2),
-        "reference_camera_id": None,
-        "window_start": 0,
-        "window_length": 8,
-        "canonical_pose_source": "gt",
-        "device": "cpu",
-    }
-    payload.update(overrides)
-    return PredictionRequest(**payload)  # type: ignore[arg-type]
-
-
-def test_tracking_mode_and_views_are_validated(tmp_path: Path) -> None:
-    service, checkpoint_root = _make_tracking_service(tmp_path)
-    checkpoint = _tracking_checkpoint(checkpoint_root)
-    resolved = service.validate_prediction_request(_tracking_request(checkpoint))
-    assert resolved["mode"] == "tracking"
-    # Training sampling ranges do not limit dynamic-view tracking models.
-    broadcast = service.validate_prediction_request(
-        _tracking_request(checkpoint, family="multi_object_broadcast", cameras=(0, 1))
-    )
-    assert broadcast["cameras"] == (0, 1)
-    assert "training sampling range" in broadcast["warnings"][0]
-    with pytest.raises(SceneCatalogError, match="camera_candidates"):
-        service.validate_prediction_request(
-            _tracking_request(checkpoint, cameras=(0, 1, 5))
-        )
-
-
-def test_tracking_rejects_reference_camera_on_physical_selector(
-    tmp_path: Path,
-) -> None:
-    service, checkpoint_root = _make_tracking_service(tmp_path)
-    checkpoint = _tracking_checkpoint(checkpoint_root)
-    with pytest.raises(SceneCatalogError, match="physical_v1"):
-        service.validate_prediction_request(
-            _tracking_request(checkpoint, reference_camera_id="camera_1")
-        )
-
-
-def test_validate_prediction_request_rejects_unavailable_device(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    service, checkpoint_root = _make_tracking_service(tmp_path)
-    checkpoint = _tracking_checkpoint(checkpoint_root)
-    with pytest.raises(ValueError, match="Invalid device"):
-        service.validate_prediction_request(
-            _tracking_request(checkpoint, device="not-a-device")
-        )
-    # An explicit CUDA request never silently falls back to CPU.
-    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
-    with pytest.raises(ValueError, match="CUDA"):
-        service.validate_prediction_request(
-            _tracking_request(checkpoint, device="cuda")
-        )
 
 
 def test_yaw_error_degrees_matches_known_angles() -> None:

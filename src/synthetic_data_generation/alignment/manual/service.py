@@ -44,8 +44,6 @@ from src.utils.io import save_json_atomic, utc_now_iso
 
 DEPENDENT_OWNERS = {
     StageName.COURT_DATASET: Path("datasets/court"),
-    StageName.BLCS_DATASET: Path("datasets/blcs"),
-    StageName.PLCS_DATASET: Path("datasets/plcs"),
     StageName.REPORT: Path("report"),
 }
 

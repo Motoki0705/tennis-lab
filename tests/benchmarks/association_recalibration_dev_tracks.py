@@ -91,7 +91,8 @@ def retrack(reuse_path: Path, report: Path) -> None:
         arrays = {'track_ids': sequence.track_ids, 'boxes': sequence.boxes, 'observed': sequence.observed,
                   'origins': origins}
         with path.open('xb') as handle:
-            np.savez_compressed(handle, **arrays)
+            np.savez_compressed(handle, track_ids=sequence.track_ids, boxes=sequence.boxes,
+                                observed=sequence.observed, origins=origins)
         with np.load(path, allow_pickle=False) as saved:
             for field, value in arrays.items():
                 np.testing.assert_array_equal(saved[field], value)
