@@ -21,7 +21,9 @@ from src.tasks.court_detection.target_schemas import (
     LINE_TARGET_DEFINITIONS,
     LINE_TARGET_SCHEMA,
     SEGMENTATION_TARGET_SCHEMA,
+    SEGMENTATION_TARGET_SCHEMA_HARD,
     SEMANTIC_LINE_TARGET_SCHEMA,
+    SEMANTIC_LINE_TARGET_SCHEMA_HARD,
 )
 from src.utils.configuration import (
     ConfigurationTypeError,
@@ -635,9 +637,12 @@ class CourtTargetConfig:
             _exact(mapping, {"kind", "target_schema"}, path=path)
             schema = _string(mapping, "target_schema", path=path)
             expected = {
-                "seg": {SEGMENTATION_TARGET_SCHEMA},
+                "seg": {SEGMENTATION_TARGET_SCHEMA, SEGMENTATION_TARGET_SCHEMA_HARD},
                 "line": set(LINE_TARGET_DEFINITIONS),
-                "semantic_line": {SEMANTIC_LINE_TARGET_SCHEMA},
+                "semantic_line": {
+                    SEMANTIC_LINE_TARGET_SCHEMA,
+                    SEMANTIC_LINE_TARGET_SCHEMA_HARD,
+                },
             }[kind]
             if schema not in expected:
                 raise SemanticConfigurationError(

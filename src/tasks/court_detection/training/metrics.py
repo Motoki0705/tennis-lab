@@ -94,15 +94,17 @@ class CourtDetectionMetrics:
         for sample_index, size in enumerate(image_size.tolist()):
             height, width = (int(value) for value in size)
             prediction = predictions[sample_index, :height, :width]
-            labels = target[sample_index, :height, :width]
             for class_index in range(self.output_channels):
-                predicted = prediction == class_index
-                expected = labels == class_index
-                self._intersection[class_index] += float(
-                    (predicted & expected).sum().item()
+                predicted = (prediction == class_index).float()
+                expected = (
+                    target[sample_index, class_index, :height, :width]
+                    if target.ndim == 4
+                    else (target[sample_index, :height, :width] == class_index).float()
                 )
-                self._union[class_index] += float(
-                    (predicted | expected).sum().item()
+                intersection = float((predicted * expected).sum().item())
+                self._intersection[class_index] += intersection
+                self._union[class_index] += (
+                    float(predicted.sum().item() + expected.sum().item()) - intersection
                 )
 
     def _update_kp(
@@ -167,9 +169,7 @@ class CourtDetectionMetrics:
                     expected.to(dtype=torch.float32).unsqueeze(0),
                     accepted.to(dtype=torch.float32).unsqueeze(0),
                 )[0]
-                self._kp_distances.extend(
-                    pairwise.amin(dim=1).detach().cpu().tolist()
-                )
+                self._kp_distances.extend(pairwise.amin(dim=1).detach().cpu().tolist())
 
     def _update_singleton_kp(
         self,
@@ -185,7 +185,12 @@ class CourtDetectionMetrics:
             )
         for sample_index, size in enumerate(image_size.tolist()):
             height, width = (int(value) for value in size)
-            if height <= 0 or width <= 0 or height > logits.shape[-2] or width > logits.shape[-1]:
+            if (
+                height <= 0
+                or width <= 0
+                or height > logits.shape[-2]
+                or width > logits.shape[-1]
+            ):
                 raise ValueError(
                     "Singleton Court KP metric image_size is outside logits bounds."
                 )
@@ -219,12 +224,12 @@ class CourtDetectionMetrics:
         image_size: Tensor,
     ) -> None:
         predictions = torch.sigmoid(logits) > 0.5
-        expected = target > 0.5
+        expected = target
         for sample_index, size in enumerate(image_size.tolist()):
             height, width = (int(value) for value in size)
             prediction = predictions[sample_index, :, :height, :width]
             label = expected[sample_index, :, :height, :width]
-            intersection = float((prediction & label).sum().item())
+            intersection = float((prediction * label).sum().item())
             union = float(prediction.sum().item() + label.sum().item())
             self._line_dice_sum += (2.0 * intersection + 1.0) / (union + 1.0)
             self._line_dice_count += 1
@@ -247,9 +252,7 @@ class CourtDetectionMetrics:
                 else 0.0
             )
             median_distance = (
-                statistics.median(self._kp_distances)
-                if self._kp_distances
-                else 0.0
+                statistics.median(self._kp_distances) if self._kp_distances else 0.0
             )
             return {
                 "mean_dist": mean_distance,
@@ -398,9 +401,9 @@ class CourtPoseGeometryMetrics:
             ),
             dim=-1,
         ).to(dtype=dense.dtype)
-        ground_truth_pixels = ground_truth_points_normalized.to(
-            dtype=dense.dtype
-        ) * scale[:, None, :]
+        ground_truth_pixels = (
+            ground_truth_points_normalized.to(dtype=dense.dtype) * scale[:, None, :]
+        )
         pose_distance = torch.linalg.vector_norm(
             pose - ground_truth_pixels,
             dim=-1,
@@ -456,9 +459,10 @@ class CourtPoseGeometryMetrics:
             ),
             dim=-1,
         ).to(dtype=projection.points_xy.dtype)
-        ground_truth_pixels = ground_truth_points_normalized.to(
-            dtype=projection.points_xy.dtype
-        ) * scale[:, None, :]
+        ground_truth_pixels = (
+            ground_truth_points_normalized.to(dtype=projection.points_xy.dtype)
+            * scale[:, None, :]
+        )
         pose_distance = torch.linalg.vector_norm(
             projection.points_xy - ground_truth_pixels,
             dim=-1,
@@ -516,12 +520,8 @@ class CourtPoseGeometryMetrics:
 
     def compute(self) -> dict[str, float]:
         return {
-            "pose_reprojection_mean_distance_px": self._mean(
-                self._pose_reprojection
-            ),
-            "kp_pose_consistency_distance_px": self._mean(
-                self._consistency_distance
-            ),
+            "pose_reprojection_mean_distance_px": self._mean(self._pose_reprojection),
+            "kp_pose_consistency_distance_px": self._mean(self._consistency_distance),
             "invalid_depth_rate": (
                 self._invalid_depth_count / self._visible_point_count
                 if self._visible_point_count

@@ -31,7 +31,11 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtLinePrediction,
     CourtSegmentationPrediction,
 )
-from src.tasks.court_detection.target_schemas import SEMANTIC_LINE_CHANNEL_NAMES
+from src.tasks.court_detection.target_schemas import (
+    DENSE_COVERAGE_SCHEMA_BY_KIND,
+    HARD_DENSE_SCHEMA_BY_KIND,
+    SEMANTIC_LINE_CHANNEL_NAMES,
+)
 from src.tasks.court_detection.visualization.inference.checkpoints import (
     COURT_TASK,
     CourtCheckpointInfo,
@@ -262,6 +266,7 @@ class DetectionService:
             raw=raw,
             threshold=float(threshold),
             channel_names=_keypoint_channel_names(raw.keypoint_channels),
+            dense_schemas=info.dense_schemas(),
         )
         return {
             "scene": scene,
@@ -379,6 +384,7 @@ class DetectionService:
         raw: CourtRawSample,
         threshold: float,
         channel_names: Sequence[str],
+        dense_schemas: Mapping[str, str],
     ) -> tuple[dict[str, object], dict[str, object], list[str]]:
         rasters: list[dict[str, object]] = []
         metrics: dict[str, object] = {}
@@ -407,8 +413,17 @@ class DetectionService:
                     semantic.mask.numpy(), SEMANTIC_LINE_CHANNEL_NAMES
                 ).to_dict()
             )
+        scored = {}
+        for kind in ("seg", "line", "semantic_line"):
+            matches = dense_schemas.get(kind) == DENSE_COVERAGE_SCHEMA_BY_KIND[kind]
+            scored[kind] = getattr(masks, kind) if matches else None
+            if kind in predictions and not matches:
+                warnings.append(
+                    f"{kind}: checkpointの教師schemaは現行coverage教師と異なるため、予測のみ表示しGT採点から除外します。"
+                )
+        score_masks = GroundTruthMasks(**scored)
         sampled, sampled_warnings = _sample_metrics(
-            predictions, masks=masks, threshold=threshold
+            predictions, masks=score_masks, threshold=threshold
         )
         metrics.update(sampled)
         warnings.extend(sampled_warnings)
@@ -582,6 +597,10 @@ def _compatibility_reason(
     for kind, schema in info.dense_schemas().items():
         dataset_schema = identity.dense_schemas.get(kind)
         if dataset_schema != schema:
+            if schema == HARD_DENSE_SCHEMA_BY_KIND.get(
+                kind
+            ) and dataset_schema == DENSE_COVERAGE_SCHEMA_BY_KIND.get(kind):
+                continue  # Same class semantics; displayed but explicitly not scored.
             return (
                 f"{kind} の supervision schema が異なります: dataset {dataset_schema!r} と "
                 f"checkpoint {schema!r}"

@@ -52,7 +52,7 @@ from src.tasks.court_detection.target_schemas import (
     SEMANTIC_LINE_TARGET_SCHEMA,
 )
 from src.tasks.court_detection.visualization.review.rasters import (
-    line_raster,
+    line_probability_raster,
     segmentation_raster,
     semantic_line_raster,
 )
@@ -700,7 +700,7 @@ class GroundTruthMasks:
         if self.seg is not None:
             rasters.append(segmentation_raster(self.seg).to_dict())
         if self.line is not None:
-            rasters.append(line_raster(self.line > 0).to_dict())
+            rasters.append(line_probability_raster(self.line).to_dict())
         if self.semantic_line is not None:
             rasters.append(
                 semantic_line_raster(
@@ -745,7 +745,7 @@ def load_ground_truth_masks(
             continue
         array = np.asarray(tensor.detach().cpu().numpy())
         if kind == "line":
-            loaded[kind] = array[0] > 0
+            loaded[kind] = array[0]
         else:
             loaded[kind] = array
     return (
