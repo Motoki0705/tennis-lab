@@ -16,9 +16,6 @@ from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
 from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
-from src.tasks.ball_detection.training.staged_lightning_module import (
-    StagedBallDetectionLightningModule,
-)
 from tests.support.tasks.ball_detection.store import (
     ball,
     frame,
@@ -39,7 +36,7 @@ class NativeGrid(torch.nn.Module):
         return cast(torch.Tensor, self.logits).expand(images.shape[0], -1, -1, -1, -1)
 
 
-def test_native_grid_metric_is_logged_each_epoch_and_staged_shares_hooks(
+def test_native_grid_metric_is_logged_each_epoch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = store_config(tmp_path)
@@ -74,8 +71,6 @@ def test_native_grid_metric_is_logged_each_epoch_and_staged_shares_hooks(
         assert logged["val/meiji/candidate_recall_at_8_20px"] == expected
         assert logged["val/candidate_observed"] == 4
         assert not module.val_candidate_metrics.frames
-    assert StagedBallDetectionLightningModule.on_validation_epoch_end is BallDetectionLightningModule.on_validation_epoch_end
-    assert StagedBallDetectionLightningModule._compute_supervised_result is BallDetectionLightningModule._compute_supervised_result
 
 
 def test_epoch_checkpoints_survive_worsening_metric_and_callback_resume(

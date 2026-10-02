@@ -1,4 +1,4 @@
-"""Read-only catalog of versioned ball frame stores and the optional Web store.
+"""Read-only catalog of versioned ball frame stores.
 
 Ball versions are discovered under data/ball_detection/<version>. Each scene
 is a full camera clip, including unreviewed and unresolved frames. Requests
@@ -10,15 +10,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Literal, Protocol, cast
+from typing import Any, Final, Literal, Protocol
 
-import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tasks.ball_detection.data.components.web.data_access_layer.web_store import (
-    WebFrameStore,
-)
 from src.tasks.ball_detection.data.store import (
     METADATA_FILE,
     SHARDS_DIR,
@@ -28,10 +24,8 @@ from src.tasks.ball_detection.data.store import (
 from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.ball_detection.visualization.io.store_frames import StoreSceneFrames
 
-SceneMode = Literal["temporal", "static"]
+SceneMode = Literal["temporal"]
 
-WEB_RELATIVE: Final = "tennis/web/unified"
-SPLIT_NAMES: Final[tuple[str, ...]] = ("train", "val", "test")
 #: Scene ids are opaque to the HTTP layer; the service splits them back into
 #: ``(dataset, local)`` before resolving them through the catalog.
 SCENE_SEPARATOR: Final = "::"
@@ -44,14 +38,6 @@ class BallDatasetSpec:
     label: str
     relative: str
     mode: SceneMode
-
-
-DATASET_SPECS: Final[tuple[BallDatasetSpec, ...]] = (
-    BallDatasetSpec("web_static", "Web frames (static)", WEB_RELATIVE, "static"),
-    BallDatasetSpec(
-        "web_temporal", "Web sequences (temporal)", WEB_RELATIVE, "temporal"
-    ),
-)
 
 
 class BallDatasetCatalogError(ValueError):
@@ -96,16 +82,6 @@ class SceneFrames(Protocol):
         ...
 
 
-def _check_index(index: object, frames: int, *, context: str) -> int:
-    if isinstance(index, bool) or not isinstance(index, int):
-        raise BallDatasetCatalogError(f"{context}: frame index must be an int.")
-    if index < 0 or index >= frames:
-        raise BallDatasetCatalogError(
-            f"{context}: frame index {index} is out of range [0, {frames - 1}]."
-        )
-    return index
-
-
 def _require_within(path: Path, root: Path, *, what: str) -> Path:
     """Return ``path`` resolved, refusing anything outside ``root``."""
     resolved = path.resolve()
@@ -118,54 +94,6 @@ def _require_within(path: Path, root: Path, *, what: str) -> Path:
 
 
 @dataclass(frozen=True, slots=True)
-class WebSceneFrames:
-    """Frame accessor over ordered samples of the unified web store."""
-
-    store: WebFrameStore
-    indices: tuple[int, ...]
-    mode: SceneMode
-
-    @property
-    def frames(self) -> int:
-        return len(self.indices)
-
-    def _sample(self, index: int) -> int:
-        checked = _check_index(index, self.frames, context="web scene")
-        return self.indices[checked]
-
-    def name(self, index: int) -> str:
-        sample = self._sample(index)
-        frame_index = self.store.frame_index(sample)
-        if frame_index >= 0:
-            return f"{frame_index:06d}.jpg"
-        return f"sample_{sample:06d}.jpg"
-
-    def original_size(self, index: int) -> tuple[int, int]:
-        width, height = self.store.original_size(self._sample(index))
-        return int(width), int(height)
-
-    def read_rgb(self, index: int) -> NDArray[np.uint8]:
-        bgr = self.store.decode_bgr(self._sample(index))
-        return cast(NDArray[np.uint8], cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
-
-    def labels(self, index: int) -> tuple[FrameLabel, ...]:
-        return tuple(self.store.labels(self._sample(index)))
-
-    def annotated(self, index: int) -> bool:
-        """Return whether the store recorded an explicit label state.
-
-        The unified store only persists positive and explicitly annotated
-        negative samples, so every stored sample is annotated by construction.
-        """
-        self._sample(index)
-        return True
-
-
-    def supervised(self, index: int) -> bool:
-        return self.annotated(index)
-
-
-@dataclass(frozen=True, slots=True)
 class SceneRef:
     """One catalogued scene before its frames are materialised."""
 
@@ -173,8 +101,7 @@ class SceneRef:
     local_id: str
     label: str
     frames: int
-    clip_id: str | None = None
-    sample_indices: tuple[int, ...] = ()
+    clip_id: str
 
     @property
     def id(self) -> str:
@@ -241,8 +168,6 @@ class BallDatasetCatalog:
         self._warnings: dict[str, tuple[str, ...]] = {}
         self._ball_stores: dict[str, BallFrameStore] = {}
         self._specs: tuple[BallDatasetSpec, ...] | None = None
-        self._store: WebFrameStore | None = None
-        self._store_error: str | None = None
 
     # -------------------------------------------------------------- refresh
 
@@ -259,8 +184,6 @@ class BallDatasetCatalog:
         self._warnings.clear()
         self._ball_stores.clear()
         self._specs = None
-        self._store = None
-        self._store_error = None
 
     # ----------------------------------------------------------- discovery
 
@@ -276,7 +199,7 @@ class BallDatasetCatalog:
                 )
                 for version in versions
                 if version.is_dir() and (version / METADATA_FILE).is_file()
-            ) + DATASET_SPECS
+            )
         return self._specs
 
     def root_of(self, spec: BallDatasetSpec) -> Path:
@@ -333,10 +256,7 @@ class BallDatasetCatalog:
             # The reason travels with the cache so a second catalog call cannot
             # silently claim a broken dataset is fine.
             return cached, self._reasons.get(spec.id)
-        if spec.id.startswith("web_"):
-            refs, reason = self._web_refs(spec)
-        else:
-            refs, reason = self._ball_refs(spec)
+        refs, reason = self._ball_refs(spec)
         self._refs[spec.id] = refs
         self._ref_index[spec.id] = {ref.local_id: ref for ref in refs}
         if reason is not None:
@@ -366,117 +286,11 @@ class BallDatasetCatalog:
             for clip in sorted(store.clips, key=lambda clip: _natural_key(clip.clip_id))
         ), None
 
-    def _open_store(self) -> WebFrameStore | None:
-        if self._store is not None:
-            return self._store
-        if self._store_error is not None:
-            return None
-        root = self.root_of(self.spec("web_static"))
-        try:
-            self._store = WebFrameStore(root)
-        except (OSError, ValueError, KeyError) as error:
-            self._store_error = str(error)
-            return None
-        # The canonical writer uses relpath for in-place COCO images, which may
-        # be siblings of unified/. Constrain these references to the configured
-        # data root, not to the shard store itself.
-        for relative in self._store.paths:
-            candidate = Path(relative)
-            if candidate.is_absolute():
-                self._store_error = (
-                    f"web store path {relative!r} must be a non-escaping relative path."
-                )
-                self._store = None
-                return None
-            if (
-                not (root / candidate)
-                .resolve()
-                .is_relative_to(self.data_root.resolve())
-            ):
-                self._store_error = (
-                    f"web store path {relative!r} must be a non-escaping reference "
-                    "inside the configured data root."
-                )
-                self._store = None
-                return None
-        return self._store
-
-    def _web_refs(
-        self, spec: BallDatasetSpec
-    ) -> tuple[tuple[SceneRef, ...], str | None]:
-        store = self._open_store()
-        if store is None:
-            return (), self._store_error or "unified web store is unavailable"
-        if spec.mode == "static":
-            refs = tuple(
-                SceneRef(
-                    dataset_id=spec.id,
-                    local_id=str(index),
-                    label=self._web_label(store, index),
-                    frames=1,
-                    sample_indices=(index,),
-                )
-                for index in self._all_indices(store)
-                if not store.temporal(index)
-            )
-        else:
-            refs = tuple(
-                SceneRef(
-                    dataset_id=spec.id,
-                    local_id=store.sequence_name(indices[0]),
-                    label=(
-                        f"{store.source_name(indices[0])}/"
-                        f"{store.sequence_name(indices[0])}"
-                    ),
-                    frames=len(indices),
-                    sample_indices=indices,
-                )
-                for indices in self._temporal_sequences(store)
-            )
-        if not refs:
-            return (), f"no {spec.mode} web samples found in {self.root_of(spec)}"
-        return refs, None
-
-    @staticmethod
-    def _all_indices(store: WebFrameStore) -> list[int]:
-        indices: list[int] = []
-        for split in SPLIT_NAMES:
-            indices.extend(int(value) for value in store.split_indices(split).tolist())
-        return indices
-
-    @staticmethod
-    def _web_label(store: WebFrameStore, index: int) -> str:
-        frame_index = store.frame_index(index)
-        suffix = f"f{frame_index}" if frame_index >= 0 else "still"
-        return f"{store.source_name(index)}/{store.sequence_name(index)}/{suffix}"
-
-    @staticmethod
-    def _temporal_sequences(store: WebFrameStore) -> list[tuple[int, ...]]:
-        by_sequence: dict[str, list[int]] = {}
-        for index in BallDatasetCatalog._all_indices(store):
-            if store.temporal(index):
-                by_sequence.setdefault(store.sequence_name(index), []).append(index)
-        return [
-            tuple(sorted(values, key=store.frame_index))
-            for _, values in sorted(by_sequence.items())
-        ]
-
-    # ---------------------------------------------------------- resolution
-
     def resolve(self, dataset_id: str, local_id: str) -> SceneFrames:
-        """Resolve one catalogued scene to a concrete frame accessor."""
-        spec = self.spec(dataset_id)
+        """Resolve one catalogued store clip to its frame accessor."""
         ref = self.scene_ref(dataset_id, local_id)
-        if ref.clip_id is not None:
-            return StoreSceneFrames(
-                self._ball_stores[dataset_id], ref.clip_id,
-            )
-        store = self._open_store()
-        if store is None:
-            raise BallDatasetCatalogError(
-                self._store_error or "unified web store is unavailable"
-            )
-        return WebSceneFrames(store=store, indices=ref.sample_indices, mode=spec.mode)
+        frames: SceneFrames = StoreSceneFrames(self._ball_stores[dataset_id], ref.clip_id)
+        return frames
 
     def iter_scene_refs(self) -> Iterator[SceneRef]:
         """Yield every scene reference across all datasets."""
@@ -495,10 +309,7 @@ def split_scene_id(scene: str) -> tuple[str, str]:
 
 
 __all__ = [
-    "DATASET_SPECS",
     "SCENE_SEPARATOR",
-    "SPLIT_NAMES",
-    "WEB_RELATIVE",
     "BallDatasetCatalog",
     "BallDatasetCatalogError",
     "BallDatasetSpec",
@@ -507,6 +318,5 @@ __all__ = [
     "SceneFrames",
     "SceneMode",
     "SceneRef",
-    "WebSceneFrames",
     "split_scene_id",
 ]

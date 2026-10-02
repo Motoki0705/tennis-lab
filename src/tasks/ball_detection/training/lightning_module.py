@@ -70,7 +70,7 @@ def _rgb_triplet(values: Any, *, name: str) -> tuple[int, int, int]:
 
 
 class BallStepResult(TypedDict):
-    """Typed supervised outputs consumed by shared GAN/staged lifecycles."""
+    """Typed supervised outputs consumed by the GAN training lifecycle."""
 
     loss: Tensor
     metrics: dict[str, Any]

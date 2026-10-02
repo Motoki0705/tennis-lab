@@ -33,7 +33,6 @@ CLI_MODULE = "scripts.colab.workflow.cli"
 RUN_ID = "test-run-0001"
 BUILTIN_ACCELERATORS = {
     "ball_detection": "gpu",
-    "ball_detection_staged": "gpu",
     "blcs": "gpu",
     "blcs_generate_dataset": "cpu",
     "court_detection": "gpu",

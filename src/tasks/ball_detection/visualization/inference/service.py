@@ -4,15 +4,13 @@ The service is the single backend the shared detection app
 (``src.tasks.base.visualization.detection``) talks to.  It owns two things:
 
 * the dataset/scene/frame catalog built from the ball-detection sources
-  (versioned ball frame stores and the optional unified web store), and
+  (versioned ball frame stores), and
 * one bounded inference window per request, executed on CPU in-process or on
   CUDA through the shared GPU queue owned by the HTTP layer.
 
 Ground truth is exactly what the datasets store: ``FrameLabel`` points in
 original-image pixels.  Nothing is interpolated, padded, or invented -- a
-window that does not fit the selected scene is rejected, and a static web frame
-is only ever expanded through the dataset's own canonical static sampling mode,
-which is labelled in the response.
+window that does not fit the selected scene is rejected.
 
 Scene ids are opaque (``<dataset>::<scene>``) and are resolved through the
 catalog, so the API never accepts a caller-supplied filesystem path.
@@ -23,7 +21,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Literal
+from typing import Any, Final
 
 import cv2
 import numpy as np
@@ -66,9 +64,6 @@ TITLE: Final = "Ball Detection"
 #: The shared web layer caps previews at this many frames per request.
 PREVIEW_FRAME_LIMIT: Final = 64
 
-WindowMode = Literal["temporal", "static_repeat"]
-
-
 class DetectionRequestError(ValueError):
     """Raised when a review or inference request is invalid."""
 
@@ -78,8 +73,6 @@ class WindowPlan:
     """One resolved inference window over scene frame positions."""
 
     positions: tuple[int, ...]
-    mode: WindowMode
-    repeat: int
 
     @property
     def start(self) -> int:
@@ -94,11 +87,11 @@ class WindowPlan:
     def to_dict(self, *, checkpoint_frames: int) -> dict[str, Any]:
         """Return the window description embedded in the metrics payload."""
         return {
-            "mode": self.mode,
+            "mode": "temporal",
             "start": self.start,
             "end": self.end,
             "count": len(self.positions),
-            "repeat": self.repeat,
+            "repeat": 1,
             "checkpoint_frames": checkpoint_frames,
         }
 
@@ -188,9 +181,6 @@ class DetectionService:
 
         * a checkpoint whose saved config cannot be read, or whose model is
           unsupported, runs nowhere;
-        * a static dataset is always runnable because the shared web store
-          defines a canonical "repeat one labelled frame to the model window"
-          sampling mode, which the window plan labels explicitly;
         * a temporal dataset needs at least one scene long enough to hold the
           checkpoint's smallest honest window, which is the architecture
           minimum (plus the MDD two-frame requirement for multi-frame MDD
@@ -201,9 +191,6 @@ class DetectionService:
         compatible: list[str] = []
         for entry in entries:
             if entry.count == 0:
-                continue
-            if entry.spec.mode == "static":
-                compatible.append(entry.spec.id)
                 continue
             if entry.max_scene_frames >= info.minimum_window:
                 compatible.append(entry.spec.id)
@@ -245,20 +232,16 @@ class DetectionService:
             # checkpoint's window, so each scene is filtered on its own length.
             info = self._checkpoint(checkpoint)
             refs = [
-                ref for ref in refs if self._scene_supports_checkpoint(ref, info, spec)
+                ref for ref in refs if self._scene_supports_checkpoint(ref, info)
             ]
         window = refs[offset : offset + limit]
         return {"items": [ref.to_dict() for ref in window], "total": len(refs)}
 
     @staticmethod
     def _scene_supports_checkpoint(
-        ref: SceneRef, info: BallCheckpointInfo, spec: BallDatasetSpec
+        ref: SceneRef, info: BallCheckpointInfo
     ) -> bool:
         """Return whether one scene can hold this checkpoint's smallest window."""
-        if spec.mode == "static":
-            # A static scene is one labelled frame expanded by the store's own
-            # static sampling mode, so its length never limits the window.
-            return True
         return bool(ref.frames >= info.minimum_window)
 
     # -------------------------------------------------------------- frames
@@ -404,12 +387,6 @@ class DetectionService:
                 f"Checkpoint {info.id!r} does not declare an input image size."
             )
         warnings: list[str] = []
-        if plan.mode == "static_repeat":
-            warnings.append(
-                "Static scene: the labelled frame was repeated to the checkpoint "
-                f"window ({plan.repeat} frames) through the store's canonical "
-                "static sampling mode."
-            )
         images = self._window_tensor(resolved.frames, plan, size=size)
         with torch.no_grad():
             call = loaded.adapter.prepare_model_call(
@@ -424,22 +401,10 @@ class DetectionService:
             )
         window_heatmaps = heatmaps[0]
         original_size = resolved.frames.original_size(plan.start)
-        if plan.mode == "static_repeat":
-            # The repeated frames are one original frame, so they collapse back
-            # to one query.  Averaging the window's probabilities is the explicit
-            # aggregation; emitting one item per repeat would let the viewer's
-            # frame map keep an arbitrary duplicate and would score the same
-            # ground truth once per repeat.
-            emitted = [(plan.start, window_heatmaps.mean(dim=0, keepdim=True)[0])]
-            warnings.append(
-                f"Averaged {plan.repeat} repeated-window heatmaps into one "
-                "prediction for the single labelled frame."
-            )
-        else:
-            emitted = [
-                (position, window_heatmaps[offset])
-                for offset, position in enumerate(plan.positions)
-            ]
+        emitted = [
+            (position, window_heatmaps[offset])
+            for offset, position in enumerate(plan.positions)
+        ]
         peaks = decode_frame_peaks(
             torch.stack([heatmap for _, heatmap in emitted]),
             original_size=original_size,
@@ -491,9 +456,7 @@ class DetectionService:
         """Score the emitted frames with the repository's canonical metrics.
 
         Only frames with trusted observed-only supervision are scored.  A frame whose row is
-        missing is *not* an annotated negative, so counting it would both invent a
-        negative and (for a repeated static frame) multiply one frame's ground
-        truth by the repeat count.  When nothing in the window is annotated the
+        missing is not an annotated negative. When nothing in the window is supervised the
         metric is reported as unavailable with the reason, never as a zero.
         """
         excluded = [
@@ -728,20 +691,6 @@ class DetectionService:
     ) -> WindowPlan:
         """Resolve the exact frame positions a request will feed the model."""
         frames = resolved.frames.frames
-        mode = resolved.ref_mode
-        self._check_range(start, 1, frames=frames, label="inference")
-        if mode == "static":
-            if count != info.num_frames:
-                raise DetectionRequestError(
-                    f"{info.id!r} consumes {info.num_frames} frames; a static scene "
-                    "is expanded by repeating one labelled frame, so count must "
-                    f"equal {info.num_frames}, got {count}."
-                )
-            return WindowPlan(
-                positions=(start,) * info.num_frames,
-                mode="static_repeat",
-                repeat=info.num_frames,
-            )
         self._check_range(start, count, frames=frames, label="inference")
         if count < info.minimum_window or count > info.maximum_window:
             raise DetectionRequestError(
@@ -749,11 +698,7 @@ class DetectionService:
                 f"{info.minimum_window} and {info.maximum_window} frames, "
                 f"got count={count}."
             )
-        return WindowPlan(
-            positions=tuple(range(start, start + count)),
-            mode="temporal",
-            repeat=1,
-        )
+        return WindowPlan(positions=tuple(range(start, start + count)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -763,12 +708,6 @@ class _ResolvedScene:
     ref: SceneRef
     frames: SceneFrames
 
-    @property
-    def ref_mode(self) -> Literal["static", "temporal"]:
-        """Return the dataset's sampling mode, not the frame accessor's."""
-        return self.frames.mode
-
-
 
 __all__ = [
     "PREVIEW_FRAME_LIMIT",
@@ -777,5 +716,4 @@ __all__ = [
     "DetectionRequestError",
     "DetectionService",
     "WindowPlan",
-    "WindowMode",
 ]
