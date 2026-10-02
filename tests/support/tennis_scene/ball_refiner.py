@@ -1,6 +1,6 @@
 """Shared synthetic GMM fixture; actual model/bundle IO is integration-tested.
 
-Only the model recipe is replaced. Production confidence filtering, consumer
+Only the model recipe is replaced. Production unfiltered point projection, consumer
 joins, side decisions, triangulation, storage and reload remain real here.
 """
 

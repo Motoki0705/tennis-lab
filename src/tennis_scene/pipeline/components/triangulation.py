@@ -56,7 +56,7 @@ class BallTriangulationModule:
         self.reprojection_px, self.min_frames, self.enabled = reprojection_px, min_frames, enabled
         self.io = ComponentIO("ball_triangulation", TriangulationInput, BallTriangulationOutput,
             {"alignment": InputPort("aligned_cameras"), "calibration": InputPort("local_court_calibration"),
-             **{f"ball_{c}": InputPort("ball_points", version=1) for c in camera_ids}}, "ball_trajectory")
+             **{f"ball_{c}": InputPort("ball_points", version=2) for c in camera_ids}}, "ball_trajectory")
 
     def process(self, inputs: TriangulationInput) -> BallTriangulationOutput:
         geometry = inputs.alignment.geometry

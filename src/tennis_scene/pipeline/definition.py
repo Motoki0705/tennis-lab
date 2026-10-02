@@ -149,10 +149,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         nodes.append(replace(node, component=component, io=component.io, source=mode))
         if node.io.name == "ball_refiner_2d":
             add(f"ball_points/{node.context.camera_id}",
-                BallPointsModule(cfg.ball_confidence, distribution_version=component.io.version),
+                BallPointsModule(distribution_version=component.io.version),
                 BallPointsInputAssembler(), {"distribution": node.name},
-                lambda: {"rule": cfg.ball_confidence, "point": "maximum_weight_mean",
-                         "region": "conditional_second_moment_ellipse_90"}, camera=node.context.camera_id)
+                lambda: {"point": "maximum_weight_mean"}, camera=node.context.camera_id)
     add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins), CourtCalibrationInputAssembler(),
         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
     for camera in ids:

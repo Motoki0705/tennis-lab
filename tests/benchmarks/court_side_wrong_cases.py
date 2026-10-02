@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from omegaconf import OmegaConf
 
-from src.tasks.ball_refiner.refiner_2d.confidence import PointConfidenceRule
 from src.tasks.court_side.benchmark import load_blcs_scene
 from src.tasks.court_side.hypothesis import (
     CourtSideConfig,
@@ -21,14 +20,16 @@ from src.tasks.court_side.hypothesis import (
 from src.tasks.court_side.scripts.benchmark_synthetic import CONDITIONS
 from src.utils.geometry.multiview_consistency import score_multiview_points
 
-if TYPE_CHECKING:
+if TYPE_CHECKING or __package__ == "tests.benchmarks":
     from tests.benchmarks.court_side_confidence import replay_mask
     from tests.benchmarks.court_side_correlated import capture, record
+    from tests.benchmarks.legacy_ball_confidence import PointConfidenceRule
 else:
     # Standalone benchmark scripts use sibling imports: the environment also
     # contains an unrelated installed ``tests`` package.
     from court_side_confidence import replay_mask
     from court_side_correlated import capture, record
+    from legacy_ball_confidence import PointConfidenceRule
 
 
 def analyse(dataset: Path, confidence: Path, original: Path, previous: Path, rule_path: Path, output: Path) -> None:

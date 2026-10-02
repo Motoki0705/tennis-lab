@@ -1,4 +1,4 @@
-"""Triangulate the single ball supplied by each camera's confidence-filtered refiner."""
+"""Triangulate the single ball supplied by each camera's unfiltered refiner."""
 
 from __future__ import annotations
 

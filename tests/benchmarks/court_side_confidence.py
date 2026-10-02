@@ -13,13 +13,12 @@ import json
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
 from omegaconf import OmegaConf
 
-from src.tasks.ball_refiner.refiner_2d.confidence import PointConfidenceRule
 from src.tasks.court_side.benchmark import (
     judge,
     load_blcs_scene,
@@ -29,6 +28,11 @@ from src.tasks.court_side.benchmark import (
 from src.tasks.court_side.hypothesis import CourtSideConfig
 from src.tasks.court_side.scripts.benchmark_synthetic import CONDITIONS
 from src.utils.checksum import dual_sha256
+
+if TYPE_CHECKING or __package__ == "tests.benchmarks":
+    from tests.benchmarks.legacy_ball_confidence import PointConfidenceRule
+else:
+    from legacy_ball_confidence import PointConfidenceRule
 
 
 def replay_mask(

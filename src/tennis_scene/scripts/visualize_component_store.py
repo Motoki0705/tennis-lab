@@ -423,24 +423,32 @@ class Review:
                             ("calibration artifact SHA256", value["calibration_artifact_sha256"])])
         return [image], details
 
-    @renders("ball_points", "ball_points", 1)
+    @renders("ball_points", "ball_points", (1, 2))
     def render_ball_points(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         positions = _array(value["uv_px"])
-        observed: np.ndarray = _array(value["observed"]).astype(bool)
-        presence, area = _array(value["presence_probability"]), _array(value["area_px2"])
-        codes = _array(value["rejection_codes"])
+        presence = _array(value["presence_probability"])
+        legacy = self.references[node]["version"] == 1
+        observed: np.ndarray = _array(value["observed"]).astype(bool) if legacy else np.ones(len(positions), bool)
 
         def draw(image: np.ndarray, frame: int) -> None:
             if observed[frame]:
                 pixel = tuple(np.rint(positions[frame]).astype(int))
                 cv2.circle(image, pixel, 15, (30, 220, 255), 4)
-            _text(image, f"{'accepted' if observed[frame] else 'missing'}: p={presence[frame]:.3f}, area={area[frame]:.1f} px2", (60, 110))
+            label = "legacy accepted" if legacy and observed[frame] else "legacy missing" if legacy else "refiner point"
+            area = f", area={_array(value['area_px2'])[frame]:.1f} px2" if legacy else ""
+            _text(image, f"{label}: p={presence[frame]:.3f}{area}", (60, 110))
 
         image = self.sheet(node, camera, draw)
         self.movie(node, camera, draw)
-        return [image], [("accepted frames", str(_count(observed))), ("missing frames", str(_count(~observed))),
-                         ("presence rejection", str(_count(codes & 1))), ("area rejection", str(_count(codes & 2))),
-                         ("fixed confidence rule", json.dumps(value["rule"], sort_keys=True))]
+        if legacy:
+            codes = _array(value["rejection_codes"])
+            details = [("accepted frames", str(_count(observed))), ("missing frames", str(_count(~observed))),
+                       ("presence rejection", str(_count(codes & 1))), ("area rejection", str(_count(codes & 2))),
+                       ("historical confidence rule", json.dumps(value["rule"], sort_keys=True))]
+        else:
+            details = [("frames", str(len(positions))), ("point", "maximum-weight component mean; all frames"),
+                       ("presence", "diagnostic only; no point rejection")]
+        return [image], details
 
     @renders("person_detection", "person_detections", 2)
     def render_person_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:

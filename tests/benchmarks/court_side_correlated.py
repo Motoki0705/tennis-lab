@@ -8,7 +8,7 @@ import json
 import time
 from dataclasses import asdict, replace
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 
 import numpy as np
@@ -16,10 +16,6 @@ import torch
 from omegaconf import OmegaConf
 
 import src.tasks.court_side.benchmark as benchmark
-from src.tasks.ball_refiner.refiner_2d.confidence import (
-    PointConfidenceRule,
-    point_confidence,
-)
 from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 from src.tasks.court_side.hypothesis import (
     BallSideEvidence,
@@ -28,6 +24,14 @@ from src.tasks.court_side.hypothesis import (
 )
 from src.tasks.court_side.scripts.benchmark_synthetic import CONDITIONS
 from src.utils.checksum import dual_sha256
+
+if TYPE_CHECKING or __package__ == "tests.benchmarks":
+    from tests.benchmarks.legacy_ball_confidence import (
+        PointConfidenceRule,
+        point_confidence,
+    )
+else:
+    from legacy_ball_confidence import PointConfidenceRule, point_confidence
 
 BANK_SHA = "0697fe921daf79c7960d616ed0437efecd3b7195f3f8a7dd6188048dd8ecc858"
 CALIBRATION_SHA = "2c9cd7ba9a1d63addeaecb808441fbae0447ad21e4a3a279ed1694fcbf67ae01"

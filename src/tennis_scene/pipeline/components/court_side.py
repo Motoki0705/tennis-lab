@@ -66,7 +66,7 @@ class CourtSideModule:
     def __init__(self, camera_ids: tuple[str, ...], config: CourtSideConfig, *, max_frames: int) -> None:
         self.config, self.max_frames = config, max_frames
         self.io = ComponentIO(COURT_SIDE, CourtSideInput, CourtSideOutput,
-            {"calibration": InputPort("local_court_calibration"), **{f"ball_{c}": InputPort("ball_points", version=1) for c in camera_ids}},
+            {"calibration": InputPort("local_court_calibration"), **{f"ball_{c}": InputPort("ball_points", version=2) for c in camera_ids}},
             SIDE_PORT.schema, SIDE_PORT.version)
 
     def process(self, inputs: CourtSideInput) -> CourtSideOutput:

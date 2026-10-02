@@ -13,7 +13,7 @@
 - 文脈なしの基準学習は[学習pilot](#文脈なし学習pilot)から実行する。
   [専用pipeline recipe](../../tennis_scene/pipeline/README.md#2d-ball-refinerの専用recipe)は
   文脈なしrefinerの全分布を単独で実行・保存する。文脈あり学習・最終holdout評価は後続PRで実装する。
-  標準pipelineの点consumerは同じconfidence規則を通したrefiner点へ接続済み。最終的な#936の入力はrefinerの全分布のみとし、
+  標準pipelineの点consumerは最大weight成分の平均点を全frameで使用する。最終的な#936の入力はrefinerの全分布のみとし、
   detectorの点推定へ戻す経路は設けない。court_sideの幾何的な仮説検定は別の利用者である。
 
 ## 2DモデルのAPI
@@ -110,7 +110,8 @@ HDR50/90/95のcoverage、位置NLL、面積を併記し、明示したhash付き
 #936へは補正後の全GMM残差bankを渡し、旧bank/合成dataは対照として保持する。
 pipelineの既定値は[専用recipeのB判定](../../tennis_scene/pipeline/README.md#ボール経路の既定と明示option)に従う。
 [2026-10-01の判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で
-e9の既定化とrefiner後のconfidence選別を採用する方針へ更新した（標準sceneへの既定切替は実装済み）。
+e9を既定化した。2026-10-02のユーザー判断によりconfidenceフィルタは廃止し、
+全frameの最大weight成分平均を使う（[点consumer契約](../../tennis_scene/pipeline/README.md#refinerの点consumer)）。
 #964完了前に文脈生成へ進める。現在の生成予算・未完事項は
 [knowledge 000027](../../../knowledge/nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)を参照。
 
@@ -141,14 +142,12 @@ OOF評価NPZとは別に保存する。実測と採用判断はknowledgeに記�
 検証例は[unit](../../../tests/unit/tasks/ball_refiner/refiner_2d)と
 [integration](../../../tests/integration/tasks/ball_refiner/test_refiner_2d.py)を参照。
 
-## 点consumerの信頼度規則
+## 点consumer
 
-`refiner_2d/confidence.py` は最大weight成分の平均点と、全GMMの2次モーメントから
-90%以上を条件付きで含む保守的な楕円面積をsource px²で計算する（HDRではない）。
-存在確率と面積による規則は [固定設定](configs/confidence/meiji_val_r29.yaml)、
-Meiji valの選定方法・camera別保持率/誤差・多視点frame数・限界は
-[knowledge 000028](../../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md) が正本。
-clip_000を選定対象に含めず、実行時の再fitや教師参照はしない。
+点への変換・保存・旧artifactの扱いは[scene pipelineの契約](../../tennis_scene/pipeline/README.md#refinerの点consumer)を参照。
+過去のconfidence規則・選定結果・限界は
+[knowledge 000028](../../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)に保持する。
+再現用コードは`tests/benchmarks/legacy_ball_confidence.py`だけに置き、productionは使用しない。
 
 ## 学習戦略（#935）
 
