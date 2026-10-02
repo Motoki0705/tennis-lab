@@ -43,7 +43,7 @@ def load_saved(record: dict[str, Any], camera: Any) -> tuple[CameraTracks, np.nd
             appearance[row] = TrackAppearance(a[f'{index}/frames'], a[f'{index}/embeddings'])
     previous = np.zeros_like(seen)
     previous[chosen] = True
-    return CameraTracks(camera, (1920, 1080), ids, boxes, seen, appearance), previous
+    return CameraTracks(camera, (1920, 1080), ids, boxes, seen, tuple(appearance)), previous
 
 
 def evaluate(previous: Path, report: Path) -> None:

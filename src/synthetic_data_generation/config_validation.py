@@ -26,7 +26,13 @@ def _compose() -> DictConfig:
 def _must_reject(name: str, operation: Callable[[], object]) -> str:
     try:
         operation()
-    except (ConfigurationError, PathContractError, FileNotFoundError, TypeError, ValueError):
+    except (
+        ConfigurationError,
+        PathContractError,
+        FileNotFoundError,
+        TypeError,
+        ValueError,
+    ):
         return name
     raise AssertionError(f"Canonical scene configuration accepted invalid case: {name}")
 
@@ -61,15 +67,18 @@ def run_scene_pipeline_validation_matrix() -> tuple[str, ...]:
         ("source-escape", _mutated(valid, "request.source_video", "../outside.mp4")),
         ("unknown-stage", _mutated(valid, "request.from_stage", "legacy_pipeline")),
         ("implicit-target", _mutated(valid, "request.targets", [])),
-        ("camera-count", _mutated(valid, "camera.expected_camera_count", 5)),
-        ("court-budget", _mutated(valid, "dataset.court.sampling.proposal_budget", 5001)),
+        ("removed-player-target", _mutated(valid, "request.targets", ["plcs"])),
+        (
+            "court-budget",
+            _mutated(valid, "dataset.court.sampling.proposal_budget", 5001),
+        ),
         (
             "court-groups",
             _mutated(valid, "dataset.court.sampling.minimum_trajectory_groups", 23),
         ),
         (
-            "short-frame-mode",
-            _mutated(valid, "dataset.blcs.timeline.frame_selection", "first_64"),
+            "removed-dataset-target",
+            _mutated(valid, "request.targets", ["blcs"]),
         ),
         (
             "missing-holdout",
