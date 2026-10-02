@@ -15,11 +15,7 @@ from src.tasks.base.model_io import TrackQueryReferenceContract
 from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.model_io import (
     BLCSReferenceMetadata,
-    BLCSTrackQueryPrediction,
-    BLCSTrajectoryPrediction,
     blcs_reference_metadata_from_batch,
-    blcs_track_query_prediction_to_physical,
-    blcs_trajectory_prediction_to_physical,
 )
 
 
@@ -77,7 +73,9 @@ def _metadata() -> BLCSReferenceMetadata:
     )
 
 
-def test_reference_metadata_round_trips_complete_table_codes_and_fixed_width_payload() -> None:
+def test_reference_metadata_round_trips_complete_table_codes_and_fixed_width_payload() -> (
+    None
+):
     metadata = _metadata()
 
     parsed = blcs_reference_metadata_from_batch(metadata.to_batch_fields())
@@ -125,28 +123,3 @@ def test_reference_metadata_rejects_mixed_schema_and_non_trailing_padding() -> N
             physical_from_reference=metadata.physical_from_reference,
             track_query_contract=metadata.track_query_contract,
         )
-
-
-def test_physical_conversion_preserves_reference_metadata() -> None:
-    metadata = _metadata()
-    provenances = tuple(selection.provenance for selection in metadata.selections)
-    trajectory = BLCSTrajectoryPrediction(
-        position=torch.ones(2, 1, 3),
-        velocity=torch.ones(2, 1, 3),
-        court_reference_provenance=provenances,
-        coordinates_in_metres=True,
-        reference_metadata=metadata,
-    )
-    logits = torch.ones(2, 1, 1)
-    tracking = BLCSTrackQueryPrediction(
-        position=torch.ones(2, 1, 1, 3),
-        presence_logits=logits,
-        presence_probability=logits.sigmoid(),
-        presence=torch.ones(2, 1, 1, dtype=torch.bool),
-        court_reference_provenance=provenances,
-        coordinates_in_metres=True,
-        reference_metadata=metadata,
-    )
-
-    assert blcs_trajectory_prediction_to_physical(trajectory).reference_metadata is metadata
-    assert blcs_track_query_prediction_to_physical(tracking).reference_metadata is metadata

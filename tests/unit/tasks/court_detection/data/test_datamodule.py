@@ -84,8 +84,8 @@ def test_setup_test_requests_explicit_test_split_without_fallback(
         split="test",
         image_path=tmp_path / "unused.png",
         annotation_path=tmp_path / "unused.json",
-        derived_key="test/sample",
-        dense_target_refs={},
+
+
         payload={},
     )
 
@@ -143,8 +143,8 @@ def test_pose_datamodule_scans_all_authority_before_model_or_workers(
                 split=split,
                 image_path=tmp_path / "unused.npy",
                 annotation_path=tmp_path / "unused.json",
-                derived_key=f"test/{split}",
-                dense_target_refs={},
+
+
                 payload={},
             ),
         )

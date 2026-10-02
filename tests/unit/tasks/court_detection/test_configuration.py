@@ -25,6 +25,7 @@ from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
     SemanticConfigurationError,
+    UnknownConfigurationKeyError,
 )
 
 _CONFIG_DIR = Path(__file__).resolve().parents[4] / "src/tasks/court_detection/configs"
@@ -50,6 +51,15 @@ def _pose_overrides() -> tuple[str, ...]:
         "loss.pose.rotation_weight=1.0",
         "loss.pose.focal_weight=1.0",
     )
+
+
+@pytest.mark.parametrize("removed_value", [None, "court_detection/derived_targets"])
+def test_processing_rejects_removed_offline_target_root(removed_value: str | None) -> None:
+    config = _compose("tennis_court_detector")
+    with open_dict(config.data.processing):
+        config.data.processing.derived_target_root = removed_value
+    with pytest.raises(UnknownConfigurationKeyError, match="derived_target_root"):
+        CourtTrainingConfig.from_config(config)
 
 
 def _pose_only_overrides() -> tuple[str, ...]:
