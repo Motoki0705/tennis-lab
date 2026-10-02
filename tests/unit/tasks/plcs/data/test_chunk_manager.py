@@ -24,7 +24,7 @@ from src.tasks.plcs.generate_dataset.scene_generator import CameraData, SceneDat
 
 
 def _camera_view_scene() -> SceneData:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
+    contract = resolve_court_keypoint_contract("physical_v1")
     camera_center = [2.0, 12.0, 4.0]
     view = build_court_view_record(
         camera_id="camera_0",
@@ -73,7 +73,7 @@ def test_chunk_generator_publishes_root_contract_for_versioned_scenes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scene = _camera_view_scene()
-    contract = resolve_court_keypoint_contract("camera_view_v2")
+    contract = resolve_court_keypoint_contract("physical_v1")
     root_contract_observed_before_scene = False
 
     def _one_scene(**kwargs: object) -> Iterator[SceneData]:
@@ -96,9 +96,7 @@ def test_chunk_generator_publishes_root_contract_for_versioned_scenes(
         "generate_parallel_scenes",
         _one_scene,
     )
-    config = OmegaConf.create(
-        {"court_keypoints": {"selector": "camera_view_v2"}}
-    )
+    config = OmegaConf.create({"court_keypoints": {"selector": "physical_v1"}})
     generator = _PLCSChunkGenerator(
         config=config,
         generator_device="cpu",

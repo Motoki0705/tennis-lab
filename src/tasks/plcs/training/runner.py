@@ -2,23 +2,15 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.plcs.configuration import PLCSTrainingConfig, validate_residual_config
-from src.tasks.plcs.model_io import (
-    resolve_plcs_track_query_reference_contract,
-    validate_plcs_checkpoint_court_keypoints,
-    validate_plcs_checkpoint_track_query_reference,
-)
-from src.tasks.plcs.model_io.axial_reference import validate_axial_reference_checkpoint
+from src.tasks.plcs.configuration import PLCSTrainingConfig
+from src.tasks.plcs.model_io import validate_plcs_checkpoint_court_keypoints
 from src.tasks.plcs.training.composition import (
     build_plcs_datamodule,
     build_plcs_lightning_module,
@@ -30,10 +22,7 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS."""
 
     def prepare_config(self, config: Any) -> None:
-        if config.model.name == "plcs_triangulation_residual":
-            validate_residual_config(config)
-        else:
-            PLCSTrainingConfig.from_config(config)
+        PLCSTrainingConfig.from_config(config)
         super().prepare_config(config)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
@@ -63,14 +52,7 @@ class PLCSTrainingRunner(BaseTrainingRunner):
             )
             if not isinstance(checkpoint, dict):
                 raise ValueError(f"Invalid PLCS init_weights checkpoint: {init_path}.")
-            from src.tasks.plcs.training.residual_lightning_module import (
-                ResidualLightningModule,
-            )
 
-            if isinstance(lightning_module, ResidualLightningModule):
-                lightning_module.on_load_checkpoint(checkpoint)
-                lightning_module.load_state_dict(checkpoint["state_dict"], strict=True)
-                return
             runtime = PLCSTrainingConfig.from_config(lightning_module.config)
             validate_court_coordinate_normalization(
                 checkpoint,
@@ -80,28 +62,6 @@ class PLCSTrainingRunner(BaseTrainingRunner):
                 checkpoint,
                 runtime.court_keypoint_contract,
             )
-            validate_axial_reference_checkpoint(
-                checkpoint, model_name=runtime.model.name
-            )
-            if runtime.model.name == "plcs_multiview_axial_reference":
-                state_dict = checkpoint.get("state_dict")
-                if not isinstance(state_dict, dict):
-                    raise ValueError(
-                        "Axial reference init_weights requires a complete state_dict."
-                    )
-                lightning_module.load_state_dict(state_dict, strict=True)
-                return
-            if runtime.model.name in {
-                "plcs_track_query",
-                "plcs_track_query_reference",
-            }:
-                validate_plcs_checkpoint_track_query_reference(
-                    checkpoint,
-                    resolve_plcs_track_query_reference_contract(
-                        runtime.model,
-                        runtime.court_keypoint_contract,
-                    ),
-                )
         super().maybe_load_init_weights(config, lightning_module)
 
     def callbacks_extra(
@@ -112,8 +72,6 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     ) -> list[Any]:
         extras: list[Any] = super().callbacks_extra(config, datamodule, logger)
 
-        if config.model.name == "plcs_triangulation_residual":
-            return extras
         runtime = PLCSTrainingConfig.from_config(config)
         if runtime.data.backend != "chunked":
             return extras
@@ -124,53 +82,3 @@ class PLCSTrainingRunner(BaseTrainingRunner):
 
         extras.append(ChunkRotationCallback())
         return extras
-
-    def test_after_fit(
-        self,
-        trainer: pl.Trainer,
-        lightning_module: pl.LightningModule,
-        datamodule: pl.LightningDataModule,
-        callbacks: list[Any],
-    ) -> None:
-        from src.tasks.plcs.training.residual_lightning_module import (
-            ResidualLightningModule,
-        )
-
-        if not isinstance(lightning_module, ResidualLightningModule):
-            super().test_after_fit(trainer, lightning_module, datamodule, callbacks)
-            return
-        monitored = [
-            c
-            for c in callbacks
-            if isinstance(c, ModelCheckpoint) and c.monitor == "val/world_mpjpe_m"
-        ]
-        if (
-            len(monitored) != 1
-            or not monitored[0].best_model_path
-            or monitored[0].best_model_score is None
-        ):
-            raise RuntimeError(
-                "A validation-selected best checkpoint is required for residual testing"
-            )
-        best = Path(monitored[0].best_model_path)
-        if not best.is_file():
-            raise FileNotFoundError(best)
-        results = trainer.test(
-            lightning_module,
-            datamodule=datamodule,
-            ckpt_path=str(best),
-            weights_only=False,
-        )
-        out = lightning_module.residual_config.runtime.run.output_dir
-        (out / "evaluation.json").write_text(
-            json.dumps(
-                {
-                    "checkpoint": str(best),
-                    "selection": "minimum val/world_mpjpe_m",
-                    "best_epoch_score": float(monitored[0].best_model_score.cpu()),
-                    "test": results,
-                },
-                indent=2,
-            )
-        )
-        print(f"BEST_CHECKPOINT={best}", flush=True)

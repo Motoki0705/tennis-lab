@@ -58,7 +58,6 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     (tmp_path / "src").mkdir()
     (tmp_path / "src/__init__.py").touch()
     excluded_files = {
-        "tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py",
         "tests/integration/synthetic_data_generation/test_court_dataset.py",
     }
     assert {

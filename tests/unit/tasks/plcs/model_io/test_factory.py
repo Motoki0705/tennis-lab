@@ -9,21 +9,7 @@ import pytest
 from hydra import compose, initialize_config_dir
 
 from src.tasks.plcs.configuration import PLCSTrainingConfig
-from src.tasks.plcs.model_io import (
-    PLCSAdapter,
-    PLCSInputProfile,
-    PLCSTrackQueryIOAdapter,
-    PLCSTrackQueryReferenceIOAdapter,
-    build_plcs_model_io,
-)
-from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
-from src.tasks.plcs.models.plcs_track_query_reference_model import (
-    PLCSTrackQueryReferenceModel,
-)
-from src.tasks.plcs.training.composition import (
-    build_plcs_datamodule,
-    build_plcs_lightning_module,
-)
+from src.tasks.plcs.model_io import PLCSAdapter, PLCSInputProfile, build_plcs_model_io
 from src.utils.paths import PROJECT_ROOT
 
 _SMALL_MODEL = (
@@ -52,29 +38,6 @@ _TRACKING_SMALL = (
         (
             "train",
             (
-                "model=frame",
-                "data=singleview_frame",
-                "loss=no_canonical",
-                *_SMALL_MODEL,
-            ),
-            "PLCSModel",
-            PLCSInputProfile.FRAME,
-        ),
-        (
-            "train",
-            (
-                "model=frame",
-                "data=singleview_sequence",
-                "data.seq_len_range=[1,3]",
-                "loss=no_canonical",
-                *_SMALL_MODEL,
-            ),
-            "PLCSModel",
-            PLCSInputProfile.SEQUENCE,
-        ),
-        (
-            "train",
-            (
                 "data.seq_len_range=[1,3]",
                 "model.max_seq_len=3",
                 "model.num_layers=1",
@@ -82,49 +45,7 @@ _TRACKING_SMALL = (
             ),
             "PLCSMultiViewAxialModel",
             PLCSInputProfile.MULTIVIEW,
-        ),
-        (
-            "train",
-            (
-                "model=multiview_axial_split",
-                "data.seq_len_range=[1,3]",
-                "model.max_seq_len=3",
-                "model.num_task_layers=1",
-                "model.rot_num_task_layers=1",
-                "model.pose_num_task_layers=1",
-                *_SMALL_MODEL,
-            ),
-            "PLCSMultiViewAxialSplitModel",
-            PLCSInputProfile.MULTIVIEW,
-        ),
-        (
-            "train",
-            (
-                "model=multiview_axial_camtoken",
-                "data.seq_len_range=[1,3]",
-                "model.max_seq_len=3",
-                "model.num_layers=1",
-                *_SMALL_MODEL,
-            ),
-            "PLCSMultiViewAxialCamTokenModel",
-            PLCSInputProfile.MULTIVIEW,
-        ),
-        (
-            "train_tracking",
-            (
-                "model.hidden_dim=16",
-                "model.num_heads=4",
-                "model.ffn_dim=32",
-                "model.rope_dim=4",
-                "model.num_stages=4",
-                "model.mhc.coefficient_dim=8",
-                "model.mhc.sinkhorn_iters=5",
-                "model.cswa.compression_ratio=2",
-                "model.cswa.window_radius=1",
-            ),
-            "PLCSTrackQueryModel",
-            PLCSInputProfile.TRACK_QUERY,
-        ),
+        )
     ],
 )
 def test_factory_binds_each_validated_model_profile_once(
@@ -140,79 +61,3 @@ def test_factory_binds_each_validated_model_profile_once(
     assert type(bound.model).__name__ == model_name
     assert adapter.profile is profile
     assert type(bound.model) is adapter.model_type
-
-
-def _tracking_config() -> object:
-    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
-        return compose(
-            config_name="train_tracking",
-            overrides=["model=tracking_query", *_TRACKING_SMALL],
-        )
-
-
-def test_factory_binds_canonical_config_to_exact_model_and_adapter() -> None:
-    runtime = PLCSTrainingConfig.from_config(_tracking_config())
-
-    binding = build_plcs_model_io(runtime)
-
-    assert type(binding.model) is PLCSTrackQueryModel
-    assert type(binding.adapter) is PLCSTrackQueryIOAdapter
-    assert binding.adapter.model_type is PLCSTrackQueryModel
-    assert binding.adapter.profile is PLCSInputProfile.TRACK_QUERY
-
-
-def test_canonical_model_uses_tracking_training_composition(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    config = _tracking_config()
-
-    class _DataModule:
-        def __init__(self, received: object) -> None:
-            self.received = received
-
-    class _LightningModule:
-        def __init__(self, received: object) -> None:
-            self.received = received
-
-    monkeypatch.setattr(
-        "src.tasks.plcs.data.tracking_datamodule.PLCSTrackingDataModule",
-        _DataModule,
-    )
-    monkeypatch.setattr(
-        "src.tasks.plcs.training.tracking_lightning_module.PLCSTrackingLightningModule",
-        _LightningModule,
-    )
-
-    datamodule = build_plcs_datamodule(config)
-    lightning_module = build_plcs_lightning_module(config)
-
-    assert type(datamodule) is _DataModule
-    assert type(lightning_module) is _LightningModule
-    assert datamodule.received is config
-    assert lightning_module.received is config
-
-
-def test_factory_binds_reference_model_and_exact_six_input_adapter() -> None:
-    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_DIR)):
-        config = compose(
-            config_name="train_tracking",
-            overrides=[
-                "model=tracking_query_reference",
-                "court_keypoints=camera_view_v2",
-                "model.hidden_dim=24",
-                "model.num_heads=4",
-                "model.ffn_dim=48",
-                "model.rope_dim=6",
-                "model.num_stages=4",
-                "model.mhc.coefficient_dim=8",
-                "model.mhc.sinkhorn_iters=5",
-                "model.cswa.compression_ratio=2",
-                "model.cswa.window_radius=1",
-            ],
-        )
-    binding = build_plcs_model_io(PLCSTrainingConfig.from_config(config))
-
-    assert type(binding.model) is PLCSTrackQueryReferenceModel
-    assert type(binding.adapter) is PLCSTrackQueryReferenceIOAdapter
-    assert binding.adapter.model_type is PLCSTrackQueryReferenceModel
-    assert binding.adapter.reference_selector_mode.value == "reference"

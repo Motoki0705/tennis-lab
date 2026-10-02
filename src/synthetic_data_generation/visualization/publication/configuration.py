@@ -48,8 +48,6 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
             "output_bundle",
             "artifacts",
             "court",
-            "blcs",
-            "plcs",
             "captured",
             "drawing",
         },
@@ -58,16 +56,6 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
         raw["court"],
         name="publication.court",
         keys={"trajectory_id", "frame_indices"},
-    )
-    blcs = _exact(
-        raw["blcs"],
-        name="publication.blcs",
-        keys={"logical_scene_id", "camera_id", "frame_indices", "camera_ids"},
-    )
-    plcs = _exact(
-        raw["plcs"],
-        name="publication.plcs",
-        keys={"logical_scene_id", "camera_id", "frame_indices", "camera_ids"},
     )
     captured = _exact(
         raw["captured"],
@@ -86,10 +74,7 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
             "frustum_depth_metres",
             "line_width",
             "font_size",
-            "history_frames",
             "maximum_rendered_captured_cameras",
-            "coincident_centre_tolerance_metres",
-            "coincident_forward_angle_tolerance_degrees",
             "maximum_artifact_bytes",
             "maximum_bundle_bytes",
         },
@@ -97,12 +82,10 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
     return PublicationRequest(
         scene_id=_text(raw["scene_id"], name="publication.scene_id"),
         scene_root=resolver.resolve(
-            PathRole.DATA,
-            _text(raw["scene_root"], name="publication.scene_root"),
+            PathRole.DATA, _text(raw["scene_root"], name="publication.scene_root")
         ),
         output_bundle=resolver.resolve(
-            PathRole.DATA,
-            _text(raw["output_bundle"], name="publication.output_bundle"),
+            PathRole.DATA, _text(raw["output_bundle"], name="publication.output_bundle")
         ),
         artifact_names=tuple(
             PublicationArtifactName(_text(value, name="publication.artifacts"))
@@ -113,26 +96,6 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
         ),
         court_frame_indices=_integer_tuple(
             court["frame_indices"], name="publication.court.frame_indices"
-        ),
-        blcs_logical_scene_id=_text(
-            blcs["logical_scene_id"], name="publication.blcs.logical_scene_id"
-        ),
-        blcs_camera_id=_text(blcs["camera_id"], name="publication.blcs.camera_id"),
-        blcs_frame_indices=_integer_tuple(
-            blcs["frame_indices"], name="publication.blcs.frame_indices"
-        ),
-        blcs_camera_ids=_text_tuple(
-            blcs["camera_ids"], name="publication.blcs.camera_ids"
-        ),
-        plcs_logical_scene_id=_text(
-            plcs["logical_scene_id"], name="publication.plcs.logical_scene_id"
-        ),
-        plcs_camera_id=_text(plcs["camera_id"], name="publication.plcs.camera_id"),
-        plcs_frame_indices=_integer_tuple(
-            plcs["frame_indices"], name="publication.plcs.frame_indices"
-        ),
-        plcs_camera_ids=_text_tuple(
-            plcs["camera_ids"], name="publication.plcs.camera_ids"
         ),
         captured_camera_ids=_text_tuple(
             captured["camera_ids"], name="publication.captured.camera_ids"
@@ -152,20 +115,9 @@ def build_publication_request(config: DictConfig) -> PublicationRequest:
             ),
             line_width=_number(drawing["line_width"], name="drawing.line_width"),
             font_size=_integer(drawing["font_size"], name="drawing.font_size"),
-            history_frames=_integer(
-                drawing["history_frames"], name="drawing.history_frames"
-            ),
             maximum_rendered_captured_cameras=_integer(
                 drawing["maximum_rendered_captured_cameras"],
                 name="drawing.maximum_rendered_captured_cameras",
-            ),
-            coincident_centre_tolerance_metres=_number(
-                drawing["coincident_centre_tolerance_metres"],
-                name="drawing.coincident_centre_tolerance_metres",
-            ),
-            coincident_forward_angle_tolerance_degrees=_number(
-                drawing["coincident_forward_angle_tolerance_degrees"],
-                name="drawing.coincident_forward_angle_tolerance_degrees",
             ),
             maximum_artifact_bytes=_integer(
                 drawing["maximum_artifact_bytes"], name="drawing.maximum_artifact_bytes"

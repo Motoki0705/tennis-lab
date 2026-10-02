@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -11,22 +10,7 @@ import pytest
 from numpy.typing import NDArray
 
 import src.synthetic_data_generation.visualization.sources as sources_module
-from src.synthetic_data_generation.dataset.blcs.contracts import BLCSSampleRecord
-from src.synthetic_data_generation.dataset.plcs.assembler import PLCS_DATASET_SCHEMA
-from src.synthetic_data_generation.dataset.runtime import (
-    ChunkWriter,
-    ForegroundDelta,
-    ForegroundDeltaBatch,
-    RenderSampleKey,
-)
-from src.synthetic_data_generation.visualization.sources import (
-    BLCSVisualizationSource,
-    CourtVisualizationSource,
-    PLCSVisualizationSource,
-)
-from src.utils.schema.court_normalization import (
-    court_coordinate_normalization_metadata,
-)
+from src.synthetic_data_generation.visualization.sources import CourtVisualizationSource
 
 
 def _write_court_fixture(
@@ -167,135 +151,3 @@ def test_court_source_rejects_unknown_dataset_schema_without_shape_fallback(
         match=r"^Unknown Court dataset schema: 'canonical_court_dataset_v4'\.$",
     ):
         CourtVisualizationSource(tmp_path, trajectory_id="orbit-0")
-
-
-def test_blcs_stream_rejects_chunk_replaced_by_a_foreign_attempt(
-    tmp_path: Path,
-) -> None:
-    writer = ChunkWriter(
-        tmp_path / "chunks",
-        attempt_token="foreign-attempt",
-        camera_ids=("camera-0",),
-        width=2,
-        height=2,
-    )
-    chunk = writer.write(
-        ForegroundDeltaBatch(
-            chunk_id="chunk-000000",
-            deltas=(
-                ForegroundDelta(
-                    key=RenderSampleKey(0, "camera-0"),
-                    pixel_indices=np.asarray([0], dtype=np.int32),
-                    rgb=np.asarray([[1.0, 0.0, 0.0]], dtype=np.float32),
-                    alpha=np.asarray([1.0], dtype=np.float32),
-                    depth=np.asarray([1.0], dtype=np.float32),
-                    instance_ids=np.asarray([1], dtype=np.int32),
-                ),
-            ),
-            metadata=({},),
-        )
-    )
-    source = object.__new__(BLCSVisualizationSource)
-    source.root = tmp_path
-    source.logical_scene_id = "trajectory-0"
-    source.camera_id = "camera-0"
-    source._attempt_token = "selected-attempt"
-    source._records = (
-        BLCSSampleRecord(
-            trajectory_id="trajectory-0",
-            split="train",
-            global_frame_index=0,
-            source_frame_index=0,
-            chunk_index=0,
-            camera_id="camera-0",
-            background_store="backgrounds",
-            foreground_chunk=chunk.directory.relative_to(tmp_path).as_posix(),
-            chunk_sample_index=0,
-        ),
-    )
-
-    with pytest.raises(ValueError, match="another stage attempt"):
-        next(source.frames())
-
-
-def test_plcs_visualization_rejects_v4_before_reading_any_payload(
-    tmp_path: Path,
-) -> None:
-    for directory in ("backgrounds", "scenes", "diagnostics"):
-        (tmp_path / directory).mkdir()
-    (tmp_path / "dataset.json").write_text(
-        json.dumps(
-            {
-                "schema": "tennis_plcs_compact_dataset_v4",
-                "scene_id": "B00",
-                "domain": "plcs",
-                "frame_inventory": {},
-                "target_courts": [],
-                "metadata": {},
-                "diagnostics": [],
-                "storage": {},
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ValueError, match="Unsupported canonical compact PLCS"):
-        PLCSVisualizationSource(
-            tmp_path,
-            logical_scene_id="B00",
-            camera_id="camera-0",
-        )
-
-
-@pytest.mark.parametrize("mutation", ["missing", "malformed", "unknown", "mismatched"])
-def test_plcs_visualization_rejects_invalid_normalization_before_payloads(
-    tmp_path: Path,
-    mutation: str,
-) -> None:
-    for directory in ("backgrounds", "scenes", "diagnostics"):
-        (tmp_path / directory).mkdir()
-    contract: object = court_coordinate_normalization_metadata()
-    if mutation == "malformed":
-        contract = "isotropic_half_length"
-    elif mutation in {"unknown", "mismatched"}:
-        assert isinstance(contract, dict)
-        contract = deepcopy(contract)
-        if mutation == "unknown":
-            contract["identity"] = "anisotropic"
-        else:
-            contract["scale_xyz_m"] = [5.485, 11.885, 1.07]
-    metadata = {
-        "coordinate_contract": {},
-        "court_coordinate_normalization": contract,
-        "seed": 0,
-        "logical_scene_count": 1,
-        "aggregate_global_frame_count": 1,
-        "aggregate_source_frame_count": 1,
-        "required_motion_categories": [],
-        "accepted_court_instance_ids": [],
-        "logical_scenes": [],
-    }
-    if mutation == "missing":
-        del metadata["court_coordinate_normalization"]
-    (tmp_path / "dataset.json").write_text(
-        json.dumps(
-            {
-                "schema": PLCS_DATASET_SCHEMA,
-                "scene_id": "B00",
-                "domain": "plcs",
-                "frame_inventory": {},
-                "target_courts": [],
-                "metadata": metadata,
-                "diagnostics": [],
-                "storage": {},
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ValueError, match="incompatible|unknown|mismatched"):
-        PLCSVisualizationSource(
-            tmp_path,
-            logical_scene_id="B00",
-            camera_id="camera-0",
-        )
