@@ -40,12 +40,11 @@ def _composed(config_name: str, overrides: list[str]) -> Iterator[DictConfig]:
 def _pipeline_config(root: Path, *overrides: str) -> DictConfig:
     """Compose the shipped pipeline config with a temporary project root.
 
-    Project-owned association and ball confidence configs are read while the
+    Project-owned association configs are read while the
     runtime config is built, so the temporary root receives the shipped copies.
     """
     for source in (
         DEFAULT_CONFIG, LEGACY_CONFIG,
-        PROJECT_ROOT / "src/tasks/ball_refiner/configs/confidence/meiji_val_r29.yaml",
     ):
         target = root / source.relative_to(PROJECT_ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -184,7 +183,7 @@ def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     assert runtime.enabled["player_reconstruction"] and "blcs_association" not in runtime.enabled
 
 
-@pytest.mark.parametrize("override", ["+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])
+@pytest.mark.parametrize("override", ["+ball_confidence=legacy.yaml", "+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])
 def test_automatic_pipeline_rejects_removed_manual_and_3d_settings(tmp_path: Path, override: str) -> None:
     with pytest.raises(UnknownConfigurationKeyError):
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))

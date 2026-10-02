@@ -1,11 +1,11 @@
 """Joint residual transport must preserve the confidence/error row pairing."""
 import numpy as np
 
-from src.tasks.ball_refiner.refiner_2d.confidence import (
+from tests.benchmarks.court_side_correlated import ResidualBank
+from tests.benchmarks.legacy_ball_confidence import (
     PointConfidenceRule,
     point_confidence,
 )
-from tests.benchmarks.court_side_correlated import ResidualBank
 
 
 def test_joint_confidence_follows_its_error_not_an_independent_mask():
@@ -39,3 +39,17 @@ def test_blocks_keep_one_empirical_camera_per_view_with_explicit_fourth():
         offsets = row % 1000
         assert ((offsets < 200) | ((offsets >= 300) & (offsets < 320))).all()
     np.testing.assert_array_equal(result, bank.sample(300, 4, np.random.default_rng(30001)))
+
+
+def test_unfiltered_benchmark_runs_production_points_for_every_camera():
+    import torch
+
+    from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
+    from tests.benchmarks.court_side_unfiltered import production_points
+
+    gmm = BallGMM2D(torch.tensor([[[[.2, .3], [.9, .8]], [[.4, .5], [.1, .2]]]]).repeat(3, 1, 1, 1),
+                    torch.eye(2).repeat(3, 2, 2, 1, 1), torch.tensor([[[2., 0.], [0., 2.]]]).repeat(3, 1, 1),
+                    torch.full((3, 2), -1000.))
+    points = production_points(gmm, (101, 201), ("a", "b", "c"))
+    assert points.dtype == np.float32
+    np.testing.assert_allclose(points, np.tile([[[20., 60.], [10., 40.]]], (3, 1, 1)))

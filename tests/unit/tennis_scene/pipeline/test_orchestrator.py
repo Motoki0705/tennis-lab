@@ -50,6 +50,7 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     for consumer in ("court_side", "camera_alignment", "ball_triangulation"):
         assert nodes[consumer].bindings["ball_cam0"] == "ball_points/cam0"
         assert nodes[consumer].io.inputs["ball_cam0"].schema == "ball_points"
+        assert nodes[consumer].io.inputs["ball_cam0"].version == 2
         assert nodes[consumer].assembler.ball_threshold == 0
     assert order.index("court_side") < order.index("camera_alignment")
     assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")

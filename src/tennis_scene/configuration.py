@@ -18,7 +18,6 @@ from src.submodules.configuration import (
 )
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
-from src.tasks.ball_refiner.refiner_2d.confidence import PointConfidenceRule
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
@@ -256,7 +255,6 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
     "ball_refiner": ConfigField.mapping(_BALL_REFINER_SCHEMA),
-    "ball_confidence": ConfigField.of(str),
     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_association": ConfigField.mapping(_PLAYER_ASSOCIATION_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
@@ -279,7 +277,6 @@ class PipelineRuntimeConfig:
     people: PeopleModelConfig
     ball_detection: BallDetectionConfig
     ball_refiner: BallRefinerRecipeConfig
-    ball_confidence: PointConfidenceRule
     sampling_max_frames: int
     camera_geometry: CameraGeometryConfig
     court_side: CourtSideConfig
@@ -367,13 +364,6 @@ class PipelineRuntimeConfig:
             calibration_artifact=None if calibration is None else resolver.resolve(PathRole.CHECKPOINT, calibration),
             batch_size=cast(int, refiner["batch_size"]),
         )
-        confidence_path = resolver.resolve(PathRole.PROJECT, cast(str, value["ball_confidence"]))
-        confidence_values = _mapping(OmegaConf.to_container(OmegaConf.load(confidence_path)), name="ball_confidence")
-        StrictConfigSchema(name="ball_confidence", fields={
-            "min_presence": ConfigField.of(float, int), "max_area_px2": ConfigField.of(float, int),
-        }).validate(confidence_values)
-        confidence = PointConfidenceRule(float(cast(float, confidence_values["min_presence"])),
-                                         float(cast(float, confidence_values["max_area_px2"])))
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
@@ -414,7 +404,7 @@ class PipelineRuntimeConfig:
         if any(mode not in {"execute", "load"} for mode in component_sources.values()):
             raise SemanticConfigurationError("Component execution modes must be execute/load")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
-        return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config, ball_refiner, confidence,
+        return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config, ball_refiner,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']))

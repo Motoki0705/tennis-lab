@@ -1,4 +1,6 @@
-"""Deterministic, full-mixture uncertainty for consumers requiring one point.
+"""Historical r29/r30 benchmark only; never used by the scene pipeline.
+
+Deterministic full-mixture uncertainty from the removed production filter.
 
 The point is the maximum-weight component mean (first component on ties).
 M = E[(X-point)(X-point)^T] includes within- and between-component uncertainty.

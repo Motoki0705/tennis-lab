@@ -176,22 +176,26 @@ manifestは重み・全入力設定・元checkpointを束縛し、倍率artifact
 [固定Bゲート](../../../knowledge/nodes/ball_refiner/000025-run-i935-source-b-gate-r26-20261001.md)の
 GT位置誤差p90が不合格だったため、run26時点では既定を維持した。
 [2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)
-に従ってe9を既定化した。confidence規則とpoint consumer配線は実装済み。安全benchと全scene qualificationで確認する。
+に従ってe9を既定化した。2026-10-02のユーザー判断でconfidenceフィルタを廃止した。
+過去の安全bench FAILと全scene qualificationの未達は、採用方針の変更だけで合格とは扱わない。
 seedの事前判定FAILと、
 それを保持して再現は十分と扱う追加ユーザー判断も同記録から辿れる。
 
-## 信頼度を共有する点consumer
+## refinerの点consumer
 
-`ball_points` は保存済み全GMMを最大weight成分の平均へ縮約し、
-[固定confidence規則](../../tasks/ball_refiner/README.md#点consumerの信頼度規則)で選別する。
-`BallPointsOutput` / schema `ball_points` v1に点、存在確率、source px²面積、採否、規則、棄却bitを保存する。
-bit1は存在確率不足、bit2は面積超過、0は採用。棄却frameは座標・confidence=0とobserved=false。
-codec再読込時も規則とmaskの一致を検証する。補間・検出点へのfallbackは行わない。
+`ball_points` は保存済み全GMMの最大weight成分の平均点を全frameでsource画素へ変換する。
+同率は先頭成分を採用し、存在確率や共分散の面積で棄却しない。
+`BallPointsOutput` / schema `ball_points` v2は点と診断用の存在確率を保存し、
+下流の観測mask・重みは全frameで1とする。有限値・camera・frame軸・sourceサイズを検証する。
 
-`court_side`・`camera_alignment`・`ball_triangulation` は同じcameraごとのball_points artifactに依存し、
-検出器のscore閾値を重ねて適用しない。court_sideのball-only/margin .15は不変。
-旧ball_detectionsをpoint consumerへload/importすることはschema不一致として拒否する。
-全GMMは別のartifactとして保持され、#936はそこから分布を利用できる。
+`court_side`・`camera_alignment`・`ball_triangulation` は同じcameraごとのv2 artifactに依存する。
+court_sideのball-only/margin .15と既存の幾何的停止条件は維持する。
+全GMMは別のartifactとして保存し、#936向けの全成分・共分散・存在確率とPTS/推論窓の出自を保持する。
+
+旧confidence maskを含む`ball_points` v1は実行時loadでschema不一致として拒否する。
+標準経路を再実行して全GMMからv2を生成する。既存GMMの明示的な再利用も、
+保存されたコード・入力・設定のidentity一致が必要で、変更前の版を無言で読み替えない。
+旧artifactの履歴はgalleryで閲覧できる。旧ball_detectionsを点consumerへload/importすることも拒否する。
 ball_detectionを無効化する場合はball/refiner/points chain全体のloadを明示する必要がある。
 
 ## 成果物

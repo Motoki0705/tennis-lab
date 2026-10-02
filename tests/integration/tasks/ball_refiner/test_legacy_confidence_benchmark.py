@@ -1,4 +1,4 @@
-"""Consumer uncertainty includes all mixture modes and retains explicit rejection."""
+"""Keep the historical r29/r30 benchmark reproducible after filter removal."""
 
 import math
 import subprocess
@@ -8,11 +8,11 @@ import numpy as np
 import pytest
 import torch
 
-from src.tasks.ball_refiner.refiner_2d.confidence import (
+from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
+from tests.benchmarks.legacy_ball_confidence import (
     PointConfidenceRule,
     point_confidence,
 )
-from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 
 
 def mixture(means: list[list[float]], weights: list[float]) -> BallGMM2D:

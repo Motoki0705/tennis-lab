@@ -7,19 +7,23 @@ import json
 from dataclasses import fields
 from itertools import product
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
 
 from src.tasks.ball_refiner.pipeline_options import E9_ANCHORED_S42
 from src.tasks.ball_refiner.refiner_2d.calibration import load_covariance_calibration
-from src.tasks.ball_refiner.refiner_2d.confidence import (
-    PointConfidenceRule,
-    point_confidence,
-)
 from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
 from src.utils.checksum import dual_sha256
+
+if TYPE_CHECKING or __package__ == "tests.benchmarks":
+    from tests.benchmarks.legacy_ball_confidence import (
+        PointConfidenceRule,
+        point_confidence,
+    )
+else:
+    from legacy_ball_confidence import PointConfidenceRule, point_confidence
 
 
 def eligible(clip_id: str) -> bool:

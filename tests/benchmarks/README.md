@@ -327,7 +327,7 @@ raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を
 
 `person_unseen_review_video.py --report <採点済み未見出力>`はsingle score receiptのラベルhashを検証し、保存raw box/IDとラベルを全長3cameraで比較する。IDの表示名は採点済み対応表を使い、camera間で異なる置換を拒否する。box単位の4色と曖昧色を表示し、再推論・再採点はしない。
 
-- `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [refiner README](../../src/tasks/ball_refiner/README.md#点consumerの信頼度規則) を参照。
+- `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [旧選定記録](../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md) を参照。
 
 - `court_side_confidence.py`: #932の元held-out全28条件の集計を再現し、固定confidenceの連続blockを追加した対比較をCPUで実行。元/filteredの全仮説を保存。実refinerとの誤差相関は再現していない。結果と限界は [安全bench](../../knowledge/nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md) を参照。
 
@@ -338,3 +338,9 @@ raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を
 `court_side_correlated.py` は実測GMM残差とconfidenceを同一rowで移植した28条件を比較する。
 `court_side_wrong_cases.py` はrun29の3誤判定のcamera/点/支持frameを元RNGから再現する。
 方法と判定規則は[run30事前登録](../../knowledge/runs/run-i935-correlated-safety-r30-20261001/protocol.md)が正本。
+
+`court_side_unfiltered.py --dataset <元dataset> --bank <固定bank> --original <元#932report> --previous <r30report> --output <新規dir>`
+は同じ28条件×400scene、seed1/30001とhash付き入力で、productionの`BallPointsModule`を各cameraに実行する。
+元#932とr30の未選別集計を条件ごとに照合し、全22,400判定を保存するCPU回帰bench。
+フィルタ廃止後も過去の比較を再現するため、上記confidence系benchは
+`legacy_ball_confidence.py`と`legacy_ball_confidence.yaml`を使う。これらはproductionの設定・依存ではない。
