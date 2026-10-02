@@ -208,11 +208,37 @@ PROHIBITED_SYMBOLS = frozenset(
         "_sort_tracks",
     }
 )
-# Issue #934 retires legacy temporal readers; no import shim may restore them.
+# Ball detection consumes only the unified store; retired workflows have no import shims.
 BALL_STORE_REMOVED_MODULES = (
     "src.tasks.ball_detection.data.tracknet_datamodule",
     "src.tasks.ball_detection.data.youtube_datamodule",
     "src.tasks.ball_detection.data.mixed_tracknet_datamodule",
+    "src.tasks.ball_detection.data.components.staged_sampler",
+    "src.tasks.ball_detection.data.components.web",
+    "src.tasks.ball_detection.data.components.web.data_access_layer",
+    "src.tasks.ball_detection.data.components.web.data_access_layer.web_store",
+    "src.tasks.ball_detection.data.components.web.data_access_layer.writer",
+    "src.tasks.ball_detection.data.components.web.parser",
+    "src.tasks.ball_detection.data.components.web.parser.ball_yolo",
+    "src.tasks.ball_detection.data.components.web.parser.base",
+    "src.tasks.ball_detection.data.components.web.parser.kaggle",
+    "src.tasks.ball_detection.data.components.web.parser.racketvision",
+    "src.tasks.ball_detection.data.components.web.parser.roboflow",
+    "src.tasks.ball_detection.data.staged_datamodule",
+    "src.tasks.ball_detection.data.web_datamodule",
+    "src.tasks.ball_detection.generate_dataset.annotation_session",
+    "src.tasks.ball_detection.generate_dataset.candidate_workflow",
+    "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio",
+    "src.tasks.ball_detection.scripts.convert_web_dataset",
+    "src.tasks.ball_detection.scripts.train_staged",
+    "src.tasks.ball_detection.scripts.youtube",
+    "src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball",
+    "src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset",
+    "src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images",
+    "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset",
+    "src.tasks.ball_detection.training.staged_calibration",
+    "src.tasks.ball_detection.training.staged_lightning_module",
+    "src.tasks.ball_detection.training.staged_runner",
 )
 COURT_INFERENCE_REMOVED_MODULES = (
     "src.tasks.court_detection.inference.mask_predictor",

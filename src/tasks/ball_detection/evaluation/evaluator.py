@@ -244,7 +244,6 @@ def evaluate_dataloader(
             data_config=data_config,
             split=split,
             dataset=dataset,
-            resolver=manifest.resolver,
         ),
     }
 

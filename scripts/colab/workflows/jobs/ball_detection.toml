@@ -24,6 +24,6 @@ args = [
 ]
 
 [[inputs]]
-source = "data/ball_detection/ball-mix-v1"
-destination = "data/ball_detection/ball-mix-v1"
+source = "data/ball_detection/ball-mix-v2"
+destination = "data/ball_detection/ball-mix-v2"
 writable = false

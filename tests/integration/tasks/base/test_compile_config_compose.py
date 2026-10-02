@@ -16,7 +16,6 @@ _SRC_TASKS = Path(__file__).resolve().parents[4] / "src/tasks"
     ("task", "config_name", "overrides"),
     [
         ("ball_detection", "train", []),
-        ("ball_detection", "train_staged", ["model=stunet"]),
         ("court_detection", "train", []),
         ("plcs", "train", []),
         ("slcs", "train", []),
