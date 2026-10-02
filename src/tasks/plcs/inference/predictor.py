@@ -102,7 +102,9 @@ class PLCSPredictor(BasePredictor):
             raise ValueError("PLCS inference requires strict checkpoint loading")
         if type(weights_only) is not bool or kwargs:
             raise TypeError(f"Unsupported PLCS checkpoint options: {kwargs}")
-        checkpoint = load_and_validate_checkpoint(checkpoints[0], weights_only=weights_only)
+        checkpoint = load_and_validate_checkpoint(
+            checkpoints[0], weights_only=weights_only
+        )
         checkpoint_config, keypoint_contract = (
             prepare_plcs_checkpoint_court_keypoint_config(
                 checkpoint,
@@ -208,9 +210,7 @@ class PLCSPredictor(BasePredictor):
         | None,
         reference_metadata: PLCSReferenceMetadata | None,
     ) -> (
-        CourtReferenceFrameProvenance
-        | tuple[CourtReferenceFrameProvenance, ...]
-        | None
+        CourtReferenceFrameProvenance | tuple[CourtReferenceFrameProvenance, ...] | None
     ):
         if reference_metadata is None:
             if provenance is None or isinstance(
@@ -324,9 +324,7 @@ class PLCSPredictor(BasePredictor):
                         "human_vis": human_vis,
                         "padding_mask": padding_mask,
                         "court_vis": court_vis,
-                        "court_keypoint_metadata": (
-                            court_keypoint_metadata
-                        ),
+                        "court_keypoint_metadata": (court_keypoint_metadata),
                         "court_reference_provenance": effective_provenance,
                     }
                 ),
@@ -418,8 +416,7 @@ class PLCSPredictor(BasePredictor):
             )
             if reference_metadata is not None:
                 metadata_provenance = tuple(
-                    selection.provenance
-                    for selection in reference_metadata.selections
+                    selection.provenance for selection in reference_metadata.selections
                 )
                 if prepared.court_reference_provenance != metadata_provenance:
                     raise ModelInputContractError(

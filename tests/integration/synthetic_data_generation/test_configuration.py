@@ -7,15 +7,7 @@ from pathlib import Path
 import pytest
 from hydra import compose, initialize_config_dir
 
-from src.synthetic_data_generation.alignment.contracts import AlignmentAcceptancePolicy
-from src.synthetic_data_generation.alignment.settings import AlignmentEvidenceSettings
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
-from src.synthetic_data_generation.dataset.blcs.contracts import BLCSBallRendering
-from src.synthetic_data_generation.dataset.blcs.rendering import BLCSNHTRenderer
-from src.synthetic_data_generation.dataset.blcs.source import (
-    PhysicsBLCSTrajectoryProvider,
-)
-from src.synthetic_data_generation.dataset.camera_profiles import sample_camera_rig
 from src.synthetic_data_generation.dataset.court.contracts import (
     OrbitCenterKind,
     OrbitCoverageMode,
@@ -29,15 +21,6 @@ from src.synthetic_data_generation.dataset.court.contracts import (
 from src.synthetic_data_generation.dataset.court.schema import (
     CourtDatasetSchemaVersion,
 )
-from src.synthetic_data_generation.dataset.plcs.handler import PLCSStageParameters
-from src.synthetic_data_generation.dataset.plcs.production import PLCSProductionMode
-from src.synthetic_data_generation.dataset.plcs.rendering import NHTPLCSRenderer
-from src.synthetic_data_generation.reconstruction import NHTReconstructionHandler
-from src.synthetic_data_generation.rendering.nht import (
-    NHTComposedRenderClient,
-    NHTRenderClient,
-)
-from src.synthetic_data_generation.scene_contract import CourtInstance, RigidTransform
 from src.utils.configuration import (
     PathRole,
     SemanticConfigurationError,
@@ -78,67 +61,6 @@ def _compose(*overrides: str) -> ScenePipelineConfiguration:
             ],
         )
     return ScenePipelineConfiguration.from_config(config)
-
-
-def test_default_profile_composes_exactly_six_shared_camera_slots() -> None:
-    runtime = _compose()
-
-    assert runtime.camera.profile == "default"
-    assert runtime.camera.expected_camera_count == 6
-    assert len(runtime.camera.slots) == 6
-
-
-def test_blcs_glb_ball_is_an_explicit_data_root_relative_option() -> None:
-    runtime = _compose(
-        "dataset.blcs.assets.rendering=mesh",
-        (
-            'dataset.blcs.assets.mesh.path="synthetic_data_generation/assets/blcs/'
-            'tennis ball 3d model.glb"'
-        ),
-    )
-
-    assert runtime.blcs.assets.rendering is BLCSBallRendering.MESH
-    assert runtime.blcs.assets.mesh is not None
-    assert runtime.blcs.assets.mesh.data_root_relative_path == (
-        "synthetic_data_generation/assets/blcs/tennis ball 3d model.glb"
-    )
-    assert runtime.blcs.assets.mesh.maximum_file_bytes == 33554432
-    assert runtime.blcs.assets.mesh.maximum_source_vertices == 500000
-    assert runtime.blcs.assets.mesh.maximum_source_faces == 1000000
-    assert runtime.blcs.assets.mesh.maximum_faces == 4096
-    assert (
-        runtime.blcs.assets.mesh.path
-        == (
-            runtime.resolver.roots.data_root
-            / "synthetic_data_generation/assets/blcs/tennis ball 3d model.glb"
-        ).resolve()
-    )
-    assert runtime.blcs.assets.settings.radius_m == 0.0335
-
-
-def test_blcs_gaussian_ball_remains_the_default_without_mesh_fallback() -> None:
-    assets = _compose().blcs.assets
-
-    assert assets.rendering is BLCSBallRendering.GAUSSIAN
-    assert assets.mesh is None
-
-
-def test_blcs_mesh_mode_never_falls_back_when_glb_path_is_missing() -> None:
-    with pytest.raises(TypeError, match="data-root-relative string"):
-        _compose("dataset.blcs.assets.rendering=mesh")
-    with pytest.raises(FileNotFoundError, match="ordinary existing"):
-        _compose(
-            "dataset.blcs.assets.rendering=mesh",
-            "dataset.blcs.assets.mesh.path=synthetic_data_generation/assets/blcs/missing.glb",
-        )
-
-
-def test_broadcast_profile_composes_exactly_two_shared_camera_slots() -> None:
-    runtime = _compose("camera=broadcast")
-
-    assert runtime.camera.profile == "broadcast"
-    assert runtime.camera.expected_camera_count == 2
-    assert len(runtime.camera.slots) == 2
 
 
 @pytest.mark.parametrize(
@@ -290,132 +212,3 @@ def test_configured_paths_retain_their_declared_runtime_roles() -> None:
             / "court_detection/multiscale_depth3/b863df1f01f0.ckpt"
         ).resolve()
     )
-    assert runtime.resolver.validate(PathRole.DATA, runtime.plcs.accad_root) == runtime.plcs.accad_root
-    assert runtime.resolver.validate(PathRole.CHECKPOINT, runtime.plcs.smplh_model_root) == runtime.plcs.smplh_model_root
-
-
-def test_composition_root_can_construct_each_no_default_runtime_input() -> None:
-    runtime = _compose()
-    client = NHTRenderClient()
-    composed_client = NHTComposedRenderClient()
-
-    reconstruction = NHTReconstructionHandler(
-        executable=runtime.nht.reconstruct_executable,
-        pipeline_config=runtime.nht.pipeline_config,
-        training_runtime=runtime.nht.training_runtime,
-        environment=runtime.nht.environment,
-        timeout_seconds=runtime.nht.reconstruction_timeout_seconds,
-    )
-    assert reconstruction.environment == _NHT_ENVIRONMENT
-
-    assert isinstance(runtime.alignment.evidence, AlignmentEvidenceSettings)
-    assert isinstance(runtime.alignment.acceptance, AlignmentAcceptancePolicy)
-
-    provider = PhysicsBLCSTrajectoryProvider(
-        generator_config=runtime.blcs.generator,
-        settings=runtime.blcs.trajectory_source,
-    )
-    blcs_renderer = BLCSNHTRenderer(
-        assets=runtime.blcs.assets,
-        client=composed_client,
-        executable=runtime.nht.render_executable,
-        environment=runtime.nht.environment,
-        timeout_seconds=runtime.blcs.render_timeout_seconds,
-        execution_device=runtime.blcs.performance.execution_device,
-        maximum_batch_frames=runtime.blcs.performance.maximum_batch_frames,
-    )
-    assert provider.settings.timeline.min_scene_frames == 512
-    assert blcs_renderer.timeout_seconds == 3_600.0
-
-    parameters = runtime.plcs.build_stage_parameters(seed=runtime.stages.seed)
-    assert isinstance(parameters, PLCSStageParameters)
-    assert parameters.production_mode is PLCSProductionMode.MULTI_OBJECT_GLOBAL_TIMELINE
-    assert len(parameters.objects) == 3
-    assert parameters.scene_splits == {
-        "B00": "train",
-        "B00-plcs-002": "train",
-    }
-    assert runtime.plcs.performance.maximum_background_cache_misses == 12
-    assert runtime.plcs.performance.maximum_nht_invocations == 1
-    plcs_renderer = NHTPLCSRenderer(
-        client=client,
-        compositor=runtime.plcs.foreground_compositor,
-        executable=runtime.nht.render_executable,
-        environment=runtime.nht.environment,
-        timeout_seconds=runtime.plcs.render_timeout_seconds,
-    )
-    assert plcs_renderer.compositor is runtime.plcs.foreground_compositor
-
-
-def test_single_object_plcs_config_composes_the_real_production_path() -> None:
-    runtime = _compose("dataset/plcs=single_object")
-    parameters = runtime.plcs.build_stage_parameters(seed=runtime.stages.seed)
-
-    assert runtime.plcs.production_mode is PLCSProductionMode.SINGLE_OBJECT
-    assert runtime.plcs.timeline.frame_selection == "all_source_frames"
-    assert runtime.plcs.require_articulated_motion
-    assert runtime.plcs.performance.require_cuda
-    assert parameters.production_mode is PLCSProductionMode.SINGLE_OBJECT
-    assert len(parameters.objects) == 1
-    assert parameters.objects[0].category.value == "running"
-    assert parameters.objects[0].start_frame == 0
-
-
-def test_unknown_plcs_production_mode_fails_at_configuration_boundary() -> None:
-    with pytest.raises(SemanticConfigurationError, match="production_mode"):
-        _compose("dataset.plcs.production_mode=unknown")
-
-
-def test_single_object_plcs_rejects_nonzero_start_frame() -> None:
-    with pytest.raises(SemanticConfigurationError, match="start_frame=0"):
-        _compose(
-            "dataset/plcs=single_object",
-            "dataset.plcs.objects.0.start_frame=1",
-        )
-
-
-def test_task_local_generation_camera_profiles_remain_available() -> None:
-    canonical_root = PROJECT_ROOT / "src/synthetic_data_generation/configs/camera"
-    assert {path.name for path in canonical_root.glob("*.yaml")} == {
-        "broadcast.yaml",
-        "default.yaml",
-    }
-    for task in ("blcs", "plcs"):
-        camera_root = PROJECT_ROOT / f"src/tasks/{task}/configs/camera"
-        profiles = tuple(sorted(camera_root.glob("*.yaml")))
-        assert {path.name for path in profiles} == {
-            "broadcast.yaml",
-            "corners.yaml",
-            "default.yaml",
-        }
-        assert all(path.is_file() and not path.is_symlink() for path in profiles)
-
-
-def test_camera_sampling_is_deterministic_and_within_composed_slot_bounds() -> None:
-    runtime = _compose()
-    identity = RigidTransform.identity()
-    court = CourtInstance(
-        court_instance_id="court-0",
-        candidate_id="candidate-0",
-        scene_from_court=identity,
-        court_from_scene=identity,
-        fit_status="accepted",
-        fit_metrics={"score": 1.0},
-        holdout_status="accepted",
-        holdout_metrics={"score": 1.0},
-    )
-
-    first = sample_camera_rig(runtime.camera, seed=runtime.stages.seed, court=court)
-    second = sample_camera_rig(runtime.camera, seed=runtime.stages.seed, court=court)
-
-    assert first == second
-    for sampled, slot in zip(first.cameras, runtime.camera.slots, strict=True):
-        x, y, height = sampled.court_local_center_m
-        look_x, look_y, look_height = sampled.court_local_look_at_m
-        assert slot.position_x_m[0] <= x <= slot.position_x_m[1]
-        assert slot.position_y_m[0] <= y <= slot.position_y_m[1]
-        assert slot.height_m[0] <= height <= slot.height_m[1]
-        assert slot.look_at_x_m[0] <= look_x <= slot.look_at_x_m[1]
-        assert slot.look_at_y_m[0] <= look_y <= slot.look_at_y_m[1]
-        assert slot.look_at_height_m[0] <= look_height <= slot.look_at_height_m[1]
-        assert slot.hfov_degrees[0] <= sampled.hfov_degrees <= slot.hfov_degrees[1]

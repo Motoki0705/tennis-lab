@@ -60,5 +60,4 @@ jobs:
         # Long dataset generation/recovery integrations are run explicitly.
         run: >-
           .venv/bin/python -m spin test -q --no-cov --dist=worksteal
-          --ignore=tests/integration/synthetic_data_generation/test_scene_pipeline_cpu.py
           --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py
