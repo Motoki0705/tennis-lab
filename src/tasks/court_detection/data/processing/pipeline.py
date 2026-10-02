@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from types import MappingProxyType
 
 import torch
-from torch import Tensor
 
 from src.tasks.court_detection.data.contracts import (
-    CourtDenseTargetKind,
     CourtSampleRecord,
     CourtTargetBundleSpec,
     CourtTargetKind,
@@ -16,6 +15,9 @@ from src.tasks.court_detection.data.contracts import (
 from src.tasks.court_detection.data.inputs.contract import CourtInput
 from src.tasks.court_detection.data.processing.geometry import CourtProcessingGeometry
 from src.tasks.court_detection.data.processing.targets import CourtTargetBuilder
+from src.tasks.court_detection.data.target_generation.online import (
+    generate_online_targets,
+)
 from src.tasks.court_detection.geometry.pose import (
     build_pose_target,
     semantic_in_front_mask,
@@ -97,14 +99,11 @@ class CourtProcessingPipeline:
         raw = self.input_layer.load(record)
         if raw.sample_id != record.sample_id:
             raise ValueError("Court input changed the stable sample ID.")
-        dense: dict[CourtDenseTargetKind, Tensor] = {}
-        for builder in self.target_builders:
-            for kind, value in builder.load_dense(raw).items():
-                if kind in dense:
-                    raise ValueError(f"Duplicate prepared dense target {kind!r}.")
-                dense[kind] = value
         plan = self.geometry.sample(raw)
-        transformed = self.geometry.apply(raw, dense_targets=dense, plan=plan)
+        transformed = self.geometry.apply(raw, dense_targets={}, plan=plan)
+        schemas = {builder.spec.kind: builder.spec.schema for builder in self.target_builders if builder.spec.kind != "kp"}
+        dense = generate_online_targets(raw, schemas, source_to_output=plan.matrix, output_size_hw=plan.output_size_hw, content_size_hw=plan.content_size_hw)
+        transformed = replace(transformed, dense_targets=MappingProxyType(dense))
         targets: dict[CourtTargetKind, object] = {
             builder.spec.kind: builder.build(transformed)
             for builder in self.target_builders

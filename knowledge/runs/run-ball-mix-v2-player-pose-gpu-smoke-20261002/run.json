@@ -1,0 +1,16 @@
+{
+  "run_id": "1790869513048574210_48328_ball-mix-v2-player-pose-gpu-smoke-20261002",
+  "name": "ball-mix-v2-player-pose-gpu-smoke-20261002",
+  "command": "PYTHONPATH=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-fullframe-pilot-r10-20260928/dino_extension/lib:/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-mix-v2-player-pose OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUDA_LAUNCH_BLOCKING=1 /home/kamimura/projects/tennis-lab/.venv/bin/python -u /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-mix-v2-player-pose/.runtime/gpu_smoke.py",
+  "provider": "codex",
+  "session": "01a0f53f-bff2-7202-b7ee-5fa777ae6627",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "bd48b063d73778710f849e56178e07806343ec1e",
+  "branch": "codex/ball-mix-v2-player-pose",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-mix-v2-player-pose",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-mix-v2-player-pose",
+  "captured_at": "2026-10-02T00:47:08+09:00"
+}

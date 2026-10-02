@@ -88,8 +88,8 @@ def summarize_fullframe(ft_progress: Path, coco_inference: Path, report: Path) -
                 for side, count in counts.items():
                     grouped[name, camera, side].update(count)
         print(f'full-frame sources {key}', flush=True)
-    for (name, camera, side), counts in sorted(grouped.items()):
-        manifest['table'].append({'source': name, 'camera': camera, 'near_far': side, **counts,
-            'persons_per_frame': counts['persons'] / counts['frames']})
+    for (name, camera, side), totals in sorted(grouped.items()):
+        manifest['table'].append({'source': name, 'camera': camera, 'near_far': side, **totals,
+            'persons_per_frame': totals['persons'] / totals['frames']})
     write_json_atomic(report / 'sources.json', manifest)
     write_csv(report / 'sources.csv', manifest['table'])
