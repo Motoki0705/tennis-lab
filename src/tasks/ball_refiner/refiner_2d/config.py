@@ -66,7 +66,7 @@ class Refiner2DConfig:
 
 @dataclass(frozen=True)
 class CandidateAnchoredConfig(Refiner2DConfig):
-    """Explicit experimental schema; the existing absolute schema is unchanged."""
+    """Adopted candidate-residual schema; absolute checkpoints keep their schema."""
 
     mean_parameterization: str
     anchored_components: int

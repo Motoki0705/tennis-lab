@@ -27,7 +27,7 @@ from src.tennis_scene.pipeline.input_assembly.observations import (
 @dataclass(frozen=True)
 class CourtSideInputAssembler:
     ball_threshold: float
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> CourtSideInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
@@ -49,7 +49,7 @@ class PlayerAssociationInputAssembler:
 class CameraAlignmentInputAssembler:
     human_threshold: float
     ball_threshold: float
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> CameraAlignmentInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
@@ -74,7 +74,7 @@ class PlayerTriangulationInputAssembler:
 @dataclass(frozen=True)
 class BallTriangulationInputAssembler:
     ball_threshold: float
-    version: int = 1
+    version: int = 2
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> TriangulationInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]

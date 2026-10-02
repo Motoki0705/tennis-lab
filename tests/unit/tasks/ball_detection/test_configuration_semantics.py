@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
@@ -16,7 +17,9 @@ from src.tasks.ball_detection.configuration import (
     validate_visualization,
     validate_youtube_boundary,
 )
-from src.utils.configuration import ConfigurationError
+from src.tasks.ball_detection.evaluation.contracts import load_evaluation_manifest
+from src.tasks.base.configuration import BaseRunConfig
+from src.utils.configuration import ConfigurationError, PathRole
 from src.utils.paths import PROJECT_ROOT
 
 
@@ -195,3 +198,42 @@ def test_youtube_source_rejects_empty_required_fields(field: str) -> None:
 
     with pytest.raises(ConfigurationError):
         validate_youtube_boundary(config)
+
+
+@pytest.mark.parametrize("name", ["train", "train_staged", "staged_phase1", "staged_phase2", "staged_phase3", "staged_phase4"])
+def test_training_keeps_backbone_assets_and_prior_phase_runs_in_separate_roots(tmp_path: Path, name: str) -> None:
+    overrides = [f"paths.project_root={tmp_path}", f"paths.artifact_root={tmp_path / 'previous-runs'}"]
+    if name == "train":
+        overrides.append("model=dinov3_rope")
+    config = _compose(name, overrides=overrides)
+    validate_training(config)
+    paths = BallRuntimePaths.from_config(config)
+    assert paths.checkpoint(str(config.model.backbone.checkpoint_path)) == (
+        tmp_path / "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    )
+    run = BaseRunConfig.from_mapping(config.run, resolver=paths.resolver)
+    if name in {"staged_phase2", "staged_phase3", "staged_phase4"}:
+        previous = int(name[-1]) - 1
+        assert run.init_weights == tmp_path / f"previous-runs/ball_detection/train/staged/phase{previous}/logs/run/checkpoints/last.ckpt"
+    else:
+        assert run.init_weights is None
+
+
+@pytest.mark.parametrize("name", ["eval", "visualize", "evaluate_manifest", "clip_and_predict_youtube_dataset"])
+def test_historical_checkpoint_inputs_preserve_the_independent_backbone_root(tmp_path: Path, name: str) -> None:
+    config = _compose(name, overrides=[f"paths.project_root={tmp_path}", f"paths.artifact_root={tmp_path / 'previous-runs'}"])
+    paths = BallRuntimePaths.from_config(config)
+    assert paths.resolver.roots.checkpoint_root == tmp_path / "ckpt"
+    if name == "evaluate_manifest":
+        manifest = load_evaluation_manifest(PROJECT_ROOT / config.manifest_path, resolver=paths.resolver)
+        assert all(model.checkpoint.is_relative_to(tmp_path / "previous-runs") for model in manifest.models)
+    else:
+        if name == "eval":
+            section, key, location = config.run, "checkpoint_path", "run"
+        elif name == "visualize":
+            section, key, location = config.visualization, "checkpoint", "visualization"
+        else:
+            section, key, location = config.workflow.prediction, "checkpoint", "workflow.prediction"
+        reference = paths.checkpoint_input(section, key, path=location)
+        assert reference.role is PathRole.ARTIFACT
+        assert reference.path.is_relative_to(tmp_path / "previous-runs")

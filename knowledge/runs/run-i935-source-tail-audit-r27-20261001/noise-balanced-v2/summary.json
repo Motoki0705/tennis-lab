@@ -1,0 +1,1038 @@
+{
+  "status": "complete",
+  "seed": 1729,
+  "repeats": 10000,
+  "method": "paired disjoint contiguous blocks, retaining partial edge blocks; uniform block resampling, expected frame multiplicity 1, no truncation; observed mask applied after sampling; linear p90; percentile intervals",
+  "limitations": "single 4.5s clip, nonstationary tail; moving blocks underrepresent endpoints, balanced disjoint blocks depend on partition origin; synchronized-camera sensitivity included; not population-general confidence or a p value",
+  "pooled_original_delta_px": 46.341093119428365,
+  "results": [
+    {
+      "block_frames": 8,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -15.866027037238858,
+          90.15810380136566
+        ],
+        "median_px": 24.97352463093062,
+        "std_px": 26.907716376869786,
+        "fraction_at_or_below_zero": 0.0999,
+        "fraction_at_or_below_gate_tolerance_5": 0.1665,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        534,
+        747
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -62.51705651942805,
+            3.6570451022139245
+          ],
+          "median_px": -33.15101372213624,
+          "std_px": 18.53914628676062,
+          "fraction_at_or_below_zero": 0.9083,
+          "fraction_at_or_below_gate_tolerance_5": 0.986,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -55.42355094445961,
+            114.94965316809359
+          ],
+          "median_px": 10.275084201501585,
+          "std_px": 38.661315979623225,
+          "fraction_at_or_below_zero": 0.1861,
+          "fraction_at_or_below_gate_tolerance_5": 0.3132,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            17.566433626311913,
+            158.24858370966263
+          ],
+          "median_px": 80.97186188292656,
+          "std_px": 38.2611779255772,
+          "fraction_at_or_below_zero": 0.0003,
+          "fraction_at_or_below_gate_tolerance_5": 0.0044,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 8,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -21.00546171272208,
+          87.68718334943401
+        ],
+        "median_px": 23.076455735365442,
+        "std_px": 27.360218672903077,
+        "fraction_at_or_below_zero": 0.1466,
+        "fraction_at_or_below_gate_tolerance_5": 0.2198,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        475,
+        784
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -62.51705651942805,
+            3.6570451022139245
+          ],
+          "median_px": -33.15101372213624,
+          "std_px": 18.53914628676062,
+          "fraction_at_or_below_zero": 0.9083,
+          "fraction_at_or_below_gate_tolerance_5": 0.986,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -54.69166593096299,
+            114.75183951676775
+          ],
+          "median_px": 10.380659619891247,
+          "std_px": 37.91127826975162,
+          "fraction_at_or_below_zero": 0.1807,
+          "fraction_at_or_below_gate_tolerance_5": 0.3048,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            16.070450405048224,
+            157.88862154220396
+          ],
+          "median_px": 81.09997541326436,
+          "std_px": 38.86862896096701,
+          "fraction_at_or_below_zero": 0.0006,
+          "fraction_at_or_below_gate_tolerance_5": 0.005,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 8,
+      "partition_offset": 4,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -15.689412100771042,
+          87.50012231058616
+        ],
+        "median_px": 25.270151081689324,
+        "std_px": 26.101303844504308,
+        "fraction_at_or_below_zero": 0.1027,
+        "fraction_at_or_below_gate_tolerance_5": 0.1635,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        531,
+        759
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -67.82357144963741,
+            2.5518199486254503
+          ],
+          "median_px": -33.05592140758529,
+          "std_px": 18.62612286036021,
+          "fraction_at_or_below_zero": 0.9252,
+          "fraction_at_or_below_gate_tolerance_5": 0.992,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -52.001403801418746,
+            114.30959659915263
+          ],
+          "median_px": 10.836534585394432,
+          "std_px": 38.861520971444214,
+          "fraction_at_or_below_zero": 0.2032,
+          "fraction_at_or_below_gate_tolerance_5": 0.3291,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            20.781419935248447,
+            154.3417126701351
+          ],
+          "median_px": 79.41641363956364,
+          "std_px": 35.32334496773239,
+          "fraction_at_or_below_zero": 0.0,
+          "fraction_at_or_below_gate_tolerance_5": 0.0014,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 8,
+      "partition_offset": 4,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -19.971836714022466,
+          86.60557842801649
+        ],
+        "median_px": 21.499628389444553,
+        "std_px": 27.107480467032275,
+        "fraction_at_or_below_zero": 0.1452,
+        "fraction_at_or_below_gate_tolerance_5": 0.2178,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        437,
+        791
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -67.82357144963741,
+            2.5518199486254503
+          ],
+          "median_px": -33.05592140758529,
+          "std_px": 18.62612286036021,
+          "fraction_at_or_below_zero": 0.9252,
+          "fraction_at_or_below_gate_tolerance_5": 0.992,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -46.23756331960234,
+            113.96446416670372
+          ],
+          "median_px": 10.76827149898709,
+          "std_px": 38.25607352661171,
+          "fraction_at_or_below_zero": 0.2036,
+          "fraction_at_or_below_gate_tolerance_5": 0.3239,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            20.606950544563823,
+            155.03041817871028
+          ],
+          "median_px": 79.32133555632353,
+          "std_px": 35.99125947322131,
+          "fraction_at_or_below_zero": 0.0001,
+          "fraction_at_or_below_gate_tolerance_5": 0.0028,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 16,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -25.04723360071421,
+          93.06139215119586
+        ],
+        "median_px": 19.45873707119733,
+        "std_px": 29.250798519353303,
+        "fraction_at_or_below_zero": 0.1548,
+        "fraction_at_or_below_gate_tolerance_5": 0.2286,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        507,
+        783
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -62.43852657412644,
+            3.2271181336697623
+          ],
+          "median_px": -29.819670319664212,
+          "std_px": 21.111336517312704,
+          "fraction_at_or_below_zero": 0.8438,
+          "fraction_at_or_below_gate_tolerance_5": 0.9922,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -52.14900814226493,
+            130.4220986834232
+          ],
+          "median_px": 10.225781180872275,
+          "std_px": 45.31551937902523,
+          "fraction_at_or_below_zero": 0.1989,
+          "fraction_at_or_below_gate_tolerance_5": 0.3453,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            5.8757161408276986,
+            160.1151360568732
+          ],
+          "median_px": 74.77365009378954,
+          "std_px": 42.11104211341487,
+          "fraction_at_or_below_zero": 0.0013,
+          "fraction_at_or_below_gate_tolerance_5": 0.0216,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 16,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -29.150301723353092,
+          85.0287190199774
+        ],
+        "median_px": 13.92622236764124,
+        "std_px": 28.00339504750209,
+        "fraction_at_or_below_zero": 0.2245,
+        "fraction_at_or_below_gate_tolerance_5": 0.3151,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        389,
+        799
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -62.43852657412644,
+            3.2271181336697623
+          ],
+          "median_px": -29.819670319664212,
+          "std_px": 21.111336517312704,
+          "fraction_at_or_below_zero": 0.8438,
+          "fraction_at_or_below_gate_tolerance_5": 0.9922,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -52.14900814226493,
+            130.8278860454937
+          ],
+          "median_px": 9.788757358366041,
+          "std_px": 45.35051180591757,
+          "fraction_at_or_below_zero": 0.1986,
+          "fraction_at_or_below_gate_tolerance_5": 0.3478,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            5.441713716676136,
+            159.72615057815005
+          ],
+          "median_px": 74.9592746280989,
+          "std_px": 41.82108751618585,
+          "fraction_at_or_below_zero": 0.0013,
+          "fraction_at_or_below_gate_tolerance_5": 0.024,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 16,
+      "partition_offset": 8,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -23.61915592511278,
+          92.07288884521134
+        ],
+        "median_px": 19.53457432346056,
+        "std_px": 28.50583388392518,
+        "fraction_at_or_below_zero": 0.1514,
+        "fraction_at_or_below_gate_tolerance_5": 0.2231,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        494,
+        795
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -76.52265772961566,
+            5.608848086058495
+          ],
+          "median_px": -33.40915812512136,
+          "std_px": 21.156319617684154,
+          "fraction_at_or_below_zero": 0.8987,
+          "fraction_at_or_below_gate_tolerance_5": 0.9719,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -59.747418958724936,
+            127.48914971229426
+          ],
+          "median_px": 9.41629125270822,
+          "std_px": 44.66292317025111,
+          "fraction_at_or_below_zero": 0.2018,
+          "fraction_at_or_below_gate_tolerance_5": 0.3395,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            9.127135795124541,
+            157.8874269915818
+          ],
+          "median_px": 73.20751948979391,
+          "std_px": 39.3849399240729,
+          "fraction_at_or_below_zero": 0.0009,
+          "fraction_at_or_below_gate_tolerance_5": 0.0167,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 16,
+      "partition_offset": 8,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -29.804150103760392,
+          85.09194920945929
+        ],
+        "median_px": 13.890296151993056,
+        "std_px": 27.69499687914892,
+        "fraction_at_or_below_zero": 0.2161,
+        "fraction_at_or_below_gate_tolerance_5": 0.2985,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        367,
+        831
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -76.52265772961566,
+            5.608848086058495
+          ],
+          "median_px": -33.40915812512136,
+          "std_px": 21.156319617684154,
+          "fraction_at_or_below_zero": 0.8987,
+          "fraction_at_or_below_gate_tolerance_5": 0.9719,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -59.991891785776446,
+            125.32921180152219
+          ],
+          "median_px": 9.57116768645298,
+          "std_px": 44.21185364372362,
+          "fraction_at_or_below_zero": 0.207,
+          "fraction_at_or_below_gate_tolerance_5": 0.3403,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            8.540024547306302,
+            157.52921427132932
+          ],
+          "median_px": 72.63251951757843,
+          "std_px": 39.37952162400237,
+          "fraction_at_or_below_zero": 0.0012,
+          "fraction_at_or_below_gate_tolerance_5": 0.0162,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 33,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -34.3246743248061,
+          93.37947172645046
+        ],
+        "median_px": 11.897237594311122,
+        "std_px": 30.9767125645288,
+        "fraction_at_or_below_zero": 0.2256,
+        "fraction_at_or_below_gate_tolerance_5": 0.2958,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        400,
+        837
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -76.98926673368058,
+            5.10333282877283
+          ],
+          "median_px": -31.8318969042614,
+          "std_px": 22.709631545188426,
+          "fraction_at_or_below_zero": 0.8245,
+          "fraction_at_or_below_gate_tolerance_5": 0.974,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -61.58192101906895,
+            119.09233874377304
+          ],
+          "median_px": 13.526805380847293,
+          "std_px": 40.02842247065866,
+          "fraction_at_or_below_zero": 0.1488,
+          "fraction_at_or_below_gate_tolerance_5": 0.2824,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            3.1973839724210755,
+            149.57753642270887
+          ],
+          "median_px": 68.411698448661,
+          "std_px": 41.631046386521646,
+          "fraction_at_or_below_zero": 0.0023,
+          "fraction_at_or_below_gate_tolerance_5": 0.0425,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 33,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -42.582494927550464,
+          71.37613544794198
+        ],
+        "median_px": 11.033949264839563,
+        "std_px": 26.63986264637724,
+        "fraction_at_or_below_zero": 0.2701,
+        "fraction_at_or_below_gate_tolerance_5": 0.3131,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        201,
+        883
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -76.98926673368058,
+            5.10333282877283
+          ],
+          "median_px": -31.8318969042614,
+          "std_px": 22.709631545188426,
+          "fraction_at_or_below_zero": 0.8245,
+          "fraction_at_or_below_gate_tolerance_5": 0.974,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -61.268979003906516,
+            119.14822523721037
+          ],
+          "median_px": 13.52382051079212,
+          "std_px": 39.9424341191631,
+          "fraction_at_or_below_zero": 0.1489,
+          "fraction_at_or_below_gate_tolerance_5": 0.2808,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            3.4028251749345224,
+            148.92360152009476
+          ],
+          "median_px": 68.74809802254896,
+          "std_px": 41.47486943257178,
+          "fraction_at_or_below_zero": 0.0023,
+          "fraction_at_or_below_gate_tolerance_5": 0.0374,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 33,
+      "partition_offset": 16,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -29.27053880878009,
+          92.3185603097837
+        ],
+        "median_px": 17.083049276467534,
+        "std_px": 28.949655246693425,
+        "fraction_at_or_below_zero": 0.1674,
+        "fraction_at_or_below_gate_tolerance_5": 0.2309,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        440,
+        813
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -77.88356618561485,
+            8.75027016102812
+          ],
+          "median_px": -32.532546800707316,
+          "std_px": 22.258697220132795,
+          "fraction_at_or_below_zero": 0.8825,
+          "fraction_at_or_below_gate_tolerance_5": 0.9599,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -43.86457734725494,
+            149.85855433192876
+          ],
+          "median_px": 12.543138103373451,
+          "std_px": 51.1969100447038,
+          "fraction_at_or_below_zero": 0.1818,
+          "fraction_at_or_below_gate_tolerance_5": 0.3906,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            1.2900340084699868,
+            158.32546085182585
+          ],
+          "median_px": 66.62414612758867,
+          "std_px": 42.95288487646351,
+          "fraction_at_or_below_zero": 0.0133,
+          "fraction_at_or_below_gate_tolerance_5": 0.055,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 33,
+      "partition_offset": 16,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -40.95925309783404,
+          83.25748301139099
+        ],
+        "median_px": 11.014022204094331,
+        "std_px": 27.782095909191536,
+        "fraction_at_or_below_zero": 0.2653,
+        "fraction_at_or_below_gate_tolerance_5": 0.3366,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        247,
+        867
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -77.88356618561485,
+            8.75027016102812
+          ],
+          "median_px": -32.532546800707316,
+          "std_px": 22.258697220132795,
+          "fraction_at_or_below_zero": 0.8825,
+          "fraction_at_or_below_gate_tolerance_5": 0.9599,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -39.67678841672327,
+            147.75017771448748
+          ],
+          "median_px": 12.248670293968786,
+          "std_px": 50.81669894529085,
+          "fraction_at_or_below_zero": 0.1852,
+          "fraction_at_or_below_gate_tolerance_5": 0.3882,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            1.2211885951116064,
+            157.39112777995655
+          ],
+          "median_px": 66.99814794586376,
+          "std_px": 42.975493972485175,
+          "fraction_at_or_below_zero": 0.0132,
+          "fraction_at_or_below_gate_tolerance_5": 0.0537,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 66,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -35.02258132183651,
+          94.488509427545
+        ],
+        "median_px": 14.754768018347166,
+        "std_px": 30.949578282437322,
+        "fraction_at_or_below_zero": 0.2283,
+        "fraction_at_or_below_gate_tolerance_5": 0.2806,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        281,
+        947
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -55.00239546177366,
+            5.042902582239478
+          ],
+          "median_px": -33.490598012280806,
+          "std_px": 19.527096339685713,
+          "fraction_at_or_below_zero": 0.8768,
+          "fraction_at_or_below_gate_tolerance_5": 0.9684,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -3.5327263038015744,
+            123.92122186182581
+          ],
+          "median_px": 13.526805380847293,
+          "std_px": 37.32976791667163,
+          "fraction_at_or_below_zero": 0.068,
+          "fraction_at_or_below_gate_tolerance_5": 0.257,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            1.3046561953054425,
+            152.25368662970723
+          ],
+          "median_px": 68.48163802474492,
+          "std_px": 45.5946303825706,
+          "fraction_at_or_below_zero": 0.011,
+          "fraction_at_or_below_gate_tolerance_5": 0.0984,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 66,
+      "partition_offset": 0,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -42.27891718048688,
+          57.8628721411272
+        ],
+        "median_px": 11.60641195004645,
+        "std_px": 27.008341676040416,
+        "fraction_at_or_below_zero": 0.312,
+        "fraction_at_or_below_gate_tolerance_5": 0.3296,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        90,
+        970
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -55.00239546177366,
+            5.042902582239478
+          ],
+          "median_px": -33.490598012280806,
+          "std_px": 19.527096339685713,
+          "fraction_at_or_below_zero": 0.8768,
+          "fraction_at_or_below_gate_tolerance_5": 0.9684,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -3.5327263038015744,
+            125.75104766779845
+          ],
+          "median_px": 13.526805380847293,
+          "std_px": 37.749411922555964,
+          "fraction_at_or_below_zero": 0.0697,
+          "fraction_at_or_below_gate_tolerance_5": 0.2519,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            1.457960387196266,
+            152.25368662970723
+          ],
+          "median_px": 69.18804466459595,
+          "std_px": 45.70681745306181,
+          "fraction_at_or_below_zero": 0.0088,
+          "fraction_at_or_below_gate_tolerance_5": 0.0924,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 66,
+      "partition_offset": 33,
+      "camera_blocks_synchronized": false,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -31.87638401188205,
+          92.93884878902436
+        ],
+        "median_px": 11.80990933417772,
+        "std_px": 30.542913334763377,
+        "fraction_at_or_below_zero": 0.2283,
+        "fraction_at_or_below_gate_tolerance_5": 0.2828,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        303,
+        937
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 9993,
+          "undefined_no_observed_replicates": 7,
+          "percentile_95_interval_px": [
+            -80.19113802949593,
+            4.049863252665347
+          ],
+          "median_px": -33.47742629936407,
+          "std_px": 21.744836097978638,
+          "fraction_at_or_below_zero": 0.8152706894826378,
+          "fraction_at_or_below_gate_tolerance_5": 1.0,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -12.073730932468678,
+            123.0035400096765
+          ],
+          "median_px": 13.368266861992282,
+          "std_px": 39.85246721883908,
+          "fraction_at_or_below_zero": 0.0491,
+          "fraction_at_or_below_gate_tolerance_5": 0.2168,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 9994,
+          "undefined_no_observed_replicates": 6,
+          "percentile_95_interval_px": [
+            1.7643932720200404,
+            154.39999874728537
+          ],
+          "median_px": 62.84757316274144,
+          "std_px": 44.611102476755796,
+          "fraction_at_or_below_zero": 0.014608765259155493,
+          "fraction_at_or_below_gate_tolerance_5": 0.033119871923153896,
+          "zero_excluded": true
+        }
+      }
+    },
+    {
+      "block_frames": 66,
+      "partition_offset": 33,
+      "camera_blocks_synchronized": true,
+      "pooled": {
+        "defined_replicates": 10000,
+        "undefined_no_observed_replicates": 0,
+        "percentile_95_interval_px": [
+          -39.887193722273935,
+          79.95247896171915
+        ],
+        "median_px": 11.835217149769761,
+        "std_px": 26.121863083931867,
+        "fraction_at_or_below_zero": 0.2754,
+        "fraction_at_or_below_gate_tolerance_5": 0.3146,
+        "zero_excluded": false
+      },
+      "observed_per_replicate_min_max": [
+        10,
+        980
+      ],
+      "cameras": {
+        "cam0": {
+          "defined_replicates": 9993,
+          "undefined_no_observed_replicates": 7,
+          "percentile_95_interval_px": [
+            -80.19113802949593,
+            4.049863252665347
+          ],
+          "median_px": -33.47742629936407,
+          "std_px": 21.744836097978638,
+          "fraction_at_or_below_zero": 0.8152706894826378,
+          "fraction_at_or_below_gate_tolerance_5": 1.0,
+          "zero_excluded": false
+        },
+        "cam1": {
+          "defined_replicates": 10000,
+          "undefined_no_observed_replicates": 0,
+          "percentile_95_interval_px": [
+            -18.0565271846094,
+            123.0035400096765
+          ],
+          "median_px": 13.368266861992282,
+          "std_px": 40.95402350428054,
+          "fraction_at_or_below_zero": 0.0496,
+          "fraction_at_or_below_gate_tolerance_5": 0.2257,
+          "zero_excluded": false
+        },
+        "cam2": {
+          "defined_replicates": 9993,
+          "undefined_no_observed_replicates": 7,
+          "percentile_95_interval_px": [
+            0.43969398528002035,
+            154.39999874728537
+          ],
+          "median_px": 62.84757316274144,
+          "std_px": 44.81458079326782,
+          "fraction_at_or_below_zero": 0.017111978384869407,
+          "fraction_at_or_below_gate_tolerance_5": 0.03652556789752827,
+          "zero_excluded": true
+        }
+      }
+    }
+  ],
+  "tail": {
+    "camera": "cam2",
+    "inclusive_frames": [
+      217,
+      265
+    ],
+    "observed": 49,
+    "cache_above_original_pooled_source_p90": 5,
+    "source_above_original_pooled_source_p90": 24,
+    "source_above_original_pooled_cache_p90": 27,
+    "cache_above_original_pooled_cache_p90": 8,
+    "cached_p90_px": 134.77176366106818,
+    "source_p90_px": 189.06469345007136,
+    "pooled_p90_if_only_these_source_errors_replaced_by_cache": 72.25487401559883,
+    "pooled_delta_if_only_these_source_errors_replaced_by_cache": -22.097731383903067,
+    "pooled_delta_excluding_these_frames_from_both": -20.892339059345332,
+    "cached_free_winner": 14,
+    "source_free_winner": 39,
+    "warning": "post-hoc attribution only; not a rescored acceptance gate or a causal model intervention"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "criterion": "https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5909424600",
+  "calibration_artifact": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-anchored-12k-s42-r21-20260930/covariance-calibration-r23.json",
+  "predictions": {
+    "42": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-anchored-12k-s42-r21-20260930",
+    "43": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-anchored-12k-s43-r23-20260930",
+    "44": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-anchored-12k-s44-r24-20260930",
+    "absolute": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-absolute-12k-s42-r21-20260930"
+  },
+  "input_sha256": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-anchored-seeds-r23-20260930/reproduction-criterion-r24.md": "0d5848b80844acb7facf9bfd2def4d462ea774e94fc05bdc0ba946e014324ede",
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/detector_only/i935-anchored-12k-s42-r21-20260930/covariance-calibration-r23.json": "197f9e6490e6c91f2ff699de27b490df2669c4ff79ea599d4dd8b484d9e122f5",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-seed-reproduction-r25-20260930/compare_seeds.py": "8a27acda40db4ed33af0d88023bf95b256283fe0abd50616cdb6f410be8ce7dc"
+  }
+}

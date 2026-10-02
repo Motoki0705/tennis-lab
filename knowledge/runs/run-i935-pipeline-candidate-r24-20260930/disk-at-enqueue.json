@@ -1,0 +1,15 @@
+{
+  "managed_new_bytes": 2995668,
+  "paths": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930": 299414,
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-seed44-retry-r24-20260930": 152606,
+    "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/export/anchored_12k/i935-s42-r24-20260930": 2543648
+  },
+  "future_job_disk_caps_bytes": [
+    1500000000,
+    3000000000
+  ],
+  "run_budget_bytes": 5000000000,
+  "old_artifacts_deleted": 0,
+  "measurement": "new run bundles/export only; excludes preexisting shared caches and future queue outputs"
+}

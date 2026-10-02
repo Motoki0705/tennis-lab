@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,8 +16,10 @@ from src.tasks.ball_detection.model_io.contracts import BallModelIOError
 from src.tasks.ball_detection.model_io.factory import build_ball_detection_pair
 from src.tasks.ball_detection.model_io.normalization import BallImageNormalization
 from src.tasks.base.model_io import BoundModelIO
+from src.utils.configuration import PathResolver
 
 MODEL_STATE_PREFIX = "model."
+_LOGGER = logging.getLogger(__name__)
 
 
 class BallInferenceCheckpointError(ValueError):
@@ -27,6 +31,37 @@ class LoadedBallCheckpoint:
     model_io: BoundModelIO[Tensor, Tensor, Tensor]
     config: DictConfig
     image_normalization: BallImageNormalization
+    backbone_asset_migration: dict[str, str] | None
+
+
+def _runtime_backbone_config(
+    config: DictConfig, resolver: PathResolver | None,
+) -> tuple[DictConfig, dict[str, str] | None]:
+    """Migrate the known external DINOv3 layout without changing saved metadata."""
+    if config.model.name != "dinov3_rope":
+        return config, None
+    runtime = copy.deepcopy(config)
+    saved_path = str(config.model.backbone.checkpoint_path)
+    migration = None
+    legacy_prefix = "dinov3/checkpoints/"
+    if saved_path == legacy_prefix[:-1] or saved_path.startswith(legacy_prefix):
+        filename = saved_path[len(legacy_prefix):]
+        if not filename or "/" in filename or "\\" in filename or filename in {".", ".."}:
+            raise BallInferenceCheckpointError("Legacy DINOv3 asset path must name exactly one checkpoint file")
+        runtime_path = f"dinov3/{filename}"
+        runtime.model.backbone.checkpoint_path = runtime_path
+        migration = {"layout": "external_dinov3_to_checkpoint", "saved_path": saved_path, "runtime_path": runtime_path}
+        if resolver is None:
+            # The legacy checkpoint root described learned outputs, not this backbone.
+            runtime.paths.checkpoint_root = "ckpt"
+    if resolver is not None:
+        runtime.paths = dict(resolver.roots.as_mapping())
+    if migration is not None:
+        from src.tasks.ball_detection.configuration import BallRuntimePaths
+        migration["checkpoint_root"] = str(BallRuntimePaths.from_config(runtime).resolver.roots.checkpoint_root)
+        _LOGGER.warning("Migrating saved DINOv3 asset path %s -> %s under %s",
+                        saved_path, migration["runtime_path"], migration["checkpoint_root"])
+    return runtime, migration
 
 
 def load_ball_checkpoint(
@@ -34,6 +69,7 @@ def load_ball_checkpoint(
     *,
     strict: bool = True,
     weights_only: bool = False,
+    resolver: PathResolver | None = None,
 ) -> LoadedBallCheckpoint:
     """Restore one model on CPU without constructing a Lightning training module.
 
@@ -71,7 +107,8 @@ def load_ball_checkpoint(
         raise BallInferenceCheckpointError(
             f"{location}: checkpoint state_dict carries no {MODEL_STATE_PREFIX!r} model weights."
         )
-    bound = build_ball_detection_pair(config)
+    runtime_config, migration = _runtime_backbone_config(config, resolver)
+    bound = build_ball_detection_pair(runtime_config)
     try:
         bound.model.load_state_dict(weights, strict=True)
     except RuntimeError as error:
@@ -82,4 +119,4 @@ def load_ball_checkpoint(
         normalization = BallImageNormalization.from_config(config)
     except BallModelIOError as error:
         raise BallInferenceCheckpointError(f"{location}: {error}") from error
-    return LoadedBallCheckpoint(bound, config, normalization)
+    return LoadedBallCheckpoint(bound, config, normalization, migration)
