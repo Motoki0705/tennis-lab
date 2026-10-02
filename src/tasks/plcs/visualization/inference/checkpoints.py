@@ -30,39 +30,15 @@ from src.tasks.base.generate_dataset import (
 )
 
 OBJECTNESS_SINGLE: Final = "single_object"
-OBJECTNESS_MULTI: Final = "multi_object"
 
-TRACK_QUERY_MODEL_NAMES: Final = frozenset(
-    {"plcs_track_query", "plcs_track_query_reference"}
-)
-REFERENCE_MODEL_NAMES: Final = frozenset(
-    {"plcs_multiview_axial_reference", "plcs_track_query_reference"}
-)
-SINGLE_OBJECT_MODEL_NAMES: Final = frozenset(
-    {
-        "plcs",
-        "plcs_multiview_axial",
-        "plcs_multiview_axial_split",
-        "plcs_multiview_axial_camtoken",
-        "plcs_multiview_axial_reference",
-    }
-)
-SUPPORTED_INPUT_PROFILES: Final = frozenset({"frame", "sequence", "multiview"})
-TRACK_QUERY_INPUT_PROFILE: Final = "track_query"
 
 # A checkpoint consumes exactly one court selector and one object count, which
 # together select the scene datasets it can run on.
+
+SINGLE_OBJECT_MODEL_NAMES: Final = frozenset({"plcs_multiview_axial"})
+SUPPORTED_INPUT_PROFILES: Final = frozenset({"multiview"})
 FAMILIES_BY_TARGET: Final[dict[tuple[str, str], tuple[str, ...]]] = {
-    (OBJECTNESS_SINGLE, PHYSICAL_V1_SELECTOR): (
-        "single_object",
-        "single_object_broadcast",
-    ),
-    (OBJECTNESS_SINGLE, CAMERA_VIEW_V2_SELECTOR): ("single_object_camera_view_v2",),
-    (OBJECTNESS_MULTI, PHYSICAL_V1_SELECTOR): (
-        "multi_object",
-        "multi_object_broadcast",
-    ),
-    (OBJECTNESS_MULTI, CAMERA_VIEW_V2_SELECTOR): ("multi_object_camera_view_v2",),
+    (OBJECTNESS_SINGLE, PHYSICAL_V1_SELECTOR): ("single_object",),
 }
 
 _SIDECAR_NAMES: Final = ("hparams.yaml", "config.yaml")
@@ -74,16 +50,14 @@ class CheckpointMetadataError(ValueError):
 
 def objectness_for_model(model_name: str) -> str | None:
     """Return the object-count family a model name consumes, if known."""
-    if model_name in TRACK_QUERY_MODEL_NAMES:
-        return OBJECTNESS_MULTI
     if model_name in SINGLE_OBJECT_MODEL_NAMES:
         return OBJECTNESS_SINGLE
     return None
 
 
 def is_reference_model(model_name: str) -> bool:
-    """Return whether a model name requires an explicit reference camera."""
-    return model_name in REFERENCE_MODEL_NAMES
+    """The supported physical-court axial model needs no reference camera."""
+    return False
 
 
 def scene_family_of(scene_dir: str | None) -> str | None:
@@ -349,14 +323,7 @@ def _build_info(
 
     objects = objectness_for_model(model_name)
     raw_profile = _nested(config, "model", "io", "input_profile")
-    if isinstance(raw_profile, str):
-        input_profile: str | None = raw_profile
-    elif objects == OBJECTNESS_MULTI:
-        # Track-query checkpoints carry no ``model.io`` block; the adapter
-        # profile is fixed by the model architecture itself.
-        input_profile = TRACK_QUERY_INPUT_PROFILE
-    else:
-        input_profile = None
+    input_profile: str | None = raw_profile if isinstance(raw_profile, str) else None
     raw_scene_dir = _nested(config, "data", "scene_dir")
     trained_scene_dir = raw_scene_dir if isinstance(raw_scene_dir, str) else None
     max_views = _as_optional_positive_int(_nested(config, "model", "max_views"))
@@ -375,11 +342,7 @@ def _build_info(
         families = (trained_family, *(f for f in families if f != trained_family))
 
     reason: str | None = None
-    allowed_profiles = SUPPORTED_INPUT_PROFILES | (
-        frozenset({TRACK_QUERY_INPUT_PROFILE})
-        if objects == OBJECTNESS_MULTI
-        else frozenset()
-    )
+    allowed_profiles = SUPPORTED_INPUT_PROFILES
     if reference and selector != CAMERA_VIEW_V2_SELECTOR:
         reason = "reference モデルは camera_view_v2 selector を要求します。"
     elif not families:
@@ -620,13 +583,9 @@ def scan_checkpoints(
 __all__ = [
     "CAMERA_VIEW_V2_SELECTOR",
     "FAMILIES_BY_TARGET",
-    "OBJECTNESS_MULTI",
     "OBJECTNESS_SINGLE",
     "PHYSICAL_V1_SELECTOR",
-    "REFERENCE_MODEL_NAMES",
     "SUPPORTED_INPUT_PROFILES",
-    "TRACK_QUERY_INPUT_PROFILE",
-    "TRACK_QUERY_MODEL_NAMES",
     "CheckpointInfo",
     "CheckpointMetadataError",
     "allowed_scene_families",

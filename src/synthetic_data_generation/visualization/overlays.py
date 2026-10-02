@@ -18,12 +18,9 @@ from src.synthetic_data_generation.dataset.court.components.labels import (
 from src.synthetic_data_generation.dataset.court.schema import CourtDatasetSchemaVersion
 from src.synthetic_data_generation.dataset.runtime import LogicalRenderSample
 from src.synthetic_data_generation.visualization.sources import (
-    BLCSSourceFrame,
     CourtSourceFrame,
-    PLCSSourceFrame,
 )
 from src.utils.schema.court import CAMERA_VIEW_HALF_TURN_INDEX, COURT_SKELETON
-from src.utils.schema.player import COCO17_SKELETON
 
 _COURT_CLASS_COLORS: tuple[tuple[int, int, int], ...] = (
     (80, 210, 255),
@@ -68,12 +65,6 @@ _TEXT_BGR = (245, 245, 245)
 BallHistory = dict[str, deque[tuple[int, int]]]
 
 
-def new_ball_history(object_ids: Sequence[str], *, history_frames: int) -> BallHistory:
-    """Create fixed-capacity trajectory histories in canonical object order."""
-    capacity = max(1, history_frames)
-    return {object_id: deque(maxlen=capacity) for object_id in object_ids}
-
-
 def render_court_overlay(
     frame: CourtSourceFrame,
     *,
@@ -85,7 +76,9 @@ def render_court_overlay(
         CourtDatasetSchemaVersion.V2,
         CourtDatasetSchemaVersion.V3,
     ):
-        return _render_court_overlay_singleton(frame, trajectory_id=trajectory_id, show_metadata=show_metadata)
+        return _render_court_overlay_singleton(
+            frame, trajectory_id=trajectory_id, show_metadata=show_metadata
+        )
     if frame.schema_version is not CourtDatasetSchemaVersion.V1:
         raise TypeError("Court overlay requires an explicit supported schema version.")
     canvas = _rgb_float_to_bgr(frame.rgb)
@@ -295,257 +288,15 @@ def _render_court_overlay_singleton(
                 f"COURT {version} trajectory={trajectory_id} view={frame.view_id} "
                 f"frame={frame.trajectory_frame_index} sample={frame.sample_id}"
             ),
-            second_line=(f"filled=renderer-visible  count={visible_points}/{total_points}"),
+            second_line=(
+                f"filled=renderer-visible  count={visible_points}/{total_points}"
+            ),
         )
         _court_class_legend(
             canvas,
             class_names=SEMANTIC_CLASS_NAMES_V2,
             colors=_COURT_CLASS_COLORS_V2,
         )
-    return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
-
-
-def render_blcs_overlay(
-    frame: BLCSSourceFrame,
-    *,
-    logical_scene_id: str,
-    camera_id: str,
-    object_ids: Sequence[str],
-    court_kp: NDArray[np.float32],
-    court_vis: NDArray[np.bool_],
-    history: BallHistory,
-    history_frames: int,
-) -> NDArray[np.uint8]:
-    """Overlay ball identity, observations, presence, and short track history."""
-    canvas = _rgb_float_to_bgr(frame.render.rgb)
-    _draw_normalized_court(
-        canvas,
-        court_kp,
-        court_vis,
-        normalized=False,
-    )
-    metadata = _object(frame.metadata, name="BLCS metadata")
-    objects = tuple(
-        _object(value, name="BLCS object")
-        for value in _array(metadata.get("objects"), name="BLCS objects")
-    )
-    if len(objects) != len(object_ids):
-        raise ValueError("BLCS object labels differ from the canonical track axis.")
-    arrays = _object(metadata.get("semantic_arrays"), name="BLCS semantic_arrays")
-    ball_uv = _float_array(arrays.get("ball_uv"), shape=(len(object_ids), 2))
-    present = _bool_array(arrays.get("present"), shape=(len(object_ids),))
-    geometric = _bool_array(arrays.get("geometric_visible"), shape=(len(object_ids),))
-    rendered = _bool_array(arrays.get("rendered_visible"), shape=(len(object_ids),))
-    instance_ids = _positive_integer_array(
-        arrays.get("instance_ids"), shape=(len(object_ids),)
-    )
-    if len(set(int(value) for value in instance_ids)) != len(instance_ids):
-        raise ValueError("BLCS semantic instance IDs must be unique.")
-    if np.any(rendered & ~present):
-        raise ValueError("Absent BLCS objects cannot be renderer-visible.")
-    for object_index, (object_id, raw_object) in enumerate(
-        zip(object_ids, objects, strict=True)
-    ):
-        if raw_object.get("object_id") != object_id:
-            raise ValueError("BLCS object identity/order changed during visualization.")
-        if raw_object.get("present") is not bool(present[object_index]):
-            raise ValueError("BLCS object presence differs from semantic arrays.")
-        if raw_object.get("geometric_visible") is not bool(
-            geometric[object_index]
-        ) or raw_object.get("rendered_visible") is not bool(rendered[object_index]):
-            raise ValueError("BLCS object visibility differs from semantic arrays.")
-        if _positive_integer(
-            raw_object.get("instance_id"), name="BLCS object instance_id"
-        ) != int(instance_ids[object_index]):
-            raise ValueError("BLCS object instance ID differs from semantic arrays.")
-    rendered_counts = _renderer_instance_counts(frame.render)
-    foreign_ids = set(rendered_counts) - set(int(value) for value in instance_ids)
-    if foreign_ids:
-        raise ValueError(
-            "BLCS render contains undeclared foreground instance IDs: "
-            f"{sorted(foreign_ids)}."
-        )
-    observed = np.asarray(
-        [int(instance_id) in rendered_counts for instance_id in instance_ids],
-        dtype=np.bool_,
-    )
-    if not np.array_equal(observed, rendered):
-        raise ValueError(
-            "BLCS rendered_visible claims disagree with streamed renderer instance IDs."
-        )
-    statuses: list[str] = []
-    for object_index, (object_id, _) in enumerate(
-        zip(object_ids, objects, strict=True)
-    ):
-        color = _IDENTITY_COLORS[object_index % len(_IDENTITY_COLORS)]
-        coordinate = _pixel(ball_uv[object_index])
-        inside = _inside(canvas, coordinate)
-        renderer_observed = bool(
-            present[object_index] and rendered[object_index] and inside
-        )
-        if history_frames > 0:
-            if renderer_observed:
-                history[object_id].append(coordinate)
-            else:
-                history[object_id].clear()
-            _draw_history(canvas, history[object_id], color=color)
-        if renderer_observed:
-            cv2.circle(canvas, coordinate, 8, color, 2, cv2.LINE_AA)
-            cv2.circle(canvas, coordinate, 3, color, -1, cv2.LINE_AA)
-            _outlined_text(
-                canvas,
-                object_id,
-                (coordinate[0] + 10, coordinate[1] - 8),
-                color=color,
-                scale=0.5,
-            )
-        elif present[object_index] and geometric[object_index] and inside:
-            cv2.drawMarker(
-                canvas,
-                coordinate,
-                color,
-                cv2.MARKER_TILTED_CROSS,
-                12,
-                2,
-                cv2.LINE_AA,
-            )
-        status = "absent"
-        if present[object_index]:
-            status = "observed" if rendered[object_index] else "present/occluded"
-        statuses.append(f"{object_id}: {status}")
-    _header(
-        canvas,
-        (
-            f"BLCS scene={logical_scene_id} camera={camera_id} "
-            f"source_frame={frame.source_frame_index} global={frame.global_frame_index}"
-        ),
-        second_line="circle=renderer observation  cross=geometric-only",
-    )
-    _status_panel(canvas, statuses)
-    return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
-
-
-def render_plcs_overlay(
-    frame: PLCSSourceFrame,
-    *,
-    logical_scene_id: str,
-    camera_id: str,
-    object_ids: Sequence[str],
-) -> NDArray[np.uint8]:
-    """Overlay projected COCO17 skeletons with identity and presence state."""
-    canvas = _rgb_float_to_bgr(frame.render.rgb)
-    _draw_normalized_court(
-        canvas,
-        frame.court_kp,
-        frame.court_vis,
-        normalized=True,
-    )
-    objects = tuple(
-        _object(value, name="PLCS object")
-        for value in _array(frame.label.get("objects"), name="PLCS objects")
-    )
-    if len(objects) != len(object_ids) or frame.present.shape != (len(object_ids),):
-        raise ValueError("PLCS object labels differ from the canonical track axis.")
-    rendered_counts = _renderer_instance_counts(frame.render)
-    declared_instance_ids: list[int] = []
-    for object_index, (object_id, raw_object) in enumerate(
-        zip(object_ids, objects, strict=True)
-    ):
-        if raw_object.get("object_id") != object_id:
-            raise ValueError("PLCS object identity/order changed during visualization.")
-        present = bool(frame.present[object_index])
-        if raw_object.get("present") is not present:
-            raise ValueError("PLCS object presence differs from supervision arrays.")
-        instance_id = _positive_integer(
-            raw_object.get("instance_id"), name="PLCS object instance_id"
-        )
-        if instance_id in declared_instance_ids:
-            raise ValueError("PLCS object instance IDs must be unique.")
-        declared_instance_ids.append(instance_id)
-        visible_pixels = _nonnegative_integer(
-            raw_object.get("visible_pixel_count"), name="visible_pixel_count"
-        )
-        actual_visible_pixels = rendered_counts.get(instance_id, 0)
-        if visible_pixels != actual_visible_pixels:
-            raise ValueError(
-                "PLCS visible_pixel_count disagrees with streamed renderer "
-                f"instance ID {instance_id}: claimed {visible_pixels}, "
-                f"observed {actual_visible_pixels}."
-            )
-        if not present and visible_pixels != 0:
-            raise ValueError("Absent PLCS objects cannot have renderer-visible pixels.")
-        keypoints = frame.human_kp[object_index]
-        visible = frame.human_vis[object_index]
-        if keypoints.shape != (17, 2) or visible.shape != (17,):
-            raise ValueError("PLCS COCO17 supervision shape changed.")
-        if not present and np.any(visible):
-            raise ValueError("Absent PLCS objects cannot have visible keypoints.")
-    foreign_ids = set(rendered_counts) - set(declared_instance_ids)
-    if foreign_ids:
-        raise ValueError(
-            "PLCS render contains undeclared foreground instance IDs: "
-            f"{sorted(foreign_ids)}."
-        )
-    statuses: list[str] = []
-    for object_index, (object_id, raw_object) in enumerate(
-        zip(object_ids, objects, strict=True)
-    ):
-        present = bool(frame.present[object_index])
-        visible_pixels = _nonnegative_integer(
-            raw_object.get("visible_pixel_count"), name="visible_pixel_count"
-        )
-        color = _IDENTITY_COLORS[object_index % len(_IDENTITY_COLORS)]
-        keypoints = frame.human_kp[object_index]
-        visible = frame.human_vis[object_index]
-        pixels = np.empty_like(keypoints)
-        pixels[:, 0] = keypoints[:, 0] * canvas.shape[1]
-        pixels[:, 1] = keypoints[:, 1] * canvas.shape[0]
-        points = tuple(_pixel(value) for value in pixels)
-        for first, second in COCO17_SKELETON:
-            if visible[first] and visible[second]:
-                cv2.line(
-                    canvas,
-                    points[first],
-                    points[second],
-                    color,
-                    2,
-                    cv2.LINE_AA,
-                )
-        visible_indices = np.flatnonzero(visible)
-        for joint_index in visible_indices:
-            cv2.circle(
-                canvas,
-                points[int(joint_index)],
-                4,
-                color,
-                -1,
-                cv2.LINE_AA,
-            )
-            cv2.circle(
-                canvas,
-                points[int(joint_index)],
-                5,
-                (255, 255, 255),
-                1,
-                cv2.LINE_AA,
-            )
-        if len(visible_indices):
-            anchor_values = pixels[visible]
-            anchor = (
-                int(round(float(np.mean(anchor_values[:, 0])))),
-                int(round(float(np.min(anchor_values[:, 1])))) - 8,
-            )
-            _outlined_text(canvas, object_id, anchor, color=color, scale=0.52)
-        status = "absent"
-        if present:
-            status = f"present pixels={visible_pixels} joints={len(visible_indices)}/17"
-        statuses.append(f"{object_id}: {status}")
-    _header(
-        canvas,
-        (f"PLCS scene={logical_scene_id} camera={camera_id} frame={frame.frame_index}"),
-        second_line="COCO17 projections; panel reports physical/rendered presence",
-    )
-    _status_panel(canvas, statuses)
     return cast(NDArray[np.uint8], cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
 
 
@@ -790,10 +541,4 @@ def _positive_integer_array(
     return cast(NDArray[np.int64], result.astype(np.int64, copy=False))
 
 
-__all__ = [
-    "BallHistory",
-    "new_ball_history",
-    "render_blcs_overlay",
-    "render_court_overlay",
-    "render_plcs_overlay",
-]
+__all__ = ["BallHistory", "render_court_overlay"]

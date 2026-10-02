@@ -44,18 +44,13 @@ from src.tasks.base.generate_dataset import CourtKeypointContract
 from src.tasks.plcs.configuration import PLCSDataConfig, PLCSModelConfig
 from src.tasks.plcs.configuration_contracts import PLCSPathConfig
 from src.tasks.plcs.inference.predictor import PLCSPredictor
-from src.tasks.plcs.inference.tracking_predictor import PLCSTrackingPredictor
 from src.tasks.plcs.model_io import (
     PLCSBoundModelIO,
     PLCSModelIOAdapter,
-    PLCSTrackQueryIOAdapter,
     build_plcs_model_io,
     prepare_plcs_checkpoint_court_keypoint_config,
-    resolve_plcs_track_query_reference_contract,
     validate_plcs_checkpoint_court_keypoints,
-    validate_plcs_checkpoint_track_query_reference,
 )
-from src.tasks.plcs.model_io.axial_reference import validate_axial_reference_checkpoint
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
 from src.utils.schema.court_normalization import (
@@ -193,28 +188,10 @@ def load_inference_checkpoint(
 
 def _validate_standard_markers(checkpoint: InferenceCheckpoint) -> None:
     """Repeat ``PLCSLightningModule.on_load_checkpoint`` exactly."""
-    validate_axial_reference_checkpoint(
-        checkpoint.raw, model_name=checkpoint.model_config.name
-    )
     validate_court_coordinate_normalization(checkpoint.raw, artifact="PLCS checkpoint")
     validate_plcs_checkpoint_court_keypoints(
         checkpoint.raw, checkpoint.court_keypoint_contract
     )
-
-
-def _validate_tracking_markers(checkpoint: InferenceCheckpoint) -> None:
-    """Repeat ``PLCSTrackingLightningModule.on_load_checkpoint`` exactly."""
-    validate_court_coordinate_normalization(
-        checkpoint.raw, artifact="PLCS tracking checkpoint"
-    )
-    validate_plcs_checkpoint_court_keypoints(
-        checkpoint.raw, checkpoint.court_keypoint_contract
-    )
-    reference_contract = resolve_plcs_track_query_reference_contract(
-        checkpoint.model_config,
-        checkpoint.court_keypoint_contract,
-    )
-    validate_plcs_checkpoint_track_query_reference(checkpoint.raw, reference_contract)
 
 
 def load_standard_predictor(
@@ -247,36 +224,6 @@ def load_standard_predictor(
     )
 
 
-def load_tracking_predictor(
-    *,
-    checkpoint_path: str | Path,
-    resolver: PathResolver,
-    device: str | torch.device,
-    court_keypoint_contract: CourtKeypointContract | None = None,
-) -> PLCSTrackingPredictor:
-    """Build a track-query predictor without restoring training state."""
-    checkpoint = load_inference_checkpoint(
-        checkpoint_path=checkpoint_path,
-        resolver=resolver,
-        court_keypoint_contract=court_keypoint_contract,
-    )
-    location = f"PLCS inference checkpoint {checkpoint.path}"
-    _validate_tracking_markers(checkpoint)
-    bound = checkpoint.model_io()
-    adapter = bound.adapter
-    if not isinstance(adapter, PLCSTrackQueryIOAdapter):
-        raise InferenceCheckpointError(
-            f"{location}: checkpoint does not contain a PLCS track-query adapter."
-        )
-    _restore_model_weights(bound.model, checkpoint.raw, location=location)
-    return PLCSTrackingPredictor(
-        model=bound.model,
-        adapter=adapter,
-        device=resolve_device(device),
-        court_keypoint_contract=checkpoint.court_keypoint_contract,
-    )
-
-
 def model_state_keys(checkpoint: Mapping[str, Any]) -> Sequence[str]:
     """Return the ``model.`` state-dict keys a checkpoint declares."""
     raw_state = checkpoint.get("state_dict")
@@ -295,6 +242,5 @@ __all__ = [
     "InferenceCheckpointError",
     "load_inference_checkpoint",
     "load_standard_predictor",
-    "load_tracking_predictor",
     "model_state_keys",
 ]

@@ -1,5 +1,5 @@
 task: line
-image_source: court/images
+image_source: court_detection/tennis_court_detector-v1/dataset.json
 checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt  # whole image; no region search
 save: ${run.output_dir}/line.gif
 fps: 6
