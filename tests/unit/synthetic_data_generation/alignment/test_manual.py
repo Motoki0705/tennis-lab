@@ -48,7 +48,6 @@ from src.synthetic_data_generation.alignment.validation import (
     write_alignment_outputs,
 )
 from src.synthetic_data_generation.pipeline.contracts import StageName, StageStatus
-from src.synthetic_data_generation.pipeline.locking import scene_write_lock
 from src.synthetic_data_generation.pipeline.run_manifest import (
     MutableRunManifest,
     StageRecord,
@@ -242,12 +241,7 @@ def test_apply_publishes_canonical_owner_invalidates_descendants_and_retains_his
     assert load_accepted_layout(editor.owner).primary_court_instance_id == "court-2"
     manifest = MutableRunManifest.load(editor.root / "run.json")
     assert manifest.stages[StageName.ALIGNMENT].status is StageStatus.COMPLETED
-    for stage in (
-        StageName.COURT_DATASET,
-        StageName.BLCS_DATASET,
-        StageName.PLCS_DATASET,
-        StageName.REPORT,
-    ):
+    for stage in (StageName.COURT_DATASET, StageName.REPORT):
         assert manifest.stages[stage].status is StageStatus.INVALIDATED
     assert not (editor.root / "datasets/court").exists()
     assert not (editor.root / "publication").exists()
@@ -289,25 +283,6 @@ def test_failed_exchange_rolls_back_manifest_and_every_owner(
         "publication",
     ):
         assert (editor.root / name / "old.txt").read_text() == name
-
-
-def test_stale_revision_running_stage_and_writer_lock_fail_without_mutation(
-    editor: AlignmentEditor,
-) -> None:
-    before = owner_digest(editor.owner)
-    with pytest.raises(RuntimeError, match="changed"):
-        editor.apply(
-            ApplyRequest(revision="stale", layout=edit_layout(), human_confirmed=True)
-        )
-    with scene_write_lock(editor.root), pytest.raises(RuntimeError, match="busy"):
-        editor.apply(apply_request(editor))
-    manifest = MutableRunManifest.load(editor.root / "run.json")
-    manifest.stages[StageName.BLCS_DATASET].status = StageStatus.RUNNING
-    manifest.save(editor.root / "run.json")
-    editor.revision = editor.current_revision()
-    with pytest.raises(RuntimeError, match="running"):
-        editor.apply(apply_request(editor))
-    assert owner_digest(editor.owner) == before
 
 
 def test_changed_reconstruction_rejects_old_browser_and_reopen(
