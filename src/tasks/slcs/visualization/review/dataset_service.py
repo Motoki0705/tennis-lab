@@ -9,16 +9,21 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
+import cv2
 import numpy as np
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
-from src.tasks.base.generate_dataset import PHYSICAL_COURT_TARGET_FRAME_ID
 from src.tasks.base.visualization.review.court import court_edges, court_keypoints
 from src.tasks.base.visualization.review.payload import ScenePayload, pack_entity_frames
 from src.tasks.slcs.configuration import SLCS_DATA_SCHEMA, SLCSDataRuntimeConfig
-from src.tasks.slcs.data.annotation import SLCSDataIndex, slcs_annotation_dir
+from src.tasks.slcs.data.annotation import (
+    SLCSDataIndex,
+    load_slcs_annotation,
+    slcs_annotation_dir,
+)
 from src.tasks.slcs.data.dataset import SLCSDataConfig, load_clip_arrays
+from src.tasks.slcs.visualization.review.inspection import ClipInspection
 from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
     DatasetClipRecord,
@@ -69,6 +74,9 @@ class SLCSDatasetReviewService:
         self._video_ids = None if video_ids is None else tuple(dict.fromkeys(video_ids))
         self._index()
         self.config = default_data_config(self.root) if config is None else config
+        self._verified_publication = lru_cache(maxsize=2)(self._verify_publication)
+        self._cached_inspection = lru_cache(maxsize=2)(self._load_inspection)
+        self._cached_image = lru_cache(maxsize=8)(self._load_image)
         self._cached_payload = lru_cache(maxsize=2)(self._load_payload)
 
     def _index(self) -> SLCSDataIndex:
@@ -130,9 +138,21 @@ class SLCSDatasetReviewService:
     def _revision(self, record: DatasetClipRecord) -> str:
         clip_dir = self._contained(self.root / record.path)
         annotation = slcs_annotation_dir(clip_dir)
-        from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
         marker = json.loads((annotation / "annotation.json").read_text())
-        scene_path = annotation_scene_path(annotation, marker)
+        relative = marker.get("scene_result")
+        if not isinstance(relative, str) or not relative:
+            raise ValueError("Annotation marker requires an explicit scene_result.")
+        scene_path = self._contained(annotation / relative)
+        index_path = self._contained(annotation / "scene.json")
+        index = json.loads(index_path.read_text())
+        manifest = ClipManifest.load(clip_dir)
+        dependencies = [
+            annotation / ref["path"] for ref in index.get("artifacts", {}).values()
+        ]
+        media = [
+            manifest.media_path(camera, must_exist=False)
+            for camera in manifest.camera_ids
+        ]
         digest = hashlib.sha256()
         for path in (
             self.root / "dataset.json",
@@ -140,10 +160,87 @@ class SLCSDatasetReviewService:
             annotation / "annotation.json",
             scene_path,
             scene_path.with_suffix(".metadata.json"),
+            index_path,
+            *dependencies,
+            *media,
+            self.root / "splits.json",
+            clip_dir / "annotations/dino_v3/annotation.json",
         ):
-            stat = self._contained(path).stat()
-            digest.update(f"{path.name}:{stat.st_size}:{stat.st_mtime_ns}".encode())
-        return digest.hexdigest()[:20]
+            path = self._contained(path)
+            if path.is_file():
+                stat = path.stat()
+                identity = f"{stat.st_size}:{stat.st_mtime_ns}:{stat.st_ctime_ns}"
+            else:
+                identity = "missing"
+            digest.update(f"{path.relative_to(self.root)}:{identity}".encode())
+        revision = digest.hexdigest()[:20]
+        # Full checksums and component lineage are still verified. Only an
+        # unchanged publication reuses verification, avoiding hashing a large
+        # SMPL export for every RGB playback request.
+        self._verified_publication(record, revision)
+        return revision
+
+    def _verify_publication(self, record: DatasetClipRecord, revision: str) -> None:
+        from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+
+        annotation = slcs_annotation_dir(self._contained(self.root / record.path))
+        marker = json.loads((annotation / "annotation.json").read_text())
+        self._contained(annotation_scene_path(annotation, marker))
+
+    def _load_inspection(
+        self, record: DatasetClipRecord, revision: str
+    ) -> ClipInspection:
+        manifest = ClipManifest.load(self._contained(self.root / record.path))
+        if manifest.clip_id != record.clip_id:
+            raise ValueError("Dataset index and clip manifest disagree on clip_id.")
+        clip = load_clip_arrays(manifest, config=self.config)
+        scene = load_slcs_annotation(manifest)
+        inspection = ClipInspection(clip, scene, self.config)
+        return inspection
+
+    def inspection_frame(
+        self, form: str, scene_id: str, camera: str, frame: int, revision: str
+    ) -> dict[str, Any]:
+        record = self._record(form, scene_id)
+        if self._revision(record) != revision:
+            raise RuntimeError("Clip changed on disk. Reload the clip.")
+        result = self._cached_inspection(record, revision).frame(camera, frame)
+        if self._revision(record) != revision:
+            raise RuntimeError("Clip changed on disk. Reload the clip.")
+        return {**result, "revision": revision}
+
+    def image(
+        self, form: str, scene_id: str, camera: str, frame: int, revision: str
+    ) -> bytes:
+        self.inspection_frame(form, scene_id, camera, frame, revision)
+        record = self._record(form, scene_id)
+        result = self._cached_image(record, revision, camera, frame)
+        if self._revision(record) != revision:
+            raise RuntimeError("Clip changed on disk. Reload the clip.")
+        return result
+
+    def _load_image(
+        self, record: DatasetClipRecord, revision: str, camera: str, frame: int
+    ) -> bytes:
+        manifest = self._cached_inspection(record, revision).clip.manifest
+        path = self._contained(manifest.media_path(camera, must_exist=False))
+        if not path.is_file():
+            raise FileNotFoundError("Saved clip media is missing.")
+        cap = cv2.VideoCapture(str(path), cv2.CAP_FFMPEG, [cv2.CAP_PROP_N_THREADS, 2])
+        try:
+            if not cap.isOpened() or not cap.set(cv2.CAP_PROP_POS_FRAMES, frame):
+                raise RuntimeError("Cannot seek the saved clip media.")
+            ok, bgr = cap.read()
+            if not ok or int(cap.get(cv2.CAP_PROP_POS_FRAMES)) != frame + 1:
+                raise RuntimeError("Cannot decode the requested clip frame.")
+            if bgr.shape[:2] != (manifest.height, manifest.width):
+                raise ValueError("Decoded media dimensions disagree with clip.json.")
+            ok, encoded = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            if not ok:
+                raise RuntimeError("Cannot encode the source frame.")
+            return encoded.tobytes()
+        finally:
+            cap.release()
 
     def payload(
         self, form: str, scene_id: str, revision: str | None = None
@@ -169,10 +266,17 @@ class SLCSDatasetReviewService:
         return binary
 
     def _load_payload(self, record: DatasetClipRecord, revision: str) -> ScenePayload:
-        manifest = ClipManifest.load(self._contained(self.root / record.path))
-        if manifest.clip_id != record.clip_id:
-            raise ValueError("Dataset index and clip manifest disagree on clip_id.")
-        clip = load_clip_arrays(manifest, config=self.config)
+        inspection = self._cached_inspection(record, revision)
+        clip = inspection.clip
+        manifest = clip.manifest
+        review = inspection.summary()
+        features = manifest.clip_dir / "annotations/dino_v3/annotation.json"
+        split = self.root / "splits.json"
+        review["preparation_note"] = (
+            f"DINO完成marker {'あり' if features.is_file() else 'なし'} / "
+            f"split file {'あり' if split.is_file() else 'なし'}。"
+            "レビューには不要。内容検証・学習準備完了の判定はしていません。"
+        )
         if not np.isfinite(clip.fps) or clip.fps <= 0:
             raise ValueError("Clip FPS must be finite and positive.")
         for name, shape in (
@@ -227,7 +331,7 @@ class SLCSDatasetReviewService:
             "fps": clip.fps,
             "frame_count": clip.num_frames,
             "units": "m",
-            "coordinate_frame": PHYSICAL_COURT_TARGET_FRAME_ID,
+            "coordinate_frame": review["coordinate_frame"],
             "court": {
                 "keypoints": court_keypoints(None).tolist(),
                 "edges": [list(edge) for edge in court_edges()],
@@ -237,8 +341,9 @@ class SLCSDatasetReviewService:
             "entities": entities,
             "description": (
                 "疑似ラベル / 選手はルート位置と向き（手前→奥の順） / "
-                "品質マスク外は非表示 / 入力カメラは未校正"
+                "品質マスク外は非表示 / 実測GTなし / " + review["calibration_note"]
             ),
+            "inspection": review,
             "quality": {
                 "min_player_confidence": quality.min_player_confidence,
                 "min_ball_cameras": quality.min_ball_cameras,
