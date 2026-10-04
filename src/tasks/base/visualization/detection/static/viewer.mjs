@@ -1,4 +1,5 @@
 import { drawPlayers } from "./players.mjs";
+import { ballPointColor } from "./review.mjs";
 
 export function fitScale(width, height, viewportWidth, viewportHeight) {
   if (
@@ -224,6 +225,10 @@ export class ImageViewer {
         ctx.stroke();
       }
       for (const point of visiblePoints(layer)) {
+        const pointColor = this.options.ballPoints && kind === "gt"
+          ? ballPointColor(point.state) : color;
+        ctx.fillStyle = pointColor;
+        ctx.strokeStyle = pointColor;
         const radius =
           (this.options.ballPoints ? 1.25 : kind === "gt" ? 5 : 3.2) / scale;
         ctx.beginPath();
@@ -252,7 +257,7 @@ export class ImageViewer {
             tw + 4 / scale,
             14 / scale,
           );
-          ctx.fillStyle = color;
+          ctx.fillStyle = pointColor;
           ctx.fillText(label, tx, ty);
         }
       }

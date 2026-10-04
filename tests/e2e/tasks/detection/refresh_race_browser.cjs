@@ -133,6 +133,7 @@ async function runScenario(browser, releaseOrder) {
         "index.html",
         "app.js",
         "viewer.mjs",
+        "review.mjs",
         "players.mjs",
         "playback.mjs",
         "icons.mjs",
