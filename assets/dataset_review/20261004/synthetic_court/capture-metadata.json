@@ -124,18 +124,18 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T16:00:51.804Z",
+      "captured_at": "2026-10-04T16:16:38.814Z",
       "source_revision": "5d56499a04af35863ba1",
       "label_scope": "all",
-      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
+      "code_revision": "d551c7960c018b49442ffb4d1aa96597954567ea",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
         "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
         "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "1b1fe7b6d7df94659836ddff47e5a5dbfb2eeea7821a1ca6e80af63267847c55",
         "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "475c9a7129f2cbba129098d7a389b93896c4c719f1ccea26e3b6db64c56f4608",
         "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
@@ -161,7 +161,7 @@
         }
       },
       "source_record_sha256": "a5567188be298978c7280139a8650e862352bf1fc7de8e32ec3d99b72f0231c8",
-      "image_sha256": "db7344ea31881e84d2cdc7dd4d132989cc381d5d48605f346a2c72c88ddef176"
+      "image_sha256": "f6338a0a001174baf63d1f1e2035c3685dbe3ddd30723a09c76c242792f43de4"
     },
     {
       "file": "after-b01-test-labels.png",
@@ -179,18 +179,18 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T16:00:52.175Z",
+      "captured_at": "2026-10-04T16:16:39.345Z",
       "source_revision": "5d56499a04af35863ba1",
       "label_scope": "all",
-      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
+      "code_revision": "d551c7960c018b49442ffb4d1aa96597954567ea",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
         "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
         "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "1b1fe7b6d7df94659836ddff47e5a5dbfb2eeea7821a1ca6e80af63267847c55",
         "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "475c9a7129f2cbba129098d7a389b93896c4c719f1ccea26e3b6db64c56f4608",
         "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
@@ -234,18 +234,18 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T16:00:52.442Z",
+      "captured_at": "2026-10-04T16:16:39.672Z",
       "source_revision": "5d56499a04af35863ba1",
       "label_scope": "target",
-      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
+      "code_revision": "d551c7960c018b49442ffb4d1aa96597954567ea",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
         "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
         "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "1b1fe7b6d7df94659836ddff47e5a5dbfb2eeea7821a1ca6e80af63267847c55",
         "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "475c9a7129f2cbba129098d7a389b93896c4c719f1ccea26e3b6db64c56f4608",
         "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
@@ -271,7 +271,7 @@
         }
       },
       "source_record_sha256": "a5567188be298978c7280139a8650e862352bf1fc7de8e32ec3d99b72f0231c8",
-      "image_sha256": "0140019a11f0f9e4be15f62c92768791eb9bebf3490128b321b0a6f323d29498"
+      "image_sha256": "ad910a2c358f9e68ba15c3ea1ff06e1965e99b9bd3511f08918980a2cad235ab"
     },
     {
       "file": "after-b01-published-map.png",
@@ -289,18 +289,18 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T16:00:53.460Z",
+      "captured_at": "2026-10-04T16:16:39.814Z",
       "source_revision": "5d56499a04af35863ba1",
       "label_scope": "target",
-      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
+      "code_revision": "d551c7960c018b49442ffb4d1aa96597954567ea",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
         "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
         "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "1b1fe7b6d7df94659836ddff47e5a5dbfb2eeea7821a1ca6e80af63267847c55",
         "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "475c9a7129f2cbba129098d7a389b93896c4c719f1ccea26e3b6db64c56f4608",
         "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
@@ -343,18 +343,18 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T16:00:53.698Z",
+      "captured_at": "2026-10-04T16:16:40.066Z",
       "source_revision": "5d56499a04af35863ba1",
       "label_scope": "target",
-      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
+      "code_revision": "d551c7960c018b49442ffb4d1aa96597954567ea",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
         "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
         "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "1b1fe7b6d7df94659836ddff47e5a5dbfb2eeea7821a1ca6e80af63267847c55",
         "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "475c9a7129f2cbba129098d7a389b93896c4c719f1ccea26e3b6db64c56f4608",
         "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
@@ -381,7 +381,7 @@
       },
       "camera": "court-sample-000025",
       "source_record_sha256": "1ae889e8bb9d1ff568c452c33fc4915c6bbdfc83923aa9c6c5f08c5e7f8a4c6e",
-      "image_sha256": "755454118daa3d0f944471a56d76387662a78d10eef9bc6c9877fecd2b30c945"
+      "image_sha256": "9e5a7168c302146ef5deda935bce36e00bdf615293f8cf8beac788efa9f7d5da"
     }
   ],
   "capture_method": "Playwright Chromium headless, real local read-only Court Review at port 8905",
@@ -391,6 +391,7 @@
     "rejected candidate court-sample-000025 has sparse camera/projection/reasons but no saved image; no accepted image was reused",
     "source owner was read-only; screenshots are browser captures, not fixtures",
     "after UI hashes match the final code; screenshot commit does not alter UI code",
-    "Default UI teacher is target-only KP14. Matched overview/label pairs use all-court reference scope; the new comparison uses target scope. Shared overlay helper and legacy API defaults were retained."
+    "Default UI teacher is target-only KP14. Matched overview/label pairs use all-court reference scope; the new comparison uses target scope. Shared overlay helper and legacy API defaults were retained.",
+    "Rejected candidate dialog places the target court projection first, with other courts collapsed as references."
   ]
 }
