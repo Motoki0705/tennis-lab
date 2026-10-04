@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ball Refiner 3D · Dataset Review</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div><div class="eyebrow">TENNIS LAB / DATASET REVIEW</div><h1>Ball Refiner <span>3D</span></h1></div><div class="header-note">合成入力・合成教師の点検<br><b>保存artifact / 読み取り専用</b></div></header>
+  <main>
+    <div id="error" role="alert" hidden></div>
+    <section class="controls">
+      <label class="dataset-label">Dataset<select id="dataset" aria-label="Dataset"></select></label>
+      <label>Split<select id="split"><option value="val">val</option><option value="train">train</option><option value="test">test</option></select></label>
+      <label>Rally<select id="rally"></select></label>
+      <div class="origin"><span id="dataset-state" class="pill"></span><span id="dataset-count"></span><small id="degradation"></small></div>
+    </section>
+    <div class="source-note">3D教師 = simulator [m] · 2D入力 = 保存GMM [source px] · cameraはMeiji校正 / 2D劣化はモデル分布由来または仮定 · RGB / 実測3D教師なし</div>
+    <section class="time-controls">
+      <button id="previous" title="前frame">◀</button><button id="play">再生</button><button id="next" title="次frame">▶</button>
+      <label class="frame-label">Frame <input id="frame" type="number" min="0" value="0"></label>
+      <strong id="time"></strong><span id="identity"></span>
+      <button id="jump-gap">次の全camera gap</button><button id="jump-out">次の画面外</button><button id="jump-event">次のevent</button>
+    </section>
+    <section class="timeline-panel">
+      <canvas id="timeline" aria-label="全frameの遮蔽・画面外・event timeline"></canvas>
+      <input id="slider" type="range" min="0" max="1" value="0" aria-label="Frame slider">
+      <div class="timeline-legend"><span><i class="key occlusion"></i>遮蔽 / evidence gap</span><span><i class="key outside"></i>画面外・背面</span><span><i class="key event"></i>hit / bounce ±5</span><span>60000 / 1001 Hz · clickでframe移動</span></div>
+    </section>
+    <div class="scene-grid">
+      <section class="panel scene-panel">
+        <div class="panel-title"><h2>3D候補と合成真値 <small>court [m]</small></h2><div><button id="reset-view">視点を戻す</button><button id="fit-view">候補までfit</button></div></div>
+        <canvas id="scene" aria-label="3D candidate scene; drag to orbit"></canvas>
+        <div class="scene-legend"><span><i class="key truth"></i>合成真値・軌道</span><span><i class="key candidate"></i>cameraあり候補</span><span><i class="key prior"></i>cameraなしprior</span><span><i class="key mean"></i>混合平均</span><span>dragで回転 · wheelで拡大</span></div>
+        <div class="draw-controls"><label>Camera数<select id="subset"><option value="all">すべてのsubset</option><option value="3">3 camera</option><option value="2">2 camera</option><option value="1">1 camera</option><option value="0">0 camera / priorのみ</option></select></label><label>描画最小weight<select id="threshold"><option value="0">0（全成分）</option><option value="0.0001">0.01%</option><option value="0.001" selected>0.1%</option><option value="0.01">1%</option><option value="0.05">5%</option></select></label><span id="draw-summary"></span></div>
+        <p class="note">楕円・楕円体は各Gaussian成分の2σ。混合全体のHDR / coverageではありません。filter後も重みは再正規化しません。</p>
+      </section>
+      <aside class="panel diagnostics">
+        <h2>同時刻の状態</h2><div id="frame-status"></div>
+        <div class="metric-grid"><div><small>Prior-only mass</small><b id="prior-mass"></b></div><div><small>混合平均→真値</small><b id="mean-error"></b></div></div>
+        <p id="gap-note" class="note"></p>
+        <h3>Camera subsetの確率質量</h3><div id="subset-mass"></div>
+        <h3>保存成分 <small>全成分・weight降順</small></h3>
+        <div class="component-scroll"><table><thead><tr><th>ID</th><th>camera</th><th>weight</th><th>method</th></tr></thead><tbody id="components"></tbody></table></div>
+      </aside>
+    </div>
+    <section class="camera-section"><div class="panel-title"><h2>同時刻のcamera別2D分布 <small>source [px] · yは下向き</small></h2><label class="zoom-label"><input id="zoom" type="checkbox">分布周辺を拡大</label></div><div id="cameras" class="camera-grid"></div><p class="note">青 = 保存2D成分（重みは球の存在を条件とする） / 緑の十字 = 合成3D真値を保存true cameraで投影。存在確率で楕円を縮めません。</p></section>
+    <details class="panel"><summary>Dataset一覧・保存schema・出自</summary><div class="catalog-scroll"><table id="catalog"><thead><tr><th>Dataset / schema</th><th>状態・用途</th><th>登録 train / val / test</th><th>frame</th><th>未登録 / missing</th></tr></thead><tbody></tbody></table></div><pre id="provenance"></pre></details>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
