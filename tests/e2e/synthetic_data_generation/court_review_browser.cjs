@@ -195,6 +195,24 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           document.querySelector("#reject-info details"),
       );
       assert.equal(await page.locator("#reject-dialog img").count(), 0);
+      const rejectedSample = summary.rejections.samples[0];
+      if (rejectedSample.projection_recorded) {
+        assert(
+          (
+            await page.locator("#reject-projection > h3").first().textContent()
+          ).startsWith(rejectedSample.target_court),
+        );
+        assert.equal(
+          await page.locator("#reject-projection > table tr").count(),
+          14,
+        );
+        assert.equal(
+          await page
+            .locator("#reject-projection .reference-courts[open]")
+            .count(),
+          0,
+        );
+      }
       assert.equal(
         await page.locator("#large-image").getAttribute("src"),
         null,

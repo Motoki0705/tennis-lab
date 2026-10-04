@@ -370,7 +370,28 @@ async function openRejection(sample) {
     );
     details.append(summary, pre);
     $("reject-info").append(details);
-    renderPointTable($("reject-projection"), d.visibility, d.target_court);
+    const targetVisibility = {
+      ...d.visibility,
+      courts: d.visibility.courts.filter((c) => c.id === d.target_court),
+    };
+    renderPointTable($("reject-projection"), targetVisibility, d.target_court);
+    const otherCourts = d.visibility.courts.filter(
+      (c) => c.id !== d.target_court,
+    );
+    if (otherCourts.length) {
+      const reference = document.createElement("details"),
+        title = document.createElement("summary"),
+        tables = document.createElement("div");
+      reference.className = "reference-courts";
+      title.textContent = "他courtの投影（参考）";
+      renderPointTable(
+        tables,
+        { ...d.visibility, courts: otherCourts },
+        d.target_court,
+      );
+      reference.append(title, tables);
+      $("reject-projection").append(reference);
+    }
   } catch (error) {
     if (sequence === detailSequence)
       $("reject-info").textContent = error.message;
