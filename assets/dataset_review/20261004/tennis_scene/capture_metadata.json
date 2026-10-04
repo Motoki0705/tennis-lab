@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "campaign": "20261004",
+  "inspection_date": "2026-10-04",
+  "task": "tennis_scene",
+  "capture_method": "Real headless Chromium page screenshots via Playwright; no fixture data or edited pixels.",
+  "browser": {
+    "version": "151.0.7922.34",
+    "viewport": {
+      "width": 1600,
+      "height": 1080
+    },
+    "device_scale_factor": 1
+  },
+  "dataset": {
+    "family": "tennis_multivew / meiji_3cam",
+    "version": 2,
+    "sample": "video_000/clip_000",
+    "source_frame_indexing": "0-based, half-open intervals",
+    "num_frames": 1010,
+    "fps": 59.94006,
+    "source_frame_size": {
+      "width": 1920,
+      "height": 1080
+    },
+    "dataset_manifest": {
+      "path": "data/tennis_multivew/processed/meiji_3cam/dataset/dataset.json",
+      "sha256": "df6f3b354fcec99216e52a844eaa46223d3a53d97ec022b857d782ea396b6264"
+    },
+    "clip_manifest": {
+      "path": "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/clip.json",
+      "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+    },
+    "source_identity_sha256": "22efe1820091ab2183e156f007572a703fe4f50dd6e3dfd4a778282fc9ee448a",
+    "videos": [
+      {
+        "camera_id": "cam0",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "path": "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+        "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+        "width": 1920,
+        "available": true,
+        "checksum_verified": true
+      },
+      {
+        "camera_id": "cam1",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "path": "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+        "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+        "width": 1920,
+        "available": true,
+        "checksum_verified": true
+      },
+      {
+        "camera_id": "cam2",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "path": "data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+        "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+        "width": 1920,
+        "available": true,
+        "checksum_verified": true
+      }
+    ]
+  },
+  "stores": {
+    "current": {
+      "index": {
+        "path": "outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/scene.json",
+        "sha256": "130e9000cccb6d30bcf42a9f20c982b5529614f9599010dc20a9cf068de64e55"
+      },
+      "role": "latest saved, incomplete",
+      "adopted": 19,
+      "export_status": "missing"
+    },
+    "history": {
+      "index": {
+        "path": "outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store/scene.json",
+        "sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170"
+      },
+      "role": "archived model-estimate snapshot",
+      "adopted": 25,
+      "export_status": "verified"
+    }
+  },
+  "code": {
+    "after": {
+      "revision": "ba128b7ce700c96e6e282be4b58ae92fb401be2e",
+      "files": {
+        "src/tennis_scene/scripts/visualize_component_store.py": "e348105841183a940c4f61beb6bef37baa9d96a23d61f1f4f6769787d3deb679",
+        "src/tennis_scene/scripts/visualize_tasks.py": "8fdb275a1166588e0df12258f84034885784ceff9ed33f759b9299312b33fffc",
+        "src/tennis_scene/review/snapshot.py": "0f2fcae4a4c601bec82fc704ab1b70940db7d9289f4e4623c0cae4ae49dc096d",
+        "src/tennis_scene/review/trajectory.py": "6c81769f42c45e52f3d0b97ea94b06dcb0fad30f98de05263806ba96a54bee48",
+        "src/tennis_scene/review/web.py": "a9bc933fe52e6d7412e613b1eb59c38bbeb794f944992e832a80097ff408149c",
+        "src/tennis_scene/review/static/panel.html": "8c316c7b9fe926e8a6d0d29832a98f682d8f8df76ade592817a7de47f31d5b4f",
+        "src/tennis_scene/review/static/review.js": "c99545140bda21910a8f8edfc369e8bc15116df45e7a5af02693c1eb0d39ed04",
+        "src/tennis_scene/review/static/model.mjs": "0dd2bd38ac262aa75e09851e4cf111efdadfebd5fcc980c22d4d81bc0a7f7357",
+        "src/tennis_scene/review/static/style.css": "184508709505a56cfc07e93d29794265aa6b51d2ab0574f7f2cb85271bd3f622"
+      }
+    },
+    "before_current": {
+      "revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "files": {
+        "src/tennis_scene/scripts/visualize_component_store.py": "eb7eb30b321d015b92d1eafca71320f5fae1734612d46041aa1ebb97eba1e46c"
+      }
+    },
+    "before_history": {
+      "revision": null,
+      "note": "Previously saved historical gallery; original generation revision is unrecorded. Same scene index and ball artifact as after.",
+      "files": [
+        {
+          "path": "outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/index.html",
+          "sha256": "66fe5cc6722efe187d414934c79ff633108a959579c30e185370e5ff19b53568"
+        },
+        {
+          "path": "outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/manifest.json",
+          "sha256": "251bb32d09a46f1edb2aa51bc0963e37d61163aea45a30c99718b453e7387610"
+        },
+        {
+          "path": "outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/images/ball_triangulation_height.png",
+          "sha256": "ebb2cca46964ccecac3a9e49f8924e88c6024b75042b597a3338b12f4a4fc2be"
+        },
+        {
+          "path": "outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/images/ball_triangulation_topdown.png",
+          "sha256": "7c7abf03d5f9fe2397be092a34d2f1c4602cd530051cf777b6e722ddd60b56d4"
+        }
+      ]
+    }
+  },
+  "comparisons": [
+    {
+      "id": "current-store",
+      "before": "before-current.png",
+      "after": "after-current.png",
+      "matching": "Same latest store, sample, source frame 0 and viewport. Old contact sheet also includes 252/504/757/1009; after adds a 3-camera synchronized inspector."
+    },
+    {
+      "id": "masked-ball-height",
+      "before": "before-history-ball.png",
+      "after": "after-history-ball.png",
+      "artifact_id": "e1687cdca6c5ae0cb931522df02ad6da0a3e937db0eb30e4de5ee8b76f0392f8",
+      "source_interval": [
+        0,
+        1010
+      ],
+      "matching": "Same archived scene index, ball artifact, full source timeline, plot bounds and viewport. New masks preserve gaps, including [749,752) and [1004,1010). The previous gallery generation revision is unknown."
+    }
+  ],
+  "captures": [
+    {
+      "file": "before-current.png",
+      "kind": "before",
+      "dataset_ref": "dataset",
+      "store_ref": "current",
+      "code_ref": "before_current",
+      "frames": {
+        "source_frame": 0,
+        "contact_sheet_frames": [
+          0,
+          252,
+          504,
+          757,
+          1009
+        ]
+      },
+      "cameras": [
+        "cam0"
+      ],
+      "settings": {
+        "scroll": "page top",
+        "saved_court_overlay": true
+      },
+      "caption": "Existing latest-store gallery; source frame 0 / cam0 appears in the court contact sheet.",
+      "sha256": "c2a4745ac9b4fa04a375a27f28d5182cc1ca789bf7798f54bdad8e417ec34a31",
+      "captured_at_utc_from_file_mtime": "2026-10-04T14:32:47.894034+00:00"
+    },
+    {
+      "file": "after-current.png",
+      "kind": "after",
+      "dataset_ref": "dataset",
+      "store_ref": "current",
+      "code_ref": "after",
+      "frames": {
+        "source_frame": 0
+      },
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "settings": {
+        "scroll": "page top",
+        "saved_2d": true,
+        "reprojection": false,
+        "scene_view": "top"
+      },
+      "caption": "Latest saved store has 19 adopted artifacts but no completed scene export; 3D/masks are explicitly unavailable.",
+      "sha256": "a112391c916ca106e4f5f0c1b62ead8105b00ff76a20d3c2978697b5410acc7a",
+      "captured_at_utc_from_file_mtime": "2026-10-04T15:15:39.708971+00:00"
+    },
+    {
+      "file": "before-history-ball.png",
+      "kind": "before",
+      "dataset_ref": "dataset",
+      "store_ref": "history",
+      "code_ref": "before_history",
+      "frames": {
+        "source_interval": [
+          0,
+          1010
+        ]
+      },
+      "cameras": [],
+      "settings": {
+        "scroll": "ball_triangulation component",
+        "views": [
+          "height",
+          "topdown"
+        ]
+      },
+      "caption": "Previously saved full-timeline ball plots connect valid samples over rejected intervals.",
+      "sha256": "6aef792a86d25634533dc99782e182014db90ed69ca2e0266301eecdf871aa3e",
+      "captured_at_utc_from_file_mtime": "2026-10-04T14:32:48.820323+00:00",
+      "artifact_id": "e1687cdca6c5ae0cb931522df02ad6da0a3e937db0eb30e4de5ee8b76f0392f8"
+    },
+    {
+      "file": "after-history-ball.png",
+      "kind": "after",
+      "dataset_ref": "dataset",
+      "store_ref": "history",
+      "code_ref": "after",
+      "frames": {
+        "source_interval": [
+          0,
+          1010
+        ]
+      },
+      "cameras": [],
+      "settings": {
+        "scroll": "ball_triangulation component",
+        "views": [
+          "height",
+          "topdown"
+        ]
+      },
+      "caption": "Same ball artifact: masked samples interrupt the height line; pink bands mark rejected source-frame intervals.",
+      "sha256": "06ed36aa320ddb4b1c66665c0ae47cd4fb8b9aa4de12ef2f5bd09eb4201c7079",
+      "captured_at_utc_from_file_mtime": "2026-10-04T15:08:17.682622+00:00",
+      "artifact_id": "e1687cdca6c5ae0cb931522df02ad6da0a3e937db0eb30e4de5ee8b76f0392f8"
+    },
+    {
+      "file": "after-history-artifacts.png",
+      "kind": "new",
+      "dataset_ref": "dataset",
+      "store_ref": "history",
+      "code_ref": "after",
+      "frames": {
+        "source_frame": 0
+      },
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "settings": {
+        "scroll": "dataset overview",
+        "artifact_details_open": true
+      },
+      "caption": "New adopted-artifact table exposes stored schema, descriptor, provenance, input references and unsupported historical schemas.",
+      "sha256": "329a99258ab076822c64c10530e2186faa036ba9677b64353a33d868f4770434",
+      "captured_at_utc_from_file_mtime": "2026-10-04T15:08:13.072156+00:00"
+    },
+    {
+      "file": "after-history-gap-f750.png",
+      "kind": "new",
+      "dataset_ref": "dataset",
+      "store_ref": "history",
+      "code_ref": "after",
+      "frames": {
+        "source_frame": 750,
+        "trail_interval": [
+          691,
+          751
+        ]
+      },
+      "cameras": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "settings": {
+        "scroll": "frame inspector",
+        "saved_2d": true,
+        "reprojection": true,
+        "scene_view": "oblique"
+      },
+      "caption": "At frame 750 player 1 has 2D observations but invalid 3D root (INSUFFICIENT_JOINTS); ball has 2 observed views but invalid 3D (EXCESSIVE_SPEED).",
+      "sha256": "4474fa74e2f0f31c2d56ca20f6ca768651039c531a3a73065278d8bc6bbb371c",
+      "captured_at_utc_from_file_mtime": "2026-10-04T15:08:14.837335+00:00"
+    }
+  ]
+}
