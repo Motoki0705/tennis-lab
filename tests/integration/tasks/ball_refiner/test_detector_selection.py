@@ -61,7 +61,7 @@ def comparison_inputs(tmp_path):
     previous = torch.get_num_threads()
     torch.set_num_threads(1)
     cfg = OmegaConf.create({
-        'model': {'name': 'conv_next_unet', 'input_mode': 'rgb', 'in_channels': 3, 'num_classes': 1,
+        'model': {'name': 'conv_next_unet', 'input_mode': 'mdd', 'in_channels': 2, 'num_classes': 1,
                   'num_frames': 4, 'input_layout': 'bcthw', 'dims': [4, 8, 16, 32], 'depth': 1,
                   'drop_path_prob': 0.0, 'mdd_a': .2, 'mdd_b': .15},
         'data': {'image_size': [32, 32], 'augmentation': {'normalize_imagenet': {'enabled': False}}},

@@ -27,7 +27,6 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 from src.utils.hydra import register_boundary_validator
-from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES
 from src.utils.paths import PROJECT_ROOT
 
 ConfigMapping = Mapping[str, Any]
@@ -337,172 +336,33 @@ _COMMON_MODEL = {
 def validate_model(
     config: object, *, paths: BallRuntimePaths | None = None
 ) -> ConfigMapping:
-    """Validate the selected model variant without model construction."""
+    """Validate the retained ConvNeXt heatmap model; direct coordinates have their own typed API."""
     root = as_mapping(config, path="configuration")
-    model = as_mapping(
-        typed(root, "model", (dict, DictConfig), path="configuration"), path="model"
-    )
+    model = as_mapping(typed(root, "model", (dict, DictConfig), path="configuration"), path="model")
     name = typed(model, "name", str, path="model")
-    if name == "stunet":
-        allowed = _COMMON_MODEL | {"mdd_a", "mdd_b"}
-    elif name == "conv_next_unet":
-        allowed = _COMMON_MODEL | {"dims", "depth", "drop_path_prob", "mdd_a", "mdd_b"}
-    elif name == "dinov3_rope":
-        allowed = _COMMON_MODEL | {"image_size", "backbone", "decoder", "heatmap_head"}
-    else:
-        raise SemanticConfigurationError(f"model.name: unsupported value {name!r}.")
-    model = exact_mapping(model, path="model", required=allowed)
-    for key in ("in_channels", "num_classes", "num_frames"):
-        value = cast(int, typed(model, key, int, path="model"))
-        _positive(value, path=f"model.{key}")
-    typed(model, "input_mode", str, path="model")
-    typed(model, "input_layout", str, path="model")
-    if name in {"stunet", "conv_next_unet"}:
-        _required_number(model, "mdd_a", path="model")
-        _required_number(model, "mdd_b", path="model")
-    if name == "conv_next_unet":
-        _required_sequence(model, "dims", path="model", item_type=int, length=4)
-        _positive(
-            cast(int, typed(model, "depth", int, path="model")), path="model.depth"
+    if name != "conv_next_unet":
+        raise SemanticConfigurationError(
+            f"model.name: unsupported heatmap model {name!r}; use conv_next_unet. "
+            "MDD+pose coordinate models use the typed mdd_pose entrypoint."
         )
-        drop_path_prob = _required_number(model, "drop_path_prob", path="model")
-        if not 0.0 <= drop_path_prob < 1.0:
-            raise SemanticConfigurationError("model.drop_path_prob must be in [0, 1).")
-    if name == "dinov3_rope":
-        _required_sequence(model, "image_size", path="model", item_type=int, length=2)
-        backbone = exact_mapping(
-            typed(model, "backbone", (dict, DictConfig), path="model"),
-            path="model.backbone",
-            required={
-                "name",
-                "repository_path",
-                "checkpoint_path",
-                "strict",
-                "train_mode",
-                "last_n_blocks",
-                "lora",
-            },
-        )
-        typed(backbone, "name", str, path="model.backbone")
-        repository_path = cast(
-            str,
-            typed(backbone, "repository_path", str, path="model.backbone"),
-        )
-        checkpoint_path = cast(
-            str,
-            typed(backbone, "checkpoint_path", str, path="model.backbone"),
-        )
-        typed(backbone, "strict", bool, path="model.backbone")
-        train_mode = cast(
-            str, typed(backbone, "train_mode", str, path="model.backbone")
-        )
-        if train_mode not in {"frozen", "last_n_blocks", "full"}:
-            raise SemanticConfigurationError(
-                "model.backbone.train_mode must be frozen, last_n_blocks, or full."
-            )
-        _positive(
-            cast(int, typed(backbone, "last_n_blocks", int, path="model.backbone")),
-            path="model.backbone.last_n_blocks",
-            allow_zero=True,
-        )
-        lora = exact_mapping(
-            typed(backbone, "lora", (dict, DictConfig), path="model.backbone"),
-            path="model.backbone.lora",
-            required={"enabled", "rank", "alpha", "dropout", "target_modules"},
-        )
-        typed(lora, "enabled", bool, path="model.backbone.lora")
-        _positive(
-            cast(int, typed(lora, "rank", int, path="model.backbone.lora")),
-            path="model.backbone.lora.rank",
-        )
-        _required_number(lora, "alpha", path="model.backbone.lora")
-        lora_dropout = _required_number(lora, "dropout", path="model.backbone.lora")
-        if not 0.0 <= lora_dropout < 1.0:
-            raise SemanticConfigurationError(
-                "model.backbone.lora.dropout must be in [0, 1)."
-            )
-        _required_sequence(
-            lora, "target_modules", path="model.backbone.lora", item_type=str
-        )
-        decoder = exact_mapping(
-            typed(model, "decoder", (dict, DictConfig), path="model"),
-            path="model.decoder",
-            required={
-                "dim",
-                "num_layers",
-                "num_heads",
-                "head_dim",
-                "ffn_dim",
-                "rope_dim",
-                "rope_base",
-                "dropout",
-                "attention_type",
-                "n_kv_heads",
-                "ffn_type",
-                "gradient_checkpointing",
-            },
-        )
-        for key in (
-            "dim",
-            "num_layers",
-            "num_heads",
-            "head_dim",
-            "ffn_dim",
-            "rope_dim",
-        ):
-            _positive(
-                cast(int, typed(decoder, key, int, path="model.decoder")),
-                path=f"model.decoder.{key}",
-            )
-        rope_base = typed(
-            decoder, "rope_base", (float, int, list, tuple), path="model.decoder"
-        )
-        if isinstance(rope_base, (list, tuple)):
-            _required_sequence(
-                decoder,
-                "rope_base",
-                path="model.decoder",
-                item_type=(float, int),
-                length=3,
-            )
-        decoder_dropout = _required_number(decoder, "dropout", path="model.decoder")
-        if not 0.0 <= decoder_dropout < 1.0:
-            raise SemanticConfigurationError("model.decoder.dropout must be in [0, 1).")
-        typed(
-            decoder,
-            "gradient_checkpointing",
-            bool,
-            path="model.decoder",
-        )
-        attention_type = cast(
-            str, typed(decoder, "attention_type", str, path="model.decoder")
-        )
-        if attention_type != "mha":
-            raise SemanticConfigurationError(
-                "model.decoder.attention_type must be 'mha'."
-            )
-        typed(decoder, "n_kv_heads", type(None), path="model.decoder")
-        ffn_type = cast(str, typed(decoder, "ffn_type", str, path="model.decoder"))
-        if ffn_type not in SUPPORTED_FFN_TYPES:
-            raise SemanticConfigurationError(
-                "model.decoder.ffn_type must be one of "
-                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
-            )
-        heatmap_head = exact_mapping(
-            typed(model, "heatmap_head", (dict, DictConfig), path="model"),
-            path="model.heatmap_head",
-            required={"min_channels"},
-        )
-        _positive(
-            cast(
-                int,
-                typed(heatmap_head, "min_channels", int, path="model.heatmap_head"),
-            ),
-            path="model.heatmap_head.min_channels",
-        )
-        if paths is not None:
-            paths.external_asset(repository_path)
-            paths.checkpoint(checkpoint_path)
+    model = exact_mapping(model, path="model", required=_COMMON_MODEL | {
+        "dims", "depth", "drop_path_prob", "mdd_a", "mdd_b",
+    })
+    for key in ("in_channels", "num_classes", "num_frames", "depth"):
+        _positive(cast(int, typed(model, key, int, path="model")), path=f"model.{key}")
+    if typed(model, "input_mode", str, path="model") != "mdd":
+        raise SemanticConfigurationError("model.input_mode must be 'mdd'; RGB model inputs were removed")
+    if typed(model, "input_layout", str, path="model") != "bcthw":
+        raise SemanticConfigurationError("model.input_layout must be 'bcthw'")
+    if model["in_channels"] != 2 or model["num_classes"] != 1:
+        raise SemanticConfigurationError("ConvNeXt requires two MDD channels and one heatmap class")
+    _required_number(model, "mdd_a", path="model")
+    _required_number(model, "mdd_b", path="model")
+    dims = _required_sequence(model, "dims", path="model", item_type=int, length=4)
+    for value in dims:
+        _positive(cast(int, value), path="model.dims")
+    if not 0 <= _required_number(model, "drop_path_prob", path="model") < 1:
+        raise SemanticConfigurationError("model.drop_path_prob must be in [0, 1)")
     return model
 
 

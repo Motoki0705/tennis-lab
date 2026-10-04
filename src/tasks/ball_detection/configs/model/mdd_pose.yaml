@@ -1,0 +1,12 @@
+# Coordinate model: use the typed MDDPoseConfig API (not the heatmap adapter).
+name: mdd_pose
+compression: conv3d  # conv3d | average | unshuffle | haar
+pose_pooling: attention  # deepsets | attention | hierarchical | gnn
+readout: query  # query | pose
+frames: 32
+channels: [8, 16, 32]
+dim: 128
+heads: 4
+layers: 2
+dropout: 0.1
+rope_base: 10000.0

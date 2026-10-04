@@ -9,21 +9,20 @@
 ### (ルート)
 - **`__init__.py`**: 検証済みmodel+adapterを返す `build_ball_detection_pair` のパッケージ入口。
 
-### models/
-- **`__init__.py`**: model実装とdiscriminator factoryの公開面。
-- **`spatiotemporal_unet.py`**: `SpatioTemporalUNet`。`(B,C,T,H,W)→(B,1,T,H/2,W/2)`、`T>=8` 必須の時空間 U-Net。
-- **`conv_next_unet.py`**: `ConvNeXtUNet`。ConvNeXt ブロックベースの spatio-temporal U-Net(`T>=1` で動作)。
-- **`dinov3_rope.py`**: `DINOv3RoPEBallDetector`。model I/O境界で準備済みのDINOv3 patch token・RoPE周波数・attention maskを3軸RoPE decoderで処理するRGB専用ヒートマップ検出器。
-- **`discriminators/__init__.py`**: `build_ball_detection_discriminator(config)` の工場関数。
+### models/ と model_io/
+- **ConvNeXtUNet**: 2ch MDDからnative probability heatmap・候補・局所patchを出す。`model_io/factory.py`の検証済みmodel/adapter経由で使う。
+- **[MDD＋pose coordinate detector](models/mdd_pose/README.md)**: 高解像度MDDの局所3D encoder、pose集約、時間RoPE/cross-attention、座標直接回帰。32frame・32条件の学習前レビュー実装。
+- **`model_io/mdd.py`**: 共通の正負輝度差＋sigmoid変換。ConvNeXtの保存済みMDD係数・正規化契約は維持する。
+- **`model_io/adapters.py`**: 元RGBの検証/宣言済み正規化→MDDへの単一経路、heatmap学習・復号。RGBを直接受け取るモデル分岐はない。
+- **`model_io/contracts.py` / `candidates.py`**: heatmap・候補のtyped契約と閾値前局所peak抽出。
+- **`models/discriminators/`**: ConvNeXtの任意GAN学習用discriminator。
 
-### model_io/
-- **`contracts.py`**: RGB入力、model call、学習batch、typed predictionの契約。
-- **`candidates.py`**: 閾値0で局所peakを抽出し、native格子のpatchと境界maskを返す。採点用の閾値やtrajectory gateは適用しない。
-- **`adapters.py`**: 推論の生RGBはfloat32・有限値・`[0,1]`を検証し、checkpointの正規化後にRGB/MDD・layout変換を行う。学習・評価のdataset側で正規化済みの入力は宣言されたchannel範囲を検証してそのまま使い、二重に正規化しない。loss/output decodeも担当。DINOv3ではraw backbone応答の検証、patch token decode、RoPE周波数とattention maskの生成もこの境界で完了する。
-- **`factory.py`**: `model.name` (`stunet`/`conv_next_unet`/`dinov3_rope`) からmodel+adapterを一度だけ選択し、DINOv3 backboneのfrozen/trainable実行経路も構築時にbind。
-- **`evaluation.py`**: checkpointから検証済みpairを読み、評価loopへprobability heatmapを提供。
+STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
+対応しない旧checkpointは明示エラーにする。court等の共有DINOv3部品は対象外。
+新モデルの座標をheatmapと偽るadapterは設けず、refiner接続は#986で別途決める。
 
 ### data/
+- **[プレイ区間・学習窓の固定](data/PLAY_INTERVALS.md)**: `play_intervals.py`、`play_manifest.py`、`pose_windows.py`。approved pose subsetからプレイ/非プレイ候補と32frame窓を作り、位置教師不足を分離して可視化する。
 - **`__init__.py`**: `build_ball_detection_datamodule(config)`。`data.source=store` を検証し、`BallStoreDataModule` を構築。
 - **`store.py`**: `BallFrameStore`。TrackNet・Meiji・chat_annotation を統一した frame store(`data/ball_detection/<version>`、`ball_detection_frames.v1`)の読み出しと検証。clip の全frameを JPEG shard + 列指向 `index.npz` で保存し、`point_kind`・`segment_break`・`event` などのラベル意味論の正本。
 - **`types.py`**: `FrameLabel`/`BallDetectionSample`/`BallDetectionBatch` のデータ契約。
@@ -41,7 +40,6 @@
 
 ### inference/
 - **`checkpoint.py`**: predictor・レビューUI共通の推論専用loader。保存されたmodel設定・`model.`重みと入力正規化をstrict復元する。`data.augmentation.normalize_imagenet.enabled`は必須で、有効なら保存されたmean/stdも使う。学習専用オプションは要求・補完しない。
-  旧DINOv3の`dinov3/checkpoints/<filename>`だけを同名のCHECKPOINT配下`dinov3/<filename>`へ明示移行し、警告と`LoadedBallCheckpoint.backbone_asset_migration`に記録する。callerのresolverを優先し、省略時の旧layoutはprojectの`ckpt/`を使う。保存config・tensorは変更せず、新配置がなければ停止する。
 - **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction`（点・score・native heatmap・候補の局所特徴）を返す。
 
 ### evaluation/
@@ -73,6 +71,8 @@
 - **`frame_store/`**: 統一 frame store の生成。`sources/{tracknet,meiji,chat_annotation}.py` が各注釈形式を検証して `ClipSpec`(`clip.py`)へ写し、`builder.py` が split 割当・JPEG shard 化・アトミック publish を行う。設定は `configs/generate_dataset.yaml`(`config.py` で厳密検証)、入口は `scripts/generate_dataset.py`。
 
 ### scripts/
+- **`review_play_intervals.py`**: CPUの区間推定・実画像レビュー。
+- **`train_mdd_pose.py`**: レビュー後に使うMDD＋pose座標モデルの学習入口。epoch/学習率/seedを明示し、testを読まない。
 - **`generate_dataset.py`**: 統一 frame store の生成エントリポイント。
 - **`train.py`**: 固定長フレーム窓での通常学習エントリポイント。
 - **`eval.py`**: 単一checkpointの詳細診断評価。
@@ -82,8 +82,7 @@
 
 ### configs/
 - モデル/データ/損失・メトリクス/学習/評価マニフェスト/可視化ごとにHydra設定を分割。
-- DINOv3の`backbone.repository_path`はEXTERNAL_ASSET、`backbone.checkpoint_path`はCHECKPOINT rootから解決する。配布ファイル名は[モデル設定](configs/model/dinov3_rope.yaml)を参照。
-- 学習は`ckpt/`の事前学習重みを使う。元学習runの重みを`init_weights`やeval/visualize/manifestの入力に使う場合は、`{role: artifact, path: ...}`でARTIFACTを明示する（契約は[出力規約](../OUTPUTS.md)）。DINOv3の事前学習重みは独立したCHECKPOINT rootから解決する。
+- 新モデルは全重みをランダム初期化する。ConvNeXtで明示的なFTを行う場合のみ`ckpt/`の重みを指定する。元学習runの重みを`init_weights`やeval/visualize/manifestの入力に使う場合は、`{role: artifact, path: ...}`でARTIFACTを明示する（契約は[出力規約](../OUTPUTS.md)）。
 
 ## 検出証拠の出力契約
 
@@ -137,7 +136,7 @@ scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結�
   `metrics.available=false` と理由を返し、0埋めのmetricを捏造しない。
   非finiteな座標・visibilityは読み込み時に拒否し、JSONへNaNを出さない。
 - 推論窓の長さは checkpointの `model.num_frames` を上限とし、下限は
-  アーキテクチャ最小(`stunet`=8、その他=1)にMDD multi-frame時の2 frame要件を
+  ConvNeXtの最小1 frameにMDD multi-frame時の2 frame要件を
   加えた値。範囲外はpadせず422で拒否する。
 - 推論窓は選択frame以降の連続frameで構築し、シーン長を超える要求は拒否する。
 - モデル入力は original frameを checkpointの `data.image_size` へ
@@ -165,7 +164,7 @@ scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結�
 
 checkpoint本体の保存configだけを根拠にする(ファイル名から推論しない)。
 
-- `model.name` が `stunet`/`conv_next_unet`/`dinov3_rope` 以外、または
+- heatmap推論の `model.name` が `conv_next_unet` 以外、または
   `num_frames < アーキテクチャ最小` のcheckpointは `error` 付きで一覧に出し、
   実行時に明示的に失敗させる。
 - `model.input_mode` か入力 `image_size` が欠落したcheckpointも同じく
@@ -193,7 +192,7 @@ Meiji、chat annotationの入力位置とsplitは `configs/generate_dataset.yaml
 生成先には全frameのJPEG shard、注釈index、metadata、READMEを保存する。
 旧YouTube収集・疑似ラベル・SSL画像収集とWeb変換の入口は提供しない。
 
-旧checkpointの推論は保存済みmodel/正規化契約のまま利用できる。
+ConvNeXt checkpointの推論は保存済みmodel/正規化契約のまま利用できる。
 学習再開には現在のstore設定を明示する。
 
 ### Meiji混合FT
@@ -219,7 +218,7 @@ validationの窓はcheckpoint選択用であり、全frameのholdout評価とは
 
 ### 毎epochの候補recallとcheckpoint
 
-通常・GAN・LoRA・staged学習は共通の `ValidationCandidateRecall` を使う。
+ConvNeXtの通常・GAN学習は共通の `ValidationCandidateRecall` を使う。
 設定の正本は `configs/training/_validation_candidates.yaml`。
 loss用に補間する前のnative sigmoid heatmapから、閾値なしK=8/NMS=5/patch=5/subpixelで復号し、
 距離≤20 source pxのrecallを記録する。保存画像の端点座標をstoreのwidth-ratio scaleで割って
@@ -236,7 +235,7 @@ datasetは未増強の教師・frame行ID・source scaleを必ずbatchへ渡し�
 重複を除き、epoch全体のhit/observed件数を割る。batch平均・rank平均ではない。
 通常storeのvalidationはラベルによらない窓と実frameの末尾backfillで全frameを覆い、
 短いclip・窓間の隙間は拒否する。混合FTのstrideは選定比較と同じ4。
-stagedの固定T prefixとWebのsamplingは各data設定どおりで、評価対象はloaderが供給した一意frame。
+評価対象はloaderが供給した一意frame。
 これらの窓集合やvalidation精度設定が違うrunを、全frame/float32の選定比較と同一条件と扱わない。
 
 `val/candidate_recall_at_8_20px` に全source合算を、

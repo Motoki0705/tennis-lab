@@ -10,8 +10,8 @@ from torch import Tensor
 
 from src.tasks.base.model_io import ModelIOContractError
 
-BallInputMode = Literal["rgb", "mdd"]
-BallInputLayout = Literal["bcthw", "btchw"]
+BallInputMode = Literal["mdd"]
+BallInputLayout = Literal["bcthw"]
 
 
 class BallModelIOError(ModelIOContractError):

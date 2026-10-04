@@ -11,7 +11,7 @@ from src.tasks.ball_detection.model_io.normalization import BallImageNormalizati
 from src.tasks.ball_detection.visualization.adapters.render_inputs import (
     build_render_animation_inputs,
 )
-from tests.unit.tasks.ball_detection.model_io.test_adapters import _rgb_adapter
+from tests.unit.tasks.ball_detection.model_io.test_adapters import _mdd_adapter
 
 
 @pytest.mark.parametrize("normalization", [
@@ -22,7 +22,7 @@ from tests.unit.tasks.ball_detection.model_io.test_adapters import _rgb_adapter
 def test_render_restores_rgb_and_matches_model_mdd_for_selected_sample(
     normalization: BallImageNormalization,
 ) -> None:
-    adapter = _rgb_adapter()
+    adapter = _mdd_adapter()
     adapter.spec = replace(adapter.spec, input_mode="mdd", input_layout="bcthw", in_channels=2)
     raw = torch.linspace(0, 1, 2 * 3 * 3 * 2 * 2).reshape(2, 3, 3, 2, 2)
     raw[:, 1] = 1 - raw[:, 1]  # Include both brighten and darken transitions.
@@ -58,5 +58,5 @@ def test_render_does_not_clip_invalid_preprocessed_input_into_valid_rgb() -> Non
             pred_heatmaps_bthw=torch.zeros(1, 2, 2, 2),
             peak_threshold=0.5,
             image_normalization=BallImageNormalization(True),
-            model_io=_rgb_adapter(),
+            model_io=_mdd_adapter(),
         )
