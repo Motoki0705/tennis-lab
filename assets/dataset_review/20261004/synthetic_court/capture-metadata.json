@@ -52,7 +52,8 @@
         }
       },
       "source_record_sha256": "a5567188be298978c7280139a8650e862352bf1fc7de8e32ec3d99b72f0231c8",
-      "image_sha256": "39835eb0ee5b7439b2027d3a4363a43e31fa2599c570343c9c1c72e03253ac0d"
+      "image_sha256": "39835eb0ee5b7439b2027d3a4363a43e31fa2599c570343c9c1c72e03253ac0d",
+      "label_scope": "all"
     },
     {
       "file": "before-b01-test-labels.png",
@@ -104,7 +105,8 @@
         }
       },
       "source_record_sha256": "a5567188be298978c7280139a8650e862352bf1fc7de8e32ec3d99b72f0231c8",
-      "image_sha256": "a271f401dc5ee321752365ea4f63fbe4047b6075e1c1daf0b3b96796c75ef59c"
+      "image_sha256": "a271f401dc5ee321752365ea4f63fbe4047b6075e1c1daf0b3b96796c75ef59c",
+      "label_scope": "all"
     },
     {
       "file": "after-b01-test-overview.png",
@@ -122,18 +124,19 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T15:45:02.972Z",
+      "captured_at": "2026-10-04T16:00:51.804Z",
       "source_revision": "5d56499a04af35863ba1",
-      "code_revision": "090185aafb780e56c9feb488e940db5aaf46df93",
+      "label_scope": "all",
+      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
-        "src/synthetic_data_generation/dataset/court/review/records.py": "1b7a39bc602cba9906098513385e15d9dbd770294287774940a18e8a391f8da0",
-        "src/synthetic_data_generation/dataset/court/review/service.py": "f38f038c44c25e5fcc3d3d6324be0c5aa84c102ab107062ed34359b011ecb3e1",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "bdab2a386b460fd37503916d007293fc80c88e206bdc03574d009a8f19f1857a",
-        "src/synthetic_data_generation/dataset/court/review/static/index.html": "c5f626583eb3464cc9ed91d7e99174df960aa70de9fdc6e775c3d1f20f410fb7",
+        "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
+        "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "1dfb3d6f3c11e32a802fca0f1300fdd8150f285a54ffc22c50ed4a0a9e13d718",
-        "src/synthetic_data_generation/dataset/court/review/web.py": "167e4e7cacd61471d7b89c7afb2f2f5f4c6a05c789f5f6a07223d5cbaa5a9090"
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
         "manifest": {
@@ -158,7 +161,7 @@
         }
       },
       "source_record_sha256": "a5567188be298978c7280139a8650e862352bf1fc7de8e32ec3d99b72f0231c8",
-      "image_sha256": "6f42577c023f3bcb12eb80ef9ae24b92d4bd96644a2a5b078054e91ab3e01fed"
+      "image_sha256": "db7344ea31881e84d2cdc7dd4d132989cc381d5d48605f346a2c72c88ddef176"
     },
     {
       "file": "after-b01-test-labels.png",
@@ -176,18 +179,19 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T15:45:03.588Z",
+      "captured_at": "2026-10-04T16:00:52.175Z",
       "source_revision": "5d56499a04af35863ba1",
-      "code_revision": "090185aafb780e56c9feb488e940db5aaf46df93",
+      "label_scope": "all",
+      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
-        "src/synthetic_data_generation/dataset/court/review/records.py": "1b7a39bc602cba9906098513385e15d9dbd770294287774940a18e8a391f8da0",
-        "src/synthetic_data_generation/dataset/court/review/service.py": "f38f038c44c25e5fcc3d3d6324be0c5aa84c102ab107062ed34359b011ecb3e1",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "bdab2a386b460fd37503916d007293fc80c88e206bdc03574d009a8f19f1857a",
-        "src/synthetic_data_generation/dataset/court/review/static/index.html": "c5f626583eb3464cc9ed91d7e99174df960aa70de9fdc6e775c3d1f20f410fb7",
+        "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
+        "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "1dfb3d6f3c11e32a802fca0f1300fdd8150f285a54ffc22c50ed4a0a9e13d718",
-        "src/synthetic_data_generation/dataset/court/review/web.py": "167e4e7cacd61471d7b89c7afb2f2f5f4c6a05c789f5f6a07223d5cbaa5a9090"
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
         "manifest": {
@@ -212,7 +216,7 @@
         }
       },
       "source_record_sha256": "a5567188be298978c7280139a8650e862352bf1fc7de8e32ec3d99b72f0231c8",
-      "image_sha256": "edf766088485dc9dde3eab241e0b29b60cfa8feae6c73eac98244c9b241deeff"
+      "image_sha256": "074024abf3d4dbea27492d8675cc1bd413ec002cd1040d4e8360000a52651c2e"
     },
     {
       "file": "after-b01-test-compare.png",
@@ -230,18 +234,19 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T15:45:03.879Z",
+      "captured_at": "2026-10-04T16:00:52.442Z",
       "source_revision": "5d56499a04af35863ba1",
-      "code_revision": "090185aafb780e56c9feb488e940db5aaf46df93",
+      "label_scope": "target",
+      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
-        "src/synthetic_data_generation/dataset/court/review/records.py": "1b7a39bc602cba9906098513385e15d9dbd770294287774940a18e8a391f8da0",
-        "src/synthetic_data_generation/dataset/court/review/service.py": "f38f038c44c25e5fcc3d3d6324be0c5aa84c102ab107062ed34359b011ecb3e1",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "bdab2a386b460fd37503916d007293fc80c88e206bdc03574d009a8f19f1857a",
-        "src/synthetic_data_generation/dataset/court/review/static/index.html": "c5f626583eb3464cc9ed91d7e99174df960aa70de9fdc6e775c3d1f20f410fb7",
+        "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
+        "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "1dfb3d6f3c11e32a802fca0f1300fdd8150f285a54ffc22c50ed4a0a9e13d718",
-        "src/synthetic_data_generation/dataset/court/review/web.py": "167e4e7cacd61471d7b89c7afb2f2f5f4c6a05c789f5f6a07223d5cbaa5a9090"
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
         "manifest": {
@@ -266,7 +271,7 @@
         }
       },
       "source_record_sha256": "a5567188be298978c7280139a8650e862352bf1fc7de8e32ec3d99b72f0231c8",
-      "image_sha256": "23270c6e781d2855f10461f42539ca531e30f74fcda07d5c0b3f7a4adc549657"
+      "image_sha256": "0140019a11f0f9e4be15f62c92768791eb9bebf3490128b321b0a6f323d29498"
     },
     {
       "file": "after-b01-published-map.png",
@@ -284,18 +289,19 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T15:45:04.002Z",
+      "captured_at": "2026-10-04T16:00:53.460Z",
       "source_revision": "5d56499a04af35863ba1",
-      "code_revision": "090185aafb780e56c9feb488e940db5aaf46df93",
+      "label_scope": "target",
+      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
-        "src/synthetic_data_generation/dataset/court/review/records.py": "1b7a39bc602cba9906098513385e15d9dbd770294287774940a18e8a391f8da0",
-        "src/synthetic_data_generation/dataset/court/review/service.py": "f38f038c44c25e5fcc3d3d6324be0c5aa84c102ab107062ed34359b011ecb3e1",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "bdab2a386b460fd37503916d007293fc80c88e206bdc03574d009a8f19f1857a",
-        "src/synthetic_data_generation/dataset/court/review/static/index.html": "c5f626583eb3464cc9ed91d7e99174df960aa70de9fdc6e775c3d1f20f410fb7",
+        "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
+        "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "1dfb3d6f3c11e32a802fca0f1300fdd8150f285a54ffc22c50ed4a0a9e13d718",
-        "src/synthetic_data_generation/dataset/court/review/web.py": "167e4e7cacd61471d7b89c7afb2f2f5f4c6a05c789f5f6a07223d5cbaa5a9090"
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
       "source": {
         "manifest": {
@@ -337,20 +343,20 @@
         "width": 1600,
         "height": 1000
       },
-      "captured_at": "2026-10-04T15:45:04.264Z",
+      "captured_at": "2026-10-04T16:00:53.698Z",
       "source_revision": "5d56499a04af35863ba1",
-      "code_revision": "090185aafb780e56c9feb488e940db5aaf46df93",
+      "label_scope": "target",
+      "code_revision": "92b71e65c3bab7019ac45bd988e34ae4ea631d77",
       "code_file_sha256": {
         "src/synthetic_data_generation/dataset/court/review/__init__.py": "07556ba3d271738876d3edf6476ca4de2eb456f0fe480b7e6c63e70c3e1ef975",
-        "src/synthetic_data_generation/dataset/court/review/records.py": "1b7a39bc602cba9906098513385e15d9dbd770294287774940a18e8a391f8da0",
-        "src/synthetic_data_generation/dataset/court/review/service.py": "f38f038c44c25e5fcc3d3d6324be0c5aa84c102ab107062ed34359b011ecb3e1",
-        "src/synthetic_data_generation/dataset/court/review/static/app.js": "bdab2a386b460fd37503916d007293fc80c88e206bdc03574d009a8f19f1857a",
-        "src/synthetic_data_generation/dataset/court/review/static/index.html": "c5f626583eb3464cc9ed91d7e99174df960aa70de9fdc6e775c3d1f20f410fb7",
+        "src/synthetic_data_generation/dataset/court/review/records.py": "3db6b904279678e98703cd0f6ce790d6f87ba860a5ba98b2556aaba581d1238e",
+        "src/synthetic_data_generation/dataset/court/review/service.py": "8b785bfb86abd6649d60576082302d9e2524172975229daf1c378c1b6a1b6044",
+        "src/synthetic_data_generation/dataset/court/review/static/app.js": "157e4123a0677a3bb1be12061db3b20152937fdb97b01ed7240e9758c3326cdb",
+        "src/synthetic_data_generation/dataset/court/review/static/index.html": "96c02c24fce9c64a63c0a7c87bf9237d91a9d3ea1e9f6ec1f4817e2a405e6c4b",
         "src/synthetic_data_generation/dataset/court/review/static/scene.mjs": "51e62c5c62e9df8a4ad525b9f8c10b5327a6dc7dc667afa538bbde211870f5f5",
-        "src/synthetic_data_generation/dataset/court/review/static/style.css": "1dfb3d6f3c11e32a802fca0f1300fdd8150f285a54ffc22c50ed4a0a9e13d718",
-        "src/synthetic_data_generation/dataset/court/review/web.py": "167e4e7cacd61471d7b89c7afb2f2f5f4c6a05c789f5f6a07223d5cbaa5a9090"
+        "src/synthetic_data_generation/dataset/court/review/static/style.css": "03b586baf732cb72a957b45adf9177eeb6b95f6035b12776da8c825c00e8e65d",
+        "src/synthetic_data_generation/dataset/court/review/web.py": "a5b0645e5eae234a307e05c71c2faaf21625e24ae6163159fc54ce693f973dc3"
       },
-      "camera": "court-sample-000025",
       "source": {
         "manifest": {
           "path": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/datasets/court/dataset.json",
@@ -373,6 +379,7 @@
           "sha256": "fa77bd3107b9f5b5e5620d793a9830dbcfe1f80cb8c4f9beff8a0fa8db74e170"
         }
       },
+      "camera": "court-sample-000025",
       "source_record_sha256": "1ae889e8bb9d1ff568c452c33fc4915c6bbdfc83923aa9c6c5f08c5e7f8a4c6e",
       "image_sha256": "755454118daa3d0f944471a56d76387662a78d10eef9bc6c9877fecd2b30c945"
     }
@@ -383,6 +390,7 @@
     "before and after use B01 / group-00786 / court-sample-000721 / frame 1 / view-00010-court_center / 1600x1000",
     "rejected candidate court-sample-000025 has sparse camera/projection/reasons but no saved image; no accepted image was reused",
     "source owner was read-only; screenshots are browser captures, not fixtures",
-    "after UI hashes match the final code; screenshot commit does not alter UI code"
+    "after UI hashes match the final code; screenshot commit does not alter UI code",
+    "Default UI teacher is target-only KP14. Matched overview/label pairs use all-court reference scope; the new comparison uses target scope. Shared overlay helper and legacy API defaults were retained."
   ]
 }
