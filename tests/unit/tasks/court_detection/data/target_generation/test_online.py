@@ -72,9 +72,13 @@ def test_all_dense_targets_without_disk_masks_share_one_homography(monkeypatch) 
         },
     )
     assert len(calls) == 1
-    assert set(torch.unique(targets["seg"]).tolist()) == set(range(7))
-    assert set(torch.unique(targets["semantic_line"]).tolist()) == set(range(12))
-    assert torch.equal(targets["line"][0] > 0, targets["semantic_line"] > 0)
+    assert targets["seg"].shape == (7, 256, 256)
+    assert (targets["seg"].sum((1, 2)) > 0).all()
+    assert targets["semantic_line"].shape == (12, 256, 256)
+    assert (targets["semantic_line"].sum((1, 2)) > 0).all()
+    torch.testing.assert_close(
+        targets["line"][0], 1 - targets["semantic_line"][0], rtol=0, atol=0
+    )
 
 
 def test_crop_transform_and_padding_do_not_extrapolate_supervision() -> None:
@@ -115,6 +119,12 @@ def test_invisible_heatmap_points_still_define_dense_geometry() -> None:
 
 def test_single_court_dense_targets_reject_multiple_instances() -> None:
     raw = _raw()
-    multiple = replace(raw, court_instances=(raw.court_instances[0], replace(raw.court_instances[0], court_instance_id="second")))
+    multiple = replace(
+        raw,
+        court_instances=(
+            raw.court_instances[0],
+            replace(raw.court_instances[0], court_instance_id="second"),
+        ),
+    )
     with pytest.raises(ValueError, match="exactly one selected court"):
         generate_online_targets(multiple, {"line": LINE_TARGET_SCHEMA})

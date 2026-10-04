@@ -14,10 +14,11 @@ from PIL import Image
 
 from src.tasks.court_detection.visualization.rendering.common import (
     COURT_SEG_PALETTE_RGB,
+    coverage_colors,
 )
 
 RgbaArray: TypeAlias = NDArray[np.uint8]
-LabelArray: TypeAlias = NDArray[np.integer[Any]]
+LabelArray: TypeAlias = NDArray[np.integer[Any]] | NDArray[np.floating[Any]]
 RgbColor = tuple[int, int, int]
 
 # The canonical 7 ordered court-cell classes shared by both Court sources.
@@ -98,6 +99,27 @@ def categorical_raster(
 ) -> RgbaArray:
     """Colour a categorical label map, leaving ``background_label`` transparent."""
     array = np.asarray(labels)
+    if array.ndim == 3:
+        if background_label != 0 or not 0 <= alpha <= 255:
+            raise ValueError(
+                "Coverage rasters require background channel zero and valid alpha."
+            )
+        colors, foreground = coverage_colors(array, palette)
+        rgba = np.zeros((*foreground.shape, 4), dtype=np.uint8)
+        rgba[..., :3] = (
+            np.rint(
+                np.divide(
+                    colors,
+                    foreground[..., None],
+                    out=np.zeros_like(colors),
+                    where=foreground[..., None] > 0,
+                )
+            )
+            .clip(0, 255)
+            .astype(np.uint8)
+        )
+        rgba[..., 3] = np.rint(foreground * alpha).astype(np.uint8)
+        return rgba
     if array.ndim != 2:
         raise ValueError("Categorical rasters require a 2-D label map.")
     if not 0 <= alpha <= 255:

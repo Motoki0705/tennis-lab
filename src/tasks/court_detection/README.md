@@ -45,6 +45,15 @@ CNN encoder、FPN、U-Net、Transformerなし、linear headの選択肢はあり
 
 4つの画像教師は同じ幾何変換を共有します。SEG・LINE・semantic LINEはKP14から
 推定したhomographyと物理線幅を使って生成し、元画像外やpaddingには外挿しません。
+境界と細線は8倍の格子で描画し、画素内の被覆率を近似します。投影頂点を整数画素へ
+丸めて細いポリゴンを捨てる処理や、KP位置への円による線の補修は新教師では使いません。
+SEGは`float32 [7,H,W]`、semantic LINEは`float32 [12,H,W]`のクラス分布、
+LINEは`float32 [1,H,W]`の0〜1の被覆率です。各画素のクラス分布は合計1で、
+元画像外・paddingは背景1（LINEは0）です。クラスIDを補間せず、各クラスの被覆率を求めます。
+
+categorical CE/Diceには分布をそのまま、LINEのBCE/Diceには被覆率を渡します。
+IoU/Diceは既存のargmax・閾値による予測に対し、GT側を被覆率で重み付けします。境界の小数値をGT側で閾値化しません。
+旧ハード教師とはschemaを区別し、そのスコアと新スコアを同一条件の結果として扱いません。
 教師schemaの正本は`target_schemas.py`です。既定のKP sigmaは画像対角長の0.01、
 LINE幅は通常線7.5 cm・baseline 15 cmです。各schemaの末尾の版番号は
 データsourceのV3とは独立です。
@@ -99,7 +108,9 @@ pose学習では`data/augmentation=pose_safe`を使用します。
 
 `review_dataset.py`は両sourceのGTを表示し、checkpoint・GPUは不要です。
 `preview_augmentation.py`は実際の学習tensor、可視KP、各クラスの画素数を確認します。
-heatmap previewもこの入口へ統合しています。
+heatmap previewもこの入口へ統合しています。各drawをoverlayとtarget-onlyの2行で表示し、
+LINEの濃度・categoricalの色とalphaに被覆率を反映します。JSONにはfractional pixel数と
+クラス別pixel massも保存します。
 
 ```bash
 .venv/bin/python -m src.tasks.court_detection.scripts.preview_augmentation \
@@ -144,7 +155,9 @@ GTと予測を原画像へ重ね、KP・SEG・LINE・semantic LINEを比較し�
 poseの画面表示は提供しません。dataset catalogは実画像と合成V3だけを受理し、
 旧合成sceneや壊れたstoreは理由を表示して無効化します。
 checkpointは本文の保存構成・target bundleを検証し、対応しない構成は理由付きで拒否します。
-比較対象は教師schemaとchannel意味が一致するlayerだけです。
+採点対象は教師schemaとchannel意味が一致するlayerだけです。直前のハード教師を持つ
+既定b863などは予測を表示できますが、schemaの異なるdense headは警告付きで採点から除外します。
+新教師を使う学習は新しいrunとして開始し、旧target bundleからの同一条件resumeとして扱いません。
 
 検証入口は`.venv/bin/python -m pytest tests/unit/tasks/court_detection tests/integration/tasks/court_detection`です。
 `local_data`テストは実データ・既定checkpointがある環境で明示的に実行します。

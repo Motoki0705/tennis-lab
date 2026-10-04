@@ -12,10 +12,13 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.court_detection.visualization.rendering.common import (
+    COURT_SEG_PALETTE_RGB,
     colorize_seg_mask,
+    coverage_colors,
 )
 
 UInt8Array: TypeAlias = NDArray[np.uint8]
+MaskArray: TypeAlias = NDArray[np.integer[Any]] | NDArray[np.floating[Any]]
 
 
 def gaussian_pixel_geometry(
@@ -56,12 +59,30 @@ def render_heatmap_target(
 
 def render_segmentation_target(
     rgb: UInt8Array,
-    mask: torch.Tensor | NDArray[np.integer[Any]],
+    mask: torch.Tensor | MaskArray,
     *,
     alpha: float,
     max_label: int = 6,
 ) -> UInt8Array:
     """Overlay a categorical target while preserving background."""
+    raw = (
+        mask.detach().cpu().numpy()
+        if isinstance(mask, torch.Tensor)
+        else np.asarray(mask)
+    )
+    if raw.ndim == 3 and raw.shape[0] > 1:
+        if not 0 <= alpha <= 1 or raw.shape[-2:] != rgb.shape[:2]:
+            raise ValueError(
+                "Coverage preview requires matching RGB and alpha in [0,1]."
+            )
+        colors, foreground = coverage_colors(
+            raw, COURT_SEG_PALETTE_RGB[: max_label + 1]
+        )
+        return (
+            np.rint(rgb * (1.0 - alpha * foreground[..., None]) + alpha * colors)
+            .clip(0, 255)
+            .astype(np.uint8)
+        )
     array = _mask_array(mask)
     if (
         max_label < 0
@@ -78,7 +99,7 @@ def render_segmentation_target(
 
 def render_line_target(
     rgb: UInt8Array,
-    mask: torch.Tensor | NDArray[np.integer[Any]],
+    mask: torch.Tensor | MaskArray,
     *,
     alpha: float,
 ) -> UInt8Array:
@@ -86,9 +107,41 @@ def render_line_target(
     array = _mask_array(mask)
     if array.shape != rgb.shape[:2]:
         raise ValueError("LINE preview requires a mask matching RGB.")
-    colored = np.empty_like(rgb)
-    colored[:] = (255, 72, 72)
-    return _blend_where(rgb, colored, array > 0, alpha=alpha)
+    if (
+        not 0 <= alpha <= 1
+        or not np.isfinite(array).all()
+        or np.any((array < 0) | (array > 1))
+    ):
+        raise ValueError("LINE coverage and alpha must be finite in [0,1].")
+    opacity = array.astype(np.float32)[..., None] * alpha
+    return (
+        np.rint(rgb * (1.0 - opacity) + np.array([255, 72, 72]) * opacity)
+        .clip(0, 255)
+        .astype(np.uint8)
+    )
+
+
+def render_target_only(kind: str, target: object) -> UInt8Array:
+    """Show exact heatmap/coverage values without a background photograph."""
+    value = (
+        cast(Mapping[str, torch.Tensor], target)["heatmap"]
+        if kind == "kp"
+        else cast(torch.Tensor, target)
+    )
+    height, width = value.shape[-2:]
+    black = np.zeros((height, width, 3), dtype=np.uint8)
+    if kind == "kp":
+        return render_heatmap_target(black, value, alpha=1.0)
+    if kind in {"seg", "semantic_line"}:
+        return render_segmentation_target(
+            black, value, alpha=1.0, max_label=6 if kind == "seg" else 11
+        )
+    if kind == "line":
+        gray = (
+            np.rint(value[0].detach().cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
+        )
+        return np.repeat(gray[..., None], 3, axis=2)
+    raise ValueError(f"Unknown target: {kind!r}.")
 
 
 def summarize_targets(
@@ -119,26 +172,12 @@ def summarize_targets(
         }
     seg = targets.get("seg")
     if seg is not None:
-        array = _mask_array(cast("torch.Tensor", seg))
-        values, counts = np.unique(array, return_counts=True)
-        result["seg"] = {
-            "shape": list(array.shape),
-            "class_pixel_counts": {
-                str(int(value)): int(count)
-                for value, count in zip(values, counts, strict=True)
-            },
-        }
+        result["seg"] = _categorical_summary(cast(torch.Tensor, seg), channels=7)
     semantic_line = targets.get("semantic_line")
     if semantic_line is not None:
-        array = _mask_array(cast("torch.Tensor", semantic_line))
-        values, counts = np.unique(array, return_counts=True)
-        result["semantic_line"] = {
-            "shape": list(array.shape),
-            "class_pixel_counts": {
-                str(int(value)): int(count)
-                for value, count in zip(values, counts, strict=True)
-            },
-        }
+        result["semantic_line"] = _categorical_summary(
+            cast(torch.Tensor, semantic_line), channels=12
+        )
     line = targets.get("line")
     if line is not None:
         tensor = cast("torch.Tensor", line)
@@ -147,21 +186,45 @@ def summarize_targets(
         result["line"] = {
             "shape": list(tensor.shape),
             "foreground_pixels": foreground,
-            "foreground_fraction": foreground / float(array.size),
+            "foreground_fraction": float(array.mean()),
+            "coverage_sum": float(array.sum()),
+            "fractional_pixels": int(((array > 0) & (array < 1)).sum()),
         }
     return result
 
 
+def _categorical_summary(value: torch.Tensor, *, channels: int) -> dict[str, object]:
+    array = value.detach().cpu().numpy()
+    if array.ndim == 3:
+        coverage_colors(array, COURT_SEG_PALETTE_RGB[:channels])
+        return {
+            "shape": list(array.shape),
+            "class_pixel_mass": {
+                str(index): float(mass)
+                for index, mass in enumerate(array.sum(axis=(1, 2)))
+            },
+            "fractional_pixels": int(((array > 0) & (array < 1)).any(axis=0).sum()),
+        }
+    labels, counts = np.unique(_mask_array(value), return_counts=True)
+    return {
+        "shape": list(array.shape),
+        "class_pixel_counts": {
+            str(int(label)): int(count)
+            for label, count in zip(labels, counts, strict=True)
+        },
+    }
+
+
 def _mask_array(
-    value: torch.Tensor | NDArray[np.integer[Any]],
-) -> NDArray[np.integer[Any]]:
+    value: torch.Tensor | MaskArray,
+) -> MaskArray:
     array = value.detach().cpu().numpy() if isinstance(value, torch.Tensor) else value
     array = np.asarray(array)
     if array.ndim == 3 and array.shape[0] == 1:
         array = array[0]
     if array.ndim != 2:
         raise ValueError("Target mask must have shape [H,W] or [1,H,W].")
-    return cast("NDArray[np.integer[Any]]", array)
+    return cast("MaskArray", array)
 
 
 def _blend(rgb: UInt8Array, colored: UInt8Array, *, alpha: float) -> UInt8Array:
@@ -194,6 +257,7 @@ __all__ = [
     "gaussian_pixel_geometry",
     "render_heatmap_target",
     "render_line_target",
+    "render_target_only",
     "render_segmentation_target",
     "summarize_targets",
 ]

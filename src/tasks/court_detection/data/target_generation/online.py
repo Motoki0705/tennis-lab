@@ -14,6 +14,9 @@ from src.tasks.court_detection.data.contracts import (
     CourtDenseTargetKind,
     CourtRawSample,
 )
+from src.tasks.court_detection.data.target_generation.coverage import (
+    generate_coverage_targets,
+)
 from src.tasks.court_detection.data.target_generation.line import generate_line_target
 from src.tasks.court_detection.data.target_generation.rasterization import (
     CourtPlaneRasterizer,
@@ -25,9 +28,10 @@ from src.tasks.court_detection.data.target_generation.semantic_line import (
     generate_semantic_line_target,
 )
 from src.tasks.court_detection.target_schemas import (
-    LINE_TARGET_SCHEMA,
-    SEGMENTATION_TARGET_SCHEMA,
-    SEMANTIC_LINE_TARGET_SCHEMA,
+    DENSE_COVERAGE_SCHEMA_BY_KIND,
+    DENSE_COVERAGE_SCHEMAS,
+    SEGMENTATION_TARGET_SCHEMA_HARD,
+    SEMANTIC_LINE_TARGET_SCHEMA_HARD,
     line_target_definition,
 )
 
@@ -47,13 +51,16 @@ def generate_online_targets(
     """
     if not schemas:
         return {}
-    if len(raw.court_instances) != 1 and any(
-        kind in {"seg", "semantic_line"} or schema == LINE_TARGET_SCHEMA
-        for kind, schema in schemas.items()
-    ):
+    if len(raw.court_instances) != 1:
         raise ValueError(
             "Current single-court dense targets require exactly one selected court."
         )
+    for kind, schema in schemas.items():
+        if (
+            schema in DENSE_COVERAGE_SCHEMAS
+            and schema != DENSE_COVERAGE_SCHEMA_BY_KIND[kind]
+        ):
+            raise ValueError(f"Coverage schema disagrees with target kind {kind!r}.")
     height, width = output_size_hw or (raw.image.height, raw.image.width)
     matrix = (
         np.eye(3)
@@ -85,6 +92,23 @@ def generate_online_targets(
             )
         )
     projectors = tuple(rasterizers)
+    coverage_kinds = tuple(
+        kind for kind, schema in schemas.items() if schema in DENSE_COVERAGE_SCHEMAS
+    )
+    result: dict[CourtDenseTargetKind, Tensor] = {}
+    if coverage_kinds:
+        result.update(
+            generate_coverage_targets(
+                raw,
+                coverage_kinds,
+                projectors=projectors,
+                source_to_output=matrix,
+                output_size_hw=(height, width),
+                content_size_hw=content_size_hw,
+            )
+        )
+    if len(result) == len(schemas):
+        return result
     support = cv2.warpPerspective(
         np.ones((raw.image.height, raw.image.width), dtype=np.uint8),
         matrix,
@@ -95,10 +119,11 @@ def generate_online_targets(
     if content_size_hw is not None:
         support[content_size_hw[0] :, :] = 0
         support[:, content_size_hw[1] :] = 0
-    result: dict[CourtDenseTargetKind, Tensor] = {}
     for kind, schema in schemas.items():
+        if kind in coverage_kinds:
+            continue
         if kind == "seg":
-            if schema != SEGMENTATION_TARGET_SCHEMA:
+            if schema != SEGMENTATION_TARGET_SCHEMA_HARD:
                 raise ValueError(f"Unsupported online SEG schema: {schema}.")
             array = generate_segmentation_target(
                 height=height,
@@ -117,7 +142,7 @@ def generate_online_targets(
                 baseline_width_metres=definition.baseline_width_metres,
             )
         elif kind == "semantic_line":
-            if schema != SEMANTIC_LINE_TARGET_SCHEMA:
+            if schema != SEMANTIC_LINE_TARGET_SCHEMA_HARD:
                 raise ValueError(f"Unsupported online semantic LINE schema: {schema}.")
             channels = raw.keypoint_channels
             if channels is None or channels.physical_indices.shape != (14, 1):

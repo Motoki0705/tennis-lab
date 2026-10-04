@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import cast
 
@@ -92,6 +93,36 @@ def colorize_seg_mask(mask: np.ndarray) -> np.ndarray:
     for label, color in enumerate(COURT_SEG_PALETTE_RGB):
         rgb[mask == label] = color
     return cast("np.ndarray", rgb)
+
+
+def coverage_colors(
+    coverage: np.ndarray, palette: Sequence[tuple[int, int, int]]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return foreground-premultiplied RGB and alpha from class coverage.
+
+    Background is channel zero. Coverage is kept fractional; neither class IDs
+    nor a hard argmax map are interpolated to manufacture smooth boundaries.
+    """
+    array = np.asarray(coverage)
+    if (
+        array.ndim != 3
+        or array.shape[0] != len(palette)
+        or not np.issubdtype(array.dtype, np.floating)
+    ):
+        raise ValueError(
+            "Class coverage must be floating [C,H,W] matching its palette."
+        )
+    if not np.isfinite(array).all() or np.any((array < 0) | (array > 1)):
+        raise ValueError("Class coverage must be finite in [0,1].")
+    if not np.allclose(array.sum(0), 1.0, atol=1e-5, rtol=0.0):
+        raise ValueError("Class coverage channels must sum to one.")
+    colors = np.einsum(
+        "chw,cd->hwd",
+        array[1:],
+        np.asarray(palette[1:], dtype=np.float32),
+        optimize=True,
+    )
+    return colors, array[1:].sum(0)
 
 
 def colorize_heatmap(heatmap: np.ndarray) -> np.ndarray:

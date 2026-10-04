@@ -8,6 +8,8 @@ an explicit nearest-neighbour resize recorded in the result.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
@@ -99,28 +101,45 @@ def keypoint_metrics(
 def categorical_metrics(
     prediction: CourtSegmentationPrediction,
     *,
-    ground_truth: NDArray[np.integer[object]],
+    ground_truth: NDArray[np.integer[object]] | NDArray[np.floating[object]],
     prefix: str,
 ) -> dict[str, object]:
     """Score a categorical head by pixel accuracy and mean IoU over classes."""
-    size_hw = (int(ground_truth.shape[0]), int(ground_truth.shape[1]))
+    size_hw = (int(ground_truth.shape[-2]), int(ground_truth.shape[-1]))
     predicted = resize_labels_nearest(prediction.mask.detach().cpu().numpy(), size_hw)
-    truth = np.asarray(ground_truth, dtype=np.int64)
-    if predicted.shape != truth.shape:
-        raise ValueError("Court categorical metrics require matching mask shapes.")
-    accuracy = float((predicted == truth).mean()) if truth.size else None
+    truth = np.asarray(ground_truth)
+    accuracy: float | None
+    labels: Iterable[int]
+    if truth.ndim == 3:
+        if (
+            not np.isfinite(truth).all()
+            or np.any((truth < 0) | (truth > 1))
+            or not np.allclose(truth.sum(0), 1, atol=1e-5)
+        ):
+            raise ValueError("Categorical coverage must be a probability distribution.")
+        if np.any((predicted < 0) | (predicted >= truth.shape[0])):
+            raise ValueError("Prediction labels exceed coverage channels.")
+        accuracy = float(np.take_along_axis(truth, predicted[None], axis=0).mean())
+        labels = range(truth.shape[0])
+    else:
+        if predicted.shape != truth.shape:
+            raise ValueError("Court categorical metrics require matching mask shapes.")
+        accuracy = float((predicted == truth).mean()) if truth.size else None
+        labels = sorted(
+            set(np.unique(truth).tolist()) | set(np.unique(predicted).tolist())
+        )
     ious: list[float] = []
-    for label in sorted(
-        set(np.unique(truth).tolist()) | set(np.unique(predicted).tolist())
-    ):
+    for label in labels:
         if label == 0:
             continue
-        truth_mask = truth == label
-        predicted_mask = predicted == label
-        union = int(np.count_nonzero(truth_mask | predicted_mask))
-        if union == 0:
-            continue
-        ious.append(float(np.count_nonzero(truth_mask & predicted_mask)) / union)
+        expected = (
+            truth[label] if truth.ndim == 3 else (truth == label).astype(np.float32)
+        )
+        mask = predicted == label
+        intersection = float((mask * expected).sum())
+        union = float(mask.sum() + expected.sum()) - intersection
+        if union > 0:
+            ious.append(intersection / union)
     return {
         f"{prefix}_pixel_accuracy": accuracy,
         f"{prefix}_mean_iou": (float(np.mean(ious)) if ious else None),
@@ -131,7 +150,7 @@ def categorical_metrics(
 def line_metrics(
     prediction: CourtLinePrediction,
     *,
-    ground_truth: NDArray[np.bool_],
+    ground_truth: NDArray[np.bool_] | NDArray[np.floating[object]],
     threshold: float,
 ) -> dict[str, object]:
     """Score the binary line head by intersection-over-union and Dice."""
@@ -140,13 +159,15 @@ def line_metrics(
         prediction.probability.detach().cpu().numpy(), size_hw
     )
     predicted = probability >= float(threshold)
-    truth = np.asarray(ground_truth, dtype=bool)
+    truth = np.asarray(ground_truth, dtype=np.float64)
+    if not np.isfinite(truth).all() or np.any((truth < 0) | (truth > 1)):
+        raise ValueError("LINE coverage must be finite in [0,1].")
     if predicted.shape != truth.shape:
         raise ValueError("Court line metrics require matching mask shapes.")
-    intersection = int(np.count_nonzero(predicted & truth))
-    union = int(np.count_nonzero(predicted | truth))
+    intersection = float((predicted * truth).sum())
+    union = float(predicted.sum() + truth.sum()) - intersection
     predicted_total = int(np.count_nonzero(predicted))
-    truth_total = int(np.count_nonzero(truth))
+    truth_total = float(truth.sum())
     iou = float(intersection) / union if union else None
     dice = (
         float(2 * intersection) / (predicted_total + truth_total)
@@ -162,11 +183,12 @@ def line_metrics(
 
 
 def resize_note(
-    prediction: NDArray[np.integer[object]], ground_truth: NDArray[np.integer[object]]
+    prediction: NDArray[np.integer[object]],
+    ground_truth: NDArray[np.integer[object]] | NDArray[np.floating[object]],
 ) -> str | None:
     """Describe a prediction/ground-truth grid mismatch for the warnings list."""
     predicted_hw = (int(prediction.shape[0]), int(prediction.shape[1]))
-    truth_hw = (int(ground_truth.shape[0]), int(ground_truth.shape[1]))
+    truth_hw = (int(ground_truth.shape[-2]), int(ground_truth.shape[-1]))
     if predicted_hw == truth_hw:
         return None
     return (
