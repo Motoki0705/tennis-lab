@@ -35,6 +35,7 @@ from .records import (
     rejection_summary,
     sample_summary,
     split_target_counts,
+    target_projection,
     visibility_summary,
 )
 
@@ -310,18 +311,34 @@ class ReviewService:
         }
 
     def overlay(
-        self, scene: str, revision: str, sample: str, width: int, mode: str = "overlay"
+        self,
+        scene: str,
+        revision: str,
+        sample: str,
+        width: int,
+        mode: str = "overlay",
+        label_scope: str = "all",
     ) -> bytes:
         if mode not in {"overlay", "raw"}:
             raise ValueError("Unknown image display mode.")
+        if label_scope not in {"target", "all"}:
+            raise ValueError("Unknown label court scope.")
         data = self.load(scene, revision)
         if sample not in data["samples"]:
             raise KeyError(sample)
         with self.render_slots:
-            return self._cached_overlay(scene, revision, sample, width, mode)
+            return self._cached_overlay(
+                scene, revision, sample, width, mode, label_scope
+            )
 
     def _overlay(
-        self, scene: str, revision: str, sample: str, width: int, mode: str = "overlay"
+        self,
+        scene: str,
+        revision: str,
+        sample: str,
+        width: int,
+        mode: str = "overlay",
+        label_scope: str = "all",
     ) -> bytes:
         data = self.load(scene, revision)
         entry = data["samples"][sample]
@@ -349,7 +366,9 @@ class ReviewService:
             sample_id=sample,
             view_id=entry["view_id"],
             trajectory_frame_index=entry["trajectory_frame_index"],
-            projection=label["projection"],
+            projection=target_projection(entry)
+            if mode == "overlay" and label_scope == "target"
+            else label["projection"],
             schema_version=court_schema_from_dataset_schema(data["schema"]).version,
         )
         image = (

@@ -24,6 +24,8 @@
    train／validation／testを色分けし、3D上の軌道クリックでも選択できる。
    画像のhover／focusで対応カメラとtarget courtの可視性を確認する。
 3. 「教師ラベル」「生成RGB」「RGBと教師を比較」を切り替える。
+   描画courtは標準で「target限定（学習教師）」とし、現行consumerのKP14対象と一致させる。
+   「全court参考」は生成scene全コートの疎な投影を表示する。target可視数はtargetだけの集計。
    画像クリックで元解像度表示を開き、frame／view、camera、target、保存KPの物理index、
    画面内／画面外／カメラ後方とrenderer可視性を確認する。点の行のtooltipはpixel座標。
    左右キー／ボタンで前後、Escapeで閉じる。長いIDと数値は選択パネルに置く。
@@ -51,6 +53,8 @@ publication／3D要約／画像を読む。`web.py`は読み取り専用API、`s
 
 画像は表示付近のみ遅延読み込みし、合成は同時2件、画像キャッシュはraw／overlay合計128件、
 シーンキャッシュは2件。一覧は最大480pxのJPEG、全画面は元解像度のJPEG。
+画像APIの既存呼出しは全court表示を保持し、UIは`label_scope=target`を明示する。
+targetの保存投影がない場合は取得エラーとし、全courtへの自動切替はしない。
 RGB表示は保存RGBのdecode結果を表示用JPEGへencodeする。rendererや推論は呼ばない。
 
 manifest／alignment／packed index／source run／resolved configのrevision変更は取得を拒否して

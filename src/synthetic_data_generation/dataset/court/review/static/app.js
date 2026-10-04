@@ -16,7 +16,7 @@ function status(message) {
   $("status").hidden = !message;
 }
 function imageURL(sample, width, mode = "overlay") {
-  return `/api/scenes/${encodeURIComponent(data.id)}/images/${encodeURIComponent(sample.id)}?revision=${encodeURIComponent(data.revision)}&width=${width}&mode=${mode}`;
+  return `/api/scenes/${encodeURIComponent(data.id)}/images/${encodeURIComponent(sample.id)}?revision=${encodeURIComponent(data.revision)}&width=${width}&mode=${mode}&label_scope=${$("label-scope").value}`;
 }
 function filteredGroups() {
   return data.groups.filter(
@@ -45,6 +45,9 @@ function inspectSample(sample) {
     `frame ${sample.frame} · ${sample.view}`,
     `target ${sample.target_court ?? "未記録"} · ${sample.target_coverage ?? "未記録"}`,
     `${sample.resolution.join("×")} · 採用 / ${group.split}`,
+    $("label-scope").value === "target"
+      ? "描画: target限定 · 学習consumerのKP14"
+      : "描画: 全court参考 · target可視数とは集計範囲が異なります",
     c
       ? `target可視 ${c.visible}/${c.total} · 画面内不可視 ${c.in_frame_hidden} · 画面外 ${c.out_of_frame}`
       : "target投影：未記録",
@@ -210,11 +213,16 @@ function openImage(index) {
   const sample = group.samples[index];
   inspectSample(sample);
   const mode = $("image-mode").value;
+  $("large-scope").value = $("label-scope").value;
   $("large-mode").value = mode;
   $("raw-pane").hidden = mode !== "compare";
   $("image-panes").classList.toggle("compare", mode === "compare");
   $("large-caption").textContent =
-    mode === "raw" ? "生成RGB · 保存JPEG" : "教師ラベル · 合成truth";
+    mode === "raw"
+      ? "生成RGB · 保存JPEG"
+      : $("label-scope").value === "target"
+        ? `target ${sample.target_court} 限定 · 学習教師KP14`
+        : "全court参考 · 学習対象はtargetのみ";
   $("large-image").alt = `${sample.id}：画像と教師ラベル`;
   $("large-image").src = imageURL(
     sample,
@@ -258,6 +266,9 @@ async function loadSampleDetail(sample) {
       detail.id,
       `${data.id} · ${detail.split} · 採用`,
       `target ${detail.target_court ?? "未記録"} / ${detail.target_coverage ?? "未記録"}`,
+      $("label-scope").value === "target"
+        ? "描画: target限定 · 学習consumerのKP14"
+        : "描画: 全court参考 · 学習対象はtargetのみ",
       `camera ${detail.camera}`,
       `frame ${detail.frame} · ${detail.view}`,
       `scene位置(m): ${[pose[3], pose[7], pose[11]].map((v) => v.toFixed(2)).join(", ")}`,
@@ -269,7 +280,16 @@ async function loadSampleDetail(sample) {
       row.textContent = text;
       $("large-sample-info").append(row);
     }
-    renderPointTable($("point-table"), detail.visibility, detail.target_court);
+    const visibility =
+      $("label-scope").value === "target"
+        ? {
+            ...detail.visibility,
+            courts: detail.visibility.courts.filter(
+              (c) => c.id === detail.target_court,
+            ),
+          }
+        : detail.visibility;
+    renderPointTable($("point-table"), visibility, detail.target_court);
   } catch (error) {
     if (sequence === detailSequence)
       $("large-sample-info").textContent = error.message;
@@ -556,6 +576,11 @@ $("image-mode").onchange = () => {
 };
 $("large-mode").onchange = () => {
   $("image-mode").value = $("large-mode").value;
+  $("image-mode").onchange();
+};
+$("label-scope").onchange = $("image-mode").onchange;
+$("large-scope").onchange = () => {
+  $("label-scope").value = $("large-scope").value;
   $("image-mode").onchange();
 };
 $("reset").onclick = () => view.reset();

@@ -81,6 +81,13 @@
               <option value="compare">RGBと教師を比較</option>
             </select>
           </label>
+          <label class="image-mode"
+            >描画court
+            <select id="label-scope" aria-label="描画court">
+              <option value="target">target限定（学習教師）</option>
+              <option value="all">全court参考</option>
+            </select>
+          </label>
           <div
             id="gallery"
             tabindex="0"
@@ -204,6 +211,15 @@
             <option value="overlay">教師ラベル</option>
             <option value="raw">生成RGB</option>
             <option value="compare">RGBと教師を比較</option>
+          </select></label
+        >
+      </div>
+      <div class="lightbox-scope">
+        <label
+          >描画court
+          <select id="large-scope" aria-label="全画面の描画court">
+            <option value="target">target限定（学習教師）</option>
+            <option value="all">全court参考</option>
           </select></label
         >
       </div>

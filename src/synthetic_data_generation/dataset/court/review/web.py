@@ -69,9 +69,10 @@ def create_app(service: ReviewService) -> FastAPI:
         revision: str,
         width: Annotated[int, Query(ge=0, le=1600)] = 480,
         mode: Literal["overlay", "raw"] = "overlay",
+        label_scope: Literal["all", "target"] = "all",
     ) -> Response:
         try:
-            content = service.overlay(scene, revision, sample, width, mode)
+            content = service.overlay(scene, revision, sample, width, mode, label_scope)
         except KeyError as error:
             raise HTTPException(404, "Unknown sample.") from error
         return Response(
