@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import threading
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 import torch
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -68,6 +68,29 @@ class InferenceRequest(BaseModel):
     device: Literal["cuda", "cpu"] = "cuda"
 
 
+class PlayerBackend(Protocol):
+    def player_preview(
+        self,
+        scene: str,
+        dataset: str,
+        start: int = 0,
+        count: int = 1,
+        mode: str = "reviewed",
+    ) -> dict[str, Any]: ...
+
+    def scenes(
+        self,
+        dataset: str,
+        search: str = "",
+        offset: int = 0,
+        limit: int = 100,
+        checkpoint: str | None = None,
+        *,
+        player_dataset: str | None = None,
+        player_status: str = "",
+    ) -> dict[str, Any]: ...
+
+
 def create_detection_app(
     service: DetectionBackend,
     *,
@@ -116,7 +139,14 @@ def create_detection_app(
 
     @app.get("/static/{name}")
     def static(name: str) -> FileResponse:
-        if name not in {"app.js", "viewer.mjs", "style.css", "icons.mjs"}:
+        if name not in {
+            "app.js",
+            "viewer.mjs",
+            "style.css",
+            "icons.mjs",
+            "playback.mjs",
+            "players.mjs",
+        }:
             raise HTTPException(404)
         return FileResponse(
             STATIC / name,
@@ -138,8 +168,36 @@ def create_detection_app(
         offset: int = Query(0, ge=0),
         limit: int = Query(100, ge=1, le=200),
         checkpoint: str | None = None,
+        player_dataset: str | None = None,
+        player_status: str = "",
     ) -> dict[str, Any]:
+        if player_dataset or player_status:
+            if task != "ball_detection":
+                raise ValueError("Player overlays require ball_detection")
+            return cast(PlayerBackend, service).scenes(
+                dataset,
+                search,
+                offset,
+                limit,
+                checkpoint,
+                player_dataset=player_dataset,
+                player_status=player_status,
+            )
         return service.scenes(dataset, search, offset, limit, checkpoint)
+
+    @app.get("/api/players")
+    def players(
+        scene: str,
+        dataset: str,
+        start: int = Query(0, ge=0),
+        count: int = Query(1, ge=1, le=64),
+        mode: Literal["reviewed", "raw"] = "reviewed",
+    ) -> dict[str, Any]:
+        if task != "ball_detection":
+            raise HTTPException(404)
+        return cast(PlayerBackend, service).player_preview(
+            scene, dataset, start, count, mode
+        )
 
     @app.get("/api/preview")
     def preview(

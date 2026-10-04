@@ -647,3 +647,16 @@ body [hidden] {
     padding: 9px 12px;
   }
 }
+
+.playback-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.2rem 1rem;
+  color: var(--muted, #82978e);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+#buffer-status { color: #b89040; }
+#player-status { overflow-wrap: anywhere; }
+#player-settings select { max-width: 100%; }

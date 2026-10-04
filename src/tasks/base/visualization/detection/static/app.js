@@ -1,4 +1,5 @@
 import { ImageViewer } from "./viewer.mjs";
+import { FrameBuffer, SequentialClock } from "./playback.mjs";
 import { fillIcons, icon } from "./icons.mjs";
 const $ = (id) => document.getElementById(id);
 fillIcons();
@@ -16,7 +17,12 @@ const state = {
   frameToken: 0,
   checkpoint: "",
   prediction: new Map(),
-  preview: new Map(),
+  buffer: null,
+  retiredBuffers: [],
+  playerDataset: "",
+  playToken: 0,
+  busyToken: null,
+  paintTimes: [],
   running: false,
   playing: false,
   timer: null,
@@ -68,7 +74,11 @@ function updateRun() {
 }
 function stop() {
   state.playing = false;
-  clearTimeout(state.timer);
+  cancelAnimationFrame(state.timer);
+  state.playToken++;
+  state.frameToken++;
+  viewer.token++;
+  $("buffer-status").textContent = "";
   $("play").innerHTML = icon("play");
 }
 function resetScene() {
@@ -79,9 +89,16 @@ function resetScene() {
   state.total = 0;
   state.frame = 0;
   state.resultWarnings = [];
-  state.preview.clear();
-  state.prediction.clear();
   viewer.clear();
+  for (const key of ["scene", "frame", "people", "playerMode"])
+    delete $("view").dataset[key];
+  state.buffer?.dispose();
+  for (const buffer of state.retiredBuffers) buffer.dispose();
+  state.retiredBuffers = [];
+  state.buffer = null;
+  $("player-status").textContent = "";
+  $("actual-fps").textContent = "実測 — fps";
+  state.prediction.clear();
   $("empty").hidden = false;
   $("frame-name").textContent = "";
   $("scene-title").textContent = "未選択";
@@ -162,8 +179,69 @@ function renderDatasets() {
       return b;
     }),
   );
+  renderPlayerDatasets();
   $("dataset-label").textContent =
     items.find((d) => d.id === state.dataset)?.label || "該当データセットなし";
+}
+function renderPlayerDatasets() {
+  const items = (state.catalog.player_datasets || []).filter(
+    (d) =>
+      d.ball_version === state.dataset.replace(/^store\//, "") || !d.available,
+  );
+  $("player-settings").hidden = state.catalog.task !== "ball_detection";
+  if (!items.some((d) => d.id === state.playerDataset && d.available))
+    state.playerDataset = items.find((d) => d.available)?.id || "";
+  $("player-dataset").replaceChildren(
+    new Option("なし", ""),
+    ...items.map((d) => {
+      const option = new Option(
+        `${d.available ? "" : "[利用不可] "}${d.label}`,
+        d.id,
+      );
+      option.disabled = !d.available;
+      option.title = d.error || d.label;
+      return option;
+    }),
+  );
+  $("player-dataset").value = state.playerDataset;
+  const failures = items.filter((d) => !d.available);
+  $("player-dataset-errors").hidden = !failures.length;
+  $("player-dataset-errors").textContent = failures
+    .map((d) => `${d.label}: ${d.error}`)
+    .join("\n");
+  $("player-status-filter").hidden = !state.playerDataset;
+  if (!state.playerDataset) $("player-status-filter").value = "";
+}
+function makeBuffer() {
+  return new FrameBuffer({
+    scene: state.scene.id,
+    total: state.total,
+    playerDataset: state.playerDataset,
+    mode: $("player-mode").value,
+    json: api,
+  });
+}
+function reportPlayers(payload, people) {
+  if (!payload) {
+    $("player-status").textContent = "Playerデータセット未選択";
+    return;
+  }
+  const kind =
+    payload.mode === "reviewed" ? "採用結果" : "生成結果（全人物・raw ID）";
+  $("player-status").textContent =
+    `${payload.label} · ${kind} · ${payload.available ? `${people.length}人観測` : "この結果は未提供"}`;
+}
+async function changePlayerSource() {
+  if (!state.scene) return;
+  stop();
+  if (state.buffer) {
+    state.buffer.retire();
+    state.retiredBuffers.push(state.buffer);
+  }
+  state.buffer = makeBuffer();
+  viewer.people = [];
+  viewer.draw();
+  await showFrame(state.frame);
 }
 async function loadCatalog() {
   const token = ++state.catalogToken;
@@ -217,7 +295,7 @@ async function loadScenes() {
   }
   try {
     const result = await api(
-      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null })}`,
+      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null, player_dataset: state.playerDataset || null, player_status: $("player-status-filter").value || null })}`,
     );
     if (
       token !== state.listToken ||
@@ -239,7 +317,7 @@ async function loadScenes() {
         const name = document.createElement("span");
         name.textContent = item.label;
         const meta = document.createElement("small");
-        meta.textContent = `${item.frames} frame${item.frames === 1 ? "" : "s"}`;
+        meta.textContent = `${item.frames} frame${item.frames === 1 ? "" : "s"}${item.player_status ? ` · ${item.player_status.label}` : ""}`;
         b.append(name, meta);
         b.onclick = () => selectScene(item);
         return b;
@@ -255,6 +333,7 @@ async function selectScene(item) {
   state.scene = item;
   state.total = item.frames;
   state.frame = 0;
+  state.buffer = makeBuffer();
   $("scene-title").textContent = item.label;
   $("start").value = "0";
   $("start").max = String(Math.max(0, item.frames - 1));
@@ -284,6 +363,11 @@ function renderLayers(gt, pred) {
   const previous = $("raster").value;
   const rasters = [...(gt?.rasters || []), ...(pred?.rasters || [])];
   const names = [...new Set(rasters.map((r) => r.name))];
+  const signature = JSON.stringify(
+    rasters.map((r) => [r.name, r.legend || []]),
+  );
+  if ($("raster").dataset.signature === signature) return;
+  $("raster").dataset.signature = signature;
   $("raster").replaceChildren(
     new Option("なし", ""),
     ...names.map((name) => new Option(name, name)),
@@ -305,48 +389,40 @@ function renderRasterLegend(rasters) {
   );
 }
 async function showFrame(frame, reset = false) {
-  if (!state.scene) return false;
+  if (!state.scene || !state.buffer) return false;
   frame = Math.max(0, Math.min(state.total - 1, frame));
-  state.frame = frame;
   const token = ++state.frameToken;
   viewer.token++;
-  const scene = state.scene.id;
   const selection = state.sceneToken;
-  $("seek").value = String(frame);
-  $("frame-position").textContent = `${frame + 1} / ${state.total}`;
+  const buffer = state.buffer;
+  if (!buffer.ready(frame))
+    $("buffer-status").textContent = "読み込み待ち（全フレーム表示）";
   try {
-    let payload = state.preview.get(frame);
-    if (!payload) {
-      payload = await api(
-        `/api/preview?${query({ scene, start: frame, count: 1 })}`,
-      );
-      if (selection !== state.sceneToken || token !== state.frameToken)
-        return false;
-      state.preview.set(frame, payload);
-      if (state.preview.size > 64)
-        state.preview.delete(state.preview.keys().next().value);
-    }
-    const item = payload.items.find((i) => i.index === frame);
-    if (!item) throw new Error("選択フレームのGTがありません。");
+    const { image, item, preview, players, people } = await buffer.get(frame);
+    if (selection !== state.sceneToken || token !== state.frameToken)
+      return false;
     const pred = state.prediction.get(frame)?.pred;
-    const applied = await viewer.setFrame(
-      `/api/image?${query({ scene, frame })}`,
-      item.gt,
-      pred,
-      reset,
-    );
+    const applied = await viewer.setFrame(image, item.gt, pred, reset, people);
     if (
       !applied ||
       selection !== state.sceneToken ||
       token !== state.frameToken
     )
       return false;
+    state.frame = frame;
+    buffer.pin(frame);
+    for (const retired of state.retiredBuffers) retired.dispose();
+    state.retiredBuffers = [];
+    $("seek").value = String(frame);
+    $("frame-position").textContent = `${frame + 1} / ${state.total}`;
     $("empty").hidden = true;
     $("frame-name").textContent = item.name;
-    $("resolution").textContent = `${payload.width} × ${payload.height}`;
+    $("resolution").textContent = `${preview.width} × ${preview.height}`;
+    $("buffer-status").textContent = "";
     renderLayers(item.gt, pred);
+    reportPlayers(players, people);
     showWarnings([
-      ...(payload.warnings || []),
+      ...(item.warnings || preview.warnings || []),
       ...(state.resultWarnings || []),
     ]);
     status(
@@ -355,6 +431,16 @@ async function showFrame(frame, reset = false) {
         : state.prediction.size
           ? "GT / このフレームは推論範囲外"
           : "Ground Truth",
+    );
+    // Committed frame identity is also used by browser regression/performance tests.
+    $("view").dataset.frame = String(frame);
+    $("view").dataset.scene = state.scene.id;
+    $("view").dataset.people = String(people.length);
+    $("view").dataset.playerMode = players?.mode || "none";
+    $("view").dispatchEvent(
+      new CustomEvent("frame-presented", {
+        detail: { scene: state.scene.id, frame, at: performance.now() },
+      }),
     );
     return true;
   } catch (error) {
@@ -365,19 +451,28 @@ async function showFrame(frame, reset = false) {
     return false;
   }
 }
-async function playTick() {
+async function playTick(now) {
   if (!state.playing) return;
-  const next = (state.frame + 1) % state.total;
-  const started = performance.now();
-  await showFrame(next);
-  if (state.playing)
-    state.timer = setTimeout(
-      playTick,
-      Math.max(
-        0,
-        1000 / Number($("fps").value) - (performance.now() - started),
-      ),
-    );
+  state.timer = requestAnimationFrame(playTick);
+  if (now - state.lastFpsUpdate >= 250) {
+    const since = Math.max(state.playStarted, now - 2000);
+    state.paintTimes = state.paintTimes.filter((time) => time >= since);
+    $("actual-fps").textContent =
+      `実測 ${((state.paintTimes.length * 1000) / (now - since)).toFixed(1)} fps`;
+    state.lastFpsUpdate = now;
+  }
+  const token = state.playToken;
+  if (state.busyToken === token || !state.clock.due(now)) return;
+  state.busyToken = token;
+  try {
+    const applied = await showFrame((state.frame + 1) % state.total);
+    if (!applied || !state.playing || token !== state.playToken) return;
+    const painted = performance.now();
+    state.clock.commit(painted);
+    state.paintTimes.push(painted);
+  } finally {
+    if (state.busyToken === token) state.busyToken = null;
+  }
 }
 function renderMetrics(metrics) {
   $("metrics").title = typeof metrics?.note === "string" ? metrics.note : "";
@@ -507,7 +602,11 @@ $("play").onclick = () => {
   if (state.total < 2) return;
   state.playing = true;
   $("play").innerHTML = icon("pause");
-  state.timer = setTimeout(playTick, 1000 / Number($("fps").value));
+  state.paintTimes = [];
+  state.playStarted = state.lastFpsUpdate = performance.now();
+  state.clock = new SequentialClock(Number($("fps").value), performance.now());
+  state.buffer.prefetch(state.frame);
+  state.timer = requestAnimationFrame(playTick);
 };
 $("zoom-in").onclick = () => viewer.zoom(1.25);
 $("zoom-out").onclick = () => viewer.zoom(0.8);
@@ -519,6 +618,11 @@ for (const [id, key] of [
   ["show-gt", "gt"],
   ["show-pred", "pred"],
   ["show-labels", "labels"],
+  ["show-players", "players"],
+  ["show-pose", "pose"],
+  ["show-boxes", "boxes"],
+  ["show-identities", "identities"],
+  ["show-trails", "trails"],
 ])
   $(id).onchange = () => viewer.configure({ [key]: $(id).checked });
 $("raster").onchange = () => {
@@ -532,5 +636,29 @@ $("opacity").oninput = () =>
   viewer.configure({ opacity: Number($("opacity").value) });
 $("threshold").oninput = () =>
   ($("threshold-value").textContent = Number($("threshold").value).toFixed(2));
-window.addEventListener("pagehide", stop);
+$("player-mode").onchange = changePlayerSource;
+$("player-dataset").onchange = () => {
+  state.playerDataset = $("player-dataset").value;
+  $("player-status-filter").value = "";
+  $("player-status-filter").hidden = !state.playerDataset;
+  state.page = 0;
+  changePlayerSource();
+  loadScenes();
+};
+$("player-status-filter").onchange = () => {
+  state.page = 0;
+  resetScene();
+  loadScenes();
+};
+$("fps").onchange = () => {
+  if (state.playing)
+    state.clock = new SequentialClock(
+      Number($("fps").value),
+      performance.now(),
+    );
+};
+window.addEventListener("pagehide", resetScene);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stop();
+});
 loadCatalog();
