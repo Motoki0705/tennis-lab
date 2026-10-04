@@ -306,7 +306,7 @@ async function selectedScene(formName, sceneId) {
     dom.cameras.disabled = scene.cameras.length === 0;
     renderChips(scene);
     renderLegend(scene);
-    window.dispatchEvent(new CustomEvent("dataset-review:scene", { detail: { phase: "loaded", scene } }));
+    window.dispatchEvent(new CustomEvent("dataset-review:scene", { detail: { phase: "loaded", scene, view } }));
     applyFrame(0);
     setStatus("");
     state.playing = true;
