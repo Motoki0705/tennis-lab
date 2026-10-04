@@ -1,0 +1,81 @@
+{
+  "config": {
+    "compression": "conv2d",
+    "pose_pooling": "attention",
+    "readout": "query",
+    "frames": 32,
+    "stem_channels": [
+      8,
+      16,
+      32,
+      48
+    ],
+    "mixed_channels": [
+      64,
+      96
+    ],
+    "dim": 128,
+    "heads": 4,
+    "layers": 2,
+    "dropout": 0.1,
+    "rope_base": 10000.0
+  },
+  "manifest_sha256": "46cf37a82cb028bce943a273e914805520753fa3a9047076a4f13557d6f5dd84",
+  "clip_id": "tracknet/game1/Clip1",
+  "start": 0,
+  "input_mdd_shape": [
+    1,
+    2,
+    32,
+    720,
+    1280
+  ],
+  "stages": {
+    "stem": [
+      1,
+      48,
+      32,
+      45,
+      80
+    ],
+    "mixed_1": [
+      1,
+      64,
+      32,
+      23,
+      40
+    ],
+    "mixed_2": [
+      1,
+      96,
+      32,
+      12,
+      20
+    ],
+    "projection": [
+      1,
+      128,
+      32,
+      12,
+      20
+    ],
+    "tokens": [
+      1,
+      32,
+      240,
+      128
+    ]
+  },
+  "output_shape": [
+    1,
+    32,
+    2
+  ],
+  "finite": true,
+  "parameters": 1346282,
+  "encoder_mdd_temporal_receptive_field": 5,
+  "each_temporal_convolution_receptive_field": 3,
+  "input_time_stride": 1,
+  "cpu_forward_seconds": 1.2678791399812326,
+  "training_executed": false
+}
