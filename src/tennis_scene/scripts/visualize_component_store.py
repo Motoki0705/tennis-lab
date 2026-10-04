@@ -16,6 +16,7 @@ import argparse
 import html
 import json
 import os
+import shutil
 import subprocess
 from collections.abc import Callable
 from functools import partial
@@ -29,6 +30,7 @@ import numpy as np
 from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
 from src.tennis_scene.pipeline.storage.codec import unpack_value
 from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
+from src.tennis_scene.review.trajectory import mask_intervals, masked_trajectory
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -140,9 +142,11 @@ def _dashed_box(image: np.ndarray, box: np.ndarray, color: tuple[int, int, int])
 
 
 class Review:
-    def __init__(self, index: Path, output: Path, *, videos: bool = False) -> None:
+    def __init__(self, index: Path, output: Path, *, videos: bool = False, online: bool = False) -> None:
         self.index_path, self.output = index.resolve(), output.resolve()
         document = json.loads(self.index_path.read_text())
+        self.document = document
+        self.online = online
         if document.get("schema") != "tennis_scene_index_v1":
             raise ValueError("Expected tennis_scene_index_v1 scene.json")
         if self.output.is_relative_to(self.index_path.parent):
@@ -168,6 +172,8 @@ class Review:
     def frame(self, camera: str, index: int) -> np.ndarray:
         key = (camera, index)
         if key not in self._frames:
+            if not self.videos[camera].is_file():
+                raise FileNotFoundError(f"Source RGB unavailable: {self.videos[camera]}")
             capture = cv2.VideoCapture(str(self.videos[camera]))
             try:
                 if not capture.set(cv2.CAP_PROP_POS_FRAMES, index):
@@ -176,6 +182,8 @@ class Review:
                 if not okay:
                     raise OSError(f"Cannot decode {camera} frame {index}")
                 self._frames[key] = image
+                if len(self._frames) > 12:
+                    del self._frames[next(iter(self._frames))]
             finally:
                 capture.release()
         return self._frames[key].copy()
@@ -292,6 +300,8 @@ class Review:
             producer = self._active_by_artifact.get(dependency["artifact_id"])
             if producer is None:
                 reasons.append(f"{port}: upstream artifact {dependency['artifact_id'][:12]} was superseded")
+            elif self.references[producer] != dependency:
+                reasons.append(f"{port}: upstream artifact reference disagrees with the adopted index")
             elif self.stale_dependencies(producer, ancestors | {node}):
                 reasons.append(f"{port}: upstream component {producer} is stale")
         result = tuple(reasons)
@@ -312,6 +322,8 @@ class Review:
         """Per-frame player ID (``-1`` = none) of each track from the adopted ``player_association`` artifact, if current."""
         if "player_association" not in self.references or self.stale_dependencies("player_association"):
             return None
+        if self.references["player_association"]["version"] != 3:
+            return None  # historical ID schema is reported in its own card
         value, _ = self.payload("player_association")
         if camera not in value["camera_ids"]:
             return None
@@ -706,8 +718,11 @@ class Review:
                 ax.figure.colorbar(dots, ax=ax, label="height (m)")
             ax.set_title("Triangulated ball positions")
         def height(ax: Any) -> None:
-            ax.plot(np.flatnonzero(valid), positions[valid, 2], lw=1, color=COLORS_MPL[0])
-            ax.set(xlabel="source frame", ylabel="height (m)", title="Ball height on valid frames")
+            ax.plot(np.arange(len(valid)), masked_trajectory(positions[:, 2], valid), lw=1,
+                    marker=".", markersize=2, color=COLORS_MPL[0])
+            for start, end in mask_intervals(~valid):
+                ax.axvspan(start - .5, end - .5, color="#c5573d", alpha=.15)
+            ax.set(xlabel="source frame", ylabel="height (m)", title="Ball height — gaps are missing, never interpolated")
             ax.grid(alpha=.2)
         images = [_save_plot(self.output / "images" / "ball_triangulation_topdown.png", topdown, figsize=(7, 8)),
                   _save_plot(self.output / "images" / "ball_triangulation_height.png", height)]
@@ -777,9 +792,11 @@ class Review:
             _court_axes(ax)
             for player in range(len(position)):
                 valid = root_valid[player]
-                xy = position[player, valid, :2]
-                ax.plot(xy[:, 0], xy[:, 1], lw=1, color=COLORS_MPL[player % len(COLORS_MPL)], label=f"player {player}")
-                frames = np.flatnonzero(valid)[::max(1, _count(valid) // 20)]
+                xy = masked_trajectory(position[player, :, :2], valid)
+                ax.plot(xy[:, 0], xy[:, 1], lw=1, marker=".", markersize=2,
+                        color=COLORS_MPL[player % len(COLORS_MPL)], label=f"player {player}")
+                heading = valid & _array(players["heading_valid"])[player]
+                frames = np.flatnonzero(heading)[::max(1, _count(heading) // 20)]
                 ax.quiver(position[player, frames, 0], position[player, frames, 1],
                           np.sin(yaw[player, frames]), np.cos(yaw[player, frames]),
                           color=COLORS_MPL[player % len(COLORS_MPL)], scale=24)
@@ -824,36 +841,69 @@ class Review:
             _court_axes(ax)
             for player in range(len(positions)):
                 valid = player_valid[player]
-                ax.plot(positions[player, valid, 0], positions[player, valid, 1],
-                        lw=1.3, color=COLORS_MPL[player % len(COLORS_MPL)], label=f"player {player}")
+                xy = masked_trajectory(positions[player, :, :2], valid)
+                ax.plot(xy[:, 0], xy[:, 1], lw=1.3, marker=".", markersize=2,
+                        color=COLORS_MPL[player % len(COLORS_MPL)], label=f"player {player}")
             ax.scatter(ball[ball_valid, 0], ball[ball_valid, 1], s=4, color="#d0aa25", label="ball")
             ax.set_title("Assembled court scene with validity masks")
             ax.legend()
         image = _save_plot(self.output / "images" / "scene_assembly_topdown.png", plot, figsize=(7, 8))
-        return [image], [("scene status", str(value["metadata"]["status"])),
+        def quality(ax: Any) -> None:
+            masks = np.vstack((player_valid, ball_valid[None]))
+            ax.imshow(masks, aspect="auto", interpolation="nearest", cmap="RdYlGn", vmin=0, vmax=1,
+                      extent=(-.5, len(ball_valid)-.5, len(masks)-.5, -.5))
+            ax.set(xlabel="source frame", yticks=np.arange(len(masks)),
+                   yticklabels=[*(f"player {p} root" for p in range(len(player_valid))), "ball 3D"],
+                   title="Saved validity — green: valid / red: rejected")
+        quality_image = _save_plot(self.output / "images" / "scene_assembly_quality.png", quality)
+        return [image, quality_image], [("scene status", str(value["metadata"]["status"])),
                          ("valid ball frames", f"{_count(ball_valid)}/{self.frame_count}"),
-                         ("valid player frames", str(_count(player_valid)))]
+                         ("valid player frames", str(_count(player_valid))),
+                         ("trajectory policy", "source-frame axis retained; no line across missing frames")]
 
     def build(self) -> Path:
         nodes: list[str] = []
         for name in STANDARD_COMPONENTS:
             scoped = sorted(node for node in self.references if node.split("/")[0] == name)
             nodes += scoped or [name]
+        nodes += sorted(set(self.references) - set(nodes))
         cards: list[str] = []
         manifest: dict[str, Any] = {"source": self.source["clip_id"], "scene_index": str(self.index_path), "components": {}}
         for node in nodes:
             if node not in self.references:
-                cards.append(f'<section class="missing"><h2>{html.escape(node)}</h2><p>未生成（scene.json に成果物なし）</p></section>')
+                cards.append(f'<section id="{html.escape(node.replace("/", "-"))}" class="missing"><h2>{html.escape(node)}</h2><p>未生成（scene.json に成果物なし。失敗理由は未保存）</p></section>')
                 manifest["components"][node] = {"status": "missing"}
                 continue
             stale = self.stale_dependencies(node)
             if stale:
                 reasons = "; ".join(stale)
-                cards.append(f'<section class="missing"><h2>{html.escape(node)}</h2><p>旧入力に依存する成果物。現版の可視化から除外: {html.escape(reasons)}</p></section>')
+                cards.append(f'<section id="{html.escape(node.replace("/", "-"))}" class="missing"><h2>{html.escape(node)}</h2><p>旧入力に依存する成果物。現版の可視化から除外: {html.escape(reasons)}</p></section>')
                 manifest["components"][node] = {"status": "stale", "reasons": stale,
                                                  "artifact_id": self.references[node]["artifact_id"]}
                 continue
-            images, details = self.render(node)
+            specification = RENDERERS.get(node.split("/")[0])
+            reference = self.references[node]
+            if specification is None:
+                self.descriptor(node)
+                reason = "保存component名は現gallery readerの対象外。履歴artifactを読み替えません。"
+                cards.append(f'<section id="{html.escape(node.replace("/", "-"))}" class="missing"><h2>{html.escape(node)}</h2><p>{reason}</p></section>')
+                manifest["components"][node] = {"status": "unsupported", "reasons": [reason], "artifact_id": reference["artifact_id"]}
+                continue
+            schema, versions, _ = specification
+            versions = (versions,) if isinstance(versions, int) else versions
+            if reference["schema"] != schema or reference["version"] not in versions:
+                self.descriptor(node)  # integrity is required even for unsupported history
+                reason = f"保存schema {reference['schema']} v{reference['version']} は現gallery readerの対象外。履歴artifactを読み替えません。"
+                cards.append(f'<section id="{html.escape(node.replace("/", "-"))}" class="missing"><h2>{html.escape(node)}</h2><p>{html.escape(reason)}</p></section>')
+                manifest["components"][node] = {"status": "unsupported", "reasons": [reason], "artifact_id": reference["artifact_id"]}
+                continue
+            try:
+                images, details = self.render(node)
+            except FileNotFoundError as error:
+                reason = str(error)
+                cards.append(f'<section id="{html.escape(node.replace("/", "-"))}" class="missing"><h2>{html.escape(node)}</h2><p>RGB不在 / 図未描画: {html.escape(reason)}</p></section>')
+                manifest["components"][node] = {"status": "unavailable", "reasons": [reason], "artifact_id": reference["artifact_id"]}
+                continue
             rows = "".join(f"<tr><th>{html.escape(key)}</th><td>{html.escape(value)}</td></tr>" for key, value in details)
             figures = "".join(f'<a href="images/{html.escape(name)}"><img src="images/{html.escape(name)}" alt="{html.escape(node)} visualization"></a>' for name in images)
             movie = self.movies.get(node)
@@ -862,12 +912,23 @@ class Review:
             manifest["components"][node] = {"status": "rendered", "images": [f"images/{name}" for name in images],
                                              "video": movie, "details": dict(details), "artifact_id": self.references[node]["artifact_id"]}
         (self.output / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
+        from src.tennis_scene.review.snapshot import build_snapshot
+        snapshot = build_snapshot(self, manifest["components"], online=self.online)
+        self.snapshot = snapshot
+        (self.output / "review.json").write_text(json.dumps(snapshot, ensure_ascii=False, allow_nan=False))
+        static = Path(__file__).resolve().parent.parent / "review" / "static"
+        for name in ("review.js", "model.mjs", "style.css"):
+            shutil.copyfile(static / name, self.output / name)
+        inspector = (static / "panel.html").read_text()
         navigation = "".join(f'<a href="#{html.escape(node.replace("/", "-"))}">{html.escape(node)}</a>' for node in nodes if node in self.references)
         page = f'''<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Component review — {html.escape(self.source['clip_id'])}</title>
 <style>body{{font:16px system-ui,sans-serif;color:#182631;background:#f2f5f5;margin:0}}header{{background:#19333d;color:white;padding:24px 3vw}}h1{{margin:0 0 6px}}nav{{display:flex;gap:8px;flex-wrap:wrap;padding:14px 3vw;background:white;position:sticky;top:0;z-index:2;box-shadow:0 2px 8px #0002}}nav a{{color:#245d70;text-decoration:none;font-size:13px;padding:4px 8px;border-radius:8px;background:#e8f1f2}}main{{padding:20px 3vw}}section{{background:white;border-radius:12px;margin:0 0 24px;padding:20px;box-shadow:0 2px 10px #0001}}section.missing{{opacity:.58}}h2{{margin:0 0 16px;font-size:22px}}.figures{{display:flex;gap:12px;overflow-x:auto;align-items:flex-start}}.figures a{{flex:0 0 auto;max-width:100%}}img{{width:min(100%,720px);max-height:620px;object-fit:contain;border:1px solid #d7e1e4;border-radius:8px}}video{{display:block;width:min(100%,1280px);margin-top:16px;border-radius:8px}}table{{border-collapse:collapse;margin-top:14px;max-width:100%}}th,td{{border-bottom:1px solid #e3e9eb;padding:6px 14px 6px 0;text-align:left;vertical-align:top}}th{{color:#536a72;white-space:nowrap}}</style>
-<header><h1>Component review</h1><div>{html.escape(self.source['clip_id'])} · {len(self.references)} published artifacts · {self.frame_count} frames</div><small>各panelは保存済みcomponent出力から生成。画像をクリックすると原寸で開きます。未生成componentは明示します。</small></header>
-<nav>{navigation}</nav><main>{''.join(cards)}</main></html>'''
+<header><h1>Component review</h1><div>{html.escape(self.source['clip_id'])} · {len(self.references)} 保存index採用artifact · {self.frame_count} source frames</div><small>各panelは保存済みcomponent出力から生成。画像をクリックすると原寸で開きます。未生成componentは明示します。</small></header>
+<link rel="stylesheet" href="style.css">
+<nav><a href="#dataset-overview">Source / 採用 / 品質</a>{navigation}</nav><main>{inspector}{''.join(cards)}</main>
+<script id="review-data" type="application/json">{json.dumps(snapshot, ensure_ascii=False, allow_nan=False).replace('<', chr(92) + 'u003c')}</script>
+<script type="module" src="review.js"></script></html>'''
         destination = self.output / "index.html"
         destination.write_text(page)
         return destination
@@ -887,6 +948,8 @@ def main() -> None:
     parser.add_argument("--store", type=Path, required=True, help="Component store directory holding scene.json")
     parser.add_argument("--output", type=Path, required=True, help="Gallery directory outside the component store")
     parser.add_argument("--videos", action="store_true", help="Also render complete 2D component overlay videos")
+    parser.add_argument("--serve", action="store_true", help="Serve the gallery and exact source RGB frames read-only on loopback")
+    parser.add_argument("--port", type=int, default=8903, help="Loopback HTTP port with --serve (default: 8903)")
     args = parser.parse_args()
     store, output = args.store.expanduser().resolve(), args.output.expanduser().resolve()
     roots = RuntimePathRoots(project_root=store, data_root=store, checkpoint_root=store, artifact_root=store,
@@ -895,7 +958,12 @@ def main() -> None:
     index = paths.declared("store").path / "scene.json"
     if not index.is_file():
         raise FileNotFoundError(index)
-    print(Review(index, paths.declared("output").path, videos=args.videos).build())
+    cv2.setNumThreads(2)
+    review = Review(index, paths.declared("output").path, videos=args.videos, online=args.serve)
+    print(review.build(), flush=True)
+    if args.serve:
+        from src.tennis_scene.review.web import serve
+        serve(review, port=args.port)
 
 
 if __name__ == "__main__":
