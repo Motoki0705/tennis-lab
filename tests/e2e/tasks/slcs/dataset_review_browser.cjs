@@ -5,14 +5,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 
 const port = Number(process.env.SLCS_REVIEW_PORT || 8784);
 const base = process.env.SLCS_REVIEW_URL || `http://127.0.0.1:${port}`;
-const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/tennis-lab/data/slcs/real_rgb_v1";
+const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/tennis-lab/data/slcs/meiji_one_clip_scene_v2";
 
 (async () => {
   let server;
   let browser;
   try {
     if (!process.env.SLCS_REVIEW_URL) {
-      server = spawn(".venv/bin/python", ["-m", "src.tasks.slcs.scripts.review_dataset", "--dataset-root", root, "--port", String(port)], { stdio: ["ignore", "ignore", "pipe"] });
+      server = spawn("./scripts/run_in_repo_venv.sh", ["python", "-m", "src.tasks.slcs.scripts.review_dataset", "--dataset-root", root, "--port", String(port)], { stdio: ["ignore", "ignore", "pipe"] });
       server.stderr.on("data", (chunk) => process.stderr.write(chunk));
       let ready = false;
       for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -36,7 +36,7 @@ const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/te
     await loaded();
     assert.equal(await page.title(), "SLCS Dataset Review");
     assert.match(await page.locator("#legend").textContent(), /選手 2.*ボール 1/);
-    assert.match(await page.locator("#scene-note").textContent(), /疑似ラベル.*未校正/);
+    assert.match(await page.locator("#scene-note").textContent(), /疑似ラベル.*実測GTなし/);
     assert.ok(await page.locator("#cameras").isDisabled());
     assert.ok(await page.locator("#open-camera").isDisabled());
     await page.click("#play");
@@ -67,6 +67,38 @@ const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/te
     }, visibleFrame);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(await page.locator("#hud-frame").textContent(), String(visibleFrame));
+    const synced = (frame, camera) => page.waitForFunction(({frame, camera}) => {
+      const sync = document.getElementById("slcs-sync");
+      return sync.dataset.pending === "false" && sync.textContent.includes(`frame ${frame} ·`) && (!camera || sync.textContent.startsWith(camera));
+    }, {frame, camera});
+    await synced(visibleFrame);
+    assert.match(await page.locator(".slcs-notice").textContent(), /実測GT.*含まれません/);
+    assert.equal(await page.locator("#slcs-quality tr").count(), 3);
+    assert.ok(await page.locator("#slcs-camera option").count() >= 1);
+    await page.click("#slcs-fit");
+    const orbit = JSON.parse(await page.locator("#slcs-fit").getAttribute("data-orbit"));
+    assert.ok(orbit.distance > 30, "narrow scene view should fit beyond the old fixed distance");
+    const cameras = await page.locator("#slcs-camera option").evaluateAll((nodes) => nodes.map((node) => node.value));
+    await page.selectOption("#slcs-camera", cameras[cameras.length - 1]);
+    await synced(visibleFrame, cameras[cameras.length - 1]);
+    assert.match(await page.locator("#slcs-crop-note").textContent(), /joints|観測なし/);
+    await page.click("#slcs-source summary");
+    assert.match(await page.locator("#slcs-provenance").textContent(), /元source.*疑似ラベル.*source正本/s);
+    await page.click("#slcs-source summary");
+    const rejected = await page.evaluate(async () => {
+      const selected = document.querySelector('.scene[aria-current="true"]');
+      const scene = await (await fetch(`/api/scene?${new URLSearchParams({form:selected.dataset.form,scene:selected.dataset.scene})}`)).json();
+      return scene.inspection.timeline.ball.findIndex((valid) => !valid);
+    });
+    assert.ok(rejected >= 0, "browser dataset needs a rejected ball teacher");
+    await page.locator("#scrub").evaluate((scrub, frame) => { scrub.value=String(frame);scrub.dispatchEvent(new Event("input",{bubbles:true})); }, rejected);
+    await synced(rejected);
+    assert.match(await page.locator("#slcs-quality tr").last().textContent(), /ball.*無効/);
+    await page.click("#slcs-next-gap");
+    assert.ok(Number(await page.locator("#hud-frame").textContent()) > rejected);
+    assert.equal(await page.locator("#play").getAttribute("title"), "再生");
+    await page.locator("#scrub").evaluate((scrub, frame) => {scrub.value=String(frame);scrub.dispatchEvent(new Event("input",{bubbles:true}));}, visibleFrame);
+    await synced(visibleFrame);
 
     const pixels = await page.evaluate(() => {
       const canvas = document.getElementById("view");
@@ -105,6 +137,12 @@ const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/te
     if (process.env.SLCS_REVIEW_SCREENSHOT) await page.screenshot({ path: process.env.SLCS_REVIEW_SCREENSHOT });
     await page.setViewportSize({ width: 720, height: 900 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1));
+    await page.route("**/api/scene?**", (route) => route.fulfill({status:422,contentType:"application/json",body:JSON.stringify({detail:"SLCS lifecycle error test"})}));
+    await page.locator(".scene").first().click();
+    await page.waitForFunction(() => document.getElementById("slcs-sync").textContent === "clip読込失敗");
+    assert.ok(await page.locator("#slcs-fit").isDisabled());
+    assert.equal(await page.locator("#slcs-quality tr").count(), 0);
+    assert.equal(await page.locator("#slcs-provenance").textContent(), "");
     assert.deepEqual(errors, []);
     console.log(`SLCS review browser passed: ${JSON.stringify(pixels)}`);
   } finally {

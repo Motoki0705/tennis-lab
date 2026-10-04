@@ -6,6 +6,7 @@ import json
 import shutil
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
@@ -169,7 +170,11 @@ def test_api_assets_and_read_only_errors(dataset: Path) -> None:
 def test_missing_annotation_artifacts_are_not_silently_accepted(
     dataset: Path, name: str, status: int
 ) -> None:
-    folder = slcs_annotation_dir(clip_dir(dataset)) if name == "annotation.json" else published_scene(dataset).parent
+    folder = (
+        slcs_annotation_dir(clip_dir(dataset))
+        if name == "annotation.json"
+        else published_scene(dataset).parent
+    )
     folder.joinpath(name).unlink()
     client = TestClient(create_dataset_app(SLCSDatasetReviewService(dataset)))
     assert (
@@ -180,7 +185,9 @@ def test_missing_annotation_artifacts_are_not_silently_accepted(
     )
 
 
-def test_revision_follows_republication_and_rejects_stale_cached_buffer(dataset: Path) -> None:
+def test_revision_follows_republication_and_rejects_stale_cached_buffer(
+    dataset: Path,
+) -> None:
     service = SLCSDatasetReviewService(dataset)
     first = service.scene("video_000", "clip_000")
     manifest = ClipManifest.load(clip_dir(dataset))
@@ -221,3 +228,154 @@ def test_symlink_escape_is_rejected(dataset: Path, tmp_path: Path) -> None:
     service = SLCSDatasetReviewService(dataset)
     with pytest.raises(ValueError, match="escapes"):
         service.scene("video_000", "clip_000")
+
+
+def test_inspection_keeps_source_order_and_separates_observation_from_teacher(
+    dataset: Path,
+) -> None:
+    ClipManifest.load(clip_dir(dataset)).media_path("cam0").unlink()
+    service = SLCSDatasetReviewService(dataset)
+    scene = service.scene("video_000", "clip_000")
+    inspection = scene["inspection"]
+    assert inspection["is_ground_truth"] is False
+    assert inspection["player_source_slots"] == [1, 0]
+    assert inspection["calibration_status"] == "unavailable"
+    assert inspection["source_cameras"][0]["media_available"] is False
+    frame = service.inspection_frame(
+        "video_000", "clip_000", "cam2", 1, scene["revision"]
+    )
+    assert frame["camera_id"] == "cam2" and frame["frame"] == 1
+    near, far = frame["players"]
+    assert near["source_slot"] == 1 and far["source_slot"] == 0
+    assert near["position_m"] is None and near["yaw_rad"] is None
+    assert near["label_valid"] is False and near["weight"] == 0
+    assert near["pose_uv"] == [None] * 17
+    assert far["label_valid"] is True
+    np.testing.assert_allclose(far["position_m"], [2, 6, 0.8], atol=1e-6)
+    assert far["projection"] == {"state": "calibration_unavailable", "uv": None}
+    assert frame["ball"]["label_valid"] is True
+    frame = service.inspection_frame(
+        "video_000", "clip_000", "cam0", 2, scene["revision"]
+    )
+    assert frame["ball"]["observation_state"] == "unobserved"
+    assert frame["ball"]["uv"] is None and frame["ball"]["position_m"] is None
+
+
+def test_saved_pinhole_projects_height_and_invalid_teacher_never_projects(
+    dataset: Path,
+) -> None:
+    manifest = ClipManifest.load(clip_dir(dataset))
+    raw = load_slcs_annotation(manifest)
+    reference = raw.metadata["court_reference"]
+    reference["camera_fits"] = [
+        {
+            "K": [[100, 0, 100], [0, 100, 50], [0, 0, 1]],
+            "R": np.eye(3).tolist(),
+            "t": [0, 0, 10],
+            "calibration": "approximate single-plane pinhole; no distortion correction",
+        }
+        for _ in manifest.camera_ids
+    ]
+    # A visible 2D observation must not re-enable a hard-rejected 3D teacher.
+    assert raw.ball_vis is not None
+    raw.ball_vis[:, 2] = True
+    raw.ball_uv[0, 0] = [1.1, 0.5]
+    publish_dataset_annotations(dataset, {manifest.clip_id: raw}, overwrite=True)
+    service = SLCSDatasetReviewService(dataset)
+    scene = service.scene("video_000", "clip_000")
+    assert scene["inspection"]["calibration_status"] == "saved_pinhole"
+    result = service.inspection_frame(
+        "video_000", "clip_000", "cam0", 0, scene["revision"]
+    )
+    # Z=2 participates in K[R|t] projection. A ground-only homography gives a different denominator.
+    np.testing.assert_allclose(
+        result["ball"]["projection"]["uv"],
+        [108.3333333 / manifest.width, 75 / manifest.height],
+    )
+    assert result["ball"]["observation_state"] == "out_of_frame"
+    rejected = service.inspection_frame(
+        "video_000", "clip_000", "cam0", 2, scene["revision"]
+    )["ball"]
+    assert rejected["observed_cameras"] == 3
+    assert rejected["label_valid"] is False
+    assert rejected["projection"] == {"state": "teacher_invalid", "uv": None}
+    assert rejected["reasons"] == ["INSUFFICIENT_VIEWS"]
+
+
+def test_inspection_api_rejects_invalid_queries_stale_media_and_writes(
+    dataset: Path, tmp_path: Path
+) -> None:
+    ClipManifest.load(clip_dir(dataset)).media_path("cam0").unlink()
+    client = TestClient(create_dataset_app(SLCSDatasetReviewService(dataset)))
+    query = {"form": "video_000", "scene": "clip_000"}
+    revision = client.get("/api/scene", params=query).json()["revision"]
+    params = {**query, "revision": revision, "camera": "cam0", "frame": 0}
+    assert client.get("/api/inspection/frame", params=params).status_code == 200
+    assert client.get("/api/inspection/image", params=params).status_code == 404
+    assert (
+        client.get(
+            "/api/inspection/frame", params={**params, "camera": "../escape"}
+        ).status_code
+        == 422
+    )
+    assert (
+        client.get("/api/inspection/frame", params={**params, "frame": 5}).status_code
+        == 422
+    )
+    assert (
+        client.get("/api/inspection/frame", params={**params, "frame": -1}).status_code
+        == 422
+    )
+    assert (
+        client.get(
+            "/api/inspection/frame", params={**params, "revision": "stale"}
+        ).status_code
+        == 409
+    )
+    assert client.post("/api/inspection/frame", params=params).status_code == 405
+    outside = tmp_path / "outside.mp4"
+    outside.write_bytes(b"not a video")
+    media = clip_dir(dataset) / "media/cam0.mp4"
+    media.symlink_to(outside)
+    assert client.get("/api/inspection/image", params=params).status_code == 422
+
+
+def test_source_jpeg_is_the_requested_frame_and_changes_invalidate_revision(
+    dataset: Path,
+) -> None:
+    manifest = ClipManifest.load(clip_dir(dataset))
+    media = manifest.media_path("cam0", must_exist=False)
+    writer = cv2.VideoWriter(
+        str(media),
+        cv2.VideoWriter.fourcc(*"mp4v"),
+        manifest.fps,
+        (manifest.width, manifest.height),
+    )
+    assert writer.isOpened()
+    for frame in range(manifest.num_frames):
+        writer.write(
+            np.full((manifest.height, manifest.width, 3), frame * 40, np.uint8)
+        )
+    writer.release()
+    client = TestClient(create_dataset_app(SLCSDatasetReviewService(dataset)))
+    query = {"form": "video_000", "scene": "clip_000"}
+    scene = client.get("/api/scene", params=query).json()
+    params = {**query, "revision": scene["revision"], "camera": "cam0", "frame": 3}
+    response = client.get("/api/inspection/image", params=params)
+    assert response.status_code == 200
+    assert response.headers["x-slcs-frame"] == "3"
+    bgr = cv2.imdecode(np.frombuffer(response.content, np.uint8), cv2.IMREAD_COLOR)
+    assert bgr is not None
+    assert bgr.shape == (manifest.height, manifest.width, 3)
+    assert 110 < bgr.mean() < 125
+    # Reuse is tied to the RGB media too, not just the pseudo-label archive.
+    media.touch()
+    assert client.get("/api/inspection/image", params=params).status_code == 409
+
+
+def test_task_extension_assets_are_packaged_and_served(dataset: Path) -> None:
+    client = TestClient(create_dataset_app(SLCSDatasetReviewService(dataset)))
+    html = client.get("/").text
+    assert html.index("slcs-inspection.mjs") < html.index("/static/app.js")
+    for name in ("slcs-inspection.css", "slcs-inspection.mjs", "slcs-overlay.mjs"):
+        assert client.get(f"/static/{name}").status_code == 200
