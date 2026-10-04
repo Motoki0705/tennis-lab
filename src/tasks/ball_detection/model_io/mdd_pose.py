@@ -7,7 +7,8 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor, nn
 
-from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDPoseDetector
+from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
+from src.tasks.ball_detection.models.mdd_pose.model import MDDPoseDetector
 from src.tasks.base.model_io import BoundModelIO, ModelCall, bind_model_io
 
 
@@ -24,8 +25,8 @@ def prepare_mdd_pose_inputs(config: MDDPoseConfig, inputs: MDDPoseInput) -> tupl
     if mdd.ndim != 5 or mdd.shape[0] < 1 or mdd.shape[1] != 2:
         raise ValueError("MDD requires B,2,T,H,W")
     b, _, t, h, w = mdd.shape
-    if min(h, w) < 8 or h % 8 or w % 8:
-        raise ValueError("MDD spatial sizes must be divisible by eight")
+    if min(h, w) < 8:
+        raise ValueError("MDD spatial sizes must be at least eight; encoder pads the bottom/right")
     if t != config.frames or coordinates.ndim != 5 or coordinates.shape[:2] != (b, t) or coordinates.shape[-2:] != (17, 2):
         raise ValueError("Expected aligned 32-frame MDD and COCO17 pose windows")
     if valid.dtype != torch.bool or valid.shape != coordinates.shape[:-1] or timestamps.shape != (b, t):

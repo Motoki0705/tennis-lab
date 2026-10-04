@@ -63,7 +63,7 @@ def test_frozen_dataset_keeps_resolution_alignment_and_masks(frozen: tuple[Path,
     assert not sample["position_valid"][10:15].any()
     assert not sample["pose_valid"][10:15, 1].any()
     batch = collate_pose_windows([sample])
-    model = MDDPoseDetector(MDDPoseConfig("conv3d", "attention", "query", 32, (4, 8, 8), 16, 2, 1, 0., 10000.))
+    model = MDDPoseDetector(MDDPoseConfig("conv2d", "attention", "query", 32, (4, 4, 8, 8), (8, 8), 16, 2, 1, 0., 10000.))
     output = model(batch["mdd"], batch["pose"], batch["pose_valid"], batch["timestamps"])
     loss = coordinate_loss(output, batch["uv"], batch["position_valid"])
     loss.backward()

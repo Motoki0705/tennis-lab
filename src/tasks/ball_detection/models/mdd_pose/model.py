@@ -44,14 +44,14 @@ class FusionBlock(nn.Module):
 
     def forward(self, tokens: Tensor, patches: Tensor, times: Tensor) -> tuple[Tensor, Tensor]:
         b, t, count, dim = tokens.shape
-        tokens = tokens + self.temporal(self.norms[0](tokens).reshape(b, t * count, dim),
-                                        times.repeat_interleave(count, dim=1)).reshape(b, t, count, dim)
         q = self.norms[1](tokens).reshape(b * t, count, dim)
         image = self.norms[2](patches).reshape(b * t, -1, dim)
         image_delta, _ = self.to_image(image, q, q, need_weights=False)
         patches = patches + image_delta.reshape_as(patches)
         delta, _ = self.to_pose(q, patches.reshape(b * t, -1, dim), patches.reshape(b * t, -1, dim), need_weights=False)
         tokens = tokens + delta.reshape_as(tokens)
+        tokens = tokens + self.temporal(self.norms[0](tokens).reshape(b, t * count, dim),
+                                        times.repeat_interleave(count, dim=1)).reshape(b, t, count, dim)
         return tokens + self.ffn(self.norms[3](tokens)), patches
 
 
@@ -65,7 +65,7 @@ class MDDPoseDetector(nn.Module):
     def __init__(self, config: MDDPoseConfig) -> None:
         super().__init__()
         self.config = config
-        self.encoder = MDDTokenEncoder(config.compression, config.channels, config.dim)
+        self.encoder = MDDTokenEncoder(config.compression, config.stem_channels, config.mixed_channels, config.dim)
         self.pose = PoseTokenizer(config.pose_pooling, config.dim, config.heads)
         if config.readout == "query":
             self.ball_query = nn.Parameter(torch.randn(config.dim) * .02)
