@@ -1,0 +1,22 @@
+{
+  "pid": 2980442,
+  "argv": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/i988-pose-after-review/.venv/bin/python",
+    "-u",
+    "-m",
+    "src.tennis_scene.chat_annotation.player_pose",
+    "orchestrate",
+    "--campaign",
+    "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-pose-after-review-20261005"
+  ],
+  "started_at": "2026-10-04T15:17:03.120146+00:00",
+  "code_commit": "e266a85b2103e15e7ce66b4abe5221285382b2c8",
+  "expansion": {
+    "existing": 815,
+    "added": 485,
+    "changed": 0,
+    "reuse": 442,
+    "generate": 730,
+    "skip": 128
+  }
+}

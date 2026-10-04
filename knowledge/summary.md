@@ -1,7 +1,7 @@
-<!-- knowledge-review: 6ab03ce7febc7bf970211f3c909cf3b3d2fa5aae6366f724d1d1eb091f75550e on 2026-10-02 -->
+<!-- knowledge-review: c656f20eb7c60cd82d92665b8c8927e7abb899c7ae287803ed06f255c59a1d5e on 2026-10-05 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
+更新日: 2026-10-05（#988の選手選別後pose生成と拡張入力の固定を記録。下流の精度改善は未評価）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -11,16 +11,20 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
-## 2026-10-02のボール検出用pose蓄積
+## 2026-10-05のボール検出用pose蓄積
 
-ユーザー指定でball-mix-v2の存在率40%以下をpose対象から外し、コートによる人物選別を
-使わず、全画面COCO DINO＋既存StrongSORT++/pose/CLIPのrawトラックをGPTで選別する。
-[GPU動作確認](nodes/player_pose_annotation/000001-run-ball-mix-v2-player-pose-gpu-smoke-20261002.md)と
-[最初の実clip](nodes/player_pose_annotation/000002-run-player-pose-v2-pilot-00034-20261002.md)は完走した。
-初回は20rawトラックから2選手を採用し、欠損を補わずframe/PTSと入力hashを検証した。
-この1clipの機能確認から、全clipのID精度・移動カメラへの頑健性は主張しない。
-対象689clipの処理とレビューは継続中。従来#964のコート選別は過去の比較として維持し、
-今回のposeデータ生成方針とは区別する。次は全対象のcoverage・保留・ID切替の実例を監査する。
+[#988の拡張campaign](nodes/player_pose_annotation/000003-run-i988-pose-after-review-20261005.md)では、
+存在率40%以下のskip条件を維持した1,300 clips snapshotを固定し、データ生成に限って
+poseなし追跡 → GPTによる選手選別 → 選択選手の実観測だけpose生成へ変更した。
+通常sceneの追跡profileとコートによる自動選別は維持する。
+旧815 clips campaignはユーザー停止済みで、そのapproved poseは入力・レビュー・画像・時刻の
+対応が一致するものだけ再利用する。旧subsetに対する#986の学習と拡張後の実験を区別する。
+
+旧方式の[GPU動作確認](nodes/player_pose_annotation/000001-run-ball-mix-v2-player-pose-gpu-smoke-20261002.md)と
+[最初の実clip](nodes/player_pose_annotation/000002-run-player-pose-v2-pilot-00034-20261002.md)は当時の完走記録として保持する。
+今回の機能・データ対応検証は、選手ID・姿勢の正解率や下流学習の改善を示すものではない。
+次は追加clipの公開/保留/失敗coverage、削減したpose crop数、ID切替の実例を監査し、拡張データの
+下流効果を独立した実験で確認する。他タスクの採用判断は今回の生成方式変更では更新しない。
 
 ## 2026-09-30の人物source・コート選別（#964）
 
