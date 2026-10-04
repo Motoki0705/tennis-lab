@@ -1,0 +1,67 @@
+{
+  "status": "complete",
+  "diagnostic_only": true,
+  "device": "cpu",
+  "config": {
+    "device": "cpu",
+    "seed": 936,
+    "updates": 400,
+    "frames": 128,
+    "learning_rate": 0.001,
+    "maximum_seconds": 900,
+    "allow_nonconverged": true,
+    "model": {
+      "width": 64,
+      "layers": 2,
+      "heads": 4,
+      "feedforward_multiplier": 2,
+      "time_frequencies": 4,
+      "dropout": 0.0
+    },
+    "loss": {
+      "x0": 1.0,
+      "reprojection": 0.01,
+      "physics": 0.0001,
+      "event": 0.1
+    }
+  },
+  "source_manifest_sha256": "5a436f36d424951088af00203227816b4ce21a57273f0e8fa6bde3f9ac7267f1",
+  "config_sha256": "bfa9ab998983737f2131a2139a745e2e73d78802bfe2ec50f5c40147eb013eca",
+  "dataset": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-ray-r6",
+  "parameters": 73925,
+  "validation_scope": "all 12 rallies plumbing only; tiny overfit uses first two sorted train prefixes; no quality selection or holdout claim",
+  "overfit_windows": [
+    {
+      "rally_id": "train-00000",
+      "start": 0,
+      "frames": 128,
+      "nonconverged_frames": 7
+    },
+    {
+      "rally_id": "train-00001",
+      "start": 0,
+      "frames": 128,
+      "nonconverged_frames": 41
+    }
+  ],
+  "nonconverged_overfit_frames": 48,
+  "initial": {
+    "loss": 1.1417118310928345,
+    "x0": 0.6842237710952759,
+    "reprojection": 21.851234436035156,
+    "physics": 1663.3448486328125,
+    "event": 0.7264124751091003
+  },
+  "initial_sample_rmse_m": 26.6307315826416,
+  "final": {
+    "loss": 0.11538347601890564,
+    "x0": 0.0017765993252396584,
+    "reprojection": 10.813233375549316,
+    "physics": 20.168790817260742,
+    "event": 0.034576691687107086
+  },
+  "final_sample_rmse_m": 0.9341359734535217,
+  "elapsed_seconds": 12.046246343990788,
+  "checkpoint_sha256": "cfa249d48195320ac0cabcaa91cae3678bf7bde4116476081e3003d92ed70c49",
+  "checkpoint_bytes": 310028
+}

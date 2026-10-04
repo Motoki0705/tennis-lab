@@ -1,0 +1,101 @@
+[
+  {
+    "rally_id": "train-00000",
+    "frames": 254,
+    "simulation_seconds": 0.8458997379639186,
+    "elapsed_seconds": 1965.9004613189609,
+    "triangulation_seconds": 1964.9373708959902,
+    "npz_bytes": 1697788,
+    "peak_worker_rss_kib": 868288,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00000.json",
+    "source_metadata_sha256": "ca6d3583cf8a1ed0cd39f9a21991b5d1fa5089e6b3f5753c2e5a8a5876355e6b"
+  },
+  {
+    "rally_id": "train-00001",
+    "frames": 497,
+    "simulation_seconds": 0.4625562040018849,
+    "elapsed_seconds": 2433.71365539002,
+    "triangulation_seconds": 2433.0590649669757,
+    "npz_bytes": 3096370,
+    "peak_worker_rss_kib": 872908,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00001.json",
+    "source_metadata_sha256": "f81c95518a67fa6b41662d9a54406340d6b861bfba386c0189a76c199453a49f"
+  },
+  {
+    "rally_id": "train-00002",
+    "frames": 512,
+    "simulation_seconds": 1.9387136029545218,
+    "elapsed_seconds": 1972.5513447239646,
+    "triangulation_seconds": 1970.4132840069942,
+    "npz_bytes": 3112202,
+    "peak_worker_rss_kib": 874408,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00002.json",
+    "source_metadata_sha256": "fc42e899f2ea411cc4729795ccfe92a6d05a92efd0ed7756bd6c4cae1d980311"
+  },
+  {
+    "rally_id": "train-00003",
+    "frames": 512,
+    "simulation_seconds": 2.0226540379808284,
+    "elapsed_seconds": 2099.3479605970206,
+    "triangulation_seconds": 2097.1402328300173,
+    "npz_bytes": 3149557,
+    "peak_worker_rss_kib": 874860,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00003.json",
+    "source_metadata_sha256": "8221316a3f8751d37d578e51a7d1dcd41aa93185ad3e5b1afd2564a7004bc4bd"
+  },
+  {
+    "rally_id": "train-00004",
+    "frames": 351,
+    "simulation_seconds": 0.1682118930038996,
+    "elapsed_seconds": 3455.103250287997,
+    "triangulation_seconds": 3454.7446562860277,
+    "npz_bytes": 2440072,
+    "peak_worker_rss_kib": 871304,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00004.json",
+    "source_metadata_sha256": "670659c09fe5250a34610d24cbb12976451bb33bf44fb80478fc39f65a55da9d"
+  },
+  {
+    "rally_id": "train-00005",
+    "frames": 512,
+    "simulation_seconds": 4.022624160978012,
+    "elapsed_seconds": 2034.8389710549964,
+    "triangulation_seconds": 2030.6386073970352,
+    "npz_bytes": 3153053,
+    "peak_worker_rss_kib": 875968,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00005.json",
+    "source_metadata_sha256": "4c57262187f62bc319cb1e9593b9d736c6c235bc546f1cc14c81ffa31c7e6462"
+  },
+  {
+    "rally_id": "train-00006",
+    "frames": 333,
+    "simulation_seconds": 3.126342745963484,
+    "elapsed_seconds": 1289.1374427810078,
+    "triangulation_seconds": 1285.8955687949783,
+    "npz_bytes": 2020273,
+    "peak_worker_rss_kib": 875272,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00006.json",
+    "source_metadata_sha256": "98515141b5593e353e9123594467b1d3d899fba9216819d56d66ff9509db9747"
+  },
+  {
+    "rally_id": "train-00007",
+    "frames": 512,
+    "simulation_seconds": 1.1690131060313433,
+    "elapsed_seconds": 2645.148994304007,
+    "triangulation_seconds": 2643.737939453975,
+    "npz_bytes": 3260461,
+    "peak_worker_rss_kib": 873888,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00007.json",
+    "source_metadata_sha256": "c0b7a5841112b6cc477b6108e494ac0a82acd434da686169e2d6018ac19cab99"
+  },
+  {
+    "rally_id": "train-00008",
+    "frames": 512,
+    "simulation_seconds": 2.1402947019669227,
+    "elapsed_seconds": 1958.72153643996,
+    "triangulation_seconds": 1956.3515682899742,
+    "npz_bytes": 3138946,
+    "peak_worker_rss_kib": 875588,
+    "source_metadata_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5/train-00008.json",
+    "source_metadata_sha256": "23e18f83089fb47a911fa77fb808fdf63c635b0b21f163f525075cda3d37b34b"
+  }
+]

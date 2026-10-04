@@ -1,4 +1,4 @@
-<!-- knowledge-review: 6ab03ce7febc7bf970211f3c909cf3b3d2fa5aae6366f724d1d1eb091f75550e on 2026-10-02 -->
+<!-- knowledge-review: 810d7d70108193e510b43d183bfc74fb5a9b037172fecb955711a2b0e0a6b936 on 2026-10-02 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
@@ -344,14 +344,61 @@ bank作成frameは配布倍率のfitと重複するため、OOF性能と区別�
 
 ### 3D Ball Refiner
 
-[確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
-Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを
-小さい計算時間で得たため、次の合成生成用の暫定実装に選ぶ。2D標本化→三角測量→KDEのCは
-多峰条件でNLLが悪く、粒子増量だけでは解消しなかった。presenceの周辺化はcamera間独立と
-不在cameraの幾何を捨てる近似で、low presenceの100% coverageを較正改善とは呼ばない。
-狭い既知prior・小Kの結果であり、実Meiji精度や3D diffusionの優位は未検証。
-次は240Hz物理原系列から60000/1001Hzへ再標本化するCPU smokeと、広いcourt prior・
-長欠損・camera摂動での健全性を確認し、#935較正後に劣化を固定する。
+[光線座標での再監査](nodes/ball_refiner_3d/000010-run-i936-ray-convergence-r6-s936.md)により、
+固定12ラリーの収束は0/4,809から4,225/4,809（87.86%）へ改善した。全成分・閾値を維持し、処理失敗0。
+単眼の細長いposteriorと中間voxelに残る質量が旧法のmoment不安定性に関係していた。
+単眼のdepth解析積分、非正則な複数視点のmode中心積分、camera変更時のmode移送を採用した。
+隣接次数の差は経験的誤差推定で、Laplace近似や共通して見落とすmodeの保証ではない。
+
+[固定K=4方式比較](nodes/ball_refiner_3d/000013-run-i936-k4-method-choice-r8-s93607.md)で、
+仕様のGT NLL/HDR/CPU費用から**固定予算Hを生成器の既定**に採用した。
+同じ事前登録311frame・全125成分で、平均0.6秒以内はA/H。Hは両集計のNLLと
+各HDR水準の較正誤差でAを改善し、加重NLL3.890、95% coverage78.79%、平均0.274秒/frame。
+未評価/未収束は診断として保持し、選定・生成のgateにしない。
+[run 7の積分監査](nodes/ball_refiner_3d/000012-run-i936-k4-audit-r7-s93607.md)の数値目標は
+採用基準から外した。adaptive rayはGT品質がHに近く、費用は約20倍だった。
+Hにも過小被覆と一部層の大きい位置誤差が残り、較正や最終性能の合格とはしない。
+停止データの完成済みtrain9件だけの標本で、全量・別splitの保証ではない。
+[96件H dev](nodes/ball_refiner_3d/000014-run-i936-h-dev-r9-s936.md)を約52分・222 MBで生成し、40,774 frame/全125成分のreader・float32 SPD・存在質量・未評価flagを検証した。合成train/valの2D HDR90/95はobserved81.65/86.16%、gap84.39/88.53%で、新しい実pilotのvalより低い。母集団差はあるが暫定劣化の較正差が残り、項目2の最終完了とはしない。[固定2k更新の回収](nodes/ball_refiner_3d/000015-run-i936-h-dev-flow-regression-r9-s936-20260930.md)では、flow/回帰のval RMSEは8.01/8.20m、加速度p95は約2,940/4,057m/s²で有用性未達。335秒・allocated 0.425GBを実測した。同一16 valの混合平均7.36m/RTS6.97mより悪く、3camera可視のframeで大きく悪化する一方1camera可視では改善した。RTSはRMSE/再投影/加速度で両armを上回るが、絶対加速度は依然過大。[20k回収](nodes/ball_refiner_3d/000016-run-i936-h-dev-long-flow-regression-r10-s936-20260930.md)ではtrain x0が低下する一方val RMSEは9.80/9.15mへ悪化し、過学習を支持した。ただしonline T128 trainと全ラリーvalの差、物理項の因果は未分離。[凍結tokenのCPU read-out](nodes/ball_refiner_3d/000017-run-i936-condition-readout-r11-s936.md)は入力混合平均をtrain 1.65mm / val 7.49mmで再現した。pooled tokenでの大きな平均情報欠落は支持されない。
+
+[同一20k重み・同一CPU/noiseのT128比較](nodes/ball_refiner_3d/000018-run-i936-context-t128-r12-s936.md)では、flowのval RMSEが9.798→3.361m、回帰も9.152→3.454mへ改善した。事前の診断規則を満たしたためphysics-weight GPU比較は実施しない。学習T128と全ラリー検証の文脈差が大きな悪化を説明し、64trainへの過学習を第一原因とした解釈を修正する。ただし2kのT128評価はなく、同文脈での過学習を否定したものではない。flowはbehind-cameraと再投影平均・jerk平均が悪化し、最終パレート優位や本番採用は未達。[新bank devの20k比較回収](nodes/ball_refiner_3d/000021-run-i936-anchored-t128-flow-regression-r13-s936.md)では全160保存予測を再計算し、固定20kのflow/回帰RMSE3.651/2.651mは混合平均4.994/RTS4.408mを改善した。ただし自由飛行加速度はRTSの11.7/13.9倍、jerkは28.0/33.8倍、再投影mean/p50が悪化しbehind6/1件が残る。事前規則では両armとも優位未達。flowの10k→20k悪化も記録し、checkpointを再選択しない。[保存予測の粗さ診断](nodes/ball_refiner_3d/000022-run-i936-roughness-r14-s936.md)ではseamがfree加速度二乗和の41〜42%を占める一方、窓内p95もRTSの10〜12倍。flow乱数の寄与は約0.12%に留まり、条件に共通したjitterと窓不連続を支持する。physicsの重み付きloss比は約2%だが勾配不足の因果は未確定。[元64trainのphysics重み10倍](nodes/ball_refiner_3d/000024-run-i936-physics10-t128-r14-s936.md)と[512trainへのデータ量比較](nodes/ball_refiner_3d/000023-run-i936-pilot512-t128-r14-s936.md)を別jobとして事前登録した。両方とも元16val/hash・20k主判定を固定し、他因子の変更や不完全datasetを開始前に拒否する。physics10は完走し、全160予測・全40,000更新の窓・初期重みの一致を確認した。full/窓内のfree加速度とjerkは約89〜92%下がったが、flowのgap/camera2/再投影p50や回帰の全RMSE軸が5%許容を超え、behindも6→8/1→6へ増えた。事前診断と正式優位は両armとも不合格。粗さに対する物理重みの効果は支持するが観測忠実度を保つ改善ではない。512train初回は未完成manifestを15秒で拒否した。[同設定再投入の回収](nodes/ball_refiner_3d/000025-run-i936-pilot512-t128-r15-s936.md)では全160予測と元16valを照合し、20k flow RMSEは3.651→2.018m、回帰2.412mを下回った。flowの10k→20k悪化も再現しないが、gap/camera2 RMSE・free粗さ・reprojection p95はrun13より悪く、回帰にもgap等の悪化とbehind1→4が残る。data量診断・正式15軸＋behindゼロ規則は両arm不合格。[512train＋physics10の併用候補](nodes/ball_refiner_3d/000026-run-i936-combined512-physics10-r16-s936.md)を回収し、全160予測・preflight/hash・同16valを照合した。20k flow RMSE1.953m・free加速度183・再投影p50 12.096px。回帰は両効果保持診断に合格したがflowは1camera RMSEが(a)比+6.05%で不合格、両arm共通保持ではない。正式規則はfree粗さ・再投影mean/p50・behind等で両arm未達。次は(c)の固定CPU overlapと保存予測の再投影差を調べる。[同じ重み/noiseのCPU重複窓比較](nodes/ball_refiner_3d/000027-run-i936-overlap-cpu-r16-s936.md)ではflowのseam二乗和が約99%減り、RMSE2.033→1.728m、behind4→0、平均/全sampleともseam診断を通過した。ただし窓内粗さはほぼ残り、回帰はcamera2 RMSEの5%条件で不合格。両arm共通改善・正式15軸優位は未達。CPU比較とCUDA数値を混同せず、併用候補(c)のstride128を変えない。
+
+[併用(c)の固定CPU overlap](nodes/ball_refiner_3d/000028-run-i936-combined-overlap-cpu-r17-s936.md)も回収した。
+flow RMSE1.971→1.632m・behind4→0、seamの二乗和は大幅に減ったが、
+camera2 RMSEと窓内free粗さの悪化で診断不合格。回帰も再投影meanと窓内粗さで不合格。
+両armの正式規則はRTSに対するfree accel/jerk・reprojection mean/p50で未達。
+最大の相対差はflow repro p50約4.9倍で、blendの調整より保存予測の観測忠実度を調べる。
+
+
+[再投影差の保存予測診断](nodes/ball_refiner_3d/000029-run-i936-reprojection-gap-r17-s936.md)では、
+3camera可視75.69%の多数区間でもp50がRTS1.886対flow11.067pxで、5frame残差より低周波の位置ずれが大きかった。
+presenceの消失ではなく、全GMMの不確実性とGT画素誤差とは異なるStudent-t NLL、出力の観測/物理バランスが仮説。
+再投影はscalar lossの約90%なので係数0.01だけで弱いとはしない。一方、保存出力の重み付き座標勾配p50は
+再投影0.116対physics0.288で、network勾配との違いを明記して再投影重み3倍の単因子比較を次に推奨する。
+512train/physics1e-3を基準に保持し、RMSE/粗さ/behindの悪化を成功にしない。[再投影3倍比較](nodes/ball_refiner_3d/000030-run-i936-repro3-512-physics10-r17-s936.md)を同16val/20k主判定で事前登録し、32testsと実CPU preflightが通過した。診断はp50を20%、meanを10%改善し、他軸105%以下・behind非増加を要求する。run18で全160予測/全評価点を回収し、診断と正式規則は両arm不合格。flow p50の改善は約9.5%に留まり、RMSEと窓内を含む粗さが悪化したため3倍を採用しない。比較基準は(c)のreprojection .01を維持し、保存入力・予測のCPU分析でconditioning/座標表現/損失のoffset原因を切り分ける。
+
+[現入力・保存出力のoffset診断](nodes/ball_refiner_3d/000031-run-i936-offset-source-cpu-r18-s936.md)では、入力が全cameraで5px以内の3,031frameでも(c) flowの再投影p50は10.10px、入力は1.49pxだった。正規化の丸め誤差は.001px未満。45窓中43窓で一定translation修正方向の現在の全GMM損失が下がり、physicsは不変だった。入力平均の同一offsetや数値解像度だけでは説明できず、出力損失とnetwork学習の違いが残る。GPUは追加せず、現(c)両encoderの全混合平均read-outを512train/同16valで行うCPU検証を次に選ぶ。旧bankの復元成功を現モデルへ一般化せず、結果によりencoderと時間処理/絶対座標headを切り分ける。oracle補正を推論や正式な改善として採用しない。
+
+[現(c)両encoderのCPU read-out](nodes/ball_refiner_3d/000032-run-i936-condition-readout-r19-s936.md)は512train全frameで入力全混合平均だけをfitし、固定16valでflow 5.53mm・回帰3.64mm、両方rank129/129、事前RMSE≤0.10mを達成した。位置の大きな欠落をpool encoderの主因とする説明は支持されない。GT軌道精度や全分布保持の証明ではなく、最大誤差は0.248/0.140m残る。次の[headへのpool token直接連結試験](nodes/ball_refiner_3d/000033-run-i936-head-context-r19-s936.md)を単因子として事前登録した。残差座標加算をせず、既存61tensor/初期出力/RNGを保持し追加384係数だけゼロ初期化する。178testsと75hash/同16valのCPU preflightを確認した。再投影p50を20%・meanを10%改善し、他RMSE/粗さ/p95は105%以下、behind非増加を要求し、正式パレートは別判定する。唯一のresource=all jobを共有queueへ登録した。GPU結果はまだ無く、(c)は比較基準として維持する。
+
+[#935 anchored bankで同じ96ラリーを再生成・監査](nodes/ball_refiner_3d/000019-run-i936-anchored-dev-comparison-r12-s936.md)し、失敗0、全80train+valの軌道/camera/mask完全一致を確認した。全混合GT NLLは3.678→−2.979nat、HDR95は85.04→92.42%、平均HDR95体積193.0→33.63m³へ改善。HDR50は67.69%の過大被覆、1cameraの大誤差/過小被覆は残る。16valの混合平均/RTS RMSEは4.99/4.41mへ改善したが、RTSのbehind1件を含み最終優位とはしない。旧#959 devは対照として維持。新bankはfit frame由来で独立Meiji/OOF性能ではない。[640件の生成と最終監査](nodes/ball_refiner_3d/000020-run-i936-pilot-h-anchored-r13-s936.md)は512/64/64、272,986frame、失敗0で完了。全NPZ/JSON・run12 plan・36入力hash・元80train+val・旧#959 controlの不変性を検証した。単調時計6.215時間、最大worker単体RSS0.904GB、全dataset1.432GB。総RAM peakは未記録、wall時刻と単調時計の差も残している。元16valを固定した512trainの同一plan preflightは通過。test/追加valの配列・品質は未評価で、最終較正の完了とはしない。
+
+[保存済み12ラリーのCPU flow loop](nodes/ball_refiner_3d/000011-run-i936-flow-overfit-r6-s936.md)は
+全40windowの形状/4損失を検証し、2つのtrain prefixで400 updatesを完了した。
+固定probeのx0・robust再投影・masked重力残差・イベントBCEが低下した。未収束入力も明示的に保持した
+plumbing/tiny overfitであり、訓練prefixの生成RMSE0.93mを性能採用の根拠にしない。
+本学習、#929/同backbone回帰の対照、実Meiji LOCO、pipeline統合は未完了。
+
+[暫定K=4劣化](nodes/ball_refiner_3d/000008-run-i936-provisional-degradation-r5-s936.md)は
+文脈なし旧detector pilotの全成分・存在を利用する。負例、長いgap、camera間相関、新detector/person contextは未較正。
+[A/B/C比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)と
+[広いpriorの失敗・A/B併用](nodes/ball_refiner_3d/000006-run-i936-triangulation-wide-s936.md)、
+[旧全frame未収束](nodes/ball_refiner_3d/000009-run-i936-integration-convergence-r5-s936.md)は方式変更の根拠として残す。
+[旧smoke v1](nodes/ball_refiner_3d/000002-run-i936-synthetic-smoke-v1-s936.md)と
+[v2失敗](nodes/ball_refiner_3d/000003-run-i936-synthetic-smoke-v2-s936.md)を除外せず、
+[固定smoke](nodes/ball_refiner_3d/000007-run-i936-synthetic-smoke-r3-s936.md)の入力を無選別で再利用した。
+[解析的CPU診断](nodes/ball_refiner_3d/000004-run-i936-diffusion-cpu-memory-s936.md)と
+[GPU memory診断](nodes/ball_refiner_3d/000005-run-i936-x0-memory-r2-20260929.md)は資源・graph確認だけで、実datasetの性能とは区別する。
 
 ### Player Detection
 

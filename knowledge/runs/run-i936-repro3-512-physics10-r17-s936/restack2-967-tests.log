@@ -1,0 +1,251 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [119 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_component_along_axis_is_ignored 
+tests/unit/utils/geometry/test_affine.py::test_centered_affine_matches_torchvision_single_shear_forward_matrix 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_result_wrapped_into_pi_range 
+tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_scales_each_axis 
+[gw3] [  0%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_scales_each_axis 
+[gw0] [  1%] PASSED tests/unit/utils/geometry/test_affine.py::test_centered_affine_matches_torchvision_single_shear_forward_matrix 
+tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_zero_position_maps_to_origin 
+[gw2] [  2%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_result_wrapped_into_pi_range 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_sign_is_preserved 
+tests/unit/utils/geometry/test_affine.py::test_transform_points_accepts_homogeneous_and_cv2_affine_matrices 
+[gw3] [  3%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCourtPositionToWorldTranslation::test_zero_position_maps_to_origin 
+[gw1] [  4%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_component_along_axis_is_ignored 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_picks_the_more_dominant_side 
+[gw2] [  5%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_sign_is_preserved 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_identity_placement_is_noop 
+[gw0] [  5%] PASSED tests/unit/utils/geometry/test_affine.py::test_transform_points_accepts_homogeneous_and_cv2_affine_matrices 
+tests/unit/utils/geometry/test_affine.py::test_invert_homogeneous_matrix_round_trips_affine_matrix 
+[gw1] [  6%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_picks_the_more_dominant_side 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_height_can_be_the_dominant_side 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_orthogonal_cos_sin_pairs 
+[gw2] [  7%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_orthogonal_cos_sin_pairs 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_error_is_non_negative_and_wrapped 
+[gw3] [  8%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_identity_placement_is_noop 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_round_trip_recovers_canonical 
+[gw0] [  9%] PASSED tests/unit/utils/geometry/test_affine.py::test_invert_homogeneous_matrix_round_trips_affine_matrix 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_unit_norm_result 
+[gw1] [ 10%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_height_can_be_the_dominant_side 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_normalized_boxes_use_unit_image_size 
+[gw2] [ 10%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_error_is_non_negative_and_wrapped 
+tests/unit/utils/geometry/test_angles.py::TestAngularError::test_batched_shape 
+[gw3] [ 11%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_round_trip_recovers_canonical 
+tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_z_axis_is_pure_translation 
+[gw1] [ 12%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_normalized_boxes_use_unit_image_size 
+[gw0] [ 13%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_unit_norm_result 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_preserves_direction_batched 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_full_frame_box_is_one 
+[gw2] [ 14%] PASSED tests/unit/utils/geometry/test_angles.py::TestAngularError::test_batched_shape 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_quarter_turn_around_z 
+[gw0] [ 15%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_preserves_direction_batched 
+[gw1] [ 15%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_full_frame_box_is_one 
+tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_non_positive_image_size_raises 
+[gw2] [ 16%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_quarter_turn_around_z 
+tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_sign_flips_with_direction 
+tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_zero_vector_is_safe 
+[gw3] [ 17%] PASSED tests/unit/utils/geometry/test_court_pose.py::TestCanonicalWorldRoundTrip::test_z_axis_is_pure_translation 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+[gw3] [ 18%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_polygon_projects_explicit_physical_margins 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-1.0] 
+[gw2] [ 19%] PASSED tests/unit/utils/geometry/test_angles.py::TestSignedAngleAroundAxis::test_sign_flips_with_direction 
+[gw1] [ 20%] PASSED tests/unit/utils/geometry/test_bbox.py::TestBboxMaxSideRatio::test_non_positive_image_size_raises 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-30.0] 
+[gw0] [ 21%] PASSED tests/unit/utils/geometry/test_angles.py::TestNormalizeVector::test_zero_vector_is_safe 
+tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_zero_difference 
+tests/unit/utils/geometry/test_bbox.py::test_pairwise_iou_known_values_and_empty_boxes 
+[gw0] [ 21%] PASSED tests/unit/utils/geometry/test_angles.py::TestWrappedAngleDiff::test_zero_difference 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_round_trip_recovers_original 
+[gw2] [ 22%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-30.0] 
+[gw1] [ 23%] PASSED tests/unit/utils/geometry/test_bbox.py::test_pairwise_iou_known_values_and_empty_boxes 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-1.0] 
+[gw0] [ 24%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_round_trip_recovers_original 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_does_not_mutate_input 
+[gw3] [ 25%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[False-1.0] 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_zero_axis_size_clamps_to_zero 
+[gw0] [ 26%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_does_not_mutate_input 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_last_pixel_centre_maps_to_one 
+[gw3] [ 26%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_zero_axis_size_clamps_to_zero 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_returns_float 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_zero_yaw_is_identity 
+[gw1] [ 27%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_zero_yaw_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_is_a_proper_rotation 
+[gw0] [ 28%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_last_pixel_centre_maps_to_one 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_round_trip_and_float32 
+[gw2] [ 29%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-1.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-30.0] 
+[gw0] [ 30%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_round_trip_and_float32 
+[gw3] [ 31%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_returns_float 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_scales_by_width_and_height 
+[gw1] [ 31%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_is_a_proper_rotation 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_rotates_x_into_minus_z_for_quarter_turn 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_differs_from_size_normalization 
+[gw2] [ 32%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_court_footpoint_region_matches_world_bounds_even_past_camera[True-30.0] 
+tests/unit/utils/geometry/test_court_roi.py::test_invalid_margins_are_rejected 
+[gw0] [ 33%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_differs_from_size_normalization 
+[gw1] [ 34%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_rotates_x_into_minus_z_for_quarter_turn 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_returns_float32 
+[gw3] [ 35%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_scales_by_width_and_height 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_does_not_mutate_input 
+[gw3] [ 36%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_does_not_mutate_input 
+tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_supports_leading_dims 
+tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_rejects_empty_image 
+[gw0] [ 36%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestGridKeypoints::test_rejects_empty_image 
+[gw1] [ 37%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixY::test_returns_float32 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_batched_shape 
+[gw1] [ 38%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_batched_shape 
+[gw2] [ 39%] PASSED tests/unit/utils/geometry/test_court_roi.py::test_invalid_margins_are_rejected 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_inside_range_is_unchanged 
+[gw2] [ 40%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_inside_range_is_unchanged 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_negative_value_clamped_to_zero 
+[gw3] [ 41%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestNormalizeKeypoints::test_supports_leading_dims 
+tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_scales_back_to_pixels 
+[gw2] [ 42%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_negative_value_clamped_to_zero 
+tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_above_max_clamped_to_axis_size_minus_one 
+[gw3] [ 42%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestDenormalizeKeypoints::test_scales_back_to_pixels 
+tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_rejects_non_xyz_points 
+[gw2] [ 43%] PASSED tests/unit/utils/geometry/test_keypoints.py::TestClampPixelCoordinate::test_value_above_max_clamped_to_axis_size_minus_one 
+tests/unit/utils/geometry/test_planar_camera.py::test_missing_points_and_low_score_outliers_do_not_bias_fit 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_each_matrix_is_a_proper_rotation 
+[gw0] [ 44%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_each_matrix_is_a_proper_rotation 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_zero_rotation_is_identity 
+[gw0] [ 45%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_zero_rotation_is_identity 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_matches_rotation_matrix_z_for_z_axis 
+tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_zero_yaw_is_identity 
+[gw1] [ 46%] PASSED tests/unit/utils/geometry/test_matrices.py::TestRotationMatrixZ::test_zero_yaw_is_identity 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_exact_observations_are_consistent_and_a_missing_view_is_ignored 
+[gw1] [ 47%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_exact_observations_are_consistent_and_a_missing_view_is_ignored 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_wrong_camera_pose_and_implausible_points_cost_one 
+[gw0] [ 47%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_matches_rotation_matrix_z_for_z_axis 
+[gw3] [ 48%] PASSED tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_rejects_non_xyz_points 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_zero_yaw_converts_smpl_y_up_to_court_z_up 
+[gw3] [ 49%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_zero_yaw_converts_smpl_y_up_to_court_z_up 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_translation_only 
+tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_batched_proper_rotations 
+[gw1] [ 50%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_wrong_camera_pose_and_implausible_points_cost_one 
+tests/unit/utils/geometry/test_multiview_consistency.py::test_contract_violations_are_errors 
+[gw0] [ 51%] PASSED tests/unit/utils/geometry/test_matrices.py::TestAxisAngleToRotationMatrix::test_batched_proper_rotations 
+[gw2] [ 52%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_missing_points_and_low_score_outliers_do_not_bias_fit 
+tests/unit/utils/geometry/test_planar_camera.py::test_out_of_image_outliers_cannot_supply_calibration_support 
+[gw3] [ 52%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_translation_only 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_batch_matches_per_frame 
+tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_maps_smpl_up_axis_to_court_up_axis 
+[gw1] [ 53%] PASSED tests/unit/utils/geometry/test_multiview_consistency.py::test_contract_violations_are_errors 
+tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[-1] 
+[gw2] [ 54%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_out_of_image_outliers_cannot_supply_calibration_support 
+[gw3] [ 55%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_batch_matches_per_frame 
+tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[world] 
+[gw0] [ 56%] PASSED tests/unit/utils/geometry/test_matrices.py::TestSmplYUpToCourtZUp::test_maps_smpl_up_axis_to_court_up_axis 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[nan] 
+tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_yaw_rotates_around_court_z_axis 
+[gw0] [ 57%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[nan] 
+[gw3] [ 57%] PASSED tests/unit/utils/geometry/test_matrices.py::TestApplyPlcsTransform::test_yaw_rotates_around_court_z_axis 
+[gw2] [ 58%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[world] 
+[gw1] [ 59%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[-1] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[score] 
+tests/unit/utils/geometry/test_planar_camera.py::test_camera_below_known_plane_is_rejected 
+[gw0] [ 60%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[score] 
+tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[image] 
+tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[1] 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[plane] 
+[gw0] [ 61%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[plane] 
+[gw2] [ 62%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_collinear_coverage_is_rejected[image] 
+[gw3] [ 63%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_camera_below_known_plane_is_rejected 
+tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[size] 
+tests/unit/utils/geometry/test_point_triangulation.py::test_recovers_known_points_and_rejects_missing_support 
+tests/unit/utils/geometry/test_planar_camera.py::test_focal_optimization_cannot_silently_saturate_bounds 
+[gw1] [ 63%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_clean_observations_recover_camera_on_either_court_side[1] 
+tests/unit/utils/geometry/test_point_triangulation.py::test_half_turn_is_a_gauge_change_of_the_court_frame 
+[gw0] [ 64%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_invalid_calibration_input_has_typed_failure[size] 
+tests/unit/utils/geometry/test_point_triangulation.py::test_backproject_to_plane_inverts_projection_and_rejects_rays_behind_the_camera 
+[gw1] [ 65%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_half_turn_is_a_gauge_change_of_the_court_frame 
+tests/unit/utils/geometry/test_point_triangulation.py::test_speed_gate_rejects_both_endpoints_without_bridging_gaps 
+[gw0] [ 66%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_backproject_to_plane_inverts_projection_and_rejects_rays_behind_the_camera 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance 
+[gw1] [ 67%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_speed_gate_rejects_both_endpoints_without_bridging_gaps 
+tests/unit/utils/geometry/test_point_triangulation.py::test_rejects_invalid_confidence 
+[gw2] [ 68%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_recovers_known_points_and_rejects_missing_support 
+[gw1] [ 68%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_rejects_invalid_confidence 
+tests/unit/utils/geometry/test_point_triangulation.py::test_pair_consensus_ignores_one_bad_camera 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+[gw3] [ 69%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_focal_optimization_cannot_silently_saturate_bounds 
+tests/unit/utils/geometry/test_planar_camera.py::test_negative_depth_planar_solution_is_rejected 
+[gw0] [ 70%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_known_linear_limit_posterior_mean_and_covariance 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+[gw2] [ 71%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_pair_consensus_ignores_one_bad_camera 
+[gw0] [ 72%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_prior_only_is_exact_and_does_not_invent_a_point 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+[gw1] [ 73%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_presence_marginalization_preserves_every_subset_mass 
+tests/unit/utils/geometry/test_point_triangulation.py::test_points_outside_the_height_bounds_are_rejected 
+[gw3] [ 73%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_negative_depth_planar_solution_is_rejected 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+tests/unit/utils/geometry/test_planar_camera.py::test_exact_out_of_image_extrapolations_can_be_kept_explicitly 
+[gw2] [ 74%] PASSED tests/unit/utils/geometry/test_point_triangulation.py::test_points_outside_the_height_bounds_are_rejected 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+[gw1] [ 75%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_component_weights_include_evidence_and_laplace_volume 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+[gw2] [ 76%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_invalid_covariance_camera_count_and_enumeration_fail 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+[gw1] [ 77%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_incompatible_modes_lose_weight_without_collapsing_valid_alternatives 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+[gw3] [ 78%] PASSED tests/unit/utils/geometry/test_planar_camera.py::test_exact_out_of_image_extrapolations_can_be_kept_explicitly 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+[gw3] [ 78%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_float32_weight_roundoff_remains_sampleable 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_quaternion_identity 
+[gw2] [ 79%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_view_order_invariance_with_correlated_covariance 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_identity_axis_angle 
+[gw3] [ 80%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_quaternion_identity 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_euler_z_matches_axis_angle 
+[gw1] [ 81%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_source_pixel_rescaling_preserves_3d_density 
+[gw2] [ 82%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_identity_axis_angle 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_z_rotation_90deg 
+[gw3] [ 83%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_euler_z_matches_axis_angle 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_quaternion_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_axis_angle_roundtrip 
+[gw1] [ 84%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestKnownValues::test_z_rotation_90deg 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_6d_roundtrip 
+[gw1] [ 84%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_6d_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_rotation_6d_produces_valid_rotations 
+[gw2] [ 85%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_quaternion_roundtrip 
+[gw3] [ 86%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_matrix_axis_angle_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_axis_angle_quaternion_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_small_angle_stability 
+[gw1] [ 87%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_rotation_6d_produces_valid_rotations 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_standardize_quaternion_nonnegative_real 
+[gw3] [ 88%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_small_angle_stability 
+[gw2] [ 89%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestRoundTrips::test_axis_angle_quaternion_roundtrip 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_matrix_shape_raises 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_matrix_to_quaternion_unit_norm 
+[gw3] [ 89%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_matrix_shape_raises 
+[gw1] [ 90%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_standardize_quaternion_nonnegative_real 
+[gw2] [ 91%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_matrix_to_quaternion_unit_norm 
+tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_euler_convention_raises 
+tests/unit/utils/geometry/test_triangulation.py::test_recovers_world_coordinates_with_missing_and_corrupt_view 
+tests/unit/utils/geometry/test_triangulation.py::test_refinement_reduces_weighted_pixel_error 
+[gw1] [ 92%] PASSED tests/unit/utils/geometry/test_rotation_conversions.py::TestProperties::test_invalid_euler_convention_raises 
+tests/unit/utils/geometry/test_triangulation.py::test_rejects_missing_degenerate_and_behind_camera 
+[gw3] [ 93%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_recovers_world_coordinates_with_missing_and_corrupt_view 
+[gw2] [ 94%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_refinement_reduces_weighted_pixel_error 
+tests/unit/utils/geometry/test_triangulation.py::test_missing_camera_on_projection_plane_does_not_poison_visible_pair 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+[gw3] [ 94%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_missing_camera_on_projection_plane_does_not_poison_visible_pair 
+[gw1] [ 95%] PASSED tests/unit/utils/geometry/test_triangulation.py::test_rejects_missing_degenerate_and_behind_camera 
+tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+[gw3] [ 96%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_triangulation.py::test_consumes_all_components_and_source_pixel_correlations 
+[gw2] [ 97%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_voxel_density_normalizes_and_matches_analytic_gaussian 
+[gw0] [ 98%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_monte_carlo_known_posterior_calibration 
+tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+[gw0] [ 99%] PASSED tests/unit/utils/geometry/test_probabilistic_triangulation.py::test_mixture_moments_include_between_mode_uncertainty 
+[gw1] [100%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_comparison.py::test_particle_linear_limit_has_known_mean_covariance 
+
+============================= 119 passed in 9.95s ==============================

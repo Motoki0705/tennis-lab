@@ -1,0 +1,71 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [29 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_metrics_pool_frames_and_samples_without_rally_mean_bias 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_strata_partition_original_derivatives_and_do_not_join_disjoint_frames 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[4] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_absolute_rmse_derivative_units_and_gap_event_support 
+[gw3] [  3%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[4] 
+[gw1] [  6%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_metrics_pool_frames_and_samples_without_rally_mean_bias 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_nonuniform_timestamps_are_rejected 
+[gw0] [ 10%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_absolute_rmse_derivative_units_and_gap_event_support 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[127] 
+[gw1] [ 13%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_nonuniform_timestamps_are_rejected 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[129] 
+[gw2] [ 17%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_strata_partition_original_derivatives_and_do_not_join_disjoint_frames 
+[gw3] [ 20%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[127] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_no_gap_is_na_and_behind_camera_is_never_a_perfect_reprojection 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_camera_strata_use_visibility_including_out_of_frame_not_presence 
+[gw0] [ 24%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_no_gap_is_na_and_behind_camera_is_never_a_perfect_reprojection 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[130] 
+[gw2] [ 27%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_camera_strata_use_visibility_including_out_of_frame_not_presence 
+[gw0] [ 31%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[130] 
+[gw1] [ 34%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[129] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[512] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[128] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_mixture_mean_keeps_all_components_and_top_uses_weight_only 
+tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[255] 
+[gw2] [ 37%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[512] 
+[gw3] [ 41%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[128] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_rts_smooths_ballistic_noise_without_ground_truth_or_frame_rejection 
+[gw1] [ 44%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_dev_metrics.py::test_windows_cover_every_frame_including_short_tail[255] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_historical_metric_and_support_changes_fail_explicitly 
+[gw2] [ 48%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_historical_metric_and_support_changes_fail_explicitly 
+[gw0] [ 51%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_mixture_mean_keeps_all_components_and_top_uses_weight_only 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_constant_bias_has_no_roughness_but_alternating_error_does 
+[gw0] [ 55%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_constant_bias_has_no_roughness_but_alternating_error_does 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_step_between_windows_is_counted_only_at_seams 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows3] 
+[gw0] [ 58%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows3] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows0] 
+[gw1] [ 62%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_step_between_windows_is_counted_only_at_seams 
+[gw2] [ 65%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows0] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows2] 
+[gw2] [ 68%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows2] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows1] 
+[gw1] [ 72%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_invalid_ownership_is_rejected[windows1] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+[gw1] [ 75%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[running] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+[gw2] [ 79%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_incomplete_generation_stops_before_reading_training_inputs[failed] 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+[gw2] [ 82%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_pilot512_t128.yaml-training_rallies] 
+[gw0] [ 86%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_single_factor_rejects_unrelated_optimizer_or_sampler_changes 
+tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+[gw0] [ 89%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_reference_validation_is_exact_and_rejects_changed_missing_or_duplicate_hashes 
+[gw3] [ 93%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_baselines.py::test_rts_smooths_ballistic_noise_without_ground_truth_or_frame_rejection 
+tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_local_decomposition_never_smooths_across_seams_or_events 
+[gw3] [ 96%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_roughness.py::test_local_decomposition_never_smooths_across_seams_or_events 
+[gw1] [100%] PASSED tests/unit/tasks/ball_refiner/refiner_3d/test_experiment.py::test_committed_trial_configs_are_single_factor[training_physics10_t128.yaml-physics_weight] 
+
+======================== 29 passed in 72.33s (0:01:12) =========================

@@ -1,0 +1,14 @@
+{
+  "collected_at": "2026-10-01T03:29:20.422552+09:00",
+  "job": "1790785421370532830_2272884_i936-pilot512-t128-r14-s936-20261001",
+  "state": "failed",
+  "exit_code": 1,
+  "reason": "complete dataset required; generator was still running",
+  "queue_wall_seconds": 15,
+  "training_started": false,
+  "output_exists": false,
+  "preflight_report_exists": false,
+  "diagnostic_rule": "not evaluated: no training",
+  "formal_rule": "not evaluated: no training",
+  "failed_generation_count_at_that_time": "not inferred; 559/640 at failure is orchestrator observation, not preserved manifest"
+}

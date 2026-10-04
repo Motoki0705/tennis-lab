@@ -1,0 +1,10 @@
+{
+  "commit": "6465cf44766aceeff328454fcb4531d7f2022522",
+  "branch": "campaign930/i936-2-synthetic-diffusion",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation",
+  "source_directory": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-r2-v1",
+  "date": "2026-09-29",
+  "provider": "codex",
+  "session": "01a0ed26-b4eb-7c30-baea-c8a3cb41cf9e",
+  "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.generate_synthetic_3d --project-root \"$task_repo_root\" --data-root /home/kamimura/projects/tennis-lab/data --plan \"$task_repo_root/src/tasks/ball_refiner/refiner_3d/dataset_plan.yaml\" --output \"$1\" --mode smoke"
+}

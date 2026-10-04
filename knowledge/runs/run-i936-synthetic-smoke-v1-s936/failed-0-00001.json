@@ -1,0 +1,6 @@
+{
+  "error": "train-00001 frame=0 seed=3716130156: Covariance must be symmetric",
+  "type": "RuntimeError",
+  "split_index": 0,
+  "rally_index": 1
+}

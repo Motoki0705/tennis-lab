@@ -14,7 +14,7 @@ task固有の変換は [BallGMM2D adapter](../../../tasks/ball_refiner/refiner_3
 存在確率pᵢに対して、camera集合Sの重みは
 `αS = ∏(i∈S) pᵢ ∏(i∉S) (1−pᵢ)`。
 各集合の条件付き位置分布を
-`qS(x) = p0(x) ∏(i∈S) Gi(πi(x)) / ZS` と正規化してから
+`qS(x) = p0(x) 1[全i∈Sでdepth_i(x)>0] ∏(i∈S) Gi(πi(x)) / ZS` と正規化してから
 `q(x) = ΣS αS qS(x)` を返す。p0は呼び出し側が必ず渡す正定値Gaussian prior。
 Sが空ならqS=p0、単眼なら光線方向にprior由来の不確実性が残る。
 
@@ -35,18 +35,114 @@ Mahalanobis誤差の係数に転用したりしない。
 evidenceはMAPの残差だけでなく、2D/priorの正規化定数と
 `(2π)^(3/2) |Σ3D|^(1/2)` を含む。同じS内で正規化する。
 
-厳密な「Gaussian積」は線形投影の場合だけ。透視投影では非線形最適化と
-局所近似であり、残差の二階微分項、単一組合せ内の複数極値、
-camera背後/地面下へのGaussian tailの切断は扱わない。
-priorの位置・幅は結果に影響するため、設定と実験記録に必ず含める。
-背後の最適解・数値失敗・非正定値共分散は例外。成分の黙った破棄やjitter追加はしない。
+透視投影では非線形最適化と局所近似になる。Gauss–Newton方向の
+fraction-to-boundaryとArmijo line searchを使い、全評価点のdepthを1e-4 world単位より
+大きく保つ。prior中心が領域外なら、投影を評価する前に凸な初期化問題を解く。
+camera境界1e-3以内、局所depthが3σ未満、評価予算の枯渇、line search失敗は
+理由付きの `NonregularComponentError`。境界へ収束した点を通常のLaplace evidenceにしない。
+`max_nfev`は残差評価回数の上限で、backtrackingの試行も数える。
+
+厳密なGaussian積になるのは線形極限だけ。残差の二階微分、
+1つの成分組合せ内の複数極値は未モデル化であり、大域最適性は保証しない。
+正depth領域で積分した場合も、exportするGaussianのtail自体は切断されない。
+地面下のtailも残る。priorの位置・幅を必ず設定と記録に含める。
+数値失敗や非正定値共分散を黙って修復しない。
+
+`LaplaceConfig(diagnose_nonregular=True)`は、同じ正depth最適化の最終点を
+全成分について返す明示的な近似方針。境界・広いtail・評価予算到達・line search停止を
+`laplace_diagnostic:<reason>`と`component_optimization_diagnostics`へ記録する。
+予算で停止した点をMAPや収束済みとは呼ばない。別積分への切替、成分削除、jitterはしない。
+共通正depth領域がない場合や非SPDなどの数値失敗は依然errorになる。
+既定のstrict方針とhybridの非正則dispatchは維持する。
+
+## 明示的なA/B併用
+
+`solver.triangulate_hybrid`は`HybridConfig(laplace, volume)`を必須にする別API。
+各成分組合せをAで評価し、上記の非正則理由だけをBの適応体積積分へ渡す。
+`triangulate_gmm`自体はBへ切り替わらない。成分を削除したりpriorで置き換えたりしない。
+Bでも積分できなければframe全体を失敗にする。返却値の`component_methods`に
+全成分の方式・理由を保持し、datasetではframe×componentのcodeと集計を保存する。
+
+`volume.py`が比較用Bと併用方式の共通実装。prior中心±指定σの箱を
+coarse-to-fineに積分し、未細分化cellの質量も残す。cheiralityはcell中心で判定するため
+境界を跨ぐcellには離散化誤差がある。各組合せの積分evidenceと平均・共分散を求め、
+その組合せだけを1つのGaussianへ近似する。全組合せ間の多峰性は保持する。
+共分散にはuniform cellの幅²/12を含める。箱外prior tailの切断・粗いcell内の
+形状誤差・単一組合せ内の非Gaussian形状の喪失は残り、予算増量対照で感度を記録する。
+数値的に0になる極小重みも、成分の配列自体は残る。
 
 最悪成分数は `(K+1)^V`（0<pᵢ<1）、全presence=1なら `K^V`。
 `LaplaceConfig.max_components` を超える列挙は開始前に拒否する。
-Top-K pruning、moment matchingによる単一Gaussian化、point推定への切替は行わない。
+Top-K pruning、全混合の単一Gaussian化、point推定への切替は行わない。
 `moments()` は成分間分散も含む要約、`sample()` / `log_prob()` は混合全体を扱う。
 float32 exportの重み和の丸め誤差は、契約検証後に再正規化する。
 成分の選別・閾値処理は含まない。
+
+## 光線座標での積分
+
+`ray.py`は非正則productのための別の明示的な積分法。単眼では
+`x=C+d*r(u,v)`、体積要素`d²/|det K|`へ変数変換し、Gaussian priorの
+正depth積分（2〜4次moment）を解析的に計算する。角度方向は2D Gaussianに
+合わせたGauss–Hermite則で積分する。有限のworld boxやdepth quantile格子を使わない。
+解析漸化式の安定領域を超える極端な背後priorは明示的にerrorにする。
+
+複数視点では全active cameraから決定論的にmode探索を開始する。物理target値でpilot位置を
+求め、その位置に最も近いcameraを積分座標の原点にする。他cameraを省略する操作ではない。
+正depth半空間の交差からdepthの上下限を求め、有限区間はlogit、無限区間はlogへ変換する。
+Jacobianを含む非線形targetの解析勾配で中心を求め、勾配差分の全Hessianで積分座標を白色化する。
+Gauss–Newtonだけではcamera中心近くのdepth分散を過大にするため使わない。
+Hessian・積分共分散が非SPDならerrorとし、jitterや別方式への自動切替はしない。
+
+全成分の方式と非正則理由を`ray:<reason>`で保持する。正則Aは従来どおりで、
+ray積分は全targetを評価してevidence/momentsを返す。全組合せを保持したまま、
+各productを1つのGaussianへ要約する近似も従来どおり残る。
+
+`method: adaptive_ray`は研究用の明示的な選択肢。複数視点の光線座標を
+`mode + L tan(πu/2)`で有限cubeへ写し、正の重みを持つ5/7点Gauss–Legendre則で
+質量・priorで白色化したworldの1次/2次momentを同時に積分する。
+埋め込み則の差が大きいcellを8分割し、全cellの積分を保持する。world箱の切断はない。
+単眼は解析depth＋Hermite角度則を維持する。Hessianが非正定値なら、明示した
+適応chart方針により白色化画素/log-depthの単位軸を使用し、
+`metric_is_local_hessian=false`を記録する。返却共分散のjitter修復は行わない。
+
+成分ごとの方式は`adaptive_ray:<reason>`、埋め込み差の合計/質量、cell数、
+評価点数、内側目標の達成を`component_integration_diagnostics`へ返す。
+この差は厳密な上界ではなく、領域選択の補助推定。外側の収束定義は下記の4差分のまま。
+内側capの到達だけでは収束にせず、各外側段階では実際に追加細分化して差を検査する。
+積分予算の`relative_errors`は段階ごとに減少、`max_cells`は増加を要求する。
+離れたmodeの共通見落としは依然保証しない。通常生成の既定方式は監査結果を確認して決める。
+
+## 積分の収束判定
+
+`convergence.triangulate_converged`は明示した積分予算を増やし、正則Aの結果と
+rayの座標を1frame内でcacheする。`RayConvergenceConfig.orders`は角度/変換depthの
+Gauss–Hermite次数で、最低3段階を検査する。旧`ConvergenceConfig`はvoxel再現用。
+設定読込の`convergence_config`はmethodを検証し、未指定の歴史的schemaだけvoxelと解釈する。
+方式と予算は呼び出し側で明記する。
+
+各隣接段階で全成分のlog evidence絶対差、平均L2差、共分散相対Frobenius差
+（分母は前後normの大きい方）を検査する。重み0へunderflowした成分も対象。
+最初/直前/現在の全成分平均と各軸±1周辺標準偏差で混合NLLの最大絶対差も検査する。
+GTを停止条件や積分座標の決定に使わない。閾値と上限の正本は呼び出し側の設定。
+最後の全分布、frame/成分flag、達成差分、使用予算、履歴を必ず返す。
+
+隣接次数の差は**経験的な数値誤差推定**であり、連続積分の誤差上界ではない。
+共通して見落とす離れたmode、AのLaplace近似、Gaussian moment近似は保証しない。
+NLL probe集合以外の密度誤差も保証しない。cap到達を収束と記録しない。
+
+## 固定予算のconditioning
+
+`conditioning.triangulate_conditioning`は生成と推論で共有できる入口。
+`conditioning_config`で`method: fixed_hybrid`を指定すると、正則Aと
+固定予算voxelの明示的なHを1回だけ実行する。全productのevidence/momentsを残し、
+方式はframe/成分ごとに決定論的で、失敗を別seedやpriorで埋めない。
+この予算の較正・費用による選定根拠は
+[K=4方式比較](../../../../knowledge/nodes/ball_refiner_3d/000013-run-i936-k4-method-choice-r8-s93607.md)を参照。
+
+固定予算では積分収束を測らない。返り値の`convergence_assessed=false`と
+`converged=false`を組み合わせて**未評価**を表す。deltaの0は未計測のplaceholderであり、
+収束の証拠に使わない。従来のray/voxel/adaptive予算では`convergence_assessed=true`を返し、
+全flag・達成差分を保持する。数値収束は診断で、方式選定や生成のgateではない。
 
 ## 検証と比較
 
@@ -54,6 +150,5 @@ float32 exportの重み和の丸め誤差は、契約検証後に再正規化す
 線形極限の共役Gaussianの平均/共分散・積分evidence、
 Monte Carlo較正、成分間の分散、presence周辺化、単眼/全不在、
 画素スケールとcamera順の不変性、予算/失敗時のerrorを検証する。
-B（適応voxel）とC（2D標本化＋三角測量）は研究用の
-[comparison.py](../../../tasks/ball_refiner/refiner_3d/comparison.py) にあり、
-本APIの自動fallbackではない。測定・選定理由はknowledgeノードを正本とする。
+Bは `volume.py`、C（2D標本化＋三角測量）は研究用の
+[comparison.py](../../../tasks/ball_refiner/refiner_3d/comparison.py) にある。測定・選定理由はknowledgeノードを正本とする。

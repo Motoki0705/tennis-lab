@@ -1,0 +1,16 @@
+{
+  "commit": "e87dd49fffcb890ab243c0f184fe4162591b9151",
+  "files": {
+    "src/tasks/ball_refiner/refiner_3d/diffusion/losses.py": "a8784882e5eebeb7dfd41eeb9f76aa53107984e5b7dd790213251ea05a00e289",
+    "src/tasks/ball_refiner/refiner_3d/diffusion/memory_smoke.py": "1a36ff02fd951c165ce089fd25b27c30f337726193d0284eda1ae484c7cb9ec2",
+    "src/tasks/ball_refiner/refiner_3d/diffusion/flow.py": "9319fddb2445ae63b24af313530d6d2e6c7dc1220c1c103e2b6038e6770cc7e6",
+    "src/tasks/ball_refiner/refiner_3d/diffusion/__init__.py": "0ec07de253c3ff8547bf2993e1734497ce78464b5618ee01c7f0a366b376cb55",
+    "src/tasks/ball_refiner/refiner_3d/diffusion/memory_fixture.py": "5108334e574a313d99b234561a6da58b959dbbb2991e4c65451326b2453e2edb",
+    "src/tasks/ball_refiner/refiner_3d/diffusion/model.py": "d5f1c83f84d87026eeb5740bf5a55c484c681b6c11d0a4269ec95c95656edb30",
+    "src/tasks/ball_refiner/refiner_3d/diffusion/data.py": "483d8429023e3f79ea2be5fecd7bb9bac87d24162807ca2f0e9063389271d32c",
+    "src/tasks/ball_refiner/refiner_3d/diffusion/training_smoke.py": "563c7922c968961d17d1997f50c92dfd8183596470c477c21966ba088b0cd235",
+    "src/tasks/ball_refiner/scripts/training_smoke_3d.py": "b3cc372ab27d589d6862e66b18762ba0a6b110d797380a0b2f3fa9eb1e78a477",
+    "src/tasks/ball_refiner/refiner_3d/synthetic/dataset.py": "86c48b7a24a34e4df7776e3a7ee9d505cc7dc6fe592a60d75b6f4d40424de6f5"
+  },
+  "command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.training_smoke_3d --dataset /home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-ray-r6 --config /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/tasks/ball_refiner/refiner_3d/training_smoke.yaml --output /absolute/new/output"
+}

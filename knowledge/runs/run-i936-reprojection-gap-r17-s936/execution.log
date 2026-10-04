@@ -1,0 +1,136 @@
+{
+  "frames": 6383,
+  "resources": {
+    "elapsed_seconds": 6.50768426398281,
+    "peak_rss_bytes": 1035366400,
+    "minimum_available_host_bytes": 21867200512
+  },
+  "statistics": {
+    "truth/reprojection/all": {
+      "count": 17528,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0
+    },
+    "truth/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0
+    },
+    "truth/reprojection/RTS_under5": {
+      "count": 11271,
+      "mean": 0.0,
+      "p50": 0.0,
+      "p95": 0.0
+    },
+    "RTS/reprojection/all": {
+      "count": 17527,
+      "mean": 16.43640899702379,
+      "p50": 2.472078710348802,
+      "p95": 74.81194600500865
+    },
+    "RTS/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 12.159409221352231,
+      "p50": 1.8864726729410317,
+      "p95": 53.223058150668464
+    },
+    "RTS/reprojection/RTS_under5": {
+      "count": 11271,
+      "mean": 1.6207318385609784,
+      "p50": 1.2974689736805287,
+      "p95": 4.083956761380886
+    },
+    "mixture/reprojection/all": {
+      "count": 17528,
+      "mean": 16.55021346850066,
+      "p50": 2.489533486982422,
+      "p95": 82.08198055120891
+    },
+    "mixture/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 12.141999257432126,
+      "p50": 2.108715886900009,
+      "p95": 54.46121450836051
+    },
+    "mixture/reprojection/RTS_under5": {
+      "count": 11271,
+      "mean": 4.000859190007549,
+      "p50": 1.835493760866947,
+      "p95": 9.144309022453935
+    },
+    "flow/reprojection/all": {
+      "count": 17524,
+      "mean": 20.731146580870572,
+      "p50": 12.09613318852902,
+      "p95": 64.35244414521297
+    },
+    "flow/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 17.64372314613857,
+      "p50": 11.066551082161757,
+      "p95": 55.29473075536423
+    },
+    "flow/reprojection/RTS_under5": {
+      "count": 11271,
+      "mean": 12.687500476829804,
+      "p50": 9.613399272742264,
+      "p95": 30.810660767633436
+    },
+    "regression/reprojection/all": {
+      "count": 17524,
+      "mean": 18.581451170898905,
+      "p50": 9.624358700824434,
+      "p95": 60.006753961568826
+    },
+    "regression/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 15.59000204158851,
+      "p50": 8.82939674844437,
+      "p95": 49.42269650725568
+    },
+    "regression/reprojection/RTS_under5": {
+      "count": 11271,
+      "mean": 10.458420188234877,
+      "p50": 7.41409699855732,
+      "p95": 28.591816376469488
+    },
+    "flow_overlap/reprojection/all": {
+      "count": 17528,
+      "mean": 21.20878124155547,
+      "p50": 12.14161339176415,
+      "p95": 63.636048600703795
+    },
+    "flow_overlap/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 17.522252055566486,
+      "p50": 11.101451828796936,
+      "p95": 56.154217319331316
+    },
+    "flow_overlap/reprojection/RTS_under5": {
+      "count": 11271,
+      "mean": 12.641634084854214,
+      "p50": 9.617089975786149,
+      "p95": 30.728151554755996
+    },
+    "regression_overlap/reprojection/all": {
+      "count": 17528,
+      "mean": 20.687587215322,
+      "p50": 9.526358470055882,
+      "p95": 59.95465725178768
+    },
+    "regression_overlap/reprojection/three_visible": {
+      "count": 14493,
+      "mean": 15.450584011197085,
+      "p50": 8.873970392898395,
+      "p95": 50.4114847379496
+    },
+    "regression_overlap/reprojection/RTS_under5": {
+      "count": 11271,
+      "mean": 10.253990145706414,
+      "p50": 7.466067398441349,
+      "p95": 26.542377236607173
+    }
+  }
+}

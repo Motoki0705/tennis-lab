@@ -1,0 +1,286 @@
+[
+  {
+    "rally_id": "train-00000",
+    "frame": 123,
+    "observed_views": 0,
+    "seconds": 7.779109329043422,
+    "functions": [
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/distributions.py",
+        "line": 90,
+        "function": "log_prob",
+        "ncalls": 6,
+        "calls": 6,
+        "own_seconds": 0.051221442000000006,
+        "cumulative_seconds": 0.183756576
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 47,
+        "function": "__init__",
+        "ncalls": 50,
+        "calls": 50,
+        "own_seconds": 0.0009607070000000001,
+        "cumulative_seconds": 0.181363127
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/convergence.py",
+        "line": 179,
+        "function": "_probes",
+        "ncalls": 7,
+        "calls": 7,
+        "own_seconds": 0.000254855,
+        "cumulative_seconds": 0.000357076
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/solver.py",
+        "line": 76,
+        "function": "fit_component",
+        "ncalls": 125,
+        "calls": 125,
+        "own_seconds": 0.041886335000000004,
+        "cumulative_seconds": 0.16517489500000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 83,
+        "function": "integrate",
+        "ncalls": 200,
+        "calls": 200,
+        "own_seconds": 0.061313326,
+        "cumulative_seconds": 5.2513666390000004
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/ray.py",
+        "line": 98,
+        "function": "__init__",
+        "ncalls": 50,
+        "calls": 228,
+        "own_seconds": 0.017446968,
+        "cumulative_seconds": 1.8905338880000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/optimization.py",
+        "line": 14,
+        "function": "__init__",
+        "ncalls": 248,
+        "calls": 248,
+        "own_seconds": 0.00101847,
+        "cumulative_seconds": 0.00101847
+      }
+    ]
+  },
+  {
+    "rally_id": "train-00000",
+    "frame": 172,
+    "observed_views": 1,
+    "seconds": 5.196135006961413,
+    "functions": [
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/distributions.py",
+        "line": 90,
+        "function": "log_prob",
+        "ncalls": 4,
+        "calls": 4,
+        "own_seconds": 0.033290935,
+        "cumulative_seconds": 0.125452161
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 47,
+        "function": "__init__",
+        "ncalls": 54,
+        "calls": 54,
+        "own_seconds": 0.000883258,
+        "cumulative_seconds": 0.174377786
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/convergence.py",
+        "line": 179,
+        "function": "_probes",
+        "ncalls": 5,
+        "calls": 5,
+        "own_seconds": 0.000207175,
+        "cumulative_seconds": 0.00029079400000000004
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/solver.py",
+        "line": 76,
+        "function": "fit_component",
+        "ncalls": 125,
+        "calls": 125,
+        "own_seconds": 0.039101194000000006,
+        "cumulative_seconds": 0.15395250200000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 83,
+        "function": "integrate",
+        "ncalls": 162,
+        "calls": 162,
+        "own_seconds": 0.024746523000000003,
+        "cumulative_seconds": 3.194443299
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/ray.py",
+        "line": 98,
+        "function": "__init__",
+        "ncalls": 54,
+        "calls": 246,
+        "own_seconds": 0.016317181,
+        "cumulative_seconds": 1.477446046
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/optimization.py",
+        "line": 14,
+        "function": "__init__",
+        "ncalls": 198,
+        "calls": 198,
+        "own_seconds": 0.0008478,
+        "cumulative_seconds": 0.0008478
+      }
+    ]
+  },
+  {
+    "rally_id": "train-00000",
+    "frame": 135,
+    "observed_views": 2,
+    "seconds": 4.187503593042493,
+    "functions": [
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/distributions.py",
+        "line": 90,
+        "function": "log_prob",
+        "ncalls": 4,
+        "calls": 4,
+        "own_seconds": 0.027843504,
+        "cumulative_seconds": 0.107143369
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 47,
+        "function": "__init__",
+        "ncalls": 38,
+        "calls": 38,
+        "own_seconds": 0.0006654450000000001,
+        "cumulative_seconds": 0.12255283800000001
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/convergence.py",
+        "line": 179,
+        "function": "_probes",
+        "ncalls": 5,
+        "calls": 5,
+        "own_seconds": 0.00018360900000000002,
+        "cumulative_seconds": 0.00025157
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/solver.py",
+        "line": 76,
+        "function": "fit_component",
+        "ncalls": 125,
+        "calls": 125,
+        "own_seconds": 0.037982407,
+        "cumulative_seconds": 0.15170360000000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 83,
+        "function": "integrate",
+        "ncalls": 114,
+        "calls": 114,
+        "own_seconds": 0.017252952000000002,
+        "cumulative_seconds": 2.146097562
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/ray.py",
+        "line": 98,
+        "function": "__init__",
+        "ncalls": 38,
+        "calls": 168,
+        "own_seconds": 0.012161051,
+        "cumulative_seconds": 1.5977633610000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/optimization.py",
+        "line": 14,
+        "function": "__init__",
+        "ncalls": 150,
+        "calls": 150,
+        "own_seconds": 0.000541696,
+        "cumulative_seconds": 0.000541696
+      }
+    ]
+  },
+  {
+    "rally_id": "train-00001",
+    "frame": 14,
+    "observed_views": 3,
+    "seconds": 9.358734973997343,
+    "functions": [
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/distributions.py",
+        "line": 90,
+        "function": "log_prob",
+        "ncalls": 8,
+        "calls": 8,
+        "own_seconds": 0.06708769,
+        "cumulative_seconds": 0.223222516
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 47,
+        "function": "__init__",
+        "ncalls": 38,
+        "calls": 38,
+        "own_seconds": 0.0006816900000000001,
+        "cumulative_seconds": 0.126786752
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/convergence.py",
+        "line": 179,
+        "function": "_probes",
+        "ncalls": 9,
+        "calls": 9,
+        "own_seconds": 0.000679714,
+        "cumulative_seconds": 0.001034996
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/solver.py",
+        "line": 76,
+        "function": "fit_component",
+        "ncalls": 125,
+        "calls": 125,
+        "own_seconds": 0.050080229000000004,
+        "cumulative_seconds": 0.19066607500000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/adaptive.py",
+        "line": 83,
+        "function": "integrate",
+        "ncalls": 190,
+        "calls": 190,
+        "own_seconds": 0.057226894,
+        "cumulative_seconds": 7.453926388
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/ray.py",
+        "line": 98,
+        "function": "__init__",
+        "ncalls": 38,
+        "calls": 168,
+        "own_seconds": 0.012209344,
+        "cumulative_seconds": 1.2386979260000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i936-probabilistic-triangulation/src/utils/geometry/probabilistic_triangulation/optimization.py",
+        "line": 14,
+        "function": "__init__",
+        "ncalls": 250,
+        "calls": 250,
+        "own_seconds": 0.000959926,
+        "cumulative_seconds": 0.000959926
+      }
+    ]
+  }
+]
