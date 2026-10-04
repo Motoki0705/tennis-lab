@@ -68,7 +68,9 @@ class InferenceRequest(BaseModel):
     device: Literal["cuda", "cpu"] = "cuda"
 
 
-class PlayerBackend(Protocol):
+class BallReviewBackend(Protocol):
+    def review(self, scene: str) -> dict[str, Any]: ...
+
     def player_preview(
         self,
         scene: str,
@@ -88,6 +90,9 @@ class PlayerBackend(Protocol):
         *,
         player_dataset: str | None = None,
         player_status: str = "",
+        source: str = "",
+        split: str = "",
+        review_state: str = "",
     ) -> dict[str, Any]: ...
 
 
@@ -146,6 +151,7 @@ def create_detection_app(
             "icons.mjs",
             "playback.mjs",
             "players.mjs",
+            "review.mjs",
         }:
             raise HTTPException(404)
         return FileResponse(
@@ -170,11 +176,14 @@ def create_detection_app(
         checkpoint: str | None = None,
         player_dataset: str | None = None,
         player_status: str = "",
+        source: str = "",
+        split: str = "",
+        review_state: str = "",
     ) -> dict[str, Any]:
-        if player_dataset or player_status:
+        if player_dataset or player_status or source or split or review_state:
             if task != "ball_detection":
-                raise ValueError("Player overlays require ball_detection")
-            return cast(PlayerBackend, service).scenes(
+                raise ValueError("Ball review filters require ball_detection")
+            return cast(BallReviewBackend, service).scenes(
                 dataset,
                 search,
                 offset,
@@ -182,6 +191,9 @@ def create_detection_app(
                 checkpoint,
                 player_dataset=player_dataset,
                 player_status=player_status,
+                source=source,
+                split=split,
+                review_state=review_state,
             )
         return service.scenes(dataset, search, offset, limit, checkpoint)
 
@@ -195,9 +207,15 @@ def create_detection_app(
     ) -> dict[str, Any]:
         if task != "ball_detection":
             raise HTTPException(404)
-        return cast(PlayerBackend, service).player_preview(
+        return cast(BallReviewBackend, service).player_preview(
             scene, dataset, start, count, mode
         )
+
+    @app.get("/api/review")
+    def review(scene: str) -> dict[str, Any]:
+        if task != "ball_detection":
+            raise HTTPException(404)
+        return cast(BallReviewBackend, service).review(scene)
 
     @app.get("/api/preview")
     def preview(

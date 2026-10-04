@@ -22,7 +22,7 @@ repoのPython環境から、次のmoduleを実行します。既定のproject ro
 
 左にデータセット・検索とページ付きシーン一覧、推論modeではcheckpoint検索と候補を表示します。未選択時は全データセット、選択後は保存契約と互換なデータだけを提示します。未配置sourceや非互換checkpointには理由があります。
 
-中央は実画像のpan/zoom、GT（緑）と予測（赤）、選択したdense layerの重ね表示です。右でGT/予測/ラベル、レイヤー、不透明度、実行device・開始frame・frame数・しきい値を操作できます。表示PNGを保存できます。Ballはフレーム再生、Courtは単画像です。推論対象外フレームを予測なしとして明示し、古い応答で現在のシーンを上書きしません。
+中央は実画像のpan/zoom、GT（Courtは緑の輪郭、Ballは状態別の小さな塗りつぶし点）と予測（赤）、選択したdense layerの重ね表示です。右でGT/予測/ラベル、レイヤー、不透明度、実行device・開始frame・frame数・しきい値を操作できます。表示PNGを保存できます。Ballはフレーム再生、Courtは単画像です。推論対象外フレームを予測なしとして明示し、古い応答で現在のシーンを上書きしません。
 
 画像座標はoriginal image pixelの`x,y`です。2Dラベルから未観測の3Dコートやcamera poseを作りません。データ固有のschema、表示可能な教師、checkpoint互換性は各タスクのREADMEを正本とします。
 
@@ -32,6 +32,9 @@ repoのPython環境から、次のmoduleを実行します。既定のproject ro
 - `GET /api/scenes?dataset=...&search=...&offset=0&limit=100&checkpoint=...`: source内scene一覧。
 - `GET /api/preview?scene=...&start=0&count=1`: original sizeとframeごとのGT。
 - `GET /api/image?scene=...&frame=0`: 原画像JPEG。
+- Ballのみ: `GET /api/review?scene=...`: source・splitとframe区分の件数、注釈状態への移動先。
+  `/api/catalog`にはindexから集計したdataset概要、`/api/preview`には各frameの採点可否・注釈kind・文脈/境界/eventを含む。
+  `/api/scenes`の`source`・`split`・`review_state`は該当frameを含むclipを絞り、一覧のpaginationより先に適用する。
 - Ballのみ: `GET /api/players?scene=...&dataset=players/...&mode=reviewed&start=0&count=32`。
   `mode=raw`で生成結果。状態と利用可否、各frameのpose・枠・ID・軌跡を返す。
   `/api/scenes`は`player_dataset`と`player_status`による状態表示・絞り込みにも対応する。
