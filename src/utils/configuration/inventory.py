@@ -390,6 +390,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "plcs.dataset_scene_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.ball_refiner.scripts.review_3d_dataset": (
+        "ball_refiner.dataset_3d_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.blcs.scripts.review_dataset": (
         "blcs.dataset_scene_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -446,6 +450,7 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary("src.tasks.ball_refiner.scripts.review_3d_dataset", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_triangulation", "main", domain="ball_refiner", executable_module=True),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.evaluate_pilot"),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
