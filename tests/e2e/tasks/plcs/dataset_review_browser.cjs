@@ -117,8 +117,30 @@ async function countPixels(page, target, tolerance) {
     await page.waitForSelector(".scene", { timeout: 120000 });
     await loaded();
 
-    assert.equal(await page.locator(".form").count(), 6);
+    assert.equal(await page.locator(".form").count(), 1);
     assert.match(await page.locator("#scene-dataset").textContent(), /plcs\//);
+
+    await page.waitForFunction(() => document.getElementById("inspection-status").hidden, {}, { timeout: 120000 });
+    await page.click("#play");
+    await page.locator("#scrub").evaluate(el => { el.value = "100"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+    assert.match(await page.locator("#inspection-frame").textContent(), /frame 100 /);
+    assert.equal(await page.locator("#human-visible").textContent(), "17 / 17");
+    assert.match(await page.locator("#motion-source").textContent(), /ACCAD/);
+    assert.match(await page.locator(".synthetic-note").textContent(), /合成投影/);
+    assert.equal(await page.locator("#visibility-mismatch").textContent(), "0点");
+    await page.click('[data-camera-index="3"]');
+    assert.equal(await page.locator("#human-visible").textContent(), "0 / 17");
+    assert.match(await page.locator("#frame-check").textContent(), /有効観測なし/);
+    await page.click('[data-camera-index="0"]');
+    await page.check("#all-court-points");
+    assert.match(await page.locator("#court-visible").textContent(), /\/ 20/);
+    await page.uncheck("#all-court-points");
+    await page.click("#next");
+    assert.match(await page.locator("#inspection-frame").textContent(), /frame 101 /);
+    assert.equal(await page.locator("#hud-frame").textContent(), "101");
+    await page.click('[data-preset="overhead"]');
+    await page.locator("#view").hover();
+    await page.mouse.wheel(0, 400);
 
     await page.waitForTimeout(600);
     const court = await countPixels(page, [[63, 125, 100]], 26);
@@ -144,6 +166,7 @@ async function countPixels(page, target, tolerance) {
     assert.equal(await cameras.getAttribute("aria-pressed"), "true");
 
     await page.click("#play");
+    await page.click("#play");
     assert.equal(await page.getAttribute("#play", "title"), "再生");
     await page.click("#play");
     assert.equal(await page.getAttribute("#play", "title"), "一時停止");
@@ -162,7 +185,19 @@ async function countPixels(page, target, tolerance) {
       overflow.scrollWidth <= overflow.clientWidth + 1,
       `horizontal overflow: ${JSON.stringify(overflow)}`,
     );
-    assert.deepEqual(errors, []);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+    assert.equal(mobileOverflow, false, "mobile horizontal overflow");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.route("**/api/scene/observations?**", route => route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "Scene file is missing." }) }));
+    await page.click('[data-scene="scene_000001"]');
+    await page.waitForFunction(() => document.getElementById("inspection-status").classList.contains("error"), {}, { timeout: 120000 });
+    assert.equal(await page.locator("#inspection-body").isVisible(), false);
+    assert.match(await page.locator("#inspection-status").textContent(), /検品は利用できません/);
+    // The intentionally rejected request must be the only browser console error.
+    const unexpectedErrors = errors.filter(message => !message.includes("404"));
+    assert.deepEqual(unexpectedErrors, []);
     console.log(
       `plcs dataset review browser regression passed (court=${court} player=${player})`,
     );
