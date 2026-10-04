@@ -1,0 +1,23 @@
+{
+  "counts": {
+    "train": 800,
+    "val": 100,
+    "test": 100
+  },
+  "missing_files": [],
+  "unknown_scenes": [],
+  "duplicate_entries": [],
+  "unassigned_scenes": [],
+  "overlapping_scenes": [],
+  "source_count": 156,
+  "shared_source_count": 101,
+  "categories": {
+    "general": 138,
+    "running": 495,
+    "walking": 367
+  },
+  "source_npz_files": 252,
+  "sample_gifs": 9,
+  "inspected_at": "2026-10-04",
+  "dataset": "/home/kamimura/projects/tennis-lab/data/plcs/single_object"
+}
