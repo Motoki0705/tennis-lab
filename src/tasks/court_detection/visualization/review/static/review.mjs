@@ -126,8 +126,8 @@ export function createCourtReview(viewer, filterChanged) {
       raw.target = "_blank"; raw.rel = "noopener";
       heading.append(node("h2", "保存教師の検品"), raw);
       const origin = node("p", synthetic
-        ? `合成投影 · ${current.target_court} · pose教師あり`
-        : "実写KP注釈 · 遮蔽/visibility未保存 · pose教師なし", "court-origin");
+        ? `合成投影 · ${current.target_court} · カメラ姿勢の教師あり`
+        : "実写KP注釈 · 遮蔽/visibility未保存 · カメラ姿勢の教師なし", "court-origin");
       const boundary = synthetic
         ? `画面外（前方）${current.counts.out_of_frame || 0} · camera背面 ${current.counts.behind_camera || 0}`
         : `画面外 ${current.counts.out_of_frame || 0}点`;
