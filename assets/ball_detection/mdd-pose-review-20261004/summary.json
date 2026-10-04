@@ -1,0 +1,593 @@
+{
+  "config": {
+    "window_length": 32,
+    "window_stride": 16,
+    "max_gap_seconds": 0.4,
+    "min_presence_fraction": 0.5,
+    "min_observed_frames": 8,
+    "timestamp_gap_factor": 2.5
+  },
+  "pose_manifest_sha256": "8302c8803894e201191f635fb287fad5142ceaa98444249be7cc089173fb23c0",
+  "counts": {
+    "tracknet/train": {
+      "clips": 70,
+      "frames": 14535,
+      "play_frames": 14039,
+      "selected_frames": 14039,
+      "observed_frames": 14014,
+      "excluded_observed_frames": 68,
+      "windows": 836,
+      "bridged_frames": 49
+    },
+    "tracknet/test": {
+      "clips": 12,
+      "frames": 2144,
+      "play_frames": 2087,
+      "selected_frames": 2087,
+      "observed_frames": 2081,
+      "excluded_observed_frames": 0,
+      "windows": 125,
+      "bridged_frames": 5
+    },
+    "tracknet/val": {
+      "clips": 8,
+      "frames": 1464,
+      "play_frames": 1436,
+      "selected_frames": 1436,
+      "observed_frames": 1429,
+      "excluded_observed_frames": 0,
+      "windows": 85,
+      "bridged_frames": 2
+    },
+    "meiji/val": {
+      "clips": 16,
+      "frames": 7393,
+      "play_frames": 7393,
+      "selected_frames": 6897,
+      "observed_frames": 6258,
+      "excluded_observed_frames": 0,
+      "windows": 419,
+      "bridged_frames": 0
+    },
+    "meiji/test": {
+      "clips": 39,
+      "frames": 13131,
+      "play_frames": 13131,
+      "selected_frames": 12237,
+      "observed_frames": 10876,
+      "excluded_observed_frames": 0,
+      "windows": 736,
+      "bridged_frames": 0
+    },
+    "meiji/train": {
+      "clips": 46,
+      "frames": 16384,
+      "play_frames": 16384,
+      "selected_frames": 14862,
+      "observed_frames": 13519,
+      "excluded_observed_frames": 2,
+      "windows": 897,
+      "bridged_frames": 0
+    },
+    "chat_annotation/train": {
+      "clips": 189,
+      "frames": 103596,
+      "play_frames": 66331,
+      "selected_frames": 65487,
+      "observed_frames": 59271,
+      "excluded_observed_frames": 603,
+      "windows": 3892,
+      "bridged_frames": 359
+    },
+    "chat_annotation/val": {
+      "clips": 32,
+      "frames": 23184,
+      "play_frames": 14420,
+      "selected_frames": 14067,
+      "observed_frames": 12948,
+      "excluded_observed_frames": 126,
+      "windows": 843,
+      "bridged_frames": 77
+    },
+    "chat_annotation/test": {
+      "clips": 30,
+      "frames": 22161,
+      "play_frames": 14841,
+      "selected_frames": 14809,
+      "observed_frames": 14346,
+      "excluded_observed_frames": 93,
+      "windows": 903,
+      "bridged_frames": 119
+    }
+  },
+  "examples": [
+    {
+      "clip_id": "tracknet/game8/Clip6",
+      "image": "example-00.jpg",
+      "frames": [
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 21,
+          "seconds": 0.7,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 43,
+          "seconds": 1.4333333333333333,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 65,
+          "seconds": 2.1666666666666665,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 66,
+          "seconds": 2.2,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 87,
+          "seconds": 2.9,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 108,
+          "seconds": 3.6,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 130,
+          "seconds": 4.333333333333333,
+          "proposal": "NON-PLAY?"
+        }
+      ],
+      "play": [
+        [
+          0,
+          66
+        ]
+      ],
+      "excluded": [
+        [
+          66,
+          131
+        ]
+      ]
+    },
+    {
+      "clip_id": "tracknet/game3/Clip6",
+      "image": "example-01.jpg",
+      "frames": [
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 59,
+          "seconds": 1.9666666666666666,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 118,
+          "seconds": 3.933333333333333,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 237,
+          "seconds": 7.8999999999999995,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 129,
+          "seconds": 4.3,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 148,
+          "seconds": 4.933333333333334,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 168,
+          "seconds": 5.6,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 188,
+          "seconds": 6.266666666666667,
+          "proposal": "NON-PLAY?"
+        }
+      ],
+      "play": [
+        [
+          0,
+          129
+        ],
+        [
+          189,
+          238
+        ]
+      ],
+      "excluded": [
+        [
+          129,
+          189
+        ]
+      ]
+    },
+    {
+      "clip_id": "tracknet/game2/Clip8",
+      "image": "example-02.jpg",
+      "frames": [
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 214,
+          "seconds": 7.133333333333333,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 429,
+          "seconds": 14.299999999999999,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 644,
+          "seconds": 21.466666666666665,
+          "proposal": "PLAY"
+        }
+      ],
+      "play": [
+        [
+          0,
+          645
+        ]
+      ],
+      "excluded": []
+    },
+    {
+      "clip_id": "meiji/video_002/clip_023/cam2",
+      "image": "example-03.jpg",
+      "frames": [
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 75,
+          "seconds": 1.25124999874875,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 151,
+          "seconds": 2.5191833308141502,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 227,
+          "seconds": 3.78711666287955,
+          "proposal": "PLAY"
+        }
+      ],
+      "play": [
+        [
+          0,
+          228
+        ]
+      ],
+      "excluded": []
+    },
+    {
+      "clip_id": "meiji/video_002/clip_023/cam1",
+      "image": "example-04.jpg",
+      "frames": [
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 75,
+          "seconds": 1.25124999874875,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 151,
+          "seconds": 2.5191833308141502,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 227,
+          "seconds": 3.78711666287955,
+          "proposal": "PLAY"
+        }
+      ],
+      "play": [
+        [
+          0,
+          228
+        ]
+      ],
+      "excluded": []
+    },
+    {
+      "clip_id": "meiji/video_002/clip_003/cam1",
+      "image": "example-05.jpg",
+      "frames": [
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 248,
+          "seconds": 4.1374666625292,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 496,
+          "seconds": 8.2749333250584,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 745,
+          "seconds": 12.429083320904251,
+          "proposal": "PLAY"
+        }
+      ],
+      "play": [
+        [
+          0,
+          746
+        ]
+      ],
+      "excluded": []
+    },
+    {
+      "clip_id": "chat_annotation/Tr2rHv9IrtA__f950e0266fc0c0fc__f000000000-000000780",
+      "image": "example-06.jpg",
+      "frames": [
+        {
+          "frame": 416,
+          "seconds": 6.933333333333334,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 537,
+          "seconds": 8.950000000000001,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 658,
+          "seconds": 10.966666666666667,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 779,
+          "seconds": 12.983333333333334,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 582,
+          "seconds": 9.700000000000001,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 588,
+          "seconds": 9.8,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 594,
+          "seconds": 9.9,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 600,
+          "seconds": 10.0,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 158,
+          "seconds": 2.6333333333333333,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 316,
+          "seconds": 5.266666666666667,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 839,
+          "seconds": 13.983333333333334,
+          "proposal": "NON-PLAY?"
+        }
+      ],
+      "play": [
+        [
+          416,
+          780
+        ]
+      ],
+      "excluded": [
+        [
+          0,
+          416
+        ],
+        [
+          780,
+          840
+        ]
+      ]
+    },
+    {
+      "clip_id": "chat_annotation/cfHeYAm0GuA__403b11a9a3e39da2__f000011742-000012392",
+      "image": "example-07.jpg",
+      "frames": [
+        {
+          "frame": 50,
+          "seconds": 1.0,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 146,
+          "seconds": 2.92,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 602,
+          "seconds": 12.040000000000001,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 699,
+          "seconds": 13.98,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 292,
+          "seconds": 5.84,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 445,
+          "seconds": 8.9,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 749,
+          "seconds": 14.98,
+          "proposal": "NON-PLAY?"
+        }
+      ],
+      "play": [
+        [
+          50,
+          189
+        ],
+        [
+          549,
+          700
+        ]
+      ],
+      "excluded": [
+        [
+          0,
+          50
+        ],
+        [
+          189,
+          549
+        ],
+        [
+          700,
+          750
+        ]
+      ]
+    },
+    {
+      "clip_id": "chat_annotation/4NhyMITa1ms__92a7d87a43d3ed85__f000009017-000009796",
+      "image": "example-08.jpg",
+      "frames": [
+        {
+          "frame": 59,
+          "seconds": 0.9843222222222223,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 318,
+          "seconds": 5.3053,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 577,
+          "seconds": 9.62628888888889,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 837,
+          "seconds": 13.963955555555556,
+          "proposal": "PLAY"
+        },
+        {
+          "frame": 146,
+          "seconds": 2.435766666666667,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 789,
+          "seconds": 13.163155555555557,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 793,
+          "seconds": 13.22988888888889,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 798,
+          "seconds": 13.3133,
+          "proposal": "GAP IN PLAY"
+        },
+        {
+          "frame": 0,
+          "seconds": 0.0,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 39,
+          "seconds": 0.6506555555555555,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 857,
+          "seconds": 14.297622222222223,
+          "proposal": "NON-PLAY?"
+        },
+        {
+          "frame": 896,
+          "seconds": 14.948266666666667,
+          "proposal": "NON-PLAY?"
+        }
+      ],
+      "play": [
+        [
+          59,
+          838
+        ]
+      ],
+      "excluded": [
+        [
+          0,
+          59
+        ],
+        [
+          838,
+          897
+        ]
+      ]
+    }
+  ],
+  "approved_clips": 442,
+  "excluded_clips": 373
+}
