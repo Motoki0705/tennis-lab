@@ -24,7 +24,7 @@ cameraはcam0から連番で、指定videoだけを開きます。保存先は
 
 ```bash
 # 既存projectだけを読み、編集・同期計算・書き出しをAPIでも拒否する。
-.venv/bin/python -m src.tennis_scene.clip_studio.review \
+.venv/bin/python -m src.tennis_scene.clip_studio \
   --data-root /absolute/path/to/data \
   --source-directory tennis_multivew/raw/meiji_3cam/video_000 --port 8904
 ```
@@ -99,7 +99,7 @@ fps・解像度が異なる場合は `export.fps`、`export.width`、`export.hei
 ## モジュール
 
 - `web/service.py`：編集トランザクション、revision検証、自動保存、Undo/Redo。
-- `review.py`：既存project専用のread-only CLI。`web/review.py`：時刻対応と既存出力の照合。
+- `__main__.py`：既存project専用のread-only CLI。`review.py`：保存projectの読込API。`web/review.py`：時刻対応と既存出力の照合。
 - `web/app.py`：FastAPI、HTTP Range動画配信、停止時のJPEGフレーム取得。ループバックで起動する。
 - `web/jobs.py`：同期候補計算・バッチ事前検証・出力済み判定・進捗。
 - `web/exporting.py`：停止可能なエンコード子プロセス、一時出力、公開とロールバック。

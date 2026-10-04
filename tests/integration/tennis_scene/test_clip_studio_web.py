@@ -158,6 +158,74 @@ def test_review_requires_existing_matching_project_without_initialization(web_cl
     assert runtime.export.projects_path.read_bytes() == before
 
 
+def test_review_package_cli_opens_saved_project_read_only(web_client, monkeypatch):
+    from src.tennis_scene.clip_studio import __main__ as review_cli
+
+    client, runtime = web_client
+    project = client.app.state.editor.project
+    project.save(runtime.export.projects_path, runtime.export.resolver)
+    before = runtime.export.projects_path.read_bytes()
+    launches = []
+
+    def run(app, *, host, port):
+        launches.append((host, port))
+        with TestClient(app) as review:
+            snapshot = review.get("/api/project").json()
+            assert snapshot["read_only"]
+            assert snapshot["dataset_id"] == project.dataset_id
+            assert snapshot["video_id"] == project.video_id
+            assert review.get("/api/jobs").json() == {"status": "idle"}
+            assert (
+                review.get("/api/frame/1?time=0.5&revision=0").headers[
+                    "x-frame-index"
+                ]
+                == "7"
+            )
+            for path, body in [
+                ("/api/edit", {"revision": 0, "action": "undo"}),
+                ("/api/jobs", {"revision": 0, "kind": "sync"}),
+                ("/api/jobs", {"revision": 0, "kind": "export"}),
+            ]:
+                assert review.post(path, json=body).status_code == 403
+
+    monkeypatch.setattr(review_cli.uvicorn, "run", run)
+    review_cli.main(
+        [
+            "--data-root",
+            str(runtime.export.resolver.roots.data_root),
+            "--source-directory",
+            "tennis_multivew/raw/test/video_000",
+            "--port",
+            "8904",
+        ]
+    )
+    assert launches == [("127.0.0.1", 8904)]
+    assert runtime.export.projects_path.read_bytes() == before
+    assert not runtime.export.output_dir.exists()
+
+
+def test_review_package_cli_does_not_initialize_missing_project(web_client, monkeypatch):
+    from src.tennis_scene.clip_studio import __main__ as review_cli
+
+    _, runtime = web_client
+
+    def run(*args, **kwargs):
+        pytest.fail("review CLI must reject a missing project before server startup")
+
+    monkeypatch.setattr(review_cli.uvicorn, "run", run)
+    with pytest.raises(FileNotFoundError):
+        review_cli.main(
+            [
+                "--data-root",
+                str(runtime.export.resolver.roots.data_root),
+                "--source-directory",
+                "tennis_multivew/raw/test/video_000",
+            ]
+        )
+    assert not runtime.export.projects_path.exists()
+    assert not runtime.export.output_dir.exists()
+
+
 def test_sync_controls_share_a_collapsible_media_area_with_video(web_client):
     client, _ = web_client
     index = client.get("/").text
