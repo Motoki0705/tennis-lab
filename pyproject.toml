@@ -102,6 +102,7 @@ namespaces = false
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.base.visualization.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tasks.base.visualization.detection" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.player_detection.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.base.visualization" = ["shared/*.js", "shared/*.mjs", "shared/*.txt"]
 "src.tasks.plcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tasks.blcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
