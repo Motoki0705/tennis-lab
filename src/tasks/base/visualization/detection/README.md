@@ -22,7 +22,7 @@ repoのPython環境から、次のmoduleを実行します。既定のproject ro
 
 左にデータセット・検索とページ付きシーン一覧、推論modeではcheckpoint検索と候補を表示します。未選択時は全データセット、選択後は保存契約と互換なデータだけを提示します。未配置sourceや非互換checkpointには理由があります。
 
-中央は実画像のpan/zoom、GT（緑の輪郭）と予測（赤の点）、選択したdense layerの重ね表示です。右でGT/予測/ラベル、レイヤー、不透明度、実行device・開始frame・frame数・しきい値を操作できます。表示PNGを保存できます。Ballはフレーム再生、Courtは単画像です。推論対象外フレームを予測なしとして明示し、古い応答で現在のシーンを上書きしません。
+中央は実画像のpan/zoom、GT（緑）と予測（赤）、選択したdense layerの重ね表示です。右でGT/予測/ラベル、レイヤー、不透明度、実行device・開始frame・frame数・しきい値を操作できます。表示PNGを保存できます。Ballはフレーム再生、Courtは単画像です。推論対象外フレームを予測なしとして明示し、古い応答で現在のシーンを上書きしません。
 
 画像座標はoriginal image pixelの`x,y`です。2Dラベルから未観測の3Dコートやcamera poseを作りません。データ固有のschema、表示可能な教師、checkpoint互換性は各タスクのREADMEを正本とします。
 

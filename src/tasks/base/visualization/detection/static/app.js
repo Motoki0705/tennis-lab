@@ -258,6 +258,7 @@ async function loadCatalog() {
     clearTimeout(searchTimer);
     resetScene();
     state.catalog = catalog;
+    viewer.configure({ ballPoints: catalog.task === "ball_detection" });
     document.title = catalog.title;
     $("title").textContent = catalog.title;
     $("mode").textContent =

@@ -26,10 +26,16 @@ export function playerColor(id) {
 
 export function drawPlayers(ctx, people, options, scale) {
   if (!options.players) return;
+  ctx.save();
+  ctx.lineCap = ctx.lineJoin = "round";
   for (const person of people) {
+    const [x1, y1, x2, y2] = person.box;
+    const height = Math.max(0, (y2 - y1) * scale);
+    const line = Math.max(0.45, Math.min(1.1, height / 160));
+    const details = height >= 55;
     const color = playerColor(person.id);
     ctx.strokeStyle = ctx.fillStyle = color;
-    ctx.lineWidth = 1.5 / scale;
+    ctx.lineWidth = Math.max(0.6, line) / scale;
     if (options.trails && person.trail.length > 1) {
       ctx.globalAlpha = 0.65;
       ctx.beginPath();
@@ -39,37 +45,46 @@ export function drawPlayers(ctx, people, options, scale) {
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
-    const [x1, y1, x2, y2] = person.box;
+    ctx.lineWidth = Math.max(0.5, Math.min(1, line)) / scale;
     if (options.boxes) ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
     if (options.pose) {
+      ctx.lineWidth = line / scale;
       ctx.beginPath();
       for (const [a, b] of COCO_EDGES) {
+        // At a distance, facial links and joint disks cover the body. Keep
+        // the limb geometry; zooming restores the full COCO-17 detail.
+        if (!details && a < 5 && b < 5) continue;
         ctx.moveTo(...person.keypoints[a].slice(0, 2));
         ctx.lineTo(...person.keypoints[b].slice(0, 2));
       }
       ctx.stroke();
-      ctx.beginPath();
-      for (const [x, y] of person.keypoints) {
-        ctx.moveTo(x + 1.8 / scale, y);
-        ctx.arc(x, y, 1.8 / scale, 0, 2 * Math.PI);
+      if (details) {
+        const radius = Math.max(0.55, Math.min(1, height / 220)) / scale;
+        ctx.beginPath();
+        for (const [x, y] of person.keypoints) {
+          ctx.moveTo(x + radius, y);
+          ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        }
+        ctx.fill();
       }
-      ctx.fill();
     }
     if (options.identities) {
       const label = person.id.startsWith("raw_")
-        ? person.id
-        : `${person.id} · raw ${person.raw_track_id}`;
-      ctx.font = `${11 / scale}px system-ui`;
-      const y = Math.max(13 / scale, y1 - 5 / scale);
+        ? `R${person.raw_track_id}`
+        : `${person.id.replace(/^player_(\d+)$/, "P$1")} / R${person.raw_track_id}`;
+      const fontSize = Math.max(7, Math.min(9, height / 10));
+      ctx.font = `${fontSize / scale}px system-ui`;
+      const y = Math.max((fontSize + 2) / scale, y1 - 3 / scale);
       ctx.fillStyle = "#10251fe6";
       ctx.fillRect(
-        x1 - 2 / scale,
-        y - 12 / scale,
-        ctx.measureText(label).width + 4 / scale,
-        15 / scale,
+        x1 - 1 / scale,
+        y - (fontSize + 1) / scale,
+        ctx.measureText(label).width + 2 / scale,
+        (fontSize + 3) / scale,
       );
       ctx.fillStyle = color;
       ctx.fillText(label, x1, y);
     }
   }
+  ctx.restore();
 }
