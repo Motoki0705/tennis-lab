@@ -12,7 +12,11 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
   --port 8773
 ```
 
-[閲覧UIを開く](http://127.0.0.1:8773)。左の形式・シーンを選ぶと、checkpoint・GPUなしでGTを確認できます。対象はphysical_v1のsingle_objectです。
+[閲覧UIを開く](http://127.0.0.1:8773)。左のシーンを選ぶと、checkpoint・GPUなしで
+保存2D ball・CourtKP20・可視性と3D教師を同じframeで確認できます。
+対象はphysical_v1のsingle_object（物理合成truth）です。右の検品パネルで6カメラを比較し、
+1台を拡大できます。hit/bounce、再投影差、保存正規化の照合も
+[BLCS検品画面](review/README.md)で説明しています。
 
 ## 推論
 
