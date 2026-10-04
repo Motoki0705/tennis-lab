@@ -1,0 +1,406 @@
+{
+  "status": "passed",
+  "screenshot_type": "real browser / real local caches",
+  "no_before_reason": "New cache/teacher review UI; existing component renderer is not a comparable browser screen",
+  "browser_version": "151.0.7922.34",
+  "captured_at": "2026-10-04T13:09:09.247Z",
+  "screenshots": [
+    {
+      "name": "01-observed-context",
+      "note": "候補・観測教師・旧比較pose/court・保存GMMを同frameで確認",
+      "kind": "new",
+      "url": "http://127.0.0.1:8894/?clip=meiji%2Fvideo_000%2Fclip_001%2Fcam1&frame=148&condition=observed",
+      "clip_id": "meiji/video_000/clip_001/cam1",
+      "source": "meiji",
+      "split": "val",
+      "camera": "cam1",
+      "frame": 148,
+      "pts": "7400000",
+      "condition": "observed",
+      "viewport": {
+        "width": 1600,
+        "height": 1250,
+        "device_scale_factor": 1
+      },
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "rgb": {
+        "available": true,
+        "reason": "Exact JPEG SHA256 + dense frame/PTS + source/stored size verified",
+        "jpeg_sha256": "f80a7cec8121c9ee5fd15b228d797c356a77f84feecb9382c3c7a97717e8da4d",
+        "provider": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2",
+        "provider_clip_index": 99,
+        "labels": "Saved evaluation NPZ only; RGB-provider labels are never substituted"
+      },
+      "target": {
+        "reason": "observed",
+        "reason_code": 0,
+        "uv": [
+          0.24857893586158752,
+          0.3410481810569763
+        ],
+        "position_valid": true,
+        "presence_valid": true,
+        "presence": true
+      },
+      "gap_active": false,
+      "context_available": true,
+      "context_used_by_gmm": false,
+      "provenance": {
+        "evidence_manifest": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+        "evidence_manifest_sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+        "evidence_npz_sha256": "20a14db9132e8fe3eb0af974c964248ad3ae799c46b91e984c712c10f4f8975e",
+        "teacher_gmm_npz_sha256": "eb19823d04d90e2119f334447b547d12d9cca5ab098a3757b91cabadb902b42b",
+        "context_npz_sha256": "4ed7aabe230235748bb4ee1f5aaa1d634b4a5fda37d05ca17d2b1e95a2ede1c9",
+        "coordinate_system": "source_xy_div_size_minus_one",
+        "teacher_source": "saved evaluation NPZ from original store; not RGB-provider annotations"
+      },
+      "screenshot_sha256": "97aecabae2a5a9c4b806acde98aeb6d44f71fa23adb687dffb0f4f29fe03d630",
+      "asset_path": "assets/dataset_review/20261004/ball_refiner_2d/01-observed-context.png",
+      "captured_from_final_code_revision": "c4fe59cef01574ce077039247e007a0db22bf1e6"
+    },
+    {
+      "name": "02-artificial-evidence-gap",
+      "note": "同clip/frameの人工候補dropout。保存patchは参考で実効入力0件",
+      "kind": "new",
+      "url": "http://127.0.0.1:8894/?clip=meiji%2Fvideo_000%2Fclip_001%2Fcam1&frame=148&condition=evidence_gap",
+      "clip_id": "meiji/video_000/clip_001/cam1",
+      "source": "meiji",
+      "split": "val",
+      "camera": "cam1",
+      "frame": 148,
+      "pts": "7400000",
+      "condition": "evidence_gap",
+      "viewport": {
+        "width": 1600,
+        "height": 1250,
+        "device_scale_factor": 1
+      },
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "rgb": {
+        "available": true,
+        "reason": "Exact JPEG SHA256 + dense frame/PTS + source/stored size verified",
+        "jpeg_sha256": "f80a7cec8121c9ee5fd15b228d797c356a77f84feecb9382c3c7a97717e8da4d",
+        "provider": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2",
+        "provider_clip_index": 99,
+        "labels": "Saved evaluation NPZ only; RGB-provider labels are never substituted"
+      },
+      "target": {
+        "reason": "observed",
+        "reason_code": 0,
+        "uv": [
+          0.24857893586158752,
+          0.3410481810569763
+        ],
+        "position_valid": true,
+        "presence_valid": true,
+        "presence": true
+      },
+      "gap_active": true,
+      "context_available": true,
+      "context_used_by_gmm": false,
+      "provenance": {
+        "evidence_manifest": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+        "evidence_manifest_sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+        "evidence_npz_sha256": "20a14db9132e8fe3eb0af974c964248ad3ae799c46b91e984c712c10f4f8975e",
+        "teacher_gmm_npz_sha256": "7bbc4bf0eeebbe119a8bd10861e57ec2aa5f1db65599bd765738e399d8153d9c",
+        "context_npz_sha256": "4ed7aabe230235748bb4ee1f5aaa1d634b4a5fda37d05ca17d2b1e95a2ede1c9",
+        "coordinate_system": "source_xy_div_size_minus_one",
+        "teacher_source": "saved evaluation NPZ from original store; not RGB-provider annotations"
+      },
+      "screenshot_sha256": "64af5f0ed69961d6cfca0a0f2a579fa17f4a98e4501003a84c15dc2fb14e4bb6",
+      "asset_path": "assets/dataset_review/20261004/ball_refiner_2d/02-artificial-evidence-gap.png",
+      "captured_from_final_code_revision": "c4fe59cef01574ce077039247e007a0db22bf1e6"
+    },
+    {
+      "name": "03-estimated-reference",
+      "note": "補間参考位置は橙の◇。教師maskは位置/存在とも0",
+      "kind": "new",
+      "url": "http://127.0.0.1:8894/?clip=meiji%2Fvideo_000%2Fclip_001%2Fcam1&frame=63&condition=observed",
+      "clip_id": "meiji/video_000/clip_001/cam1",
+      "source": "meiji",
+      "split": "val",
+      "camera": "cam1",
+      "frame": 63,
+      "pts": "3150000",
+      "condition": "observed",
+      "viewport": {
+        "width": 1600,
+        "height": 1250,
+        "device_scale_factor": 1
+      },
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "rgb": {
+        "available": true,
+        "reason": "Exact JPEG SHA256 + dense frame/PTS + source/stored size verified",
+        "jpeg_sha256": "f80a7cec8121c9ee5fd15b228d797c356a77f84feecb9382c3c7a97717e8da4d",
+        "provider": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2",
+        "provider_clip_index": 99,
+        "labels": "Saved evaluation NPZ only; RGB-provider labels are never substituted"
+      },
+      "target": {
+        "reason": "interpolated",
+        "reason_code": 5,
+        "uv": [
+          0.2609254717826843,
+          0.45140960812568665
+        ],
+        "position_valid": false,
+        "presence_valid": false,
+        "presence": null
+      },
+      "gap_active": false,
+      "context_available": true,
+      "context_used_by_gmm": false,
+      "provenance": {
+        "evidence_manifest": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+        "evidence_manifest_sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+        "evidence_npz_sha256": "20a14db9132e8fe3eb0af974c964248ad3ae799c46b91e984c712c10f4f8975e",
+        "teacher_gmm_npz_sha256": "eb19823d04d90e2119f334447b547d12d9cca5ab098a3757b91cabadb902b42b",
+        "context_npz_sha256": "4ed7aabe230235748bb4ee1f5aaa1d634b4a5fda37d05ca17d2b1e95a2ede1c9",
+        "coordinate_system": "source_xy_div_size_minus_one",
+        "teacher_source": "saved evaluation NPZ from original store; not RGB-provider annotations"
+      },
+      "screenshot_sha256": "230004d6cc0b4a9dfe25c93f7f866118aca089905b280042339120be0bdcee28",
+      "asset_path": "assets/dataset_review/20261004/ball_refiner_2d/03-estimated-reference.png",
+      "captured_from_final_code_revision": "c4fe59cef01574ce077039247e007a0db22bf1e6"
+    },
+    {
+      "name": "04-unknown-presence",
+      "note": "unknownを不存在の負例にしない。保存GMMの存在確率は別欄",
+      "kind": "new",
+      "url": "http://127.0.0.1:8894/?clip=meiji%2Fvideo_000%2Fclip_001%2Fcam1&frame=66&condition=observed",
+      "clip_id": "meiji/video_000/clip_001/cam1",
+      "source": "meiji",
+      "split": "val",
+      "camera": "cam1",
+      "frame": 66,
+      "pts": "3300000",
+      "condition": "observed",
+      "viewport": {
+        "width": 1600,
+        "height": 1250,
+        "device_scale_factor": 1
+      },
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "rgb": {
+        "available": true,
+        "reason": "Exact JPEG SHA256 + dense frame/PTS + source/stored size verified",
+        "jpeg_sha256": "f80a7cec8121c9ee5fd15b228d797c356a77f84feecb9382c3c7a97717e8da4d",
+        "provider": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2",
+        "provider_clip_index": 99,
+        "labels": "Saved evaluation NPZ only; RGB-provider labels are never substituted"
+      },
+      "target": {
+        "reason": "unresolved",
+        "reason_code": 7,
+        "uv": null,
+        "position_valid": false,
+        "presence_valid": false,
+        "presence": null
+      },
+      "gap_active": false,
+      "context_available": true,
+      "context_used_by_gmm": false,
+      "provenance": {
+        "evidence_manifest": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+        "evidence_manifest_sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+        "evidence_npz_sha256": "20a14db9132e8fe3eb0af974c964248ad3ae799c46b91e984c712c10f4f8975e",
+        "teacher_gmm_npz_sha256": "eb19823d04d90e2119f334447b547d12d9cca5ab098a3757b91cabadb902b42b",
+        "context_npz_sha256": "4ed7aabe230235748bb4ee1f5aaa1d634b4a5fda37d05ca17d2b1e95a2ede1c9",
+        "coordinate_system": "source_xy_div_size_minus_one",
+        "teacher_source": "saved evaluation NPZ from original store; not RGB-provider annotations"
+      },
+      "screenshot_sha256": "5d8226a23d326917ec9d0889e1a812b0476c9db4c6d5acdef49ec6ee79e2a4c7",
+      "asset_path": "assets/dataset_review/20261004/ball_refiner_2d/04-unknown-presence.png",
+      "captured_from_final_code_revision": "c4fe59cef01574ce077039247e007a0db22bf1e6"
+    },
+    {
+      "name": "05-explicit-out-of-frame",
+      "note": "明示画面外: 位置mask0 / 存在mask1 / 存在教師0",
+      "kind": "new",
+      "url": "http://127.0.0.1:8894/?clip=chat_annotation%2F2Fa16bdg8pI__403208cbe9abb73c__f000001212-000001537&frame=234&condition=observed",
+      "clip_id": "chat_annotation/2Fa16bdg8pI__403208cbe9abb73c__f000001212-000001537",
+      "source": "chat_annotation",
+      "split": "val",
+      "camera": null,
+      "frame": 234,
+      "pts": "119808",
+      "condition": "observed",
+      "viewport": {
+        "width": 1600,
+        "height": 1250,
+        "device_scale_factor": 1
+      },
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "rgb": {
+        "available": true,
+        "reason": "Exact JPEG SHA256 + dense frame/PTS + source/stored size verified",
+        "jpeg_sha256": "b0f276589b14f44e58744c24600ef764126dadebbb777c6a60880ae6cd490a7f",
+        "provider": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2",
+        "provider_clip_index": 312,
+        "labels": "Saved evaluation NPZ only; RGB-provider labels are never substituted"
+      },
+      "target": {
+        "reason": "out_of_frame",
+        "reason_code": 1,
+        "uv": null,
+        "position_valid": false,
+        "presence_valid": true,
+        "presence": false
+      },
+      "gap_active": false,
+      "context_available": false,
+      "provenance": {
+        "evidence_manifest": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+        "evidence_manifest_sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+        "evidence_npz_sha256": "6a5354f95f0d26372f5dd8b4f78bb6a5da1b6a9b0483fc8717422528335f8c7f",
+        "teacher_gmm_npz_sha256": "e989c85770d46e3e0e87501b11be3daff2e2e2901a8f8c8e0a6f856a92a70a02",
+        "context_npz_sha256": null,
+        "coordinate_system": "source_xy_div_size_minus_one",
+        "teacher_source": "saved evaluation NPZ from original store; not RGB-provider annotations"
+      },
+      "screenshot_sha256": "15d4bddba13d423ca7329c14e59fef251c7658235bb4db19c2edd1c92dbe9e1d",
+      "asset_path": "assets/dataset_review/20261004/ball_refiner_2d/05-explicit-out-of-frame.png",
+      "captured_from_final_code_revision": "c4fe59cef01574ce077039247e007a0db22bf1e6"
+    },
+    {
+      "name": "06-saved-teacher-unavailable",
+      "kind": "new",
+      "note": "train clipの保存教師/GMMは未提供。RGBと証拠datasetは実在。unknownラベルと区別",
+      "url": "http://127.0.0.1:8894/?clip=tracknet%2Fgame1%2FClip1&frame=100&condition=observed",
+      "clip_id": "tracknet/game1/Clip1",
+      "source": "tracknet",
+      "split": "train",
+      "camera": null,
+      "frame": 100,
+      "pts": "100",
+      "condition": "observed",
+      "viewport": {
+        "width": 1600,
+        "height": 1250,
+        "device_scale_factor": 1
+      },
+      "source_size_wh": [
+        1280,
+        720
+      ],
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "rgb": {
+        "available": true,
+        "reason": "Exact JPEG SHA256 + dense frame/PTS + source/stored size verified",
+        "jpeg_sha256": "da14017b94a4f3081fe4b8d45d7571495ae2164ab9979598381d198c2981ce51",
+        "provider": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2",
+        "provider_clip_index": 0,
+        "labels": "Saved evaluation NPZ only; RGB-provider labels are never substituted"
+      },
+      "target": null,
+      "gap_active": false,
+      "context_available": true,
+      "context_used_by_gmm": false,
+      "provenance": {
+        "evidence_manifest": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+        "evidence_manifest_sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+        "evidence_npz_sha256": "ecfb5036086da9daa2697882538ec9f4a6042cba5fea908990f964d7cf1b639c",
+        "teacher_gmm_npz_sha256": null,
+        "context_npz_sha256": "cbf72f2b429355351c4547ed0889e2419fcd1fa542e60989315b04146c9d3068",
+        "coordinate_system": "source_xy_div_size_minus_one",
+        "teacher_source": "saved evaluation NPZ from original store; not RGB-provider annotations"
+      },
+      "screenshot_sha256": "56e1af527e59f33315aca25ce5e5b026ef8e88d6ae014a48f6dac9f695fe78c2",
+      "asset_path": "assets/dataset_review/20261004/ball_refiner_2d/06-saved-teacher-unavailable.png",
+      "captured_from_final_code_revision": "c4fe59cef01574ce077039247e007a0db22bf1e6"
+    }
+  ],
+  "checks": [
+    "same-frame observed/evidence_gap",
+    "observed/estimated/unknown/absent masks",
+    "verified RGB",
+    "actual playback/steps",
+    "layer toggles",
+    "state jump",
+    "source/search filtering",
+    "missing teacher distinct from unknown",
+    "no browser errors",
+    "additional real train clip screenshot: saved teacher/GMM unavailable, RGB/candidates present"
+  ],
+  "schema": "dataset_review_capture.v1",
+  "task": "ball_refiner_2d",
+  "code_revision": "c4fe59cef01574ce077039247e007a0db22bf1e6",
+  "assembled_at": "2026-10-04T13:12:01.990561+00:00",
+  "source_files_sha256": {
+    "src/tasks/ball_refiner/refiner_2d/review/artifacts.py": "a6a5e7b8933995a47e8ffc1e17fc7ab43e64d26bd3b13d8eeea9bd459f452f31",
+    "src/tasks/ball_refiner/refiner_2d/review/web.py": "042e6f28a0ade035d783f0e945ad1fb4b1f01f9c686c554eeee5c52423f7b8dd",
+    "src/tasks/ball_refiner/refiner_2d/review/__init__.py": "0612fab695a26a4af40139f2701a8378a679baef286bdfed5bcb7a09e3158456",
+    "src/tasks/ball_refiner/refiner_2d/review/README.md": "4da66351a3fb04078f095ad2c6f3a71d67ddfe5d751e62d3b35666d60588b32c",
+    "src/tasks/ball_refiner/refiner_2d/review/static/index.html": "67bf7730e8d994a2dd46579364a254f6f4f352acbe24a5bb59b89778dd8b2951",
+    "src/tasks/ball_refiner/refiner_2d/review/static/style.css": "7462deefc998b9f924137ac669ce79f04591a56f6e5a9bd50a8bb55d41b27a71",
+    "src/tasks/ball_refiner/refiner_2d/review/static/app.js": "d889975c760ca697f4daa045742c7aec52a3e987a731e071c21547b2a06dcfa6"
+  },
+  "input_manifests": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+      "sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/precision/i935-anchored-12k-s42-r21-20260930/manifest.json",
+      "sha256": "8f99cf72a2a3b5e553322037ee4986cbd0b8571ccf2c746c6f46ef88be6b65c2"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2/metadata.json",
+      "sha256": "3c9ebf405ce8346fe692d6bec251614ca97bb0f528b6d7b04082b97f9dbad309"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2/index.npz",
+      "sha256": "f552dae1e15094facfa782c9a9483588169ff7984e01fca5c1c0eecb560513c5"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/shard-00087-a1/manifest.json",
+      "sha256": "a18ce8bed2ab09b12ab166ea5ed69a7bc3796153ce5f1ead74a38be98bec44ed"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928/shard-00000-a1/manifest.json",
+      "sha256": "9783e057958a0f04abeb846f942ced753a28f8a731d8e476d41304c16d31712e"
+    }
+  ],
+  "inputs_modified": false,
+  "models_executed": false,
+  "independent_validator_rounds": 0
+}
