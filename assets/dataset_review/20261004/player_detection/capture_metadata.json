@@ -1,7 +1,7 @@
 {
-  "captured_at": "2026-10-04T12:37:06.792Z",
+  "captured_at": "2026-10-04T12:49:21.622Z",
   "chromium": "151.0.7922.34",
-  "code_revision": "0c3d1d6c61943a149bfe8561c6e8b68567cecca1",
+  "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
   "real_data": true,
   "fixture_used_for_evidence": false,
   "dataset_manifest_index_unchanged": true,
@@ -66,12 +66,12 @@
       "stage": "new",
       "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
       "filter": "all",
-      "code_revision": "0c3d1d6c61943a149bfe8561c6e8b68567cecca1",
+      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
       "code_file_sha256": {
         "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
         "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
         "src/tasks/player_detection/review/static/index.html": "2f01c228dcf2dd1e4263923781dd7efb649d470fa0d127bea57ea90a7f14782a",
-        "src/tasks/player_detection/review/static/app.js": "c2fb18569ed07a2429fe7dd7cefb8a18616f0029b1f73712b7bc7c1556a43ce5",
+        "src/tasks/player_detection/review/static/app.js": "a9b54762f30119f373b3da891f66c4cdaea1ea2a81848f2d985d15ccb9b03615",
         "src/tasks/player_detection/review/static/style.css": "1c7ba1306d519e65b7392085c323145d1d1b4845050de4260a0e3d469489639c",
         "src/tasks/player_detection/scripts/review_dataset.py": "e9e3e44e9e5e4e91a4896c6a8a449d44700d3028681612a153ce6c3fd00b9d76",
         "src/tasks/player_detection/configs/data/default.yaml": "3f35ee6f2ef3cbb3558759656ea3f13163e09df5e3e99b1f0aaf0a33807b734b"
@@ -142,12 +142,12 @@
       "stage": "new",
       "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
       "filter": "unresolved",
-      "code_revision": "0c3d1d6c61943a149bfe8561c6e8b68567cecca1",
+      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
       "code_file_sha256": {
         "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
         "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
         "src/tasks/player_detection/review/static/index.html": "2f01c228dcf2dd1e4263923781dd7efb649d470fa0d127bea57ea90a7f14782a",
-        "src/tasks/player_detection/review/static/app.js": "c2fb18569ed07a2429fe7dd7cefb8a18616f0029b1f73712b7bc7c1556a43ce5",
+        "src/tasks/player_detection/review/static/app.js": "a9b54762f30119f373b3da891f66c4cdaea1ea2a81848f2d985d15ccb9b03615",
         "src/tasks/player_detection/review/static/style.css": "1c7ba1306d519e65b7392085c323145d1d1b4845050de4260a0e3d469489639c",
         "src/tasks/player_detection/scripts/review_dataset.py": "e9e3e44e9e5e4e91a4896c6a8a449d44700d3028681612a153ce6c3fd00b9d76",
         "src/tasks/player_detection/configs/data/default.yaml": "3f35ee6f2ef3cbb3558759656ea3f13163e09df5e3e99b1f0aaf0a33807b734b"
@@ -186,12 +186,12 @@
       "stage": "new",
       "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
       "filter": "truncated",
-      "code_revision": "0c3d1d6c61943a149bfe8561c6e8b68567cecca1",
+      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
       "code_file_sha256": {
         "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
         "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
         "src/tasks/player_detection/review/static/index.html": "2f01c228dcf2dd1e4263923781dd7efb649d470fa0d127bea57ea90a7f14782a",
-        "src/tasks/player_detection/review/static/app.js": "c2fb18569ed07a2429fe7dd7cefb8a18616f0029b1f73712b7bc7c1556a43ce5",
+        "src/tasks/player_detection/review/static/app.js": "a9b54762f30119f373b3da891f66c4cdaea1ea2a81848f2d985d15ccb9b03615",
         "src/tasks/player_detection/review/static/style.css": "1c7ba1306d519e65b7392085c323145d1d1b4845050de4260a0e3d469489639c",
         "src/tasks/player_detection/scripts/review_dataset.py": "e9e3e44e9e5e4e91a4896c6a8a449d44700d3028681612a153ce6c3fd00b9d76",
         "src/tasks/player_detection/configs/data/default.yaml": "3f35ee6f2ef3cbb3558759656ea3f13163e09df5e3e99b1f0aaf0a33807b734b"
