@@ -1,0 +1,8 @@
+{
+  "approved_clips_verified": 442,
+  "all_pose_and_review_checksums_match": true,
+  "all_frame_pts_and_pose_shapes_match": true,
+  "missing_pose_values_explicitly_masked": true,
+  "all_jpeg_sha256_recorded": true,
+  "manifest_sha256": "46cf37a82cb028bce943a273e914805520753fa3a9047076a4f13557d6f5dd84"
+}
