@@ -50,6 +50,11 @@ RGB映像、テニス選手の実測3D教師、人手の2Dアノテーション�
 逐次生成する供給方式です。独立したデータ系列ではなく、val/testは固定splitを使います。
 設定・元動作は`configs/data/`、`configs/motion_sources/accad.yaml`を参照してください。
 
+保存データと実際の学習入力は区別します。現行の固定・chunked data profileは
+`num_court_kp=14`で、保存CourtKP20の先頭14点を切り出します。
+COCO17・CourtKPともvis=0のUVを0化し、選択したcamera・時間窓へcropして
+augmentationを適用します。レビューUIはこの前段の保存観測を表示します。
+
 scene内の`position.npy`は共有のコート正規化契約に従います。レビューUIのroot位置は
 `denormalize_court_position()`でメートルへ復元し、COCO17のhip中心とは区別して表示します。
 `human_kp_3d.npy`は物理コート座標のCOCO17です。学習のcanonical教師は
