@@ -30,12 +30,17 @@ metrics:
   verified_reuse_clips: 442
   new_generation_clips: 730
   selected_frames: 728439
+  first_tracking_frames: 109
+  first_tracking_detections: 1526
+  first_tracking_raw_tracks: 22
+  first_tracking_pose_crops: 0
 artifacts:
   campaign: /home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-pose-after-review-20261005
   dataset: /home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2-player-pose-v2-20261005
   input_snapshot: /home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/i988-input-20261005/ball-mix-v2
   run_dir: knowledge/runs/run-i988-pose-after-review-20261005
   log: /home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-pose-after-review-20261005/orchestrator.log
+  first_tracking_queue_repro: /home/kamimura/projects/tennis-lab/.training_queue/repro/1791127279983807818_2988777_i988-ab949f713060c86e-tracking-00091-a0
 parents:
 - run-player-pose-v2-pilot-00034-20261002
 relations: []
@@ -64,3 +69,5 @@ CPUの114テストと変更箇所のRuff・mypyは通過した。実際のJPEG�
 本runはデータ生成システムの起動とデータ対応の確認であり、学習・精度比較ではない。TensorBoardと学習曲線は対象外。全対象の生成完了、GPTによる選手IDの意味的正しさ、姿勢の精度や下流の改善は未確認。次に全体・追加clip別の公開/保留/失敗coverageと全検出数対pose crop数を集計し、旧approved subsetから拡張した際の下流効果を別実験で比較する。
 
 2026-10-05 00:17 JSTに新campaignのorchestratorをPID 2980442で起動した。固定config・identity・plan集計と起動receiptをrun bundleへ保存した。GPU処理はメインrepoの共有training queueだけに登録し、旧campaignは再開していない。
+
+初回の実GPU追跡はtracknet/game9/Clip6（index 91）の109 framesで完了した。1,526検出から22 raw tracks／1,471実観測を保存し、pose cropは0件。raw NPZはframe_index・pts・track_ids・boxes・detection_rowsだけを持ち、keypoints配列はない。queue jobのrun.jsonと追跡receiptを保存した。これは追跡段階の動作確認であり、まだGPT承認後のpose数や速度改善率とは解釈しない。新公開datasetのTrackNet・Meiji・Chat各1clipはPlayerPoseStoreのhash・frame/PTS・mask検査を通過した。
