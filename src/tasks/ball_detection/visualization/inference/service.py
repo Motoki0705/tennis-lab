@@ -56,6 +56,7 @@ from src.tasks.ball_detection.visualization.review.datasets import (
     SceneRef,
     split_scene_id,
 )
+from src.tasks.ball_detection.visualization.review.players import PlayerCatalog
 from src.utils.device import DeviceSelectionError, resolve_device
 
 TASK: Final = TASK_NAME
@@ -123,6 +124,7 @@ class DetectionService:
             else self.project_root / "ckpt" / TASK
         )
         self.dataset_catalog = BallDatasetCatalog(self.data_root)
+        self.player_catalog = PlayerCatalog(self.data_root, self.project_root)
         self._checkpoint_cache: dict[str, BallCheckpointInfo] | None = None
 
     # ------------------------------------------------------------- catalog
@@ -146,6 +148,7 @@ class DetectionService:
         a dataset that became unavailable must keep reporting its reason.
         """
         self.dataset_catalog.refresh()
+        self.player_catalog = PlayerCatalog(self.data_root, self.project_root)
         self._checkpoint_cache = self._scan_checkpoints()
         entries = self.dataset_catalog.entries()
         warnings: list[str] = []
@@ -167,6 +170,7 @@ class DetectionService:
             "title": TITLE,
             "datasets": datasets,
             "checkpoints": checkpoints,
+            "player_datasets": self.player_catalog.discover(),
             "warnings": warnings,
         }
 
@@ -205,6 +209,9 @@ class DetectionService:
         offset: int = 0,
         limit: int = 100,
         checkpoint: str | None = None,
+        *,
+        player_dataset: str | None = None,
+        player_status: str = "",
     ) -> dict[str, Any]:
         """Return one page of scenes for a dataset, optionally filtered."""
         spec = self._spec(dataset)
@@ -234,8 +241,32 @@ class DetectionService:
             refs = [
                 ref for ref in refs if self._scene_supports_checkpoint(ref, info)
             ]
+        source = self.player_catalog.source(player_dataset) if player_dataset else None
+        if player_status:
+            if source is None:
+                raise DetectionRequestError(
+                    "Select a player dataset before filtering its status"
+                )
+            refs = [ref for ref in refs if source.status(ref.clip_id)["status"] == player_status]
         window = refs[offset : offset + limit]
-        return {"items": [ref.to_dict() for ref in window], "total": len(refs)}
+        return {
+            "items": [
+                {**ref.to_dict(), **({"player_status": source.status(ref.clip_id)} if source else {})}
+                for ref in window
+            ],
+            "total": len(refs),
+        }
+
+    def player_preview(
+        self, scene: str, dataset: str, start: int = 0,
+        count: int = 1, mode: str = "reviewed",
+    ) -> dict[str, Any]:
+        """Return reviewed or raw observations, joined to the selected RGB clip."""
+        dataset_id, local_id = split_scene_id(scene)
+        ref = self.dataset_catalog.scene_ref(dataset_id, local_id)
+        return self.player_catalog.preview(
+            dataset, self.dataset_catalog.store(dataset_id), ref.clip_id, start, count, mode,
+        )
 
     @staticmethod
     def _scene_supports_checkpoint(
@@ -259,6 +290,7 @@ class DetectionService:
         width, height = resolved.frames.original_size(start)
         items: list[dict[str, Any]] = []
         for index in range(start, start + count):
+            warning_start = len(warnings)
             size = resolved.frames.original_size(index)
             if size != (width, height):
                 warnings.append(
@@ -282,6 +314,7 @@ class DetectionService:
                     },
                     "annotated": resolved.frames.annotated(index),
                     "supervised": resolved.frames.supervised(index),
+                    "warnings": warnings[warning_start:],
                 }
             )
         return {
@@ -320,15 +353,7 @@ class DetectionService:
             raise DetectionRequestError(
                 f"frame {frame} is out of range [0, {frames - 1}]."
             )
-        rgb = resolved.frames.read_rgb(frame)
-        ok, buffer = cv2.imencode(
-            ".jpg",
-            cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
-            [int(cv2.IMWRITE_JPEG_QUALITY), 90],
-        )
-        if not ok:
-            raise RuntimeError(f"Failed to encode frame {frame} of scene {scene!r}.")
-        return bytes(buffer.tobytes())
+        return resolved.frames.read_jpeg(frame)
 
     # ----------------------------------------------------------- inference
 
