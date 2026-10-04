@@ -57,7 +57,8 @@ function clearFrame(message) {
 }
 
 async function chooseClip(id, requestedFrame) {
-  stop(); clearError(); const epoch = ++state.epoch;
+  stop(); clearError(); clearFrame('保存済みRGBを読み込んでいます');
+  const epoch = ++state.epoch;
   const clip = await api('clip', {dataset: state.dataset.id, clip: id});
   if (epoch !== state.epoch) return;
   state.clip = clip;
@@ -79,7 +80,6 @@ async function chooseClip(id, requestedFrame) {
   for (const button of $('clips').querySelectorAll('button')) button.classList.toggle('selected', button.dataset.clip === id);
   const selected = $('clips').querySelector('.selected');
   if (selected) selected.scrollIntoView({block:'nearest'});
-  for (const id of ['previous', 'next', 'play', 'jump', 'seek']) $(id).disabled = false;
   $('seek').max = Math.max(0, state.frames.length - 1);
   if (!state.frames.length) { clearFrame('このクリップに条件一致frameはありません'); return; }
   await showFrame();
@@ -95,6 +95,7 @@ async function showFrame() {
   const [frame, img] = await Promise.all([api('frame', args), loadImage('/api/image?' + new URLSearchParams(args))]);
   if (epoch !== state.epoch) return;
   state.frame = frame; state.image = img;
+  for (const id of ['previous', 'next', 'play', 'jump', 'seek']) $(id).disabled = false;
   $('image-empty').hidden = true;
   $('viewer').width = frame.width; $('viewer').height = frame.height;
   $('jump').max = state.clip.clip_frame_count - 1; $('jump').value = frame.frame_index;
@@ -148,6 +149,7 @@ function draw() {
 
 function renderPlayers() {
   $('players').replaceChildren();
+  if (!state.frame) return;
   for (const a of state.frame.annotations) {
     const card = document.createElement('div'); card.className = 'player';
     const info = document.createElement('div'); info.className = 'info';

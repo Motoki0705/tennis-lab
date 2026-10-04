@@ -52,7 +52,21 @@ const base = process.env.PLAYER_REVIEW_URL || 'http://127.0.0.1:8895';
   await page.waitForFunction(() => document.querySelector('#clip-count').textContent === '0 clips');
   assert.match(await page.locator('#sample-title').innerText(), /一致するクリップがありません/);
   assert.equal(await page.locator('#players').locator('.player').count(), 0);
+  await page.locator('#boxes').uncheck();
+  await page.locator('#boxes').check();
+  // A failed JPEG on clip change must not retain the preceding clip's RGB.
+  await page.route('**/api/image?**', route => route.abort('failed'));
+  const otherClip = clips.clips[1];
+  const otherTimeline = await (await page.request.get(base + '/api/clip?' + new URLSearchParams({dataset:dataset.id,clip:otherClip.id}))).json();
+  await page.goto(base + '/#' + new URLSearchParams({dataset:dataset.id,clip:otherClip.id,frame:otherTimeline.frames[0].frame_index}), {waitUntil:'networkidle'});
+  await page.waitForFunction(() => !document.querySelector('#error').hidden);
+  assert.match(await page.locator('#error').innerText(), /保存画像を読み込めません/);
+  assert.equal(await page.locator('#frame-label').innerText(), '');
+  assert.equal(await page.locator('#players').locator('.player').count(), 0);
+  assert.equal(await page.locator('#play').isDisabled(), true);
+  await page.locator('#boxes').uncheck();
+  await page.locator('#boxes').check();
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ok:true,viewport:[1600,1200],mobile:[390,844],checks:['bbox/original','zoom/reset','seek/next/previous','play/pause','unresolved state','unstored frame refusal','empty filter state','mobile width','no browser errors']}, null, 2));
+  console.log(JSON.stringify({ok:true,viewport:[1600,1200],mobile:[390,844],checks:['bbox/original','zoom/reset','seek/next/previous','play/pause','hash navigation','unresolved state','unstored frame refusal','empty filter state','failed image clears previous clip','mobile width','no browser errors']}, null, 2));
  } finally { await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode=1;});
