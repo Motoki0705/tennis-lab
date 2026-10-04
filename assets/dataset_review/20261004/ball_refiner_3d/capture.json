@@ -1,0 +1,222 @@
+{
+  "task": "ball_refiner_3d",
+  "captured_utc": "2026-10-04T12:21:43.545Z",
+  "browser": "151.0.7922.34",
+  "before": "既存のブラウザUIなし。全画像は新画面。",
+  "code_file_hashes": {
+    "src/tasks/ball_refiner/scripts/review_3d_dataset.py": "05ec179b2d2153281471a793ca207c4a35a3ad0c4535dbc8b9fb0e6ddc9e4d5e",
+    "src/tasks/ball_refiner/refiner_3d/review/data.py": "ddf7e44ce8bea28ba770a48b78b7d7207ef69982090d1dbc2847794986e5ea31",
+    "src/tasks/ball_refiner/refiner_3d/review/web.py": "080220b0c1445afc661e18f413ce0dc65d899f7d79542e956ae32272874d33d0",
+    "src/tasks/ball_refiner/refiner_3d/review/static/index.html": "5c80d648b8873ad959225fa7d5148e060df03ba6dcb42ded1bc3c4ce77ab3a69",
+    "src/tasks/ball_refiner/refiner_3d/review/static/app.js": "9472defa47482f4fe633ba34eb03502a896c53e3a9ec643d9c7ba85918d31007",
+    "src/tasks/ball_refiner/refiner_3d/review/static/style.css": "6d347c6e18e4e9621b09db0d3bb44a41459df3a9e27e223dc05170b33661cabe",
+    "src/utils/configuration/inventory.py": "7e21d68e4af6c6dca02a5f7172f534f463691670f49bcdee68269fc8a482f8f5"
+  },
+  "screenshots": [
+    {
+      "file": "01-observed.png",
+      "kind": "new",
+      "description": "遮蔽なし・画面内の同時刻2D候補/3D真値",
+      "dataset": "i936-dev-h-anchored-r11-s936",
+      "sample": "val-00000",
+      "split": "val",
+      "frame": 50,
+      "seconds": 0.8341666666666666,
+      "camera": "all",
+      "viewport": {
+        "width": 1680,
+        "height": 1280
+      },
+      "device_scale_factor": 1,
+      "url": "http://127.0.0.1:8893/?dataset=i936-dev-h-anchored-r11-s936&split=val&rally=val-00000&frame=50&zoom=1&subset=all&threshold=0.001",
+      "view": {
+        "yaw": -0.7,
+        "pitch": 0.72,
+        "zoom_3d": 1,
+        "fit": false
+      },
+      "controls": {
+        "subset": "all",
+        "minimum_weight": "0.001",
+        "zoom_2d": true
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936/manifest.json",
+      "source_manifest_sha256": "ba1759196f3472939c529dc0d7cd5a866cefca064b0fc693ec037a3f239c7366",
+      "npz_sha256": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef",
+      "screenshot_sha256": "8dc5d3859e3c010a78bbd07397889c8f54f9c42ce501223b65a12fd7866a09e2",
+      "observed": {
+        "occlusion": [
+          false,
+          false,
+          false
+        ],
+        "out_of_frame": [
+          false,
+          false,
+          false
+        ],
+        "presence": [
+          0.9999019958717718,
+          0.9999245239780827,
+          0.9999803771388256
+        ],
+        "prior_only_probability": 1.4544198094143534e-13,
+        "convergence": "unassessed"
+      }
+    },
+    {
+      "file": "02-all-camera-gap.png",
+      "kind": "new",
+      "description": "全camera gapでも保存GMM/存在確率が残る",
+      "dataset": "i936-dev-h-anchored-r11-s936",
+      "sample": "val-00000",
+      "split": "val",
+      "frame": 85,
+      "seconds": 1.4180833333333334,
+      "camera": "all",
+      "viewport": {
+        "width": 1680,
+        "height": 1280
+      },
+      "device_scale_factor": 1,
+      "url": "http://127.0.0.1:8893/?dataset=i936-dev-h-anchored-r11-s936&split=val&rally=val-00000&frame=85&zoom=1&subset=all&threshold=0.001",
+      "view": {
+        "yaw": -0.7,
+        "pitch": 0.72,
+        "zoom_3d": 1,
+        "fit": false
+      },
+      "controls": {
+        "subset": "all",
+        "minimum_weight": "0.001",
+        "zoom_2d": true
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936/manifest.json",
+      "source_manifest_sha256": "ba1759196f3472939c529dc0d7cd5a866cefca064b0fc693ec037a3f239c7366",
+      "npz_sha256": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef",
+      "screenshot_sha256": "99b0af4e56d527d167bb0c00c636e5a1148facd115ce1c18c31a217601b3d954",
+      "observed": {
+        "occlusion": [
+          true,
+          true,
+          true
+        ],
+        "out_of_frame": [
+          false,
+          false,
+          false
+        ],
+        "presence": [
+          0.9994913860386454,
+          0.9998260081690236,
+          0.9996121873971486
+        ],
+        "prior_only_probability": 3.4314235480836786e-11,
+        "convergence": "unassessed"
+      }
+    },
+    {
+      "file": "03-out-of-frame.png",
+      "kind": "new",
+      "description": "画面外maskと2D位置候補を別々に読む",
+      "dataset": "i936-dev-h-anchored-r11-s936",
+      "sample": "val-00000",
+      "split": "val",
+      "frame": 140,
+      "seconds": 2.3356666666666666,
+      "camera": "all",
+      "viewport": {
+        "width": 1680,
+        "height": 1280
+      },
+      "device_scale_factor": 1,
+      "url": "http://127.0.0.1:8893/?dataset=i936-dev-h-anchored-r11-s936&split=val&rally=val-00000&frame=140&zoom=1&subset=all&threshold=0.001",
+      "view": {
+        "yaw": -0.7,
+        "pitch": 0.72,
+        "zoom_3d": 1,
+        "fit": false
+      },
+      "controls": {
+        "subset": "all",
+        "minimum_weight": "0.001",
+        "zoom_2d": true
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936/manifest.json",
+      "source_manifest_sha256": "ba1759196f3472939c529dc0d7cd5a866cefca064b0fc693ec037a3f239c7366",
+      "npz_sha256": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef",
+      "screenshot_sha256": "8015c8ca1f4f24bdb349f1165241518fbc5b05ab54d6fd9ed6f711c175516183",
+      "observed": {
+        "occlusion": [
+          false,
+          false,
+          false
+        ],
+        "out_of_frame": [
+          true,
+          true,
+          false
+        ],
+        "presence": [
+          0.017986209962091562,
+          0.017986209962091562,
+          0.9998806710607893
+        ],
+        "prior_only_probability": 0.000115074566565454,
+        "convergence": "unassessed"
+      }
+    },
+    {
+      "file": "04-prior-component.png",
+      "kind": "new",
+      "description": "保存された空camera subsetだけを描画。frame全体がprior-onlyという意味ではない",
+      "dataset": "i936-dev-h-anchored-r11-s936",
+      "sample": "val-00000",
+      "split": "val",
+      "frame": 85,
+      "seconds": 1.4180833333333334,
+      "camera": "all",
+      "viewport": {
+        "width": 1680,
+        "height": 1280
+      },
+      "device_scale_factor": 1,
+      "url": "http://127.0.0.1:8893/?dataset=i936-dev-h-anchored-r11-s936&split=val&rally=val-00000&frame=85&zoom=1&subset=0&threshold=0",
+      "view": {
+        "yaw": -0.7,
+        "pitch": 0.72,
+        "zoom_3d": 1,
+        "fit": false
+      },
+      "controls": {
+        "subset": "0",
+        "minimum_weight": "0",
+        "zoom_2d": true
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936/manifest.json",
+      "source_manifest_sha256": "ba1759196f3472939c529dc0d7cd5a866cefca064b0fc693ec037a3f239c7366",
+      "npz_sha256": "a3ddd0f1ecde54196332409f50288e53945beb9230f69f552cba48d09686b1ef",
+      "screenshot_sha256": "e878e2d7c96f9070639580911c053ab0259786dfae9c5e77bf6ef14f61234ed1",
+      "observed": {
+        "occlusion": [
+          true,
+          true,
+          true
+        ],
+        "out_of_frame": [
+          false,
+          false,
+          false
+        ],
+        "presence": [
+          0.9994913860386454,
+          0.9998260081690236,
+          0.9996121873971486
+        ],
+        "prior_only_probability": 3.4314235480836786e-11,
+        "convergence": "unassessed"
+      }
+    }
+  ],
+  "code_revision": "09b83c9cb3001626e3cb1dc1a22e8ba5be74014e"
+}
