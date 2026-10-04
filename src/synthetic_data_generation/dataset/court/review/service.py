@@ -31,6 +31,13 @@ from src.utils.schema.court import (
     court_keypoints_3d,
 )
 
+from .records import (
+    rejection_summary,
+    sample_summary,
+    split_target_counts,
+    visibility_summary,
+)
+
 
 def contained_file(root: Path, relative: str) -> Path:
     """Only serve files belonging to this dataset, including after symlink resolution."""
@@ -66,14 +73,22 @@ class ReviewService:
     def revision(self, scene: str) -> str:
         root = self.scene_root(scene)
         identities = []
-        for relative in ("datasets/court/dataset.json", "alignment/alignment.json"):
+        files = ["datasets/court/dataset.json", "alignment/alignment.json"]
+        files.extend(
+            name
+            for name in ("run.json", "resolved-config.yaml")
+            if (root / name).exists()
+        )
+        for relative in files:
             p = contained_file(root, relative)
             st = p.stat()
             identities.append((relative, st.st_ino, st.st_size, st.st_mtime_ns))
         index = root / "datasets/court/samples/index.npz"
         if index.is_file():
             st = index.stat()
-            identities.append(("samples/index.npz", st.st_ino, st.st_size, st.st_mtime_ns))
+            identities.append(
+                ("samples/index.npz", st.st_ino, st.st_size, st.st_mtime_ns)
+            )
         return hashlib.sha256(repr(identities).encode()).hexdigest()[:20]
 
     def scenes(self) -> list[dict[str, str]]:
@@ -85,6 +100,94 @@ class ReviewService:
                 result.append({"id": p.name, "revision": self.revision(p.name)})
             except (ValueError, OSError) as error:
                 result.append({"id": p.name, "error": str(error)})
+        return result
+
+    def publication(self, scene: str, dataset: dict[str, Any]) -> dict[str, Any]:
+        root = self.scene_root(scene)
+        descriptor = read_object(contained_file(root, "datasets/court/dataset.json"))
+        run = (
+            read_object(contained_file(root, "run.json"))
+            if (root / "run.json").exists()
+            else None
+        )
+        if run is not None and run.get("scene_id") != scene:
+            raise ValueError("Source run and dataset scene identities disagree.")
+        stages = run.get("stages", {}) if run is not None else {}
+        generation = stages.get("court_dataset", {})
+        storage = descriptor.get("storage")
+        count = storage["count"] if storage is not None else len(dataset["samples"])
+        if count != dataset["metrics"]["accepted_frame_count"]:
+            raise ValueError("Published sample count and acceptance metrics disagree.")
+        rejected = rejection_summary(dataset)
+        config = root / "resolved-config.yaml"
+        return {
+            "id": scene,
+            "schema": dataset["schema"],
+            "status": dataset["status"],
+            "profile": dataset.get("profile"),
+            "seed": dataset.get("seed"),
+            "storage_schema": descriptor["schema"]
+            if storage is not None
+            else "legacy_float32",
+            "storage_format": storage["format"]
+            if storage is not None
+            else "float32 / sparse JSON",
+            "renderer_rasters_retained": descriptor.get("renderer_rasters_retained"),
+            "visibility_authority": descriptor.get("visibility_authority"),
+            "source_video": run.get("source_video") if run is not None else None,
+            "targets": run.get("targets") if run is not None else None,
+            "generation_state": generation.get("status"),
+            "generated_at": generation.get("updated_at"),
+            "captured_camera_count": stages.get("reconstruction", {})
+            .get("summary", {})
+            .get("camera_count")
+            if stages.get("reconstruction", {}).get("summary") is not None
+            else None,
+            "sample_count": count,
+            "group_count": len(dataset["trajectory_groups"]),
+            "split_frame_counts": dataset["metrics"]["split_frame_counts"],
+            "rejected_count": rejected["count"],
+            "rejected_record_count": rejected["record_count"],
+            "manifest_path": str(root / "datasets/court/dataset.json"),
+            "manifest_sha256": hashlib.sha256(
+                (root / "datasets/court/dataset.json").read_bytes()
+            ).hexdigest(),
+            "index_sha256": storage["index_sha256"] if storage is not None else None,
+            "config_sha256": hashlib.sha256(
+                contained_file(root, "resolved-config.yaml").read_bytes()
+            ).hexdigest()
+            if config.exists()
+            else None,
+        }
+
+    def catalog(self) -> list[dict[str, Any]]:
+        """Inspect publication metadata only; do not decode every image or sample."""
+        result = []
+        for scene in self.scenes():
+            if "error" in scene:
+                result.append(scene)
+                continue
+            try:
+                root = self.scene_root(scene["id"]) / "datasets/court"
+                descriptor = read_object(root / "dataset.json")
+                dataset = (
+                    open_court_store(root).metadata
+                    if "storage" in descriptor
+                    else read_court_manifest(root)
+                )
+                if (
+                    dataset["scene_id"] != scene["id"]
+                    or dataset["status"] != "completed"
+                ):
+                    raise ValueError(
+                        "Only completed matching publications are supported."
+                    )
+                entry = self.publication(scene["id"], dataset)
+                if self.revision(scene["id"]) != scene["revision"]:
+                    raise RuntimeError("Publication changed during catalog inspection.")
+                result.append({**entry, "revision": scene["revision"]})
+            except (ValueError, RuntimeError, OSError) as error:
+                result.append({"id": scene["id"], "error": str(error)})
         return result
 
     def load(self, scene: str, revision: str) -> dict[str, Any]:
@@ -118,6 +221,8 @@ class ReviewService:
             )
             if not samples:
                 raise ValueError(f"Trajectory has no published samples: {gid}")
+            if any(s["split"] != group["split"] for s in samples):
+                raise ValueError(f"Sample split disagrees with trajectory group: {gid}")
             points = []
             forwards = []
             for sample in samples:
@@ -135,14 +240,7 @@ class ReviewService:
                     "split": group["split"],
                     "points": points,
                     "forwards": forwards,
-                    "samples": [
-                        {
-                            "id": s["sample_id"],
-                            "frame": s["trajectory_frame_index"],
-                            "view": s["view_id"],
-                        }
-                        for s in samples
-                    ],
+                    "samples": [sample_summary(s) for s in samples],
                 }
             )
         geometry = court_keypoints_3d(STANDARD_COURT_CONFIG).numpy()
@@ -162,28 +260,76 @@ class ReviewService:
             "metrics": dataset["metrics"],
             "shapes": dict(Counter(g["trajectory"]["shape"] for g in groups)),
             "schema": dataset["schema"],
+            "publication": self.publication(scene, dataset),
+            "rejections": rejection_summary(dataset),
+            "split_targets": split_target_counts(
+                dataset["samples"], [c["id"] for c in courts]
+            ),
         }
         if revision != self.revision(scene):
             raise RuntimeError("Dataset changed during loading. Reload this scene.")
         return {
             "summary": summary,
             "samples": sample_index,
+            "rejected_samples": {
+                s["sample_id"]: s for s in dataset.get("rejected_samples", [])
+            },
             "schema": dataset["schema"],
-            "image_store": open_court_store(root / "datasets/court") if "storage" in dataset else None,
+            "image_store": open_court_store(root / "datasets/court")
+            if "storage" in dataset
+            else None,
         }
 
-    def overlay(self, scene: str, revision: str, sample: str, width: int) -> bytes:
+    def sample_detail(self, scene: str, revision: str, sample: str) -> dict[str, Any]:
+        data = self.load(scene, revision)
+        entry = data["samples"][sample]
+        return {
+            **sample_summary(entry),
+            "split": entry["split"],
+            "trajectory_group": entry["trajectory_group_id"],
+            "visibility": visibility_summary(entry["projection"]),
+            "intrinsics": entry["camera"]["intrinsics"],
+            "camera_to_scene": entry["camera"]["camera_to_scene"],
+            "target_binding": entry.get("target_court"),
+        }
+
+    def rejection_detail(
+        self, scene: str, revision: str, sample: str
+    ) -> dict[str, Any]:
+        entry = self.load(scene, revision)["rejected_samples"][sample]
+        return {
+            **sample_summary(entry),
+            "split": entry["split"],
+            "trajectory_group": entry["trajectory_group_id"],
+            "reasons": entry["reasons"],
+            "visibility": visibility_summary(entry.get("projection")),
+            "intrinsics": entry["camera"]["intrinsics"],
+            "camera_to_scene": entry["camera"]["camera_to_scene"],
+            "target_binding": entry.get("target_court"),
+            "image_state": "not_retained",
+        }
+
+    def overlay(
+        self, scene: str, revision: str, sample: str, width: int, mode: str = "overlay"
+    ) -> bytes:
+        if mode not in {"overlay", "raw"}:
+            raise ValueError("Unknown image display mode.")
         data = self.load(scene, revision)
         if sample not in data["samples"]:
             raise KeyError(sample)
         with self.render_slots:
-            return self._cached_overlay(scene, revision, sample, width)
+            return self._cached_overlay(scene, revision, sample, width, mode)
 
-    def _overlay(self, scene: str, revision: str, sample: str, width: int) -> bytes:
+    def _overlay(
+        self, scene: str, revision: str, sample: str, width: int, mode: str = "overlay"
+    ) -> bytes:
         data = self.load(scene, revision)
         entry = data["samples"][sample]
         root = self.scene_root(scene) / "datasets/court"
-        rgb = read_court_rgb(root, entry, store=data["image_store"]).astype(np.float32) / 255.0
+        rgb = (
+            read_court_rgb(root, entry, store=data["image_store"]).astype(np.float32)
+            / 255.0
+        )
         if (
             rgb.dtype != np.float32
             or rgb.shape != (entry["height"], entry["width"], 3)
@@ -206,8 +352,12 @@ class ReviewService:
             projection=label["projection"],
             schema_version=court_schema_from_dataset_schema(data["schema"]).version,
         )
-        image = render_court_overlay(
-            frame, trajectory_id=entry["trajectory_id"], show_metadata=False
+        image = (
+            render_court_overlay(
+                frame, trajectory_id=entry["trajectory_id"], show_metadata=False
+            )
+            if mode == "overlay"
+            else np.round(rgb * 255).astype(np.uint8)
         )
         resized = (
             cv2.resize(
