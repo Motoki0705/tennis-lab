@@ -782,6 +782,9 @@ dd {
   padding: 6px;
   font-size: 11px;
 }
+#reject-projection .reference-courts {
+  grid-column: 1 / -1;
+}
 #rejected-table button {
   font-size: 10px;
   padding: 4px 6px;
