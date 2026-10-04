@@ -71,3 +71,5 @@ CPUの114テストと変更箇所のRuff・mypyは通過した。実際のJPEG�
 2026-10-05 00:17 JSTに新campaignのorchestratorをPID 2980442で起動した。固定config・identity・plan集計と起動receiptをrun bundleへ保存した。GPU処理はメインrepoの共有training queueだけに登録し、旧campaignは再開していない。
 
 初回の実GPU追跡はtracknet/game9/Clip6（index 91）の109 framesで完了した。1,526検出から22 raw tracks／1,471実観測を保存し、pose cropは0件。raw NPZはframe_index・pts・track_ids・boxes・detection_rowsだけを持ち、keypoints配列はない。queue jobのrun.jsonと追跡receiptを保存した。これは追跡段階の動作確認であり、まだGPT承認後のpose数や速度改善率とは解釈しない。新公開datasetのTrackNet・Meiji・Chat各1clipはPlayerPoseStoreのhash・frame/PTS・mask検査を通過した。
+
+初期再公開は442 clipsすべて完了し、coordinatorがindex 91のGPTレビューとindex 227の次の追跡jobを開始した状態をcoordinator-ready.jsonへ固定した。残りの新規生成730 clipsはこの時点で未完了であり、以後の現在値はcampaignのmetrics.jsonを参照する。
