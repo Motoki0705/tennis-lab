@@ -16,7 +16,10 @@ import numpy as np
 
 from src.submodules.visualization.review.geometry import placed_vertices
 from src.tennis_scene.pipeline.storage.codec import unpack_value
-from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
+from src.tennis_scene.pipeline.storage.scene_index import (
+    assert_current_component_lineage,
+    read_component_descriptor,
+)
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.triangulation import PointRejection
 from src.utils.schema.player import COCO17_SKELETON, COCO_KP_NAMES
@@ -71,6 +74,11 @@ class PoseReviewStore:
                 self.media_status[camera] = "available"
         self.payloads: dict[str, dict[str, Any]] = {}
         self.artifacts: dict[str, dict[str, Any]] = {}
+        relevant = {node: reference for node, reference in self.document["artifacts"].items() if node.split("/")[0] in SCHEMAS}
+        if relevant:
+            # Include ancestors outside the displayed families (e.g. calibration),
+            # so a current immediate input cannot hide an overwritten ancestor.
+            assert_current_component_lineage(self.document, self.root, relevant)
         for node, reference in self.document["artifacts"].items():
             family = node.split("/")[0]
             if family not in SCHEMAS:
@@ -88,11 +96,6 @@ class PoseReviewStore:
             self._remember(directory / Path(reference["path"]).name)
             for name in descriptor["arrays"]:
                 self._remember(directory / name)
-            # Pairing a body with an overwritten upstream input would be misleading.
-            active = self.document["artifacts"]
-            for dependency in descriptor["dependencies"].values():
-                if dependency not in active.values():
-                    raise ValueError(f"Superseded input dependency in {node}; review its original snapshot")
         self.faces: list[list[int]] | None = None
         if topology is not None:
             with np.load(topology, allow_pickle=False) as archive:

@@ -96,7 +96,40 @@ def test_superseded_input_is_not_paired_with_current_body(snapshot: Path) -> Non
     document = json.loads(index.read_text())
     del document["artifacts"]["body_view_selection"]
     index.write_text(json.dumps(document))
-    with pytest.raises(ValueError, match="Superseded input"):
+    with pytest.raises(ValueError, match="superseded"):
+        PoseReviewStore(snapshot)
+
+
+def test_superseded_ancestor_outside_displayed_families_is_rejected(snapshot: Path) -> None:
+    from src.utils.checksum import dual_sha256
+
+    index = snapshot / "scene.json"
+    document = json.loads(index.read_text())
+    path = snapshot / "calibration.json"
+    descriptor = {"node": "court_calibration", "artifact_id": "calibration", "output_schema": "local_court_calibration", "output_version": 1, "source_sha256": "a" * 64, "dependencies": {"old_court": {"artifact_id": "no-longer-adopted"}}}
+    path.write_text(json.dumps(descriptor))
+    reference = {"artifact_id": "calibration", "schema": "local_court_calibration", "version": 1, "path": path.name, "sha256": dual_sha256(path)}
+    document["artifacts"]["court_calibration"] = reference
+    selected = document["artifacts"]["body_view_selection"]
+    selected_path = snapshot / selected["path"]
+    selected_descriptor = json.loads(selected_path.read_text())
+    selected_descriptor["dependencies"]["calibration"] = reference
+    selected_path.write_text(json.dumps(selected_descriptor))
+    selected["sha256"] = dual_sha256(selected_path)
+    gvhmr = document["artifacts"]["gvhmr"]
+    gvhmr_path = snapshot / gvhmr["path"]
+    gvhmr_descriptor = json.loads(gvhmr_path.read_text())
+    gvhmr_descriptor["dependencies"]["selection"] = selected
+    gvhmr_path.write_text(json.dumps(gvhmr_descriptor))
+    gvhmr["sha256"] = dual_sha256(gvhmr_path)
+    placement = document["artifacts"]["body_placement"]
+    placement_path = snapshot / placement["path"]
+    placement_descriptor = json.loads(placement_path.read_text())
+    placement_descriptor["dependencies"]["recovered"] = gvhmr
+    placement_path.write_text(json.dumps(placement_descriptor))
+    placement["sha256"] = dual_sha256(placement_path)
+    index.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="superseded"):
         PoseReviewStore(snapshot)
 
 
