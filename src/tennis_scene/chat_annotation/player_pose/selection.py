@@ -78,6 +78,14 @@ def presence_counts(store: BallFrameStore, threshold: float) -> list[dict[str, A
 
 
 def initialize(campaign: Path, config: dict[str, Any]) -> dict[str, Any]:
+    from .expansion import plan_expansion
+
+    config = dict(config)
+    config.setdefault("generation_mode", "review_then_pose.v1")
+    if config["generation_mode"] != "review_then_pose.v1":
+        raise ValueError(
+            "New campaigns require explicit review_then_pose.v1 generation"
+        )
     if campaign.exists():
         raise FileExistsError(campaign)
     dataset = Path(config["dataset"])
@@ -96,6 +104,7 @@ def initialize(campaign: Path, config: dict[str, Any]) -> dict[str, Any]:
         raise FileExistsError(dataset)
     store = BallFrameStore(Path(config["store"]))
     clips = presence_counts(store, float(config["presence_threshold"]))
+    expansion = plan_expansion(config, clips, store)
     config["store_hashes"] = {
         name: digest(store.directory / name) for name in ("metadata.json", "index.npz")
     }
@@ -125,7 +134,9 @@ def initialize(campaign: Path, config: dict[str, Any]) -> dict[str, Any]:
     if instruction.exists():
         config["code_hashes"][str(instruction)] = digest(instruction)
     plan = {
-        "schema": "ball_store_player_pose_plan.v1",
+        "schema": "ball_store_player_pose_plan.v2",
+        "generation_mode": config["generation_mode"],
+        "expansion": expansion,
         "clips": clips,
         "selected_clips": sum(c["selected"] for c in clips),
         "selected_frames": sum(c["frame_count"] for c in clips if c["selected"]),
@@ -145,6 +156,7 @@ def initialize(campaign: Path, config: dict[str, Any]) -> dict[str, Any]:
     )
     write_json(campaign / "generation_status.json", {"status": "pending"})
     write_json(campaign / "review_status.json", {"status": "pending"})
+    write_json(campaign / "pose_status.json", {"status": "pending"})
     write_json(
         dataset / "manifest.json",
         {
@@ -158,7 +170,14 @@ def initialize(campaign: Path, config: dict[str, Any]) -> dict[str, Any]:
             "court_policy": "disabled",
             "status": "partial" if plan["selected_clips"] else "complete",
             "clips": [
-                {**c, "pose_status": "pending" if c["selected"] else "skipped"}
+                {
+                    **c,
+                    "pose_status": "reuse_pending"
+                    if c["action"] == "reuse"
+                    else "tracking_pending"
+                    if c["selected"]
+                    else "skipped",
+                }
                 for c in clips
             ],
         },

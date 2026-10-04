@@ -36,6 +36,10 @@ track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わ
 上限6は共通コート選別後のgroupにだけ適用する。
 
 `TrackingConfig`は採用済み`strongsort_pp_pose`＋CLIPだけを受け付ける。
+データセット生成用の`DatasetTrackingConfig`は`strongsort_pp_appearance`＋CLIPを固定し、
+pose重み0でpose距離・更新を計算しない。`FeatureExtractor(None, UnpromptedEncoder(...))`は
+poseモデルやpromptを使わず、`DetectionFeatures.poses`と`TrackEvidence.poses`を`None`に保つ。
+pose必須の消費側は`require_poses()`で明示検証する。通常profileへposeなし入力を渡すと失敗する。
 他のtrackerは`methods.build_tracker`と`tests/benchmarks/person_tracking_*.py`の比較入口で使用する。
 標準pipelineに比較方式を指定すると停止する。
 名前の誤り・欠損重み・不正な特徴や状態は停止する。profileの値は`TrackingConfig.identity()`と

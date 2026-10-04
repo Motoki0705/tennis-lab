@@ -4,14 +4,14 @@ import json
 import os
 import signal
 import subprocess
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 from typing import Any
 
 from .evidence import prepare
-from .reviews import REVIEW_SCHEMA, publish
+from .reviews import REVIEW_SCHEMA, accept_review
 from .selection import load_campaign
 from .storage import clip_root, digest, lock, read_json, verify_record, write_json
 
@@ -58,6 +58,7 @@ def _invoke(
     env = dict(os.environ, CODEX_HOME=config["codex_home"])
     env.pop("CODEX_THREAD_ID", None)
     env.pop("CODEX_SESSION_ID", None)
+    started = time.monotonic()
     command = codex_command(config, attempt, images)
     write_json(
         attempt / "launch.json",
@@ -93,11 +94,20 @@ def _invoke(
                 child.wait()
             write_json(
                 attempt / "exit.json",
-                {"exit_code": child.returncode, "timed_out": True},
+                {
+                    "exit_code": child.returncode,
+                    "timed_out": True,
+                    "seconds": time.monotonic() - started,
+                },
             )
             return 124
     write_json(
-        attempt / "exit.json", {"exit_code": child.returncode, "timed_out": False}
+        attempt / "exit.json",
+        {
+            "exit_code": child.returncode,
+            "timed_out": False,
+            "seconds": time.monotonic() - started,
+        },
     )
     return int(child.returncode)
 
@@ -106,6 +116,11 @@ def review_clip(campaign: Path, index: int) -> dict[str, Any]:
     config, _, _ = load_campaign(campaign)
     root = clip_root(campaign, index)
     with lock(root / "review.lock", blocking=False):
+        if (root / "review.json").exists():
+            receipt = verify_record(root / "review.json")
+            return accept_review(
+                campaign, index, root / "decision.json", receipt["required_sheets"]
+            )
         status_path = root / "review_status.json"
         if status_path.exists() and read_json(status_path)["status"] in (
             "approved",
@@ -139,7 +154,7 @@ def review_clip(campaign: Path, index: int) -> dict[str, Any]:
             try:
                 if code != 0:
                     raise RuntimeError(f"Codex exited {code}")
-                result = publish(
+                result = accept_review(
                     campaign,
                     index,
                     attempt / "result.json",
@@ -177,7 +192,7 @@ def review_clip(campaign: Path, index: int) -> dict[str, Any]:
                     )
                     return {"status": "deferred_usage_limit"}
         result = {
-            "status": "needs_review",
+            "status": "review_failed",
             "error": previous_error,
             "reason": "review_attempts_exhausted",
         }
@@ -185,14 +200,22 @@ def review_clip(campaign: Path, index: int) -> dict[str, Any]:
         return result
 
 
-def review_worker(campaign: Path) -> None:
+def review_worker(campaign: Path, stop: Event | None = None) -> None:
     config, plan, _ = load_campaign(campaign)
     with lock(campaign / "review_worker.lock", blocking=False):
-        selected = [c for c in plan["clips"] if c["selected"]]
+        selected = [
+            c
+            for c in plan["clips"]
+            if c["selected"] and c.get("action", "generate") == "generate"
+        ]
         selected.sort(key=lambda c: (c["frame_count"], c["index"]))
         with ThreadPoolExecutor(max_workers=config["review_parallel"]) as pool:
             active: dict[int, Any] = {}
             while True:
+                if stop is not None and stop.is_set():
+                    raise RuntimeError(
+                        "Review coordinator interrupted after another stage failed"
+                    )
                 for index, future in list(active.items()):
                     if not future.done():
                         continue
@@ -201,7 +224,7 @@ def review_worker(campaign: Path) -> None:
                     except Exception as exc:
                         write_json(
                             clip_root(campaign, index) / "review_status.json",
-                            {"status": "needs_review", "error": repr(exc)},
+                            {"status": "review_failed", "error": repr(exc)},
                         )
                     del active[index]
                 pause_path = campaign / "review_pause.json"
@@ -218,7 +241,7 @@ def review_worker(campaign: Path) -> None:
                             continue
                         if (root / "review_status.json").exists() and read_json(
                             root / "review_status.json"
-                        )["status"] in ("approved", "needs_review"):
+                        )["status"] in ("approved", "needs_review", "review_failed"):
                             continue
                         active[index] = pool.submit(review_clip, campaign, index)
                 generation = read_json(campaign / "generation_status.json")["status"]
@@ -270,22 +293,15 @@ def review_worker(campaign: Path) -> None:
 
 def status(campaign: Path) -> dict[str, Any]:
     config, plan, _ = load_campaign(campaign)
+    from .reporting import campaign_metrics
+
     return {
+        **campaign_metrics(campaign, config, plan),
         "selected_clips": plan["selected_clips"],
         "selected_frames": plan["selected_frames"],
         "skipped_clips": len(plan["clips"]) - plan["selected_clips"],
         "generation": read_json(campaign / "generation_status.json"),
         "review": read_json(campaign / "review_status.json"),
+        "pose": read_json(campaign / "pose_status.json"),
         "dataset": config["dataset"],
     }
-
-
-def generation_command(campaign: Path) -> list[str]:
-    return [
-        sys.executable,
-        "-m",
-        "src.tennis_scene.chat_annotation.player_pose",
-        "generate",
-        "--campaign",
-        str(campaign),
-    ]

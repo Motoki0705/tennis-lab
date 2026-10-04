@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +14,7 @@ from src.tennis_scene.chat_annotation.player_pose.generation import (
     _save_chunk,
 )
 from src.tennis_scene.chat_annotation.player_pose.reviews import (
-    publish,
+    accept_review,
     validate_and_remap,
 )
 from src.tennis_scene.chat_annotation.player_pose.selection import (
@@ -206,8 +205,14 @@ def test_committed_chunk_corruption_is_not_silently_reused(tmp_path: Path) -> No
 
 
 def test_real_images_fake_codex_and_publication(
-    store: BallFrameStore, tmp_path: Path
+    store: BallFrameStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    import torch
+
+    from src.submodules.models import Pose2DResult
+    from src.tennis_scene.chat_annotation.player_pose import selected_pose
+    from src.tennis_scene.chat_annotation.player_pose.publication import publish
+
     fake = tmp_path / "fake-codex"
     fake.write_text("""#!/usr/bin/env python3
 import sys,json,re
@@ -231,7 +236,9 @@ print(json.dumps({'type':'turn.completed'}))
         "dataset": str(tmp_path / "poses"),
         "project_root": str(tmp_path),
         "presence_threshold": 0.4,
-        "assets": {"dummy": str(asset)},
+        "assets": {"vitpose": str(asset)},
+        "cuda_memory_fraction": 0.5,
+        "chunk_frames": 2,
         "codex_binary": str(fake),
         "codex_home": str(tmp_path),
         "model": "gpt-6.1-sol",
@@ -243,12 +250,40 @@ print(json.dumps({'type':'turn.completed'}))
     plan = initialize(campaign, config)
     root = clip_root(campaign, 0)
     root.mkdir(parents=True)
-    write_npz(root / "tracks.npz", **raw_tracks())
+    raw = raw_tracks()
+    raw.pop("keypoints")
+    write_npz(root / "tracks.npz", **raw)
+    from src.tasks.ball_detection.data.store import SHARDS_DIR, shard_name
+
+    write_json(
+        root / "input.json",
+        {"shard_sha256": digest(store.directory / SHARDS_DIR / shard_name(0))},
+    )
     write_json(
         root / "generation.json", {"files": {"tracks.npz": digest(root / "tracks.npz")}}
     )
     result = runner.review_clip(campaign, 0)
     assert result["status"] == "approved"
+    with pytest.raises(RuntimeError, match="not approved"):
+        PlayerPoseStore(tmp_path / "poses").read_clip(plan["clips"][0]["clip_id"])
+    with pytest.raises(FileNotFoundError):
+        publish(campaign, 0)
+
+    class Pose:
+        def predict(self, request: object) -> Pose2DResult:
+            return Pose2DResult(torch.ones(1, 17, 3))
+
+        def unload(self) -> None:
+            pass
+
+    monkeypatch.setenv("TENNIS_RUN_ID", "fixture")
+    monkeypatch.setenv("TENNIS_GPU_RESOURCE", "all")
+    monkeypatch.setattr(torch.cuda, "set_per_process_memory_fraction", lambda _: None)
+    monkeypatch.setattr(selected_pose, "pose_model", lambda _: Pose())
+    raw_hash = digest(root / "tracks.npz")
+    selected_pose.generate_selected_pose(campaign, 0)
+    publish(campaign, 0)
+    assert digest(root / "tracks.npz") == raw_hash
     loaded = PlayerPoseStore(tmp_path / "poses").read_clip(plan["clips"][0]["clip_id"])
     assert loaded is not None and loaded["player_ids"].tolist() == ["player_1"]
     assert loaded["observed"].all()
@@ -256,16 +291,15 @@ print(json.dumps({'type':'turn.completed'}))
     assert len(list((root / "evidence").glob("frames-*.jpg"))) == 1
     path = root / "review/attempt-000/result.json"
     assert (
-        publish(campaign, 0, path, ["frames-000000-000004.jpg"])["status"] == "approved"
+        accept_review(campaign, 0, path, ["frames-000000-000004.jpg"])["status"]
+        == "approved"
     )
-    held = copy.deepcopy(read_json(path))
+    held = read_json(path)
     held["status"] = "needs_review"
     held["segments"][0].update(role="unknown", player_id=None)
     write_json(root / "held.json", held)
-    assert (
-        publish(campaign, 0, root / "held.json", ["frames-000000-000004.jpg"])["status"]
-        == "needs_review"
-    )
+    with pytest.raises(ValueError, match="immutable"):
+        accept_review(campaign, 0, root / "held.json", ["frames-000000-000004.jpg"])
     assert (
         PlayerPoseStore(tmp_path / "poses").read_clip(plan["clips"][0]["clip_id"])
         is not None

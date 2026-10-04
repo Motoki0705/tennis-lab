@@ -41,15 +41,37 @@ class TrackingConfig:
     def online_config(self) -> StrongSortConfig:
         return StrongSortConfig(pose_weight=.15)
 
+    @property
+    def requires_pose(self) -> bool:
+        return True
+
     def identity(self) -> dict[str, Any]:
         return {**asdict(self), 'online_config': asdict(self.online_config()),
                 'offline_profile': 'i964_run9_aflink_gsi'}
 
 
 @dataclass(frozen=True)
+class DatasetTrackingConfig(TrackingConfig):
+    """Dataset-only profile: identity review precedes all pose inference."""
+
+    method: str = 'strongsort_pp_appearance'
+
+    def __post_init__(self) -> None:
+        if self.method != 'strongsort_pp_appearance' or self.encoder != CLIP_ENCODER:
+            raise ValueError('Dataset tracking requires the pose-free CLIP-ReID profile')
+
+    @property
+    def requires_pose(self) -> bool:
+        return False
+
+    def online_config(self) -> StrongSortConfig:
+        return StrongSortConfig(pose_weight=0.)
+
+
+@dataclass(frozen=True)
 class TrackEvidence:
     detection_rows: np.ndarray
-    poses: np.ndarray
+    poses: np.ndarray | None
     embeddings: np.ndarray
     appearance_valid: np.ndarray
     encoder: str
@@ -57,16 +79,21 @@ class TrackEvidence:
     def __post_init__(self) -> None:
         shape = self.detection_rows.shape
         if len(shape) != 2 or self.detection_rows.dtype != np.int64 or (self.detection_rows < -1).any() \
-                or self.poses.shape != (*shape, 17, 3) or self.poses.dtype != np.float32 \
+                or (self.poses is not None and (self.poses.shape != (*shape, 17, 3) or self.poses.dtype != np.float32)) \
                 or self.embeddings.ndim != 3 or self.embeddings.shape[:2] != shape or self.embeddings.dtype != np.float32 \
                 or self.appearance_valid.shape != shape or self.appearance_valid.dtype != np.bool_ \
-                or not self.encoder or not np.isfinite(self.poses).all() or not np.isfinite(self.embeddings).all():
+                or not self.encoder or (self.poses is not None and not np.isfinite(self.poses).all()) or not np.isfinite(self.embeddings).all():
             raise ValueError('Invalid tracked detection evidence')
         absent = self.detection_rows < 0
-        if self.appearance_valid[absent].any() or (self.poses[absent] != 0).any() \
+        if self.appearance_valid[absent].any() or (self.poses is not None and (self.poses[absent] != 0).any()) \
                 or (self.embeddings[~self.appearance_valid] != 0).any() \
                 or not np.allclose(np.linalg.norm(self.embeddings[self.appearance_valid], axis=1), 1., atol=1e-4):
             raise ValueError('Missing observations/features must remain explicitly masked')
+
+    def require_poses(self) -> np.ndarray:
+        if self.poses is None:
+            raise ValueError('This consumer requires inferred track pose evidence')
+        return self.poses
 
     def regroup(self, origins: np.ndarray) -> TrackEvidence:
         """Project raw track rows selected for each group/frame; never fill gaps."""
@@ -74,14 +101,16 @@ class TrackEvidence:
                 or origins.dtype != np.int64 or (origins < -1).any() or (origins >= len(self.detection_rows)).any():
             raise ValueError('Invalid group source track rows')
         rows = np.full(origins.shape, -1, np.int64)
-        poses = np.zeros((*origins.shape, 17, 3), np.float32)
+        poses = None if self.poses is None else np.zeros((*origins.shape, 17, 3), np.float32)
         embeddings = np.zeros((*origins.shape, self.embeddings.shape[-1]), np.float32)
         valid = np.zeros(origins.shape, bool)
         g, f = np.nonzero(origins >= 0)
         source = origins[g, f]
         if (self.detection_rows[source, f] < 0).any():
             raise ValueError('Group mapping refers to a synthetic/missing observation')
-        rows[g, f], poses[g, f] = self.detection_rows[source, f], self.poses[source, f]
+        rows[g, f] = self.detection_rows[source, f]
+        if poses is not None:
+            poses[g, f] = self.require_poses()[source, f]
         embeddings[g, f], valid[g, f] = self.embeddings[source, f], self.appearance_valid[source, f]
         return TrackEvidence(rows, poses, embeddings, valid, self.encoder)
 
@@ -112,6 +141,8 @@ def track_sequence(frames: Iterable[DetectionFeatures], *, fps: float,
     seen: set[int] = set()
     dimension = None
     for index, frame in enumerate(frames):
+        if (frame.poses is not None) != config.requires_pose:
+            raise ValueError('Feature pose presence differs from the explicit tracking profile')
         if frame.frame != index or seen.intersection(frame.rows.tolist()) or frame.parts is not None:
             raise ValueError('Production features need contiguous frames and globally unique detection rows, without native parts')
         seen.update(frame.rows.tolist())
@@ -127,7 +158,7 @@ def track_sequence(frames: Iterable[DetectionFeatures], *, fps: float,
     assert dimension is not None
     boxes: np.ndarray = np.zeros((*shape, 4), np.float32)
     origins: np.ndarray = np.full(shape, -1, np.int64)
-    poses: np.ndarray = np.zeros((*shape, 17, 3), np.float32)
+    poses: np.ndarray | None = np.zeros((*shape, 17, 3), np.float32) if config.requires_pose else None
     embeddings: np.ndarray = np.zeros((*shape, dimension), np.float32)
     valid: np.ndarray = np.zeros(shape, bool)
     for frame, result in zip(features, assignments, strict=True):
@@ -136,7 +167,9 @@ def track_sequence(frames: Iterable[DetectionFeatures], *, fps: float,
             if int(detection) not in lookup:
                 raise ValueError('Tracker emitted an absent source detection row')
             i, p, f = lookup[int(detection)], int(np.searchsorted(ids, identity)), frame.frame
-            boxes[p, f], origins[p, f], poses[p, f] = frame.boxes[i], detection, frame.poses[i]
+            boxes[p, f], origins[p, f] = frame.boxes[i], detection
+            if poses is not None:
+                poses[p, f] = frame.require_poses()[i]
             embeddings[p, f], valid[p, f] = frame.embeddings[i], frame.appearance_valid[i]
     evidence = TrackEvidence(origins, poses, embeddings, valid, config.encoder)
     source_ids: tuple[tuple[int, ...], ...] = tuple((int(i),) for i in ids)
