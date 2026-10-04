@@ -15,9 +15,9 @@ Notes:
       (deterministic validation resize only).
     - preview.require_pose must match the intended loss route. When true, the
       pipeline uses the same aspect-preserving camera-pose geometry as training.
-    - Each row is one exact dataset draw. Columns separately expose RGB, the
-      actual KP heatmap, categorical SEG masks, and binary LINE mask passed to
-      the losses; no target is hidden beneath another target's overlay.
+    - Each draw has an overlay row and a target-only row. Both render the exact
+      KP heatmaps and dense class/line coverage passed to the losses, preserving
+      fractional boundary values.
     - Outputs are resolved beneath `paths.output_root`.
 """
 
@@ -55,6 +55,7 @@ from src.tasks.court_detection.visualization.rendering.target_preview import (
     render_heatmap_target,
     render_line_target,
     render_segmentation_target,
+    render_target_only,
     summarize_targets,
 )
 from src.utils.configuration import PathRole
@@ -200,6 +201,14 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
                 cfg=cfg,
             )
             rendered_rows.append((panels, panel_titles))
+            raw_panels, raw_titles = _target_panels(
+                sample,
+                target_kinds=target_kinds,
+                title=f"{title}/target",
+                cfg=cfg,
+                target_only=True,
+            )
+            rendered_rows.append((raw_panels, raw_titles))
             variant_metadata.append(
                 {
                     "variant": title,
@@ -230,6 +239,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             "sample_index": sample_index,
             "sample_id": sample_id,
             "targets": list(target_kinds),
+            "target_schemas": {
+                kind: spec.schema
+                for kind, spec in base_dataset.pipeline.target_bundle_spec.targets.items()
+            },
+            "render_views": ["overlay", "target_only"],
             "split": split_name,
             "num_augmented": num_augmented,
             "require_pose": require_pose,
@@ -275,6 +289,7 @@ def _target_panels(
     target_kinds: tuple[str, ...],
     title: str,
     cfg: DictConfig,
+    target_only: bool = False,
 ) -> tuple[list[np.ndarray], list[str]]:
     """Render RGB plus one non-overlapping panel per configured loss target."""
     rgb = denormalize_tensor_to_rgb(cast("torch.Tensor", sample["image"]))
@@ -312,9 +327,11 @@ def _target_panels(
                 cast("torch.Tensor", value),
                 alpha=float(cfg.preview.draw.mask_alpha),
             )
-            label = "LINE binary"
+            label = "LINE coverage"
         else:  # pragma: no cover - strict configuration owns target kinds
             raise ValueError(f"Unknown Court target: {kind!r}")
+        if target_only:
+            panel = render_target_only(kind, value)
         panels.append(panel)
         titles.append(f"{title}: {label}")
     return panels, titles

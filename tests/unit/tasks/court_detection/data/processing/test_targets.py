@@ -17,20 +17,24 @@ from src.tasks.court_detection.data.processing.targets import (
 from src.tasks.court_detection.target_schemas import (
     SEMANTIC_LINE_CLASS_BY_NAME,
     SEMANTIC_LINE_TARGET_SCHEMA,
+    SEMANTIC_LINE_TARGET_SCHEMA_HARD,
 )
 
 pytestmark = pytest.mark.unit
 
 
-def test_semantic_line_builder_swaps_only_left_right_classes_on_flip() -> None:
+@pytest.mark.parametrize("soft", [False, True])
+def test_semantic_line_builder_swaps_only_left_right_classes_on_flip(
+    soft: bool,
+) -> None:
     builder = SemanticLineTargetBuilder(
-        target_schema=SEMANTIC_LINE_TARGET_SCHEMA,
+        target_schema=SEMANTIC_LINE_TARGET_SCHEMA
+        if soft
+        else SEMANTIC_LINE_TARGET_SCHEMA_HARD,
         input_spec=CourtInputSpec(
             source_kind="synthetic_court",
             source_schema="fixture",
-            capabilities=frozenset(
-                {CourtInputCapability.COURT_INSTANCES}
-            ),
+            capabilities=frozenset({CourtInputCapability.COURT_INSTANCES}),
         ),
     )
     names = (
@@ -44,6 +48,8 @@ def test_semantic_line_builder_swaps_only_left_right_classes_on_flip() -> None:
         [[SEMANTIC_LINE_CLASS_BY_NAME[name] for name in names]],
         dtype=torch.long,
     )
+    if soft:
+        mask = torch.nn.functional.one_hot(mask, 12).permute(2, 0, 1).float()
     sample = CourtTransformedSample(
         sample_id="fixture",
         image_tensor=torch.zeros(3, 1, 5),
@@ -64,16 +70,21 @@ def test_semantic_line_builder_swaps_only_left_right_classes_on_flip() -> None:
     result = builder.build(sample)
 
     assert isinstance(result, torch.Tensor)
+    if soft:
+        torch.testing.assert_close(result.sum(0), torch.ones(1, 5))
+        result = result.argmax(0)
     assert torch.equal(
         result,
         torch.tensor(
-            [[
-                SEMANTIC_LINE_CLASS_BY_NAME["right_doubles_sideline"],
-                SEMANTIC_LINE_CLASS_BY_NAME["left_doubles_sideline"],
-                SEMANTIC_LINE_CLASS_BY_NAME["right_singles_sideline"],
-                SEMANTIC_LINE_CLASS_BY_NAME["left_singles_sideline"],
-                SEMANTIC_LINE_CLASS_BY_NAME["far_baseline"],
-            ]],
+            [
+                [
+                    SEMANTIC_LINE_CLASS_BY_NAME["right_doubles_sideline"],
+                    SEMANTIC_LINE_CLASS_BY_NAME["left_doubles_sideline"],
+                    SEMANTIC_LINE_CLASS_BY_NAME["right_singles_sideline"],
+                    SEMANTIC_LINE_CLASS_BY_NAME["left_singles_sideline"],
+                    SEMANTIC_LINE_CLASS_BY_NAME["far_baseline"],
+                ]
+            ],
             dtype=torch.long,
         ),
     )

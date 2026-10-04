@@ -42,6 +42,17 @@ def _pad_spatial_3d(value: Tensor, *, height: int, width: int) -> Tensor:
     return output
 
 
+def _pad_categorical(
+    value: Tensor, *, height: int, width: int, coverage: bool
+) -> Tensor:
+    if not coverage:
+        return _pad_spatial_2d(value, height=height, width=width)
+    output = _pad_spatial_3d(value, height=height, width=width)
+    output[0, value.shape[-2] :, :] = 1.0
+    output[0, :, value.shape[-1] :] = 1.0
+    return output
+
+
 def _collate_keypoints(
     payloads: list[Mapping[str, object]],
     *,
@@ -64,9 +75,7 @@ def _collate_keypoints(
     ):
         point_output = point_value.new_zeros((channels, max_points, 2))
         visible_output = torch.zeros((channels, max_points), dtype=torch.bool)
-        physical_output = torch.full(
-            (channels, max_points), -1, dtype=torch.long
-        )
+        physical_output = torch.full((channels, max_points), -1, dtype=torch.long)
         count = point_value.shape[1]
         point_output[:, :count] = point_value
         visible_output[:, :count] = visible_value
@@ -110,7 +119,12 @@ def court_detection_collate(
         elif kind in {"seg", "semantic_line"}:
             targets[kind] = torch.stack(
                 [
-                    _pad_spatial_2d(cast(Tensor, value), height=height, width=width)
+                    _pad_categorical(
+                        cast(Tensor, value),
+                        height=height,
+                        width=width,
+                        coverage=bundle.targets[kind].target_dtype == torch.float32,
+                    )
                     for value in values
                 ]
             )
@@ -161,9 +175,7 @@ def court_detection_collate(
         if any(set(value) != expected_fields for value in typed_payloads):
             raise ValueError("Court pose target fields changed before collation.")
         output["pose_target"] = {
-            field: torch.stack(
-                [cast(Tensor, value[field]) for value in typed_payloads]
-            )
+            field: torch.stack([cast(Tensor, value[field]) for value in typed_payloads])
             for field in expected_fields
         }
     return output
