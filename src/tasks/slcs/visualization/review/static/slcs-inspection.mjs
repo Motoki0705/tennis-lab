@@ -35,20 +35,20 @@ document.querySelector(".workspace").append(panel);
 const byId = (id) => document.getElementById(`slcs-${id}`);
 const canvas = byId("image"), ctx = canvas.getContext("2d"), crop = byId("crop"), cropCtx = crop.getContext("2d");
 let scene = null, camera = "", targetFrame = 0, generation = 0, pending = null, busy = false, last = null, timer = null;
-let sceneView = null;
+let sceneView = null, presetName = "corner";
 const fitButton = document.createElement("button"); fitButton.className = "icon-button"; fitButton.id = "slcs-fit"; fitButton.textContent = "全体fit"; fitButton.title = "コートと有効教師の全軌跡を表示"; fitButton.disabled = true;
 document.querySelector(".controls").append(fitButton);
 function fitView() {
   if (!sceneView?.model) return;
-  const preset = document.querySelector("[data-preset][aria-pressed='true']")?.dataset.preset ?? "corner";
-  const {yaw, pitch} = PRESETS[preset];
+  const {yaw, pitch} = PRESETS[presetName];
   const orbit = fitOrbit(framingPoints(sceneView.model), {yaw, pitch, fov: sceneView.fov, aspect: sceneView.canvas.clientWidth / sceneView.canvas.clientHeight});
   const follow = document.getElementById("follow"); if (follow.getAttribute("aria-pressed") === "true") follow.click();
   sceneView.setOrbit(orbit);
+  for (const button of document.querySelectorAll("[data-preset]")) button.setAttribute("aria-pressed", String(button.dataset.preset === presetName));
   fitButton.dataset.orbit = JSON.stringify(orbit);
 }
 fitButton.addEventListener("click", fitView);
-for (const button of document.querySelectorAll("[data-preset], #reset")) button.addEventListener("click", () => requestAnimationFrame(fitView));
+for (const button of document.querySelectorAll("[data-preset], #reset")) button.addEventListener("click", () => { presetName = button.dataset.preset ?? "corner"; requestAnimationFrame(fitView); });
 const number = (n, digits = 2) => Number.isFinite(n) ? n.toFixed(digits) : "不明";
 const vector = (xyz) => xyz ? xyz.map((n) => number(n)).join(", ") : "—";
 

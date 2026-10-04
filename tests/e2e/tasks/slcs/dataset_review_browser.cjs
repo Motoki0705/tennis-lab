@@ -125,6 +125,8 @@ const root = process.env.SLCS_REVIEW_DATASET_ROOT || "/home/kamimura/projects/te
     await page.click("#trail");
     assert.equal(await page.locator("#trail").getAttribute("aria-pressed"), "false");
     await page.click("[data-preset='overhead']");
+    await page.waitForFunction(() => JSON.parse(document.getElementById("slcs-fit").dataset.orbit).pitch > 1);
+    assert.equal(await page.locator("[data-preset='overhead']").getAttribute("aria-pressed"), "true");
     await page.fill("#query", "no-such-clip");
     await page.waitForFunction(() => document.getElementById("result-count").textContent.startsWith("0 シーン"));
     await page.click("#clear");
