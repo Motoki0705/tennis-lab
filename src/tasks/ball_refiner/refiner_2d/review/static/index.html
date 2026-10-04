@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ball Refiner 2D · Dataset Review</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header><div><span class="eyebrow">TENNIS LAB / DATASET REVIEW</span><h1>Ball Refiner <span>2D</span></h1></div><div class="header-note">保存済みデータを読む <span class="tag">READ ONLY</span><br>候補 → 文脈 → 教師 → 位置分布</div></header>
+  <main>
+    <section class="map"><div class="map-title">この画面で読むデータ <span id="total"></span></div><div class="map-grid">
+      <article><b>01 / 検出器の入力証拠</b><p id="evidence-name"></p><small>候補8 slot・score・5×5 patch。dense heatmapは未保存。</small></article>
+      <article><b>02 / 人物・コート文脈</b><p id="context-name"></p><small>旧e13 / BoT-SORT比較用・部分生成。保存GMMの入力には未使用。</small></article>
+      <article><b>03 / 教師と保存GMM</b><p id="predictions-name"></p><small>val評価の教師mask・4成分・存在確率。未較正の保存値。</small></article>
+    </div></section>
+    <section class="toolbar">
+      <label>source<select id="source"><option value="">全source</option><option>meiji</option><option>tracknet</option><option>chat_annotation</option></select></label>
+      <label class="search-label">clip検索<input id="search" placeholder="clip IDで絞り込み" aria-label="clip検索"></label>
+      <label class="clip-label">dataset / clip<select id="clip"></select></label>
+      <label>保存された条件<select id="condition"><option value="observed">元の入力証拠</option><option value="evidence_gap">人工 evidence gap</option></select></label>
+    </section>
+    <p class="condition-note">人工 evidence gapは、保存された検出証拠だけを落とした条件です。元RGBは同じ画像で、RGB遮蔽の再推論ではありません。</p>
+    <div id="error" role="alert" hidden></div>
+    <div class="review-grid">
+      <section class="scene-panel panel">
+        <div class="panel-heading"><div><h2 id="scene-title">frameを読み込み中</h2><div id="frame-subtitle" class="muted"></div></div><span id="rgb-badge" class="tag"></span></div>
+        <div class="layers"><label><input type="checkbox" id="show-candidates" checked>候補</label><label><input type="checkbox" id="show-context" checked>pose / court</label><label><input type="checkbox" id="show-target" checked>教師 / 参考位置</label><label><input type="checkbox" id="show-gmm" checked>GMM 2σ</label><label><input type="checkbox" id="show-rgb" checked>検証済みRGB</label></div>
+        <canvas id="scene" width="1280" height="720" aria-label="同frameの候補・文脈・教師・GMM"></canvas>
+        <div class="legend"><span class="candidate">● detector候補</span><span class="observed">＋ observed教師</span><span class="estimated">◇ 推定・参考位置</span><span class="context">● モデル推定pose / court</span><span class="gmm">○ 同じ球の4位置仮説</span></div>
+        <div class="scene-footer"><span id="geometry-note"></span><span id="support-note"></span></div>
+        <div class="transport"><button id="previous" aria-label="前のframe">←</button><button id="play">再生</button><button id="next" aria-label="次のframe">→</button><input id="frame-range" type="range" min="0" max="1" value="0" aria-label="frame"><input id="frame-number" type="number" min="0" value="0" aria-label="frame番号"><span id="frame-total"></span></div>
+        <div class="timeline-header"><h3>教師maskと入力のtimeline</h3><select id="jump"><option value="">次の状態へ移動…</option><option value="observed">観測教師</option><option value="estimated">推定・参考位置</option><option value="unknown">unknown</option><option value="absent">明示的な画面外</option><option value="gap">人工gap</option></select></div>
+        <canvas id="timeline" width="1280" height="118" aria-label="教師の理由・位置mask・存在mask・候補・pose"></canvas>
+        <p class="tiny">各列は実frame。unknown・instanceなしは存在の負例にしない。推定位置はobserved教師に含めない。</p>
+      </section>
+      <aside>
+        <section class="panel teacher-panel"><div class="panel-heading"><h2>このframeの教師</h2><span id="teacher-state" class="tag"></span></div><div id="teacher-description"></div><div class="masks" id="masks"></div><div id="teacher-coordinates" class="tiny"></div></section>
+        <section class="panel distribution-panel"><div class="panel-heading"><h2>保存GMM</h2><span class="tag">未較正</span></div><div class="presence"><span>画面内 amodal 存在確率</span><b id="presence-value">—</b></div><div class="meter"><div id="presence-meter"></div></div><div id="components"></div><p class="tiny">成分は同じ球の位置仮説。楕円は各成分の2σで、混合HDRや95%領域ではありません。detector scoreとは別の確率です。</p></section>
+        <section class="panel context-panel"><div class="panel-heading"><h2>文脈のcoverage</h2></div><p id="context-state"></p><p class="tiny">全COCO17を保存。肘・手首4点を強調。raw peakを[0,1]へclipし、表示thresholdを適用。courtはframe 0のKP14。人物・コートはモデル推定です。</p></section>
+        <section class="panel zoom-panel"><div class="panel-heading"><h2>球付近を拡大</h2><span id="zoom-label" class="tiny"></span></div><canvas id="zoom" width="600" height="260" aria-label="球位置付近の拡大"></canvas></section>
+      </aside>
+    </div>
+    <section class="panel patches-panel"><div class="panel-heading"><div><h2>保存済み local probability patches <span>5×5 / native格子</span></h2><p id="patch-note" class="tiny"></p></div><span id="candidate-count" class="tag"></span></div><div id="patches"></div></section>
+    <details class="panel provenance"><summary>出自・対応検証・データの範囲</summary><p id="provenance-note"></p><pre id="provenance"></pre><div id="group-table"></div></details>
+    <footer>原本を変更せず、保存された候補・context・教師・分布を確認する画面です。trainの保存教師がないclipは「未提供」。画像の有無とdatasetの有無を分けて表示します。</footer>
+  </main>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

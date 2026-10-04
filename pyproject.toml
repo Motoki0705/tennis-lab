@@ -92,6 +92,7 @@ exclude = ["src.tasks.blcs.generate_dataset.webui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"src.tasks.ball_refiner.refiner_2d.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tennis_scene.chat_annotation.player_pose" = ["WORKER.md"]
 "src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt", "resources/*/*.txt"]
 "src.tennis_scene.chat_annotation.web" = ["static/*.html", "static/*.css", "static/*.js"]

@@ -274,6 +274,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.ball_refiner.scripts.review_2d_dataset": (
+        "ball_refiner.review_2d_dataset",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner.scripts.compare_triangulation": (
         "ball_refiner.compare_triangulation",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -446,6 +450,13 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.tasks.ball_refiner.scripts.review_2d_dataset",
+        "main",
+        domain="ball_refiner",
+        executable_module=True,
+        optional_policy="predictions/context_root/rgb_store may be omitted; supplied absolute input paths are validated",
+    ),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_triangulation", "main", domain="ball_refiner", executable_module=True),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.evaluate_pilot"),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
