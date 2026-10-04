@@ -1,4 +1,4 @@
-<!-- knowledge-review: c656f20eb7c60cd82d92665b8c8927e7abb899c7ae287803ed06f255c59a1d5e on 2026-10-05 -->
+<!-- knowledge-review: 2a092d570bab8e3023f521837718b8ef3752e0db5e08b87e606921296f7bd40c on 2026-10-05 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-05（#988の選手選別後pose生成と拡張入力の固定を記録。下流の精度改善は未評価）
