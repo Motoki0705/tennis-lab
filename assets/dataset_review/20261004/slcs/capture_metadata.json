@@ -1,0 +1,213 @@
+{
+  "captured_at": "2026-10-04T14:49:30.913Z",
+  "browser": "151.0.7922.34",
+  "code_revision": "463c938f5095b5f651c4c5f34129c9afc9bacf9a",
+  "code_file_sha256": {
+    "src/tasks/base/visualization/review/static/app.js": "f197b7144b112f94b1c0496b833e9431a621cff308ab09b795147fac6e54516a",
+    "src/tasks/slcs/visualization/review/dataset_service.py": "d2677761c81e439ee49866a14c26121e69d814f05ee6c03f1260fbee13ace039",
+    "src/tasks/slcs/visualization/review/inspection.py": "9120c6b4c7b1aaa55b645a2079c7eaa32d6c654baf0a3031db8ba3599aaf2a31",
+    "src/tasks/slcs/visualization/review/dataset_web.py": "dce34c3173b0c3dedc5561f6243f63d7391e55e9396db7786794be8c28072839",
+    "src/tasks/slcs/visualization/review/static/slcs-framing.mjs": "36bf9d7ba5e86ef8abdfe67548c0bbdd829e82ee3f701a2671a96882fb76ad2f",
+    "src/tasks/slcs/visualization/review/static/slcs-inspection.css": "c90e54fa25a9810b0869af03a8cd5102f317dc87b1aead87b3be9a96911c5cc1",
+    "src/tasks/slcs/visualization/review/static/slcs-inspection.mjs": "7c1af83fcadb21bf94f3ef4e4fd0247af9878d0da9b2cfb69cf341f10fb02a0d",
+    "src/tasks/slcs/visualization/review/static/slcs-overlay.mjs": "5a368bb0e8e4cd2a00c1dfa19386b720ecad8f315c814d260e779db9b97186fa"
+  },
+  "dataset_manifest_sha256": "1ca5e7401e1bf105d18547750e3d9173fdce44526cd857095d870af5084e5216",
+  "annotation_marker_sha256": "37ef335a23b2680ce29e3c9851c5e9b35335d715a806f1f52db28be563fcfb56",
+  "scene_index_sha256": "2de67fe8c23f5cb077fe9c1a3c1b520ec82e31285d18f551eb10d4f40954bc59",
+  "records": [
+    {
+      "image": "before-frame750.png",
+      "kind": "before",
+      "code_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "dataset": "slcs/meiji_one_clip_scene_v2",
+      "sample": "video_000/clip_000",
+      "frame": 750,
+      "camera": null,
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "preset": "corner",
+      "orbit": {
+        "yaw": -2.35,
+        "pitch": 0.5,
+        "distance": 30,
+        "target": [
+          0,
+          0,
+          1
+        ]
+      },
+      "settings": {
+        "trail": true,
+        "follow": false
+      },
+      "source_manifest": {
+        "path": "data/slcs/meiji_one_clip_scene_v2/videos/video_000/clips/clip_000/clip.json",
+        "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+      },
+      "note": "既存UIはcamera選択/RGB/2D表示なし。afterはcorner方向を維持し狭いviewportへfit。"
+    },
+    {
+      "image": "after-frame750.png",
+      "kind": "after",
+      "code_revision": "463c938f5095b5f651c4c5f34129c9afc9bacf9a",
+      "dataset": "slcs/meiji_one_clip_scene_v2",
+      "sample": "video_000/clip_000",
+      "frame": 750,
+      "camera": "cam0",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "preset": "corner",
+      "orbit": {
+        "yaw": -2.35,
+        "pitch": 0.5,
+        "distance": 75.62186570972172,
+        "target": [
+          0,
+          0.5039010047912598,
+          2.221997022628784
+        ]
+      },
+      "settings": {
+        "trail": true,
+        "follow": false,
+        "pose": true,
+        "ball2d": true,
+        "court": true,
+        "projection": true,
+        "crop_slot": 1,
+        "source_open": false
+      },
+      "source_manifest": {
+        "path": "data/slcs/meiji_one_clip_scene_v2/videos/video_000/clips/clip_000/clip.json",
+        "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+      },
+      "readout": "cam0 · frame 750 · 12.51s · RGB/観測/教師一致",
+      "quality": "P0\t有効 / 0.843\t17/17 joints · 全cam coverage 0.84\t-0.72, -14.74, 0.79 / 165.0°\nP1\t無効 / 0.000\t0/17 joints · 全cam coverage 0.30 / root棄却: INSUFFICIENT_JOINTS・heading無効・2D coverage閾値未満\t—\nball\t無効 / 0.000\t枠内観測 · 2/3 cam / EXCESSIVE_SPEED\t—"
+    },
+    {
+      "image": "after-frame100-cam0.png",
+      "kind": "after",
+      "code_revision": "463c938f5095b5f651c4c5f34129c9afc9bacf9a",
+      "dataset": "slcs/meiji_one_clip_scene_v2",
+      "sample": "video_000/clip_000",
+      "frame": 100,
+      "camera": "cam0",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "preset": "corner",
+      "orbit": {
+        "yaw": -2.35,
+        "pitch": 0.5,
+        "distance": 75.62186570972172,
+        "target": [
+          0,
+          0.5039010047912598,
+          2.221997022628784
+        ]
+      },
+      "settings": {
+        "trail": true,
+        "follow": false,
+        "pose": true,
+        "ball2d": true,
+        "court": true,
+        "projection": true,
+        "crop_slot": 1,
+        "source_open": false
+      },
+      "source_manifest": {
+        "path": "data/slcs/meiji_one_clip_scene_v2/videos/video_000/clips/clip_000/clip.json",
+        "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+      },
+      "readout": "cam0 · frame 100 · 1.67s · RGB/観測/教師一致",
+      "quality": "P0\t有効 / 0.835\t17/17 joints · 全cam coverage 0.84\t0.61, -13.44, 0.94 / 157.3°\nP1\t有効 / 0.677\t17/17 joints · 全cam coverage 0.68\t0.28, 11.87, 1.07 / 4.6°\nball\t有効 / 0.667\t未観測（不在未確認） · 2/3 cam\t-1.29, 6.94, 2.66"
+    },
+    {
+      "image": "after-frame100-cam2.png",
+      "kind": "after",
+      "code_revision": "463c938f5095b5f651c4c5f34129c9afc9bacf9a",
+      "dataset": "slcs/meiji_one_clip_scene_v2",
+      "sample": "video_000/clip_000",
+      "frame": 100,
+      "camera": "cam2",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "preset": "overhead",
+      "orbit": {
+        "yaw": -1.5707963267948966,
+        "pitch": 1.45,
+        "distance": 64.95488809990937,
+        "target": [
+          0,
+          0.5039010047912598,
+          2.221997022628784
+        ]
+      },
+      "settings": {
+        "trail": true,
+        "follow": false,
+        "pose": true,
+        "ball2d": true,
+        "court": true,
+        "projection": true,
+        "crop_slot": 1,
+        "source_open": false
+      },
+      "source_manifest": {
+        "path": "data/slcs/meiji_one_clip_scene_v2/videos/video_000/clips/clip_000/clip.json",
+        "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+      },
+      "readout": "cam2 · frame 100 · 1.67s · RGB/観測/教師一致",
+      "quality": "P0\t有効 / 0.835\t17/17 joints · 全cam coverage 0.84\t0.61, -13.44, 0.94 / 157.3°\nP1\t有効 / 0.677\t17/17 joints · 全cam coverage 0.68\t0.28, 11.87, 1.07 / 4.6°\nball\t有効 / 0.667\t枠内観測 · 2/3 cam\t-1.29, 6.94, 2.66"
+    },
+    {
+      "image": "after-source-cam2.png",
+      "kind": "after",
+      "code_revision": "463c938f5095b5f651c4c5f34129c9afc9bacf9a",
+      "dataset": "slcs/meiji_one_clip_scene_v2",
+      "sample": "video_000/clip_000",
+      "frame": 100,
+      "camera": "cam2",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "preset": "overhead",
+      "orbit": {
+        "yaw": -1.5707963267948966,
+        "pitch": 1.45,
+        "distance": 64.95488809990937,
+        "target": [
+          0,
+          0.5039010047912598,
+          2.221997022628784
+        ]
+      },
+      "settings": {
+        "trail": true,
+        "follow": false,
+        "pose": true,
+        "ball2d": true,
+        "court": true,
+        "projection": true,
+        "crop_slot": 1,
+        "source_open": true
+      },
+      "source_manifest": {
+        "path": "data/slcs/meiji_one_clip_scene_v2/videos/video_000/clips/clip_000/clip.json",
+        "sha256": "19313b7847d3d5cfb6c7c40ee9570586a53ccf1f8c4d90ed1a85d7e23a5d5138"
+      },
+      "readout": "cam2 · frame 100 · 1.67s · RGB/観測/教師一致",
+      "quality": "P0\t有効 / 0.835\t17/17 joints · 全cam coverage 0.84\t0.61, -13.44, 0.94 / 157.3°\nP1\t有効 / 0.677\t17/17 joints · 全cam coverage 0.68\t0.28, 11.87, 1.07 / 4.6°\nball\t有効 / 0.667\t枠内観測 · 2/3 cam\t-1.29, 6.94, 2.66"
+    }
+  ]
+}
