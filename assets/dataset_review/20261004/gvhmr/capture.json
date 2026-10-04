@@ -25,8 +25,8 @@
       "source_manifest_sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170",
       "code_revision": null,
       "note": "Existing contact sheet includes source frame504; old UI has no frame selector.",
-      "screenshot_sha256": "a96499c29796b1b4affca29f95736b8c467600e168624f07a6445bdf660f04d6",
-      "captured_at": "2026-10-04T14:52:44.107Z"
+      "screenshot_sha256": "98f827d2017f353184dbf3a4736b690b628143fbc0df4b2f76b6da3ab49b979f",
+      "captured_at": "2026-10-04T14:54:14.334Z"
     },
     {
       "file": "before-gvhmr-placement.png",
@@ -46,8 +46,8 @@
       "source_manifest_sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170",
       "code_revision": null,
       "note": "Existing aggregated body parameter / placement gallery, no synchronized source frame; baseline code revision unavailable.",
-      "screenshot_sha256": "61108ea12097efcc40d829f51615371a4bdf10cadfa7f84e90135cd291c036f6",
-      "captured_at": "2026-10-04T14:52:44.107Z"
+      "screenshot_sha256": "1a366d41b5f05897d8d2eb2dcbfc9d78784bf2647de3ed8be4eba09400e64f21",
+      "captured_at": "2026-10-04T14:54:14.482Z"
     },
     {
       "file": "after-unsampled-504.png",
