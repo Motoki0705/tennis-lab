@@ -28,6 +28,7 @@
 | `refiner_2d/model.py` | 計算だけのforward。候補集合→時間→文脈→時間→MDN |
 | `refiner_2d/distribution.py` | GMM検証、条件付き密度、source画素への平均/共分散変換 |
 | `refiner_2d/loss.py` | 既知frameの重み付きjoint NLLとepoch集計用の和・分母 |
+| [`refiner_2d/review/`](refiner_2d/review/README.md) | 保存済み入力証拠・文脈・教師mask・GMMの同frameブラウザレビュー |
 | `data/inputs.py` | 教師なし入力の切出し、人物軸だけのcollate、device転送 |
 | `data/temporal.py` | 実frameだけの窓と中心距離による採用規則 |
 | `inference.py` | camera全frameのGMM推論と、各frameを採用した窓の出自 |
