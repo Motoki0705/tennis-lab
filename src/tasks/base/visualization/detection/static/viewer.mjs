@@ -51,7 +51,12 @@ export class ImageViewer {
       labels: false,
       raster: "",
       opacity: 0.55,
-      players: true, pose: true, boxes: true, identities: true, trails: true,
+      ballPoints: false,
+      players: true,
+      pose: true,
+      boxes: true,
+      identities: true,
+      trails: true,
     };
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
@@ -131,7 +136,7 @@ export class ImageViewer {
     const loaded = await Promise.all(
       rasterList.map(async (layer) => [
         layer.data,
-        this.rasters.get(layer.data) || await loadImage(layer.data),
+        this.rasters.get(layer.data) || (await loadImage(layer.data)),
       ]),
     );
     if (token !== this.token) return false;
@@ -219,10 +224,11 @@ export class ImageViewer {
         ctx.stroke();
       }
       for (const point of visiblePoints(layer)) {
-        const radius = (kind === "gt" ? 5 : 3.2) / scale;
+        const radius =
+          (this.options.ballPoints ? 1.25 : kind === "gt" ? 5 : 3.2) / scale;
         ctx.beginPath();
         ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
-        if (kind === "gt") {
+        if (kind === "gt" && !this.options.ballPoints) {
           ctx.stroke();
         } else {
           ctx.fill();
