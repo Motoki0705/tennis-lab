@@ -1,0 +1,281 @@
+{
+  "campaign": "dataset-review-20261004:gvhmr",
+  "captures": [
+    {
+      "file": "before-pose-cam1.png",
+      "kind": "before",
+      "dataset": "Meiji historical inference snapshot i931",
+      "sample": "video_000/clip_000",
+      "camera": "cam1",
+      "source_frames": [
+        0,
+        252,
+        504,
+        757,
+        1009
+      ],
+      "viewport": {
+        "width": 1600,
+        "height": 1600
+      },
+      "url": "file:///home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/index.html#pose_estimation-cam1",
+      "baseline_html": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/index.html",
+      "baseline_html_sha256": "66fe5cc6722efe187d414934c79ff633108a959579c30e185370e5ff19b53568",
+      "source_manifest": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170",
+      "code_revision": null,
+      "note": "Existing contact sheet includes source frame504; old UI has no frame selector.",
+      "screenshot_sha256": "a96499c29796b1b4affca29f95736b8c467600e168624f07a6445bdf660f04d6",
+      "captured_at": "2026-10-04T14:52:44.107Z"
+    },
+    {
+      "file": "before-gvhmr-placement.png",
+      "kind": "before",
+      "dataset": "Meiji historical inference snapshot i931",
+      "sample": "video_000/clip_000",
+      "camera": null,
+      "source_frames": null,
+      "viewport": {
+        "width": 1600,
+        "height": 1600
+      },
+      "url": "file:///home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/index.html#gvhmr",
+      "baseline_html": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/gallery/index.html",
+      "baseline_html_sha256": "66fe5cc6722efe187d414934c79ff633108a959579c30e185370e5ff19b53568",
+      "source_manifest": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170",
+      "code_revision": null,
+      "note": "Existing aggregated body parameter / placement gallery, no synchronized source frame; baseline code revision unavailable.",
+      "screenshot_sha256": "61108ea12097efcc40d829f51615371a4bdf10cadfa7f84e90135cd291c036f6",
+      "captured_at": "2026-10-04T14:52:44.107Z"
+    },
+    {
+      "file": "after-unsampled-504.png",
+      "kind": "after",
+      "dataset": "Meiji historical inference snapshot i931",
+      "sample": "video_000/clip_000",
+      "person": 0,
+      "camera": "cam1",
+      "source_frame": 504,
+      "viewport": {
+        "width": 1600,
+        "height": 1600
+      },
+      "url": "http://127.0.0.1:8902/?person=0&camera=cam1&frame=504",
+      "code_revision": "b155a37e00cf97aa75deb858b8b8952bf28a907d",
+      "ui_file_sha256": {
+        "app.js": "2cc2dea3bb0e9619d39e5df5b28ee829fbd64eebbbcf261578a70f8037d4d688",
+        "style.css": "f43531a485a078a823c167d05a57eedefce187d60d7ad5c8ac9b0e9cf8cce943",
+        "index.html": "cd4eba230298faa03c12e65a3f4459b388d86a8986844dee5f0873c466fbbd0b",
+        "store.py": "213b2590f83b30d5ab59a991b9ac5f06509b1fba87c74336da8fd43c0988c87e"
+      },
+      "source_manifest": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170",
+      "observed": "observed",
+      "request_saved": false,
+      "parameters_saved": false,
+      "placement": {
+        "root_valid": true,
+        "heading_valid": true,
+        "smpl_valid": true,
+        "reason_code": 0,
+        "reason": "valid",
+        "position": [
+          0.19342568516731262,
+          -12.993486404418945,
+          0.834709882736206
+        ],
+        "yaw": -2.8867931365966797,
+        "reprojection_px": 8.49166202545166
+      },
+      "vertices": 6890,
+      "joint_reasons_3d": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "observations_by_camera": {
+        "cam0": {
+          "state": "observed",
+          "track_id": 1
+        },
+        "cam1": {
+          "state": "observed",
+          "track_id": 1
+        },
+        "cam2": {
+          "state": "observed",
+          "track_id": 2
+        }
+      },
+      "screenshot_sha256": "1b466b0c46cd831eee3a89f38dcc013c173afcac53e8c8ec20c006ce827a2b8f",
+      "captured_at": "2026-10-04T14:52:44.108Z"
+    },
+    {
+      "file": "after-low-confidence-148.png",
+      "kind": "after",
+      "dataset": "Meiji historical inference snapshot i931",
+      "sample": "video_000/clip_000",
+      "person": 0,
+      "camera": "cam1",
+      "source_frame": 148,
+      "viewport": {
+        "width": 1600,
+        "height": 1600
+      },
+      "url": "http://127.0.0.1:8902/?person=0&camera=cam1&frame=148",
+      "code_revision": "b155a37e00cf97aa75deb858b8b8952bf28a907d",
+      "ui_file_sha256": {
+        "app.js": "2cc2dea3bb0e9619d39e5df5b28ee829fbd64eebbbcf261578a70f8037d4d688",
+        "style.css": "f43531a485a078a823c167d05a57eedefce187d60d7ad5c8ac9b0e9cf8cce943",
+        "index.html": "cd4eba230298faa03c12e65a3f4459b388d86a8986844dee5f0873c466fbbd0b",
+        "store.py": "213b2590f83b30d5ab59a991b9ac5f06509b1fba87c74336da8fd43c0988c87e"
+      },
+      "source_manifest": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170",
+      "observed": "observed",
+      "request_saved": true,
+      "parameters_saved": true,
+      "placement": {
+        "root_valid": true,
+        "heading_valid": true,
+        "smpl_valid": true,
+        "reason_code": 0,
+        "reason": "valid",
+        "position": [
+          -0.3025698959827423,
+          -13.685227394104004,
+          0.7843512296676636
+        ],
+        "yaw": -1.8203835487365723,
+        "reprojection_px": 9.88918399810791
+      },
+      "vertices": 6890,
+      "joint_reasons_3d": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "observations_by_camera": {
+        "cam0": {
+          "state": "observed",
+          "track_id": 1
+        },
+        "cam1": {
+          "state": "observed",
+          "track_id": 1
+        },
+        "cam2": {
+          "state": "observed",
+          "track_id": 2
+        }
+      },
+      "screenshot_sha256": "02ddf8ba3bec8bda5ddef6a78cb47e6f372fbbd04d9bc3dfd6a3cc303f49c651",
+      "captured_at": "2026-10-04T14:52:44.109Z"
+    },
+    {
+      "file": "after-rejected-754.png",
+      "kind": "after",
+      "dataset": "Meiji historical inference snapshot i931",
+      "sample": "video_000/clip_000",
+      "person": 1,
+      "camera": "cam2",
+      "source_frame": 754,
+      "viewport": {
+        "width": 1600,
+        "height": 1600
+      },
+      "url": "http://127.0.0.1:8902/?person=1&camera=cam2&frame=754",
+      "code_revision": "b155a37e00cf97aa75deb858b8b8952bf28a907d",
+      "ui_file_sha256": {
+        "app.js": "2cc2dea3bb0e9619d39e5df5b28ee829fbd64eebbbcf261578a70f8037d4d688",
+        "style.css": "f43531a485a078a823c167d05a57eedefce187d60d7ad5c8ac9b0e9cf8cce943",
+        "index.html": "cd4eba230298faa03c12e65a3f4459b388d86a8986844dee5f0873c466fbbd0b",
+        "store.py": "213b2590f83b30d5ab59a991b9ac5f06509b1fba87c74336da8fd43c0988c87e"
+      },
+      "source_manifest": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "fe476331de0f5cef9423c1d43b0d72bc119a457c61ef3e146bcd8ded4a18b170",
+      "observed": "observed",
+      "request_saved": false,
+      "parameters_saved": false,
+      "placement": {
+        "root_valid": false,
+        "heading_valid": false,
+        "smpl_valid": false,
+        "reason_code": 101,
+        "reason": "INSUFFICIENT_JOINTS",
+        "position": null,
+        "yaw": null,
+        "reprojection_px": null
+      },
+      "vertices": null,
+      "joint_reasons_3d": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "observations_by_camera": {
+        "cam0": {
+          "state": "unobserved",
+          "track_id": null
+        },
+        "cam1": {
+          "state": "unobserved",
+          "track_id": null
+        },
+        "cam2": {
+          "state": "observed",
+          "track_id": 1
+        }
+      },
+      "screenshot_sha256": "95ebb4fe3cb61b6e3409f4a91c0d3d3e6b6650b3a2443f67bcb4d0ce85cfff92",
+      "captured_at": "2026-10-04T14:52:44.110Z"
+    }
+  ],
+  "comparison": "Same saved store and viewport. Before pose sheet contains frame504 matched to after504; old aggregate/body panels cannot select one frame. Dedicated synchronized UI is newly added.",
+  "inference": "none",
+  "gpu": false,
+  "source_data_read_only": true
+}
