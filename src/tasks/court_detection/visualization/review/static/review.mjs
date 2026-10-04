@@ -128,7 +128,10 @@ export function createCourtReview(viewer, filterChanged) {
       const origin = node("p", synthetic
         ? `合成投影 · ${current.target_court} · pose教師あり`
         : "実写KP注釈 · 遮蔽/visibility未保存 · pose教師なし", "court-origin");
-      const count = node("p", `KP教師採用 ${current.kp_supervised} / ${current.points.length}点 · 画面外 ${current.counts.out_of_frame || 0}点`, "court-count");
+      const boundary = synthetic
+        ? `画面外（前方）${current.counts.out_of_frame || 0} · camera背面 ${current.counts.behind_camera || 0}`
+        : `画面外 ${current.counts.out_of_frame || 0}点`;
+      const count = node("p", `KP教師採用 ${current.kp_supervised} / ${current.points.length}点 · ${boundary}`, "court-count");
       const why = node("p", synthetic
         ? "採用条件: in_front × in_frame × renderer_visible。不可視は未注釈とは別です。"
         : "readerは画像境界だけで採用を判定。画像内でも遮蔽がないとは断定できません。", "court-explanation");
