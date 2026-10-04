@@ -44,7 +44,7 @@ RGB映像、テニス選手の実測3D教師、人手の2Dアノテーション�
 | `data/ACCAD/**/*.npz` | 元動作（AMASS/SMPL-H）。学習シーンの生成素材 | `poses`、`trans`、`betas`、gender、fps。生成時にCOCO17へ変換しコートへ配置 |
 | `data/plcs/single_object/scenes/<scene>/` | 学習・検品する生成シーン | カメラ別COCO17/CourtKP20の正規化UV・vis、正規化root位置、yawのcos/sin、世界COCO17[m] |
 | `data/plcs/single_object/{train,val,test}.txt` | scene IDの分割 | 保存splitを読み、未割当・重複・同一元動作のsplit共有を確認する |
-| `data/plcs/single_object/samples/` | シーンに付属する閲覧用GIFと選定manifest | [共有サンプル仕様](../base/generate_dataset/README.md#human-readable-dataset-samples)に従う補助成果物 |
+| `data/plcs/single_object/samples/` | シーンに付属する閲覧用GIFと選定manifest | 冒頭の共有契約にあるサンプル仕様に従う補助成果物 |
 
 `train_chunked` / `train_chunked_gan` は同じsingle_object契約のtrainシーンを
 逐次生成する供給方式です。独立したデータ系列ではなく、val/testは固定splitを使います。
