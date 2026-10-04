@@ -6,7 +6,7 @@ const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const colors=['#ed8151','#4bb985','#9b70d7','#4c92d5'];
 const statusLabels={rendered:'描画可能',unsupported:'履歴schema / reader対象外',missing:'未生成',stale:'古い依存',unavailable:'RGB不在 / 図未描画'};
 const yes=(value,empty='無効')=>`<span class="${value?'valid':'rejected'}">${value?'有効':empty}</span>`;
-let frame=0,timer=null,request=0;
+let frame=0,timer=null,request=0,playGeneration=0;
 
 $('snapshot-path').textContent=data.index_path;
 const counts=data.nodes.reduce((result,node)=>{result[node.status]=(result[node.status]??0)+1;return result;},{});
@@ -77,7 +77,7 @@ function drawOverlay(ctx,camera,f){
 async function drawRGB(f,token){
   await Promise.all(data.sources.map(async v=>{
     const {canvas,tile}=viewCanvases.get(v.camera_id),ctx=canvas.getContext('2d');
-    ctx.clearRect(0,0,960,540);tile.querySelector('.rgb-frame').textContent=f;
+    ctx.clearRect(0,0,960,540);canvas.dataset.frame='';tile.querySelector('.rgb-frame').textContent=f;
     const note=tile.querySelector('.rgb-error');note.textContent='RGB読取中…';
     if(!v.available){note.textContent='元RGB未保存 / 不在';return;}
     const src=data.online?`/api/frame?camera=${encodeURIComponent(v.camera_id)}&frame=${f}`:data.samples[v.camera_id][f];
@@ -133,7 +133,8 @@ function syncMovies(f,leader=null){
   for(const video of movies)if(video!==leader&&video.readyState>=1&&Math.abs(video.currentTime*data.fps-f-.5)>.75)video.currentTime=videoTimeForFrame(f,data.fps);
   videoSync=false;
 }
-for(const video of movies){video.addEventListener('play',()=>{if(timer){clearInterval(timer);timer=null;$('play-frames').textContent='▶ 4 fpsで確認';}for(const other of movies)if(other!==video)other.pause();});for(const event of ['timeupdate','seeked'])video.addEventListener(event,()=>{const next=frameFromTime(video.currentTime,data.fps,data.frames);if(!videoSync&&next!==frame&&(event==='seeked'||!video.paused))setFrame(next,video);});}
+function stopFrames(){playGeneration++;if(timer!==null)clearTimeout(timer);timer=null;$('play-frames').textContent='▶ frame送り';}
+for(const video of movies){video.addEventListener('play',()=>{stopFrames();for(const other of movies)if(other!==video)other.pause();});for(const event of ['timeupdate','seeked'])video.addEventListener(event,()=>{const next=frameFromTime(video.currentTime,data.fps,data.frames);if(!videoSync&&next!==frame&&(event==='seeked'||!video.paused))setFrame(next,video);});}
 if(movies.length)$('media-note').textContent+=' component動画も同じ保存FPSのframeへ連動します。動画再生は選択した1本が基準です。';
 async function setFrame(value,leader=null){
   frame=Math.max(0,Math.min(data.frames-1,Math.trunc(Number(value)||0)));const token=++request;
@@ -144,6 +145,17 @@ async function setFrame(value,leader=null){
 $('frame-number').addEventListener('change',e=>setFrame(e.target.value));$('frame-slider').addEventListener('input',e=>setFrame(e.target.value));
 $('previous-frame').addEventListener('click',()=>setFrame(frame-1));$('next-frame').addEventListener('click',()=>setFrame(frame+1));
 for(const id of ['show-2d','show-reprojection','scene-view'])$(id).addEventListener('change',()=>setFrame(frame));
-$('play-frames').addEventListener('click',()=>{if(timer){clearInterval(timer);timer=null;$('play-frames').textContent='▶ 4 fpsで確認';}else{for(const v of movies)v.pause();$('play-frames').textContent='■ 停止';timer=setInterval(()=>{if(frame>=data.frames-1){clearInterval(timer);timer=null;$('play-frames').textContent='▶ 4 fpsで確認';}else setFrame(frame+1);},250);}});
-window.addEventListener('pagehide',()=>{if(timer)clearInterval(timer);});
+$('play-frames').addEventListener('click',()=>{
+  if(timer!==null){stopFrames();return;}
+  for(const video of movies)video.pause();
+  const generation=++playGeneration;timer=0;$('play-frames').textContent='■ 停止';
+  const advance=async()=>{
+    if(generation!==playGeneration)return;
+    if(frame>=data.frames-1){stopFrames();return;}
+    await setFrame(frame+1);
+    if(generation===playGeneration)timer=setTimeout(advance,250);
+  };
+  advance();
+});
+window.addEventListener('pagehide',stopFrames);
 setFrame(0);
