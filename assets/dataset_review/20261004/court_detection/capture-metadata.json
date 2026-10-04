@@ -1,0 +1,226 @@
+{
+  "task": "court_detection",
+  "campaign": "dataset-review-20261004",
+  "before_code_revision": "c6533321b4845c3ea65512e5659c7e0323f1fa6f",
+  "after_code_revision": "98b57b2f7d0d5d99e9d1d8befe3329b7ab26f3cb",
+  "browser": "151.0.7922.34",
+  "data_policy": "Existing local data only; read-only; no GPU inference, training or generation. Unit fixtures not used for screenshots.",
+  "code_files_sha256": {
+    "src/tasks/base/visualization/detection/static/app.js": "4d1999da5ae4691cef4ba1a130782ca3b579f1ec1ed02ec05cb5cdb4e5ef2f9c",
+    "src/tasks/base/visualization/detection/static/viewer.mjs": "3015195b69661d536857f396c98eca59756fe96ce7f94c1f9aa80c59f00585b0",
+    "src/tasks/base/visualization/detection/web.py": "432992ce969ef7c0b0d2f5fc2599f23234807b720c0b41a7ad1794868b42952d",
+    "src/tasks/court_detection/visualization/inference/service.py": "6d5ebabfe42844f9e92a5376a0e0d51ff066fb5efb046e01a66a7633edfe6bc0",
+    "src/tasks/court_detection/visualization/review/datasets.py": "b54827ea1ff71aa15d097e41e16bcd3e6ec707975501c3d514b497aed07578d1",
+    "src/tasks/court_detection/visualization/review/inspection.py": "040605ed98a0e80f1308b0672260044657b483dcace0792348f99ef09c0fcbcb",
+    "src/tasks/court_detection/visualization/review/web.py": "b801f1d9f29bb313238f31ea8ee138a84860303f2df1400244e0a4d4a4d1f217",
+    "src/tasks/court_detection/visualization/review/static/review.mjs": "eeb592c7181d7fe35433d3d19958a6c80a46efc46a79e55d3f4f7a7d91adfa62",
+    "src/tasks/court_detection/visualization/review/static/review.css": "172e6bacf8e5996d834376352e0acf07fd531fcb3f667c990c54fa3408bb6824",
+    "src/tasks/court_detection/configs/data/source/tennis_court_detector.yaml": "923442e7986fa6742e8625a14361d380c892485bb60f0267daa19899926037cf",
+    "src/tasks/court_detection/configs/data/source/synthetic_court.yaml": "eecd9a67bb51c9bfc966408e64224a9cfd8b5a921809e7599a0cb6d216f89fee",
+    "src/tasks/court_detection/target_schemas.py": "bbb7118a8d589232079a756e1ac1a51b78fb02dfd389d09d24b041d8d8b1406f"
+  },
+  "dataset_inventory": [
+    {
+      "dataset": "tennis_court_detector-v1",
+      "schema": "tennis_court_detector_store_v1",
+      "stored_count": 8841,
+      "stored_splits": {
+        "train": 6630,
+        "val": 2211
+      },
+      "manifest": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/dataset.json",
+      "sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41"
+    },
+    {
+      "dataset": "B00",
+      "schema": "canonical_court_dataset_v3",
+      "stored_count": 2176,
+      "stored_splits": {
+        "train": 1718,
+        "validation": 220,
+        "test": 238
+      },
+      "manifest": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json",
+      "sha256": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad"
+    },
+    {
+      "dataset": "B01",
+      "schema": "canonical_court_dataset_v3",
+      "stored_count": 2052,
+      "stored_splits": {
+        "train": 1559,
+        "validation": 295,
+        "test": 198
+      },
+      "manifest": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/datasets/court/dataset.json",
+      "sha256": "a2f7ee3a04bb3c6e39732b7917a1af5af0ad093446b36a0f7974e4569f436f4e"
+    },
+    {
+      "dataset": "B02",
+      "schema": "canonical_court_dataset_v3",
+      "stored_count": 2094,
+      "stored_splits": {
+        "train": 1648,
+        "test": 252,
+        "validation": 194
+      },
+      "manifest": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B02/datasets/court/dataset.json",
+      "sha256": "40f17dd3345570c5f4897d2ee454909a678583e0a8237f4dca352e34cfc9b568"
+    },
+    {
+      "dataset": "B03",
+      "schema": "canonical_court_dataset_v3",
+      "stored_count": 2093,
+      "stored_splits": {
+        "train": 1669,
+        "test": 198,
+        "validation": 226
+      },
+      "manifest": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B03/datasets/court/dataset.json",
+      "sha256": "84c8195ac34c4cf0a9eb4852ec85e37ce7940a58cc2b29a7637c1fa087d12607"
+    }
+  ],
+  "captures": [
+    {
+      "file": "real-before.png",
+      "kind": "before",
+      "scene": "tennis_court_detector/train::7Zet_ieK_JM_800",
+      "camera": null,
+      "width": 1280,
+      "height": 720,
+      "captured_at": "2026-10-04T12:55:01.089726+00:00",
+      "frame": 0,
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "device_scale_factor": 1,
+      "code_revision": "c6533321b4845c3ea65512e5659c7e0323f1fa6f",
+      "image_sha256": "97682edf4bd6ac96b62d785cd5e74d65546e5cec0bec7166a2d16ba28b556a7f",
+      "raster": "line",
+      "opacity": 0.55,
+      "labels": false,
+      "reference_points": false,
+      "image_view": "full image fit",
+      "source_manifest": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/dataset.json",
+      "source_manifest_sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+      "source_index_sha256": "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b",
+      "dataset_schema": "tennis_court_detector_store_v1"
+    },
+    {
+      "file": "synthetic-before.png",
+      "kind": "before",
+      "scene": "synthetic_court/B00/train::B00:court-sample-000000",
+      "camera": "court-sample-000000",
+      "width": 959,
+      "height": 539,
+      "captured_at": "2026-10-04T12:55:05.828279+00:00",
+      "frame": 0,
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "device_scale_factor": 1,
+      "code_revision": "c6533321b4845c3ea65512e5659c7e0323f1fa6f",
+      "image_sha256": "d3a7902e0576bd990a4722254cc96e27755eb28733ca16f15ce461efc70f9737",
+      "raster": "line",
+      "opacity": 0.55,
+      "labels": false,
+      "reference_points": false,
+      "image_view": "full image fit",
+      "source_manifest": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json",
+      "source_manifest_sha256": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad",
+      "source_index_sha256": "24721bcc3e621b536fd0673d606143384eca941d1052dcf6773e2a4d60d57e63",
+      "dataset_schema": "canonical_court_dataset_v3"
+    },
+    {
+      "file": "real-after.png",
+      "kind": "after",
+      "scene": "tennis_court_detector/train::7Zet_ieK_JM_800",
+      "frame": 0,
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "raster": "line",
+      "opacity": 0.55,
+      "labels": false,
+      "reference_points": false,
+      "width": 1280,
+      "height": 720,
+      "camera": null,
+      "counts": {
+        "in_frame_visibility_unknown": 13,
+        "out_of_frame": 1
+      },
+      "captured_at": "2026-10-04T13:25:04.170641+00:00",
+      "device_scale_factor": 1,
+      "code_revision": "98b57b2f7d0d5d99e9d1d8befe3329b7ab26f3cb",
+      "image_sha256": "601de86f6cb100034eb96d667813990278e301dc1670d0981ebcdbb7efaef827",
+      "image_view": "full image fit",
+      "source_manifest": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/dataset.json",
+      "source_manifest_sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+      "source_index_sha256": "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b",
+      "dataset_schema": "tennis_court_detector_store_v1"
+    },
+    {
+      "file": "dataset-map-new.png",
+      "kind": "new",
+      "scene": "tennis_court_detector/train::7Zet_ieK_JM_800",
+      "frame": 0,
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "view": "dataset map dialog",
+      "camera": null,
+      "captured_at": "2026-10-04T13:25:04.368455+00:00",
+      "device_scale_factor": 1,
+      "code_revision": "98b57b2f7d0d5d99e9d1d8befe3329b7ab26f3cb",
+      "image_sha256": "cdf2603d63f32768dd581690a8bd39e99b529b566f24a55c0da4131b810592ca",
+      "source_manifest": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/dataset.json",
+      "source_manifest_sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+      "source_index_sha256": "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b",
+      "dataset_schema": "tennis_court_detector_store_v1"
+    },
+    {
+      "file": "synthetic-after.png",
+      "kind": "after",
+      "scene": "synthetic_court/B00/train::B00:court-sample-000000",
+      "frame": 0,
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "raster": "line",
+      "opacity": 0.55,
+      "labels": false,
+      "reference_points": false,
+      "width": 959,
+      "height": 539,
+      "camera": "court-sample-000000",
+      "counts": {
+        "renderer_visible": 7,
+        "behind_camera": 4,
+        "out_of_frame": 3
+      },
+      "captured_at": "2026-10-04T13:25:10.010572+00:00",
+      "device_scale_factor": 1,
+      "code_revision": "98b57b2f7d0d5d99e9d1d8befe3329b7ab26f3cb",
+      "image_sha256": "a8431996ce7531b8d39316371b88b3c6f28d371a54202ed4576057161ed89535",
+      "image_view": "full image fit",
+      "source_manifest": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/datasets/court/dataset.json",
+      "source_manifest_sha256": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad",
+      "source_index_sha256": "24721bcc3e621b536fd0673d606143384eca941d1052dcf6773e2a4d60d57e63",
+      "dataset_schema": "canonical_court_dataset_v3"
+    }
+  ],
+  "browser_checks": [
+    "real 14 named KP; #3 saved out-of-frame (1285,570), KP excluded; visibility remains unknown",
+    "point focus, out-of-frame non-focus, raw RGB, KP/SEG/LINE/semantic LINE controls, reference toggle, actual annotation JSON",
+    "synthetic V3 target only; logical labels and actual packed record distinguishable",
+    "renderer-invisible candidate empty state explicit (B00 has no in-frame renderer-invisible candidates)"
+  ],
+  "browser_errors": [],
+  "request_failures": []
+}
