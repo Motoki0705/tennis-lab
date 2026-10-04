@@ -234,7 +234,7 @@ class MeijiContextProducer(StoredJPEGContextProducer):
         boxes[~observed] = 0
         arrays = ContextArrays(store.frames["frame_index"][rows].copy(), store.frames["pts"][rows].copy(), counts,
             np.arange(observed.shape[1], dtype=np.int64), boxes.astype(np.float32), observed,
-            evidence.poses.transpose(1, 0, 2, 3).copy(), court.points_px, court.valid)
+            evidence.require_poses().transpose(1, 0, 2, 3).copy(), court.points_px, court.valid)
         # Every source frame has an explicit pose state, independent of ball labels.
         states = np.where(observed.any(1), "observed", np.where(counts == 0, "no_detection", "no_selected_track")).tolist()
         if diagnostic["status"] == "camera_not_calibrated":

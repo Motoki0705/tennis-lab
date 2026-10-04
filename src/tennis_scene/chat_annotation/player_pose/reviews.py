@@ -162,26 +162,36 @@ def validate_and_remap(
     for (player, frame), at in selected.items():
         column = columns[player]
         boxes[frame, column] = raw["boxes"][at, frame]
-        poses[frame, column] = raw["keypoints"][at, frame]
+        if "keypoints" in raw:
+            poses[frame, column] = raw["keypoints"][at, frame]
         valid[frame, column] = True
         origins[frame, column] = track_ids[at]
         detection_rows[frame, column] = raw["detection_rows"][at, frame]
-    return {
+    result = {
         "frame_index": raw["frame_index"],
         "pts": raw["pts"],
         "player_ids": np.asarray(ids, dtype=np.str_),
         "boxes_xyxy": boxes,
-        "keypoints": poses,
         "observed": valid,
         "raw_track_ids": origins,
         "detection_rows": detection_rows,
     }
+    if "keypoints" in raw:
+        result["keypoints"] = poses
+    if len(np.unique(detection_rows[valid])) != int(valid.sum()):
+        raise ValueError("Selected detection rows must be unique real observations")
+    return result
 
 
-def publish(
+def accept_review(
     campaign: Path, index: int, review_path: Path, required_sheets: list[str]
 ) -> dict[str, Any]:
+    """Freeze selected real observations; approval does not imply generated poses."""
+    from .dataset import update_entry
+
     config, plan, _ = load_campaign(campaign)
+    if not plan["clips"][index]["selected"]:
+        raise ValueError("Cannot approve a skipped clip")
     root = clip_root(campaign, index)
     verify_record(root / "generation.json")
     review = read_json(review_path)
@@ -194,74 +204,91 @@ def publish(
         raw_hash=digest(root / "tracks.npz"),
         required_sheets=required_sheets,
     )
-    if review["status"] != "approved":
-        write_json(
-            root / "review_status.json",
-            {
+    if "keypoints" in raw:
+        raise ValueError("New campaigns require pose-free tracking artifacts")
+    with lock(root / "selection.lock"):
+        if (root / "review.json").exists():
+            verify_record(root / "review.json")
+            if read_json(root / "decision.json") != review:
+                raise ValueError("Approved selection is immutable; use a new campaign")
+            manifest = read_json(Path(config["dataset"]) / "manifest.json")
+            if manifest["clips"][index]["pose_status"] != "approved":
+                update_entry(Path(config["dataset"]), index, pose_status="pose_pending")
+            write_json(
+                root / "review_status.json",
+                {"status": "approved", "pose_status": "pending"},
+            )
+            return {"status": "approved", "pose_status": "pending"}
+        if review["status"] != "approved":
+            result = {
                 "status": "needs_review",
                 "review": str(review_path),
                 "notes": review["notes"],
-            },
-        )
-        return {"status": "needs_review"}
-    dataset = Path(config["dataset"])
-    review_hash = digest(review_path)
-    artifact = f"clip-{index:05d}-{review_hash[:16]}"
-    dataset.mkdir(parents=True, exist_ok=True)
-    with lock(dataset / ".publish.lock"):
-        target = dataset / "clips" / f"{artifact}.npz"
-        # Idempotent recovery: deterministic files are written before the manifest reference.
-        write_npz(target, **arrays)
-        decision = dataset / "reviews" / f"{artifact}.json"
-        write_json(decision, review)
-        manifest_path = dataset / "manifest.json"
-        if manifest_path.exists():
-            manifest = read_json(manifest_path)
-            if manifest["ball_store"]["hashes"] != config["store_hashes"]:
-                raise ValueError("Existing pose dataset belongs to another ball store")
-        else:
-            manifest = {
-                "schema": "ball_detection_player_poses.v1",
-                "coordinate_system": "stored_jpeg_pixels",
-                "ball_store": {
-                    "directory": config["store"],
-                    "hashes": config["store_hashes"],
-                },
-                "campaign": str(campaign),
-                "court_policy": "disabled",
-                "clips": [
-                    {**c, "pose_status": "pending" if c["selected"] else "skipped"}
-                    for c in plan["clips"]
-                ],
             }
-        manifest["clips"][index].update(
-            pose_status="approved",
-            file=str(target.relative_to(dataset)),
-            sha256=digest(target),
-            review_file=str(decision.relative_to(dataset)),
-            review_sha256=digest(decision),
-            raw_tracks_sha256=review["raw_tracks_sha256"],
-            players=len(arrays["player_ids"]),
-        )
-        manifest["status"] = (
-            "complete"
-            if all(
-                c["pose_status"] in ("approved", "skipped") for c in manifest["clips"]
-            )
-            else "partial"
-        )
-        write_json(manifest_path, manifest)
+            write_json(root / "review_status.json", result)
+            update_entry(Path(config["dataset"]), index, pose_status="needs_review")
+            return result
+        write_npz(root / "selection.npz", **arrays)
+        write_json(root / "decision.json", review)
         write_json(
-            root / "review_status.json",
+            root / "review.json",
             {
                 "status": "approved",
-                "file": str(target),
-                "sha256": digest(target),
-                "review_sha256": review_hash,
+                "raw_tracks_sha256": review["raw_tracks_sha256"],
+                "required_sheets": required_sheets,
+                "selected_crops": int(arrays["observed"].sum()),
+                "files": {
+                    name: digest(root / name)
+                    for name in (
+                        "tracks.npz",
+                        "generation.json",
+                        "selection.npz",
+                        "decision.json",
+                    )
+                },
             },
         )
-    return {
-        "status": "approved",
-        "players": len(arrays["player_ids"]),
-        "file": str(target),
-    }
+        update_entry(Path(config["dataset"]), index, pose_status="pose_pending")
+        result = {
+            "status": "approved",
+            "pose_status": "pending",
+            "selected_crops": int(arrays["observed"].sum()),
+        }
+        write_json(root / "review_status.json", result)
+        return result
+
+
+def load_selection(campaign: Path, index: int) -> dict[str, Any]:
+    """Revalidate review-to-observation identity before pose or publication."""
+    _, plan, store = load_campaign(campaign)
+    if not plan["clips"][index]["selected"]:
+        raise ValueError("Skipped clips cannot have selected poses")
+    root = clip_root(campaign, index)
+    verify_record(root / "generation.json")
+    receipt = verify_record(root / "review.json")
+    review = read_json(root / "decision.json")
+    if receipt["status"] != "approved" or review["status"] != "approved":
+        raise ValueError("Pose inference requires an approved review")
+    with np.load(root / "tracks.npz", allow_pickle=False) as data:
+        raw = dict(data)
+    expected = validate_and_remap(
+        raw,
+        review,
+        clip_id=plan["clips"][index]["clip_id"],
+        raw_hash=digest(root / "tracks.npz"),
+        required_sheets=receipt["required_sheets"],
+    )
+    with np.load(root / "selection.npz", allow_pickle=False) as data:
+        arrays = dict(data)
+    if set(arrays) != set(expected) or any(
+        not np.array_equal(arrays[k], expected[k]) for k in expected
+    ):
+        raise ValueError("Selection differs from the approved raw detection rows")
+    clip = store.clips[index]
+    rows = store.clip_rows(clip)
+    if any(
+        not np.array_equal(arrays[k], store.frames[k][rows])
+        for k in ("frame_index", "pts")
+    ):
+        raise ValueError("Selected observation frame/PTS differs from ball store")
+    return arrays

@@ -16,6 +16,8 @@ _SCHEMA = 'person_detection_features_v2'
 
 
 def save_features(path: Path, frames: list[DetectionFeatures], provenance: dict[str, Any]) -> None:
+    if any(f.poses is None for f in frames):
+        raise ValueError('The pose feature archive requires inferred poses')
     if any(f.parts is not None for f in frames):
         raise ValueError('Use the native part archive; v2 cannot discard part descriptors')
     if not frames or [f.frame for f in frames] != list(range(len(frames))):
