@@ -105,6 +105,7 @@ namespaces = false
 "src.tasks.base.visualization" = ["shared/*.js", "shared/*.mjs", "shared/*.txt"]
 "src.tasks.plcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tasks.blcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.person_tracking.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "*" = [
     "README.md",
     "configs/*.yaml",
