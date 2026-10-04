@@ -1,17 +1,18 @@
 """Pseudo-label quality filtering for SLCS training targets.
 
-The tennis_scene pseudo-annotations are model outputs, not ground truth. This
-module converts observation coverage into explicit per-frame label validity
-masks and confidence weights, so the loss never treats a hallucinated label as
-a fully trusted one. Rationale (documented in the task README):
+The stored tennis_scene pseudo-annotations are estimates, not ground truth.
+Their generation source is recorded in scene metadata. This module converts
+observation coverage into per-frame validity masks and loss weights; coverage
+does not independently establish the correctness of a target. The task README
+documents the dataset and filtering contract:
 
-- **Player labels** (position/yaw) come from PLCS + GVHMR, whose reliability
-  tracks 2D pose coverage. The per-frame confidence is the mean 2D keypoint
+- **Player labels** (position/yaw) are weighted by 2D pose coverage.
+  The per-frame confidence is the mean 2D keypoint
   visibility over joints and cameras; frames below ``min_player_confidence``
   are masked out entirely, the rest are weighted by
   ``confidence ** label_weight_power``.
-- **Ball labels** come from BLCS, whose reliability tracks how many cameras
-  observed the ball. Frames observed by fewer than ``min_ball_cameras``
+- **Ball labels** are weighted by the number of cameras observing the ball.
+  Frames observed by fewer than ``min_ball_cameras``
   cameras are masked out; the weight is the observing-camera fraction raised
   to ``label_weight_power``.
 - **Windows** whose labeled fraction falls below ``min_window_label_ratio``
