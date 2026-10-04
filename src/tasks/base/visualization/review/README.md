@@ -46,7 +46,10 @@ PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
 
 - `dataset-review:scene`：`detail.phase`は`loading`・`loaded`・`error`。
   `loaded`時の`detail.scene`はmodel・表示操作を準備済みのscene JSON。
+  同時に`detail.view`で現在の`Scene3D`を渡す。タスク固有のfitは既存の
+  `setOrbit()`などpublic APIを使用できる。共有側は初期画角を変更しない。
   `loading`/`error`は`form`・`sceneId`を含み、前の検品内容を破棄できる。
+  この2phaseには`view`を渡さない。拡張側も以前の参照を破棄する。
 - `dataset-review:frame`：確定した表示フレームを`{sceneId, form, frame, timeSeconds}`で通知する。
 
 拡張指定のない呼び出しは従来のindexとassetを使う。PLCSの2D検品は
