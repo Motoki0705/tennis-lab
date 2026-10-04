@@ -547,6 +547,19 @@ dd {
   top: 17px;
   font-size: 12px;
 }
+.lightbox-scope {
+  position: absolute;
+  top: 17px;
+  left: 340px;
+  font-size: 12px;
+}
+.lightbox-scope select {
+  font-size: 11px;
+  background: #25343c;
+  border: 1px solid #4b606b;
+  border-radius: 5px;
+  padding: 5px;
+}
 #image-panes {
   display: grid;
   grid-template-columns: 1fr;

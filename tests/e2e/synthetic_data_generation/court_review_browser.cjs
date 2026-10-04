@@ -24,6 +24,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     assert(scenes.includes("B00") && scenes.includes("B03"));
     const modeBox = await page.locator("#image-mode").boundingBox();
     assert(modeBox && modeBox.y + modeBox.height < 1000);
+    assert.equal(await page.locator("#label-scope").inputValue(), "target");
     await page.waitForSelector("#catalog-table tbody button");
     assert.match(
       await page.locator("#catalog-total").textContent(),
@@ -106,6 +107,28 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
         );
       });
       assert(await page.locator("#raw-pane").isVisible());
+      assert.equal(await page.locator("#point-table table").count(), 1);
+      assert.equal(await page.locator("#point-table tr").count(), 14);
+      assert.match(
+        await page.locator("#large-caption").textContent(),
+        /target court-/,
+      );
+      await page.selectOption("#large-scope", "all");
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector("#large-caption")
+            .textContent.includes("全court参考") &&
+          document.querySelectorAll("#point-table table").length > 0,
+      );
+      assert.match(
+        await page.locator("#large-sample-info").textContent(),
+        /全court参考/,
+      );
+      await page.selectOption("#large-scope", "target");
+      await page.waitForFunction(
+        () => document.querySelectorAll("#point-table tr").length === 14,
+      );
       assert.match(
         await page.locator("#large-sample-info").textContent(),
         /target court-/,
@@ -125,6 +148,32 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
         ).href,
       );
       const summary = await response.json();
+      if (summary.courts.length > 1) {
+        const s = summary.groups
+          .flatMap((g) => g.samples)
+          .find(
+            (s) =>
+              s.target_counts && s.counts.in_frame > s.target_counts.in_frame,
+          );
+        assert(
+          s,
+          "a sample with additional in-frame courts is required for scope comparison",
+        );
+        const endpoint = new URL(
+          `/api/scenes/${scene}/images/${s.id}?revision=${summary.revision}&width=480`,
+          baseURL,
+        ).href;
+        const targetImage = await (
+          await page.request.get(endpoint + "&label_scope=target")
+        ).body();
+        const allImage = await (
+          await page.request.get(endpoint + "&label_scope=all")
+        ).body();
+        assert(
+          !targetImage.equals(allImage),
+          "target and all-court image caches must remain distinct",
+        );
+      }
       assert.equal(
         splitCount,
         summary.groups.filter((g) => g.split === "test").length,

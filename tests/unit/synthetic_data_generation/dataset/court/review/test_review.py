@@ -182,6 +182,20 @@ def test_api_reports_stale_revision_and_unknown_sample(
         assert detail.json()["camera_to_scene"] == np.eye(4).ravel().tolist()
         assert (
             client.get(
+                "/api/scenes/B00/images/sample-1",
+                params={"revision": revision, "label_scope": "target"},
+            ).status_code
+            == 422
+        )
+        assert (
+            client.get(
+                "/api/scenes/B00/images/sample-1",
+                params={"revision": revision, "label_scope": "invalid"},
+            ).status_code
+            == 422
+        )
+        assert (
+            client.get(
                 "/api/scenes/B00/samples/missing", params={"revision": revision}
             ).status_code
             == 404

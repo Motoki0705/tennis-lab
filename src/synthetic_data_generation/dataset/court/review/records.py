@@ -96,6 +96,18 @@ def visibility_summary(projection: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def target_projection(sample: dict[str, Any]) -> dict[str, Any]:
+    """Select the stored target KP without changing the all-court sparse record."""
+    target = target_court_id(sample)
+    projection = sample.get("projection")
+    if target is None or projection is None:
+        raise ValueError("Target court projection is not recorded.")
+    courts = [c for c in projection["courts"] if c["court_instance_id"] == target]
+    if len(courts) != 1:
+        raise ValueError("Target court projection must bind exactly one court.")
+    return {**projection, "courts": courts}
+
+
 def sample_summary(sample: dict[str, Any]) -> dict[str, Any]:
     visibility = visibility_summary(sample["projection"])
     target = target_court_id(sample)

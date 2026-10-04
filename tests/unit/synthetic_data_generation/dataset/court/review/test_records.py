@@ -10,6 +10,7 @@ from src.synthetic_data_generation.dataset.court.review.records import (
     rejection_summary,
     sample_summary,
     split_target_counts,
+    target_projection,
     visibility_summary,
 )
 
@@ -160,3 +161,26 @@ def test_pre_render_rejection_has_geometry_but_no_renderer_evidence() -> None:
         )["samples"][0]["projection_recorded"]
         is False
     )
+
+
+def test_target_only_projection_preserves_saved_truth_and_has_no_fallback() -> None:
+    record = sample("court-001", "test")
+    target = {
+        "court_instance_id": "court-001",
+        "coverage_mode": "partial",
+        "classes": [],
+    }
+    record["projection"]["courts"].append(target)
+    selected = target_projection(record)
+    assert selected["courts"] == [target]
+    assert selected["courts"][0] is target
+    assert len(record["projection"]["courts"]) == 2
+    record["projection"]["courts"].append(target)
+    with pytest.raises(ValueError, match="exactly one"):
+        target_projection(record)
+    record["projection"] = projection([])
+    with pytest.raises(ValueError, match="exactly one"):
+        target_projection(record)
+    record.pop("target_court")
+    with pytest.raises(ValueError, match="not recorded"):
+        target_projection(record)
