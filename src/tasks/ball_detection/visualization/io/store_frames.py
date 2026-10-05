@@ -11,6 +11,7 @@ from numpy.typing import NDArray
 from src.tasks.ball_detection.data.store import POINT_KIND_NAMES, BallFrameStore
 from src.tasks.ball_detection.data.supervision import (
     OBSERVED_ONLY,
+    FrameSupervision,
     resolve_frame_supervision,
 )
 from src.tasks.ball_detection.data.types import FrameLabel
@@ -26,10 +27,16 @@ class StoreSceneFrames:
 
     mode: Literal["temporal"] = "temporal"
 
-    def __init__(self, store: BallFrameStore, clip_id: str) -> None:
+    def __init__(
+        self,
+        store: BallFrameStore,
+        clip_id: str,
+        *,
+        supervision: FrameSupervision | None = None,
+    ) -> None:
         self.store = store
         self.clip = store.clip_by_id(clip_id)
-        self._supervision = resolve_frame_supervision(store, OBSERVED_ONLY)
+        self._supervision = supervision
 
     @property
     def frames(self) -> int:
@@ -47,7 +54,7 @@ class StoreSceneFrames:
         self._row(index)
         return self.clip.width, self.clip.height
 
-    def read_rgb(self, index: int) -> NDArray[np.uint8]:
+    def _check_shard(self) -> None:
         # Recheck on access as well as catalog discovery (symlinks can change).
         from src.tasks.ball_detection.data.store import SHARDS_DIR, shard_name
 
@@ -55,6 +62,15 @@ class StoreSceneFrames:
         shard = root / SHARDS_DIR / shard_name(self.clip.index)
         if not shard.resolve().is_relative_to(root):
             raise ValueError(f"Shard {shard} resolves outside the store root")
+
+    def read_jpeg(self, index: int) -> bytes:
+        """Serve the original stored bytes, without lossy re-encoding."""
+        row = self._row(index)
+        self._check_shard()
+        return bytes(self.store.read_jpeg(row))
+
+    def read_rgb(self, index: int) -> NDArray[np.uint8]:
+        self._check_shard()
         return cast(
             NDArray[np.uint8],
             cv2.cvtColor(self.store.read_bgr(self._row(index)), cv2.COLOR_BGR2RGB),
@@ -82,4 +98,6 @@ class StoreSceneFrames:
         return bool(self.store.frames["annotated"][self._row(index)])
 
     def supervised(self, index: int) -> bool:
+        if self._supervision is None:
+            self._supervision = resolve_frame_supervision(self.store, OBSERVED_ONLY)
         return bool(self._supervision.supervised[self._row(index)])
