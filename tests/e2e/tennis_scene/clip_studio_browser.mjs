@@ -15,6 +15,7 @@ try {
   await page.goto(base);
   await page.waitForSelector('.viewer img:not([hidden])');
   const initial = await (await page.request.get(`${base}/api/project`)).json();
+  assert.equal(initial.dataset_id, 'clip_studio_edit_test', 'Never run editing E2E on a production project');
   assert.equal(initial.clips.length, 0, 'Use an empty disposable project');
   assert.ok(initial.sources.length >= 2);
   assert.ok(initial.extent[1] > 40);
