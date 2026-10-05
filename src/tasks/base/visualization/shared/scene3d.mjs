@@ -353,6 +353,7 @@ export class Scene3D {
     this.follow = false;
     this.showCameras = true;
     this.showTrail = true;
+    this.trailMode = "history";
     this.selectedCamera = null;
     this.dirty = true;
     this.onCameraPick = options.onCameraPick ?? null;
@@ -774,6 +775,13 @@ export class Scene3D {
     }
   }
 
+  /** Offline comparisons can show complete paths without moving the playhead. */
+  setTrailMode(mode) {
+    if (!["history", "full"].includes(mode)) throw new Error(`Unknown trail mode: ${mode}`);
+    this.trailMode = mode;
+    this._applyFrame();
+  }
+
   _applyFrame() {
     const frame = this.frame;
     for (const entity of this._entities) {
@@ -854,7 +862,7 @@ export class Scene3D {
         }
       }
 
-      const visible = entity.trail.prefix[frame] ?? 0;
+      const visible = this.trailMode === "full" ? entity.trail.count : (entity.trail.prefix[frame] ?? 0);
       entity.trail.line.geometry.setDrawRange(0, Math.min(visible, entity.trail.count) * 2);
       entity.trail.line.visible = this.showTrail;
       entity.trail.line.material.color.copy(color);

@@ -6,6 +6,9 @@ offlineの双方向Transformerを共通にし、2Dは直接回帰、3Dは直接�
 回帰は全frameの復元損失に、任意のconditional LSGAN補助を加える。
 GANの有効性は比較で判断し、平均化の回避を保証しない。
 
+共通データ、学習済み重み、拡張前後をブラウザで比較する場合は
+[2D / 3D Dataset Review](review/README.md)を参照。
+
 ## 共有データ
 
 `data/ball_refiner/single_object/` が2D・3Dで共通のdataset。

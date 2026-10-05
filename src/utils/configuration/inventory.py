@@ -278,6 +278,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.ball_refiner.scripts.serve_coordinate_review": (
+        "ball_refiner.serve_coordinate_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.submodules.visualization.review.__main__": (
         "submodules.pose_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -481,6 +485,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary("src.submodules.visualization.review.__main__", "main", domain="submodules", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.predict_coordinates", "main", domain="ball_refiner", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_refiner.scripts.serve_coordinate_review", "main", domain="ball_refiner", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_triangulation", "main", domain="ball_refiner", executable_module=True),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.evaluate_pilot"),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
