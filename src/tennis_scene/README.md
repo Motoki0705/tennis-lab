@@ -46,6 +46,9 @@ storeの採用済みartifactは、推論もstoreへの書き込みもせずにHT
 .venv/bin/python -m src.tennis_scene.scripts.visualize_component_store --store <clip>/annotations/tennis_scene --output <dir> [--videos]
 ```
 
+source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認する画面と、
+`--serve --port 8903`での起動方法は[review/README.md](review/README.md)を参照してください。
+
 ## 座標・対応
 
 観測の正本はpixel座標、sceneの2D座標はpixel/(width,height)です。

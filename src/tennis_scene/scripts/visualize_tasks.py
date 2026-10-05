@@ -17,6 +17,7 @@ from omegaconf import DictConfig
 
 from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.configuration import validate_visualize_tasks_boundary
+from src.tennis_scene.review.trajectory import mask_intervals
 from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.schema.player import COCO17_SKELETON
 
@@ -123,13 +124,12 @@ def _render_ball_detection(
     for t in frame_range:
         frame = frames[t].copy()
         # Trail of recent visible detections.
-        pts = [
-            (int(ball_uv[s, 0]), int(ball_uv[s, 1]))
-            for s in range(max(frame_range.start, t - trail_length), t)
-            if vis[s]
-        ]
-        for i in range(1, len(pts)):
-            cv2.line(frame, pts[i - 1], pts[i], _BALL_BGR, 1, cv2.LINE_AA)
+        start = max(frame_range.start, t - trail_length)
+        for a, b in mask_intervals(vis[start:t]):
+            for s in range(start + a + 1, start + b):
+                previous = (int(ball_uv[s - 1, 0]), int(ball_uv[s - 1, 1]))
+                current = (int(ball_uv[s, 0]), int(ball_uv[s, 1]))
+                cv2.line(frame, previous, current, _BALL_BGR, 1, cv2.LINE_AA)
         if vis[t]:
             x, y = int(ball_uv[t, 0]), int(ball_uv[t, 1])
             cv2.circle(frame, (x, y), 6, _BALL_BGR, 2, cv2.LINE_AA)

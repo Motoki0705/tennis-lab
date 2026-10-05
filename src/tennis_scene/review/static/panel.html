@@ -1,0 +1,27 @@
+<section id="dataset-overview" class="review-panel">
+  <div class="review-heading"><div><p class="eyebrow">保存済み統合dataset / component store</p><h2>Source → 採用artifact → 品質</h2></div><span class="pill">読取専用 · モデル推定</span></div>
+  <p id="snapshot-path" class="small"></p>
+  <div id="snapshot-summary" class="summary-grid"></div>
+  <p class="notice">「採用」はこの保存index内の選択です。依存一致・描画可能であっても、現在の推論コードとの互換性や教師の品質合格を意味しません。</p>
+  <details id="source-details"><summary>元入力とchecksum / 単位</summary><div id="source-table"></div><p class="small">RGBは実動画、2Dは保存モデル観測。scene 2Dは pixel / (width, height)、3Dはコート座標 m、yawはrad。欠測から人物/球の不在や画面外を推定しません。</p></details>
+  <details id="artifact-details"><summary>採用artifact・履歴schema・古い依存を辿る</summary><div class="inventory-scroll" id="artifact-table"></div></details>
+</section>
+<section id="frame-review" class="review-panel">
+  <div class="review-heading"><div><p class="eyebrow">RGB / 保存2D観測 / 3D / quality mask</p><h2>同じsource frameで確認</h2></div><span id="scene-status" class="pill"></span></div>
+  <p id="scene-note" class="small"></p>
+  <div class="frame-controls">
+    <button id="previous-frame" aria-label="前のframe">←</button><button id="play-frames">▶ frame送り</button><button id="next-frame" aria-label="次のframe">→</button>
+    <label>source frame <input id="frame-number" type="number" min="0" value="0"></label><span id="frame-time" class="small"></span>
+    <label><input id="show-2d" type="checkbox" checked>保存2D</label><label><input id="show-reprojection" type="checkbox">3D再投影</label>
+    <label>3D表示 <select id="scene-view"><option value="top">上面</option><option value="oblique">斜め</option></select></label>
+  </div>
+  <input id="frame-slider" type="range" min="0" value="0" aria-label="source frame">
+  <div class="inspection-grid">
+    <div><div id="rgb-views" class="rgb-grid"></div><p class="small">橙/緑: 保存2D pose · 黄の小点: ball観測 · 橙輪: ballの保存補間/推定点 · 青輪: 有効3Dの近似再投影。sceneなしのposeはcamera-local track（表示conf &gt; .15）。Court14はframe 0からの固定値。RGBはクリックでframe画像を開きます。</p><div id="frame-quality"></div></div>
+    <div class="court-panel"><canvas id="court-scene" width="440" height="390" aria-label="同frameのコート3D推定"></canvas><p class="small">軌跡は直前60 source frame。欠測で線を切ります。関節/球/rootはmaskが有効なものだけ。近似校正: 単一平面pinhole、歪み補正なし。</p><div id="calibration-details" class="small"></div></div>
+  </div>
+  <div id="quality-timeline"></div>
+  <div class="review-heading"><h3>欠損区間へ移動</h3><span class="small">[start, end) / 0始まりsource frame</span></div>
+  <div id="gap-buttons" class="gap-buttons"></div>
+  <p id="media-note" class="small"></p>
+</section>
