@@ -63,6 +63,7 @@
 - **`io/clip.py`**: storeのclipから推論/描画用テンソルを構築（`visualization.store_dir` と `clip_id` を指定）。
 - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
 - **`review/datasets.py`**: `BallDatasetCatalog`。ball storeの全versionを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
+- **`review/quality.py`**: 保存済みframe/instance表とobserved-only方針からsource/split・教師区分を集計。クリップ絞込、注釈状態への移動、各frameの採点可否に使う。
 - **`review/players/`**: [検証付きpose・tracking reader](visualization/review/players/README.md)。採用済みとraw結果を既存RGBへ対応付け、状態・pose・ID・欠損を読み取り専用で提供する。
 - **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
 - **`inference/loader.py`**: `load_ball_model()`。共通checkpoint loaderを使い、レビュー用の入力サイズ・窓長を検証する。
@@ -180,19 +181,10 @@ checkpoint本体の保存configだけを根拠にする(ファイル名から推
 
 ## 学習データ
 
-学習・評価・レビューUIは `data/ball_detection/<version>` の統一frame storeを使う。
-通常学習の既定versionは `ball-mix-v2`。store内の `tracknet` / `meiji` /
-`chat_annotation` は出自の名前であり、学習時に元の画像・動画へアクセスしない。
-3 sourceの混合比と教師方針は `configs/data/rgb_sequence.yaml` を正本とする。
+現行のdataset系列・sourceとsplit・入力と教師・派生poseの制限は
+[データセット体系](data/README.md)を参照してください。
 学習窓は `model.num_frames` に固定し、`eval_stride: null` はその長さごとの窓を意味する。
 `data.source=store` のみ受け付け、廃止したWeb・staged・旧sourceへのフォールバックは行わない。
-
-統一storeの新規生成は `scripts/generate_dataset.py` が担当する。TrackNetの配布形式、
-Meiji、chat annotationの入力位置とsplitは `configs/generate_dataset.yaml` に定義する。
-生成済みstoreの利用には原本不要だが、新規生成には選択したsourceの原本が必要。
-入力やsplitを変更して生成するときは `dataset.version` に新しいversionを指定する。
-生成先には全frameのJPEG shard、注釈index、metadata、READMEを保存する。
-旧YouTube収集・疑似ラベル・SSL画像収集とWeb変換の入口は提供しない。
 
 旧checkpointの推論は保存済みmodel/正規化契約のまま利用できる。
 学習再開には現在のstore設定を明示する。

@@ -28,6 +28,7 @@ from src.tasks.ball_detection.data.supervision import (
 )
 from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.ball_detection.visualization.io.store_frames import StoreSceneFrames
+from src.tasks.ball_detection.visualization.review.quality import BallReviewIndex
 
 SceneMode = Literal["temporal"]
 
@@ -133,6 +134,7 @@ class DatasetEntry:
     max_scene_frames: int
     reason: str | None
     warnings: tuple[str, ...] = ()
+    overview: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return the JSON payload for the catalog endpoint."""
@@ -148,6 +150,8 @@ class DatasetEntry:
             payload["reason"] = self.reason
         if self.warnings:
             payload["warnings"] = list(self.warnings)
+        if self.overview is not None:
+            payload["overview"] = self.overview
         return payload
 
 
@@ -177,6 +181,8 @@ class BallDatasetCatalog:
         self._warnings: dict[str, tuple[str, ...]] = {}
         self._ball_stores: dict[str, BallFrameStore] = {}
         self._supervision: dict[str, FrameSupervision] = {}
+        self._reviews: dict[str, BallReviewIndex] = {}
+        self._overviews: dict[str, dict[str, Any]] = {}
         self._specs: tuple[BallDatasetSpec, ...] | None = None
 
     # -------------------------------------------------------------- refresh
@@ -194,6 +200,8 @@ class BallDatasetCatalog:
         self._warnings.clear()
         self._ball_stores.clear()
         self._supervision.clear()
+        self._reviews.clear()
+        self._overviews.clear()
         self._specs = None
 
     # ----------------------------------------------------------- discovery
@@ -241,6 +249,7 @@ class BallDatasetCatalog:
                     max_scene_frames=max((ref.frames for ref in refs), default=0),
                     reason=reason,
                     warnings=self._warnings.get(spec.id, ()),
+                    overview=self.overview(spec.id) if reason is None else None,
                 )
             )
         return entries
@@ -312,6 +321,21 @@ class BallDatasetCatalog:
             self._supervision[dataset_id] = resolve_frame_supervision(store, OBSERVED_ONLY)
         frames = StoreSceneFrames(store, ref.clip_id, supervision=self._supervision[dataset_id])
         return frames
+
+    def review(self, dataset_id: str) -> BallReviewIndex:
+        """Return annotation review masks using the canonical scoring policy."""
+        store = self.store(dataset_id)
+        if dataset_id not in self._supervision:
+            self._supervision[dataset_id] = resolve_frame_supervision(store, OBSERVED_ONLY)
+        if dataset_id not in self._reviews:
+            self._reviews[dataset_id] = BallReviewIndex(store, self._supervision[dataset_id])
+        return self._reviews[dataset_id]
+
+    def overview(self, dataset_id: str) -> dict[str, Any]:
+        """Return cached table-derived counts for one discovered dataset."""
+        if dataset_id not in self._overviews:
+            self._overviews[dataset_id] = self.review(dataset_id).overview()
+        return self._overviews[dataset_id]
 
     def iter_scene_refs(self) -> Iterator[SceneRef]:
         """Yield every scene reference across all datasets."""
