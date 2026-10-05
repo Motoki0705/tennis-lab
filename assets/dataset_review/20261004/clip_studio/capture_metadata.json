@@ -1,0 +1,203 @@
+{
+  "campaign": "dataset-review-20261004:clip_studio",
+  "ui_code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+  "captures": [
+    {
+      "name": "before-clip.png",
+      "phase": "before",
+      "kind": "clip",
+      "captured_at": "2026-10-04T15:08:36.901Z",
+      "dataset": "meiji_3cam",
+      "sample": "video_000",
+      "selected_clip": "clip_000",
+      "global_time_sec": 45,
+      "camera": "cam0",
+      "display": "comparison",
+      "zoom": "100%",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "device_scale_factor": 1,
+      "raw_frame_labels": [
+        "frame 2697 · 00:00:45.000",
+        "frame 5602 · 00:01:33.465",
+        "frame 779 · 00:00:13.001"
+      ],
+      "code_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "relevant_file_hashes": {
+        "web/static/index.html": "118deb097651e128ddcde496f5bcd10f5bc2fa0b9c1f18b8d74e1cfe12426386",
+        "web/static/studio.js": "d12d5e5bc6d0bb7aad37746344a714756224e249a8e09d9f1eafc24bd458161f",
+        "web/static/style.css": "7900617b571bd04bdb32c262b4441162e9810daad70a67b3d2d93e00f8523324",
+        "web/static/playback.js": "ae0ef268587d053c2ec4c32e11a257c391c40e3d982150af72ebc5697f13ee41",
+        "web/app.py": "3b2234d78ede679ca8c72c900f8676b177a1fe69ab900424fc9cb08a01cf4460"
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/projects.json",
+      "source_manifest_sha256": "7da1386652c404ae9d429a2c01b706c0765533bdc852961875b024171946faea",
+      "read_only_capture": true,
+      "image_sha256": "53250648a851fe9a355ec9119eaad1e6e2222969ecce8ab7ec4ed8d2e05c2340"
+    },
+    {
+      "name": "after-clip.png",
+      "phase": "after",
+      "kind": "clip",
+      "captured_at": "2026-10-04T15:49:38.795Z",
+      "dataset": "meiji_3cam",
+      "sample": "video_000",
+      "selected_clip": "clip_000",
+      "global_time_sec": 45,
+      "camera": "cam0",
+      "display": "comparison",
+      "zoom": "100%",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "device_scale_factor": 1,
+      "raw_frame_labels": [
+        "frame 2697 · 00:00:45.000",
+        "frame 5602 · 00:01:33.465",
+        "frame 779 · 00:00:13.001"
+      ],
+      "code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+      "relevant_file_hashes": {
+        "web/static/index.html": "bf75c414c2155cda25cc51ac69c2c2531dcd05ed58c5266ae7547696fa08ac0a",
+        "web/static/studio.js": "cbc4364107eb1e3c8b3dbdbd28333fd5059aded87f1fc9dfd28865272583d5f3",
+        "web/static/style.css": "c84b070888093fcd287d24f59642368ef51d0fa09d3577e9557a8ae086474316",
+        "web/static/playback.js": "ae0ef268587d053c2ec4c32e11a257c391c40e3d982150af72ebc5697f13ee41",
+        "web/static/review.js": "4c04ba575ca9d0f69e70470c1513f5174e931c318ef8cb2af9d3eef069e97761",
+        "web/app.py": "eca0c01b268c2ff426f2eb84ee04a733c076997199e49493d4004cf0633363c1",
+        "web/service.py": "728eb9cd01533c0f55b1b66831803f07010f0aeb36e0715e272f5662a628d9c6",
+        "web/review.py": "36010e3a70c52dff00b32c8fbb3abcab1b9eb3a76d7f4ba2b4aa770a43189fc4",
+        "review.py": "8c09f558512abccbfd806b568e100e610784cff9f0a719799276312c9ac1af9c",
+        "export.py": "5fca9a6e165c87a09ba75d42a1ec2fb21dd8ddc50f34a1f86196315a71eb8c0e"
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/projects.json",
+      "source_manifest_sha256": "7da1386652c404ae9d429a2c01b706c0765533bdc852961875b024171946faea",
+      "read_only_capture": true,
+      "image_sha256": "3e9adc4af245fbc627fc0c1cfa515ffbbeadd8d2e800940270e1ec9623582bdb"
+    },
+    {
+      "name": "before-missing.png",
+      "phase": "before",
+      "kind": "missing",
+      "captured_at": "2026-10-04T15:08:37.611Z",
+      "dataset": "meiji_3cam",
+      "sample": "video_000",
+      "selected_clip": "clip_000",
+      "global_time_sec": 0,
+      "camera": "cam0",
+      "display": "comparison",
+      "zoom": "100%",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "device_scale_factor": 1,
+      "raw_frame_labels": [
+        "frame 0 · 00:00:00.000",
+        "frame 2905 · 00:00:48.465",
+        "この時刻の映像はありません"
+      ],
+      "code_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "relevant_file_hashes": {
+        "web/static/index.html": "118deb097651e128ddcde496f5bcd10f5bc2fa0b9c1f18b8d74e1cfe12426386",
+        "web/static/studio.js": "d12d5e5bc6d0bb7aad37746344a714756224e249a8e09d9f1eafc24bd458161f",
+        "web/static/style.css": "7900617b571bd04bdb32c262b4441162e9810daad70a67b3d2d93e00f8523324",
+        "web/static/playback.js": "ae0ef268587d053c2ec4c32e11a257c391c40e3d982150af72ebc5697f13ee41",
+        "web/app.py": "3b2234d78ede679ca8c72c900f8676b177a1fe69ab900424fc9cb08a01cf4460"
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/projects.json",
+      "source_manifest_sha256": "7da1386652c404ae9d429a2c01b706c0765533bdc852961875b024171946faea",
+      "read_only_capture": true,
+      "image_sha256": "456e18ab8f7ff96edbd4fddf76baa3629c4564d53266152a970931171d9fab3f"
+    },
+    {
+      "name": "after-missing.png",
+      "phase": "after",
+      "kind": "missing",
+      "captured_at": "2026-10-04T15:49:39.466Z",
+      "dataset": "meiji_3cam",
+      "sample": "video_000",
+      "selected_clip": "clip_000",
+      "global_time_sec": 0,
+      "camera": "cam0",
+      "display": "comparison",
+      "zoom": "100%",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "device_scale_factor": 1,
+      "raw_frame_labels": [
+        "frame 0 · 00:00:00.000",
+        "frame 2905 · 00:00:48.465",
+        "この時刻の映像はありません"
+      ],
+      "code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+      "relevant_file_hashes": {
+        "web/static/index.html": "bf75c414c2155cda25cc51ac69c2c2531dcd05ed58c5266ae7547696fa08ac0a",
+        "web/static/studio.js": "cbc4364107eb1e3c8b3dbdbd28333fd5059aded87f1fc9dfd28865272583d5f3",
+        "web/static/style.css": "c84b070888093fcd287d24f59642368ef51d0fa09d3577e9557a8ae086474316",
+        "web/static/playback.js": "ae0ef268587d053c2ec4c32e11a257c391c40e3d982150af72ebc5697f13ee41",
+        "web/static/review.js": "4c04ba575ca9d0f69e70470c1513f5174e931c318ef8cb2af9d3eef069e97761",
+        "web/app.py": "eca0c01b268c2ff426f2eb84ee04a733c076997199e49493d4004cf0633363c1",
+        "web/service.py": "728eb9cd01533c0f55b1b66831803f07010f0aeb36e0715e272f5662a628d9c6",
+        "web/review.py": "36010e3a70c52dff00b32c8fbb3abcab1b9eb3a76d7f4ba2b4aa770a43189fc4",
+        "review.py": "8c09f558512abccbfd806b568e100e610784cff9f0a719799276312c9ac1af9c",
+        "export.py": "5fca9a6e165c87a09ba75d42a1ec2fb21dd8ddc50f34a1f86196315a71eb8c0e"
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/projects.json",
+      "source_manifest_sha256": "7da1386652c404ae9d429a2c01b706c0765533bdc852961875b024171946faea",
+      "read_only_capture": true,
+      "image_sha256": "b319369fde6988540d776dfd79f837a2103b25b83f435bc71f81f0e3b1acc504"
+    },
+    {
+      "name": "after-unexported.png",
+      "phase": "after",
+      "kind": "unexported",
+      "captured_at": "2026-10-04T15:51:02.182Z",
+      "dataset": "meiji_3cam",
+      "sample": "video_002",
+      "selected_clip": "clip_024",
+      "global_time_sec": 565.1587753333333,
+      "camera": "cam0",
+      "display": "comparison",
+      "zoom": "100%",
+      "viewport": {
+        "width": 1600,
+        "height": 1100
+      },
+      "device_scale_factor": 1,
+      "raw_frame_labels": [
+        "frame 34912 · 00:09:42.442",
+        "frame 34421 · 00:09:34.259",
+        "frame 33908 · 00:09:25.693"
+      ],
+      "code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+      "relevant_file_hashes": {
+        "web/static/index.html": "bf75c414c2155cda25cc51ac69c2c2531dcd05ed58c5266ae7547696fa08ac0a",
+        "web/static/studio.js": "cbc4364107eb1e3c8b3dbdbd28333fd5059aded87f1fc9dfd28865272583d5f3",
+        "web/static/style.css": "c84b070888093fcd287d24f59642368ef51d0fa09d3577e9557a8ae086474316",
+        "web/static/playback.js": "ae0ef268587d053c2ec4c32e11a257c391c40e3d982150af72ebc5697f13ee41",
+        "web/static/review.js": "4c04ba575ca9d0f69e70470c1513f5174e931c318ef8cb2af9d3eef069e97761",
+        "web/app.py": "eca0c01b268c2ff426f2eb84ee04a733c076997199e49493d4004cf0633363c1",
+        "web/service.py": "728eb9cd01533c0f55b1b66831803f07010f0aeb36e0715e272f5662a628d9c6",
+        "web/review.py": "36010e3a70c52dff00b32c8fbb3abcab1b9eb3a76d7f4ba2b4aa770a43189fc4",
+        "review.py": "8c09f558512abccbfd806b568e100e610784cff9f0a719799276312c9ac1af9c",
+        "export.py": "5fca9a6e165c87a09ba75d42a1ec2fb21dd8ddc50f34a1f86196315a71eb8c0e"
+      },
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/projects.json",
+      "source_manifest_sha256": "7da1386652c404ae9d429a2c01b706c0765533bdc852961875b024171946faea",
+      "read_only_capture": true,
+      "image_sha256": "a1b9b5f7b7cacc0556974dba942e9718802e260da2b8ea31153bb9b96bf07e4c"
+    }
+  ],
+  "original_verification": {
+    "json_sha256_checked": 243,
+    "media_stat_checked": 192,
+    "new_media": [],
+    "differences": []
+  },
+  "evidence_note": "Actual browser screenshots of existing real raw videos. Review only; registration/media existence does not assert QA or teacher quality. Test fixtures are excluded."
+}

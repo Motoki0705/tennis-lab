@@ -274,6 +274,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tennis_scene.clip_studio.__main__": (
+        "tennis_scene.clip_studio_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner.scripts.compare_triangulation": (
         "ball_refiner.compare_triangulation",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -386,6 +390,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "plcs.accad_motion_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.player_detection.scripts.review_dataset": (
+        "player_detection.review_dataset",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.plcs.scripts.review_dataset": (
         "plcs.dataset_scene_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -396,6 +404,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     ),
     "src.tasks.slcs.scripts.review_dataset": (
         "slcs.dataset_scene_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.person_tracking.scripts.review_dataset": (
+        "person_tracking.dataset_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.player_association.scripts.review_dataset": (
@@ -416,6 +428,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     ),
     "src.tasks.court_side.scripts.benchmark_synthetic": (
         "court_side.benchmark_synthetic",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.court_side.scripts.review_dataset": (
+        "court_side.dataset_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
 }
@@ -450,6 +466,7 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_triangulation", "main", domain="ball_refiner", executable_module=True),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.evaluate_pilot"),
     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
@@ -572,6 +589,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         executable_module=True,
     ),
     _non_hydra_boundary(
+        "src.tasks.person_tracking.scripts.review_dataset",
+        "main",
+        domain="person_tracking",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
         "src.tasks.player_association.scripts.review_dataset",
         "main",
         domain="player_association",
@@ -597,6 +620,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.tasks.court_side.scripts.benchmark_synthetic",
+        "main",
+        domain="court_side",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.court_side.scripts.review_dataset",
         "main",
         domain="court_side",
         executable_module=True,
@@ -651,6 +680,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _runtime_boundary(
         "player_detection", "src.tasks.player_detection.scripts.preview_dataset"
+    ),
+    _non_hydra_boundary(
+        "src.tasks.player_detection.scripts.review_dataset",
+        "main",
+        domain="player_detection",
+        executable_module=True,
     ),
     _runtime_boundary("plcs", "src.tasks.plcs.scripts.analysis.analyze_angle_velocity"),
     _runtime_boundary(
