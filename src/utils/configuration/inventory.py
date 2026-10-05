@@ -418,6 +418,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "court_side.benchmark_synthetic",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.court_side.scripts.review_dataset": (
+        "court_side.dataset_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
 }
 
 
@@ -597,6 +601,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.tasks.court_side.scripts.benchmark_synthetic",
+        "main",
+        domain="court_side",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.court_side.scripts.review_dataset",
         "main",
         domain="court_side",
         executable_module=True,
