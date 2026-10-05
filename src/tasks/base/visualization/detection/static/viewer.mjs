@@ -1,3 +1,5 @@
+import { drawPlayers } from "./players.mjs";
+
 export function fitScale(width, height, viewportWidth, viewportHeight) {
   if (
     ![width, height, viewportWidth, viewportHeight].every(
@@ -40,6 +42,7 @@ export class ImageViewer {
     this.token = 0;
     this.gt = null;
     this.pred = null;
+    this.people = [];
     this.rasters = new Map();
     this.pointers = new Map();
     this.options = {
@@ -48,6 +51,12 @@ export class ImageViewer {
       labels: false,
       raster: "",
       opacity: 0.55,
+      ballPoints: false,
+      players: true,
+      pose: true,
+      boxes: true,
+      identities: true,
+      trails: true,
     };
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
@@ -116,17 +125,18 @@ export class ImageViewer {
     this.image = null;
     this.gt = null;
     this.pred = null;
+    this.people = [];
     this.rasters.clear();
     this.draw();
   }
-  async setFrame(url, gt, pred, reset = false) {
+  async setFrame(source, gt, pred, reset = false, people = []) {
     const token = ++this.token;
-    const image = await loadImage(url);
+    const image = typeof source === "string" ? await loadImage(source) : source;
     const rasterList = [...(gt?.rasters || []), ...(pred?.rasters || [])];
     const loaded = await Promise.all(
       rasterList.map(async (layer) => [
         layer.data,
-        await loadImage(layer.data),
+        this.rasters.get(layer.data) || (await loadImage(layer.data)),
       ]),
     );
     if (token !== this.token) return false;
@@ -137,6 +147,7 @@ export class ImageViewer {
     this.image = image;
     this.gt = gt;
     this.pred = pred;
+    this.people = people;
     this.rasters = new Map(loaded);
     if (reset || changedSize) this.fit();
     else this.draw();
@@ -182,6 +193,7 @@ export class ImageViewer {
     ctx.beginPath();
     ctx.rect(0, 0, this.image.width, this.image.height);
     ctx.clip();
+    drawPlayers(ctx, this.people, this.options, scale);
     for (const [kind, color] of [
       ["gt", "#25db97"],
       ["pred", "#ff6285"],
@@ -212,10 +224,11 @@ export class ImageViewer {
         ctx.stroke();
       }
       for (const point of visiblePoints(layer)) {
-        const radius = (kind === "gt" ? 5 : 3.2) / scale;
+        const radius =
+          (this.options.ballPoints ? 1.25 : kind === "gt" ? 5 : 3.2) / scale;
         ctx.beginPath();
         ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
-        if (kind === "gt") {
+        if (kind === "gt" && !this.options.ballPoints) {
           ctx.stroke();
         } else {
           ctx.fill();

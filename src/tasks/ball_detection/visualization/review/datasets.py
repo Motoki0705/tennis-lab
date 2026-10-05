@@ -21,6 +21,11 @@ from src.tasks.ball_detection.data.store import (
     BallFrameStore,
     shard_name,
 )
+from src.tasks.ball_detection.data.supervision import (
+    OBSERVED_ONLY,
+    FrameSupervision,
+    resolve_frame_supervision,
+)
 from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.ball_detection.visualization.io.store_frames import StoreSceneFrames
 
@@ -67,6 +72,10 @@ class SceneFrames(Protocol):
 
     def read_rgb(self, index: int) -> NDArray[np.uint8]:
         """Return the frame as an ``(H, W, 3)`` uint8 RGB array."""
+        ...
+
+    def read_jpeg(self, index: int) -> bytes:
+        """Return the original stored JPEG bytes."""
         ...
 
     def labels(self, index: int) -> tuple[FrameLabel, ...]:
@@ -167,6 +176,7 @@ class BallDatasetCatalog:
         self._reasons: dict[str, str] = {}
         self._warnings: dict[str, tuple[str, ...]] = {}
         self._ball_stores: dict[str, BallFrameStore] = {}
+        self._supervision: dict[str, FrameSupervision] = {}
         self._specs: tuple[BallDatasetSpec, ...] | None = None
 
     # -------------------------------------------------------------- refresh
@@ -183,6 +193,7 @@ class BallDatasetCatalog:
         self._reasons.clear()
         self._warnings.clear()
         self._ball_stores.clear()
+        self._supervision.clear()
         self._specs = None
 
     # ----------------------------------------------------------- discovery
@@ -286,10 +297,20 @@ class BallDatasetCatalog:
             for clip in sorted(store.clips, key=lambda clip: _natural_key(clip.clip_id))
         ), None
 
-    def resolve(self, dataset_id: str, local_id: str) -> SceneFrames:
+    def store(self, dataset_id: str) -> BallFrameStore:
+        """Return a discovered store, refusing unavailable datasets."""
+        self.refs(dataset_id)
+        if dataset_id not in self._ball_stores:
+            raise BallDatasetCatalogError(self._reasons.get(dataset_id, "Store unavailable"))
+        return self._ball_stores[dataset_id]
+
+    def resolve(self, dataset_id: str, local_id: str) -> StoreSceneFrames:
         """Resolve one catalogued store clip to its frame accessor."""
         ref = self.scene_ref(dataset_id, local_id)
-        frames: SceneFrames = StoreSceneFrames(self._ball_stores[dataset_id], ref.clip_id)
+        store = self._ball_stores[dataset_id]
+        if dataset_id not in self._supervision:
+            self._supervision[dataset_id] = resolve_frame_supervision(store, OBSERVED_ONLY)
+        frames = StoreSceneFrames(store, ref.clip_id, supervision=self._supervision[dataset_id])
         return frames
 
     def iter_scene_refs(self) -> Iterator[SceneRef]:
