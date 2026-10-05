@@ -151,7 +151,9 @@ KPのcamera-view順序を複数cameraの物理point identityへ自動変換し�
 
 ## Dataset review / inference UI
 
-GTと予測を原画像へ重ね、KP・SEG・LINE・semantic LINEを比較します。
+保存KP・派生targetと予測を原画像へ重ね、KP・SEG・LINE・semantic LINEを比較します。
+dataset体系表、点名・座標・可視性の検品、raw注釈の閲覧は
+[Web UI利用ガイド](visualization/README.md#データセット閲覧)を参照してください。
 poseの画面表示は提供しません。dataset catalogは実画像と合成V3だけを受理し、
 旧合成sceneや壊れたstoreは理由を表示して無効化します。
 checkpointは本文の保存構成・target bundleを検証し、対応しない構成は理由付きで拒否します。
