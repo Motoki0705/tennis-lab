@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Player Dataset Review</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div><p class="eyebrow">TENNIS LAB / DATASET REVIEW</p><h1>Player Detection <span>画像と注釈を確認する</span></h1></div>
+    <span class="readonly">読取専用 · 保存済みデータ</span>
+  </header>
+  <div id="error" role="alert" hidden></div>
+  <section id="overview" aria-label="Dataset summary"></section>
+  <div class="layout">
+    <aside class="library">
+      <label>データセット<select id="dataset"></select></label>
+      <p id="build" class="muted"></p>
+      <p id="availability" class="muted" role="status"></p>
+      <div class="filters"><label>Split<select id="split"><option value="all">すべて</option><option>train</option><option>val</option><option>test</option></select></label><label>注目する状態<select id="flag"><option value="all">すべて</option><option value="unresolved">位置未解決</option><option value="inferred">推定 / 補完bbox</option><option value="occluded">遮蔽</option><option value="truncated">画面端の切れ</option><option value="excluded">学習選別で除外</option><option value="unreviewed">未review</option></select></label></div>
+      <label>Source動画<select id="source"><option value="all">すべてのsource</option></select></label>
+      <label>クリップ検索<input id="search" type="search" placeholder="source名 / clip ID"></label>
+      <div class="list-heading"><strong>クリップ</strong><span id="clip-count" class="muted"></span></div>
+      <div id="clips" aria-label="Clip list"></div>
+    </aside>
+    <main>
+      <div class="sample-heading"><div><p id="sample-meta" class="eyebrow"></p><h2 id="sample-title">クリップを選択</h2><p id="sample-id" class="muted"></p></div><span id="split-badge" class="badge"></span></div>
+      <div class="view-controls"><div class="legend"><span><i class="observed"></i>observed</span><span><i class="inferred"></i>inferred</span><span><i class="unresolved"></i>unresolved · 座標なし</span></div><div class="display-controls"><label><input id="boxes" type="checkbox" checked> bbox</label><label><input id="labels" type="checkbox" checked> ID</label><button id="reset-view">全画角</button></div></div>
+      <div id="image-stage"><canvas id="viewer" aria-label="Original stored RGB with annotation boxes"></canvas><p id="image-empty">保存済みRGBを読み込んでいます</p></div>
+      <div class="frame-controls"><button id="previous" aria-label="Previous frame">←</button><button id="play">▶ 再生</button><button id="next" aria-label="Next frame">→</button><strong id="frame-label"></strong><label class="jump-label">frame<input id="jump" type="number" min="0" aria-label="Clip frame index"></label><span id="image-size" class="muted"></span></div>
+      <input id="seek" type="range" min="0" max="0" value="0" aria-label="Stored frame position">
+      <canvas id="timeline" height="16" aria-label="Annotation state timeline"></canvas>
+      <div class="timeline-footer"><span id="timeline-label"></span><span>紫: 未解決 / 橙: 補完 / 緑: observed</span></div>
+      <div class="detail-heading"><h3>選手ごとの拡大</h3><p>原画像の切り出し · bbox内と周辺を確認</p></div>
+      <div id="players"></div>
+      <p id="gaps" class="gap-note"></p>
+    </main>
+    <aside class="inspector">
+      <h3>このフレームの注釈</h3>
+      <div id="frame-facts"></div>
+      <div id="eligibility" class="notice"></div>
+      <div class="partial-note"><strong id="annotation-status">注釈status</strong><p>reviewedは確認済みフレームの記録です。bboxの全画素精度や、独立に検証されたGTを保証しません。</p></div>
+      <h3>教師の読み方</h3>
+      <dl class="annotation-key"><dt><i class="observed"></i>observed</dt><dd>保存注釈の観測bbox</dd><dt><i class="inferred"></i>inferred</dt><dd>遮蔽・切れ等の推定 / 補完bbox</dd><dt><i class="unresolved"></i>unresolved</dt><dd>選手は記録済み。位置は未解決で座標なし。</dd></dl>
+      <p class="muted">色はbbox_sourceの区別です。モデルの信頼度・確率ではありません。</p>
+      <details id="issues"><summary>クリップの注釈注意事項 <span id="issue-count"></span></summary><ul id="issue-list"></ul></details>
+      <details><summary>保存形式とsplit</summary><div id="dataset-facts"></div><p>元画像pixelのxyxy。track IDはclip内だけで有効。RGBはplayerを列挙したframeのみを保存し、欠落frameを負例にしません。</p></details>
+    </aside>
+  </div>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

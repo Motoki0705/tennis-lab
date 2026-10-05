@@ -1,0 +1,228 @@
+{
+  "schema": "dataset_review_capture_v1",
+  "task": "player_association",
+  "kind": "new",
+  "before_ui_available": false,
+  "before_note": "No task-local dataset review UI existed; prior workflow was static contact sheets/footpoint figures and generic component galleries.",
+  "viewport": {
+    "width": 1920,
+    "height": 1250
+  },
+  "device_scale_factor": 1,
+  "code_commit": "929fa832db54801406d307ec7e42bcdc12004f26",
+  "relevant_code_sha256": "80a557c3ad0abe4d5ee27f5ee45d5cb10184f29dd94b1f6328cbc4a24995aaa7",
+  "relevant_file_sha256": {
+    "src/tasks/player_association/review/__init__.py": "da84d45e94e231312a7fd2707f374852b4434ca707f408716fdf80602b1b412a",
+    "src/tasks/player_association/review/diagnostics.py": "d5617aa5cb0538fdcfb3ee1093a1d18eee3ba9f77c73cc97628939d7c4289690",
+    "src/tasks/player_association/review/reader.py": "afb417e803e14f3efdb09652f20a1fc2dd90dfe498081fbd919a2566a099ce76",
+    "src/tasks/player_association/review/service.py": "41c23295f5dd27fb3cfecec51202ec54fd1a316625bd73362ff5ad3e1a6649fd",
+    "src/tasks/player_association/review/static/app.js": "ca2010e23c99ef08d0ff2584a8c93189bdd0db79dd4e1037e410e29267a9fa1a",
+    "src/tasks/player_association/review/static/index.html": "1ae5ff6756347565701a4c6abc7a8afc8a212446e7a78657f1ae8ad876d33d4c",
+    "src/tasks/player_association/review/static/style.css": "d79bb55688d630939c8eeb6267a9dcface80173e8338d244067d494873a67b09",
+    "src/tasks/player_association/review/web.py": "25bb7600e796b35094ddfe9d2761b014960235cdcc9eb175f7d1c5a4b2132bc0",
+    "src/tasks/player_association/scripts/__init__.py": "110a034633fb47fbaf4076699fd0dc0cfc0f88b696b4b36484178d5733b65a18",
+    "src/tasks/player_association/scripts/review_dataset.py": "e87c38628537d25f94c16282d42e0d489a953d73e2669502d8d2754c5a7b9619"
+  },
+  "captures": [
+    {
+      "kind": "new",
+      "file": "assets/dataset_review/20261004/player_association/01-same-colour-exclusion.png",
+      "sha256": "b4db3555f440db362bee854467cc443cbd924fd3a9dbd040a72569f8367f93c8",
+      "captured_at": "2026-10-04T14:09:18.133Z",
+      "dataset": "meiji_3cam",
+      "clip": "video_000/clip_007",
+      "frame": 160,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "selected_camera": "cam2",
+      "selected_raw_track_id": 1,
+      "report_id": 0,
+      "viewport": {
+        "width": 1920,
+        "height": 1250
+      },
+      "png_dimensions": {
+        "width": 1920,
+        "height": 2161
+      },
+      "caption": "Meiji video_000/clip_007 f160 / cam0-2: 選手Bと同色ウェアのX1（cam0 t3）、遠方crop、誤検出X2を区別。選択Bを3cameraで追い、旧v3入力のclassical保存候補scoreを見る。",
+      "url": "http://127.0.0.1:8897/?clip=video_000%2Fclip_007&frame=160&camera=cam2&track=1&report=0",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/clip.json",
+        "sha256": "280d6032b3eb9ac701332f1b9a619343ed6d293a4c96a81b9ad1070f3d122b1f"
+      },
+      "labels_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+      "store": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores/video_000/clip_007",
+      "scene_index_sha256": "95c9f82d4dab818cf56767281d2758bb56a489d8ac2bc5ae7d295b00d6c0bd00",
+      "raw_track_versions": {
+        "cam0": 3,
+        "cam1": 3,
+        "cam2": 3
+      },
+      "score_report_sha256": "9703be6033ff1ee7873932d2dbe6d539dc298db28e0d39a5f7e6608c4734a191"
+    },
+    {
+      "kind": "new",
+      "file": "assets/dataset_review/20261004/player_association/02-footpoint-consistency.png",
+      "sha256": "80b57d4960ed28e1e39ba105f0205c2a6943cd68040f777bbb098f2e32067678",
+      "captured_at": "2026-10-04T14:09:18.624Z",
+      "dataset": "meiji_3cam",
+      "clip": "video_000/clip_007",
+      "frame": 280,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "selected_camera": "cam0",
+      "selected_raw_track_id": 1,
+      "report_id": 0,
+      "viewport": {
+        "width": 1920,
+        "height": 1250
+      },
+      "png_dimensions": {
+        "width": 1920,
+        "height": 2040
+      },
+      "caption": "Meiji video_000/clip_007 f280 / cam0-2: 選手Aの足元yはcam0 -11.634、cam1 -11.616、cam2 -12.564m。cam0↔2は約0.94m。保存box・side・camera行列と表示計算を照合済み。独立GTでの精度保証ではなく、差の原因は未確定。",
+      "url": "http://127.0.0.1:8897/?clip=video_000%2Fclip_007&frame=280&camera=cam0&track=1&report=0",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/clip.json",
+        "sha256": "280d6032b3eb9ac701332f1b9a619343ed6d293a4c96a81b9ad1070f3d122b1f"
+      },
+      "labels_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+      "store": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores/video_000/clip_007",
+      "scene_index_sha256": "95c9f82d4dab818cf56767281d2758bb56a489d8ac2bc5ae7d295b00d6c0bd00",
+      "raw_track_versions": {
+        "cam0": 3,
+        "cam1": 3,
+        "cam2": 3
+      },
+      "score_report_sha256": "9703be6033ff1ee7873932d2dbe6d539dc298db28e0d39a5f7e6608c4734a191"
+    },
+    {
+      "kind": "new",
+      "file": "assets/dataset_review/20261004/player_association/03-ambiguous-switch.png",
+      "sha256": "8ac32bd93f9dec1d988ce9e19935be5c6a10d49a33bdb119aa02f4e2a7f083f3",
+      "captured_at": "2026-10-04T14:09:20.910Z",
+      "dataset": "meiji_3cam",
+      "clip": "video_001/clip_001",
+      "frame": 760,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "selected_camera": "cam0",
+      "selected_raw_track_id": 7,
+      "report_id": 0,
+      "viewport": {
+        "width": 1920,
+        "height": 1250
+      },
+      "png_dimensions": {
+        "width": 1920,
+        "height": 2345
+      },
+      "caption": "Meiji video_001/clip_001 f760 / cam0 t7: f758–762はnullの曖昧boxで採点対象外。raw IDを選んだまま前後のラベル推移と同期cropを確認する。",
+      "url": "http://127.0.0.1:8897/?clip=video_001%2Fclip_001&frame=760&camera=cam0&track=7&report=0",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/clip.json",
+        "sha256": "36af0f219298b616cbef39bd57428c01be0ca6d08886fe1ad77b294162a2a6a1"
+      },
+      "labels_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+      "store": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores/video_001/clip_001",
+      "scene_index_sha256": "eb68c09071e5a39eb9f946071d924b23182d37f1ceecfb1c8470f8af536b5f8e",
+      "raw_track_versions": {
+        "cam0": 3,
+        "cam1": 3,
+        "cam2": 3
+      },
+      "score_report_sha256": "9703be6033ff1ee7873932d2dbe6d539dc298db28e0d39a5f7e6608c4734a191"
+    },
+    {
+      "kind": "new",
+      "file": "assets/dataset_review/20261004/player_association/04-switched-player.png",
+      "sha256": "0967f4b3d1ef49727d424253c0b572dad329b6198227dd4bb2a4ee769b2baa84",
+      "captured_at": "2026-10-04T14:09:21.988Z",
+      "dataset": "meiji_3cam",
+      "clip": "video_001/clip_001",
+      "frame": 800,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "selected_camera": "cam0",
+      "selected_raw_track_id": 7,
+      "report_id": 0,
+      "viewport": {
+        "width": 1920,
+        "height": 1250
+      },
+      "png_dimensions": {
+        "width": 1920,
+        "height": 2345
+      },
+      "caption": "同じclip・viewport・選択cam0 t7、f800: f763からBになったraw IDをcam1 t2 / cam2 t15へ辿る。前画像との比較は新UI内のframe比較で、before/after UI比較ではない。",
+      "url": "http://127.0.0.1:8897/?clip=video_001%2Fclip_001&frame=800&camera=cam0&track=7&report=0",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/clip.json",
+        "sha256": "36af0f219298b616cbef39bd57428c01be0ca6d08886fe1ad77b294162a2a6a1"
+      },
+      "labels_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+      "store": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores/video_001/clip_001",
+      "scene_index_sha256": "eb68c09071e5a39eb9f946071d924b23182d37f1ceecfb1c8470f8af536b5f8e",
+      "raw_track_versions": {
+        "cam0": 3,
+        "cam1": 3,
+        "cam2": 3
+      },
+      "score_report_sha256": "9703be6033ff1ee7873932d2dbe6d539dc298db28e0d39a5f7e6608c4734a191"
+    },
+    {
+      "kind": "new",
+      "file": "assets/dataset_review/20261004/player_association/05-partial-v5-reference.png",
+      "sha256": "8084877c8d4fb80701b1cf0fa1779ec3d7f9e80dfefe3ee9824d9938c5aeba98",
+      "captured_at": "2026-10-04T14:09:23.582Z",
+      "dataset": "meiji_3cam",
+      "clip": "video_000/clip_002",
+      "frame": 85,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "selected_camera": "cam0",
+      "selected_raw_track_id": 4,
+      "report_id": 0,
+      "viewport": {
+        "width": 1920,
+        "height": 1250
+      },
+      "png_dimensions": {
+        "width": 1920,
+        "height": 1771
+      },
+      "caption": "Meiji video_000/clip_002 f85 / cam0-2: 追加Codex目視の部分参照（第2注釈者なし）、v5 rawの曖昧boxと除外対象。旧v3 scoreはrunが異なるため結合しない。参照box照合100%は未検出人物のrecall保証ではない。",
+      "url": "http://127.0.0.1:8897/?clip=video_000%2Fclip_002&frame=85&camera=cam0&track=4&report=0",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_002/clip.json",
+        "sha256": "f781cd997c6faf11de07aa80c81536928ccdb7d5deef49ff488b0b8ac5e268a0"
+      },
+      "labels_sha256": "4b8e1d6ef1d6958e10b569745b868bb7364a2af4cde03c15c1c61c9623c9c826",
+      "store": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/video_000/clip_002/store",
+      "scene_index_sha256": "5410d882b4037531f2de53754054f5a6c38a85547797a56aeb3059ff274425cd",
+      "raw_track_versions": {
+        "cam0": 5,
+        "cam1": 5,
+        "cam2": 5
+      },
+      "score_report_sha256": null
+    }
+  ]
+}

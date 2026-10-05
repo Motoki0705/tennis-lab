@@ -1,4 +1,5 @@
 import {Playback, clamp, stepSeconds, timecode} from './playback.js';
+import {DatasetReview} from './review.js';
 const $ = id => document.getElementById(id);
 let project, selected = null, markIn = null, markOut = null, saving = false, view = null, proposal = null;
 function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
@@ -22,10 +23,12 @@ function setSyncPanel(visible) {
   $('sync-toggle').textContent = visible ? '同期調整を閉じる' : '同期調整を開く';
   $('sync-panel').parentElement.classList.toggle('sync-visible', visible);
 }
+const review = new DatasetReview(status);
 const playback = new Playback($('viewers'), (time, playing) => {
   $('time').textContent = timecode(time); $('seek-time').value = time.toFixed(3);
   $('seek').value = time; $('play').textContent = playing ? 'Ⅱ 停止' : '▶ 再生';
   if (playing && view && (time > view[1] || time < view[0])) setView(time - (view[1] - view[0]) * 0.2, view[1] - view[0]);
+  review.atTime(time, playing);
 }, status, index => { $('camera').value = index; playback.select(index); });
 function setView(start, span) {
   const [lo, hi] = project.extent;
@@ -41,6 +44,7 @@ function renderTrack() {
     const left = Math.max(clip.start_sec, view[0]), right = Math.min(clip.end_sec, view[1]);
     if (right <= left) return;
     const item = document.createElement('button'); item.title = clip.name; item.setAttribute('aria-label', `選択 ${clip.name}`);
+    item.classList.toggle('active', clip.name === selected);
     item.style.left = `${100 * (left - view[0]) / (view[1] - view[0])}%`;
     item.style.width = `${100 * (right - left) / (view[1] - view[0])}%`;
     item.onclick = () => selectClip(clip.name); $('clip-track').append(item);
@@ -62,14 +66,16 @@ function renderClips() {
   if (!project.clips.length) { const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = '開始 I → 終了 O → 追加 C でラリーを記録'; $('clips').append(hint); }
   [...project.clips].sort((a,b) => a.start_sec - b.start_sec).forEach(clip => {
     const button = document.createElement('button'); button.className = 'clip-row'; button.classList.toggle('active', clip.name === selected);
+    button.dataset.clip = clip.name;
     const title = document.createElement('span'); title.textContent = clip.name;
     const times = document.createElement('small'); times.textContent = `${timecode(clip.start_sec)} / ${(clip.end_sec - clip.start_sec).toFixed(2)}s`;
     button.append(title, times); button.onclick = () => selectClip(clip.name); $('clips').append(button);
   });
   const clip = project.clips.find(c => c.name === selected);
-  $('clip-editor').hidden = !clip;
+  $('clip-editor').hidden = project.read_only || !clip;
   if (clip) { $('clip-name').value = clip.name; $('clip-start').value = clip.start_sec.toFixed(6); $('clip-end').value = clip.end_sec.toFixed(6); }
   renderTrack();
+  review.select(selected); review.decorateRows();
 }
 function renderOffsets() {
   $('offsets').replaceChildren();
@@ -90,15 +96,16 @@ function renderOffsets() {
   });
 }
 function renderProject(initial = false) {
+  document.body.classList.toggle('read-only', project.read_only);
   $('video').textContent = `${project.dataset_id} / ${project.video_id}`;
-  $('saved').textContent = '保存済み'; $('saved').title = project.projects_path;
+  $('saved').textContent = project.read_only ? '読取専用レビュー' : '保存済み'; $('saved').title = project.projects_path;
   $('undo').disabled = !project.can_undo; $('redo').disabled = !project.can_redo;
   if (initial) {
     ['camera','reference'].forEach(id => {
       $(id).replaceChildren(); project.sources.forEach((source,index) => { const option = new Option(source.camera_id, index); $(id).add(option); });
     });
   }
-  playback.load(project);
+  review.load(project, selected); playback.load(project);
   if (!view) setView(...[project.extent[0], project.extent[1] - project.extent[0]]);
   else setView(view[0], view[1] - view[0]);
   const [a,b] = project.common;
@@ -106,6 +113,7 @@ function renderProject(initial = false) {
   renderClips(); renderOffsets(); marks();
 }
 async function mutate(operation) {
+  if (project.read_only) throw new Error('読取専用レビューでは変更できません。');
   if (saving) throw new Error('保存中です。完了を待って操作してください。');
   saving = true; $('saved').textContent = '保存中…'; marks(); playback.pause(); clearLoop();
   try {
@@ -154,6 +162,7 @@ bind('loop', () => {
   $('loop').textContent = 'リピート解除'; playback.seekAndPlay(clip.start_sec);
 });
 async function startJob(body) {
+  if (project.read_only) throw new Error('読取専用レビューでは同期計算・書き出しを実行できません。');
   if (saving) throw new Error('保存完了後に実行してください。');
   proposal = null; $('proposal').replaceChildren();
   await api('jobs', {revision:project.revision, ...body}); await pollJob();
@@ -202,5 +211,5 @@ try {
     $('startup-notice').classList.toggle('warning', notice.warning);
     $('startup-notice').hidden = false;
   }
-  project = await api('project'); renderProject(true); status('単一カメラでラリーを切り出せます。同期確認は「カメラ比較」へ。'); await pollJob(); }
+  project = await api('project'); renderProject(true); status(project.read_only ? '読取専用です。保存clipを選び、停止して同期とdataset登録を確認できます。' : '単一カメラでラリーを切り出せます。同期確認は「カメラ比較」へ。'); await pollJob(); }
 catch(error) { status(error.message,true); }

@@ -14,7 +14,9 @@ pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使�
    clip-local の track ID と時刻を残します（将来の ID tracking 用）。
    split の単位は YouTube の source 動画です。同じ version への上書きは拒否します。
    保存形式と読み出し API の正本は [data/store.py](data/store.py) です。
-2. `scripts.preview_dataset`: split ごとの frame と box を重ねた preview を書きます。
+2. `scripts.review_dataset`: 保存済みRGB、注釈の出自・未解決状態、学習選別をWebで確認します。
+   [レビュー画面の使い方とデータ体系](review/README.md)を参照してください。
+   `scripts.preview_dataset` は従来のsplitごとの静的frame previewを出力します。
 3. `scripts.train`: Lightning で fine-tune します。frame の選別（未 review、`unresolved` player を含む frame、
    画面外にほぼ出た box の除外）は [data/detection_dataset.py](data/detection_dataset.py) が所有し、
    除外件数を split ごとに表示します。

@@ -75,6 +75,7 @@ fs.mkdirSync(outputDir, { recursive: true });
         return json({ items: scenes, total: scenes.length });
       if (p === "/api/preview") {
         const index = Number(url.searchParams.get("start"));
+      const count = Number(url.searchParams.get("count") || 1);
         return json({
           scene: url.searchParams.get("scene"),
           label: "Clip",
@@ -82,14 +83,12 @@ fs.mkdirSync(outputDir, { recursive: true });
           start: index,
           width: 1280,
           height: 720,
-          items: [
-            {
-              index,
-              name: `frame_${index}.jpg`,
-              gt: { points: [{ x: 600, y: 400, label: "b001" }], rasters: [] },
-            },
-          ],
-          warnings: [],
+          items: Array.from({length:count}, (_,offset) => ({
+          index: index + offset,
+          name: `frame_${index + offset}.jpg`,
+          gt: { points: [{ x: 600, y: 400, label: "b001" }], rasters: [] },
+        })),
+        warnings: [],
         });
       }
       if (p === "/api/image")
@@ -108,6 +107,9 @@ fs.mkdirSync(outputDir, { recursive: true });
           "index.html",
           "app.js",
           "viewer.mjs",
+          "review.mjs",
+        "players.mjs",
+        "playback.mjs",
           "icons.mjs",
           "style.css",
         ].includes(file)

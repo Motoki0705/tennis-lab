@@ -1,0 +1,206 @@
+{
+  "captured_at": "2026-10-04T12:49:21.622Z",
+  "chromium": "151.0.7922.34",
+  "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+  "real_data": true,
+  "fixture_used_for_evidence": false,
+  "dataset_manifest_index_unchanged": true,
+  "records": [
+    {
+      "dataset": "chat-player-v1",
+      "sample": "-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "clip_index": 0,
+      "frame": 0,
+      "source_frame": 471,
+      "source_id": "-6UwVW0DeO4",
+      "camera": "single broadcast image; no calibrated camera id",
+      "image_size": [
+        1920,
+        1080
+      ],
+      "viewport": {
+        "width": 1600,
+        "height": 1200,
+        "device_scale_factor": 1
+      },
+      "source_manifest_path": "data/player_detection/chat-player-v1/metadata.json",
+      "source_manifest_sha256": "f1b5c4c1e2bb5d18590985473407f5ad65620b73e5bb0304e1b02d6faebb2e02",
+      "source_index_path": "data/player_detection/chat-player-v1/index.npz",
+      "source_index_sha256": "ef3370e4597ed4c20385a2d5bfde9448c9d89b7a508517c6d6dfc90af81ba3b3",
+      "annotation_sha256": "16f60fd9cb412d935364ad2313108e4c02202583ab248dfef4f34901b5fa75bf",
+      "video_sha256": "2c8fa90eb8cd095cd6480acbe930a110bec60b214a69cc313b740597351af749",
+      "source_stored_jpeg_sha256": "636648fdfd35d10c894bc498d3c81d87dc3dcdfb92646b69660e79bf37d5d899",
+      "file": "before-static-observed-inferred.png",
+      "stage": "before",
+      "view": "existing static preview displayed in browser; no prior interactive UI",
+      "source_preview_path": "outputs/player_detection/visualize/dataset_preview/chat-player-v1/test/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821__0.jpg",
+      "source_preview_sha256": "50e3906df1ad812285a747c91652970fb0c6586d2c2bd94bb759354ab0fac935",
+      "code_revision": null,
+      "code_revision_note": "Generating revision of existing static artifact was not recorded; the artifact itself is SHA256 fixed."
+    },
+    {
+      "dataset": "chat-player-v1",
+      "sample": "-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "clip_index": 0,
+      "frame": 0,
+      "source_frame": 471,
+      "source_id": "-6UwVW0DeO4",
+      "camera": "single broadcast image; no calibrated camera id",
+      "image_size": [
+        1920,
+        1080
+      ],
+      "viewport": {
+        "width": 1600,
+        "height": 1200,
+        "device_scale_factor": 1
+      },
+      "source_manifest_path": "data/player_detection/chat-player-v1/metadata.json",
+      "source_manifest_sha256": "f1b5c4c1e2bb5d18590985473407f5ad65620b73e5bb0304e1b02d6faebb2e02",
+      "source_index_path": "data/player_detection/chat-player-v1/index.npz",
+      "source_index_sha256": "ef3370e4597ed4c20385a2d5bfde9448c9d89b7a508517c6d6dfc90af81ba3b3",
+      "annotation_sha256": "16f60fd9cb412d935364ad2313108e4c02202583ab248dfef4f34901b5fa75bf",
+      "video_sha256": "2c8fa90eb8cd095cd6480acbe930a110bec60b214a69cc313b740597351af749",
+      "source_stored_jpeg_sha256": "636648fdfd35d10c894bc498d3c81d87dc3dcdfb92646b69660e79bf37d5d899",
+      "file": "new-observed-inferred.png",
+      "stage": "new",
+      "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
+      "filter": "all",
+      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+      "code_file_sha256": {
+        "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
+        "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
+        "src/tasks/player_detection/review/static/index.html": "2f01c228dcf2dd1e4263923781dd7efb649d470fa0d127bea57ea90a7f14782a",
+        "src/tasks/player_detection/review/static/app.js": "a9b54762f30119f373b3da891f66c4cdaea1ea2a81848f2d985d15ccb9b03615",
+        "src/tasks/player_detection/review/static/style.css": "1c7ba1306d519e65b7392085c323145d1d1b4845050de4260a0e3d469489639c",
+        "src/tasks/player_detection/scripts/review_dataset.py": "e9e3e44e9e5e4e91a4896c6a8a449d44700d3028681612a153ce6c3fd00b9d76",
+        "src/tasks/player_detection/configs/data/default.yaml": "3f35ee6f2ef3cbb3558759656ea3f13163e09df5e3e99b1f0aaf0a33807b734b"
+      },
+      "selection_reason": "eligible",
+      "annotation_sources": [
+        "observed",
+        "inferred"
+      ]
+    },
+    {
+      "dataset": "chat-player-v1",
+      "sample": "1WAjW7l89YQ__56e36db935f82937__f000003027-000003806",
+      "clip_index": 21,
+      "frame": 812,
+      "source_frame": 3780,
+      "source_id": "1WAjW7l89YQ",
+      "camera": "single broadcast image; no calibrated camera id",
+      "image_size": [
+        1920,
+        1080
+      ],
+      "viewport": {
+        "width": 1600,
+        "height": 1200,
+        "device_scale_factor": 1
+      },
+      "source_manifest_path": "data/player_detection/chat-player-v1/metadata.json",
+      "source_manifest_sha256": "f1b5c4c1e2bb5d18590985473407f5ad65620b73e5bb0304e1b02d6faebb2e02",
+      "source_index_path": "data/player_detection/chat-player-v1/index.npz",
+      "source_index_sha256": "ef3370e4597ed4c20385a2d5bfde9448c9d89b7a508517c6d6dfc90af81ba3b3",
+      "annotation_sha256": "a302071753a7c1985f2a947538049bca59efc5ee10335319fb866e5ed8b9b2f1",
+      "video_sha256": "cd395a5e00c1379b7c756d858c68cdc8a7cc21f4fa9193562fbc3fa78344ef8e",
+      "source_stored_jpeg_sha256": "64aac619545a59c59832ef51dd097b60a29e3317f01b3dba492f4526eb65ed68",
+      "file": "before-static-unresolved.png",
+      "stage": "before",
+      "view": "existing static preview displayed in browser; no prior interactive UI",
+      "source_preview_path": "outputs/player_detection/visualize/dataset_preview/chat-player-v1/test/1WAjW7l89YQ__56e36db935f82937__f000003027-000003806__812.jpg",
+      "source_preview_sha256": "6a8a6187e37a6685df359fa330042604996730c1122c87d5477696c43430e861",
+      "code_revision": null,
+      "code_revision_note": "Generating revision of existing static artifact was not recorded; the artifact itself is SHA256 fixed."
+    },
+    {
+      "dataset": "chat-player-v1",
+      "sample": "1WAjW7l89YQ__56e36db935f82937__f000003027-000003806",
+      "clip_index": 21,
+      "frame": 812,
+      "source_frame": 3780,
+      "source_id": "1WAjW7l89YQ",
+      "camera": "single broadcast image; no calibrated camera id",
+      "image_size": [
+        1920,
+        1080
+      ],
+      "viewport": {
+        "width": 1600,
+        "height": 1200,
+        "device_scale_factor": 1
+      },
+      "source_manifest_path": "data/player_detection/chat-player-v1/metadata.json",
+      "source_manifest_sha256": "f1b5c4c1e2bb5d18590985473407f5ad65620b73e5bb0304e1b02d6faebb2e02",
+      "source_index_path": "data/player_detection/chat-player-v1/index.npz",
+      "source_index_sha256": "ef3370e4597ed4c20385a2d5bfde9448c9d89b7a508517c6d6dfc90af81ba3b3",
+      "annotation_sha256": "a302071753a7c1985f2a947538049bca59efc5ee10335319fb866e5ed8b9b2f1",
+      "video_sha256": "cd395a5e00c1379b7c756d858c68cdc8a7cc21f4fa9193562fbc3fa78344ef8e",
+      "source_stored_jpeg_sha256": "64aac619545a59c59832ef51dd097b60a29e3317f01b3dba492f4526eb65ed68",
+      "file": "new-unresolved.png",
+      "stage": "new",
+      "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
+      "filter": "unresolved",
+      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+      "code_file_sha256": {
+        "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
+        "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
+        "src/tasks/player_detection/review/static/index.html": "2f01c228dcf2dd1e4263923781dd7efb649d470fa0d127bea57ea90a7f14782a",
+        "src/tasks/player_detection/review/static/app.js": "a9b54762f30119f373b3da891f66c4cdaea1ea2a81848f2d985d15ccb9b03615",
+        "src/tasks/player_detection/review/static/style.css": "1c7ba1306d519e65b7392085c323145d1d1b4845050de4260a0e3d469489639c",
+        "src/tasks/player_detection/scripts/review_dataset.py": "e9e3e44e9e5e4e91a4896c6a8a449d44700d3028681612a153ce6c3fd00b9d76",
+        "src/tasks/player_detection/configs/data/default.yaml": "3f35ee6f2ef3cbb3558759656ea3f13163e09df5e3e99b1f0aaf0a33807b734b"
+      },
+      "selection_reason": "unresolved_player",
+      "annotation_sources": [
+        "unresolved",
+        "unresolved"
+      ]
+    },
+    {
+      "dataset": "chat-player-v1",
+      "sample": "4v4ui5hGz5c__6c42c9382ed25ac9__f000013813-000014463",
+      "clip_index": 53,
+      "frame": 749,
+      "source_frame": 14512,
+      "source_id": "4v4ui5hGz5c",
+      "camera": "single broadcast image; no calibrated camera id",
+      "image_size": [
+        1920,
+        1080
+      ],
+      "viewport": {
+        "width": 1600,
+        "height": 1200,
+        "device_scale_factor": 1
+      },
+      "source_manifest_path": "data/player_detection/chat-player-v1/metadata.json",
+      "source_manifest_sha256": "f1b5c4c1e2bb5d18590985473407f5ad65620b73e5bb0304e1b02d6faebb2e02",
+      "source_index_path": "data/player_detection/chat-player-v1/index.npz",
+      "source_index_sha256": "ef3370e4597ed4c20385a2d5bfde9448c9d89b7a508517c6d6dfc90af81ba3b3",
+      "annotation_sha256": "90c3cb4d1734913e3243b08d18ce5122d64a9e7dec660aed9453a08ece868e86",
+      "video_sha256": "f459a3c79e7760488d83ad3344b351bbffcbd4bb6dd97ecc55ee6879f77a612f",
+      "source_stored_jpeg_sha256": "957b5da6fe752e288d8ad10398d809f6ef184c1c318429a29a436f89748c4236",
+      "file": "new-truncated.png",
+      "stage": "new",
+      "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
+      "filter": "truncated",
+      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+      "code_file_sha256": {
+        "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
+        "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
+        "src/tasks/player_detection/review/static/index.html": "2f01c228dcf2dd1e4263923781dd7efb649d470fa0d127bea57ea90a7f14782a",
+        "src/tasks/player_detection/review/static/app.js": "a9b54762f30119f373b3da891f66c4cdaea1ea2a81848f2d985d15ccb9b03615",
+        "src/tasks/player_detection/review/static/style.css": "1c7ba1306d519e65b7392085c323145d1d1b4845050de4260a0e3d469489639c",
+        "src/tasks/player_detection/scripts/review_dataset.py": "e9e3e44e9e5e4e91a4896c6a8a449d44700d3028681612a153ce6c3fd00b9d76",
+        "src/tasks/player_detection/configs/data/default.yaml": "3f35ee6f2ef3cbb3558759656ea3f13163e09df5e3e99b1f0aaf0a33807b734b"
+      },
+      "selection_reason": "eligible",
+      "annotation_sources": [
+        "inferred",
+        "inferred"
+      ]
+    }
+  ]
+}
