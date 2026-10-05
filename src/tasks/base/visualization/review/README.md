@@ -18,8 +18,9 @@ PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
 回転・平行移動・ズームできる。カメラ位置・視錐台・カメラ視点、再生・シーク、
 軌跡・追従の切り替えに対応する。Three.jsはローカル配信する。
 
-形式は `single_object` / `multi_object` と、それぞれの `_broadcast` /
-`_camera_view_v2` の全6形式（BLCS / PLCS）。
+現行BLCS / PLCSの対象は`single_object` / `physical_v1`のみ。
+ほかの生成形式はPR #978で廃止されており、共通catalogがディレクトリを検出できることは
+現行タスクがその形式をサポートする根拠にならない。
 
 ## 構成
 
@@ -36,6 +37,20 @@ PLCSは `http://127.0.0.1:8772`、BLCSは `http://127.0.0.1:8773`。
   カメラのJSON化・エンティティ整形・CourtKP検証の呼び出しを共通化する。
 - `web.py`: `create_review_app(service, title=..., task=...)`。FastAPI アプリ。
 - `static/model.mjs`: 単一／混合エンティティのbinaryをdecodeし、共有3D engineへ渡す。
+
+## タスク固有の検品パネル
+
+`create_review_app()`は`extra_static={名前: Path}`に宣言したCSS/JS/MJSのみを追加配信する。
+共有asset名の上書きは拒否し、`extra_stylesheets`・`extra_modules`で指定した名前を
+共有indexへ挿入する。追加moduleは共有`app.js`より先に読み込み、次のwindowイベントに購読できる。
+
+- `dataset-review:scene`：`detail.phase`は`loading`・`loaded`・`error`。
+  `loaded`時の`detail.scene`はmodel・表示操作を準備済みのscene JSON。
+  `loading`/`error`は`form`・`sceneId`を含み、前の検品内容を破棄できる。
+- `dataset-review:frame`：確定した表示フレームを`{sceneId, form, frame, timeSeconds}`で通知する。
+
+拡張指定のない呼び出しは従来のindexとassetを使う。PLCSの2D検品は
+[task-owned API](../../../plcs/visualization/review/README.md)で実装している。
 
 ## API
 
