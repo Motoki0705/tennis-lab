@@ -1,0 +1,63 @@
+{
+  "authorization": "user: replace all existing data/ball_refiner datasets with shared single_object",
+  "time": "2026-10-05T01:34:13.984630+00:00",
+  "entries": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-pilot-r10-20260928",
+      "bytes": 926856
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-pilot-r9-20260928",
+      "bytes": 135691
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/context-fullframe-shards-r12-20260928",
+      "bytes": 86691702
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928",
+      "bytes": 103465975
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930",
+      "bytes": 116539982
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-anchored-r11-s936",
+      "bytes": 213418311
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-dev-h-r9-s936",
+      "bytes": 221776838
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/i936-pilot-h-anchored-s936",
+      "bytes": 1431545595
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-dev-r5",
+      "bytes": 32439249
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-preflight-r5",
+      "bytes": 1891916
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-r2-v1",
+      "bytes": 15615
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-r2-v2",
+      "bytes": 1414903
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-r3",
+      "bytes": 13122533
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/synthetic-3d-i936-smoke-ray-r6",
+      "bytes": 23319731
+    }
+  ],
+  "status": "complete"
+}

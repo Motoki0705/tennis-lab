@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/coordinates-smoke/gpu-20261005/logs/version_0/checkpoints

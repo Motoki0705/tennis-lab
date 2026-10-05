@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/coordinates-3d-gan-p05/20261005-v2-s42/logs/version_0/checkpoints
