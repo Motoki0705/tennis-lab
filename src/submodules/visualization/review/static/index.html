@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GVHMR / Pose · 保存データレビュー</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<header><div><div class="eyebrow">SAVED ARTIFACT REVIEW · READ ONLY · CPU</div><h1>GVHMR / Pose <span>入力から3D身体まで</span></h1></div><div id="clip"></div></header>
+<main>
+<div class="notice">モデル推定の保存結果です。独立した3D GT・GVHMR学習datasetではありません。観測maskとsample格子をsource frameで照合します。</div>
+<div id="snapshot" class="muted"></div>
+<section class="controls"><label>人物 <select id="person"></select></label><label>観測camera <select id="camera"></select></label><button id="inputView">GVHMR入力viewへ</button><span class="divider"></span><button id="previous">◀</button><label>source frame <input id="frame" type="number" min="0" value="148"></label><button id="next">▶</button><button id="play">再生</button><button id="rejected">次のmesh拒否</button><span id="time"></span><label class="threshold">表示confidence ≥ <input id="threshold" type="number" min="0" max="1" step="0.05" value="0.3"></label></section>
+<div id="error" role="alert" hidden></div>
+<div id="status" class="status"></div>
+<section class="views">
+<article class="imagePanel"><h2>RGB + 保存2D観測 <span id="imageLabel"></span></h2><canvas id="image" width="960" height="540"></canvas><p class="legend"><i class="green"></i>実観測pose <i class="amber"></i>このframeのGVHMR入力pose <i class="red"></i>表示threshold未満（空の点）</p><p id="inputStatus"></p><div class="cropRow"><div><h3>人物を拡大 <span>box / pixel座標</span></h3><canvas id="crop" width="410" height="300"></canvas></div><div class="confidence"><h3>関節のconfidence <span>観測 / GVHMR入力</span></h3><div id="confidence"></div></div></div></article>
+<article class="bodyPanel"><h2>保存3D身体と三角測量 <span>court m / Z-up</span></h2><canvas id="body" width="520" height="500"></canvas><p class="legend"><i class="blue"></i>保存SMPL mesh <i class="purple"></i>有効COCO17（三角測量）</p><p class="muted">dragで回転 · wheelで拡大 · <button id="reset">視点を戻す</button></p><div id="placement"></div><div class="mini"><canvas id="court" width="200" height="150"></canvas><div id="parameters"></div></div></article>
+</section>
+<section class="timelinePanel"><h2>観測 / GVHMR sample / 配置mask <span>クリックで同じsource frameへ</span></h2><canvas id="timeline" width="1450" height="108"></canvas><input id="scrub" type="range" min="0" value="148"><p class="muted">緑: 有効 / 観測、橙: 保存GVHMR sample、赤: 配置無効、灰: 未観測 / 未sample、斜線: 成果物未保存。観測なしは不在・画面外の確定ラベルではありません。</p></section>
+<details><summary>保存schema・出自・座標の解釈</summary><div id="provenance"></div><p>GVHMR parameters: camera-local translation (m), rotation vector (rad), betas。body placement: root-centered / scale適用済みの保存vertexを、保存orientation・yaw・rootでcourtへ変換します。camera-local translationをcourt位置として扱いません。RGB時刻はsource frame / FPSで表示（保存PTSはありません）。</p><p>入力viewを選ぶと、body_view_selectionに保存された実際のrequestを重ねます。requestのないframeで近傍sampleを代用しません。mesh拒否frameでは保存された有効3D関節を表示し、meshを補間して描きません。topology未指定時は点群表示です。</p></details>
+</main><script type="module" src="/static/app.js"></script>
+</body></html>
