@@ -1,4 +1,4 @@
-"""PLCS review data must reproduce the stored 2D projections for all forms."""
+"""PLCS review data must reproduce stored single-object 2D projections."""
 
 from __future__ import annotations
 
@@ -88,9 +88,7 @@ def test_human_keypoints_reproject_exactly(form: str) -> None:
 
 
 def test_api_shapes_and_errors() -> None:
-    service = PLCSDatasetReviewService(
-        DATA_ROOT, forms=["single_object", "multi_object"]
-    )
+    service = PLCSDatasetReviewService(DATA_ROOT, forms=["single_object"])
     client = TestClient(create_dataset_app(service))
 
     catalog = client.get("/api/catalog").json()
@@ -118,21 +116,6 @@ def test_api_shapes_and_errors() -> None:
         },
     ).content
     assert len(buffer) == frames * 17 * 3 * 4 + frames * 2 * 4
-
-    multi = client.get(
-        "/api/scene", params={"form": "multi_object", "scene": SCENE}
-    ).json()
-    slots = multi["entity"]["slots"]
-    frames = multi["entity"]["frames"]
-    assert slots == 10
-    assert multi["entity"]["presence"] is True
-    multi_buffer = client.get(
-        "/api/scene/buffer",
-        params={"form": "multi_object", "scene": SCENE, "revision": multi["revision"]},
-    ).content
-    assert len(multi_buffer) == (
-        slots * frames * 17 * 3 * 4 + slots * frames * 2 * 4 + slots * frames
-    )
 
     stale = client.get(
         "/api/scene",

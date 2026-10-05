@@ -1,0 +1,62 @@
+.workspace { grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(350px, 390px); }
+.viewport-head .title-block { min-width: 150px; }
+.form-tags .tag:first-child { display: none; }
+.inspection-panel {
+  min-height: 0; overflow-y: auto; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; overscroll-behavior: contain;
+}
+.inspection-panel h2 { margin: 0 0 5px; font-size: 16px; }
+.inspection-panel h3 { margin: 0 0 6px; font-size: 12px; }
+.inspection-panel p { margin: 0 0 8px; }
+.inspection-panel .muted { color: var(--muted); font-size: 11px; }
+.inspection-panel .synthetic-note {
+  margin-bottom: 12px; padding: 8px 10px; border-radius: 6px;
+  background: var(--accent-soft); color: var(--accent-ink); font-size: 11px;
+}
+.inspection-panel section { border-top: 1px solid var(--border); padding: 10px 0; }
+.inspection-panel dl { margin: 0; }
+.inspection-panel dl div { display: flex; gap: 12px; justify-content: space-between; margin: 3px 0; }
+.inspection-panel dt { color: var(--muted); font-size: 11px; }
+.inspection-panel dd { margin: 0; font-size: 11px; font-family: var(--mono); text-align: right; }
+.inspection-panel .source-path { overflow-wrap: anywhere; font-size: 11px; }
+.inspection-panel .camera-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 8px 0; }
+.inspection-panel .camera-grid button {
+  padding: 6px 4px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--surface-2); cursor: pointer; font-size: 11px; min-width: 0;
+}
+.inspection-panel .camera-grid button small { display: block; color: var(--muted); font-variant-numeric: tabular-nums; }
+.inspection-panel .camera-grid button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.inspection-panel .camera-grid button[data-empty="true"] small { color: var(--warn); }
+.inspection-panel canvas { display: block; width: 100%; aspect-ratio: 16 / 9; background: #eef2f6; border: 1px solid var(--border); border-radius: 5px; }
+.inspection-panel .zoom-row { display: grid; grid-template-columns: 115px minmax(0, 1fr); gap: 10px; margin-top: 9px; }
+.inspection-panel .zoom-row canvas { aspect-ratio: 1; }
+.inspection-panel .zoom-row dl { align-self: center; }
+.inspection-panel .observation-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 7px; font-size: 10px; color: var(--muted); }
+.inspection-panel .observation-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.inspection-panel .marker { width: 8px; height: 8px; border-radius: 50%; background: #167e70; }
+.inspection-panel .marker.court { background: #377bc2; }
+.inspection-panel .marker.projection { background: transparent; border: 2px solid #c8661b; width: 10px; height: 10px; }
+.inspection-panel .marker.hidden-point { background: transparent; border: 1px dashed #7b8998; }
+.inspection-panel .check-status { color: var(--accent-ink); padding: 6px 8px; border-radius: 4px; background: var(--accent-soft); font-size: 11px; }
+.inspection-panel .check-status[data-warning="true"], .inspection-panel .warning { color: #985219; background: #fff3e4; }
+.inspection-panel .warning { padding: 6px 8px; border-radius: 4px; font-size: 11px; margin-top: 6px; }
+.inspection-panel .split-badge { background: var(--surface-3); border-radius: 4px; padding: 2px 6px; font-family: var(--mono); }
+.inspection-panel .error { padding: 10px; color: var(--danger); background: #fdf2f2; overflow-wrap: anywhere; }
+.inspection-panel label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+.inspection-panel .inspection-frame { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.inspection-panel .summary-line { font-size: 11px; overflow-wrap: anywhere; }
+@media (max-width: 1190px) {
+  .workspace { grid-template-columns: 205px minmax(0, 1fr); height: auto; min-height: calc(100dvh - 20px); }
+  .browser { grid-row: 1 / 3; max-height: calc(100dvh - 20px); }
+  .viewport { min-height: 560px; }
+  .inspection-panel { grid-column: 2; max-height: none; }
+  .inspection-panel .inspection-body { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .inspection-panel .teacher { grid-column: 1 / 3; }
+}
+@media (max-width: 720px) {
+  .workspace { display: flex; flex-direction: column; }
+  .browser { max-height: 260px; }
+  .viewport { min-height: 520px; }
+  .inspection-panel .inspection-body { display: block; }
+}
