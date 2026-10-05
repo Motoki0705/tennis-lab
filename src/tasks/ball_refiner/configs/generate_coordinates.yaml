@@ -1,0 +1,57 @@
+defaults:
+  - physics: default
+  - rally: default
+  - camera: default
+  - generator: default
+  - targeted_velocity: default
+  - court_keypoints: physical_v1
+  - _self_
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: data
+  external_asset_root: third_party
+
+generation:
+  dataset: ball_refiner/single_object
+  train_rallies: 1024
+  val_rallies: 128
+  test_rallies: 128
+  seed: 991
+  workers: 4
+  min_frames: 128
+  maximum_attempts: 64
+
+rally:
+  output_fps: 60
+  max_rallies: 4
+  max_total_frames: 4800
+
+camera_sampling:
+  views: 4
+  width: 1280
+  height: 720
+  z_min: 3.0
+  z_max: 12.0
+  hfov_min: 60.0
+  hfov_max: 120.0
+  look_x: 2.0
+  look_y: 12.0
+  look_z_min: 0.5
+  look_z_max: 2.0
+  maximum_attempts: 1024
+
+hydra:
+  searchpath:
+    - file://${tennis_lab_path:project}/src/tasks/blcs/configs
+  output_subdir: null
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_refiner,generate,coordinates,${tennis_run_id:}},hydra}
+  job:
+    chdir: false

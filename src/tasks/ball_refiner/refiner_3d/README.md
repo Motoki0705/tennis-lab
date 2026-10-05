@@ -1,6 +1,9 @@
-# 3D Ball Refiner (#936)
+# 3D Ball Refiner
 
-CPUでの入力分布の準備段階。モデル・pipeline接続は未実装。
+現在のモデルは[#1014の座標Refiner](../coordinates/README.md)。回帰＋GANとconditional flowの
+実装・学習・推論が共通datasetを使う。
+
+以下は旧#936の確率的三角測量の履歴・計画であり、新方式の契約ではない。
 要件の正本は [#936](https://github.com/Motoki0705/tennis-lab/issues/936)。
 2D契約は [親README](../README.md#2dモデルのapi) を参照する。
 
