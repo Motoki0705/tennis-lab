@@ -95,6 +95,7 @@ namespaces = false
 "src.submodules.visualization.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.court_side.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.player_association.review" = ["static/*.html", "static/*.css", "static/*.js"]
+"src.tennis_scene.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.chat_annotation.player_pose" = ["WORKER.md"]
 "src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt", "resources/*/*.txt"]
 "src.tennis_scene.chat_annotation.web" = ["static/*.html", "static/*.css", "static/*.js"]
