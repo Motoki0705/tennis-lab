@@ -51,10 +51,22 @@ P95の入力値は分布の設定なので、短い1ラリーの実測値は一�
 Flow seedは拡張seedと独立で、平均や正解に基づく選択をせず1本だけ生成する。
 再生frame・camera・表示方法の変更だけでは推論しない。
 
-`best.ckpt`と同じrunの保存済みtest予測があり、ラリー・拡張条件・seedが一致する場合は
+checkpoint内容hashと結びついた表示用test予測があり、ラリー・拡張条件・seedが一致する場合は
 「保存済み評価」で再計算せず表示できる。GT、入力、mask、camera/frame対応も検証する。
 条件不一致を現在のモデルの結果として表示せず、評価条件への復帰または再推論を求める。
 checkpoint本体にない学習条件は推測せず、隣接configがないコピーでは条件不明と表示する。
+
+生成元の重みhashがない旧学習runの予測は、そのまま流用しない。次のコマンドは互換性のある
+`best.ckpt`からtest予測をCPUで新しく生成して終了する。学習runは変更せず、
+`outputs/ball_refiner/review/predictions/<checkpoint hash>/<評価条件 hash>/`へ保存する。
+同じ内容を検証済みなら省略し、破損したbundleは黙って上書きしない。
+
+```bash
+.venv/bin/python -m src.tasks.ball_refiner.scripts.serve_coordinate_review --prepare-saved-predictions
+```
+
+重み・dataset・評価条件・予測本体のhashを照合する。同じstepの重みを差し替えて一覧を更新した場合も
+古い予測を流用せず、表示用予測の生成またはUIの再推論を要求する。
 
 ## 保存と再現
 
