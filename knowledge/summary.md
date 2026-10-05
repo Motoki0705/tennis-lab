@@ -1,4 +1,4 @@
-<!-- knowledge-review: 6ab03ce7febc7bf970211f3c909cf3b3d2fa5aae6366f724d1d1eb091f75550e on 2026-10-02 -->
+<!-- knowledge-review: 53e430f0e60b787ab55a0b5d682e8b887be1e09719047bfe1ad482a78c6b1c87 on 2026-10-05 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
@@ -277,6 +277,10 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 
 ### Ball Refiner
 
+2026-10-05、#991/#1014の[座標Refiner比較](nodes/ball_refiner/000040-group-i991-i1014-coordinate-refiners-s42.md)で、座標＋欠損maskから全frameの単一軌道を復元する方針へ移行した。共通BLCSデータ1,280ラリーを `data/ball_refiner/single_object` に生成し、旧14datasetはユーザー指定で削除した。2D/3D計15条件が同一split・評価劣化・seed42・4,000更新で完了した。2Dのvalidation選択はイベント選択率75%・GANありで、test RMSEは全体15.188px、欠損29.120px。GANの差は小さく、急変点の丸まりと時間方向の揺れは残る。実動画の精度と追加seedでの再現性は未確認で、sceneの既定重み切替は行っていない。
+
+以下は方針転換前のGMM方式の実験履歴であり、現在の座標モデルの学習仕様ではない。
+
 [#935の教師・既存文脈監査](nodes/ball_refiner/000001-run-i935-data-audit-r2.md)で、
 全storeのsplitを保持し、observed位置教師と明示的out_of_frameの存在負例を分けられた。
 空frameと推定・unknownはamodal負例にしない。確定負例はchatに偏り、Meijiだけでは存在較正を判断できない。
@@ -343,6 +347,10 @@ bank作成frameは配布倍率のfitと重複するため、OOF性能と区別�
 [2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。[run29](nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)で既定切替・標準scene refinerを追加し、clip_000を除く保存済みMeiji valで存在確率と全GMMの90%包含楕円面積の規則を固定した。保持frameの誤差は低下したがcache入力での選定結果であり、mp4への一般化は未確認。当時のconsumer配線は同じ欠測maskをside・幾何・三角測量へ渡していた（現在は後述の2026-10-02方針で廃止）。[固定filterの安全bench](nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md)は元の全28条件を再現した上で誤判定0→3件、停止率18.58→24.91%となりFAIL。経験的confidence blockを独立に付けた合成回帰試験でE2Eではないが、directiveに従いclip_000 qualificationは投入せず、閾値を変えない。証拠のない区間の改善と文脈ablation、test評価も未完了。
 
 ### 3D Ball Refiner
+
+同じ[共通座標データ比較](nodes/ball_refiner/000040-group-i991-i1014-coordinate-refiners-s42.md)で、2D画素ノイズを三角測量した座標＋maskから、回帰／GAN／x0予測Flow Matchingの全方式を学習・評価した。validation選択はイベント選択率75%の回帰で、test RMSEは全体0.425m、欠損0.648m、event近傍0.661m。Flow内のvalidation最良は50%条件で全体0.556mだった。単独GPUの128frame推論は回帰がおよそ3〜7ms、Flowが56〜70ms。同一予算では回帰を優先する結果だが、加速度の過大・少数の負高さが残り、物理的な自然さや実動画の品質を保証しない。Flowの方式と重みも保持した。
+
+以下は旧#936の確率分布入力を前提とした比較・計画の履歴。
 
 [確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
 Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを

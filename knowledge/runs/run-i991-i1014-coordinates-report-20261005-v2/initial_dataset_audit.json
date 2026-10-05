@@ -1,0 +1,51 @@
+{
+  "rallies": 1280,
+  "frames": 540431,
+  "manifest_sha256": "54f2b0ccf026a1332f0fb8e947ee72a27de3fb591626400dc7952d4a20192d12",
+  "splits": {
+    "train": {
+      "rallies": 1024,
+      "frames": 432884,
+      "events": 7269
+    },
+    "val": {
+      "rallies": 128,
+      "frames": 53127,
+      "events": 920
+    },
+    "test": {
+      "rallies": 128,
+      "frames": 54420,
+      "events": 943
+    }
+  },
+  "noise": {
+    "0.25": {
+      "noise_p95_px": 199.50111389160156,
+      "noise_p50_px": 3.8192405700683594,
+      "frame_missing_rate_2d": 0.13942714241040946,
+      "frame_missing_rate_3d": 0.12121991521581849,
+      "isolated_probability_realized": 0.039881399363644106,
+      "selected_event_fraction": 0.24934296977660972
+    },
+    "0.5": {
+      "noise_p95_px": 199.54299926757812,
+      "noise_p50_px": 3.8193068504333496,
+      "frame_missing_rate_2d": 0.18999465241631217,
+      "frame_missing_rate_3d": 0.17504732334007486,
+      "isolated_probability_realized": 0.03991964092829642,
+      "selected_event_fraction": 0.5074463425317565
+    },
+    "0.75": {
+      "noise_p95_px": 199.4793701171875,
+      "noise_p50_px": 3.8194096088409424,
+      "frame_missing_rate_2d": 0.2381909068872807,
+      "frame_missing_rate_3d": 0.2264414883676177,
+      "isolated_probability_realized": 0.039961081260067075,
+      "selected_event_fraction": 0.7548182216381953
+    }
+  },
+  "visible_fraction": 0.9477426350449919,
+  "attempts_total": 2383,
+  "generation_seconds": 714.8500303660403
+}

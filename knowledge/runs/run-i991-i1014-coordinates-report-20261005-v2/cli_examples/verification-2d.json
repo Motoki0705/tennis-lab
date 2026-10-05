@@ -1,0 +1,7 @@
+{
+  "frames": 462,
+  "same_device_API_matches_CLI_exactly": true,
+  "maximum_difference_to_GPU_px": 0.0302734375,
+  "missing_frames": 69,
+  "note": "CPU and CUDA use different floating point kernels; cross-device bitwise equality is not claimed."
+}

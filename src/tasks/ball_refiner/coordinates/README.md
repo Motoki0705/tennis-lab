@@ -62,6 +62,10 @@ validationの全frame RMSEでcheckpointを選び、その後だけtestを評価�
 RMSEは軸平均でなくユークリッド距離の二乗平均平方根。全体・欠損・観測・イベント近傍を分け、
 線形補間対照と実際のframe欠損率も残す。学習曲線と実験結論は `knowledge/` に登録する。
 
+2026-10-05の15条件の学習・共通評価・単独GPU計測は
+[比較記録](../../../../knowledge/nodes/ball_refiner/000040-group-i991-i1014-coordinate-refiners-s42.md)を参照。
+各runのnodeから重みの場所・設定・全frame予測・学習曲線を確認できる。
+
 ## 推論
 
 `inference.load_checkpoint()` と `refine_coordinates()` は2方式で共通。
