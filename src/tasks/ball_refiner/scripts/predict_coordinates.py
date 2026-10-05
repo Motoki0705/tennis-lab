@@ -24,6 +24,7 @@ from src.utils.configuration import (
     RuntimePathRoots,
 )
 from src.utils.device import resolve_device
+from src.utils.paths import PROJECT_ROOT
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="ball_refiner.predict_coordinates",
@@ -81,7 +82,7 @@ def main() -> None:
     args = parser.parse_args()
     if not all(path.is_absolute() for path in (args.checkpoint, args.input, args.output)):
         parser.error("checkpoint, input and output must be explicit absolute paths")
-    roots = RuntimePathRoots(project_root=Path.cwd(), data_root=args.input.parent, checkpoint_root=args.checkpoint.parent,
+    roots = RuntimePathRoots(project_root=PROJECT_ROOT, data_root=args.input.parent, checkpoint_root=args.checkpoint.parent,
                              output_root=args.output.parent, artifact_root=args.output.parent, cache_root=args.output.parent,
                              external_asset_root=args.output.parent)
     paths = PATH_BOUNDARY.validate({"checkpoint": args.checkpoint, "input": args.input, "output": args.output}, resolver=PathResolver(roots))
