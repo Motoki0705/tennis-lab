@@ -49,6 +49,7 @@ def corrupt_trajectory(
     *,
     config: CorruptionConfig,
     seed: int,
+    noise_enabled: bool = True,
 ) -> CorruptedTrajectory:
     """Synchronize event gaps across views; sample isolated drops independently.
 
@@ -76,7 +77,7 @@ def corrupt_trajectory(
         intervals.append((int(event), start, end))
     isolated = (isolated_rng.random(visible.shape) < config.isolated_probability) & visible & ~blocked[None]
     missing = ~visible | blocked[None] | isolated
-    noise = coordinate_noise(visible.shape, config, noise_rng)
+    noise = coordinate_noise(visible.shape, config, noise_rng) if noise_enabled else np.zeros_like(uv_px)
     observation = np.where(missing[..., None], 0, uv_px + noise).astype(np.float32)
     result = triangulate_multiview(
         observation.transpose(1, 0, 2), (~missing).T.astype(np.float64), projections,
