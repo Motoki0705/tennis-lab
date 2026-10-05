@@ -14,6 +14,11 @@ import yaml
 
 from src.tasks.ball_refiner.coordinates.config import ModelConfig, parse_section
 from src.tasks.ball_refiner.coordinates.inference import CHECKPOINT_SCHEMA
+from src.tasks.ball_refiner.coordinates.review.artifacts import (
+    bundle_path,
+    cache_root,
+    read_receipt,
+)
 from src.tasks.ball_refiner.coordinates.review.contracts import evaluation_profile
 
 
@@ -22,12 +27,14 @@ class Checkpoint:
     path: Path
     info: dict[str, Any]
     run: Path | None
+    predictions: Path | None = None
 
 
-def describe(path: Path, identifier: str, manifest_hash: str, fps: float) -> Checkpoint:
+def describe(path: Path, identifier: str, manifest_hash: str, fps: float, prediction_root: Path) -> Checkpoint:
     info: dict[str, Any] = {"id": identifier, "label": identifier, "filename": path.name,
                             "compatible": False, "reason": None, "recommended": False}
     run: Path | None = None
+    predictions = None
     try:
         payload = torch.load(path, map_location="cpu", weights_only=True, mmap=True)
         if not isinstance(payload, dict) or payload.get("schema") != CHECKPOINT_SCHEMA:
@@ -59,10 +66,8 @@ def describe(path: Path, identifier: str, manifest_hash: str, fps: float) -> Che
                 run = candidate
                 info.update(train_event_probability=float(config["corruption"]["event_probability"]),
                             evaluation_profile=evaluation_profile(config), run_name=candidate.parent.name)
-                metrics_path = run / "predictions" / "metrics.json"
-                if path.name == "best.ckpt" and metrics_path.is_file() and (run / "predictions" / "pred_test.npz").is_file():
-                    metrics = json.loads(metrics_path.read_text())
-                    info["saved_available"] = metrics.get("best_step") == info["step"]
+                if path.name == "best.ckpt":
+                    predictions = bundle_path(prediction_root, info["sha256"], info["evaluation_profile"])
         rate = info["train_event_probability"]
         suffix = "学習条件不明" if rate is None else f"イベント {rate:.0%}"
         info.update(compatible=True, label=f"{model.dimensions}D · {method.upper()} · {suffix} · {path.name} · val {score:.3f} {info['unit']}")
@@ -71,12 +76,13 @@ def describe(path: Path, identifier: str, manifest_hash: str, fps: float) -> Che
     # weights_only may reject legacy custom pickle classes. Keep that visible.
     except Exception as exc:
         info["reason"] = f"checkpoint読込失敗: {type(exc).__name__}: {exc}"
-    return Checkpoint(path, info, run)
+    return Checkpoint(path, info, run, predictions)
 
 
 class CheckpointCatalog:
     def __init__(self, outputs: Path, curated: Path, manifest_hash: str, fps: float) -> None:
         self.roots = {"outputs": outputs.resolve(), "ckpt": curated.resolve()}
+        self.prediction_root = cache_root(outputs.resolve())
         self.manifest_hash, self.fps = manifest_hash, fps
         self.entries: dict[str, Checkpoint] = {}
         self._cache: dict[str, tuple[tuple[int, int, int, int], Checkpoint]] = {}
@@ -96,9 +102,17 @@ class CheckpointCatalog:
                 side = sidecar.stat() if sidecar.is_file() else None
                 revision = (stat.st_size, stat.st_mtime_ns, side.st_size if side else 0, side.st_mtime_ns if side else 0)
                 old = self._cache.get(identifier)
-                entry = old[1] if old and old[0] == revision else describe(resolved, identifier, self.manifest_hash, self.fps)
+                entry = old[1] if old and old[0] == revision else describe(resolved, identifier, self.manifest_hash, self.fps, self.prediction_root)
                 self._cache[identifier] = (revision, entry)
                 entry.info["recommended"] = False
+                if entry.info["compatible"]:
+                    entry.info.update(saved_available=False, saved_unavailable_reason="生成元を検証できる保存済み予測がありません")
+                    if entry.predictions is not None:
+                        try:
+                            read_receipt(entry.predictions, entry.info["sha256"], self.manifest_hash, entry.info["evaluation_profile"])
+                            entry.info.update(saved_available=True, saved_unavailable_reason=None)
+                        except ValueError as exc:
+                            entry.info["saved_unavailable_reason"] = str(exc)
                 entries[identifier] = entry
         self.entries = entries
         # Compare validation scores only within an identical evaluation recipe.

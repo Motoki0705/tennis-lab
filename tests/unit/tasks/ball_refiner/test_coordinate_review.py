@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import shutil
 from dataclasses import asdict
 
 import numpy as np
@@ -20,7 +21,17 @@ from src.tasks.ball_refiner.coordinates.generation import (
 )
 from src.tasks.ball_refiner.coordinates.inference import checkpoint_metadata
 from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
-from src.tasks.ball_refiner.coordinates.review.contracts import ReviewRequest
+from src.tasks.ball_refiner.coordinates.review.artifacts import (
+    bundle_path,
+    cache_root,
+    sha256,
+    write_bundle,
+)
+from src.tasks.ball_refiner.coordinates.review.contracts import (
+    ReviewRequest,
+    evaluation_profile,
+)
+from src.tasks.ball_refiner.coordinates.review.prepare import prepare_saved_predictions
 from src.tasks.ball_refiner.coordinates.review.service import ReviewService
 from src.tasks.ball_refiner.coordinates.review.web import create_app
 from src.tasks.base.visualization.inference_queue import execute_request
@@ -70,6 +81,9 @@ def review(tmp_path):
         np.savez(run / "predictions/pred_test.npz", **predictions)
         (run / "predictions/metrics.json").write_text(json.dumps({**report, "best_step": 100}))
         (run / "data_contract.json").write_text(json.dumps({"manifest_sha256": dataset.manifest_hash, "test_ids": ["rally_000002"]}))
+        digest, profile = sha256(checkpoints / "best.ckpt"), evaluation_profile(config)
+        write_bundle(bundle_path(cache_root(outputs), digest, profile), predictions, checkpoint=checkpoints / "best.ckpt",
+                     checkpoint_hash=digest, manifest_hash=dataset.manifest_hash, profile=profile)
     service = ReviewService(data, outputs, tmp_path / "curated")
     catalog = service.catalog()
     request = ReviewRequest(rally="rally_000002", manifest_sha256=catalog["manifest_sha256"],
@@ -149,6 +163,55 @@ def test_mutated_dataset_or_checkpoint_cannot_reuse_stale_result(review):
         file.write(b"changed")
     with pytest.raises(RuntimeError, match="ラリー"):
         service.preview(request)
+
+
+def test_replaced_checkpoint_with_same_step_cannot_adopt_old_predictions_after_refresh(review):
+    service, request = review
+    before = service.saved(request)
+    entry = service.checkpoints.entries[request.checkpoint_2d]
+    payload = torch.load(entry.path, weights_only=True, map_location="cpu")
+    payload["model"]["output.1.bias"] += 0.5
+    payload["validation_rmse"] = 123.0
+    torch.save(payload, entry.path)
+    service.catalog(refresh=True)
+    changed = service.checkpoints.entries[request.checkpoint_2d]
+    assert changed.info["step"] == entry.info["step"]
+    assert changed.info["sha256"] != entry.info["sha256"]
+    assert not changed.info["saved_available"]
+    request = request.model_copy(update={"checkpoint_hashes": {"2": changed.info["sha256"]}})
+    with pytest.raises(ValueError, match="保存済み"):
+        service.saved(request)
+    restarted = ReviewService(service.data_root, service.outputs_root, service.checkpoints_root)
+    with pytest.raises(ValueError, match="保存済み"):
+        restarted.saved(request)
+    after = service.infer(request)
+    assert np.max(np.abs(np.asarray(after["scene"]["prediction_2d"]) - before["scene"]["prediction_2d"])) > 100
+
+
+def test_prediction_bytes_and_receipt_are_checked_even_with_warm_array_cache(review):
+    service, request = review
+    service.saved(request)
+    entry = service.checkpoints.entries[request.checkpoint_2d]
+    with (entry.predictions / "pred_test.npz").open("ab") as stream:
+        stream.write(b"changed")
+    with pytest.raises(ValueError, match="内容hash"):
+        service.saved(request)
+    assert not next(item for item in service.catalog(refresh=True)["checkpoints"] if item["id"] == request.checkpoint_2d)["saved_available"]
+
+
+def test_legacy_predictions_require_fresh_evaluation_in_separate_review_cache(review):
+    service, request = review
+    entry = service.checkpoints.entries[request.checkpoint_2d]
+    original = {path: sha256(path) for path in entry.run.rglob("*") if path.is_file()}
+    shutil.rmtree(entry.predictions)
+    service.catalog(refresh=True)
+    assert not service.checkpoints.entries[request.checkpoint_2d].info["saved_available"]
+    with pytest.raises(ValueError, match="保存済み"):
+        service.saved(request)
+    prepare_saved_predictions(service)
+    saved, live = service.saved(request), service.infer(request)
+    np.testing.assert_allclose(saved["scene"]["prediction_2d"], live["scene"]["prediction_2d"], atol=1e-5)
+    assert original == {path: sha256(path) for path in entry.run.rglob("*") if path.is_file()}
 
 
 def test_review_api_rejects_invalid_contract_and_uses_queue_for_cuda(review, monkeypatch):

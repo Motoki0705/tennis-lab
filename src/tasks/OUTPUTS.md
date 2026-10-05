@@ -168,7 +168,7 @@ checkpoint探索の入力rootとして扱う。
 | 入口 | ディスクへの保存と設定 |
 |---|---|
 | ball/court/BLCS/PLCS `review_dataset`、PLCS `review_accad_motion` | dataset・モーションを読み取り、JSON・画像・バイナリをHTTP応答として返す。永続的な編集・可視化ファイルは作らない。入力rootは各CLIのdata/ACCAD/SMPL引数 |
-| ball_refiner `serve_coordinate_review` | 共通DATA・OUTPUT内の学習run・CHECKPOINTを読み取るHTTP UI。設定JSON・比較PNGはブラウザdownloadへ保存。CUDA要求のみ共有queueへ記録 |
+| ball_refiner `serve_coordinate_review` | 共通DATA・OUTPUT内の学習run・CHECKPOINTを読み取るHTTP UI。設定JSON・比較PNGはブラウザdownloadへ保存。`--prepare-saved-predictions`は`OUTPUT/ball_refiner/review/predictions/`へ表示用予測を生成。CUDA要求のみ共有queueへ記録 |
 | ball/court/BLCS `inference_ui`、PLCS `serve_inference_ui` | 推論要求と応答は共有repoの `.training_queue/ui_requests/<task>-<unique>/` に保持。入力は `request.json`、成功はatomicに公開する `result.bin`、失敗は `error.json`。queue実行ログは同じ共有queueの `logs/`。推論結果はHTTP応答としても返す |
 | base `inference_worker` | 上記requestディレクトリ内に結果を保存。CLIのrequest引数はその境界内の既存ファイルに限定 |
 

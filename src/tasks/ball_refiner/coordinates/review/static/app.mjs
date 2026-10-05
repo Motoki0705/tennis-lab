@@ -70,6 +70,7 @@ function modelLabels() {
   for (const dimension of [2, 3]) {
     const item = checkpoint(dimension);
     $(`model-${dimension}d-info`).textContent = item ? `${item.method.toUpperCase()} · step ${item.step.toLocaleString()} · validation ${item.validation_rmse.toFixed(3)} ${item.unit}` : "モデル未選択";
+    $(`model-${dimension}d-info`).title = item ? (item.saved_unavailable_reason || "重みと対応を検証した保存済み評価があります") : "";
   }
 }
 function fillRallies(preferred = null) {

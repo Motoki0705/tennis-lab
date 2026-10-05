@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import threading
 import time
@@ -23,6 +24,7 @@ from src.tasks.ball_refiner.coordinates.inference import (
     load_checkpoint,
     refine_coordinates,
 )
+from src.tasks.ball_refiner.coordinates.review.artifacts import read_receipt
 from src.tasks.ball_refiner.coordinates.review.checkpoints import (
     Checkpoint,
     CheckpointCatalog,
@@ -37,8 +39,11 @@ from src.utils.paths import PROJECT_ROOT
 
 
 @lru_cache(maxsize=2)
-def _saved_arrays(path: str, size: int, modified: int) -> dict[str, np.ndarray]:
-    with np.load(path, allow_pickle=False) as data:
+def _saved_arrays(path: str, digest: str) -> dict[str, np.ndarray]:
+    content = Path(path).read_bytes()
+    if hashlib.sha256(content).hexdigest() != digest:
+        raise ValueError("保存済み予測の内容hashが一致しません")
+    with np.load(io.BytesIO(content), allow_pickle=False) as data:
         return {key: data[key] for key in data.files}
 
 
@@ -88,16 +93,16 @@ class ReviewService:
                                   config=request.corruption(), seed=seed, noise_enabled=request.noise_enabled)
 
     def _saved(self, checkpoint: Checkpoint, request: ReviewRequest, rally: Rally, corruption: CorruptedTrajectory) -> np.ndarray:
-        if rally.split != "test" or not checkpoint.info["saved_available"] or checkpoint.run is None:
+        if rally.split != "test" or not checkpoint.info["saved_available"] or checkpoint.run is None or checkpoint.predictions is None:
             raise ValueError("このラリー・checkpointには保存済みtest予測がありません。再推論を実行してください")
         if request.profile() != checkpoint.info["evaluation_profile"]:
             raise ValueError("保存済み予測と拡張条件・seedが異なります。評価条件に戻すか再推論してください")
         contract = json.loads((checkpoint.run / "data_contract.json").read_text())
         if contract["manifest_sha256"] != self.dataset.manifest_hash or rally.name not in contract["test_ids"]:
             raise ValueError("保存済み予測のデータ契約が一致しません")
-        path = checkpoint.run / "predictions" / "pred_test.npz"
-        stat = path.stat()
-        arrays = _saved_arrays(str(path), stat.st_size, stat.st_mtime_ns)
+        receipt = read_receipt(checkpoint.predictions, checkpoint.info["sha256"], self.dataset.manifest_hash, request.profile())
+        path = checkpoint.predictions / "pred_test.npz"
+        arrays = _saved_arrays(str(path), receipt["predictions_sha256"])
         dim = checkpoint.info["dimensions"]
         views = len(rally.uv) if dim == 2 else 1
         frames = len(rally.xyz)
