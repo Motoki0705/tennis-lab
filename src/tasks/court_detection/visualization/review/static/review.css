@@ -1,0 +1,31 @@
+body[data-review-task="court"] .workspace { grid-template-columns: 280px minmax(300px, 1fr) 330px; }
+body[data-review-task="court"] .transport,
+body[data-review-task="court"] .playback-status { display: none; }
+body[data-review-task="court"] .dataset-section { display: flex; flex-direction: column; height: 270px; overflow: hidden; }
+body[data-review-task="court"] #datasets { display: block; overflow-y: auto; min-height: 0; flex: 1; }
+body[data-review-task="court"] .dataset-section .overview-open { flex-shrink: 0; }
+.court-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.court-section-heading a { color: var(--green); font-size: 11px; }
+.court-section-heading h2 { margin-bottom: 8px; }
+.court-origin { font-size: 12px; margin: 2px 0 8px; line-height: 1.6; }
+.court-count { color: var(--green); font-weight: 600; margin: 5px 0; }
+.court-explanation, .court-selected, .court-layer-note { font-size: 11px; line-height: 1.6; color: #55645e; margin: 6px 0; }
+.court-point-list { display: grid; gap: 3px; margin-top: 10px; }
+.court-point { display: grid; grid-template-columns: 1fr auto; text-align: left; padding: 6px 7px; gap: 2px 5px; border-color: transparent; background: #f4f7f5; }
+.court-point-name { grid-column: 1 / -1; display: flex; gap: 6px; font-size: 11px; }
+.court-point-name b { width: 18px; color: var(--green); }
+.court-point small { font-size: 10px; color: #627269; }
+.court-point-state { font-size: 10px; }
+.court-point.state-out_of_frame, .court-point.state-behind_camera { background: #f1f3f4; color: #66727b; }
+.court-point.state-renderer_not_visible { background: #fff4dd; color: #7b5916; }
+.court-point.selected { border-color: var(--green); }
+.court-inspection details { font-size: 11px; line-height: 1.6; margin-top: 8px; }
+.court-inspection pre, body[data-review-task="court"] #dataset-overview pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f3f6f4; padding: 8px; font-size: 11px; }
+.court-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 9px 16px; background: #f9fbfa; border-bottom: 1px solid var(--line); }
+.court-tools button { padding: 6px 12px; }
+.court-layer-note { width: 100%; margin: 0; }
+.court-tools .check { margin: 0 0 0 auto; font-size: 11px; gap: 8px; }
+.court-schema { overflow-wrap: anywhere; white-space: pre-wrap; }
+.court-flag { color: #a56116; }
+#court-sample-filter { margin-top: 8px; padding: 8px; font-size: 11px; }
+@media (max-width: 1100px) { body[data-review-task="court"] .workspace { grid-template-columns: 220px minmax(260px, 1fr) 280px; } }

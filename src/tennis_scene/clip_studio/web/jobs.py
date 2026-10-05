@@ -62,6 +62,8 @@ class Jobs:
 
     def start(self, request: JobRequest) -> dict[str, Any]:
         with self._lock, self.editor.lock:
+            if self.editor.read_only:
+                raise PermissionError("読取専用レビューでは同期計算・書き出しを実行できません。")
             if self._state["status"] == "running":
                 raise ValueError("処理中です。完了またはキャンセルを待ってください。")
             self.editor.check_revision(request.revision)
