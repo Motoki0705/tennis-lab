@@ -10,17 +10,26 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     args: ["--no-sandbox"],
   });
   try {
+    const baseURL = process.env.COURT_REVIEW_URL || "http://127.0.0.1:8778";
     const page = await browser.newPage({
         viewport: { width: 1440, height: 1000 },
       }),
       errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.goto(process.env.COURT_REVIEW_URL || "http://127.0.0.1:8778");
+    await page.goto(baseURL);
     await page.waitForSelector(".trajectory", { timeout: 90000 });
     const scenes = await page
       .locator("#scene option")
       .evaluateAll((options) => options.map((o) => o.value));
     assert(scenes.includes("B00") && scenes.includes("B03"));
+    const modeBox = await page.locator("#image-mode").boundingBox();
+    assert(modeBox && modeBox.y + modeBox.height < 1000);
+    assert.equal(await page.locator("#label-scope").inputValue(), "target");
+    await page.waitForSelector("#catalog-table tbody button");
+    assert.match(
+      await page.locator("#catalog-total").textContent(),
+      /8,415採用 · 601 reject/,
+    );
     for (const scene of ["B00", "B01", "B02", "B03"]) {
       await page.selectOption("#scene", scene);
       await page.waitForFunction(
@@ -38,13 +47,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
         {},
         { timeout: 30000 },
       );
-      const dimensions = await page
-        .locator("#gallery")
-        .evaluate((el) => ({
-          height: el.clientHeight,
-          tile: el.firstElementChild.getBoundingClientRect().height,
-          count: el.children.length,
-        }));
+      const dimensions = await page.locator("#gallery").evaluate((el) => ({
+        height: el.clientHeight,
+        tile: el.firstElementChild.getBoundingClientRect().height,
+        count: el.children.length,
+      }));
       assert(
         Math.abs((dimensions.height + 8) / (dimensions.tile + 8) - 5.5) < 0.05,
       );
@@ -86,8 +93,143 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       );
       await page.keyboard.press("Escape");
       assert.equal(await page.locator("#lightbox").isVisible(), false);
+      await page.selectOption("#image-mode", "compare");
+      await page.locator(".thumbnail").first().click();
+      await page.waitForFunction(() => {
+        const raw = document.querySelector("#raw-image"),
+          overlay = document.querySelector("#large-image");
+        return (
+          raw.complete &&
+          raw.naturalWidth > 0 &&
+          overlay.complete &&
+          overlay.naturalWidth > 0 &&
+          document.querySelector("#point-table table")
+        );
+      });
+      assert(await page.locator("#raw-pane").isVisible());
+      assert.equal(await page.locator("#point-table table").count(), 1);
+      assert.equal(await page.locator("#point-table tr").count(), 14);
+      assert.match(
+        await page.locator("#large-caption").textContent(),
+        /target court-/,
+      );
+      await page.selectOption("#large-scope", "all");
+      await page.waitForFunction(
+        () =>
+          document
+            .querySelector("#large-caption")
+            .textContent.includes("全court参考") &&
+          document.querySelectorAll("#point-table table").length > 0,
+      );
+      assert.match(
+        await page.locator("#large-sample-info").textContent(),
+        /全court参考/,
+      );
+      await page.selectOption("#large-scope", "target");
+      await page.waitForFunction(
+        () => document.querySelectorAll("#point-table tr").length === 14,
+      );
+      assert.match(
+        await page.locator("#large-sample-info").textContent(),
+        /target court-/,
+      );
+      await page.keyboard.press("Escape");
+      await page.selectOption("#image-mode", "overlay");
+      await page.selectOption("#split-filter", "test");
+      const splitCount = await page.locator(".trajectory").count();
+      assert(splitCount > 0);
+      const sceneList = await (
+        await page.request.get(new URL("/api/scenes", baseURL).href)
+      ).json();
+      const response = await page.request.get(
+        new URL(
+          `/api/scenes/${scene}?revision=${sceneList.find((s) => s.id === scene).revision}`,
+          baseURL,
+        ).href,
+      );
+      const summary = await response.json();
+      if (summary.courts.length > 1) {
+        const s = summary.groups
+          .flatMap((g) => g.samples)
+          .find(
+            (s) =>
+              s.target_counts && s.counts.in_frame > s.target_counts.in_frame,
+          );
+        assert(
+          s,
+          "a sample with additional in-frame courts is required for scope comparison",
+        );
+        const endpoint = new URL(
+          `/api/scenes/${scene}/images/${s.id}?revision=${summary.revision}&width=480`,
+          baseURL,
+        ).href;
+        const targetImage = await (
+          await page.request.get(endpoint + "&label_scope=target")
+        ).body();
+        const allImage = await (
+          await page.request.get(endpoint + "&label_scope=all")
+        ).body();
+        assert(
+          !targetImage.equals(allImage),
+          "target and all-court image caches must remain distinct",
+        );
+      }
+      assert.equal(
+        splitCount,
+        summary.groups.filter((g) => g.split === "test").length,
+      );
+      if (scene === "B01") {
+        assert.deepEqual(summary.split_targets.test, {
+          "court-000": 0,
+          "court-001": 198,
+          "court-002": 0,
+        });
+        assert.equal(await page.locator(".zero-count").count(), 2);
+      }
+      await page.selectOption("#split-filter", "all");
+      await page.locator("#rejection-details summary").click();
+      await page.locator("#rejected-table tbody button").first().click();
+      await page.waitForFunction(
+        () =>
+          document.querySelector("#reject-dialog").open &&
+          document.querySelector("#reject-info details"),
+      );
+      assert.equal(await page.locator("#reject-dialog img").count(), 0);
+      const rejectedSample = summary.rejections.samples[0];
+      if (rejectedSample.projection_recorded) {
+        assert(
+          (
+            await page.locator("#reject-projection > h3").first().textContent()
+          ).startsWith(rejectedSample.target_court),
+        );
+        assert.equal(
+          await page.locator("#reject-projection > table tr").count(),
+          14,
+        );
+        assert.equal(
+          await page
+            .locator("#reject-projection .reference-courts[open]")
+            .count(),
+          0,
+        );
+      }
+      assert.equal(
+        await page.locator("#large-image").getAttribute("src"),
+        null,
+      );
+      assert.match(
+        await page.locator("#reject-dialog").textContent(),
+        /画像未保存/,
+      );
+      assert.match(
+        await page.locator("#reject-info").textContent(),
+        /scene位置\(m\)/,
+      );
+      await page.locator("#reject-close").click();
+      await page.locator("#rejection-details summary").click();
+      await page.evaluate(() => scrollTo(0, 0));
       console.log(
-        `${scene}: ${await page.locator(".trajectory").count()} trajectories; gallery, full-screen and keyboard passed`,
+        `${scene}: ${await page.locator(".trajectory").count()} trajectories; gallery, full-screen, compare, split and reject isolation passed`,
       );
     }
     // Clicking a pickable trajectory directly in the 3D canvas updates the list/gallery.

@@ -92,6 +92,7 @@ exclude = ["src.tasks.blcs.generate_dataset.webui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"src.tasks.court_side.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tennis_scene.chat_annotation.player_pose" = ["WORKER.md"]
 "src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt", "resources/*/*.txt"]
 "src.tennis_scene.chat_annotation.web" = ["static/*.html", "static/*.css", "static/*.js"]
@@ -101,11 +102,15 @@ namespaces = false
 "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.base.visualization.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.blcs.visualization.review" = ["static/*.css", "static/*.mjs"]
 "src.tasks.base.visualization.detection" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.court_detection.visualization.review" = ["static/*.css", "static/*.mjs"]
 "src.tasks.player_detection.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.base.visualization" = ["shared/*.js", "shared/*.mjs", "shared/*.txt"]
 "src.tasks.plcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.plcs.visualization.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs", "dataset_static/*.css", "dataset_static/*.js", "dataset_static/*.mjs"]
 "src.tasks.blcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.person_tracking.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "*" = [
     "README.md",
     "configs/*.yaml",

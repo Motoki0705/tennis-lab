@@ -1,7 +1,7 @@
 """Local, read-only API and packaged browser assets."""
 
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -47,9 +47,20 @@ def create_app(service: ReviewService) -> FastAPI:
     def scenes() -> list[dict[str, str]]:
         return service.scenes()
 
+    @app.get("/api/catalog")
+    def catalog() -> list[dict[str, Any]]:
+        return service.catalog()
+
     @app.get("/api/scenes/{scene}")
     def scene_data(scene: str, revision: str) -> Any:
         return service.load(scene, revision)["summary"]
+
+    @app.get("/api/scenes/{scene}/samples/{sample}")
+    def sample_data(scene: str, sample: str, revision: str) -> dict[str, Any]:
+        try:
+            return service.sample_detail(scene, revision, sample)
+        except KeyError as error:
+            raise HTTPException(404, "Unknown sample.") from error
 
     @app.get("/api/scenes/{scene}/images/{sample}")
     def image(
@@ -57,9 +68,11 @@ def create_app(service: ReviewService) -> FastAPI:
         sample: str,
         revision: str,
         width: Annotated[int, Query(ge=0, le=1600)] = 480,
+        mode: Literal["overlay", "raw"] = "overlay",
+        label_scope: Literal["all", "target"] = "all",
     ) -> Response:
         try:
-            content = service.overlay(scene, revision, sample, width)
+            content = service.overlay(scene, revision, sample, width, mode, label_scope)
         except KeyError as error:
             raise HTTPException(404, "Unknown sample.") from error
         return Response(
@@ -67,5 +80,12 @@ def create_app(service: ReviewService) -> FastAPI:
             media_type="image/jpeg",
             headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
         )
+
+    @app.get("/api/scenes/{scene}/rejections/{sample}")
+    def rejection_data(scene: str, sample: str, revision: str) -> dict[str, Any]:
+        try:
+            return service.rejection_detail(scene, revision, sample)
+        except KeyError as error:
+            raise HTTPException(404, "Unknown rejected candidate.") from error
 
     return app

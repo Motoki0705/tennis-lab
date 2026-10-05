@@ -33,6 +33,38 @@ SMPL-Hは `paths.external_asset_root=ckpt` 配下の `body_models/smplh` を読�
 学習のresume/init_weightsを解決する `paths.checkpoint_root=outputs` とは独立しています。
 chunked生成のCOCO17 regressorはvendoredの静的資産を参照します。
 
+## データセットの体系
+
+現行の学習データ系列は **`single_object` / `physical_v1` のみ**です。
+ACCADの動作を物理コートへ配置し、保存カメラへ投影した合成データです。
+RGB映像、テニス選手の実測3D教師、人手の2Dアノテーションは含みません。
+
+| 配置 | 役割 | 入力・教師と単位 |
+|---|---|---|
+| `data/ACCAD/**/*.npz` | 元動作（AMASS/SMPL-H）。学習シーンの生成素材 | `poses`、`trans`、`betas`、gender、fps。生成時にCOCO17へ変換しコートへ配置 |
+| `data/plcs/single_object/scenes/<scene>/` | 学習・検品する生成シーン | カメラ別COCO17/CourtKP20の正規化UV・vis、正規化root位置、yawのcos/sin、世界COCO17[m] |
+| `data/plcs/single_object/{train,val,test}.txt` | scene IDの分割 | 保存splitを読み、未割当・重複・同一元動作のsplit共有を確認する |
+| `data/plcs/single_object/samples/` | シーンに付属する閲覧用GIFと選定manifest | 冒頭の共有契約にあるサンプル仕様に従う補助成果物 |
+
+`train_chunked` / `train_chunked_gan` は同じsingle_object契約のtrainシーンを
+逐次生成する供給方式です。独立したデータ系列ではなく、val/testは固定splitを使います。
+設定・元動作は`configs/data/`、`configs/motion_sources/accad.yaml`を参照してください。
+
+保存データと実際の学習入力は区別します。現行の固定・chunked data profileは
+`num_court_kp=14`で、保存CourtKP20の先頭14点を切り出します。
+COCO17・CourtKPともvis=0のUVを0化し、選択したcamera・時間窓へcropして
+augmentationを適用します。レビューUIはこの前段の保存観測を表示します。
+
+scene内の`position.npy`は共有のコート正規化契約に従います。レビューUIのroot位置は
+`denormalize_court_position()`でメートルへ復元し、COCO17のhip中心とは区別して表示します。
+`human_kp_3d.npy`は物理コート座標のCOCO17です。学習のcanonical教師は
+この世界COCO17とroot/yawから構成します。保存された`canonical_pose_3d.npy`の関節数は
+検品画面にそのまま表示し、旧シーンに残るSMPL-H由来の表現をCOCO17と取り違えません。
+
+splitの独立性を元動作単位で確保したい場合、生成時に`run.split_group=motion_source`を指定します。
+保存済みのscene単位splitをUIが書き換えることはありません。
+データセット検品の起動・見方は[Web UIガイド](visualization/README.md#データセット閲覧)へまとめています。
+
 ## データ生成
 
 ```bash
@@ -63,7 +95,8 @@ checkpointの座標契約・設定・state dictの不一致はエラーになり
 ## 閲覧・推論
 
 起動方法は[Web UIガイド](visualization/README.md)を参照してください。
-checkpointからaxialを復元し、single_objectシーンのGTと予測を比較します。
+データセット閲覧はcheckpointなしで保存入力と合成教師を確認します。
+推論UIはcheckpointからaxialを復元し、single_objectシーンの教師と予測を比較します。
 
 `generate_dataset/sampling/`はACCADを読み、`motion/`はCOCO-17変換とコートへの配置を所有します。
 SMPL-HとCOCO-17 regressorは明示した外部assetを使用します。GVHMRモーション抽出・混合は廃止しました。

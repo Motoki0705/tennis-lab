@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Court Side · Dataset review</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<header><div><div class="eyebrow">TENNIS LAB / DATASET REVIEW</div><h1>Court Side <span>同期観測とside仮説の根拠</span></h1></div><div class="readonly">保存artifactを読む · CPU</div></header>
+<div class="toolbar"><label>観測セット <select id="case" aria-label="観測セット"></select></label><span id="source"></span><button id="back" aria-label="前のframe">←</button><button id="play">再生</button><button id="next" aria-label="次のframe">→</button><label>frame <input id="frame" type="number" min="0" value="0" aria-label="frame"></label><span id="clock"></span></div>
+<div id="error" role="alert" hidden></div>
+<div class="notice" id="notice"></div>
+<main>
+<div class="observations">
+<section><div class="section-title"><h2>同じ時刻の観測</h2><span><i class="dot"></i> 保存ボール点 <span class="subtle">／画像をクリックして拡大中心を変更</span></span></div><div id="views" class="views"></div></section>
+<section class="timeline-section"><div class="section-title"><h2>観測と保存costのtimeline</h2><span id="timeline-legend"></span></div><canvas id="timeline" height="140" aria-label="カメラ別観測と保存仮説costのtimeline"></canvas><input id="scrub" type="range" min="0" value="0" aria-label="同期frame slider"><div class="subtle" id="timeline-note"></div></section>
+<section><div class="section-title"><h2>仮説を同時刻で比較</h2><span>行を選ぶと校正図の向きが切り替わります</span></div><div id="hypotheses"></div><p class="subtle" id="score-note"></p></section>
+</div>
+<aside>
+<section class="decision-card"><div class="eyebrow">保存された判定</div><h2 id="decision"></h2><div id="metrics" class="metrics"></div><p id="threshold" class="subtle"></p></section>
+<section><div class="section-title"><h2>camera-local校正と仮説</h2></div><div class="subtle">位置・向きは保存校正の座標変換（m）</div><canvas id="geometry" width="340" height="245" aria-label="仮説に対応するカメラの位置と向き"></canvas><div id="geometry-legend"></div><div id="calibration" class="subtle"></div></section>
+<section><h2>このframeの根拠</h2><div id="evidence"></div><div id="pairs"></div></section>
+</aside>
+</main>
+<footer><details><summary>入力の出典・schema・未保存の情報</summary><pre id="provenance"></pre></details><p>ボール観測だけでsideを判定する処理。人物の対応・身体poseはsideの根拠に含みません。</p></footer>
+<script src="/static/app.js" type="module"></script>
+</body></html>
