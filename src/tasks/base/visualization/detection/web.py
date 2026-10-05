@@ -96,6 +96,21 @@ class BallReviewBackend(Protocol):
     ) -> dict[str, Any]: ...
 
 
+class CourtReviewBackend(Protocol):
+    def annotation(self, scene: str) -> dict[str, object]: ...
+
+    def scenes(
+        self,
+        dataset: str,
+        search: str = "",
+        offset: int = 0,
+        limit: int = 100,
+        checkpoint: str | None = None,
+        *,
+        sample_state: str = "",
+    ) -> dict[str, Any]: ...
+
+
 def create_detection_app(
     service: DetectionBackend,
     *,
@@ -108,6 +123,14 @@ def create_detection_app(
         TrustedHostMiddleware,
         allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"],
     )
+    if task == "court_detection":
+        from src.tasks.court_detection.visualization.review.web import (
+            install_review_routes,
+        )
+
+        install_review_routes(
+            app, lambda scene: cast(CourtReviewBackend, service).annotation(scene)
+        )
     inference_lock = threading.Lock()
 
     @app.middleware("http")
@@ -179,7 +202,16 @@ def create_detection_app(
         source: str = "",
         split: str = "",
         review_state: str = "",
+        sample_state: str = "",
     ) -> dict[str, Any]:
+        if sample_state:
+            if task != "court_detection":
+                raise ValueError("Court sample filters require court_detection")
+            if player_dataset or player_status or source or split or review_state:
+                raise ValueError("Ball review filters require ball_detection")
+            return cast(CourtReviewBackend, service).scenes(
+                dataset, search, offset, limit, checkpoint, sample_state=sample_state
+            )
         if player_dataset or player_status or source or split or review_state:
             if task != "ball_detection":
                 raise ValueError("Ball review filters require ball_detection")

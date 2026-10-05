@@ -37,6 +37,7 @@ const viewer = new ImageViewer(
   $("view"),
   (scale) => ($("zoom").textContent = `${Math.round(scale * 100)}%`),
 );
+let courtReview = null;
 const query = (values) =>
   new URLSearchParams(
     Object.entries(values).filter(([, v]) => v !== null && v !== undefined),
@@ -95,6 +96,7 @@ function resetScene() {
   state.review = null;
   renderSceneReview(null);
   renderFrameReview(null);
+  courtReview?.clear();
   renderJumpOptions(null);
   state.total = 0;
   state.frame = 0;
@@ -191,6 +193,7 @@ function renderDatasets() {
   );
   renderPlayerDatasets();
   renderReviewFilters(items.find((d) => d.id === state.dataset), state.catalog.task === "ball_detection");
+  courtReview?.dataset(items.find((d) => d.id === state.dataset));
   $("dataset-label").textContent =
     items.find((d) => d.id === state.dataset)?.label || "該当データセットなし";
 }
@@ -273,10 +276,19 @@ async function loadCatalog() {
     clearTimeout(searchTimer);
     resetScene();
     state.catalog = catalog;
+    if (catalog.task === "court_detection" && !courtReview) {
+      const { createCourtReview } = await import("/task-static/review.mjs");
+      if (token !== state.catalogToken) return;
+      courtReview = createCourtReview(viewer, () => {
+        state.page = 0;
+        resetScene();
+        loadScenes();
+      });
+    }
     viewer.configure({ ballPoints: catalog.task === "ball_detection" });
     $("ball-state-legend").hidden = catalog.task !== "ball_detection";
-    $("gt-legend-label").textContent = catalog.task === "ball_detection" ? "観測" : "GT";
-    $("gt-layer-label").textContent = catalog.task === "ball_detection" ? "保存ball注釈" : "Ground Truth";
+    $("gt-legend-label").textContent = catalog.task === "ball_detection" ? "観測" : "保存KP / 派生target";
+    $("gt-layer-label").textContent = catalog.task === "ball_detection" ? "保存ball注釈" : "保存KP + 派生target";
     document.title = catalog.title;
     $("title").textContent = catalog.title;
     $("mode").textContent =
@@ -289,9 +301,9 @@ async function loadCatalog() {
       "pred-legend",
     ])
       $(id).hidden = review;
-    $("device-status").textContent = catalog.cuda_available
-      ? "CUDA available"
-      : "CPU only";
+    $("device-status").textContent = catalog.task === "court_detection" && review
+      ? "保存データを確認"
+      : catalog.cuda_available ? "CUDA available" : "CPU only";
     if (!catalog.checkpoints.some((c) => c.id === state.checkpoint && !c.error))
       state.checkpoint = "";
     renderCheckpoints();
@@ -314,7 +326,7 @@ async function loadScenes() {
   }
   try {
     const result = await api(
-      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null, player_dataset: state.playerDataset || null, player_status: $("player-status-filter").value || null, source: $("source-filter").value || null, split: $("split-filter").value || null, review_state: $("review-state-filter").value || null })}`,
+      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null, player_dataset: state.playerDataset || null, player_status: $("player-status-filter").value || null, source: $("source-filter").value || null, split: $("split-filter").value || null, review_state: $("review-state-filter").value || null, sample_state: $("court-sample-filter")?.value || null })}`,
     );
     if (
       token !== state.listToken ||
@@ -356,6 +368,7 @@ async function selectScene(item) {
   state.buffer = makeBuffer();
   $("scene-title").textContent = item.label;
   renderSceneReview(item);
+  courtReview?.dataset(state.catalog.datasets.find((d) => d.id === state.dataset));
   $("start").value = "0";
   $("start").max = String(Math.max(0, item.frames - 1));
   $("seek").max = String(Math.max(0, item.frames - 1));
@@ -456,12 +469,13 @@ async function showFrame(frame, reset = false) {
     renderLayers(item.gt, pred);
     reportPlayers(players, people);
     renderFrameReview(item);
+    courtReview?.frame(item, state.scene.id);
     updateJumpButtons(state.review, frame);
     showWarnings([
       ...(item.warnings || preview.warnings || []),
       ...(state.resultWarnings || []),
     ]);
-    const annotationLabel = item.review ? "保存ball注釈" : "GT";
+    const annotationLabel = item.review ? "保存ball注釈" : "保存Court KP / 派生target";
     status(
       pred
         ? `${annotationLabel} + Prediction`
@@ -469,7 +483,7 @@ async function showFrame(frame, reset = false) {
           ? `${annotationLabel} / このフレームは推論範囲外`
           : item.review
             ? `${annotationLabel} · ${item.supervised ? "採点対象" : "採点対象外"}`
-            : "Ground Truth",
+            : annotationLabel,
     );
     // Committed frame identity is also used by browser regression/performance tests.
     $("view").dataset.frame = String(frame);
@@ -703,6 +717,11 @@ for (const [id, direction] of [["review-jump-prev", -1], ["review-jump-next", 1]
     if (target !== null) { stop(); showFrame(target); }
   };
 $("dataset-overview-open").onclick = () => {
+  if (courtReview) {
+    courtReview.overview(state.catalog);
+    $("dataset-overview").showModal();
+    return;
+  }
   renderDatasetOverview(
     state.catalog.datasets.find((d) => d.id === state.dataset),
     (state.catalog.player_datasets || []).filter((d) => d.ball_version === state.dataset.replace(/^store\//, "") || !d.available),

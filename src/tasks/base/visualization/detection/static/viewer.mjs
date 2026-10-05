@@ -53,6 +53,8 @@ export class ImageViewer {
       raster: "",
       opacity: 0.55,
       ballPoints: false,
+      referencePoints: false,
+      highlightPoint: null,
       players: true,
       pose: true,
       boxes: true,
@@ -179,6 +181,14 @@ export class ImageViewer {
     this.onZoom(this.transform.scale);
     this.draw();
   }
+  focusPoint(point) {
+    if (!this.image || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+    const scale = Math.max(this.transform.scale, 2);
+    this.transform = { scale, x: this.width / 2 - point.x * scale, y: this.height / 2 - point.y * scale };
+    this.options.highlightPoint = point;
+    this.onZoom(scale);
+    this.draw();
+  }
   draw() {
     const ctx = this.ctx;
     if (!ctx) return;
@@ -224,9 +234,14 @@ export class ImageViewer {
         ctx.lineTo(line.x2, line.y2);
         ctx.stroke();
       }
-      for (const point of visiblePoints(layer)) {
+      const points = kind === "gt" && this.options.referencePoints
+        ? (layer.points || []).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+        : visiblePoints(layer);
+      for (const point of points) {
+        const reference = point.visible === false;
         const pointColor = this.options.ballPoints && kind === "gt"
-          ? ballPointColor(point.state) : color;
+          ? ballPointColor(point.state) : reference ? "#ffc857" : color;
+        if (this.options.referencePoints) ctx.setLineDash(reference ? [3 / scale, 2 / scale] : []);
         ctx.fillStyle = pointColor;
         ctx.strokeStyle = pointColor;
         const radius =
@@ -240,7 +255,7 @@ export class ImageViewer {
         }
         if (this.options.labels && point.label) {
           ctx.font = `${10 / scale}px system-ui`;
-          const label = String(point.label);
+          const label = String(point.display_label ?? point.label);
           const tw = ctx.measureText(label).width;
           const tx = Math.min(
             Math.max(point.x + 7 / scale, 0),
@@ -261,6 +276,13 @@ export class ImageViewer {
           ctx.fillText(label, tx, ty);
         }
       }
+      if (this.options.referencePoints) ctx.setLineDash([]);
+    }
+    const selected = this.options.highlightPoint;
+    if (selected && this.options.gt) {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2 / scale;
+      ctx.beginPath(); ctx.arc(selected.x, selected.y, 11 / scale, 0, 2 * Math.PI); ctx.stroke();
     }
     ctx.restore();
   }
