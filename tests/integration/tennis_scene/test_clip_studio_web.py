@@ -76,6 +76,156 @@ def test_ranged_media_and_exact_source_frame(web_client):
     assert client.get("/api/media/99").status_code == 404
 
 
+def test_review_time_mapping_matches_real_jpeg_frames_and_stale_requests(web_client):
+    client, _ = web_client
+    for time in (-1, 0, 0.55, 2.9, 3.0):
+        mapping = client.get(f"/api/correspondence?time={time}&revision=0").json()
+        for camera, block in enumerate(mapping["cameras"]):
+            response = client.get(f"/api/frame/{camera}?time={time}&revision=0")
+            if block["frame_index"] is None:
+                assert response.status_code == 204
+            else:
+                assert int(response.headers["x-frame-index"]) == block["frame_index"]
+    assert client.get("/api/correspondence?time=nan&revision=0").status_code == 422
+    assert client.get("/api/review?revision=0").json()["clips"] == []
+    assert (
+        client.post(
+            "/api/edit",
+            json={"revision": 0, "action": "create", "start_sec": 0.5, "end_sec": 1.0},
+        ).status_code
+        == 200
+    )
+    assert client.get("/api/review?revision=0").status_code == 409
+    assert client.get("/api/correspondence?time=0&revision=0").status_code == 409
+    assert client.get("/api/review?revision=1").json()["counts"] == {"unexported": 1}
+
+
+def test_read_only_review_rejects_every_write_route_and_keeps_original(web_client):
+    from src.tennis_scene.clip_studio.review import load_review_project
+    from src.tennis_scene.clip_studio.web.jobs import JobRequest
+    from src.tennis_scene.clip_studio.web.service import Edit
+
+    client, runtime = web_client
+    project = client.app.state.editor.project
+    project.save(runtime.export.projects_path, runtime.export.resolver)
+    before = runtime.export.projects_path.read_bytes()
+    with TestClient(
+        create_app(runtime, load_review_project(runtime), read_only=True)
+    ) as review:
+        assert review.get("/api/project").json()["read_only"]
+        for path, body in [
+            (
+                "/api/edit",
+                {"revision": 0, "action": "create", "start_sec": 0.5, "end_sec": 1.0},
+            ),
+            ("/api/jobs", {"revision": 0, "kind": "export"}),
+            ("/api/jobs", {"revision": 0, "kind": "sync"}),
+            ("/api/jobs/cancel", {}),
+        ]:
+            response = review.post(path, json=body)
+            assert response.status_code == 403
+            assert "読取専用" in response.json()["detail"]
+        with pytest.raises(PermissionError):
+            review.app.state.editor.edit(
+                Edit(revision=0, action="delete", name="clip_000")
+            )
+        with pytest.raises(PermissionError):
+            review.app.state.jobs.start(JobRequest(revision=0, kind="sync"))
+        assert (
+            review.get("/api/frame/1?time=0.5&revision=0").headers["x-frame-index"]
+            == "7"
+        )
+        assert review.get("/api/jobs").json() == {"status": "idle"}
+    assert runtime.export.projects_path.read_bytes() == before
+    assert not runtime.export.output_dir.exists()
+
+
+def test_review_requires_existing_matching_project_without_initialization(web_client):
+    from src.tennis_scene.clip_studio.review import load_review_project
+
+    client, runtime = web_client
+    with pytest.raises(FileNotFoundError):
+        load_review_project(runtime)
+    assert not runtime.export.projects_path.exists()
+    project = client.app.state.editor.project
+    project.save(runtime.export.projects_path, runtime.export.resolver)
+    assert load_review_project(runtime).sources[1].offset_sec == 0.2
+    project.sources[0].path = runtime.export.resolver.roots.data_root / "other.mp4"
+    project.save(runtime.export.projects_path, runtime.export.resolver)
+    before = runtime.export.projects_path.read_bytes()
+    with pytest.raises(ValueError, match="一致"):
+        load_review_project(runtime)
+    assert runtime.export.projects_path.read_bytes() == before
+
+
+def test_review_package_cli_opens_saved_project_read_only(web_client, monkeypatch):
+    from src.tennis_scene.clip_studio import __main__ as review_cli
+
+    client, runtime = web_client
+    project = client.app.state.editor.project
+    project.save(runtime.export.projects_path, runtime.export.resolver)
+    before = runtime.export.projects_path.read_bytes()
+    launches = []
+
+    def run(app, *, host, port):
+        launches.append((host, port))
+        with TestClient(app) as review:
+            snapshot = review.get("/api/project").json()
+            assert snapshot["read_only"]
+            assert snapshot["dataset_id"] == project.dataset_id
+            assert snapshot["video_id"] == project.video_id
+            assert review.get("/api/jobs").json() == {"status": "idle"}
+            assert (
+                review.get("/api/frame/1?time=0.5&revision=0").headers[
+                    "x-frame-index"
+                ]
+                == "7"
+            )
+            for path, body in [
+                ("/api/edit", {"revision": 0, "action": "undo"}),
+                ("/api/jobs", {"revision": 0, "kind": "sync"}),
+                ("/api/jobs", {"revision": 0, "kind": "export"}),
+            ]:
+                assert review.post(path, json=body).status_code == 403
+
+    monkeypatch.setattr(review_cli.uvicorn, "run", run)
+    review_cli.main(
+        [
+            "--data-root",
+            str(runtime.export.resolver.roots.data_root),
+            "--source-directory",
+            "tennis_multivew/raw/test/video_000",
+            "--port",
+            "8904",
+        ]
+    )
+    assert launches == [("127.0.0.1", 8904)]
+    assert runtime.export.projects_path.read_bytes() == before
+    assert not runtime.export.output_dir.exists()
+
+
+def test_review_package_cli_does_not_initialize_missing_project(web_client, monkeypatch):
+    from src.tennis_scene.clip_studio import __main__ as review_cli
+
+    _, runtime = web_client
+
+    def run(*args, **kwargs):
+        pytest.fail("review CLI must reject a missing project before server startup")
+
+    monkeypatch.setattr(review_cli.uvicorn, "run", run)
+    with pytest.raises(FileNotFoundError):
+        review_cli.main(
+            [
+                "--data-root",
+                str(runtime.export.resolver.roots.data_root),
+                "--source-directory",
+                "tennis_multivew/raw/test/video_000",
+            ]
+        )
+    assert not runtime.export.projects_path.exists()
+    assert not runtime.export.output_dir.exists()
+
+
 def test_sync_controls_share_a_collapsible_media_area_with_video(web_client):
     client, _ = web_client
     index = client.get("/").text
@@ -119,7 +269,9 @@ def test_autosave_revision_and_cross_origin_protection(web_client):
 
 
 def wait_job(client):
-    deadline = monotonic() + 20
+    # Spawn imports the existing dataset/pipeline packages (including torch).
+    # Allow bootstrap separately from the strict post-cancellation stop budget.
+    deadline = monotonic() + 60
     while monotonic() < deadline:
         job = client.get("/api/jobs").json()
         if job["status"] != "running":
@@ -219,7 +371,8 @@ def test_cancel_stops_active_encoder_and_removes_unpublished_output(web_client):
         json={"revision": 0, "action": "create", "start_sec": 0.2, "end_sec": 2.5},
     )
     client.post("/api/jobs", json={"revision": 1, "kind": "export"})
-    deadline = monotonic() + 15
+    # Cold spawned imports can exceed the old 15s before encoding starts.
+    deadline = monotonic() + 60
     while monotonic() < deadline:
         job = client.get("/api/jobs").json()
         if job.get("frames_completed", 0) > 0:

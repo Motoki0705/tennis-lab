@@ -4,10 +4,51 @@ import {
   fitScale,
   zoomAt,
   visiblePoints,
+  ImageViewer,
 } from "../../../../../../src/tasks/base/visualization/detection/static/viewer.mjs";
 test("fit preserves aspect and margin", () => {
   assert.equal(fitScale(1000, 500, 500, 500), 0.47);
   assert.equal(fitScale(500, 1000, 500, 500), 0.47);
+});
+test("Court invisible references are opt-in and remain visually distinct", () => {
+  let arc, dash = [];
+  const drawn = [];
+  const ctx = {
+    setTransform() {}, fillRect() {}, save() {}, translate() {}, scale() {},
+    drawImage() {}, beginPath() {}, rect() {}, clip() {}, restore() {},
+    setLineDash(value) { dash = value; },
+    arc(x, y) { arc = { x, y }; },
+    stroke() { drawn.push({ ...arc, color: this.strokeStyle, dash }); },
+  };
+  const viewer = Object.create(ImageViewer.prototype);
+  Object.assign(viewer, {
+    ctx, image: {width: 1280, height: 720}, width: 640, height: 360,
+    transform: {x: 0, y: 0, scale: 0.5}, people: [], rasters: new Map(),
+    options: {gt: true, players: false, referencePoints: false},
+    gt: {points: [{x: 10, y: 20}, {x: 30, y: 40, visible: false}]},
+  });
+  viewer.draw();
+  assert.equal(drawn.length, 1);
+  drawn.length = 0;
+  viewer.options.referencePoints = true;
+  viewer.draw();
+  assert.equal(drawn.length, 2);
+  assert.equal(drawn[0].color, "#25db97");
+  assert.deepEqual(drawn[0].dash, []);
+  assert.equal(drawn[1].color, "#ffc857");
+  assert.deepEqual(drawn[1].dash, [6, 4]);
+  assert.equal(viewer.gt.points[1].visible, false);
+});
+test("point focus centers source pixels without changing annotation coordinates", () => {
+  const viewer = Object.create(ImageViewer.prototype);
+  Object.assign(viewer, {image: {width:1000, height:500}, width:600, height:400,
+    transform:{x:0,y:0,scale:0.5}, options:{}, onZoom() {}, draw() {}});
+  const point = {x:420,y:123};
+  viewer.focusPoint(point);
+  assert.equal(viewer.transform.x + point.x * viewer.transform.scale, 300);
+  assert.equal(viewer.transform.y + point.y * viewer.transform.scale, 200);
+  assert.deepEqual(point, {x:420,y:123});
+  assert.equal(viewer.options.highlightPoint, point);
 });
 test("invalid canvas dimensions are finite", () => {
   assert.equal(fitScale(0, 500, 500, 500), 1);

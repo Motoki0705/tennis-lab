@@ -21,6 +21,7 @@ from src.tennis_scene.clip_studio.project import ClipStudioProject
 from src.tennis_scene.clip_studio.sources import PreviewSource
 from src.tennis_scene.clip_studio.timeline import source_frame_index
 from src.tennis_scene.clip_studio.web.jobs import JobRequest, Jobs
+from src.tennis_scene.clip_studio.web.review import frame_correspondence, review_catalog
 from src.tennis_scene.clip_studio.web.service import Edit, Editor, RevisionConflict
 from src.tennis_scene.configuration import ClipStudioRuntimeConfig
 
@@ -32,6 +33,7 @@ def create_app(
     project: ClipStudioProject,
     *,
     startup_notice: StartupNotice | None = None,
+    read_only: bool = False,
 ) -> FastAPI:
     sources: list[PreviewSource] = []
     try:
@@ -49,6 +51,7 @@ def create_app(
             [source.info for source in sources],
             runtime.export.projects_path,
             runtime.export.resolver,
+            read_only=read_only,
         )
     except Exception:
         for preview in sources:
@@ -88,6 +91,13 @@ def create_app(
     async def same_origin(
         request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        if read_only and request.method not in {"GET", "HEAD"}:
+            return JSONResponse(
+                {
+                    "detail": "読取専用レビューでは変更・同期計算・書き出しを実行できません。"
+                },
+                status_code=403,
+            )
         origin = request.headers.get("origin")
         if request.method != "GET" and origin:
             parsed = urlsplit(origin)
@@ -121,7 +131,7 @@ def create_app(
         return FileResponse(STATIC / "index.html")
 
     def static(name: str) -> FileResponse:
-        if name not in {"studio.js", "playback.js", "style.css"}:
+        if name not in {"studio.js", "playback.js", "review.js", "style.css"}:
             raise HTTPException(404)
         return FileResponse(STATIC / name)
 
@@ -130,6 +140,20 @@ def create_app(
 
     def get_project() -> dict[str, Any]:
         return editor.snapshot()
+
+    def get_review(revision: int) -> dict[str, Any]:
+        with editor.lock:
+            editor.check_revision(revision)
+            return review_catalog(
+                editor.project, editor.infos, editor.path, settings.output_dir
+            )
+
+    def get_correspondence(
+        time: Annotated[float, Query(allow_inf_nan=False)], revision: int
+    ) -> dict[str, Any]:
+        with editor.lock:
+            editor.check_revision(revision)
+            return frame_correspondence(editor.project, editor.infos, time)
 
     def edit(request: Edit) -> dict[str, Any]:
         return editor.edit(request)
@@ -181,6 +205,8 @@ def create_app(
     app.add_api_route("/static/{name}", static, methods=["GET"])
     app.add_api_route("/api/startup-notice", get_startup_notice, methods=["GET"])
     app.add_api_route("/api/project", get_project, methods=["GET"])
+    app.add_api_route("/api/review", get_review, methods=["GET"])
+    app.add_api_route("/api/correspondence", get_correspondence, methods=["GET"])
     app.add_api_route("/api/edit", edit, methods=["POST"])
     app.add_api_route("/api/media/{camera}", media, methods=["GET"])
     app.add_api_route("/api/frame/{camera}", frame, methods=["GET"])

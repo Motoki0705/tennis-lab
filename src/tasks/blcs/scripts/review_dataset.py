@@ -1,4 +1,4 @@
-"""Browse generated BLCS dataset scenes in 3D, locally."""
+"""Inspect saved BLCS single_object 2D observations alongside 3D teachers."""
 
 from __future__ import annotations
 
@@ -43,7 +43,8 @@ def main() -> None:
         "--form",
         action="append",
         default=None,
-        help="Limit the catalog to one form; repeat for several.",
+        choices=("single_object",),
+        help="Current dataset: single_object / physical_v1 (the default).",
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8773)

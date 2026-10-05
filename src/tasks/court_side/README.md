@@ -5,6 +5,9 @@
 
 出力先の規約は[タスク出力規約](../OUTPUTS.md)を参照。
 
+保存済みの同期観測・校正・side診断は[dataset review画面](review/README.md)で確認できます。
+専用の学習datasetはなく、既存component storeがレビュー対象です。
+
 ## なぜballだけか
 
 - CourtKP14とコートラインは `Rz(π)` に対して完全に対称で、camera-local校正は常にcameraを `-Y` 側に置く。
@@ -44,6 +47,11 @@ DLTは外れviewを除外しない。誤った姿勢のcameraを多数決で無�
 pipeline component は[tennis_scene pipeline](../../tennis_scene/pipeline/README.md)を参照。
 
 ## 合成ベンチマークと閾値の選定（`benchmark.py`）
+
+以下は旧 `single_object_camera_view_v2` による保存実験の説明です。
+BLCSの現行datasetは `single_object` のみで、旧形式は廃止済みです。
+このbenchmark入口は現行形式へ移行していないため、以下のコマンドは過去実験の契約として残しています。
+dataset reviewでは保存済みevidenceを読み、新しいbenchmarkや推論を実行しません。
 
 BLCSの合成rally（`blcs/single_object_camera_view_v2` のtest split、物理cameraが既知、30 fps）で、
 cameraとreferenceをランダムに選び、`camera_view_v2` のcamera-local校正（ネットの向こうのcameraはlocalにhalf-turn）を作る。

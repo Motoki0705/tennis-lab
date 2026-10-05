@@ -1,0 +1,239 @@
+{
+  "captured_at_utc": "2026-10-04T14:15:47.901956+00:00",
+  "inspection_date": "2026-10-04",
+  "viewport": {
+    "width": 1600,
+    "height": 1250,
+    "device_scale_factor": 1
+  },
+  "ui_code_revision": "9ed6eb13b3dd3b4f2b1084adbed7df4f319fc248",
+  "ui_file_sha256": {
+    "src/tasks/court_side/review/store.py": "544ff58598a85c259c83f910f01e8180a0d38acd330a61cceae7cfff6f9996d1",
+    "src/tasks/court_side/review/diagnostics.py": "f7183d03b6bc2663c591786d9cdd9c8ae395c063d9b554cdfb04c5d1cffdb535",
+    "src/tasks/court_side/review/service.py": "1b38b7324195aa3c23fd30aa4a21b63895a4b264853e37af012d86ef20223ebf",
+    "src/tasks/court_side/review/web.py": "3db4f2066f419bb51678cd830e8ea0ddf343ab35e5439a150c1d5a28aa1c87bc",
+    "src/tasks/court_side/review/static/index.html": "1d22a837ead6d7bb84d562f5c1c33e0d6b65e531dcef3facfda6d6e9ef62fa46",
+    "src/tasks/court_side/review/static/app.js": "23fbb676f13c2dc4fe9351a1b6d44f9cd6512e57356bce7767dad2891ea73019",
+    "src/tasks/court_side/review/static/style.css": "0f51c2048563ca967e7c00c8cf8111c3cfd3146ad779279646c76f86e224ea9d"
+  },
+  "renderer_before": {
+    "baseline_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+    "path": "src/tennis_scene/scripts/visualize_component_store.py",
+    "sha256": "eb7eb30b321d015b92d1eafca71320f5fae1734612d46041aa1ebb97eba1e46c",
+    "selection": "Existing renderer and HTML template; caller restricts STANDARD_COMPONENTS to court_side because unrelated historical person schema is unsupported. No renderer code modification."
+  },
+  "screenshots": [
+    {
+      "file": "before_annotation_frame0.png",
+      "kind": "before",
+      "dataset": "meiji_3cam structured v2",
+      "sample": "video_000/clip_000",
+      "frame": 0,
+      "seconds": 0.0,
+      "camera": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "case_id": 1,
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i932-component-side-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "4c7976421b8851191ad5ddecbbff788f577ba0045bd821eef22c24bcc6210964",
+      "source_sha256": "22efe1820091ab2183e156f007572a703fe4f50dd6e3dfd4a778282fc9ee448a",
+      "source_videos": [
+        {
+          "camera": "cam0",
+          "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39"
+        },
+        {
+          "camera": "cam1",
+          "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+        },
+        {
+          "camera": "cam2",
+          "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+        }
+      ],
+      "diagnostic_sources": null,
+      "image_sha256": "b913fc83736a7c834eaf34bbe06fa92cf86bc958798c77c60ee2843c38a46ccf",
+      "caption_ja": "既存Court Side rendererのframe0静止画とclip集計cost。"
+    },
+    {
+      "file": "after_annotation_frame0.png",
+      "kind": "after",
+      "dataset": "meiji_3cam structured v2",
+      "sample": "video_000/clip_000",
+      "frame": 0,
+      "seconds": 0.0,
+      "camera": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "case_id": 1,
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i932-component-side-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "4c7976421b8851191ad5ddecbbff788f577ba0045bd821eef22c24bcc6210964",
+      "source_sha256": "22efe1820091ab2183e156f007572a703fe4f50dd6e3dfd4a778282fc9ee448a",
+      "source_videos": [
+        {
+          "camera": "cam0",
+          "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39"
+        },
+        {
+          "camera": "cam1",
+          "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+        },
+        {
+          "camera": "cam2",
+          "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+        }
+      ],
+      "diagnostic_sources": null,
+      "image_sha256": "e4f9ae134b68bf9db05d1322940f5e6e89ac8e2b88b96032e62bb64eb1e84a74",
+      "caption_ja": "同一store・frame0・camera・viewport。観測種別、拡大と未保存frame診断を確認。"
+    },
+    {
+      "file": "new_production_frame4.png",
+      "kind": "new",
+      "dataset": "meiji_3cam structured v2",
+      "sample": "video_000/clip_000",
+      "frame": 4,
+      "seconds": 0.0667333332666,
+      "camera": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "case_id": 0,
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/scene.json",
+      "source_manifest_sha256": "130e9000cccb6d30bcf42a9f20c982b5529614f9599010dc20a9cf068de64e55",
+      "source_sha256": "22efe1820091ab2183e156f007572a703fe4f50dd6e3dfd4a778282fc9ee448a",
+      "source_videos": [
+        {
+          "camera": "cam0",
+          "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39"
+        },
+        {
+          "camera": "cam1",
+          "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+        },
+        {
+          "camera": "cam2",
+          "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+        }
+      ],
+      "diagnostic_sources": [
+        {
+          "path": "/home/kamimura/projects/tennis-lab/knowledge/runs/run-i964-clip000-side-diagnosis-r15-20261001/production/production.json",
+          "sha256": "e00e970bfa7b25d6a10e77dc1a2e328c5353fb0a1aca16142663e06e5dd5a8a6"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/knowledge/runs/run-i964-clip000-side-diagnosis-r15-20261001/production/production-observations.npz",
+          "sha256": "68c4d1d3821447663fbbf53d856573689f71fc320f07bea4655c16e44dc5411b"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/knowledge/runs/run-i964-clip000-side-diagnosis-r15-20261001/production/production-frames.csv",
+          "sha256": "03df9963df9f821148bb9314f3dd2c009c57e5e1b2fba05a90ce276913541c34"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/qualification.pipeline_config.yaml",
+          "sha256": "b591e5c332b3f34635a942c419752b040d9aaeb0e37d8d11e74cae2acb935bc3"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/execute.json",
+          "sha256": "e9e980d6efd84ea08444a58d8b1f924325a1574a87d53e74e50950201aed0a3b"
+        }
+      ],
+      "image_sha256": "e68150af0e4c93ba954ab072d178df3731e2995bd9a931232052311b16fb72ad",
+      "caption_ja": "検出点のcam2欠測。cam0+cam1だけでH1/H2が同cost・共に支持される。"
+    },
+    {
+      "file": "new_annotation_frame4.png",
+      "kind": "new",
+      "dataset": "meiji_3cam structured v2",
+      "sample": "video_000/clip_000",
+      "frame": 4,
+      "seconds": 0.0667333332666,
+      "camera": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "case_id": 1,
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i932-component-side-meiji-clip000-20260927/store/scene.json",
+      "source_manifest_sha256": "4c7976421b8851191ad5ddecbbff788f577ba0045bd821eef22c24bcc6210964",
+      "source_sha256": "22efe1820091ab2183e156f007572a703fe4f50dd6e3dfd4a778282fc9ee448a",
+      "source_videos": [
+        {
+          "camera": "cam0",
+          "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39"
+        },
+        {
+          "camera": "cam1",
+          "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+        },
+        {
+          "camera": "cam2",
+          "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+        }
+      ],
+      "diagnostic_sources": null,
+      "image_sha256": "76e1cbe0c735b64476a970928752dd568f852ebebe933effc169b05a38b88aec",
+      "caption_ja": "同じsource frame4のレビュー点。3camera観測と、保存実験の採用を確認。frame別支持は未保存。"
+    },
+    {
+      "file": "new_production_frame631.png",
+      "kind": "new",
+      "dataset": "meiji_3cam structured v2",
+      "sample": "video_000/clip_000",
+      "frame": 631,
+      "seconds": 10.527183322806149,
+      "camera": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "case_id": 0,
+      "source_manifest_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/scene.json",
+      "source_manifest_sha256": "130e9000cccb6d30bcf42a9f20c982b5529614f9599010dc20a9cf068de64e55",
+      "source_sha256": "22efe1820091ab2183e156f007572a703fe4f50dd6e3dfd4a778282fc9ee448a",
+      "source_videos": [
+        {
+          "camera": "cam0",
+          "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39"
+        },
+        {
+          "camera": "cam1",
+          "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+        },
+        {
+          "camera": "cam2",
+          "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+        }
+      ],
+      "diagnostic_sources": [
+        {
+          "path": "/home/kamimura/projects/tennis-lab/knowledge/runs/run-i964-clip000-side-diagnosis-r15-20261001/production/production.json",
+          "sha256": "e00e970bfa7b25d6a10e77dc1a2e328c5353fb0a1aca16142663e06e5dd5a8a6"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/knowledge/runs/run-i964-clip000-side-diagnosis-r15-20261001/production/production-observations.npz",
+          "sha256": "68c4d1d3821447663fbbf53d856573689f71fc320f07bea4655c16e44dc5411b"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/knowledge/runs/run-i964-clip000-side-diagnosis-r15-20261001/production/production-frames.csv",
+          "sha256": "03df9963df9f821148bb9314f3dd2c009c57e5e1b2fba05a90ce276913541c34"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/qualification.pipeline_config.yaml",
+          "sha256": "b591e5c332b3f34635a942c419752b040d9aaeb0e37d8d11e74cae2acb935bc3"
+        },
+        {
+          "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/execute.json",
+          "sha256": "e9e980d6efd84ea08444a58d8b1f924325a1574a87d53e74e50950201aed0a3b"
+        }
+      ],
+      "image_sha256": "b99229b10e33ad18d1a9c6bf41bad3dcfc0859ba20d7d12ade305471a2be77e7",
+      "caption_ja": "3cameraが採点されたframe631。H1だけ支持するが、clip全体はmargin不足で停止。"
+    }
+  ]
+}
