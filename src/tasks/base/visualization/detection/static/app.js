@@ -1,12 +1,18 @@
 import { ImageViewer } from "./viewer.mjs";
 import { FrameBuffer, SequentialClock } from "./playback.mjs";
 import { fillIcons, icon } from "./icons.mjs";
+import {
+  renderReviewFilters, renderSceneReview, renderFrameReview,
+  renderJumpOptions, updateJumpButtons, jumpTarget, renderDatasetOverview,
+  sourceLabels,
+} from "./review.mjs";
 const $ = (id) => document.getElementById(id);
 fillIcons();
 const state = {
   catalog: null,
   dataset: "",
   scene: null,
+  review: null,
   frame: 0,
   total: 0,
   page: 0,
@@ -86,6 +92,10 @@ function resetScene() {
   state.sceneToken++;
   state.frameToken++;
   state.scene = null;
+  state.review = null;
+  renderSceneReview(null);
+  renderFrameReview(null);
+  renderJumpOptions(null);
   state.total = 0;
   state.frame = 0;
   state.resultWarnings = [];
@@ -180,6 +190,7 @@ function renderDatasets() {
     }),
   );
   renderPlayerDatasets();
+  renderReviewFilters(items.find((d) => d.id === state.dataset), state.catalog.task === "ball_detection");
   $("dataset-label").textContent =
     items.find((d) => d.id === state.dataset)?.label || "該当データセットなし";
 }
@@ -204,6 +215,10 @@ function renderPlayerDatasets() {
     }),
   );
   $("player-dataset").value = state.playerDataset;
+  const selected = items.find((d) => d.id === state.playerDataset);
+  $("player-dataset-scope").textContent = selected?.available
+    ? `元データ ${selected.clips} clips · 採用 ${selected.reviewed_clips} / raw ${selected.raw_clips}。ボール教師とは別の推定結果です。`
+    : "";
   const failures = items.filter((d) => !d.available);
   $("player-dataset-errors").hidden = !failures.length;
   $("player-dataset-errors").textContent = failures
@@ -259,6 +274,9 @@ async function loadCatalog() {
     resetScene();
     state.catalog = catalog;
     viewer.configure({ ballPoints: catalog.task === "ball_detection" });
+    $("ball-state-legend").hidden = catalog.task !== "ball_detection";
+    $("gt-legend-label").textContent = catalog.task === "ball_detection" ? "観測" : "GT";
+    $("gt-layer-label").textContent = catalog.task === "ball_detection" ? "保存ball注釈" : "Ground Truth";
     document.title = catalog.title;
     $("title").textContent = catalog.title;
     $("mode").textContent =
@@ -296,7 +314,7 @@ async function loadScenes() {
   }
   try {
     const result = await api(
-      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null, player_dataset: state.playerDataset || null, player_status: $("player-status-filter").value || null })}`,
+      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null, player_dataset: state.playerDataset || null, player_status: $("player-status-filter").value || null, source: $("source-filter").value || null, split: $("split-filter").value || null, review_state: $("review-state-filter").value || null })}`,
     );
     if (
       token !== state.listToken ||
@@ -318,13 +336,14 @@ async function loadScenes() {
         const name = document.createElement("span");
         name.textContent = item.label;
         const meta = document.createElement("small");
-        meta.textContent = `${item.frames} frame${item.frames === 1 ? "" : "s"}${item.player_status ? ` · ${item.player_status.label}` : ""}`;
+        meta.textContent = `${item.review ? `${sourceLabels[item.review.source] || item.review.source} · ` : ""}${item.frames} frame${item.frames === 1 ? "" : "s"}${item.player_status ? ` · ${item.player_status.label}` : ""}`;
         b.append(name, meta);
         b.onclick = () => selectScene(item);
         return b;
       }),
     );
     if (!state.scene && result.items.length) await selectScene(result.items[0]);
+    if (!state.scene && !result.items.length) status("条件に合うクリップがありません");
   } catch (error) {
     if (token === state.listToken) status(error.message, true);
   }
@@ -336,6 +355,7 @@ async function selectScene(item) {
   state.frame = 0;
   state.buffer = makeBuffer();
   $("scene-title").textContent = item.label;
+  renderSceneReview(item);
   $("start").value = "0";
   $("start").max = String(Math.max(0, item.frames - 1));
   $("seek").max = String(Math.max(0, item.frames - 1));
@@ -343,7 +363,20 @@ async function selectScene(item) {
   for (const b of $("scenes").children)
     b.classList.toggle("selected", b.dataset.scene === item.id);
   updateRun();
-  await showFrame(0, true);
+  const selection = state.sceneToken;
+  if (state.catalog.task === "ball_detection" && item.review) {
+    try {
+      const review = await api(`/api/review?${query({ scene: item.id })}`);
+      if (selection !== state.sceneToken) return;
+      state.review = review;
+      renderJumpOptions(review);
+    } catch (error) {
+      if (selection !== state.sceneToken) return;
+      status(error.message, true);
+      return;
+    }
+  }
+  await showFrame(state.review?.positions[$("review-state-filter").value]?.[0] ?? 0, true);
 }
 function configureWindow() {
   const cp = checkpoint();
@@ -422,22 +455,28 @@ async function showFrame(frame, reset = false) {
     $("buffer-status").textContent = "";
     renderLayers(item.gt, pred);
     reportPlayers(players, people);
+    renderFrameReview(item);
+    updateJumpButtons(state.review, frame);
     showWarnings([
       ...(item.warnings || preview.warnings || []),
       ...(state.resultWarnings || []),
     ]);
+    const annotationLabel = item.review ? "保存ball注釈" : "GT";
     status(
       pred
-        ? "GT + Prediction"
+        ? `${annotationLabel} + Prediction`
         : state.prediction.size
-          ? "GT / このフレームは推論範囲外"
-          : "Ground Truth",
+          ? `${annotationLabel} / このフレームは推論範囲外`
+          : item.review
+            ? `${annotationLabel} · ${item.supervised ? "採点対象" : "採点対象外"}`
+            : "Ground Truth",
     );
     // Committed frame identity is also used by browser regression/performance tests.
     $("view").dataset.frame = String(frame);
     $("view").dataset.scene = state.scene.id;
     $("view").dataset.people = String(people.length);
     $("view").dataset.playerMode = players?.mode || "none";
+    $("view").dataset.supervision = item.review?.supervision || "none";
     $("view").dispatchEvent(
       new CustomEvent("frame-presented", {
         detail: { scene: state.scene.id, frame, at: performance.now() },
@@ -651,6 +690,26 @@ $("player-status-filter").onchange = () => {
   resetScene();
   loadScenes();
 };
+for (const id of ["source-filter", "split-filter", "review-state-filter"])
+  $(id).onchange = () => {
+    state.page = 0;
+    resetScene();
+    loadScenes();
+  };
+$("review-jump-state").onchange = () => updateJumpButtons(state.review, state.frame);
+for (const [id, direction] of [["review-jump-prev", -1], ["review-jump-next", 1]])
+  $(id).onclick = () => {
+    const target = jumpTarget(state.review?.positions[$("review-jump-state").value] || [], state.frame, direction);
+    if (target !== null) { stop(); showFrame(target); }
+  };
+$("dataset-overview-open").onclick = () => {
+  renderDatasetOverview(
+    state.catalog.datasets.find((d) => d.id === state.dataset),
+    (state.catalog.player_datasets || []).filter((d) => d.ball_version === state.dataset.replace(/^store\//, "") || !d.available),
+  );
+  $("dataset-overview").showModal();
+};
+$("dataset-overview-close").onclick = () => $("dataset-overview").close();
 $("fps").onchange = () => {
   if (state.playing)
     state.clock = new SequentialClock(

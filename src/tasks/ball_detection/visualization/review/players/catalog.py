@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from pathlib import Path
 from threading import RLock
 from typing import Any
@@ -95,9 +95,10 @@ class PlayerSource:
         self.cache_bytes = 0
 
     def raw_root(self, entry: dict[str, Any]) -> Path:
-        return within(
+        root: Path = within(
             self.campaign / "clips" / f"clip-{entry['index']:05d}", self.campaign
         )
+        return root
 
     def status(self, clip_id: str) -> dict[str, Any]:
         return dict(
@@ -211,6 +212,11 @@ class PlayerCatalog:
                         "label": path.parent.name,
                         "ball_version": source.version,
                         "available": True,
+                        "clips": len(source.entries),
+                        "reviewed_clips": sum(status["reviewed_available"] for status in source.statuses.values()),
+                        "raw_clips": sum(status["raw_available"] for status in source.statuses.values()),
+                        "status_counts": dict(Counter(status["status"] for status in source.statuses.values())),
+                        "ball_store_path": str(source.store_path),
                     }
                 )
             except (OSError, ValueError, KeyError, TypeError) as error:

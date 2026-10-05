@@ -1,6 +1,6 @@
 # Ball Detection Web UI 利用ガイド
 
-原画像にボールのGT・予測位置とheatmapを重ね、クリップを再生して確認します。
+保存RGB画像にボール注釈・予測位置とheatmapを重ね、クリップを再生して確認します。
 [共通の実行前確認](../../base/visualization/README.md#実行前確認)を済ませ、コードのあるリポジトリまたはworktreeの直下で実行してください。各ブロックは単独でコピーできます。
 
 ## データセット閲覧
@@ -13,6 +13,13 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 ```
 
 [閲覧UIを開く](http://127.0.0.1:8776)。左でBall storeのversionとクリップを選びます。checkpoint・GPUは不要です。
+
+1. 「体系・内訳を見る」で現物のsource・split・frame数とinstance数、入力と教師、派生poseの対応範囲を確認します。
+2. Source・Split・注釈状態でクリップを絞ります。注釈状態を選ぶと、該当状態の先頭frameを開きます。
+3. 右の「現在のフレーム」で採点対象か参考ラベルかを読みます。観測は緑、補間は黄、遮蔽推定は紫の小点です。座標がない位置不明・画面外も一覧に残ります。
+4. 下の「注釈状態へ移動」で前後の該当frameを確認します。再生は選んだ状態で間引かず、全frameを表示します。
+
+体系の説明は[データセット体系](../data/README.md)を参照してください。
 
 ## Player pose・tracking
 

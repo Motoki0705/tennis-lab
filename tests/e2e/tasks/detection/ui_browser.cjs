@@ -107,6 +107,7 @@ fs.mkdirSync(outputDir, { recursive: true });
           "index.html",
           "app.js",
           "viewer.mjs",
+          "review.mjs",
         "players.mjs",
         "playback.mjs",
           "icons.mjs",
