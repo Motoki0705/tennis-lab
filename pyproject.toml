@@ -108,6 +108,7 @@ namespaces = false
 "src.tasks.plcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tasks.plcs.visualization.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs", "dataset_static/*.css", "dataset_static/*.js", "dataset_static/*.mjs"]
 "src.tasks.blcs.visualization.inference" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
+"src.tasks.person_tracking.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "*" = [
     "README.md",
     "configs/*.yaml",

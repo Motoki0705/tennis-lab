@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Person Tracking · データレビュー</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<header>
+  <div><div class="eyebrow">SAVED OBSERVATIONS</div><h1>Person Tracking <span>データレビュー</span></h1></div>
+  <div class="read-only">読取専用 · 推論なし</div>
+</header>
+<main>
+  <section class="catalog panel">
+    <div class="catalog-fields">
+      <label>データの役割<select id="family" aria-label="データの役割"></select></label>
+      <label>ソース<select id="sourceFilter" aria-label="ソース"><option value="">すべて</option></select></label>
+      <label>split<select id="splitFilter" aria-label="split"><option value="">すべて</option></select></label>
+      <label class="search-field">clipを検索<input id="search" type="search" placeholder="clip ID / camera"></label>
+      <label class="sample-field">clip / camera<select id="sequence" aria-label="clip / camera"></select></label>
+    </div>
+    <div id="inventory" class="inventory"></div>
+    <p id="familyNote" class="muted"></p>
+  </section>
+  <p id="error" role="alert" hidden></p>
+  <div id="loading" class="panel loading" hidden>保存データとRGBの対応を確認しています…</div>
+  <div id="review" hidden>
+    <div class="sample-title"><div><h2 id="clipTitle"></h2><div id="sampleInfo" class="muted"></div></div><span id="reviewStatus" class="status"></span></div>
+    <div class="metrics">
+      <div class="metric"><span>raw ID</span><strong id="idCount"></strong></div>
+      <div class="metric"><span>実観測box</span><strong id="observedCount"></strong></div>
+      <div class="metric"><span>保存された補間box</span><strong id="syntheticCount"></strong></div>
+      <div class="metric"><span id="labelCountTitle">ID区間の被覆</span><strong id="labelCount"></strong></div>
+      <div class="metric"><span>選別後の実観測</span><strong id="selectedCount"></strong></div>
+    </div>
+    <section class="workspace">
+      <div class="panel viewer">
+        <div class="viewer-heading"><div><h3>元画像と保存box</h3><p class="muted">R: raw tracker ID · G: 保存GSI（未観測）· boxクリックで選択</p></div><div class="toggles"><select id="drawMode" aria-label="表示範囲"><option value="raw">選別前 · 全raw</option><option value="selected">選別後 · 実観測のみ</option></select><label><input id="synthetic" type="checkbox"> 保存GSI</label><label id="referenceToggle" hidden><input id="reference" type="checkbox"> 部分参照box</label></div></div>
+        <div class="image-area"><canvas id="scene" aria-label="元画像のtracking overlay"></canvas><span id="frameLoading" hidden>frameを読込中…</span></div>
+        <div class="playback"><button id="play">再生 · 4fps</button><button id="previous" aria-label="前frame">‹</button><input id="frameSlider" type="range" min="0" step="1" aria-label="source frame"><button id="next" aria-label="次frame">›</button><label>f <input id="frameNumber" type="number" min="0" step="1" aria-label="frame番号"></label><span id="frameTime" class="muted"></span></div>
+        <p id="syntheticNote" class="note"></p>
+      </div>
+      <aside class="panel inspection">
+        <div class="inspection-heading"><h3 id="trackTitle">raw ID</h3><span id="frameState" class="status"></span></div>
+        <div class="crop-area"><canvas id="crop" aria-label="選択したraw IDの元画像crop"></canvas><div id="noCrop" hidden>このframeのboxは未保存</div></div>
+        <div id="cropCaption" class="muted crop-caption"></div>
+        <dl id="trackDetails"></dl>
+        <div class="observation-nav"><button id="previousObserved">前の実観測</button><button id="nextObserved">次の実観測</button></div>
+        <p id="selectionNote" class="note"></p>
+        <div id="assignmentDetail" class="assignment-detail"></div>
+      </aside>
+    </section>
+    <section class="panel timeline-panel">
+      <div class="timeline-heading"><div><h3>raw ID の時系列</h3><p class="muted">行を選び、任意のframeをクリックして元画像・cropへ移動できます。ID区間は保存された実観測にだけ適用します。</p></div><div class="legend"><span><i class="legend-observed"></i>実観測</span><span><i class="legend-synthetic"></i>保存GSI</span><span><i class="legend-missing"></i>box欠損</span></div></div>
+      <div class="timeline-axis"><span>raw ID / 保存された区間</span><div><span>f0</span><span id="axisMiddle"></span><span id="axisEnd"></span></div></div>
+      <div id="timeline" class="timeline"></div>
+    </section>
+    <section class="panel gap-panel"><h3 id="gapTitle">実観測の途切れ</h3><p class="muted">箱がない理由やID switchの正解は、観測maskだけでは決められません。保存区間の前後を画像で確認します。</p><div id="gaps" class="gaps"></div></section>
+    <details class="panel provenance"><summary>出自・labelの範囲・保存された連結情報</summary><p id="labelNote" class="note"></p><p id="referenceBinding" class="note"></p><p>照合cost / detector scoreは、このtrack観測に未保存です。保存候補の値は下の原記録で確認できます。</p><pre id="provenance"></pre></details>
+  </div>
+</main>
+</body>
+</html>
