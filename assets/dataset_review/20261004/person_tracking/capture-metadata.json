@@ -1,0 +1,270 @@
+{
+  "inspection_date": "2026-10-04",
+  "capture_time_utc": "2026-10-04T13:52:21.693Z",
+  "browser": "Playwright Chromium / real saved data",
+  "fixture_data_used": false,
+  "before_after_match": "Same qualification clip video_000/clip_000, cam1, source frame504, raw observed overlay and 1600x1120 viewport; existing UI is a fixed contact sheet containing frame504.",
+  "code_files": {
+    "src/tasks/person_tracking/review/README.md": "704a662e15d71ce5a380fa9c22a75c93c2e700b36c677055e561ca141dd2e2bd",
+    "src/tasks/person_tracking/review/__init__.py": "83b38277c195990bbf98815e8fee81e90d9de55e454c69ab45635def3b8589a1",
+    "src/tasks/person_tracking/review/model.py": "93ab9a9ff64dc7e3a235dffb85e5867cf163d9711519e4c42e7a6ca85cb2c2a2",
+    "src/tasks/person_tracking/review/service.py": "ba35e2705b9d247a6fc0059935d2f061f5abf22e2fb71e21da503767f960e864",
+    "src/tasks/person_tracking/review/sources.py": "e61d83c6f63914494fe970951d4e2b60c3cedfac0ae0ad4ff0a7f988a8d75bfd",
+    "src/tasks/person_tracking/review/static/app.js": "111778990a293bb1f4eda0de4f20d0d2aa3495f7fd76215ba130ee0bf574f792",
+    "src/tasks/person_tracking/review/static/index.html": "022d393d5d785e70b982f4ecd07d647a8f7aa1ad615ef6642a19261dd0a9e452",
+    "src/tasks/person_tracking/review/static/style.css": "dad643d0569a21136c800175d70daae36e21fa0f99b489d120e07a27763507e7",
+    "src/tasks/person_tracking/review/web.py": "2d53c271c61f99c9f6c2a551e32c9b003c60b52c2537e089c3dee28420fc4607",
+    "src/tasks/person_tracking/scripts/__init__.py": "ccfdc140321679314f742cd0fe153861e691ae3f844f23a601818d5c748b2374",
+    "src/tasks/person_tracking/scripts/review_dataset.py": "df4a371d4dd300f981ff64415752e99c307687435e96ceca6f57f8a4be2f9033"
+  },
+  "captures": [
+    {
+      "file": "before-gallery-cam1.png",
+      "kind": "before",
+      "dataset_role": "固定評価component store",
+      "clip_id": "video_000/clip_000",
+      "camera_id": "cam1",
+      "frames": [
+        0,
+        252,
+        504,
+        757,
+        1009
+      ],
+      "focus_frame": 504,
+      "viewport": {
+        "width": 1600,
+        "height": 1120
+      },
+      "settings": {
+        "mode": "raw observed boxes, original static gallery; fixed contact sheet"
+      },
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/scene.json",
+        "sha256": "130e9000cccb6d30bcf42a9f20c982b5529614f9599010dc20a9cf068de64e55"
+      },
+      "code_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "renderer_sha256": "eb7eb30b321d015b92d1eafca71320f5fae1734612d46041aa1ebb97eba1e46c",
+      "image_sha256": "a763865c63598cc7406ced5bd05fe4f3d783e774b6fe196d9f9cf0fdf90d43a8"
+    },
+    {
+      "file": "after-component-cam1-f504.png",
+      "kind": "after",
+      "sequence": "component:130e9000cccb6d30:cam1",
+      "clip_id": "video_000/clip_000",
+      "camera_id": "cam1",
+      "frame": 504,
+      "track_id": 2,
+      "viewport": {
+        "width": 1600,
+        "height": 1120
+      },
+      "scroll_y": 255,
+      "settings": {
+        "mode": "raw",
+        "show_saved_gsi": false,
+        "show_reference": false
+      },
+      "pts": 25200000,
+      "time_base": "1/2997003",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/scene.json",
+        "sha256": "130e9000cccb6d30bcf42a9f20c982b5529614f9599010dc20a9cf068de64e55"
+      },
+      "raw_artifact": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/components/person_tracking/43eadd2bb9e316a38aeabb494fd869c5dba56433fb20c35cc6a0e6c228c25f0f/person_tracking.json",
+        "sha256": "2f6185cfad7102e7a8a8c4a85a1a11f7e0ca53c8cb6fdbc677bfdf67eaa2d03e"
+      },
+      "rgb": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+        "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+      },
+      "label_status": "固定評価artifact / 現行v5契約",
+      "track_state": "observed",
+      "source_revision": "file hashes in code_files below",
+      "image_sha256": "b72cbbb7c6ccbd6338a6616e1db4ca968bfb811ad9234d3a98c31ea36e30df22"
+    },
+    {
+      "file": "after-component-cam1-gsi-f741.png",
+      "kind": "after",
+      "sequence": "component:130e9000cccb6d30:cam1",
+      "clip_id": "video_000/clip_000",
+      "camera_id": "cam1",
+      "frame": 741,
+      "track_id": 2,
+      "viewport": {
+        "width": 1600,
+        "height": 1120
+      },
+      "scroll_y": 360,
+      "settings": {
+        "mode": "raw",
+        "show_saved_gsi": true,
+        "show_reference": false
+      },
+      "pts": 37050000,
+      "time_base": "1/2997003",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/scene.json",
+        "sha256": "130e9000cccb6d30bcf42a9f20c982b5529614f9599010dc20a9cf068de64e55"
+      },
+      "raw_artifact": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store/components/person_tracking/43eadd2bb9e316a38aeabb494fd869c5dba56433fb20c35cc6a0e6c228c25f0f/person_tracking.json",
+        "sha256": "2f6185cfad7102e7a8a8c4a85a1a11f7e0ca53c8cb6fdbc677bfdf67eaa2d03e"
+      },
+      "rgb": {
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+        "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+      },
+      "label_status": "固定評価artifact / 現行v5契約",
+      "track_state": "interpolated",
+      "source_revision": "file hashes in code_files below",
+      "image_sha256": "6c2a964f845431bed6b90dbfaaef70b22ae209bd7639fecc74574b94d3f08b3b"
+    },
+    {
+      "file": "new-ball-id-interval-f267.png",
+      "kind": "new",
+      "sequence": "ball:307",
+      "clip_id": "chat_annotation/1a7l0K4VKPQ__7f79d378ba8afab3__f000004541-000004930",
+      "camera_id": "single_view",
+      "frame": 267,
+      "track_id": 1,
+      "viewport": {
+        "width": 1600,
+        "height": 1120
+      },
+      "scroll_y": 255,
+      "settings": {
+        "mode": "raw",
+        "show_saved_gsi": false,
+        "show_reference": false
+      },
+      "pts": 267267,
+      "time_base": "1/30000",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2-player-pose-v1/manifest.json",
+        "sha256": "8302c8803894e201191f635fb287fad5142ceaa98444249be7cc089173fb23c0"
+      },
+      "raw_artifact": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-20261002/clips/clip-00307/tracks.npz",
+        "sha256": "bcdd6efa5cc39f1f9a76171432a8191adf7c0eeaf43e0a297e67fc2defc80d2c"
+      },
+      "rgb": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-20261002/input_snapshot/ball-mix-v2/shards/clip-00307.bin",
+        "sha256": "93c6b4ccec5fa4cdcfa47d92309a005e45d07ff73393cd01b1bf40eb72e87ef5"
+      },
+      "label_status": "approved",
+      "track_state": "observed",
+      "source_revision": "file hashes in code_files below",
+      "image_sha256": "eb5d1dc5cb981d03c25ac2a91f73ebf45e10857e6613c3e937a4eb50a805a02d"
+    },
+    {
+      "file": "new-ball-missing-f60.png",
+      "kind": "new",
+      "sequence": "ball:307",
+      "clip_id": "chat_annotation/1a7l0K4VKPQ__7f79d378ba8afab3__f000004541-000004930",
+      "camera_id": "single_view",
+      "frame": 60,
+      "track_id": 1,
+      "viewport": {
+        "width": 1600,
+        "height": 1120
+      },
+      "scroll_y": 255,
+      "settings": {
+        "mode": "raw",
+        "show_saved_gsi": false,
+        "show_reference": false
+      },
+      "pts": 60060,
+      "time_base": "1/30000",
+      "source_manifest": {
+        "path": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2-player-pose-v1/manifest.json",
+        "sha256": "8302c8803894e201191f635fb287fad5142ceaa98444249be7cc089173fb23c0"
+      },
+      "raw_artifact": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-20261002/clips/clip-00307/tracks.npz",
+        "sha256": "bcdd6efa5cc39f1f9a76171432a8191adf7c0eeaf43e0a297e67fc2defc80d2c"
+      },
+      "rgb": {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-20261002/input_snapshot/ball-mix-v2/shards/clip-00307.bin",
+        "sha256": "93c6b4ccec5fa4cdcfa47d92309a005e45d07ff73393cd01b1bf40eb72e87ef5"
+      },
+      "label_status": "approved",
+      "track_state": "missing",
+      "source_revision": "file hashes in code_files below",
+      "image_sha256": "6f7943753b656984779be5d243d4d8450605c0d15be049cf66b9025f1a7e80da"
+    }
+  ],
+  "validation": {
+    "pytest": "46 passed (22 task-local review cases plus inventory/architecture)",
+    "browser_checks": [
+      "部分参照boxを別overlayで表示してもraw IDへ人物ラベルを自動割当しない",
+      "選別後表示では未観測GSIの描画が無効",
+      "保存GSI frame741から前後の実観測740/743へ移動",
+      "timelineクリックが同じraw ID / frame504の画像とcropに同期",
+      "同じraw ID1で保存区間ボタンからplayer_1 / player_2の根拠frameへ移動",
+      "raw欠損frame60にbox/crop/匿名選手IDを捏造しない",
+      "source絞込は固定snapshot内のMeiji clipだけを列挙"
+    ],
+    "page_errors": [],
+    "console_errors": [],
+    "network_errors": [],
+    "wheel_static_assets": "All 3 assets match final source bytes; CLI packaged",
+    "independent_validator_rounds": 0
+  },
+  "inventory_summary": {
+    "inspection_date": "2026-10-04",
+    "ball_snapshot_clips": 815,
+    "snapshot_split_clips": {
+      "train": 535,
+      "test": 155,
+      "val": 125
+    },
+    "snapshot_selected_clips": 689,
+    "raw_saved_clips": 512,
+    "raw_saved_frames": 238156,
+    "raw_saved_split_clips": {
+      "train": 349,
+      "test": 98,
+      "val": 65
+    },
+    "approved_clips": 442,
+    "approved_frames": 203992,
+    "approved_split_clips": {
+      "train": 305,
+      "test": 81,
+      "val": 56
+    },
+    "pose_status": {
+      "approved": 442,
+      "pending": 247,
+      "skipped": 126
+    },
+    "public_ball_clips": 1300,
+    "meiji_clips": 57,
+    "partial_reference_clips": 7
+  },
+  "inventory_sources": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-20261002/config.json",
+      "sha256": "bd331ca036968eee62c46e99f6dc5dfaf6ce79e930746f04de7982e19b8bc9ca"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-20261002/plan.json",
+      "sha256": "4713045f3cec2eacebf252b24bed027cf7ebf40fe79c9b06e6afff53d59932d0"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2-player-pose-v1/manifest.json",
+      "sha256": "8302c8803894e201191f635fb287fad5142ceaa98444249be7cc089173fb23c0"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2/metadata.json",
+      "sha256": "3c9ebf405ce8346fe692d6bec251614ca97bb0f528b6d7b04082b97f9dbad309"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/dataset.json",
+      "sha256": "df6f3b354fcec99216e52a844eaa46223d3a53d97ec022b857d782ea396b6264"
+    }
+  ]
+}

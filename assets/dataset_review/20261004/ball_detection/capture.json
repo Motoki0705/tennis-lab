@@ -1,0 +1,174 @@
+{
+  "task": "ball_detection",
+  "inspection_date": "2026-10-04",
+  "source_kind": "existing local datasets and saved artifacts; no test fixture imagery",
+  "dataset_root": "data/ball_detection/ball-mix-v2",
+  "source_files": {
+    "data/ball_detection/ball-mix-v2/metadata.json": {
+      "sha256": "3c9ebf405ce8346fe692d6bec251614ca97bb0f528b6d7b04082b97f9dbad309",
+      "mtime_utc": "2026-10-04T05:50:44.617157+00:00"
+    },
+    "data/ball_detection/ball-mix-v2/index.npz": {
+      "sha256": "f552dae1e15094facfa782c9a9483588169ff7984e01fca5c1c0eecb560513c5",
+      "mtime_utc": "2026-10-04T05:50:40.274570+00:00"
+    }
+  },
+  "player_manifest": {
+    "path": "data/ball_detection/ball-mix-v2-player-pose-v1/manifest.json",
+    "sha256": "8302c8803894e201191f635fb287fad5142ceaa98444249be7cc089173fb23c0"
+  },
+  "code_revision_after": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+  "captures": [
+    {
+      "file": "before-interpolated.png",
+      "kind": "before",
+      "view": "dataset review image and annotation state",
+      "dataset": "store/ball-mix-v2",
+      "clip": "meiji/video_000/clip_000/cam0",
+      "frame_index_zero_based": 21,
+      "camera": "cam0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "code_revision": "a8b48ba50068f255ccd84267eb3fa63fc7a77c75",
+      "screenshot_sha256": "4e11f70b87095779b9f519fdaa94027eee6bacae1f53ef797f9583cad1916dfb",
+      "captured_at_utc": "2026-10-04T11:21:41.817080+00:00",
+      "stored_jpeg_sha256": "dd6ffbc973b33e20ba3828a290f4853f3249b74c741cc3ab911d812d1e1a6a85",
+      "settings": {
+        "gt": true,
+        "labels": false,
+        "prediction": "none",
+        "player_mode": "reviewed",
+        "players": true,
+        "pose": true,
+        "boxes": true,
+        "identities": true,
+        "trails": true,
+        "fps": 10,
+        "fit": true
+      }
+    },
+    {
+      "file": "after-interpolated.png",
+      "kind": "after",
+      "view": "dataset review image and annotation state",
+      "dataset": "store/ball-mix-v2",
+      "clip": "meiji/video_000/clip_000/cam0",
+      "frame_index_zero_based": 21,
+      "camera": "cam0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "code_revision": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+      "screenshot_sha256": "17e6fb53f319a8783bbd6c7b6c33bda104981c90bc9d3d8084f2d2be7f8a2ef4",
+      "captured_at_utc": "2026-10-04T11:46:20.349424+00:00",
+      "stored_jpeg_sha256": "dd6ffbc973b33e20ba3828a290f4853f3249b74c741cc3ab911d812d1e1a6a85",
+      "settings": {
+        "gt": true,
+        "labels": false,
+        "prediction": "none",
+        "player_mode": "reviewed",
+        "players": true,
+        "pose": true,
+        "boxes": true,
+        "identities": true,
+        "trails": true,
+        "fps": 10,
+        "fit": true
+      }
+    },
+    {
+      "file": "before-unresolved.png",
+      "kind": "before",
+      "view": "dataset review image and annotation state",
+      "dataset": "store/ball-mix-v2",
+      "clip": "meiji/video_000/clip_000/cam0",
+      "frame_index_zero_based": 86,
+      "camera": "cam0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "code_revision": "a8b48ba50068f255ccd84267eb3fa63fc7a77c75",
+      "screenshot_sha256": "134b633dab21b69af16915e8ad6cf06160ff27be6c70927e70080b74a960e372",
+      "captured_at_utc": "2026-10-04T11:21:42.092196+00:00",
+      "stored_jpeg_sha256": "2fe608bf34d2e144dfd828d8602a0ca9ae5997c5d98611814fbe86fcac8d87e6",
+      "settings": {
+        "gt": true,
+        "labels": false,
+        "prediction": "none",
+        "player_mode": "reviewed",
+        "players": true,
+        "pose": true,
+        "boxes": true,
+        "identities": true,
+        "trails": true,
+        "fps": 10,
+        "fit": true
+      }
+    },
+    {
+      "file": "after-unresolved.png",
+      "kind": "after",
+      "view": "dataset review image and annotation state",
+      "dataset": "store/ball-mix-v2",
+      "clip": "meiji/video_000/clip_000/cam0",
+      "frame_index_zero_based": 86,
+      "camera": "cam0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "code_revision": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+      "screenshot_sha256": "e0db25fee0264f91109ba2a87b77d2897b70946e280c8c81583271a96d7efb77",
+      "captured_at_utc": "2026-10-04T11:46:20.606949+00:00",
+      "stored_jpeg_sha256": "2fe608bf34d2e144dfd828d8602a0ca9ae5997c5d98611814fbe86fcac8d87e6",
+      "settings": {
+        "gt": true,
+        "labels": false,
+        "prediction": "none",
+        "player_mode": "reviewed",
+        "players": true,
+        "pose": true,
+        "boxes": true,
+        "identities": true,
+        "trails": true,
+        "fps": 10,
+        "fit": true
+      }
+    },
+    {
+      "file": "after-overview.png",
+      "kind": "after",
+      "view": "dataset overview dialog",
+      "dataset": "store/ball-mix-v2",
+      "clip": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "frame_index_zero_based": 0,
+      "camera": null,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "code_revision": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+      "screenshot_sha256": "7ecfc7ac386a21a5f938cbe01bd402f3807cad2bcce13cc41b26ec5c8b672c08",
+      "captured_at_utc": "2026-10-04T11:46:19.842179+00:00",
+      "stored_jpeg_sha256": "d2578b329abc5c8ff485f72cbfe97c5d7e77314c3c38c31badf62799cf48a3fa",
+      "settings": {
+        "gt": true,
+        "labels": false,
+        "prediction": "none",
+        "player_mode": "reviewed",
+        "players": true,
+        "pose": true,
+        "boxes": true,
+        "identities": true,
+        "trails": true,
+        "fps": 10,
+        "fit": true
+      }
+    }
+  ],
+  "note": "Before/after pairs use the same stored JPEG, sample, frame, viewport, fit and overlay settings. The metadata files predate all captures. Hashes were recorded when publishing; datasets were read-only throughout this task. New review controls change the surrounding layout. Frame index is zero-based; the transport displays index + 1."
+}

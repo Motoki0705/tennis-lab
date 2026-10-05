@@ -16,6 +16,11 @@ from src.tasks.plcs.court_keypoint_contract import (
     PLCS_GENERATED_DATASET_SCHEMA_ID,
     validate_plcs_court_keypoint_headers,
 )
+from src.tasks.plcs.visualization.review.dataset_inspection import (
+    InspectionPayload,
+    build_inspection,
+    split_inventory,
+)
 from src.utils.schema.player import (
     COCO17_SKELETON,
     COCO_KP_NAMES,
@@ -42,6 +47,16 @@ class PLCSDatasetReviewService(DatasetSceneReviewService):
 
     task = "plcs"
     entity_kind = "player"
+
+    def inspection(self, form: str, scene_id: str, revision: str) -> InspectionPayload:
+        """Return stored 2D inputs and diagnostics against the 3D teacher."""
+        document = self.scene(form, scene_id, revision)
+        scene_path, _ = self._resolve(form, scene_id)
+        inventory = split_inventory(scene_path.parent.parent)
+        payload = build_inspection(scene_path, document, inventory)
+        if self._catalog.revision(form, scene_id) != revision:
+            raise RuntimeError("Scene changed on disk. Reload the catalog.")
+        return payload
 
     def _validate_scene_contract(
         self, scene_path: Path, contract: CourtKeypointContract
@@ -83,7 +98,10 @@ class PLCSDatasetReviewService(DatasetSceneReviewService):
         if "court_config" not in meta:
             return None
         court_config = meta["court_config"]
-        if not isinstance(court_config, dict) or "net_post_offset_x" not in court_config:
+        if (
+            not isinstance(court_config, dict)
+            or "net_post_offset_x" not in court_config
+        ):
             raise ValueError(
                 "PLCS court_config must contain net_post_offset_x when present."
             )
@@ -91,7 +109,9 @@ class PLCSDatasetReviewService(DatasetSceneReviewService):
 
     def _fps(self, meta: dict[str, Any], scene_path: Path) -> float:
         if "fps" not in meta:
-            raise ValueError(f"{scene_path / 'meta.json'}: required key 'fps' is missing.")
+            raise ValueError(
+                f"{scene_path / 'meta.json'}: required key 'fps' is missing."
+            )
         value = float(meta["fps"])
         if not value > 0.0:
             raise ValueError(f"{scene_path / 'meta.json'}: fps must be positive.")
