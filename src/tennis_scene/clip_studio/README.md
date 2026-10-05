@@ -4,11 +4,57 @@
 
 ## 起動・再開
 
-コマンド、入力動画の命名規則、project・datasetの入出力構造、再実行時の扱いは
-[tennis_sceneの入出力契約](../README.md#1-clip_studio--入力動画を同期切り出す)を参照してください。
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.clip_studio \
+  source_directory=tennis_multivew/raw/meiji_3cam/video_000 gui.port=8765
+```
+
 画面は既定で `http://127.0.0.1:8765`、ポートは `gui.port` で指定します。
 
+入力はDATA root相対の`tennis_multivew/raw/<dataset_id>/video_<3桁以上>/cam<index>.mp4`。
+cameraはcam0から連番で、指定videoだけを開きます。保存先は
+`tennis_multivew/processed/<dataset_id>/projects.json`（v1）、出力先はその隣の
+`dataset/videos/<video_id>/clips/<clip_name>/`です。dataset/clip v2のスキーマとreaderは
+[generate_dataset/manifest.py](../generate_dataset/manifest.py)が所有します。
+旧raw直下の`cam0.mp4`や旧`dataset/clips/...`配置を自動探索・移行しません。
+
 新規プロジェクト作成時だけ、全動画のコンテナの `creation_time` をUTCへそろえ、最も遅い録画開始を共通時刻0秒として同期オフセットを初期設定します。1つでも時刻が欠落・不正（タイムゾーンなしを含む）、または取得できない場合は、全カメラ0秒の従来動作で開始します。初期推定の結果と失敗理由は起動ログと画面上部に表示します。通知はそのサーバー起動中に表示され、通常の編集操作では消えません。既存JSONは、全オフセットが0秒・クリップ未登録でも再推定せず、そのまま読み込みます。初期値は映像を確認して音声同期・手動調整で修正できます。
+
+## 保存済みデータのレビュー
+
+```bash
+# 既存projectだけを読み、編集・同期計算・書き出しをAPIでも拒否する。
+.venv/bin/python -m src.tennis_scene.clip_studio \
+  --data-root /absolute/path/to/data \
+  --source-directory tennis_multivew/raw/meiji_3cam/video_000 --port 8904
+```
+
+`projects.json`・指定videoが無ければ停止します。rawと保存camera/pathの一致も必要です。
+新projectの作成、同期値の再推定、dataset登録の修復、推論は行いません。
+
+上部のraw → 同期project → 切出datasetで、現在のvideoの**保存clip数**と
+**dataset.json登録数**・**未出力数**を区別します。保存clipが学習への採用や切出済みを
+意味するわけではありません。この段階のデータはRGBと時間選別で、教師・学習splitはありません。
+offsetの推定方法は既存project JSONからは分かりません。
+
+停止すると、共通時刻から元動画時刻・0始まりの最近傍frameへの対応を全cameraで表示します。
+プレビューと同じ`timeline.source_frame_index`を使い、録画範囲外はframeを`—`、映像なしと表示します。
+再生中は厳密なframe照合を表示せず、停止を案内します。
+一覧選択は再生位置を変えるだけです。選択clipの`[start,end)`、現在位置の区間内/外、
+出力形式、元frame範囲（末尾を含む）・letterboxを確認できます。
+
+| 表示 | 確認できた状態 |
+|---|---|
+| 登録済み | v2 clip・保存区間/同期値・dataset登録情報・mediaファイル存在が一致 |
+| 未出力 | 保存区間に対応するclip.jsonがない |
+| 出力不足 | clip.jsonまたはcamera mediaが欠ける |
+| 不一致 | 出力manifestと保存project、またはdataset登録情報が異なる |
+| 未登録 / 登録未確認 | clip/mediaは存在するが登録がない / indexがない・読めない |
+| 確認失敗 | 旧version・不正manifest・現在のrawでは成立しない出力計画など、理由を表示 |
+
+出力のfps・解像度は保存manifestを使って照合し、現在のexport既定設定とは区別します。
+レビューは全動画の再decode、media内容の同一性、教師品質を検証しません。
+同期・切出後の3D推定や教師採用の確認は各下流reviewの担当です。
 
 ## 編集の流れ
 
@@ -53,6 +99,7 @@ fps・解像度が異なる場合は `export.fps`、`export.width`、`export.hei
 ## モジュール
 
 - `web/service.py`：編集トランザクション、revision検証、自動保存、Undo/Redo。
+- `__main__.py`：既存project専用のread-only CLI。`review.py`：保存projectの読込API。`web/review.py`：時刻対応と既存出力の照合。
 - `web/app.py`：FastAPI、HTTP Range動画配信、停止時のJPEGフレーム取得。ループバックで起動する。
 - `web/jobs.py`：同期候補計算・バッチ事前検証・出力済み判定・進捗。
 - `web/exporting.py`：停止可能なエンコード子プロセス、一時出力、公開とロールバック。
@@ -76,6 +123,12 @@ fps・解像度が異なる場合は `export.fps`、`export.width`、`export.hei
   tests/integration/tennis_scene/test_clip_export.py
 ```
 
-ブラウザ回帰テストは `tests/e2e/tennis_scene/clip_studio_browser.mjs`。Playwrightのインストール先を `PLAYWRIGHT_MODULE`、60秒以上・2カメラ以上の**空の検証専用プロジェクト**のURLを `CLIP_STUDIO_TEST_URL` に指定してNodeで実行します。テストはクリップと同期オフセットを変更します。必要なら `CHROMIUM_PATH` でブラウザ実行ファイルを指定します。
+ブラウザ回帰テストは `tests/e2e/tennis_scene/clip_studio_browser.mjs`。Playwrightのインストール先を `PLAYWRIGHT_MODULE`、60秒以上・2カメラ以上の**空の検証専用dataset `clip_studio_edit_test`**のURLを `CLIP_STUDIO_TEST_URL` に指定してNodeで実行します。テストはクリップと同期オフセットを変更します。実dataset名では編集前に拒否します。必要なら `CHROMIUM_PATH` でブラウザ実行ファイルを指定します。
 
 再生要求の競合回帰テストは `node --test tests/e2e/tennis_scene/playback.test.mjs` で実行できます（Playwright不要）。
+
+読取専用ブラウザー回帰は`tests/e2e/tennis_scene/clip_studio_review_browser.mjs`。
+10fps・2camera・offset `[0,-1]`・`clip_000=[2,4)`・未出力の検証専用dataset
+`clip_studio_review_test`を読取専用で開き、`CLIP_STUDIO_REVIEW_TEST_URL`と
+`PLAYWRIGHT_MODULE`を指定します。実datasetでは起動前に拒否します。
+frame照合・範囲外・半開区間・登録状態・API書込み拒否・再読込・狭い画面を検証します。
