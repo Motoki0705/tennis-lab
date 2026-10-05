@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><title>Player Association · Dataset Review</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<header><div><span class="eyebrow">TENNIS LAB / DATASET REVIEW</span><h1>Player Association</h1><p>raw track → 匿名人物 → camera を、同じ時刻で辿る</p></div><span class="readonly">READ ONLY · 保存artifact + RGB</span></header>
+<main>
+  <section class="notice" id="scope"></section>
+  <div class="layout">
+    <aside><div class="section-label">DATASET / MEIJI 3 CAM</div><div id="counts"></div><div id="clips"></div><div class="legend"><span class="dot a"></span>選手A <span class="dot b"></span>選手B<br><span class="dot excluded"></span>除外対象 <span class="dot ambiguous"></span>曖昧box <span class="dot unknown"></span>未対応</div><details><summary>現在の方式と研究記録</summary><p id="method"></p><p id="research"></p><p>未ラベルclipは負例にしません。足元はbox下端のz=0逆投影による推定、GTではありません。</p></details></aside>
+    <article>
+      <section class="panel controls"><div class="row"><h2 id="clip-title"></h2><span id="reference" class="muted"></span></div><div class="row seek"><button id="previous" aria-label="前frame">‹</button><button id="next" aria-label="次frame">›</button><label>frame <input id="frame-number" type="number" min="0" value="0"></label><input id="seek" type="range" min="0" value="0" aria-label="frame slider"><span id="time"></span></div><div id="coverage" class="coverage"></div><div id="track-preview"></div></section>
+      <div id="error" role="alert" hidden></div>
+      <section id="views" class="views" aria-label="同期camera全景とcrop"></section>
+      <div class="inspection">
+        <section class="panel"><div class="row"><h2>選択したraw track</h2><button id="clear-selection">選択解除</button></div><div id="inspector"></div><div class="filter-row" id="filters"></div><p class="muted">全景・cropをクリックすると、同じ匿名選手を各cameraで強調。除外対象のcamera間同一性は未確認。</p></section>
+        <section class="panel ground"><h2>同時刻の足元 <small>m / z = 0</small></h2><canvas id="court" width="360" height="340"></canvas><p class="muted">box下端中央を逆投影。画像境界・光線不交差・校正欠測は点を描かず理由を表示。範囲外の点は境界へ丸めません。</p><div id="ground-missing"></div></section>
+      </div>
+      <section class="panel scores"><div class="row"><h2>保存scoreの候補比較</h2><select id="report" aria-label="保存score report"></select></div><p class="muted">旧classical評価のsegment全区間の証拠。現行採用尺度Aの再推論ではありません。尤度比scoreは確率ではありません。</p><div id="score-binding"></div><div id="score-table"></div></section>
+      <details class="panel" id="all-timelines"><summary>全raw IDの観測・ラベル推移 <span id="timeline-count"></span></summary><p class="muted">灰色の空白は実観測なし。人物の不在やout-of-frameとは断定しない。ラベル切替は目視参照の推移で、solverのID switch判定ではありません。</p><div id="timelines"></div></details>
+      <details class="panel"><summary>出自・ラベル被覆の分母</summary><div id="coverage-detail"></div><pre id="provenance"></pre></details>
+    </article>
+  </div>
+</main>
+<footer>既存データと注釈を変更しないレビュー。新規推論・学習・player自動生成は実行しない。</footer>
+<script src="/static/app.js" defer></script>
+</body></html>
