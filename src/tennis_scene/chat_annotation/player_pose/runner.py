@@ -19,6 +19,14 @@ from .storage import clip_root, digest, lock, read_json, verify_record, write_js
 def codex_command(
     config: dict[str, Any], attempt: Path, images: list[Path]
 ) -> list[str]:
+    tier_options: list[str] = []
+    if "service_tier" in config:
+        tier = config["service_tier"]
+        if not isinstance(tier, str) or not tier.strip():
+            raise ValueError("service_tier must be a nonempty string when configured")
+        tier_options = ["-c", f"service_tier={json.dumps(tier)}"]
+        if tier == "fast":
+            tier_options.extend(["--enable", "fast_mode"])
     return [
         config["codex_binary"],
         "--disable",
@@ -32,6 +40,7 @@ def codex_command(
         config["model"],
         "-c",
         f"model_reasoning_effort={json.dumps(config['effort'])}",
+        *tier_options,
         "-c",
         'approval_policy="never"',
         "-s",
@@ -65,6 +74,8 @@ def _invoke(
         {
             "argv": command,
             "model": config["model"],
+            "effort": config["effort"],
+            "service_tier": config.get("service_tier"),
             "images": {str(p): digest(p) for p in images},
             "started_at": time.time(),
         },
@@ -118,9 +129,10 @@ def review_clip(campaign: Path, index: int) -> dict[str, Any]:
     with lock(root / "review.lock", blocking=False):
         if (root / "review.json").exists():
             receipt = verify_record(root / "review.json")
-            return accept_review(
+            approved_result: dict[str, Any] = accept_review(
                 campaign, index, root / "decision.json", receipt["required_sheets"]
             )
+            return approved_result
         status_path = root / "review_status.json"
         if status_path.exists() and read_json(status_path)["status"] in (
             "approved",
@@ -154,7 +166,7 @@ def review_clip(campaign: Path, index: int) -> dict[str, Any]:
             try:
                 if code != 0:
                     raise RuntimeError(f"Codex exited {code}")
-                result = accept_review(
+                result: dict[str, Any] = accept_review(
                     campaign,
                     index,
                     attempt / "result.json",

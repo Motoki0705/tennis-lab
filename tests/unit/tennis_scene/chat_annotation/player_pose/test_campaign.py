@@ -74,9 +74,10 @@ def decision(segments: list[dict]) -> dict:
 
 
 def remap(raw: dict, review: dict) -> dict:
-    return validate_and_remap(
+    result: dict = validate_and_remap(
         raw, review, clip_id="clip", raw_hash="hash", required_sheets=["frames.jpg"]
     )
+    return result
 
 
 def test_fragment_merge_reuses_pose_and_keeps_missing_frames() -> None:
@@ -204,9 +205,15 @@ def test_committed_chunk_corruption_is_not_silently_reused(tmp_path: Path) -> No
         _cached_chunk(path)
 
 
+@pytest.mark.parametrize("service_tier", [None, "fast"])
 def test_real_images_fake_codex_and_publication(
-    store: BallFrameStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    store: BallFrameStore,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    service_tier: str | None,
 ) -> None:
+    import tomllib
+
     import torch
 
     from src.submodules.models import Pose2DResult
@@ -217,6 +224,7 @@ def test_real_images_fake_codex_and_publication(
     fake.write_text("""#!/usr/bin/env python3
 import sys,json,re
 from pathlib import Path
+Path('captured-argv.json').write_text(json.dumps(sys.argv))
 prompt=sys.stdin.read()
 packet=json.loads(Path(re.search(r"packet: ([^\\n]+)",prompt).group(1)).read_text())
 segments=[]
@@ -242,11 +250,13 @@ print(json.dumps({'type':'turn.completed'}))
         "codex_binary": str(fake),
         "codex_home": str(tmp_path),
         "model": "gpt-6.1-sol",
-        "effort": "high",
+        "effort": "max",
         "review_timeout_seconds": 30,
         "review_attempts": 2,
         "review_parallel": 1,
     }
+    if service_tier is not None:
+        config["service_tier"] = service_tier
     plan = initialize(campaign, config)
     root = clip_root(campaign, 0)
     root.mkdir(parents=True)
@@ -264,6 +274,17 @@ print(json.dumps({'type':'turn.completed'}))
     )
     result = runner.review_clip(campaign, 0)
     assert result["status"] == "approved"
+    argv = read_json(root / "review/attempt-000/captured-argv.json")
+    overrides = {}
+    for flag, value in zip(argv, argv[1:], strict=False):
+        if flag == "-c":
+            overrides.update(tomllib.loads(value))
+    assert overrides["model_reasoning_effort"] == "max"
+    assert overrides.get("service_tier") == service_tier
+    enabled = [
+        value for flag, value in zip(argv, argv[1:], strict=False) if flag == "--enable"
+    ]
+    assert ("fast_mode" in enabled) == (service_tier == "fast")
     with pytest.raises(RuntimeError, match="not approved"):
         PlayerPoseStore(tmp_path / "poses").read_clip(plan["clips"][0]["clip_id"])
     with pytest.raises(FileNotFoundError):
@@ -287,7 +308,10 @@ print(json.dumps({'type':'turn.completed'}))
     loaded = PlayerPoseStore(tmp_path / "poses").read_clip(plan["clips"][0]["clip_id"])
     assert loaded is not None and loaded["player_ids"].tolist() == ["player_1"]
     assert loaded["observed"].all()
-    assert read_json(root / "review/attempt-000/launch.json")["model"] == "gpt-6.1-sol"
+    launch = read_json(root / "review/attempt-000/launch.json")
+    assert launch["model"] == "gpt-6.1-sol"
+    assert launch["effort"] == "max"
+    assert launch["service_tier"] == service_tier
     assert len(list((root / "evidence").glob("frames-*.jpg"))) == 1
     path = root / "review/attempt-000/result.json"
     assert (

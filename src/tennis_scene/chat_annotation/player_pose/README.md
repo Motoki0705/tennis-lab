@@ -20,6 +20,8 @@ unresolvedの球が1つ以上あるframeの割合。out_of_frameは数えない�
 configにはstore/dataset/project_root/python、presence_threshold、assets、chunk_frames、
 generation_attempts、cuda_memory_fraction、codex_binary/codex_home、model/effort、
 review_parallel/review_attempts/review_timeout_seconds、queue_dir/queue_script/session_idを明示する。
+Fastを使用する場合は任意の`service_tier`に`fast`を指定する。CLIのservice tierとfast_modeを
+明示し、モデル・effort・tierを各レビューattemptのlaunch.jsonへ記録する。
 assetsにはdino、dino_repository、vitpose、clip_reid、aflink、dino_extensionを指定する。
 `pose_attempts`は任意で、省略時はgeneration_attemptsと同じ回数。
 GPU環境のPYTHONPATHには指定したDINO拡張libと実装worktreeを含める。
