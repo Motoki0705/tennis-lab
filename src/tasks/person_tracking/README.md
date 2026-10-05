@@ -2,6 +2,7 @@
 
 #964のcamera内追跡。検出rowごとの特徴を保存し、同じ検出・pose・外観を複数の追跡方式で使う。
 標準pipelineの人物sourceとコート選別は[pipeline README](../../tennis_scene/pipeline/README.md)を参照。
+[保存tracking・ID区間のデータレビューUI](review/README.md)は、元画像/crop・欠測・保存GSIを読取専用で点検する。
 [選手poseのGPTレビュー](../../tennis_scene/chat_annotation/player_pose/README.md)も、
 `features.py` / `sequence.py` の共通処理からコート選別前のraw追跡を利用する。
 既定はユーザーが採用した **StrongSORT++＋pose/CLIP**。run 10の固定設定を使用する。

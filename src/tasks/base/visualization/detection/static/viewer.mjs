@@ -1,3 +1,6 @@
+import { drawPlayers } from "./players.mjs";
+import { ballPointColor } from "./review.mjs";
+
 export function fitScale(width, height, viewportWidth, viewportHeight) {
   if (
     ![width, height, viewportWidth, viewportHeight].every(
@@ -40,6 +43,7 @@ export class ImageViewer {
     this.token = 0;
     this.gt = null;
     this.pred = null;
+    this.people = [];
     this.rasters = new Map();
     this.pointers = new Map();
     this.options = {
@@ -48,6 +52,14 @@ export class ImageViewer {
       labels: false,
       raster: "",
       opacity: 0.55,
+      ballPoints: false,
+      referencePoints: false,
+      highlightPoint: null,
+      players: true,
+      pose: true,
+      boxes: true,
+      identities: true,
+      trails: true,
     };
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas);
@@ -116,17 +128,18 @@ export class ImageViewer {
     this.image = null;
     this.gt = null;
     this.pred = null;
+    this.people = [];
     this.rasters.clear();
     this.draw();
   }
-  async setFrame(url, gt, pred, reset = false) {
+  async setFrame(source, gt, pred, reset = false, people = []) {
     const token = ++this.token;
-    const image = await loadImage(url);
+    const image = typeof source === "string" ? await loadImage(source) : source;
     const rasterList = [...(gt?.rasters || []), ...(pred?.rasters || [])];
     const loaded = await Promise.all(
       rasterList.map(async (layer) => [
         layer.data,
-        await loadImage(layer.data),
+        this.rasters.get(layer.data) || (await loadImage(layer.data)),
       ]),
     );
     if (token !== this.token) return false;
@@ -137,6 +150,7 @@ export class ImageViewer {
     this.image = image;
     this.gt = gt;
     this.pred = pred;
+    this.people = people;
     this.rasters = new Map(loaded);
     if (reset || changedSize) this.fit();
     else this.draw();
@@ -167,6 +181,14 @@ export class ImageViewer {
     this.onZoom(this.transform.scale);
     this.draw();
   }
+  focusPoint(point) {
+    if (!this.image || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+    const scale = Math.max(this.transform.scale, 2);
+    this.transform = { scale, x: this.width / 2 - point.x * scale, y: this.height / 2 - point.y * scale };
+    this.options.highlightPoint = point;
+    this.onZoom(scale);
+    this.draw();
+  }
   draw() {
     const ctx = this.ctx;
     if (!ctx) return;
@@ -182,6 +204,7 @@ export class ImageViewer {
     ctx.beginPath();
     ctx.rect(0, 0, this.image.width, this.image.height);
     ctx.clip();
+    drawPlayers(ctx, this.people, this.options, scale);
     for (const [kind, color] of [
       ["gt", "#25db97"],
       ["pred", "#ff6285"],
@@ -211,18 +234,28 @@ export class ImageViewer {
         ctx.lineTo(line.x2, line.y2);
         ctx.stroke();
       }
-      for (const point of visiblePoints(layer)) {
-        const radius = (kind === "gt" ? 5 : 3.2) / scale;
+      const points = kind === "gt" && this.options.referencePoints
+        ? (layer.points || []).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+        : visiblePoints(layer);
+      for (const point of points) {
+        const reference = point.visible === false;
+        const pointColor = this.options.ballPoints && kind === "gt"
+          ? ballPointColor(point.state) : reference ? "#ffc857" : color;
+        if (this.options.referencePoints) ctx.setLineDash(reference ? [3 / scale, 2 / scale] : []);
+        ctx.fillStyle = pointColor;
+        ctx.strokeStyle = pointColor;
+        const radius =
+          (this.options.ballPoints ? 1.25 : kind === "gt" ? 5 : 3.2) / scale;
         ctx.beginPath();
         ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
-        if (kind === "gt") {
+        if (kind === "gt" && !this.options.ballPoints) {
           ctx.stroke();
         } else {
           ctx.fill();
         }
         if (this.options.labels && point.label) {
           ctx.font = `${10 / scale}px system-ui`;
-          const label = String(point.label);
+          const label = String(point.display_label ?? point.label);
           const tw = ctx.measureText(label).width;
           const tx = Math.min(
             Math.max(point.x + 7 / scale, 0),
@@ -239,10 +272,17 @@ export class ImageViewer {
             tw + 4 / scale,
             14 / scale,
           );
-          ctx.fillStyle = color;
+          ctx.fillStyle = pointColor;
           ctx.fillText(label, tx, ty);
         }
       }
+      if (this.options.referencePoints) ctx.setLineDash([]);
+    }
+    const selected = this.options.highlightPoint;
+    if (selected && this.options.gt) {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2 / scale;
+      ctx.beginPath(); ctx.arc(selected.x, selected.y, 11 / scale, 0, 2 * Math.PI); ctx.stroke();
     }
     ctx.restore();
   }

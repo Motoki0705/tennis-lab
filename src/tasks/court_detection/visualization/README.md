@@ -14,6 +14,22 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 [閲覧UIを開く](http://127.0.0.1:8774)。左でTennisCourtDetectorまたは合成シーンのsplitを選び、画像を選択します。checkpoint・GPUは不要です。
 
+「体系・内訳を見る」で、現物の保存件数・現行readerのsplit別件数・保存schema・
+source設定の除外を確認できます。実写のtestは未提供です。合成のvalidationはUIのvalに
+対応し、trajectory group単位で分割されます。対応する形式と教師契約は
+[学習データ](../README.md#学習データ)が正本です。
+
+1. 左の「注釈の確認候補」で、画面外KP・画像内のrenderer不可視KP・重複座標があるsampleを絞ります。source/splitはdataset選択、sample IDは検索で指定します。
+2. 右の「保存教師の検品」で14点の名前・元画像pixel座標・KP教師採用状態を確認します。実写の「画像内・遮蔽不明」は保存visibilityがないという意味です。合成は保存in_front / in_frame / renderer_visibleと、KP教師への採用を区別します。
+3. 点を選ぶとchannel番号・physical IDを表示し、画像内の点へ拡大します。画面外の座標は保持し、画像内へ移動させません。「全体表示」で戻ります。ラベルを有効にすると画像上は短いchannel番号、右は完全な点名になります。
+4. 画像上の「画像だけ」「保存KP」「SEG」「LINE」「semantic LINE」を切り替えて元注釈と派生教師を比較します。「不可視点を参考表示」はKP教師対象外の位置を黄色の破線で示します。可視教師へ変更する操作ではありません。
+5. 「raw注釈」で、選択sampleの保存record・source/provenanceをJSONとして開きます。合成compact storeでは実際のstored_recordとreaderが復元するlogical labelsを分けます。「schema / source / sample」「派生targetのschemaと読み方」で保存先と派生schemaを確認できます。
+
+SEG/LINE/semantic LINEは両sourceとも保存マスクではなく、同じKP14からhomographyを
+推定して生成します。画面ではaugmentationなしの原画像解像度、学習では変換後の解像度と
+paddingに対して同じgeneratorを使用します。遮蔽物を除くマスクではなく、元KPの誤りも
+引き継ぐため、派生ラスタの一致だけで注釈の正しさを判断しないでください。
+
 ## 推論
 
 ```bash
@@ -34,7 +50,7 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 ## 表示操作
 
-ドラッグで画像を移動、ホイールでズーム、フィットで全体表示へ戻します。ダウンロードボタンで表示PNGを保存できます。Courtは単画像なのでフレーム再生はありません。
+ドラッグで画像を移動、ホイールでズーム、フィットで全体表示へ戻します。ダウンロードボタンで表示PNGを保存できます。Courtは単画像（frame 0）なので再生操作は表示しません。
 
 ## パスと注意点
 

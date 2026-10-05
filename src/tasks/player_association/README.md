@@ -19,6 +19,7 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
 | `appearance/kpr.py`・`parts.py` | KPR Market/SOLIDERの推論portとnative可視part距離。6×512のnative partsとvisibilityを保持し、全体cosineへの暗黙変換はしない。HL3・移植差分は[notice](appearance/kpr_vendor/NOTICE.md) |
 | `appearance/affinity.py` | 区間の平均 embedding の cosine の対数尤度比（camera 間の組だけ） |
 | `evaluation/` | 評価ラベルと指標（下記） |
+| [`review/`](review/README.md) | 保存済みraw ID・匿名人物ラベル・cameraの同期全景/crop/足元/被覆と旧scoreを読取専用でレビュー。現物の棚卸しと起動方法はリンク先 |
 | `calibration/` | run 12で事前固定した擬似pair-window・階層重み・尺度fit・leave-one-video-out検証。支持不足/不収束/不安定/3候補不合格ではconfigを返さず証拠を残す |
 
 データから決める値（`geometry.sigma_m`、`appearance.slope`・`center`）は、ラベルの無い Meiji clip の擬似ラベルで当てはめる
@@ -50,13 +51,15 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
 
 ラベルに含まれるのは、観測 run の tracker が出した box だけである。tracker が一度も box を出さなかった人物は、ラベルにも無い。
 
-### Meiji 3cam のラベル（v1）
+### Meiji 3cam のラベル（初期v1観測）
 
 review とラベルは各clipの `annotations/player_association/{review.yaml,labels.json}` に置く。
 Meijiのdatasetは `data/tennis_multivew/processed/meiji_3cam/dataset`。
 [`evaluation/dataset_labels.py`](evaluation/dataset_labels.py)が保存先と探索を所有し、git内の旧ラベルへ戻る経路はない。
 観測 run は `outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927`（#933）。
 clip ごとの選定理由と人物の説明は review YAML の `selection`・`people` を正とする。
+以下は初期dev4本の性質。追加の部分参照を含む現在のローカル現物は
+[`review/README.md`](review/README.md#現物と現行reader2026-10-04調査)で区別する。
 
 - 3本の動画にまたがる4 clip: `video_000/clip_000`（人手の対応が既にある clip）、`video_000/clip_007`、`video_001/clip_001`、`video_002/clip_013`。
 - 全 clip がシングルス。Meiji にはダブルスとボールボーイが無い。ダブルス・同色ウェアは合成データでのみ検証する。
