@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -43,16 +44,23 @@ class CoordinateRefiner(nn.Module):
         self.temporal = nn.TransformerEncoder(layer, config.layers, enable_nested_tensor=False)
         self.output = nn.Sequential(nn.LayerNorm(config.width), nn.Linear(config.width, config.dimensions))
         self.flow_time = nn.Sequential(nn.Linear(config.width, config.width), nn.SiLU(), nn.Linear(config.width, config.width)) if config.architecture == "flow" else None
+        self.register_forward_pre_hook(self._validate_flow_arguments, with_kwargs=True)
+
+    def _validate_flow_arguments(self, _module: nn.Module, args: tuple[object, ...], kwargs: dict[str, object]) -> None:
+        """Validate call arity before entering the computation-only forward."""
+        state = args[2] if len(args) > 2 else kwargs.get("state")
+        time = args[3] if len(args) > 3 else kwargs.get("time")
+        if self.config.architecture == "flow":
+            if state is None or time is None or self.flow_time is None:
+                raise ValueError("Flow forward requires its state and time")
+        elif state is not None or time is not None:
+            raise ValueError("Regression does not accept flow state/time")
 
     def forward(self, coordinates: Tensor, missing: Tensor, state: Tensor | None = None, time: Tensor | None = None) -> Tensor:
         clean_input = torch.where(missing[..., None], 0, coordinates)
         features = [clean_input, missing[..., None].to(coordinates.dtype)]
         if self.config.architecture == "flow":
-            if state is None or time is None or self.flow_time is None:
-                raise ValueError("Flow forward requires its state and time")
-            features.append(state)
-        elif state is not None or time is not None:
-            raise ValueError("Regression does not accept flow state/time")
+            features.append(cast(Tensor, state))
         token = self.input(torch.cat(features, dim=-1))
         token = token + sinusoidal(torch.arange(coordinates.shape[1], device=coordinates.device, dtype=coordinates.dtype), self.config.width)[None]
         if self.flow_time is not None and time is not None:

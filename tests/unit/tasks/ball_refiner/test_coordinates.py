@@ -146,6 +146,22 @@ def test_future_observation_influences_past_offline_prediction():
     assert values.grad[0, -1].abs().sum() > 0
 
 
+@pytest.mark.parametrize("architecture,with_state,with_time", [
+    ("regression", True, False), ("regression", False, True),
+    ("flow", False, False), ("flow", True, False), ("flow", False, True),
+])
+def test_flow_arguments_are_rejected_before_tensor_computation(architecture, with_state, with_time):
+    model = CoordinateRefiner(ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3)).eval()
+    coordinates = torch.zeros(1, 16, 3)
+    missing = torch.zeros(1, 16, dtype=torch.bool)
+    computed = []
+    model.input.register_forward_pre_hook(lambda *_: computed.append(True))
+    with pytest.raises(ValueError, match="Flow forward requires|Regression does not accept"):
+        model(coordinates, missing, state=torch.zeros_like(coordinates) if with_state else None,
+              time=torch.zeros(1) if with_time else None)
+    assert not computed
+
+
 def test_flow_and_gan_both_supply_trainable_gradients():
     coords, target = torch.randn(2, 16, 3), torch.randn(2, 16, 3)
     missing = torch.rand(2, 16) < 0.5
