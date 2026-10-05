@@ -410,6 +410,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "person_tracking.dataset_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.player_association.scripts.review_dataset": (
+        "player_association.dataset_review",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.plcs.scripts.serve_inference_ui": (
         "plcs.inference_ui",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -588,6 +592,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "src.tasks.person_tracking.scripts.review_dataset",
         "main",
         domain="person_tracking",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.player_association.scripts.review_dataset",
+        "main",
+        domain="player_association",
         executable_module=True,
     ),
     _non_hydra_boundary(
