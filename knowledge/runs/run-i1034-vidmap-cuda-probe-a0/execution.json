@@ -1,0 +1,35 @@
+{
+  "run_id": "vidmap-cuda-probe-a0",
+  "queue_job_id": "1791301965073915284_102935_i1034-vidmap-cuda-probe-a0",
+  "stage": "sanity",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/bin/python",
+    "-m",
+    "experiments.sfm_comparison.probe_runtime",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/environment/cuda-probe.json"
+  ],
+  "timeout_seconds": 180,
+  "started_at": "2026-10-06T15:52:45.659614+00:00",
+  "status": "done",
+  "required_path": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/environment/cuda-probe.json",
+  "finished_at": "2026-10-06T15:53:01.314268+00:00",
+  "elapsed_seconds": 15.653945720000138,
+  "returncode": 0,
+  "required_path_exists": true,
+  "device_memory_sampling": "whole-device MiB at approximately 2-second intervals",
+  "device_memory_sample_count": 8,
+  "device_peak_memory_mib": 1430.0,
+  "metrics": {
+    "torch": "2.14.0+cu130",
+    "cuda": "13.0",
+    "xformers": "0.0.35",
+    "device": "NVIDIA GeForce RTX 5060 Ti",
+    "compiled_matches_eager": true,
+    "attention_finite": true,
+    "torch_peak_allocated_bytes": 10240,
+    "scope": "runtime compatibility only; not an SfM quality measurement"
+  },
+  "metrics_source": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/environment/cuda-probe.json"
+}

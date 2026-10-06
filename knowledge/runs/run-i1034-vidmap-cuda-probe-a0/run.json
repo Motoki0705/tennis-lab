@@ -1,0 +1,16 @@
+{
+  "run_id": "1791301965073915284_102935_i1034-vidmap-cuda-probe-a0",
+  "name": "i1034-vidmap-cuda-probe-a0",
+  "command": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.venv/bin/python -m experiments.sfm_comparison.run_command --campaign /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006 --run-id vidmap-cuda-probe-a0 --stage sanity --seconds 180 --metrics-source /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/environment/cuda-probe.json --required-path /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/environment/cuda-probe.json -- /home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/bin/python -m experiments.sfm_comparison.probe_runtime --output /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/environment/cuda-probe.json",
+  "provider": "codex",
+  "session": "01a1106e-187c-7163-be4e-9f1673767ad9",
+  "issue": "1034",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "2eeea0faecac81da5808f34e68dc792ac94c2b8c",
+  "branch": "research/sfm-night-20261006",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "captured_at": "2026-10-07T00:52:45+09:00"
+}
