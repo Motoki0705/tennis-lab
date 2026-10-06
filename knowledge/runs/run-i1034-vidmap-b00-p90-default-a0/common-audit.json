@@ -1,0 +1,359 @@
+{
+  "original_model": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/rec",
+  "evaluated_model": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/evaluation/model-with-refreshed-errors",
+  "manifest": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/inputs/manifest-a1.json",
+  "manifest_sha256": "8d990743e7d151a172b19cc41af9307f4da0075220cbcb408228a90d4e578cd0",
+  "input_images": 90,
+  "registered_images": [
+    "frame_000000.jpg",
+    "frame_000001.jpg",
+    "frame_000002.jpg",
+    "frame_000005.jpg",
+    "frame_000007.jpg",
+    "frame_000011.jpg",
+    "frame_000017.jpg",
+    "frame_000022.jpg",
+    "frame_000025.jpg",
+    "frame_000027.jpg",
+    "frame_000028.jpg",
+    "frame_000029.jpg",
+    "frame_000031.jpg",
+    "frame_000034.jpg",
+    "frame_000040.jpg",
+    "frame_000042.jpg",
+    "frame_000044.jpg",
+    "frame_000046.jpg",
+    "frame_000048.jpg",
+    "frame_000050.jpg",
+    "frame_000053.jpg",
+    "frame_000059.jpg",
+    "frame_000067.jpg",
+    "frame_000075.jpg",
+    "frame_000077.jpg",
+    "frame_000078.jpg",
+    "frame_000079.jpg",
+    "frame_000081.jpg",
+    "frame_000082.jpg",
+    "frame_000085.jpg",
+    "frame_000089.jpg"
+  ],
+  "missing_images": [
+    "frame_000003.jpg",
+    "frame_000004.jpg",
+    "frame_000006.jpg",
+    "frame_000008.jpg",
+    "frame_000009.jpg",
+    "frame_000010.jpg",
+    "frame_000012.jpg",
+    "frame_000013.jpg",
+    "frame_000014.jpg",
+    "frame_000015.jpg",
+    "frame_000016.jpg",
+    "frame_000018.jpg",
+    "frame_000019.jpg",
+    "frame_000020.jpg",
+    "frame_000021.jpg",
+    "frame_000023.jpg",
+    "frame_000024.jpg",
+    "frame_000026.jpg",
+    "frame_000030.jpg",
+    "frame_000032.jpg",
+    "frame_000033.jpg",
+    "frame_000035.jpg",
+    "frame_000036.jpg",
+    "frame_000037.jpg",
+    "frame_000038.jpg",
+    "frame_000039.jpg",
+    "frame_000041.jpg",
+    "frame_000043.jpg",
+    "frame_000045.jpg",
+    "frame_000047.jpg",
+    "frame_000049.jpg",
+    "frame_000051.jpg",
+    "frame_000052.jpg",
+    "frame_000054.jpg",
+    "frame_000055.jpg",
+    "frame_000056.jpg",
+    "frame_000057.jpg",
+    "frame_000058.jpg",
+    "frame_000060.jpg",
+    "frame_000061.jpg",
+    "frame_000062.jpg",
+    "frame_000063.jpg",
+    "frame_000064.jpg",
+    "frame_000065.jpg",
+    "frame_000066.jpg",
+    "frame_000068.jpg",
+    "frame_000069.jpg",
+    "frame_000070.jpg",
+    "frame_000071.jpg",
+    "frame_000072.jpg",
+    "frame_000073.jpg",
+    "frame_000074.jpg",
+    "frame_000076.jpg",
+    "frame_000080.jpg",
+    "frame_000083.jpg",
+    "frame_000084.jpg",
+    "frame_000086.jpg",
+    "frame_000087.jpg",
+    "frame_000088.jpg"
+  ],
+  "original_dimensions_verified": true,
+  "pycolmap_version": "4.3.0",
+  "error_definition": "Per-point mean Euclidean pixel residual over its track, recomputed from final geometry; mean/median/p95 across points.",
+  "invalid_stored_point_errors": 0,
+  "stored_to_recomputed_max_abs_px": 0.0,
+  "stored_to_recomputed_mean_abs_px": 0.0,
+  "changed_point_errors_over_1e_6_px": 0,
+  "gate_note": "NHT CLI generic gates are not baseline native short-clip gates; do not rank accepted flags.",
+  "poses": [
+    {
+      "image": "frame_000000.jpg",
+      "center": [
+        6.750654479029258,
+        -1.9381984490314839,
+        20.79275011330858
+      ]
+    },
+    {
+      "image": "frame_000001.jpg",
+      "center": [
+        6.454666349603659,
+        -1.9230389892376525,
+        20.944048212626047
+      ]
+    },
+    {
+      "image": "frame_000002.jpg",
+      "center": [
+        6.038812924996343,
+        -1.9345926025096163,
+        21.118678118996847
+      ]
+    },
+    {
+      "image": "frame_000005.jpg",
+      "center": [
+        5.051370507696804,
+        -1.9252374798250294,
+        21.434681222001863
+      ]
+    },
+    {
+      "image": "frame_000007.jpg",
+      "center": [
+        4.320531911142215,
+        -1.9155743872699906,
+        21.642221679179432
+      ]
+    },
+    {
+      "image": "frame_000011.jpg",
+      "center": [
+        2.6113858150961446,
+        -1.8866032112442666,
+        21.491577165276805
+      ]
+    },
+    {
+      "image": "frame_000017.jpg",
+      "center": [
+        -0.4689396040607612,
+        -1.8197856185113452,
+        20.735064472333075
+      ]
+    },
+    {
+      "image": "frame_000022.jpg",
+      "center": [
+        -2.8907321138175743,
+        -1.7867261000734922,
+        20.0242613051965
+      ]
+    },
+    {
+      "image": "frame_000025.jpg",
+      "center": [
+        -4.437687188894267,
+        -1.7597694394646082,
+        19.591895504100272
+      ]
+    },
+    {
+      "image": "frame_000027.jpg",
+      "center": [
+        -5.380504874960907,
+        -1.7350449679759288,
+        19.24457799468659
+      ]
+    },
+    {
+      "image": "frame_000028.jpg",
+      "center": [
+        -5.903434468374314,
+        -1.7429395527342104,
+        19.107240326005414
+      ]
+    },
+    {
+      "image": "frame_000029.jpg",
+      "center": [
+        -6.438669647857633,
+        -1.7325582291557822,
+        18.934982728850798
+      ]
+    },
+    {
+      "image": "frame_000031.jpg",
+      "center": [
+        -7.5423032282658315,
+        -1.7130356463080079,
+        18.708797367179205
+      ]
+    },
+    {
+      "image": "frame_000034.jpg",
+      "center": [
+        -9.204389992851352,
+        -1.7212518749244508,
+        18.31577084775247
+      ]
+    },
+    {
+      "image": "frame_000040.jpg",
+      "center": [
+        -12.45098942573569,
+        -1.6771676096357853,
+        17.513490402723555
+      ]
+    },
+    {
+      "image": "frame_000042.jpg",
+      "center": [
+        -13.676880761097799,
+        -1.6549299681352734,
+        17.15841186502188
+      ]
+    },
+    {
+      "image": "frame_000044.jpg",
+      "center": [
+        -14.78204117265743,
+        -1.640289571180519,
+        16.839485106089732
+      ]
+    },
+    {
+      "image": "frame_000046.jpg",
+      "center": [
+        -15.76220437949402,
+        -1.651869693746625,
+        16.416766735764796
+      ]
+    },
+    {
+      "image": "frame_000048.jpg",
+      "center": [
+        -16.529785940710447,
+        -1.6255883043826587,
+        15.640177581234317
+      ]
+    },
+    {
+      "image": "frame_000050.jpg",
+      "center": [
+        -16.981662623748687,
+        -1.6426923713743742,
+        14.55983428792858
+      ]
+    },
+    {
+      "image": "frame_000053.jpg",
+      "center": [
+        -17.046488055551567,
+        -1.6386958102863596,
+        12.788707369767401
+      ]
+    },
+    {
+      "image": "frame_000059.jpg",
+      "center": [
+        -16.313399686064912,
+        -1.6620485728799015,
+        9.033006529547988
+      ]
+    },
+    {
+      "image": "frame_000067.jpg",
+      "center": [
+        -14.943638540405395,
+        -1.633286088316144,
+        3.7383138227928425
+      ]
+    },
+    {
+      "image": "frame_000075.jpg",
+      "center": [
+        -13.676715024038085,
+        -1.5988618599036917,
+        -1.7879456574792156
+      ]
+    },
+    {
+      "image": "frame_000077.jpg",
+      "center": [
+        -13.112975653230176,
+        -1.5601262636298578,
+        -3.1263038938856846
+      ]
+    },
+    {
+      "image": "frame_000078.jpg",
+      "center": [
+        -12.729283167727193,
+        -1.5602391032046834,
+        -3.742490546294982
+      ]
+    },
+    {
+      "image": "frame_000079.jpg",
+      "center": [
+        -12.208347357993105,
+        -1.5520223537991817,
+        -4.246772398666381
+      ]
+    },
+    {
+      "image": "frame_000081.jpg",
+      "center": [
+        -10.954551046905856,
+        -1.560839286614255,
+        -4.803971808202771
+      ]
+    },
+    {
+      "image": "frame_000082.jpg",
+      "center": [
+        -10.27821648874756,
+        -1.5523862304352678,
+        -4.932432513662728
+      ]
+    },
+    {
+      "image": "frame_000085.jpg",
+      "center": [
+        -8.178513859196435,
+        -1.5550309529283313,
+        -4.607054017625373
+      ]
+    },
+    {
+      "image": "frame_000089.jpg",
+      "center": [
+        -5.299283747725596,
+        -1.5795190402014434,
+        -3.96229941699947
+      ]
+    }
+  ]
+}

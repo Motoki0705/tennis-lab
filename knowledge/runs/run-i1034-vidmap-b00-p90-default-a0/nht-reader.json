@@ -1,0 +1,8 @@
+{
+  "pycolmap_version": "4.1.1",
+  "registered_images": 31,
+  "sparse_points": 10280,
+  "cameras": 1,
+  "camera_centers_max_abs_difference_to_4_3": 0.0,
+  "scope": "PyCOLMAP reader only; NHT trainer SceneManager and export not exercised"
+}

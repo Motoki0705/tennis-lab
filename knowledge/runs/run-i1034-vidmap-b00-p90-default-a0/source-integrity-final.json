@@ -1,0 +1,32 @@
+[
+  {
+    "source": "nht",
+    "expected": "9493001f1f5650f62e8f9809b023618edcde3f03",
+    "actual": "9493001f1f5650f62e8f9809b023618edcde3f03",
+    "tracked_diff_exit": 0
+  },
+  {
+    "source": "vidmap",
+    "expected": "1a48f2a1c9b59ba1e28bf40eeba1777f5d34ebb1",
+    "actual": "1a48f2a1c9b59ba1e28bf40eeba1777f5d34ebb1",
+    "tracked_diff_exit": 0
+  },
+  {
+    "source": "colmap",
+    "expected": "ea063e6874583429143dd5c53d86c3e68c895e8f",
+    "actual": "ea063e6874583429143dd5c53d86c3e68c895e8f",
+    "tracked_diff_exit": 0
+  },
+  {
+    "source": "pyceres",
+    "expected": "86ffa83b7099bdc46a0c8117f606b54f2d83ff03",
+    "actual": "86ffa83b7099bdc46a0c8117f606b54f2d83ff03",
+    "tracked_diff_exit": 0
+  },
+  {
+    "source": "poselib",
+    "expected": "48b0fdd032534f1d76ffb5bc1536b337d5517c50",
+    "actual": "48b0fdd032534f1d76ffb5bc1536b337d5517c50",
+    "tracked_diff_exit": 0
+  }
+]

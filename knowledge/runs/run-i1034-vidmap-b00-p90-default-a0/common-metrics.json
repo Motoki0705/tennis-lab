@@ -1,0 +1,191 @@
+{
+  "model_path": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/evaluation/model-with-refreshed-errors",
+  "input_images": 90,
+  "registered_images": 31,
+  "registration_ratio": 0.34444444444444444,
+  "supported_registered_images": 31,
+  "supported_registration_ratio": 0.34444444444444444,
+  "weak_registered_images": [],
+  "minimum_registered_points_per_image": 1302,
+  "p05_registered_points_per_image": 1340.5,
+  "median_registered_points_per_image": 1546.0,
+  "sparse_points": 10280,
+  "points_per_supported_camera": 331.61290322580646,
+  "point_cloud_coverage": {
+    "extent": [
+      112.57156105390891,
+      41.3108055025563,
+      110.42387714295829
+    ],
+    "robust_p01_p99_extent": [
+      63.26689689104573,
+      17.61077841858994,
+      45.88432864759115
+    ],
+    "centroid": [
+      -2.647703441886493,
+      -3.5506986581376636,
+      8.043008209465642
+    ],
+    "voxel_occupancy_fraction": 0.28414351851851855
+  },
+  "mean_reprojection_error_px": 1.1797213070855481,
+  "median_reprojection_error_px": 1.0669745939052868,
+  "p95_reprojection_error_px": 2.415332532104121,
+  "mean_track_length": 4.63715953307393,
+  "median_track_length": 3.0,
+  "p95_track_length": 13.0,
+  "trajectory": {
+    "median_step": 0.566342744591368,
+    "p95_step": 0.7261556885490383,
+    "maximum_step": 0.7376599062341901,
+    "maximum_step_to_median": 1.3024973185918223,
+    "step_outlier_count": 0,
+    "median_rotation_step_deg": 3.1555364381896513,
+    "p95_rotation_step_deg": 8.618893220766092,
+    "maximum_rotation_step_deg": 11.518438872093185,
+    "planarity_ratio": 0.0025650366031730264,
+    "extent": [
+      23.797142534580825,
+      0.3861760952323021,
+      26.57465419284216
+    ],
+    "p05_step": 0.3610373088918137,
+    "near_duplicate_step_count": 0,
+    "near_duplicate_fraction": 0.0
+  },
+  "cameras": {
+    "0": {
+      "model": "PINHOLE",
+      "width": 1920,
+      "height": 1080,
+      "params": [
+        1053.9555366528418,
+        1050.9548319217743,
+        973.30421571266,
+        526.9689232301142
+      ],
+      "focal_to_width": 0.5481537418163062
+    }
+  },
+  "mapping_components": 1,
+  "triangulation": {
+    "sampled_points": 10280,
+    "median_angle_deg": 25.62773184740142,
+    "p05_angle_deg": 2.0246937546979367
+  },
+  "intrinsics_stability": {
+    "camera_count": 1,
+    "focal_to_width_median": 0.5481537418163062,
+    "focal_length_coefficient_of_variation": 2.0253862008611581e-16,
+    "p95_adjacent_relative_focal_change": 0.0
+  },
+  "minimum_focal_to_width": 0.5481537418163062,
+  "maximum_focal_to_width": 0.5481537418163062,
+  "minimum_supported_points_per_image": 100,
+  "gates": {
+    "registration_ratio": {
+      "value": 0.34444444444444444,
+      "operator": ">=",
+      "threshold": 0.95,
+      "passed": false
+    },
+    "supported_registration_ratio": {
+      "value": 0.34444444444444444,
+      "operator": ">=",
+      "threshold": 0.95,
+      "passed": false
+    },
+    "sparse_points": {
+      "value": 10280,
+      "operator": ">=",
+      "threshold": 50000,
+      "passed": false
+    },
+    "median_track_length": {
+      "value": 3.0,
+      "operator": ">=",
+      "threshold": 3.0,
+      "passed": true
+    },
+    "p95_reprojection_error_px": {
+      "value": 2.415332532104121,
+      "operator": "<=",
+      "threshold": 3.0,
+      "passed": true
+    },
+    "trajectory_step_ratio": {
+      "value": 1.3024973185918223,
+      "operator": "<=",
+      "threshold": 5.0,
+      "passed": true
+    },
+    "trajectory_step_outliers": {
+      "value": 0,
+      "operator": "<=",
+      "threshold": 0,
+      "passed": true
+    },
+    "trajectory_planarity": {
+      "value": 0.0025650366031730264,
+      "operator": "<=",
+      "threshold": 0.15,
+      "passed": true
+    },
+    "rotation_continuity_deg": {
+      "value": 11.518438872093185,
+      "operator": "<=",
+      "threshold": 120.0,
+      "passed": true
+    },
+    "mapping_components": {
+      "value": 1,
+      "operator": "<=",
+      "threshold": 1,
+      "passed": true
+    },
+    "near_duplicate_cameras": {
+      "value": 0.0,
+      "operator": "<=",
+      "threshold": 0.05,
+      "passed": true
+    },
+    "minimum_focal_to_width": {
+      "value": 0.5481537418163062,
+      "operator": ">=",
+      "threshold": 0.1,
+      "passed": true
+    },
+    "maximum_focal_to_width": {
+      "value": 0.5481537418163062,
+      "operator": "<=",
+      "threshold": 5.0,
+      "passed": true
+    },
+    "points_per_supported_camera": {
+      "value": 331.61290322580646,
+      "operator": ">=",
+      "threshold": 100.0,
+      "passed": true
+    },
+    "spatial_voxel_coverage": {
+      "value": 0.28414351851851855,
+      "operator": ">=",
+      "threshold": 0.005,
+      "passed": true
+    },
+    "triangulation_parallax_deg": {
+      "value": 25.62773184740142,
+      "operator": ">=",
+      "threshold": 0.5,
+      "passed": true
+    },
+    "intrinsics_stability": {
+      "value": 2.0253862008611581e-16,
+      "operator": "<=",
+      "threshold": 0.15,
+      "passed": true
+    }
+  },
+  "accepted": false
+}

@@ -1,0 +1,16 @@
+{
+  "run_id": "1791312063000272170_903266_i1034-vidmap-b00-p90-default-a0",
+  "name": "i1034-vidmap-b00-p90-default-a0",
+  "command": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.venv/bin/python -m experiments.sfm_comparison.run_command --campaign /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006 --run-id vidmap-b00-p90-default-a0 --stage sfm --seconds 5400 --required-path /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/evaluation/metrics.json --metrics-source /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/evaluation/metrics.json -- env HF_HOME=/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/huggingface TORCH_HOME=/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/torch HF_HUB_DISABLE_XET=1 TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-compile TORCHINDUCTOR_COMPILE_THREADS=2 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 MKL_NUM_THREADS=4 /home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/bin/python -m experiments.sfm_comparison.run_vidmap --images /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1/frames/images --manifest /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/inputs/manifest-a1.json --output /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0 --evaluator-root /home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/nht",
+  "provider": "codex",
+  "session": "01a1106e-187c-7163-be4e-9f1673767ad9",
+  "issue": "1034",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "b113500e37bd391125a39a6a1862a4e73fabf11a",
+  "branch": "research/sfm-night-20261006",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "captured_at": "2026-10-07T03:41:03+09:00"
+}
