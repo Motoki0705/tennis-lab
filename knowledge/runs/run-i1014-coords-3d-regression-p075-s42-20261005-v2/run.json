@@ -1,0 +1,16 @@
+{
+  "run_id": "1791166594648825961_2475216_i1014-coords-3d-regression-p075-s42-20261005-v2",
+  "name": "i1014-coords-3d-regression-p075-s42-20261005-v2",
+  "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=3 model.architecture=regression corruption.event_probability=0.75 training.gan_weight=0 run.output_dir=ball_refiner/train/coordinates-3d-regression-p075/20261005-v2-s42",
+  "provider": "codex",
+  "session": "01a10697-63da-75b2-ae84-f2980da51c23",
+  "issue": "1014",
+  "resource": "half",
+  "logical_gpu_slot": "1",
+  "commit": "0bdeb9514ae1e780f1d8e8e08a431b2aa9f5143c",
+  "branch": "codex/coordinate-ball-refiners-991-1014",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "captured_at": "2026-10-05T11:46:53+09:00"
+}

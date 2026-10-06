@@ -1,0 +1,47 @@
+{
+  "run-i1014-coords-3d-flow-p025-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 0.0018926865123116501,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.28130635619163513
+  },
+  "run-i1014-coords-3d-flow-p05-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 0.0014884233737596471,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.27890074253082275
+  },
+  "run-i1014-coords-3d-flow-p075-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 0.0015803013597941932,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.2639724314212799
+  },
+  "run-i1014-coords-3d-gan-p025-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 0.0010106578463800074,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.47521764039993286
+  },
+  "run-i1014-coords-3d-gan-p05-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 1.8375597206909223e-05,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.40734970569610596
+  },
+  "run-i1014-coords-3d-gan-p075-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 9.187798603454613e-05,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.3115871846675873
+  },
+  "run-i1014-coords-3d-regression-p025-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 0.0009555310547592797,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.4651646316051483
+  },
+  "run-i1014-coords-3d-regression-p05-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 1.8375597206909223e-05,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.4059925675392151
+  },
+  "run-i1014-coords-3d-regression-p075-s42-20261005-v2": {
+    "prediction_z_below_zero_rate": 0.00011025358324145535,
+    "truth_z_below_zero_rate": 0.0,
+    "minimum_prediction_z_m": -0.3270728588104248
+  }
+}

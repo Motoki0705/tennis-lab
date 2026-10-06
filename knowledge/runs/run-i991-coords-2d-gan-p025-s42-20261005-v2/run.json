@@ -1,0 +1,16 @@
+{
+  "run_id": "1791166593937744554_2474401_i991-coords-2d-gan-p025-s42-20261005-v2",
+  "name": "i991-coords-2d-gan-p025-s42-20261005-v2",
+  "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=2 model.architecture=regression corruption.event_probability=0.25 training.gan_weight=0.002 run.output_dir=ball_refiner/train/coordinates-2d-gan-p025/20261005-v2-s42",
+  "provider": "codex",
+  "session": "01a10697-63da-75b2-ae84-f2980da51c23",
+  "issue": "991",
+  "resource": "half",
+  "logical_gpu_slot": "1",
+  "commit": "ea96f1ffaa378f5b36d5347f29dabbd3edaee038",
+  "branch": "codex/coordinate-ball-refiners-991-1014",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "captured_at": "2026-10-05T11:20:23+09:00"
+}

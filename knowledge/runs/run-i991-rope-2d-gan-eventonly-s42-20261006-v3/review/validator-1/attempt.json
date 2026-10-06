@@ -1,0 +1,8 @@
+{
+  "requested": 1,
+  "attempted": 1,
+  "completed": 1,
+  "model_provider_effort": "Confirmed session_meta/turn_context: root and validator openai / gpt-6-astra / max",
+  "result": "CHANGES_REQUIRED",
+  "finding": "R1/P2: jitter and outlier input listeners missing"
+}

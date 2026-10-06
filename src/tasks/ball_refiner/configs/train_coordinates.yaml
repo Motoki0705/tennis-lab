@@ -1,0 +1,49 @@
+defaults:
+  - model: coordinate_transformer
+  - training: coordinate_gan
+  - _self_
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: data
+  external_asset_root: third_party
+
+data:
+  dataset: ball_refiner/single_object
+  evaluation_event_probability: 0.5
+  evaluation_seed: 20991
+
+corruption:
+  event_probability: 0.5
+  isolated_probability: 0.0
+  gap_min: 3
+  gap_max: 10
+  noise_p95_px: 0.0
+  jitter_sigma_px: 0.0
+  outlier_probability: 0.0
+  triangulation_steps: 3
+
+compile:
+  enabled: false
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+
+run:
+  output_dir: ${tennis_output:ball_refiner,train,coordinates,${tennis_run_id:}}
+  seed: 42
+  device: cuda
+
+hydra:
+  output_subdir: null
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  job:
+    chdir: false
