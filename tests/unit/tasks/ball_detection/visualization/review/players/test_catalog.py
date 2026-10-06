@@ -99,12 +99,21 @@ def assets(tmp_path: Path) -> dict[str, Any]:
                 pose["boxes_xyxy"][~observed] = 0
                 pose["keypoints"][~observed] = 0
                 write_npz(poses / "clips" / "a.npz", **pose)
-                write_json(poses / "reviews" / "a.json", {"status": "approved"})
+                raw_hash = digest(root / "tracks.npz")
+                write_json(
+                    poses / "reviews" / "a.json",
+                    {
+                        "status": "approved",
+                        "clip_id": clip.clip_id,
+                        "raw_tracks_sha256": raw_hash,
+                    },
+                )
                 entry.update(
                     file="clips/a.npz",
                     sha256=digest(poses / "clips/a.npz"),
                     review_file="reviews/a.json",
                     review_sha256=digest(poses / "reviews/a.json"),
+                    raw_tracks_sha256=raw_hash,
                 )
         entries.append(entry)
     write_json(
@@ -139,7 +148,10 @@ def preview(
     a: dict[str, Any], clip: str = "approved", mode: str = "reviewed"
 ) -> dict[str, Any]:
     catalog: PlayerCatalog = a["catalog"]
-    return catalog.preview(a["identity"], a["public"], clip, 0, 6, mode)
+    result: dict[str, Any] = catalog.preview(
+        a["identity"], a["public"], clip, 0, 6, mode
+    )
+    return result
 
 
 def test_appended_store_join_mask_raw_ids_and_gap_breaks(
@@ -226,6 +238,27 @@ def test_replaced_artifact_is_not_served_from_cache(assets: dict[str, Any]) -> N
     preview(assets)
     (assets["poses"] / "clips/a.npz").write_bytes(b"replaced")
     with pytest.raises(ValueError, match="checksum"):
+        preview(assets)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [("clip_id", "held"), ("raw_tracks_sha256", "0" * 64)],
+)
+def test_review_identity_is_checked_after_artifact_checksum(
+    assets: dict[str, Any], field: str, value: str
+) -> None:
+    review_path = assets["poses"] / "reviews/a.json"
+    decision = json.loads(review_path.read_text())
+    decision[field] = value
+    write_json(review_path, decision)
+    manifest_path = assets["poses"] / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    entry = next(c for c in manifest["clips"] if c["clip_id"] == "approved")
+    entry["review_sha256"] = digest(review_path)
+    write_json(manifest_path, manifest)
+    assets["catalog"] = PlayerCatalog(assets["root"] / "data", assets["root"])
+    with pytest.raises(ValueError, match="review identity/status mismatch"):
         preview(assets)
 
 
