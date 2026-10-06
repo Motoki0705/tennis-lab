@@ -34,7 +34,7 @@ ball_points＋court → court_side（ballだけのhalf-turn仮説検定）
 選別group＋court＋side（＋動画のcrop） → player_association
 人物対応＋side＋2D観測 → camera_alignment
 人物観測＋camera → player_triangulation
-ball_points＋camera → ball_triangulation
+ball_points＋CourtKP14＋camera → ball_reconstruction（BLCS）
 人物対応＋2D観測＋camera → body_view_selection → gvhmr
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
@@ -118,11 +118,17 @@ v1 artifactの自動補完は行わず、executeで再生成、loadはschema不�
 
 ## ボール点と欠損
 
-`ball_detection → ball_points → court_side / camera_alignment / ball_triangulation` を使う。
+`ball_detection → ball_points → court_side / camera_alignment / ball_reconstruction` を使う。
 `ball_points` schema v3は検出器の `observed` とconfidenceを保持する。
 補間点・occlusion推定点は観測扱いせず、欠損はゼロ値とfalse maskで表す。
 有効な観測が2view未満の時刻は3Dでも欠損のまま保持する。
 旧v1/v2 storeはload不可。executeで再生成する。2D Refinerのbundleは不要。
+
+`ball_reconstruction`は`pipeline.yaml`のcheckpointを厳密に読み、physical_v1のBLCS axialを128フレーム窓で実行する。
+camera-local CourtKP14はsideの半回転置換で物理順に揃え、pixel/(width,height)へ変換する。
+学習時FPSへ最寄りsource frameを採り、予測を元の時間軸へ戻す。元の観測maskは補完しない。
+2view以上の観測・再投影閾値・高さ/速度制約を満たす予測だけを有効にする。
+`ball_trajectory` v2は旧三角測量v1と区別し、旧artifactを新BLCSの結果としてloadしない。
 
 
 ## 成果物

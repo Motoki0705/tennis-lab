@@ -47,7 +47,7 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     assert order.index("court_side") < order.index("player_association") < order.index("player_triangulation")
     assert order.index("person_tracking/cam2") < order.index("player_association")
     assert order.index("ball_detection/cam0") < order.index("ball_points/cam0") < order.index("court_side")
-    for consumer in ("court_side", "camera_alignment", "ball_triangulation"):
+    for consumer in ("court_side", "camera_alignment", "ball_reconstruction"):
         assert nodes[consumer].bindings["ball_cam0"] == "ball_points/cam0"
         assert nodes[consumer].io.inputs["ball_cam0"].schema == "ball_points"
         assert nodes[consumer].io.inputs["ball_cam0"].version == 3

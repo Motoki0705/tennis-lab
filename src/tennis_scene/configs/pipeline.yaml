@@ -27,7 +27,7 @@ execution:
   court_side: execute
   camera_alignment: execute
   player_triangulation: execute
-  ball_triangulation: execute
+  ball_reconstruction: execute
   body_view_selection: execute
   gvhmr: execute
   body_placement: execute
@@ -183,6 +183,8 @@ player_reconstruction:
     max_nfev: 200
 ball_reconstruction:
   enabled: true
+  checkpoint: blcs/axial-base-kp14-t128-v3-6-e200-s42-epoch189.ckpt
+  window_size: 128
   reprojection_px: 20.0
   min_frames: 5
 gvhmr:

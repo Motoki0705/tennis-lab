@@ -74,14 +74,14 @@ def test_gallery_renderers_keep_gaps_on_the_source_frame_axis(tmp_path: Path, mo
     monkeypatch.setattr("src.tennis_scene.scripts.visualize_component_store._save_plot", capture)
     valid = np.array([True, True, False, True, False])
     position = np.array([[0., 0., 0.], [1., 1., 1.], [0., 0., 0.], [3., 3., 3.], [0., 0., 0.]])
-    review.render_ball_triangulation("ball_triangulation", "", {"ball": {"status": "partial", "trajectory": {
+    review.render_ball_reconstruction("ball_reconstruction", "", {"ball": {"status": "partial", "trajectory": {
         "positions": position, "valid": valid, "inliers": np.tile(valid, (3, 1)),
     }}})
     review.render_body_placement("body_placement", "", {"players": {"position": position[None], "yaw": np.zeros((1, 5)),
         "root_valid": valid[None], "heading_valid": valid[None], "smpl_valid": np.zeros((1, 5), bool), "vertices_local": None}})
     review.render_scene_assembly("scene_assembly", "", {"player_position": position[None], "player_valid": valid[None],
         "ball_3d": position, "ball_3d_valid": valid, "metadata": {"status": "partial"}})
-    height = captured["ball_triangulation_height.png"][0]
+    height = captured["ball_reconstruction_height.png"][0]
     assert height[:, 0].tolist() == list(range(5))
     assert np.isnan(height[~valid, 1]).all()
     for name in ("body_placement_topdown.png", "scene_assembly_topdown.png"):

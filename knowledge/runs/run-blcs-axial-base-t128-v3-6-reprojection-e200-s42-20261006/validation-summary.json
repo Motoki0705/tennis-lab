@@ -1,0 +1,21 @@
+{
+  "completed_epochs": 200,
+  "validation_count": 40,
+  "selected_epoch_zero_based": 189,
+  "selected_validation": {
+    "loss": 0.0003175773308612406,
+    "position_error_m": 0.3374446630477905,
+    "position_accuracy_0.3m": 0.6478515863418579,
+    "endpoint_error_m": 1.0061335563659668
+  },
+  "last_validation": {
+    "loss": 0.0003151624696329236,
+    "position_error_m": 0.34825247526168823,
+    "position_accuracy_0.3m": 0.6192382574081421,
+    "endpoint_error_m": 0.9899278283119202
+  },
+  "optimizer_updates": 8400,
+  "last_epoch_finished_jst": "2026-10-06T18:25:18.087609+09:00",
+  "qualitative_gifs": 0,
+  "gif_issue": "https://github.com/Motoki0705/tennis-lab/issues/1031"
+}

@@ -194,11 +194,37 @@ class TrackIdentities:
         return PlayerIdentitiesOutput(cameras, local, players, {"stand_in": True})
 
 
+class KnownBallStage:
+    """Deterministic scene-orchestration stand-in; model behavior is tested separately."""
+
+    def __init__(self, cfg: PipelineRuntimeConfig, camera_ids: tuple[str, ...]) -> None:
+        from src.tennis_scene.pipeline.components.blcs import BLCSReconstructionModule
+
+        self.config, self.calls = cfg, 0
+        self.io = BLCSReconstructionModule(camera_ids, checkpoint=cfg.ball_checkpoint, resolver=cfg.resolver,
+            device="cpu", window_size=128, reprojection_px=cfg.ball_reprojection_px, min_frames=cfg.ball_min_frames).io
+
+    def process(self, request: Any) -> Any:
+        from src.tennis_scene.pipeline.components.ball_reconstruction import (
+            reconstruct_ball,
+        )
+        from src.tennis_scene.pipeline.components.blcs import BallReconstructionOutput
+
+        self.calls += 1
+        geometry = request.alignment.geometry
+        if geometry is None:
+            return BallReconstructionOutput(None)
+        return BallReconstructionOutput(reconstruct_ball(request.observations, geometry.cameras,
+            fps=request.source.fps, reprojection_px=self.config.ball_reprojection_px * request.source.pixel_threshold_scale,
+            min_frames=self.config.ball_min_frames))
+
+
 def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bool = False) -> tuple[TennisSceneOrchestrator, tuple[Path, ...], dict[str, Any]]:
     cfg = runtime(tmp_path)
     court, people, balls = inputs(empty=empty)
     stages: dict[str, Any] = dict(camera_stages(court, people, balls))
     stages["player_association"] = TrackIdentities(people.camera_ids)
+    stages["ball_reconstruction"] = KnownBallStage(cfg, people.camera_ids)
     pipeline = TennisSceneOrchestrator(cfg, components=stages)
     paths = patch_video_probe(tmp_path, monkeypatch)
     def forbidden(*args: Any, **kwargs: Any) -> None:
@@ -386,4 +412,20 @@ def test_load_rejects_historical_filtered_ball_points(tmp_path: Path, monkeypatc
                          schema="ball_points", version=2, identity={"legacy": True}, dependencies={}, provenance={"origin": "import"})
     pipeline.config = replace(pipeline.config, cache_source="load")
     with pytest.raises(ValueError, match="Loaded component contract mismatch: ball_points/cam0"):
+        pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=store_root)
+
+
+def test_load_rejects_triangulated_ball_as_new_blcs_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+
+    pipeline, paths, _ = setup_pipeline(tmp_path, monkeypatch)
+    store_root = tmp_path / "store"
+    pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=store_root)
+    runner = pipeline.last_runner
+    assert runner is not None
+    assert runner.references["ball_reconstruction"].version == 2
+    runner.store.publish("ball_reconstruction", {"historical_triangulation": True}, ArtifactCodec(dict),
+        schema="ball_trajectory", version=1, identity={"legacy": True}, dependencies={}, provenance={"origin": "import"})
+    pipeline.config = replace(pipeline.config, cache_source="load")
+    with pytest.raises(ValueError, match="Loaded component contract mismatch: ball_reconstruction"):
         pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=store_root)

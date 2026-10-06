@@ -1,7 +1,7 @@
-<!-- knowledge-review: 41a9636bae49a194a6eb0031db2a1a8287175377d0871b08566b4b3f0bec510b on 2026-10-06 -->
+<!-- knowledge-review: 0417613e6b0ba7a188fff622a10c61dc02e07c7518912723ba57d0b8158e333c on 2026-10-06 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
+更新日: 2026-10-06（BLCS baseの200 epoch学習・選定重みのtest評価・ユーザー指定のtennis_scene採用を追加）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -400,6 +400,14 @@ reprojection lossは一方向な改善ではありません。[`group-plcs-multi
 camera-view v2のreference selectorも決着していません。PLCSではreferenceがpositionとID switchesで良い一方、selector-zeroがY-sign、heading、presenceで良く、指標ごとに優位が逆転しました。このselector比較単独ではv1からの移行根拠になりません。2026-09-21のpipelineは上記の入力契約移行によりv2へ変更しています。
 
 ### BLCS
+
+2026-10-06の[axial base・KP14・128 frame・3–6 viewの200 epoch学習](nodes/blcs/000043-run-blcs-axial-base-t128-v3-6-reprojection-e200-s42-20261006.md)を完了し、
+validationで選んだepoch189をユーザー指定でtennis_sceneの標準ボール再構成へ採用する。
+選定重みの固定test中心window（85 scene）は平均位置誤差0.382467 m。配布場所・hash・選定根拠は同ノードの台帳が正本。
+旧reference/broadcastモデルや三角測量残差とは座標・データ・評価条件が異なり、直接順位付けしない。
+新componentはcamera-local CourtKP14をphysical順に揃え、元の観測maskと2view以上の再投影検品を維持する。
+合成testは実動画の独立3D精度保証ではなく、窓端・欠測・バウンド・別会場は引き続き検品が必要。
+自動GIFが出ない共通callbackの周期問題と他タスクの影響は[issue #1031](https://github.com/Motoki0705/tennis-lab/issues/1031)へまとめた。
 
 single-ballではmultiview deployが単眼親よりposition `1.845 → 1.065 m`、endpoint `3.408 → 2.025 m`へ改善しました。ただしcamera presetも変わるため、改善全量をview数へ帰属できません。
 

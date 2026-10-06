@@ -1,6 +1,6 @@
 # tennis_scene
 
-同期済みの固定カメラ動画から、camera-local CourtV2観測、人物・球の2D観測、三角測量、
+同期済みの固定カメラ動画から、camera-local CourtV2観測、人物・球の2D観測、人物の三角測量・BLCSの球軌道推定、
 GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不足は欠測または理由付き失敗として保存します。
 
 ## 標準経路
@@ -9,7 +9,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 2. 全画面の人物検出にpose・外観特徴を付けて追跡し、コート座標で選手を選別する。各camera/frameの検出点と観測maskを保存する。
 3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
-5. 人物の同一ID観測と、各カメラの有効なボール観測を三角測量。
+5. 人物の同一ID観測を三角測量し、BLCSでボールの3D軌道を推定する。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
 
@@ -56,7 +56,7 @@ Court・ball検出器のpixel格子正規化（W-1/H-1）は`src.utils.geometry.
 CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
-無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、検出器の観測maskを保持して三角測量します。2view未満の時刻は3Dでも欠損です。
+無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、BLCSの予測を検出器の観測maskと再投影で検品します。2view未満の時刻は3Dでも欠損です。
 
 sideはball観測だけで決め、最低evidence、referenceとの接続性、絶対的な幾何品質、次点とのmarginを要求します。
 決まらないclipは理由付きで停止します。`camera_alignment`は人物観測も加えて絶対的な幾何品質を再検証します。校正はframe 0で採用されたHomographyの投影点に対する
@@ -77,7 +77,7 @@ v2でmaskや理由コードが欠けた・矛盾したarchiveは保存・読込�
 | player_heading_valid | P,T | yaw | — |
 | player_kp_3d_vis | P,T,17 | 三角測量したCOCO17 | player_kp_3d_rejection_code |
 | player_smpl_valid | P,T | 配置した身体mesh | — |
-| ball_3d_valid | T | 球の三角測量 | ball_rejection_code |
+| ball_3d_valid | T | 観測で検品したBLCSの球軌道 | ball_rejection_code |
 
 無効な座標は0で保存し、座標値0から有効性を推定しません。理由コード0は有効を意味します。
 heading・meshは有効なrootを、3Dの人物は実2D観測を、球の3Dは2 view以上の観測を必要とします。
