@@ -1,0 +1,5 @@
+# 初回中断runの再現限界
+
+このrunはDドライブ容量不足でWSLが停止し、worktree内の当時のconfig・入力manifest・測定outputが失われた。raw `repro.sh`とqueue captureだけを歴史的証拠として保持する。正確な同条件再実行はできず、完成した測定値もない。
+
+後続a1のconfigやmanifestを当時のものとして補完しない。a1は固定sourceと残存元動画から準備し直した別attemptであり、別ノードに結果を保存した。現行`kg_repro_paths.py`の当時のconfig参照ERRORはこの欠損を反映する。
