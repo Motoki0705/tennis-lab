@@ -18,3 +18,8 @@ UI修正後にvalidatorの再評価は行っていない。本学習はこのUI�
 最初のPR CIは6,375 passed、86 skipped、1 failed。新GeneratorのFFN選択が共通componentsの設定規約に未接続だった。親が設定からffn_typeを渡すように修正し、共通利用者一覧へ追加した。checkpointはFFN明示のv3にし、既存v2は定義どおりSwiGLUとして明示復元する。v1/v2/v3互換性を含む対象54テストとruff/mypyのcommit hookが成功した。今回の実際の2D/3D best重みで修正前後のCPU出力はbit単位一致した。学習run自体はc5cee39bで実行され、その記録・設定・重みは更新していない。
 
 これらは親の修正と通常検証であり、validatorによる再評価ではない。指定1回・試行1回・完了1回を維持する。
+
+
+CIの追加設定監査で、FFN設定にPython側の既定値を置いたことがcomposition-owned defaults規約に違反すると判明した。ffn_typeを必須フィールドにし、既定値はYAMLだけに保持するよう親が修正した。v2互換経路は形式に定義されたSwiGLUを明示するため、重み・演算は不変であり、実際の2D/3D best重みのCPU出力も元の学習版とbit一致した。この変更もvalidator再評価の対象外である。
+
+この既定値修正後、Refiner・FFN選択・共通設定監査・関連consumerを合わせた通常検証で454 passed / 1 skipped。ruff/mypyのcommit hookも実施する。

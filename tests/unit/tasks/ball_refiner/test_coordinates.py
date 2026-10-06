@@ -127,7 +127,7 @@ def test_phantom_bounces_after_return_are_excluded_before_rounding():
 @pytest.mark.parametrize("dimensions,architecture", [(2, "regression"), (3, "regression"), (3, "flow")])
 def test_masked_values_cannot_leak_and_observed_frames_are_predicted(dimensions, architecture):
     torch.set_num_threads(1)
-    model = CoordinateRefiner(ModelConfig(dimensions, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
+    model = CoordinateRefiner(ModelConfig(dimensions, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu")).eval()
     coordinates = torch.randn(1, 43, dimensions)
     missing = torch.zeros(1, 43, dtype=torch.bool)
     missing[:, 10:25] = True
@@ -143,7 +143,7 @@ def test_masked_values_cannot_leak_and_observed_frames_are_predicted(dimensions,
 
 
 def test_future_observation_influences_past_offline_prediction():
-    model = CoordinateRefiner(ModelConfig(2, "regression", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
+    model = CoordinateRefiner(ModelConfig(2, "regression", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu")).eval()
     values = torch.zeros(1, 16, 2, requires_grad=True)
     model(values, torch.zeros(1, 16, dtype=torch.bool))[0, 0].sum().backward()
     assert values.grad[0, -1].abs().sum() > 0
@@ -154,7 +154,7 @@ def test_future_observation_influences_past_offline_prediction():
     ("flow", False, False), ("flow", True, False), ("flow", False, True),
 ])
 def test_flow_arguments_are_rejected_before_tensor_computation(architecture, with_state, with_time):
-    model = CoordinateRefiner(ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
+    model = CoordinateRefiner(ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu")).eval()
     coordinates = torch.zeros(1, 16, 3)
     missing = torch.zeros(1, 16, dtype=torch.bool)
     computed = []
@@ -168,7 +168,7 @@ def test_flow_arguments_are_rejected_before_tensor_computation(architecture, wit
 def test_flow_and_gan_both_supply_trainable_gradients():
     coords, target = torch.randn(2, 16, 3), torch.randn(2, 16, 3)
     missing = torch.rand(2, 16) < 0.5
-    model = CoordinateRefiner(ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0))
+    model = CoordinateRefiner(ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu"))
     loss = model.flow_loss(coords, missing, target, torch.Generator().manual_seed(4))
     loss.backward()
     assert torch.isfinite(loss) and model.input.weight.grad.abs().sum() > 0

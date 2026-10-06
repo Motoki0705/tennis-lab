@@ -111,7 +111,7 @@ def test_schedule_must_reach_target_and_defaults_have_only_event_corruption():
 
 @pytest.mark.parametrize("dimensions,architecture", [(2, "regression"), (3, "regression"), (3, "flow")])
 def test_v2_fixed_swiglu_checkpoints_preserve_predictions(tmp_path, dimensions, architecture):
-    config = ModelConfig(dimensions, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0)
+    config = ModelConfig(dimensions, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0, "swiglu")
     model = CoordinateRefiner(config).eval()
     legacy_config = asdict(config)
     legacy_config.pop("ffn_type")

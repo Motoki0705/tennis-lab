@@ -97,7 +97,7 @@ class RoPEModelConfigV2(LegacyModelConfig):
 
 @dataclass(frozen=True)
 class ModelConfig(RoPEModelConfigV2):
-    ffn_type: str = "swiglu"
+    ffn_type: str
 
     def __post_init__(self) -> None:
         super().__post_init__()
