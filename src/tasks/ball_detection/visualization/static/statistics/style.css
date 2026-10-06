@@ -1,0 +1,26 @@
+.statistics-dialog { width: min(1400px, 97vw); max-width: 97vw; height: 94dvh; max-height: 94dvh; padding: 18px; border: 1px solid #b9cec2; border-radius: 8px; color: #25332f; }
+.statistics-dialog::backdrop { background: #10251bc0; }
+.statistics-dialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; position: sticky; top: -18px; z-index: 4; background: white; padding: 10px 0; }
+.statistics-dialog button { padding: 6px 10px; }
+.statistics-settings, .statistics-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin: 12px 0; }
+.statistics-settings label, .statistics-filters label { display: grid; gap: 5px; font-size: 12px; max-width: 100%; }
+.statistics-settings input { width: 125px; padding: 7px; }
+.statistics-settings label:first-child input { width: 190px; }
+.statistics-dialog details { margin: 15px 0; border-top: 1px solid #dce3df; padding-top: 10px; }
+.statistics-dialog summary { cursor: pointer; font-weight: 600; }
+.statistics-table-scroll { overflow: auto; max-height: 440px; margin: 10px 0; }
+.statistics-dialog table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.statistics-dialog th, .statistics-dialog td { text-align: left; padding: 7px; border-bottom: 1px solid #dde5df; white-space: nowrap; }
+.statistics-dialog th { position: sticky; top: 0; background: #edf4ef; z-index: 1; white-space: nowrap; }
+.statistics-dialog td:first-child { overflow-wrap: anywhere; min-width: 180px; max-width: 420px; white-space: normal; }
+.statistics-dialog td button { text-align: left; overflow-wrap: anywhere; max-width: 340px; }
+.statistics-charts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.statistics-charts details { grid-column: 1 / -1; }
+.statistics-figure { margin: 10px 0; min-width: 0; }
+.statistics-figure figcaption { font-size: 12px; margin-bottom: 8px; }
+.statistics-heatmap { display: grid; gap: 1px; }
+.statistics-heatmap span { min-height: 27px; min-width: 0; font-size: 9px; display: grid; place-items: center; overflow: hidden; }
+.statistics-figure canvas { width: min(100%,720px); display: block; cursor: crosshair; }
+.statistics-dialog [data-id="status"] { color: #0d7956; }
+.statistics-dialog [data-id="summary"] { font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width:640px) { .statistics-charts { grid-template-columns: 1fr; } .statistics-dialog { padding: 10px; } .statistics-dialog td button { max-width: 200px; } }

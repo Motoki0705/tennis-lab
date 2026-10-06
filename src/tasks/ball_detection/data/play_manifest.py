@@ -5,20 +5,19 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict
-from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.ball_detection.data.annotation_states import annotation_states
 from src.tasks.ball_detection.data.play_intervals import (
     PlayIntervalConfig,
     infer_play_intervals,
     mask_intervals,
 )
 from src.tasks.ball_detection.data.store import (
-    POINT_KIND_CODES,
     BallFrameStore,
     ClipRecord,
     shard_name,
@@ -29,18 +28,8 @@ from src.utils.checksum import dual_sha256
 def clip_evidence(
     store: BallFrameStore, clip: ClipRecord,
 ) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_], NDArray[np.float64]]:
-    rows = store.clip_rows(clip)
-    eligible = store.frames["is_target"][rows].copy()
-    reviewed = store.frames["annotated"][rows] & eligible
-    single = store.frames["inst_count"][rows] == 1
-    kind = np.full(clip.frame_count, 255, np.uint8)
-    offsets = store.frames["inst_start"][rows]
-    kind[single] = store.instances["point_kind"][offsets[single]]
-    presence = reviewed & single & (kind != POINT_KIND_CODES["out_of_frame"])
-    observed = reviewed & single & (kind == POINT_KIND_CODES["observed"])
-    pts = store.frames["pts"][rows]
-    times = (pts - pts[0]).astype(np.float64) * float(Fraction(clip.time_base))
-    return presence, observed, eligible, times
+    states = annotation_states(store, clip)
+    return states.evidence, states.supervision, states.target, states.times
 
 
 def load_pose_snapshot(
