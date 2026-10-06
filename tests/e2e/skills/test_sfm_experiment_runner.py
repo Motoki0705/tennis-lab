@@ -68,6 +68,11 @@ def test_recorder_keeps_measured_output_and_failure_status(
     )
     assert saved["device_peak_memory_mib"] is None
     assert saved["elapsed_seconds"] >= 0
+    flat = json.loads((repro / "predictions/metrics.json").read_text())
+    assert all(isinstance(value, (int, float)) for value in flat.values())
+    assert "device_peak_memory_mib" not in flat  # Missing samples are not zero.
+    if outcome == "success":
+        assert flat["sfm/registration_ratio"] == 0.5
 
 
 def test_recorder_rejects_direct_execution(tmp_path: Path) -> None:
