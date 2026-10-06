@@ -1,0 +1,16 @@
+{
+  "run_id": "1791166823083491190_2779389_i991-i1014-coordinates-report-20261005-v2",
+  "name": "i991-i1014-coordinates-report-20261005-v2",
+  "command": "PYTHONPATH=. OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python tests/benchmarks/ball_refiner_coordinates_report.py --runs-root /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train --output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/coordinates/20261005-v2 --tag 20261005-v2 --device cuda",
+  "provider": "codex",
+  "session": "01a10697-63da-75b2-ae84-f2980da51c23",
+  "issue": "1014",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "0bdeb9514ae1e780f1d8e8e08a431b2aa9f5143c",
+  "branch": "codex/coordinate-ball-refiners-991-1014",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "captured_at": "2026-10-05T11:57:44+09:00"
+}

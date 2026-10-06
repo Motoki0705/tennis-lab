@@ -1,0 +1,1 @@
+{"best_step": 2500, "checkpoint_kind": "best", "checkpoint_step": 2500, "inference_ms_per_frame": 0.01792522724646834, "test_event_rmse_m": 0.37349846959114075, "test_frame_missing_rate": 0.11321205439176774, "test_missing_rmse_m": 0.493459552526474, "test_rmse_m": 0.22590123116970062}

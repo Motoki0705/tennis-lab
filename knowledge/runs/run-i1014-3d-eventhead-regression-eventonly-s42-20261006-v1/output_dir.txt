@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_refiner_3d/train/rope-regression-eventhead-eventonly/20261006-v1-s42/logs/version_0/checkpoints

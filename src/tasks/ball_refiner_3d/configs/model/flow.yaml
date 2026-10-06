@@ -1,0 +1,4 @@
+defaults:
+- _base
+- _self_
+architecture: flow

@@ -1,0 +1,7 @@
+diff --git a/knowledge/nodes/ball_refiner/.sequence b/knowledge/nodes/ball_refiner/.sequence
+index f04c001f3..f5c89552b 100644
+--- a/knowledge/nodes/ball_refiner/.sequence
++++ b/knowledge/nodes/ball_refiner/.sequence
+@@ -1 +1 @@
+-29
++32

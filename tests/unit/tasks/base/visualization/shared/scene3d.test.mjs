@@ -106,6 +106,22 @@ test("PLCS arrows hide absent players and missing rotations", () => {
 });
 
 const HALF_LENGTH = 11.885;
+test("offline full paths preserve gaps and current-frame marker visibility", () => {
+  const scene = geometryScene([{id: "input", kind: "ball", frames: 5, joints: 1,
+    positions: new Float32Array([0,0,1, 1,0,1, 0,0,0, 3,0,1, 4,0,1]),
+    presence: new Uint8Array([1,1,0,1,1])}], 5);
+  const entity = scene._entities[0];
+  assert.equal(entity.trail.line.geometry.drawRange.count, 0);
+  scene.setTrailMode("full");
+  assert.equal(entity.trail.line.geometry.drawRange.count, 4);
+  assert.equal(entity.trail.count, 2, "the two sides of a missing frame must stay disconnected");
+  scene.setFrame(2);
+  assert.equal(entity.markers.visible, false);
+  assert.equal(entity.trail.line.geometry.drawRange.count, 4);
+  scene.setTrailMode("history");
+  assert.equal(entity.trail.line.geometry.drawRange.count, 2);
+  assert.throws(() => scene.setTrailMode("unknown"), /Unknown trail mode/);
+});
 const HALF_DOUBLES = 5.485;
 const HALF_SINGLES = 4.115;
 const SERVICE_LINE = 6.4;
