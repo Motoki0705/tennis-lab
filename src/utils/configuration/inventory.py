@@ -137,10 +137,8 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 
 
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
-    "src.tasks.ball_refiner.scripts.evaluate_pilot": "ball_refiner.evaluate_pilot",
-    "src.tasks.ball_refiner.scripts.train": "ball_refiner.train",
-    "src.tasks.ball_refiner.scripts.train_coordinates": "ball_refiner.train_coordinates",
-    "src.tasks.ball_refiner.scripts.generate_coordinates": "ball_refiner.generate_coordinates",
+    "src.tasks.ball_refiner_3d.scripts.train_coordinates": "ball_refiner_3d.train_coordinates",
+    "src.tasks.ball_refiner_3d.scripts.generate_coordinates": "ball_refiner_3d.generate_coordinates",
     "src.tennis_scene.chat_annotation.scripts.prepare": "tennis_scene.chat_annotation.prepare",
     "src.synthetic_data_generation.scripts.run_appearance_variant": "synthetic.appearance_variant",
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
@@ -192,10 +190,8 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
-    "src.tasks.ball_refiner.scripts.evaluate_pilot": "src.tasks.ball_refiner.evaluation.configuration.validate_evaluation_boundary",
-    "src.tasks.ball_refiner.scripts.train": "src.tasks.ball_refiner.training.configuration.validate_training_boundary",
-    "src.tasks.ball_refiner.scripts.train_coordinates": "src.tasks.ball_refiner.coordinates.config.validate_training",
-    "src.tasks.ball_refiner.scripts.generate_coordinates": "src.tasks.ball_refiner.coordinates.generation.validate_generation",
+    "src.tasks.ball_refiner_3d.scripts.train_coordinates": "src.tasks.ball_refiner_3d.config.validate_training",
+    "src.tasks.ball_refiner_3d.scripts.generate_coordinates": "src.tasks.ball_refiner_3d.generation.validate_generation",
     "src.tennis_scene.chat_annotation.scripts.prepare": "src.tennis_scene.chat_annotation.configuration.validate_prepare_config",
     "src.synthetic_data_generation.scripts.run_appearance_variant": "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary",
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "src.synthetic_data_generation.visualization.publication.configuration.validate_publication_boundary",
@@ -278,8 +274,8 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.tasks.ball_refiner.scripts.serve_coordinate_review": (
-        "ball_refiner.serve_coordinate_review",
+    "src.tasks.ball_refiner_3d.scripts.serve_coordinate_review": (
+        "ball_refiner_3d.serve_coordinate_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.submodules.visualization.review.__main__": (
@@ -290,44 +286,8 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.clip_studio_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tasks.ball_refiner.scripts.predict_coordinates": (
-        "ball_refiner.predict_coordinates",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.compare_triangulation": (
-        "ball_refiner.compare_triangulation",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.calibrate_covariance": (
-        "ball_refiner.calibrate_covariance",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.compare_detectors": (
-        "ball_refiner.compare_detectors",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.context_shards": (
-        "ball_refiner.context_shards",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.generate_context": (
-        "ball_refiner.generate_context",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.meiji_context": (
-        "ball_refiner.meiji_context",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.export_pilot": (
-        "ball_refiner.export_pilot",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.generate_evidence": (
-        "ball_refiner.generate_evidence",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.ball_refiner.scripts.audit_data": (
-        "ball_refiner.audit_data",
+    "src.tasks.ball_refiner_3d.scripts.predict_coordinates": (
+        "ball_refiner_3d.predict_coordinates",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tennis_scene.chat_annotation.player_pose.__main__": (
@@ -480,21 +440,10 @@ def _non_hydra_boundary(
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary("src.submodules.visualization.review.__main__", "main", domain="submodules", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.predict_coordinates", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.serve_coordinate_review", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_triangulation", "main", domain="ball_refiner", executable_module=True),
-    _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.evaluate_pilot"),
-    _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
-    _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train_coordinates"),
-    _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.generate_coordinates"),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.calibrate_covariance", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.generate_evidence", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_detectors", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.generate_context", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.meiji_context", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.context_shards", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.export_pilot", "main", domain="ball_refiner", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_refiner.scripts.audit_data", "main", domain="ball_refiner", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.predict_coordinates", "main", domain="ball_refiner_3d", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.serve_coordinate_review", "main", domain="ball_refiner_3d", executable_module=True),
+    _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.train_coordinates"),
+    _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.generate_coordinates"),
     _non_hydra_boundary("src.tennis_scene.chat_annotation.player_pose.__main__", "main",
                         domain="tennis_scene", executable_module=True),
     *(

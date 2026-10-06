@@ -1,0 +1,42 @@
+steps: 4000
+batch_size: 32
+learning_rate: 0.0003
+weight_decay: 0.01
+gradient_clip: 1.0
+evaluate_every: 500
+log_every: 100
+cpu_threads: 2
+
+event:
+  weight: 1.0
+  sigma_frames: 2.0
+
+reconstruction:
+  enabled: false
+  initial_weight: 1.0
+  final_weight: 1.0
+  start_step: 0
+  decay_steps: 1
+
+# BLCS-style pure-supervised phase, linear GAN warmup, then constant target.
+# This runner counts generator updates rather than dataset epochs.
+gan:
+  enabled: false
+  schedule_enabled: false
+  target_weight: 1.0
+  transition:
+    start_step: 500
+  warmup_steps: 1000
+  discriminator:
+    name: trajectory_transformer
+    hidden_dim: ${model.width}
+    num_layers: 4
+    num_heads: ${model.heads}
+    ffn_dim: ${model.ffn_dim}
+    ffn_type: swiglu
+    dropout: 0.1
+    rope_dim: ${model.rope_dim}
+    rope_theta: ${model.rope_theta}
+    max_seq_len: ${model.window_length}
+    invalid_init_std: 0.02
+    cls_init_std: 0.02
