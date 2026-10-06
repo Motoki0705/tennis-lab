@@ -7,7 +7,8 @@
 ## 設定
 
 - optimizer・batch・更新回数: [training/_base.yaml](../configs/training/_base.yaml)
-- 位置／イベントlossと位置係数schedule: [loss/default.yaml](../configs/loss/default.yaml)
+- 位置／イベント／物理lossと位置係数schedule: [loss/default.yaml](../configs/loss/default.yaml)
+- 学習窓: [data/default.yaml](../configs/data/default.yaml) の `window`
 - optional GAN・discriminator・GAN係数schedule: [training/_gan.yaml](../configs/training/_gan.yaml)
 - 実行先・resume・初期重み: [run/train.yaml](../configs/run/train.yaml)
 
@@ -16,6 +17,14 @@
 座標はXYZを10/20/5mで割り、L1を軸・frame・batchで平均する。
 係数の比率はloss実測値や勾配量の比率とは異なる。
 Flowでは位置側をFlow matchingの速度MSEに置き換える。
+すべての項はpadding frameを除いて平均する。
+
+物理headは `loss.physics` で学習する（`model.physics_heads` と同時に有効化し、どちらか片方は拒否）。
+`field` は場の正規化L1とsurfaceのCE、`segment` は窓内の各区間の初期状態の正規化L1。
+`reconstruction` は予測パラメータを積分した軌道とGTの正規化L1、`consistency` は積分軌道と直接出力の正規化L1で、
+`consistency_gradient` が勾配を受ける側（`direct`: 直接出力を物理へ寄せる、`integrated`: 逆、`both`）を決める。
+積分系の項はパラメータ教師（field・segment）を必須とし、GANとの併用は拒否する。
+学習中の区間はGTの区間分割を窓内で0から振り直したもので、窓の先頭で切れた区間は先頭frameの状態を教師にする。
 
 GANは共通 `ManualGANTrainingStrategy` / LSGANを使う。
 `training.gan.enabled=true` で有効化し、段階増加は
