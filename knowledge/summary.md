@@ -1,4 +1,4 @@
-<!-- knowledge-review: 41a9636bae49a194a6eb0031db2a1a8287175377d0871b08566b4b3f0bec510b on 2026-10-06 -->
+<!-- knowledge-review: a01b6a75a6bca6ec769de715ac26920cb9900d463881582dd3b4c48d90b3dcaa on 2026-10-07 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
@@ -10,6 +10,10 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-07のSfMキャンペーン復旧
+
+[#1034の初回SIFT試行](nodes/synthetic_data_generation/000024-run-i1034-nht-b00-p90-interrupted-a0.md)は、ホスト容量不足によるWSL停止で中断した。測定結果が残らず、既存のSfM幾何診断と採否の判断は変更しない。旧queue entryの復旧証拠を保存し、共有出力先へ移して別attemptを準備した。中断分の予算控除は保守的な会計値であり、実測処理時間ではない。次は再生成した共通入力でのSIFT再試行とVidMapの環境・実機適合性を確認する。
 
 ## 2026-10-05のボール検出用pose蓄積
 
