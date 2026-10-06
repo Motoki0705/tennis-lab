@@ -106,6 +106,8 @@ Video
 
 ## 開発
 
+AIによる調査・比較実験・レポート作成には[ARIS Codex](.agents/aris/README.md)を利用できる。
+
 依存関係は `uv sync --locked` で同期し、共通の開発コマンドは
 `uv run spin` から確認できます。環境診断、lint、type check、test、CI 相当検証の
 詳細は [`.spin/README.md`](.spin/README.md) を参照してください。
