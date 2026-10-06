@@ -1,5 +1,11 @@
 # AGENTS.md
 
+## ARIS Codex research workflows
+
+ARISのスキルを使用するときは、最初に[プロジェクト連携規約](.agents/aris/INTEGRATION.md)を読む。
+上流の実行・レビュー・保存先の既定値よりこの連携規約を優先し、既存のtraining-queueと
+knowledge-controlへ接続する。導入・使用方法は[ARIS README](.agents/aris/README.md)を参照。
+
 ## プロジェクト概要
 
 このプロジェクトは、テニスシーンの3次元再構成をAIによって解くことを目的とする。入力はマルチカメラの動画であり、各カメラにおけるボール位置・プレーヤーpose検出という2次元検出から始まり、それらを2D → 3Dへ再構築するモデルが最終的に3D空間へ写像する。

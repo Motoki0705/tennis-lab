@@ -1,0 +1,78 @@
+repository = "https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep"
+revision = "3b19a22dc5a64c983d2eafd6c2c94000fadc4f8d"
+package = "skills/skills-codex"
+installed_on = "2026-10-06"
+license = "MIT"
+skills = [
+  "ablation-planner",
+  "analyze-results",
+  "arxiv",
+  "auto-review-loop",
+  "experiment-audit",
+  "experiment-bridge",
+  "experiment-plan",
+  "experiment-queue",
+  "idea-creator",
+  "idea-discovery",
+  "monitor-experiment",
+  "novelty-check",
+  "openalex",
+  "render-html",
+  "research-lit",
+  "research-pipeline",
+  "research-refine",
+  "research-refine-pipeline",
+  "research-review",
+  "result-to-claim",
+  "run-experiment",
+  "semantic-scholar",
+  "system-profile",
+  "training-check",
+  "web-debug-search",
+]
+
+# Local entrypoints adapted to the existing queue/knowledge/review contracts.
+adapted_skills = [
+  "research-pipeline",
+  "idea-discovery",
+  "experiment-bridge",
+  "run-experiment",
+  "experiment-queue",
+  "monitor-experiment",
+  "auto-review-loop",
+  "research-review",
+]
+
+# Bundled upstream resources; other product installers/backends are not shipped.
+support_files = [
+  "tools/arxiv_fetch.py",
+  "tools/capture_filter.py",
+  "tools/deepxiv_fetch.py",
+  "tools/evidence_check.py",
+  "tools/exa_search.py",
+  "tools/idea_discovery_gate.py",
+  "tools/iteration_log.py",
+  "tools/openalex_fetch.py",
+  "tools/provenance.py",
+  "tools/research_wiki.py",
+  "tools/review_gate.py",
+  "tools/run_state.py",
+  "tools/save_trace.sh",
+  "tools/semantic_scholar_fetch.py",
+  "tools/skill-groups.tsv",
+  "tools/threat_scan.py",
+  "tools/watchdog.py",
+  "templates/EXPERIMENT_LOG_TEMPLATE.md",
+  "templates/EXPERIMENT_PLAN_TEMPLATE.md",
+  "templates/EXPERIMENT_PLAN_TEMPLATE_CN.md",
+  "templates/FINDINGS_TEMPLATE.md",
+  "templates/IDEA_CANDIDATES_TEMPLATE.md",
+  "templates/IDEA_CANDIDATES_TEMPLATE_CN.md",
+  "templates/MANIFEST_TEMPLATE.md",
+  "templates/NARRATIVE_REPORT_TEMPLATE.md",
+  "templates/PAPER_PLAN_TEMPLATE.md",
+  "templates/RESEARCH_BRIEF_TEMPLATE.md",
+  "templates/RESEARCH_BRIEF_TEMPLATE_CN.md",
+  "templates/RESEARCH_CONTRACT_TEMPLATE.md",
+  "templates/gitignore-trace.txt",
+]
