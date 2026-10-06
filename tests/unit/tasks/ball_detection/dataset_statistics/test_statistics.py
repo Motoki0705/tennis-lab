@@ -197,3 +197,28 @@ def test_occlusion_location_is_matched_per_ball_not_across_instances(tmp_path):
     result = metrics.compute(data, np.ones(1, bool))
     assert result.rates['annotation/occluded_located'] == (0, 1)
     assert result.rates['annotation/occluded_unlocated'] == (1, 1)
+
+
+def test_pose_recovery_uses_only_joints_valid_at_both_endpoints(tmp_path):
+    _, data = fixture_clip(tmp_path)
+    data = with_pose(data)
+    p = data.pose
+    assert p is not None
+    points, scores, observed = p.points.copy(), p.scores.copy(), p.observed.copy()
+    observed[38:41] = False
+    scores[37] = scores[41] = .1
+    points[41, 0, :, 0] += 1000
+    data = replace(data, pose=replace(p, points=points, scores=scores, observed=observed))
+    config = replace(StatisticsConfig.shipped(), pose_min_score=.5)
+    result = pose.signals(data, config)
+    assert result is not None and result.recovery == ()
+
+    # Low-score outliers at either endpoint cannot dominate the recovery median.
+    scores[37, 0, 9] = scores[41, 0, 9] = 1.0
+    scores[41, 0, 10] = 1.0  # Only the later endpoint is valid for this joint.
+    points[41, 0, 9, 0] -= 1000
+    result = pose.signals(data, config)
+    assert result is not None
+    assert len(result.recovery) == 1
+    assert result.recovery[0][:3] == (37, 41, 0)
+    assert result.recovery[0][3] == pytest.approx(.04)
