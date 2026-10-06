@@ -36,10 +36,14 @@ def event_detection_report(
     truth: list[NDArray[np.integer]],
     tolerance: int,
 ) -> dict[str, Any]:
-    """Greedy nearest matching within ``tolerance`` frames, pooled over rallies."""
+    """Greedy nearest matching within ``tolerance`` frames, pooled over rallies.
+
+    ``segmentation_failure_rate`` is the share of rallies with any missed or
+    spurious event, i.e. whose predicted flight segments differ from the truth.
+    """
     if len(predicted) != len(truth) or tolerance < 0:
         raise ValueError("Require one prediction per rally and tolerance >= 0")
-    matched, offsets, predicted_count, true_count = 0, [], 0, 0
+    matched, offsets, predicted_count, true_count, exact = 0, [], 0, 0, 0
     for frames, targets in zip(predicted, truth, strict=True):
         predicted_count += len(frames)
         true_count += len(targets)
@@ -54,6 +58,7 @@ def event_detection_report(
                 used_t.add(t)
                 offsets.append(p - t)
         matched += len(used_t)
+        exact += len(used_t) == len(frames) == len(targets)
     return {
         "tolerance_frames": tolerance,
         "predicted": predicted_count,
@@ -66,6 +71,8 @@ def event_detection_report(
             if predicted_count + true_count
             else None
         ),
+        # A rally is segmented correctly when every event, and nothing else, is found.
+        "segmentation_failure_rate": 1 - exact / len(truth) if truth else None,
         "mean_abs_offset_frames": float(np.mean(np.abs(offsets))) if offsets else None,
         "mean_offset_frames": float(np.mean(offsets)) if offsets else None,
     }

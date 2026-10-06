@@ -11,6 +11,11 @@ segment's residual depends on its 9 own parameters and the 4 field parameters,
 so forward-mode Jacobians of all segments are computed in one batched pass and
 assembled into one small dense normal system per rally.
 
+The field is not convex: from a single start, or when the field moves before
+the segment spins are fitted, a rally can settle in a wrong wind/drag basin.
+Every rally is therefore fitted from several field starts in one batch, first
+with the field held fixed, and keeps its best result.
+
 Spin enters free flight only through ``k_magnus * (omega x v)``: the fit
 identifies that product, not ``k_magnus`` and spin separately, and spin parallel
 to the velocity is unobservable.  The fitted field is a diagnostic, not a
@@ -40,14 +45,25 @@ class FitSettings:
     gravity: float
     dt: float
     substeps: int
+    # Segment-only iterations at the fixed start field, then joint iterations.
+    segment_iterations: int
     iterations: int
     minimum_segment_frames: int
+    # Initial (k_drag, k_magnus, wind_x, wind_y); every rally keeps its best
+    # fit over the starts.
+    field_starts: tuple[tuple[float, float, float, float], ...]
 
     def __post_init__(self) -> None:
         if min(self.substeps, self.iterations) < 1 or self.minimum_segment_frames < 3:
             raise ValueError("Require positive iterations/substeps and >=3 frames")
+        if self.segment_iterations < 0:
+            raise ValueError("segment_iterations must be nonnegative")
         if not (self.gravity > 0 and self.dt > 0):
             raise ValueError("Require positive gravity and dt")
+        if not self.field_starts or any(
+            len(start) != 4 or min(start[:2]) <= 0 for start in self.field_starts
+        ):
+            raise ValueError("Require (k_drag>0, k_magnus>0, wind_x, wind_y) starts")
 
 
 @dataclass(frozen=True)
@@ -71,9 +87,34 @@ def fit_flight_physics(
     settings: FitSettings,
     device: torch.device,
 ) -> list[FlightFit]:
-    """Fit every rally; ``segments`` lists ``[start, end)`` frame spans."""
+    """Fit every rally; ``segments`` lists ``[start, end)`` frame spans.
+
+    The problem is not convex in the field: from one start a rally can settle
+    in a wrong (k_drag, k_magnus) basin, so all starts run as one batch.
+    """
     if len(trajectories) != len(segments) or not trajectories:
         raise ValueError("Require one segment list per trajectory")
+    starts = len(settings.field_starts)
+    fits, losses = _fit_from(
+        trajectories * starts,
+        segments * starts,
+        [start for start in settings.field_starts for _ in trajectories],
+        settings,
+        device,
+    )
+    rallies = len(trajectories)
+    best = losses.reshape(starts, rallies).argmin(axis=0)
+    return [fits[int(start) * rallies + rally] for rally, start in enumerate(best)]
+
+
+def _fit_from(
+    trajectories: list[NDArray[np.floating]],
+    segments: list[list[tuple[int, int]]],
+    initial: list[tuple[float, float, float, float]],
+    settings: FitSettings,
+    device: torch.device,
+) -> tuple[list[FlightFit], NDArray[np.float64]]:
+    """Fits and final squared-residual sums from one start per rally."""
     spans = [
         (rally, start, end)
         for rally, rally_spans in enumerate(segments)
@@ -108,8 +149,10 @@ def fit_flight_physics(
         dim=-1,
     )
     field_params = torch.tensor(
-        [math.log(0.01), math.log(0.001), 0.0, 0.0], dtype=dtype, device=device
-    ).repeat(rallies, 1)
+        [[math.log(d), math.log(m), wx, wy] for d, m, wx, wy in initial],
+        dtype=dtype,
+        device=device,
+    )
 
     def simulate_one(params: torch.Tensor) -> torch.Tensor:
         """Positions ``(L,3)`` of one segment from its 13 parameters."""
@@ -147,7 +190,7 @@ def fit_flight_physics(
     with torch.no_grad():
         residual = residual_of(segment_params, field_params)
         loss = rally_loss(residual)
-        for _ in range(settings.iterations):
+        for iteration in range(settings.segment_iterations + settings.iterations):
             params = torch.cat((segment_params, field_params[owner]), dim=-1)
             jac = jacobian(params) * weight[..., None]  # (N, L, 3, 13)
             flat = jac.reshape(len(spans), -1, _SEGMENT + _FIELD)
@@ -155,7 +198,12 @@ def fit_flight_physics(
             normal = flat.transpose(1, 2) @ flat  # (N, 13, 13)
             gradient = (flat.transpose(1, 2) @ res[..., None])[..., 0]  # (N, 13)
             step_segment, step_field = _solve_rallies(
-                normal, gradient, owner, rallies, damping
+                normal,
+                gradient,
+                owner,
+                rallies,
+                damping,
+                field_fixed=iteration < settings.segment_iterations,
             )
             candidate_segment = segment_params - step_segment
             candidate_field = field_params - step_field
@@ -187,7 +235,7 @@ def fit_flight_physics(
                 wind_xy=field[2:4].copy(),
             )
         )
-    return results
+    return results, loss.cpu().numpy()
 
 
 def _solve_rallies(
@@ -196,11 +244,14 @@ def _solve_rallies(
     owner: torch.Tensor,
     rallies: int,
     damping: torch.Tensor,
+    *,
+    field_fixed: bool,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Damped Gauss-Newton steps from per-segment normal-equation blocks.
 
     Each rally's system couples its segments only through the field, so the
-    segment blocks are eliminated with a Schur complement.
+    segment blocks are eliminated with a Schur complement.  With
+    ``field_fixed`` the segments are solved independently and the field stays.
     """
     s, f = _SEGMENT, _FIELD
     seg_seg = normal[:, :s, :s]
@@ -213,6 +264,10 @@ def _solve_rallies(
         eye_s * seg_seg.diagonal(dim1=1, dim2=2)[:, None, :] + 1e-12 * eye_s
     )
     inverse = torch.linalg.inv(seg_damped)
+    if field_fixed:
+        return (inverse @ g_seg[..., None])[..., 0], torch.zeros(
+            rallies, f, dtype=normal.dtype, device=normal.device
+        )
     # Schur complement on the field, summed over each rally's segments.
     reduced_n = field_field - seg_field.transpose(1, 2) @ inverse @ seg_field
     reduced_g = (

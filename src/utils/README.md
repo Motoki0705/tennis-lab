@@ -52,7 +52,7 @@
 ### `physics/`
 - **`ball/`**: テニスボール物理の唯一の実装。`dynamics.py` の `BallField`（重力・k_drag・k_magnus・風）と、重力＋風相対の二次抵抗＋マグナスの加速度、半陰的Euler step。`bounce.py` はスピンに依存する滑り／グリップの地面バウンド（Cross）で、バウンド後の速度とスピンを返す。`surfaces.py` はボール定数とhard／clay／grassの固定係数の正本で、値の出典もここに書く。`integrate.py` は出力frame単位の自由飛行積分。すべて先頭次元でbatch化され、torchで微分可能。データ生成シミュレータ・軌道モデル・物理評価は同じ関数を使い、記録した状態の積分が記録軌道を再現する。
   `record.py` は1軌道の物理GT（`ball_physics.v1`）。フィールドパラメータ、出力frameごとのsim速度、全イベント（sim step・前後の速度とスピン）だけを保存し、frameごとのスピン・飛行区間・イベントframeは導出する。区間は「イベントのsim step以後で最初の出力frame」から始まり、その状態の積分で区間の全frameが再現される（生成時に検証）。
-  物理評価の部品: `kinematics.py` は飛行区間内に閉じた有限差分（衝突を跨ぐstencilは無効）による速度・加速度誤差・jerk比・非物理加速度率、`fitting.py` は重力固定の力モデルをラリー共通の場（k_drag・k_magnus・水平風）と区間ごとの初期状態でLM法により当てはめ、説明できない残差を返す（GTは数値精度で0。飛行中に同定できるのは `k_magnus·ω` のみ）、`events.py` はイベント確率のピーク抽出と許容frame内の1対1照合、`parameters.py` はモデルが出力する場・区間パラメータの誤差。
+  物理評価の部品: `kinematics.py` は飛行区間内に閉じた有限差分（衝突を跨ぐstencilは無効）による速度・加速度誤差・jerk比・非物理加速度率、`fitting.py` は重力固定の力モデルをラリー共通の場（k_drag・k_magnus・水平風）と区間ごとの初期状態でLM法により当てはめ、説明できない残差を返す（局所解を避けるため複数の場の初期値から、場を固定した区間のみの反復を経て解き、ラリーごとに最良を採る。GTは数値精度で0。飛行中に同定できるのは `k_magnus·ω` のみ）、`events.py` はイベント確率のピーク抽出と許容frame内の1対1照合、`parameters.py` はモデルが出力する場・区間パラメータの誤差。
 
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。

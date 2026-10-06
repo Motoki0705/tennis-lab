@@ -34,7 +34,16 @@ PROTOCOL = "physics_eval.v1"
 class PhysicsProtocol:
     acceleration_mps2: float = 40.0
     below_ground_m: float = 0.02
+    # 5 segment-only + 20 joint LM iterations from 2 drag x 5 wind starts fit
+    # every ground-truth test rally exactly; one start leaves ~11% in a wrong
+    # wind/drag basin.
+    fit_segment_iterations: int = 5
     fit_iterations: int = 20
+    fit_starts: tuple[tuple[float, float, float, float], ...] = tuple(
+        (k_drag, 0.001, wind_x, wind_y)
+        for k_drag in (0.007, 0.015)
+        for wind_x, wind_y in ((0, 0), (2, 0), (-2, 0), (0, 2), (0, -2))
+    )
     minimum_segment_frames: int = 3
     event_threshold: float = 0.5
     event_min_separation: int = 3
@@ -93,8 +102,10 @@ def physics_report(
             gravity=first.gravity,
             dt=first.dt,
             substeps=first.stride,
+            segment_iterations=protocol.fit_segment_iterations,
             iterations=protocol.fit_iterations,
             minimum_segment_frames=protocol.minimum_segment_frames,
+            field_starts=protocol.fit_starts,
         ),
         device,
     )
@@ -195,7 +206,7 @@ def _pooled_kinematics(
             masks.setdefault(name, []).append(np.append(mask, False))
         positions.append(np.zeros((1, 3)))
         targets.append(np.zeros((1, 3)))
-    return kinematic_report(
+    report: dict[str, Any] = kinematic_report(
         np.concatenate(positions).astype(np.float64),
         np.concatenate(targets).astype(np.float64),
         np.concatenate(segments),
@@ -203,6 +214,7 @@ def _pooled_kinematics(
         {name: np.concatenate(values) for name, values in masks.items()},
         KinematicThresholds(protocol.acceleration_mps2, protocol.below_ground_m),
     )
+    return report
 
 
 def _breakdown(values: NDArray[np.float64]) -> dict[str, Any]:
@@ -234,6 +246,7 @@ def physics_metrics(report: dict[str, Any]) -> dict[str, float]:
         ],
         "test_event_f1": events["f1"],
         "test_event_recall": events["recall"],
+        "test_segmentation_failure_rate": events["segmentation_failure_rate"],
     }
     missing = [name for name, value in values.items() if value is None]
     if missing:

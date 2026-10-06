@@ -32,6 +32,18 @@ def test_matching_is_one_to_one_within_tolerance() -> None:
     assert report["recall"] == pytest.approx(1 / 3)
     assert report["f1"] == pytest.approx(1 / 3)
     assert report["mean_abs_offset_frames"] == 0.0
+    assert report["segmentation_failure_rate"] == 1.0
+
+
+def test_a_rally_is_segmented_only_when_all_events_match_one_to_one() -> None:
+    report = event_detection_report(
+        [np.array([10, 31]), np.array([4, 20]), np.array([7])],
+        [np.array([11, 30]), np.array([4]), np.array([7, 15])],
+        tolerance=1,
+    )
+    # Rally 1: spurious 20; rally 2: missed 15.
+    assert report["segmentation_failure_rate"] == pytest.approx(2 / 3)
+    assert report["mean_offset_frames"] == 0.0
 
 
 def test_precision_is_undefined_without_predictions_but_f1_is_zero() -> None:
