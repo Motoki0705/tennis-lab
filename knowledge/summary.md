@@ -1,4 +1,4 @@
-<!-- knowledge-review: 41a9636bae49a194a6eb0031db2a1a8287175377d0871b08566b4b3f0bec510b on 2026-10-06 -->
+<!-- knowledge-review: 868a9502a18e77ab28e88ff60f9b87345927173e920d85f578ff05367f255fe4 on 2026-10-07 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
@@ -357,6 +357,8 @@ bank作成frameは配布倍率のfitと重複するため、OOF性能と区別�
 [2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。[run29](nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)で既定切替・標準scene refinerを追加し、clip_000を除く保存済みMeiji valで存在確率と全GMMの90%包含楕円面積の規則を固定した。保持frameの誤差は低下したがcache入力での選定結果であり、mp4への一般化は未確認。当時のconsumer配線は同じ欠測maskをside・幾何・三角測量へ渡していた（現在は後述の2026-10-02方針で廃止）。[固定filterの安全bench](nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md)は元の全28条件を再現した上で誤判定0→3件、停止率18.58→24.91%となりFAIL。経験的confidence blockを独立に付けた合成回帰試験でE2Eではないが、directiveに従いclip_000 qualificationは投入せず、閾値を変えない。証拠のない区間の改善と文脈ablation、test評価も未完了。
 
 ### 3D Ball Refiner
+
+2026-10-07、#1032で物理整合性を測る `physics_eval.v1`（重力固定の力モデルをGT区間ごとに当てはめた残差、区間内の加速度・jerk・非物理加速度率、イベント照合）を導入し、`ball_physics.v1` 付きで再生成したデータでGT残差0を確認した。旧重みは座標RMSE 0.154mだが加速度RMSE 208m/s²・非物理加速度率0.374で、線形補間（76m/s²・0.016）より非物理的だった。[物理head比較](nodes/ball_refiner_3d/000015-group-i1032-physics-heads-s42.md)では、可変長窓・全クリップ推論の座標のみ（0.162m）が最良で、場・区間初期状態のheadと教師を足すと直接座標（0.257〜0.265m）・イベントF1・物理指標がいずれも悪化した。積分軌道はGT区間分割なら構造的に物理的（加速度RMSE約2.35m/s²）だが、位置RMSEは再構成・整合性lossありでも0.581m、予測区間分割では1.22mで、場パラメータはprior程度の誤差だった。単一seed・合成のみ。物理headを既定にはせず、loss係数・観測へのアンカー・区間分割の改善のどれを次に試すかはユーザー判断待ち。
 
 2026-10-06、2D補完点の誤差を三角測量へ伝えない方針に変更し、観測の不足を3D欠損として保持して3D側で補完する。イベント確率の補助教師を加え、位置lossは維持し、GANは任意の比較条件とした。モデル・損失・Gaussian教師の設定は[3D task README](../src/tasks/ball_refiner_3d/README.md)を正本とする。[GAN-only比較](nodes/ball_refiner/000047-group-i991-i1014-gan-only-eventonly-s42.md)はこの条件で位置教師を外す根拠がないことを示すが、GAN一般の有効性を否定する比較ではない。[イベントヘッド付き回帰の本学習](nodes/ball_refiner_3d/000011-run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.md)は4,000更新を完了し、test RMSEは全体0.158m・欠損0.428m、Gaussian教師へのイベントBrierは0.00324。欠損RMSEは同入力の線形補間より約52%低い一方、正確な観測にも約6.8cmのRMSEを生む。WebUIの本重み・GT・イベント確率表示と再推論を確認したが、欠損付近の速度振動は残る。単一seed・合成データのみで、最終区間もvalidationが改善している。次は同一入力・L1・GANなしでイベント教師の有無を比較し、時刻精度と学習予算を検討する。
 
