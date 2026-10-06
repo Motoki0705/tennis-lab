@@ -1,4 +1,4 @@
-<!-- knowledge-review: 1af989b990a32328ac537c9481088528d5f94e5e888429ec9a46be8fbbcd61f0 on 2026-10-07 -->
+<!-- knowledge-review: e31f578f2434f4a5c657e47c5bc7823396c6ace4b8ec28102e26dc4e93aa03ec on 2026-10-07 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
@@ -501,3 +501,5 @@ CPUの契約回帰は検証し、安全bench全11,200件は元dataset欠測で�
 merge方針の変更は品質合格の新観測ではない。
 
 人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価run16は完了した。clip_000全pipelineは当時未検証で、今回のmerge許可後も新たな品質測定は行っていない。
+
+2026-10-07のVidMap実画像sanityは[run-i1034-vidmap-b00-sanity12-a0](nodes/synthetic_data_generation/000027-run-i1034-vidmap-b00-sanity12-a0.md)に保存した。B00 12枚から7 keyframe・2,648点を約5分50秒で出力し、最終geometryの再計算と旧PyCOLMAPでの読込を確認した。小規模な実機実行可能性の証拠であり、90枚SIFTとの順位付け・NHTへの即時採用・絶対精度の証拠にはしない。次は共通90枚比較。

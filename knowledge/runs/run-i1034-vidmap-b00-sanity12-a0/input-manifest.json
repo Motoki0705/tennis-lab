@@ -1,0 +1,68 @@
+{
+  "purpose": "runtime and end-to-end sanity, not ranked against 90-image baseline",
+  "parent_manifest": "manifest-a1.json",
+  "image_directory": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/inputs/sanity12",
+  "accepted_image_count": 12,
+  "images": [
+    {
+      "name": "frame_000000.jpg",
+      "sha256": "6a877fb8e6b8736591513efc2d5b26d13a91505693871ca8a241aec8ac3e4962",
+      "bytes": 189654
+    },
+    {
+      "name": "frame_000001.jpg",
+      "sha256": "e4e5c2606014c8cd3b98810c2487797d9d40e47fa3c91b3899a82de139ad5af2",
+      "bytes": 225281
+    },
+    {
+      "name": "frame_000002.jpg",
+      "sha256": "994b73b4ec56e36be6ca327286047761ada578756fd607f3de984db6192a5d00",
+      "bytes": 226399
+    },
+    {
+      "name": "frame_000003.jpg",
+      "sha256": "d32ef10015129f9efcc39ca587973d4a60a55ddf0c517be0d6c7f54af55abf8e",
+      "bytes": 247434
+    },
+    {
+      "name": "frame_000004.jpg",
+      "sha256": "ef01ffdad91bc227c3f7e42e1d30ad00fdcbf7ebe90c8b58bd20e892f509da24",
+      "bytes": 246289
+    },
+    {
+      "name": "frame_000005.jpg",
+      "sha256": "0564a2a163cf98c2e37a959a21a48fa01428b48793b541e4466720f6df2dffd6",
+      "bytes": 251972
+    },
+    {
+      "name": "frame_000006.jpg",
+      "sha256": "27c160b80e3bcac0754a61dc896a657ba1a76f55724330800cb33fbbfbe11de5",
+      "bytes": 246961
+    },
+    {
+      "name": "frame_000007.jpg",
+      "sha256": "f2a9e037210f2b2569944f281831ec2bb11522f14f723c05b57cd1c2a3136b12",
+      "bytes": 240688
+    },
+    {
+      "name": "frame_000008.jpg",
+      "sha256": "4d05745408bc87a8f390d416424e39d8da3e21d79250163fac00a72a7f6f234f",
+      "bytes": 213338
+    },
+    {
+      "name": "frame_000009.jpg",
+      "sha256": "493e1b052aa4ae5392fa563b6205c7ed6b7ec704917bc5885c3f49f457c91138",
+      "bytes": 218901
+    },
+    {
+      "name": "frame_000010.jpg",
+      "sha256": "cd9cad420b2e24e31d969ccc468aa7900486a18f3d9ae4a5eae8467332ba1422",
+      "bytes": 227329
+    },
+    {
+      "name": "frame_000011.jpg",
+      "sha256": "cb2b348361a636d704d8cfb0ac3b278e4e088b27aff600c0b322fe0343473631",
+      "bytes": 220072
+    }
+  ]
+}
