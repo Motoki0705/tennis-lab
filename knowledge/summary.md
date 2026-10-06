@@ -1,4 +1,4 @@
-<!-- knowledge-review: 94511c4faea126f6cf73f61f1efbf500ca70da8a9ee40bb4f77cb14cce320e99 on 2026-10-07 -->
+<!-- knowledge-review: 1af989b990a32328ac537c9481088528d5f94e5e888429ec9a46be8fbbcd61f0 on 2026-10-07 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）

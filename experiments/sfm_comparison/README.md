@@ -12,6 +12,7 @@ productionのsceneやconfigは変更しない。作業状態・凍結入力・�
 VidMap候補はcommit `1a48f2a1c9b59ba1e28bf40eeba1777f5d34ebb1`。
 別々の`.cache/runtimes/`へ依存を導入する。source・environment・入力manifestは
 campaignの`environment/`と`inputs/`に記録する。
+native環境の構築で判明した制約と復元手順は[ENVIRONMENT.md](ENVIRONMENT.md)を参照する。
 
 初回入力はB00先頭90秒、NHT既定1 fpsと既定quality filterを適用した画像集合。
 VidMapの小さいsanityは別条件であり、full inputのSIFTと順位付けしない。
