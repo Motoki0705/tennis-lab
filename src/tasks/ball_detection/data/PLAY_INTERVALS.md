@@ -17,17 +17,18 @@
 学習対象にならない場合がある。非プレイ候補は確定GTではなく、短いラリー・長い遮蔽・
 画面外への移動を誤って除外し得る。逆に静止球や打球準備を含む可能性もある。
 
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.review_play_intervals \
-  --poses <absolute-root>/ball-mix-v2-player-pose-v1 \
-  --output <absolute-new-report-directory>
-```
+レビューは[データセットWebUI](../visualization/README.md#プレイ区間の候補)で行う。
+選択したclipの注釈からCPUでその場で計算し、画像・GTと同じframe列に区間を表示する。
+ファイル出力・モデル推論・学習は行わない。通常storeの候補とpose承認済みsubsetは
+別のdatasetとして表示し、後者はpose manifestが指定したball snapshotを検証して読む。
+カタログ更新で承認状況を再読込するため、UI表示自体は学習対象の凍結や承認ではない。
 
-CPUのみ。学習・モデル推論はしない。`manifest.json`にapproved subset、ball snapshot、
-pose artifact、学習窓と全除外範囲を固定し、`summary.json`・`timelines.png`・
-`example-*.jpg`に集計と実画像を出す。サンプル選択はtrain clipだけで、長い非プレイ候補と
-連続プレイ例を各sourceから示す。定量的な全体集計には同じ規則を全splitへ適用する。
+レビュー後に学習対象を固定するAPIは
+`play_manifest.build_play_manifest(pose_directory, PlayIntervalConfig(...))`。
+返り値をJSONとして実験出力先に保存すると、approved subset、ball snapshot、
+pose artifact、JPEG shardのhash、学習窓と全除外範囲を固定できる。
+この保存処理はWebUIの閲覧とは分離し、生成物をソースリポジトリへ追加しない。
 
-`pose_windows.py`はこのmanifestだけを使う新モデル用dataset。後から承認されたclipを
+`pose_windows.py`は固定したmanifestだけを使う新モデル用dataset。後から承認されたclipを
 足さず、crop/resizeを行わずにMDD・pose・observed座標を同じ32実frameで返す。
 人物軸だけをbatch内paddingし、時間の反復や欠損位置の補完はしない。

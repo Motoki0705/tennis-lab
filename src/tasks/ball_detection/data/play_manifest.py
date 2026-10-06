@@ -43,20 +43,43 @@ def clip_evidence(
     return presence, observed, eligible, times
 
 
-def build_play_manifest(pose_directory: Path, config: PlayIntervalConfig) -> dict[str, Any]:
-    """Snapshot once; never follow a growing pose manifest during experiments."""
+def load_pose_snapshot(
+    pose_directory: Path, *, allowed_store_root: Path | None = None,
+) -> tuple[dict[str, Any], BallFrameStore, str]:
+    """Read one pose manifest and verify its exact annotation snapshot identity.
+
+    A web caller must constrain referenced paths before reading them. Training
+    callers already supply a trusted local manifest through their path boundary.
+    """
     pose_path = pose_directory / "manifest.json"
+    if not pose_path.resolve().is_relative_to(pose_directory.resolve()):
+        raise ValueError("Pose manifest resolves outside its directory")
     raw = pose_path.read_bytes()
     pose = json.loads(raw)
     if pose["schema"] != "ball_detection_player_poses.v1" or pose["coordinate_system"] != "stored_jpeg_pixels":
         raise ValueError("Unsupported pose dataset")
     store_root = Path(pose["ball_store"]["directory"])
+    if not store_root.is_absolute():
+        raise ValueError("Pose snapshot directory must be absolute")
+    if allowed_store_root is not None and not store_root.resolve().is_relative_to(allowed_store_root.resolve()):
+        raise ValueError("Pose snapshot resolves outside the configured project root")
+    if set(pose["ball_store"]["hashes"]) != {"metadata.json", "index.npz"}:
+        raise ValueError("Pose snapshot must identify metadata.json and index.npz")
     for name, digest in pose["ball_store"]["hashes"].items():
+        if not (store_root / name).resolve().is_relative_to(store_root.resolve()):
+            raise ValueError("Pose snapshot index resolves outside the store")
         if dual_sha256(store_root / name) != digest:
             raise ValueError("Pose snapshot and ball store identity differ")
     store = BallFrameStore(store_root)
-    if {e["clip_id"] for e in pose["clips"]} != {c.clip_id for c in store.clips}:
+    clip_ids = [e["clip_id"] for e in pose["clips"]]
+    if len(set(clip_ids)) != len(clip_ids) or set(clip_ids) != {c.clip_id for c in store.clips}:
         raise ValueError("Pose manifest does not cover its declared snapshot")
+    return pose, store, hashlib.sha256(raw).hexdigest()
+
+
+def build_play_manifest(pose_directory: Path, config: PlayIntervalConfig) -> dict[str, Any]:
+    """Snapshot once; never follow a growing pose manifest during experiments."""
+    pose, store, pose_digest = load_pose_snapshot(pose_directory)
     counts: dict[str, dict[str, int]] = {}
     clips: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
@@ -90,7 +113,7 @@ def build_play_manifest(pose_directory: Path, config: PlayIntervalConfig) -> dic
     # Later approvals may proceed; reading them never grows this frozen subset.
     return dict(
         schema="ball_play_windows.v1", pose_directory=str(pose_directory.resolve()),
-        pose_manifest_sha256=hashlib.sha256(raw).hexdigest(), ball_store=pose["ball_store"],
+        pose_manifest_sha256=pose_digest, ball_store=pose["ball_store"],
         config=asdict(config), clips=clips, skipped=skipped, counts=counts,
         semantics="Annotation-based selection proposal; excluded does not certify non-play. No label interpolation.",
     )

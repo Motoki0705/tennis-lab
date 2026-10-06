@@ -1,5 +1,6 @@
 import { ImageViewer } from "./viewer.mjs";
 import { fillIcons, icon } from "./icons.mjs";
+import { PlayTimeline } from "./play_intervals.mjs";
 const $ = (id) => document.getElementById(id);
 fillIcons();
 const state = {
@@ -25,6 +26,10 @@ const viewer = new ImageViewer(
   $("view"),
   (scale) => ($("zoom").textContent = `${Math.round(scale * 100)}%`),
 );
+const playTimeline = new PlayTimeline($("play-intervals"), (frame) => {
+  stop();
+  showFrame(frame);
+});
 const query = (values) =>
   new URLSearchParams(
     Object.entries(values).filter(([, v]) => v !== null && v !== undefined),
@@ -73,6 +78,7 @@ function stop() {
 }
 function resetScene() {
   stop();
+  playTimeline.clear();
   state.sceneToken++;
   state.frameToken++;
   state.scene = null;
@@ -263,7 +269,24 @@ async function selectScene(item) {
   for (const b of $("scenes").children)
     b.classList.toggle("selected", b.dataset.scene === item.id);
   updateRun();
-  await showFrame(0, true);
+  await Promise.all([showFrame(0, true), loadPlayIntervals()]);
+}
+async function loadPlayIntervals() {
+  if (!state.catalog.play_intervals_available) return;
+  const selection = state.sceneToken;
+  const scene = state.scene.id;
+  playTimeline.message("プレイ区間の候補を計算中...");
+  try {
+    const result = await api(`/api/play-intervals?${query({ scene })}`);
+    if (selection !== state.sceneToken || scene !== state.scene?.id) return;
+    if (result.scene !== scene || result.frames !== state.total)
+      throw new Error("区間候補と選択clipのフレーム列が一致しません。");
+    playTimeline.render(result);
+    playTimeline.setFrame(state.frame);
+  } catch (error) {
+    if (selection === state.sceneToken)
+      playTimeline.message(`区間候補を表示できません: ${error.message}`);
+  }
 }
 function configureWindow() {
   const cp = checkpoint();
@@ -343,6 +366,7 @@ async function showFrame(frame, reset = false) {
       return false;
     $("empty").hidden = true;
     $("frame-name").textContent = item.name;
+    playTimeline.setFrame(frame);
     $("resolution").textContent = `${payload.width} × ${payload.height}`;
     renderLayers(item.gt, pred);
     showWarnings([

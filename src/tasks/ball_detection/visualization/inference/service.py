@@ -56,6 +56,9 @@ from src.tasks.ball_detection.visualization.review.datasets import (
     SceneRef,
     split_scene_id,
 )
+from src.tasks.ball_detection.visualization.review.play_intervals import (
+    review_play_intervals,
+)
 from src.utils.device import DeviceSelectionError, resolve_device
 
 TASK: Final = TASK_NAME
@@ -105,6 +108,7 @@ class DetectionService:
         data_root: str | Path | None = None,
         outputs_root: str | Path | None = None,
         checkpoints_root: str | Path | None = None,
+        play_poses: str | Path | None = None,
     ) -> None:
         self.project_root = Path(project_root).expanduser().resolve(strict=False)
         self.data_root = (
@@ -122,7 +126,10 @@ class DetectionService:
             if checkpoints_root is not None
             else self.project_root / "ckpt" / TASK
         )
-        self.dataset_catalog = BallDatasetCatalog(self.data_root)
+        self.dataset_catalog = BallDatasetCatalog(
+            self.data_root, play_poses=Path(play_poses).resolve() if play_poses is not None else None,
+            project_root=self.project_root,
+        )
         self._checkpoint_cache: dict[str, BallCheckpointInfo] | None = None
 
     # ------------------------------------------------------------- catalog
@@ -245,6 +252,10 @@ class DetectionService:
         return bool(ref.frames >= info.minimum_window)
 
     # -------------------------------------------------------------- frames
+
+    def play_intervals(self, scene: str) -> dict[str, Any]:
+        """Return CPU-only proposals on exactly the selected scene timeline."""
+        return review_play_intervals(self.dataset_catalog, scene)
 
     def preview(self, scene: str, start: int = 0, count: int = 1) -> dict[str, Any]:
         """Return original-size ground truth for a bounded frame range."""

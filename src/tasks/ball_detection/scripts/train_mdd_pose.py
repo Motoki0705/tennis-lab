@@ -80,7 +80,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--model-config", type=Path, default=Path(__file__).parents[1] / "configs/model/mdd_pose.yaml")
+    parser.add_argument("--model-config", type=Path, required=True)
     parser.add_argument("--compression", choices=("conv2d", "average", "unshuffle", "haar"))
     parser.add_argument("--pose-pooling", choices=("deepsets", "attention", "hierarchical", "gnn"))
     parser.add_argument("--readout", choices=("query", "pose"))

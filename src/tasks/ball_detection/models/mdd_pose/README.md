@@ -84,8 +84,8 @@ LayerNorm→Linear(2)→sigmoidでuvを出す。pooling内部のpose queryはbal
 
 ## データと学習入口
 
-先に `scripts.review_play_intervals` でapproved pose clipと実frameの学習窓を固定し、
-可視化をレビューする。manifestにコピーされたpose artifact hashを使うため、
+先に[プレイ区間・学習窓](../../data/PLAY_INTERVALS.md)をWebUIでレビューし、
+学習対象をmanifestに固定する。コピーされたpose artifact hashを使うため、
 元campaignの承認が進んでも対象は自動で増えない。
 MDDは保存JPEGの解像度で計算し、ImageNet正規化や先行resizeはしない。
 ConvNeXtと共有するsigmoid MDDを使い、最初のframeは参照画像がないため0にする。
@@ -96,7 +96,8 @@ ConvNeXtと共有するsigmoid MDDを使い、最初のframeは参照画像が�
 ```bash
 # CUDAは元repo共有training queueから実行する。
 .venv/bin/python -m src.tasks.ball_detection.scripts.train_mdd_pose \
-  --manifest <absolute-play-review>/manifest.json --output <absolute-new-run> \
+  --manifest <absolute-frozen-selection>/manifest.json --output <absolute-new-run> \
+  --model-config <absolute-code-root>/src/tasks/ball_detection/configs/model/mdd_pose.yaml \
   --device cuda --epochs <budget> --learning-rate <lr> --seed <seed> \
   --compression conv2d --pose-pooling attention --readout query
 ```
