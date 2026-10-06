@@ -1,0 +1,32 @@
+defaults:
+- generation: default
+- generation@camera_sampling: cameras
+- physics: default
+- rally: default
+- camera: default
+- generator: default
+- targeted_velocity: default
+- court_keypoints: physical_v1
+- _self_
+- override hydra/job_logging: disabled
+- override hydra/hydra_logging: disabled
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: data
+  external_asset_root: third_party
+rally:
+  output_fps: 60
+  max_rallies: 4
+  max_total_frames: 4800
+hydra:
+  searchpath:
+  - file://${tennis_lab_path:project}/src/tasks/blcs/configs
+  output_subdir: null
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_refiner_3d,generate,coordinates,${tennis_run_id:}},hydra}
+  job:
+    chdir: false

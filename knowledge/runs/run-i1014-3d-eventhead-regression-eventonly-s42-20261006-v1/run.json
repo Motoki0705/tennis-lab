@@ -1,0 +1,16 @@
+{
+  "run_id": "1791267710532423200_3920312_i1014-3d-eventhead-regression-eventonly-s42-20261006-v1",
+  "name": "i1014-3d-eventhead-regression-eventonly-s42-20261006-v1",
+  "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner_3d.scripts.train_coordinates run.output_dir=ball_refiner_3d/train/rope-regression-eventhead-eventonly/20261006-v1-s42",
+  "provider": "codex",
+  "session": "01a10697-63da-75b2-ae84-f2980da51c23",
+  "issue": "1014",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "09540efcf1cd46e1941eaf31f4062691eeee3c66",
+  "branch": "codex/ball-refiner-3d-consolidation",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-refiner-3d-consolidation",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-refiner-3d-consolidation",
+  "captured_at": "2026-10-06T15:21:51+09:00"
+}

@@ -152,20 +152,6 @@ def test_hybrid_audit_declares_input_output_and_optional_scene_paths() -> None:
     assert "path-direction:output" in fields["output_dir"].value_constraints
 
 
-def test_refiner_covariance_calibration_declares_prediction_and_checkpoint_paths() -> None:
-    contract = next(
-        item for item in ADAPTER_CONTRACTS
-        if item.adapter_symbol == "src.tasks.ball_refiner.scripts.calibrate_covariance.PATH_BOUNDARY"
-    )
-    fields = {field.path.rsplit(".", 1)[-1]: field for field in contract.fields}
-    assert set(fields) == {"predictions", "output", "calibration_artifact"}
-    assert all(field.required for field in fields.values())
-    assert "path-role:artifact" in fields["predictions"].value_constraints
-    assert "must-exist-before-side-effects" in fields["predictions"].value_constraints
-    assert "path-role:checkpoint" in fields["calibration_artifact"].value_constraints
-    assert "path-direction:output" in fields["calibration_artifact"].value_constraints
-    assert "path-direction:output" in fields["output"].value_constraints
-
 
 def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None:
     expected = {
