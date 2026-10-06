@@ -9,7 +9,7 @@ from typing import Any
 from omegaconf import DictConfig
 
 from src.tasks.ball_refiner_3d.configuration.core import parse_section, resolved_config
-from src.tasks.ball_refiner_3d.configuration.data import CorruptionConfig
+from src.tasks.ball_refiner_3d.configuration.data import CorruptionConfig, WindowConfig
 from src.tasks.ball_refiner_3d.configuration.model import (
     DiscriminatorConfig,
     ModelConfig,
@@ -62,6 +62,59 @@ class ReconstructionConfig:
             )
         if self.start_step < 0 or self.decay_steps < 1:
             raise ValueError("Invalid reconstruction decay schedule")
+
+
+CONSISTENCY_GRADIENTS = ("direct", "integrated", "both")
+
+
+@dataclass(frozen=True)
+class PhysicsLossConfig:
+    """Weights of the physics-head objectives.
+
+    ``field`` and ``segment`` supervise the predicted parameters, ``reconstruction``
+    compares their integrated trajectory with ground truth and ``consistency``
+    with the direct coordinates.  ``consistency_gradient`` names the side that
+    receives the consistency gradient: ``direct`` pulls the coordinates toward
+    the integrated flight, ``integrated`` the reverse, ``both`` updates both.
+    """
+
+    field_weight: float
+    segment_weight: float
+    reconstruction_weight: float
+    consistency_weight: float
+    consistency_gradient: str
+
+    def __post_init__(self) -> None:
+        if (
+            min(
+                self.field_weight,
+                self.segment_weight,
+                self.reconstruction_weight,
+                self.consistency_weight,
+            )
+            < 0
+        ):
+            raise ValueError("Physics loss weights must be nonnegative")
+        if self.consistency_gradient not in CONSISTENCY_GRADIENTS:
+            raise ValueError(
+                f"consistency_gradient must be one of {CONSISTENCY_GRADIENTS}"
+            )
+
+    @property
+    def enabled(self) -> bool:
+        return (
+            max(
+                self.field_weight,
+                self.segment_weight,
+                self.reconstruction_weight,
+                self.consistency_weight,
+            )
+            > 0
+        )
+
+    @property
+    def integrates(self) -> bool:
+        return max(self.reconstruction_weight, self.consistency_weight) > 0
 
 
 def parse_gan(raw: dict[str, Any]) -> tuple[GANConfig, DiscriminatorConfig]:
@@ -123,9 +176,11 @@ class RefinerTrainingSettings:
     dataset: Path
     model: ModelConfig
     updates: TrainingConfig
+    window: WindowConfig
     augmentation: CorruptionConfig
     event: EventConfig
     reconstruction: ReconstructionConfig
+    physics: PhysicsLossConfig
     gan: GANConfig
     discriminator: DiscriminatorConfig
 
@@ -153,6 +208,7 @@ def training_config(config: DictConfig) -> RefinerTrainingSettings:
     if set(raw["training"]) != expected_training or set(raw["loss"]) != {
         "event",
         "reconstruction",
+        "physics",
     }:
         raise ValueError("Unknown or missing training/loss settings")
     if set(raw["data"]) != {
@@ -161,6 +217,7 @@ def training_config(config: DictConfig) -> RefinerTrainingSettings:
         "evaluation_seed",
         "num_workers",
         "pin_memory",
+        "window",
     }:
         raise ValueError("Unknown or missing data settings")
     updates = parse_section(
@@ -171,6 +228,17 @@ def training_config(config: DictConfig) -> RefinerTrainingSettings:
     augmentation = parse_section(CorruptionConfig, raw["augmentation"])
     event = parse_section(EventConfig, raw["loss"]["event"])
     reconstruction = parse_section(ReconstructionConfig, raw["loss"]["reconstruction"])
+    physics = parse_section(PhysicsLossConfig, raw["loss"]["physics"])
+    window = parse_section(WindowConfig, raw["data"]["window"])
+    if physics.enabled != model.physics_heads:
+        raise ValueError(
+            "Physics heads require a physics objective, and physics objectives "
+            "require model.physics_heads"
+        )
+    if physics.integrates and min(physics.field_weight, physics.segment_weight) == 0:
+        raise ValueError(
+            "Integrated objectives require supervised field and segment parameters"
+        )
     gan, discriminator = parse_gan(raw["training"]["gan"])
     runtime = TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
     trainer = runtime.training.trainer
@@ -236,6 +304,8 @@ def training_config(config: DictConfig) -> RefinerTrainingSettings:
         )
     if model.architecture == "flow" and gan.enabled:
         raise ValueError("GAN is only supported by direct regression")
+    if physics.enabled and gan.enabled:
+        raise ValueError("Physics objectives are not combined with GAN training")
     if (
         gan.enabled
         and gan.schedule_enabled
@@ -264,9 +334,11 @@ def training_config(config: DictConfig) -> RefinerTrainingSettings:
         raise ValueError("Zero reconstruction weight requires an active GAN objective")
     if (
         discriminator.hidden_dim != model.width
-        or discriminator.max_seq_len != model.window_length
+        or discriminator.max_seq_len != window.max_length
     ):
-        raise ValueError("Discriminator width/window must match the generator")
+        raise ValueError(
+            "Discriminator width/length must match the generator and longest window"
+        )
     if (
         not 0 <= raw["data"]["evaluation_event_probability"] <= 1
         or type(raw["data"]["evaluation_seed"]) is not int
@@ -295,9 +367,11 @@ def training_config(config: DictConfig) -> RefinerTrainingSettings:
         dataset,
         model,
         updates,
+        window,
         augmentation,
         event,
         reconstruction,
+        physics,
         gan,
         discriminator,
     )

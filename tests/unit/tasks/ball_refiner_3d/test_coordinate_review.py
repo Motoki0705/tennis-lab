@@ -24,6 +24,7 @@ from src.tasks.ball_refiner_3d.evaluation.evaluator import evaluate
 from src.tasks.ball_refiner_3d.generate_dataset.cameras import sample_visible_cameras
 from src.tasks.ball_refiner_3d.model_io.checkpoint import checkpoint_metadata
 from src.tasks.ball_refiner_3d.model_io.factory import build_refiner
+from src.tasks.ball_refiner_3d.physics.targets import FlightClock
 from src.tasks.ball_refiner_3d.visualization.dataset_review.artifacts import (
     bundle_path,
     cache_root,
@@ -121,7 +122,7 @@ def review(tmp_path):
     for dim, architecture in ((3, "regression"), (3, "flow")):
         model = build_refiner(
             ModelConfig(
-                dim, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0, "swiglu"
+                dim, architecture, 16, 1, 2, 0.0, 3, 64, 8, 10000.0, "swiglu", False
             )
         ).eval()
         run = outputs / f"{dim}d-{architecture}" / "run"
@@ -137,7 +138,9 @@ def review(tmp_path):
         }
         (run / "config.yaml").write_text(yaml.safe_dump(config))
         payload = {
-            **checkpoint_metadata(model, event_sigma_frames=2.0),
+            **checkpoint_metadata(
+                model, event_sigma_frames=2.0, clock=FlightClock(9.8, 1 / 240, 4)
+            ),
             "model": model.state_dict(),
             "manifest_sha256": dataset.manifest_hash,
             "fps": 60,

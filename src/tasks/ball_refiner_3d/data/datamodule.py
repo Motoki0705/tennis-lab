@@ -17,6 +17,7 @@ from src.tasks.ball_refiner_3d.data.dataset import SharedDataset
 from src.tasks.ball_refiner_3d.data.preprocessing import prepare
 from src.tasks.ball_refiner_3d.data.sampling import sample_batch
 from src.tasks.ball_refiner_3d.data.schema import PreparedRally
+from src.tasks.ball_refiner_3d.physics.targets import FlightClock
 
 
 class WindowBatches(IterableDataset[dict[str, Tensor]]):
@@ -44,19 +45,12 @@ class WindowBatches(IterableDataset[dict[str, Tensor]]):
             )
             module._train_epoch = self.epoch
         for _ in range(len(self)):
-            values = sample_batch(
+            yield sample_batch(
                 module.training_data,
                 settings.updates.batch_size,
-                settings.model.window_length,
+                settings.window,
                 module.sampling,
                 torch.device("cpu"),
-            )
-            yield dict(
-                zip(
-                    ("coordinates", "missing", "target", "event_target"),
-                    values,
-                    strict=True,
-                )
             )
 
 
@@ -67,8 +61,9 @@ class RefinerDataModule(pl.LightningDataModule):
         super().__init__()
         self.settings = settings
         self.dataset = SharedDataset(settings.dataset)
-        if min(len(r.xyz) for r in self.dataset.rallies) < settings.model.window_length:
+        if min(len(r.xyz) for r in self.dataset.rallies) < settings.window.length:
             raise ValueError("Training window exceeds the shortest shared rally")
+        self.clock = FlightClock.of([r.physics for r in self.dataset.rallies])
         self.training_data: list[PreparedRally] = []
         self.validation: list[PreparedRally] = []
         self.test: list[PreparedRally] = []

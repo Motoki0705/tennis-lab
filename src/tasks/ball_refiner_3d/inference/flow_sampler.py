@@ -14,25 +14,27 @@ from src.tasks.ball_refiner_3d.models.generators.regression import RegressionRef
 
 
 @torch.no_grad()  # type: ignore[untyped-decorator]
-def predict_window(
+def predict_sequences(
     model: RefinerModel,
     coordinates: Tensor,
     missing: Tensor,
     *,
     generator: torch.Generator | None,
+    segment: Tensor | None = None,
 ) -> RefinerOutput:
+    """One forward over whole (unpadded) sequences ``(B,T,3)``."""
     validate_input(coordinates, missing, 3)
-    if coordinates.shape[1] > model.config.window_length:
-        raise ValueError(
-            "Sequence exceeds configured window_length; use windowed inference"
-        )
     binding = bind_refiner(model)
+    padding = torch.zeros_like(missing)
     if isinstance(model, RegressionRefiner):
-        return cast(
-            RefinerOutput, binding.run({"coordinates": coordinates, "missing": missing})
-        )
+        batch = {"coordinates": coordinates, "missing": missing, "padding": padding}
+        if segment is not None:
+            batch["segment"] = segment
+        return cast(RefinerOutput, binding.run(batch))
     if not isinstance(model, FlowRefiner):
         raise TypeError("Unsupported refiner model")
+    if segment is not None:
+        raise ValueError("Flow refiners have no physics heads")
     if generator is None:
         raise ValueError(
             "Flow inference requires an explicit generator for reproducibility"
@@ -54,6 +56,7 @@ def predict_window(
             {
                 "coordinates": coordinates,
                 "missing": missing,
+                "padding": padding,
                 "state": state,
                 "time": time,
             }
