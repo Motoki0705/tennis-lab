@@ -145,6 +145,20 @@ class GANConfig:
             raise ValueError("Enabled GAN requires positive target_weight")
 
 
+@dataclass(frozen=True)
+class ReconstructionConfig:
+    initial_weight: float
+    final_weight: float
+    start_step: int
+    decay_steps: int
+
+    def __post_init__(self) -> None:
+        if self.initial_weight <= 0 or not 0 <= self.final_weight <= self.initial_weight:
+            raise ValueError("Reconstruction weights must satisfy 0 <= final <= positive initial")
+        if self.start_step < 0 or self.decay_steps < 1:
+            raise ValueError("Invalid reconstruction decay schedule")
+
+
 def parse_gan(raw: dict[str, Any]) -> tuple[GANConfig, DiscriminatorConfig]:
     if set(raw) != {"enabled", "target_weight", "transition", "warmup_steps", "discriminator"} or set(raw["transition"]) != {"start_step"}:
         raise ValueError("Require explicit GAN transition and discriminator configuration")
@@ -182,13 +196,18 @@ def training_config(config: DictConfig) -> tuple[dict[str, Any], Path, Path]:
     raw, resolver = resolved_config(config, {"paths", "data", "corruption", "model", "training", "run", "compile"})
     CompileConfig.from_mapping(raw["compile"])
     model = parse_section(ModelConfig, raw["model"])
-    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key != "gan"})
+    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key not in {"gan", "reconstruction"}})
     gan, discriminator = parse_gan(raw["training"]["gan"])
+    reconstruction = parse_section(ReconstructionConfig, raw["training"]["reconstruction"])
     parse_section(CorruptionConfig, raw["corruption"])
     if model.architecture == "flow" and gan.enabled:
         raise ValueError("GAN is only used by the direct regression comparison")
     if gan.enabled and gan.start_step + gan.warmup_steps > train.steps:
         raise ValueError("GAN transition and warmup must reach target within training.steps")
+    if reconstruction.final_weight < reconstruction.initial_weight and reconstruction.start_step + reconstruction.decay_steps > train.steps:
+        raise ValueError("Reconstruction decay must reach final_weight within training.steps")
+    if reconstruction.final_weight == 0 and (not gan.enabled or gan.start_step >= reconstruction.start_step + reconstruction.decay_steps):
+        raise ValueError("Zero reconstruction weight requires an active GAN objective")
     if discriminator.hidden_dim != model.width or discriminator.max_seq_len != model.window_length:
         raise ValueError("Discriminator width/window must match the generator")
     if set(raw["data"]) != {"dataset", "evaluation_event_probability", "evaluation_seed"}:

@@ -51,8 +51,8 @@ def test_reprojection_reuses_identical_3d_events_and_splits(shared, tmp_path):
         assert not np.array_equal(before.uv, after.uv)
 
 
-@pytest.mark.parametrize("dimensions,architecture,gan", [(2, "regression", 0.002), (3, "regression", 0.002), (3, "flow", 0)])
-def test_shared_training_roundtrip(shared, tmp_path, dimensions, architecture, gan):
+@pytest.mark.parametrize("dimensions,architecture,gan,gan_only", [(2, "regression", True, False), (3, "regression", True, False), (3, "flow", False, False), (2, "regression", True, True), (3, "regression", True, True)])
+def test_shared_training_roundtrip(shared, tmp_path, monkeypatch, dimensions, architecture, gan, gan_only):
     torch.set_num_threads(1)
     root, dataset_path = shared
     data = SharedDataset(dataset_path)
@@ -60,8 +60,11 @@ def test_shared_training_roundtrip(shared, tmp_path, dimensions, architecture, g
     split_ids = {name: {r.name for r in data.split(name)} for name in ("train", "val", "test")}
     assert not split_ids["train"] & (split_ids["val"] | split_ids["test"])
     assert not split_ids["val"] & split_ids["test"]
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path / "repro"))
+    schedule_overrides = ["training=coordinate_gan_only", "training.reconstruction.start_step=1", "training.reconstruction.decay_steps=2"] if gan_only else []
     with initialize_config_dir(version_base=None, config_dir=CONFIGS):
         cfg = compose(config_name="train_coordinates", overrides=[
+            *schedule_overrides,
             f"paths.data_root={root}", f"paths.output_root={tmp_path}", "run.output_dir=ball_refiner/train/integration/cpu",
             "run.device=cpu", "training.steps=4", "training.batch_size=2", "training.evaluate_every=2", "training.log_every=1", "training.gan.transition.start_step=1", "training.gan.warmup_steps=2", "training.gan.discriminator.num_layers=1",
             f"training.gan.enabled={str(bool(gan)).lower()}", f"model.dimensions={dimensions}", f"model.architecture={architecture}",
@@ -71,13 +74,19 @@ def test_shared_training_roundtrip(shared, tmp_path, dimensions, architecture, g
     with pytest.raises(FileExistsError):
         run_training(cfg)
     rows = [json.loads(line) for line in (output / "learning_curve.jsonl").read_text().splitlines()]
-    assert [row["gan_weight_current"] for row in rows] == ([0.0, 1.0, 2.0, 2.0] if gan else [0.0] * 4)
+    target_weight = 1.0 if gan_only else 2.0
+    assert [row["gan_weight_current"] for row in rows] == ([0.0, target_weight / 2, target_weight, target_weight] if gan else [0.0] * 4)
+    assert [row["reconstruction_weight_current"] for row in rows] == ([1.0, 0.5, 0.0, 0.0] if gan_only else [1.0] * 4)
     for row in rows:
-        assert row["total"] == pytest.approx(row["reconstruction"] + row["weighted_gan"], rel=1e-5)
+        assert row["weighted_reconstruction"] == pytest.approx(row["reconstruction"] * row["reconstruction_weight_current"])
+        assert row["total"] == pytest.approx(row["weighted_reconstruction"] + row["weighted_gan"], rel=1e-5)
     last = torch.load(output / "logs/version_0/checkpoints/last.ckpt", weights_only=True)
     if gan:
         assert {int(state["step"]) for state in last["disc_optimizer"]["state"].values()} == {3}
-        assert last["gan_weight"] == 2.0
+        assert last["gan_weight"] == target_weight
+    assert last["reconstruction_weight"] == (0.0 if gan_only else 1.0)
+    if gan_only:
+        assert all(row["total"] == row["weighted_gan"] for row in rows[2:])
     checkpoint = output / "logs/version_0/checkpoints/best.ckpt"
     model, metadata = load_checkpoint(checkpoint, torch.device("cpu"))
     assert metadata["manifest_sha256"] == data.manifest_hash
@@ -86,6 +95,18 @@ def test_shared_training_roundtrip(shared, tmp_path, dimensions, architecture, g
     _, repeated = evaluate(model, test, torch.device("cpu"), seed=cfg.data.evaluation_seed, batch_size=2)
     with np.load(output / "predictions/pred_test.npz") as saved:
         np.testing.assert_array_equal(saved["prediction"], repeated["prediction"])
+    final_model, _ = load_checkpoint(output / "logs/version_0/checkpoints/last.ckpt", torch.device("cpu"))
+    _, repeated_last = evaluate(final_model, test, torch.device("cpu"), seed=cfg.data.evaluation_seed, batch_size=2)
+    with np.load(output / "predictions_last/pred_test.npz") as final, np.load(output / "predictions/pred_test.npz") as saved:
+        np.testing.assert_array_equal(final["prediction"], repeated_last["prediction"])
+        for key in ("target", "input", "missing", "event", "rally_id", "view_id", "frame_id"):
+            np.testing.assert_array_equal(final[key], saved[key])
+    first_report = json.loads((output / "predictions/diagnostic_metrics.json").read_text())
+    final_report = json.loads((output / "predictions_last/diagnostic_metrics.json").read_text())
+    assert first_report["evaluation_input_sha256"] == final_report["evaluation_input_sha256"]
+    assert final_report["checkpoint_kind"] == "last" and final_report["checkpoint_step"] == 4
+    assert first_report["checkpoint_step"] == metadata["step"]
+    assert (tmp_path / "repro/predictions_last/pred_test.npz").read_bytes() == (output / "predictions_last/pred_test.npz").read_bytes()
     rally = test[0]
     coordinates = rally.corrupted.uv_px if dimensions == 2 else rally.corrupted.xyz_m[None]
     missing = rally.corrupted.missing_2d if dimensions == 2 else rally.corrupted.missing_3d[None]
