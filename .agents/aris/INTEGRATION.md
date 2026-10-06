@@ -77,7 +77,8 @@ do not create a second ARIS GPU scheduler. For dependent batches, enqueue a
 downstream phase only after its required predecessor jobs and artifacts pass.
 
 Put the experiment's explicit wall-time limit inside the queued command when
-needed, for example `timeout --signal=TERM --kill-after=30s 1800s ...`.
+needed, for example `timeout --foreground --signal=TERM --kill-after=30s 1800s ...`.
+Keep `--foreground` so the command stays in the queue-owned process group.
 Count failed attempts and retries in the campaign budget. Stop adding jobs when
 the remaining budget cannot cover the next run. Do not automatically lower
 resolution, batch size, steps or evaluation coverage after OOM; record a proposed
