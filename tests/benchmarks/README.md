@@ -339,8 +339,5 @@ raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を
 `court_side_wrong_cases.py` はrun29の3誤判定のcamera/点/支持frameを元RNGから再現する。
 方法と判定規則は[run30事前登録](../../knowledge/runs/run-i935-correlated-safety-r30-20261001/protocol.md)が正本。
 
-`court_side_unfiltered.py --dataset <元dataset> --bank <固定bank> --original <元#932report> --previous <r30report> --output <新規dir>`
-は同じ28条件×400scene、seed1/30001とhash付き入力で、productionの`BallPointsModule`を各cameraに実行する。
-元#932とr30の未選別集計を条件ごとに照合し、全22,400判定を保存するCPU回帰bench。
 フィルタ廃止後も過去の比較を再現するため、上記confidence系benchは
 `legacy_ball_confidence.py`と`legacy_ball_confidence.yaml`を使う。これらはproductionの設定・依存ではない。

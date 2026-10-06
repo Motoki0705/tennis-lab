@@ -39,35 +39,3 @@ def test_blocks_keep_one_empirical_camera_per_view_with_explicit_fourth():
         offsets = row % 1000
         assert ((offsets < 200) | ((offsets >= 300) & (offsets < 320))).all()
     np.testing.assert_array_equal(result, bank.sample(300, 4, np.random.default_rng(30001)))
-
-
-def test_unfiltered_benchmark_runs_production_points_for_every_camera():
-    import torch
-
-    from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
-    from tests.benchmarks.court_side_unfiltered import production_points
-
-    gmm = BallGMM2D(torch.tensor([[[[.2, .3], [.9, .8]], [[.4, .5], [.1, .2]]]]).repeat(3, 1, 1, 1),
-                    torch.eye(2).repeat(3, 2, 2, 1, 1), torch.tensor([[[2., 0.], [0., 2.]]]).repeat(3, 1, 1),
-                    torch.full((3, 2), -1000.))
-    points = production_points(gmm, (101, 201), ("a", "b", "c"))
-    assert points.dtype == np.float32
-    np.testing.assert_allclose(points, np.tile([[[20., 60.], [10., 40.]]], (3, 1, 1)))
-
-
-def test_production_projection_matches_legacy_unfiltered_coordinates_exactly():
-    import torch
-
-    from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
-    from tests.benchmarks.court_side_unfiltered import production_points
-
-    generator = torch.Generator().manual_seed(42)
-    means = torch.rand((3, 41, 4, 2), generator=generator)
-    tril = torch.tril(torch.rand((3, 41, 4, 2, 2), generator=generator) * .5)
-    tril[..., 0, 0] += .001
-    tril[..., 1, 1] += .001
-    gmm = BallGMM2D(means, tril, torch.randn((3, 41, 4), generator=generator),
-                    torch.linspace(-1000., 1000., 41).repeat(3, 1))
-    legacy_points, presence, area = point_confidence(gmm, (1920, 1080))
-    assert (PointConfidenceRule(.9, 30000.).rejection_codes(presence, area) != 0).any()
-    np.testing.assert_array_equal(production_points(gmm, (1920, 1080), ("a", "b", "c")), legacy_points.astype(np.float32))
