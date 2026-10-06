@@ -2,9 +2,23 @@
 
 [#991](https://github.com/Motoki0705/tennis-lab/issues/991)・[#1014](https://github.com/Motoki0705/tennis-lab/issues/1014)の実装。
 モデルは**座標時系列と欠損maskだけ**を受け、観測区間も含む全frameの座標を1本返す。
-offlineの双方向Transformerを共通にし、2Dは直接回帰、3Dは直接回帰／x0予測のconditional flow matchingを比較する。
-回帰は全frameの復元損失に、任意のconditional LSGAN補助を加える。
+offlineの双方向RoPE Transformerを共通にし、2Dは直接回帰、3Dは直接回帰／x0予測のconditional flow matchingを比較する。
+回帰は全frameのSmooth L1復元損失に、任意の軌道のみを判別するLSGAN補助を加える。
 GANの有効性は比較で判断し、平均化の回避を保証しない。
+
+## モデル構成
+
+| 場所 | 責務 |
+|---|---|
+| `models/generators/transformer.py` | 共通componentsのTransformerBlock・RoPE・RMSNorm・SwiGLUによる全frame生成 |
+| `models/discriminators/` | BLCS/PLCS共通のTransformerSequenceDiscriminatorを構築。座標だけを入力しCLSから系列ごとに1スコア |
+| `models/legacy.py` | v1のsinusoidalモデルを保存済みcheckpointから明示的に復元 |
+| [`configs/model/coordinate_transformer.yaml`](../configs/model/coordinate_transformer.yaml) | Generatorの幅・深さ・FFN・RoPEの正本 |
+| [`configs/training/coordinate_gan.yaml`](../configs/training/coordinate_gan.yaml) | 学習条件・GANの開始/線形増加・Discriminatorの正本 |
+
+Generatorは座標と欠損mask、Discriminatorは生成/GT座標 `(B,T,D)` だけを受け取る。
+Discriminatorには観測座標、欠損mask、速度・加速度特徴を渡さず、復元した全時刻を有効tokenとして扱う。
+Flowは同じGenerator backboneを使用するがGANと併用せず、独立した比較方式として残す。
 
 共通データ、学習済み重み、拡張前後をブラウザで比較する場合は
 [2D / 3D Dataset Review](review/README.md)を参照。
@@ -36,7 +50,7 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python \
 
 - bounce／shotをイベント単位で選択し、左右の幅を異ならせた連続欠損を作る。重複区間は和集合、端はclip境界で切る。
 - 選択イベントの欠損はcamera間で同期させ、3Dにも実際の連続欠損を作る。残りの観測frameの離散欠損はcameraごとに独立。
-- 小さな定位jitterと大きな誤検出の混合分布を使い、1280×720での非欠損frame全体の距離誤差P95を規定する。画面端でnoiseをclipしない。
+- 既定はイベント連続欠損のみで、jitter・外れ値・離散欠損は0。ノイズを使う比較ではjitter/外れ値混合の非欠損frame全体の距離誤差P95を規定する。ノイズ無効時はP95・jitter・外れ値率を全て0にし、混在指定は拒否する。
 - 3D入力は同じ劣化済み2Dを既存のmulti-view DLT＋再投影最小化へ渡して作る。2視点未満・退化・負depthは欠損とし、3D真値から入力を作らない。
 - 学習の劣化は一定更新間隔で再生成する。評価は学習側のイベント選択率に依存しない固定seed／率を使い、モデル間で入力hashを照合できる。
 
@@ -51,13 +65,21 @@ GPU学習は必ず[共有training queue](../../../../.agents/skills/training-que
 
 ```bash
 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates \
-  model.dimensions=3 model.architecture=flow training.gan_weight=0
+  model.dimensions=3 model.architecture=flow training.gan.enabled=false
 ```
 
-事前宣言したイベント選択率3条件×〔2D回帰/GAN、3D回帰/GAN/Flow〕の15条件は
-[比較用queue登録script](../../../../tests/benchmarks/ball_refiner_coordinates.sh)で同一seed・更新予算を登録する。
+2D/3DのGAN各1本は [queue登録script](../../../../tests/benchmarks/ball_refiner_rope_gan.sh) を使う。
+イベント選択率3条件×〔2D回帰/GAN、3D回帰/GAN/Flow〕の追加比較は
+[比較用queue登録script](../../../../tests/benchmarks/ball_refiner_coordinates.sh)で現在の設定に対して登録する。
+過去の15条件は当時のknowledge/repro bundleの設定を使い、現在の既定で再現したとは扱わない。
 同時学習時の推論時間はGPU競合の影響を受けるため、性能報告では単独GPU計測を別に行う。
 compileは設定で明示する。この比較の既定はeager実行。
+
+`training.gan.transition.start_step` 回の更新を座標lossのみで行った後、
+`warmup_steps` 回でGAN係数を `target_weight` まで線形に増やす。
+BLCS/PLCSのepochスケジュールと同じ共通関数を更新回数に適用する。
+G/DともAdamWを使い、GAN有効期間はD1回/G1回。Gの学習率だけ全学習期間でcosine減衰する。
+TensorBoardとJSONLへ復元loss、生GAN loss、重み付きGAN loss、合計、実際の係数を記録する。
 
 validationの全frame RMSEでcheckpointを選び、その後だけtestを評価する。
 `outputs/ball_refiner/train/<条件>/<run>/` に設定・劣化監査・TensorBoard・best/last checkpointと
@@ -79,7 +101,8 @@ Flowは明示seedから1本だけ生成し、複数sampleの平均や正解に�
 
 `detection.heatmaps_to_coordinates()` はheatmapの最大点を座標化し、scoreは捨てる。
 検出器由来の欠損maskは呼び出し元から明示する。
-既存のGMM checkpointとは別schemaで、読み替え・自動fallbackをしない。
+RoPEモデルはv2 schemaで保存する。v1座標モデルは専用legacy classから復元し、設定や重みを新構造へ読み替えない。
+既存のGMM checkpointとは別schemaで、自動fallbackをしない。
 旧scene pipelineの配布モデル切替は、この合成比較の自動的な結果とはしない。
 
 NPZ入力は `coordinates`, `missing`, `fps`、2Dの場合は追加で `image_size_wh` を持つ。

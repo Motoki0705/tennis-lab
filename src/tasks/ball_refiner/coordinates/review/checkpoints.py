@@ -12,8 +12,11 @@ from typing import Any
 import torch
 import yaml
 
-from src.tasks.ball_refiner.coordinates.config import ModelConfig, parse_section
-from src.tasks.ball_refiner.coordinates.inference import CHECKPOINT_SCHEMA
+from src.tasks.ball_refiner.coordinates.inference import (
+    CHECKPOINT_SCHEMA,
+    LEGACY_CHECKPOINT_SCHEMA,
+    checkpoint_model_config,
+)
 from src.tasks.ball_refiner.coordinates.review.artifacts import (
     bundle_path,
     cache_root,
@@ -37,9 +40,9 @@ def describe(path: Path, identifier: str, manifest_hash: str, fps: float, predic
     predictions = None
     try:
         payload = torch.load(path, map_location="cpu", weights_only=True, mmap=True)
-        if not isinstance(payload, dict) or payload.get("schema") != CHECKPOINT_SCHEMA:
+        if not isinstance(payload, dict) or payload.get("schema") not in (CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA):
             raise ValueError("座標Refinerのcheckpoint形式ではありません")
-        model = parse_section(ModelConfig, payload["model_config"])
+        model = checkpoint_model_config(payload)
         if payload["manifest_sha256"] != manifest_hash:
             raise ValueError("学習時の共通データとmanifestが一致しません")
         if not math.isclose(float(payload["fps"]), fps, abs_tol=1e-6, rel_tol=0):
@@ -61,7 +64,8 @@ def describe(path: Path, identifier: str, manifest_hash: str, fps: float, predic
                 config = yaml.safe_load(config_path.read_text())
                 if config["model"] != payload["model_config"]:
                     raise ValueError("隣接するconfigとcheckpointのモデル設定が一致しません")
-                if bool(config["training"]["gan_weight"]) != (method == "gan"):
+                gan_enabled = bool(config["training"]["gan_weight"]) if payload["schema"] == LEGACY_CHECKPOINT_SCHEMA else config["training"]["gan"]["enabled"]
+                if gan_enabled != (method == "gan"):
                     raise ValueError("隣接するconfigとcheckpointのGAN設定が一致しません")
                 run = candidate
                 info.update(train_event_probability=float(config["corruption"]["event_probability"]),

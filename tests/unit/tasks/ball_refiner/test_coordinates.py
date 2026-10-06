@@ -9,6 +9,7 @@ import torch
 
 from src.tasks.ball_refiner.coordinates.config import (
     CorruptionConfig,
+    DiscriminatorConfig,
     ModelConfig,
     parse_section,
 )
@@ -26,6 +27,8 @@ from src.tasks.ball_refiner.coordinates.generation import (
 from src.tasks.ball_refiner.coordinates.inference import refine_coordinates
 from src.tasks.ball_refiner.coordinates.model import (
     CoordinateRefiner,
+)
+from src.tasks.ball_refiner.coordinates.models.discriminators import (
     TrajectoryDiscriminator,
 )
 from src.tasks.base.training.gan_loss import LSGANLoss
@@ -124,7 +127,7 @@ def test_phantom_bounces_after_return_are_excluded_before_rounding():
 @pytest.mark.parametrize("dimensions,architecture", [(2, "regression"), (3, "regression"), (3, "flow")])
 def test_masked_values_cannot_leak_and_observed_frames_are_predicted(dimensions, architecture):
     torch.set_num_threads(1)
-    model = CoordinateRefiner(ModelConfig(dimensions, architecture, 16, 1, 2, 0, 32, 3)).eval()
+    model = CoordinateRefiner(ModelConfig(dimensions, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
     coordinates = torch.randn(1, 43, dimensions)
     missing = torch.zeros(1, 43, dtype=torch.bool)
     missing[:, 10:25] = True
@@ -140,7 +143,7 @@ def test_masked_values_cannot_leak_and_observed_frames_are_predicted(dimensions,
 
 
 def test_future_observation_influences_past_offline_prediction():
-    model = CoordinateRefiner(ModelConfig(2, "regression", 16, 1, 2, 0, 32, 3)).eval()
+    model = CoordinateRefiner(ModelConfig(2, "regression", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
     values = torch.zeros(1, 16, 2, requires_grad=True)
     model(values, torch.zeros(1, 16, dtype=torch.bool))[0, 0].sum().backward()
     assert values.grad[0, -1].abs().sum() > 0
@@ -151,7 +154,7 @@ def test_future_observation_influences_past_offline_prediction():
     ("flow", False, False), ("flow", True, False), ("flow", False, True),
 ])
 def test_flow_arguments_are_rejected_before_tensor_computation(architecture, with_state, with_time):
-    model = CoordinateRefiner(ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3)).eval()
+    model = CoordinateRefiner(ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
     coordinates = torch.zeros(1, 16, 3)
     missing = torch.zeros(1, 16, dtype=torch.bool)
     computed = []
@@ -165,13 +168,13 @@ def test_flow_arguments_are_rejected_before_tensor_computation(architecture, wit
 def test_flow_and_gan_both_supply_trainable_gradients():
     coords, target = torch.randn(2, 16, 3), torch.randn(2, 16, 3)
     missing = torch.rand(2, 16) < 0.5
-    model = CoordinateRefiner(ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3))
+    model = CoordinateRefiner(ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0))
     loss = model.flow_loss(coords, missing, target, torch.Generator().manual_seed(4))
     loss.backward()
     assert torch.isfinite(loss) and model.input.weight.grad.abs().sum() > 0
     predicted = torch.randn(2, 16, 3, requires_grad=True)
-    discriminator = TrajectoryDiscriminator(3, 16)
-    LSGANLoss().generator_loss(discriminator(predicted, coords, missing)).backward()
+    discriminator = TrajectoryDiscriminator(3, DiscriminatorConfig("trajectory_transformer", 16, 1, 2, 64, 0.0, 8, 10000.0, "swiglu", 32, 0.02, 0.02))
+    LSGANLoss().generator_loss(discriminator(predicted)).backward()
     assert predicted.grad.abs().sum() > 0
 
 
@@ -188,4 +191,18 @@ def test_config_rejects_implicit_or_unknown_fields():
     with pytest.raises(ValueError, match="missing"):
         parse_section(ModelConfig, {"dimensions": 2})
     with pytest.raises(TypeError):
-        parse_section(ModelConfig, {"dimensions": True, "architecture": "regression", "width": 16, "layers": 1, "heads": 2, "dropout": 0, "window_length": 32, "flow_steps": 3})
+        parse_section(ModelConfig, {"dimensions": True, "architecture": "regression", "width": 16, "layers": 1, "heads": 2, "dropout": 0, "window_length": 32, "flow_steps": 3, "ffn_dim": 64, "rope_dim": 8, "rope_theta": 10000.0})
+
+
+def test_event_only_inputs_preserve_observations_and_shared_3d(corruption):
+    xyz, uv, visible, cameras, events = projected()
+    config = replace(corruption, noise_p95_px=0.0, jitter_sigma_px=0.0, outlier_probability=0.0, isolated_probability=0.0)
+    result = corrupt_trajectory(uv, visible, cameras, events, config=config, seed=7)
+    expected: np.ndarray = np.zeros(len(events), dtype=bool)
+    for _, start, end in result.intervals:
+        expected[start:end] = True
+    np.testing.assert_array_equal(result.missing_2d, np.broadcast_to(expected, visible.shape))
+    np.testing.assert_array_equal(result.missing_3d, expected)
+    assert not result.isolated.any() and not result.noise_px.any()
+    np.testing.assert_array_equal(result.uv_px[~result.missing_2d], uv[~result.missing_2d])
+    np.testing.assert_allclose(result.xyz_m[~expected], xyz[~expected], atol=1e-4)

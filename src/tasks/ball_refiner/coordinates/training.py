@@ -21,6 +21,7 @@ from src.tasks.ball_refiner.coordinates.config import (
     CorruptionConfig,
     ModelConfig,
     TrainingConfig,
+    parse_gan,
     parse_section,
     training_config,
 )
@@ -35,13 +36,14 @@ from src.tasks.ball_refiner.coordinates.inference import (
     checkpoint_metadata,
     load_checkpoint,
 )
-from src.tasks.ball_refiner.coordinates.model import (
-    CoordinateRefiner,
-    TrajectoryDiscriminator,
+from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
+from src.tasks.ball_refiner.coordinates.models.discriminators import (
+    build_refiner_discriminator,
 )
 from src.tasks.base.configuration import CompileConfig
 from src.tasks.base.training.compilation import compile_modules
 from src.tasks.base.training.gan_loss import LSGANLoss
+from src.tasks.base.training.gan_schedule import gan_weight_at
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.utils.device import resolve_device
 
@@ -70,7 +72,8 @@ def corruption_audit(data: list[PreparedRally]) -> dict[str, float]:
 def run_training(config: DictConfig) -> Path:
     raw, dataset_path, output = training_config(config)
     model_config = parse_section(ModelConfig, raw["model"])
-    train = parse_section(TrainingConfig, raw["training"])
+    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key != "gan"})
+    gan, discriminator_config = parse_gan(raw["training"]["gan"])
     corruption = parse_section(CorruptionConfig, raw["corruption"])
     seed = int(raw["run"]["seed"])
     device = resolve_device(raw["run"]["device"])
@@ -93,7 +96,7 @@ def run_training(config: DictConfig) -> Path:
         torch.cuda.manual_seed_all(seed)
         torch.cuda.reset_peak_memory_stats(device)
     model = CoordinateRefiner(model_config).to(device)
-    discriminator = TrajectoryDiscriminator(model_config.dimensions, model_config.width).to(device) if train.gan_weight else None
+    discriminator = build_refiner_discriminator(model_config.dimensions, discriminator_config).to(device) if gan.enabled else None
     compile_modules({"refiner": model, **({"discriminator": discriminator} if discriminator else {})}, CompileConfig.from_mapping(raw["compile"]))
     optimizer = torch.optim.AdamW(model.parameters(), lr=train.learning_rate, weight_decay=train.weight_decay)
     disc_optimizer = torch.optim.AdamW(discriminator.parameters(), lr=train.learning_rate, weight_decay=train.weight_decay) if discriminator else None
@@ -118,7 +121,7 @@ def run_training(config: DictConfig) -> Path:
     best_step = 0
     start = time.monotonic()
     training_data: list[PreparedRally] = []
-    sums: dict[str, float] = {"reconstruction": 0, "generator_gan": 0, "discriminator": 0}
+    sums: dict[str, float] = {"reconstruction": 0, "generator_gan": 0, "discriminator": 0, "gan_weight": 0, "weighted_gan": 0, "total": 0}
     try:
         for step in range(1, train.steps + 1):
             if (step - 1) % train.evaluate_every == 0:
@@ -133,21 +136,23 @@ def run_training(config: DictConfig) -> Path:
             optimizer.zero_grad(set_to_none=True)
             gan_loss = coordinates.new_zeros(())
             disc_loss = coordinates.new_zeros(())
+            gan_weight = gan_weight_at(step - 1, start=gan.start_step, warmup=gan.warmup_steps, target=gan.target_weight) if gan.enabled else 0.0
             if model_config.architecture == "flow":
                 reconstruction = model.flow_loss(coordinates, missing, target, flow_rng)
             else:
                 prediction = model(coordinates, missing)
                 reconstruction = F.smooth_l1_loss(prediction, target, beta=0.02)
-                if discriminator is not None and disc_optimizer is not None and step > train.gan_warmup_steps:
+                if discriminator is not None and disc_optimizer is not None and gan_weight > 0:
+                    discriminator.train()
                     discriminator.requires_grad_(True)
                     disc_optimizer.zero_grad(set_to_none=True)
-                    disc_loss = adversarial.discriminator_loss(discriminator(target, coordinates, missing), discriminator(prediction.detach(), coordinates, missing))
+                    disc_loss = adversarial.discriminator_loss(discriminator(target), discriminator(prediction.detach()))
                     disc_loss.backward()
                     torch.nn.utils.clip_grad_norm_(discriminator.parameters(), train.gradient_clip, error_if_nonfinite=True)
                     disc_optimizer.step()
                     discriminator.requires_grad_(False)
-                    gan_loss = adversarial.generator_loss(discriminator(prediction, coordinates, missing))
-            loss = reconstruction + train.gan_weight * gan_loss
+                    gan_loss = adversarial.generator_loss(discriminator(prediction))
+            loss = reconstruction + gan_weight * gan_loss
             if not torch.isfinite(loss):
                 raise RuntimeError(f"Nonfinite training loss at step {step}")
             loss.backward()
@@ -156,9 +161,12 @@ def run_training(config: DictConfig) -> Path:
             scheduler.step()
             for key, value in (("reconstruction", reconstruction), ("generator_gan", gan_loss), ("discriminator", disc_loss)):
                 sums[key] += float(value.detach())
+            sums["gan_weight"] += gan_weight
+            sums["weighted_gan"] += gan_weight * float(gan_loss.detach())
+            sums["total"] += float(loss.detach())
             if step % train.log_every == 0:
                 row = {key: value / train.log_every for key, value in sums.items()}
-                row.update(step=step, seconds=time.monotonic() - start)
+                row.update(step=step, seconds=time.monotonic() - start, gan_weight_current=gan_weight)
                 for key, value in row.items():
                     writer.add_scalar(f"train/{key}", value, step)
                 with (output / "learning_curve.jsonl").open("a") as stream:
@@ -176,6 +184,7 @@ def run_training(config: DictConfig) -> Path:
                            "scheduler": scheduler.state_dict(), "step": step, "seed": seed, "fps": dataset.fps,
                            "manifest_sha256": dataset.manifest_hash, "validation_rmse": score,
                            "discriminator": discriminator.state_dict() if discriminator else None,
+                           "gan_config": raw["training"]["gan"], "gan_weight": gan_weight,
                            "disc_optimizer": disc_optimizer.state_dict() if disc_optimizer else None,
                            "torch_rng": torch.get_rng_state(), "flow_rng": flow_rng.get_state(),
                            "sampling_rng": sampling.bit_generator.state}

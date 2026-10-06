@@ -32,7 +32,9 @@
     <div class="two-fields"><label>イベント選択率 (%)<input id="event-probability" type="number" min="0" max="100" step="1"></label><label>離散欠損率 (%)<input id="isolated-probability" type="number" min="0" max="100" step="1"></label></div>
     <div class="two-fields"><label>左右幅の最小 (frame)<input id="gap-min" type="number" min="1" max="119" step="1"></label><label>左右幅の最大 (frame)<input id="gap-max" type="number" min="2" max="120" step="1"></label></div>
     <p class="hint">前後で異なる幅を抽選し、イベント自身も隠します。</p>
-    <label>ノイズ距離のP95 (px)<input id="noise-p95" type="number" min="16" max="2000" step="1"></label>
+    <label>jitterの標準偏差 (px)<input id="noise-jitter" type="number" min="0" max="100" step="0.1"></label>
+    <label>外れ値の発生率 (%)<input id="noise-outlier" type="number" min="0" max="99.9" step="0.1"></label>
+    <label>ノイズ距離のP95 (px)<input id="noise-p95" type="number" min="0" max="2000" step="1"></label>
     <div class="two-fields"><label>拡張seed<input id="augmentation-seed" type="number" min="0" max="4294967295" step="1"></label><label>Flow seed<input id="flow-seed" type="number" min="0" max="4294967295" step="1"></label></div>
     <button id="resample">拡張seedを変える</button><p class="hint">2D・3Dは同じ拡張を共有。3D入力は拡張後2Dの三角測量です。</p>
   </section>

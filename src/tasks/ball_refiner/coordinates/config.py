@@ -47,16 +47,19 @@ class CorruptionConfig:
             raise ValueError("Missingness probabilities must be in [0,1]")
         if not 1 <= self.gap_min < self.gap_max:
             raise ValueError("Require distinct positive left/right gap widths")
-        if not 0.05 < self.outlier_probability < 1:
+        if self.noise_p95_px == 0:
+            if self.jitter_sigma_px != 0 or self.outlier_probability != 0:
+                raise ValueError("Zero noise requires zero jitter and zero outlier probability")
+        elif not 0.05 < self.outlier_probability < 1:
             raise ValueError("Outlier probability must exceed 5% for the specified P95 mixture")
-        if not 0 <= self.jitter_sigma_px < self.noise_p95_px / 5:
+        elif not 0 <= self.jitter_sigma_px < self.noise_p95_px / 5:
             raise ValueError("Jitter must be small relative to the positive noise P95")
         if self.triangulation_steps < 0:
             raise ValueError("triangulation_steps must be nonnegative")
 
 
 @dataclass(frozen=True)
-class ModelConfig:
+class LegacyModelConfig:
     dimensions: int
     architecture: str
     width: int
@@ -78,6 +81,64 @@ class ModelConfig:
 
 
 @dataclass(frozen=True)
+class ModelConfig(LegacyModelConfig):
+    ffn_dim: int
+    rope_dim: int
+    rope_theta: float
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.ffn_dim < 1 or self.rope_dim < 2 or self.rope_dim % 2 or self.rope_dim > self.width // self.heads or self.rope_theta <= 0:
+            raise ValueError("Invalid FFN or RoPE dimensions")
+
+
+@dataclass(frozen=True)
+class DiscriminatorConfig:
+    name: str
+    hidden_dim: int
+    num_layers: int
+    num_heads: int
+    ffn_dim: int
+    dropout: float
+    rope_dim: int
+    rope_theta: float
+    ffn_type: str
+    max_seq_len: int
+    invalid_init_std: float
+    cls_init_std: float
+
+    def __post_init__(self) -> None:
+        if self.name != "trajectory_transformer" or self.ffn_type != "swiglu":
+            raise ValueError("Require trajectory_transformer with swiglu")
+        if min(self.hidden_dim, self.num_heads, self.num_layers, self.ffn_dim, self.max_seq_len) < 1 or self.hidden_dim % self.num_heads:
+            raise ValueError("Invalid discriminator dimensions")
+        if self.rope_dim < 2 or self.rope_dim % 2 or self.rope_dim > self.hidden_dim // self.num_heads or self.rope_theta <= 0:
+            raise ValueError("Invalid discriminator RoPE configuration")
+        if not 0 <= self.dropout < 1 or min(self.invalid_init_std, self.cls_init_std) < 0:
+            raise ValueError("Invalid discriminator dropout or initialization")
+
+
+@dataclass(frozen=True)
+class GANConfig:
+    enabled: bool
+    target_weight: float
+    start_step: int
+    warmup_steps: int
+
+    def __post_init__(self) -> None:
+        if self.target_weight < 0 or self.start_step < 0 or self.warmup_steps < 1:
+            raise ValueError("Invalid GAN target or transition schedule")
+        if self.enabled and self.target_weight == 0:
+            raise ValueError("Enabled GAN requires positive target_weight")
+
+
+def parse_gan(raw: dict[str, Any]) -> tuple[GANConfig, DiscriminatorConfig]:
+    if set(raw) != {"enabled", "target_weight", "transition", "warmup_steps", "discriminator"} or set(raw["transition"]) != {"start_step"}:
+        raise ValueError("Require explicit GAN transition and discriminator configuration")
+    return parse_section(GANConfig, {key: raw[key] for key in ("enabled", "target_weight", "warmup_steps")} | raw["transition"]), parse_section(DiscriminatorConfig, raw["discriminator"])
+
+
+@dataclass(frozen=True)
 class TrainingConfig:
     steps: int
     batch_size: int
@@ -86,14 +147,12 @@ class TrainingConfig:
     gradient_clip: float
     evaluate_every: int
     log_every: int
-    gan_weight: float
-    gan_warmup_steps: int
     cpu_threads: int
 
     def __post_init__(self) -> None:
         if min(self.steps, self.batch_size, self.evaluate_every, self.log_every, self.cpu_threads) < 1:
             raise ValueError("Training counts must be positive")
-        if min(self.learning_rate, self.gradient_clip) <= 0 or min(self.weight_decay, self.gan_weight, self.gan_warmup_steps) < 0:
+        if min(self.learning_rate, self.gradient_clip) <= 0 or self.weight_decay < 0:
             raise ValueError("Invalid optimizer/GAN settings")
 
 
@@ -110,10 +169,15 @@ def training_config(config: DictConfig) -> tuple[dict[str, Any], Path, Path]:
     raw, resolver = resolved_config(config, {"paths", "data", "corruption", "model", "training", "run", "compile"})
     CompileConfig.from_mapping(raw["compile"])
     model = parse_section(ModelConfig, raw["model"])
-    train = parse_section(TrainingConfig, raw["training"])
+    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key != "gan"})
+    gan, discriminator = parse_gan(raw["training"]["gan"])
     parse_section(CorruptionConfig, raw["corruption"])
-    if model.architecture == "flow" and train.gan_weight:
+    if model.architecture == "flow" and gan.enabled:
         raise ValueError("GAN is only used by the direct regression comparison")
+    if gan.enabled and gan.start_step + gan.warmup_steps > train.steps:
+        raise ValueError("GAN transition and warmup must reach target within training.steps")
+    if discriminator.hidden_dim != model.width or discriminator.max_seq_len != model.window_length:
+        raise ValueError("Discriminator width/window must match the generator")
     if set(raw["data"]) != {"dataset", "evaluation_event_probability", "evaluation_seed"}:
         raise ValueError("Invalid data configuration")
     if not 0 <= raw["data"]["evaluation_event_probability"] <= 1:

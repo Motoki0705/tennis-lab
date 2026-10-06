@@ -112,7 +112,7 @@ def report(runs_root: Path, output: Path, *, tag: str, device: str) -> None:
         detail = json.loads((run / "predictions/diagnostic_metrics.json").read_text())
         dimensions = config["model"]["dimensions"]
         architecture = config["model"]["architecture"]
-        method = "flow" if architecture == "flow" else ("gan" if config["training"]["gan_weight"] else "regression")
+        method = "flow" if architecture == "flow" else ("gan" if (config["training"]["gan"]["enabled"] if "gan" in config["training"] else config["training"]["gan_weight"]) else "regression")
         rate = config["corruption"]["event_probability"]
         identity = dimensions, method, rate
         if identity in conditions:
