@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-2d-gan-gpu-preflight/20261006-s42/logs/version_0/checkpoints
