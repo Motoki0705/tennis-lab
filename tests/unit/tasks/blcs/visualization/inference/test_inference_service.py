@@ -29,6 +29,7 @@ from src.tasks.blcs.visualization.inference.service import (
 )
 from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court_normalization import court_coordinate_normalization_metadata
+from tests.support.physics.ball_record import simulated_record
 
 REPO_ROOT = Path("/home/kamimura/projects/tennis-lab")
 REAL_DATA_ROOT = REPO_ROOT / "data"
@@ -193,6 +194,9 @@ def _write_scene(
     np.save(scene_dir / "ball_pos_norm.npy", world / 11.885)
     np.save(scene_dir / "ball_vel_world.npy", np.zeros_like(world))
     np.save(scene_dir / "ball_vel_norm.npy", np.zeros_like(world))
+    _, physics = simulated_record(frames, output_fps=int(fps), sim_fps=240)
+    for key, value in physics.to_arrays().items():
+        np.save(scene_dir / f"{key}.npy", value)
     if present:
         presence: np.ndarray = np.zeros((frames, slots), dtype=bool)
         presence[:, 0] = True

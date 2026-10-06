@@ -51,6 +51,7 @@
 
 ### `physics/`
 - **`ball/`**: テニスボール物理の唯一の実装。`dynamics.py` の `BallField`（重力・k_drag・k_magnus・風）と、重力＋風相対の二次抵抗＋マグナスの加速度、半陰的Euler step。`bounce.py` はスピンに依存する滑り／グリップの地面バウンド（Cross）で、バウンド後の速度とスピンを返す。`surfaces.py` はボール定数とhard／clay／grassの固定係数の正本で、値の出典もここに書く。`integrate.py` は出力frame単位の自由飛行積分。すべて先頭次元でbatch化され、torchで微分可能。データ生成シミュレータ・軌道モデル・物理評価は同じ関数を使い、記録した状態の積分が記録軌道を再現する。
+  `record.py` は1軌道の物理GT（`ball_physics.v1`）。フィールドパラメータ、出力frameごとのsim速度、全イベント（sim step・前後の速度とスピン）だけを保存し、frameごとのスピン・飛行区間・イベントframeは導出する。区間は「イベントのsim step以後で最初の出力frame」から始まり、その状態の積分で区間の全frameが再現される（生成時に検証）。
 
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
