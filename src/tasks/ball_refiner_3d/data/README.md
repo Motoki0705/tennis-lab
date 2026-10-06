@@ -13,6 +13,10 @@ train/val/test分割はrally単位で固定する。
 2D座標はこの生成過程にのみ必要で、2D Refinerは存在しない。
 設定の正本は [augmentation/event_only.yaml](../configs/augmentation/event_only.yaml)。
 
+`sampling.py` は既定で128 frameの窓を作り、確率 `long_probability` でそれより長い窓
+（ラリー全長まで、上限 `max_length`）を一様に選ぶ。batch内は最長の窓へpaddingし、paddingは欠損かつ教師なしとする。
+物理教師（`physics/targets.py`）は全frameの区間ラベルと状態、ラリーの場とsurfaceで、窓ごとに区間を0から振り直す。
+
 `targets/events.py` はイベント種別を区別せず、各イベントframeで1となるGaussian教師を作る。
 重なる教師はmaxで合成する。ラリー全体で生成してから `sampling.py` が窓を切り出すので、窓外イベントの裾も保持する。
 モデルへ渡す入力は座標・欠損maskだけ。GT座標とイベント教師はloss専用。
