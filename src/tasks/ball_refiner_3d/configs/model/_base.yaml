@@ -1,0 +1,11 @@
+dimensions: 3
+width: 256
+layers: 8
+heads: 4
+dropout: 0.05
+window_length: 128
+flow_steps: 16
+ffn_dim: 704
+ffn_type: swiglu
+rope_dim: 64
+rope_theta: 10000.0

@@ -92,6 +92,7 @@ exclude = ["src.tasks.blcs.generate_dataset.webui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"src.tasks.ball_refiner_3d.visualization.dataset_review" = ["static/*.html", "static/*.css", "static/*.mjs"]
 "src.submodules.visualization.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.court_side.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.player_association.review" = ["static/*.html", "static/*.css", "static/*.js"]

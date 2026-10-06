@@ -145,8 +145,12 @@ def execute_request(document: Mapping[str, Any]) -> bytes:
     if document["task"] == "ball_refiner_3d":
         import torch
 
-        from src.tasks.ball_refiner_3d.review.contracts import ReviewRequest
-        from src.tasks.ball_refiner_3d.review.service import ReviewService
+        from src.tasks.ball_refiner_3d.visualization.dataset_review.contracts import (
+            ReviewRequest,
+        )
+        from src.tasks.ball_refiner_3d.visualization.dataset_review.service import (
+            ReviewService,
+        )
 
         torch.set_num_threads(2)
         result = ReviewService(**config).infer(ReviewRequest.model_validate(request))

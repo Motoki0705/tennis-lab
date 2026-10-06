@@ -1,0 +1,5 @@
+dataset: ball_refiner/single_object
+evaluation_event_probability: 0.5
+evaluation_seed: 20991
+num_workers: 0
+pin_memory: false
