@@ -11,13 +11,21 @@ from src.utils.physics.ball.record import BallPhysicsRecord
 from tests.support.physics.ball_record import simulated_record
 
 
-def _settings(record_dt: float, stride: int, iterations: int = 30) -> FitSettings:
+def _settings(
+    record_dt: float,
+    stride: int,
+    iterations: int = 30,
+    starts: tuple[tuple[float, float, float, float], ...] = ((0.01, 0.001, 0, 0),),
+    segment_iterations: int = 0,
+) -> FitSettings:
     return FitSettings(
         gravity=9.8,
         dt=record_dt,
         substeps=stride,
+        segment_iterations=segment_iterations,
         iterations=iterations,
         minimum_segment_frames=3,
+        field_starts=starts,
     )
 
 
@@ -90,5 +98,33 @@ def test_invalid_inputs_are_rejected() -> None:
         )
     with pytest.raises(ValueError):
         FitSettings(
-            gravity=9.8, dt=0.01, substeps=1, iterations=1, minimum_segment_frames=2
+            gravity=9.8,
+            dt=0.01,
+            substeps=1,
+            segment_iterations=0,
+            iterations=1,
+            minimum_segment_frames=2,
+            field_starts=((0.01, 0.001, 0, 0),),
         )
+    with pytest.raises(ValueError, match="starts"):
+        _settings(0.01, 1, starts=((0.0, 0.001, 0, 0),))
+    with pytest.raises(ValueError, match="starts"):
+        _settings(0.01, 1, starts=())
+
+
+def test_each_rally_keeps_its_best_start() -> None:
+    """A start far from the truth is rescued by a better one in the same batch."""
+    positions, record = simulated_record(48, hits=(90,), wind=(2.5, -2.0, 0.0))
+    far = (0.03, 0.003, -6.0, 6.0)
+    near = (record.k_drag, record.k_magnus, *record.wind[:2])
+    ((alone,), (mixed,)) = (
+        fit_flight_physics(
+            [positions],
+            [_spans(record)],
+            _settings(record.dt, record.stride, 15, starts, segment_iterations=3),
+            torch.device("cpu"),
+        )
+        for starts in ((far,), (far, near))
+    )
+    assert np.nansum(mixed.residual**2) < np.nansum(alone.residual**2)
+    assert np.abs(mixed.residual[mixed.fitted]).max() < 1e-4
