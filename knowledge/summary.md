@@ -1,4 +1,4 @@
-<!-- knowledge-review: e31f578f2434f4a5c657e47c5bc7823396c6ace4b8ec28102e26dc4e93aa03ec on 2026-10-07 -->
+<!-- knowledge-review: d7bcd0faed65e8c234456283d28714f44f8799627e14436b91cecf9f89a77ca8 on 2026-10-07 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
@@ -11,13 +11,11 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
-## 2026-10-07のSfMキャンペーン復旧
+## 2026-10-07のSfM初夜比較
 
-[#1034の初回SIFT試行](nodes/synthetic_data_generation/000024-run-i1034-nht-b00-p90-interrupted-a0.md)は、ホスト容量不足によるWSL停止で中断した。測定結果が残らず、既存のSfM幾何診断と採否の判断は変更しない。旧queue entryの復旧証拠を保存し、共有出力先へ移して別attemptを準備した。中断分の予算控除は保守的な会計値であり、実測処理時間ではない。次は再生成した共通入力でのSIFT再試行とVidMapの環境・実機適合性を確認する。
+[ARIS初夜比較](nodes/synthetic_data_generation/000029-group-i1034-sfm-first-night.md)を完了した。共通B00 90枚に対し、SIFT/COLMAPは90/90 pose、VidMap既定は選択31 keyframeの31/31（元入力の31/90）を出力した。現行SIFTを維持し、VidMapの非keyframe poseとNHT受け渡しを次の課題とする。再計算した内部残差p95はSIFT 1.987 px、VidMap 2.415 pxだが、特徴点集合・camera modelが異なり、独立GTや後段RGB/白線品質は未評価。絶対精度改善の証拠にしない。
 
-[B00先頭90秒の再試行](nodes/synthetic_data_generation/000025-run-i1034-nht-b00-p90-s42-a1.md)は90/90登録で短尺gateを通過し、今回の比較基準を得た。独立pose/地面GTはなく、全動画・他会場・下流描画への改善を示さない。初回runnerのnested metricsと登録器のflat数値契約の不一致は生データからノードを補正し、以降のrunner出力とテストを修正した。次はVidMapの実機適合と同じ入力集合での比較を行う。
-
-[VidMap用の小tensor CUDA probe](nodes/synthetic_data_generation/000026-run-i1034-vidmap-cuda-probe-a0.md)はRTX 5060 Tiでcompile/eager一致とattentionの有限値を確認した。実画像・fullモデルの容量・SfM精度は未評価であり、基準や採用判断は変えない。次は固定版native依存と実画像sanityを確認する。
+VidMapは16GB GPUで実行できたが、装置全体の観測最大15,860 MiBで余裕は小さい。SIFTはCPU、VidMapはGPU frontend/CPU mapperとsanity cache再利用なので、観測時間を一般的な速度比にしない。初回WSL停止による欠損と保守的な予算控除を保持し、使用枠は36分52秒/6時間。LIMAP/GLUEMAPは環境未準備で未実行。次は共通eval viewを固定したNHT比較、またはSIFT初期値へのLIMAP構造制約を独立条件として試す。
 
 ## 2026-10-05のボール検出用pose蓄積
 
@@ -502,4 +500,3 @@ merge方針の変更は品質合格の新観測ではない。
 
 人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価run16は完了した。clip_000全pipelineは当時未検証で、今回のmerge許可後も新たな品質測定は行っていない。
 
-2026-10-07のVidMap実画像sanityは[run-i1034-vidmap-b00-sanity12-a0](nodes/synthetic_data_generation/000027-run-i1034-vidmap-b00-sanity12-a0.md)に保存した。B00 12枚から7 keyframe・2,648点を約5分50秒で出力し、最終geometryの再計算と旧PyCOLMAPでの読込を確認した。小規模な実機実行可能性の証拠であり、90枚SIFTとの順位付け・NHTへの即時採用・絶対精度の証拠にはしない。次は共通90枚比較。

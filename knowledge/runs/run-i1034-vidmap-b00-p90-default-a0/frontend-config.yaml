@@ -1,0 +1,109 @@
+scene: null
+mode: minimal
+testset_id: null
+name: uncalib/base
+colmap_runtime: stock
+frontend_cache_root: null
+deterministic_frontend: false
+pre_geom_db_stop: false
+pre_geom_repro_dir: null
+replay_cache:
+  mode: 'off'
+  root: null
+  write_stage: null
+roma:
+  compile: true
+  lc_feature_capacity: 8
+keyframes:
+  matching:
+    coarse_only: false
+    batch_size: 8
+    num_workers: 4
+    resize_to_shape:
+    - 560
+    - 560
+    interpolation: torch_bicubic
+  selection:
+    max_normalized_keypoint_drift: 0.11
+    target_frac: 0.4
+    certainty_threshold: 0.01
+    lookahead_pruning: true
+    force_gt_keyframes: false
+    intrinsics_source: geocalib
+  features:
+    preprocessing:
+      grayscale: false
+      resize_max: 1200
+      resize_force: false
+      interpolation: cv2_area
+    nms_radius: 5
+    max_num_keypoints: 2000
+    sub_pixel: false
+tracks:
+  images:
+    grayscale: false
+    resize_max: 1200
+    resize_force: true
+    interpolation: cv2_area
+  propagation:
+    num_workers: 4
+    nms_radius: 3
+    max_kps: 1500
+    min_conf: 0.05
+    max_sequential_track_sigma_roma_px: 8.0
+    density_thin_k: 0.05
+    density_thin_std: 0.013
+    sampling_density_std: 0.1
+    tvg_max_epipolar_error: 4.0
+    tvg_max_iterations: 50000
+    tvg_min_iterations: 50
+    tvg_min_inliers: 50
+    salient_density_ref_kps: 2000
+    salient_density_std: 0.1
+    salient_density_max_scale: 3.0
+    salient_density_power: 1.0
+    lt_cov_scale: 4.0
+    multiflow_hops:
+    - 8
+    - 6
+    - 4
+    - 2
+    - 1
+loop_closure:
+  retrieval_min_score: 0.1
+  nquery: 10
+  tcorr_min_matches: 200
+  lc_pair_nms: true
+  lc_pair_nms_radius: 2
+  lc_match_thresh: 0.05
+depth:
+  backend:
+    type: da3_video
+    window_size: 1
+    ref_view_strategy: middle
+    process_res: 504
+    compile: true
+  cache_map: true
+  preprocessing:
+    grayscale: false
+    resize_max: null
+    resize_force: false
+    interpolation: cv2_area
+  batch_size: 4
+  num_workers: 4
+camera_priors:
+  estimator: da3
+  inference: per_view
+  initialization: predicted
+  max_images: 30
+preparation:
+  lc:
+    exclude_lc_matches: false
+    exclude_window_lc: false
+    min_lc_score: 0.0
+  geom_verif:
+    max_H_inlier_ratio: 0.8
+    min_num_inliers: 15
+    ransac_max_num_trials: 20000
+    ransac_min_inlier_ratio: 0.25
+    ransac_max_error: 4.0

@@ -1,0 +1,135 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/lib/python3.11/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/lib/python3.11/site-packages/lightglue/lightglue.py:24: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
+2026-10-07 03:41:08 | INFO     | vidmap.frontend.tracking.composition | Input sparse features: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/sparse_features.h5
+2026-10-07 03:41:08 | INFO     | vidmap.frontend.tracking.composition | Depth maps: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/depth_maps-da3_video_w1.h5
+/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/lib/python3.11/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+2026-10-07 03:41:08 | INFO     | vidmap.frontend.cache.validation | Ignoring stale cache: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/track_pairs.h5: cache artifact does not exist
+2026-10-07 03:41:21 | INFO     | vidmap.frontend.geocalib | Keyframe GeoCalib bootstrap: indices=[0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 46, 49, 52, 55, 58, 61, 64, 67, 70, 73, 76, 79, 82, 85, 89] images=['frame_000000.jpg', 'frame_000003.jpg', 'frame_000006.jpg', 'frame_000009.jpg', 'frame_000012.jpg', 'frame_000015.jpg', 'frame_000018.jpg', 'frame_000021.jpg', 'frame_000024.jpg', 'frame_000027.jpg', 'frame_000030.jpg', 'frame_000033.jpg', 'frame_000036.jpg', 'frame_000039.jpg', 'frame_000042.jpg', 'frame_000046.jpg', 'frame_000049.jpg', 'frame_000052.jpg', 'frame_000055.jpg', 'frame_000058.jpg', 'frame_000061.jpg', 'frame_000064.jpg', 'frame_000067.jpg', 'frame_000070.jpg', 'frame_000073.jpg', 'frame_000076.jpg', 'frame_000079.jpg', 'frame_000082.jpg', 'frame_000085.jpg', 'frame_000089.jpg'] K=[[1237.6920166015625, 0.0, 960.0000610351562], [0.0, 1237.69189453125, 540.0], [0.0, 0.0, 1.0]]
+2026-10-07 03:41:21 | INFO     | vidmap.frontend.models.romav2 | Loaded RoMaV2 model on cuda
+2026-10-07 03:41:21 | INFO     | vidmap.frontend.keyframes.processing | Starting streaming keyframe detection and salient-feature extraction
+2026-10-07 03:41:22 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/a4e30db81d7f0415ae1b21d2dfa1352adb73ff53afafc45b8b10362a84a17cd2/module
+2026-10-07 03:41:22 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/a4e30db81d7f0415ae1b21d2dfa1352adb73ff53afafc45b8b10362a84a17cd2/00d90c634f04d0eb8c5165c6d4ac4cc004cab820e62b78e635ae7dc3fbccfde0
+2026-10-07 03:41:25 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/290f9baf736841b3ca476ff636d6433f72605b8ea6e9edf692ddc7ac84fa76b4/module
+2026-10-07 03:41:25 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/290f9baf736841b3ca476ff636d6433f72605b8ea6e9edf692ddc7ac84fa76b4/7e05d56ff50cf0bd301d472e306a1b53eca1355731bed510c166249b54a4c754
+2026-10-07 03:41:25 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/dda6993eb77e97ea9bd5d8425c4e686676e55bea28f96ce7d25bbe8b7bf45131/module
+2026-10-07 03:41:26 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/dda6993eb77e97ea9bd5d8425c4e686676e55bea28f96ce7d25bbe8b7bf45131/bd72441920de3536fe177aeea7a67c39662c965a5d0df4568b613d6cac51a2f5
+2026-10-07 03:41:36 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/a4e30db81d7f0415ae1b21d2dfa1352adb73ff53afafc45b8b10362a84a17cd2/bff052dbef361a5e08c1419c5b6af400e7e2ee254fb3568fc3f8e2c4bee6b787
+2026-10-07 03:41:37 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/290f9baf736841b3ca476ff636d6433f72605b8ea6e9edf692ddc7ac84fa76b4/f996e158aa7b19cabb01d6733f2fd7449fc7dcc2108d6fc1e5d731d730085ce7
+2026-10-07 03:41:37 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/romav2/dda6993eb77e97ea9bd5d8425c4e686676e55bea28f96ce7d25bbe8b7bf45131/ed46b4891b6a54b60bb2435f9c0ea98aea42cfb60ff6cb748913b187f1cd6c70
+2026-10-07 03:41:56 | INFO     | vidmap.frontend.keyframes.processing | Number of detected keyframes: 31
+2026-10-07 03:41:56 | INFO     | vidmap.frontend.keyframes.processing | Cached admitted track pairs to: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/track_pairs.h5
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.cache.validation | Ignoring stale cache: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/extended_matches.h5: cache artifact does not exist
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.loop_closure.matching | Skipping sequential LC frontend; all 134 pairs exist
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.tracking.transitive | Building transitive correspondences
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.colmap_database | Importing features into /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/.database_transitive.db.building
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.colmap_database | Importing matches into /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/.database_transitive.db.building
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.colmap_database | Added 30 matches to /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/.database_transitive.db.building
+I20261007 03:41:57.233446 127183726794560 database_cache.cc:55] Loading rigs...
+I20261007 03:41:57.233542 127183726794560 database_cache.cc:65]  0 in 0.000s
+I20261007 03:41:57.233552 127183726794560 database_cache.cc:73] Loading cameras...
+I20261007 03:41:57.233646 127183726794560 database_cache.cc:91]  31 in 0.000s
+I20261007 03:41:57.233666 127183726794560 database_cache.cc:99] Loading frames...
+I20261007 03:41:57.233679 127183726794560 database_cache.cc:109]  0 in 0.000s
+I20261007 03:41:57.233683 127183726794560 database_cache.cc:117] Loading matches...
+I20261007 03:41:57.233807 127183726794560 database_cache.cc:136]  30 in 0.000s
+I20261007 03:41:57.233812 127183726794560 database_cache.cc:144] Loading images...
+I20261007 03:41:57.234464 127183726794560 database_cache.cc:241]  31 in 0.001s (connected 31, loaded 31)
+I20261007 03:41:57.234486 127183726794560 database_cache.cc:255] Loading pose priors...
+I20261007 03:41:57.234492 127183726794560 database_cache.cc:263]  0 in 0.000s
+I20261007 03:41:57.234496 127183726794560 database_cache.cc:271] Building correspondence graph...
+I20261007 03:41:57.238040 127183726794560 database_cache.cc:300]  in 0.004s (ignored 0)
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.tracking.transitive | Built 399 transitive correspondence pairs
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.cache.validation | Ignoring stale cache: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/retrieval_features.h5: cache artifact does not exist
+2026-10-07 03:41:57 | INFO     | vidmap.frontend.loop_closure.extended_matches | Computing retrieval features for 31 images
+2026-10-07 03:42:02 | INFO     | vidmap.frontend.loop_closure.retrieval | Retrieval features saved to /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/retrieval_features.h5
+2026-10-07 03:42:03 | INFO     | vidmap.frontend.loop_closure.retrieval | LC pair endpoint NMS radius=2: 301 -> 22 pairs
+2026-10-07 03:42:03 | INFO     | vidmap.frontend.loop_closure.retrieval | Generated 22 retrieval pairs, excluding sequential pairs
+2026-10-07 03:42:03 | INFO     | vidmap.frontend.loop_closure.extended_matches | Cached 22 retrieval pairs
+2026-10-07 03:42:03 | INFO     | vidmap.frontend.loop_closure.matching | Streaming LC frontend for 22 retrieval pairs
+2026-10-07 03:42:06 | INFO     | vidmap.frontend.loop_closure.matching | [LC Streaming] Dense matches computed: 22
+2026-10-07 03:42:06 | INFO     | vidmap.frontend.loop_closure.matching | [LC Streaming] Total sparse matches selected: 1095
+2026-10-07 03:42:06 | INFO     | vidmap.frontend.loop_closure.extended_matches | Merged 156 extended match pairs into transitive correspondences
+2026-10-07 03:42:07 | INFO     | vidmap.frontend.depth | Estimating depth maps for 31 keyframes
+2026-10-07 03:42:07 | INFO     | vidmap.frontend.depth | Estimating depth maps for 31 images
+2026-10-07 03:42:07 | INFO     | vidmap.frontend.depth | Loading DA3 model: depth-anything/DA3NESTED-GIANT-LARGE-1.1 (window=1, ref_view=middle, res=504)
+/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/lib/python3.11/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+2026-10-07 03:42:10 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/da3/8051ea95a8fc244d3314c9ecb2d17856db37475a1f1099f6fcf65ec85ad4db48/0342d9a8d7cd4df855ef06e70bbeee81609e0eb0082382e6f2192f6ad8988f91
+2026-10-07 03:42:11 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/da3/2dd7f387b28f46a202222143b849361154d555f74bd4a1084934493cea2b6ad0/4f49665b8e9db309d7f337cb9b37bb944e7e30dd305932d68fcc185db922b844
+2026-10-07 03:42:11 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/da3/745139427e44f0184431cd5d0757f4667beeb8c3dd4a30b43024ade87abb44ef/d2665269e0a710169be4d26bdf70247cca389c8831688ee7f45adbfc7cbd9541
+2026-10-07 03:42:12 | INFO     | vidmap.frontend.models.compiled_graph | Loading saved graph: /home/kamimura/.cache/vidmap/da3/d8d5fd4bfdc6140cae003a12fb26c1c2da4c85c6259c02d352537f815e72a9b0/a613f69a55e1637ac754b6c0acdd0d4565de98600faa61e958f355b8d20844a9
+2026-10-07 03:42:15 | INFO     | vidmap.frontend.depth | Sampled DA3 depth maps saved to: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/depth_maps-da3_video_w1.h5
+2026-10-07 03:42:15 | INFO     | vidmap.frontend.tracking.composition | Features located in /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/sparse_features.h5
+2026-10-07 03:42:15 | INFO     | vidmap.utils.loop_closure_masks | Wrote 406 loop-closure match masks to /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/cache/all/cache-5a578ba1784a4676/lc_masks-sparse_matches.json
+2026-10-07 03:42:15 | INFO     | vidmap.frontend.colmap_database | Importing features into /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/work/..database_complete.db-ku5fpx32.tmp.building
+2026-10-07 03:42:15 | INFO     | vidmap.frontend.colmap_database | Importing matches into /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/work/..database_complete.db-ku5fpx32.tmp.building
+2026-10-07 03:42:15 | INFO     | vidmap.frontend.colmap_database | Added 406 matches to /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/work/..database_complete.db-ku5fpx32.tmp.building
+2026-10-07 03:42:15 | INFO     | vidmap.frontend.colmap_database | Geometric verification of /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/tmp_cache_dir/work/.database_complete.db-ku5fpx32.tmp with 406 pairs
+[93m[WARN ] Dependency 'e3nn' not found. Required for rotating the camera space SH coeff[0m
+2026-10-07 03:42:15 | INFO     | vidmap.frontend.colmap_database | Geometric verification options: {'max_H_inlier_ratio': 0.8, 'min_num_inliers': 15, 'ransac': {'max_num_trials': 20000, 'min_inlier_ratio': 0.25, 'max_error': 4.0}}
+I20261007 03:42:15.641344 127165248067264 feature_matching.cc:169] === Feature matching & geometric verification ===
+I20261007 03:42:15.641908 127166075201216 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.641921 127180996216512 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.641942 127166083593920 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642001 127166121502400 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642081 127166129895104 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642210 127166616409792 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642311 127166624802496 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642409 127166633195200 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642510 127166641587904 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642637 127166649980608 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642739 127166658373312 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.642839 127166666766016 sift.cc:1638] Creating SIFT CPU feature matcher
+I20261007 03:42:15.644001 127165248067264 pairing.cc:877] Importing image pairs...
+I20261007 03:42:15.644312 127165248067264 pairing.cc:910] Processing block [1/1]
+I20261007 03:42:16.248710 127165248067264 feature_matching.cc:191] in 0.604s
+I20261007 03:42:16.248761 127165248067264 timer.cc:63] Elapsed time: 0.010 [minutes]
+2026-10-07 03:42:16 | INFO     | vidmap.utils.loop_closure_masks | Wrote 406 loop-closure match masks to /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/mapper_inputs/lc_masks.json
+2026-10-07 03:42:16 | INFO     | vidmap.cli.run | Mapper inputs ready: tag=uncalib-base path=/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/mapper_inputs
+2026-10-07 03:42:16 | INFO     | vidmap.reconstruction | Starting mapping for <custom> from /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/mapper_inputs
+2026-10-07 03:42:16 | INFO     | vidmap.utils.loop_closure_masks | Read 406 loop-closure masks from /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/mapper_inputs/lc_masks.json
+2026-10-07 03:42:16 | INFO     | vidmap.mapper.inputs.database | Loading 31 images from the finalized database
+2026-10-07 03:42:16 | INFO     | vidmap.mapper.inputs.database | Loaded 366 image pairs; 0 are invalid
+2026-10-07 03:42:16 | INFO     | vidmap.mapper.stages.view_graph_calibration | Running view graph calibration...
+2026-10-07 03:42:16 | INFO     | vidmap.mapper.stages.view_graph_calibration | VGC: invalidated 7 / 366 pairs (residual^2 > 4.0000)
+2026-10-07 03:42:16 | INFO     | vidmap.mapper.stages.relative_pose.estimator | Estimating relative poses using MDRP
+2026-10-07 03:42:16 | INFO     | vidmap.mapper.stages.relative_pose.estimator | Estimating relative poses for 359 image pairs
+Estimating relative poses (MDRP):   0%|          | 0/359 [00:00<?, ?it/s]Estimating relative poses (MDRP):   1%|          | 2/359 [00:00<00:26, 13.39it/s]Estimating relative poses (MDRP):   7%|▋         | 24/359 [00:00<00:02, 113.17it/s]Estimating relative poses (MDRP):  16%|█▌        | 58/359 [00:00<00:01, 164.14it/s]Estimating relative poses (MDRP):  26%|██▋       | 95/359 [00:00<00:01, 161.73it/s]Estimating relative poses (MDRP):  32%|███▏      | 116/359 [00:00<00:01, 172.47it/s]Estimating relative poses (MDRP):  42%|████▏     | 150/359 [00:00<00:01, 203.29it/s]Estimating relative poses (MDRP):  48%|████▊     | 172/359 [00:01<00:00, 192.67it/s]Estimating relative poses (MDRP):  53%|█████▎    | 192/359 [00:01<00:00, 170.50it/s]Estimating relative poses (MDRP):  62%|██████▏   | 224/359 [00:01<00:00, 169.07it/s]Estimating relative poses (MDRP):  69%|██████▉   | 249/359 [00:01<00:00, 176.81it/s]Estimating relative poses (MDRP):  76%|███████▌  | 273/359 [00:01<00:00, 187.96it/s]Estimating relative poses (MDRP):  82%|████████▏ | 293/359 [00:01<00:00, 174.06it/s]Estimating relative poses (MDRP):  90%|█████████ | 324/359 [00:01<00:00, 203.22it/s]Estimating relative poses (MDRP):  99%|█████████▉| 357/359 [00:01<00:00, 229.37it/s]Estimating relative poses (MDRP): 100%|██████████| 359/359 [00:01<00:00, 184.47it/s]
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.relative_pose.estimator | Estimating relative pose done
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.relative_pose.estimator | Assigned 359/359 valid MDRP results
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.rotation_averaging | 31 are within the connected component.
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.depth_consistency | Depth consistency: 2068 tainted keypoints from depth outliers
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.depth_consistency | Building track membership for 2068 tainted keypoints...
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.depth_consistency | Found 5526 keypoints in bad tracks
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.depth_consistency | Track-aware boundary LC marking: 8496 matches marked LC
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.depth_consistency | Marked 2621 keypoints as depth outliers (after boundary)
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.tracks | Before filter: 11049, after filter: 10713
+2026-10-07 03:42:18 | INFO     | vidmap.mapper.stages.global_positioning.positioner | Running first global positioning ...
+I20261007 03:42:18.770949 127183726794560 global_positioning.cc:111] Setting up the global positioner problem
+I20261007 03:42:23.623533 127183726794560 global_positioning.cc:99] Ceres Solver Report: Iterations: 24, Initial cost: 2.335052e+05, Final cost: 1.656511e+05, Termination: CONVERGENCE
+2026-10-07 03:42:23 | INFO     | vidmap.mapper.stages.global_positioning.positioner | Running second global positioning ...
+I20261007 03:42:23.719248 127183726794560 global_positioning.cc:111] Setting up the global positioner problem
+I20261007 03:42:26.865069 127183726794560 global_positioning.cc:99] Ceres Solver Report: Iterations: 28, Initial cost: 3.574894e+05, Final cost: 2.650759e+05, Termination: CONVERGENCE
+2026-10-07 03:42:26 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Bundle adjustment start
+2026-10-07 03:42:27 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 6259 points, retriangulated 9018, completed 1, merged 2399
+2026-10-07 03:42:29 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 3390 points, retriangulated 3424, completed 1, merged 1395
+2026-10-07 03:42:31 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 0 points, retriangulated 2891, completed 1, merged 698
+2026-10-07 03:42:34 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 0 points, retriangulated 4383, completed 1, merged 273
+2026-10-07 03:42:36 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Annealed bundle adjustment start
+2026-10-07 03:42:36 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 0 points, retriangulated 9114, completed 1, merged 4005
+2026-10-07 03:42:38 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 8 points, retriangulated 3136, completed 0, merged 161
+2026-10-07 03:42:40 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 44 points, retriangulated 2841, completed 0, merged 192
+2026-10-07 03:42:42 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | [Annealed BA] Final refinement with aggressive outlier downweighting
+2026-10-07 03:42:43 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 28 points, retriangulated 2766, completed 0, merged 51
+2026-10-07 03:42:45 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | [Annealed BA] Final refinement done (param_mult=0.125)
+2026-10-07 03:42:45 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Saved pre-point-refinement checkpoint: /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/.rec-pre-point-refinement-wqkfr67o
+2026-10-07 03:42:45 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Post-annealing point-only refinement start
+2026-10-07 03:42:45 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Filtered 1132 points, retriangulated 1134, completed 0, merged 0
+2026-10-07 03:42:45 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Post-annealing point-only refinement done
+2026-10-07 03:42:45 | INFO     | vidmap.mapper.stages.bundle_adjustment.adjuster | Post-annealing point-only refinement filtered 7562 observations
+2026-10-07 03:42:45 | INFO     | vidmap.reconstruction | Extracted point colors from /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1/frames/images
+2026-10-07 03:42:45 | INFO     | vidmap.reconstruction | Reconstruction complete with 31/31 registered images
+2026-10-07 03:42:45 | INFO     | vidmap.cli.run | Reconstruction written to /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-p90-default-a0/rec

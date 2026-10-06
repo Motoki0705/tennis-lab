@@ -1,0 +1,5 @@
+{
+  "vidmap_seconds": 104.77641181900071,
+  "cpu_evaluation_seconds": 0.976850368999294,
+  "note": "Cold/warm compilation and model caches are not controlled speed benchmarks."
+}
