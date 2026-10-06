@@ -71,8 +71,9 @@ def signals(data: ClipInput, config: StatisticsConfig) -> PoseSignals | None:
     for player in range(people):
         ids = np.flatnonzero(p.observed[:, player])
         for a, b in zip(ids[:-1], ids[1:], strict=True):
-            if b > a + 1 and not data.breaks[a + 1:b + 1].any():
-                step = np.median(np.linalg.norm(p.points[b, player] - p.points[a, player], axis=1)) / scale[player]
+            common = valid[a, player] & valid[b, player]
+            if b > a + 1 and common.any() and not data.breaks[a + 1:b + 1].any():
+                step = np.median(np.linalg.norm(p.points[b, player, common] - p.points[a, player, common], axis=1)) / scale[player]
                 recovery.append((int(a), int(b), player, float(step)))
     flags = (speed > config.pose_jump_primary) | (relative > config.pose_jump_primary) | (spike > config.pose_spike_threshold)
     return PoseSignals(speed, relative, spike, bone, swapped, translation, flags, valid, tuple(recovery))
