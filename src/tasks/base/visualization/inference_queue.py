@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 from src.utils.paths import PROJECT_ROOT
 
-Task = Literal["blcs", "plcs", "ball_detection", "court_detection", "ball_refiner_coordinates"]
+Task = Literal["blcs", "plcs", "ball_detection", "court_detection", "ball_refiner_3d"]
 SOURCE_ROOT: Path = PROJECT_ROOT
 
 
@@ -142,11 +142,11 @@ def execute_request(document: Mapping[str, Any]) -> bytes:
         if name in config and config[name] is not None:
             config[name] = Path(config[name])
     request = dict(document["request"])
-    if document["task"] == "ball_refiner_coordinates":
+    if document["task"] == "ball_refiner_3d":
         import torch
 
-        from src.tasks.ball_refiner.coordinates.review.contracts import ReviewRequest
-        from src.tasks.ball_refiner.coordinates.review.service import ReviewService
+        from src.tasks.ball_refiner_3d.review.contracts import ReviewRequest
+        from src.tasks.ball_refiner_3d.review.service import ReviewService
 
         torch.set_num_threads(2)
         result = ReviewService(**config).infer(ReviewRequest.model_validate(request))

@@ -134,20 +134,6 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、
   未決定は理由と全ID=-1の採点を残す。設定選択・再fit・既定変更は行わない。
 
-- `ball_refiner_context_shard.sh`: [固定計画によるclip分割](../../src/tasks/ball_refiner/README.md#clip単位の分割生成と統合)の
-  queue入口。引数は `<asset_root> <detector_cache> <plan.json> <scene.yaml> <extension_dir> <shard_index> <new_context> <new_report>`。
-  planを作った共通DINO拡張を使い、1clip全frameの生成と別プロセスの保存後検証を行う。
-  plan・scene・build設定・検証結果をreportとqueue reproへ保存する。
-  時間制限はqueue commandの外側で指定し、失敗時も元cache/reportを保持する。
-
-- `ball_refiner_context_pilot.sh`: #935の固定3source文脈生成pilot。引数は絶対pathの
-  `<asset_root> <detector_cache> <new_context_cache> <new_report>`。trainのTrackNet 35・Meiji 151・chat 375frameを
-  全frame処理する。run専用DINO拡張を再ビルドし、scene設定のcompose、CPU事前検査、生成、別プロセス読込検証を行う。
-  必ず共有training queueへ投入する。新しいcache/reportを要求し、失敗した出力を上書きしない。
-  `ball_refiner_context.py`は保存後のNPZ/frame/PTS・JPEG hash・元解像度への座標変換をCPUで検査し、
-  指定clipの完全一致、pose/courtの有効数・score変換・実行記録を`context-verification.json`へ保存する。
-  この検査は人物選別・pose/courtの精度・ablationの改善を証明しない。
-
 - `ball_detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
   実clip検証。既定pipelineのball nodeだけを全cameraで実行し、native heatmap・候補・patchを
   `--report/store` に保存する。checksum/型/shapeを検証してdiskからload-onlyで再開し、
@@ -327,20 +313,8 @@ raw/group/対応後のcamera×near/far CSV、unit表、#933全指標と停止を
 
 `person_unseen_review_video.py --report <採点済み未見出力>`はsingle score receiptのラベルhashを検証し、保存raw box/IDとラベルを全長3cameraで比較する。IDの表示名は採点済み対応表を使い、camera間で異なる置換を拒否する。box単位の4色と曖昧色を表示し、再推論・再採点はしない。
 
-- `ball_refiner_confidence.py`: 保存済みMeiji valのclip_001–011だけで固定規則を選定するCPU入口。`--plan --calibration --metadata --output` は絶対path。規則・母数・限界は [旧選定記録](../../knowledge/nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md) を参照。
+## 旧2D Refiner実験
 
-- `court_side_confidence.py`: #932の元held-out全28条件の集計を再現し、固定confidenceの連続blockを追加した対比較をCPUで実行。元/filteredの全仮説を保存。実refinerとの誤差相関は再現していない。結果と限界は [安全bench](../../knowledge/nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md) を参照。
-
-## Meiji contextと相関court_side安全bench
-
-`ball_refiner_meiji_context.sh` は [Meiji cache入口](../../src/tasks/ball_refiner/README.md#meijiの凍結人物経路による文脈cache)を
-固定plan・共有GPU queue・資源guard・12時間上限で実行する。引数はscriptのusageを参照。
-`court_side_correlated.py` は実測GMM残差とconfidenceを同一rowで移植した28条件を比較する。
-`court_side_wrong_cases.py` はrun29の3誤判定のcamera/点/支持frameを元RNGから再現する。
-方法と判定規則は[run30事前登録](../../knowledge/runs/run-i935-correlated-safety-r30-20261001/protocol.md)が正本。
-
-`court_side_unfiltered.py --dataset <元dataset> --bank <固定bank> --original <元#932report> --previous <r30report> --output <新規dir>`
-は同じ28条件×400scene、seed1/30001とhash付き入力で、productionの`BallPointsModule`を各cameraに実行する。
-元#932とr30の未選別集計を条件ごとに照合し、全22,400判定を保存するCPU回帰bench。
-フィルタ廃止後も過去の比較を再現するため、上記confidence系benchは
-`legacy_ball_confidence.py`と`legacy_ball_confidence.yaml`を使う。これらはproductionの設定・依存ではない。
+GMM・2D Refinerとそれに依存するcontext / confidence / court-side比較の実行入口は廃止した。
+過去の結果・制約・再現commitは `knowledge/nodes/ball_refiner/` と `knowledge/nodes/court_side/` に保存している。
+現在の3D Refinerの学習・比較は [task README](../../src/tasks/ball_refiner_3d/README.md)を参照。

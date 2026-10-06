@@ -73,7 +73,7 @@
 ### どこに何があるか（タスク）
 
 - Ball Detection: 画像上の2Dボール位置（`src/tasks/ball_detection`）
-- Ball Refiner: 座標時系列による2D・3Dボール軌道の欠損補完とノイズ除去（[学習設計・モデル契約](src/tasks/ball_refiner/README.md)）
+- 3D Ball Refiner: 3D座標・欠損maskから全frame軌道とイベント確率を推論（[学習設計・モデル契約](src/tasks/ball_refiner_3d/README.md)）
 - Court Detection: 14点コートキーポイント（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
