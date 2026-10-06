@@ -1,0 +1,13 @@
+# Keep architecture, optimizer and GAN timing identical to coordinate_gan.
+defaults:
+  - coordinate_gan
+  - _self_
+
+reconstruction:
+  initial_weight: 1.0
+  final_weight: 0.0
+  start_step: 2000
+  decay_steps: 1000
+
+gan:
+  target_weight: 1.0

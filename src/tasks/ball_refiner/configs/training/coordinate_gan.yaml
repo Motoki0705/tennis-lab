@@ -7,6 +7,12 @@ evaluate_every: 500
 log_every: 100
 cpu_threads: 2
 
+reconstruction:
+  initial_weight: 1.0
+  final_weight: 1.0
+  start_step: 0
+  decay_steps: 1
+
 # BLCS-style pure-supervised phase, linear GAN warmup, then constant target.
 # This runner counts generator updates rather than dataset epochs.
 gan:

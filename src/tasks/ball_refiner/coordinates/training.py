@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -20,6 +21,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.tasks.ball_refiner.coordinates.config import (
     CorruptionConfig,
     ModelConfig,
+    ReconstructionConfig,
     TrainingConfig,
     parse_gan,
     parse_section,
@@ -35,6 +37,10 @@ from src.tasks.ball_refiner.coordinates.evaluation import evaluate
 from src.tasks.ball_refiner.coordinates.inference import (
     checkpoint_metadata,
     load_checkpoint,
+)
+from src.tasks.ball_refiner.coordinates.losses import (
+    generator_objective,
+    reconstruction_weight_at,
 )
 from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
 from src.tasks.ball_refiner.coordinates.models.discriminators import (
@@ -69,11 +75,39 @@ def corruption_audit(data: list[PreparedRally]) -> dict[str, float]:
     }
 
 
+def evaluate_checkpoint(checkpoint: Path, prediction_dir: Path, test: list[PreparedRally], device: torch.device, *, seed: int, batch_size: int, common_metadata: dict[str, Any]) -> dict[str, Any]:
+    """Bind each saved evaluation to its checkpoint and the fixed test inputs."""
+    from src.tasks.ball_refiner.coordinates.visualization import plot_predictions
+
+    selected, metadata = load_checkpoint(checkpoint, device)
+    report, predictions = evaluate(selected, test, device, seed=seed, batch_size=batch_size)
+    report.update(common_metadata)
+    report.update(checkpoint_kind=checkpoint.stem, checkpoint_step=metadata["step"],
+                  checkpoint_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+                  validation_rmse=metadata["validation_rmse"], gan_weight=metadata["gan_weight"],
+                  reconstruction_weight=metadata["reconstruction_weight"])
+    prediction_dir.mkdir()
+    with (prediction_dir / "pred_test.npz").open("xb") as stream:
+        np.savez_compressed(stream, allow_pickle=False, **predictions)
+    unit = report["unit"]
+    metrics = {f"test_rmse_{unit}": report["all"]["rmse"], f"test_missing_rmse_{unit}": report["missing"]["rmse"],
+               f"test_event_rmse_{unit}": report["event"]["rmse"], "test_frame_missing_rate": report["frame_missing_rate"],
+               "inference_ms_per_frame": report["milliseconds_per_frame"], "best_step": common_metadata["best_step"],
+               "checkpoint_kind": checkpoint.stem, "checkpoint_step": metadata["step"]}
+    write_json_atomic(prediction_dir / "metrics.json", metrics)
+    write_json_atomic(prediction_dir / "diagnostic_metrics.json", report)
+    plot_predictions(predictions, prediction_dir / "examples.png", dimensions=selected.config.dimensions)
+    if os.environ.get("TENNIS_REPRO_DIR"):
+        shutil.copytree(prediction_dir, Path(os.environ["TENNIS_REPRO_DIR"]) / prediction_dir.name, dirs_exist_ok=True)
+    return metrics
+
+
 def run_training(config: DictConfig) -> Path:
     raw, dataset_path, output = training_config(config)
     model_config = parse_section(ModelConfig, raw["model"])
-    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key != "gan"})
+    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key not in {"gan", "reconstruction"}})
     gan, discriminator_config = parse_gan(raw["training"]["gan"])
+    reconstruction_config = parse_section(ReconstructionConfig, raw["training"]["reconstruction"])
     corruption = parse_section(CorruptionConfig, raw["corruption"])
     seed = int(raw["run"]["seed"])
     device = resolve_device(raw["run"]["device"])
@@ -121,7 +155,7 @@ def run_training(config: DictConfig) -> Path:
     best_step = 0
     start = time.monotonic()
     training_data: list[PreparedRally] = []
-    sums: dict[str, float] = {"reconstruction": 0, "generator_gan": 0, "discriminator": 0, "gan_weight": 0, "weighted_gan": 0, "total": 0}
+    sums: dict[str, float] = dict.fromkeys(("reconstruction", "reconstruction_weight", "weighted_reconstruction", "generator_gan", "discriminator", "gan_weight", "weighted_gan", "total"), 0.0)
     try:
         for step in range(1, train.steps + 1):
             if (step - 1) % train.evaluate_every == 0:
@@ -137,11 +171,12 @@ def run_training(config: DictConfig) -> Path:
             gan_loss = coordinates.new_zeros(())
             disc_loss = coordinates.new_zeros(())
             gan_weight = gan_weight_at(step - 1, start=gan.start_step, warmup=gan.warmup_steps, target=gan.target_weight) if gan.enabled else 0.0
+            reconstruction_weight = reconstruction_weight_at(step - 1, reconstruction_config)
             if model_config.architecture == "flow":
                 reconstruction = model.flow_loss(coordinates, missing, target, flow_rng)
             else:
                 prediction = model(coordinates, missing)
-                reconstruction = F.smooth_l1_loss(prediction, target, beta=0.02)
+                reconstruction = F.smooth_l1_loss(prediction if reconstruction_weight > 0 else prediction.detach(), target, beta=0.02)
                 if discriminator is not None and disc_optimizer is not None and gan_weight > 0:
                     discriminator.train()
                     discriminator.requires_grad_(True)
@@ -152,7 +187,7 @@ def run_training(config: DictConfig) -> Path:
                     disc_optimizer.step()
                     discriminator.requires_grad_(False)
                     gan_loss = adversarial.generator_loss(discriminator(prediction))
-            loss = reconstruction + gan_weight * gan_loss
+            loss = generator_objective(reconstruction, gan_loss, reconstruction_weight=reconstruction_weight, gan_weight=gan_weight)
             if not torch.isfinite(loss):
                 raise RuntimeError(f"Nonfinite training loss at step {step}")
             loss.backward()
@@ -162,11 +197,13 @@ def run_training(config: DictConfig) -> Path:
             for key, value in (("reconstruction", reconstruction), ("generator_gan", gan_loss), ("discriminator", disc_loss)):
                 sums[key] += float(value.detach())
             sums["gan_weight"] += gan_weight
+            sums["reconstruction_weight"] += reconstruction_weight
+            sums["weighted_reconstruction"] += reconstruction_weight * float(reconstruction.detach())
             sums["weighted_gan"] += gan_weight * float(gan_loss.detach())
             sums["total"] += float(loss.detach())
             if step % train.log_every == 0:
                 row = {key: value / train.log_every for key, value in sums.items()}
-                row.update(step=step, seconds=time.monotonic() - start, gan_weight_current=gan_weight)
+                row.update(step=step, seconds=time.monotonic() - start, gan_weight_current=gan_weight, reconstruction_weight_current=reconstruction_weight)
                 for key, value in row.items():
                     writer.add_scalar(f"train/{key}", value, step)
                 with (output / "learning_curve.jsonl").open("a") as stream:
@@ -185,6 +222,7 @@ def run_training(config: DictConfig) -> Path:
                            "manifest_sha256": dataset.manifest_hash, "validation_rmse": score,
                            "discriminator": discriminator.state_dict() if discriminator else None,
                            "gan_config": raw["training"]["gan"], "gan_weight": gan_weight,
+                           "reconstruction_config": raw["training"]["reconstruction"], "reconstruction_weight": reconstruction_weight,
                            "disc_optimizer": disc_optimizer.state_dict() if disc_optimizer else None,
                            "torch_rng": torch.get_rng_state(), "flow_rng": flow_rng.get_state(),
                            "sampling_rng": sampling.bit_generator.state}
@@ -197,30 +235,19 @@ def run_training(config: DictConfig) -> Path:
                 print(json.dumps({"step": step, "validation_rmse": score, "best_step": best_step}), flush=True)
         # Test is only opened after checkpoint selection is complete.
         del training_data, validation
-        selected, _ = load_checkpoint(checkpoint_dir / "best.ckpt", device)
         test = prepare(dataset.split("test"), model_config.dimensions, eval_config, evaluation_seed)
-        report, predictions = evaluate(selected, test, device, seed=evaluation_seed, batch_size=train.batch_size)
-        report.update(best_step=best_step, validation_rmse=best, training_seconds=time.monotonic() - start,
-                      peak_gpu_memory_bytes=int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0,
-                      test_corruption_audit=corruption_audit(test), dataset_manifest_sha256=dataset.manifest_hash)
-        prediction_dir = output / "predictions"
-        prediction_dir.mkdir()
-        with (prediction_dir / "pred_test.npz").open("xb") as stream:
-            np.savez_compressed(stream, allow_pickle=False, **predictions)
-        unit = report["unit"]
-        metrics = {f"test_rmse_{unit}": report["all"]["rmse"], f"test_missing_rmse_{unit}": report["missing"]["rmse"],
-                   f"test_event_rmse_{unit}": report["event"]["rmse"], "test_frame_missing_rate": report["frame_missing_rate"],
-                   "inference_ms_per_frame": report["milliseconds_per_frame"], "best_step": best_step}
-        write_json_atomic(prediction_dir / "metrics.json", metrics)
-        write_json_atomic(prediction_dir / "diagnostic_metrics.json", report)
-        from src.tasks.ball_refiner.coordinates.visualization import plot_predictions
-        plot_predictions(predictions, prediction_dir / "examples.png", dimensions=model_config.dimensions)
+        common_metadata = {"best_step": best_step, "training_seconds": time.monotonic() - start,
+                           "peak_gpu_memory_bytes": int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0,
+                           "test_corruption_audit": corruption_audit(test), "dataset_manifest_sha256": dataset.manifest_hash}
+        metrics = evaluate_checkpoint(checkpoint_dir / "best.ckpt", output / "predictions", test, device,
+                                      seed=evaluation_seed, batch_size=train.batch_size, common_metadata=common_metadata)
+        last_metrics = evaluate_checkpoint(checkpoint_dir / "last.ckpt", output / "predictions_last", test, device,
+                                           seed=evaluation_seed, batch_size=train.batch_size, common_metadata=common_metadata)
         if os.environ.get("TENNIS_REPRO_DIR"):
             repro = Path(os.environ["TENNIS_REPRO_DIR"])
-            shutil.copytree(prediction_dir, repro / "predictions", dirs_exist_ok=True)
             (repro / "output_dir.txt").write_text(str(checkpoint_dir) + "\n")
-        write_json_atomic(output / "state.json", {"status": "complete", "step": train.steps, "best_step": best_step, **metrics})
-        print(json.dumps({"output": str(output), **metrics}), flush=True)
+        write_json_atomic(output / "state.json", {"status": "complete", "step": train.steps, **metrics, "last_metrics": last_metrics})
+        print(json.dumps({"output": str(output), **metrics, "last_metrics": last_metrics}), flush=True)
     except BaseException as error:
         write_json_atomic(output / "state.json", {"status": "failed", "error": repr(error)})
         raise

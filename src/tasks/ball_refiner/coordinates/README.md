@@ -81,9 +81,18 @@ BLCS/PLCSのepochスケジュールと同じ共通関数を更新回数に適用
 G/DともAdamWを使い、GAN有効期間はD1回/G1回。Gの学習率だけ全学習期間でcosine減衰する。
 TensorBoardとJSONLへ復元loss、生GAN loss、重み付きGAN loss、合計、実際の係数を記録する。
 
+位置lossを後半で0へ減衰させる実験は [`training=coordinate_gan_only`](../configs/training/coordinate_gan_only.yaml) を選ぶ。
+GANの開始・増加期間を保ち、最大係数を1にする。復元係数は最初の2,000更新で1、続く1,000更新で0へ線形減衰し、最後の1,000更新はGANだけでGeneratorを更新する。
+復元誤差は係数0でも診断用に記録するが、更新の計算グラフから外す。
+2D/3Dの登録は [GAN-only queue script](../../../../tests/benchmarks/ball_refiner_gan_only.sh) を使う。
+通常の `coordinate_gan` は復元係数1を維持し、Flow比較にも使用できる。
+
 validationの全frame RMSEでcheckpointを選び、その後だけtestを評価する。
 `outputs/ball_refiner/train/<条件>/<run>/` に設定・劣化監査・TensorBoard・best/last checkpointと
-`predictions/{pred_test.npz,metrics.json,diagnostic_metrics.json,examples.png}` を保存する。
+`predictions/{pred_test.npz,metrics.json,diagnostic_metrics.json,examples.png}`（best）を保存する。
+最終更新のlastも同じtest入力で評価し、同形式の `predictions_last/` に保存する。
+各診断JSONはcheckpointの更新回数・hash・loss係数と評価入力hashを持つ。
+GAN-onlyの評価ではbestの選択時点が移行前の可能性があるため、lastの結果を必ず区別する。
 RMSEは軸平均でなくユークリッド距離の二乗平均平方根。全体・欠損・観測・イベント近傍を分け、
 線形補間対照と実際のframe欠損率も残す。学習曲線と実験結論は `knowledge/` に登録する。
 
