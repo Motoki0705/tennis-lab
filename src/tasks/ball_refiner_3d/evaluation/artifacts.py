@@ -13,6 +13,7 @@ import torch
 
 from src.tasks.ball_refiner_3d.data.schema import PreparedRally
 from src.tasks.ball_refiner_3d.evaluation.evaluator import evaluate
+from src.tasks.ball_refiner_3d.evaluation.physics import physics_metrics
 from src.tasks.ball_refiner_3d.model_io.checkpoint import load_checkpoint
 from src.tasks.ball_refiner_3d.visualization.plots import plot_predictions
 from src.utils.io import write_json_atomic
@@ -32,7 +33,7 @@ def evaluate_checkpoint(
 
     selected, metadata = load_checkpoint(checkpoint, device)
     report, predictions = evaluate(
-        selected, test, device, seed=seed, batch_size=batch_size
+        selected, test, device, seed=seed, batch_size=batch_size, physics=True
     )
     report.update(common_metadata)
     report.update(
@@ -56,6 +57,7 @@ def evaluate_checkpoint(
         "checkpoint_step": metadata["step"],
         "test_event_brier": report["event_probability"]["brier"],
         "test_event_soft_ce": report["event_probability"]["soft_cross_entropy"],
+        **physics_metrics(report["physics"]),
     }
     if "best_step" in common_metadata:
         metrics["best_step"] = common_metadata["best_step"]
