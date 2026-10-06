@@ -1,7 +1,7 @@
 """Scene generator for BLCS dataset generation (rally-only scene format).
 
 Per-scene variation:
-- Physics constants (gravity, drag, magnus, restitution, friction)
+- Physics constants (drag, magnus) and the court surface
 - Wind (speed + direction)
 - Court geometry (net post position)
 - Camera intrinsics and look-at direction
@@ -33,6 +33,9 @@ from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
     NUM_CELLS_PER_SIDE,
     CellManager,
 )
+from src.tasks.blcs.generate_dataset.simulation.physics_record import (
+    build_physics_record,
+)
 from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
     RallyConfig,
     RallySimulator,
@@ -40,6 +43,7 @@ from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
 )
+from src.utils.physics.ball.record import BallPhysicsRecord
 from src.utils.projection.camera_projector import (
     CameraConfig,
     CameraProjector,
@@ -93,6 +97,7 @@ class BLCSSceneData:
 
     cameras: list[CameraData]
     num_cameras_sampled: int  # Total cameras tried (before filtering)
+    physics_record: BallPhysicsRecord  # verified field/event ground truth
 
     fps_out: float
     sim_fps: float
@@ -271,8 +276,9 @@ class BLCSSceneGenerator:
         rally_simulator = self._build_rally_simulator(physics_config)
         physics = BallPhysics(physics_config)
 
-        # 3. Generate rally
+        # 3. Generate rally and its verified physics record
         rally_result = rally_simulator.generate_rally(from_cell, side)
+        physics_record = build_physics_record(rally_result, physics_config)
 
         # 4. Generate cameras (with sampled court geometry)
         valid_cameras = self._generate_valid_cameras(
@@ -318,6 +324,7 @@ class BLCSSceneGenerator:
             ball_vel_norm=normalize_court_velocity(rally_result.velocities),
             cameras=valid_cameras,
             num_cameras_sampled=num_cameras_sampled,
+            physics_record=physics_record,
             fps_out=rally_result.fps_out,
             sim_fps=rally_result.sim_fps,
             physics_config_dict=physics_config.to_dict(),

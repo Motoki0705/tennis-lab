@@ -1,7 +1,6 @@
 """Scientific/data contracts for the shared coordinate refiner strategy."""
 
 from dataclasses import replace
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -16,7 +15,6 @@ from src.tasks.ball_refiner_3d.configuration.model import (
 )
 from src.tasks.ball_refiner_3d.data.augmentation.noise import coordinate_noise
 from src.tasks.ball_refiner_3d.data.preprocessing import corrupt_trajectory
-from src.tasks.ball_refiner_3d.generate_dataset.blcs_adapter import event_frames
 from src.tasks.ball_refiner_3d.generate_dataset.cameras import (
     sample_cameras,
     sample_visible_cameras,
@@ -136,28 +134,6 @@ def test_ablation_changes_selection_only_not_noise_or_gap_geometry(corruption):
     assert set(map(tuple, low.intervals)) <= set(map(tuple, high.intervals))
     both = ~low.missing_2d & ~high.missing_2d
     np.testing.assert_array_equal(low.uv_px[both], high.uv_px[both])
-
-
-def test_phantom_bounces_after_return_are_excluded_before_rounding():
-    def shot(start, returned, bounces):
-        return SimpleNamespace(
-            t_start=start,
-            t_return=returned,
-            t_bounce1=bounces[0],
-            t_bounce2=bounces[1],
-            t_bounce3=bounces[2],
-        )
-
-    result = SimpleNamespace(
-        trajectory=np.zeros((80, 3)),
-        shot_events=[shot(0, 35, [20, 36, 60]), shot(36, -1, [64, -1, -1])],
-    )
-    events = event_frames(result, stride=4)
-    # 36 is a real next shot but a hypothetical previous bounce, in same output bin.
-    assert events[9] == 1
-    assert events[5] == 2
-    assert events[15] == 0
-    assert events[16] == 2
 
 
 @pytest.mark.parametrize("dimensions,architecture", [(3, "regression"), (3, "flow")])

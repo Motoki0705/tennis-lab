@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 
 from src.tasks.ball_refiner_3d.data.schema import SCHEMA, Rally
+from src.utils.physics.ball.record import BallPhysicsRecord, record_keys
 
 
 class SharedDataset:
@@ -47,36 +48,27 @@ class SharedDataset:
             with np.load(path, allow_pickle=False) as payload:
                 arrays = {
                     key: payload[key]
-                    for key in (
-                        "xyz_m",
-                        "uv_px",
-                        "visible",
-                        "projection",
-                        "events",
-                        "time_s",
-                    )
+                    for key in ("xyz_m", "uv_px", "visible", "projection", "time_s")
                 }
+                physics = BallPhysicsRecord.from_arrays(
+                    {key: payload[key] for key in record_keys()}
+                )
             frames, views = record["frames"], self.manifest["views"]
             shapes = {
                 "xyz_m": (frames, 3),
                 "uv_px": (views, frames, 2),
                 "visible": (views, frames),
                 "projection": (views, 3, 4),
-                "events": (frames,),
                 "time_s": (frames,),
             }
             if any(arrays[key].shape != shape for key, shape in shapes.items()) or any(
                 not np.isfinite(value).all() for value in arrays.values()
             ):
                 raise ValueError(f"Invalid rally arrays: {record['id']}")
-            if (
-                arrays["visible"].dtype != np.bool_
-                or arrays["events"].dtype != np.uint8
-                or (arrays["events"] > 3).any()
-            ):
-                raise ValueError(
-                    "Visibility/event dtypes are part of the dataset contract"
-                )
+            if arrays["visible"].dtype != np.bool_:
+                raise ValueError("Visibility dtype is part of the dataset contract")
+            if physics.frames != frames or physics.output_fps != self.fps:
+                raise ValueError(f"Physics record does not match: {record['id']}")
             if not np.allclose(arrays["time_s"], np.arange(frames) / self.fps):
                 raise ValueError("Rally sampling does not match the dataset FPS")
             self.rallies.append(
@@ -88,8 +80,9 @@ class SharedDataset:
                     arrays["uv_px"],
                     arrays["visible"],
                     arrays["projection"],
-                    arrays["events"],
+                    physics.event_mask(),
                     arrays["time_s"],
+                    physics,
                 )
             )
         if {r.split for r in self.rallies} != {"train", "val", "test"}:
