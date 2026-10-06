@@ -90,6 +90,9 @@ def serve(
     module = import_module(f"src.tasks.{task}.visualization.inference.service")
     service = module.DetectionService(**values)
     config = {name: str(value) for name, value in values.items()}
-    app = create_detection_app(service, task=task, mode=mode, service_config=config)
+    app = create_detection_app(
+        service, task=task, mode=mode, service_config=config,
+        play_intervals=service.play_intervals if task == "ball_detection" and mode == "review" else None,
+    )
     print(f"{task} {mode}: http://127.0.0.1:{port}", flush=True)
     uvicorn.run(app, host="127.0.0.1", port=port)

@@ -61,6 +61,7 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 - **`io/clip.py`**: storeのclipから推論/描画用テンソルを構築（`visualization.store_dir` と `clip_id` を指定）。
 - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
 - **`review/datasets.py`**: `BallDatasetCatalog`。ball storeの全versionを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
+- **`review/play_intervals.py`**: 選択clipのプレイ・除外候補、教師窓被覆、存在証拠を同じ注釈・PTSから計算してWebUIへ返す。
 - **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
 - **`inference/loader.py`**: `load_ball_model()`。共通checkpoint loaderを使い、レビュー用の入力サイズ・窓長を検証する。
 - **`inference/peaks.py`**: `decode_frame_peaks()`。canonicalなthreshold/NMS/top-k + subpixel refineで複数peakをstored image pixelへ写す。
@@ -71,7 +72,7 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 - **`frame_store/`**: 統一 frame store の生成。`sources/{tracknet,meiji,chat_annotation}.py` が各注釈形式を検証して `ClipSpec`(`clip.py`)へ写し、`builder.py` が split 割当・JPEG shard 化・アトミック publish を行う。設定は `configs/generate_dataset.yaml`(`config.py` で厳密検証)、入口は `scripts/generate_dataset.py`。
 
 ### scripts/
-- **`review_play_intervals.py`**: CPUの区間推定・実画像レビュー。
+- **`review_dataset.py`**: 画像・GT・プレイ区間候補を閲覧するWebUI。
 - **`train_mdd_pose.py`**: レビュー後に使うMDD＋pose座標モデルの学習入口。epoch/学習率/seedを明示し、testを読まない。
 - **`generate_dataset.py`**: 統一 frame store の生成エントリポイント。
 - **`train.py`**: 固定長フレーム窓での通常学習エントリポイント。
@@ -121,6 +122,7 @@ ball_detection固有のsourceと互換契約だけを記す。
 | id | 実体 | mode | 備考 |
 |---|---|---|---|
 | `store/<version>` | `data/ball_detection/<version>` | temporal | TrackNet・Meiji・chat_annotation。1 camera-clip = 1 scene |
+| `pose-approved/<name>` | `--play-poses`で指定したpose datasetのball snapshot | temporal | pose承認済みclipだけ。起動方法は[利用ガイド](visualization/README.md#プレイ区間の候補) |
 
 scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結果として
 解決する。任意pathを受け取るAPIは提供しない。
@@ -159,6 +161,9 @@ scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結�
 - 読み取りはconfigured root内に限定する。root外へ解決される `*.ckpt`
   symlinkは `error` 付きで拒否し、root外を指すstoreやshard
   symlinkはstoreを unavailable にして理由に残す。
+- pose reviewは明示指定したdata root内のpose manifestを読み、その参照先をproject root内の
+  snapshotに限定する。metadata/indexのhash、clip集合の一致とshardのstore内配置を検証し、
+  live storeへ置き換えない。破損時は理由付きでdatasetを無効にする。
 
 ### checkpoint互換
 

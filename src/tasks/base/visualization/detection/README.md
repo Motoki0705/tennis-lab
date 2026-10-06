@@ -32,6 +32,7 @@ repoのPython環境から、次のmoduleを実行します。既定のproject ro
 - `GET /api/scenes?dataset=...&search=...&offset=0&limit=100&checkpoint=...`: source内scene一覧。
 - `GET /api/preview?scene=...&start=0&count=1`: original sizeとframeごとのGT。
 - `GET /api/image?scene=...&frame=0`: 原画像JPEG。
+- `GET /api/play-intervals?scene=...`: Ball dataset reviewの区間候補。`catalog.play_intervals_available`で対応を通知し、未対応mode/taskは404。区間は0始まりの`[start, stop)`、時刻はclip先頭からの実PTS秒。[表示・対象選択](../../../ball_detection/visualization/README.md#プレイ区間の候補)。
 - `POST /api/infer`: `{checkpoint,scene,start,count,threshold,device}`。review modeでは拒否。
 
 frame layerは`points`とPNG data URLの`rasters`を持ちます。pointsはfiniteなpixel座標、rastersは`name,data`と任意の`legend`です。バックエンドはscene IDをserver-side catalogで解決し、任意ファイル読み込みAPIは提供しません。1要求最大64frames、推論はserverごとに同時1件です。

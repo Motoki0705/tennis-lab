@@ -15,6 +15,7 @@ from typing import Any, Final, Literal, Protocol
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.ball_detection.data.play_manifest import load_pose_snapshot
 from src.tasks.ball_detection.data.store import (
     METADATA_FILE,
     SHARDS_DIR,
@@ -23,6 +24,7 @@ from src.tasks.ball_detection.data.store import (
 )
 from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.ball_detection.visualization.io.store_frames import StoreSceneFrames
+from src.utils.checksum import FileIntegrityError
 
 SceneMode = Literal["temporal"]
 
@@ -38,6 +40,7 @@ class BallDatasetSpec:
     label: str
     relative: str
     mode: SceneMode
+    pose_approved: bool = False
 
 
 class BallDatasetCatalogError(ValueError):
@@ -157,8 +160,15 @@ def _natural_key(relative: str) -> tuple[tuple[int, object], ...]:
 class BallDatasetCatalog:
     """Enumerate the ball-detection datasets, scenes, and frames read-only."""
 
-    def __init__(self, data_root: str | Path) -> None:
+    def __init__(
+        self, data_root: str | Path, *, play_poses: Path | None = None,
+        project_root: Path | None = None,
+    ) -> None:
         self.data_root = Path(data_root).expanduser()
+        if play_poses is not None and project_root is None:
+            raise ValueError("Pose review requires an explicit project root")
+        self.play_poses = play_poses
+        self.project_root = project_root
         self._refs: dict[str, tuple[SceneRef, ...]] = {}
         self._ref_index: dict[str, dict[str, SceneRef]] = {}
         # The availability reason is part of the cache: a dataset that cannot be
@@ -200,10 +210,22 @@ class BallDatasetCatalog:
                 for version in versions
                 if version.is_dir() and (version / METADATA_FILE).is_file()
             )
+            if self.play_poses is not None:
+                self._specs = (BallDatasetSpec(
+                    f"pose-approved/{self.play_poses.name}",
+                    f"Pose承認済み ({self.play_poses.name})",
+                    "", "temporal", pose_approved=True,
+                ), *self._specs)
         return self._specs
 
     def root_of(self, spec: BallDatasetSpec) -> Path:
         """Return the absolute root directory of one dataset source."""
+        if spec.pose_approved:
+            store = self._ball_stores.get(spec.id)
+            if store is not None:
+                return Path(store.directory)
+            assert self.play_poses is not None
+            return self.play_poses
         return (self.data_root / spec.relative).resolve()
 
     def spec(self, dataset_id: str) -> BallDatasetSpec:
@@ -266,15 +288,26 @@ class BallDatasetCatalog:
     def _ball_refs(
         self, spec: BallDatasetSpec
     ) -> tuple[tuple[SceneRef, ...], str | None]:
-        root = self.data_root / spec.relative
+        approved: set[str] | None = None
         try:
-            _require_within(root, self.data_root, what="ball store")
+            if spec.pose_approved:
+                assert self.play_poses is not None and self.project_root is not None
+                _require_within(self.play_poses, self.data_root, what="pose dataset")
+                pose, store, _ = load_pose_snapshot(self.play_poses, allowed_store_root=self.project_root)
+                root = store.directory
+                approved = {e["clip_id"] for e in pose["clips"] if e["pose_status"] == "approved"}
+                if not approved:
+                    raise ValueError("No approved pose clips exist")
+            else:
+                root = self.data_root / spec.relative
+                _require_within(root, self.data_root, what="ball store")
             for name in (METADATA_FILE, "index.npz"):
                 _require_within(root / name, root, what="store index")
-            store = BallFrameStore(root.resolve())
+            if not spec.pose_approved:
+                store = BallFrameStore(root.resolve())
             for clip in store.clips:
                 _require_within(root / SHARDS_DIR / shard_name(clip.index), root, what="shard")
-        except (OSError, ValueError, KeyError) as error:
+        except (OSError, ValueError, KeyError, FileIntegrityError) as error:
             return (), str(error)
         self._ball_stores[spec.id] = store
         return tuple(
@@ -284,7 +317,13 @@ class BallDatasetCatalog:
                 clip_id=clip.clip_id,
             )
             for clip in sorted(store.clips, key=lambda clip: _natural_key(clip.clip_id))
+            if approved is None or clip.clip_id in approved
         ), None
+
+    def store_clip(self, dataset_id: str, local_id: str) -> tuple[BallFrameStore, str]:
+        """Resolve annotation access through the same catalog as RGB/GT."""
+        ref = self.scene_ref(dataset_id, local_id)
+        return self._ball_stores[dataset_id], ref.clip_id
 
     def resolve(self, dataset_id: str, local_id: str) -> SceneFrames:
         """Resolve one catalogued store clip to its frame accessor."""

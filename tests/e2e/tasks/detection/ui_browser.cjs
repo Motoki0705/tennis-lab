@@ -27,6 +27,23 @@ fs.mkdirSync(outputDir, { recursive: true });
     page.on("pageerror", (error) => errors.push(error.message));
     let pending = null;
     let inferCount = 0;
+    let mode = "inference";
+    let holdPlayScene = null;
+    let pendingPlay = null;
+    let failPlay = false;
+    const proposal = (scene) => ({
+      scene, frames: 150, pose_approved: true,
+      config: {window_length: 32, window_stride: 16, max_gap_seconds: 0.4,
+        min_presence_fraction: 0.5, min_observed_frames: 8},
+      timestamps: Array.from({length: 150}, (_, i) => i / 30),
+      play: scene === "scene1" ? [[20, 80]] : [[0, 150]],
+      excluded: scene === "scene1" ? [[0, 20], [80, 150]] : [],
+      training: scene === "scene1" ? [[20, 80]] : [],
+      presence: [[20, 45], [50, 80]], bridged: [[45, 50]],
+      counts: {play: scene === "scene1" ? 60 : 150,
+        excluded: scene === "scene1" ? 90 : 0,
+        training: scene === "scene1" ? 60 : 0, windows: scene === "scene1" ? 3 : 0},
+    });
     const scenes = [
       { id: "scene1", label: "game1 / Clip1", frames: 150 },
       { id: "scene2", label: "game2 / Clip2", frames: 150 },
@@ -39,7 +56,8 @@ fs.mkdirSync(outputDir, { recursive: true });
         return json({
           task: "ball_detection",
           title: "Ball Detection",
-          mode: "inference",
+          mode,
+          play_intervals_available: mode === "review",
           cuda_available: true,
           datasets: [
             {
@@ -73,6 +91,15 @@ fs.mkdirSync(outputDir, { recursive: true });
         });
       if (p === "/api/scenes")
         return json({ items: scenes, total: scenes.length });
+      if (p === "/api/play-intervals") {
+        const scene = url.searchParams.get("scene");
+        if (scene === holdPlayScene) {
+          pendingPlay = {route, scene};
+          return;
+        }
+        if (failPlay) return route.fulfill({status: 422, json: {detail: "snapshot mismatch"}});
+        return json(proposal(scene));
+      }
       if (p === "/api/preview") {
         const index = Number(url.searchParams.get("start"));
         return json({
@@ -109,6 +136,7 @@ fs.mkdirSync(outputDir, { recursive: true });
           "app.js",
           "viewer.mjs",
           "icons.mjs",
+          "play_intervals.mjs",
           "style.css",
         ].includes(file)
       )
@@ -198,6 +226,50 @@ fs.mkdirSync(outputDir, { recursive: true });
       () => document.getElementById("status").textContent === "GT + Prediction",
     );
     assert.equal(inferCount, 2);
+    assert.equal(await page.locator("#play-intervals").isVisible(), false);
+    mode = "review";
+    await page.reload();
+    await page.locator("#play-frame-state").waitFor();
+    assert.equal(await page.locator(".play-track").count(), 3);
+    assert.match(await page.locator("#play-frame-state").textContent(), /除外候補/);
+    await page.getByRole("button", {name: "次の区間境界"}).click();
+    await page.waitForFunction(() => document.getElementById("frame-name").textContent === "frame_20.jpg");
+    assert.match(await page.locator("#play-frame-state").textContent(), /プレイ候補 · 教師窓内/);
+    const track = page.locator(".play-track").first();
+    let trackBox = await track.boundingBox();
+    await track.click({position: {x: trackBox.width * 90.5 / 150, y: 8}});
+    await page.waitForFunction(() => document.getElementById("frame-name").textContent === "frame_90.jpg");
+    assert.match(await page.locator("#play-frame-state").textContent(), /除外候補 · 教師窓外/);
+    await track.press("ArrowRight");
+    await page.waitForFunction(() => document.getElementById("frame-name").textContent === "frame_91.jpg");
+    await page.locator("#seek").evaluate((el) => {
+      el.value = "45"; el.dispatchEvent(new Event("input"));
+    });
+    await page.waitForFunction(() => document.getElementById("play-frame-state").textContent.includes("frame 45"));
+    assert.match(await page.locator("#play-frame-state").textContent(), /欠損を連結/);
+    assert.equal(await track.getAttribute("aria-valuenow"), "45");
+    await page.click("#play");
+    await page.waitForFunction(() => Number(document.querySelector(".play-track").getAttribute("aria-valuenow")) > 45);
+    await page.click("#play");
+    holdPlayScene = "scene1";
+    await page.locator(".scene").first().click();
+    while (!pendingPlay) await page.waitForTimeout(10);
+    assert.equal(await page.locator(".play-track").count(), 0);
+    await page.locator(".scene").nth(1).click();
+    await page.waitForFunction(() => document.getElementById("play-frame-state")?.textContent.includes("プレイ候補 · 教師窓外"));
+    await pendingPlay.route.fulfill({json: proposal(pendingPlay.scene)});
+    pendingPlay = null;
+    holdPlayScene = null;
+    await page.waitForTimeout(100);
+    assert.equal(await page.locator(".play-segment.excluded").count(), 0);
+    assert.match(await page.locator("#play-frame-state").textContent(), /プレイ候補 · 教師窓外/);
+    failPlay = true;
+    await page.locator(".scene").first().click();
+    await page.waitForFunction(() => document.getElementById("play-intervals").textContent.includes("snapshot mismatch"));
+    assert.equal(await page.locator(".play-track").count(), 0);
+    failPlay = false;
+    await page.locator(".scene").first().click();
+    await page.locator("#play-frame-state").waitFor();
     for (const [width, height] of [
       [1440, 1000],
       [800, 1000],
@@ -225,6 +297,9 @@ fs.mkdirSync(outputDir, { recursive: true });
         }),
       );
       assert.ok(bounds.every(Boolean), `transport bounds ${width}`);
+      const panel = await page.locator("#play-intervals").boundingBox();
+      const center = await page.locator(".center").boundingBox();
+      assert.ok(panel.y + panel.height <= center.y + center.height + 1, `timeline bounds ${width}`);
       await page.screenshot({
         path: path.join(outputDir, `detection-${width}.png`),
         fullPage: true,
@@ -232,7 +307,7 @@ fs.mkdirSync(outputDir, { recursive: true });
     }
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: source image, zoom/pan, filtering, playback seek, inference selection race, retry, responsive bounds",
+      "PASS: image/GT, inference regression, play timeline seek/keyboard/playback, stale proposals/error handling, responsive bounds",
     );
   } finally {
     await browser.close();

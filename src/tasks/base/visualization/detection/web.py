@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
@@ -74,6 +75,7 @@ def create_detection_app(
     task: DetectionTask,
     mode: Literal["review", "inference"],
     service_config: dict[str, Any],
+    play_intervals: Callable[[str], dict[str, Any]] | None = None,
 ) -> FastAPI:
     app = FastAPI(title=f"{task} {mode}", docs_url=None, redoc_url=None)
     app.add_middleware(
@@ -116,7 +118,7 @@ def create_detection_app(
 
     @app.get("/static/{name}")
     def static(name: str) -> FileResponse:
-        if name not in {"app.js", "viewer.mjs", "style.css", "icons.mjs"}:
+        if name not in {"app.js", "viewer.mjs", "style.css", "icons.mjs", "play_intervals.mjs"}:
             raise HTTPException(404)
         return FileResponse(
             STATIC / name,
@@ -129,6 +131,7 @@ def create_detection_app(
             **service.catalog(),
             "mode": mode,
             "cuda_available": torch.cuda.is_available(),
+            "play_intervals_available": play_intervals is not None,
         }
 
     @app.get("/api/scenes")
@@ -150,6 +153,12 @@ def create_detection_app(
     @app.get("/api/image")
     def image(scene: str, frame: int = Query(0, ge=0)) -> Response:
         return Response(service.image(scene, frame), media_type="image/jpeg")
+
+    @app.get("/api/play-intervals")
+    def play_proposals(scene: str) -> dict[str, Any]:
+        if play_intervals is None:
+            raise HTTPException(404, "Play interval review is unavailable.")
+        return play_intervals(scene)
 
     @app.post("/api/infer")
     def infer(request: InferenceRequest) -> dict[str, Any]:
