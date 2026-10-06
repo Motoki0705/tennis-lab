@@ -42,15 +42,15 @@ def gather_balls(source: ClipSource, artifacts: Mapping[str, Any]) -> ObjectObse
     rows: list[BallPointsOutput] = [artifacts[f"ball_{c}"] for c in source.camera_ids]
     for camera_id, row in zip(source.camera_ids, rows, strict=True):
         if not isinstance(row, BallPointsOutput):
-            raise TypeError("Point consumers require unfiltered refiner points")
+            raise TypeError("Point consumers require detector points with explicit observed masks")
         if row.camera_id != camera_id or not np.array_equal(row.frame_indices, np.arange(source.num_frames)):
             raise ValueError("Ball artifact camera/timeline mismatch")
         if row.source_size_wh != source.size:
             raise ValueError("Ball points source image size mismatch")
     return ObjectObservations(source.camera_ids, source.size, source.fps,
         np.stack([r.uv_px for r in rows])[:, :, None, None],
-        np.ones((len(rows), source.num_frames, 1, 1), np.float32),
-        np.ones((len(rows), source.num_frames, 1), bool), np.zeros((len(rows), 1), np.int64))
+        np.stack([r.confidence for r in rows])[:, :, None, None],
+        np.stack([r.observed for r in rows])[:, :, None], np.zeros((len(rows), 1), np.int64))
 
 
 def identified_people(raw: ObjectObservations, identities: PlayerIdentitiesOutput, threshold: float) -> GroupedObservations:
