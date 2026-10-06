@@ -71,7 +71,7 @@ def review(tmp_path):
     corruption = CorruptionConfig(**raw["corruption"])
     outputs = tmp_path / "outputs"
     for dim, architecture in ((2, "regression"), (3, "regression"), (3, "flow")):
-        model = CoordinateRefiner(ModelConfig(dim, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0)).eval()
+        model = CoordinateRefiner(ModelConfig(dim, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0, "swiglu")).eval()
         run = outputs / f"{dim}d-{architecture}" / "run"
         checkpoints = run / "logs/version_0/checkpoints"
         checkpoints.mkdir(parents=True)
