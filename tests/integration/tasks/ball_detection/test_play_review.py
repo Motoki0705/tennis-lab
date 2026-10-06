@@ -1,6 +1,7 @@
 """Review the same proposal masks as training on real JPEG/store timelines."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -58,6 +59,47 @@ def test_play_without_coordinate_teachers_and_short_clips(tmp_path: Path) -> Non
     assert not unknown["training"] and not unknown["windows"]
     short = service.play_intervals("store/test::short")
     assert not short["play"] and short["excluded"] == ((0, 5),)
+
+
+def test_annotation_visibility_and_selection_evidence_are_distinct(tmp_path: Path) -> None:
+    frames = [
+        replace(frame(0, ball()), is_target=False),
+        replace(frame(1, ball("unresolved", None)), is_target=False),
+        frame(2, ball("unresolved", None)),
+        frame(3, ball("interpolated")),
+        frame(4, ball("occlusion_estimated")),
+        frame(5, ball("out_of_frame", None)),
+        frame(6, ball(), ball(track="b002")),
+        frame(7, ball(), annotated=False),
+        frame(8),
+        frame(9, annotated=False),
+    ]
+    write_store_clip(tmp_path / "data/ball_detection/test", "clip", frames)
+    service = DetectionService(tmp_path)
+    response = service.play_intervals("store/test::clip")
+    annotations = response["annotations"]
+    assert [a["located_count"] for a in annotations] == [1, 0, 0, 1, 1, 0, 2, 1, 0, 0]
+    assert [a["evidence"] for a in annotations] == [False, False, True, True, True, False, False, False, False, False]
+    assert [a["exclusion_reasons"] for a in annotations] == [
+        ["reference_only"], ["reference_only"], [], [], [], ["out_of_frame"],
+        ["multiple_balls"], ["unreviewed"], ["no_ball"], ["unreviewed", "no_ball"],
+    ]
+    assert annotations[2]["kinds"] == ["unresolved"]
+    assert annotations[3]["kinds"] == ["interpolated"]
+    preview = service.preview("store/test::clip", count=10)
+    # Exact parity with the viewer's visiblePoints filter, without eligibility masking.
+    assert [sum(p["visible"] for p in item["gt"]["points"]) for item in preview["items"]] == [a["located_count"] for a in annotations]
+
+
+def test_one_frame_coordinate_gap_is_preserved_even_when_evidence_is_continuous(tmp_path: Path) -> None:
+    write_store_clip(tmp_path / "data/ball_detection/test", "clip", [
+        frame(i, ball("unresolved", None) if i == 58 else ball()) for i in range(100)
+    ])
+    response = DetectionService(tmp_path).play_intervals("store/test::clip")
+    assert response["presence"] == ((0, 100),)
+    assert response["play"] == ((0, 100),)
+    assert [response["annotations"][i]["located_count"] for i in (57, 58, 59)] == [1, 0, 1]
+    assert response["annotations"][58]["exclusion_reasons"] == []
 
 
 @pytest.fixture

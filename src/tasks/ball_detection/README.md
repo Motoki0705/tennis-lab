@@ -61,7 +61,7 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 - **`io/clip.py`**: storeのclipから推論/描画用テンソルを構築（`visualization.store_dir` と `clip_id` を指定）。
 - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
 - **`review/datasets.py`**: `BallDatasetCatalog`。ball storeの全versionを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
-- **`review/play_intervals.py`**: 選択clipのプレイ・除外候補、教師窓被覆、存在証拠を同じ注釈・PTSから計算してWebUIへ返す。
+- **`review/play_intervals.py`**: 選択clipのプレイ・除外候補、教師窓被覆、選択用の証拠と全frameの位置注釈・除外理由を同じ注釈・PTSからWebUIへ返す。
 - **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
 - **`inference/loader.py`**: `load_ball_model()`。共通checkpoint loaderを使い、レビュー用の入力サイズ・窓長を検証する。
 - **`inference/peaks.py`**: `decode_frame_peaks()`。canonicalなthreshold/NMS/top-k + subpixel refineで複数peakをstored image pixelへ写す。

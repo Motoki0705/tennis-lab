@@ -58,7 +58,7 @@ input[type="range"] {
 input[type="checkbox"] {
   accent-color: var(--green);
 }
-button:hover:not(:disabled) {
+button:not(.play-cell):hover:not(:disabled) {
   background: #eaf4ef;
 }
 svg {
@@ -526,10 +526,14 @@ dd {
 }
 .play-track:focus-visible { outline: 2px solid var(--green); }
 .play-segment { position: absolute; top: 0; bottom: 0; }
-.play-segment.play { background: #2a9d65; }
-.play-segment.excluded { background: #d98555; }
-.play-segment.training { background: #9980be; }
-.play-segment.presence { background: #3264b8; }
+.play-segment.play, .play-cell.play { background: #2a9d65; }
+.play-segment.excluded, .play-cell.excluded { background: #d98555; }
+.play-segment.training, .play-cell.training { background: #9980be; }
+.play-segment.located, .play-cell.located { background: #3264b8; }
+.play-segment.estimated, .play-cell.estimated {
+  background: repeating-linear-gradient(135deg, #74bee5 0 3px, #d8eef8 3px 6px);
+}
+.play-segment.evidence, .play-cell.evidence { background: #28867f; }
 .play-cursor {
   position: absolute;
   height: 20px;
@@ -541,6 +545,29 @@ dd {
 .play-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
 .play-controls button { padding: 4px 7px; font-size: 11px; }
 .play-controls output { font-size: 11px; overflow-wrap: anywhere; }
+.play-controls select { width: auto; padding: 3px; }
+.play-controls label, #play-frame-state { font-size: 11px; }
+#play-frame-state { display: block; margin-top: 5px; }
+.play-annotation-state { font-size: 12px; overflow-wrap: anywhere; }
+.play-detail-scroll { overflow-x: auto; margin-top: 6px; }
+.play-detail-grid { min-width: calc(104px + var(--detail-frames) * 16px); }
+.play-detail-row {
+  display: grid;
+  grid-template-columns: 104px repeat(var(--detail-frames), minmax(16px, 1fr));
+  align-items: center;
+  min-height: 21px;
+}
+.play-detail-label {
+  position: sticky; left: 0; z-index: 1; background: white;
+  font-size: 11px; height: 100%; display: flex; align-items: center;
+}
+.play-detail-axis { font-size: 9px; font-variant-numeric: tabular-nums; }
+.play-cell {
+  padding: 0; border-radius: 0; border: 1px solid white; height: 20px; min-width: 16px;
+}
+.play-cell.missing { background: #e1e5e3; }
+.play-cell.current { outline: 2px solid #101e19; outline-offset: -2px; }
+.play-cell:hover:not(:disabled) { filter: brightness(0.8); }
 body [hidden] {
   display: none !important;
 }

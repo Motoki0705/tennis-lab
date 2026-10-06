@@ -8,6 +8,7 @@ const state = {
   dataset: "",
   scene: null,
   frame: 0,
+  displayedFrame: 0,
   total: 0,
   page: 0,
   sceneTotal: 0,
@@ -84,6 +85,7 @@ function resetScene() {
   state.scene = null;
   state.total = 0;
   state.frame = 0;
+  state.displayedFrame = 0;
   state.resultWarnings = [];
   state.preview.clear();
   state.prediction.clear();
@@ -282,7 +284,7 @@ async function loadPlayIntervals() {
     if (result.scene !== scene || result.frames !== state.total)
       throw new Error("区間候補と選択clipのフレーム列が一致しません。");
     playTimeline.render(result);
-    playTimeline.setFrame(state.frame);
+    playTimeline.setFrame(state.displayedFrame);
   } catch (error) {
     if (selection === state.sceneToken)
       playTimeline.message(`区間候補を表示できません: ${error.message}`);
@@ -366,6 +368,7 @@ async function showFrame(frame, reset = false) {
       return false;
     $("empty").hidden = true;
     $("frame-name").textContent = item.name;
+    state.displayedFrame = frame;
     playTimeline.setFrame(frame);
     $("resolution").textContent = `${payload.width} × ${payload.height}`;
     renderLayers(item.gt, pred);
