@@ -31,7 +31,22 @@ fs.mkdirSync(outputDir, { recursive: true });
     let holdPlayScene = null;
     let pendingPlay = null;
     let failPlay = false;
-    const proposal = (scene) => ({
+    const annotations = scene => Array.from({length: scene === "long" ? 10000 : 150}, (_, i) => {
+      const reference = scene === "scene1" && i < 20;
+      const absent = scene === "scene1" && (i >= 80 || (i >= 45 && i < 50));
+      const unresolved = scene === "scene2" || i === 58;
+      return {kinds: absent ? [] : [unresolved ? "unresolved" : i === 22 ? "interpolated" : "observed"],
+        located_count: absent || unresolved ? 0 : 1, reviewed: true, is_target: !reference,
+        evidence: !reference && !absent,
+        exclusion_reasons: reference ? ["reference_only"] : absent ? ["no_ball"] : []};
+    });
+    const proposal = (scene) => scene === "long" ? {
+      ...proposal("scene1"), scene, frames: 10000,
+      timestamps: Array.from({length: 10000}, (_, i) => i / 30),
+      play: [[0, 10000]], excluded: [], training: [[0, 10000]], presence: [[0, 10000]],
+      bridged: [], annotations: annotations(scene),
+      counts: {play: 10000, excluded: 0, training: 10000, windows: 624},
+    } : ({
       scene, frames: 150, pose_approved: true,
       config: {window_length: 32, window_stride: 16, max_gap_seconds: 0.4,
         min_presence_fraction: 0.5, min_observed_frames: 8},
@@ -39,7 +54,9 @@ fs.mkdirSync(outputDir, { recursive: true });
       play: scene === "scene1" ? [[20, 80]] : [[0, 150]],
       excluded: scene === "scene1" ? [[0, 20], [80, 150]] : [],
       training: scene === "scene1" ? [[20, 80]] : [],
-      presence: [[20, 45], [50, 80]], bridged: [[45, 50]],
+      presence: scene === "scene1" ? [[20, 45], [50, 80]] : [[0, 150]],
+      bridged: scene === "scene1" ? [[45, 50]] : [],
+      annotations: annotations(scene),
       counts: {play: scene === "scene1" ? 60 : 150,
         excluded: scene === "scene1" ? 90 : 0,
         training: scene === "scene1" ? 60 : 0, windows: scene === "scene1" ? 3 : 0},
@@ -47,6 +64,7 @@ fs.mkdirSync(outputDir, { recursive: true });
     const scenes = [
       { id: "scene1", label: "game1 / Clip1", frames: 150 },
       { id: "scene2", label: "game2 / Clip2", frames: 150 },
+      { id: "long", label: "long clip / one frame without coordinates", frames: 10000 },
     ];
     await page.route("http://detection.test/**", async (route) => {
       const url = new URL(route.request().url());
@@ -102,10 +120,12 @@ fs.mkdirSync(outputDir, { recursive: true });
       }
       if (p === "/api/preview") {
         const index = Number(url.searchParams.get("start"));
+        const scene = url.searchParams.get("scene");
+        const annotation = annotations(scene)[index];
         return json({
           scene: url.searchParams.get("scene"),
           label: "Clip",
-          frames: 150,
+          frames: scene === "long" ? 10000 : 150,
           start: index,
           width: 1280,
           height: 720,
@@ -113,7 +133,7 @@ fs.mkdirSync(outputDir, { recursive: true });
             {
               index,
               name: `frame_${index}.jpg`,
-              gt: { points: [{ x: 600, y: 400, label: "b001" }], rasters: [] },
+              gt: { points: mode === "review" && !annotation.located_count ? [] : [{ x: 600, y: 400, label: "b001" }], rasters: [] },
             },
           ],
           warnings: [],
@@ -230,8 +250,12 @@ fs.mkdirSync(outputDir, { recursive: true });
     mode = "review";
     await page.reload();
     await page.locator("#play-frame-state").waitFor();
-    assert.equal(await page.locator(".play-track").count(), 3);
+    assert.equal(await page.locator(".play-track").count(), 4);
     assert.match(await page.locator("#play-frame-state").textContent(), /除外候補/);
+    assert.match(await page.locator("#play-annotation-state").textContent(), /位置注釈 1個.*参照用フレーム/);
+    assert.ok(await page.locator('.play-detail-row[data-row="annotations"] .play-cell[data-frame="0"]').evaluate(el => el.classList.contains("located")));
+    assert.ok(await page.locator('.play-detail-row[data-row="evidence"] .play-cell[data-frame="0"]').evaluate(el => el.classList.contains("missing")));
+    assert.ok(await page.locator('.play-detail-row[data-row="annotations"] .play-cell[data-frame="22"]').evaluate(el => el.classList.contains("estimated")));
     await page.getByRole("button", {name: "次の区間境界"}).click();
     await page.waitForFunction(() => document.getElementById("frame-name").textContent === "frame_20.jpg");
     assert.match(await page.locator("#play-frame-state").textContent(), /プレイ候補 · 教師窓内/);
@@ -270,6 +294,26 @@ fs.mkdirSync(outputDir, { recursive: true });
     failPlay = false;
     await page.locator(".scene").first().click();
     await page.locator("#play-frame-state").waitFor();
+    // A one-frame gap is subpixel in the 10,000-frame overview but remains
+    // a distinct >=16px cell in detail, even though evidence stays continuous.
+    await page.locator(".scene").nth(2).click();
+    await page.waitForFunction(() => document.getElementById("seek").max === "9999" && document.getElementById("play-frame-state"));
+    await page.locator("#seek").evaluate(el => {el.value = "58"; el.dispatchEvent(new Event("input"));});
+    await page.waitForFunction(() => document.getElementById("play-frame-state").textContent.startsWith("frame 58 "));
+    assert.match(await page.locator("#play-annotation-state").textContent(), /位置注釈 0個（位置未確定）.*証拠 あり/);
+    const gap = page.locator('.play-detail-row[data-row="annotations"] .play-cell[data-frame="58"]');
+    assert.ok(await gap.evaluate(el => el.classList.contains("missing")));
+    assert.ok((await gap.boundingBox()).width >= 16);
+    const evidence = page.locator('.play-detail-row[data-row="evidence"] .play-cell[data-frame="58"]');
+    assert.ok(await evidence.evaluate(el => el.classList.contains("evidence")));
+    await page.locator('.play-detail-row[data-row="annotations"] .play-cell[data-frame="59"]').click();
+    await page.waitForFunction(() => document.getElementById("frame-name").textContent === "frame_59.jpg");
+    assert.match(await page.locator("#play-annotation-state").textContent(), /位置注釈 1個（実測）/);
+    await page.getByRole("button", {name: "前の注釈変化"}).click();
+    await page.waitForFunction(() => document.getElementById("play-frame-state").textContent.startsWith("frame 58 "));
+    await page.selectOption("#play-detail-count", "16");
+    assert.equal(await page.locator('.play-detail-row[data-row="annotations"] .play-cell').count(), 16);
+    await page.selectOption("#play-detail-count", "64");
     for (const [width, height] of [
       [1440, 1000],
       [800, 1000],
@@ -300,6 +344,7 @@ fs.mkdirSync(outputDir, { recursive: true });
       const panel = await page.locator("#play-intervals").boundingBox();
       const center = await page.locator(".center").boundingBox();
       assert.ok(panel.y + panel.height <= center.y + center.height + 1, `timeline bounds ${width}`);
+      assert.ok((await page.locator('.play-detail-row[data-row="annotations"] .play-cell[data-frame="58"]').boundingBox()).width >= 16, `one-frame detail ${width}`);
       await page.screenshot({
         path: path.join(outputDir, `detection-${width}.png`),
         fullPage: true,
