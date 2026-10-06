@@ -11,6 +11,10 @@ import torch
 
 from src.tasks.ball_refiner_3d.data.schema import PreparedRally
 from src.tasks.ball_refiner_3d.evaluation.baselines import linear_baseline
+from src.tasks.ball_refiner_3d.evaluation.physics import (
+    RallyPrediction,
+    physics_report,
+)
 from src.tasks.ball_refiner_3d.inference.windowing import predict_normalized
 from src.tasks.ball_refiner_3d.model_io.adapters import normalization
 from src.tasks.ball_refiner_3d.model_io.factory import RefinerModel
@@ -24,7 +28,13 @@ def evaluate(
     *,
     seed: int,
     batch_size: int,
+    physics: bool,
 ) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
+    """Full-rally predictions and metrics; ``physics`` adds ``physics_eval.v1``.
+
+    The physics protocol fits the force model to every rally, so it runs only
+    for saved held-out evaluations, not for per-epoch validation.
+    """
     predictions: list[np.ndarray] = []
     event_probabilities: list[np.ndarray] = []
     event_targets: list[np.ndarray] = []
@@ -36,6 +46,7 @@ def evaluate(
     view_ids: list[np.ndarray] = []
     frame_ids: list[np.ndarray] = []
     baselines: list[np.ndarray] = []
+    physics_inputs: list[tuple[RallyPrediction, RallyPrediction]] = []
     scale, offset = normalization(model.config.dimensions)
     elapsed = 0.0
     digest = hashlib.sha256()
@@ -71,11 +82,22 @@ def evaluate(
         masks.append(rally.missing.ravel())
         event_masks.append(events.ravel())
         inputs.append(physical_input.reshape(-1, model.config.dimensions))
-        baselines.append(
-            linear_baseline(physical_input, rally.missing).reshape(
-                -1, model.config.dimensions
+        baseline = linear_baseline(physical_input, rally.missing)
+        baselines.append(baseline.reshape(-1, model.config.dimensions))
+        if physics:
+            if shape[0] != 1:
+                raise ValueError("Physics evaluation requires single-view 3D rallies")
+            probability = normalized.event_probability.cpu().numpy()[0]
+            physics_inputs.append(
+                (
+                    RallyPrediction(
+                        rally.source, prediction[0], rally.missing[0], probability
+                    ),
+                    RallyPrediction(
+                        rally.source, baseline[0], rally.missing[0], probability
+                    ),
+                )
             )
-        )
         ids.append(np.full(np.prod(shape), rally.source.index, dtype=np.int64))
         view_ids.append(np.repeat(np.arange(shape[0]), shape[1]))
         frame_ids.append(np.tile(np.arange(shape[1]), shape[0]))
@@ -104,13 +126,18 @@ def evaluate(
         input_sha256=digest.hexdigest(),
         method=model.config.architecture,
     )
+    if physics:
+        report["physics"] = physics_report([p for p, _ in physics_inputs], device)
+        report["linear_baseline"]["physics"] = physics_report(
+            [b for _, b in physics_inputs], device, events=False
+        )
     return report, arrays
 
 
 def summarize_predictions(
     arrays: dict[str, np.ndarray], *, elapsed: float, input_sha256: str, method: str
 ) -> dict[str, Any]:
-    report = error_metrics(
+    report: dict[str, Any] = error_metrics(
         arrays["prediction"], arrays["target"], arrays["missing"], arrays["event"]
     )
     report["event_probability"] = {

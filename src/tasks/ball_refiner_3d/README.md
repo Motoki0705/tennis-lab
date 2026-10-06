@@ -58,6 +58,16 @@ GPU実行は[training queue](../../../.agents/skills/training-queue/SKILL.md)に
 FPSはcheckpointと一致させる。座標と確率は重複窓の同じ担当窓から採用する。
 新しい評価先・推論出力は既存ファイルを上書きしない。
 
+## 評価指標
+
+`evaluation/evaluator.py` は座標RMSE・イベント確率に加え、checkpoint評価で物理整合性 `physics_eval.v1`
+（`evaluation/physics.py`）を計算する。GTの飛行区間ごとに共有の力モデルを当てはめた残差、
+区間内有限差分の速度・加速度誤差とjerk比、非物理加速度率、地面下率、イベントのピーク照合を、
+欠損・観測・イベント近傍・バウンド後・ショット後のframe群と、surface・ラリー長・バウンド数別に出す。
+`metrics.json` には代表値（`test_fit_residual_rmse_m` など）、全体は `diagnostic_metrics.json`。
+当てはめは区間全体の残差を最小化するため、欠損区間の非物理性は同じ区間の観測frameの残差にも現れる。
+学習中のvalidationは物理評価を行わない。
+
 ## 互換性
 
 既存のイベントヘッド付き `ball_refiner_3d.events.v1` 重みは、そのまま推論・初期重みとして使える。
