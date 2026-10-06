@@ -1,0 +1,10 @@
+{
+  "torch": "2.14.0+cu130",
+  "cuda": "13.0",
+  "xformers": "0.0.35",
+  "device": "NVIDIA GeForce RTX 5060 Ti",
+  "compiled_matches_eager": true,
+  "attention_finite": true,
+  "torch_peak_allocated_bytes": 10240,
+  "scope": "runtime compatibility only; not an SfM quality measurement"
+}

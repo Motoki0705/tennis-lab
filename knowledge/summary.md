@@ -1,4 +1,4 @@
-<!-- knowledge-review: 4da6fe6440bbd9c88510848290ca82d2afa2adc236a0bfa1f9c50792c1aef12a on 2026-10-07 -->
+<!-- knowledge-review: 94511c4faea126f6cf73f61f1efbf500ca70da8a9ee40bb4f77cb14cce320e99 on 2026-10-07 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
@@ -16,6 +16,8 @@
 [#1034の初回SIFT試行](nodes/synthetic_data_generation/000024-run-i1034-nht-b00-p90-interrupted-a0.md)は、ホスト容量不足によるWSL停止で中断した。測定結果が残らず、既存のSfM幾何診断と採否の判断は変更しない。旧queue entryの復旧証拠を保存し、共有出力先へ移して別attemptを準備した。中断分の予算控除は保守的な会計値であり、実測処理時間ではない。次は再生成した共通入力でのSIFT再試行とVidMapの環境・実機適合性を確認する。
 
 [B00先頭90秒の再試行](nodes/synthetic_data_generation/000025-run-i1034-nht-b00-p90-s42-a1.md)は90/90登録で短尺gateを通過し、今回の比較基準を得た。独立pose/地面GTはなく、全動画・他会場・下流描画への改善を示さない。初回runnerのnested metricsと登録器のflat数値契約の不一致は生データからノードを補正し、以降のrunner出力とテストを修正した。次はVidMapの実機適合と同じ入力集合での比較を行う。
+
+[VidMap用の小tensor CUDA probe](nodes/synthetic_data_generation/000026-run-i1034-vidmap-cuda-probe-a0.md)はRTX 5060 Tiでcompile/eager一致とattentionの有限値を確認した。実画像・fullモデルの容量・SfM精度は未評価であり、基準や採用判断は変えない。次は固定版native依存と実画像sanityを確認する。
 
 ## 2026-10-05のボール検出用pose蓄積
 
