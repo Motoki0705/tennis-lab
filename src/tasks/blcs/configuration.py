@@ -42,6 +42,7 @@ from src.utils.models.components.ffn_layers import (
     FFNType,
 )
 from src.utils.paths import PROJECT_ROOT
+from src.utils.physics.ball import SURFACE_NAMES
 
 Scalar: TypeAlias = str | int | float | bool | None
 
@@ -924,8 +925,7 @@ def validate_generator_sections(
             "gravity",
             "k_drag",
             "k_magnus",
-            "e_z",
-            "mu",
+            "surface",
             "alpha_net",
             "alpha_net_cord",
             "alpha_fence",
@@ -935,13 +935,11 @@ def validate_generator_sections(
             "use_drag",
             "use_magnus",
             "wind",
-            "gravity_range",
             "k_drag_range",
             "k_magnus_range",
-            "e_z_range",
-            "mu_range",
             "wind_speed_range",
             "wind_direction_range_deg",
+            "surface_choices",
         },
         "rally": {
             "z_range",
@@ -1023,8 +1021,6 @@ def validate_generator_sections(
                     "gravity",
                     "k_drag",
                     "k_magnus",
-                    "e_z",
-                    "mu",
                     "alpha_net",
                     "alpha_net_cord",
                     "alpha_fence",
@@ -1033,19 +1029,18 @@ def validate_generator_sections(
                     "dt",
                 )
             },
+            "surface": str,
             "use_drag": bool,
             "use_magnus": bool,
             **{
                 key: list
                 for key in (
                     "wind",
-                    "gravity_range",
                     "k_drag_range",
                     "k_magnus_range",
-                    "e_z_range",
-                    "mu_range",
                     "wind_speed_range",
                     "wind_direction_range_deg",
+                    "surface_choices",
                 )
             },
         },
@@ -1053,23 +1048,24 @@ def validate_generator_sections(
     )
     _numeric_sequence(physics["wind"], path="physics.wind", length=3)
     _positive(cast("float", physics["gravity"]), path="physics.gravity")
-    for key in ("k_drag", "k_magnus", "mu"):
+    for key in ("k_drag", "k_magnus"):
         _non_negative(cast("float", physics[key]), path=f"physics.{key}")
-    for key in ("e_z", "alpha_net", "alpha_net_cord", "alpha_fence"):
+    for key in ("alpha_net", "alpha_net_cord", "alpha_fence"):
         _probability(cast("float", physics[key]), path=f"physics.{key}")
     for key in ("net_half_thickness", "net_cord_radius", "dt"):
         _positive(cast("float", physics[key]), path=f"physics.{key}")
-    _ordered_range(
-        physics["gravity_range"], path="physics.gravity_range", positive=True
-    )
-    for key in ("k_drag_range", "k_magnus_range", "mu_range", "wind_speed_range"):
+    for key in ("k_drag_range", "k_magnus_range", "wind_speed_range"):
         _ordered_range(physics[key], path=f"physics.{key}", lower_bound=0.0)
-    _ordered_range(
-        physics["e_z_range"],
-        path="physics.e_z_range",
-        lower_bound=0.0,
-        upper_bound=1.0,
-    )
+    surface_choices = cast("list[object]", physics["surface_choices"])
+    for name in [physics["surface"], *surface_choices]:
+        if name not in SURFACE_NAMES:
+            raise SemanticConfigurationError(
+                f"physics surfaces must be in {SURFACE_NAMES}; got {name!r}."
+            )
+    if not surface_choices or len(set(surface_choices)) != len(surface_choices):
+        raise SemanticConfigurationError(
+            "physics.surface_choices must list distinct surfaces."
+        )
     _ordered_range(
         physics["wind_direction_range_deg"],
         path="physics.wind_direction_range_deg",

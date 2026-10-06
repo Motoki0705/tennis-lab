@@ -5,18 +5,18 @@ Provides realistic tennis ball trajectory generation including:
 - Air drag (velocity-squared drag, relative to wind)
 - Magnus effect (spin-induced lift)
 - Wind force
-- Bounce physics with friction
+- Spin-dependent bounce on the sampled court surface
 - Net collision with velocity reduction
 - Fence collision detection
 
-All environment constants (gravity, drag, restitution, etc.) can be
-perturbed per-scene via ``PhysicsConfig.sample()``.
+Drag, Magnus, wind and the court surface are sampled per scene via
+``PhysicsConfig.sample()``; gravity is fixed.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -24,10 +24,13 @@ import torch
 from torch import Tensor
 
 from src.utils.physics.ball import (
+    TENNIS_BALL,
     BallField,
+    SurfaceProperties,
     acceleration,
     ground_bounce,
     semi_implicit_euler_step,
+    surface_properties,
 )
 from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
@@ -52,15 +55,15 @@ if TYPE_CHECKING:
 class PhysicsConfig:
     """Configuration for ball physics simulation.
 
-    Includes per-scene perturbation ranges. When ``*_range`` fields are set,
-    ``sample()`` draws from them uniformly to create a stochastic config.
+    Gravity is fixed.  ``surface`` names an entry of the shared surface table;
+    bounce coefficients are never configured directly.  When ``*_range`` or
+    ``surface_choices`` are set, ``sample()`` draws one deterministic config.
     """
 
     gravity: float
     k_drag: float
     k_magnus: float
-    e_z: float
-    mu: float
+    surface: str
     alpha_net: float
     alpha_net_cord: float
     alpha_fence: float
@@ -73,20 +76,29 @@ class PhysicsConfig:
     # Wind velocity (m/s) in world frame (x, y, z)
     wind: tuple[float, float, float]
 
-    # --- Per-scene perturbation ranges (None = use base value) ---
-    gravity_range: tuple[float, float] | None
+    # --- Per-scene perturbation (None = use base value) ---
     k_drag_range: tuple[float, float] | None
     k_magnus_range: tuple[float, float] | None
-    e_z_range: tuple[float, float] | None
-    mu_range: tuple[float, float] | None
     wind_speed_range: tuple[float, float] | None
     wind_direction_range_deg: tuple[float, float] | None
+    # Uniformly sampled surface names.
+    surface_choices: tuple[str, ...] | None
+
+    def __post_init__(self) -> None:
+        surface_properties(self.surface)
+        for name in self.surface_choices or ():
+            surface_properties(name)
+
+    @property
+    def surface_properties(self) -> SurfaceProperties:
+        return surface_properties(self.surface)
 
     def sample(self) -> PhysicsConfig:
         """Return a new config with stochastic parameters sampled.
 
         Scalar fields are sampled uniformly from their ``*_range`` if set.
-        Wind is sampled from speed and direction ranges if set.
+        Wind is sampled from speed and direction ranges if set.  The surface is
+        drawn uniformly from ``surface_choices`` if set.
         """
 
         def _u(base: float, rng: tuple[float, float] | None) -> float:
@@ -95,11 +107,12 @@ class PhysicsConfig:
             lo, hi = rng
             return float(lo + torch.rand(1).item() * (hi - lo))
 
-        gravity = _u(self.gravity, self.gravity_range)
         k_drag = _u(self.k_drag, self.k_drag_range)
         k_magnus = _u(self.k_magnus, self.k_magnus_range)
-        e_z = _u(self.e_z, self.e_z_range)
-        mu = _u(self.mu, self.mu_range)
+        surface = self.surface
+        if self.surface_choices is not None:
+            index = int(torch.randint(len(self.surface_choices), (1,)).item())
+            surface = self.surface_choices[index]
 
         wind = self.wind
         if self.wind_speed_range is not None:
@@ -115,39 +128,31 @@ class PhysicsConfig:
                 0.0,
             )
 
-        return PhysicsConfig(
-            gravity=gravity,
+        return replace(
+            self,
             k_drag=k_drag,
             k_magnus=k_magnus,
-            e_z=e_z,
-            mu=mu,
-            alpha_net=self.alpha_net,
-            alpha_net_cord=self.alpha_net_cord,
-            alpha_fence=self.alpha_fence,
-            net_half_thickness=self.net_half_thickness,
-            net_cord_radius=self.net_cord_radius,
-            dt=self.dt,
-            use_drag=self.use_drag,
-            use_magnus=self.use_magnus,
+            surface=surface,
             wind=wind,
             # Ranges are NOT propagated to sampled config (it is deterministic)
-            gravity_range=None,
             k_drag_range=None,
             k_magnus_range=None,
-            e_z_range=None,
-            mu_range=None,
             wind_speed_range=None,
             wind_direction_range_deg=None,
+            surface_choices=None,
         )
 
     def to_dict(self) -> dict:
         """Serialize to dict (for scene metadata)."""
+        surface = self.surface_properties
         return {
             "gravity": self.gravity,
             "k_drag": self.k_drag,
             "k_magnus": self.k_magnus,
-            "e_z": self.e_z,
-            "mu": self.mu,
+            "surface": self.surface,
+            "restitution": surface.restitution,
+            "friction": surface.friction,
+            "grip_restitution": surface.grip_restitution,
             "alpha_net": self.alpha_net,
             "alpha_net_cord": self.alpha_net_cord,
             "alpha_fence": self.alpha_fence,
@@ -201,7 +206,7 @@ class BallPhysics:
     Implements:
     - Semi-implicit Euler integration
     - Gravity + drag + Magnus force model (drag relative to wind)
-    - Bounce with restitution and friction
+    - Spin-dependent slide/grip bounce on the configured surface
     - Net collision with velocity reduction
     - Fence boundary detection
     """
@@ -256,11 +261,14 @@ class BallPhysics:
         if state.position[2] <= 0 and state.velocity[2] < 0:
             new_pos = state.position.clone()
             new_pos[2] = 0.0
+            surface = self.config.surface_properties
             velocity, spin = ground_bounce(
                 state.velocity,
                 state.spin,
-                restitution=self.config.e_z,
-                friction=self.config.mu,
+                restitution=surface.restitution,
+                friction=surface.friction,
+                grip_restitution=surface.grip_restitution,
+                ball=TENNIS_BALL,
             )
             return BallState(position=new_pos, velocity=velocity, spin=spin), True
 
