@@ -1,0 +1,55 @@
+{
+  "initial": {
+    "rally": "rally_000030",
+    "frames": 462,
+    "audit": {
+      "frame_missing_rate_2d": 0.09956709956709957,
+      "frame_missing_rate_3d": 0.09956709956709957,
+      "selected_events": 3,
+      "events": 9,
+      "noise_p95_px": 0,
+      "observed_frames_2d": 1664
+    },
+    "models": "outputs:train/rope-2d-gan-gpu-preflight/20261006-s42/logs/version_0/checkpoints/best.ckpt / outputs:train/coordinates-3d-regression-p075/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt"
+  },
+  "newOldInference": {
+    "source": "CPU 推論 · 0.63 s",
+    "dimensions": [
+      4,
+      462,
+      462
+    ],
+    "metrics": "2D / Cam 1\t2887.53 px\t2704.02 px\t2907.11 px\t2846.25 px\t1159.05 px/s\n3D\t0.294 m\t0.508 m\t0.260 m\t0.482 m\t5.20 m/s",
+    "input_sha256": "5098ec6fc6b3148d11e87bd108ea415520074667ef2ae1c8ed248b4c3d18e7cf"
+  },
+  "missingInvalidation": {
+    "before": {
+      "requestCount": 4,
+      "source": "CPU 推論 · 0.53 s",
+      "metrics": "2D / Cam 1\t2888.24 px\t2705.19 px\t2907.77 px\t2847.36 px\t1295.79 px/s\n3D\t0.338 m\t0.509 m\t0.295 m\t0.512 m\t9.42 m/s",
+      "provenance": "dataset 18fe4f79dcc1 · input 5e56fa7e50c1 · augmentation seed 20991 · Flow seed 20991 · 1本の全フレーム予測"
+    },
+    "jitterAfter": {
+      "requestCount": 4,
+      "source": "CPU 推論 · 0.53 s",
+      "metrics": "2D / Cam 1\t2888.24 px\t2705.19 px\t2907.77 px\t2847.36 px\t1295.79 px/s\n3D\t0.338 m\t0.509 m\t0.295 m\t0.512 m\t9.42 m/s",
+      "provenance": "dataset 18fe4f79dcc1 · input 5e56fa7e50c1 · augmentation seed 20991 · Flow seed 20991 · 1本の全フレーム予測",
+      "saveEnabled": true,
+      "jitter": "4"
+    },
+    "outlierAfter": {
+      "requestCount": 4,
+      "source": "CPU 推論 · 0.53 s",
+      "metrics": "2D / Cam 1\t2888.24 px\t2705.19 px\t2907.77 px\t2847.36 px\t1295.79 px/s\n3D\t0.338 m\t0.509 m\t0.295 m\t0.512 m\t9.42 m/s",
+      "provenance": "dataset 18fe4f79dcc1 · input 5e56fa7e50c1 · augmentation seed 20991 · Flow seed 20991 · 1本の全フレーム予測",
+      "saveEnabled": true,
+      "outlier": "20"
+    }
+  },
+  "old2dInference": {
+    "id": "outputs:train/coordinates-2d-gan-p025/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+    "frames": 462,
+    "source": "live"
+  },
+  "pageErrors": []
+}

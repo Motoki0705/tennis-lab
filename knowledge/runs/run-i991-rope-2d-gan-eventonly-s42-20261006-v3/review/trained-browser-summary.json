@@ -1,0 +1,79 @@
+{
+  "rally": "rally_000030",
+  "source": "saved",
+  "checkpoints": [
+    "outputs:train/rope-2d-gan-eventonly/20261006-v3-s42/logs/version_0/checkpoints/best.ckpt",
+    "outputs:train/rope-3d-gan-eventonly/20261006-v3-s42/logs/version_0/checkpoints/best.ckpt"
+  ],
+  "augmentation": {
+    "event_probability": 0.5,
+    "isolated_probability": 0,
+    "gap_min": 3,
+    "gap_max": 10,
+    "noise_p95_px": 0,
+    "jitter_sigma_px": 0,
+    "outlier_probability": 0,
+    "triangulation_steps": 3
+  },
+  "input_sha256": "5098ec6fc6b3148d11e87bd108ea415520074667ef2ae1c8ed248b4c3d18e7cf",
+  "metrics2d": {
+    "frame_missing_rate": 0.09956709956709957,
+    "frames": 462,
+    "all": {
+      "count": 462,
+      "rmse": 3.2128350734710693,
+      "mean": 2.6788599491119385,
+      "p95": 6.452505588531494
+    },
+    "missing": {
+      "count": 46,
+      "rmse": 6.8496503829956055,
+      "mean": 6.012451171875,
+      "p95": 12.666471481323242
+    },
+    "observed": {
+      "count": 416,
+      "rmse": 2.5051352977752686,
+      "mean": 2.31024169921875,
+      "p95": 3.9079036712646484
+    },
+    "event": {
+      "count": 97,
+      "rmse": 5.094704627990723,
+      "mean": 4.07627534866333,
+      "p95": 9.632946014404297
+    },
+    "velocity_rmse": 56.68862700462341
+  },
+  "metrics3d": {
+    "frame_missing_rate": 0.09956709956709957,
+    "frames": 462,
+    "all": {
+      "count": 462,
+      "rmse": 0.10683213174343109,
+      "mean": 0.07476365566253662,
+      "p95": 0.22144505381584167
+    },
+    "missing": {
+      "count": 46,
+      "rmse": 0.2505885064601898,
+      "mean": 0.21227985620498657,
+      "p95": 0.45237505435943604
+    },
+    "observed": {
+      "count": 416,
+      "rmse": 0.07570664584636688,
+      "mean": 0.059557538479566574,
+      "p95": 0.12850618362426758
+    },
+    "event": {
+      "count": 97,
+      "rmse": 0.17444489896297455,
+      "mean": 0.1310318410396576,
+      "p95": 0.3972158133983612
+    },
+    "velocity_rmse": 3.8873693346977234
+  },
+  "savedMatchesLive": true,
+  "errors": []
+}
