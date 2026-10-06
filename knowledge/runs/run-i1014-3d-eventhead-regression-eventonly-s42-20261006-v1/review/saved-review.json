@@ -1,0 +1,39 @@
+{
+  "schema": "ball_refiner_3d.event_review.v1",
+  "request": {
+    "rally": "rally_000030",
+    "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+    "checkpoint_3d": "outputs:train/rope-regression-eventhead-eventonly/20261006-v1-s42/logs/version_0/checkpoints/best.ckpt",
+    "augmentation": {
+      "event_probability": 0.75,
+      "isolated_probability": 0,
+      "gap_min": 3,
+      "gap_max": 10,
+      "noise_p95_px": 300,
+      "jitter_sigma_px": 3,
+      "outlier_probability": 0.1,
+      "triangulation_steps": 3
+    },
+    "augmentation_seed": 1234,
+    "flow_seed": 20991,
+    "missing_enabled": true,
+    "noise_enabled": true,
+    "device": "cpu",
+    "checkpoint_hashes": {
+      "3": "1a5b1fa7cbe02453e269788fb638f5979a446e363ff18de9f7f627ed3c0ddf8a"
+    }
+  },
+  "source": "live",
+  "input_sha256": "a7cca3e34331b6f930781dd5506e8291e0d0c760d32634fbeeb536f09984e442",
+  "view": {
+    "frame": 150,
+    "camera": 2,
+    "layout": "overlay",
+    "plot": "error",
+    "visibility": {
+      "gt": true,
+      "input": true,
+      "prediction": true
+    }
+  }
+}

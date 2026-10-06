@@ -1,4 +1,4 @@
-<!-- knowledge-review: dc1cc5b92fc9e659fbf409aa5f8d4b21ffc9de100bb1a9ba700219b1cd5ed0ef on 2026-10-06 -->
+<!-- knowledge-review: e374835632f66ac10b9c979653ae6ba94de2060b49192a615fc5249e25328b1a on 2026-10-06 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
@@ -354,7 +354,7 @@ bank作成frameは配布倍率のfitと重複するため、OOF性能と区別�
 
 ### 3D Ball Refiner
 
-2026-10-06、2D補完点の誤差を三角測量へ伝えない方針に変更し、観測の不足を3D欠損として保持して3D側で補完する。イベント確率の補助教師を加え、位置lossは維持し、GANは任意の比較条件とした。モデル・損失・Gaussian教師の設定は[3D task README](../src/tasks/ball_refiner_3d/README.md)を正本とする。[GAN-only比較](nodes/ball_refiner/000047-group-i991-i1014-gan-only-eventonly-s42.md)はこの条件で位置教師を外す根拠がないことを示すが、GAN一般の有効性を否定する比較ではない。新しいイベントヘッドはCPUの短い学習・推論と画面表示まで確認した段階で、本学習の精度は未評価。次は同一入力・予算・seedで位置のみと位置＋イベントの対照を取り、欠損/イベント付近の位置誤差とイベント時刻の精度を比較する。
+2026-10-06、2D補完点の誤差を三角測量へ伝えない方針に変更し、観測の不足を3D欠損として保持して3D側で補完する。イベント確率の補助教師を加え、位置lossは維持し、GANは任意の比較条件とした。モデル・損失・Gaussian教師の設定は[3D task README](../src/tasks/ball_refiner_3d/README.md)を正本とする。[GAN-only比較](nodes/ball_refiner/000047-group-i991-i1014-gan-only-eventonly-s42.md)はこの条件で位置教師を外す根拠がないことを示すが、GAN一般の有効性を否定する比較ではない。[イベントヘッド付き回帰の本学習](nodes/ball_refiner_3d/000011-run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.md)は4,000更新を完了し、test RMSEは全体0.158m・欠損0.428m、Gaussian教師へのイベントBrierは0.00324。欠損RMSEは同入力の線形補間より約52%低い一方、正確な観測にも約6.8cmのRMSEを生む。WebUIの本重み・GT・イベント確率表示と再推論を確認したが、欠損付近の速度振動は残る。単一seed・合成データのみで、最終区間もvalidationが改善している。次は同一入力・L1・GANなしでイベント教師の有無を比較し、時刻精度と学習予算を検討する。
 
 同日の[GAN-only移行](nodes/ball_refiner/000047-group-i991-i1014-gan-only-eventonly-s42.md)では、最終3Dのtest全体RMSEが12.31mへ悪化した。bestは位置係数0.5のstep2500で0.226m、最終GAN-onlyモデルとは別に保存した。GTとの対応と速度整合性が崩れ、lastの採用根拠はない。共通入力・評価seed・予算は照合済みで、入力位置との一致を保つlossの下限を次の比較候補とする。
 
