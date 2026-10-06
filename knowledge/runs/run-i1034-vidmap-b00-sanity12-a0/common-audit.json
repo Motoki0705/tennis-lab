@@ -1,0 +1,89 @@
+{
+  "original_model": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-sanity12-a0/rec",
+  "evaluated_model": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/analysis/vidmap-sanity12-a0/model-with-refreshed-errors",
+  "manifest": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/inputs/manifest-sanity12.json",
+  "manifest_sha256": "4f14e313bd7e5a8a73467efd09fdd30cced98c7862cd0ce49e1a55a9a156b584",
+  "input_images": 12,
+  "registered_images": [
+    "frame_000000.jpg",
+    "frame_000001.jpg",
+    "frame_000002.jpg",
+    "frame_000003.jpg",
+    "frame_000005.jpg",
+    "frame_000007.jpg",
+    "frame_000011.jpg"
+  ],
+  "missing_images": [
+    "frame_000004.jpg",
+    "frame_000006.jpg",
+    "frame_000008.jpg",
+    "frame_000009.jpg",
+    "frame_000010.jpg"
+  ],
+  "original_dimensions_verified": true,
+  "pycolmap_version": "4.3.0",
+  "error_definition": "Per-point mean Euclidean pixel residual over its track, recomputed from final geometry; mean/median/p95 across points.",
+  "invalid_stored_point_errors": 0,
+  "stored_to_recomputed_max_abs_px": 0.0,
+  "stored_to_recomputed_mean_abs_px": 0.0,
+  "changed_point_errors_over_1e_6_px": 0,
+  "gate_note": "NHT CLI generic gates are not baseline native short-clip gates; do not rank accepted flags.",
+  "poses": [
+    {
+      "image": "frame_000000.jpg",
+      "center": [
+        0.4844814257914017,
+        3.2204152274228584,
+        27.711800063884116
+      ]
+    },
+    {
+      "image": "frame_000001.jpg",
+      "center": [
+        0.7717522796930739,
+        3.217789749167125,
+        27.811517332480708
+      ]
+    },
+    {
+      "image": "frame_000002.jpg",
+      "center": [
+        1.1492687315072418,
+        3.1840184047360074,
+        27.97574764106633
+      ]
+    },
+    {
+      "image": "frame_000003.jpg",
+      "center": [
+        1.3581139946345893,
+        3.1735353837052473,
+        28.14165803089863
+      ]
+    },
+    {
+      "image": "frame_000005.jpg",
+      "center": [
+        1.9811900921874057,
+        3.138800117775368,
+        28.434930199292587
+      ]
+    },
+    {
+      "image": "frame_000007.jpg",
+      "center": [
+        2.5788496492000927,
+        3.1066196170369516,
+        28.78887433469365
+      ]
+    },
+    {
+      "image": "frame_000011.jpg",
+      "center": [
+        3.5521116600541216,
+        3.0295575144547433,
+        30.02452466204165
+      ]
+    }
+  ]
+}

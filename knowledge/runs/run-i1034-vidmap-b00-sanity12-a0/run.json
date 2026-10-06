@@ -1,0 +1,16 @@
+{
+  "run_id": "1791306572233754420_305168_i1034-vidmap-b00-sanity12-a0",
+  "name": "i1034-vidmap-b00-sanity12-a0",
+  "command": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.venv/bin/python -m experiments.sfm_comparison.run_command --campaign /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006 --run-id vidmap-b00-sanity12-a0 --stage sanity --seconds 1800 --required-path /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-sanity12-a0/rec/images.bin -- env HF_HOME=/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/huggingface TORCH_HOME=/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/torch HF_HUB_DISABLE_XET=1 TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-compile TORCHINDUCTOR_COMPILE_THREADS=2 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 MKL_NUM_THREADS=4 /home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/vidmap-native/bin/python -m vidmap.run --input_data /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/inputs/sanity12 --output /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/vidmap-sanity12-a0 --device cuda",
+  "provider": "codex",
+  "session": "01a1106e-187c-7163-be4e-9f1673767ad9",
+  "issue": "1034",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "bed9964eee2d2de0e818e76a4a56fe5cf6b91c67",
+  "branch": "research/sfm-night-20261006",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "captured_at": "2026-10-07T03:34:13+09:00"
+}

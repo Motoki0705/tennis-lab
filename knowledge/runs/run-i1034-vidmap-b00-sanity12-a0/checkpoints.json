@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/huggingface/hub/models--depth-anything--DA3NESTED-GIANT-LARGE-1.1/snapshots/b2359bdf726fb44ef62acca04d629dcf158053e7/config.json",
+    "sha256": "09adf89474017e717bc05aa86fd3a378708ba8914b036d61874eced328069468",
+    "bytes": 3113,
+    "source": "https://huggingface.co/depth-anything/DA3NESTED-GIANT-LARGE-1.1/resolve/b2359bdf726fb44ef62acca04d629dcf158053e7/config.json"
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/huggingface/hub/models--depth-anything--DA3NESTED-GIANT-LARGE-1.1/snapshots/b2359bdf726fb44ef62acca04d629dcf158053e7/model.safetensors",
+    "sha256": "8ebe871a022ed58d2fc8fdfb2ebdb31d57b60fe39611c849095851a7b7c6020c",
+    "bytes": 6759558100,
+    "source": "https://huggingface.co/depth-anything/DA3NESTED-GIANT-LARGE-1.1/resolve/b2359bdf726fb44ef62acca04d629dcf158053e7/model.safetensors"
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/huggingface/hub/models--gberton--MegaLoc/snapshots/7cb9f7970d366fdf059963d04d372e503e8e9df9/model.safetensors",
+    "sha256": "d4f9f2bcb60018f91eb6a8e061ed054fd55654e10c2569cf13841ea986ffb4f8",
+    "bytes": 914577436,
+    "source": "https://huggingface.co/gberton/MegaLoc/resolve/7cb9f7970d366fdf059963d04d372e503e8e9df9/model.safetensors"
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/torch/hub/checkpoints/romav2.0.1.pt",
+    "sha256": "1557dec0d21b62366465f7ff4d5fdf228cc695d0582e196ad2b80e05230828b7",
+    "bytes": 1095883548,
+    "source": "https://github.com/Parskatt/RoMaV2/releases/download/v2.0.1/romav2.0.1.pt"
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/torch/hub/checkpoints/aliked-n16.pth",
+    "sha256": "5be8704840ed662d9d8c561bf7279c222092674e7eb05fd0feab94899e9d82f2",
+    "bytes": 2738091,
+    "source": "https://github.com/Shiaoming/ALIKED/raw/main/models/aliked-n16.pth"
+  },
+  {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap-model-cache/torch/hub/geocalib/pinhole.tar",
+    "sha256": "86d6aeacd8bbd974c59ce39f61854e00d36911c732ad89be471476fd708722ac",
+    "bytes": 116074121,
+    "source": "https://github.com/cvg/GeoCalib/releases/download/v1.0/geocalib-pinhole.tar"
+  }
+]

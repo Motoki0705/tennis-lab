@@ -1,0 +1,92 @@
+accelerate==1.8.1
+addict==2.4.0
+annotated-types==0.8.0
+antlr4-python3-runtime==4.9.3
+apsw==3.53.4.0
+argcomplete==3.7.2
+certifi==2026.7.22
+charset-normalizer==3.5.2
+colorama==0.4.6
+contourpy==1.3.3
+cuda-bindings==13.4.3
+cuda-pathfinder==1.8.3
+cuda-toolkit==13.0.3.0
+cycler==0.12.1
+einops==0.8.1
+evo==1.31.1
+filelock==4.0.12
+fonttools==4.66.1
+fsspec==2026.9.0
+geocalib @ git+https://github.com/cvg/GeoCalib.git@982f625d822fbb2b50c65d123fd1362a5c01ec2c
+h5py==3.14.0
+hf-xet==1.6.0
+huggingface-hub==0.36.0
+hydra-core==1.3.2
+idna==3.20
+jinja2==3.1.6
+kiwisolver==1.5.1
+kornia==0.8.3
+kornia-rs==0.2.0
+lightglue @ git+https://github.com/cvg/LightGlue.git@c2f8561576f0160b2cdaa3e4634b6b61d6cf6cb8
+lz4==4.4.5
+markupsafe==3.0.4
+matplotlib==3.10.3
+mpmath==1.3.0
+natsort==8.4.0
+networkx==3.6.1
+numexpr==2.14.2
+numpy==1.26.4
+nvidia-cublas==13.1.1.3
+nvidia-cuda-cupti==13.0.85
+nvidia-cuda-nvrtc==13.0.88
+nvidia-cuda-runtime==13.0.96
+nvidia-cudnn-cu13==9.24.0.43
+nvidia-cufft==12.0.0.61
+nvidia-cufile==1.15.1.6
+nvidia-curand==10.4.0.35
+nvidia-cusolver==12.0.4.66
+nvidia-cusparse==12.6.3.3
+nvidia-cusparselt-cu13==0.8.1
+nvidia-nccl-cu13==2.30.7
+nvidia-nvjitlink==13.4.92
+nvidia-nvshmem-cu13==3.4.5
+nvidia-nvtx==13.0.85
+omegaconf==2.3.0
+opencv-python==4.11.0.86
+packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1785888127/work
+pandas==3.0.6
+pathspec==1.1.1
+pillow==11.3.0
+pip @ file:///home/conda/feedstock_root/build_artifacts/pip_1785914405025/work
+poselib @ file:///home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/outputs/aris/i1034-sfm-night-20261006/environment/wheels/poselib-2.0.5-cp311-cp311-linux_x86_64.whl
+psutil==7.2.2
+pybind11==3.1.0
+pyceres @ file:///home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/outputs/aris/i1034-sfm-night-20261006/environment/wheels/pyceres-2.7-cp311-cp311-linux_x86_64.whl
+pycolmap @ file:///home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/colmap
+pydantic==2.11.7
+pydantic-core==2.33.2
+pygments==2.21.0
+pyparsing==3.3.3
+python-dateutil==2.9.0.post0
+pyyaml==6.0.2
+requests==2.32.4
+rosbags==0.11.5
+ruamel-yaml==0.19.1
+safetensors==0.5.3
+scikit-build-core==0.11.6
+scipy==1.15.3
+seaborn==0.13.2
+setuptools==84.0.0
+six==1.17.0
+sympy==1.14.0
+torch==2.14.0
+torchvision==0.29.0
+tqdm==4.67.1
+triton==3.8.0
+typing-extensions==4.16.0
+typing-inspection==0.4.4
+urllib3==2.8.0
+-e file:///home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/vidmap
+wheel==0.48.0
+xformers==0.0.35
+zstandard==0.25.0
