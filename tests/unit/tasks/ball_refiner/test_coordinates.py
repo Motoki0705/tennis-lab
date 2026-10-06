@@ -191,7 +191,7 @@ def test_config_rejects_implicit_or_unknown_fields():
     with pytest.raises(ValueError, match="missing"):
         parse_section(ModelConfig, {"dimensions": 2})
     with pytest.raises(TypeError):
-        parse_section(ModelConfig, {"dimensions": True, "architecture": "regression", "width": 16, "layers": 1, "heads": 2, "dropout": 0, "window_length": 32, "flow_steps": 3, "ffn_dim": 64, "rope_dim": 8, "rope_theta": 10000.0})
+        parse_section(ModelConfig, {"dimensions": True, "architecture": "regression", "width": 16, "layers": 1, "heads": 2, "dropout": 0, "window_length": 32, "flow_steps": 3, "ffn_dim": 64, "rope_dim": 8, "rope_theta": 10000.0, "ffn_type": "swiglu"})
 
 
 def test_event_only_inputs_preserve_observations_and_shared_3d(corruption):

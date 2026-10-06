@@ -35,7 +35,7 @@ class CoordinateRefiner(nn.Module):
                 dim=config.width, n_heads=config.heads, ffn_dim=config.ffn_dim,
                 head_dim=config.width // config.heads, rope_dim=config.rope_dim,
                 attn_dropout=config.dropout, attention_type="mha", n_kv_heads=None,
-                rope_base=config.rope_theta, ffn_type="swiglu",
+                rope_base=config.rope_theta, ffn_type=config.ffn_type,
             )) for _ in range(config.layers)
         ])
         self.output = nn.Sequential(RMSNorm(config.width), nn.Linear(config.width, config.dimensions))
@@ -101,4 +101,3 @@ class CoordinateRefiner(nn.Module):
             x0 = self(coordinates, missing, state, time)
             state = state + (x0 - state) / (self.config.flow_steps - step)
         return state
-

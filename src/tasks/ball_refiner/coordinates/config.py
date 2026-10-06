@@ -11,6 +11,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.configuration import CompileConfig
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES
 from src.utils.paths import PROJECT_ROOT
 
 T = TypeVar("T")
@@ -81,7 +82,9 @@ class LegacyModelConfig:
 
 
 @dataclass(frozen=True)
-class ModelConfig(LegacyModelConfig):
+class RoPEModelConfigV2(LegacyModelConfig):
+    """The v2 checkpoint contract has a fixed SwiGLU FFN."""
+
     ffn_dim: int
     rope_dim: int
     rope_theta: float
@@ -90,6 +93,16 @@ class ModelConfig(LegacyModelConfig):
         super().__post_init__()
         if self.ffn_dim < 1 or self.rope_dim < 2 or self.rope_dim % 2 or self.rope_dim > self.width // self.heads or self.rope_theta <= 0:
             raise ValueError("Invalid FFN or RoPE dimensions")
+
+
+@dataclass(frozen=True)
+class ModelConfig(RoPEModelConfigV2):
+    ffn_type: str = "swiglu"
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.ffn_type not in SUPPORTED_FFN_TYPES:
+            raise ValueError(f"Unsupported FFN type: {self.ffn_type}")
 
 
 @dataclass(frozen=True)
@@ -108,8 +121,8 @@ class DiscriminatorConfig:
     cls_init_std: float
 
     def __post_init__(self) -> None:
-        if self.name != "trajectory_transformer" or self.ffn_type != "swiglu":
-            raise ValueError("Require trajectory_transformer with swiglu")
+        if self.name != "trajectory_transformer" or self.ffn_type not in SUPPORTED_FFN_TYPES:
+            raise ValueError("Require trajectory_transformer with a supported FFN type")
         if min(self.hidden_dim, self.num_heads, self.num_layers, self.ffn_dim, self.max_seq_len) < 1 or self.hidden_dim % self.num_heads:
             raise ValueError("Invalid discriminator dimensions")
         if self.rope_dim < 2 or self.rope_dim % 2 or self.rope_dim > self.hidden_dim // self.num_heads or self.rope_theta <= 0:
