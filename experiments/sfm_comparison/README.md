@@ -17,3 +17,9 @@ native環境の構築で判明した制約と復元手順は[ENVIRONMENT.md](ENV
 初回入力はB00先頭90秒、NHT既定1 fpsと既定quality filterを適用した画像集合。
 VidMapの小さいsanityは別条件であり、full inputのSIFTと順位付けしない。
 独立したcamera/ground GTがないため、登録率と再投影残差だけで絶対精度を主張しない。
+
+`run_vidmap.py`は外部runtimeから公式VidMapを起動し、成功したモデルに
+`evaluate_model.py`を適用する。後者は凍結入力・camera原寸を検査し、最終geometryから
+残差を再計算したコピーをNHTの公開CLIで計測する。`run_command.py`のtimeout内で
+この一連の処理をqueue実行し、`evaluation/metrics.json`を必要artifactにする。
+元モデルと評価用コピー、VidMap本体とCPU評価の時間は別に保存する。
