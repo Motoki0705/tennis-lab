@@ -73,8 +73,12 @@ runtimeの変更が生じた場合は別の実験条件として記録する。
 取得前にDドライブの空き112 GiB以上を要求する。合計は約8.3 GiB。
 実際のpath/byte数/hashは`environment/checkpoints.json`に保存した。
 GPU jobの`HF_HOME`と`TORCH_HOME`は`.cache/vidmap-model-cache`配下へ明示する。
-`HF_HUB_DISABLE_XET=1`、compiled model cacheは`.cache/vidmap-compile`、
+`HF_HUB_DISABLE_XET=1`、Torch Inductor cacheは`.cache/vidmap-compile`、
 compile threadsは2、BLAS/OpenMP threadsは4。
+これとは別に、VidMapの保存済みgraph/moduleは初回実行で既定の
+`~/.cache/vidmap/{romav2,da3}`へ書かれることを実ログで確認した。
+後続runはこのcacheも再利用する。配置を変える場合は公式の
+`VIDMAP_ROMAV2_CACHE_DIR`と`VIDMAP_DA3_CACHE_DIR`を明示し、cache条件の変更を記録する。
 
 公式`python -m vidmap.run --input_data ... --output ... --device cuda`を使用する。
 native Ceres/CHOLMODをTorchより先にloadする公式の順序を保つ。
