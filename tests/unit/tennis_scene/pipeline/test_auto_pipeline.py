@@ -232,16 +232,15 @@ def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch:
     np.testing.assert_array_equal(load_scene_result(output).ball_3d, scene.ball_3d)
 
 
-def test_constant_refiner_points_stop_at_the_side_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # An empty detector yields a constant synthetic refiner mean at (0,0).
-    # All frames reach geometry; the unchanged motion test counts one support.
+def test_no_ball_observations_stop_at_the_side_decision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # No detector observations means zero supporting frames for court side.
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch, empty=True)
     with pytest.raises(ReconstructionUnavailable, match="insufficient_frames") as stopped:
         pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
-    assert stopped.value.reason == "court_side_insufficient_frames" and stopped.value.diagnostics["frames"] == 1
+    assert stopped.value.reason == "court_side_insufficient_frames" and stopped.value.diagnostics["frames"] == 0
     assert pipeline.last_runner is not None and pipeline.last_runner.statuses["court_side"] == "failed"
     assert pipeline.last_receipt is not None and pipeline.last_receipt["error_reason"] == "court_side_insufficient_frames"
-    assert pipeline.last_receipt["error_diagnostics"]["pair_frames"] == {"cam0-cam1": 1, "cam0-cam2": 1, "cam1-cam2": 1}
+    assert pipeline.last_receipt["error_diagnostics"]["pair_frames"] == {"cam0-cam1": 0, "cam0-cam2": 0, "cam1-cam2": 0}
 
 
 def test_single_ball_missing_views_remain_invalid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -346,37 +345,30 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
         pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
 
 
-def test_all_consumers_keep_low_presence_broad_refiner_points_and_reload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import torch
-
-    from src.tasks.ball_refiner.refiner_2d.distribution import BallGMM2D
+def test_missing_detector_frames_remain_missing_through_triangulation_and_reload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from src.tennis_scene.pipeline.components.ball_points import BallPointsOutput
-    from src.tennis_scene.pipeline.components.ball_refiner import BallRefiner2DOutput
     from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
-    from tests.support.tennis_scene.ball_refiner import FixtureRefiner
 
-    original = FixtureRefiner.process
-
-    def uncertain(self: FixtureRefiner, detections: BallDetectionOutput) -> BallRefiner2DOutput:
-        result = original(self, detections)
-        gmm = result.prediction.distribution
-        broad = BallGMM2D(gmm.means, gmm.scale_tril * 100000., gmm.mixture_logits,
-                          torch.full_like(gmm.presence_logits, -1000.))
-        return replace(result, prediction=replace(result.prediction, distribution=broad))
-
-    monkeypatch.setattr(FixtureRefiner, "process", uncertain)
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch)
+    for camera in ("cam0", "cam1", "cam2"):
+        stage = stages[f"ball_detection/{camera}"]
+        row = stage.result
+        observed, kind = row.observed.copy(), row.point_kind.copy()
+        observed[8:11], kind[8:11] = False, 2  # finite interpolated pixels must not enter geometry
+        stage.result = replace(row, observed=observed, point_kind=kind)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
-    assert scene.ball_3d_valid.all()  # side, camera alignment and triangulation all consumed the points.
+    assert not scene.ball_3d_valid[8:11].any()
+    assert scene.ball_3d_valid[:8].all() and scene.ball_3d_valid[11:].all()
     runner = pipeline.last_runner
     assert runner is not None
     for camera in ("cam0", "cam1", "cam2"):
         points = runner.store.load(runner.references[f"ball_points/{camera}"], ArtifactCodec(BallPointsOutput))
-        assert (points.presence_probability == 0).all()
-        np.testing.assert_allclose(points.uv_px, stages[f"ball_detection/{camera}"].result.uv_px, rtol=1e-6)
-        assert runner.references[f"ball_points/{camera}"].version == 2
+        assert not points.observed[8:11].any()
+        assert (points.uv_px[8:11] == 0).all()
+        assert runner.references[f"ball_points/{camera}"].version == 3
     pipeline.config = replace(pipeline.config, cache_source="load")
     loaded = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
+    np.testing.assert_array_equal(loaded.ball_3d_valid, scene.ball_3d_valid)
     np.testing.assert_array_equal(loaded.ball_3d, scene.ball_3d)
     assert pipeline.last_runner is not None and set(pipeline.last_runner.statuses.values()) == {"loaded"}
 
@@ -389,9 +381,9 @@ def test_load_rejects_historical_filtered_ball_points(tmp_path: Path, monkeypatc
     pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=store_root)
     runner = pipeline.last_runner
     assert runner is not None
-    # An archived v1 reference is rejected by its declared schema before payload decoding.
+    # An archived v2 reference is rejected by its declared schema before payload decoding.
     runner.store.publish("ball_points/cam0", {"historical_filtered": True}, ArtifactCodec(dict),
-                         schema="ball_points", version=1, identity={"legacy": True}, dependencies={}, provenance={"origin": "import"})
+                         schema="ball_points", version=2, identity={"legacy": True}, dependencies={}, provenance={"origin": "import"})
     pipeline.config = replace(pipeline.config, cache_source="load")
     with pytest.raises(ValueError, match="Loaded component contract mismatch: ball_points/cam0"):
         pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=store_root)
