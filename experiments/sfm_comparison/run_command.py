@@ -20,6 +20,27 @@ def write_json(path: Path, value: Any) -> None:
     )
 
 
+def numeric_metrics(record: dict[str, Any]) -> dict[str, float]:
+    """Export the flat numeric mapping expected by knowledge-control."""
+    values = {"elapsed_seconds": float(record["elapsed_seconds"])}
+    peak = record.get("device_peak_memory_mib")
+    if peak is not None:
+        values["device_peak_memory_mib"] = float(peak)
+
+    def collect(prefix: str, data: dict[str, Any]) -> None:
+        for key, value in data.items():
+            if key in {"gates", "minimum_supported_points_per_image"}:
+                continue  # Thresholds and gate policy are not measured scores.
+            name = f"{prefix}/{key}"
+            if isinstance(value, dict):
+                collect(name, value)
+            elif isinstance(value, (int, float)) and not isinstance(value, bool):
+                values[name] = float(value)
+
+    collect("sfm", record["metrics"])
+    return values
+
+
 def sample_memory(stop: threading.Event, samples: list[float]) -> None:
     """Measure whole-device memory, explicitly not process-only allocations."""
     while not stop.is_set():
@@ -142,12 +163,7 @@ def main() -> int:
     write_json(output / "execution.json", record)
     repro = Path(os.environ["TENNIS_REPRO_DIR"])
     write_json(repro / "execution.json", record)
-    observed = {
-        "elapsed_seconds": elapsed,
-        "device_peak_memory_mib": record["device_peak_memory_mib"],
-        "sfm": record["metrics"],
-    }
-    write_json(repro / "predictions/metrics.json", observed)
+    write_json(repro / "predictions/metrics.json", numeric_metrics(record))
     print(
         json.dumps(
             {
