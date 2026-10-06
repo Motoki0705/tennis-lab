@@ -1,0 +1,29 @@
+{
+  "clips": 1300,
+  "expansion": {
+    "existing": 815,
+    "added": 485,
+    "changed": 0,
+    "reuse": 442,
+    "generate": 730,
+    "skip": 128
+  },
+  "states": {
+    "reused": 420,
+    "tracking_pending": 729,
+    "review_pending": 1,
+    "skipped": 128,
+    "reuse_pending": 22
+  },
+  "added_clip_states": {
+    "tracking_pending": 483,
+    "skipped": 2
+  },
+  "new_all_detections": 1526,
+  "new_pose_crops": 0,
+  "seconds": {
+    "tracking": 212.9731904710352,
+    "pose": 0.0,
+    "review": 0.0
+  }
+}

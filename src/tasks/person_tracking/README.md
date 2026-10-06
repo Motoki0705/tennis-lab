@@ -12,14 +12,14 @@ AFLinkは論文再実装と公開重みを当面使うが、**重みの独立し
 | モジュール | 責務 |
 |---|---|
 | `contracts.py` | 1 frameの検出row、source画素box、score、COCO17 pose、外観と明示mask、追跡の実観測→検出row対応 |
-| `features.py` | decoded BGR frameの全検出へViTPoseを1回適用し、encoder用cropと同じ座標のpose promptを作る。encoderはtracking方式と独立 |
+| `features.py` | 通常profileは検出へViTPoseを適用してpose promptと外観を抽出する。生成専用profileは外観だけを抽出する。crop幾何は後段pose推論と共有 |
 | `archive.py` | 連続frame・一意rowを検証して特徴をNPZへ保存/読込。元検出artifact・重みhashなどの出自は呼び出し側が渡す |
 | `botsort_pose.py` | XYWH Kalman、high/lowの2段対応、外観EMAとpose距離を使う固定camera向けBoT-SORT派生 |
 | `deep_ocsort_pose.py` | 公式Deep OC-SORTのobservation-centric Kalman再更新・方向速度・adaptive appearanceに共通poseコストを加えたadapter。出自・差分は`deep_ocsort_vendor/NOTICE.md` |
 | `strongsort.py` / `strongsort_offline.py` | 論文からのStrongSORT・AFLink・GSI推論再実装。明示的なpose重み（既定0）で共通pose距離を両照合段へ加算できる。GSI補間は別maskで保持。[出自と重みの制約](strongsort_NOTICE.md) |
 | `part_archive.py` | 検証済みKPR native archiveのreader。Deep OC-SORT / StrongSORTへ共通可視partのEuclidean距離を渡す |
 | `feature_tracks.py` / `evaluation.py` | 元検出rowを維持するscatter・共通外観samplingと、部分参照ラベル上のcamera内IDF1/switch/fragment |
-| `methods.py` / `sequence.py` | 比較用tracker factoryと、採用profile専用のproduction/文脈共通`track_sequence`。元row・pose・CLIP、AFLink source ID、GSI syntheticを保存 |
+| `methods.py` / `sequence.py` | 比較用tracker factoryと、採用profileのproduction/文脈と生成専用profileに共通の`track_sequence`。元row・pose・CLIP、AFLink source ID、GSI syntheticを保存 |
 | `duplicate_boxes.py` | 検出直後の任意greedy統合（IoU>=.8）。score降順・同点元row順でkeep/dropを記録。既定off |
 | `court_candidates.py` | CPU開発診断用。全人物を追跡した後、既存プレー領域内の実観測滞在時間で候補を選び、最後に上限6を適用。scoreは使わない |
 | `court_linking.py` | 標準pipelineと開発比較で共有する固定選別。足元連続性とCLIPで断片を連結して滞在を集約する。領域はmembership判定にだけ使い、選択済み断片の全実観測を保持する。定義・限界はmodule docstring |
@@ -36,6 +36,10 @@ track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わ
 上限6は共通コート選別後のgroupにだけ適用する。
 
 `TrackingConfig`は採用済み`strongsort_pp_pose`＋CLIPだけを受け付ける。
+データセット生成用の`DatasetTrackingConfig`は`strongsort_pp_appearance`＋CLIPを固定し、
+pose重み0でpose距離・更新を計算しない。`FeatureExtractor(None, UnpromptedEncoder(...))`は
+poseモデルやpromptを使わず、`DetectionFeatures.poses`と`TrackEvidence.poses`を`None`に保つ。
+pose必須の消費側は`require_poses()`で明示検証する。通常profileへposeなし入力を渡すと失敗する。
 他のtrackerは`methods.build_tracker`と`tests/benchmarks/person_tracking_*.py`の比較入口で使用する。
 標準pipelineに比較方式を指定すると停止する。
 名前の誤り・欠損重み・不正な特徴や状態は停止する。profileの値は`TrackingConfig.identity()`と

@@ -75,7 +75,7 @@ def test_shared_sequence_retains_gaps_without_synthetic_pose(
         and result.reconstruction.interpolated[:, 5].all()
     )
     assert not result.observed[:, 5].any()
-    assert not result.evidence.poses[:, 5].any()
+    assert not result.evidence.require_poses()[:, 5].any()
 
 
 def test_feature_extractor_uses_stream_api_and_preserves_raw_scores() -> None:
@@ -104,7 +104,7 @@ def test_feature_extractor_uses_stream_api_and_preserves_raw_scores() -> None:
         np.ones(2, np.float32),
     )
     assert output.rows.tolist() == [10, 11]
-    assert (output.poses[..., 2] > 1).all()
+    assert (output.require_poses()[..., 2] > 1).all()
 
 
 def test_real_generation_import_path_is_available_without_gpu(

@@ -75,8 +75,10 @@ DEFAULT_CONFIG = FeatureConfig()
 
 
 class FeatureExtractor:
-    def __init__(self, pose: PoseModel, encoder: DetectionEncoder, config: FeatureConfig = DEFAULT_CONFIG) -> None:
+    def __init__(self, pose: PoseModel | None, encoder: DetectionEncoder, config: FeatureConfig = DEFAULT_CONFIG) -> None:
         self.pose, self.encoder, self.config = pose, encoder, config
+        if pose is None and not isinstance(encoder, UnpromptedEncoder):
+            raise ValueError("Pose-free extraction requires an explicitly unprompted encoder")
         if encoder.dimension < 1:
             raise ValueError("Encoder dimension must be explicit, including empty frames")
 
@@ -85,7 +87,7 @@ class FeatureExtractor:
         boxes: NDArray[np.float32], scores: NDArray[np.float32],
     ) -> DetectionFeatures:
         n = len(rows)
-        poses: NDArray[np.float32] = np.zeros((n, 17, 3), np.float32)
+        poses: NDArray[np.float32] | None = None if self.pose is None else np.zeros((n, 17, 3), np.float32)
         embeddings: NDArray[np.float32] = np.zeros((n, self.encoder.dimension), np.float32)
         valid: NDArray[np.bool_] = np.zeros(n, bool)
         # Validate before invoking either model, including empty input frames.
@@ -94,29 +96,40 @@ class FeatureExtractor:
             raise ValueError("Feature image must be uint8 BGR (H,W,3)")
         if not n:
             return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
-        centres = (boxes[:, :2] + boxes[:, 2:]) * .5
-        sizes = (boxes[:, 2:] - boxes[:, :2]).max(1) * self.config.bbox_enlarge
-        squares = torch.from_numpy(np.column_stack((centres, sizes)).astype(np.float32))
-        result = self.pose.predict(Pose2DFrameSequenceRequest(
-            [(frame, image)], squares, torch.full((n,), frame, dtype=torch.int64)))
-        if result.keypoints.shape != (n, 17, 3):
-            raise ValueError("Pose model changed the detection row axis")
-        poses = result.keypoints.detach().cpu().numpy().astype(np.float32)
-        # ViTPose returns regression heatmap peaks, not probabilities. Preserve
-        # them (including values >1 or <0); clipping would change pose weights
-        # and the prompt supplied to a pose-aware appearance encoder.
-        if not np.isfinite(poses).all():
-            bad = np.argwhere(~np.isfinite(poses))
-            details = [(int(rows[i]), int(j), int(k), str(poses[i, j, k])) for i, j, k in bad]
-            raise ValueError(f"Nonfinite pose at frame {frame}: (detection row, joint, channel, value)={details}")
+        if self.pose is not None:
+            poses = infer_poses(frame, image, boxes, self.pose, self.config, rows=rows)
         return encode_appearance(frame, image, rows, boxes, scores, poses, self.encoder, self.config)
 
 
+def infer_poses(frame: int, image: NDArray[np.uint8], boxes: NDArray[np.float32],
+                model: PoseModel, config: FeatureConfig = DEFAULT_CONFIG, *,
+                rows: NDArray[np.int64] | None = None) -> NDArray[np.float32]:
+    """Infer exactly the supplied observations using the shared ViTPose crop geometry."""
+    n = len(boxes)
+    if not n:
+        return np.zeros((0, 17, 3), np.float32)
+    centres = (boxes[:, :2] + boxes[:, 2:]) * .5
+    sizes = (boxes[:, 2:] - boxes[:, :2]).max(1) * config.bbox_enlarge
+    squares = torch.from_numpy(np.column_stack((centres, sizes)).astype(np.float32))
+    result = model.predict(Pose2DFrameSequenceRequest(
+        [(frame, image)], squares, torch.full((n,), frame, dtype=torch.int64)))
+    if result.keypoints.shape != (n, 17, 3):
+        raise ValueError("Pose model changed the detection row axis")
+    poses = result.keypoints.detach().cpu().numpy().astype(np.float32)
+    if not np.isfinite(poses).all():
+        bad = np.argwhere(~np.isfinite(poses))
+        details = [(int(rows[i]) if rows is not None else int(i), int(j), int(k), str(poses[i, j, k])) for i, j, k in bad]
+        raise ValueError(f"Nonfinite pose at frame {frame}: (detection row, joint, channel, value)={details}")
+    return poses
+
+
 def encode_appearance(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int64],
-                      boxes: NDArray[np.float32], scores: NDArray[np.float32], poses: NDArray[np.float32],
+                      boxes: NDArray[np.float32], scores: NDArray[np.float32], poses: NDArray[np.float32] | None,
                       encoder: DetectionEncoder, config: FeatureConfig = DEFAULT_CONFIG) -> DetectionFeatures:
     """Encode another backbone using the identical saved pose/detection rows."""
     n = len(rows)
+    if poses is None and not isinstance(encoder, UnpromptedEncoder):
+        raise ValueError("Pose-free appearance requires an explicitly unprompted encoder")
     embeddings: NDArray[np.float32] = np.zeros((n, encoder.dimension), np.float32)
     valid: NDArray[np.bool_] = np.zeros(n, bool)
     DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
@@ -133,9 +146,13 @@ def encode_appearance(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int
     for start in range(0, len(selected), config.appearance_batch_size):
         batch = selected[start:start + config.appearance_batch_size]
         pixels = torch.from_numpy(np.stack([crop(image, boxes[row], encoder.input_size) for row in batch]))
-        prompts = poses[batch].copy()
-        prompts[..., :2] = (prompts[..., :2] - clipped[batch, None, :2]) / crop_size[batch, None, :]
-        encoded = encoder.embed(pixels, torch.from_numpy(prompts)).detach().cpu().numpy()
+        if poses is None:
+            assert isinstance(encoder, UnpromptedEncoder)
+            encoded = encoder.encoder.embed(pixels).detach().cpu().numpy()
+        else:
+            prompts = poses[batch].copy()
+            prompts[..., :2] = (prompts[..., :2] - clipped[batch, None, :2]) / crop_size[batch, None, :]
+            encoded = encoder.embed(pixels, torch.from_numpy(prompts)).detach().cpu().numpy()
         if encoded.shape != (len(batch), encoder.dimension):
             raise ValueError("Appearance model changed the detection or embedding axis")
         embeddings[batch] = encoded
