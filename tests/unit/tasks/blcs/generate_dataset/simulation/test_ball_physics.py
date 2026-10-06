@@ -1,6 +1,8 @@
-"""Fixed court normalization tests at the BLCS physics boundary."""
+"""BLCS physics boundary: normalization, shared force model and surfaces."""
 
 from __future__ import annotations
+
+from dataclasses import replace
 
 import pytest
 import torch
@@ -33,11 +35,10 @@ def test_position_normalization_uses_one_scale_and_round_trips() -> None:
 
 def _config(*, use_drag: bool, use_magnus: bool) -> PhysicsConfig:
     return PhysicsConfig(
-        gravity=9.81,
+        gravity=9.8,
         k_drag=0.013,
         k_magnus=0.0011,
-        e_z=0.75,
-        mu=0.1,
+        surface="hard",
         alpha_net=0.3,
         alpha_net_cord=0.05,
         alpha_fence=0.3,
@@ -47,13 +48,11 @@ def _config(*, use_drag: bool, use_magnus: bool) -> PhysicsConfig:
         use_drag=use_drag,
         use_magnus=use_magnus,
         wind=(1.5, -0.5, 0.0),
-        gravity_range=None,
         k_drag_range=None,
         k_magnus_range=None,
-        e_z_range=None,
-        mu_range=None,
         wind_speed_range=None,
         wind_direction_range_deg=None,
+        surface_choices=None,
     )
 
 
@@ -94,3 +93,45 @@ def test_shared_force_model_reproduces_scalar_simulator_bitwise(
         reference = _reference_step(config, reference)
         assert torch.equal(state.position, reference.position)
         assert torch.equal(state.velocity, reference.velocity)
+
+
+def test_sampled_surfaces_are_uniform_and_recorded_with_their_constants() -> None:
+    config = replace(
+        _config(use_drag=True, use_magnus=True),
+        surface_choices=("hard", "clay", "grass"),
+    )
+    torch.manual_seed(5)
+    counts = {"hard": 0, "clay": 0, "grass": 0}
+    for _ in range(3000):
+        sampled = config.sample()
+        assert sampled.surface_choices is None
+        counts[sampled.surface] += 1
+    assert all(abs(count / 3000 - 1 / 3) < 0.03 for count in counts.values())
+    record = replace(config, surface="clay").to_dict()
+    assert record["surface"] == "clay"
+    assert (record["restitution"], record["friction"]) == (0.9, 0.8)
+
+
+def test_unknown_surface_is_rejected_at_construction() -> None:
+    with pytest.raises(KeyError):
+        replace(_config(use_drag=True, use_magnus=True), surface="carpet")
+
+
+def test_bounce_uses_the_configured_surface() -> None:
+    state = BallState(
+        position=torch.tensor([0.0, 5.0, -0.01]),
+        velocity=torch.tensor([0.0, 20.0, -8.0]),
+        spin=torch.tensor([-150.0, 0.0, 0.0]),
+    )
+    clay, clay_bounced = BallPhysics(
+        replace(_config(use_drag=True, use_magnus=True), surface="clay")
+    ).handle_bounce(state)
+    grass, grass_bounced = BallPhysics(
+        replace(_config(use_drag=True, use_magnus=True), surface="grass")
+    ).handle_bounce(state)
+    assert clay_bounced and grass_bounced
+    assert clay.position[2].item() == 0.0
+    # Clay bounces higher and slower than grass.
+    assert clay.velocity[2] > grass.velocity[2]
+    assert clay.velocity[1] < grass.velocity[1]
+    assert not torch.equal(clay.spin, state.spin)

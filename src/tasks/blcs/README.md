@@ -36,6 +36,8 @@ camera_view_v2専用データは廃止しました。旧設定や別モデルの
 
 既定出力は `data/blcs/single_object` です。`scenes/`、train/val/testのsplit、
 設定とmetadata、閲覧用`samples/`を保持します。生成はCPUの並列workerを使います。
+重力は固定で、sceneごとにk_drag・k_magnus・風と、`physics.surface_choices`から均等にcourt surfaceを1つ選びます。
+バウンド係数はsurface名から共有の表を引くだけで、設定では直接指定しません。
 サンプル生成もsingle_object・physical_v1に限定します。
 
 ## 学習
