@@ -1,6 +1,6 @@
 """RoPE architecture, trajectory-only GAN and zero-noise experiment contracts."""
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import numpy as np
 import pytest
@@ -107,3 +107,42 @@ def test_schedule_must_reach_target_and_defaults_have_only_event_corruption():
     config.training.gan.warmup_steps = config.training.steps
     with pytest.raises(ValueError, match="within training.steps"):
         training_config(config)
+
+
+@pytest.mark.parametrize("dimensions,architecture", [(2, "regression"), (3, "regression"), (3, "flow")])
+def test_v2_fixed_swiglu_checkpoints_preserve_predictions(tmp_path, dimensions, architecture):
+    config = ModelConfig(dimensions, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0)
+    model = CoordinateRefiner(config).eval()
+    legacy_config = asdict(config)
+    legacy_config.pop("ffn_type")
+    payload = {"schema": "ball_refiner.coordinates.v2", "model_config": legacy_config, "model": model.state_dict()}
+    path = tmp_path / "v2.ckpt"
+    torch.save(payload, path)
+    loaded, _ = load_checkpoint(path, torch.device("cpu"))
+    assert loaded.config == config
+    coords = torch.randn(1, 16, dimensions)
+    missing = torch.rand(1, 16) < 0.5
+    first = model.predict(coords, missing, generator=torch.Generator().manual_seed(8))
+    second = loaded.predict(coords, missing, generator=torch.Generator().manual_seed(8))
+    torch.testing.assert_close(first, second, atol=0, rtol=0)
+    # The fixed-FFN schema cannot silently accept a different architecture.
+    legacy_config["ffn_type"] = "mlp"
+    torch.save(payload, path)
+    with pytest.raises(ValueError, match="unknown"):
+        load_checkpoint(path, torch.device("cpu"))
+
+
+@pytest.mark.parametrize("ffn_type", ["swiglu", "mlp"])
+def test_v3_configured_ffn_roundtrips_with_checkpoint(tmp_path, ffn_type):
+    config = ModelConfig(2, "regression", 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0, ffn_type)
+    model = CoordinateRefiner(config).eval()
+    path = tmp_path / "v3.ckpt"
+    metadata = checkpoint_metadata(model)
+    assert metadata["schema"] == "ball_refiner.coordinates.v3"
+    torch.save({**metadata, "model": model.state_dict()}, path)
+    loaded, _ = load_checkpoint(path, torch.device("cpu"))
+    assert loaded.config == config
+    coords, missing = torch.randn(1, 16, 2), torch.zeros(1, 16, dtype=torch.bool)
+    torch.testing.assert_close(model(coords, missing), loaded(coords, missing), atol=0, rtol=0)
+    with pytest.raises(ValueError, match="Unsupported FFN"):
+        replace(config, ffn_type="invalid")

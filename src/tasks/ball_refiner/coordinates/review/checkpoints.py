@@ -14,6 +14,7 @@ import yaml
 
 from src.tasks.ball_refiner.coordinates.inference import (
     CHECKPOINT_SCHEMA,
+    FIXED_SWIGLU_CHECKPOINT_SCHEMA,
     LEGACY_CHECKPOINT_SCHEMA,
     checkpoint_model_config,
 )
@@ -40,7 +41,7 @@ def describe(path: Path, identifier: str, manifest_hash: str, fps: float, predic
     predictions = None
     try:
         payload = torch.load(path, map_location="cpu", weights_only=True, mmap=True)
-        if not isinstance(payload, dict) or payload.get("schema") not in (CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA):
+        if not isinstance(payload, dict) or payload.get("schema") not in (CHECKPOINT_SCHEMA, FIXED_SWIGLU_CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA):
             raise ValueError("座標Refinerのcheckpoint形式ではありません")
         model = checkpoint_model_config(payload)
         if payload["manifest_sha256"] != manifest_hash:

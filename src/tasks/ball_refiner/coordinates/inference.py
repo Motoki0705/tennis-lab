@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeAlias
 
 import numpy as np
 import torch
@@ -13,6 +13,7 @@ from torch import Tensor
 from src.tasks.ball_refiner.coordinates.config import (
     LegacyModelConfig,
     ModelConfig,
+    RoPEModelConfigV2,
     parse_section,
 )
 from src.tasks.ball_refiner.coordinates.data import normalization
@@ -20,14 +21,18 @@ from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner, validate
 from src.tasks.ball_refiner.coordinates.models.legacy import LegacyCoordinateRefiner
 from src.tasks.ball_refiner.data.temporal import window_owners, window_starts
 
-CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v2"
+CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v3"
+FIXED_SWIGLU_CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v2"
 LEGACY_CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v1"
-RefinerModel = CoordinateRefiner | LegacyCoordinateRefiner
+RefinerModel: TypeAlias = CoordinateRefiner | LegacyCoordinateRefiner
 
 
 def checkpoint_model_config(payload: dict[str, Any]) -> ModelConfig | LegacyModelConfig:
     if payload["schema"] == CHECKPOINT_SCHEMA:
         return parse_section(ModelConfig, payload["model_config"])
+    if payload["schema"] == FIXED_SWIGLU_CHECKPOINT_SCHEMA:
+        config = parse_section(RoPEModelConfigV2, payload["model_config"])
+        return ModelConfig(**asdict(config), ffn_type="swiglu")
     if payload["schema"] == LEGACY_CHECKPOINT_SCHEMA:
         return parse_section(LegacyModelConfig, payload["model_config"])
     raise ValueError("Expected a coordinate refiner checkpoint; a legacy GMM bundle is incompatible")

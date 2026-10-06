@@ -101,7 +101,7 @@ Flowは明示seedから1本だけ生成し、複数sampleの平均や正解に�
 
 `detection.heatmaps_to_coordinates()` はheatmapの最大点を座標化し、scoreは捨てる。
 検出器由来の欠損maskは呼び出し元から明示する。
-RoPEモデルはv2 schemaで保存する。v1座標モデルは専用legacy classから復元し、設定や重みを新構造へ読み替えない。
+RoPEモデルはFFN種別を明示するv3 schemaで保存する。SwiGLU固定のv2重みはその形式を厳密に検査し、同じSwiGLU構成で復元する。v1座標モデルは専用legacy classから復元し、設定や重みを新構造へ読み替えない。
 既存のGMM checkpointとは別schemaで、自動fallbackをしない。
 旧scene pipelineの配布モデル切替は、この合成比較の自動的な結果とはしない。
 
