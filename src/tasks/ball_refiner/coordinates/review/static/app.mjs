@@ -27,6 +27,7 @@ function applyProfile(profile) {
   $("gap-min").value = a.gap_min; $("gap-max").value = a.gap_max; $("noise-p95").value = a.noise_p95_px;
   $("augmentation-seed").value = profile.augmentation_seed; $("flow-seed").value = profile.flow_seed;
   $("augmentation-mode").value = profile.missing_enabled ? (profile.noise_enabled ? "both" : "missing") : (profile.noise_enabled ? "noise" : "none");
+  $("noise-jitter").value = a.jitter_sigma_px; $("noise-outlier").value = a.outlier_probability * 100;
   state.augmentationBase = { ...a };
 }
 function requestFromForm() {
@@ -36,7 +37,8 @@ function requestFromForm() {
   const mode = $("augmentation-mode").value;
   const augmentation = { ...state.augmentationBase, event_probability: Number($("event-probability").value) / 100,
     isolated_probability: Number($("isolated-probability").value) / 100, gap_min: Number($("gap-min").value),
-    gap_max: Number($("gap-max").value), noise_p95_px: Number($("noise-p95").value) };
+    gap_max: Number($("gap-max").value), noise_p95_px: Number($("noise-p95").value),
+    jitter_sigma_px: Number($("noise-jitter").value), outlier_probability: Number($("noise-outlier").value) / 100 };
   if (augmentation.gap_min >= augmentation.gap_max) throw new Error("左右幅の最大値は最小値より大きくしてください。");
   return { rally: $("rally").value, manifest_sha256: state.catalog.manifest_sha256,
     checkpoint_2d: $("model-2d").value || null, checkpoint_3d: $("model-3d").value || null,

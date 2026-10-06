@@ -19,9 +19,9 @@ class Augmentation(BaseModel):
     isolated_probability: float = Field(ge=0, le=1)
     gap_min: int = Field(ge=1, le=120)
     gap_max: int = Field(ge=2, le=120)
-    noise_p95_px: float = Field(gt=0, le=2000)
+    noise_p95_px: float = Field(ge=0, le=2000)
     jitter_sigma_px: float = Field(ge=0, le=100)
-    outlier_probability: float = Field(gt=0.05, lt=1)
+    outlier_probability: float = Field(ge=0, lt=1)
     triangulation_steps: int = Field(ge=0, le=10)
 
     def config(self) -> CorruptionConfig:

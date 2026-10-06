@@ -13,14 +13,14 @@ for refiner_dimensions in 2 3; do
     for refiner_method in regression gan flow; do
       [[ "$refiner_dimensions" == 2 && "$refiner_method" == flow ]] && continue
       refiner_architecture=regression
-      refiner_gan=0
+      refiner_gan=false
       [[ "$refiner_method" == flow ]] && refiner_architecture=flow
-      [[ "$refiner_method" == gan ]] && refiner_gan=0.002
+      [[ "$refiner_method" == gan ]] && refiner_gan=true
       refiner_issue=991
       [[ "$refiner_dimensions" == 3 ]] && refiner_issue=1014
       refiner_name="i${refiner_issue}-coords-${refiner_dimensions}d-${refiner_method}-p${refiner_rate/./}-s42-${refiner_tag}"
-      refiner_command="OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=${refiner_dimensions} model.architecture=${refiner_architecture} corruption.event_probability=${refiner_rate} training.gan_weight=${refiner_gan} run.output_dir=ball_refiner/train/coordinates-${refiner_dimensions}d-${refiner_method}-p${refiner_rate/./}/${refiner_tag}-s42"
-      bash "$refiner_queue" add "$refiner_command" --name "$refiner_name" --provider codex --session "$refiner_session" --issue "$refiner_issue" --resource half
+      refiner_command="OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=${refiner_dimensions} model.architecture=${refiner_architecture} corruption.event_probability=${refiner_rate} training.gan.enabled=${refiner_gan} run.output_dir=ball_refiner/train/coordinates-${refiner_dimensions}d-${refiner_method}-p${refiner_rate/./}/${refiner_tag}-s42"
+      bash "$refiner_queue" add "$refiner_command" --name "$refiner_name" --provider codex --session "$refiner_session" --issue "$refiner_issue" --resource all
     done
   done
 done

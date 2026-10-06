@@ -10,6 +10,8 @@ import pytest
 import torch
 import yaml
 from fastapi.testclient import TestClient
+from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
 
 from src.tasks.ball_refiner.coordinates.config import CorruptionConfig, ModelConfig
 from src.tasks.ball_refiner.coordinates.data import SharedDataset, prepare
@@ -62,15 +64,18 @@ def review(tmp_path):
     (data / "manifest.json").write_text(json.dumps({"schema": SCHEMA, "image_size_wh": [1280, 720], "fps": 60, "views": 4, "records": records}))
     (data / "state.json").write_text(json.dumps({"status": "complete"}))
     dataset = SharedDataset(data)
-    raw = yaml.safe_load((PROJECT_ROOT / "src/tasks/ball_refiner/configs/train_coordinates.yaml").read_text())
+    with initialize_config_dir(version_base=None, config_dir=str(PROJECT_ROOT / "src/tasks/ball_refiner/configs")):
+        raw = OmegaConf.to_container(compose(config_name="train_coordinates"), resolve=True)
+    # Keep noisy review coverage as well as the new zero-noise training profile.
+    raw["corruption"].update(noise_p95_px=200.0, jitter_sigma_px=3.0, outlier_probability=0.1, isolated_probability=0.04)
     corruption = CorruptionConfig(**raw["corruption"])
     outputs = tmp_path / "outputs"
     for dim, architecture in ((2, "regression"), (3, "regression"), (3, "flow")):
-        model = CoordinateRefiner(ModelConfig(dim, architecture, 16, 1, 2, 0.0, 32, 3)).eval()
+        model = CoordinateRefiner(ModelConfig(dim, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0)).eval()
         run = outputs / f"{dim}d-{architecture}" / "run"
         checkpoints = run / "logs/version_0/checkpoints"
         checkpoints.mkdir(parents=True)
-        config = {**raw, "model": asdict(model.config), "training": {**raw["training"], "gan_weight": 0.0}}
+        config = {**raw, "model": asdict(model.config), "training": {**raw["training"], "gan": {**raw["training"]["gan"], "enabled": False}}}
         (run / "config.yaml").write_text(yaml.safe_dump(config))
         payload = {**checkpoint_metadata(model), "model": model.state_dict(), "manifest_sha256": dataset.manifest_hash,
                    "fps": 60, "step": 100, "validation_rmse": 0.2 if architecture == "regression" else 0.3, "discriminator": None}
@@ -78,7 +83,7 @@ def review(tmp_path):
         torch.save({**payload, "validation_rmse": 0.4, "step": 200}, checkpoints / "last.ckpt")
         report, predictions = evaluate(model, prepare(dataset.split("test"), dim, corruption, 20991), torch.device("cpu"), seed=20991, batch_size=32)
         (run / "predictions").mkdir()
-        np.savez(run / "predictions/pred_test.npz", **predictions)
+        np.savez(run / "predictions/pred_test.npz", allow_pickle=False, **predictions)
         (run / "predictions/metrics.json").write_text(json.dumps({**report, "best_step": 100}))
         (run / "data_contract.json").write_text(json.dumps({"manifest_sha256": dataset.manifest_hash, "test_ids": ["rally_000002"]}))
         digest, profile = sha256(checkpoints / "best.ckpt"), evaluation_profile(config)
@@ -88,7 +93,7 @@ def review(tmp_path):
     catalog = service.catalog()
     request = ReviewRequest(rally="rally_000002", manifest_sha256=catalog["manifest_sha256"],
                             checkpoint_2d=catalog["default_checkpoints"]["2"], checkpoint_3d=catalog["default_checkpoints"]["3"],
-                            **catalog["default_profile"])
+                            **evaluation_profile(raw))
     return service, request
 
 
@@ -247,3 +252,18 @@ def test_shared_queue_worker_dispatches_coordinate_review_contract(review):
         "checkpoints_root": str(service.checkpoints_root)}, "request": request.model_dump()}))
     assert result["source"] == "live" and result["scene"]["rally"] == request.rally
     assert result["scene"]["metrics_3d"]["all"]["count"] == 96
+
+
+def test_review_accepts_zero_noise_event_only_profile(review):
+    service, request = review
+    augmentation = request.augmentation.model_copy(update={"noise_p95_px": 0.0, "jitter_sigma_px": 0.0,
+                                                           "outlier_probability": 0.0, "isolated_probability": 0.0})
+    request = request.model_copy(update={"augmentation": augmentation})
+    client = TestClient(create_app(service))
+    response = client.post("/api/preview", json=request.model_dump())
+    assert response.status_code == 200
+    scene = response.json()["scene"]
+    assert scene["audit"]["noise_p95_px"] == 0
+    assert not np.asarray(scene["isolated_missing"]).any()
+    mask = np.asarray(scene["missing_2d"])
+    np.testing.assert_array_equal(np.asarray(scene["input_2d"])[~mask], np.asarray(scene["gt_2d"])[~mask])

@@ -11,8 +11,10 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.ball_refiner.coordinates.data import PreparedRally, normalization
-from src.tasks.ball_refiner.coordinates.inference import predict_normalized
-from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
+from src.tasks.ball_refiner.coordinates.inference import (
+    RefinerModel,
+    predict_normalized,
+)
 
 
 def event_neighborhood(events: np.ndarray, radius: int = 5) -> NDArray[np.bool_]:
@@ -45,7 +47,7 @@ def linear_baseline(coordinates: np.ndarray, missing: np.ndarray) -> np.ndarray:
     return result
 
 
-def evaluate(model: CoordinateRefiner, data: list[PreparedRally], device: torch.device, *, seed: int, batch_size: int) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
+def evaluate(model: RefinerModel, data: list[PreparedRally], device: torch.device, *, seed: int, batch_size: int) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
     predictions: list[np.ndarray] = []
     targets: list[np.ndarray] = []
     masks: list[np.ndarray] = []

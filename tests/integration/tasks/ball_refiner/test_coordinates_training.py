@@ -1,5 +1,6 @@
 """Real CPU BLCS -> shared storage -> train/checkpoint/test/inference roundtrip."""
 
+import json
 from dataclasses import replace
 
 import numpy as np
@@ -62,13 +63,21 @@ def test_shared_training_roundtrip(shared, tmp_path, dimensions, architecture, g
     with initialize_config_dir(version_base=None, config_dir=CONFIGS):
         cfg = compose(config_name="train_coordinates", overrides=[
             f"paths.data_root={root}", f"paths.output_root={tmp_path}", "run.output_dir=ball_refiner/train/integration/cpu",
-            "run.device=cpu", "training.steps=2", "training.batch_size=2", "training.evaluate_every=2", "training.log_every=1", "training.gan_warmup_steps=0",
-            f"training.gan_weight={gan}", f"model.dimensions={dimensions}", f"model.architecture={architecture}",
-            "model.width=16", "model.layers=1", "model.heads=2", "model.window_length=32", "model.flow_steps=3",
+            "run.device=cpu", "training.steps=4", "training.batch_size=2", "training.evaluate_every=2", "training.log_every=1", "training.gan.transition.start_step=1", "training.gan.warmup_steps=2", "training.gan.discriminator.num_layers=1",
+            f"training.gan.enabled={str(bool(gan)).lower()}", f"model.dimensions={dimensions}", f"model.architecture={architecture}",
+            "model.ffn_dim=64", "model.rope_dim=8", "model.width=16", "model.layers=1", "model.heads=2", "model.window_length=32", "model.flow_steps=3",
         ])
     output = run_training(cfg)
     with pytest.raises(FileExistsError):
         run_training(cfg)
+    rows = [json.loads(line) for line in (output / "learning_curve.jsonl").read_text().splitlines()]
+    assert [row["gan_weight_current"] for row in rows] == ([0.0, 1.0, 2.0, 2.0] if gan else [0.0] * 4)
+    for row in rows:
+        assert row["total"] == pytest.approx(row["reconstruction"] + row["weighted_gan"], rel=1e-5)
+    last = torch.load(output / "logs/version_0/checkpoints/last.ckpt", weights_only=True)
+    if gan:
+        assert {int(state["step"]) for state in last["disc_optimizer"]["state"].values()} == {3}
+        assert last["gan_weight"] == 2.0
     checkpoint = output / "logs/version_0/checkpoints/best.ckpt"
     model, metadata = load_checkpoint(checkpoint, torch.device("cpu"))
     assert metadata["manifest_sha256"] == data.manifest_hash

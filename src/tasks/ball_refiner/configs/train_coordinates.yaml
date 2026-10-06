@@ -1,4 +1,6 @@
 defaults:
+  - model: coordinate_transformer
+  - training: coordinate_gan
   - _self_
   - override hydra/job_logging: disabled
   - override hydra/hydra_logging: disabled
@@ -19,23 +21,13 @@ data:
 
 corruption:
   event_probability: 0.5
-  isolated_probability: 0.04
+  isolated_probability: 0.0
   gap_min: 3
   gap_max: 10
-  noise_p95_px: 200.0
-  jitter_sigma_px: 3.0
-  outlier_probability: 0.1
+  noise_p95_px: 0.0
+  jitter_sigma_px: 0.0
+  outlier_probability: 0.0
   triangulation_steps: 3
-
-model:
-  dimensions: 2
-  architecture: regression
-  width: 96
-  layers: 4
-  heads: 4
-  dropout: 0.05
-  window_length: 128
-  flow_steps: 16
 
 compile:
   enabled: false
@@ -43,18 +35,6 @@ compile:
   mode: default
   fullgraph: false
   dynamic: false
-
-training:
-  steps: 4000
-  batch_size: 32
-  learning_rate: 0.0003
-  weight_decay: 0.01
-  gradient_clip: 1.0
-  evaluate_every: 500
-  log_every: 100
-  gan_weight: 0.002
-  gan_warmup_steps: 500
-  cpu_threads: 2
 
 run:
   output_dir: ${tennis_output:ball_refiner,train,coordinates,${tennis_run_id:}}
