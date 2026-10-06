@@ -1,0 +1,7 @@
+diff --git a/knowledge/nodes/synthetic_data_generation/.sequence b/knowledge/nodes/synthetic_data_generation/.sequence
+index 409940768..a45fd52cc 100644
+--- a/knowledge/nodes/synthetic_data_generation/.sequence
++++ b/knowledge/nodes/synthetic_data_generation/.sequence
+@@ -1 +1 @@
+-23
++24

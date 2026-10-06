@@ -1,0 +1,16 @@
+{
+  "run_id": "1791300440670295978_33905_i1034-nht-b00-p90-s42-a1",
+  "name": "i1034-nht-b00-p90-s42-a1",
+  "command": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.venv/bin/python -m experiments.sfm_comparison.run_command --campaign /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006 --run-id nht-b00-90-s42-a1 --stage sfm --seconds 1200 --metrics-source /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1/sfm/candidates/sift-incremental/metrics.json --required-path /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1/sfm/candidates/sift-incremental/metrics.json -- /home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/nht-sfm/bin/nht-reconstruct --scene-id B00-i1034-p90 --workspace /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1 --config /home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/configs/nht-sift.yaml --from-stage sfm --through-stage sfm",
+  "provider": "codex",
+  "session": "01a1106e-187c-7163-be4e-9f1673767ad9",
+  "issue": "1034",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "4c5c76e02d575fc76ab96f9dfbe764f9c3f0749d",
+  "branch": "research/sfm-night-20261006",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "captured_at": "2026-10-07T00:27:21+09:00"
+}

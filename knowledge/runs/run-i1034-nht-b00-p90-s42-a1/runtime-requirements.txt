@@ -1,0 +1,11 @@
+attrs==26.1.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+-e file:///home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/nht
+numpy==2.4.6
+pillow==12.3.0
+pycolmap==4.1.1
+pyyaml==6.0.3
+referencing==0.37.0
+rpds-py==2026.9.1
+typing-extensions==4.16.0

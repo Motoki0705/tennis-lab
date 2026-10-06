@@ -1,0 +1,69 @@
+schema: nht_pipeline_config_v1
+seed: 42
+frames:
+  frames_per_second: 1.0
+  jpeg_quality: 2
+preprocess:
+  absolute_minimum_sharpness: 10.0
+  p05_sharpness_fraction: 0.15
+  maximum_clipped_fraction: 0.6
+  minimum_temporal_difference: 1.0
+  training_image_factor: 2
+sfm:
+  minimum_supported_points_per_camera: 100
+  quality_gates:
+    minimum_registration_ratio: 0.95
+    minimum_supported_registration_ratio: 0.95
+    minimum_sparse_points: 50000
+    minimum_median_track_length: 3.0
+    maximum_p95_reprojection_error_px: 3.0
+    maximum_trajectory_step_ratio: 5.0
+    maximum_trajectory_step_outliers: 0
+    maximum_planarity_ratio: 0.15
+    maximum_rotation_step_deg: 120.0
+    maximum_mapping_components: 1
+    maximum_near_duplicate_fraction: 0.05
+    minimum_focal_to_width: 0.1
+    maximum_focal_to_width: 5.0
+    minimum_points_per_supported_camera: 100.0
+    minimum_spatial_voxel_coverage_fraction: 0.005
+    minimum_median_triangulation_angle_deg: 0.5
+    maximum_focal_length_coefficient_of_variation: 0.15
+  short_clip_max_images: 90
+  short_clip_quality_gates:
+    minimum_sparse_points: 500
+    minimum_points_per_supported_camera: 20.0
+    minimum_spatial_voxel_coverage_fraction: 0.002
+    minimum_median_triangulation_angle_deg: 0.2
+  candidates:
+  - id: sift-incremental
+    backend: pycolmap_sift_incremental
+    run_condition: always
+    camera_model: OPENCV
+    camera_sharing: single
+    sequential_overlap: 10
+    quadratic_overlap: true
+    max_features: 4096
+    max_image_size: 1920
+    num_threads: 4
+  maximum_candidates: 1
+nht_training:
+  data_factor: 2
+  max_steps: 30000
+  cap_max: 1000000
+  test_every: 8
+  lpips_net: alex
+  python: null
+  trainer: null
+  adapter: null
+  extra_args: []
+  cuda_device: 0
+  camera_model: pinhole
+  pose_opt: false
+  post_processing: null
+  near_plane: 0.01
+  far_plane: 10000000000.0
+export:
+  schema: nht_standard_scene_v1
+operations:
+  minimum_free_gb: 5.0

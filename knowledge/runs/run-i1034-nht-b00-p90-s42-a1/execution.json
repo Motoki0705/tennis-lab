@@ -1,0 +1,227 @@
+{
+  "run_id": "nht-b00-90-s42-a1",
+  "queue_job_id": "1791300440670295978_33905_i1034-nht-b00-p90-s42-a1",
+  "stage": "sfm",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006",
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/sfm-night-20261006/.cache/runtimes/nht-sfm/bin/nht-reconstruct",
+    "--scene-id",
+    "B00-i1034-p90",
+    "--workspace",
+    "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1",
+    "--config",
+    "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/configs/nht-sift.yaml",
+    "--from-stage",
+    "sfm",
+    "--through-stage",
+    "sfm"
+  ],
+  "timeout_seconds": 1200,
+  "started_at": "2026-10-06T15:27:21.192335+00:00",
+  "status": "done",
+  "required_path": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1/sfm/candidates/sift-incremental/metrics.json",
+  "finished_at": "2026-10-06T15:35:21.261084+00:00",
+  "elapsed_seconds": 480.0676328740001,
+  "returncode": 0,
+  "required_path_exists": true,
+  "device_memory_sampling": "whole-device MiB at approximately 2-second intervals",
+  "device_memory_sample_count": 225,
+  "device_peak_memory_mib": 1522.0,
+  "metrics": {
+    "model_path": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1/.staging/sfm/sfm/candidates/sift-incremental/model",
+    "input_images": 90,
+    "registered_images": 90,
+    "registration_ratio": 1.0,
+    "supported_registered_images": 90,
+    "supported_registration_ratio": 1.0,
+    "weak_registered_images": [],
+    "minimum_registered_points_per_image": 1216,
+    "p05_registered_points_per_image": 1498.05,
+    "median_registered_points_per_image": 2583.0,
+    "sparse_points": 44993,
+    "points_per_supported_camera": 499.9222222222222,
+    "point_cloud_coverage": {
+      "extent": [
+        70.70400728963484,
+        57.39433264824797,
+        137.2043068118491
+      ],
+      "robust_p01_p99_extent": [
+        21.070802878915675,
+        7.512684560575892,
+        28.014414183287982
+      ],
+      "centroid": [
+        -3.815106301049248,
+        -0.9226080062654388,
+        0.024798106890970676
+      ],
+      "voxel_occupancy_fraction": 0.42650462962962965
+    },
+    "mean_reprojection_error_px": 0.722150828943708,
+    "median_reprojection_error_px": 0.5435109190947347,
+    "p95_reprojection_error_px": 1.987200967562287,
+    "mean_track_length": 4.761185073233614,
+    "median_track_length": 3.0,
+    "p95_track_length": 14.0,
+    "trajectory": {
+      "median_step": 0.17617318815525812,
+      "p95_step": 0.21837887902481865,
+      "maximum_step": 0.23143568953063984,
+      "maximum_step_to_median": 1.3136828137927543,
+      "step_outlier_count": 0,
+      "median_rotation_step_deg": 2.0016631508327403,
+      "p95_rotation_step_deg": 8.635843861200046,
+      "maximum_rotation_step_deg": 11.561758946671045,
+      "planarity_ratio": 0.0020872314285454163,
+      "extent": [
+        6.047506286390247,
+        0.10598425933366602,
+        9.442825067169696
+      ],
+      "p05_step": 0.11371776377947668,
+      "near_duplicate_step_count": 0,
+      "near_duplicate_fraction": 0.0
+    },
+    "cameras": {
+      "1": {
+        "model": "OPENCV",
+        "width": 1920,
+        "height": 1080,
+        "params": [
+          1054.392418338752,
+          1064.4687510046163,
+          960.0,
+          540.0,
+          -0.030120144577030387,
+          0.022719391853618206,
+          0.00023617740916678936,
+          -0.004297993178102249
+        ],
+        "focal_to_width": 0.5517867628498354
+      }
+    },
+    "mapping_components": 1,
+    "triangulation": {
+      "sampled_points": 20000,
+      "median_angle_deg": 8.037743725368543,
+      "p05_angle_deg": 1.990899628675261
+    },
+    "intrinsics_stability": {
+      "camera_count": 1,
+      "focal_to_width_median": 0.5517867628498354,
+      "focal_length_coefficient_of_variation": 2.0120508489387145e-16,
+      "p95_adjacent_relative_focal_change": 0.0
+    },
+    "minimum_focal_to_width": 0.5517867628498354,
+    "maximum_focal_to_width": 0.5517867628498354,
+    "minimum_supported_points_per_image": 100,
+    "gates": {
+      "registration_ratio": {
+        "value": 1.0,
+        "operator": ">=",
+        "threshold": 0.95,
+        "passed": true
+      },
+      "supported_registration_ratio": {
+        "value": 1.0,
+        "operator": ">=",
+        "threshold": 0.95,
+        "passed": true
+      },
+      "sparse_points": {
+        "value": 44993,
+        "operator": ">=",
+        "threshold": 500,
+        "passed": true
+      },
+      "median_track_length": {
+        "value": 3.0,
+        "operator": ">=",
+        "threshold": 3.0,
+        "passed": true
+      },
+      "p95_reprojection_error_px": {
+        "value": 1.987200967562287,
+        "operator": "<=",
+        "threshold": 3.0,
+        "passed": true
+      },
+      "trajectory_step_ratio": {
+        "value": 1.3136828137927543,
+        "operator": "<=",
+        "threshold": 5.0,
+        "passed": true
+      },
+      "trajectory_step_outliers": {
+        "value": 0,
+        "operator": "<=",
+        "threshold": 0,
+        "passed": true
+      },
+      "trajectory_planarity": {
+        "value": 0.0020872314285454163,
+        "operator": "<=",
+        "threshold": 0.15,
+        "passed": true
+      },
+      "rotation_continuity_deg": {
+        "value": 11.561758946671045,
+        "operator": "<=",
+        "threshold": 120.0,
+        "passed": true
+      },
+      "mapping_components": {
+        "value": 1,
+        "operator": "<=",
+        "threshold": 1,
+        "passed": true
+      },
+      "near_duplicate_cameras": {
+        "value": 0.0,
+        "operator": "<=",
+        "threshold": 0.05,
+        "passed": true
+      },
+      "minimum_focal_to_width": {
+        "value": 0.5517867628498354,
+        "operator": ">=",
+        "threshold": 0.1,
+        "passed": true
+      },
+      "maximum_focal_to_width": {
+        "value": 0.5517867628498354,
+        "operator": "<=",
+        "threshold": 5.0,
+        "passed": true
+      },
+      "points_per_supported_camera": {
+        "value": 499.9222222222222,
+        "operator": ">=",
+        "threshold": 20.0,
+        "passed": true
+      },
+      "spatial_voxel_coverage": {
+        "value": 0.42650462962962965,
+        "operator": ">=",
+        "threshold": 0.002,
+        "passed": true
+      },
+      "triangulation_parallax_deg": {
+        "value": 8.037743725368543,
+        "operator": ">=",
+        "threshold": 0.2,
+        "passed": true
+      },
+      "intrinsics_stability": {
+        "value": 2.0120508489387145e-16,
+        "operator": "<=",
+        "threshold": 0.15,
+        "passed": true
+      }
+    },
+    "accepted": true,
+    "quality_profile": "short_clip"
+  },
+  "metrics_source": "/home/kamimura/projects/tennis-lab/outputs/aris/i1034-sfm-night-20261006/baseline-a1/sfm/candidates/sift-incremental/metrics.json"
+}
