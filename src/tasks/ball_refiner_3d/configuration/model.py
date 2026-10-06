@@ -15,16 +15,19 @@ class ModelConfig:
     layers: int
     heads: int
     dropout: float
-    window_length: int
     flow_steps: int
     ffn_dim: int
     rope_dim: int
     rope_theta: float
     ffn_type: str
+    # Field (wind, k_drag, k_magnus, surface) and segment initial-state heads.
+    physics_heads: bool
 
     def __post_init__(self) -> None:
         if self.dimensions != 3 or self.architecture not in ("regression", "flow"):
             raise ValueError("Require dimensions=3 and architecture=regression|flow")
+        if self.physics_heads and self.architecture != "regression":
+            raise ValueError("Physics heads are only supported by direct regression")
         if (
             self.width < 8
             or self.heads < 1
@@ -32,11 +35,7 @@ class ModelConfig:
             or self.width % 2
         ):
             raise ValueError("width must be even and divisible by heads")
-        if (
-            min(self.layers, self.flow_steps) < 1
-            or self.window_length < 3
-            or not 0 <= self.dropout < 1
-        ):
+        if min(self.layers, self.flow_steps) < 1 or not 0 <= self.dropout < 1:
             raise ValueError("Invalid temporal model configuration")
         if (
             self.ffn_dim < 1

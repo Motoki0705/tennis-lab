@@ -9,14 +9,18 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from src.tasks.ball_refiner_3d.inference.windowing import predict_normalized
+from src.tasks.ball_refiner_3d.inference.clip import predict_normalized
 from src.tasks.ball_refiner_3d.model_io.adapters import normalization
-from src.tasks.ball_refiner_3d.model_io.checkpoint import load_checkpoint
+from src.tasks.ball_refiner_3d.model_io.checkpoint import (
+    checkpoint_flight_clock,
+    load_checkpoint,
+)
 from src.tasks.ball_refiner_3d.model_io.contracts import (
     RefinerPrediction,
     validate_input,
 )
 from src.tasks.ball_refiner_3d.model_io.factory import RefinerModel
+from src.tasks.ball_refiner_3d.physics.targets import FlightClock
 from src.tasks.base.inference.predictor import BasePredictor
 from src.utils.device import resolve_device
 
@@ -28,12 +32,15 @@ def refine_coordinates(
     missing: Tensor,
     *,
     seed: int,
+    clock: FlightClock | None,
     batch_size: int = 32,
 ) -> RefinerPrediction:
     """Physical metres (3D), with true=missing; return all frames.
 
     Input is (V,T,D), where V is merely independent sequences, not a model view
-    feature. FPS must match checkpoint metadata; resampling is a caller concern.
+    feature. Each whole sequence is predicted in one forward. FPS must match
+    checkpoint metadata; resampling is a caller concern.  Physics outputs keep
+    network units except the integrated trajectory, which is in metres.
     """
     validate_input(coordinates, missing, model.config.dimensions)
     scale_np, offset_np = normalization(model.config.dimensions)
@@ -41,10 +48,13 @@ def refine_coordinates(
     offset = coordinates.new_tensor(offset_np)
     normalized = torch.where(missing[..., None], 0, coordinates / scale - offset)
     result = predict_normalized(
-        model, normalized, missing, batch_size=batch_size, seed=seed
+        model, normalized, missing, batch_size=batch_size, seed=seed, clock=clock
     )
+    physics = result.physics
+    if physics is not None:
+        physics = physics._replace(integrated=(physics.integrated + offset) * scale)
     return RefinerPrediction(
-        (result.coordinates + offset) * scale, result.event_probability
+        (result.coordinates + offset) * scale, result.event_probability, physics
     )
 
 
@@ -57,6 +67,9 @@ class RefinerPredictor(BasePredictor[RefinerPrediction]):
         self.model = model.to(device).eval()
         self.metadata = metadata
         self.device = device
+        self.clock = (
+            checkpoint_flight_clock(metadata) if model.config.physics_heads else None
+        )
 
     @classmethod
     def from_checkpoint(
@@ -87,8 +100,14 @@ class RefinerPredictor(BasePredictor[RefinerPrediction]):
             coordinates.to(self.device),
             missing.to(self.device),
             seed=seed,
+            clock=self.clock,
             batch_size=batch_size,
         )
+        physics = result.physics
         return RefinerPrediction(
-            result.coordinates.cpu(), result.event_probability.cpu()
+            result.coordinates.cpu(),
+            result.event_probability.cpu(),
+            None
+            if physics is None
+            else type(physics)(*(value.cpu() for value in physics)),
         )

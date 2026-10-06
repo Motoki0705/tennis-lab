@@ -21,6 +21,7 @@ from src.tasks.ball_refiner_3d.model_io.factory import build_refiner
 from src.tasks.ball_refiner_3d.models.discriminators import (
     build_refiner_discriminator,
 )
+from src.tasks.ball_refiner_3d.physics.targets import FlightClock
 from src.tasks.ball_refiner_3d.visualization.dataset_review.contracts import (
     Augmentation,
 )
@@ -58,7 +59,7 @@ def test_requested_architecture_scores_only_complete_output_and_backpropagates(
     missing = torch.zeros(2, 128, dtype=torch.bool)
     missing[:, 48:65] = True
     coords[missing] = float("nan")
-    output = generator(coords, missing).coordinates
+    output = generator(coords, missing, torch.zeros_like(missing)).coordinates
     output.retain_grad()
     received = []
     discriminator.network.input_projection.register_forward_pre_hook(
@@ -113,18 +114,23 @@ def test_schedule_must_reach_target_and_defaults_have_only_event_corruption():
 @pytest.mark.parametrize("ffn_type", ["swiglu", "mlp"])
 def test_event_checkpoint_configured_ffn_roundtrips_with_checkpoint(tmp_path, ffn_type):
     config = ModelConfig(
-        3, "regression", 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0, ffn_type
+        3, "regression", 16, 1, 2, 0.0, 3, 64, 8, 10000.0, ffn_type, False
     )
     model = build_refiner(config).eval()
     path = tmp_path / "v3.ckpt"
-    metadata = checkpoint_metadata(model, event_sigma_frames=2.0)
+    metadata = checkpoint_metadata(
+        model, event_sigma_frames=2.0, clock=FlightClock(9.8, 1 / 240, 4)
+    )
     assert metadata["schema"] == "ball_refiner_3d.events.v1"
     torch.save({**metadata, "model": model.state_dict()}, path)
     loaded, _ = load_checkpoint(path, torch.device("cpu"))
     assert loaded.config == config
     coords, missing = torch.randn(1, 16, 3), torch.zeros(1, 16, dtype=torch.bool)
     torch.testing.assert_close(
-        model(coords, missing), loaded(coords, missing), atol=0, rtol=0
+        model(coords, missing, missing),
+        loaded(coords, missing, missing),
+        atol=0,
+        rtol=0,
     )
     with pytest.raises(ValueError, match="Unsupported FFN"):
         replace(config, ffn_type="invalid")
@@ -136,12 +142,13 @@ def test_forward_can_compile_without_moving_validation_into_tensor_graph(archite
 
     torch.set_num_threads(1)
     model = build_refiner(
-        ModelConfig(3, architecture, 16, 1, 2, 0.0, 16, 3, 64, 8, 10000.0, "swiglu")
+        ModelConfig(3, architecture, 16, 1, 2, 0.0, 3, 64, 8, 10000.0, "swiglu", False)
     ).eval()
     binding = bind_refiner(model)
     batch = {
         "coordinates": torch.randn(2, 16, 3),
         "missing": torch.zeros(2, 16, dtype=torch.bool),
+        "padding": torch.zeros(2, 16, dtype=torch.bool),
     }
     if architecture == "flow":
         batch.update(state=torch.randn(2, 16, 3), time=torch.full((2,), 0.5))
@@ -167,3 +174,50 @@ def test_forward_can_compile_without_moving_validation_into_tensor_graph(archite
 def test_unused_derived_training_overrides_are_rejected(override):
     with pytest.raises(ValueError):
         training_config(configuration([override]))
+
+
+@pytest.mark.parametrize(
+    "overrides,message",
+    [
+        (["model.physics_heads=true"], "Physics heads require"),
+        (["loss.physics.field_weight=1.0"], "Physics heads require"),
+        (
+            [
+                "model.physics_heads=true",
+                "loss.physics.segment_weight=1.0",
+                "loss.physics.reconstruction_weight=1.0",
+            ],
+            "Integrated objectives require",
+        ),
+        (
+            [
+                "model.physics_heads=true",
+                "loss.physics.field_weight=1.0",
+                "loss.physics.segment_weight=1.0",
+                "training.gan.enabled=true",
+            ],
+            "not combined with GAN",
+        ),
+        (["loss.physics.consistency_gradient=sideways"], "consistency_gradient"),
+        (["data.window.length=2048"], "length <= max_length"),
+    ],
+)
+def test_physics_and_window_settings_are_validated(overrides, message):
+    with pytest.raises(ValueError, match=message):
+        training_config(configuration(overrides))
+
+
+def test_full_physics_configuration_is_accepted():
+    settings = training_config(
+        configuration(
+            [
+                "model.physics_heads=true",
+                "loss.physics.field_weight=1.0",
+                "loss.physics.segment_weight=1.0",
+                "loss.physics.reconstruction_weight=1.0",
+                "loss.physics.consistency_weight=1.0",
+            ]
+        )
+    )
+    assert settings.physics.integrates and settings.model.physics_heads
+    assert settings.window.length == 128 and settings.window.max_length == 1024

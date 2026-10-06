@@ -16,5 +16,13 @@ class RegressionRefiner(TemporalTransformer):
             raise ValueError("RegressionRefiner requires architecture=regression")
         super().__init__(config, input_channels=4)
 
-    def forward(self, coordinates: Tensor, missing: Tensor) -> RefinerOutput:
-        return self.encode(coordinate_features(coordinates, missing))
+    def forward(
+        self,
+        coordinates: Tensor,
+        missing: Tensor,
+        padding: Tensor,
+        segment: Tensor | None = None,
+    ) -> RefinerOutput:
+        return self.encode(
+            coordinate_features(coordinates, missing), padding, segment=segment
+        )
