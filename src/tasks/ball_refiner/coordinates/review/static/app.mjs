@@ -267,7 +267,7 @@ for (const [id, delta] of [["previous-rally", -1], ["next-rally", 1]]) $(id).add
 for (const dim of [2, 3]) $(`model-${dim}d`).addEventListener("change", () => { modelLabels(); loadReview("auto"); });
 $("show-last").addEventListener("change", () => { fillModels(); loadReview("auto"); });
 $("refresh").addEventListener("click", async () => { try { invalidate(); await loadCatalog(true); fillModels(); await loadReview("auto"); } catch (error) { message(error.message, true); } });
-for (const id of ["event-probability", "isolated-probability", "gap-min", "gap-max", "noise-p95", "augmentation-seed", "flow-seed"]) $(id).addEventListener("input", changedInput);
+for (const id of ["event-probability", "isolated-probability", "gap-min", "gap-max", "noise-p95", "noise-jitter", "noise-outlier", "augmentation-seed", "flow-seed"]) $(id).addEventListener("input", changedInput);
 $("augmentation-mode").addEventListener("change", changedInput);
 $("resample").addEventListener("click", () => { $("augmentation-seed").value = (Number($("augmentation-seed").value) + 1) % 4294967296; changedInput(); });
 $("evaluation-preset").addEventListener("click", () => { applyProfile(checkpoint(2)?.evaluation_profile || checkpoint(3)?.evaluation_profile || state.catalog.default_profile); loadReview("auto"); });
