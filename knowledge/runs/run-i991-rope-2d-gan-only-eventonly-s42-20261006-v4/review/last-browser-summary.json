@@ -1,0 +1,89 @@
+{
+  "rally": "rally_000030",
+  "source": "live",
+  "request": {
+    "rally": "rally_000030",
+    "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+    "checkpoint_2d": "outputs:train/rope-2d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/last.ckpt",
+    "checkpoint_3d": "outputs:train/rope-3d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/last.ckpt",
+    "augmentation": {
+      "event_probability": 0.5,
+      "isolated_probability": 0,
+      "gap_min": 3,
+      "gap_max": 10,
+      "noise_p95_px": 0,
+      "jitter_sigma_px": 0,
+      "outlier_probability": 0,
+      "triangulation_steps": 3
+    },
+    "augmentation_seed": 20991,
+    "flow_seed": 20991,
+    "missing_enabled": true,
+    "noise_enabled": true,
+    "device": "cpu",
+    "checkpoint_hashes": {
+      "2": "a2f87bba31d991afe326a8bfe2a43eb3f826dcc0ff739b10aafb0fd1030542e2",
+      "3": "f76ccdcbf27b7f112620acef2a38ae8ea5e40ef9b39e32ceb0e040971461d015"
+    }
+  },
+  "input_sha256": "5098ec6fc6b3148d11e87bd108ea415520074667ef2ae1c8ed248b4c3d18e7cf",
+  "metrics2d": {
+    "frame_missing_rate": 0.09956709956709957,
+    "frames": 462,
+    "all": {
+      "count": 462,
+      "rmse": 324.23919677734375,
+      "mean": 312.4244384765625,
+      "p95": 400.49298095703125
+    },
+    "missing": {
+      "count": 46,
+      "rmse": 355.9107360839844,
+      "mean": 352.00128173828125,
+      "p95": 408.03289794921875
+    },
+    "observed": {
+      "count": 416,
+      "rmse": 320.54498291015625,
+      "mean": 308.04815673828125,
+      "p95": 395.77252197265625
+    },
+    "event": {
+      "count": 97,
+      "rmse": 322.2396240234375,
+      "mean": 312.028076171875,
+      "p95": 402.4969177246094
+    },
+    "velocity_rmse": 281.2228488922119
+  },
+  "metrics3d": {
+    "frame_missing_rate": 0.09956709956709957,
+    "frames": 462,
+    "all": {
+      "count": 462,
+      "rmse": 14.997238159179688,
+      "mean": 13.391286849975586,
+      "p95": 24.156402587890625
+    },
+    "missing": {
+      "count": 46,
+      "rmse": 14.304492950439453,
+      "mean": 12.44271183013916,
+      "p95": 22.345457077026367
+    },
+    "observed": {
+      "count": 416,
+      "rmse": 15.071883201599121,
+      "mean": 13.49617862701416,
+      "p95": 24.220245361328125
+    },
+    "event": {
+      "count": 97,
+      "rmse": 16.308591842651367,
+      "mean": 15.256169319152832,
+      "p95": 23.157712936401367
+    },
+    "velocity_rmse": 31.322847604751587
+  },
+  "errors": []
+}

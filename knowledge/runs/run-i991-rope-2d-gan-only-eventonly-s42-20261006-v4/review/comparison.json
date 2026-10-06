@@ -1,0 +1,220 @@
+{
+  "rows": [
+    {
+      "dimensions": 2,
+      "kind": "best",
+      "run": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-2d-gan-only-eventonly/20261006-v4-s42",
+      "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-2d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/best.ckpt",
+      "step": 3000,
+      "reconstruction_weight": 0.0,
+      "gan_weight": 1.0,
+      "all_rmse": 9.476381301879883,
+      "missing_rmse": 23.475875854492188,
+      "observed_rmse": 5.559487342834473,
+      "event_rmse": 17.9011173248291,
+      "unit": "px",
+      "validation_rmse": 9.86307430267334,
+      "motion": {
+        "velocity_rmse_per_s": 142.0474882835111,
+        "acceleration_rmse_per_s2": 9684.918706174249,
+        "event_acceleration_magnitude_ratio": 2.502993452918707
+      },
+      "evaluation_input_sha256": "21f1d274a529bead73bd93c47c931648704550daccfb67642af114b16d31c36c",
+      "previous": {
+        "all": {
+          "count": 217680,
+          "mean": 3.2696492671966553,
+          "p95": 8.52256965637207,
+          "rmse": 6.980915546417236
+        },
+        "missing": {
+          "count": 24644,
+          "mean": 10.654581069946289,
+          "p95": 31.82705307006836,
+          "rmse": 19.22686195373535
+        },
+        "observed": {
+          "count": 193036,
+          "mean": 2.3268496990203857,
+          "p95": 4.868783473968506,
+          "rmse": 2.7857491970062256
+        },
+        "event": {
+          "count": 39452,
+          "mean": 7.042091369628906,
+          "p95": 22.762413024902344,
+          "rmse": 14.639830589294434
+        }
+      },
+      "previous_motion": {
+        "velocity_rmse_per_s": 120.04348172074236,
+        "acceleration_rmse_per_s2": 7661.825681896389,
+        "event_acceleration_magnitude_ratio": 1.9594446269943335
+      }
+    },
+    {
+      "dimensions": 2,
+      "kind": "last",
+      "run": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-2d-gan-only-eventonly/20261006-v4-s42",
+      "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-2d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/last.ckpt",
+      "step": 4000,
+      "reconstruction_weight": 0.0,
+      "gan_weight": 1.0,
+      "all_rmse": 289.4901428222656,
+      "missing_rmse": 267.4595947265625,
+      "observed_rmse": 292.1831359863281,
+      "event_rmse": 262.9962463378906,
+      "unit": "px",
+      "validation_rmse": 288.4842529296875,
+      "motion": {
+        "velocity_rmse_per_s": 297.7136036277659,
+        "acceleration_rmse_per_s2": 21272.133115595316,
+        "event_acceleration_magnitude_ratio": 2.7492108692113226
+      },
+      "evaluation_input_sha256": "21f1d274a529bead73bd93c47c931648704550daccfb67642af114b16d31c36c",
+      "previous": {
+        "all": {
+          "count": 217680,
+          "mean": 3.2696492671966553,
+          "p95": 8.52256965637207,
+          "rmse": 6.980915546417236
+        },
+        "missing": {
+          "count": 24644,
+          "mean": 10.654581069946289,
+          "p95": 31.82705307006836,
+          "rmse": 19.22686195373535
+        },
+        "observed": {
+          "count": 193036,
+          "mean": 2.3268496990203857,
+          "p95": 4.868783473968506,
+          "rmse": 2.7857491970062256
+        },
+        "event": {
+          "count": 39452,
+          "mean": 7.042091369628906,
+          "p95": 22.762413024902344,
+          "rmse": 14.639830589294434
+        }
+      },
+      "previous_motion": {
+        "velocity_rmse_per_s": 120.04348172074236,
+        "acceleration_rmse_per_s2": 7661.825681896389,
+        "event_acceleration_magnitude_ratio": 1.9594446269943335
+      }
+    },
+    {
+      "dimensions": 3,
+      "kind": "best",
+      "run": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42",
+      "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/best.ckpt",
+      "step": 2500,
+      "reconstruction_weight": 0.5,
+      "gan_weight": 1.0,
+      "all_rmse": 0.22590123116970062,
+      "missing_rmse": 0.493459552526474,
+      "observed_rmse": 0.1626637727022171,
+      "event_rmse": 0.37349846959114075,
+      "unit": "m",
+      "validation_rmse": 0.22799526154994965,
+      "motion": {
+        "velocity_rmse_per_s": 4.0104756136897475,
+        "acceleration_rmse_per_s2": 288.2856551344078,
+        "event_acceleration_magnitude_ratio": 3.302878968168261
+      },
+      "evaluation_input_sha256": "cf25cad6c60fa9f76d373d7dd39a9281c279df246661f23b72f02c21ed8b6f33",
+      "previous": {
+        "all": {
+          "count": 54420,
+          "mean": 0.07713091373443604,
+          "p95": 0.25056496262550354,
+          "rmse": 0.14714941382408142
+        },
+        "missing": {
+          "count": 6161,
+          "mean": 0.2911902964115143,
+          "p95": 0.7828326225280762,
+          "rmse": 0.4016360342502594
+        },
+        "observed": {
+          "count": 48259,
+          "mean": 0.049802958965301514,
+          "p95": 0.11590144783258438,
+          "rmse": 0.06183363497257233
+        },
+        "event": {
+          "count": 9863,
+          "mean": 0.18431773781776428,
+          "p95": 0.5912699103355408,
+          "rmse": 0.2967858910560608
+        }
+      },
+      "previous_motion": {
+        "velocity_rmse_per_s": 3.2509710741498634,
+        "acceleration_rmse_per_s2": 241.40067124054613,
+        "event_acceleration_magnitude_ratio": 2.71123562720467
+      }
+    },
+    {
+      "dimensions": 3,
+      "kind": "last",
+      "run": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42",
+      "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/last.ckpt",
+      "step": 4000,
+      "reconstruction_weight": 0.0,
+      "gan_weight": 1.0,
+      "all_rmse": 12.313251495361328,
+      "missing_rmse": 13.201810836791992,
+      "observed_rmse": 12.195154190063477,
+      "event_rmse": 13.854686737060547,
+      "unit": "m",
+      "validation_rmse": 12.19472599029541,
+      "motion": {
+        "velocity_rmse_per_s": 29.835855299982775,
+        "acceleration_rmse_per_s2": 1952.0725237454133,
+        "event_acceleration_magnitude_ratio": 7.5674411849582475
+      },
+      "evaluation_input_sha256": "cf25cad6c60fa9f76d373d7dd39a9281c279df246661f23b72f02c21ed8b6f33",
+      "previous": {
+        "all": {
+          "count": 54420,
+          "mean": 0.07713091373443604,
+          "p95": 0.25056496262550354,
+          "rmse": 0.14714941382408142
+        },
+        "missing": {
+          "count": 6161,
+          "mean": 0.2911902964115143,
+          "p95": 0.7828326225280762,
+          "rmse": 0.4016360342502594
+        },
+        "observed": {
+          "count": 48259,
+          "mean": 0.049802958965301514,
+          "p95": 0.11590144783258438,
+          "rmse": 0.06183363497257233
+        },
+        "event": {
+          "count": 9863,
+          "mean": 0.18431773781776428,
+          "p95": 0.5912699103355408,
+          "rmse": 0.2967858910560608
+        }
+      },
+      "previous_motion": {
+        "velocity_rmse_per_s": 3.2509710741498634,
+        "acceleration_rmse_per_s2": 241.40067124054613,
+        "event_acceleration_magnitude_ratio": 2.71123562720467
+      }
+    }
+  ],
+  "matched_inputs_and_gt": true,
+  "optimizer_counts_verified": true,
+  "all_metrics_recomputed": true,
+  "baseline_changes": [
+    "GAN maximum 2 to 1",
+    "position coefficient 1 to scheduled 0"
+  ],
+  "scope": "synthetic single seed42; no causal isolation or real-video evaluation"
+}
