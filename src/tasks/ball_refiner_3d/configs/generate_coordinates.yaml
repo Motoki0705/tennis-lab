@@ -52,6 +52,6 @@ hydra:
     - file://${tennis_lab_path:project}/src/tasks/blcs/configs
   output_subdir: null
   run:
-    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_refiner,generate,coordinates,${tennis_run_id:}},hydra}
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_refiner_3d,generate,coordinates,${tennis_run_id:}},hydra}
   job:
     chdir: false
