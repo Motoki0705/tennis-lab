@@ -93,7 +93,7 @@ def evaluate_checkpoint(checkpoint: Path, prediction_dir: Path, test: list[Prepa
     metrics = {f"test_rmse_{unit}": report["all"]["rmse"], f"test_missing_rmse_{unit}": report["missing"]["rmse"],
                f"test_event_rmse_{unit}": report["event"]["rmse"], "test_frame_missing_rate": report["frame_missing_rate"],
                "inference_ms_per_frame": report["milliseconds_per_frame"], "best_step": common_metadata["best_step"],
-               "checkpoint_kind": checkpoint.stem, "checkpoint_step": metadata["step"]}
+               "checkpoint_step": metadata["step"]}
     write_json_atomic(prediction_dir / "metrics.json", metrics)
     write_json_atomic(prediction_dir / "diagnostic_metrics.json", report)
     plot_predictions(predictions, prediction_dir / "examples.png", dimensions=selected.config.dimensions)
@@ -103,6 +103,7 @@ def evaluate_checkpoint(checkpoint: Path, prediction_dir: Path, test: list[Prepa
 
 
 def run_training(config: DictConfig) -> Path:
+    output: Path
     raw, dataset_path, output = training_config(config)
     model_config = parse_section(ModelConfig, raw["model"])
     train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key not in {"gan", "reconstruction"}})

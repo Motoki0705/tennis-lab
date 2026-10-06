@@ -106,6 +106,9 @@ def test_shared_training_roundtrip(shared, tmp_path, monkeypatch, dimensions, ar
     assert first_report["evaluation_input_sha256"] == final_report["evaluation_input_sha256"]
     assert final_report["checkpoint_kind"] == "last" and final_report["checkpoint_step"] == 4
     assert first_report["checkpoint_step"] == metadata["step"]
+    for directory in ("predictions", "predictions_last"):
+        metrics = json.loads((output / directory / "metrics.json").read_text())
+        assert all(type(value) in (int, float) for value in metrics.values())  # knowledge importer contract
     assert (tmp_path / "repro/predictions_last/pred_test.npz").read_bytes() == (output / "predictions_last/pred_test.npz").read_bytes()
     rally = test[0]
     coordinates = rally.corrupted.uv_px if dimensions == 2 else rally.corrupted.xyz_m[None]
