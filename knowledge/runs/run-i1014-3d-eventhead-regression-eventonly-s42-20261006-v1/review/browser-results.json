@@ -1,0 +1,129 @@
+{
+  "status": "passed",
+  "errors": [],
+  "checks": [
+    "trained suggestions",
+    "saved predictions",
+    "event/frame sync",
+    "Gaussian target and softmax probabilities",
+    "3D orbit",
+    "side-by-side",
+    "augmentation switches",
+    "custom CPU inference",
+    "regression checkpoint",
+    "JSON/PNG export",
+    "state restore",
+    "stale response isolation",
+    "responsive layout"
+  ],
+  "checkpoint": {
+    "id": "outputs:train/rope-regression-eventhead-eventonly/20261006-v1-s42/logs/version_0/checkpoints/best.ckpt",
+    "label": "3D · REGRESSION · イベント 50% · best.ckpt · val 0.150 m",
+    "filename": "best.ckpt",
+    "compatible": true,
+    "reason": null,
+    "recommended": true,
+    "event_sigma_frames": 2,
+    "dimensions": 3,
+    "method": "regression",
+    "model_config": {
+      "dimensions": 3,
+      "architecture": "regression",
+      "width": 256,
+      "layers": 8,
+      "heads": 4,
+      "dropout": 0.05,
+      "window_length": 128,
+      "flow_steps": 16,
+      "ffn_dim": 704,
+      "rope_dim": 64,
+      "rope_theta": 10000,
+      "ffn_type": "swiglu"
+    },
+    "step": 4000,
+    "validation_rmse": 0.14971549808979034,
+    "unit": "m",
+    "train_event_probability": 0.5,
+    "evaluation_profile": {
+      "augmentation": {
+        "event_probability": 0.5,
+        "isolated_probability": 0,
+        "gap_min": 3,
+        "gap_max": 10,
+        "noise_p95_px": 0,
+        "jitter_sigma_px": 0,
+        "outlier_probability": 0,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true
+    },
+    "saved_available": true,
+    "sha256": "1a5b1fa7cbe02453e269788fb638f5979a446e363ff18de9f7f627ed3c0ddf8a",
+    "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+    "run_name": "rope-regression-eventhead-eventonly",
+    "saved_unavailable_reason": null
+  },
+  "initial_metrics": {
+    "frame_missing_rate": 0.09956709956709957,
+    "frames": 462,
+    "all": {
+      "count": 462,
+      "rmse": 0.09095748513936996,
+      "mean": 0.06765454262495041,
+      "p95": 0.2084745615720749
+    },
+    "missing": {
+      "count": 46,
+      "rmse": 0.18893828988075256,
+      "mean": 0.17059293389320374,
+      "p95": 0.2847108542919159
+    },
+    "observed": {
+      "count": 416,
+      "rmse": 0.07239306718111038,
+      "mean": 0.056271929293870926,
+      "p95": 0.14400939643383026
+    },
+    "event": {
+      "count": 97,
+      "rmse": 0.13919897377490997,
+      "mean": 0.11508548259735107,
+      "p95": 0.26868847012519836
+    },
+    "velocity_rmse": 3.0127090215682983
+  },
+  "initial_input": "5098ec6fc6b3148d11e87bd108ea415520074667ef2ae1c8ed248b4c3d18e7cf",
+  "custom_input": "a7cca3e34331b6f930781dd5506e8291e0d0c760d32634fbeeb536f09984e442",
+  "custom_metrics": {
+    "frame_missing_rate": 0.3116883116883117,
+    "frames": 462,
+    "all": {
+      "count": 462,
+      "rmse": 1.951757550239563,
+      "mean": 1.3133234977722168,
+      "p95": 4.608829975128174
+    },
+    "missing": {
+      "count": 144,
+      "rmse": 2.1903984546661377,
+      "mean": 1.6719022989273071,
+      "p95": 4.89442777633667
+    },
+    "observed": {
+      "count": 318,
+      "rmse": 1.8335049152374268,
+      "mean": 1.1509480476379395,
+      "p95": 4.430785179138184
+    },
+    "event": {
+      "count": 97,
+      "rmse": 2.4318151473999023,
+      "mean": 1.804559588432312,
+      "p95": 5.254978179931641
+    },
+    "velocity_rmse": 94.29129838943481
+  }
+}
