@@ -1,0 +1,9 @@
+event:
+  weight: 1.0
+  sigma_frames: 2.0
+reconstruction:
+  enabled: false
+  initial_weight: 1.0
+  final_weight: 1.0
+  start_step: 0
+  decay_steps: 1

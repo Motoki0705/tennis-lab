@@ -1,5 +1,6 @@
-"""RoPE coordinate generators for direct regression and conditional flow."""
+"""Direct regression and conditional flow generators."""
 
-from .transformer import CoordinateRefiner
+from .flow import FlowRefiner
+from .regression import RegressionRefiner
 
-__all__ = ["CoordinateRefiner"]
+__all__ = ["RegressionRefiner", "FlowRefiner"]

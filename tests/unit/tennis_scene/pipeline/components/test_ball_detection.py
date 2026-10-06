@@ -192,7 +192,10 @@ def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
 def test_centre_policy_matches_training_owners_without_score_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, batch_size: int,
 ) -> None:
-    from src.tasks.ball_refiner_3d.temporal import window_owners, window_starts
+    from src.tasks.ball_refiner_3d.inference.windowing import (
+        window_owners,
+        window_starts,
+    )
 
     packets = [FramePacket(index=i, frame=np.full((4, 6, 3), i, np.uint8), original_size=(6, 4)) for i in range(11)]
     monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)

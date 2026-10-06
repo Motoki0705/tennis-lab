@@ -17,11 +17,26 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   page.on("pageerror", error => errors.push(error.message));
   page.on("response", async response => {
     if (/\/api\/(saved|preview|infer)$/.test(response.url()) && response.ok()) {
-      captured.push(await response.json());
+      try { captured.push(await response.json()); } catch (error) {
+        if (!page.isClosed()) errors.push(error.message);
+      }
     }
   });
-  const waitFor = async source => page.waitForFunction(value => document.querySelector("#source").textContent.includes(value)
-    && !document.querySelector("#source").classList.contains("busy"), source, {timeout: 90000});
+  let latestResponse;
+  const waitFor = async source => {
+    await page.waitForFunction(value => document.querySelector("#source").textContent.includes(value)
+      && !document.querySelector("#source").classList.contains("busy"), source, {timeout: 90000});
+    const provenance = await page.locator("#provenance").textContent();
+    const hash = provenance.match(/input ([a-f0-9]+)/)?.[1];
+    assert.ok(hash, "rendered provenance includes the applied input hash");
+    const until = Date.now() + 10000;
+    do {
+      latestResponse = captured.findLast(item => item.input_sha256.startsWith(hash) && (source.includes("CPU") ? item.source === "live" : source.includes("保存済み") ? item.source === "saved" : item.source === "preview"));
+      if (latestResponse) return;
+      await new Promise(resolve => setTimeout(resolve, 20));
+    } while (Date.now() < until);
+    throw new Error("The rendered response was not captured");
+  };
   const shot = async name => { await page.waitForTimeout(200); await page.screenshot({path: path.join(out, name + ".png"), fullPage: true}); };
   const digest = locator => locator.evaluate(canvas => canvas.toDataURL());
   try {
@@ -30,22 +45,20 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     assert.equal(await page.locator("#model-2d").count(), 0);
     assert.equal(await page.locator("#event-graph").count(), 1);
     assert.match(await page.locator("#model-3d-info").textContent(), /REGRESSION|GAN|FLOW/);
-    assert.equal(await page.locator("#view-2d canvas").count(), 1);
+    assert.equal(await page.locator("#view-2d, #camera, #graph-2d").count(), 0);
     assert.equal(await page.locator("#view-3d canvas").count(), 1);
     assert.ok((await digest(page.locator("#view-3d canvas"))).length > 15000);
     await shot("01-saved-desktop");
     const initial = captured.find(item => item.source === "saved");
     assert.ok(initial, "the actual trained saved predictions must be used");
     assert.equal(initial.scene.gt_3d.length, initial.scene.prediction_3d.length);
-    assert.equal(initial.scene.gt_2d.length, 4);
+    assert.ok(!("gt_2d" in initial.scene) && !("missing_2d" in initial.scene));
     const baselineInput = initial.input_sha256;
 
     await page.locator("#next-event").click();
     assert.ok(Number(await page.locator("#scrub").inputValue()) > 0);
     const eventFrame = Number(await page.locator("#scrub").inputValue());
     assert.ok(initial.scene.events[eventFrame]);
-    await page.locator("#camera").selectOption("2");
-    assert.match(await page.locator("#camera-label").textContent(), /3/);
     await page.locator("#play").click();
     await page.waitForTimeout(150);
     await page.locator("#play").click();
@@ -63,14 +76,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     assert.notEqual(await digest(worldCanvas), beforeOrbit, "3D orbit must change the image");
 
     await page.locator("#layout").selectOption("separate");
-    assert.equal(await page.locator("#view-2d canvas").count(), 2);
     assert.equal(await page.locator("#view-3d canvas").count(), 3);
     await shot("03-side-by-side");
     await page.locator("#layout").selectOption("overlay");
     await page.locator("#augmentation-mode").selectOption("none");
     await waitFor("GT・拡張後入力");
-    const clean = captured.at(-1);
-    assert.equal(clean.scene.audit.frame_missing_rate_2d,0);
+    const clean = latestResponse;
+    assert.equal(clean.scene.audit.frame_missing_rate_3d,0);
     assert.equal(clean.scene.audit.noise_p95_px,0);
     assert.equal(clean.scene.event_probability,null,"augmentation changes must invalidate predictions");
     assert.equal(clean.scene.prediction_3d,null);
@@ -87,7 +99,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     await page.waitForFunction(() => document.querySelector("#audit-noise").textContent.includes("px"));
     await page.locator("#infer").click();
     await waitFor("CPU 推論");
-    const live = captured.at(-1);
+    const live = latestResponse;
     assert.equal(live.source,"live");
     assert.equal(live.request.augmentation.noise_p95_px,300);
     assert.equal(live.request.augmentation.event_probability,0.75);
@@ -105,6 +117,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     await (await configDownload).saveAs(configFile);
     const savedConfig = JSON.parse(await fs.readFile(configFile,"utf8"));
     assert.equal(savedConfig.input_sha256,live.input_sha256);
+    assert.equal(savedConfig.schema,"ball_refiner_3d.event_review.v2");
+    assert.ok(!("camera" in savedConfig.view));
     const imageDownload = page.waitForEvent("download");
     await page.locator("#save-image").click();
     const png = path.join(out,"exported-comparison.png");
@@ -114,24 +128,26 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     assert.ok(bytes.length>10000);
     await page.locator("#resample").click();
     await waitFor("GT・拡張後入力");
-    assert.notEqual(captured.at(-1).input_sha256,live.input_sha256);
+    assert.notEqual(latestResponse.input_sha256,live.input_sha256);
     await page.locator("#config-file").setInputFiles(configFile);
     await waitFor("CPU 推論");
-    assert.equal(captured.at(-1).input_sha256,live.input_sha256);
-    assert.deepEqual(captured.at(-1).scene.prediction_3d,live.scene.prediction_3d);
+    assert.equal(latestResponse.input_sha256,live.input_sha256);
+    assert.deepEqual(latestResponse.scene.prediction_3d,live.scene.prediction_3d);
 
     await page.locator("#evaluation-preset").click();
     await waitFor("保存済み評価");
     const flowOption = await page.locator("#model-3d option").evaluateAll(options => options.find(o => /FLOW/.test(o.textContent) && /best.ckpt$/.test(o.value))?.value);
-    assert.ok(flowOption,"trained Flow checkpoint must be suggested");
-    await page.locator("#model-3d").selectOption(flowOption);
-    await waitFor("保存済み評価");
-    await page.locator("#resample").click();
-    await waitFor("GT・拡張後入力");
-    await page.locator("#infer").click();
-    await waitFor("CPU 推論");
-    assert.equal(captured.at(-1).models["3"].method,"flow");
-    await shot("06-flow-inference");
+    if (process.env.REFINER_REQUIRE_FLOW === "1") assert.ok(flowOption,"a compatible Flow checkpoint is required");
+    if (flowOption) {
+      await page.locator("#model-3d").selectOption(flowOption);
+      await waitFor("保存済み評価");
+      await page.locator("#resample").click();
+      await waitFor("GT・拡張後入力");
+      await page.locator("#infer").click();
+      await waitFor("CPU 推論");
+      assert.equal(latestResponse.models["3"].method,"flow");
+      await shot("06-flow-inference");
+    }
 
     const pure = await page.evaluate(async () => {
       const {valuesFor} = await import("/static/plots.mjs");
@@ -166,8 +182,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     assert.deepEqual(errors,[]);
     await fs.writeFile(path.join(out,"browser-results.json"),JSON.stringify({status:"passed",errors,
       checks:["trained suggestions","saved predictions","event/frame sync","Gaussian target and softmax probabilities","3D orbit","side-by-side",
-        "augmentation switches","custom CPU inference","Flow inference","JSON/PNG export","state restore","stale response isolation","responsive layout"],
+        "augmentation switches","custom CPU inference","JSON/PNG export","state restore","stale response isolation","responsive layout"],
+      flow_browser: flowOption ? "passed" : "no compatible event-head Flow checkpoint; CPU integration test covers Flow",
       initial_input:baselineInput,custom_input:live.input_sha256,custom_metrics:live.scene.metrics_3d},null,2));
     console.log("Coordinate review browser checks passed: "+out);
+  } catch (error) {
+    await shot("failure");
+    console.error("Browser errors:", errors);
+    throw error;
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

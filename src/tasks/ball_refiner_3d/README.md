@@ -1,72 +1,67 @@
 # 3D Ball Refiner
 
-三角測量の3D座標 `(B,T,3)` と欠損mask `(B,T)`（true=欠損）から、
-観測区間も含む全frameの3D軌道1本と、各frameのイベント確率を推論する。
-オフラインの双方向Transformer。confidence・court・camera・GTイベントは入力しない。
-2D Refinerは廃止した。2Dの補間点を三角測量へ渡さず、3Dで欠損を補完する。
+三角測量した3D座標 `(B,T,3)` と欠損mask `(B,T)`（true=欠損）から、
+観測区間を含む全frameの軌道1本と、各frameのイベント確率を推論する。
+オフラインの双方向Transformer。confidence・court・camera・GTイベントはモデルへ渡さない。
+
+## 構成と依存
+
+| ディレクトリ | 責務 |
+|---|---|
+| `configs/` | Hydraのdata・augmentation・model・loss・training・generation・visualization設定 |
+| `configuration/` | 設定の厳密な検証、path境界、旧実験設定の明示的な読み取り |
+| [data/](data/README.md) | NPZ読込、拡張、三角測量、イベント教師、窓サンプリング、DataModule |
+| `generate_dataset/` | BLCS物理生成adapter、camera選択、保存、既存3D軌道の再投影 |
+| [models/](models/README.md) | 共通trunk、回帰・Flow generator、軌道discriminatorのforward |
+| `model_io/` | 入出力型、正規化、adapter、factory、checkpoint読込 |
+| [training/](training/README.md) | BaseTrainingRunner / BaseLightningModuleへの接続、loss、step schedule |
+| `inference/` | 公開Predictor、窓の統合、Flow sampling、NPZ入出力 |
+| `evaluation/` | 全ラリー評価、baseline、checkpointと対応付けた予測・指標の保存 |
+| [visualization/](visualization/dataset_review/README.md) | 静的plotとDataset Review WebUI |
+| `scripts/` | 引数・path検証と上記APIの呼び出しのみ |
+
+`models` はloss・sampling・dataset・WebUIを参照しない。
+`model_io` がforward前にshape/device/maskを検証し、共通 `BoundModelIO` を通じてモデルを呼ぶ。
+汎用Transformer部品は `src/utils/models/components`、学習基盤は `src/tasks/base` を再利用する。
 シーンへの3D Refiner接続はこのtaskの学習・推論APIとは別の工程。
 
-## モデルと損失
-
-`models/generators/transformer.py` は共通componentsのRoPE / RMSNorm / SwiGLUを使う。
-幅256・8層、FFNは8/3倍を64単位に切り上げた704。
-座標ヘッドとイベント2logitヘッドを持ち、イベント確率はクラス軸のsoftmaxの第2成分。
-時間軸をsoftmaxで正規化せず、複数イベントを表現する。
-設定の正本は [model/coordinate_transformer.yaml](configs/model/coordinate_transformer.yaml)。
-
-- 既定の直接回帰は、正規化3D座標の全frame **L1 + soft cross-entropy**。係数は位置:イベント=1:1。
-- 3D座標の固定scaleはXYZそれぞれ10/20/5m。L1は軸・frame・batchの平均。係数1:1は実測loss値や勾配量の均等化を意味しない。
-- イベント教師はshot/bounceを区別せず、イベント時刻を頂点1とするGaussian。複数イベントはmaxで合成する。ラリー全体で生成してから窓を切り出すので、窓外イベントの裾も残る。soft CEの教師は `[1-p,p]`。
-- **GANとlossスケジュールは既定で無効**。位置lossは最後まで維持する。
-- optional GANのDは出力3D軌道だけを評価する4層Transformer。位置への対応を保証する目的ではない。`training.gan.enabled=true` で有効化し、係数の段階増加はさらに `training.gan.schedule_enabled=true` を明示する。
-- `model.architecture=flow` は条件付きx0予測Flow matchingの比較方式。既存の速度MSEを位置側の目的とし、同じ状態・時刻からイベントsoft CEも学習する。推論は明示seedから1本生成し、最終更新と同じforwardのイベント確率を返す。GANとは併用しない。
-
-Gaussian幅・係数・optimizer・batch size・optional scheduleの正本は
-[training/coordinate_gan.yaml](configs/training/coordinate_gan.yaml)。
-G/DはAdamW。Generatorの学習率cosine減衰はloss係数のスケジュールとは独立。
-入力の欠損値はforwardでゼロ化し、欠損frameも双方向attentionのqueryとして残す。
-
-## データと拡張
-
-共通データは既存の `data/ball_refiner/single_object/` を再利用する。
-BLCSの3D軌道を一度だけ保存し、多視点投影・camera・イベントを同じrallyに保持する。
-全cameraと窓はrally単位でtrain/val/testに分割し、モデルごとにデータを複製しない。
-両baseline後方のfence面でcameraのX/Z・注視方向・画角を変える。
-データ生成条件は [generate_coordinates.yaml](configs/generate_coordinates.yaml)。
-
-拡張はイベント単位で連続欠損を選び、左右3〜10frameを異なる長さで抽選する。
-選択イベントの欠損をcamera間で同期し、その2D観測だけから三角測量する。
-2view未満・退化・負depthは3Dでも欠損。3D GTを入力へコピーしない。
-既定はjitter・外れ値・離散欠損がすべて0。条件は [train_coordinates.yaml](configs/train_coordinates.yaml)。
-欠損選択率やノイズを変更してアブレーション可能。評価条件とseedは固定し、入力hashを記録する。
+## 実行
 
 ```bash
-# 生成先が既存なら停止する。今回の移行で再生成・削除はしない。
-.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.generate_coordinates
-# CUDA実行は下記の共有training queueから登録する。
-.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.train_coordinates
+# 既存datasetがあれば停止する。共有データの再生成は通常不要。
+.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.generate_dataset
+
+# ローカルCUDAは必ずtraining queueへ登録して実行する。
+.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.train
+# Flowの比較実験は model=flow。回帰は model=regression。
 ```
 
-ローカルGPUは必ず[training queue](../../../.agents/skills/training-queue/SKILL.md)を使う。
-既定出力は `outputs/ball_refiner_3d/train/coordinates/<run>/`。
-validation全frame位置RMSEでbestを選び、best/last両方を固定testで評価する。
-`logs/version_0/checkpoints/{best,last}.ckpt` と `predictions*/pred_test.npz` に保存し、
-NPZには座標・欠損・frame/rally対応に加えて `event_probability` と `event_target` を保持する。
-位置指標に加えてイベントBrier scoreとsoft CEを記録する。位置RMSEはm単位のユークリッド距離。
-
-## 推論・レビュー
+GPU実行は[training queue](../../../.agents/skills/training-queue/SKILL.md)に従う。
+学習設定・再開・保存先は[training README](training/README.md)を参照。
 
 ```bash
-.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.predict_coordinates \
+.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.predict \
   --checkpoint /absolute/run/logs/version_0/checkpoints/best.ckpt \
   --input /absolute/input.npz --output /absolute/prediction.npz --device cpu
+
+.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.evaluate \
+  --checkpoint /absolute/run/logs/version_0/checkpoints/best.ckpt \
+  --run-config /absolute/run/config.yaml \
+  --dataset /absolute/data/ball_refiner/single_object \
+  --output /absolute/new-evaluation --device cpu
+
+.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.review_dataset
 ```
 
 入力NPZは `coordinates`, `missing`, `fps` のみ。座標はm、欠損はbool。
-FPSはcheckpointと一致させる。出力は同じ単位の座標とframeごとの `event_probability`。
-重複窓では座標とイベントを同じ窓から採用し、短い系列は実frameだけで処理する。
-checkpoint schema `ball_refiner_3d.events.v1` はGaussian幅とイベントヘッドを必須とし、
-旧2D/GMM/イベントヘッドなし3D重みは明示的に拒否する。過去のデータ・重み・knowledgeは保存する。
-旧実験の再現にはその記録のcommitを使用する。
+公開API `inference.RefinerPredictor` は同じ契約で入力し、CPU上の座標とイベント確率を返す。
+FPSはcheckpointと一致させる。座標と確率は重複窓の同じ担当窓から採用する。
+新しい評価先・推論出力は既存ファイルを上書きしない。
 
-[Dataset Review](review/README.md)ではcheckpoint候補、拡張前後、3D推論とGT、イベント確率とGaussian教師を比較できる。
+## 互換性
+
+既存のイベントヘッド付き `ball_refiner_3d.events.v1` 重みは、そのまま推論・初期重みとして使える。
+新しい学習はoptimizer・scheduler・乱数状態を持つLightning `events.v2` checkpointを保存する。
+2D/GMM/イベントヘッドなし3Dの重みは明示的に拒否する。
+共有dataset・学習済み重み・過去の実験記録は変更しない。
+旧CLI・flat moduleは廃止したため、過去実験の再実行には記録されたcommitを使用する。
