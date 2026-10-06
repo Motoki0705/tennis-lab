@@ -3,7 +3,6 @@
 defaults:
 - paths: default
 - _self_
-- ball_path: e9_anchored_s42_covariance
 video_paths:
 - samples/cam0.mp4
 - samples/cam1.mp4
@@ -23,7 +22,6 @@ execution:
   player_selection: execute
   pose_estimation: execute
   ball_detection: execute
-  ball_refiner_2d: execute
   ball_points: execute
   player_association: execute
   court_side: execute
@@ -119,6 +117,7 @@ person_observations:
   # Cap linked player groups AFTER court dwell selection; never cap raw person tracks.
   max_tracks_per_camera: 6
 ball_detection:
+  checkpoint: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
   enabled: true
   batch_size: 4
   image_size: [288, 512]
