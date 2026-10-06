@@ -85,11 +85,13 @@ class MotionState:
 
     def distances(self, boxes: NDArray[np.float32]) -> NDArray[np.float64]:
         delta = np.stack([measurement(box) for box in boxes]) - self.mean[:4]
-        return np.einsum('ni,in->n', delta, np.linalg.solve(self.project(), delta.T))
+        result: NDArray[np.float64] = np.einsum('ni,in->n', delta, np.linalg.solve(self.project(), delta.T))
+        return result
 
     def box(self) -> NDArray[np.float64]:
         size = np.asarray([self.mean[2] * self.mean[3], self.mean[3]])
-        return np.r_[self.mean[:2] - size / 2, self.mean[:2] + size / 2]
+        result: NDArray[np.float64] = np.r_[self.mean[:2] - size / 2, self.mean[:2] + size / 2]
+        return result
 
 
 @dataclass
@@ -99,7 +101,7 @@ class _Track:
     embedding: NDArray[np.float32]
     valid: bool
     parts: NativeParts | None
-    pose: NDArray[np.float32]
+    pose: NDArray[np.float32] | None
     hits: int = 1
     age: int = 0
     confirmed: bool = False
@@ -127,7 +129,7 @@ class StrongSort:
                                 np.concatenate([p.visible for p in stored if p is not None]))
             distance, valid = part_distance(parts, features.parts)
         else:
-            distance = 1 - np.asarray([t.embedding for t in tracks]) @ features.embeddings.T
+            distance = (1 - np.asarray([t.embedding for t in tracks]) @ features.embeddings.T).astype(np.float64)
             valid = np.asarray([t.valid for t in tracks])[:, None] & features.appearance_valid[None]
         # No appearance evidence in the appearance stage; IoU stage is explicit.
         return np.where(valid, distance, np.inf)
@@ -137,9 +139,11 @@ class StrongSort:
         result: NDArray[np.float64] = np.zeros((len(tracks), len(rows)), np.float64)
         if self.config.pose_weight == 0:
             return result
+        poses = features.require_poses()
         for j, row in enumerate(rows):
-            pose = local_pose(features.boxes[row], features.poses[row])
+            pose = local_pose(features.boxes[row], poses[row])
             for i, track in enumerate(tracks):
+                assert track.pose is not None
                 distance = pose_distance(pose, track.pose)
                 if distance is not None:
                     result[i, j] = self.config.pose_weight * distance
@@ -153,6 +157,7 @@ class StrongSort:
         return [(int(a), int(b)) for a, b in zip(left, right, strict=True) if cost[a, b] <= maximum]
 
     def update(self, features: DetectionFeatures) -> TrackAssignments:
+        poses = features.require_poses() if self.config.pose_weight else None
         shape = features.embeddings.shape[1:] if features.parts is None else features.parts.embeddings.shape[1:]
         if features.frame != self.frame + 1 or self.seen_rows.intersection(features.rows.tolist()):
             raise ValueError('StrongSORT requires unique rows and sequential complete frames')
@@ -192,7 +197,7 @@ class StrongSort:
             track.hits += 1
             track.confirmed = track.hits >= self.config.n_init
             track.detection_row = int(features.rows[row])
-            track.pose = local_pose(features.boxes[row], features.poses[row])
+            track.pose = None if poses is None else local_pose(features.boxes[row], poses[row])
             if features.parts is not None:
                 if track.parts is None:
                     raise ValueError('StrongSORT native appearance state is missing')
@@ -211,7 +216,7 @@ class StrongSort:
                 self.tracks.append(_Track(self.next_id, MotionState.initiate(features.boxes[row]),
                                           features.embeddings[row].copy(), bool(features.appearance_valid[row]),
                                           None if features.parts is None else features.parts.take(np.asarray([row], np.int64)),
-                                          local_pose(features.boxes[row], features.poses[row]),
+                                          None if poses is None else local_pose(features.boxes[row], poses[row]),
                                           detection_row=int(features.rows[row])))
                 self.next_id += 1
         emitted = sorted((t for t in self.tracks if t.confirmed and t.age == 0), key=lambda t: t.detection_row)
