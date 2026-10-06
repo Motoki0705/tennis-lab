@@ -42,12 +42,12 @@ def write_npz(path: Path, **arrays: Any) -> None:
 
 
 @contextlib.contextmanager
-def lock(path: Path, *, blocking: bool = True) -> Iterator[None]:
+def lock(path: Path, *, blocking: bool = True) -> Iterator[int]:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
         try:
-            yield
+            yield handle.fileno()
         finally:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 

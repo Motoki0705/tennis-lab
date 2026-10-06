@@ -1,0 +1,17 @@
+{
+  "schema": "ball_store_player_pose_plan.v2",
+  "generation_mode": "review_then_pose.v1",
+  "expansion": {
+    "existing": 815,
+    "added": 485,
+    "changed": 0,
+    "reuse": 442,
+    "generate": 730,
+    "skip": 128
+  },
+  "selected_clips": 1172,
+  "selected_frames": 728439,
+  "presence_definition": "reviewed target frames with any observed/interpolated/occlusion_estimated/unresolved ball; out_of_frame excluded",
+  "court_policy": "disabled; all human tracks reviewed by GPT",
+  "threshold": 0.4
+}

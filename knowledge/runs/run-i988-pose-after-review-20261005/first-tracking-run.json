@@ -1,0 +1,16 @@
+{
+  "run_id": "1791127279983807818_2988777_i988-ab949f713060c86e-tracking-00091-a0",
+  "name": "i988-ab949f713060c86e-tracking-00091-a0",
+  "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-fullframe-pilot-r10-20260928/dino_extension/lib:/home/kamimura/projects/tennis-lab/.claude/worktrees/i988-pose-after-review OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/i988-pose-after-review/.venv/bin/python -u -m src.tennis_scene.chat_annotation.player_pose generate-clip --campaign /home/kamimura/projects/tennis-lab/outputs/chat_annotation/player_pose/ball-mix-v2-pose-after-review-20261005 --index 91",
+  "provider": "codex",
+  "session": "01a106ac-abf2-73b3-8167-796a547cbd91",
+  "issue": "988",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "51992ecd77eb65e20f7e332695f16508e0e9ac92",
+  "branch": "codex/i988-pose-after-review",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/i988-pose-after-review",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/i988-pose-after-review",
+  "captured_at": "2026-10-05T00:21:21+09:00"
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import os
+import time
 import traceback
 from fractions import Fraction
 from pathlib import Path
@@ -31,9 +32,12 @@ def _cached_chunk(path: Path) -> bool:
     return True
 
 
-def _save_chunk(path: Path, **arrays: Any) -> None:
+def _save_chunk(path: Path, *, seconds: float = 0.0, **arrays: Any) -> None:
     write_npz(path, **arrays)
-    write_json(path.with_suffix(".json"), {"files": {path.name: digest(path)}})
+    write_json(
+        path.with_suffix(".json"),
+        {"seconds": seconds, "files": {path.name: digest(path)}},
+    )
 
 
 def generate_clip(campaign: Path, index: int) -> None:
@@ -47,24 +51,27 @@ def generate_clip(campaign: Path, index: int) -> None:
         )
     import torch
 
-    from src.submodules.configuration import ViTPoseHeadConfig
     from src.submodules.models.dino.extension import validate_dino_extension
     from src.submodules.models.dino.person_detector import (
         DinoPersonDetector,
         PersonDetectionRequest,
     )
-    from src.submodules.models.vitpose.pose2d import ViTPosePose2D
     from src.tasks.person_tracking.contracts import DetectionFeatures
     from src.tasks.person_tracking.features import (
         FeatureConfig,
         FeatureExtractor,
         UnpromptedEncoder,
     )
-    from src.tasks.person_tracking.sequence import TrackingConfig, track_sequence
+    from src.tasks.person_tracking.sequence import DatasetTrackingConfig, track_sequence
     from src.tasks.person_tracking.strongsort_offline import AFLink
     from src.tasks.player_association.appearance.encoders import ClipReIDEncoder
 
+    started = time.monotonic()
     config, plan, store = load_campaign(campaign)
+    if config.get("generation_mode") != "review_then_pose.v1":
+        raise ValueError(
+            "Use a new review_then_pose campaign; legacy campaigns are immutable"
+        )
     entry = plan["clips"][index]
     if not entry["selected"]:
         raise ValueError("Cannot generate a skipped clip")
@@ -108,12 +115,15 @@ def generate_clip(campaign: Path, index: int) -> None:
         ]
         start_row = store.row_of(clip, 0)
         detector = None
+        chunk_seconds = 0.0
         detection_chunks = []
         for start, stop in ranges:
             path = root / "detections" / f"{start:06d}-{stop:06d}.npz"
             detection_chunks.append(path)
             if _cached_chunk(path):
+                chunk_seconds += read_json(path.with_suffix(".json"))["seconds"]
                 continue
+            chunk_started = time.monotonic()
             if detector is None:
                 detector = DinoPersonDetector(
                     Path(config["assets"]["dino"]),
@@ -140,14 +150,16 @@ def generate_clip(campaign: Path, index: int) -> None:
                 offsets=np.asarray(offsets, np.int64),
                 boxes=np.concatenate(boxes),
                 scores=np.concatenate(scores),
+                seconds=time.monotonic() - chunk_started,
             )
+            chunk_seconds += read_json(path.with_suffix(".json"))["seconds"]
         # Cleanup only follows success; it must not replace the original CUDA traceback.
         if detector is not None:
             detector.unload()
             del detector
         gc.collect()
         torch.cuda.empty_cache()
-        pose = encoder = extractor = None
+        encoder = extractor = None
         all_features = []
         row_offset = 0
         for (start, stop), det_path in zip(ranges, detection_chunks, strict=True):
@@ -159,39 +171,22 @@ def generate_clip(campaign: Path, index: int) -> None:
                 with np.load(path, allow_pickle=False) as data:
                     features = {name: data[name] for name in data.files}
             else:
-                if pose is None:
-                    head = ViTPoseHeadConfig(
-                        in_channels=1280,
-                        out_channels=17,
-                        num_deconv_layers=2,
-                        num_deconv_filters=(256, 256),
-                        num_deconv_kernels=(4, 4),
-                        final_conv_kernel=1,
-                        num_conv_layers=0,
-                        num_conv_kernels=(),
-                    )
-                    pose = ViTPosePose2D(
-                        Path(config["assets"]["vitpose"]),
-                        device="cuda",
-                        flip_test=True,
-                        batch_size=4,
-                        head_config=head,
-                        precision="float32",
-                    )
+                chunk_started = time.monotonic()
+                if encoder is None:
                     encoder = ClipReIDEncoder(
                         "clipreid_vitb16_market1501",
                         Path(config["assets"]["clip_reid"]),
                         "cuda",
                     )
                     extractor = FeatureExtractor(
-                        pose, UnpromptedEncoder(encoder, 1280), FeatureConfig()
+                        None, UnpromptedEncoder(encoder, 1280), FeatureConfig()
                     )
                 frames = []
                 for local, frame in enumerate(range(start, stop)):
                     write_json(
                         root / "progress.json",
                         {
-                            "stage": "pose_clip_features",
+                            "stage": "appearance_features",
                             "frame": frame,
                             "frames": clip.frame_count,
                         },
@@ -211,7 +206,6 @@ def generate_clip(campaign: Path, index: int) -> None:
                     "rows",
                     "boxes",
                     "scores",
-                    "poses",
                     "embeddings",
                     "appearance_valid",
                 )
@@ -220,7 +214,8 @@ def generate_clip(campaign: Path, index: int) -> None:
                     for name in fields
                 }
                 features["offsets"] = offsets
-                _save_chunk(path, **features)
+                _save_chunk(path, seconds=time.monotonic() - chunk_started, **features)
+            chunk_seconds += read_json(path.with_suffix(".json"))["seconds"]
             if not np.array_equal(features["offsets"], offsets):
                 raise ValueError("Feature/detection offsets changed")
             for local, frame in enumerate(range(start, stop)):
@@ -234,20 +229,19 @@ def generate_clip(campaign: Path, index: int) -> None:
                     values["rows"], np.arange(row_offset + a, row_offset + b)
                 ):
                     raise ValueError("Cached detection identity changed")
-                all_features.append(DetectionFeatures(frame, **values))
+                all_features.append(DetectionFeatures(frame, poses=None, **values))
             row_offset += int(offsets[-1])
-        if pose is not None:
-            pose.unload()
-        del pose, encoder, extractor
+        del encoder, extractor
         gc.collect()
         torch.cuda.empty_cache()
         write_json(
             root / "progress.json", {"stage": "tracking", "frames": clip.frame_count}
         )
-        result = track_sequence(
+        tracking_started = time.monotonic()
+        tracking = track_sequence(
             all_features,
             fps=float(Fraction(clip.fps)),
-            config=TrackingConfig(),
+            config=DatasetTrackingConfig(),
             aflink=AFLink(Path(config["assets"]["aflink"])),
         )
         tracks = root / "tracks.npz"
@@ -256,22 +250,27 @@ def generate_clip(campaign: Path, index: int) -> None:
             tracks,
             frame_index=store.frames["frame_index"][rows],
             pts=store.frames["pts"][rows],
-            track_ids=result.track_ids,
-            boxes=result.boxes,
-            detection_rows=result.evidence.detection_rows,
-            keypoints=result.evidence.poses,
+            track_ids=tracking.track_ids,
+            boxes=tracking.boxes,
+            detection_rows=tracking.evidence.detection_rows,
         )
         write_json(
             root / "generation.json",
             {
                 "status": "complete",
+                "stage": "tracking",
+                "generation_mode": config["generation_mode"],
+                "all_detections": row_offset,
+                "pose_crops": 0,
+                "seconds": chunk_seconds + time.monotonic() - tracking_started,
+                "last_attempt_seconds": time.monotonic() - started,
                 "clip_id": clip.clip_id,
                 "frame_count": clip.frame_count,
-                "raw_tracks": len(result.track_ids),
+                "raw_tracks": len(tracking.track_ids),
                 "court_policy": "disabled",
-                "tracking_profile": TrackingConfig().identity(),
-                "source_track_ids": result.source_track_ids,
-                "link_candidates": result.link_candidates,
+                "tracking_profile": DatasetTrackingConfig().identity(),
+                "source_track_ids": tracking.source_track_ids,
+                "link_candidates": tracking.link_candidates,
                 "synthetic_poses_used": False,
                 "files": {
                     "tracks.npz": digest(tracks),
