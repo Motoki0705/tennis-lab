@@ -1,0 +1,13 @@
+{
+  "source": "/home/kamimura/projects/tennis-lab/outputs/blcs/train/axial_base_t128_v3-6_reprojection_e200/s42-20261006-001/logs/version_0/checkpoints/blcs-epoch=189.ckpt",
+  "destination": "/home/kamimura/projects/tennis-lab/ckpt/blcs/axial-base-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "checkpoint_root_relative": "blcs/axial-base-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "sha256": "c83e56a51c553a10203b509cd307df930ccba59adb72c49cec89d6f42e1d73a8",
+  "size_bytes": 621077035,
+  "selected_epoch_zero_based": 189,
+  "completed_epochs": 200,
+  "selection_monitor": "val/position_error_m",
+  "selection_score_m": 0.3374446630477905,
+  "selection_split": "val",
+  "selection_used_test": false
+}

@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/blcs/train/axial_base_t128_v3-6_reprojection_e200/s42-20261006-001/logs/version_0/checkpoints

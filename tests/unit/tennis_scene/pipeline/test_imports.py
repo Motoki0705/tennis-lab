@@ -25,6 +25,7 @@ from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
+    KnownBallStage,
     TrackIdentities,
     camera_stages,
     inputs,
@@ -57,6 +58,7 @@ def build(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, frames: int = 40, 
     court, people, balls = inputs(frames=frames)
     stages: dict[str, Any] = {name: stage for name, stage in camera_stages(court, people, balls).items() if not name.startswith("ball_detection/")}
     stages["player_association"] = TrackIdentities(CAMERAS)
+    stages["ball_reconstruction"] = KnownBallStage(cfg, CAMERAS)
     source = build_clip_source(patch_video_probe(tmp_path, monkeypatch, frames), CAMERAS)
     store = ClipStore(tmp_path / "store", json_value(source))
     return cfg, source, store, standard_definition(cfg, source, code_identity="test", overrides=stages), balls

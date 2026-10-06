@@ -1,0 +1,21 @@
+{
+  "checkpoint": "blcs/axial-base-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "checkpoint_sha256": "c83e56a51c553a10203b509cd307df930ccba59adb72c49cec89d6f42e1d73a8",
+  "selection": "minimum val/position_error_m; test was not used for selection",
+  "split": "test",
+  "scene_count": 85,
+  "sequence_length": 128,
+  "window": "deterministic centre crop from the training dataset reader",
+  "camera_range": [
+    3,
+    6
+  ],
+  "camera_selection": "sample-local RNG with run seed 42",
+  "augmentation": false,
+  "metrics": {
+    "test/loss": 0.0004441512865014374,
+    "test/position_error_m": 0.3824673891067505,
+    "test/position_accuracy_0.3m": 0.5979779362678528,
+    "test/endpoint_error_m": 1.074790596961975
+  }
+}

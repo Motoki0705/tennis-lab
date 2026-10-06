@@ -12,6 +12,7 @@ from src.tasks.player_association.appearance.sampling import CropSamplingConfig
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionModule
 from src.tennis_scene.pipeline.components.ball_points import BallPointsModule
+from src.tennis_scene.pipeline.components.blcs import BLCSReconstructionModule
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementModule
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionModule,
@@ -32,7 +33,6 @@ from src.tennis_scene.pipeline.components.player_selection import PlayerSelectio
 from src.tennis_scene.pipeline.components.pose_estimation import PoseEstimationModule
 from src.tennis_scene.pipeline.components.scene_assembly import SceneAssemblyModule
 from src.tennis_scene.pipeline.components.triangulation import (
-    BallTriangulationModule,
     PlayerTriangulationModule,
 )
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource
@@ -54,7 +54,7 @@ from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     PoseEstimationInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.reconstruction import (
-    BallTriangulationInputAssembler,
+    BallReconstructionInputAssembler,
     CameraAlignmentInputAssembler,
     CourtSideInputAssembler,
     PlayerAssociationInputAssembler,
@@ -192,10 +192,12 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("player_triangulation", PlayerTriangulationModule(ids, reprojection_px=cfg.player_reprojection_px,
         joint_confidence=cfg.joint_confidence, enabled=cfg.enabled["player_reconstruction"]),
         PlayerTriangulationInputAssembler(cfg.human_vis_threshold), reconstructed, lambda: cfg.processing_settings["player_reconstruction"])
-    add("ball_triangulation", BallTriangulationModule(ids, reprojection_px=cfg.ball_reprojection_px,
+    add("ball_reconstruction", BLCSReconstructionModule(ids, checkpoint=cfg.ball_checkpoint, resolver=cfg.resolver,
+        device=cfg.device, window_size=cfg.ball_window_size, reprojection_px=cfg.ball_reprojection_px,
         min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
-        BallTriangulationInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
-        lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
+        BallReconstructionInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
+        lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0,
+            "assets": asset_identities(cfg.enabled["ball_reconstruction"], {"checkpoint": cfg.ball_checkpoint})})
     add("body_view_selection", BodyViewSelectionModule(ids, max_frames=cfg.sampling_max_frames, enabled=body_enabled),
         BodyViewSelectionInputAssembler(cfg.human_vis_threshold), reconstructed,
         lambda: {"policy": "coverage_confidence_camera_id", "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "enabled": body_enabled})
@@ -207,7 +209,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         lambda: {"config": cfg.player_placement, "assets": body_assets()})
     add("scene_assembly", SceneAssemblyModule(ids, require_people=cfg.enabled["player_reconstruction"],
         require_ball=cfg.enabled["ball_reconstruction"], require_body=body_enabled), SceneAssemblyInputAssembler(cfg.human_vis_threshold),
-        {**reconstructed, "skeleton": "player_triangulation", "ball": "ball_triangulation", "placement": "body_placement"}, lambda: {"enabled": cfg.enabled})
+        {**reconstructed, "skeleton": "player_triangulation", "ball": "ball_reconstruction", "placement": "body_placement"}, lambda: {"enabled": cfg.enabled})
     return tuple(nodes)
 
 
@@ -217,6 +219,7 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     return {
         "court": cfg.court_kp.checkpoint,
         "ball": cfg.ball_detection.checkpoint,
+        **({"blcs": cfg.ball_checkpoint} if cfg.enabled["ball_reconstruction"] else {}),
         **({"detector": cfg.people.detector_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **({"tracking_encoder": cfg.tracking_encoder_weights, "aflink": cfg.aflink_checkpoint} if people else {}),

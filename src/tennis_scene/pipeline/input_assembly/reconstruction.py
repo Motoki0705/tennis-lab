@@ -9,6 +9,7 @@ from typing import Any
 from src.tennis_scene.pipeline.components.ball_reconstruction import (
     single_ball_observations,
 )
+from src.tennis_scene.pipeline.components.blcs import BallReconstructionInput
 from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentInput
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
@@ -72,12 +73,14 @@ class PlayerTriangulationInputAssembler:
 
 
 @dataclass(frozen=True)
-class BallTriangulationInputAssembler:
+class BallReconstructionInputAssembler:
     ball_threshold: float
-    version: int = 2
+    version: int = 3
 
-    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> TriangulationInput:
+    def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> BallReconstructionInput:
         calibration: CourtCalibrationOutput = artifacts["calibration"]
         active = tuple(v.source_index for v in calibration.calibration.views)
         grouped = single_ball_observations(gather_balls(context.source, artifacts).select_views(active), threshold=self.ball_threshold)
-        return TriangulationInput(context.source, artifacts["alignment"], grouped)
+        court = calibration.court
+        selected = type(court)(court.keypoints[list(active)], court.visibility[list(active)], court.frame_indices, court.diagnostics)
+        return BallReconstructionInput(context.source, artifacts["alignment"], grouped, selected, calibration.calibration.camera_ids)

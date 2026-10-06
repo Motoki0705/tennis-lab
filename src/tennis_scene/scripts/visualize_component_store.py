@@ -668,8 +668,8 @@ class Review:
                    for player in range(len(positions))]
         return [image], details
 
-    @renders("ball_triangulation", "ball_trajectory", 1)
-    def render_ball_triangulation(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+    @renders("ball_reconstruction", "ball_trajectory", 2)
+    def render_ball_reconstruction(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         ball = value["ball"]
         if ball is None:
             return [], [("output", "none (the component published an explicit empty result)")]
@@ -681,7 +681,7 @@ class Review:
                 dots = ax.scatter(positions[valid, 0], positions[valid, 1], c=positions[valid, 2],
                                   s=12, cmap="viridis", vmin=0, vmax=max(4., float(positions[valid, 2].max())))
                 ax.figure.colorbar(dots, ax=ax, label="height (m)")
-            ax.set_title("Triangulated ball positions")
+            ax.set_title("Reconstructed ball positions")
         def height(ax: Any) -> None:
             ax.plot(np.arange(len(valid)), masked_trajectory(positions[:, 2], valid), lw=1,
                     marker=".", markersize=2, color=COLORS_MPL[0])
@@ -689,8 +689,8 @@ class Review:
                 ax.axvspan(start - .5, end - .5, color="#c5573d", alpha=.15)
             ax.set(xlabel="source frame", ylabel="height (m)", title="Ball height — gaps are missing, never interpolated")
             ax.grid(alpha=.2)
-        images = [_save_plot(self.output / "images" / "ball_triangulation_topdown.png", topdown, figsize=(7, 8)),
-                  _save_plot(self.output / "images" / "ball_triangulation_height.png", height)]
+        images = [_save_plot(self.output / "images" / "ball_reconstruction_topdown.png", topdown, figsize=(7, 8)),
+                  _save_plot(self.output / "images" / "ball_reconstruction_height.png", height)]
         return images, [("status", ball["status"]), ("valid frames", f"{_count(valid)}/{len(valid)}"),
                         ("inlier camera observations", str(_count(trajectory["inliers"])))]
 

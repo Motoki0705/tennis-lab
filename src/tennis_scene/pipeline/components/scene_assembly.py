@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.tennis_scene.pipeline.assembly import assemble_automatic_scene
+from src.tennis_scene.pipeline.components.blcs import BallReconstructionOutput
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementOutput
 from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentOutput
 from src.tennis_scene.pipeline.components.court_calibration import (
@@ -12,7 +13,6 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 )
 from src.tennis_scene.pipeline.components.identity import IDENTITIES_PORT
 from src.tennis_scene.pipeline.components.triangulation import (
-    BallTriangulationOutput,
     PlayerTriangulationOutput,
 )
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
@@ -29,7 +29,7 @@ class SceneAssemblyInput:
     alignment: CameraAlignmentOutput
     people: GroupedObservations
     skeleton: PlayerTriangulationOutput
-    ball: BallTriangulationOutput
+    ball: BallReconstructionOutput
     placement: BodyPlacementOutput
 
 
@@ -39,7 +39,7 @@ class SceneAssemblyModule:
         self.io = ComponentIO("scene_assembly", SceneAssemblyInput, SceneResult,
             {"calibration": InputPort("local_court_calibration"), "alignment": InputPort("aligned_cameras"),
              "identities": IDENTITIES_PORT, "skeleton": InputPort("player_skeletons"),
-             "ball": InputPort("ball_trajectory"), "placement": InputPort("placed_bodies"),
+             "ball": InputPort("ball_trajectory", 2), "placement": InputPort("placed_bodies"),
              **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "scene_result", 2)
 
     def process(self, inputs: SceneAssemblyInput) -> SceneResult:

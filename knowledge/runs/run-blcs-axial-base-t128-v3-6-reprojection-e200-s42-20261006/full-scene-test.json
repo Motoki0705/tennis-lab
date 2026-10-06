@@ -1,0 +1,724 @@
+{
+  "split": "test",
+  "scene_count": 100,
+  "frames": 32501,
+  "checkpoint": "checkpoints:axial-base-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "cameras": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "window": 128,
+  "protocol": "all held-out scenes, including short scenes; non-overlapping windows; frame-weighted errors",
+  "precision": "float32 predictor; separate from bf16 centre-window Trainer test",
+  "metrics": {
+    "position_error_m": 0.49481457707393484,
+    "median_position_error_m": 0.21943350086047506,
+    "p95_position_error_m": 1.7049788734541198,
+    "accuracy_0p3m": 0.636041967939448,
+    "mean_scene_endpoint_error_m": 2.665169056531459
+  },
+  "scenes": [
+    {
+      "scene_id": "scene_000686",
+      "frames": 162,
+      "position_error_m": 1.1967518487394737,
+      "endpoint_error_m": 3.526418719200686,
+      "accuracy_0p3m": 0.4074074074074074
+    },
+    {
+      "scene_id": "scene_000214",
+      "frames": 549,
+      "position_error_m": 0.21730929729170514,
+      "endpoint_error_m": 0.33772096060275136,
+      "accuracy_0p3m": 0.7905282331511839
+    },
+    {
+      "scene_id": "scene_000363",
+      "frames": 195,
+      "position_error_m": 1.262963624444302,
+      "endpoint_error_m": 2.0655313822931998,
+      "accuracy_0p3m": 0.38974358974358975
+    },
+    {
+      "scene_id": "scene_000379",
+      "frames": 249,
+      "position_error_m": 0.3761739382891051,
+      "endpoint_error_m": 0.8278229731090854,
+      "accuracy_0p3m": 0.6345381526104418
+    },
+    {
+      "scene_id": "scene_000166",
+      "frames": 613,
+      "position_error_m": 0.210102833654841,
+      "endpoint_error_m": 0.4249136173504328,
+      "accuracy_0p3m": 0.799347471451876
+    },
+    {
+      "scene_id": "scene_000373",
+      "frames": 571,
+      "position_error_m": 0.2790199064040217,
+      "endpoint_error_m": 0.31246204921777876,
+      "accuracy_0p3m": 0.6427320490367776
+    },
+    {
+      "scene_id": "scene_000854",
+      "frames": 93,
+      "position_error_m": 1.8967777637138714,
+      "endpoint_error_m": 4.465234177586687,
+      "accuracy_0p3m": 0.3333333333333333
+    },
+    {
+      "scene_id": "scene_000650",
+      "frames": 327,
+      "position_error_m": 0.8133455809138597,
+      "endpoint_error_m": 5.085016314084381,
+      "accuracy_0p3m": 0.6085626911314985
+    },
+    {
+      "scene_id": "scene_000464",
+      "frames": 138,
+      "position_error_m": 0.4919985808049734,
+      "endpoint_error_m": 1.161801446084637,
+      "accuracy_0p3m": 0.47101449275362317
+    },
+    {
+      "scene_id": "scene_000954",
+      "frames": 166,
+      "position_error_m": 1.7018916164850277,
+      "endpoint_error_m": 1.4744412337212498,
+      "accuracy_0p3m": 0.6506024096385542
+    },
+    {
+      "scene_id": "scene_000947",
+      "frames": 101,
+      "position_error_m": 0.35494778885273287,
+      "endpoint_error_m": 1.6341153607254562,
+      "accuracy_0p3m": 0.7128712871287128
+    },
+    {
+      "scene_id": "scene_000103",
+      "frames": 606,
+      "position_error_m": 0.2024548205824587,
+      "endpoint_error_m": 0.33547786866356266,
+      "accuracy_0p3m": 0.8184818481848185
+    },
+    {
+      "scene_id": "scene_000887",
+      "frames": 431,
+      "position_error_m": 0.6648862107017196,
+      "endpoint_error_m": 0.29345348583872793,
+      "accuracy_0p3m": 0.531322505800464
+    },
+    {
+      "scene_id": "scene_000978",
+      "frames": 153,
+      "position_error_m": 0.608860726103406,
+      "endpoint_error_m": 1.5737841788348912,
+      "accuracy_0p3m": 0.7254901960784313
+    },
+    {
+      "scene_id": "scene_000875",
+      "frames": 556,
+      "position_error_m": 0.3371184012615745,
+      "endpoint_error_m": 0.69295218777564,
+      "accuracy_0p3m": 0.5773381294964028
+    },
+    {
+      "scene_id": "scene_000081",
+      "frames": 122,
+      "position_error_m": 1.0832296558558347,
+      "endpoint_error_m": 3.691480876772431,
+      "accuracy_0p3m": 0.45901639344262296
+    },
+    {
+      "scene_id": "scene_000296",
+      "frames": 495,
+      "position_error_m": 0.3073262898820179,
+      "endpoint_error_m": 0.36182362630468895,
+      "accuracy_0p3m": 0.7676767676767676
+    },
+    {
+      "scene_id": "scene_000791",
+      "frames": 193,
+      "position_error_m": 0.30992526397690784,
+      "endpoint_error_m": 1.0743453512461485,
+      "accuracy_0p3m": 0.6269430051813472
+    },
+    {
+      "scene_id": "scene_000233",
+      "frames": 170,
+      "position_error_m": 0.4738713216522556,
+      "endpoint_error_m": 2.995063058567676,
+      "accuracy_0p3m": 0.47058823529411764
+    },
+    {
+      "scene_id": "scene_000677",
+      "frames": 491,
+      "position_error_m": 0.26628101695186174,
+      "endpoint_error_m": 0.2412491841939834,
+      "accuracy_0p3m": 0.745417515274949
+    },
+    {
+      "scene_id": "scene_000046",
+      "frames": 361,
+      "position_error_m": 0.3502088474988662,
+      "endpoint_error_m": 2.051073838636867,
+      "accuracy_0p3m": 0.6565096952908587
+    },
+    {
+      "scene_id": "scene_000071",
+      "frames": 405,
+      "position_error_m": 0.6907881536611061,
+      "endpoint_error_m": 10.524572469484665,
+      "accuracy_0p3m": 0.6493827160493827
+    },
+    {
+      "scene_id": "scene_000721",
+      "frames": 285,
+      "position_error_m": 0.4814089370199215,
+      "endpoint_error_m": 2.2552116031688287,
+      "accuracy_0p3m": 0.7087719298245614
+    },
+    {
+      "scene_id": "scene_000196",
+      "frames": 278,
+      "position_error_m": 1.2038893779965452,
+      "endpoint_error_m": 8.712534626075298,
+      "accuracy_0p3m": 0.5179856115107914
+    },
+    {
+      "scene_id": "scene_000591",
+      "frames": 292,
+      "position_error_m": 0.45558713035177867,
+      "endpoint_error_m": 2.924067619099092,
+      "accuracy_0p3m": 0.5821917808219178
+    },
+    {
+      "scene_id": "scene_000370",
+      "frames": 97,
+      "position_error_m": 1.0618450403414066,
+      "endpoint_error_m": 1.8359702937288256,
+      "accuracy_0p3m": 0.30927835051546393
+    },
+    {
+      "scene_id": "scene_000882",
+      "frames": 615,
+      "position_error_m": 0.5209593800719563,
+      "endpoint_error_m": 2.0540823696270705,
+      "accuracy_0p3m": 0.44552845528455287
+    },
+    {
+      "scene_id": "scene_000906",
+      "frames": 365,
+      "position_error_m": 0.4994677053768575,
+      "endpoint_error_m": 2.495310635677301,
+      "accuracy_0p3m": 0.5178082191780822
+    },
+    {
+      "scene_id": "scene_000633",
+      "frames": 499,
+      "position_error_m": 0.2717884639807222,
+      "endpoint_error_m": 0.364076464641219,
+      "accuracy_0p3m": 0.7595190380761523
+    },
+    {
+      "scene_id": "scene_000643",
+      "frames": 92,
+      "position_error_m": 0.4901998714394971,
+      "endpoint_error_m": 1.1882181725134644,
+      "accuracy_0p3m": 0.4673913043478261
+    },
+    {
+      "scene_id": "scene_000849",
+      "frames": 502,
+      "position_error_m": 0.3327585357866368,
+      "endpoint_error_m": 2.639446403945416,
+      "accuracy_0p3m": 0.7629482071713147
+    },
+    {
+      "scene_id": "scene_000300",
+      "frames": 523,
+      "position_error_m": 0.3777815556355976,
+      "endpoint_error_m": 6.778890899402639,
+      "accuracy_0p3m": 0.7858508604206501
+    },
+    {
+      "scene_id": "scene_000565",
+      "frames": 204,
+      "position_error_m": 0.6200058247833619,
+      "endpoint_error_m": 2.7129303218957923,
+      "accuracy_0p3m": 0.5490196078431373
+    },
+    {
+      "scene_id": "scene_000080",
+      "frames": 594,
+      "position_error_m": 0.26270163941758384,
+      "endpoint_error_m": 0.34995582759210964,
+      "accuracy_0p3m": 0.6531986531986532
+    },
+    {
+      "scene_id": "scene_000387",
+      "frames": 556,
+      "position_error_m": 0.7314929795955463,
+      "endpoint_error_m": 4.747871397127742,
+      "accuracy_0p3m": 0.7122302158273381
+    },
+    {
+      "scene_id": "scene_000127",
+      "frames": 207,
+      "position_error_m": 0.44040365253045555,
+      "endpoint_error_m": 0.49981264259327324,
+      "accuracy_0p3m": 0.3671497584541063
+    },
+    {
+      "scene_id": "scene_000549",
+      "frames": 535,
+      "position_error_m": 0.266235680460832,
+      "endpoint_error_m": 1.3544929086480952,
+      "accuracy_0p3m": 0.7121495327102804
+    },
+    {
+      "scene_id": "scene_000470",
+      "frames": 534,
+      "position_error_m": 0.5977937422201056,
+      "endpoint_error_m": 4.369911046356426,
+      "accuracy_0p3m": 0.6816479400749064
+    },
+    {
+      "scene_id": "scene_000747",
+      "frames": 524,
+      "position_error_m": 0.16553359346299526,
+      "endpoint_error_m": 0.27711700133082495,
+      "accuracy_0p3m": 0.8683206106870229
+    },
+    {
+      "scene_id": "scene_000044",
+      "frames": 321,
+      "position_error_m": 1.392590751380302,
+      "endpoint_error_m": 10.833199138634743,
+      "accuracy_0p3m": 0.3862928348909657
+    },
+    {
+      "scene_id": "scene_000826",
+      "frames": 325,
+      "position_error_m": 0.3881560591890376,
+      "endpoint_error_m": 1.8562533341611156,
+      "accuracy_0p3m": 0.6184615384615385
+    },
+    {
+      "scene_id": "scene_000270",
+      "frames": 279,
+      "position_error_m": 1.3398187467133844,
+      "endpoint_error_m": 6.316029778295072,
+      "accuracy_0p3m": 0.3978494623655914
+    },
+    {
+      "scene_id": "scene_000618",
+      "frames": 467,
+      "position_error_m": 0.36347085116965283,
+      "endpoint_error_m": 1.2533485329386755,
+      "accuracy_0p3m": 0.5588865096359743
+    },
+    {
+      "scene_id": "scene_000352",
+      "frames": 623,
+      "position_error_m": 0.3226308573403407,
+      "endpoint_error_m": 1.5722483546788335,
+      "accuracy_0p3m": 0.6581059390048154
+    },
+    {
+      "scene_id": "scene_000867",
+      "frames": 241,
+      "position_error_m": 0.3471707911050114,
+      "endpoint_error_m": 1.4115052464068778,
+      "accuracy_0p3m": 0.6639004149377593
+    },
+    {
+      "scene_id": "scene_000367",
+      "frames": 345,
+      "position_error_m": 0.23866411071946395,
+      "endpoint_error_m": 0.8038433110213883,
+      "accuracy_0p3m": 0.7130434782608696
+    },
+    {
+      "scene_id": "scene_000099",
+      "frames": 284,
+      "position_error_m": 0.3078489966489169,
+      "endpoint_error_m": 1.5206226658036106,
+      "accuracy_0p3m": 0.7077464788732394
+    },
+    {
+      "scene_id": "scene_000389",
+      "frames": 390,
+      "position_error_m": 0.7673214583614106,
+      "endpoint_error_m": 7.988082310298416,
+      "accuracy_0p3m": 0.49743589743589745
+    },
+    {
+      "scene_id": "scene_000094",
+      "frames": 373,
+      "position_error_m": 0.24239990546334617,
+      "endpoint_error_m": 0.5369141048935541,
+      "accuracy_0p3m": 0.8337801608579088
+    },
+    {
+      "scene_id": "scene_000990",
+      "frames": 137,
+      "position_error_m": 0.8338392691464939,
+      "endpoint_error_m": 4.930682260714264,
+      "accuracy_0p3m": 0.5620437956204379
+    },
+    {
+      "scene_id": "scene_000344",
+      "frames": 365,
+      "position_error_m": 0.36698633146057397,
+      "endpoint_error_m": 1.6058686081194258,
+      "accuracy_0p3m": 0.5424657534246575
+    },
+    {
+      "scene_id": "scene_000781",
+      "frames": 175,
+      "position_error_m": 1.2513435862537854,
+      "endpoint_error_m": 3.4815362730315256,
+      "accuracy_0p3m": 0.44571428571428573
+    },
+    {
+      "scene_id": "scene_000220",
+      "frames": 210,
+      "position_error_m": 1.5282701019929747,
+      "endpoint_error_m": 7.691867329065594,
+      "accuracy_0p3m": 0.4666666666666667
+    },
+    {
+      "scene_id": "scene_000159",
+      "frames": 133,
+      "position_error_m": 0.5014186321961537,
+      "endpoint_error_m": 2.7213948609491516,
+      "accuracy_0p3m": 0.7518796992481203
+    },
+    {
+      "scene_id": "scene_000964",
+      "frames": 284,
+      "position_error_m": 0.7903270582090355,
+      "endpoint_error_m": 3.0410472267731583,
+      "accuracy_0p3m": 0.6373239436619719
+    },
+    {
+      "scene_id": "scene_000348",
+      "frames": 361,
+      "position_error_m": 0.36320477221418745,
+      "endpoint_error_m": 3.902880813839372,
+      "accuracy_0p3m": 0.590027700831025
+    },
+    {
+      "scene_id": "scene_000983",
+      "frames": 79,
+      "position_error_m": 0.8794072898755181,
+      "endpoint_error_m": 1.9613166915794704,
+      "accuracy_0p3m": 0.3670886075949367
+    },
+    {
+      "scene_id": "scene_000714",
+      "frames": 673,
+      "position_error_m": 0.412672835311811,
+      "endpoint_error_m": 4.448060477251698,
+      "accuracy_0p3m": 0.6849925705794948
+    },
+    {
+      "scene_id": "scene_000163",
+      "frames": 112,
+      "position_error_m": 0.34189704500688556,
+      "endpoint_error_m": 0.6369765209983566,
+      "accuracy_0p3m": 0.7053571428571429
+    },
+    {
+      "scene_id": "scene_000825",
+      "frames": 724,
+      "position_error_m": 0.30438765202412066,
+      "endpoint_error_m": 0.291275869534241,
+      "accuracy_0p3m": 0.7265193370165746
+    },
+    {
+      "scene_id": "scene_000777",
+      "frames": 311,
+      "position_error_m": 0.44392183066868235,
+      "endpoint_error_m": 1.3667467853037358,
+      "accuracy_0p3m": 0.4565916398713826
+    },
+    {
+      "scene_id": "scene_000006",
+      "frames": 214,
+      "position_error_m": 0.42441025092779944,
+      "endpoint_error_m": 1.9915867167566543,
+      "accuracy_0p3m": 0.48598130841121495
+    },
+    {
+      "scene_id": "scene_000890",
+      "frames": 178,
+      "position_error_m": 0.477633918506778,
+      "endpoint_error_m": 2.8667105452408785,
+      "accuracy_0p3m": 0.6123595505617978
+    },
+    {
+      "scene_id": "scene_000828",
+      "frames": 322,
+      "position_error_m": 0.27957447525374407,
+      "endpoint_error_m": 0.2898459059807136,
+      "accuracy_0p3m": 0.6708074534161491
+    },
+    {
+      "scene_id": "scene_000284",
+      "frames": 637,
+      "position_error_m": 0.2613402228943001,
+      "endpoint_error_m": 0.2902852430774443,
+      "accuracy_0p3m": 0.7237048665620094
+    },
+    {
+      "scene_id": "scene_000603",
+      "frames": 185,
+      "position_error_m": 0.32502195381273596,
+      "endpoint_error_m": 0.6262460069856548,
+      "accuracy_0p3m": 0.5297297297297298
+    },
+    {
+      "scene_id": "scene_000459",
+      "frames": 515,
+      "position_error_m": 0.21646614273896936,
+      "endpoint_error_m": 0.2070758646854049,
+      "accuracy_0p3m": 0.7514563106796116
+    },
+    {
+      "scene_id": "scene_000225",
+      "frames": 106,
+      "position_error_m": 0.9423124485445078,
+      "endpoint_error_m": 5.479231888487847,
+      "accuracy_0p3m": 0.5377358490566038
+    },
+    {
+      "scene_id": "scene_000429",
+      "frames": 313,
+      "position_error_m": 0.16626377615420132,
+      "endpoint_error_m": 0.10794704422629092,
+      "accuracy_0p3m": 0.9009584664536742
+    },
+    {
+      "scene_id": "scene_000986",
+      "frames": 394,
+      "position_error_m": 0.6676301427352751,
+      "endpoint_error_m": 8.07521222087728,
+      "accuracy_0p3m": 0.6040609137055838
+    },
+    {
+      "scene_id": "scene_000718",
+      "frames": 444,
+      "position_error_m": 0.2813257759573865,
+      "endpoint_error_m": 1.8959065025009947,
+      "accuracy_0p3m": 0.7319819819819819
+    },
+    {
+      "scene_id": "scene_000665",
+      "frames": 229,
+      "position_error_m": 0.393658542598713,
+      "endpoint_error_m": 2.6620304624980986,
+      "accuracy_0p3m": 0.6506550218340611
+    },
+    {
+      "scene_id": "scene_000733",
+      "frames": 151,
+      "position_error_m": 1.8966916804613507,
+      "endpoint_error_m": 7.337885700477966,
+      "accuracy_0p3m": 0.3443708609271523
+    },
+    {
+      "scene_id": "scene_000203",
+      "frames": 457,
+      "position_error_m": 0.2532803088411615,
+      "endpoint_error_m": 0.16253135946610878,
+      "accuracy_0p3m": 0.7089715536105032
+    },
+    {
+      "scene_id": "scene_000574",
+      "frames": 713,
+      "position_error_m": 0.8113602994690867,
+      "endpoint_error_m": 1.8764541298128938,
+      "accuracy_0p3m": 0.5091164095371669
+    },
+    {
+      "scene_id": "scene_000027",
+      "frames": 119,
+      "position_error_m": 0.75443432840542,
+      "endpoint_error_m": 1.4441386230171076,
+      "accuracy_0p3m": 0.47058823529411764
+    },
+    {
+      "scene_id": "scene_000616",
+      "frames": 135,
+      "position_error_m": 0.4282753725768634,
+      "endpoint_error_m": 0.7710506985501483,
+      "accuracy_0p3m": 0.4962962962962963
+    },
+    {
+      "scene_id": "scene_000517",
+      "frames": 312,
+      "position_error_m": 0.5261559451478182,
+      "endpoint_error_m": 0.41671439231837654,
+      "accuracy_0p3m": 0.44871794871794873
+    },
+    {
+      "scene_id": "scene_000238",
+      "frames": 347,
+      "position_error_m": 0.7534841513157062,
+      "endpoint_error_m": 2.359917372900743,
+      "accuracy_0p3m": 0.4495677233429395
+    },
+    {
+      "scene_id": "scene_000223",
+      "frames": 721,
+      "position_error_m": 0.22190646207509193,
+      "endpoint_error_m": 0.26687902423018867,
+      "accuracy_0p3m": 0.7933425797503467
+    },
+    {
+      "scene_id": "scene_000095",
+      "frames": 125,
+      "position_error_m": 0.48201701430184507,
+      "endpoint_error_m": 2.8506782949363045,
+      "accuracy_0p3m": 0.52
+    },
+    {
+      "scene_id": "scene_000030",
+      "frames": 235,
+      "position_error_m": 0.6436992180284491,
+      "endpoint_error_m": 4.7867388521834044,
+      "accuracy_0p3m": 0.5404255319148936
+    },
+    {
+      "scene_id": "scene_000032",
+      "frames": 188,
+      "position_error_m": 0.20934977455870987,
+      "endpoint_error_m": 0.620606088671189,
+      "accuracy_0p3m": 0.8829787234042553
+    },
+    {
+      "scene_id": "scene_000432",
+      "frames": 231,
+      "position_error_m": 0.3824604371000955,
+      "endpoint_error_m": 0.2876658463924988,
+      "accuracy_0p3m": 0.48484848484848486
+    },
+    {
+      "scene_id": "scene_000604",
+      "frames": 73,
+      "position_error_m": 0.8650874854646884,
+      "endpoint_error_m": 1.7028956134045976,
+      "accuracy_0p3m": 0.3424657534246575
+    },
+    {
+      "scene_id": "scene_000089",
+      "frames": 126,
+      "position_error_m": 1.0849789406218882,
+      "endpoint_error_m": 6.8046406570269395,
+      "accuracy_0p3m": 0.1984126984126984
+    },
+    {
+      "scene_id": "scene_000558",
+      "frames": 150,
+      "position_error_m": 0.5798248126440647,
+      "endpoint_error_m": 2.837044608378332,
+      "accuracy_0p3m": 0.6
+    },
+    {
+      "scene_id": "scene_000913",
+      "frames": 108,
+      "position_error_m": 0.14908108077183732,
+      "endpoint_error_m": 0.3602021701260618,
+      "accuracy_0p3m": 0.9351851851851852
+    },
+    {
+      "scene_id": "scene_000758",
+      "frames": 174,
+      "position_error_m": 0.477761350439489,
+      "endpoint_error_m": 0.6130164093297323,
+      "accuracy_0p3m": 0.39655172413793105
+    },
+    {
+      "scene_id": "scene_000692",
+      "frames": 563,
+      "position_error_m": 0.22288726729225372,
+      "endpoint_error_m": 0.6574604311381016,
+      "accuracy_0p3m": 0.7992895204262878
+    },
+    {
+      "scene_id": "scene_000104",
+      "frames": 201,
+      "position_error_m": 0.5131987110024863,
+      "endpoint_error_m": 1.7264202147932008,
+      "accuracy_0p3m": 0.31840796019900497
+    },
+    {
+      "scene_id": "scene_000754",
+      "frames": 381,
+      "position_error_m": 0.6118299125417211,
+      "endpoint_error_m": 5.1143814115193305,
+      "accuracy_0p3m": 0.6535433070866141
+    },
+    {
+      "scene_id": "scene_000142",
+      "frames": 413,
+      "position_error_m": 1.245225790971246,
+      "endpoint_error_m": 12.471828509798689,
+      "accuracy_0p3m": 0.5932203389830508
+    },
+    {
+      "scene_id": "scene_000228",
+      "frames": 640,
+      "position_error_m": 0.3352777106327226,
+      "endpoint_error_m": 0.40522607993724263,
+      "accuracy_0p3m": 0.53125
+    },
+    {
+      "scene_id": "scene_000250",
+      "frames": 86,
+      "position_error_m": 1.3949101718112673,
+      "endpoint_error_m": 3.4219661314568395,
+      "accuracy_0p3m": 0.38372093023255816
+    },
+    {
+      "scene_id": "scene_000281",
+      "frames": 422,
+      "position_error_m": 0.38144630055128514,
+      "endpoint_error_m": 4.84684977522325,
+      "accuracy_0p3m": 0.7322274881516587
+    },
+    {
+      "scene_id": "scene_000759",
+      "frames": 145,
+      "position_error_m": 1.020127000309992,
+      "endpoint_error_m": 5.384473092093705,
+      "accuracy_0p3m": 0.6689655172413793
+    },
+    {
+      "scene_id": "scene_000025",
+      "frames": 79,
+      "position_error_m": 1.1028467255650583,
+      "endpoint_error_m": 3.48127737545698,
+      "accuracy_0p3m": 0.34177215189873417
+    },
+    {
+      "scene_id": "scene_000114",
+      "frames": 395,
+      "position_error_m": 0.3469338264812847,
+      "endpoint_error_m": 3.4176408534153455,
+      "accuracy_0p3m": 0.7670886075949367
+    },
+    {
+      "scene_id": "scene_000654",
+      "frames": 213,
+      "position_error_m": 0.67628763037217,
+      "endpoint_error_m": 4.715888447762121,
+      "accuracy_0p3m": 0.4460093896713615
+    }
+  ]
+}

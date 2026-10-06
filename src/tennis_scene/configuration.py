@@ -236,6 +236,7 @@ _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_rec
 })
 _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
+    "checkpoint": ConfigField.of(str), "window_size": ConfigField.of(int),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
@@ -283,6 +284,8 @@ class PipelineRuntimeConfig:
     player_placement: TemporalPlacementConfig
     ball_reprojection_px: float
     ball_min_frames: int
+    ball_checkpoint: Path
+    ball_window_size: int
     cache_directory: Path
     cache_source: str
     cache_overwrite: bool
@@ -383,6 +386,9 @@ class PipelineRuntimeConfig:
         placement = TemporalPlacementConfig(**cast(dict[str, Any], dict(_mapping(player["placement"], name="player_reconstruction.placement"))))
         _unit_interval(joint_confidence, name="joint_confidence")
         _positive(cast(int, ball["min_frames"]), name="ball_min_frames")
+        ball_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, ball["checkpoint"]))
+        ball_window_size = cast(int, ball["window_size"])
+        _positive(ball_window_size, name="ball_reconstruction.window_size")
         enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in OPTIONAL_FEATURES}
         validate_requested_features(enabled)
         component_sources = {name: str(mode) for name, mode in _mapping(value["execution"], name="execution").items()}
@@ -390,7 +396,7 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Component execution modes must be execute/load")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
-            sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+            sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]), ball_checkpoint, ball_window_size,
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']))
 
