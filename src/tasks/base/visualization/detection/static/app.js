@@ -2,6 +2,7 @@ import { ImageViewer } from "./viewer.mjs";
 import { fillIcons, icon } from "./icons.mjs";
 import { PlayTimeline } from "./play_intervals.mjs";
 const $ = (id) => document.getElementById(id);
+let statisticsPanel = null;
 fillIcons();
 const state = {
   catalog: null,
@@ -188,6 +189,7 @@ async function loadCatalog() {
     clearTimeout(searchTimer);
     resetScene();
     state.catalog = catalog;
+    $("statistics-open").hidden = !catalog.statistics_ui;
     document.title = catalog.title;
     $("title").textContent = catalog.title;
     $("mode").textContent =
@@ -509,6 +511,25 @@ $("page-next").onclick = () => {
 };
 // loadCatalog が冒頭で scene をリセットするため、ここでは再読込だけを行う。
 $("refresh").onclick = loadCatalog;
+$("statistics-open").onclick = async () => {
+  try {
+    if (!statisticsPanel) {
+      const { StatisticsPanel } = await import(state.catalog.statistics_ui);
+      statisticsPanel = new StatisticsPanel($("statistics-dialog"), async (clip, frame) => {
+        if (clip.dataset !== state.dataset) {
+          state.dataset = clip.dataset;
+          state.page = 0;
+          resetScene();
+          renderDatasets();
+        }
+        await selectScene({id: `${clip.dataset}::${clip.clip_id}`, label: clip.clip_id, frames: clip.frame_count});
+        stop();
+        await showFrame(frame);
+      });
+    }
+    await statisticsPanel.open(state.dataset);
+  } catch (error) { status(error.message, true); }
+};
 $("infer").onclick = infer;
 $("first").onclick = () => {
   stop();

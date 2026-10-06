@@ -40,3 +40,6 @@ frame layerは`points`とPNG data URLの`rasters`を持ちます。pointsはfini
 ## 検証
 
 共有HTTP/queueテスト、タスク別source/inferenceテストに加え、`tests/e2e/tasks/detection/ui_browser.cjs` は実画像とmock inferenceでpan/zoom、checkpoint filtering、seek後の再生、推論中scene変更、再実行、desktop/mobile boundsを検証します。ブラウザテストは`PLAYWRIGHT_MODULE`と`CHROMIUM_PATH`でローカルのPlaywright/Chromiumを指定できます。
+
+Ball reviewでは、タスク専用routerと静的ファイルを登録して[データセット統計](../../../ball_detection/dataset_statistics/README.md)を提供します。
+`catalog.statistics_ui`がある場合だけ統計ボタンを表示し、共有画面はタスク側のpanelを読み込みます。

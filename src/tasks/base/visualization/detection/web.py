@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 import torch
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -76,6 +76,8 @@ def create_detection_app(
     mode: Literal["review", "inference"],
     service_config: dict[str, Any],
     play_intervals: Callable[[str], dict[str, Any]] | None = None,
+    review_router: APIRouter | None = None,
+    statistics_ui: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title=f"{task} {mode}", docs_url=None, redoc_url=None)
     app.add_middleware(
@@ -83,6 +85,8 @@ def create_detection_app(
         allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"],
     )
     inference_lock = threading.Lock()
+    if review_router is not None:
+        app.include_router(review_router)
 
     @app.middleware("http")
     async def local_requests(request: Request, call_next: Any) -> Response:
@@ -132,6 +136,7 @@ def create_detection_app(
             "mode": mode,
             "cuda_available": torch.cuda.is_available(),
             "play_intervals_available": play_intervals is not None,
+            "statistics_ui": statistics_ui,
         }
 
     @app.get("/api/scenes")

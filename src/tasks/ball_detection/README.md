@@ -32,6 +32,9 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 - **`supervision.py`**: point_kindから教師マスクを決める。既定の正例はobserved、負例はレビュー済みでinstanceなし／out_of_frameのみ。unresolved・interpolated・occlusion_estimated・未レビューはframe全体をloss/metricsから除外する。
 - **`components/augmentation.py`**: `BallDetectionAugmentation`。回転/flip/affine/crop/色/ノイズ/ゼロマスク等の augmentation 合成。
 
+### dataset_statistics/
+- **[データセット統計](dataset_statistics/README.md)**: 注釈構成、欠損・補間、位置・速度、複数strideの32frame窓、poseの飛び候補をCPUで計算する。全体分布とclip間分布を分離し、レビューUIから原注釈・画像へ戻れる。
+
 ### training/
 - **`lightning_module.py`**: `BallDetectionLightningModule`。Focal損失によるヒートマップ学習、GAN併用可。
 - **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。

@@ -76,3 +76,18 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 - ポートが使用中なら`--port`を空き番号へ変更し、その番号のURLを開きます。終了はCtrl+Cです。
 
 [データ・checkpointの契約](../README.md#データセットレビュー--推論ui) / [共通画面・HTTP API](../../base/visualization/detection/README.md)
+
+## データセット統計
+
+BallのDataset Reviewでdatasetを選び、画面上部の「データセット統計」を開きます。
+比較stride、採用範囲のstride、位置分布の分割数、pose候補閾値を確認し、「統計を計算」を押します。
+CPUで進捗を表示しながら計算します。poseも調べる場合は`--play-poses`で起動し、Pose承認済みdatasetを選んでください。
+
+source・split・対象範囲で絞り込むと、位置分布、領域間遷移、注釈構成、stride比較を確認できます。
+「分布統計」で全サンプルの分布とclip間の分布を切り替え、指標名で検索できます。
+clip一覧は速度・欠損・補間・pose候補で並べ替え可能です。clip詳細には原注釈のissues/notesと確認候補を表示し、
+frameボタンや軌跡の点をクリックすると画像レビューへ移動します。
+
+設定変更後は再計算してください。同時に計算できるのは1件で、最新の結果だけ保持します。
+取得できない情報は理由と未定義値で表示します。指標の定義・分母・制約は
+[統計仕様](../dataset_statistics/README.md)を参照してください。
