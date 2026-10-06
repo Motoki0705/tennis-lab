@@ -1,0 +1,16 @@
+{
+  "run_id": "1791165244385535955_1534041_i991-coordinate-gpu-smoke-20261005",
+  "name": "i991-coordinate-gpu-smoke-20261005",
+  "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates paths.data_root=/tmp/ball-refiner-coordinate-smoke run.output_dir=ball_refiner/train/coordinates-smoke/gpu-20261005 training.steps=100 training.batch_size=32 training.evaluate_every=100 training.log_every=25 training.gan_warmup_steps=25",
+  "provider": "codex",
+  "session": "01a10697-63da-75b2-ae84-f2980da51c23",
+  "issue": "991",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ea96f1ffaa378f5b36d5347f29dabbd3edaee038",
+  "branch": "codex/coordinate-ball-refiners-991-1014",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",
+  "captured_at": "2026-10-05T10:56:23+09:00"
+}

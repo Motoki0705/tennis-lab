@@ -135,6 +135,9 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 | SLCS `evaluate`、`predict_clip`、`analyze_predictions` | OUTPUT / `evaluate.output_dir`、`predict.output_dir`、`analysis.output_dir` |
 | `src.tasks.slcs.scripts.evaluate_run` | 明示的な絶対 `--output-root` / `--output slcs/evaluate/<experiment>/<run-id>`。選定receipt・条件別config/予測/metricsを保存。入力 `--training-run` も同じrootからの相対train階層 |
 | BLCS/PLCS `generate_dataset` | DATA / `run.output_dir`。dataset-versionは固定、生成ログだけ独立run |
+| ball_refiner `generate_coordinates` | DATA / `generation.dataset`。2D・3D共通の3D真値・投影・split・manifest。既存datasetは拒否 |
+| ball_refiner `train_coordinates` | 入力はDATA / `data.dataset`、出力はOUTPUT / `run.output_dir`。同じ共有datasetから次元・方式別に学習runを作る |
+| ball_refiner `predict_coordinates` | 明示的な絶対 `--checkpoint`・`--input`・`--output`。各引数の親をCHECKPOINT・DATA・OUTPUT rootとして検証し、新規NPZを保存 |
 | BLCS `evaluate_real` | OUTPUT / `run.output_dir`（evaluate run）。入力重みはCHECKPOINT / `evaluation.checkpoint`。固定test splitの結果・入力hash・展開済み設定を保存 |
 | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
 | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |
@@ -165,6 +168,7 @@ checkpoint探索の入力rootとして扱う。
 | 入口 | ディスクへの保存と設定 |
 |---|---|
 | ball/court/BLCS/PLCS `review_dataset`、PLCS `review_accad_motion` | dataset・モーションを読み取り、JSON・画像・バイナリをHTTP応答として返す。永続的な編集・可視化ファイルは作らない。入力rootは各CLIのdata/ACCAD/SMPL引数 |
+| ball_refiner `serve_coordinate_review` | 共通DATA・OUTPUT内の学習run・CHECKPOINTを読み取るHTTP UI。設定JSON・比較PNGはブラウザdownloadへ保存。`--prepare-saved-predictions`は`OUTPUT/ball_refiner/review/predictions/`へ表示用予測を生成。CUDA要求のみ共有queueへ記録 |
 | ball/court/BLCS `inference_ui`、PLCS `serve_inference_ui` | 推論要求と応答は共有repoの `.training_queue/ui_requests/<task>-<unique>/` に保持。入力は `request.json`、成功はatomicに公開する `result.bin`、失敗は `error.json`。queue実行ログは同じ共有queueの `logs/`。推論結果はHTTP応答としても返す |
 | base `inference_worker` | 上記requestディレクトリ内に結果を保存。CLIのrequest引数はその境界内の既存ファイルに限定 |
 

@@ -23,6 +23,7 @@ from src.tasks.base.configuration import (
     as_config_mapping,
     require_config_mapping,
 )
+from src.tasks.base.training.gan_schedule import gan_weight_at
 
 
 @runtime_checkable
@@ -100,8 +101,5 @@ class GANTransitionCallback(pl.Callback):
     def _ramp_weight(self, current_epoch: int) -> float:
         # Warmup is anchored to ``start_epoch`` (not the activation epoch) so a
         # resumed run picks the correct point on the ramp for its epoch.
-        epochs_since_switch = max(current_epoch - self.start_epoch + 1, 0)
-        if self.gan_warmup_epochs <= 1:
-            return self.gan_target_weight
-        progress = min(epochs_since_switch / self.gan_warmup_epochs, 1.0)
-        return self.gan_target_weight * progress
+        return gan_weight_at(current_epoch, start=self.start_epoch,
+                             warmup=max(self.gan_warmup_epochs, 1), target=self.gan_target_weight)

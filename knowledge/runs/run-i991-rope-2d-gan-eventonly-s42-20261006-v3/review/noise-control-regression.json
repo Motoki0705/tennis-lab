@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "field": "noise-jitter",
+      "expected": 4,
+      "previewClearedPrediction": true,
+      "previewInputHash": "f88322645ad14dfb463d4e48d794d1edf40688f3ab4fab17d93493f94f20717c",
+      "recomputedInputHash": "f88322645ad14dfb463d4e48d794d1edf40688f3ab4fab17d93493f94f20717c"
+    },
+    {
+      "field": "noise-outlier",
+      "expected": 0.2,
+      "previewClearedPrediction": true,
+      "previewInputHash": "a2fca4452f4e85cded56db2a0da25a603b4fcca4244344927f8a9cdfa6df6ace",
+      "recomputedInputHash": "a2fca4452f4e85cded56db2a0da25a603b4fcca4244344927f8a9cdfa6df6ace"
+    }
+  ],
+  "errors": []
+}
