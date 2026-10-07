@@ -40,8 +40,8 @@ def test_cpu_gradient_and_manifest_evaluation_use_store_mask(tmp_path: Path) -> 
     cfg.data.image_size = [64, 64]
     cfg.model.dims = [4, 8, 16, 32]
     cfg.model.depth = 1
-    cfg.model.input_mode = "rgb"
-    cfg.model.in_channels = 3
+    cfg.model.input_mode = "mdd"
+    cfg.model.in_channels = 2
     write_store_clip(
         tmp_path / "ball_detection/test-v1",
         "tracknet/val/clip",

@@ -32,6 +32,8 @@ repoのPython環境から、次のmoduleを実行します。既定のproject ro
 - `GET /api/scenes?dataset=...&search=...&offset=0&limit=100&checkpoint=...`: source内scene一覧。
 - `GET /api/preview?scene=...&start=0&count=1`: original sizeとframeごとのGT。
 - `GET /api/image?scene=...&frame=0`: 原画像JPEG。
+- `GET /api/play-intervals?scene=...`: Ball dataset reviewの区間候補。`catalog.play_intervals_available`で対応を通知し、未対応mode/taskは404。区間は0始まりの`[start, stop)`、時刻はclip先頭からの実PTS秒。[表示・対象選択](../../../ball_detection/visualization/README.md#プレイ区間の候補)。
+
 - Ballのみ: `GET /api/review?scene=...`: source・splitとframe区分の件数、注釈状態への移動先。
   `/api/catalog`にはindexから集計したdataset概要、`/api/preview`には各frameの採点可否・注釈kind・文脈/境界/eventを含む。
   `/api/scenes`の`source`・`split`・`review_state`は該当frameを含むclipを絞り、一覧のpaginationより先に適用する。
@@ -45,6 +47,9 @@ frame layerは`points`とPNG data URLの`rasters`を持ちます。pointsはfini
 ## 検証
 
 共有HTTP/queueテスト、タスク別source/inferenceテストに加え、`tests/e2e/tasks/detection/ui_browser.cjs` は実画像とmock inferenceでpan/zoom、checkpoint filtering、seek後の再生、推論中scene変更、再実行、desktop/mobile boundsを検証します。ブラウザテストは`PLAYWRIGHT_MODULE`と`CHROMIUM_PATH`でローカルのPlaywright/Chromiumを指定できます。
+
+Ball reviewでは、タスク専用routerと静的ファイルを登録して[データセット統計](../../../ball_detection/dataset_statistics/README.md)を提供します。
+`catalog.statistics_ui`がある場合だけ統計ボタンを表示し、共有画面はタスク側のpanelを読み込みます。
 
 `static/playback.mjs`は注釈を32frameずつ取得し、画像を12frame先読みします。
 画像は最大24枚 / 96 MiB、通信ジョブは最大4件（注釈ジョブはGTとposeの2要求）です。
