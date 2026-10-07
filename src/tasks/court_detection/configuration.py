@@ -1624,7 +1624,7 @@ class CourtTrainingConfig:
         selection_mode = _string(
             qualitative, "selection_mode", path="training.qualitative_logging"
         )
-        if selection_mode not in {"first", "random", "indices"}:
+        if selection_mode not in {"random", "fixed_indices"}:
             raise SemanticConfigurationError(
                 "training.qualitative_logging.selection_mode is invalid."
             )
@@ -1644,9 +1644,9 @@ class CourtTrainingConfig:
             raise SemanticConfigurationError(
                 "training.qualitative_logging.selected_indices must be non-negative."
             )
-        if selection_mode == "indices" and not selected_indices:
+        if selection_mode == "fixed_indices" and not selected_indices:
             raise SemanticConfigurationError(
-                "indices selection requires non-empty selected_indices."
+                "fixed_indices selection requires non-empty selected_indices."
             )
         shared_training = dict(training_mapping)
         shared_training["qualitative_logging"] = {
