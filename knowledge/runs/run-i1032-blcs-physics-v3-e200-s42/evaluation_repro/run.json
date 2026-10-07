@@ -1,0 +1,16 @@
+{
+  "run_id": "1791334195915857854_1089080_i1032-blcs-physics-v3-best-test-s42-20261007",
+  "name": "i1032-blcs-physics-v3-best-test-s42-20261007",
+  "command": "'env' 'CUDA_VISIBLE_DEVICES=' 'PYTHONPATH=.' 'OMP_NUM_THREADS=1' 'MKL_NUM_THREADS=1' 'OPENBLAS_NUM_THREADS=1' '.venv/bin/python' '-u' 'knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/audit_dataset.py' '--dataset' 'data/blcs/single_object-physics-v3-cc863cacd-20261007' '--manifest' 'outputs/blcs/analyze/physics_v3_retrain/s42-20261007-001/dataset_files.jsonl.gz' '--output' 'outputs/blcs/analyze/physics_v3_retrain/s42-20261007-001/dataset_audit_after.json' && 'env' 'CUDA_VISIBLE_DEVICES=' 'PYTHONPATH=.' 'OMP_NUM_THREADS=1' 'MKL_NUM_THREADS=1' 'OPENBLAS_NUM_THREADS=1' '.venv/bin/python' '-u' 'knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/select_checkpoint.py' '--training-run' 'outputs/blcs/train/axial_base_physics_v3_t128_v3-6_reprojection_e200/s42-20261007-001' '--output' 'outputs/blcs/analyze/physics_v3_retrain/s42-20261007-001/checkpoint-selection.json' && 'env' 'PYTHONPATH=.' 'MPLBACKEND=Agg' 'OMP_NUM_THREADS=4' 'MKL_NUM_THREADS=4' 'OPENBLAS_NUM_THREADS=4' 'PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True' '.venv/bin/python' '-u' 'knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/evaluate_selected.py' '--repository-root' '/home/kamimura/projects/tennis-lab' '--selection' 'outputs/blcs/analyze/physics_v3_retrain/s42-20261007-001/checkpoint-selection.json' '--output-dir' 'blcs/evaluate/axial_base_physics_v3_e200/s42-20261007-001'",
+  "provider": "codex",
+  "session": "01a113c9-1a0e-7991-a023-196be2e79e54",
+  "issue": "1032",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+  "branch": "codex/blcs-physics-v3-retrain-20261007",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/blcs-physics-v3-retrain-20261007",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/blcs-physics-v3-retrain-20261007",
+  "captured_at": "2026-10-07T11:30:27+09:00"
+}

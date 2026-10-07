@@ -1,0 +1,13 @@
+{
+  "x_error_m": 0.10535814274441112,
+  "y_error_m": 0.19841179251670837,
+  "z_error_m": 0.07553562792864713,
+  "position_accuracy_0.6m": 0.9311079545454546,
+  "position_accuracy_1.2m": 0.9780717329545454,
+  "endpoint_accuracy_0.5m": 0.4772727272727273,
+  "endpoint_accuracy_1m": 0.875,
+  "loss_position": 0.00020404980651536872,
+  "loss_reprojection": 3.514520447176685e-05,
+  "loss_smoothness": 0.0,
+  "loss_gravity": 0.0
+}
