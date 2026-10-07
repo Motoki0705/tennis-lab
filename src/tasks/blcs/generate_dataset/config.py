@@ -22,8 +22,7 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         gravity=float(cfg.physics.gravity),
         k_drag=float(cfg.physics.k_drag),
         k_magnus=float(cfg.physics.k_magnus),
-        e_z=float(cfg.physics.e_z),
-        mu=float(cfg.physics.mu),
+        surface=str(cfg.physics.surface),
         alpha_net=float(cfg.physics.alpha_net),
         alpha_net_cord=float(cfg.physics.alpha_net_cord),
         alpha_fence=float(cfg.physics.alpha_fence),
@@ -33,13 +32,11 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         use_drag=bool(cfg.physics.use_drag),
         use_magnus=bool(cfg.physics.use_magnus),
         wind=tuple(cfg.physics.wind),
-        gravity_range=tuple(cfg.physics.gravity_range),
         k_drag_range=tuple(cfg.physics.k_drag_range),
         k_magnus_range=tuple(cfg.physics.k_magnus_range),
-        e_z_range=tuple(cfg.physics.e_z_range),
-        mu_range=tuple(cfg.physics.mu_range),
         wind_speed_range=tuple(cfg.physics.wind_speed_range),
         wind_direction_range_deg=tuple(cfg.physics.wind_direction_range_deg),
+        surface_choices=tuple(str(name) for name in cfg.physics.surface_choices),
     )
 
     rally_config = RallyConfig(
