@@ -222,9 +222,26 @@ def test_shared_training_roundtrip(
     )
     with np.load(output / "predictions/pred_test.npz") as saved:
         np.testing.assert_array_equal(saved["prediction"], repeated["prediction"])
-        assert ("integrated" in saved.files) == physics
+        physics_arrays = (
+            "integrated",
+            "integrated_segment",
+            "integrated_truth_segments",
+            "physics_rally_id",
+            "physics_field",
+            "physics_surface_probability",
+        )
+        assert all((name in saved.files) == physics for name in physics_arrays)
+        # Saved with physics=True, repeated without: the arrays do not depend on it.
+        for name in physics_arrays if physics else ():
+            np.testing.assert_array_equal(saved[name], repeated[name])
         if physics:
-            np.testing.assert_array_equal(saved["integrated"], repeated["integrated"])
+            frames = len(saved["prediction"])
+            assert saved["integrated_truth_segments"].shape == (frames, dimensions)
+            assert saved["integrated_segment"].shape == (frames,)
+            assert saved["physics_field"].shape == (len(test), 4)
+            np.testing.assert_array_equal(
+                saved["physics_rally_id"], [r.source.index for r in test]
+            )
         np.testing.assert_array_equal(
             saved["event_probability"], repeated["event_probability"]
         )

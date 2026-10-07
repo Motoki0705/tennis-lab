@@ -21,6 +21,7 @@ from src.tasks.ball_refiner_3d.inference.clip import predict_normalized
 from src.tasks.ball_refiner_3d.model_io.adapters import normalization
 from src.tasks.ball_refiner_3d.model_io.factory import RefinerModel
 from src.tasks.ball_refiner_3d.physics.targets import FlightClock
+from src.tasks.ball_refiner_3d.physics.units import decode_field, physical_field
 from src.tasks.ball_refiner_3d.training.metrics import error_metrics, event_neighborhood
 
 
@@ -37,9 +38,12 @@ def evaluate(
 
     The physics protocol fits the force model to every rally, so it runs only
     for saved held-out evaluations, not for per-epoch validation.  Physics heads
-    add their integrated trajectory (flights segmented at predicted events) and,
-    with ``physics``, the same under ground-truth segmentation (an upper bound)
-    and the parameter errors.
+    add per-frame arrays ``integrated`` (flights segmented at the predicted
+    events, labels in ``integrated_segment``) and ``integrated_truth_segments``
+    (ground-truth segmentation, an upper bound), and per-rally arrays
+    ``physics_field`` (``physics.units.PHYSICAL_FIELD_COLUMNS``) and
+    ``physics_surface_probability`` keyed by ``physics_rally_id``; ``physics``
+    adds their reports and the parameter errors.
     """
     predictions: list[np.ndarray] = []
     event_probabilities: list[np.ndarray] = []
@@ -54,6 +58,11 @@ def evaluate(
     baselines: list[np.ndarray] = []
     physics_inputs: list[tuple[RallyPrediction, RallyPrediction]] = []
     integrated: list[np.ndarray] = []
+    integrated_segments: list[np.ndarray] = []
+    truth_integrated: list[np.ndarray] = []
+    fields: list[np.ndarray] = []
+    surfaces: list[np.ndarray] = []
+    physics_ids: list[int] = []
     integrated_inputs: list[tuple[RallyPrediction, RallyPrediction]] = []
     parameters: list[PhysicsParameters] = []
     heads = model.config.physics_heads
@@ -78,12 +87,6 @@ def evaluate(
         if device.type == "cuda":
             torch.cuda.synchronize(device)
         elapsed += time.perf_counter() - start
-        if normalized.physics is not None:
-            integrated.append(
-                (
-                    (normalized.physics.integrated.cpu().numpy() + offset) * scale
-                ).reshape(-1, model.config.dimensions)
-            )
         prediction = (normalized.coordinates.cpu().numpy() + offset) * scale
         target = (rally.target + offset) * scale
         physical_input = np.where(
@@ -102,6 +105,34 @@ def evaluate(
         inputs.append(physical_input.reshape(-1, model.config.dimensions))
         baseline = linear_baseline(physical_input, rally.missing)
         baselines.append(baseline.reshape(-1, model.config.dimensions))
+        upper = None
+        if normalized.physics is not None:
+            if shape[0] != 1:
+                raise ValueError("Physics heads require single-view 3D rallies")
+            truth = torch.from_numpy(rally.physics.segment[None]).to(device)
+            upper = predict_normalized(
+                model,
+                coordinates,
+                missing,
+                batch_size=batch_size,
+                seed=seed + rally.source.index,
+                clock=clock,
+                segment=truth,
+            )
+            if upper.physics is None:
+                raise RuntimeError("Physics heads returned no physics")
+            integrated.append(
+                (normalized.physics.integrated.cpu().numpy()[0] + offset) * scale
+            )
+            truth_integrated.append(
+                (upper.physics.integrated.cpu().numpy()[0] + offset) * scale
+            )
+            integrated_segments.append(normalized.physics.segment.cpu().numpy()[0])
+            fields.append(
+                physical_field(decode_field(upper.physics.field.cpu()))[0].numpy()
+            )
+            surfaces.append(upper.physics.surface_probability.cpu().numpy()[0])
+            physics_ids.append(rally.source.index)
         if physics:
             if shape[0] != 1:
                 raise ValueError("Physics evaluation requires single-view 3D rallies")
@@ -116,29 +147,20 @@ def evaluate(
                     ),
                 )
             )
-            if normalized.physics is not None:
-                truth = torch.from_numpy(rally.physics.segment[None]).to(device)
-                upper = predict_normalized(
-                    model,
-                    coordinates,
-                    missing,
-                    batch_size=batch_size,
-                    seed=seed + rally.source.index,
-                    clock=clock,
-                    segment=truth,
-                )
-                if upper.physics is None:
-                    raise RuntimeError("Physics heads returned no physics")
-                predicted_flight, upper_flight = (
-                    RallyPrediction(
-                        rally.source,
-                        (value.integrated.cpu().numpy()[0] + offset) * scale,
-                        rally.missing[0],
-                        probability,
+            if upper is not None and upper.physics is not None:
+                integrated_inputs.append(
+                    (
+                        RallyPrediction(
+                            rally.source, integrated[-1], rally.missing[0], probability
+                        ),
+                        RallyPrediction(
+                            rally.source,
+                            truth_integrated[-1],
+                            rally.missing[0],
+                            probability,
+                        ),
                     )
-                    for value in (normalized.physics, upper.physics)
                 )
-                integrated_inputs.append((predicted_flight, upper_flight))
                 parameters.append(
                     PhysicsParameters(
                         rally,
@@ -170,7 +192,14 @@ def evaluate(
         )
     }
     if heads:
-        arrays["integrated"] = np.concatenate(integrated)
+        arrays.update(
+            integrated=np.concatenate(integrated),
+            integrated_segment=np.concatenate(integrated_segments).astype(np.int64),
+            integrated_truth_segments=np.concatenate(truth_integrated),
+            physics_rally_id=np.array(physics_ids, dtype=np.int64),
+            physics_field=np.stack(fields).astype(np.float32),
+            physics_surface_probability=np.stack(surfaces).astype(np.float32),
+        )
     report = summarize_predictions(
         arrays,
         elapsed=elapsed,

@@ -84,6 +84,17 @@ def decode_field(values: Tensor) -> Field:
     )
 
 
+PHYSICAL_FIELD_COLUMNS = ("wind_x_mps", "wind_y_mps", "k_drag", "k_magnus")
+
+
+def physical_field(field: Field) -> Tensor:
+    """``(...,4)`` reported field in :data:`PHYSICAL_FIELD_COLUMNS` order."""
+    return torch.cat(
+        (field.wind[..., :2], field.k_drag[..., None], field.k_magnus[..., None]),
+        dim=-1,
+    )
+
+
 def encode_state(state: State) -> Tensor:
     like = state.position
     return torch.cat(

@@ -76,6 +76,11 @@ FPSはcheckpointと一致させる。窓分割はせず、各クリップ全体�
 学習中のvalidationは物理評価を行わない。
 物理headのモデルは、積分軌道（予測イベントで区間分割）の座標誤差と物理指標、GT区間分割での積分軌道（上限）、
 場・surface・区間初期状態のパラメータ誤差（`parameters`）も報告する。
+このとき `pred_test.npz` には次の配列が加わる。
+- frame単位：`integrated`、`integrated_segment`、`integrated_truth_segments`。
+- ラリー単位：`physics_field`（風x・風y・k_drag・k_magnus）と `physics_surface_probability`。`physics_rally_id` でラリーに対応付ける。
+
+dataset reviewはこれらの配列を表示する。
 
 ## 互換性
 

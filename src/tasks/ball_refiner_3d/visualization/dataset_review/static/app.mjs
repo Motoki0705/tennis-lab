@@ -1,13 +1,17 @@
-import { ScenePanels } from "./scene.mjs";
+import { ScenePanels, SERIES, LABELS, COLORS, present } from "./scene.mjs";
 import { drawGraph, drawTimeline, drawEvents, frameFromPointer } from "./plots.mjs";
 
 const $ = (id) => document.getElementById(id);
 const SCHEMA = "ball_refiner_3d.event_review.v2";
 const state = { catalog: null, result: null, frame: 0, playing: false, lastTick: 0, sequence: 0, controller: null, debounce: null };
 const world = new ScenePanels($("view-3d"));
-const visibility = () => Object.fromEntries(["gt", "input", "prediction"].map((key) => [key, $(`show-${key}`).checked]));
+const visibility = () => Object.fromEntries(SERIES.map((key) => [key, $(`show-${key}`).checked]));
 const checkpoint = (dimension) => state.catalog?.checkpoints.find((item) => item.id === $(`model-${dimension}d`).value);
 const percent = (value) => `${(value * 100).toFixed(1)}%`;
+const fixed = (value, digits, unit = "") => value == null ? "—" : `${value.toFixed(digits)}${unit ? " " + unit : ""}`;
+const cell = (row, value, title = "") => { const td = document.createElement("td"); td.textContent = value; if (title) td.title = title; row.append(td); return td; };
+// Model-dependent scene fields; cleared whenever the shown prediction is invalidated.
+const MODEL_FIELDS = ["prediction_3d", "integrated_3d", "integrated_truth_3d", "event_probability"];
 
 function message(text = "", error = false) {
   $("message").textContent = text; $("message").hidden = !text; $("message").classList.toggle("error", error);
@@ -71,9 +75,42 @@ function fillModels(preferred = {}) {
 function modelLabels() {
   for (const dimension of [3]) {
     const item = checkpoint(dimension);
-    $(`model-${dimension}d-info`).textContent = item ? `${item.method.toUpperCase()} · step ${item.step.toLocaleString()} · validation ${item.validation_rmse.toFixed(3)} ${item.unit}` : "モデル未選択";
+    $(`model-${dimension}d-info`).textContent = item ? `${item.method.toUpperCase()}${item.physics_heads ? " + 物理head" : ""} · step ${item.step.toLocaleString()} · validation ${item.validation_rmse.toFixed(3)} ${item.unit}${item.saved_available ? "" : " · 保存済み評価なし"}` : "モデル未選択";
     $(`model-${dimension}d-info`).title = item ? (item.saved_unavailable_reason || "重みと対応を検証した保存済み評価があります") : "";
   }
+  renderSummary();
+}
+function renderSummary() {
+  if (!state.catalog) return;
+  const selected = $("model-3d").value, body = $("summary");
+  const rows = state.catalog.checkpoints.filter((item) => item.compatible && item.test_summary
+    && ($("show-last").checked || item.filename !== "last.ckpt")).sort((a, b) => a.label.localeCompare(b.label));
+  body.replaceChildren();
+  for (const item of rows) {
+    const s = item.test_summary, row = document.createElement("tr");
+    row.classList.toggle("selected", item.id === selected);
+    row.title = item.id;
+    cell(row, `${item.recommended ? "★ " : ""}${item.run_name ?? item.id} · ${item.filename}`);
+    cell(row, `${item.method.toUpperCase()}${item.physics_heads ? " + 物理head" : ""}`);
+    cell(row, `${fixed(s.test_rmse_m, 3)} / ${fixed(s.test_missing_rmse_m, 3)} m`);
+    cell(row, fixed(s.test_acceleration_rmse_mps2, 0, "m/s²"));
+    cell(row, s.test_implausible_acceleration_rate == null ? "—" : percent(s.test_implausible_acceleration_rate));
+    cell(row, fixed(s.test_fit_residual_rmse_m, 3, "m"));
+    cell(row, fixed(s.test_event_f1, 3));
+    cell(row, s.test_segmentation_failure_rate == null ? "—" : percent(s.test_segmentation_failure_rate));
+    cell(row, s.test_integrated_rmse_m == null ? "—" : `${fixed(s.test_integrated_rmse_m, 3)} / ${fixed(s.test_integrated_truth_segments_rmse_m, 3)} m`);
+    cell(row, s.test_surface_accuracy == null ? "—" : percent(s.test_surface_accuracy));
+    cell(row, fixed(s.test_wind_error_median_mps, 2, "m/s"), "中央値");
+    cell(row, fixed(s.test_k_drag_relative_error_median, 2), "中央値");
+    row.addEventListener("click", () => {
+      if (item.filename === "last.ckpt") $("show-last").checked = true;
+      fillModels({ 3: item.id }); loadReview("auto");
+    });
+    body.append(row);
+  }
+  if (!rows.length) { const row = document.createElement("tr"); cell(row, "checkpointと対応を確認できる学習時のtest評価がありません。").colSpan = 12; body.append(row); }
+  const hidden = state.catalog.checkpoints.filter((item) => item.compatible && !item.test_summary && item.filename === "best.ckpt").length;
+  $("summary-note").textContent = `学習時のevaluate_checkpointが保存した値で、checkpointとdatasetのhashを照合済み。物理指標は physics_eval.v1（当てはめ残差はGT区間への力モデル当てはめ）。積分RMSEのGT区間は、区間分割が正しい場合の上限。${hidden ? `test評価を照合できないbest.ckpt: ${hidden}件。` : ""}`;
 }
 function fillRallies(preferred = null) {
   const select = $("rally"), previous = preferred || select.value, query = $("search").value.toLowerCase();
@@ -93,13 +130,16 @@ async function loadCatalog(refresh = false) {
   $("excluded-summary").textContent = `非対応のcheckpoint (${excluded.length})`;
   $("excluded-list").replaceChildren();
   excluded.forEach((entry) => { const li = document.createElement("li"); li.textContent = `${entry.id}: ${entry.reason}`; $("excluded-list").append(li); });
+  renderSummary();
 }
 
 function clearPredictions() {
   if (!state.result) return;
-  state.result = { ...state.result, source: "preview", scene: { ...state.result.scene,
-    prediction_3d: null, event_probability: null, metrics_3d: null } };
-  mountViews(); renderMetrics();
+  const scene = { ...state.result.scene, ...Object.fromEntries(MODEL_FIELDS.map((key) => [key, null])),
+    metrics: { linear: state.result.scene.metrics.linear }, segments: { ...state.result.scene.segments, predicted: null },
+    physics: { ...state.result.scene.physics, predicted: null, surface_probability: null } };
+  state.result = { ...state.result, source: "preview", scene };
+  syncSeries(); mountViews(); renderMetrics(); renderPhysics();
 }
 function invalidate() {
   state.sequence++; state.controller?.abort(); clearTimeout(state.debounce);
@@ -132,7 +172,7 @@ async function loadReview(action = "preview", restoredView = null) {
       $("layout").value = restoredView.layout; $("plot-mode").value = restoredView.plot;
       for (const [kind, value] of Object.entries(restoredView.visibility)) if ($(`show-${kind}`)) $(`show-${kind}`).checked = value;
     }
-    mountViews(); renderMetrics(); audit(); applyFrame(state.frame);
+    syncSeries(); mountViews(); renderMetrics(); renderPhysics(); audit(); applyFrame(state.frame);
     $("save-config").disabled = false; $("save-image").disabled = false;
     $("provenance").textContent = `dataset ${body.manifest_sha256.slice(0, 12)} · input ${result.input_sha256.slice(0, 12)} · augmentation seed ${body.augmentation_seed} · Flow seed ${body.flow_seed} · 1本の全フレーム予測`;
   } catch (error) {
@@ -142,6 +182,14 @@ async function loadReview(action = "preview", restoredView = null) {
 function changedInput() {
   invalidate(); busy("拡張を適用中…");
   state.debounce = setTimeout(() => loadReview("preview"), 250);
+}
+function syncSeries() {
+  const available = new Set(present(state.result.scene));
+  for (const kind of SERIES) {
+    const box = $(`show-${kind}`);
+    box.disabled = !available.has(kind);
+    box.parentElement.title = box.disabled ? `${LABELS[kind]}: このモデル・結果にはありません` : box.parentElement.dataset.title ?? box.parentElement.title;
+  }
 }
 function mountViews() {
   if (!state.result) return;
@@ -157,8 +205,9 @@ function draw() {
   drawTimeline($("timeline"), scene, state.frame);
   drawEvents($("event-graph"), scene, state.frame);
   $("event-target-info").textContent = `GT: Gaussian σ=${scene.event_sigma_frames} frame · 推論: softmax`;
-  drawGraph($("graph-3d"), scene, state.frame, mode, flags);
-  $("graph-3d-title").textContent = `3D · ${mode === "speed" ? "m/s" : "m"}`;
+  const { clipped } = drawGraph($("graph-3d"), scene, state.frame, mode, flags);
+  const unit = { speed: "m/s", acceleration: "m/s²" }[mode] ?? "m";
+  $("graph-3d-title").textContent = `3D · ${unit}${["speed", "acceleration"].includes(mode) ? " · GT飛行区間内の差分" : ""}${clipped ? " · 縦軸はP99で打ち切り" : ""}`;
 }
 function applyFrame(frame) {
   if (!state.result) return;
@@ -173,12 +222,48 @@ function renderMetrics() {
   if (!state.result) return;
   const scene = state.result.scene;
   $("metrics").replaceChildren();
-  for (const [label, metrics, unit] of [["3D", scene.metrics_3d, "m"]]) {
-    const row = document.createElement("tr");
-    const cells = [label, ...["all", "missing", "observed", "event"].map((key) => metrics?.[key]?.rmse == null ? "—" : `${metrics[key].rmse.toFixed(unit === "m" ? 3 : 2)} ${unit}`), metrics ? `${metrics.velocity_rmse.toFixed(2)} ${unit}/s` : "—"];
-    cells.forEach((value) => { const cell = document.createElement("td"); cell.textContent = value; row.append(cell); });
+  for (const kind of SERIES.filter((key) => scene.metrics[key])) {
+    const metrics = scene.metrics[kind], kinematics = metrics.kinematics.all, row = document.createElement("tr");
+    const label = cell(row, LABELS[kind]); label.style.color = COLORS[kind];
+    for (const key of ["all", "missing", "observed", "event"]) cell(row, fixed(metrics[key]?.rmse, 3, "m"));
+    cell(row, fixed(kinematics.velocity_rmse, 2, "m/s"));
+    cell(row, fixed(kinematics.acceleration_rmse, 1, "m/s²"), `欠損frame: ${fixed(metrics.kinematics.missing.acceleration_rmse, 1, "m/s²")}`);
+    cell(row, kinematics.implausible_acceleration_rate == null ? "—" : percent(kinematics.implausible_acceleration_rate));
+    cell(row, fixed(kinematics.jerk_ratio, 2));
     $("metrics").append(row);
   }
+}
+function renderPhysics() {
+  if (!state.result) return;
+  const physics = state.result.scene.physics, body = $("physics");
+  body.replaceChildren();
+  const names = { wind_x_mps: ["風 x", 2, "m/s"], wind_y_mps: ["風 y", 2, "m/s"], k_drag: ["k_drag", 4, ""], k_magnus: ["k_magnus", 5, ""] };
+  physics.columns.forEach((column, i) => {
+    const [label, digits, unit] = names[column], truth = physics.truth[i], guess = physics.predicted?.[i];
+    const row = document.createElement("tr");
+    cell(row, label); cell(row, fixed(truth, digits, unit)); cell(row, fixed(guess, digits, unit));
+    cell(row, guess == null ? "—" : unit ? fixed(guess - truth, digits, unit) : `${((guess / truth - 1) * 100).toFixed(1)}%`);
+    body.append(row);
+  });
+  const [wx, wy] = physics.truth, [px, py] = physics.predicted ?? [];
+  const wind = document.createElement("tr");
+  cell(wind, "風のベクトル誤差"); cell(wind, fixed(Math.hypot(wx, wy), 2, "m/s"), "GTの風速"); cell(wind, px == null ? "—" : fixed(Math.hypot(px, py), 2, "m/s"), "予測の風速");
+  cell(wind, px == null ? "—" : fixed(Math.hypot(px - wx, py - wy), 2, "m/s"));
+  body.append(wind);
+  const surface = document.createElement("tr");
+  cell(surface, "surface"); cell(surface, physics.surface);
+  const probability = physics.surface_probability;
+  const best = probability ? physics.surfaces[probability.indexOf(Math.max(...probability))] : null;
+  cell(surface, probability ? physics.surfaces.map((name, i) => `${name} ${percent(probability[i])}`).join(" · ") : "—");
+  cell(surface, best == null ? "—" : best === physics.surface ? "正解" : `誤り（${best}）`);
+  body.append(surface);
+  const segments = state.result.scene.segments, count = (labels) => labels ? labels[labels.length - 1] + 1 : null;
+  const row = document.createElement("tr");
+  cell(row, "飛行区間の数"); cell(row, String(count(segments.truth))); cell(row, segments.predicted ? String(count(segments.predicted)) : "—");
+  cell(row, segments.predicted ? `${count(segments.predicted) - count(segments.truth) >= 0 ? "+" : ""}${count(segments.predicted) - count(segments.truth)}` : "—");
+  body.append(row);
+  const model = Object.values(state.result.models)[0];
+  $("physics-note").textContent = physics.predicted ? "予測は場head（ラリーで1回）の出力。k_drag・k_magnusの誤差は相対値" : model ? "このモデルには物理headがありません（GTのみ表示）" : "GTのみ表示";
 }
 function audit() {
   const a = state.result.scene.audit;
@@ -231,8 +316,8 @@ function exportImage() {
   const ctx = canvas.getContext("2d"); ctx.scale(2, 2); ctx.fillStyle = "#0b111b"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#e2eaf5"; ctx.font = "bold 16px system-ui"; ctx.fillText(`Ball Refiner · ${state.result.scene.rally} · frame ${state.frame}`, 12, 24);
   ctx.font = "10px system-ui"; ctx.fillStyle = "#a3b7cb";
-  ctx.fillText(`GT: green / Input: gray / Prediction: orange · ${$("source").textContent} · augmentation seed ${state.result.request.augmentation_seed}`, 12, 44);
-  const models = Object.entries(state.result.models).map(([dim, item]) => `${dim}D ${item.method.toUpperCase()} · train events ${item.train_event_probability == null ? "unknown" : percent(item.train_event_probability)} · step ${item.step}`);
+  ctx.fillText(`GT: green / Input: gray / Prediction: orange / Integrated (predicted segments): blue / Integrated (GT segments): pink / Linear: brown · ${$("source").textContent} · augmentation seed ${state.result.request.augmentation_seed}`, 12, 44);
+  const models = Object.entries(state.result.models).map(([dim, item]) => `${item.run_name ?? dim + "D"} ${item.method.toUpperCase()}${item.physics_heads ? " + physics heads" : ""} · train events ${item.train_event_probability == null ? "unknown" : percent(item.train_event_probability)} · step ${item.step}`);
   ctx.fillText(models.join(" / "), 12, 62);
   const a = state.result.request.augmentation;
   const missing = state.result.request.missing_enabled ? `events ${percent(a.event_probability)} / isolated ${percent(a.isolated_probability)} / gaps ${a.gap_min}–${a.gap_max} frames per side` : "missing off";
@@ -243,7 +328,7 @@ function exportImage() {
   }
   let y = views.height + 106;
   ctx.fillStyle = "#a3b7cb"; ctx.fillText(`${$("audit-events").textContent} / ${$("audit-missing").textContent} / ${$("audit-noise").textContent}`, 12, y); y += 12;
-  ctx.drawImage($("timeline"), 0, y, views.width, 60); y += 76;
+  ctx.drawImage($("timeline"), 0, y, views.width, 78); y += 94;
   ctx.fillText(`Time series: ${$("plot-mode").selectedOptions[0].textContent} · 3D`, 12, y); y += 7;
   ctx.drawImage($("graph-3d"), 0, y, views.width, 165); y += 184;
   ctx.fillText(`Event probability: GT Gaussian sigma=${state.result.scene.event_sigma_frames} / softmax prediction`, 12, y); y += 8;
@@ -261,6 +346,7 @@ for (const [id, delta] of [["previous-rally", -1], ["next-rally", 1]]) $(id).add
 });
 for (const dim of [3]) $(`model-${dim}d`).addEventListener("change", () => { modelLabels(); loadReview("auto"); });
 $("show-last").addEventListener("change", () => { fillModels(); loadReview("auto"); });
+for (const kind of SERIES) $(`show-${kind}`).parentElement.dataset.title = $(`show-${kind}`).parentElement.title;
 $("refresh").addEventListener("click", async () => { try { invalidate(); await loadCatalog(true); fillModels(); await loadReview("auto"); } catch (error) { message(error.message, true); } });
 for (const id of ["event-probability", "isolated-probability", "gap-min", "gap-max", "noise-p95", "noise-jitter", "noise-outlier", "augmentation-seed", "flow-seed"]) $(id).addEventListener("input", changedInput);
 $("augmentation-mode").addEventListener("change", changedInput);
@@ -268,7 +354,9 @@ $("resample").addEventListener("click", () => { $("augmentation-seed").value = (
 $("evaluation-preset").addEventListener("click", () => { applyProfile(checkpoint(3)?.evaluation_profile || state.catalog.default_profile); loadReview("auto"); });
 $("infer").addEventListener("click", () => loadReview("infer")); $("load-saved").addEventListener("click", () => loadReview("saved"));
 $("layout").addEventListener("change", mountViews); $("plot-mode").addEventListener("change", draw);
-for (const kind of ["gt", "input", "prediction"]) $(`show-${kind}`).addEventListener("change", () => { world.visibility(visibility()); draw(); });
+for (const kind of SERIES) $(`show-${kind}`).addEventListener("change", () => {
+  if ($("layout").value === "separate") mountViews(); else { world.visibility(visibility()); draw(); }
+});
 $("show-cameras").addEventListener("change", () => world.cameras($("show-cameras").checked)); $("reset-view").addEventListener("click", () => world.reset());
 $("scrub").addEventListener("input", () => seek(Number($("scrub").value)));
 $("previous-frame").addEventListener("click", () => seek(state.frame - 1)); $("next-frame").addEventListener("click", () => seek(state.frame + 1));
