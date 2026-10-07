@@ -23,6 +23,7 @@ from src.tasks.base.generate_dataset.parallel_runner import (
 )
 from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
 from src.utils.io import write_json_atomic
+from src.utils.physics.ball.record import EVENT_BITS, RECORD_SCHEMA
 
 
 def _generate_rally(
@@ -33,15 +34,17 @@ def _generate_rally(
     physics: GeneratorConfig,
     split: tuple[str, ...],
 ) -> dict[str, Any]:
-    result, xyz, cameras, attempts = simulate_rally(index, generation, camera, physics)
+    result, record, xyz, cameras, attempts = simulate_rally(
+        index, generation, camera, physics
+    )
     return write_rally(
         root,
         index,
         generation,
         camera,
-        physics,
         split[index],
         result,
+        record,
         xyz,
         cameras,
         attempts,
@@ -90,11 +93,13 @@ def generate_dataset(config: DictConfig) -> Path:
         "fps": physics.rally.output_fps,
         "image_size_wh": [camera.width, camera.height],
         "views": camera.views,
-        "event_bits": {"shot": 1, "bounce": 2},
+        "event_bits": EVENT_BITS,
+        "physics_record": RECORD_SCHEMA,
         "records": records,
         "split_policy": "seeded rally-disjoint; every view and temporal window follows its parent rally",
         "selection_policy": "truncate at first fence exit; bounded resampling of short/no-full-rally-visible-camera/full-physics-rejected rallies; attempts in each record",
-        "event_policy": "native simulation-frame ownership before nearest output-frame mapping; hypothetical post-return bounces excluded",
+        "event_policy": "events of the physics record at their first output frame at or after the simulation step; toss excluded; post-return bounces never simulated into the trajectory",
+        "surface_policy": "one court surface per rally, drawn uniformly from physics.surface_choices",
         "camera_policy": "fixed within rally; continuous X/Z on both baseline-rear fence planes; clean trajectory fully in frame before occlusion/noise",
         "generation_seconds": time.monotonic() - start,
     }
@@ -112,4 +117,4 @@ def generate_dataset(config: DictConfig) -> Path:
         ),
         flush=True,
     )
-    return root
+    return Path(root)

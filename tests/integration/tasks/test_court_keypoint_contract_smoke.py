@@ -58,6 +58,7 @@ from src.utils.schema.court_normalization import (
     normalize_court_position,
     normalize_court_velocity,
 )
+from tests.support.physics.ball_record import simulated_record
 
 pytestmark = pytest.mark.integration
 
@@ -152,6 +153,7 @@ def _write_blcs_dataset(
         ball_vel_norm=normalize_court_velocity(physical_velocity),
         cameras=[_blcs_camera(0, contract), _blcs_camera(1, contract)],
         num_cameras_sampled=2,
+        physics_record=simulated_record(len(physical_position))[1],
         fps_out=30,
         sim_fps=120,
         physics_config_dict={},

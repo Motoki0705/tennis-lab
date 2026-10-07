@@ -4,7 +4,8 @@ Saves scene data as a directory per scene with structure:
 - meta.json: scene metadata
 - scalars.json: scalar values (num_cameras, rally_length, end_reason,
   camera parameters)
-- {key}.npy: array data files (ball_pos_world, ball_pos_norm, etc.)
+- {key}.npy: array data files (ball_pos_world, ball_pos_norm, etc.) and the
+  ``physics_*`` arrays of the shared ``ball_physics.v1`` record
 
 Each camera produces per-camera npy files (cam_{i}_ball_uv.npy, etc.)
 and its parameters are stored in scalars.json.
@@ -40,6 +41,7 @@ from src.tasks.blcs.data.types import (
     BLCSSceneMeta,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
+from src.utils.physics.ball.record import BallPhysicsRecord, record_keys
 from src.utils.schema.court_normalization import (
     court_coordinate_normalization_metadata,
     validate_court_coordinate_normalization,
@@ -47,7 +49,7 @@ from src.utils.schema.court_normalization import (
 
 logger = logging.getLogger(__name__)
 
-BLCS_DATASET_SCHEMA_ID = "blcs_generated_dataset_v2"
+BLCS_DATASET_SCHEMA_ID = "blcs_generated_dataset_v3"
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,7 +318,10 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "ball_pos_norm": scene.ball_pos_norm.numpy(),
             "ball_vel_world": scene.ball_vel_world.numpy(),
             "ball_vel_norm": scene.ball_vel_norm.numpy(),
+            **scene.physics_record.to_arrays(),
         }
+        if scene.physics_record.frames != len(scene.ball_pos_world):
+            raise ValueError("BLCS physics record and trajectory lengths differ.")
         scalars: dict[str, Any] = {
             "num_cameras": len(scene.cameras),
             "num_balls": scene.num_balls,
@@ -445,6 +450,9 @@ def load_scene(
         "ball_vel_norm": np.load(scene_dir / "ball_vel_norm.npy"),
         "num_cameras": num_cameras,
         "cameras": cameras,
+        "physics_record": BallPhysicsRecord.from_arrays(
+            {key: np.load(scene_dir / f"{key}.npy") for key in record_keys()}
+        ),
     }
     ball_present_path = scene_dir / "ball_present.npy"
     if ball_present_path.exists():
