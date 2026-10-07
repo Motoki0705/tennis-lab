@@ -209,7 +209,7 @@ class BaseLightningModule(pl.LightningModule):
 
     def render_qualitative_samples(
         self,
-        batches: list[dict[str, Any]],
+        batches: list[Any],
         outputs: list[dict[str, Any]],
         artifact_dir: Path,
         tb_writer: Any | None,
@@ -222,7 +222,7 @@ class BaseLightningModule(pl.LightningModule):
         Enabling qualitative logging without an override is rejected at construction.
 
         Args:
-            batches: Collected validation batch dicts (CPU tensors).
+            batches: Collected task-owned validation batches (CPU tensors).
             outputs: Corresponding validation_step outputs (CPU tensors).
             artifact_dir: Directory to save artifact images/files.
             tb_writer: TensorBoard SummaryWriter (may be ``None``).

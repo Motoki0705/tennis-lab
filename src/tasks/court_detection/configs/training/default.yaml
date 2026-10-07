@@ -54,7 +54,7 @@ lr_monitor:
 
 # ---- Qualitative validation logging ----
 qualitative_logging:
-  enabled: false  # The default Court pose model has no qualitative renderer.
+  enabled: true
   every_n_epochs: 5
   num_samples: 4
   selection_mode: random

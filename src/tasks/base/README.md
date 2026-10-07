@@ -44,10 +44,11 @@ checkpoint状態に保持する。resume後も元の周期を維持し、状態�
 再開後の最初のvalidationで到達済みの期限を1回にまとめて保存する。
 成果物ディレクトリの`epoch_XXXX`とrendererに渡すepochはLightningに合わせて0始まりのまま。
 
-有効化にはtaskの`render_qualitative_samples()`実装が必要で、未実装のSLCSと
-Player Detectionはmodule構築時に拒否する。Court Detectionのpose構成も描画未対応のため
-有効化を拒否し、Courtの既定設定では無効とする。Courtのdense構成では明示的に有効化できる。
-Ball Refiner 3Dの既存の有効化拒否はtask設定で扱う。
+有効化にはtaskの`render_qualitative_samples()`実装が必要で、未実装のmoduleは構築時に拒否する。
+SLCSとBall Refiner 3Dはtask設定の検証時に有効化を拒否する。
+Court Detectionはposeの有無にかかわらずdense headだけをPNG保存する。
+Player Detectionは選択したvalidation batchの先頭sampleに対応する元動画へbboxを描く。
+動画の解決・間引き・保存範囲は[Player Detection](../player_detection/README.md#学習中の定性保存)を参照。
 
 #### Metric visibility and test artifacts
 
