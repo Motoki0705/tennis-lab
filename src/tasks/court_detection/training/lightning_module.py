@@ -902,7 +902,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
     ) -> None:
         _ = (outputs, epoch)
         if self.pose_variant:
-            return
+            raise NotImplementedError("Court pose qualitative rendering is not supported.")
         model_io = self.model_io
         device = next(self.parameters()).device
         style = self.qualitative_style.build()

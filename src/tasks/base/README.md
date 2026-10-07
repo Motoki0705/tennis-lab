@@ -32,6 +32,23 @@
 - **`losses.py`**: `FocalBCEWithLogitsLoss`。複数taskで重複していた実装を統合。
 - **`metric_logging.py`**: train/val/testのheadline allowlist、必須key検証、scalar metricのnumerator/denominatorによるepoch集計を持つstrict contract。
 
+#### Qualitative logging
+
+`training.qualitative_logging.every_n_epochs` は **学習epoch数** を1始まりで数える。
+`N, 2N, 3N, ...` epochに到達した後、最初に実行されるvalidationでGIF/画像を保存する。
+例えばvalidationが5 epochごと・保存が10 epochごとなら10, 20, 30, ...、
+validationが3 epochごと・保存が5 epochごとなら6, 12, 15, 21, ... epochに保存する。
+複数の保存期限をまたいだ場合は1回にまとめ、同じ区間での追加validationでは上書きしない。
+validationがないepochやsanity checkでは収集・保存せず、最後に描画したepochをcallbackの
+checkpoint状態に保持する。resume後も元の周期を維持し、状態を持たない旧checkpointでは
+再開後の最初のvalidationで到達済みの期限を1回にまとめて保存する。
+成果物ディレクトリの`epoch_XXXX`とrendererに渡すepochはLightningに合わせて0始まりのまま。
+
+有効化にはtaskの`render_qualitative_samples()`実装が必要で、未実装のSLCSと
+Player Detectionはmodule構築時に拒否する。Court Detectionのpose構成も描画未対応のため
+有効化を拒否し、Courtの既定設定では無効とする。Courtのdense構成では明示的に有効化できる。
+Ball Refiner 3Dの既存の有効化拒否はtask設定で扱う。
+
 #### Metric visibility and test artifacts
 
 通常logger/progress barにはtaskごとの少数のheadlineと`stage/loss`だけを出し、metric実装が計算するaxis/lifecycle/reference index/loss component等は診断値として分離する。trackingのval/test metricはbatch scalarを平均せず、metricごとの加算可能なnumerator/denominator（frame、segment、有効sequence、reference stratum等）をepoch全体で合算してから比率を求めるため、batch分割とpaddingに依存しない。分母がない診断値は出力せず、必須headlineの分母がないepochは失敗する。test成果物の`metrics.json`はknowledge-control向けheadlineのみ、`diagnostic_metrics.json`はheadlineと重複しない詳細値、`pred_test.npz`は再評価用predictionを保持する。headline欠落や未知stageはfallbackせず失敗する。

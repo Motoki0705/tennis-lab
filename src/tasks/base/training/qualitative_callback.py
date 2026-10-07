@@ -33,12 +33,16 @@ class _QualitativeRenderer(Protocol):
 class QualitativeLoggingCallback(pl.Callback):
     """Collect validation samples and save qualitative visualizations.
 
-    The callback randomly selects ``num_samples`` batches each validation epoch,
+    The callback randomly selects ``num_samples`` batches on scheduled validations,
     then calls ``render_qualitative_samples`` on the LightningModule to produce
     task-specific visualizations.
 
     Args:
-        every_n_epochs: Run qualitative logging every *n* validation epochs.
+        every_n_epochs: Training-epoch interval, counted from epoch 1. Save on
+            the first validation at or after each multiple of this interval.
+            Multiple overdue intervals produce one visualization, and repeated
+            validations in the same interval do not overwrite it. The last
+            rendered epoch is checkpointed so resuming preserves the schedule.
         num_samples: Number of validation batches to collect per epoch.
         enabled: Master switch; when ``False`` the callback is a no-op.
     """
@@ -60,6 +64,7 @@ class QualitativeLoggingCallback(pl.Callback):
         self.enabled = enabled
         self.selection_mode = selection_mode
         self.selected_indices = selected_indices
+        self._last_logged_epoch = 0  # One-based training epoch; 0 means no output yet.
 
         # Populated during validation
         self._collected_batches: list[dict[str, Any]] = []
@@ -70,6 +75,15 @@ class QualitativeLoggingCallback(pl.Callback):
     # ------------------------------------------------------------------
     # Lifecycle hooks
     # ------------------------------------------------------------------
+
+    def state_dict(self) -> dict[str, Any]:
+        return {"last_logged_epoch": self._last_logged_epoch}
+
+    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
+        epoch = state_dict["last_logged_epoch"]
+        if type(epoch) is not int or epoch < 0:
+            raise ValueError("Qualitative last_logged_epoch must be a non-negative integer.")
+        self._last_logged_epoch = epoch
 
     def on_validation_epoch_start(
         self,
@@ -128,6 +142,7 @@ class QualitativeLoggingCallback(pl.Callback):
 
         # Only rank-zero writes artifacts
         if trainer.global_rank != 0:
+            self._last_logged_epoch = trainer.current_epoch + 1
             self._collected_batches.clear()
             self._collected_outputs.clear()
             return
@@ -142,15 +157,20 @@ class QualitativeLoggingCallback(pl.Callback):
         global_step = trainer.global_step
 
         # Delegate rendering to the task LightningModule
-        if isinstance(pl_module, _QualitativeRenderer):
-            pl_module.render_qualitative_samples(
-                batches=self._collected_batches,
-                outputs=self._collected_outputs,
-                artifact_dir=artifact_dir,
-                tb_writer=tb_writer,
-                global_step=global_step,
-                epoch=epoch,
+        if not isinstance(pl_module, _QualitativeRenderer):
+            raise TypeError(
+                "Qualitative logging requires render_qualitative_samples on "
+                f"{type(pl_module).__name__}."
             )
+        pl_module.render_qualitative_samples(
+            batches=self._collected_batches,
+            outputs=self._collected_outputs,
+            artifact_dir=artifact_dir,
+            tb_writer=tb_writer,
+            global_step=global_step,
+            epoch=epoch,
+        )
+        self._last_logged_epoch = epoch + 1
 
         self._collected_batches.clear()
         self._collected_outputs.clear()
@@ -185,12 +205,15 @@ class QualitativeLoggingCallback(pl.Callback):
         )
 
     def _should_log(self, trainer: pl.Trainer) -> bool:
-        """Check if qualitative logging should run this epoch."""
+        """Log once when validation reaches a new training-epoch interval."""
         if not self.enabled:
             return False
         if trainer.sanity_checking:
             return False
-        should_log: bool = (trainer.current_epoch % self.every_n_epochs) == 0
+        should_log: bool = (
+            (trainer.current_epoch + 1) // self.every_n_epochs
+            > self._last_logged_epoch // self.every_n_epochs
+        )
         return should_log
 
     def _estimate_total_batches(self, trainer: pl.Trainer) -> int:

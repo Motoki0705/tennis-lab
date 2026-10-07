@@ -91,6 +91,16 @@ class BaseLightningModule(pl.LightningModule):
         self.training_config = BaseTrainingConfig.from_validated_task_mapping(
             require_config_mapping(root, "training", path="configuration")
         )
+        if (
+            self.training_config.qualitative_logging.enabled
+            and type(self).render_qualitative_samples
+            is BaseLightningModule.render_qualitative_samples
+        ):
+            raise ValueError(
+                "training.qualitative_logging.enabled=true requires "
+                f"{type(self).__name__} to implement render_qualitative_samples. "
+                "Set training.qualitative_logging.enabled=false for this task."
+            )
         self.path_resolver = PathResolver(
             RuntimePathRoots.from_mapping(
                 require_config_mapping(root, "paths", path="configuration"),
@@ -209,7 +219,7 @@ class BaseLightningModule(pl.LightningModule):
         """Render qualitative validation samples.
 
         Override in task-specific subclasses to produce visualizations.
-        The default implementation is a no-op.
+        Enabling qualitative logging without an override is rejected at construction.
 
         Args:
             batches: Collected validation batch dicts (CPU tensors).
@@ -219,6 +229,9 @@ class BaseLightningModule(pl.LightningModule):
             global_step: Current global training step.
             epoch: Current epoch number.
         """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement qualitative rendering."
+        )
 
     # ------------------------------------------------------------------
     # Test-split inference saving (issue #533)

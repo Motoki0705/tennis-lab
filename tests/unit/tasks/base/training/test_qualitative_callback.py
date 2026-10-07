@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import cast
+from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -83,6 +84,10 @@ class _Trainer:
     def __init__(self, *, enabled_epoch: int = 0, sanity: bool = False) -> None:
         self.current_epoch = enabled_epoch
         self.sanity_checking = sanity
+        self.global_rank = 0
+        self.global_step = 1
+        self.val_dataloaders: list[list[dict[str, Any]]] = [[{}]]
+        self.logger = None
 
 
 def _as_lightning_trainer(trainer: _Trainer) -> pl.Trainer:
@@ -101,9 +106,134 @@ def test_should_log_skips_sanity_check() -> None:
 
 def test_should_log_every_n_epochs() -> None:
     cb = _callback(enabled=True, every_n_epochs=3)
-    assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=0))) is True
+    assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=0))) is False
+    assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=2))) is True
     assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=3))) is True
     assert cb._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=1))) is False
+
+
+class _Renderer(pl.LightningModule):
+    def __init__(self) -> None:
+        super().__init__()
+        self.epochs: list[int] = []
+
+    def render_qualitative_samples(
+        self,
+        batches: list[dict[str, Any]],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any,
+        global_step: int,
+        epoch: int,
+    ) -> None:
+        assert len(batches) == len(outputs) == 1
+        assert batches[0]["x"].device.type == "cpu"
+        assert not outputs[0]["prediction"].requires_grad
+        self.epochs.append(epoch + 1)
+
+
+def _validation(
+    callback: QualitativeLoggingCallback,
+    trainer: _Trainer,
+    module: pl.LightningModule,
+    *,
+    collect: bool = True,
+) -> None:
+    wrapped = _as_lightning_trainer(trainer)
+    callback.on_validation_epoch_start(wrapped, module)
+    if collect:
+        callback.on_validation_batch_end(
+            wrapped,
+            module,
+            {"prediction": torch.ones(1, requires_grad=True)},
+            {"x": torch.ones(1)},
+            0,
+        )
+    callback.on_validation_epoch_end(wrapped, module)
+    assert not callback._collected_batches
+    assert not callback._collected_outputs
+
+
+@pytest.fixture
+def scheduled_callback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> QualitativeLoggingCallback:
+    callback = _callback(every_n_epochs=5)
+    monkeypatch.setattr(
+        callback, "_resolve_artifact_dir", lambda trainer, epoch: tmp_path / str(epoch)
+    )
+    return callback
+
+
+def test_state_roundtrip_skips_already_rendered_interval(
+    scheduled_callback: QualitativeLoggingCallback,
+) -> None:
+    module = _Renderer()
+    _validation(scheduled_callback, _Trainer(enabled_epoch=5), module)
+    assert module.epochs == [6]
+    restored = _callback(every_n_epochs=5)
+    restored.load_state_dict(scheduled_callback.state_dict())
+    for epoch in (5, 8):
+        assert not restored._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=epoch)))
+    assert restored._should_log(_as_lightning_trainer(_Trainer(enabled_epoch=11)))
+
+
+@pytest.mark.parametrize("epoch", [-1, True, 1.5, "5"])
+def test_invalid_checkpoint_state_is_rejected(epoch: object) -> None:
+    with pytest.raises(ValueError, match="last_logged_epoch"):
+        _callback().load_state_dict({"last_logged_epoch": epoch})
+
+
+def test_sanity_check_does_not_consume_due_interval(
+    scheduled_callback: QualitativeLoggingCallback,
+) -> None:
+    module = _Renderer()
+    trainer = _Trainer(enabled_epoch=5, sanity=True)
+    before = scheduled_callback.state_dict()
+    _validation(scheduled_callback, trainer, module)
+    assert scheduled_callback.state_dict() == before
+    assert module.epochs == []
+    trainer.sanity_checking = False
+    _validation(scheduled_callback, trainer, module)
+    assert module.epochs == [6]
+
+
+def test_disabled_logging_does_not_collect_or_advance(
+    scheduled_callback: QualitativeLoggingCallback,
+) -> None:
+    scheduled_callback.enabled = False
+    module = _Renderer()
+    before = scheduled_callback.state_dict()
+    _validation(scheduled_callback, _Trainer(enabled_epoch=5), module)
+    assert scheduled_callback.state_dict() == before
+    assert module.epochs == []
+
+
+def test_empty_validation_keeps_interval_due(
+    scheduled_callback: QualitativeLoggingCallback,
+) -> None:
+    module = _Renderer()
+    _validation(scheduled_callback, _Trainer(enabled_epoch=5), module, collect=False)
+    _validation(scheduled_callback, _Trainer(enabled_epoch=8), module)
+    assert module.epochs == [9]
+
+
+def test_nonzero_rank_advances_schedule_without_rendering(
+    scheduled_callback: QualitativeLoggingCallback,
+) -> None:
+    module = _Renderer()
+    trainer = _Trainer(enabled_epoch=5)
+    trainer.global_rank = 1
+    _validation(scheduled_callback, trainer, module)
+    assert module.epochs == []
+    assert not scheduled_callback._should_log(_as_lightning_trainer(trainer))
+
+
+def test_missing_renderer_is_not_silently_ignored(
+    scheduled_callback: QualitativeLoggingCallback,
+) -> None:
+    with pytest.raises(TypeError, match="requires render_qualitative_samples"):
+        _validation(scheduled_callback, _Trainer(enabled_epoch=5), pl.LightningModule())
 
 
 def test_detach_to_cpu_recurses_structures() -> None:
