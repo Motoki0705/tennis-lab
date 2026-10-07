@@ -34,13 +34,15 @@ def refine_coordinates(
     seed: int,
     clock: FlightClock | None,
     batch_size: int = 32,
+    segment: Tensor | None = None,
 ) -> RefinerPrediction:
     """Physical metres (3D), with true=missing; return all frames.
 
     Input is (V,T,D), where V is merely independent sequences, not a model view
     feature. Each whole sequence is predicted in one forward. FPS must match
     checkpoint metadata; resampling is a caller concern.  Physics outputs keep
-    network units except the integrated trajectory, which is in metres.
+    network units except the integrated trajectory, which is in metres.  A
+    given ``segment (V,T)`` replaces the flights segmented at predicted events.
     """
     validate_input(coordinates, missing, model.config.dimensions)
     scale_np, offset_np = normalization(model.config.dimensions)
@@ -48,7 +50,13 @@ def refine_coordinates(
     offset = coordinates.new_tensor(offset_np)
     normalized = torch.where(missing[..., None], 0, coordinates / scale - offset)
     result = predict_normalized(
-        model, normalized, missing, batch_size=batch_size, seed=seed, clock=clock
+        model,
+        normalized,
+        missing,
+        batch_size=batch_size,
+        seed=seed,
+        clock=clock,
+        segment=segment,
     )
     physics = result.physics
     if physics is not None:
@@ -90,6 +98,7 @@ class RefinerPredictor(BasePredictor[RefinerPrediction]):
         fps: float,
         seed: int,
         batch_size: int = 32,
+        segment: Tensor | None = None,
     ) -> RefinerPrediction:
         if not math.isclose(fps, self.metadata["fps"], abs_tol=1e-6, rel_tol=0):
             raise ValueError(
@@ -102,6 +111,7 @@ class RefinerPredictor(BasePredictor[RefinerPrediction]):
             seed=seed,
             clock=self.clock,
             batch_size=batch_size,
+            segment=None if segment is None else segment.to(self.device),
         )
         physics = result.physics
         return RefinerPrediction(
