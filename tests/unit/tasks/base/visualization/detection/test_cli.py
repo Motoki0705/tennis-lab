@@ -192,3 +192,22 @@ def test_detection_scripts_bind_their_inventory_boundary() -> None:
         )
 
     assert ("src.tasks.base.visualization.detection.cli", "serve") not in discovered
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_ball_pose_review_path_is_checked_before_serving(tmp_path, monkeypatch, valid) -> None:
+    module = _script_module("ball_detection", "review_dataset")
+    calls = _record_serve_calls(monkeypatch, module)
+    (tmp_path / "data").mkdir()
+    poses = tmp_path / ("data/poses" if valid else "missing-poses")
+    if valid:
+        poses.mkdir()
+    monkeypatch.setattr(sys, "argv", ["review_dataset", "--project-root", str(tmp_path),
+                                     "--play-poses", str(poses)])
+    if valid:
+        module.main()
+        assert calls[0][1]["values"]["play_poses"] == poses
+    else:
+        with pytest.raises(PathContractError):
+            module.main()
+        assert calls == []

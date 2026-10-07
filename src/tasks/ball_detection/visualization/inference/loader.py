@@ -47,11 +47,8 @@ def _required_image_size(config: DictConfig, *, location: str) -> tuple[int, int
         raise BallInferenceCheckpointError(
             f"{location}: checkpoint config has no model mapping."
         )
-    if str(model_block.get("name")) == "dinov3_rope":
-        source: Any = model_block.get("image_size")
-    else:
-        data_block = container.get("data")
-        source = data_block.get("image_size") if isinstance(data_block, Mapping) else None
+    data_block = container.get("data")
+    source = data_block.get("image_size") if isinstance(data_block, Mapping) else None
     if isinstance(source, (str, bytes)) or not isinstance(source, Sequence) or len(source) != 2:
         raise BallInferenceCheckpointError(
             f"{location}: checkpoint config does not declare a 2-element "

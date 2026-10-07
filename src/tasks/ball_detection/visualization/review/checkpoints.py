@@ -34,9 +34,7 @@ from src.tasks.ball_detection.evaluation.configuration import read_checkpoint_co
 TASK_NAME: Final = "ball_detection"
 
 MINIMUM_FRAMES_BY_MODEL: Final[dict[str, int]] = {
-    "stunet": 8,
     "conv_next_unet": 1,
-    "dinov3_rope": 1,
 }
 
 #: Fallbacks mirroring ``configs/metrics/default.yaml`` for checkpoints that
@@ -105,7 +103,7 @@ class BallCheckpointInfo:
         A checkpoint whose own configured window is a single frame is the
         exception: that *is* its trained contract.
         """
-        if self.input_mode == "mdd" and self.num_frames > 1:
+        if self.num_frames > 1:
             return max(self.minimum_frames, 2)
         return self.minimum_frames
 
@@ -273,11 +271,8 @@ def image_size_of(config: Mapping[str, Any], *, model: str) -> tuple[int, int] |
     if not isinstance(model_block, Mapping):
         return None
     source: Any
-    if model == "dinov3_rope":
-        source = model_block.get("image_size")
-    else:
-        data_block = config.get("data")
-        source = data_block.get("image_size") if isinstance(data_block, Mapping) else None
+    data_block = config.get("data")
+    source = data_block.get("image_size") if isinstance(data_block, Mapping) else None
     if isinstance(source, (str, bytes)) or not isinstance(source, Sequence):
         return None
     if len(source) != 2:
@@ -407,9 +402,9 @@ def describe_config(
             f"{model_name} requires at least {minimum_frames} frames, but the "
             f"checkpoint was configured with model.num_frames={num_frames}."
         )
-    if not isinstance(input_mode, str) or input_mode not in {"rgb", "mdd"}:
+    if not isinstance(input_mode, str) or input_mode != "mdd":
         errors.append(
-            "checkpoint config must declare model.input_mode as 'rgb' or 'mdd', "
+            "checkpoint config must declare model.input_mode as 'mdd', "
             f"got {input_mode!r}."
         )
     if image_size is None:

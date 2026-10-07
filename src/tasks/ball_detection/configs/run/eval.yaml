@@ -3,6 +3,6 @@ seed: 42
 gpus: 1
 checkpoint_path:
   role: artifact
-  path: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+  path: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
 strict: true
 weights_only: false

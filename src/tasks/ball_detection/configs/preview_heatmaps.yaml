@@ -1,6 +1,6 @@
 defaults:
   - paths: default
-  - model: stunet
+  - model: conv_next_unet
   - data: rgb_sequence
   - _self_
 
