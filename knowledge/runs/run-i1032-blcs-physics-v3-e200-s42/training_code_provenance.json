@@ -1,0 +1,12 @@
+{
+  "baseline_commit": "1178e66a8873d57083366bfc4b9536eee494878a",
+  "training_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+  "paths": {
+    "src/tasks/blcs/models/blcs_multiview_axial_model.py": "5863b93d167f20cbc895c6603e9f50a42e9230e9bf76a1b52db310c3a3982e40",
+    "src/tasks/blcs/data/dataset.py": "ac7e271e1cc5cfbafaf5d70586a616b8c3ed7b878ab36454567ab1b38d327f83",
+    "src/tasks/blcs/training/lightning_module.py": "103405fc5a8cea1d16f8472732301dff47e1c625d13c5c5705a60663b282312e",
+    "src/tasks/blcs/training/losses.py": "b75aa892c9a8e011b2ffea0b33497b2c8a073f79cd7af131ad5bae00f3dd6a2a",
+    "uv.lock": "a68d8ac6cc5a19fe8175695cb5be66f14a1665d2f652bed470140f6ea83d8244"
+  },
+  "diff_vs_previous_blcs_training": ""
+}

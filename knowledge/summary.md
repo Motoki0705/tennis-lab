@@ -1,7 +1,7 @@
-<!-- knowledge-review: 868a9502a18e77ab28e88ff60f9b87345927173e920d85f578ff05367f255fe4 on 2026-10-07 -->
+<!-- knowledge-review: db7c961f75c52e19d64413a01a75d8c6df52bcfbdb6ae67afda9a7a94ac797e1 on 2026-10-07 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
+更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -402,6 +402,8 @@ reprojection lossは一方向な改善ではありません。[`group-plcs-multi
 camera-view v2のreference selectorも決着していません。PLCSではreferenceがpositionとID switchesで良い一方、selector-zeroがY-sign、heading、presenceで良く、指標ごとに優位が逆転しました。このselector比較単独ではv1からの移行根拠になりません。2026-09-21のpipelineは上記の入力契約移行によりv2へ変更しています。
 
 ### BLCS
+
+2026-10-07、[#1038の物理GT付きv3データでの再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)を完了し、validation選定ckptをローカルckpt/blcs/へ置換した。旧#1036はデータ変更と組み込み方針の未確定により不採用とし、tennis_sceneの実装・既定設定は変更していない。データsnapshotを固定した200 epoch学習と88シーンの中心窓testが完走したが、旧実験とはシーン集合・更新数が異なるため精度改善の因果比較には使わない。短いtestシーン・全長・実検出・実動画3D精度・追加seedは未評価。次は組み込み経路の確定後に入力契約と受入条件を別途定める。以下の旧deploy・associationの知見は当時の構成に限定した履歴であり、今回の採用範囲を拡張しない。
 
 single-ballではmultiview deployが単眼親よりposition `1.845 → 1.065 m`、endpoint `3.408 → 2.025 m`へ改善しました。ただしcamera presetも変わるため、改善全量をview数へ帰属できません。
 
