@@ -100,6 +100,26 @@ def test_dense_training_can_enable_qualitative_logging() -> None:
     assert runtime.shared.training.qualitative_logging.enabled
 
 
+def test_qualitative_fixed_batch_indices_follow_shared_contract() -> None:
+    config = _compose(
+        "synthetic_court", "training.qualitative_logging.enabled=true",
+        "training.qualitative_logging.selection_mode=fixed_indices",
+        "training.qualitative_logging.selected_indices=[0,2]",
+        "training.qualitative_logging.num_samples=2",
+    )
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.shared.training.qualitative_logging.selected_indices == (0, 2)
+
+
+@pytest.mark.parametrize("selection_mode", ["first", "indices"])
+def test_qualitative_rejects_selection_modes_unsupported_by_callback(selection_mode: str) -> None:
+    config = _compose(
+        "synthetic_court", f"training.qualitative_logging.selection_mode={selection_mode}"
+    )
+    with pytest.raises(SemanticConfigurationError, match="selection_mode"):
+        CourtTrainingConfig.from_config(config)
+
+
 @pytest.mark.parametrize(
     ("source", "schema"),
     [
