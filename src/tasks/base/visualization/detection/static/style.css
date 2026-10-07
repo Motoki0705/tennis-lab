@@ -722,3 +722,77 @@ body [hidden] {
     padding: 9px 12px;
   }
 }
+
+.playback-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.2rem 1rem;
+  color: var(--muted, #82978e);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+#buffer-status { color: #b89040; }
+#player-status { overflow-wrap: anywhere; }
+#player-settings select { max-width: 100%; }
+
+.overview-open {
+  margin-top: 10px;
+  width: 100%;
+  padding: 7px;
+  color: var(--green);
+  font-size: 11px;
+}
+.review-filters { display: grid; gap: 5px; margin: 6px 0; }
+.review-filters select { padding: 6px; font-size: 11px; }
+#scene-review-meta { margin: 4px 0 0; font-size: 11px; }
+.legend i.interpolated, .legend i.estimated {
+  display: inline-block;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ffc857;
+}
+.legend i.estimated { background: #d594ff; }
+.supervision-badge {
+  display: inline-block; padding: 5px 8px; border-radius: 4px;
+  background: #e2f3ea; color: #086243; font-size: 11px;
+}
+.supervision-badge[data-state="reference"] { background: #fff2d3; color: #795907; }
+.supervision-badge[data-state="unreviewed"] { background: #edf0f2; color: #4c6572; }
+.review-reason { font-size: 11px; line-height: 1.7; }
+.point-kind-list { display: grid; gap: 6px; }
+.point-kind-row { display: flex; gap: 6px; align-items: center; font-size: 11px; overflow-wrap: anywhere; }
+.point-kind-row i { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 6px; }
+#frame-review-section details { font-size: 11px; }
+#frame-stored-meta { font-size: 10px; line-height: 1.6; }
+.review-jumps {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+  padding: 7px 16px; border-bottom: 1px solid var(--line); font-size: 11px;
+}
+.review-jumps select { width: auto; max-width: 270px; padding: 5px; font-size: 11px; }
+.review-jumps button { padding: 5px 8px; font-size: 11px; }
+.review-jumps output { color: var(--muted); font-size: 10px; }
+#dataset-overview {
+  width: min(900px, calc(100vw - 28px)); max-height: calc(100dvh - 40px);
+  padding: 22px; border: 1px solid var(--line); border-radius: 8px;
+  color: #25332f; overflow: auto;
+}
+#dataset-overview::backdrop { background: #17221e88; }
+.overview-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.overview-heading h1 { font-size: 19px; }
+.overview-heading button { padding: 6px 12px; }
+#dataset-overview-content p { font-size: 12px; line-height: 1.8; }
+#dataset-overview-content h2 { margin: 22px 0 10px; }
+.overview-total { font-size: 15px !important; font-weight: 600; }
+.overview-table { overflow-x: auto; }
+.overview-table table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.overview-table td, .overview-table th { padding: 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.overview-table td:first-child, .overview-table th:first-child { text-align: left; }
+.overview-table th { background: #f3f7f5; font-weight: 600; }
+.overview-path { overflow-wrap: anywhere; color: var(--muted); }
+@media (max-width: 640px) {
+  .review-filters { grid-template-columns: 1fr 1fr; }
+  #review-state-filter { grid-column: 1 / -1; }
+  .review-jumps { padding: 7px 10px; }
+  .review-jumps select { max-width: 220px; }
+  #dataset-overview { padding: 14px; }
+}

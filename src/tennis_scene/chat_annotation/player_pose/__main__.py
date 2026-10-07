@@ -49,6 +49,8 @@ def main(argv: list[str] | None = None) -> None:
             "init",
             "orchestrate",
             "generate-clip",
+            "pose-clip",
+            "publish-clip",
             "review",
             "review-clip",
             "status",
@@ -75,8 +77,13 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("--config is accepted only by init")
     if args.index is not None and args.index < 0:
         parser.error("--index must be nonnegative")
-    if args.index is not None and args.command not in {"generate-clip", "review-clip"}:
-        parser.error("--index is accepted only by generate-clip and review-clip")
+    if args.index is not None and args.command not in {
+        "generate-clip",
+        "pose-clip",
+        "publish-clip",
+        "review-clip",
+    }:
+        parser.error("--index is accepted only by per-clip commands")
     if args.command == "init":
         if args.config is None:
             parser.error("init requires --config")
@@ -106,6 +113,15 @@ def main(argv: list[str] | None = None) -> None:
         except Exception:
             record_failure(args.campaign, args.index)
             raise
+    elif args.command in ("pose-clip", "publish-clip"):
+        from .publication import publish
+        from .selected_pose import generate_selected_pose
+
+        if args.index is None:
+            parser.error(f"{args.command} requires --index")
+        if args.command == "pose-clip":
+            generate_selected_pose(args.campaign, args.index)
+        publish(args.campaign, args.index)
     else:
         from .runner import review_clip, review_worker, status
 

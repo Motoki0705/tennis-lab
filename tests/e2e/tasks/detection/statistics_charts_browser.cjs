@@ -20,7 +20,7 @@ const output=process.env.SCREENSHOT_DIR||'/tmp/ball-statistics-charts';fs.mkdirS
    const u=new URL(route.request().url());
    if(u.pathname==='/api/catalog')return route.fulfill({json:{task:'ball_detection',title:'Ball Detection',mode:'review',cuda_available:false,play_intervals_available:false,statistics_ui:'/statistics-static/panel.mjs',datasets:[{id:dataset,label:'Pose承認済み',available:true,count:report.clip_count,mode:'temporal'}],checkpoints:[],warnings:[]}});
    if(u.pathname==='/api/scenes')return route.fulfill({json:{items:[{id:scene,label:clip.clip.clip_id,frames:clip.clip.frame_count}],total:1}});
-   if(u.pathname==='/api/preview'){const frame=Number(u.searchParams.get('start'));return route.fulfill({json:{scene,frames:clip.clip.frame_count,width:1280,height:720,items:[{index:frame,name:`frame_${frame}.jpg`,gt:{points:[],rasters:[]}}],warnings:[]}});}
+   if(u.pathname==='/api/preview'){const frame=Number(u.searchParams.get('start')),count=Number(u.searchParams.get('count')||1);return route.fulfill({json:{scene,frames:clip.clip.frame_count,width:1280,height:720,items:Array.from({length:count},(_,offset)=>({index:frame+offset,name:`frame_${frame+offset}.jpg`,gt:{points:[],rasters:[]}})),warnings:[]}});}
    if(u.pathname==='/api/image')return route.fulfill({body:picture,contentType:'image/jpeg'});
    if(u.pathname==='/api/statistics/config')return route.fulfill({json:report.config});
    if(u.pathname==='/api/statistics/jobs')return route.fulfill({status:202,json:{id:'chart-test',state:'complete'}});

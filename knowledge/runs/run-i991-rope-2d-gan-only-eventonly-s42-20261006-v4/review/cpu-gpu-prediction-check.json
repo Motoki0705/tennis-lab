@@ -1,0 +1,17 @@
+{
+  "2": {
+    "max_abs_cpu_gpu_difference": 0.0003662109375,
+    "shape": [
+      4,
+      462,
+      2
+    ]
+  },
+  "3": {
+    "max_abs_cpu_gpu_difference": 1.049041748046875e-05,
+    "shape": [
+      462,
+      3
+    ]
+  }
+}

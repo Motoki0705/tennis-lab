@@ -100,7 +100,7 @@ class BotSortPose:
                         continue  # high IoU cannot erase reliable contradictory appearance
                     total += cfg.appearance_weight * appearance
                     weight += cfg.appearance_weight
-                distance = pose_distance(track.pose, local_pose(features.boxes[row], features.poses[row]),
+                distance = pose_distance(track.pose, local_pose(features.boxes[row], features.require_poses()[row]),
                                          confidence=cfg.pose_confidence, min_joints=cfg.min_pose_joints, scale=cfg.pose_scale)
                 if distance is not None:
                     total += cfg.pose_weight * distance
@@ -116,6 +116,7 @@ class BotSortPose:
         return [(tracks[t], int(rows[d])) for t, d in zip(ti, di, strict=True) if cost[t, d] < 1e6]
 
     def update(self, features: DetectionFeatures) -> TrackAssignments:
+        features.require_poses()
         if features.parts is not None:
             raise ValueError('BoT-SORT pose has no native part adapter; refusing to discard appearance')
         if features.frame != self.frame + 1:
@@ -146,7 +147,7 @@ class BotSortPose:
         for track, row in matches:
             track.mean, track.covariance = self.filter.update(track.mean, track.covariance, _xywh(features.boxes[row]))
             track.last_frame = self.frame
-            track.pose = local_pose(features.boxes[row], features.poses[row])
+            track.pose = local_pose(features.boxes[row], features.require_poses()[row])
             # Low-confidence observations can keep a track but do not contaminate its appearance EMA.
             if features.scores[row] >= cfg.high_score and features.appearance_valid[row]:
                 embedded = features.embeddings[row]
@@ -158,7 +159,7 @@ class BotSortPose:
         for row in births:
             mean, covariance = self.filter.initiate(_xywh(features.boxes[row]))
             created = _Track(self.next_id, mean, covariance, self.frame,
-                             local_pose(features.boxes[row], features.poses[row]),
+                             local_pose(features.boxes[row], features.require_poses()[row]),
                              features.embeddings[row].copy() if features.appearance_valid[row] else None)
             self.next_id += 1
             self.tracks.append(created)

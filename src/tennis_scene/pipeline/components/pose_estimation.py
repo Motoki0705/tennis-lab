@@ -45,8 +45,8 @@ class PoseEstimationModule:
         if tracks.evidence is not None:
             for p, track_id in enumerate(ids):
                 boxes[0, :, p] = tracked.bbx_xys(track_id, base_enlarge=config.runtime.tracking.bbox_enlarge).numpy()
-            uv[:] = tracks.evidence.poses[..., :2].transpose(1, 0, 2, 3)[None]
-            confidence[:] = tracks.evidence.poses[..., 2].transpose(1, 0, 2)[None]
+            uv[:] = tracks.evidence.require_poses()[..., :2].transpose(1, 0, 2, 3)[None]
+            confidence[:] = tracks.evidence.require_poses()[..., 2].transpose(1, 0, 2)[None]
             return ObjectObservations((video.camera_id,), (video.width, video.height), video.fps,
                 uv, confidence, tracks.observed.T[None], tracks.track_ids[None], boxes)
         if self.require_evidence:

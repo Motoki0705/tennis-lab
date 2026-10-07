@@ -19,7 +19,7 @@
 
 STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 対応しない旧checkpointは明示エラーにする。court等の共有DINOv3部品は対象外。
-新モデルの座標をheatmapと偽るadapterは設けず、refiner接続は#986で別途決める。
+新モデルは独立した座標推定経路とし、sceneへの接続は#986で別途決める。
 
 ### data/
 - **[プレイ区間・学習窓の固定](data/PLAY_INTERVALS.md)**: `play_intervals.py`、`play_manifest.py`、`pose_windows.py`。approved pose subsetからプレイ/非プレイ候補と32frame窓を作り、位置教師不足を分離して可視化する。
@@ -46,7 +46,7 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 - **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction`（点・score・native heatmap・候補の局所特徴）を返す。
 
 ### evaluation/
-- **`candidate_recall.py`**: 閾値なし候補集合のsource画素recall、候補外、順位誤りの加算可能な件数。[refinerのvalidation選定](../ball_refiner/README.md#validationによる検出器選定)で利用する。
+- **`candidate_recall.py`**: 閾値なし候補集合のsource画素recall、候補外、順位誤りの加算可能な件数。検出器ごとの候補集合の評価に使う。
 - **`contracts.py`**: 評価マニフェスト(`ball_detection_evaluation_manifest_v1`)の型付き契約。
 - **`configuration.py`**: checkpoint設定読み出しとモデル名整合性検証。
 - **`dataset_provenance.py`**: データセットの provenance(ハッシュ・ソース)記録。
@@ -65,6 +65,8 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 - **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
 - **`review/datasets.py`**: `BallDatasetCatalog`。ball storeの全versionを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
 - **`review/play_intervals.py`**: 選択clipのプレイ・除外候補、教師窓被覆、選択用の証拠と全frameの位置注釈・除外理由を同じ注釈・PTSからWebUIへ返す。
+- **`review/quality.py`**: 保存済みframe/instance表とobserved-only方針からsource/split・教師区分を集計。クリップ絞込、注釈状態への移動、各frameの採点可否に使う。
+- **`review/players/`**: [検証付きpose・tracking reader](visualization/review/players/README.md)。採用済みとraw結果を既存RGBへ対応付け、状態・pose・ID・欠損を読み取り専用で提供する。
 - **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
 - **`inference/loader.py`**: `load_ball_model()`。共通checkpoint loaderを使い、レビュー用の入力サイズ・窓長を検証する。
 - **`inference/peaks.py`**: `decode_frame_peaks()`。canonicalなthreshold/NMS/top-k + subpixel refineで複数peakをstored image pixelへ写す。
@@ -186,10 +188,8 @@ checkpoint本体の保存configだけを根拠にする(ファイル名から推
 
 ## 学習データ
 
-学習・評価・レビューUIは `data/ball_detection/<version>` の統一frame storeを使う。
-通常学習の既定versionは `ball-mix-v2`。store内の `tracknet` / `meiji` /
-`chat_annotation` は出自の名前であり、学習時に元の画像・動画へアクセスしない。
-3 sourceの混合比と教師方針は `configs/data/rgb_sequence.yaml` を正本とする。
+現行のdataset系列・sourceとsplit・入力と教師・派生poseの制限は
+[データセット体系](data/README.md)を参照してください。
 学習窓は `model.num_frames` に固定し、`eval_stride: null` はその長さごとの窓を意味する。
 `data.source=store` のみ受け付け、廃止したWeb・staged・旧sourceへのフォールバックは行わない。
 

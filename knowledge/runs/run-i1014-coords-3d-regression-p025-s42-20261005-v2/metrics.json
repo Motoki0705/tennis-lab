@@ -1,0 +1,1 @@
+{"best_step": 4000, "inference_ms_per_frame": 0.025899378743146927, "test_event_rmse_m": 0.78057861328125, "test_frame_missing_rate": 0.17916207276736493, "test_missing_rmse_m": 0.8447312712669373, "test_rmse_m": 0.4804685711860657}

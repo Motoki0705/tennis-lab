@@ -679,6 +679,8 @@ def keypoint_points(raw: CourtRawSample) -> list[dict[str, object]]:
                     "x": float(x_coord),
                     "y": float(y_coord),
                     "label": names[channel],
+                    "display_label": str(channel),
+                    "channel": channel,
                     "visible": bool(visible[channel, peak]),
                     "physical_index": physical_index,
                 }

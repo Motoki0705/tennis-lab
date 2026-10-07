@@ -1,0 +1,170 @@
+[
+  {
+    "url": "http://127.0.0.1:8786/api/preview",
+    "body": {
+      "rally": "rally_000030",
+      "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+      "checkpoint_2d": "outputs:train/rope-2d-gan-gpu-preflight/20261006-s42/logs/version_0/checkpoints/best.ckpt",
+      "checkpoint_3d": "outputs:train/coordinates-3d-regression-p075/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "augmentation": {
+        "event_probability": 0.5,
+        "isolated_probability": 0,
+        "gap_min": 3,
+        "gap_max": 10,
+        "noise_p95_px": 0,
+        "jitter_sigma_px": 0,
+        "outlier_probability": 0,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true,
+      "device": "cpu",
+      "checkpoint_hashes": {
+        "2": "6cd3e348db230c454ce4c351080bc7e5e5565f51ed20fdf192dda5eb4dcf1b43",
+        "3": "03931eaad9e6280d207f52bbe439d4c1d798bff66e2f944b9b1483c2517ac6c0"
+      }
+    }
+  },
+  {
+    "url": "http://127.0.0.1:8786/api/infer",
+    "body": {
+      "rally": "rally_000030",
+      "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+      "checkpoint_2d": "outputs:train/rope-2d-gan-gpu-preflight/20261006-s42/logs/version_0/checkpoints/best.ckpt",
+      "checkpoint_3d": "outputs:train/coordinates-3d-regression-p075/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "augmentation": {
+        "event_probability": 0.5,
+        "isolated_probability": 0,
+        "gap_min": 3,
+        "gap_max": 10,
+        "noise_p95_px": 0,
+        "jitter_sigma_px": 0,
+        "outlier_probability": 0,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true,
+      "device": "cpu",
+      "checkpoint_hashes": {
+        "2": "6cd3e348db230c454ce4c351080bc7e5e5565f51ed20fdf192dda5eb4dcf1b43",
+        "3": "03931eaad9e6280d207f52bbe439d4c1d798bff66e2f944b9b1483c2517ac6c0"
+      }
+    }
+  },
+  {
+    "url": "http://127.0.0.1:8786/api/preview",
+    "body": {
+      "rally": "rally_000030",
+      "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+      "checkpoint_2d": "outputs:train/rope-2d-gan-gpu-preflight/20261006-s42/logs/version_0/checkpoints/best.ckpt",
+      "checkpoint_3d": "outputs:train/coordinates-3d-regression-p075/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "augmentation": {
+        "event_probability": 0.5,
+        "isolated_probability": 0,
+        "gap_min": 3,
+        "gap_max": 10,
+        "noise_p95_px": 200,
+        "jitter_sigma_px": 3,
+        "outlier_probability": 0.1,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true,
+      "device": "cpu",
+      "checkpoint_hashes": {
+        "2": "6cd3e348db230c454ce4c351080bc7e5e5565f51ed20fdf192dda5eb4dcf1b43",
+        "3": "03931eaad9e6280d207f52bbe439d4c1d798bff66e2f944b9b1483c2517ac6c0"
+      }
+    }
+  },
+  {
+    "url": "http://127.0.0.1:8786/api/infer",
+    "body": {
+      "rally": "rally_000030",
+      "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+      "checkpoint_2d": "outputs:train/rope-2d-gan-gpu-preflight/20261006-s42/logs/version_0/checkpoints/best.ckpt",
+      "checkpoint_3d": "outputs:train/coordinates-3d-regression-p075/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "augmentation": {
+        "event_probability": 0.5,
+        "isolated_probability": 0,
+        "gap_min": 3,
+        "gap_max": 10,
+        "noise_p95_px": 200,
+        "jitter_sigma_px": 3,
+        "outlier_probability": 0.1,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true,
+      "device": "cpu",
+      "checkpoint_hashes": {
+        "2": "6cd3e348db230c454ce4c351080bc7e5e5565f51ed20fdf192dda5eb4dcf1b43",
+        "3": "03931eaad9e6280d207f52bbe439d4c1d798bff66e2f944b9b1483c2517ac6c0"
+      }
+    }
+  },
+  {
+    "url": "http://127.0.0.1:8786/api/preview",
+    "body": {
+      "rally": "rally_000030",
+      "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+      "checkpoint_2d": "outputs:train/coordinates-2d-gan-p025/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "checkpoint_3d": "outputs:train/coordinates-3d-regression-p075/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "augmentation": {
+        "event_probability": 0.5,
+        "isolated_probability": 0,
+        "gap_min": 3,
+        "gap_max": 10,
+        "noise_p95_px": 200,
+        "jitter_sigma_px": 4,
+        "outlier_probability": 0.2,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true,
+      "device": "cpu",
+      "checkpoint_hashes": {
+        "2": "d3e3cff43c10cce06c1bfd5bc28949ff5bde8f7b1e57da9b90d467431e34c5f9",
+        "3": "03931eaad9e6280d207f52bbe439d4c1d798bff66e2f944b9b1483c2517ac6c0"
+      }
+    }
+  },
+  {
+    "url": "http://127.0.0.1:8786/api/infer",
+    "body": {
+      "rally": "rally_000030",
+      "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+      "checkpoint_2d": "outputs:train/coordinates-2d-gan-p025/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "checkpoint_3d": "outputs:train/coordinates-3d-regression-p075/20261005-v2-s42/logs/version_0/checkpoints/best.ckpt",
+      "augmentation": {
+        "event_probability": 0.5,
+        "isolated_probability": 0,
+        "gap_min": 3,
+        "gap_max": 10,
+        "noise_p95_px": 200,
+        "jitter_sigma_px": 4,
+        "outlier_probability": 0.2,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true,
+      "device": "cpu",
+      "checkpoint_hashes": {
+        "2": "d3e3cff43c10cce06c1bfd5bc28949ff5bde8f7b1e57da9b90d467431e34c5f9",
+        "3": "03931eaad9e6280d207f52bbe439d4c1d798bff66e2f944b9b1483c2517ac6c0"
+      }
+    }
+  }
+]

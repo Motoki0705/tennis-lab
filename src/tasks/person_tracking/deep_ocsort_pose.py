@@ -83,7 +83,7 @@ class DeepOCSortPose:
     def _pose_cost(self, features: DetectionFeatures, rows: NDArray[np.int64], tracks: list[_Track]) -> NDArray[np.float64]:
         result: NDArray[np.float64] = np.zeros((len(rows), len(tracks)), np.float64)
         for i, row in enumerate(rows):
-            pose = local_pose(features.boxes[row], features.poses[row])
+            pose = local_pose(features.boxes[row], features.require_poses()[row])
             for j, track in enumerate(tracks):
                 distance = pose_distance(pose, track.pose)
                 if distance is not None:
@@ -136,6 +136,7 @@ class DeepOCSortPose:
         return [(int(rows[d]), tracks[t]) for d, t in zip(di, ti, strict=True) if iou[d, t] >= cfg.iou_threshold]
 
     def update(self, features: DetectionFeatures) -> TrackAssignments:
+        features.require_poses()
         if features.frame != self.frame + 1:
             raise ValueError('Tracking requires every frame once, starting at zero')
         if self.dimension is not None and self.dimension != features.embeddings.shape[1]:
@@ -179,7 +180,7 @@ class DeepOCSortPose:
                 else:
                     track.state.emb = features.embeddings[row].copy()
                 track.has_appearance = True
-            track.pose = local_pose(features.boxes[row], features.poses[row])
+            track.pose = local_pose(features.boxes[row], features.require_poses()[row])
             track.detection_row = int(features.rows[row])
         for track in self.tracks:
             if track.identity not in used:
@@ -189,7 +190,7 @@ class DeepOCSortPose:
                 continue
             state = KalmanBoxTracker(np.r_[features.boxes[row], features.scores[row]], delta_t=self.config.delta_t,
                                      emb=features.embeddings[row].copy(), new_kf=False)
-            self.tracks.append(_Track(self.next_id, state, local_pose(features.boxes[row], features.poses[row]),
+            self.tracks.append(_Track(self.next_id, state, local_pose(features.boxes[row], features.require_poses()[row]),
                                       bool(features.appearance_valid[row]), int(features.rows[row]),
                                       None if features.parts is None else features.parts.take(np.asarray([row], np.int64))))
             self.next_id += 1

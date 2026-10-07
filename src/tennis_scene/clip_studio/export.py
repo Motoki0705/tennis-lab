@@ -252,7 +252,8 @@ def _write_camera_video(
                 )
 
 
-def _build_manifest(plan: ClipExportPlan) -> dict[str, Any]:
+def build_clip_manifest(plan: ClipExportPlan) -> dict[str, Any]:
+    """Describe a pure export plan, also used for read-only project comparison."""
     cameras: list[dict[str, Any]] = []
     for camera in plan.cameras:
         source_size = (camera.source_info.width, camera.source_info.height)
@@ -329,7 +330,7 @@ def verify_existing_export(plan: ClipExportPlan, settings: ExportSettings) -> bo
             f"{plan.clip_name}: incomplete output (clip.json missing); move it aside or explicitly enable overwrite"
         )
     saved = load_json(manifest)
-    expected = _build_manifest(plan)
+    expected = build_clip_manifest(plan)
     if not isinstance(saved, dict) or set(saved) != set(expected):
         raise ValueError(
             f"{plan.clip_name}: existing clip.json does not use the exact "
@@ -386,7 +387,7 @@ def export_clip(
         video_paths.append(video_path)
 
     manifest_path = save_json_atomic(
-        _build_manifest(plan), clip_dir / MANIFEST_FILENAME
+        build_clip_manifest(plan), clip_dir / MANIFEST_FILENAME
     )
     register_exported_clip(dataset_dir, manifest_path, allow_replace=settings.overwrite)
     LOGGER.info(f"Exported clip '{plan.clip_name}' to {clip_dir}")
@@ -427,6 +428,7 @@ def export_clips(
 
 
 __all__ = [
+    "build_clip_manifest",
     "CameraExportPlan",
     "ClipExportPlan",
     "ClipExportResult",

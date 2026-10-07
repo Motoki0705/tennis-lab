@@ -1,7 +1,0 @@
-defaults:
-  - /model/comparison/absolute@_here_
-  - _self_
-
-mean_parameterization: candidate_residual_v1
-anchored_components: 3
-max_offset_uv: 0.02

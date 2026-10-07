@@ -109,6 +109,7 @@ async function runScenario(browser, releaseOrder) {
     }
     if (p === "/api/preview") {
       const index = Number(url.searchParams.get("start"));
+      const count = Number(url.searchParams.get("count") || 1);
       return json({
         scene: url.searchParams.get("scene"),
         label: "Clip",
@@ -116,13 +117,11 @@ async function runScenario(browser, releaseOrder) {
         start: index,
         width: 1,
         height: 1,
-        items: [
-          {
-            index,
-            name: `frame_${index}.jpg`,
-            gt: { points: [{ x: 0, y: 0, label: "b001" }], rasters: [] },
-          },
-        ],
+        items: Array.from({length:count}, (_,offset) => ({
+          index: index + offset,
+          name: `frame_${index + offset}.jpg`,
+          gt: { points: [{ x: 0, y: 0, label: "b001" }], rasters: [] },
+        })),
         warnings: [],
       });
     }
@@ -134,6 +133,10 @@ async function runScenario(browser, releaseOrder) {
         "index.html",
         "app.js",
         "viewer.mjs",
+        "review.mjs",
+        "players.mjs",
+        "playback.mjs",
+        "play_intervals.mjs",
         "icons.mjs",
         "style.css",
       ].includes(file)

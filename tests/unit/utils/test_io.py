@@ -36,3 +36,35 @@ def test_relative_path_resolves_paths(tmp_path: Path) -> None:
     child.write_text("x", encoding="utf-8")
 
     assert relative_path(child, root) == "a/b.txt"
+
+
+def test_strict_atomic_artifact_json_keeps_previous_value_on_failure(
+    tmp_path: Path,
+) -> None:
+    from dataclasses import dataclass
+
+    import numpy as np
+    import pytest
+
+    from src.utils.io import json_value, load_json, write_json_atomic
+
+    @dataclass
+    class Record:
+        location: Path
+        samples: np.ndarray
+
+    path = tmp_path / "receipt.json"
+    record = Record(tmp_path, np.array([1, 2]))
+    write_json_atomic(path, {"record": record, "score": np.float32(0.5)})
+    expected = path.read_bytes()
+    assert load_json(path) == {
+        "record": {"location": str(tmp_path), "samples": [1, 2]},
+        "score": 0.5,
+    }
+    with pytest.raises(ValueError, match="JSON"):
+        write_json_atomic(path, {"invalid": np.nan})
+    with pytest.raises(TypeError, match="Unsupported"):
+        write_json_atomic(path, {"invalid": object()})
+    assert path.read_bytes() == expected
+    assert list(tmp_path.iterdir()) == [path]
+    assert json_value((np.int64(3),)) == [3]

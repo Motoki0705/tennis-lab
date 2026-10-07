@@ -47,6 +47,7 @@
         <section class="dataset-section">
           <h2>Datasets</h2>
           <nav id="datasets" aria-label="データセット一覧"></nav>
+          <button id="dataset-overview-open" class="overview-open" hidden>体系・内訳を見る</button>
         </section>
         <section class="scene-section">
           <div class="section-heading">
@@ -59,6 +60,20 @@
             placeholder="シーンを検索"
             aria-label="シーンを検索"
           />
+          <div id="ball-review-filters" class="review-filters" hidden>
+            <select id="source-filter" aria-label="データの出自"><option value="">Source: すべて</option></select>
+            <select id="split-filter" aria-label="データのsplit"><option value="">Split: すべて</option></select>
+            <select id="review-state-filter" aria-label="含まれる注釈状態"><option value="">注釈状態: すべて</option></select>
+          </div>
+          <select id="player-status-filter" aria-label="Player状態" hidden>
+            <option value="">Player: すべて</option>
+            <option value="approved">採用済み</option>
+            <option value="needs_review">要確認</option>
+            <option value="review_pending">レビュー待ち</option>
+            <option value="not_generated">未生成</option>
+            <option value="skipped">対象外</option>
+            <option value="failed">生成エラー</option>
+          </select>
           <nav id="scenes" aria-label="シーン一覧"></nav>
           <div class="pagination">
             <button
@@ -84,13 +99,15 @@
           <div>
             <p id="dataset-label" class="eyebrow">DATASET</p>
             <h1 id="scene-title">未選択</h1>
+            <p id="scene-review-meta" class="muted" hidden></p>
           </div>
           <span id="resolution" class="muted"></span>
         </header>
         <div class="view-toolbar">
           <div class="legend">
-            <span><i class="gt"></i>GT</span
+            <span><i class="gt"></i><span id="gt-legend-label">GT</span></span
             ><span id="pred-legend"><i class="pred"></i>Prediction</span>
+            <span id="ball-state-legend" hidden><i class="interpolated"></i>補間 <i class="estimated"></i>遮蔽推定</span>
           </div>
           <div class="view-actions">
             <button
@@ -177,13 +194,32 @@
           </select>
         </div>
         <section id="play-intervals" class="play-intervals" aria-label="プレイ区間の候補" hidden></section>
+        <div class="playback-status"><output id="actual-fps" aria-label="実測fps">実測 — fps</output><span id="buffer-status" role="status"></span></div>
+        <div id="review-jumps" class="review-jumps" hidden>
+          <label for="review-jump-state">注釈状態へ移動</label>
+          <select id="review-jump-state" aria-label="移動する注釈状態"></select>
+          <button id="review-jump-prev" aria-label="前の該当フレーム">前へ</button>
+          <button id="review-jump-next" aria-label="次の該当フレーム">次へ</button>
+          <output id="review-jump-count"></output>
+        </div>
         <div id="status" class="status" role="status">読み込み中...</div>
       </section>
       <aside class="inspector" aria-label="表示・推論設定">
+        <section id="frame-review-section" hidden>
+          <h2>現在のフレーム</h2>
+          <span id="frame-supervision" class="supervision-badge"></span>
+          <p id="frame-review-reason" class="review-reason"></p>
+          <div id="frame-point-kinds" class="point-kind-list"></div>
+          <p id="frame-stored-meta" class="muted"></p>
+          <details><summary>教師の読み方</summary>
+            <p class="muted">観測点（緑）は正例。補間（黄）・遮蔽推定（紫）は参考位置です。位置不明は座標がありません。いずれかが含まれるフレームは採点対象外です。</p>
+            <p class="muted">レビュー済みでボール不在・画面外は負例。未レビューは不在と判断せず、教師に使いません。</p>
+          </details>
+        </section>
         <section>
           <h2>Layers</h2>
           <label class="check"
-            ><span><i class="gt"></i>Ground Truth</span
+            ><span><i class="gt"></i><span id="gt-layer-label">Ground Truth</span></span
             ><input id="show-gt" type="checkbox" checked /></label
           ><label class="check" id="pred-toggle"
             ><span><i class="pred"></i>Prediction</span
@@ -204,6 +240,24 @@
               step="0.05"
           /></label>
           <div id="raster-legend"></div>
+        </section>
+        <section id="player-settings" hidden>
+          <h2>Player pose / Tracking</h2>
+          <label class="field">データセット<select id="player-dataset"><option value="">なし</option></select></label>
+          <p id="player-dataset-errors" class="muted" role="status" hidden></p>
+          <p id="player-dataset-scope" class="muted"></p>
+          <label class="field">表示する結果<select id="player-mode">
+            <option value="reviewed">採用済み（選手ID）</option>
+            <option value="raw">生成結果（全人物・raw ID）</option>
+          </select></label>
+          <p id="player-status" class="muted" role="status"></p>
+          <label class="check">選手を表示<input id="show-players" type="checkbox" checked /></label>
+          <label class="check">姿勢<input id="show-pose" type="checkbox" checked /></label>
+          <label class="check">人物枠<input id="show-boxes" type="checkbox" checked /></label>
+          <label class="check">ID（P: 選手 / R: raw）<input id="show-identities" type="checkbox" checked /></label>
+          <label class="check">移動軌跡<input id="show-trails" type="checkbox" checked /></label>
+          <p class="muted">姿勢はモデル推定。IDはクリップ内の対応です。軌跡は人物枠の下辺中央、最大20コマ。</p>
+          <p class="muted">小さい選手は骨格線を優先し、拡大すると顔・関節点も表示します。</p>
         </section>
         <section id="inference-settings">
           <h2>Inference</h2>
@@ -254,6 +308,10 @@
       </aside>
     </main>
     <dialog id="statistics-dialog" aria-label="データセット統計"></dialog>
+    <dialog id="dataset-overview" aria-labelledby="dataset-overview-title">
+      <div class="overview-heading"><h1 id="dataset-overview-title">データセット体系</h1><button id="dataset-overview-close" aria-label="データセット概要を閉じる">閉じる</button></div>
+      <div id="dataset-overview-content"></div>
+    </dialog>
     <script type="module" src="/static/app.js"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@ import json
 import threading
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 import torch
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
@@ -69,6 +69,49 @@ class InferenceRequest(BaseModel):
     device: Literal["cuda", "cpu"] = "cuda"
 
 
+class BallReviewBackend(Protocol):
+    def review(self, scene: str) -> dict[str, Any]: ...
+
+    def player_preview(
+        self,
+        scene: str,
+        dataset: str,
+        start: int = 0,
+        count: int = 1,
+        mode: str = "reviewed",
+    ) -> dict[str, Any]: ...
+
+    def scenes(
+        self,
+        dataset: str,
+        search: str = "",
+        offset: int = 0,
+        limit: int = 100,
+        checkpoint: str | None = None,
+        *,
+        player_dataset: str | None = None,
+        player_status: str = "",
+        source: str = "",
+        split: str = "",
+        review_state: str = "",
+    ) -> dict[str, Any]: ...
+
+
+class CourtReviewBackend(Protocol):
+    def annotation(self, scene: str) -> dict[str, object]: ...
+
+    def scenes(
+        self,
+        dataset: str,
+        search: str = "",
+        offset: int = 0,
+        limit: int = 100,
+        checkpoint: str | None = None,
+        *,
+        sample_state: str = "",
+    ) -> dict[str, Any]: ...
+
+
 def create_detection_app(
     service: DetectionBackend,
     *,
@@ -84,6 +127,14 @@ def create_detection_app(
         TrustedHostMiddleware,
         allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"],
     )
+    if task == "court_detection":
+        from src.tasks.court_detection.visualization.review.web import (
+            install_review_routes,
+        )
+
+        install_review_routes(
+            app, lambda scene: cast(CourtReviewBackend, service).annotation(scene)
+        )
     inference_lock = threading.Lock()
     if review_router is not None:
         app.include_router(review_router)
@@ -122,7 +173,16 @@ def create_detection_app(
 
     @app.get("/static/{name}")
     def static(name: str) -> FileResponse:
-        if name not in {"app.js", "viewer.mjs", "style.css", "icons.mjs", "play_intervals.mjs"}:
+        if name not in {
+            "app.js",
+            "viewer.mjs",
+            "style.css",
+            "icons.mjs",
+            "playback.mjs",
+            "players.mjs",
+            "review.mjs",
+            "play_intervals.mjs",
+        }:
             raise HTTPException(404)
         return FileResponse(
             STATIC / name,
@@ -146,8 +206,57 @@ def create_detection_app(
         offset: int = Query(0, ge=0),
         limit: int = Query(100, ge=1, le=200),
         checkpoint: str | None = None,
+        player_dataset: str | None = None,
+        player_status: str = "",
+        source: str = "",
+        split: str = "",
+        review_state: str = "",
+        sample_state: str = "",
     ) -> dict[str, Any]:
+        if sample_state:
+            if task != "court_detection":
+                raise ValueError("Court sample filters require court_detection")
+            if player_dataset or player_status or source or split or review_state:
+                raise ValueError("Ball review filters require ball_detection")
+            return cast(CourtReviewBackend, service).scenes(
+                dataset, search, offset, limit, checkpoint, sample_state=sample_state
+            )
+        if player_dataset or player_status or source or split or review_state:
+            if task != "ball_detection":
+                raise ValueError("Ball review filters require ball_detection")
+            return cast(BallReviewBackend, service).scenes(
+                dataset,
+                search,
+                offset,
+                limit,
+                checkpoint,
+                player_dataset=player_dataset,
+                player_status=player_status,
+                source=source,
+                split=split,
+                review_state=review_state,
+            )
         return service.scenes(dataset, search, offset, limit, checkpoint)
+
+    @app.get("/api/players")
+    def players(
+        scene: str,
+        dataset: str,
+        start: int = Query(0, ge=0),
+        count: int = Query(1, ge=1, le=64),
+        mode: Literal["reviewed", "raw"] = "reviewed",
+    ) -> dict[str, Any]:
+        if task != "ball_detection":
+            raise HTTPException(404)
+        return cast(BallReviewBackend, service).player_preview(
+            scene, dataset, start, count, mode
+        )
+
+    @app.get("/api/review")
+    def review(scene: str) -> dict[str, Any]:
+        if task != "ball_detection":
+            raise HTTPException(404)
+        return cast(BallReviewBackend, service).review(scene)
 
     @app.get("/api/preview")
     def preview(

@@ -1,0 +1,24 @@
+gan:
+  enabled: false
+  schedule_enabled: false
+  target_weight: 1.0
+  transition:
+    start_step: 500
+    start_epoch: ${refiner_epoch_index:${training.gan.transition.start_step},${training.evaluate_every}}
+  warmup_steps: 1000
+  discriminator:
+    name: trajectory_transformer
+    hidden_dim: ${model.width}
+    num_layers: 4
+    num_heads: ${model.heads}
+    ffn_dim: ${model.ffn_dim}
+    ffn_type: swiglu
+    dropout: 0.1
+    rope_dim: ${model.rope_dim}
+    rope_theta: ${model.rope_theta}
+    max_seq_len: ${model.window_length}
+    invalid_init_std: 0.02
+    cls_init_std: 0.02
+  generator_gradient_clip_val: ${training.gradient_clip}
+  discriminator_gradient_clip_val: ${training.gradient_clip}
+  warmup_epochs: ${refiner_epochs:${training.gan.warmup_steps},${training.evaluate_every}}

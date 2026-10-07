@@ -130,6 +130,12 @@ def test_pose_subset_uses_verified_snapshot_and_refreshes_approvals(pose_source)
     assert proposal["frames"] == 40 and proposal["pose_approved"]
     assert proposal["play"] == ((0, 40),)
     assert service.preview(f"{dataset}::approved")["frames"] == 40
+    overview = service.dataset_catalog.overview(dataset)
+    assert overview["clips"] == 1 and overview["counts"]["frames"] == 40
+    assert overview["point_counts"]["observed"] == 40
+    assert overview["selection"]["parent_clips"] == 2
+    assert service.scenes(dataset, source="tracknet", review_state="observed")["total"] == 1
+    assert service.review(f"{dataset}::approved")["positions"]["observed"] == list(range(40))
     assert service.play_intervals("store/live::approved")["frames"] == 80
     with pytest.raises(ValueError, match="Unknown scene"):
         service.play_intervals(f"{dataset}::skipped")
@@ -166,6 +172,7 @@ def test_invalid_pose_snapshot_is_unavailable_without_live_fallback(pose_source,
         catalog = service.catalog()
         entry = next(d for d in catalog["datasets"] if d["id"] == "pose-approved/poses")
         assert not entry["available"] and entry["reason"]
-        assert service.scenes("pose-approved/poses")["items"] == []
+        with pytest.raises(ValueError):
+            service.scenes("pose-approved/poses")
         with pytest.raises(ValueError, match="Unknown scene"):
             service.play_intervals("pose-approved/poses::approved")

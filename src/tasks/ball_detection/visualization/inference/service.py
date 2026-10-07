@@ -28,6 +28,7 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
+from src.tasks.ball_detection.data.store import SOURCES, SPLIT_CODES
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.ball_detection.visualization.inference.loader import (
     LoadedBallModel,
@@ -59,6 +60,8 @@ from src.tasks.ball_detection.visualization.review.datasets import (
 from src.tasks.ball_detection.visualization.review.play_intervals import (
     review_play_intervals,
 )
+from src.tasks.ball_detection.visualization.review.players import PlayerCatalog
+from src.tasks.ball_detection.visualization.review.quality import REVIEW_FILTERS
 from src.utils.device import DeviceSelectionError, resolve_device
 
 TASK: Final = TASK_NAME
@@ -130,6 +133,7 @@ class DetectionService:
             self.data_root, play_poses=Path(play_poses).resolve() if play_poses is not None else None,
             project_root=self.project_root,
         )
+        self.player_catalog = PlayerCatalog(self.data_root, self.project_root)
         self._checkpoint_cache: dict[str, BallCheckpointInfo] | None = None
 
     # ------------------------------------------------------------- catalog
@@ -153,6 +157,7 @@ class DetectionService:
         a dataset that became unavailable must keep reporting its reason.
         """
         self.dataset_catalog.refresh()
+        self.player_catalog = PlayerCatalog(self.data_root, self.project_root)
         self._checkpoint_cache = self._scan_checkpoints()
         entries = self.dataset_catalog.entries()
         warnings: list[str] = []
@@ -174,6 +179,7 @@ class DetectionService:
             "title": TITLE,
             "datasets": datasets,
             "checkpoints": checkpoints,
+            "player_datasets": self.player_catalog.discover(),
             "warnings": warnings,
         }
 
@@ -212,6 +218,12 @@ class DetectionService:
         offset: int = 0,
         limit: int = 100,
         checkpoint: str | None = None,
+        *,
+        player_dataset: str | None = None,
+        player_status: str = "",
+        source: str = "",
+        split: str = "",
+        review_state: str = "",
     ) -> dict[str, Any]:
         """Return one page of scenes for a dataset, optionally filtered."""
         spec = self._spec(dataset)
@@ -219,6 +231,13 @@ class DetectionService:
             raise DetectionRequestError("offset must be non-negative.")
         if limit <= 0:
             raise DetectionRequestError("limit must be positive.")
+        for name, value, allowed in (
+            ("source", source, SOURCES),
+            ("split", split, tuple(SPLIT_CODES)),
+            ("review_state", review_state, REVIEW_FILTERS),
+        ):
+            if value and value not in allowed:
+                raise DetectionRequestError(f"Unknown {name}: {value!r}")
         if checkpoint is not None:
             info = self._checkpoint(checkpoint)
             if dataset not in self._compatible_datasets(
@@ -241,8 +260,57 @@ class DetectionService:
             refs = [
                 ref for ref in refs if self._scene_supports_checkpoint(ref, info)
             ]
+        store = self.dataset_catalog.store(dataset)
+        review = self.dataset_catalog.review(dataset)
+        refs = [
+            ref for ref in refs
+            if (not source or store.clip_by_id(ref.clip_id).source == source)
+            and (not split or store.clip_by_id(ref.clip_id).split == split)
+            and (not review_state or review.summary(store.clip_by_id(ref.clip_id))["counts"][review_state] > 0)
+        ]
+        player_source = self.player_catalog.source(player_dataset) if player_dataset else None
+        if player_status:
+            if player_source is None:
+                raise DetectionRequestError(
+                    "Select a player dataset before filtering its status"
+                )
+            refs = [ref for ref in refs if player_source.status(ref.clip_id)["status"] == player_status]
         window = refs[offset : offset + limit]
-        return {"items": [ref.to_dict() for ref in window], "total": len(refs)}
+        return {
+            "items": [
+                {
+                    **ref.to_dict(),
+                    "review": review.summary(store.clip_by_id(ref.clip_id)),
+                    **({"player_status": player_source.status(ref.clip_id)} if player_source else {}),
+                }
+                for ref in window
+            ],
+            "total": len(refs),
+        }
+
+    def review(self, scene: str) -> dict[str, Any]:
+        """Return clip composition and jump targets from stored annotation rows."""
+        resolved = self._resolve_scene(scene)
+        store = self.dataset_catalog.store(resolved.ref.dataset_id)
+        clip = store.clip_by_id(resolved.ref.clip_id)
+        review = self.dataset_catalog.review(resolved.ref.dataset_id)
+        return {
+            "scene": resolved.ref.id,
+            **review.summary(clip),
+            "positions": review.positions(clip),
+        }
+
+    def player_preview(
+        self, scene: str, dataset: str, start: int = 0,
+        count: int = 1, mode: str = "reviewed",
+    ) -> dict[str, Any]:
+        """Return reviewed or raw observations, joined to the selected RGB clip."""
+        dataset_id, local_id = split_scene_id(scene)
+        ref = self.dataset_catalog.scene_ref(dataset_id, local_id)
+        payload: dict[str, Any] = self.player_catalog.preview(
+            dataset, self.dataset_catalog.store(dataset_id), ref.clip_id, start, count, mode,
+        )
+        return payload
 
     @staticmethod
     def _scene_supports_checkpoint(
@@ -255,7 +323,7 @@ class DetectionService:
 
     def play_intervals(self, scene: str) -> dict[str, Any]:
         """Return CPU-only proposals on exactly the selected scene timeline."""
-        return review_play_intervals(self.dataset_catalog, scene)
+        return dict(review_play_intervals(self.dataset_catalog, scene))
 
     def preview(self, scene: str, start: int = 0, count: int = 1) -> dict[str, Any]:
         """Return original-size ground truth for a bounded frame range."""
@@ -268,8 +336,12 @@ class DetectionService:
         self._check_range(start, count, frames=frames, label="preview")
         warnings: list[str] = []
         width, height = resolved.frames.original_size(start)
+        store = self.dataset_catalog.store(resolved.ref.dataset_id)
+        clip = store.clip_by_id(resolved.ref.clip_id)
+        review = self.dataset_catalog.review(resolved.ref.dataset_id)
         items: list[dict[str, Any]] = []
         for index in range(start, start + count):
+            warning_start = len(warnings)
             size = resolved.frames.original_size(index)
             if size != (width, height):
                 warnings.append(
@@ -293,6 +365,8 @@ class DetectionService:
                     },
                     "annotated": resolved.frames.annotated(index),
                     "supervised": resolved.frames.supervised(index),
+                    "review": review.frame(clip, index),
+                    "warnings": warnings[warning_start:],
                 }
             )
         return {
@@ -331,15 +405,7 @@ class DetectionService:
             raise DetectionRequestError(
                 f"frame {frame} is out of range [0, {frames - 1}]."
             )
-        rgb = resolved.frames.read_rgb(frame)
-        ok, buffer = cv2.imencode(
-            ".jpg",
-            cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
-            [int(cv2.IMWRITE_JPEG_QUALITY), 90],
-        )
-        if not ok:
-            raise RuntimeError(f"Failed to encode frame {frame} of scene {scene!r}.")
-        return bytes(buffer.tobytes())
+        return resolved.frames.read_jpeg(frame)
 
     # ----------------------------------------------------------- inference
 

@@ -1,0 +1,1490 @@
+diff --git a/src/tasks/ball_refiner/configs/model/coordinate_transformer.yaml b/src/tasks/ball_refiner/configs/model/coordinate_transformer.yaml
+new file mode 100644
+index 000000000..b2f6c1a5d
+--- /dev/null
++++ b/src/tasks/ball_refiner/configs/model/coordinate_transformer.yaml
+@@ -0,0 +1,12 @@
++dimensions: 2
++architecture: regression
++width: 256
++layers: 8
++heads: 4
++dropout: 0.05
++window_length: 128
++flow_steps: 16
++# default_ffn_dim(256): 8/3 expansion, rounded up to a multiple of 64.
++ffn_dim: 704
++rope_dim: 64
++rope_theta: 10000.0
+diff --git a/src/tasks/ball_refiner/configs/train_coordinates.yaml b/src/tasks/ball_refiner/configs/train_coordinates.yaml
+index 382420c31..cb1552976 100644
+--- a/src/tasks/ball_refiner/configs/train_coordinates.yaml
++++ b/src/tasks/ball_refiner/configs/train_coordinates.yaml
+@@ -1,4 +1,6 @@
+ defaults:
++  - model: coordinate_transformer
++  - training: coordinate_gan
+   - _self_
+   - override hydra/job_logging: disabled
+   - override hydra/hydra_logging: disabled
+@@ -19,24 +21,14 @@ data:
+ 
+ corruption:
+   event_probability: 0.5
+-  isolated_probability: 0.04
++  isolated_probability: 0.0
+   gap_min: 3
+   gap_max: 10
+-  noise_p95_px: 200.0
+-  jitter_sigma_px: 3.0
+-  outlier_probability: 0.1
++  noise_p95_px: 0.0
++  jitter_sigma_px: 0.0
++  outlier_probability: 0.0
+   triangulation_steps: 3
+ 
+-model:
+-  dimensions: 2
+-  architecture: regression
+-  width: 96
+-  layers: 4
+-  heads: 4
+-  dropout: 0.05
+-  window_length: 128
+-  flow_steps: 16
+-
+ compile:
+   enabled: false
+   backend: inductor
+@@ -44,18 +36,6 @@ compile:
+   fullgraph: false
+   dynamic: false
+ 
+-training:
+-  steps: 4000
+-  batch_size: 32
+-  learning_rate: 0.0003
+-  weight_decay: 0.01
+-  gradient_clip: 1.0
+-  evaluate_every: 500
+-  log_every: 100
+-  gan_weight: 0.002
+-  gan_warmup_steps: 500
+-  cpu_threads: 2
+-
+ run:
+   output_dir: ${tennis_output:ball_refiner,train,coordinates,${tennis_run_id:}}
+   seed: 42
+diff --git a/src/tasks/ball_refiner/configs/training/coordinate_gan.yaml b/src/tasks/ball_refiner/configs/training/coordinate_gan.yaml
+new file mode 100644
+index 000000000..f5d335322
+--- /dev/null
++++ b/src/tasks/ball_refiner/configs/training/coordinate_gan.yaml
+@@ -0,0 +1,30 @@
++steps: 4000
++batch_size: 32
++learning_rate: 0.0003
++weight_decay: 0.01
++gradient_clip: 1.0
++evaluate_every: 500
++log_every: 100
++cpu_threads: 2
++
++# BLCS-style pure-supervised phase, linear GAN warmup, then constant target.
++# This runner counts generator updates rather than dataset epochs.
++gan:
++  enabled: true
++  target_weight: 2.0
++  transition:
++    start_step: 500
++  warmup_steps: 1000
++  discriminator:
++    name: trajectory_transformer
++    hidden_dim: ${model.width}
++    num_layers: 4
++    num_heads: ${model.heads}
++    ffn_dim: ${model.ffn_dim}
++    ffn_type: swiglu
++    dropout: 0.1
++    rope_dim: ${model.rope_dim}
++    rope_theta: ${model.rope_theta}
++    max_seq_len: ${model.window_length}
++    invalid_init_std: 0.02
++    cls_init_std: 0.02
+diff --git a/src/tasks/ball_refiner/coordinates/README.md b/src/tasks/ball_refiner/coordinates/README.md
+index f6762a8cf..47a564e11 100644
+--- a/src/tasks/ball_refiner/coordinates/README.md
++++ b/src/tasks/ball_refiner/coordinates/README.md
+@@ -2,10 +2,24 @@
+ 
+ [#991](https://github.com/Motoki0705/tennis-lab/issues/991)・[#1014](https://github.com/Motoki0705/tennis-lab/issues/1014)の実装。
+ モデルは**座標時系列と欠損maskだけ**を受け、観測区間も含む全frameの座標を1本返す。
+-offlineの双方向Transformerを共通にし、2Dは直接回帰、3Dは直接回帰／x0予測のconditional flow matchingを比較する。
+-回帰は全frameの復元損失に、任意のconditional LSGAN補助を加える。
++offlineの双方向RoPE Transformerを共通にし、2Dは直接回帰、3Dは直接回帰／x0予測のconditional flow matchingを比較する。
++回帰は全frameのSmooth L1復元損失に、任意の軌道のみを判別するLSGAN補助を加える。
+ GANの有効性は比較で判断し、平均化の回避を保証しない。
+ 
++## モデル構成
++
++| 場所 | 責務 |
++|---|---|
++| `models/generators/transformer.py` | 共通componentsのTransformerBlock・RoPE・RMSNorm・SwiGLUによる全frame生成 |
++| `models/discriminators/` | BLCS/PLCS共通のTransformerSequenceDiscriminatorを構築。座標だけを入力しCLSから系列ごとに1スコア |
++| `models/legacy.py` | v1のsinusoidalモデルを保存済みcheckpointから明示的に復元 |
++| [`configs/model/coordinate_transformer.yaml`](../configs/model/coordinate_transformer.yaml) | Generatorの幅・深さ・FFN・RoPEの正本 |
++| [`configs/training/coordinate_gan.yaml`](../configs/training/coordinate_gan.yaml) | 学習条件・GANの開始/線形増加・Discriminatorの正本 |
++
++Generatorは座標と欠損mask、Discriminatorは生成/GT座標 `(B,T,D)` だけを受け取る。
++Discriminatorには観測座標、欠損mask、速度・加速度特徴を渡さず、復元した全時刻を有効tokenとして扱う。
++Flowは同じGenerator backboneを使用するがGANと併用せず、独立した比較方式として残す。
++
+ 共通データ、学習済み重み、拡張前後をブラウザで比較する場合は
+ [2D / 3D Dataset Review](review/README.md)を参照。
+ 
+@@ -36,7 +50,7 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python \
+ 
+ - bounce／shotをイベント単位で選択し、左右の幅を異ならせた連続欠損を作る。重複区間は和集合、端はclip境界で切る。
+ - 選択イベントの欠損はcamera間で同期させ、3Dにも実際の連続欠損を作る。残りの観測frameの離散欠損はcameraごとに独立。
+-- 小さな定位jitterと大きな誤検出の混合分布を使い、1280×720での非欠損frame全体の距離誤差P95を規定する。画面端でnoiseをclipしない。
++- 既定はイベント連続欠損のみで、jitter・外れ値・離散欠損は0。ノイズを使う比較ではjitter/外れ値混合の非欠損frame全体の距離誤差P95を規定する。ノイズ無効時はP95・jitter・外れ値率を全て0にし、混在指定は拒否する。
+ - 3D入力は同じ劣化済み2Dを既存のmulti-view DLT＋再投影最小化へ渡して作る。2視点未満・退化・負depthは欠損とし、3D真値から入力を作らない。
+ - 学習の劣化は一定更新間隔で再生成する。評価は学習側のイベント選択率に依存しない固定seed／率を使い、モデル間で入力hashを照合できる。
+ 
+@@ -51,14 +65,22 @@ GPU学習は必ず[共有training queue](../../../../.agents/skills/training-que
+ 
+ ```bash
+ .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates \
+-  model.dimensions=3 model.architecture=flow training.gan_weight=0
++  model.dimensions=3 model.architecture=flow training.gan.enabled=false
+ ```
+ 
+-事前宣言したイベント選択率3条件×〔2D回帰/GAN、3D回帰/GAN/Flow〕の15条件は
+-[比較用queue登録script](../../../../tests/benchmarks/ball_refiner_coordinates.sh)で同一seed・更新予算を登録する。
++2D/3DのGAN各1本は [queue登録script](../../../../tests/benchmarks/ball_refiner_rope_gan.sh) を使う。
++イベント選択率3条件×〔2D回帰/GAN、3D回帰/GAN/Flow〕の追加比較は
++[比較用queue登録script](../../../../tests/benchmarks/ball_refiner_coordinates.sh)で現在の設定に対して登録する。
++過去の15条件は当時のknowledge/repro bundleの設定を使い、現在の既定で再現したとは扱わない。
+ 同時学習時の推論時間はGPU競合の影響を受けるため、性能報告では単独GPU計測を別に行う。
+ compileは設定で明示する。この比較の既定はeager実行。
+ 
++`training.gan.transition.start_step` 回の更新を座標lossのみで行った後、
++`warmup_steps` 回でGAN係数を `target_weight` まで線形に増やす。
++BLCS/PLCSのepochスケジュールと同じ共通関数を更新回数に適用する。
++G/DともAdamWを使い、GAN有効期間はD1回/G1回。Gの学習率だけ全学習期間でcosine減衰する。
++TensorBoardとJSONLへ復元loss、生GAN loss、重み付きGAN loss、合計、実際の係数を記録する。
++
+ validationの全frame RMSEでcheckpointを選び、その後だけtestを評価する。
+ `outputs/ball_refiner/train/<条件>/<run>/` に設定・劣化監査・TensorBoard・best/last checkpointと
+ `predictions/{pred_test.npz,metrics.json,diagnostic_metrics.json,examples.png}` を保存する。
+@@ -79,7 +101,8 @@ Flowは明示seedから1本だけ生成し、複数sampleの平均や正解に
+ 
+ `detection.heatmaps_to_coordinates()` はheatmapの最大点を座標化し、scoreは捨てる。
+ 検出器由来の欠損maskは呼び出し元から明示する。
+-既存のGMM checkpointとは別schemaで、読み替え・自動fallbackをしない。
++RoPEモデルはv2 schemaで保存する。v1座標モデルは専用legacy classから復元し、設定や重みを新構造へ読み替えない。
++既存のGMM checkpointとは別schemaで、自動fallbackをしない。
+ 旧scene pipelineの配布モデル切替は、この合成比較の自動的な結果とはしない。
+ 
+ NPZ入力は `coordinates`, `missing`, `fps`、2Dの場合は追加で `image_size_wh` を持つ。
+diff --git a/src/tasks/ball_refiner/coordinates/config.py b/src/tasks/ball_refiner/coordinates/config.py
+index f47969215..4e08e98f4 100644
+--- a/src/tasks/ball_refiner/coordinates/config.py
++++ b/src/tasks/ball_refiner/coordinates/config.py
+@@ -47,16 +47,19 @@ class CorruptionConfig:
+             raise ValueError("Missingness probabilities must be in [0,1]")
+         if not 1 <= self.gap_min < self.gap_max:
+             raise ValueError("Require distinct positive left/right gap widths")
+-        if not 0.05 < self.outlier_probability < 1:
++        if self.noise_p95_px == 0:
++            if self.jitter_sigma_px != 0 or self.outlier_probability != 0:
++                raise ValueError("Zero noise requires zero jitter and zero outlier probability")
++        elif not 0.05 < self.outlier_probability < 1:
+             raise ValueError("Outlier probability must exceed 5% for the specified P95 mixture")
+-        if not 0 <= self.jitter_sigma_px < self.noise_p95_px / 5:
++        elif not 0 <= self.jitter_sigma_px < self.noise_p95_px / 5:
+             raise ValueError("Jitter must be small relative to the positive noise P95")
+         if self.triangulation_steps < 0:
+             raise ValueError("triangulation_steps must be nonnegative")
+ 
+ 
+ @dataclass(frozen=True)
+-class ModelConfig:
++class LegacyModelConfig:
+     dimensions: int
+     architecture: str
+     width: int
+@@ -77,6 +80,64 @@ class ModelConfig:
+             raise ValueError("Invalid temporal model configuration")
+ 
+ 
++@dataclass(frozen=True)
++class ModelConfig(LegacyModelConfig):
++    ffn_dim: int
++    rope_dim: int
++    rope_theta: float
++
++    def __post_init__(self) -> None:
++        super().__post_init__()
++        if self.ffn_dim < 1 or self.rope_dim < 2 or self.rope_dim % 2 or self.rope_dim > self.width // self.heads or self.rope_theta <= 0:
++            raise ValueError("Invalid FFN or RoPE dimensions")
++
++
++@dataclass(frozen=True)
++class DiscriminatorConfig:
++    name: str
++    hidden_dim: int
++    num_layers: int
++    num_heads: int
++    ffn_dim: int
++    dropout: float
++    rope_dim: int
++    rope_theta: float
++    ffn_type: str
++    max_seq_len: int
++    invalid_init_std: float
++    cls_init_std: float
++
++    def __post_init__(self) -> None:
++        if self.name != "trajectory_transformer" or self.ffn_type != "swiglu":
++            raise ValueError("Require trajectory_transformer with swiglu")
++        if min(self.hidden_dim, self.num_heads, self.num_layers, self.ffn_dim, self.max_seq_len) < 1 or self.hidden_dim % self.num_heads:
++            raise ValueError("Invalid discriminator dimensions")
++        if self.rope_dim < 2 or self.rope_dim % 2 or self.rope_dim > self.hidden_dim // self.num_heads or self.rope_theta <= 0:
++            raise ValueError("Invalid discriminator RoPE configuration")
++        if not 0 <= self.dropout < 1 or min(self.invalid_init_std, self.cls_init_std) < 0:
++            raise ValueError("Invalid discriminator dropout or initialization")
++
++
++@dataclass(frozen=True)
++class GANConfig:
++    enabled: bool
++    target_weight: float
++    start_step: int
++    warmup_steps: int
++
++    def __post_init__(self) -> None:
++        if self.target_weight < 0 or self.start_step < 0 or self.warmup_steps < 1:
++            raise ValueError("Invalid GAN target or transition schedule")
++        if self.enabled and self.target_weight == 0:
++            raise ValueError("Enabled GAN requires positive target_weight")
++
++
++def parse_gan(raw: dict[str, Any]) -> tuple[GANConfig, DiscriminatorConfig]:
++    if set(raw) != {"enabled", "target_weight", "transition", "warmup_steps", "discriminator"} or set(raw["transition"]) != {"start_step"}:
++        raise ValueError("Require explicit GAN transition and discriminator configuration")
++    return parse_section(GANConfig, {key: raw[key] for key in ("enabled", "target_weight", "warmup_steps")} | raw["transition"]), parse_section(DiscriminatorConfig, raw["discriminator"])
++
++
+ @dataclass(frozen=True)
+ class TrainingConfig:
+     steps: int
+@@ -86,14 +147,12 @@ class TrainingConfig:
+     gradient_clip: float
+     evaluate_every: int
+     log_every: int
+-    gan_weight: float
+-    gan_warmup_steps: int
+     cpu_threads: int
+ 
+     def __post_init__(self) -> None:
+         if min(self.steps, self.batch_size, self.evaluate_every, self.log_every, self.cpu_threads) < 1:
+             raise ValueError("Training counts must be positive")
+-        if min(self.learning_rate, self.gradient_clip) <= 0 or min(self.weight_decay, self.gan_weight, self.gan_warmup_steps) < 0:
++        if min(self.learning_rate, self.gradient_clip) <= 0 or self.weight_decay < 0:
+             raise ValueError("Invalid optimizer/GAN settings")
+ 
+ 
+@@ -110,10 +169,15 @@ def training_config(config: DictConfig) -> tuple[dict[str, Any], Path, Path]:
+     raw, resolver = resolved_config(config, {"paths", "data", "corruption", "model", "training", "run", "compile"})
+     CompileConfig.from_mapping(raw["compile"])
+     model = parse_section(ModelConfig, raw["model"])
+-    train = parse_section(TrainingConfig, raw["training"])
++    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key != "gan"})
++    gan, discriminator = parse_gan(raw["training"]["gan"])
+     parse_section(CorruptionConfig, raw["corruption"])
+-    if model.architecture == "flow" and train.gan_weight:
++    if model.architecture == "flow" and gan.enabled:
+         raise ValueError("GAN is only used by the direct regression comparison")
++    if gan.enabled and gan.start_step + gan.warmup_steps > train.steps:
++        raise ValueError("GAN transition and warmup must reach target within training.steps")
++    if discriminator.hidden_dim != model.width or discriminator.max_seq_len != model.window_length:
++        raise ValueError("Discriminator width/window must match the generator")
+     if set(raw["data"]) != {"dataset", "evaluation_event_probability", "evaluation_seed"}:
+         raise ValueError("Invalid data configuration")
+     if not 0 <= raw["data"]["evaluation_event_probability"] <= 1:
+diff --git a/src/tasks/ball_refiner/coordinates/corruption.py b/src/tasks/ball_refiner/coordinates/corruption.py
+index 448752acf..2f384e0dc 100644
+--- a/src/tasks/ball_refiner/coordinates/corruption.py
++++ b/src/tasks/ball_refiner/coordinates/corruption.py
+@@ -33,6 +33,8 @@ def coordinate_noise(shape: tuple[int, ...], config: CorruptionConfig, rng: np.r
+     function exactly for the broad component at R=config.noise_p95_px.
+     """
+     radius = config.noise_p95_px
++    if radius == 0:
++        return np.zeros((*shape, 2), dtype=np.float32)
+     small_tail = np.exp(-0.5 * (radius / config.jitter_sigma_px) ** 2) if config.jitter_sigma_px else 0.0
+     broad_tail = (0.05 - (1 - config.outlier_probability) * small_tail) / config.outlier_probability
+     broad_sigma = radius / np.sqrt(-2 * np.log(broad_tail))
+diff --git a/src/tasks/ball_refiner/coordinates/evaluation.py b/src/tasks/ball_refiner/coordinates/evaluation.py
+index 8aa335534..7c07b9ec8 100644
+--- a/src/tasks/ball_refiner/coordinates/evaluation.py
++++ b/src/tasks/ball_refiner/coordinates/evaluation.py
+@@ -11,8 +11,10 @@ import torch
+ from numpy.typing import NDArray
+ 
+ from src.tasks.ball_refiner.coordinates.data import PreparedRally, normalization
+-from src.tasks.ball_refiner.coordinates.inference import predict_normalized
+-from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
++from src.tasks.ball_refiner.coordinates.inference import (
++    RefinerModel,
++    predict_normalized,
++)
+ 
+ 
+ def event_neighborhood(events: np.ndarray, radius: int = 5) -> NDArray[np.bool_]:
+@@ -45,7 +47,7 @@ def linear_baseline(coordinates: np.ndarray, missing: np.ndarray) -> np.ndarray:
+     return result
+ 
+ 
+-def evaluate(model: CoordinateRefiner, data: list[PreparedRally], device: torch.device, *, seed: int, batch_size: int) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
++def evaluate(model: RefinerModel, data: list[PreparedRally], device: torch.device, *, seed: int, batch_size: int) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
+     predictions: list[np.ndarray] = []
+     targets: list[np.ndarray] = []
+     masks: list[np.ndarray] = []
+diff --git a/src/tasks/ball_refiner/coordinates/inference.py b/src/tasks/ball_refiner/coordinates/inference.py
+index 8847635cd..06162d6c5 100644
+--- a/src/tasks/ball_refiner/coordinates/inference.py
++++ b/src/tasks/ball_refiner/coordinates/inference.py
+@@ -10,27 +10,40 @@ import numpy as np
+ import torch
+ from torch import Tensor
+ 
+-from src.tasks.ball_refiner.coordinates.config import ModelConfig, parse_section
++from src.tasks.ball_refiner.coordinates.config import (
++    LegacyModelConfig,
++    ModelConfig,
++    parse_section,
++)
+ from src.tasks.ball_refiner.coordinates.data import normalization
+ from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner, validate_input
++from src.tasks.ball_refiner.coordinates.models.legacy import LegacyCoordinateRefiner
+ from src.tasks.ball_refiner.data.temporal import window_owners, window_starts
+ 
+-CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v1"
++CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v2"
++LEGACY_CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v1"
++RefinerModel = CoordinateRefiner | LegacyCoordinateRefiner
+ 
+ 
+-def load_checkpoint(path: Path, device: torch.device) -> tuple[CoordinateRefiner, dict[str, Any]]:
++def checkpoint_model_config(payload: dict[str, Any]) -> ModelConfig | LegacyModelConfig:
++    if payload["schema"] == CHECKPOINT_SCHEMA:
++        return parse_section(ModelConfig, payload["model_config"])
++    if payload["schema"] == LEGACY_CHECKPOINT_SCHEMA:
++        return parse_section(LegacyModelConfig, payload["model_config"])
++    raise ValueError("Expected a coordinate refiner checkpoint; a legacy GMM bundle is incompatible")
++
++
++def load_checkpoint(path: Path, device: torch.device) -> tuple[RefinerModel, dict[str, Any]]:
+     payload = torch.load(path, map_location="cpu", weights_only=True)
+-    if payload["schema"] != CHECKPOINT_SCHEMA:
+-        raise ValueError("Expected a coordinate refiner checkpoint; a legacy GMM bundle is incompatible")
+-    config = parse_section(ModelConfig, payload["model_config"])
+-    model = CoordinateRefiner(config)
++    config = checkpoint_model_config(payload)
++    model: RefinerModel = CoordinateRefiner(config) if isinstance(config, ModelConfig) else LegacyCoordinateRefiner(config)
+     model.load_state_dict(payload["model"], strict=True)
+     model.to(device).eval()
+     return model, payload
+ 
+ 
+ @torch.no_grad()  # type: ignore[untyped-decorator]
+-def predict_normalized(model: CoordinateRefiner, coordinates: Tensor, missing: Tensor, *, batch_size: int, seed: int) -> Tensor:
++def predict_normalized(model: RefinerModel, coordinates: Tensor, missing: Tensor, *, batch_size: int, seed: int) -> Tensor:
+     """V,T,D -> V,T,D. Real windows, nearest-center ownership, no mode averaging."""
+     validate_input(coordinates, missing, model.config.dimensions)
+     if batch_size < 1 or seed < 0:
+@@ -62,7 +75,7 @@ def predict_normalized(model: CoordinateRefiner, coordinates: Tensor, missing: T
+ 
+ 
+ @torch.no_grad()  # type: ignore[untyped-decorator]
+-def refine_coordinates(model: CoordinateRefiner, coordinates: Tensor, missing: Tensor, *, seed: int, batch_size: int = 32) -> Tensor:
++def refine_coordinates(model: RefinerModel, coordinates: Tensor, missing: Tensor, *, seed: int, batch_size: int = 32) -> Tensor:
+     """Physical pixels (2D) or metres (3D), with true=missing; return all frames.
+ 
+     Input is (V,T,D), where V is merely independent sequences, not a model view
+@@ -76,6 +89,6 @@ def refine_coordinates(model: CoordinateRefiner, coordinates: Tensor, missing: T
+     return (predict_normalized(model, normalized, missing, batch_size=batch_size, seed=seed) + offset) * scale
+ 
+ 
+-def checkpoint_metadata(model: CoordinateRefiner) -> dict[str, Any]:
+-    return {"schema": CHECKPOINT_SCHEMA, "model_config": asdict(model.config),
++def checkpoint_metadata(model: RefinerModel) -> dict[str, Any]:
++    return {"schema": CHECKPOINT_SCHEMA if isinstance(model.config, ModelConfig) else LEGACY_CHECKPOINT_SCHEMA, "model_config": asdict(model.config),
+             "input_contract": "coordinates + missing boolean only; true=missing", "output_contract": "one trajectory, all frames; absolute coordinates"}
+diff --git a/src/tasks/ball_refiner/coordinates/model.py b/src/tasks/ball_refiner/coordinates/model.py
+index 4b7500caa..1f2d5ad91 100644
+--- a/src/tasks/ball_refiner/coordinates/model.py
++++ b/src/tasks/ball_refiner/coordinates/model.py
+@@ -1,116 +1,6 @@
+-"""Bidirectional coordinate regression and x0-parameterized conditional flow."""
++"""Public coordinate generator API; implementations live in models/."""
+ 
+-from __future__ import annotations
++from src.tasks.ball_refiner.coordinates.models.contracts import validate_input
++from src.tasks.ball_refiner.coordinates.models.generators import CoordinateRefiner
+ 
+-import math
+-from typing import cast
+-
+-import torch
+-from torch import Tensor, nn
+-from torch.nn import functional as F
+-
+-from src.tasks.ball_refiner.coordinates.config import ModelConfig
+-
+-
+-def sinusoidal(values: Tensor, width: int) -> Tensor:
+-    frequency = torch.exp(torch.arange(0, width, 2, device=values.device, dtype=values.dtype) * (-math.log(10000) / width))
+-    phase = values[..., None] * frequency
+-    return torch.stack((phase.sin(), phase.cos()), dim=-1).flatten(-2)
+-
+-
+-def validate_input(coordinates: Tensor, missing: Tensor, dimensions: int) -> None:
+-    if coordinates.ndim != 3 or coordinates.shape[-1] != dimensions or coordinates.shape[1] < 1:
+-        raise ValueError(f"Coordinates must be B,T,{dimensions} with T>0")
+-    if missing.shape != coordinates.shape[:-1] or missing.dtype != torch.bool:
+-        raise ValueError("missing must be a B,T boolean tensor (true=missing)")
+-    if missing.device != coordinates.device or not coordinates.is_floating_point():
+-        raise ValueError("Coordinates and mask must share a device; coordinates must be floating point")
+-    if not torch.isfinite(coordinates[~missing]).all():
+-        raise ValueError("Observed coordinates must be finite")
+-
+-
+-class CoordinateRefiner(nn.Module):
+-    """No confidence, court, camera, or event inputs. Predict every frame."""
+-
+-    def __init__(self, config: ModelConfig) -> None:
+-        super().__init__()
+-        self.config = config
+-        channels = config.dimensions + 1 + (config.dimensions if config.architecture == "flow" else 0)
+-        self.input = nn.Linear(channels, config.width)
+-        layer = nn.TransformerEncoderLayer(
+-            config.width, config.heads, dim_feedforward=4 * config.width,
+-            dropout=config.dropout, activation="gelu", batch_first=True, norm_first=True,
+-        )
+-        self.temporal = nn.TransformerEncoder(layer, config.layers, enable_nested_tensor=False)
+-        self.output = nn.Sequential(nn.LayerNorm(config.width), nn.Linear(config.width, config.dimensions))
+-        self.flow_time = nn.Sequential(nn.Linear(config.width, config.width), nn.SiLU(), nn.Linear(config.width, config.width)) if config.architecture == "flow" else None
+-        self.register_forward_pre_hook(self._validate_flow_arguments, with_kwargs=True)
+-
+-    def _validate_flow_arguments(self, _module: nn.Module, args: tuple[object, ...], kwargs: dict[str, object]) -> None:
+-        """Validate call arity before entering the computation-only forward."""
+-        state = args[2] if len(args) > 2 else kwargs.get("state")
+-        time = args[3] if len(args) > 3 else kwargs.get("time")
+-        if self.config.architecture == "flow":
+-            if state is None or time is None or self.flow_time is None:
+-                raise ValueError("Flow forward requires its state and time")
+-        elif state is not None or time is not None:
+-            raise ValueError("Regression does not accept flow state/time")
+-
+-    def forward(self, coordinates: Tensor, missing: Tensor, state: Tensor | None = None, time: Tensor | None = None) -> Tensor:
+-        clean_input = torch.where(missing[..., None], 0, coordinates)
+-        features = [clean_input, missing[..., None].to(coordinates.dtype)]
+-        if self.config.architecture == "flow":
+-            features.append(cast(Tensor, state))
+-        token = self.input(torch.cat(features, dim=-1))
+-        token = token + sinusoidal(torch.arange(coordinates.shape[1], device=coordinates.device, dtype=coordinates.dtype), self.config.width)[None]
+-        if self.flow_time is not None and time is not None:
+-            token = token + self.flow_time(sinusoidal(time * 1000, self.config.width))[:, None]
+-        # Missing frames remain queries and attend to both temporal directions.
+-        # Masked coordinates were removed above, so no ground truth can leak.
+-        return self.output(self.temporal(token))
+-
+-    def flow_loss(self, coordinates: Tensor, missing: Tensor, target: Tensor, generator: torch.Generator) -> Tensor:
+-        if self.config.architecture != "flow":
+-            raise ValueError("flow_loss requires a flow model")
+-        time = torch.rand((len(target),), device=target.device, generator=generator) * 0.95
+-        noise = torch.randn(target.shape, device=target.device, dtype=target.dtype, generator=generator)
+-        t = time[:, None, None]
+-        state = (1 - t) * noise + t * target
+-        x0 = self(coordinates, missing, state, time)
+-        # x0 parameterization of v=(x0-x_t)/(1-t); all target frames supervise it.
+-        return F.mse_loss((x0 - state) / (1 - t), target - noise)
+-
+-    @torch.no_grad()  # type: ignore[untyped-decorator]
+-    def predict(self, coordinates: Tensor, missing: Tensor, *, generator: torch.Generator | None = None) -> Tensor:
+-        validate_input(coordinates, missing, self.config.dimensions)
+-        if self.config.architecture == "regression":
+-            return self(coordinates, missing)
+-        if generator is None:
+-            raise ValueError("Flow inference requires an explicit generator for reproducibility")
+-        state = torch.randn(coordinates.shape, dtype=coordinates.dtype, device=coordinates.device, generator=generator)
+-        for step in range(self.config.flow_steps):
+-            t = step / self.config.flow_steps
+-            time = torch.full((len(state),), t, dtype=coordinates.dtype, device=coordinates.device)
+-            x0 = self(coordinates, missing, state, time)
+-            state = state + (x0 - state) / (self.config.flow_steps - step)
+-        return state
+-
+-
+-class TrajectoryDiscriminator(nn.Module):
+-    """Conditional local/multiscale trajectory realism, including event motion."""
+-
+-    def __init__(self, dimensions: int, width: int) -> None:
+-        super().__init__()
+-        self.net = nn.Sequential(
+-            nn.Conv1d(4 * dimensions + 1, width, 5, padding=2), nn.LeakyReLU(0.2),
+-            nn.Conv1d(width, width, 5, stride=2, padding=2), nn.LeakyReLU(0.2),
+-            nn.Conv1d(width, width, 5, stride=2, padding=2), nn.LeakyReLU(0.2),
+-            nn.Conv1d(width, 1, 3, padding=1),
+-        )
+-
+-    def forward(self, trajectory: Tensor, coordinates: Tensor, missing: Tensor) -> Tensor:
+-        velocity = F.pad(torch.diff(trajectory, dim=1), (0, 0, 1, 0))
+-        acceleration = F.pad(torch.diff(velocity, dim=1), (0, 0, 1, 0))
+-        condition = torch.where(missing[..., None], 0, coordinates)
+-        features = torch.cat((trajectory, velocity, acceleration, condition, missing[..., None].to(trajectory.dtype)), -1)
+-        return self.net(features.transpose(1, 2))
++__all__ = ["CoordinateRefiner", "validate_input"]
+diff --git a/src/tasks/ball_refiner/coordinates/models/__init__.py b/src/tasks/ball_refiner/coordinates/models/__init__.py
+new file mode 100644
+index 000000000..b9bb5c7bf
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/models/__init__.py
+@@ -0,0 +1 @@
++"""Coordinate refiner generators and trajectory-only discriminators."""
+diff --git a/src/tasks/ball_refiner/coordinates/models/contracts.py b/src/tasks/ball_refiner/coordinates/models/contracts.py
+new file mode 100644
+index 000000000..353f087ad
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/models/contracts.py
+@@ -0,0 +1,26 @@
++"""Coordinate input validation and flow-time features."""
++
++from __future__ import annotations
++
++import math
++
++import torch
++from torch import Tensor
++
++
++def sinusoidal(values: Tensor, width: int) -> Tensor:
++    frequency = torch.exp(torch.arange(0, width, 2, device=values.device, dtype=values.dtype) * (-math.log(10000) / width))
++    phase = values[..., None] * frequency
++    return torch.stack((phase.sin(), phase.cos()), dim=-1).flatten(-2)
++
++
++def validate_input(coordinates: Tensor, missing: Tensor, dimensions: int) -> None:
++    if coordinates.ndim != 3 or coordinates.shape[-1] != dimensions or coordinates.shape[1] < 1:
++        raise ValueError(f"Coordinates must be B,T,{dimensions} with T>0")
++    if missing.shape != coordinates.shape[:-1] or missing.dtype != torch.bool:
++        raise ValueError("missing must be a B,T boolean tensor (true=missing)")
++    if missing.device != coordinates.device or not coordinates.is_floating_point():
++        raise ValueError("Coordinates and mask must share a device; coordinates must be floating point")
++    if not torch.isfinite(coordinates[~missing]).all():
++        raise ValueError("Observed coordinates must be finite")
++
+diff --git a/src/tasks/ball_refiner/coordinates/models/discriminators/__init__.py b/src/tasks/ball_refiner/coordinates/models/discriminators/__init__.py
+new file mode 100644
+index 000000000..33ccab850
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/models/discriminators/__init__.py
+@@ -0,0 +1,36 @@
++"""Trajectory-only Transformer discriminator, using the BLCS/PLCS builder."""
++
++from __future__ import annotations
++
++from dataclasses import asdict
++
++import torch
++from torch import Tensor, nn
++
++from src.tasks.ball_refiner.coordinates.config import DiscriminatorConfig
++from src.utils.models.architectures import build_trajectory_discriminator
++
++
++class TrajectoryDiscriminator(nn.Module):
++    """Score each complete (B,T,D) output trajectory; no observation condition."""
++
++    def __init__(self, dimensions: int, config: DiscriminatorConfig) -> None:
++        super().__init__()
++        if dimensions not in (2, 3):
++            raise ValueError("Require 2D or 3D trajectories")
++        self.config = config
++        values = asdict(config)
++        values.pop("name")
++        self.network = build_trajectory_discriminator(input_dim=dimensions, disc_cfg=values)
++
++    def forward(self, trajectory: Tensor) -> Tensor:
++        # Every generated frame is a real token, including reconstructed gaps.
++        padding = torch.zeros(trajectory.shape[:2], dtype=torch.bool, device=trajectory.device)
++        return self.network(trajectory, padding_mask=padding)
++
++
++def build_refiner_discriminator(dimensions: int, config: DiscriminatorConfig) -> TrajectoryDiscriminator:
++    return TrajectoryDiscriminator(dimensions, config)
++
++
++__all__ = ["TrajectoryDiscriminator", "build_refiner_discriminator"]
+diff --git a/src/tasks/ball_refiner/coordinates/models/generators/__init__.py b/src/tasks/ball_refiner/coordinates/models/generators/__init__.py
+new file mode 100644
+index 000000000..02530b8e9
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/models/generators/__init__.py
+@@ -0,0 +1,5 @@
++"""RoPE coordinate generators for direct regression and conditional flow."""
++
++from .transformer import CoordinateRefiner
++
++__all__ = ["CoordinateRefiner"]
+diff --git a/src/tasks/ball_refiner/coordinates/models/generators/transformer.py b/src/tasks/ball_refiner/coordinates/models/generators/transformer.py
+new file mode 100644
+index 000000000..7516579f3
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/models/generators/transformer.py
+@@ -0,0 +1,104 @@
++"""Bidirectional RoPE/SwiGLU generator shared by 2D, 3D and conditional flow."""
++
++from __future__ import annotations
++
++from typing import cast
++
++import torch
++from torch import Tensor, nn
++from torch.nn import functional as F
++
++from src.tasks.ball_refiner.coordinates.config import ModelConfig
++from src.tasks.ball_refiner.coordinates.models.contracts import (
++    sinusoidal,
++    validate_input,
++)
++from src.utils.models.components import (
++    RMSNorm,
++    TransformerBlock,
++    TransformerBlockConfig,
++    precompute_freqs_cis,
++)
++
++
++class CoordinateRefiner(nn.Module):
++    """No confidence, court, camera, or event inputs. Predict every frame."""
++
++    def __init__(self, config: ModelConfig) -> None:
++        super().__init__()
++        self.config = config
++        channels = config.dimensions + 1 + (config.dimensions if config.architecture == "flow" else 0)
++        self.input = nn.Linear(channels, config.width)
++        self.input_dropout = nn.Dropout(config.dropout)
++        self.blocks = nn.ModuleList([
++            TransformerBlock(TransformerBlockConfig(
++                dim=config.width, n_heads=config.heads, ffn_dim=config.ffn_dim,
++                head_dim=config.width // config.heads, rope_dim=config.rope_dim,
++                attn_dropout=config.dropout, attention_type="mha", n_kv_heads=None,
++                rope_base=config.rope_theta, ffn_type="swiglu",
++            )) for _ in range(config.layers)
++        ])
++        self.output = nn.Sequential(RMSNorm(config.width), nn.Linear(config.width, config.dimensions))
++        self.register_buffer("freqs_cis", precompute_freqs_cis(
++            dim=config.rope_dim, seqlen=config.window_length, base=config.rope_theta,
++        ), persistent=False)
++        self.flow_time = nn.Sequential(nn.Linear(config.width, config.width), nn.SiLU(), nn.Linear(config.width, config.width)) if config.architecture == "flow" else None
++        self.register_forward_pre_hook(self._validate_flow_arguments, with_kwargs=True)
++
++    def _validate_flow_arguments(self, _module: nn.Module, args: tuple[object, ...], kwargs: dict[str, object]) -> None:
++        """Validate call arity before entering the computation-only forward."""
++        coordinates = args[0] if args else kwargs.get("coordinates")
++        if isinstance(coordinates, Tensor) and coordinates.shape[1] > self.config.window_length:
++            raise ValueError("Sequence exceeds configured window_length; use windowed inference")
++        state = args[2] if len(args) > 2 else kwargs.get("state")
++        time = args[3] if len(args) > 3 else kwargs.get("time")
++        if self.config.architecture == "flow":
++            if state is None or time is None or self.flow_time is None:
++                raise ValueError("Flow forward requires its state and time")
++        elif state is not None or time is not None:
++            raise ValueError("Regression does not accept flow state/time")
++
++    def forward(self, coordinates: Tensor, missing: Tensor, state: Tensor | None = None, time: Tensor | None = None) -> Tensor:
++        clean_input = torch.where(missing[..., None], 0, coordinates)
++        features = [clean_input, missing[..., None].to(coordinates.dtype)]
++        if self.config.architecture == "flow":
++            features.append(cast(Tensor, state))
++        token = self.input(torch.cat(features, dim=-1))
++        token = self.input_dropout(token)
++        if self.flow_time is not None and time is not None:
++            token = token + self.flow_time(sinusoidal(time * 1000, self.config.width))[:, None]
++        # Missing frames remain queries and attend to both temporal directions.
++        # Masked coordinates were removed above, so no ground truth can leak.
++        length = coordinates.shape[1]
++        keep = torch.ones((len(coordinates), length, length), dtype=torch.bool, device=coordinates.device)
++        frequencies = self.get_buffer("freqs_cis")[:length]
++        for block in self.blocks:
++            token = block(token, freqs_cis=frequencies, attn_mask=keep)
++        return self.output(token)
++
++    def flow_loss(self, coordinates: Tensor, missing: Tensor, target: Tensor, generator: torch.Generator) -> Tensor:
++        if self.config.architecture != "flow":
++            raise ValueError("flow_loss requires a flow model")
++        time = torch.rand((len(target),), device=target.device, generator=generator) * 0.95
++        noise = torch.randn(target.shape, device=target.device, dtype=target.dtype, generator=generator)
++        t = time[:, None, None]
++        state = (1 - t) * noise + t * target
++        x0 = self(coordinates, missing, state, time)
++        # x0 parameterization of v=(x0-x_t)/(1-t); all target frames supervise it.
++        return F.mse_loss((x0 - state) / (1 - t), target - noise)
++
++    @torch.no_grad()  # type: ignore[untyped-decorator]
++    def predict(self, coordinates: Tensor, missing: Tensor, *, generator: torch.Generator | None = None) -> Tensor:
++        validate_input(coordinates, missing, self.config.dimensions)
++        if self.config.architecture == "regression":
++            return self(coordinates, missing)
++        if generator is None:
++            raise ValueError("Flow inference requires an explicit generator for reproducibility")
++        state = torch.randn(coordinates.shape, dtype=coordinates.dtype, device=coordinates.device, generator=generator)
++        for step in range(self.config.flow_steps):
++            t = step / self.config.flow_steps
++            time = torch.full((len(state),), t, dtype=coordinates.dtype, device=coordinates.device)
++            x0 = self(coordinates, missing, state, time)
++            state = state + (x0 - state) / (self.config.flow_steps - step)
++        return state
++
+diff --git a/src/tasks/ball_refiner/coordinates/models/legacy.py b/src/tasks/ball_refiner/coordinates/models/legacy.py
+new file mode 100644
+index 000000000..424c1b196
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/models/legacy.py
+@@ -0,0 +1,97 @@
++"""Frozen v1 sinusoidal model, used only for explicit legacy checkpoint loading."""
++
++from __future__ import annotations
++
++import math
++from typing import cast
++
++import torch
++from torch import Tensor, nn
++from torch.nn import functional as F
++
++from src.tasks.ball_refiner.coordinates.config import LegacyModelConfig as ModelConfig
++
++
++def sinusoidal(values: Tensor, width: int) -> Tensor:
++    frequency = torch.exp(torch.arange(0, width, 2, device=values.device, dtype=values.dtype) * (-math.log(10000) / width))
++    phase = values[..., None] * frequency
++    return torch.stack((phase.sin(), phase.cos()), dim=-1).flatten(-2)
++
++
++def validate_input(coordinates: Tensor, missing: Tensor, dimensions: int) -> None:
++    if coordinates.ndim != 3 or coordinates.shape[-1] != dimensions or coordinates.shape[1] < 1:
++        raise ValueError(f"Coordinates must be B,T,{dimensions} with T>0")
++    if missing.shape != coordinates.shape[:-1] or missing.dtype != torch.bool:
++        raise ValueError("missing must be a B,T boolean tensor (true=missing)")
++    if missing.device != coordinates.device or not coordinates.is_floating_point():
++        raise ValueError("Coordinates and mask must share a device; coordinates must be floating point")
++    if not torch.isfinite(coordinates[~missing]).all():
++        raise ValueError("Observed coordinates must be finite")
++
++
++class LegacyCoordinateRefiner(nn.Module):
++    """No confidence, court, camera, or event inputs. Predict every frame."""
++
++    def __init__(self, config: ModelConfig) -> None:
++        super().__init__()
++        self.config = config
++        channels = config.dimensions + 1 + (config.dimensions if config.architecture == "flow" else 0)
++        self.input = nn.Linear(channels, config.width)
++        layer = nn.TransformerEncoderLayer(
++            config.width, config.heads, dim_feedforward=4 * config.width,
++            dropout=config.dropout, activation="gelu", batch_first=True, norm_first=True,
++        )
++        self.temporal = nn.TransformerEncoder(layer, config.layers, enable_nested_tensor=False)
++        self.output = nn.Sequential(nn.LayerNorm(config.width), nn.Linear(config.width, config.dimensions))
++        self.flow_time = nn.Sequential(nn.Linear(config.width, config.width), nn.SiLU(), nn.Linear(config.width, config.width)) if config.architecture == "flow" else None
++        self.register_forward_pre_hook(self._validate_flow_arguments, with_kwargs=True)
++
++    def _validate_flow_arguments(self, _module: nn.Module, args: tuple[object, ...], kwargs: dict[str, object]) -> None:
++        """Validate call arity before entering the computation-only forward."""
++        state = args[2] if len(args) > 2 else kwargs.get("state")
++        time = args[3] if len(args) > 3 else kwargs.get("time")
++        if self.config.architecture == "flow":
++            if state is None or time is None or self.flow_time is None:
++                raise ValueError("Flow forward requires its state and time")
++        elif state is not None or time is not None:
++            raise ValueError("Regression does not accept flow state/time")
++
++    def forward(self, coordinates: Tensor, missing: Tensor, state: Tensor | None = None, time: Tensor | None = None) -> Tensor:
++        clean_input = torch.where(missing[..., None], 0, coordinates)
++        features = [clean_input, missing[..., None].to(coordinates.dtype)]
++        if self.config.architecture == "flow":
++            features.append(cast(Tensor, state))
++        token = self.input(torch.cat(features, dim=-1))
++        token = token + sinusoidal(torch.arange(coordinates.shape[1], device=coordinates.device, dtype=coordinates.dtype), self.config.width)[None]
++        if self.flow_time is not None and time is not None:
++            token = token + self.flow_time(sinusoidal(time * 1000, self.config.width))[:, None]
++        # Missing frames remain queries and attend to both temporal directions.
++        # Masked coordinates were removed above, so no ground truth can leak.
++        return self.output(self.temporal(token))
++
++    def flow_loss(self, coordinates: Tensor, missing: Tensor, target: Tensor, generator: torch.Generator) -> Tensor:
++        if self.config.architecture != "flow":
++            raise ValueError("flow_loss requires a flow model")
++        time = torch.rand((len(target),), device=target.device, generator=generator) * 0.95
++        noise = torch.randn(target.shape, device=target.device, dtype=target.dtype, generator=generator)
++        t = time[:, None, None]
++        state = (1 - t) * noise + t * target
++        x0 = self(coordinates, missing, state, time)
++        # x0 parameterization of v=(x0-x_t)/(1-t); all target frames supervise it.
++        return F.mse_loss((x0 - state) / (1 - t), target - noise)
++
++    @torch.no_grad()  # type: ignore[untyped-decorator]
++    def predict(self, coordinates: Tensor, missing: Tensor, *, generator: torch.Generator | None = None) -> Tensor:
++        validate_input(coordinates, missing, self.config.dimensions)
++        if self.config.architecture == "regression":
++            return self(coordinates, missing)
++        if generator is None:
++            raise ValueError("Flow inference requires an explicit generator for reproducibility")
++        state = torch.randn(coordinates.shape, dtype=coordinates.dtype, device=coordinates.device, generator=generator)
++        for step in range(self.config.flow_steps):
++            t = step / self.config.flow_steps
++            time = torch.full((len(state),), t, dtype=coordinates.dtype, device=coordinates.device)
++            x0 = self(coordinates, missing, state, time)
++            state = state + (x0 - state) / (self.config.flow_steps - step)
++        return state
++
+diff --git a/src/tasks/ball_refiner/coordinates/review/checkpoints.py b/src/tasks/ball_refiner/coordinates/review/checkpoints.py
+index 101215997..4ef55f19b 100644
+--- a/src/tasks/ball_refiner/coordinates/review/checkpoints.py
++++ b/src/tasks/ball_refiner/coordinates/review/checkpoints.py
+@@ -12,8 +12,11 @@ from typing import Any
+ import torch
+ import yaml
+ 
+-from src.tasks.ball_refiner.coordinates.config import ModelConfig, parse_section
+-from src.tasks.ball_refiner.coordinates.inference import CHECKPOINT_SCHEMA
++from src.tasks.ball_refiner.coordinates.inference import (
++    CHECKPOINT_SCHEMA,
++    LEGACY_CHECKPOINT_SCHEMA,
++    checkpoint_model_config,
++)
+ from src.tasks.ball_refiner.coordinates.review.artifacts import (
+     bundle_path,
+     cache_root,
+@@ -37,9 +40,9 @@ def describe(path: Path, identifier: str, manifest_hash: str, fps: float, predic
+     predictions = None
+     try:
+         payload = torch.load(path, map_location="cpu", weights_only=True, mmap=True)
+-        if not isinstance(payload, dict) or payload.get("schema") != CHECKPOINT_SCHEMA:
++        if not isinstance(payload, dict) or payload.get("schema") not in (CHECKPOINT_SCHEMA, LEGACY_CHECKPOINT_SCHEMA):
+             raise ValueError("座標Refinerのcheckpoint形式ではありません")
+-        model = parse_section(ModelConfig, payload["model_config"])
++        model = checkpoint_model_config(payload)
+         if payload["manifest_sha256"] != manifest_hash:
+             raise ValueError("学習時の共通データとmanifestが一致しません")
+         if not math.isclose(float(payload["fps"]), fps, abs_tol=1e-6, rel_tol=0):
+@@ -61,7 +64,8 @@ def describe(path: Path, identifier: str, manifest_hash: str, fps: float, predic
+                 config = yaml.safe_load(config_path.read_text())
+                 if config["model"] != payload["model_config"]:
+                     raise ValueError("隣接するconfigとcheckpointのモデル設定が一致しません")
+-                if bool(config["training"]["gan_weight"]) != (method == "gan"):
++                gan_enabled = bool(config["training"]["gan_weight"]) if payload["schema"] == LEGACY_CHECKPOINT_SCHEMA else config["training"]["gan"]["enabled"]
++                if gan_enabled != (method == "gan"):
+                     raise ValueError("隣接するconfigとcheckpointのGAN設定が一致しません")
+                 run = candidate
+                 info.update(train_event_probability=float(config["corruption"]["event_probability"]),
+diff --git a/src/tasks/ball_refiner/coordinates/review/contracts.py b/src/tasks/ball_refiner/coordinates/review/contracts.py
+index 223da8a79..49bb9e26f 100644
+--- a/src/tasks/ball_refiner/coordinates/review/contracts.py
++++ b/src/tasks/ball_refiner/coordinates/review/contracts.py
+@@ -19,9 +19,9 @@ class Augmentation(BaseModel):
+     isolated_probability: float = Field(ge=0, le=1)
+     gap_min: int = Field(ge=1, le=120)
+     gap_max: int = Field(ge=2, le=120)
+-    noise_p95_px: float = Field(gt=0, le=2000)
++    noise_p95_px: float = Field(ge=0, le=2000)
+     jitter_sigma_px: float = Field(ge=0, le=100)
+-    outlier_probability: float = Field(gt=0.05, lt=1)
++    outlier_probability: float = Field(ge=0, lt=1)
+     triangulation_steps: int = Field(ge=0, le=10)
+ 
+     def config(self) -> CorruptionConfig:
+diff --git a/src/tasks/ball_refiner/coordinates/review/static/app.mjs b/src/tasks/ball_refiner/coordinates/review/static/app.mjs
+index acbdfb1ee..3f4ec472f 100644
+--- a/src/tasks/ball_refiner/coordinates/review/static/app.mjs
++++ b/src/tasks/ball_refiner/coordinates/review/static/app.mjs
+@@ -27,6 +27,7 @@ function applyProfile(profile) {
+   $("gap-min").value = a.gap_min; $("gap-max").value = a.gap_max; $("noise-p95").value = a.noise_p95_px;
+   $("augmentation-seed").value = profile.augmentation_seed; $("flow-seed").value = profile.flow_seed;
+   $("augmentation-mode").value = profile.missing_enabled ? (profile.noise_enabled ? "both" : "missing") : (profile.noise_enabled ? "noise" : "none");
++  $("noise-jitter").value = a.jitter_sigma_px; $("noise-outlier").value = a.outlier_probability * 100;
+   state.augmentationBase = { ...a };
+ }
+ function requestFromForm() {
+@@ -36,7 +37,8 @@ function requestFromForm() {
+   const mode = $("augmentation-mode").value;
+   const augmentation = { ...state.augmentationBase, event_probability: Number($("event-probability").value) / 100,
+     isolated_probability: Number($("isolated-probability").value) / 100, gap_min: Number($("gap-min").value),
+-    gap_max: Number($("gap-max").value), noise_p95_px: Number($("noise-p95").value) };
++    gap_max: Number($("gap-max").value), noise_p95_px: Number($("noise-p95").value),
++    jitter_sigma_px: Number($("noise-jitter").value), outlier_probability: Number($("noise-outlier").value) / 100 };
+   if (augmentation.gap_min >= augmentation.gap_max) throw new Error("左右幅の最大値は最小値より大きくしてください。");
+   return { rally: $("rally").value, manifest_sha256: state.catalog.manifest_sha256,
+     checkpoint_2d: $("model-2d").value || null, checkpoint_3d: $("model-3d").value || null,
+diff --git a/src/tasks/ball_refiner/coordinates/review/static/index.html b/src/tasks/ball_refiner/coordinates/review/static/index.html
+index a5f7cbb3f..4c838c18c 100644
+--- a/src/tasks/ball_refiner/coordinates/review/static/index.html
++++ b/src/tasks/ball_refiner/coordinates/review/static/index.html
+@@ -32,7 +32,9 @@
+     <div class="two-fields"><label>イベント選択率 (%)<input id="event-probability" type="number" min="0" max="100" step="1"></label><label>離散欠損率 (%)<input id="isolated-probability" type="number" min="0" max="100" step="1"></label></div>
+     <div class="two-fields"><label>左右幅の最小 (frame)<input id="gap-min" type="number" min="1" max="119" step="1"></label><label>左右幅の最大 (frame)<input id="gap-max" type="number" min="2" max="120" step="1"></label></div>
+     <p class="hint">前後で異なる幅を抽選し、イベント自身も隠します。</p>
+-    <label>ノイズ距離のP95 (px)<input id="noise-p95" type="number" min="16" max="2000" step="1"></label>
++    <label>jitterの標準偏差 (px)<input id="noise-jitter" type="number" min="0" max="100" step="0.1"></label>
++    <label>外れ値の発生率 (%)<input id="noise-outlier" type="number" min="0" max="99.9" step="0.1"></label>
++    <label>ノイズ距離のP95 (px)<input id="noise-p95" type="number" min="0" max="2000" step="1"></label>
+     <div class="two-fields"><label>拡張seed<input id="augmentation-seed" type="number" min="0" max="4294967295" step="1"></label><label>Flow seed<input id="flow-seed" type="number" min="0" max="4294967295" step="1"></label></div>
+     <button id="resample">拡張seedを変える</button><p class="hint">2D・3Dは同じ拡張を共有。3D入力は拡張後2Dの三角測量です。</p>
+   </section>
+diff --git a/src/tasks/ball_refiner/coordinates/training.py b/src/tasks/ball_refiner/coordinates/training.py
+index 96b5c04e5..a8bbbdc9c 100644
+--- a/src/tasks/ball_refiner/coordinates/training.py
++++ b/src/tasks/ball_refiner/coordinates/training.py
+@@ -21,6 +21,7 @@ from src.tasks.ball_refiner.coordinates.config import (
+     CorruptionConfig,
+     ModelConfig,
+     TrainingConfig,
++    parse_gan,
+     parse_section,
+     training_config,
+ )
+@@ -35,13 +36,14 @@ from src.tasks.ball_refiner.coordinates.inference import (
+     checkpoint_metadata,
+     load_checkpoint,
+ )
+-from src.tasks.ball_refiner.coordinates.model import (
+-    CoordinateRefiner,
+-    TrajectoryDiscriminator,
++from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
++from src.tasks.ball_refiner.coordinates.models.discriminators import (
++    build_refiner_discriminator,
+ )
+ from src.tasks.base.configuration import CompileConfig
+ from src.tasks.base.training.compilation import compile_modules
+ from src.tasks.base.training.gan_loss import LSGANLoss
++from src.tasks.base.training.gan_schedule import gan_weight_at
+ from src.tennis_scene.pipeline.artifacts import write_json_atomic
+ from src.utils.device import resolve_device
+ 
+@@ -70,7 +72,8 @@ def corruption_audit(data: list[PreparedRally]) -> dict[str, float]:
+ def run_training(config: DictConfig) -> Path:
+     raw, dataset_path, output = training_config(config)
+     model_config = parse_section(ModelConfig, raw["model"])
+-    train = parse_section(TrainingConfig, raw["training"])
++    train = parse_section(TrainingConfig, {key: value for key, value in raw["training"].items() if key != "gan"})
++    gan, discriminator_config = parse_gan(raw["training"]["gan"])
+     corruption = parse_section(CorruptionConfig, raw["corruption"])
+     seed = int(raw["run"]["seed"])
+     device = resolve_device(raw["run"]["device"])
+@@ -93,7 +96,7 @@ def run_training(config: DictConfig) -> Path:
+         torch.cuda.manual_seed_all(seed)
+         torch.cuda.reset_peak_memory_stats(device)
+     model = CoordinateRefiner(model_config).to(device)
+-    discriminator = TrajectoryDiscriminator(model_config.dimensions, model_config.width).to(device) if train.gan_weight else None
++    discriminator = build_refiner_discriminator(model_config.dimensions, discriminator_config).to(device) if gan.enabled else None
+     compile_modules({"refiner": model, **({"discriminator": discriminator} if discriminator else {})}, CompileConfig.from_mapping(raw["compile"]))
+     optimizer = torch.optim.AdamW(model.parameters(), lr=train.learning_rate, weight_decay=train.weight_decay)
+     disc_optimizer = torch.optim.AdamW(discriminator.parameters(), lr=train.learning_rate, weight_decay=train.weight_decay) if discriminator else None
+@@ -118,7 +121,7 @@ def run_training(config: DictConfig) -> Path:
+     best_step = 0
+     start = time.monotonic()
+     training_data: list[PreparedRally] = []
+-    sums: dict[str, float] = {"reconstruction": 0, "generator_gan": 0, "discriminator": 0}
++    sums: dict[str, float] = {"reconstruction": 0, "generator_gan": 0, "discriminator": 0, "gan_weight": 0, "weighted_gan": 0, "total": 0}
+     try:
+         for step in range(1, train.steps + 1):
+             if (step - 1) % train.evaluate_every == 0:
+@@ -133,21 +136,23 @@ def run_training(config: DictConfig) -> Path:
+             optimizer.zero_grad(set_to_none=True)
+             gan_loss = coordinates.new_zeros(())
+             disc_loss = coordinates.new_zeros(())
++            gan_weight = gan_weight_at(step - 1, start=gan.start_step, warmup=gan.warmup_steps, target=gan.target_weight) if gan.enabled else 0.0
+             if model_config.architecture == "flow":
+                 reconstruction = model.flow_loss(coordinates, missing, target, flow_rng)
+             else:
+                 prediction = model(coordinates, missing)
+                 reconstruction = F.smooth_l1_loss(prediction, target, beta=0.02)
+-                if discriminator is not None and disc_optimizer is not None and step > train.gan_warmup_steps:
++                if discriminator is not None and disc_optimizer is not None and gan_weight > 0:
++                    discriminator.train()
+                     discriminator.requires_grad_(True)
+                     disc_optimizer.zero_grad(set_to_none=True)
+-                    disc_loss = adversarial.discriminator_loss(discriminator(target, coordinates, missing), discriminator(prediction.detach(), coordinates, missing))
++                    disc_loss = adversarial.discriminator_loss(discriminator(target), discriminator(prediction.detach()))
+                     disc_loss.backward()
+                     torch.nn.utils.clip_grad_norm_(discriminator.parameters(), train.gradient_clip, error_if_nonfinite=True)
+                     disc_optimizer.step()
+                     discriminator.requires_grad_(False)
+-                    gan_loss = adversarial.generator_loss(discriminator(prediction, coordinates, missing))
+-            loss = reconstruction + train.gan_weight * gan_loss
++                    gan_loss = adversarial.generator_loss(discriminator(prediction))
++            loss = reconstruction + gan_weight * gan_loss
+             if not torch.isfinite(loss):
+                 raise RuntimeError(f"Nonfinite training loss at step {step}")
+             loss.backward()
+@@ -156,9 +161,12 @@ def run_training(config: DictConfig) -> Path:
+             scheduler.step()
+             for key, value in (("reconstruction", reconstruction), ("generator_gan", gan_loss), ("discriminator", disc_loss)):
+                 sums[key] += float(value.detach())
++            sums["gan_weight"] += gan_weight
++            sums["weighted_gan"] += gan_weight * float(gan_loss.detach())
++            sums["total"] += float(loss.detach())
+             if step % train.log_every == 0:
+                 row = {key: value / train.log_every for key, value in sums.items()}
+-                row.update(step=step, seconds=time.monotonic() - start)
++                row.update(step=step, seconds=time.monotonic() - start, gan_weight_current=gan_weight)
+                 for key, value in row.items():
+                     writer.add_scalar(f"train/{key}", value, step)
+                 with (output / "learning_curve.jsonl").open("a") as stream:
+@@ -176,6 +184,7 @@ def run_training(config: DictConfig) -> Path:
+                            "scheduler": scheduler.state_dict(), "step": step, "seed": seed, "fps": dataset.fps,
+                            "manifest_sha256": dataset.manifest_hash, "validation_rmse": score,
+                            "discriminator": discriminator.state_dict() if discriminator else None,
++                           "gan_config": raw["training"]["gan"], "gan_weight": gan_weight,
+                            "disc_optimizer": disc_optimizer.state_dict() if disc_optimizer else None,
+                            "torch_rng": torch.get_rng_state(), "flow_rng": flow_rng.get_state(),
+                            "sampling_rng": sampling.bit_generator.state}
+diff --git a/src/tasks/base/training/gan_schedule.py b/src/tasks/base/training/gan_schedule.py
+new file mode 100644
+index 000000000..0d2f3c2af
+--- /dev/null
++++ b/src/tasks/base/training/gan_schedule.py
+@@ -0,0 +1,10 @@
++"""Deterministic linear GAN transition, in caller-selected epochs or updates."""
++
++from __future__ import annotations
++
++
++def gan_weight_at(index: int, *, start: int, warmup: int, target: float) -> float:
++    """Zero-based index: wait `start` units, then reach target in `warmup` units."""
++    if min(index, start, target) < 0 or warmup < 1:
++        raise ValueError("Require nonnegative index/start/target and positive warmup")
++    return target * min(max(index - start + 1, 0) / warmup, 1.0)
+diff --git a/src/tasks/base/training/gan_transition_callback.py b/src/tasks/base/training/gan_transition_callback.py
+index c94768377..8ead275a5 100644
+--- a/src/tasks/base/training/gan_transition_callback.py
++++ b/src/tasks/base/training/gan_transition_callback.py
+@@ -23,6 +23,7 @@ from src.tasks.base.configuration import (
+     as_config_mapping,
+     require_config_mapping,
+ )
++from src.tasks.base.training.gan_schedule import gan_weight_at
+ 
+ 
+ @runtime_checkable
+@@ -100,8 +101,5 @@ class GANTransitionCallback(pl.Callback):
+     def _ramp_weight(self, current_epoch: int) -> float:
+         # Warmup is anchored to ``start_epoch`` (not the activation epoch) so a
+         # resumed run picks the correct point on the ramp for its epoch.
+-        epochs_since_switch = max(current_epoch - self.start_epoch + 1, 0)
+-        if self.gan_warmup_epochs <= 1:
+-            return self.gan_target_weight
+-        progress = min(epochs_since_switch / self.gan_warmup_epochs, 1.0)
+-        return self.gan_target_weight * progress
++        return gan_weight_at(current_epoch, start=self.start_epoch,
++                             warmup=max(self.gan_warmup_epochs, 1), target=self.gan_target_weight)
+diff --git a/tests/benchmarks/ball_refiner_coordinates.sh b/tests/benchmarks/ball_refiner_coordinates.sh
+index e0da298c2..b2565a97d 100644
+--- a/tests/benchmarks/ball_refiner_coordinates.sh
++++ b/tests/benchmarks/ball_refiner_coordinates.sh
+@@ -13,14 +13,14 @@ for refiner_dimensions in 2 3; do
+     for refiner_method in regression gan flow; do
+       [[ "$refiner_dimensions" == 2 && "$refiner_method" == flow ]] && continue
+       refiner_architecture=regression
+-      refiner_gan=0
++      refiner_gan=false
+       [[ "$refiner_method" == flow ]] && refiner_architecture=flow
+-      [[ "$refiner_method" == gan ]] && refiner_gan=0.002
++      [[ "$refiner_method" == gan ]] && refiner_gan=true
+       refiner_issue=991
+       [[ "$refiner_dimensions" == 3 ]] && refiner_issue=1014
+       refiner_name="i${refiner_issue}-coords-${refiner_dimensions}d-${refiner_method}-p${refiner_rate/./}-s42-${refiner_tag}"
+-      refiner_command="OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=${refiner_dimensions} model.architecture=${refiner_architecture} corruption.event_probability=${refiner_rate} training.gan_weight=${refiner_gan} run.output_dir=ball_refiner/train/coordinates-${refiner_dimensions}d-${refiner_method}-p${refiner_rate/./}/${refiner_tag}-s42"
+-      bash "$refiner_queue" add "$refiner_command" --name "$refiner_name" --provider codex --session "$refiner_session" --issue "$refiner_issue" --resource half
++      refiner_command="OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=${refiner_dimensions} model.architecture=${refiner_architecture} corruption.event_probability=${refiner_rate} training.gan.enabled=${refiner_gan} run.output_dir=ball_refiner/train/coordinates-${refiner_dimensions}d-${refiner_method}-p${refiner_rate/./}/${refiner_tag}-s42"
++      bash "$refiner_queue" add "$refiner_command" --name "$refiner_name" --provider codex --session "$refiner_session" --issue "$refiner_issue" --resource all
+     done
+   done
+ done
+diff --git a/tests/benchmarks/ball_refiner_coordinates_report.py b/tests/benchmarks/ball_refiner_coordinates_report.py
+index 130a97137..b72a73064 100644
+--- a/tests/benchmarks/ball_refiner_coordinates_report.py
++++ b/tests/benchmarks/ball_refiner_coordinates_report.py
+@@ -112,7 +112,7 @@ def report(runs_root: Path, output: Path, *, tag: str, device: str) -> None:
+         detail = json.loads((run / "predictions/diagnostic_metrics.json").read_text())
+         dimensions = config["model"]["dimensions"]
+         architecture = config["model"]["architecture"]
+-        method = "flow" if architecture == "flow" else ("gan" if config["training"]["gan_weight"] else "regression")
++        method = "flow" if architecture == "flow" else ("gan" if (config["training"]["gan"]["enabled"] if "gan" in config["training"] else config["training"]["gan_weight"]) else "regression")
+         rate = config["corruption"]["event_probability"]
+         identity = dimensions, method, rate
+         if identity in conditions:
+diff --git a/tests/benchmarks/ball_refiner_rope_gan.sh b/tests/benchmarks/ball_refiner_rope_gan.sh
+new file mode 100644
+index 000000000..a32573b1c
+--- /dev/null
++++ b/tests/benchmarks/ball_refiner_rope_gan.sh
+@@ -0,0 +1,17 @@
++#!/usr/bin/env bash
++# Enqueue one event-only RoPE GAN training run for each coordinate dimension.
++set -euo pipefail
++refiner_tag=${1:?usage: ball_refiner_rope_gan.sh RUN_TAG CODEX_SESSION_ID}
++refiner_session=${2:?An attributable session id is required}
++[[ "$refiner_tag" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo 'Invalid run tag' >&2; exit 2; }
++refiner_common=$(git rev-parse --path-format=absolute --git-common-dir)
++export TRAINING_QUEUE_DIR="$(dirname "$refiner_common")/.training_queue"
++refiner_queue=.agents/skills/training-queue/scripts/training_queue.sh
++[[ -f data/ball_refiner/single_object/manifest.json ]] || { echo 'Complete shared dataset required' >&2; exit 2; }
++for refiner_dimensions in 2 3; do
++  refiner_issue=991
++  [[ "$refiner_dimensions" == 3 ]] && refiner_issue=1014
++  refiner_name="i${refiner_issue}-rope-${refiner_dimensions}d-gan-eventonly-s42-${refiner_tag}"
++  refiner_command="OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=${refiner_dimensions} run.output_dir=ball_refiner/train/rope-${refiner_dimensions}d-gan-eventonly/${refiner_tag}-s42"
++  bash "$refiner_queue" add "$refiner_command" --name "$refiner_name" --provider codex --session "$refiner_session" --issue "$refiner_issue" --resource all
++done
+diff --git a/tests/integration/tasks/ball_refiner/test_coordinates_training.py b/tests/integration/tasks/ball_refiner/test_coordinates_training.py
+index 57d170b75..35616a658 100644
+--- a/tests/integration/tasks/ball_refiner/test_coordinates_training.py
++++ b/tests/integration/tasks/ball_refiner/test_coordinates_training.py
+@@ -1,5 +1,6 @@
+ """Real CPU BLCS -> shared storage -> train/checkpoint/test/inference roundtrip."""
+ 
++import json
+ from dataclasses import replace
+ 
+ import numpy as np
+@@ -62,13 +63,21 @@ def test_shared_training_roundtrip(shared, tmp_path, dimensions, architecture, g
+     with initialize_config_dir(version_base=None, config_dir=CONFIGS):
+         cfg = compose(config_name="train_coordinates", overrides=[
+             f"paths.data_root={root}", f"paths.output_root={tmp_path}", "run.output_dir=ball_refiner/train/integration/cpu",
+-            "run.device=cpu", "training.steps=2", "training.batch_size=2", "training.evaluate_every=2", "training.log_every=1", "training.gan_warmup_steps=0",
+-            f"training.gan_weight={gan}", f"model.dimensions={dimensions}", f"model.architecture={architecture}",
+-            "model.width=16", "model.layers=1", "model.heads=2", "model.window_length=32", "model.flow_steps=3",
++            "run.device=cpu", "training.steps=4", "training.batch_size=2", "training.evaluate_every=2", "training.log_every=1", "training.gan.transition.start_step=1", "training.gan.warmup_steps=2", "training.gan.discriminator.num_layers=1",
++            f"training.gan.enabled={str(bool(gan)).lower()}", f"model.dimensions={dimensions}", f"model.architecture={architecture}",
++            "model.ffn_dim=64", "model.rope_dim=8", "model.width=16", "model.layers=1", "model.heads=2", "model.window_length=32", "model.flow_steps=3",
+         ])
+     output = run_training(cfg)
+     with pytest.raises(FileExistsError):
+         run_training(cfg)
++    rows = [json.loads(line) for line in (output / "learning_curve.jsonl").read_text().splitlines()]
++    assert [row["gan_weight_current"] for row in rows] == ([0.0, 1.0, 2.0, 2.0] if gan else [0.0] * 4)
++    for row in rows:
++        assert row["total"] == pytest.approx(row["reconstruction"] + row["weighted_gan"], rel=1e-5)
++    last = torch.load(output / "logs/version_0/checkpoints/last.ckpt", weights_only=True)
++    if gan:
++        assert {int(state["step"]) for state in last["disc_optimizer"]["state"].values()} == {3}
++        assert last["gan_weight"] == 2.0
+     checkpoint = output / "logs/version_0/checkpoints/best.ckpt"
+     model, metadata = load_checkpoint(checkpoint, torch.device("cpu"))
+     assert metadata["manifest_sha256"] == data.manifest_hash
+diff --git a/tests/unit/tasks/ball_refiner/test_coordinate_review.py b/tests/unit/tasks/ball_refiner/test_coordinate_review.py
+index f0d776523..f07108a60 100644
+--- a/tests/unit/tasks/ball_refiner/test_coordinate_review.py
++++ b/tests/unit/tasks/ball_refiner/test_coordinate_review.py
+@@ -10,6 +10,8 @@ import pytest
+ import torch
+ import yaml
+ from fastapi.testclient import TestClient
++from hydra import compose, initialize_config_dir
++from omegaconf import OmegaConf
+ 
+ from src.tasks.ball_refiner.coordinates.config import CorruptionConfig, ModelConfig
+ from src.tasks.ball_refiner.coordinates.data import SharedDataset, prepare
+@@ -62,15 +64,18 @@ def review(tmp_path):
+     (data / "manifest.json").write_text(json.dumps({"schema": SCHEMA, "image_size_wh": [1280, 720], "fps": 60, "views": 4, "records": records}))
+     (data / "state.json").write_text(json.dumps({"status": "complete"}))
+     dataset = SharedDataset(data)
+-    raw = yaml.safe_load((PROJECT_ROOT / "src/tasks/ball_refiner/configs/train_coordinates.yaml").read_text())
++    with initialize_config_dir(version_base=None, config_dir=str(PROJECT_ROOT / "src/tasks/ball_refiner/configs")):
++        raw = OmegaConf.to_container(compose(config_name="train_coordinates"), resolve=True)
++    # Keep noisy review coverage as well as the new zero-noise training profile.
++    raw["corruption"].update(noise_p95_px=200.0, jitter_sigma_px=3.0, outlier_probability=0.1, isolated_probability=0.04)
+     corruption = CorruptionConfig(**raw["corruption"])
+     outputs = tmp_path / "outputs"
+     for dim, architecture in ((2, "regression"), (3, "regression"), (3, "flow")):
+-        model = CoordinateRefiner(ModelConfig(dim, architecture, 16, 1, 2, 0.0, 32, 3)).eval()
++        model = CoordinateRefiner(ModelConfig(dim, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0)).eval()
+         run = outputs / f"{dim}d-{architecture}" / "run"
+         checkpoints = run / "logs/version_0/checkpoints"
+         checkpoints.mkdir(parents=True)
+-        config = {**raw, "model": asdict(model.config), "training": {**raw["training"], "gan_weight": 0.0}}
++        config = {**raw, "model": asdict(model.config), "training": {**raw["training"], "gan": {**raw["training"]["gan"], "enabled": False}}}
+         (run / "config.yaml").write_text(yaml.safe_dump(config))
+         payload = {**checkpoint_metadata(model), "model": model.state_dict(), "manifest_sha256": dataset.manifest_hash,
+                    "fps": 60, "step": 100, "validation_rmse": 0.2 if architecture == "regression" else 0.3, "discriminator": None}
+@@ -78,7 +83,7 @@ def review(tmp_path):
+         torch.save({**payload, "validation_rmse": 0.4, "step": 200}, checkpoints / "last.ckpt")
+         report, predictions = evaluate(model, prepare(dataset.split("test"), dim, corruption, 20991), torch.device("cpu"), seed=20991, batch_size=32)
+         (run / "predictions").mkdir()
+-        np.savez(run / "predictions/pred_test.npz", **predictions)
++        np.savez(run / "predictions/pred_test.npz", allow_pickle=False, **predictions)
+         (run / "predictions/metrics.json").write_text(json.dumps({**report, "best_step": 100}))
+         (run / "data_contract.json").write_text(json.dumps({"manifest_sha256": dataset.manifest_hash, "test_ids": ["rally_000002"]}))
+         digest, profile = sha256(checkpoints / "best.ckpt"), evaluation_profile(config)
+@@ -88,7 +93,7 @@ def review(tmp_path):
+     catalog = service.catalog()
+     request = ReviewRequest(rally="rally_000002", manifest_sha256=catalog["manifest_sha256"],
+                             checkpoint_2d=catalog["default_checkpoints"]["2"], checkpoint_3d=catalog["default_checkpoints"]["3"],
+-                            **catalog["default_profile"])
++                            **evaluation_profile(raw))
+     return service, request
+ 
+ 
+@@ -247,3 +252,18 @@ def test_shared_queue_worker_dispatches_coordinate_review_contract(review):
+         "checkpoints_root": str(service.checkpoints_root)}, "request": request.model_dump()}))
+     assert result["source"] == "live" and result["scene"]["rally"] == request.rally
+     assert result["scene"]["metrics_3d"]["all"]["count"] == 96
++
++
++def test_review_accepts_zero_noise_event_only_profile(review):
++    service, request = review
++    augmentation = request.augmentation.model_copy(update={"noise_p95_px": 0.0, "jitter_sigma_px": 0.0,
++                                                           "outlier_probability": 0.0, "isolated_probability": 0.0})
++    request = request.model_copy(update={"augmentation": augmentation})
++    client = TestClient(create_app(service))
++    response = client.post("/api/preview", json=request.model_dump())
++    assert response.status_code == 200
++    scene = response.json()["scene"]
++    assert scene["audit"]["noise_p95_px"] == 0
++    assert not np.asarray(scene["isolated_missing"]).any()
++    mask = np.asarray(scene["missing_2d"])
++    np.testing.assert_array_equal(np.asarray(scene["input_2d"])[~mask], np.asarray(scene["gt_2d"])[~mask])
+diff --git a/tests/unit/tasks/ball_refiner/test_coordinate_rope_gan.py b/tests/unit/tasks/ball_refiner/test_coordinate_rope_gan.py
+new file mode 100644
+index 000000000..03de4d353
+--- /dev/null
++++ b/tests/unit/tasks/ball_refiner/test_coordinate_rope_gan.py
+@@ -0,0 +1,109 @@
++"""RoPE architecture, trajectory-only GAN and zero-noise experiment contracts."""
++
++from dataclasses import asdict
++
++import numpy as np
++import pytest
++import torch
++from hydra import compose, initialize_config_dir
++from omegaconf import OmegaConf
++
++from src.tasks.ball_refiner.coordinates.config import (
++    CorruptionConfig,
++    LegacyModelConfig,
++    ModelConfig,
++    parse_gan,
++    parse_section,
++    training_config,
++)
++from src.tasks.ball_refiner.coordinates.corruption import coordinate_noise
++from src.tasks.ball_refiner.coordinates.inference import (
++    checkpoint_metadata,
++    load_checkpoint,
++)
++from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
++from src.tasks.ball_refiner.coordinates.models.discriminators import (
++    build_refiner_discriminator,
++)
++from src.tasks.ball_refiner.coordinates.models.legacy import LegacyCoordinateRefiner
++from src.tasks.ball_refiner.coordinates.review.contracts import Augmentation
++from src.tasks.base.training.gan_loss import LSGANLoss
++from src.utils.models.components import TransformerBlock, default_ffn_dim
++from src.utils.paths import PROJECT_ROOT
++
++
++def configuration():
++    with initialize_config_dir(version_base=None, config_dir=str(PROJECT_ROOT / "src/tasks/ball_refiner/configs")):
++        return compose(config_name="train_coordinates")
++
++
++@pytest.mark.parametrize("dimensions", [2, 3])
++def test_requested_architecture_scores_only_complete_output_and_backpropagates(dimensions):
++    torch.set_num_threads(1)
++    config = configuration()
++    config.model.dimensions = dimensions
++    raw, _, _ = training_config(config)
++    generator = CoordinateRefiner(parse_section(ModelConfig, raw["model"])).eval()
++    _, disc_config = parse_gan(raw["training"]["gan"])
++    discriminator = build_refiner_discriminator(dimensions, disc_config).eval()
++    assert len(generator.blocks) == 8 and len(discriminator.network.blocks) == 4
++    assert generator.config.width == discriminator.network.hidden_dim == 256
++    assert generator.config.ffn_dim == disc_config.ffn_dim == default_ffn_dim(256) == 704
++    assert all(isinstance(block, TransformerBlock) for block in generator.blocks)
++    coords = torch.randn(2, 128, dimensions)
++    missing = torch.zeros(2, 128, dtype=torch.bool)
++    missing[:, 48:65] = True
++    coords[missing] = float("nan")
++    output = generator(coords, missing)
++    output.retain_grad()
++    received = []
++    discriminator.network.input_projection.register_forward_pre_hook(lambda _, args: received.append(args[0].detach().clone()))
++    score = discriminator(output)
++    assert score.shape == (2,)
++    torch.testing.assert_close(received[0], output.detach())
++    LSGANLoss().generator_loss(score).backward()
++    assert torch.isfinite(output).all() and output.shape == coords.shape
++    assert output.grad[missing].abs().sum() > 0 and output.grad[~missing].abs().sum() > 0
++    assert generator.input.weight.grad.abs().sum() > 0
++    # Neither an observed-input sequence nor a missing mask is part of D's API.
++    with pytest.raises(TypeError):
++        discriminator(output, coords, missing)
++
++
++def test_zero_noise_is_exact_and_mixed_invalid_configuration_is_rejected():
++    config = CorruptionConfig(0.5, 0.0, 3, 10, 0.0, 0.0, 0.0, 3)
++    noise = coordinate_noise((4, 500), config, np.random.default_rng(4))
++    assert noise.shape == (4, 500, 2) and np.count_nonzero(noise) == 0
++    assert Augmentation(**asdict(config)).config() == config
++    for change in ({"jitter_sigma_px": 3.0}, {"outlier_probability": 0.1}, {"noise_p95_px": -1.0}):
++        with pytest.raises(ValueError):
++            CorruptionConfig(**(asdict(config) | change))
++
++
++@pytest.mark.parametrize("dimensions,architecture", [(2, "regression"), (3, "regression"), (3, "flow")])
++def test_v1_checkpoints_restore_explicit_legacy_architecture(tmp_path, dimensions, architecture):
++    model = LegacyCoordinateRefiner(LegacyModelConfig(dimensions, architecture, 16, 1, 2, 0.0, 32, 3)).eval()
++    path = tmp_path / "v1.ckpt"
++    payload = {**checkpoint_metadata(model), "model": model.state_dict()}
++    torch.save(payload, path)
++    loaded, _ = load_checkpoint(path, torch.device("cpu"))
++    assert isinstance(loaded, LegacyCoordinateRefiner)
++    coords = torch.randn(1, 16, dimensions)
++    missing = torch.rand(1, 16) < 0.5
++    first = model.predict(coords, missing, generator=torch.Generator().manual_seed(8))
++    second = loaded.predict(coords, missing, generator=torch.Generator().manual_seed(8))
++    torch.testing.assert_close(first, second, atol=0, rtol=0)
++    payload["schema"] = "ball_refiner.coordinates.v2"
++    torch.save(payload, path)
++    with pytest.raises(ValueError, match="missing"):
++        load_checkpoint(path, torch.device("cpu"))
++
++
++def test_schedule_must_reach_target_and_defaults_have_only_event_corruption():
++    config = configuration()
++    raw = OmegaConf.to_container(config, resolve=True)
++    corruption = parse_section(CorruptionConfig, raw["corruption"])
++    assert corruption.noise_p95_px == corruption.jitter_sigma_px == corruption.outlier_probability == corruption.isolated_probability == 0
++    config.training.gan.warmup_steps = config.training.steps
++    with pytest.raises(ValueError, match="within training.steps"):
++        training_config(config)
+diff --git a/tests/unit/tasks/ball_refiner/test_coordinates.py b/tests/unit/tasks/ball_refiner/test_coordinates.py
+index 4f8ff9687..72426e519 100644
+--- a/tests/unit/tasks/ball_refiner/test_coordinates.py
++++ b/tests/unit/tasks/ball_refiner/test_coordinates.py
+@@ -9,6 +9,7 @@ import torch
+ 
+ from src.tasks.ball_refiner.coordinates.config import (
+     CorruptionConfig,
++    DiscriminatorConfig,
+     ModelConfig,
+     parse_section,
+ )
+@@ -26,6 +27,8 @@ from src.tasks.ball_refiner.coordinates.generation import (
+ from src.tasks.ball_refiner.coordinates.inference import refine_coordinates
+ from src.tasks.ball_refiner.coordinates.model import (
+     CoordinateRefiner,
++)
++from src.tasks.ball_refiner.coordinates.models.discriminators import (
+     TrajectoryDiscriminator,
+ )
+ from src.tasks.base.training.gan_loss import LSGANLoss
+@@ -124,7 +127,7 @@ def test_phantom_bounces_after_return_are_excluded_before_rounding():
+ @pytest.mark.parametrize("dimensions,architecture", [(2, "regression"), (3, "regression"), (3, "flow")])
+ def test_masked_values_cannot_leak_and_observed_frames_are_predicted(dimensions, architecture):
+     torch.set_num_threads(1)
+-    model = CoordinateRefiner(ModelConfig(dimensions, architecture, 16, 1, 2, 0, 32, 3)).eval()
++    model = CoordinateRefiner(ModelConfig(dimensions, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
+     coordinates = torch.randn(1, 43, dimensions)
+     missing = torch.zeros(1, 43, dtype=torch.bool)
+     missing[:, 10:25] = True
+@@ -140,7 +143,7 @@ def test_masked_values_cannot_leak_and_observed_frames_are_predicted(dimensions,
+ 
+ 
+ def test_future_observation_influences_past_offline_prediction():
+-    model = CoordinateRefiner(ModelConfig(2, "regression", 16, 1, 2, 0, 32, 3)).eval()
++    model = CoordinateRefiner(ModelConfig(2, "regression", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
+     values = torch.zeros(1, 16, 2, requires_grad=True)
+     model(values, torch.zeros(1, 16, dtype=torch.bool))[0, 0].sum().backward()
+     assert values.grad[0, -1].abs().sum() > 0
+@@ -151,7 +154,7 @@ def test_future_observation_influences_past_offline_prediction():
+     ("flow", False, False), ("flow", True, False), ("flow", False, True),
+ ])
+ def test_flow_arguments_are_rejected_before_tensor_computation(architecture, with_state, with_time):
+-    model = CoordinateRefiner(ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3)).eval()
++    model = CoordinateRefiner(ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0)).eval()
+     coordinates = torch.zeros(1, 16, 3)
+     missing = torch.zeros(1, 16, dtype=torch.bool)
+     computed = []
+@@ -165,13 +168,13 @@ def test_flow_arguments_are_rejected_before_tensor_computation(architecture, wit
+ def test_flow_and_gan_both_supply_trainable_gradients():
+     coords, target = torch.randn(2, 16, 3), torch.randn(2, 16, 3)
+     missing = torch.rand(2, 16) < 0.5
+-    model = CoordinateRefiner(ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3))
++    model = CoordinateRefiner(ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0))
+     loss = model.flow_loss(coords, missing, target, torch.Generator().manual_seed(4))
+     loss.backward()
+     assert torch.isfinite(loss) and model.input.weight.grad.abs().sum() > 0
+     predicted = torch.randn(2, 16, 3, requires_grad=True)
+-    discriminator = TrajectoryDiscriminator(3, 16)
+-    LSGANLoss().generator_loss(discriminator(predicted, coords, missing)).backward()
++    discriminator = TrajectoryDiscriminator(3, DiscriminatorConfig("trajectory_transformer", 16, 1, 2, 64, 0.0, 8, 10000.0, "swiglu", 32, 0.02, 0.02))
++    LSGANLoss().generator_loss(discriminator(predicted)).backward()
+     assert predicted.grad.abs().sum() > 0
+ 
+ 
+@@ -188,4 +191,18 @@ def test_config_rejects_implicit_or_unknown_fields():
+     with pytest.raises(ValueError, match="missing"):
+         parse_section(ModelConfig, {"dimensions": 2})
+     with pytest.raises(TypeError):
+-        parse_section(ModelConfig, {"dimensions": True, "architecture": "regression", "width": 16, "layers": 1, "heads": 2, "dropout": 0, "window_length": 32, "flow_steps": 3})
++        parse_section(ModelConfig, {"dimensions": True, "architecture": "regression", "width": 16, "layers": 1, "heads": 2, "dropout": 0, "window_length": 32, "flow_steps": 3, "ffn_dim": 64, "rope_dim": 8, "rope_theta": 10000.0})
++
++
++def test_event_only_inputs_preserve_observations_and_shared_3d(corruption):
++    xyz, uv, visible, cameras, events = projected()
++    config = replace(corruption, noise_p95_px=0.0, jitter_sigma_px=0.0, outlier_probability=0.0, isolated_probability=0.0)
++    result = corrupt_trajectory(uv, visible, cameras, events, config=config, seed=7)
++    expected: np.ndarray = np.zeros(len(events), dtype=bool)
++    for _, start, end in result.intervals:
++        expected[start:end] = True
++    np.testing.assert_array_equal(result.missing_2d, np.broadcast_to(expected, visible.shape))
++    np.testing.assert_array_equal(result.missing_3d, expected)
++    assert not result.isolated.any() and not result.noise_px.any()
++    np.testing.assert_array_equal(result.uv_px[~result.missing_2d], uv[~result.missing_2d])
++    np.testing.assert_allclose(result.xyz_m[~expected], xyz[~expected], atol=1e-4)
+diff --git a/tests/unit/tasks/base/training/test_gan_schedule.py b/tests/unit/tasks/base/training/test_gan_schedule.py
+new file mode 100644
+index 000000000..d80f069e4
+--- /dev/null
++++ b/tests/unit/tasks/base/training/test_gan_schedule.py
+@@ -0,0 +1,22 @@
++"""Boundary contract shared by BLCS/PLCS epochs and refiner update schedules."""
++
++import pytest
++
++from src.tasks.base.training.gan_schedule import gan_weight_at
++
++
++def test_wait_ramp_plateau_including_exact_target_boundary():
++    weights = [gan_weight_at(index, start=2, warmup=4, target=2.0) for index in range(8)]
++    assert weights == [0, 0, 0.5, 1.0, 1.5, 2.0, 2.0, 2.0]
++
++
++def test_immediate_single_update_ramp_and_zero_target():
++    assert gan_weight_at(0, start=0, warmup=1, target=2.0) == 2
++    assert gan_weight_at(0, start=1, warmup=1, target=2.0) == 0
++    assert gan_weight_at(99, start=0, warmup=4, target=0.0) == 0
++
++
++@pytest.mark.parametrize("index,start,warmup,target", [(-1, 0, 1, 2), (0, -1, 1, 2), (0, 0, 0, 2), (0, 0, 1, -2)])
++def test_invalid_schedule_rejected(index, start, warmup, target):
++    with pytest.raises(ValueError):
++        gan_weight_at(index, start=start, warmup=warmup, target=target)

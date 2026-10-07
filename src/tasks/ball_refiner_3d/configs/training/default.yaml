@@ -1,0 +1,4 @@
+defaults:
+- _base
+- _gan
+- _self_
