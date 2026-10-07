@@ -23,6 +23,12 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
+from src.utils.physics.ball import (
+    BallField,
+    acceleration,
+    ground_bounce,
+    semi_implicit_euler_step,
+)
 from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
@@ -208,6 +214,7 @@ class BallPhysics:
         """
         self.config = config
         self._wind_vec: Tensor | None = None
+        self._field: BallField | None = None
 
     @property
     def wind_vec(self) -> Tensor:
@@ -216,99 +223,46 @@ class BallPhysics:
             self._wind_vec = torch.tensor(self.config.wind, dtype=torch.float32)
         return self._wind_vec
 
+    @property
+    def field(self) -> BallField:
+        """Shared force-model parameters; a disabled term has a zero coefficient."""
+        if self._field is None:
+            cfg = self.config
+            self._field = BallField(
+                gravity=cfg.gravity,
+                k_drag=torch.tensor(cfg.k_drag if cfg.use_drag else 0.0),
+                k_magnus=torch.tensor(cfg.k_magnus if cfg.use_magnus else 0.0),
+                wind=self.wind_vec,
+            )
+        return self._field
+
     def compute_acceleration(self, state: BallState) -> Tensor:
-        """Compute acceleration given current state.
-
-        a = a_g + a_d + a_m
-        Drag and Magnus use velocity relative to wind.
-
-        Args:
-            state: Current ball state.
-
-        Returns:
-            Acceleration [3].
-        """
-        device = state.position.device
-        cfg = self.config
-
-        # Gravity
-        accel = torch.tensor([0.0, 0.0, -cfg.gravity], device=device)
-
-        # Wind-relative velocity
-        wind = self.wind_vec.to(device)
-        v_rel = state.velocity - wind
-
-        # Air drag (opposes relative velocity)
-        if cfg.use_drag:
-            speed_rel = v_rel.norm()
-            if speed_rel > 1e-6:
-                drag_accel = -cfg.k_drag * speed_rel * v_rel
-                accel = accel + drag_accel
-
-        # Magnus effect (spin-induced lift, relative velocity)
-        if cfg.use_magnus and state.spin is not None:
-            magnus_accel = cfg.k_magnus * torch.linalg.cross(state.spin, v_rel)
-            accel = accel + magnus_accel
-
-        return accel
+        """Acceleration [3] from the shared force model."""
+        return acceleration(state.velocity, state.spin, self.field)
 
     def step(self, state: BallState) -> BallState:
-        """Advance ball state by one time step using semi-implicit Euler.
-
-        1. a_t = f(p_t, v_t, omega_0)
-        2. v_{t+1} = v_t + a_t * dt
-        3. p_{t+1} = p_t + v_{t+1} * dt
-
-        Args:
-            state: Current ball state.
-
-        Returns:
-            New ball state after dt.
-        """
-        dt = self.config.dt
-
-        accel = self.compute_acceleration(state)
-
-        new_vel = state.velocity + accel * dt
-        new_pos = state.position + new_vel * dt
-
-        return BallState(
-            position=new_pos,
-            velocity=new_vel,
-            spin=state.spin.clone(),
+        """Advance ball state by one semi-implicit Euler step of ``dt``."""
+        position, velocity = semi_implicit_euler_step(
+            state.position, state.velocity, state.spin, self.field, self.config.dt
         )
+        return BallState(position=position, velocity=velocity, spin=state.spin.clone())
 
     def handle_bounce(self, state: BallState) -> tuple[BallState, bool]:
-        """Handle ground bounce if ball is below ground.
-
-        Reflection:
-        - V_z' = -e_z * V_z
-        - V_x' = (1 - mu) * V_x
-        - V_y' = (1 - mu) * V_y
-        - Z' = 0
-
-        Args:
-            state: Current ball state.
+        """Apply the shared ground-bounce response when the ball is below ground.
 
         Returns:
             (new_state, did_bounce)
         """
-        cfg = self.config
-
         if state.position[2] <= 0 and state.velocity[2] < 0:
             new_pos = state.position.clone()
             new_pos[2] = 0.0
-
-            new_vel = state.velocity.clone()
-            new_vel[2] = -cfg.e_z * state.velocity[2]
-            new_vel[0] = (1 - cfg.mu) * state.velocity[0]
-            new_vel[1] = (1 - cfg.mu) * state.velocity[1]
-
-            return BallState(
-                position=new_pos,
-                velocity=new_vel,
-                spin=state.spin.clone(),
-            ), True
+            velocity, spin = ground_bounce(
+                state.velocity,
+                state.spin,
+                restitution=self.config.e_z,
+                friction=self.config.mu,
+            )
+            return BallState(position=new_pos, velocity=velocity, spin=spin), True
 
         return state, False
 

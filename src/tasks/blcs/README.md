@@ -59,6 +59,6 @@ checkpointの座標契約・設定・state dictの不一致はエラーになり
 起動方法は[Web UIガイド](visualization/README.md)を参照してください。
 checkpointからaxialを復元し、single_objectシーンのGTと予測を比較します。
 
-物理モデル、ラリー連鎖、着地点サンプリングは`generate_dataset/simulation/`が所有します。
+力・バウンド・積分は[共有物理](../../utils/README.md#physics)を使い、ネット／フェンス衝突、ラリー連鎖、着地点サンプリングは`generate_dataset/simulation/`が所有します。
 物理proposalの再試行には`generation.maximum_physics_attempts_per_scene`の有限budgetを使用します。
 `generate_dataset/api_server/`と`webui/`は物理シミュレータの操作・確認用です。

@@ -49,6 +49,9 @@
 ### `matching/`
 - **`multiview_clustering.py`**: `cluster_multiview()`。任意の対称 score 行列から、view 排他（同じ view の item は同一 identity にしない）と推移律を満たす最大 score の分割を MILP で厳密に解く。`with_margins=True` で各 pair の決定を反転したときの目的関数の低下（反転マージン）を返し、`ambiguous_pairs()` で次点と僅差の決定を列挙する。`decision_margins()` は解いた後で、指定した item に触れる pair だけのマージンを計算する（それ以外は `nan` で、`ambiguous_pairs()` は判定を拒む）。最適性が証明できなければ停止する。
 
+### `physics/`
+- **`ball/`**: テニスボール物理の唯一の実装。`dynamics.py` の `BallField`（重力・k_drag・k_magnus・風）と、重力＋風相対の二次抵抗＋マグナスの加速度、半陰的Euler step。`bounce.py` の地面バウンド、`integrate.py` の出力frame単位の自由飛行積分。すべて先頭次元でbatch化され、torchで微分可能。データ生成シミュレータ・軌道モデル・物理評価は同じ関数を使い、記録した状態の積分が記録軌道を再現する。
+
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
 - **`differentiable_projection.py`**: `DifferentiablePinholeProjection`。任意のworld point shape `(B,...,3)`を固定camera群へ微分可能に投影し、normalized UVと正depth maskを返す。court座標のdenormalizeやtask固有maskは呼び出し側が担当する。
