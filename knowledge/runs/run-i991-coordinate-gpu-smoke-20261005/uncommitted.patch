@@ -1,0 +1,1568 @@
+diff --git a/src/tasks/ball_refiner/configs/generate_coordinates.yaml b/src/tasks/ball_refiner/configs/generate_coordinates.yaml
+new file mode 100644
+index 000000000..1f1f5160f
+--- /dev/null
++++ b/src/tasks/ball_refiner/configs/generate_coordinates.yaml
+@@ -0,0 +1,60 @@
++defaults:
++  - physics: default
++  - rally: default
++  - camera: default
++  - generator: default
++  - targeted_velocity: default
++  - court_keypoints: physical_v1
++  - _self_
++
++paths:
++  project_root: .
++  data_root: data
++  checkpoint_root: ckpt
++  artifact_root: outputs
++  output_root: outputs
++  cache_root: data
++  external_asset_root: third_party
++
++generation:
++  dataset: ball_refiner/single_object
++  train_rallies: 1024
++  val_rallies: 128
++  test_rallies: 128
++  seed: 991
++  workers: 4
++  min_frames: 128
++  maximum_attempts: 64
++
++rally:
++  output_fps: 60
++  max_rallies: 4
++  max_total_frames: 4800
++
++camera_sampling:
++  views: 4
++  width: 1280
++  height: 720
++  z_min: 3.0
++  z_max: 8.0
++  hfov_min: 60.0
++  hfov_max: 90.0
++  look_x: 2.0
++  look_y: 3.0
++  look_z_min: 0.5
++  look_z_max: 2.0
++
++hydra:
++  searchpath:
++    - file://${tennis_lab_path:project}/src/tasks/blcs/configs
++  output_subdir: null
++  run:
++    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:ball_refiner,generate,coordinates,${tennis_run_id:}},hydra}
++  job:
++    chdir: false
++  job_logging:
++    version: 1
++    disable_existing_loggers: false
++    handlers: {}
++    root:
++      handlers: []
+diff --git a/src/tasks/ball_refiner/configs/train_coordinates.yaml b/src/tasks/ball_refiner/configs/train_coordinates.yaml
+new file mode 100644
+index 000000000..8dd9f3d85
+--- /dev/null
++++ b/src/tasks/ball_refiner/configs/train_coordinates.yaml
+@@ -0,0 +1,70 @@
++paths:
++  project_root: .
++  data_root: data
++  checkpoint_root: ckpt
++  artifact_root: outputs
++  output_root: outputs
++  cache_root: data
++  external_asset_root: third_party
++
++data:
++  dataset: ball_refiner/single_object
++  evaluation_event_probability: 0.5
++  evaluation_seed: 20991
++
++corruption:
++  event_probability: 0.5
++  isolated_probability: 0.04
++  gap_min: 3
++  gap_max: 10
++  noise_p95_px: 200.0
++  jitter_sigma_px: 3.0
++  outlier_probability: 0.1
++  triangulation_steps: 3
++
++model:
++  dimensions: 2
++  architecture: regression
++  width: 96
++  layers: 4
++  heads: 4
++  dropout: 0.05
++  window_length: 128
++  flow_steps: 16
++
++compile:
++  enabled: false
++  backend: inductor
++  mode: default
++  fullgraph: false
++  dynamic: false
++
++training:
++  steps: 4000
++  batch_size: 32
++  learning_rate: 0.0003
++  weight_decay: 0.01
++  gradient_clip: 1.0
++  evaluate_every: 500
++  log_every: 100
++  gan_weight: 0.002
++  gan_warmup_steps: 500
++  cpu_threads: 2
++
++run:
++  output_dir: ${tennis_output:ball_refiner,train,coordinates,${tennis_run_id:}}
++  seed: 42
++  device: cuda
++
++hydra:
++  output_subdir: null
++  run:
++    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
++  job:
++    chdir: false
++  job_logging:
++    version: 1
++    disable_existing_loggers: false
++    handlers: {}
++    root:
++      handlers: []
+diff --git a/src/tasks/ball_refiner/coordinates/__init__.py b/src/tasks/ball_refiner/coordinates/__init__.py
+new file mode 100644
+index 000000000..2933bd1c8
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/__init__.py
+@@ -0,0 +1 @@
++"""Coordinate-only, offline refiners sharing one physical trajectory dataset."""
+diff --git a/src/tasks/ball_refiner/coordinates/config.py b/src/tasks/ball_refiner/coordinates/config.py
+new file mode 100644
+index 000000000..f47969215
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/config.py
+@@ -0,0 +1,134 @@
++"""Strict configuration for the coordinate refiner experiments (#991/#1014)."""
++
++from __future__ import annotations
++
++import math
++from dataclasses import asdict, dataclass, fields
++from pathlib import Path
++from typing import Any, TypeVar, cast, get_type_hints
++
++from omegaconf import DictConfig, OmegaConf
++
++from src.tasks.base.configuration import CompileConfig
++from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
++from src.utils.paths import PROJECT_ROOT
++
++T = TypeVar("T")
++
++
++def parse_section(cls: type[T], raw: dict[str, Any]) -> T:
++    """Reject missing/unknown fields and nonfinite numbers before constructing."""
++    expected = {field.name for field in fields(cast(Any, cls))}
++    if set(raw) != expected:
++        raise ValueError(f"{cls.__name__}: missing={expected - set(raw)}, unknown={set(raw) - expected}")
++    types = get_type_hints(cls)
++    for key, value in raw.items():
++        allowed = (int, float) if types[key] is float else (types[key],)
++        if type(value) not in allowed:
++            raise TypeError(f"Invalid type for {cls.__name__}.{key}: {type(value).__name__}")
++        if isinstance(value, float) and not math.isfinite(value):
++            raise ValueError(f"Nonfinite {cls.__name__}.{key}")
++    return cls(**raw)
++
++
++@dataclass(frozen=True)
++class CorruptionConfig:
++    event_probability: float
++    isolated_probability: float
++    gap_min: int
++    gap_max: int
++    noise_p95_px: float
++    jitter_sigma_px: float
++    outlier_probability: float
++    triangulation_steps: int
++
++    def __post_init__(self) -> None:
++        if not 0 <= self.event_probability <= 1 or not 0 <= self.isolated_probability <= 1:
++            raise ValueError("Missingness probabilities must be in [0,1]")
++        if not 1 <= self.gap_min < self.gap_max:
++            raise ValueError("Require distinct positive left/right gap widths")
++        if not 0.05 < self.outlier_probability < 1:
++            raise ValueError("Outlier probability must exceed 5% for the specified P95 mixture")
++        if not 0 <= self.jitter_sigma_px < self.noise_p95_px / 5:
++            raise ValueError("Jitter must be small relative to the positive noise P95")
++        if self.triangulation_steps < 0:
++            raise ValueError("triangulation_steps must be nonnegative")
++
++
++@dataclass(frozen=True)
++class ModelConfig:
++    dimensions: int
++    architecture: str
++    width: int
++    layers: int
++    heads: int
++    dropout: float
++    window_length: int
++    flow_steps: int
++
++    def __post_init__(self) -> None:
++        if self.dimensions not in (2, 3) or self.architecture not in ("regression", "flow"):
++            raise ValueError("Require dimensions=2|3 and architecture=regression|flow")
++        if self.architecture == "flow" and self.dimensions != 3:
++            raise ValueError("The diffusion comparison is defined for 3D")
++        if self.width < 8 or self.heads < 1 or self.width % self.heads or self.width % 2:
++            raise ValueError("width must be even and divisible by heads")
++        if min(self.layers, self.flow_steps) < 1 or self.window_length < 3 or not 0 <= self.dropout < 1:
++            raise ValueError("Invalid temporal model configuration")
++
++
++@dataclass(frozen=True)
++class TrainingConfig:
++    steps: int
++    batch_size: int
++    learning_rate: float
++    weight_decay: float
++    gradient_clip: float
++    evaluate_every: int
++    log_every: int
++    gan_weight: float
++    gan_warmup_steps: int
++    cpu_threads: int
++
++    def __post_init__(self) -> None:
++        if min(self.steps, self.batch_size, self.evaluate_every, self.log_every, self.cpu_threads) < 1:
++            raise ValueError("Training counts must be positive")
++        if min(self.learning_rate, self.gradient_clip) <= 0 or min(self.weight_decay, self.gan_weight, self.gan_warmup_steps) < 0:
++            raise ValueError("Invalid optimizer/GAN settings")
++
++
++def resolved_config(config: DictConfig, expected: set[str]) -> tuple[dict[str, Any], PathResolver]:
++    raw = OmegaConf.to_container(config, resolve=True, throw_on_missing=True)
++    if not isinstance(raw, dict) or set(raw) != expected:
++        raise ValueError(f"Require exactly the configuration sections {sorted(expected)}")
++    raw = cast(dict[str, Any], raw)
++    roots = RuntimePathRoots.from_mapping(raw["paths"], repository_root=PROJECT_ROOT)
++    return raw, PathResolver(roots)
++
++
++def training_config(config: DictConfig) -> tuple[dict[str, Any], Path, Path]:
++    raw, resolver = resolved_config(config, {"paths", "data", "corruption", "model", "training", "run", "compile"})
++    CompileConfig.from_mapping(raw["compile"])
++    model = parse_section(ModelConfig, raw["model"])
++    train = parse_section(TrainingConfig, raw["training"])
++    parse_section(CorruptionConfig, raw["corruption"])
++    if model.architecture == "flow" and train.gan_weight:
++        raise ValueError("GAN is only used by the direct regression comparison")
++    if set(raw["data"]) != {"dataset", "evaluation_event_probability", "evaluation_seed"}:
++        raise ValueError("Invalid data configuration")
++    if not 0 <= raw["data"]["evaluation_event_probability"] <= 1:
++        raise ValueError("Invalid evaluation event probability")
++    if set(raw["run"]) != {"output_dir", "seed", "device"} or raw["run"]["device"] not in ("cpu", "cuda"):
++        raise ValueError("Require explicit run output, seed, and cpu/cuda device")
++    if min(raw["run"]["seed"], raw["data"]["evaluation_seed"]) < 0:
++        raise ValueError("Seeds must be nonnegative")
++    dataset = resolver.resolve(PathRole.DATA, raw["data"]["dataset"])
++    output = resolver.resolve(PathRole.OUTPUT, raw["run"]["output_dir"])
++    if output == dataset or output.is_relative_to(dataset) or dataset.is_relative_to(output):
++        raise ValueError("Training output must be separate from the dataset")
++    raw["paths"] = {name: str(value) for name, value in asdict(resolver.roots).items()}
++    return raw, dataset, output
++
++
++def validate_training(config: DictConfig) -> None:
++    training_config(config)
+diff --git a/src/tasks/ball_refiner/coordinates/corruption.py b/src/tasks/ball_refiner/coordinates/corruption.py
+new file mode 100644
+index 000000000..ca7f09956
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/corruption.py
+@@ -0,0 +1,88 @@
++"""One event/noise realization feeds both coordinate refiners."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import TypeAlias, cast
++
++import numpy as np
++from numpy.typing import NDArray
++
++from src.tasks.ball_refiner.coordinates.config import CorruptionConfig
++from src.utils.geometry.triangulation import triangulate_multiview
++
++FloatArray: TypeAlias = NDArray[np.float32]
++BoolArray: TypeAlias = NDArray[np.bool_]
++
++
++@dataclass(frozen=True)
++class CorruptedTrajectory:
++    uv_px: FloatArray  # V,T,2; zero where missing
++    missing_2d: BoolArray  # V,T; true means missing
++    xyz_m: FloatArray  # T,3; zero where missing
++    missing_3d: BoolArray
++    intervals: NDArray[np.int64]  # selected event, inclusive start, exclusive end
++    isolated: BoolArray  # V,T; excludes event gaps and out-of-frame
++    noise_px: FloatArray  # before masking, retained for audits only
++
++
++def coordinate_noise(shape: tuple[int, ...], config: CorruptionConfig, rng: np.random.Generator) -> FloatArray:
++    """Isotropic small jitter + Gaussian outliers with population radial P95.
++
++    The Rayleigh tail at R is exp(-R²/2σ²). Solve the two-component survival
++    function exactly for the broad component at R=config.noise_p95_px.
++    """
++    radius = config.noise_p95_px
++    small_tail = np.exp(-0.5 * (radius / config.jitter_sigma_px) ** 2) if config.jitter_sigma_px else 0.0
++    broad_tail = (0.05 - (1 - config.outlier_probability) * small_tail) / config.outlier_probability
++    broad_sigma = radius / np.sqrt(-2 * np.log(broad_tail))
++    outlier = rng.random(shape) < config.outlier_probability
++    sigma = np.where(outlier, broad_sigma, config.jitter_sigma_px)
++    return cast(FloatArray, (rng.standard_normal((*shape, 2)) * sigma[..., None]).astype(np.float32))
++
++
++def corrupt_trajectory(
++    uv_px: FloatArray,
++    visible: BoolArray,
++    projections: NDArray[np.floating],
++    events: NDArray[np.integer],
++    *,
++    config: CorruptionConfig,
++    seed: int,
++) -> CorruptedTrajectory:
++    """Synchronize event gaps across views; sample isolated drops independently.
++
++    Random streams are separate, so rate ablations have nested event selection
++    and identical noise/widths/isolated proposals. Overlapping gaps are unioned.
++    Event metadata is never returned as a model feature.
++    """
++    if uv_px.ndim != 3 or uv_px.shape[-1] != 2 or visible.shape != uv_px.shape[:-1]:
++        raise ValueError("Require V,T,2 coordinates and V,T visibility")
++    frames = uv_px.shape[1]
++    if events.shape != (frames,) or not np.isfinite(uv_px).all():
++        raise ValueError("Require finite coordinates and one event bitmask per frame")
++    event_rng, noise_rng, isolated_rng = [np.random.default_rng(s) for s in np.random.SeedSequence(seed).spawn(3)]
++    indices = np.flatnonzero(events)
++    selected = event_rng.random(len(indices)) < config.event_probability
++    left = event_rng.integers(config.gap_min, config.gap_max + 1, len(indices))
++    # Sample right uniformly among the other widths: midpoint is never the event.
++    right = event_rng.integers(config.gap_min, config.gap_max, len(indices))
++    right += right >= left
++    blocked = np.zeros(frames, dtype=bool)
++    intervals = []
++    for event, before, after in zip(indices[selected], left[selected], right[selected], strict=True):
++        start, end = max(0, int(event - before)), min(frames, int(event + after + 1))
++        blocked[start:end] = True
++        intervals.append((int(event), start, end))
++    isolated = (isolated_rng.random(visible.shape) < config.isolated_probability) & visible & ~blocked[None]
++    missing = ~visible | blocked[None] | isolated
++    noise = coordinate_noise(visible.shape, config, noise_rng)
++    observation = np.where(missing[..., None], 0, uv_px + noise).astype(np.float32)
++    result = triangulate_multiview(
++        observation.transpose(1, 0, 2), (~missing).T.astype(np.float64), projections,
++        min_score=0.5, refinement_steps=config.triangulation_steps,
++    )
++    return CorruptedTrajectory(
++        observation, missing, np.where(result.valid[:, None], result.points, 0).astype(np.float32),
++        ~result.valid, np.asarray(intervals, dtype=np.int64).reshape(-1, 3), isolated, noise,
++    )
+diff --git a/src/tasks/ball_refiner/coordinates/data.py b/src/tasks/ball_refiner/coordinates/data.py
+new file mode 100644
+index 000000000..d8412cc7a
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/data.py
+@@ -0,0 +1,123 @@
++"""Load one shared rally store; prepare deterministic corruption in bounded RAM."""
++
++from __future__ import annotations
++
++import hashlib
++import json
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import torch
++from numpy.typing import NDArray
++from torch import Tensor
++
++from src.tasks.ball_refiner.coordinates.config import CorruptionConfig
++from src.tasks.ball_refiner.coordinates.corruption import (
++    CorruptedTrajectory,
++    corrupt_trajectory,
++)
++from src.tasks.ball_refiner.coordinates.generation import SCHEMA
++
++
++@dataclass(frozen=True)
++class Rally:
++    index: int
++    name: str
++    split: str
++    xyz: NDArray[np.float32]
++    uv: NDArray[np.float32]
++    visible: NDArray[np.bool_]
++    projection: NDArray[np.float64]
++    events: NDArray[np.uint8]
++    time: NDArray[np.float64]
++
++
++class SharedDataset:
++    def __init__(self, root: Path) -> None:
++        if json.loads((root / "state.json").read_text())["status"] != "complete":
++            raise ValueError("The shared dataset is not complete")
++        self.manifest_hash = hashlib.sha256((root / "manifest.json").read_bytes()).hexdigest()
++        self.manifest: dict[str, Any] = json.loads((root / "manifest.json").read_text())
++        if self.manifest["schema"] != SCHEMA:
++            raise ValueError("Unsupported shared dataset schema")
++        self.image_size = tuple(self.manifest["image_size_wh"])
++        if self.image_size != (1280, 720):
++            raise ValueError("This noise recipe requires the declared 1280x720 reference grid")
++        self.fps = float(self.manifest["fps"])
++        self.rallies = []
++        identities = set()
++        for index, record in enumerate(self.manifest["records"]):
++            if record["id"] in identities or record["split"] not in ("train", "val", "test"):
++                raise ValueError("Duplicate rally or unknown split")
++            identities.add(record["id"])
++            path = root / record["path"]
++            if not path.resolve().is_relative_to(root.resolve()) or hashlib.sha256(path.read_bytes()).hexdigest() != record["sha256"]:
++                raise ValueError(f"Dataset path/hash mismatch: {record['id']}")
++            with np.load(path, allow_pickle=False) as payload:
++                arrays = {key: payload[key] for key in ("xyz_m", "uv_px", "visible", "projection", "events", "time_s")}
++            frames, views = record["frames"], self.manifest["views"]
++            shapes = {"xyz_m": (frames, 3), "uv_px": (views, frames, 2), "visible": (views, frames),
++                      "projection": (views, 3, 4), "events": (frames,), "time_s": (frames,)}
++            if any(arrays[key].shape != shape for key, shape in shapes.items()) or any(not np.isfinite(value).all() for value in arrays.values()):
++                raise ValueError(f"Invalid rally arrays: {record['id']}")
++            if arrays["visible"].dtype != np.bool_ or arrays["events"].dtype != np.uint8 or (arrays["events"] > 3).any():
++                raise ValueError("Visibility/event dtypes are part of the dataset contract")
++            if not np.allclose(arrays["time_s"], np.arange(frames) / self.fps):
++                raise ValueError("Rally sampling does not match the dataset FPS")
++            self.rallies.append(Rally(index, record["id"], record["split"], arrays["xyz_m"], arrays["uv_px"],
++                                     arrays["visible"], arrays["projection"], arrays["events"], arrays["time_s"]))
++        if {r.split for r in self.rallies} != {"train", "val", "test"}:
++            raise ValueError("All three nonempty rally-disjoint splits are required")
++
++    def split(self, split: str) -> list[Rally]:
++        if split not in ("train", "val", "test"):
++            raise ValueError("Unknown split")
++        return [r for r in self.rallies if r.split == split]
++
++
++def normalization(dimensions: int) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
++    if dimensions == 2:
++        return np.array([1279, 719], np.float32), np.array([0.5, 0.5], np.float32)
++    if dimensions == 3:
++        return np.array([10, 20, 5], np.float32), np.zeros(3, np.float32)
++    raise ValueError("Require 2D or 3D coordinates")
++
++
++@dataclass(frozen=True)
++class PreparedRally:
++    source: Rally
++    corrupted: CorruptedTrajectory
++    coordinates: NDArray[np.float32]  # V,T,D (3D uses V=1)
++    missing: NDArray[np.bool_]
++    target: NDArray[np.float32]
++
++
++def prepare(rallies: list[Rally], dimensions: int, config: CorruptionConfig, seed: int) -> list[PreparedRally]:
++    scale, offset = normalization(dimensions)
++    output = []
++    for rally in rallies:
++        corruption_seed = int(np.random.SeedSequence([seed, rally.index]).generate_state(1)[0])
++        corrupted = corrupt_trajectory(rally.uv, rally.visible, rally.projection, rally.events, config=config, seed=corruption_seed)
++        inputs = corrupted.uv_px if dimensions == 2 else corrupted.xyz_m[None]
++        missing = corrupted.missing_2d if dimensions == 2 else corrupted.missing_3d[None]
++        truth = rally.uv if dimensions == 2 else rally.xyz[None]
++        normalized = np.where(missing[..., None], 0, inputs / scale - offset).astype(np.float32)
++        output.append(PreparedRally(rally, corrupted, normalized, missing, (truth / scale - offset).astype(np.float32)))
++    return output
++
++
++def sample_batch(data: list[PreparedRally], batch_size: int, length: int, rng: np.random.Generator, device: torch.device) -> tuple[Tensor, Tensor, Tensor]:
++    coords, masks, targets = [], [], []
++    # Equal rally sampling; one random view for 2D. No camera or event features.
++    for index in rng.integers(len(data), size=batch_size):
++        rally = data[index]
++        if rally.coordinates.shape[1] < length:
++            raise ValueError("Rally shorter than the configured training window")
++        view = int(rng.integers(len(rally.coordinates)))
++        start = int(rng.integers(rally.coordinates.shape[1] - length + 1))
++        coords.append(rally.coordinates[view, start:start + length])
++        masks.append(rally.missing[view, start:start + length])
++        targets.append(rally.target[view, start:start + length])
++    return tuple(torch.from_numpy(np.stack(values)).to(device) for values in (coords, masks, targets))
+diff --git a/src/tasks/ball_refiner/coordinates/evaluation.py b/src/tasks/ball_refiner/coordinates/evaluation.py
+new file mode 100644
+index 000000000..8aa335534
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/evaluation.py
+@@ -0,0 +1,97 @@
++"""All-frame, gap, observed and event metrics on identical fixed corruption."""
++
++from __future__ import annotations
++
++import hashlib
++import time
++from typing import Any
++
++import numpy as np
++import torch
++from numpy.typing import NDArray
++
++from src.tasks.ball_refiner.coordinates.data import PreparedRally, normalization
++from src.tasks.ball_refiner.coordinates.inference import predict_normalized
++from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner
++
++
++def event_neighborhood(events: np.ndarray, radius: int = 5) -> NDArray[np.bool_]:
++    selected: NDArray[np.bool_] = np.zeros(events.shape, dtype=bool)
++    for index in np.flatnonzero(events):
++        selected[max(0, index - radius):min(len(events), index + radius + 1)] = True
++    return selected
++
++
++def error_metrics(prediction: np.ndarray, target: np.ndarray, missing: np.ndarray, events: np.ndarray) -> dict[str, Any]:
++    distance = np.linalg.norm(prediction - target, axis=-1)
++    if not np.isfinite(distance).all():
++        raise ValueError("Nonfinite evaluation error")
++    result: dict[str, Any] = {"frame_missing_rate": float(missing.mean()), "frames": int(missing.size)}
++    for name, mask in (("all", np.ones_like(missing)), ("missing", missing), ("observed", ~missing), ("event", events)):
++        values = distance[mask]
++        result[name] = {"count": len(values), "rmse": float(np.sqrt(np.mean(values**2))) if len(values) else None,
++                        "mean": float(values.mean()) if len(values) else None,
++                        "p95": float(np.quantile(values, 0.95)) if len(values) else None}
++    return result
++
++
++def linear_baseline(coordinates: np.ndarray, missing: np.ndarray) -> np.ndarray:
++    result = coordinates.copy()
++    for view in range(len(result)):
++        known = np.flatnonzero(~missing[view])
++        # Explicit all-missing baseline is zero in physical coordinates.
++        for axis in range(result.shape[-1]):
++            result[view, :, axis] = np.interp(np.arange(result.shape[1]), known, coordinates[view, known, axis]) if len(known) else 0
++    return result
++
++
++def evaluate(model: CoordinateRefiner, data: list[PreparedRally], device: torch.device, *, seed: int, batch_size: int) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
++    predictions: list[np.ndarray] = []
++    targets: list[np.ndarray] = []
++    masks: list[np.ndarray] = []
++    event_masks: list[np.ndarray] = []
++    inputs: list[np.ndarray] = []
++    ids: list[np.ndarray] = []
++    view_ids: list[np.ndarray] = []
++    frame_ids: list[np.ndarray] = []
++    baselines: list[np.ndarray] = []
++    scale, offset = normalization(model.config.dimensions)
++    elapsed = 0.0
++    digest = hashlib.sha256()
++    for rally in data:
++        coordinates = torch.from_numpy(rally.coordinates).to(device)
++        missing = torch.from_numpy(rally.missing).to(device)
++        if device.type == "cuda":
++            torch.cuda.synchronize(device)
++        start = time.perf_counter()
++        normalized = predict_normalized(model, coordinates, missing, batch_size=batch_size, seed=seed + rally.source.index)
++        if device.type == "cuda":
++            torch.cuda.synchronize(device)
++        elapsed += time.perf_counter() - start
++        prediction = (normalized.cpu().numpy() + offset) * scale
++        target = (rally.target + offset) * scale
++        physical_input = np.where(rally.missing[..., None], 0, (rally.coordinates + offset) * scale)
++        events = np.broadcast_to(event_neighborhood(rally.source.events), rally.missing.shape)
++        shape = rally.missing.shape
++        predictions.append(prediction.reshape(-1, model.config.dimensions))
++        targets.append(target.reshape(-1, model.config.dimensions))
++        masks.append(rally.missing.ravel())
++        event_masks.append(events.ravel())
++        inputs.append(physical_input.reshape(-1, model.config.dimensions))
++        baselines.append(linear_baseline(physical_input, rally.missing).reshape(-1, model.config.dimensions))
++        ids.append(np.full(np.prod(shape), rally.source.index, dtype=np.int64))
++        view_ids.append(np.repeat(np.arange(shape[0]), shape[1]))
++        frame_ids.append(np.tile(np.arange(shape[1]), shape[0]))
++        digest.update(rally.source.name.encode())
++        digest.update(rally.coordinates.tobytes())
++        digest.update(rally.missing.tobytes())
++    arrays = {name: np.concatenate(values) for name, values in (
++        ("prediction", predictions), ("target", targets), ("missing", masks), ("event", event_masks), ("input", inputs),
++        ("linear_baseline", baselines), ("rally_id", ids), ("view_id", view_ids), ("frame_id", frame_ids),
++    )}
++    report = error_metrics(arrays["prediction"], arrays["target"], arrays["missing"], arrays["event"])
++    report["linear_baseline"] = error_metrics(arrays["linear_baseline"], arrays["target"], arrays["missing"], arrays["event"])
++    report.update({"unit": "px" if model.config.dimensions == 2 else "m", "inference_seconds": elapsed,
++                   "milliseconds_per_frame": elapsed * 1000 / report["frames"], "evaluation_input_sha256": digest.hexdigest(),
++                   "sampling": "one fixed-seed flow trajectory; no oracle selection or sample averaging"})
++    return report, arrays
+diff --git a/src/tasks/ball_refiner/coordinates/generation.py b/src/tasks/ball_refiner/coordinates/generation.py
+new file mode 100644
+index 000000000..48710311c
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/generation.py
+@@ -0,0 +1,235 @@
++"""BLCS physics -> one immutable rally store shared by 2D and 3D training."""
++
++from __future__ import annotations
++
++import hashlib
++import json
++import random
++import time
++from dataclasses import asdict, dataclass, replace
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import torch
++from numpy.typing import NDArray
++from omegaconf import DictConfig, OmegaConf
++
++from src.tasks.ball_refiner.coordinates.config import parse_section, resolved_config
++from src.tasks.base.generate_dataset.parallel_runner import (
++    run_parallel_scene_generation,
++)
++from src.tasks.blcs.generate_dataset.config import build_generator_config
++from src.tasks.blcs.generate_dataset.physics_retry import (
++    generate_with_bounded_physics_resampling,
++)
++from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
++from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager
++from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
++    RallyResult,
++    RallySimulator,
++)
++from src.tennis_scene.pipeline.artifacts import write_json_atomic
++from src.utils.configuration import PathRole
++from src.utils.geometry.triangulation import PinholeCamera
++from src.utils.projection import make_look_at_camera
++from src.utils.schema.court import (
++    BASELINE_CLEAR,
++    HALF_DOUBLES_WIDTH,
++    HALF_LENGTH,
++    SIDELINE_CLEAR,
++)
++
++SCHEMA = "ball_refiner.single_object.v1"
++
++
++@dataclass(frozen=True)
++class CameraSampling:
++    views: int
++    width: int
++    height: int
++    z_min: float
++    z_max: float
++    hfov_min: float
++    hfov_max: float
++    look_x: float
++    look_y: float
++    look_z_min: float
++    look_z_max: float
++
++    def __post_init__(self) -> None:
++        if self.views < 2 or self.views % 2 or min(self.width, self.height) < 2:
++            raise ValueError("Use an even camera count >=2 and valid image dimensions")
++        if not 0 < self.z_min <= self.z_max or not 0 < self.hfov_min <= self.hfov_max < 170:
++            raise ValueError("Invalid height/field-of-view ranges")
++        if min(self.look_x, self.look_y, self.look_z_min) < 0 or self.look_z_min > self.look_z_max:
++            raise ValueError("Invalid look-at ranges")
++
++
++@dataclass(frozen=True)
++class GenerationConfig:
++    dataset: str
++    train_rallies: int
++    val_rallies: int
++    test_rallies: int
++    seed: int
++    workers: int
++    min_frames: int
++    maximum_attempts: int
++
++    def __post_init__(self) -> None:
++        if min(self.train_rallies, self.val_rallies, self.test_rallies, self.workers, self.min_frames, self.maximum_attempts) < 1 or self.seed < 0:
++            raise ValueError("Require positive generation counts and nonnegative seed")
++
++
++def generation_config(config: DictConfig) -> tuple[dict[str, Any], Path, GenerationConfig, CameraSampling, GeneratorConfig]:
++    raw, resolver = resolved_config(config, {
++        "paths", "generation", "camera_sampling", "physics", "rally", "camera",
++        "generator", "targeted_velocity", "court_keypoints",
++    })
++    generation = parse_section(GenerationConfig, raw["generation"])
++    camera = parse_section(CameraSampling, raw["camera_sampling"])
++    physics = build_generator_config(config)
++    if physics.rally.sim_fps % physics.rally.output_fps or physics.rally.output_fps <= 0:
++        raise ValueError("BLCS simulation FPS must be divisible by output FPS")
++    if not np.isclose(physics.physics.dt, 1 / physics.rally.sim_fps):
++        raise ValueError("Physics dt must match simulation FPS")
++    raw["paths"] = {name: str(value) for name, value in asdict(resolver.roots).items()}
++    return raw, resolver.resolve(PathRole.DATA, generation.dataset), generation, camera, physics
++
++
++def validate_generation(config: DictConfig) -> None:
++    generation_config(config)
++
++
++def sample_cameras(config: CameraSampling, rng: np.random.Generator) -> tuple[PinholeCamera, ...]:
++    result = []
++    for index in range(config.views):
++        # Same fence planes for every clip, continuous X/Z within those planes.
++        center = (rng.uniform(-HALF_DOUBLES_WIDTH - SIDELINE_CLEAR, HALF_DOUBLES_WIDTH + SIDELINE_CLEAR),
++                  (-1 if index % 2 == 0 else 1) * (HALF_LENGTH + BASELINE_CLEAR), rng.uniform(config.z_min, config.z_max))
++        look = (rng.uniform(-config.look_x, config.look_x), rng.uniform(-config.look_y, config.look_y), rng.uniform(config.look_z_min, config.look_z_max))
++        camera = make_look_at_camera(center, look_at=look, image_size=(config.width, config.height), hfov_deg=rng.uniform(config.hfov_min, config.hfov_max))
++        intrinsic = np.array([[camera.f, 0, camera.cx], [0, camera.f, camera.cy], [0, 0, 1]], dtype=np.float64)
++        rotation = camera.R.numpy().astype(np.float64)
++        translation = -rotation @ camera.C.numpy().astype(np.float64)
++        result.append(PinholeCamera(f"cam{index}", intrinsic, rotation, translation))
++    return tuple(result)
++
++
++def event_frames(result: RallyResult, stride: int = 1, frames: int | None = None) -> NDArray[np.uint8]:
++    """Discard hypothetical later bounces after a shot was actually returned."""
++    events: NDArray[np.uint8] = np.zeros(frames if frames is not None else len(result.trajectory[::stride]), dtype=np.uint8)
++    for index, shot in enumerate(result.shot_events):
++        end = result.shot_events[index + 1].t_start if index + 1 < len(result.shot_events) else len(result.trajectory)
++        if shot.t_return >= 0:
++            end = min(end, shot.t_return + 1)
++        start_frame = int(np.floor(shot.t_start / stride + 0.5))
++        if 0 <= start_frame < len(events):
++            events[start_frame] |= 1
++        for bounce in (shot.t_bounce1, shot.t_bounce2, shot.t_bounce3):
++            if shot.t_start <= bounce < end:
++                frame = int(np.floor(bounce / stride + 0.5))
++                if frame < len(events):
++                    events[frame] |= 2
++    return events
++
++
++def _generate_rally(index: int, root: Path, generation: GenerationConfig, camera: CameraSampling, physics: GeneratorConfig, split: tuple[str, ...]) -> dict[str, Any]:
++    torch.set_num_threads(1)
++    seed = generation.seed + index
++    random.seed(seed)
++    np.random.seed(seed)
++    torch.manual_seed(seed)
++    rng = np.random.default_rng(seed)
++    attempts = 0
++    stride = physics.rally.sim_fps // physics.rally.output_fps
++    # Extract event ownership at native physics resolution, before FPS rounding.
++    native_rally = replace(physics.rally, output_fps=physics.rally.sim_fps)
++
++    def proposal() -> tuple[RallyResult, np.ndarray, tuple[PinholeCamera, ...]] | None:
++        nonlocal attempts
++        attempts += 1
++        simulator = RallySimulator(physics_config=physics.physics.sample(), rally_config=native_rally,
++                                   cell_manager=CellManager(), targeted_velocity_config=physics.targeted_velocity, device="cpu")
++        rally = simulator.generate_rally(from_cell=int(rng.integers(9)), from_side="near" if rng.random() < 0.5 else "far")
++        xyz = rally.trajectory[::stride].numpy().astype(np.float32)
++        outside = (np.abs(xyz[:, 0]) > HALF_DOUBLES_WIDTH + SIDELINE_CLEAR) | (np.abs(xyz[:, 1]) > HALF_LENGTH + BASELINE_CLEAR)
++        if outside.any():
++            xyz = xyz[:int(np.flatnonzero(outside)[0])]
++        if len(xyz) < generation.min_frames:
++            return None
++        cameras = sample_cameras(camera, rng)
++        if not all(view.project(xyz)[1].all() for view in cameras):
++            return None
++        return rally, xyz, cameras
++
++    name = f"rally_{index:06d}"
++    result, xyz, cameras = generate_with_bounded_physics_resampling(proposal, scene_id=name, maximum_attempts=generation.maximum_attempts)
++    points, visible = [], []
++    for view in cameras:
++        uv, front = view.project(xyz)
++        if not front.all():
++            # Keep only projection-finite trajectories: never fabricate GT behind a camera.
++            raise ValueError(f"{name}: trajectory passed behind a rear-fence camera")
++        points.append(uv.astype(np.float32))
++        visible.append(front & (uv[:, 0] >= 0) & (uv[:, 0] < camera.width) & (uv[:, 1] >= 0) & (uv[:, 1] < camera.height))
++    arrays = {
++        "xyz_m": xyz, "uv_px": np.stack(points), "visible": np.stack(visible),
++        "events": event_frames(result, stride, len(xyz)), "time_s": np.arange(len(xyz), dtype=np.float64) / physics.rally.output_fps,
++        "projection": np.stack([view.matrix for view in cameras]),
++        "camera_centers": np.stack([view.center for view in cameras]),
++        "intrinsic": np.stack([view.intrinsic for view in cameras]),
++        "rotation": np.stack([view.rotation for view in cameras]),
++        "translation": np.stack([view.translation for view in cameras]),
++    }
++    if not np.isfinite(xyz).all():
++        raise ValueError(f"Nonfinite physical trajectory: {name}")
++    path = root / "rallies" / f"{name}.npz"
++    with path.with_suffix(".partial").open("xb") as stream:
++        np.savez_compressed(stream, **arrays)
++    path.with_suffix(".partial").replace(path)
++    metadata = {
++        "id": name, "split": split[index], "seed": seed, "path": f"rallies/{name}.npz",
++        "frames": len(xyz), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
++        "attempts": attempts, "shots": len(result.shot_events), "event_frames": int(np.count_nonzero(arrays["events"])),
++        "end_reason": result.end_reason.value, "visible_fraction": float(np.mean(visible)),
++        "shot_metadata_fps": physics.rally.sim_fps,
++        "shot_metadata": [{key: getattr(shot, key) for key in ("shot_index", "t_start", "t_return", "t_bounce1", "t_bounce2", "t_bounce3", "shot_type", "return_type")} for shot in result.shot_events],
++    }
++    write_json_atomic(path.with_suffix(".json"), metadata)
++    return metadata
++
++
++def generate_dataset(config: DictConfig) -> Path:
++    raw, root, generation, camera, physics = generation_config(config)
++    if root.exists():
++        raise FileExistsError(f"Dataset output already exists: {root}")
++    (root / "rallies").mkdir(parents=True, exist_ok=False)
++    OmegaConf.save(OmegaConf.create(raw), root / "config.yaml")
++    write_json_atomic(root / "state.json", {"status": "generating"})
++    splits = np.array(["train"] * generation.train_rallies + ["val"] * generation.val_rallies + ["test"] * generation.test_rallies)
++    np.random.default_rng(generation.seed).shuffle(splits)
++    start = time.monotonic()
++    records = []
++    args = (root, generation, camera, physics, tuple(str(s) for s in splits))
++    indices = list(range(len(splits)))
++    iterator = (map(lambda i: _generate_rally(i, *args), indices) if generation.workers == 1 else
++                run_parallel_scene_generation(_generate_rally, indices, *args, num_workers=generation.workers))
++    for record in iterator:
++        records.append(record)
++        if len(records) % 25 == 0 or len(records) == len(indices):
++            print(json.dumps({"generated": len(records), "total": len(indices), "seconds": round(time.monotonic() - start, 1)}), flush=True)
++    manifest = {
++        "schema": SCHEMA, "fps": physics.rally.output_fps, "image_size_wh": [camera.width, camera.height],
++        "views": camera.views, "event_bits": {"shot": 1, "bounce": 2}, "records": records,
++        "split_policy": "seeded rally-disjoint; every view and temporal window follows its parent rally",
++        "selection_policy": "truncate at first fence exit; bounded resampling of short/behind-camera/full-physics-rejected rallies; attempts in each record",
++        "event_policy": "native simulation-frame ownership before nearest output-frame mapping; hypothetical post-return bounces excluded",
++        "camera_policy": "fixed within rally; continuous X/Z on both baseline-rear fence planes",
++        "generation_seconds": time.monotonic() - start,
++    }
++    write_json_atomic(root / "manifest.json", manifest)
++    write_json_atomic(root / "state.json", {"status": "complete", "rallies": len(records)})
++    print(json.dumps({"dataset": str(root), "rallies": len(records), "frames": sum(r["frames"] for r in records)}), flush=True)
++    return root
+diff --git a/src/tasks/ball_refiner/coordinates/inference.py b/src/tasks/ball_refiner/coordinates/inference.py
+new file mode 100644
+index 000000000..8847635cd
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/inference.py
+@@ -0,0 +1,81 @@
++"""Explicit checkpoint loading and one full offline trajectory per input."""
++
++from __future__ import annotations
++
++from dataclasses import asdict
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import torch
++from torch import Tensor
++
++from src.tasks.ball_refiner.coordinates.config import ModelConfig, parse_section
++from src.tasks.ball_refiner.coordinates.data import normalization
++from src.tasks.ball_refiner.coordinates.model import CoordinateRefiner, validate_input
++from src.tasks.ball_refiner.data.temporal import window_owners, window_starts
++
++CHECKPOINT_SCHEMA = "ball_refiner.coordinates.v1"
++
++
++def load_checkpoint(path: Path, device: torch.device) -> tuple[CoordinateRefiner, dict[str, Any]]:
++    payload = torch.load(path, map_location="cpu", weights_only=True)
++    if payload["schema"] != CHECKPOINT_SCHEMA:
++        raise ValueError("Expected a coordinate refiner checkpoint; a legacy GMM bundle is incompatible")
++    config = parse_section(ModelConfig, payload["model_config"])
++    model = CoordinateRefiner(config)
++    model.load_state_dict(payload["model"], strict=True)
++    model.to(device).eval()
++    return model, payload
++
++
++@torch.no_grad()  # type: ignore[untyped-decorator]
++def predict_normalized(model: CoordinateRefiner, coordinates: Tensor, missing: Tensor, *, batch_size: int, seed: int) -> Tensor:
++    """V,T,D -> V,T,D. Real windows, nearest-center ownership, no mode averaging."""
++    validate_input(coordinates, missing, model.config.dimensions)
++    if batch_size < 1 or seed < 0:
++        raise ValueError("Require positive batch size and nonnegative seed")
++    frames = coordinates.shape[1]
++    length = min(frames, model.config.window_length)
++    starts = window_starts(frames, length, max(1, length // 2))
++    owners = window_owners(frames, starts, length)
++    output = torch.empty_like(coordinates)
++    generator = torch.Generator(device=coordinates.device).manual_seed(seed)
++    was_training = model.training
++    model.eval()
++    try:
++        for view in range(len(coordinates)):
++            for first in range(0, len(starts), batch_size):
++                selected = starts[first:first + batch_size]
++                inputs = torch.stack([coordinates[view, start:start + length] for start in selected])
++                mask = torch.stack([missing[view, start:start + length] for start in selected])
++                prediction = model.predict(inputs, mask, generator=generator)
++                for local, start in enumerate(selected):
++                    take = np.flatnonzero(owners[start:start + length] == first + local)
++                    indices = torch.from_numpy(take).to(coordinates.device)
++                    output[view, indices + start] = prediction[local, indices]
++    finally:
++        model.train(was_training)
++    if not torch.isfinite(output).all():
++        raise ValueError("Refiner produced nonfinite coordinates")
++    return output
++
++
++@torch.no_grad()  # type: ignore[untyped-decorator]
++def refine_coordinates(model: CoordinateRefiner, coordinates: Tensor, missing: Tensor, *, seed: int, batch_size: int = 32) -> Tensor:
++    """Physical pixels (2D) or metres (3D), with true=missing; return all frames.
++
++    Input is (V,T,D), where V is merely independent sequences, not a model view
++    feature. FPS must match checkpoint metadata; resampling is a caller concern.
++    """
++    validate_input(coordinates, missing, model.config.dimensions)
++    scale_np, offset_np = normalization(model.config.dimensions)
++    scale = coordinates.new_tensor(scale_np)
++    offset = coordinates.new_tensor(offset_np)
++    normalized = torch.where(missing[..., None], 0, coordinates / scale - offset)
++    return (predict_normalized(model, normalized, missing, batch_size=batch_size, seed=seed) + offset) * scale
++
++
++def checkpoint_metadata(model: CoordinateRefiner) -> dict[str, Any]:
++    return {"schema": CHECKPOINT_SCHEMA, "model_config": asdict(model.config),
++            "input_contract": "coordinates + missing boolean only; true=missing", "output_contract": "one trajectory, all frames; absolute coordinates"}
+diff --git a/src/tasks/ball_refiner/coordinates/model.py b/src/tasks/ball_refiner/coordinates/model.py
+new file mode 100644
+index 000000000..8e3a2df9c
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/model.py
+@@ -0,0 +1,108 @@
++"""Bidirectional coordinate regression and x0-parameterized conditional flow."""
++
++from __future__ import annotations
++
++import math
++
++import torch
++from torch import Tensor, nn
++from torch.nn import functional as F
++
++from src.tasks.ball_refiner.coordinates.config import ModelConfig
++
++
++def sinusoidal(values: Tensor, width: int) -> Tensor:
++    frequency = torch.exp(torch.arange(0, width, 2, device=values.device, dtype=values.dtype) * (-math.log(10000) / width))
++    phase = values[..., None] * frequency
++    return torch.stack((phase.sin(), phase.cos()), dim=-1).flatten(-2)
++
++
++def validate_input(coordinates: Tensor, missing: Tensor, dimensions: int) -> None:
++    if coordinates.ndim != 3 or coordinates.shape[-1] != dimensions or coordinates.shape[1] < 1:
++        raise ValueError(f"Coordinates must be B,T,{dimensions} with T>0")
++    if missing.shape != coordinates.shape[:-1] or missing.dtype != torch.bool:
++        raise ValueError("missing must be a B,T boolean tensor (true=missing)")
++    if missing.device != coordinates.device or not coordinates.is_floating_point():
++        raise ValueError("Coordinates and mask must share a device; coordinates must be floating point")
++    if not torch.isfinite(coordinates[~missing]).all():
++        raise ValueError("Observed coordinates must be finite")
++
++
++class CoordinateRefiner(nn.Module):
++    """No confidence, court, camera, or event inputs. Predict every frame."""
++
++    def __init__(self, config: ModelConfig) -> None:
++        super().__init__()
++        self.config = config
++        channels = config.dimensions + 1 + (config.dimensions if config.architecture == "flow" else 0)
++        self.input = nn.Linear(channels, config.width)
++        layer = nn.TransformerEncoderLayer(
++            config.width, config.heads, dim_feedforward=4 * config.width,
++            dropout=config.dropout, activation="gelu", batch_first=True, norm_first=True,
++        )
++        self.temporal = nn.TransformerEncoder(layer, config.layers, enable_nested_tensor=False)
++        self.output = nn.Sequential(nn.LayerNorm(config.width), nn.Linear(config.width, config.dimensions))
++        self.flow_time = nn.Sequential(nn.Linear(config.width, config.width), nn.SiLU(), nn.Linear(config.width, config.width)) if config.architecture == "flow" else None
++
++    def forward(self, coordinates: Tensor, missing: Tensor, state: Tensor | None = None, time: Tensor | None = None) -> Tensor:
++        clean_input = torch.where(missing[..., None], 0, coordinates)
++        features = [clean_input, missing[..., None].to(coordinates.dtype)]
++        if self.config.architecture == "flow":
++            if state is None or time is None or self.flow_time is None:
++                raise ValueError("Flow forward requires its state and time")
++            features.append(state)
++        elif state is not None or time is not None:
++            raise ValueError("Regression does not accept flow state/time")
++        token = self.input(torch.cat(features, dim=-1))
++        token = token + sinusoidal(torch.arange(coordinates.shape[1], device=coordinates.device, dtype=coordinates.dtype), self.config.width)[None]
++        if self.flow_time is not None and time is not None:
++            token = token + self.flow_time(sinusoidal(time * 1000, self.config.width))[:, None]
++        # Missing frames remain queries and attend to both temporal directions.
++        # Masked coordinates were removed above, so no ground truth can leak.
++        return self.output(self.temporal(token))
++
++    def flow_loss(self, coordinates: Tensor, missing: Tensor, target: Tensor, generator: torch.Generator) -> Tensor:
++        if self.config.architecture != "flow":
++            raise ValueError("flow_loss requires a flow model")
++        time = torch.rand((len(target),), device=target.device, generator=generator) * 0.95
++        noise = torch.randn(target.shape, device=target.device, dtype=target.dtype, generator=generator)
++        t = time[:, None, None]
++        state = (1 - t) * noise + t * target
++        x0 = self(coordinates, missing, state, time)
++        # x0 parameterization of v=(x0-x_t)/(1-t); all target frames supervise it.
++        return F.mse_loss((x0 - state) / (1 - t), target - noise)
++
++    @torch.no_grad()  # type: ignore[untyped-decorator]
++    def predict(self, coordinates: Tensor, missing: Tensor, *, generator: torch.Generator | None = None) -> Tensor:
++        validate_input(coordinates, missing, self.config.dimensions)
++        if self.config.architecture == "regression":
++            return self(coordinates, missing)
++        if generator is None:
++            raise ValueError("Flow inference requires an explicit generator for reproducibility")
++        state = torch.randn(coordinates.shape, dtype=coordinates.dtype, device=coordinates.device, generator=generator)
++        for step in range(self.config.flow_steps):
++            t = step / self.config.flow_steps
++            time = torch.full((len(state),), t, dtype=coordinates.dtype, device=coordinates.device)
++            x0 = self(coordinates, missing, state, time)
++            state = state + (x0 - state) / (self.config.flow_steps - step)
++        return state
++
++
++class TrajectoryDiscriminator(nn.Module):
++    """Conditional local/multiscale trajectory realism, including event motion."""
++
++    def __init__(self, dimensions: int, width: int) -> None:
++        super().__init__()
++        self.net = nn.Sequential(
++            nn.Conv1d(4 * dimensions + 1, width, 5, padding=2), nn.LeakyReLU(0.2),
++            nn.Conv1d(width, width, 5, stride=2, padding=2), nn.LeakyReLU(0.2),
++            nn.Conv1d(width, width, 5, stride=2, padding=2), nn.LeakyReLU(0.2),
++            nn.Conv1d(width, 1, 3, padding=1),
++        )
++
++    def forward(self, trajectory: Tensor, coordinates: Tensor, missing: Tensor) -> Tensor:
++        velocity = F.pad(torch.diff(trajectory, dim=1), (0, 0, 1, 0))
++        acceleration = F.pad(torch.diff(velocity, dim=1), (0, 0, 1, 0))
++        condition = torch.where(missing[..., None], 0, coordinates)
++        features = torch.cat((trajectory, velocity, acceleration, condition, missing[..., None].to(trajectory.dtype)), -1)
++        return self.net(features.transpose(1, 2))
+diff --git a/src/tasks/ball_refiner/coordinates/training.py b/src/tasks/ball_refiner/coordinates/training.py
+new file mode 100644
+index 000000000..96b5c04e5
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/training.py
+@@ -0,0 +1,220 @@
++"""Reproducible bounded training, validation selection, and held-out evaluation."""
++
++from __future__ import annotations
++
++import json
++import math
++import os
++import shutil
++import time
++from dataclasses import asdict, replace
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import torch
++from omegaconf import DictConfig, OmegaConf
++from torch.nn import functional as F
++from torch.utils.tensorboard import SummaryWriter
++
++from src.tasks.ball_refiner.coordinates.config import (
++    CorruptionConfig,
++    ModelConfig,
++    TrainingConfig,
++    parse_section,
++    training_config,
++)
++from src.tasks.ball_refiner.coordinates.data import (
++    PreparedRally,
++    SharedDataset,
++    prepare,
++    sample_batch,
++)
++from src.tasks.ball_refiner.coordinates.evaluation import evaluate
++from src.tasks.ball_refiner.coordinates.inference import (
++    checkpoint_metadata,
++    load_checkpoint,
++)
++from src.tasks.ball_refiner.coordinates.model import (
++    CoordinateRefiner,
++    TrajectoryDiscriminator,
++)
++from src.tasks.base.configuration import CompileConfig
++from src.tasks.base.training.compilation import compile_modules
++from src.tasks.base.training.gan_loss import LSGANLoss
++from src.tennis_scene.pipeline.artifacts import write_json_atomic
++from src.utils.device import resolve_device
++
++
++def save_checkpoint(path: Path, payload: dict[str, Any]) -> None:
++    temporary = path.with_suffix(".partial")
++    with temporary.open("wb") as stream:
++        torch.save(payload, stream)
++    temporary.replace(path)
++
++
++def corruption_audit(data: list[PreparedRally]) -> dict[str, float]:
++    noises = np.concatenate([np.linalg.norm(r.corrupted.noise_px, axis=-1)[~r.corrupted.missing_2d] for r in data])
++    eligible = sum(np.count_nonzero(r.source.visible & ~np.any(r.corrupted.missing_2d & ~r.corrupted.isolated & r.source.visible, axis=0)[None]) for r in data)
++    event_count = sum(np.count_nonzero(r.source.events) for r in data)
++    return {
++        "noise_p95_px": float(np.quantile(noises, 0.95)),
++        "noise_p50_px": float(np.median(noises)),
++        "frame_missing_rate_2d": float(np.concatenate([r.corrupted.missing_2d.ravel() for r in data]).mean()),
++        "frame_missing_rate_3d": float(np.concatenate([r.corrupted.missing_3d for r in data]).mean()),
++        "isolated_probability_realized": sum(int(r.corrupted.isolated.sum()) for r in data) / eligible if eligible else 0.0,
++        "selected_event_fraction": sum(len(r.corrupted.intervals) for r in data) / event_count if event_count else 0.0,
++    }
++
++
++def run_training(config: DictConfig) -> Path:
++    raw, dataset_path, output = training_config(config)
++    model_config = parse_section(ModelConfig, raw["model"])
++    train = parse_section(TrainingConfig, raw["training"])
++    corruption = parse_section(CorruptionConfig, raw["corruption"])
++    seed = int(raw["run"]["seed"])
++    device = resolve_device(raw["run"]["device"])
++    if device.type == "cuda" and not os.environ.get("TENNIS_RUN_ID"):
++        raise RuntimeError("GPU training must be launched through the shared training queue")
++    if output.exists() and any(p.name != "hydra" for p in output.iterdir()):
++        raise FileExistsError(f"New training requires a new run directory: {output}")
++    dataset = SharedDataset(dataset_path)
++    if min(len(r.xyz) for r in dataset.rallies) < model_config.window_length:
++        raise ValueError("Training window exceeds the shortest shared rally")
++    output.mkdir(parents=True, exist_ok=True)
++    OmegaConf.save(OmegaConf.create(raw), output / "config.yaml")
++    write_json_atomic(output / "state.json", {"status": "preparing"})
++    checkpoint_dir = output / "logs" / "version_0" / "checkpoints"
++    checkpoint_dir.mkdir(parents=True)
++    writer = SummaryWriter(str(output / "logs" / "version_0"))
++    torch.set_num_threads(train.cpu_threads)
++    torch.manual_seed(seed)
++    if device.type == "cuda":
++        torch.cuda.manual_seed_all(seed)
++        torch.cuda.reset_peak_memory_stats(device)
++    model = CoordinateRefiner(model_config).to(device)
++    discriminator = TrajectoryDiscriminator(model_config.dimensions, model_config.width).to(device) if train.gan_weight else None
++    compile_modules({"refiner": model, **({"discriminator": discriminator} if discriminator else {})}, CompileConfig.from_mapping(raw["compile"]))
++    optimizer = torch.optim.AdamW(model.parameters(), lr=train.learning_rate, weight_decay=train.weight_decay)
++    disc_optimizer = torch.optim.AdamW(discriminator.parameters(), lr=train.learning_rate, weight_decay=train.weight_decay) if discriminator else None
++    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=train.steps, eta_min=train.learning_rate * 0.05)
++    adversarial = LSGANLoss()
++    # Discriminator initialization must not change the generator dropout stream.
++    torch.manual_seed(seed + 100)
++    flow_rng = torch.Generator(device=device).manual_seed(seed + 200)
++    sampling = np.random.default_rng(seed + 300)
++    eval_config = replace(corruption, event_probability=float(raw["data"]["evaluation_event_probability"]))
++    evaluation_seed = int(raw["data"]["evaluation_seed"])
++    validation = prepare(dataset.split("val"), model_config.dimensions, eval_config, evaluation_seed)
++    write_json_atomic(output / "data_contract.json", {
++        "dataset": str(dataset_path), "manifest_sha256": dataset.manifest_hash, "fps": dataset.fps,
++        "train_ids": [r.name for r in dataset.split("train")], "val_ids": [r.name for r in dataset.split("val")],
++        "test_ids": [r.name for r in dataset.split("test")], "evaluation_corruption": asdict(eval_config),
++        "evaluation_seed": evaluation_seed, "validation_audit": corruption_audit(validation),
++        "selection": "lowest all-frame physical-coordinate RMSE on fixed validation corruption",
++        "augmentation_refresh": "entire training split refreshed every evaluate_every updates; seed+10000+block",
++    })
++    best = math.inf
++    best_step = 0
++    start = time.monotonic()
++    training_data: list[PreparedRally] = []
++    sums: dict[str, float] = {"reconstruction": 0, "generator_gan": 0, "discriminator": 0}
++    try:
++        for step in range(1, train.steps + 1):
++            if (step - 1) % train.evaluate_every == 0:
++                block = (step - 1) // train.evaluate_every
++                training_data = prepare(dataset.split("train"), model_config.dimensions, corruption, seed + 10000 + block)
++                audit = corruption_audit(training_data)
++                write_json_atomic(output / f"corruption-block-{block:03d}.json", audit)
++                for key, value in audit.items():
++                    writer.add_scalar(f"corruption/{key}", value, step)
++            coordinates, missing, target = sample_batch(training_data, train.batch_size, model_config.window_length, sampling, device)
++            model.train()
++            optimizer.zero_grad(set_to_none=True)
++            gan_loss = coordinates.new_zeros(())
++            disc_loss = coordinates.new_zeros(())
++            if model_config.architecture == "flow":
++                reconstruction = model.flow_loss(coordinates, missing, target, flow_rng)
++            else:
++                prediction = model(coordinates, missing)
++                reconstruction = F.smooth_l1_loss(prediction, target, beta=0.02)
++                if discriminator is not None and disc_optimizer is not None and step > train.gan_warmup_steps:
++                    discriminator.requires_grad_(True)
++                    disc_optimizer.zero_grad(set_to_none=True)
++                    disc_loss = adversarial.discriminator_loss(discriminator(target, coordinates, missing), discriminator(prediction.detach(), coordinates, missing))
++                    disc_loss.backward()
++                    torch.nn.utils.clip_grad_norm_(discriminator.parameters(), train.gradient_clip, error_if_nonfinite=True)
++                    disc_optimizer.step()
++                    discriminator.requires_grad_(False)
++                    gan_loss = adversarial.generator_loss(discriminator(prediction, coordinates, missing))
++            loss = reconstruction + train.gan_weight * gan_loss
++            if not torch.isfinite(loss):
++                raise RuntimeError(f"Nonfinite training loss at step {step}")
++            loss.backward()
++            torch.nn.utils.clip_grad_norm_(model.parameters(), train.gradient_clip, error_if_nonfinite=True)
++            optimizer.step()
++            scheduler.step()
++            for key, value in (("reconstruction", reconstruction), ("generator_gan", gan_loss), ("discriminator", disc_loss)):
++                sums[key] += float(value.detach())
++            if step % train.log_every == 0:
++                row = {key: value / train.log_every for key, value in sums.items()}
++                row.update(step=step, seconds=time.monotonic() - start)
++                for key, value in row.items():
++                    writer.add_scalar(f"train/{key}", value, step)
++                with (output / "learning_curve.jsonl").open("a") as stream:
++                    stream.write(json.dumps(row, allow_nan=False) + "\n")
++                print(json.dumps(row), flush=True)
++                sums = dict.fromkeys(sums, 0.0)
++            if step % train.evaluate_every == 0 or step == train.steps:
++                report, _ = evaluate(model, validation, device, seed=evaluation_seed, batch_size=train.batch_size)
++                score = float(report["all"]["rmse"])
++                writer.add_scalar("val/rmse", score, step)
++                for name in ("observed", "missing", "event"):
++                    if report[name]["rmse"] is not None:
++                        writer.add_scalar(f"val/{name}_rmse", report[name]["rmse"], step)
++                payload = {**checkpoint_metadata(model), "model": model.state_dict(), "optimizer": optimizer.state_dict(),
++                           "scheduler": scheduler.state_dict(), "step": step, "seed": seed, "fps": dataset.fps,
++                           "manifest_sha256": dataset.manifest_hash, "validation_rmse": score,
++                           "discriminator": discriminator.state_dict() if discriminator else None,
++                           "disc_optimizer": disc_optimizer.state_dict() if disc_optimizer else None,
++                           "torch_rng": torch.get_rng_state(), "flow_rng": flow_rng.get_state(),
++                           "sampling_rng": sampling.bit_generator.state}
++                save_checkpoint(checkpoint_dir / "last.ckpt", payload)
++                if score < best:
++                    best, best_step = score, step
++                    save_checkpoint(checkpoint_dir / "best.ckpt", payload)
++                write_json_atomic(output / f"validation-{step:06d}.json", report)
++                write_json_atomic(output / "state.json", {"status": "training", "step": step, "best_step": best_step, "best_val_rmse": best})
++                print(json.dumps({"step": step, "validation_rmse": score, "best_step": best_step}), flush=True)
++        # Test is only opened after checkpoint selection is complete.
++        del training_data, validation
++        selected, _ = load_checkpoint(checkpoint_dir / "best.ckpt", device)
++        test = prepare(dataset.split("test"), model_config.dimensions, eval_config, evaluation_seed)
++        report, predictions = evaluate(selected, test, device, seed=evaluation_seed, batch_size=train.batch_size)
++        report.update(best_step=best_step, validation_rmse=best, training_seconds=time.monotonic() - start,
++                      peak_gpu_memory_bytes=int(torch.cuda.max_memory_allocated(device)) if device.type == "cuda" else 0,
++                      test_corruption_audit=corruption_audit(test), dataset_manifest_sha256=dataset.manifest_hash)
++        prediction_dir = output / "predictions"
++        prediction_dir.mkdir()
++        with (prediction_dir / "pred_test.npz").open("xb") as stream:
++            np.savez_compressed(stream, allow_pickle=False, **predictions)
++        unit = report["unit"]
++        metrics = {f"test_rmse_{unit}": report["all"]["rmse"], f"test_missing_rmse_{unit}": report["missing"]["rmse"],
++                   f"test_event_rmse_{unit}": report["event"]["rmse"], "test_frame_missing_rate": report["frame_missing_rate"],
++                   "inference_ms_per_frame": report["milliseconds_per_frame"], "best_step": best_step}
++        write_json_atomic(prediction_dir / "metrics.json", metrics)
++        write_json_atomic(prediction_dir / "diagnostic_metrics.json", report)
++        from src.tasks.ball_refiner.coordinates.visualization import plot_predictions
++        plot_predictions(predictions, prediction_dir / "examples.png", dimensions=model_config.dimensions)
++        if os.environ.get("TENNIS_REPRO_DIR"):
++            repro = Path(os.environ["TENNIS_REPRO_DIR"])
++            shutil.copytree(prediction_dir, repro / "predictions", dirs_exist_ok=True)
++            (repro / "output_dir.txt").write_text(str(checkpoint_dir) + "\n")
++        write_json_atomic(output / "state.json", {"status": "complete", "step": train.steps, "best_step": best_step, **metrics})
++        print(json.dumps({"output": str(output), **metrics}), flush=True)
++    except BaseException as error:
++        write_json_atomic(output / "state.json", {"status": "failed", "error": repr(error)})
++        raise
++    finally:
++        writer.close()
++    return output
+diff --git a/src/tasks/ball_refiner/coordinates/visualization.py b/src/tasks/ball_refiner/coordinates/visualization.py
+new file mode 100644
+index 000000000..9ded2accf
+--- /dev/null
++++ b/src/tasks/ball_refiner/coordinates/visualization.py
+@@ -0,0 +1,31 @@
++"""Standalone qualitative plots from saved inference arrays."""
++
++from pathlib import Path
++
++import matplotlib
++import numpy as np
++
++matplotlib.use("Agg")
++import matplotlib.pyplot as plt
++
++
++def plot_predictions(arrays: dict[str, np.ndarray], output: Path, *, dimensions: int) -> None:
++    rallies = np.unique(arrays["rally_id"])[:3]
++    fig, axes = plt.subplots(len(rallies), dimensions, figsize=(6 * dimensions, 3 * len(rallies)), squeeze=False)
++    for row, rally in enumerate(rallies):
++        selected = (arrays["rally_id"] == rally) & (arrays["view_id"] == 0)
++        frames = arrays["frame_id"][selected]
++        missing = arrays["missing"][selected]
++        for axis in range(dimensions):
++            ax = axes[row, axis]
++            ax.plot(frames, arrays["target"][selected, axis], label="BLCS truth", color="#167d58", linewidth=1.4)
++            ax.scatter(frames[~missing], arrays["input"][selected, axis][~missing], label="Noisy observations", color="#999999", s=4, alpha=0.5)
++            ax.plot(frames, arrays["prediction"][selected, axis], label="Refiner", color="#d84b2b", linewidth=1.0)
++            ax.fill_between(frames, 0, 1, where=missing, transform=ax.get_xaxis_transform(), color="#478ecc", alpha=0.15)
++            ax.set_title(f"Rally {rally}, {'XYZ'[axis]} ({'px' if dimensions == 2 else 'm'})")
++            ax.set_xlabel("Frame")
++            if row == 0 and axis == 0:
++                ax.legend(fontsize=8)
++    fig.tight_layout()
++    fig.savefig(output, dpi=130)
++    plt.close(fig)
+diff --git a/src/tasks/ball_refiner/scripts/generate_coordinates.py b/src/tasks/ball_refiner/scripts/generate_coordinates.py
+new file mode 100644
+index 000000000..649c459bc
+--- /dev/null
++++ b/src/tasks/ball_refiner/scripts/generate_coordinates.py
+@@ -0,0 +1,20 @@
++"""Generate a shared, rally-disjoint coordinate dataset on CPU."""
++
++from omegaconf import DictConfig
++
++from src.tasks.ball_refiner.coordinates.generation import (
++    generate_dataset,
++    validate_generation,
++)
++from src.utils.hydra import hydra_main, register_boundary_validator
++
++register_boundary_validator("ball_refiner.generate_coordinates", validate_generation)
++
++
++@hydra_main(version_base=None, config_path="../configs", config_name="generate_coordinates", validation_boundary="ball_refiner.generate_coordinates")
++def main(config: DictConfig) -> None:
++    generate_dataset(config)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/tasks/ball_refiner/scripts/train_coordinates.py b/src/tasks/ball_refiner/scripts/train_coordinates.py
+new file mode 100644
+index 000000000..04b2d4f10
+--- /dev/null
++++ b/src/tasks/ball_refiner/scripts/train_coordinates.py
+@@ -0,0 +1,18 @@
++"""Train one coordinate refiner condition; use the shared queue for CUDA."""
++
++from omegaconf import DictConfig
++
++from src.tasks.ball_refiner.coordinates.config import validate_training
++from src.tasks.ball_refiner.coordinates.training import run_training
++from src.utils.hydra import hydra_main, register_boundary_validator
++
++register_boundary_validator("ball_refiner.train_coordinates", validate_training)
++
++
++@hydra_main(version_base=None, config_path="../configs", config_name="train_coordinates", validation_boundary="ball_refiner.train_coordinates")
++def main(config: DictConfig) -> None:
++    run_training(config)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/utils/configuration/inventory.py b/src/utils/configuration/inventory.py
+index 00cce68c8..49fcb7a7f 100644
+--- a/src/utils/configuration/inventory.py
++++ b/src/utils/configuration/inventory.py
+@@ -139,6 +139,8 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
+ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+     "src.tasks.ball_refiner.scripts.evaluate_pilot": "ball_refiner.evaluate_pilot",
+     "src.tasks.ball_refiner.scripts.train": "ball_refiner.train",
++    "src.tasks.ball_refiner.scripts.train_coordinates": "ball_refiner.train_coordinates",
++    "src.tasks.ball_refiner.scripts.generate_coordinates": "ball_refiner.generate_coordinates",
+     "src.tennis_scene.chat_annotation.scripts.prepare": "tennis_scene.chat_annotation.prepare",
+     "src.synthetic_data_generation.scripts.run_appearance_variant": "synthetic.appearance_variant",
+     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
+@@ -192,6 +194,8 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
+ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
+     "src.tasks.ball_refiner.scripts.evaluate_pilot": "src.tasks.ball_refiner.evaluation.configuration.validate_evaluation_boundary",
+     "src.tasks.ball_refiner.scripts.train": "src.tasks.ball_refiner.training.configuration.validate_training_boundary",
++    "src.tasks.ball_refiner.scripts.train_coordinates": "src.tasks.ball_refiner.coordinates.config.validate_training",
++    "src.tasks.ball_refiner.scripts.generate_coordinates": "src.tasks.ball_refiner.coordinates.generation.validate_generation",
+     "src.tennis_scene.chat_annotation.scripts.prepare": "src.tennis_scene.chat_annotation.configuration.validate_prepare_config",
+     "src.synthetic_data_generation.scripts.run_appearance_variant": "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary",
+     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "src.synthetic_data_generation.visualization.publication.configuration.validate_publication_boundary",
+@@ -475,6 +479,8 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+     _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_triangulation", "main", domain="ball_refiner", executable_module=True),
+     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.evaluate_pilot"),
+     _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train"),
++    _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.train_coordinates"),
++    _runtime_boundary("ball_refiner", "src.tasks.ball_refiner.scripts.generate_coordinates"),
+     _non_hydra_boundary("src.tasks.ball_refiner.scripts.calibrate_covariance", "main", domain="ball_refiner", executable_module=True),
+     _non_hydra_boundary("src.tasks.ball_refiner.scripts.generate_evidence", "main", domain="ball_refiner", executable_module=True),
+     _non_hydra_boundary("src.tasks.ball_refiner.scripts.compare_detectors", "main", domain="ball_refiner", executable_module=True),
+diff --git a/tests/unit/tasks/ball_refiner/test_coordinates.py b/tests/unit/tasks/ball_refiner/test_coordinates.py
+new file mode 100644
+index 000000000..8e2e4f058
+--- /dev/null
++++ b/tests/unit/tasks/ball_refiner/test_coordinates.py
+@@ -0,0 +1,161 @@
++"""Scientific/data contracts for the shared coordinate refiner strategy."""
++
++from dataclasses import replace
++from types import SimpleNamespace
++
++import numpy as np
++import pytest
++import torch
++
++from src.tasks.ball_refiner.coordinates.config import (
++    CorruptionConfig,
++    ModelConfig,
++    parse_section,
++)
++from src.tasks.ball_refiner.coordinates.corruption import (
++    coordinate_noise,
++    corrupt_trajectory,
++)
++from src.tasks.ball_refiner.coordinates.evaluation import error_metrics
++from src.tasks.ball_refiner.coordinates.generation import (
++    CameraSampling,
++    event_frames,
++    sample_cameras,
++)
++from src.tasks.ball_refiner.coordinates.inference import refine_coordinates
++from src.tasks.ball_refiner.coordinates.model import (
++    CoordinateRefiner,
++    TrajectoryDiscriminator,
++)
++from src.tasks.base.training.gan_loss import LSGANLoss
++from src.utils.geometry.triangulation import triangulate_multiview
++from src.utils.schema.court import BASELINE_CLEAR, HALF_LENGTH
++
++
++@pytest.fixture
++def corruption():
++    return CorruptionConfig(0.5, 0.04, 3, 10, 200.0, 3.0, 0.1, 3)
++
++
++def projected(frames=600):
++    cameras = sample_cameras(CameraSampling(4, 1280, 720, 3, 8, 60, 90, 2, 3, 0.5, 2), np.random.default_rng(41))
++    time = np.arange(frames) / 60
++    xyz = np.column_stack((np.sin(time), np.sin(time * 0.4) * 7, 2 + np.sin(time)))
++    uv = np.stack([c.project(xyz)[0] for c in cameras]).astype(np.float32)
++    visible = np.ones((4, frames), dtype=bool)
++    events = np.zeros(frames, dtype=np.uint8)
++    events[np.arange(25, frames - 25, 40)] = 1
++    return xyz, uv, visible, np.stack([c.matrix for c in cameras]), events
++
++
++def test_camera_planes_and_roundtrip():
++    cameras = sample_cameras(CameraSampling(40, 1280, 720, 3, 8, 60, 90, 2, 3, 0.5, 2), np.random.default_rng(42))
++    centers = np.stack([c.center for c in cameras])
++    np.testing.assert_allclose(np.abs(centers[:, 1]), HALF_LENGTH + BASELINE_CLEAR, atol=1e-5)
++    assert np.ptp(centers[:, 0]) > 12
++    assert np.ptp(centers[:, 2]) > 3
++    assert len(np.unique([c.intrinsic[0, 0] for c in cameras])) == 40
++    xyz, uv, visible, projections, _ = projected()
++    result = triangulate_multiview(uv.transpose(1, 0, 2), visible.T.astype(float), projections)
++    assert result.valid.all()
++    np.testing.assert_allclose(result.points, xyz, atol=1e-4)
++
++
++def test_noise_radial_p95_is_measured_over_all_observations(corruption):
++    noise = coordinate_noise((250000,), corruption, np.random.default_rng(3))
++    distance = np.linalg.norm(noise, axis=-1)
++    assert np.quantile(distance, 0.95) == pytest.approx(200, abs=5)
++    assert np.median(distance) < 5
++    assert np.quantile(distance, 0.99) > 300
++
++
++def test_asymmetric_event_gaps_include_events_and_match_3d(corruption):
++    _, uv, visible, cameras, events = projected()
++    config = replace(corruption, event_probability=1, isolated_probability=0)
++    result = corrupt_trajectory(uv, visible, cameras, events, config=config, seed=7)
++    assert len(result.intervals) == np.count_nonzero(events)
++    for event, start, end in result.intervals:
++        assert 3 <= event - start <= 10
++        assert 3 <= end - event - 1 <= 10
++        assert 7 <= end - start <= 21
++        assert event - start != end - event - 1
++        assert result.missing_2d[:, start:end].all()
++        assert result.missing_3d[start:end].all()
++    assert np.all(result.uv_px[result.missing_2d] == 0)
++    assert np.all(result.xyz_m[result.missing_3d] == 0)
++
++
++def test_ablation_changes_selection_only_not_noise_or_gap_geometry(corruption):
++    _, uv, visible, cameras, events = projected()
++    low = corrupt_trajectory(uv, visible, cameras, events, config=replace(corruption, event_probability=0.25), seed=15)
++    high = corrupt_trajectory(uv, visible, cameras, events, config=replace(corruption, event_probability=0.75), seed=15)
++    np.testing.assert_array_equal(low.noise_px, high.noise_px)
++    assert set(map(tuple, low.intervals)) <= set(map(tuple, high.intervals))
++    both = ~low.missing_2d & ~high.missing_2d
++    np.testing.assert_array_equal(low.uv_px[both], high.uv_px[both])
++
++
++def test_phantom_bounces_after_return_are_excluded_before_rounding():
++    def shot(start, returned, bounces):
++        return SimpleNamespace(t_start=start, t_return=returned, t_bounce1=bounces[0], t_bounce2=bounces[1], t_bounce3=bounces[2])
++    result = SimpleNamespace(trajectory=np.zeros((80, 3)), shot_events=[shot(0, 35, [20, 36, 60]), shot(36, -1, [64, -1, -1])])
++    events = event_frames(result, stride=4)
++    # 36 is a real next shot but a hypothetical previous bounce, in same output bin.
++    assert events[9] == 1
++    assert events[5] == 2
++    assert events[15] == 0
++    assert events[16] == 2
++
++
++@pytest.mark.parametrize("dimensions,architecture", [(2, "regression"), (3, "regression"), (3, "flow")])
++def test_masked_values_cannot_leak_and_observed_frames_are_predicted(dimensions, architecture):
++    torch.set_num_threads(1)
++    model = CoordinateRefiner(ModelConfig(dimensions, architecture, 16, 1, 2, 0, 32, 3)).eval()
++    coordinates = torch.randn(1, 43, dimensions)
++    missing = torch.zeros(1, 43, dtype=torch.bool)
++    missing[:, 10:25] = True
++    first = refine_coordinates(model, coordinates, missing, seed=91)
++    coordinates[missing] = float("nan")
++    second = refine_coordinates(model, coordinates, missing, seed=91)
++    torch.testing.assert_close(first, second, rtol=0, atol=0)
++    assert first.shape == coordinates.shape and torch.isfinite(first).all()
++    assert not torch.allclose(first[~missing], coordinates[~missing])
++    # All missing windows are valid inputs and still return one complete trajectory.
++    prediction = refine_coordinates(model, coordinates, torch.ones_like(missing), seed=8)
++    assert torch.isfinite(prediction).all()
++
++
++def test_future_observation_influences_past_offline_prediction():
++    model = CoordinateRefiner(ModelConfig(2, "regression", 16, 1, 2, 0, 32, 3)).eval()
++    values = torch.zeros(1, 16, 2, requires_grad=True)
++    model(values, torch.zeros(1, 16, dtype=torch.bool))[0, 0].sum().backward()
++    assert values.grad[0, -1].abs().sum() > 0
++
++
++def test_flow_and_gan_both_supply_trainable_gradients():
++    coords, target = torch.randn(2, 16, 3), torch.randn(2, 16, 3)
++    missing = torch.rand(2, 16) < 0.5
++    model = CoordinateRefiner(ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3))
++    loss = model.flow_loss(coords, missing, target, torch.Generator().manual_seed(4))
++    loss.backward()
++    assert torch.isfinite(loss) and model.input.weight.grad.abs().sum() > 0
++    predicted = torch.randn(2, 16, 3, requires_grad=True)
++    discriminator = TrajectoryDiscriminator(3, 16)
++    LSGANLoss().generator_loss(discriminator(predicted, coords, missing)).backward()
++    assert predicted.grad.abs().sum() > 0
++
++
++def test_metric_rmse_is_euclidean_and_counts_every_frame():
++    prediction = np.array([[3, 4], [0, 0], [0, 12]], dtype=float)
++    report = error_metrics(prediction, np.zeros_like(prediction), np.array([True, False, False]), np.array([True, False, True]))
++    assert report["all"]["rmse"] == pytest.approx(np.sqrt(169 / 3))
++    assert report["missing"]["rmse"] == 5
++    assert report["observed"]["count"] == 2
++    assert report["frame_missing_rate"] == pytest.approx(1 / 3)
++
++
++def test_config_rejects_implicit_or_unknown_fields():
++    with pytest.raises(ValueError, match="missing"):
++        parse_section(ModelConfig, {"dimensions": 2})
++    with pytest.raises(TypeError):
++        parse_section(ModelConfig, {"dimensions": True, "architecture": "regression", "width": 16, "layers": 1, "heads": 2, "dropout": 0, "window_length": 32, "flow_steps": 3})

@@ -10,6 +10,7 @@
 | BLCS | [利用ガイド](../../blcs/visualization/README.md) | 8773 / 8770 |
 | Court Detection | [利用ガイド](../../court_detection/visualization/README.md) | 8774 / 8775 |
 | Ball Detection | [利用ガイド](../../ball_detection/visualization/README.md) | 8776 / 8777 |
+| Ball Refiner (座標2D/3D) | [利用ガイド](../../ball_refiner/coordinates/review/README.md) | 8784（閲覧・拡張・推論を統合） |
 
 ## 実行前確認
 

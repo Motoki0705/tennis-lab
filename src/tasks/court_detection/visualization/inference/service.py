@@ -58,6 +58,13 @@ from src.tasks.court_detection.visualization.review.datasets import (
     layer_identity,
     load_ground_truth_masks,
 )
+from src.tasks.court_detection.visualization.review.inspection import (
+    SAMPLE_STATES,
+    dataset_map,
+    record_states,
+    sample_inspection,
+    saved_annotation,
+)
 from src.tasks.court_detection.visualization.review.rasters import (
     heatmap_raster,
     line_probability_raster,
@@ -107,6 +114,10 @@ class DetectionService:
         )
 
     # ----------------------------------------------------------------- catalog
+    def annotation(self, scene: str) -> dict[str, object]:
+        """Expose saved sparse annotation only for a validated catalog sample."""
+        return saved_annotation(self.datasets, scene)
+
     def catalog(self) -> dict[str, Any]:
         """Rebuild the catalog from disk; refresh must surface new files.
 
@@ -133,6 +144,7 @@ class DetectionService:
             "datasets": datasets,
             "checkpoints": checkpoints,
             "warnings": self.datasets.warnings(),
+            "court_review": {"families": dataset_map(self.datasets)},
         }
 
     def scenes(
@@ -142,11 +154,15 @@ class DetectionService:
         offset: int = 0,
         limit: int = 100,
         checkpoint: str | None = None,
+        *,
+        sample_state: str = "",
     ) -> dict[str, Any]:
         if offset < 0:
             raise ValueError("Court scene の offset は 0 以上である必要があります。")
         if limit <= 0:
             raise ValueError("Court scene の limit は正の値である必要があります。")
+        if sample_state and sample_state not in SAMPLE_STATES:
+            raise ValueError(f"Unsupported Court sample state: {sample_state!r}.")
         entry = self.datasets.entry(dataset)
         if checkpoint:
             self._require_compatible(self._describe(checkpoint), entry)
@@ -155,6 +171,7 @@ class DetectionService:
             record.sample_id
             for record in self.datasets.records(dataset)
             if needle in record.sample_id.lower()
+            and (not sample_state or sample_state in record_states(record))
         ]
         window = identifiers[offset : offset + limit]
         return {
@@ -190,6 +207,9 @@ class DetectionService:
                 {
                     "index": 0,
                     "name": record.sample_id,
+                    "court_review": sample_inspection(
+                        entry, record, raw, self._input(entry).spec, masks
+                    ),
                     "gt": {
                         "points": points,
                         "segments": _keypoint_segments(points),

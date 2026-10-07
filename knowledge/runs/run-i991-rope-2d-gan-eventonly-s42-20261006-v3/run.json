@@ -1,0 +1,16 @@
+{
+  "run_id": "1791248190791221542_3435495_i991-rope-2d-gan-eventonly-s42-20261006-v3",
+  "name": "i991-rope-2d-gan-eventonly-s42-20261006-v3",
+  "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates model.dimensions=2 run.output_dir=ball_refiner/train/rope-2d-gan-eventonly/20261006-v3-s42",
+  "provider": "codex",
+  "session": "01a10697-63da-75b2-ae84-f2980da51c23",
+  "issue": "991",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "c5cee39b26e8f876c23df177d627df2f6ea8fece",
+  "branch": "codex/coordinate-refiner-rope-gan",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-refiner-rope-gan",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-refiner-rope-gan",
+  "captured_at": "2026-10-06T09:56:31+09:00"
+}

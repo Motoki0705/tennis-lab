@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 : "${1:?new absolute output directory required}"
-# Run from the checkout containing the commit recorded in repro.json.
+case "$1" in /*) ;; *) echo 'Output must be absolute' >&2; exit 2;; esac
+# Reproduce the recorded implementation in a new, isolated worktree.
+repro_main_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+repro_checkout="$repro_main_root/.claude/worktrees/repro-i935-unfiltered-production"
+test -x "$repro_main_root/.venv/bin/python"
+git -C "$repro_main_root" worktree add --detach "$repro_checkout" 37c41ce42c5e5b79110b07cee97088795b246f25
+ln -s "$repro_main_root/.venv" "$repro_checkout/.venv"
+cd "$repro_checkout"
 task_repo_root="$PWD"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 CUDA_VISIBLE_DEVICES='' PYTHONPATH="$task_repo_root"
 .venv/bin/python tests/benchmarks/court_side_unfiltered.py \

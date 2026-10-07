@@ -61,6 +61,9 @@ bbx_xys = tracks.bbx_xys(tracks.track_ids[0], base_enlarge=1.2)
 
 ## デモ
 
+保存済みの入力pose・観測mask・3D身体と配置拒否を同じsource frameで確認する
+読取専用UIは[保存GVHMR / Pose review](visualization/review/README.md)を参照してください。
+
 ```bash
 python -m src.submodules.scripts.demo_gvhmr \
     video_path=data/samples/tennis_clip.mp4 num_tracks=2 max_frames=120

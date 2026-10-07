@@ -43,12 +43,15 @@ class Editor:
         infos: list[VideoInfo],
         path: Path,
         resolver: PathResolver,
+        *,
+        read_only: bool = False,
     ) -> None:
         ClipStudioState(project, infos)
         self.project = deepcopy(project)
         self.infos = infos
         self.path = path
         self.resolver = resolver
+        self.read_only = read_only
         self.revision = 0
         self.lock = threading.RLock()
         self._undo: list[ClipStudioProject] = []
@@ -65,12 +68,14 @@ class Editor:
             state = ClipStudioState(self.project, self.infos)
             return {
                 "revision": self.revision,
+                "read_only": self.read_only,
                 "dataset_id": self.project.dataset_id,
                 "video_id": self.project.video_id,
                 "projects_path": str(self.path),
                 "sources": [
                     {
                         "camera_id": source.camera_id,
+                        "source_path": str(source.path),
                         "offset_sec": source.offset_sec,
                         "fps": info.fps,
                         "frame_count": info.frame_count,
@@ -94,6 +99,8 @@ class Editor:
 
     def edit(self, request: Edit) -> dict[str, Any]:
         with self.lock:
+            if self.read_only:
+                raise PermissionError("読取専用レビューではprojectを変更できません。")
             self.check_revision(request.revision)
             candidate = deepcopy(self.project)
             if request.action in {"undo", "redo"}:

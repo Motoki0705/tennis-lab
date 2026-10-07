@@ -6,11 +6,16 @@
 <div id="startup-notice" role="status" aria-live="polite" hidden></div>
 <main>
 <section class="workspace">
+<section id="dataset-map" aria-label="raw動画からdatasetへの関係">
+<div class="dataset-flow"><div><span class="eyebrow">01 RAW 動画</span><strong id="raw-summary">—</strong></div><span aria-hidden="true">→</span><div><span class="eyebrow">02 同期 PROJECT</span><strong id="project-summary">—</strong></div><span aria-hidden="true">→</span><div><span class="eyebrow">03 切出 DATASET</span><strong id="dataset-summary">照合中…</strong></div></div>
+<details id="dataset-details"><summary>出典・保存状態</summary><p id="dataset-provenance"></p><div id="source-paths"></div><p class="hint">RGBの時間選別です。この段階に教師・学習splitはありません。同期値の推定方法は保存JSONに記録されていません。登録・media存在の照合は、全frameや教師品質の検証とは別です。</p></details>
+</section>
 <div class="section-head"><div class="toolbar modes"><button id="focus" class="active" aria-pressed="true">単一カメラ</button><button id="compare" aria-pressed="false">カメラ比較</button></div><div class="toolbar"><label>フォーカス <select id="camera" aria-label="フォーカスするカメラ"></select></label><button id="sync-toggle" aria-expanded="false" aria-controls="sync-panel">同期調整を開く</button></div></div>
 <div class="media-check">
 <div id="viewers" class="viewers focus"></div>
 <section id="sync-panel" aria-labelledby="sync-title" hidden><div class="section-head"><h2 id="sync-title">カメラの同期調整</h2><button id="sync-close">閉じる</button></div><p class="hint">時差は「動画の時刻 = 共通時刻 + 時差」。停止中の画像はフレーム番号で照合できます。</p><div id="offsets"></div><div class="toolbar"><label>基準 <select id="reference"></select></label><button id="auto-sync">音声から同期候補を計算</button></div><div id="proposal"></div></section>
 </div>
+<section id="time-review" aria-labelledby="time-review-title"><div class="section-head"><h2 id="time-review-title">共通時刻 → 各カメラの元フレーム</h2><output id="review-time">照合中…</output></div><div class="table-scroll"><table><thead><tr><th>カメラ / raw形式</th><th>保存offset（秒）</th><th>元動画時刻（秒）</th><th>元frame（0始まり）</th><th>この時刻の映像</th></tr></thead><tbody id="frame-map"></tbody></table></div><p id="clip-membership" class="hint"></p></section>
 <div id="status" role="status" aria-live="polite">プロジェクトを読み込んでいます</div>
 <section class="transport">
 <div class="toolbar"><button id="back" title="左矢印キー">◀ 戻る</button><button id="play" class="primary">▶ 再生</button><button id="forward" title="右矢印キー">進む ▶</button><output id="time">00:00:00.000</output><label>再生速度 <select id="rate"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="4">4×</option></select></label><label>← → 移動量 <select id="step"><option value="frame">1フレーム</option><option value="0.1">0.1秒</option><option value="1" selected>1秒</option><option value="5">5秒</option><option value="10">10秒</option><option value="30">30秒</option></select></label></div>
@@ -23,6 +28,7 @@
 </section>
 </section>
 <aside><div class="section-head"><h2>ラリークリップ</h2><span id="count">0 clips</span></div><div id="clips"></div>
+<section id="clip-review" aria-label="選択clipのdataset状態"><p class="hint">一覧からclipを選ぶと区間と出力状態を確認できます。</p></section>
 <form id="clip-editor" hidden><h3>選択クリップの編集</h3><label>名前<input id="clip-name" required pattern="[A-Za-z0-9][A-Za-z0-9._-]*"></label><label>開始（秒）<input id="clip-start" type="number" step="any" required></label><button id="set-start" type="button">現在位置を開始に</button><label>終了（秒・この時刻は含まない）<input id="clip-end" type="number" step="any" required></label><button id="set-end" type="button">現在位置を終了に</button><div class="toolbar"><button type="submit" class="primary">変更を保存</button><button id="delete" type="button" class="danger">削除</button></div><div class="toolbar"><button id="loop" type="button">区間リピート</button><button id="export-one" type="button">このクリップを書き出す</button></div></form>
 <section class="exports"><button id="export-all">全クリップを書き出す</button><div id="job" role="status" aria-live="polite"></div><progress id="job-progress" hidden></progress><button id="cancel-job" hidden>書き出しをキャンセル</button></section>
 </aside>

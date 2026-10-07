@@ -105,11 +105,14 @@ def test_pose_integrity_and_frame_alignment(dataset):
              player_ids=np.array(['p1']), frame_index=np.arange(40), pts=store.frames['pts'],
              raw_track_ids=np.ones((40, 1), np.int64), detection_rows=np.arange(40)[:, None])
     review = poses / 'review.json'
-    review.write_text('{}')
+    raw_tracks_sha256 = 'fixture-raw-tracks'
+    review.write_text(json.dumps(dict(status='approved', clip_id=store.clips[0].clip_id,
+                                     raw_tracks_sha256=raw_tracks_sha256)))
     manifest = dict(schema='ball_detection_player_poses.v1', coordinate_system='stored_jpeg_pixels',
                     ball_store=dict(directory=str(root), hashes={name: dual_sha256(root / name) for name in ('metadata.json', 'index.npz')}),
                     clips=[dict(clip_id=store.clips[0].clip_id, pose_status='approved', file=artifact.name,
-                                sha256=dual_sha256(artifact), review_file=review.name, review_sha256=dual_sha256(review))])
+                                sha256=dual_sha256(artifact), raw_tracks_sha256=raw_tracks_sha256,
+                                review_file=review.name, review_sha256=dual_sha256(review))])
     (poses / 'manifest.json').write_text(json.dumps(manifest))
     report = compute_dataset_statistics(store, [store.clips[0].clip_id], StatisticsConfig.shipped(), project_root=project, pose_directory=poses)
     assert report['pose_available_clips'] == 1

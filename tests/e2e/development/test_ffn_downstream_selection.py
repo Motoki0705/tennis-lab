@@ -18,6 +18,7 @@ _EXPECTED_FFN_TYPES = frozenset(
 )
 _EXPECTED_DIRECT_CONSUMERS = frozenset(
     {
+        "src/tasks/ball_refiner_3d/models/components/temporal_transformer.py",
         "src/tasks/blcs/models/blcs_multiview_axial_model.py",
         "src/tasks/court_detection/models/dinov3_dpt.py",
         "src/tasks/plcs/models/plcs_multiview_axial_model.py",
@@ -26,6 +27,7 @@ _EXPECTED_DIRECT_CONSUMERS = frozenset(
     }
 )
 _CONFIGURATION_SURFACES = (
+    "src/tasks/ball_refiner_3d/configuration/model.py",
     "src/tasks/blcs/configuration.py",
     "src/tasks/court_detection/configuration.py",
     "src/tasks/plcs/configuration.py",

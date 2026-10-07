@@ -121,7 +121,8 @@ fs.mkdirSync(outputDir, { recursive: true });
       if (p === "/api/preview") {
         const index = Number(url.searchParams.get("start"));
         const scene = url.searchParams.get("scene");
-        const annotation = annotations(scene)[index];
+        const count = Number(url.searchParams.get("count") || 1);
+        const annotationRows = annotations(scene);
         return json({
           scene: url.searchParams.get("scene"),
           label: "Clip",
@@ -129,13 +130,11 @@ fs.mkdirSync(outputDir, { recursive: true });
           start: index,
           width: 1280,
           height: 720,
-          items: [
-            {
-              index,
-              name: `frame_${index}.jpg`,
-              gt: { points: mode === "review" && !annotation.located_count ? [] : [{ x: 600, y: 400, label: "b001" }], rasters: [] },
-            },
-          ],
+          items: Array.from({length:count}, (_,offset) => ({
+            index: index + offset,
+            name: `frame_${index + offset}.jpg`,
+            gt: { points: mode === "review" && !annotationRows[index + offset].located_count ? [] : [{ x: 600, y: 400, label: "b001" }], rasters: [] },
+          })),
           warnings: [],
         });
       }
@@ -155,6 +154,9 @@ fs.mkdirSync(outputDir, { recursive: true });
           "index.html",
           "app.js",
           "viewer.mjs",
+          "review.mjs",
+        "players.mjs",
+        "playback.mjs",
           "icons.mjs",
           "play_intervals.mjs",
           "style.css",
@@ -243,7 +245,7 @@ fs.mkdirSync(outputDir, { recursive: true });
     });
     pending = null;
     await page.waitForFunction(
-      () => document.getElementById("status").textContent === "GT + Prediction",
+      () => document.getElementById("status").textContent.endsWith(" + Prediction"),
     );
     assert.equal(inferCount, 2);
     assert.equal(await page.locator("#play-intervals").isVisible(), false);

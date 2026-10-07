@@ -1,6 +1,12 @@
 import { ImageViewer } from "./viewer.mjs";
+import { FrameBuffer, SequentialClock } from "./playback.mjs";
 import { fillIcons, icon } from "./icons.mjs";
 import { PlayTimeline } from "./play_intervals.mjs";
+import {
+  renderReviewFilters, renderSceneReview, renderFrameReview,
+  renderJumpOptions, updateJumpButtons, jumpTarget, renderDatasetOverview,
+  sourceLabels,
+} from "./review.mjs";
 const $ = (id) => document.getElementById(id);
 let statisticsPanel = null;
 fillIcons();
@@ -8,6 +14,7 @@ const state = {
   catalog: null,
   dataset: "",
   scene: null,
+  review: null,
   frame: 0,
   displayedFrame: 0,
   total: 0,
@@ -19,7 +26,12 @@ const state = {
   frameToken: 0,
   checkpoint: "",
   prediction: new Map(),
-  preview: new Map(),
+  buffer: null,
+  retiredBuffers: [],
+  playerDataset: "",
+  playToken: 0,
+  busyToken: null,
+  paintTimes: [],
   running: false,
   playing: false,
   timer: null,
@@ -32,6 +44,7 @@ const playTimeline = new PlayTimeline($("play-intervals"), (frame) => {
   stop();
   showFrame(frame);
 });
+let courtReview = null;
 const query = (values) =>
   new URLSearchParams(
     Object.entries(values).filter(([, v]) => v !== null && v !== undefined),
@@ -75,7 +88,11 @@ function updateRun() {
 }
 function stop() {
   state.playing = false;
-  clearTimeout(state.timer);
+  cancelAnimationFrame(state.timer);
+  state.playToken++;
+  state.frameToken++;
+  viewer.token++;
+  $("buffer-status").textContent = "";
   $("play").innerHTML = icon("play");
 }
 function resetScene() {
@@ -84,13 +101,25 @@ function resetScene() {
   state.sceneToken++;
   state.frameToken++;
   state.scene = null;
+  state.review = null;
+  renderSceneReview(null);
+  renderFrameReview(null);
+  courtReview?.clear();
+  renderJumpOptions(null);
   state.total = 0;
   state.frame = 0;
   state.displayedFrame = 0;
   state.resultWarnings = [];
-  state.preview.clear();
-  state.prediction.clear();
   viewer.clear();
+  for (const key of ["scene", "frame", "people", "playerMode"])
+    delete $("view").dataset[key];
+  state.buffer?.dispose();
+  for (const buffer of state.retiredBuffers) buffer.dispose();
+  state.retiredBuffers = [];
+  state.buffer = null;
+  $("player-status").textContent = "";
+  $("actual-fps").textContent = "実測 — fps";
+  state.prediction.clear();
   $("empty").hidden = false;
   $("frame-name").textContent = "";
   $("scene-title").textContent = "未選択";
@@ -171,8 +200,75 @@ function renderDatasets() {
       return b;
     }),
   );
+  renderPlayerDatasets();
+  renderReviewFilters(items.find((d) => d.id === state.dataset), state.catalog.task === "ball_detection");
+  courtReview?.dataset(items.find((d) => d.id === state.dataset));
   $("dataset-label").textContent =
     items.find((d) => d.id === state.dataset)?.label || "該当データセットなし";
+}
+function renderPlayerDatasets() {
+  const items = (state.catalog.player_datasets || []).filter(
+    (d) =>
+      d.ball_version === state.dataset.replace(/^store\//, "") || !d.available,
+  );
+  $("player-settings").hidden = state.catalog.task !== "ball_detection";
+  if (!items.some((d) => d.id === state.playerDataset && d.available))
+    state.playerDataset = items.find((d) => d.available)?.id || "";
+  $("player-dataset").replaceChildren(
+    new Option("なし", ""),
+    ...items.map((d) => {
+      const option = new Option(
+        `${d.available ? "" : "[利用不可] "}${d.label}`,
+        d.id,
+      );
+      option.disabled = !d.available;
+      option.title = d.error || d.label;
+      return option;
+    }),
+  );
+  $("player-dataset").value = state.playerDataset;
+  const selected = items.find((d) => d.id === state.playerDataset);
+  $("player-dataset-scope").textContent = selected?.available
+    ? `元データ ${selected.clips} clips · 採用 ${selected.reviewed_clips} / raw ${selected.raw_clips}。ボール教師とは別の推定結果です。`
+    : "";
+  const failures = items.filter((d) => !d.available);
+  $("player-dataset-errors").hidden = !failures.length;
+  $("player-dataset-errors").textContent = failures
+    .map((d) => `${d.label}: ${d.error}`)
+    .join("\n");
+  $("player-status-filter").hidden = !state.playerDataset;
+  if (!state.playerDataset) $("player-status-filter").value = "";
+}
+function makeBuffer() {
+  return new FrameBuffer({
+    scene: state.scene.id,
+    total: state.total,
+    playerDataset: state.playerDataset,
+    mode: $("player-mode").value,
+    json: api,
+  });
+}
+function reportPlayers(payload, people) {
+  if (!payload) {
+    $("player-status").textContent = "Playerデータセット未選択";
+    return;
+  }
+  const kind =
+    payload.mode === "reviewed" ? "採用結果" : "生成結果（全人物・raw ID）";
+  $("player-status").textContent =
+    `${payload.label} · ${kind} · ${payload.available ? `${people.length}人観測` : "この結果は未提供"}`;
+}
+async function changePlayerSource() {
+  if (!state.scene) return;
+  stop();
+  if (state.buffer) {
+    state.buffer.retire();
+    state.retiredBuffers.push(state.buffer);
+  }
+  state.buffer = makeBuffer();
+  viewer.people = [];
+  viewer.draw();
+  await showFrame(state.frame);
 }
 async function loadCatalog() {
   const token = ++state.catalogToken;
@@ -190,6 +286,19 @@ async function loadCatalog() {
     resetScene();
     state.catalog = catalog;
     $("statistics-open").hidden = !catalog.statistics_ui;
+    if (catalog.task === "court_detection" && !courtReview) {
+      const { createCourtReview } = await import("/task-static/review.mjs");
+      if (token !== state.catalogToken) return;
+      courtReview = createCourtReview(viewer, () => {
+        state.page = 0;
+        resetScene();
+        loadScenes();
+      });
+    }
+    viewer.configure({ ballPoints: catalog.task === "ball_detection" });
+    $("ball-state-legend").hidden = catalog.task !== "ball_detection";
+    $("gt-legend-label").textContent = catalog.task === "ball_detection" ? "観測" : "保存KP / 派生target";
+    $("gt-layer-label").textContent = catalog.task === "ball_detection" ? "保存ball注釈" : "保存KP + 派生target";
     document.title = catalog.title;
     $("title").textContent = catalog.title;
     $("mode").textContent =
@@ -202,9 +311,9 @@ async function loadCatalog() {
       "pred-legend",
     ])
       $(id).hidden = review;
-    $("device-status").textContent = catalog.cuda_available
-      ? "CUDA available"
-      : "CPU only";
+    $("device-status").textContent = catalog.task === "court_detection" && review
+      ? "保存データを確認"
+      : catalog.cuda_available ? "CUDA available" : "CPU only";
     if (!catalog.checkpoints.some((c) => c.id === state.checkpoint && !c.error))
       state.checkpoint = "";
     renderCheckpoints();
@@ -227,7 +336,7 @@ async function loadScenes() {
   }
   try {
     const result = await api(
-      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null })}`,
+      `/api/scenes?${query({ dataset, search: $("scene-search").value, offset: state.page * 100, limit: 100, checkpoint: state.checkpoint || null, player_dataset: state.playerDataset || null, player_status: $("player-status-filter").value || null, source: $("source-filter").value || null, split: $("split-filter").value || null, review_state: $("review-state-filter").value || null, sample_state: $("court-sample-filter")?.value || null })}`,
     );
     if (
       token !== state.listToken ||
@@ -249,13 +358,14 @@ async function loadScenes() {
         const name = document.createElement("span");
         name.textContent = item.label;
         const meta = document.createElement("small");
-        meta.textContent = `${item.frames} frame${item.frames === 1 ? "" : "s"}`;
+        meta.textContent = `${item.review ? `${sourceLabels[item.review.source] || item.review.source} · ` : ""}${item.frames} frame${item.frames === 1 ? "" : "s"}${item.player_status ? ` · ${item.player_status.label}` : ""}`;
         b.append(name, meta);
         b.onclick = () => selectScene(item);
         return b;
       }),
     );
     if (!state.scene && result.items.length) await selectScene(result.items[0]);
+    if (!state.scene && !result.items.length) status("条件に合うクリップがありません");
   } catch (error) {
     if (token === state.listToken) status(error.message, true);
   }
@@ -265,7 +375,10 @@ async function selectScene(item) {
   state.scene = item;
   state.total = item.frames;
   state.frame = 0;
+  state.buffer = makeBuffer();
   $("scene-title").textContent = item.label;
+  renderSceneReview(item);
+  courtReview?.dataset(state.catalog.datasets.find((d) => d.id === state.dataset));
   $("start").value = "0";
   $("start").max = String(Math.max(0, item.frames - 1));
   $("seek").max = String(Math.max(0, item.frames - 1));
@@ -273,7 +386,24 @@ async function selectScene(item) {
   for (const b of $("scenes").children)
     b.classList.toggle("selected", b.dataset.scene === item.id);
   updateRun();
-  await Promise.all([showFrame(0, true), loadPlayIntervals()]);
+  const selection = state.sceneToken;
+  if (state.catalog.task === "ball_detection" && (item.review || state.catalog.datasets.find((d) => d.id === state.dataset)?.overview)) {
+    try {
+      const review = await api(`/api/review?${query({ scene: item.id })}`);
+      if (selection !== state.sceneToken) return;
+      state.review = review;
+      renderSceneReview({ ...item, review });
+      renderJumpOptions(review);
+    } catch (error) {
+      if (selection !== state.sceneToken) return;
+      status(error.message, true);
+      return;
+    }
+  }
+  await Promise.all([
+    showFrame(state.review?.positions[$("review-state-filter").value]?.[0] ?? 0, true),
+    loadPlayIntervals(),
+  ]);
 }
 async function loadPlayIntervals() {
   if (!state.catalog.play_intervals_available) return;
@@ -311,6 +441,11 @@ function renderLayers(gt, pred) {
   const previous = $("raster").value;
   const rasters = [...(gt?.rasters || []), ...(pred?.rasters || [])];
   const names = [...new Set(rasters.map((r) => r.name))];
+  const signature = JSON.stringify(
+    rasters.map((r) => [r.name, r.legend || []]),
+  );
+  if ($("raster").dataset.signature === signature) return;
+  $("raster").dataset.signature = signature;
   $("raster").replaceChildren(
     new Option("なし", ""),
     ...names.map((name) => new Option(name, name)),
@@ -332,58 +467,67 @@ function renderRasterLegend(rasters) {
   );
 }
 async function showFrame(frame, reset = false) {
-  if (!state.scene) return false;
+  if (!state.scene || !state.buffer) return false;
   frame = Math.max(0, Math.min(state.total - 1, frame));
-  state.frame = frame;
   const token = ++state.frameToken;
   viewer.token++;
-  const scene = state.scene.id;
   const selection = state.sceneToken;
-  $("seek").value = String(frame);
-  $("frame-position").textContent = `${frame + 1} / ${state.total}`;
+  const buffer = state.buffer;
+  if (!buffer.ready(frame))
+    $("buffer-status").textContent = "読み込み待ち（全フレーム表示）";
   try {
-    let payload = state.preview.get(frame);
-    if (!payload) {
-      payload = await api(
-        `/api/preview?${query({ scene, start: frame, count: 1 })}`,
-      );
-      if (selection !== state.sceneToken || token !== state.frameToken)
-        return false;
-      state.preview.set(frame, payload);
-      if (state.preview.size > 64)
-        state.preview.delete(state.preview.keys().next().value);
-    }
-    const item = payload.items.find((i) => i.index === frame);
-    if (!item) throw new Error("選択フレームのGTがありません。");
+    const { image, item, preview, players, people } = await buffer.get(frame);
+    if (selection !== state.sceneToken || token !== state.frameToken)
+      return false;
     const pred = state.prediction.get(frame)?.pred;
-    const applied = await viewer.setFrame(
-      `/api/image?${query({ scene, frame })}`,
-      item.gt,
-      pred,
-      reset,
-    );
+    const applied = await viewer.setFrame(image, item.gt, pred, reset, people);
     if (
       !applied ||
       selection !== state.sceneToken ||
       token !== state.frameToken
     )
       return false;
+    state.frame = frame;
+    buffer.pin(frame);
+    for (const retired of state.retiredBuffers) retired.dispose();
+    state.retiredBuffers = [];
+    $("seek").value = String(frame);
+    $("frame-position").textContent = `${frame + 1} / ${state.total}`;
     $("empty").hidden = true;
     $("frame-name").textContent = item.name;
     state.displayedFrame = frame;
     playTimeline.setFrame(frame);
-    $("resolution").textContent = `${payload.width} × ${payload.height}`;
+    $("resolution").textContent = `${preview.width} × ${preview.height}`;
+    $("buffer-status").textContent = "";
     renderLayers(item.gt, pred);
+    reportPlayers(players, people);
+    renderFrameReview(item);
+    courtReview?.frame(item, state.scene.id);
+    updateJumpButtons(state.review, frame);
     showWarnings([
-      ...(payload.warnings || []),
+      ...(item.warnings || preview.warnings || []),
       ...(state.resultWarnings || []),
     ]);
+    const annotationLabel = item.review ? "保存ball注釈" : "保存Court KP / 派生target";
     status(
       pred
-        ? "GT + Prediction"
+        ? `${annotationLabel} + Prediction`
         : state.prediction.size
-          ? "GT / このフレームは推論範囲外"
-          : "Ground Truth",
+          ? `${annotationLabel} / このフレームは推論範囲外`
+          : item.review
+            ? `${annotationLabel} · ${item.supervised ? "採点対象" : "採点対象外"}`
+            : annotationLabel,
+    );
+    // Committed frame identity is also used by browser regression/performance tests.
+    $("view").dataset.frame = String(frame);
+    $("view").dataset.scene = state.scene.id;
+    $("view").dataset.people = String(people.length);
+    $("view").dataset.playerMode = players?.mode || "none";
+    $("view").dataset.supervision = item.review?.supervision || "none";
+    $("view").dispatchEvent(
+      new CustomEvent("frame-presented", {
+        detail: { scene: state.scene.id, frame, at: performance.now() },
+      }),
     );
     return true;
   } catch (error) {
@@ -394,19 +538,28 @@ async function showFrame(frame, reset = false) {
     return false;
   }
 }
-async function playTick() {
+async function playTick(now) {
   if (!state.playing) return;
-  const next = (state.frame + 1) % state.total;
-  const started = performance.now();
-  await showFrame(next);
-  if (state.playing)
-    state.timer = setTimeout(
-      playTick,
-      Math.max(
-        0,
-        1000 / Number($("fps").value) - (performance.now() - started),
-      ),
-    );
+  state.timer = requestAnimationFrame(playTick);
+  if (now - state.lastFpsUpdate >= 250) {
+    const since = Math.max(state.playStarted, now - 2000);
+    state.paintTimes = state.paintTimes.filter((time) => time >= since);
+    $("actual-fps").textContent =
+      `実測 ${((state.paintTimes.length * 1000) / (now - since)).toFixed(1)} fps`;
+    state.lastFpsUpdate = now;
+  }
+  const token = state.playToken;
+  if (state.busyToken === token || !state.clock.due(now)) return;
+  state.busyToken = token;
+  try {
+    const applied = await showFrame((state.frame + 1) % state.total);
+    if (!applied || !state.playing || token !== state.playToken) return;
+    const painted = performance.now();
+    state.clock.commit(painted);
+    state.paintTimes.push(painted);
+  } finally {
+    if (state.busyToken === token) state.busyToken = null;
+  }
 }
 function renderMetrics(metrics) {
   $("metrics").title = typeof metrics?.note === "string" ? metrics.note : "";
@@ -555,7 +708,11 @@ $("play").onclick = () => {
   if (state.total < 2) return;
   state.playing = true;
   $("play").innerHTML = icon("pause");
-  state.timer = setTimeout(playTick, 1000 / Number($("fps").value));
+  state.paintTimes = [];
+  state.playStarted = state.lastFpsUpdate = performance.now();
+  state.clock = new SequentialClock(Number($("fps").value), performance.now());
+  state.buffer.prefetch(state.frame);
+  state.timer = requestAnimationFrame(playTick);
 };
 $("zoom-in").onclick = () => viewer.zoom(1.25);
 $("zoom-out").onclick = () => viewer.zoom(0.8);
@@ -567,6 +724,11 @@ for (const [id, key] of [
   ["show-gt", "gt"],
   ["show-pred", "pred"],
   ["show-labels", "labels"],
+  ["show-players", "players"],
+  ["show-pose", "pose"],
+  ["show-boxes", "boxes"],
+  ["show-identities", "identities"],
+  ["show-trails", "trails"],
 ])
   $(id).onchange = () => viewer.configure({ [key]: $(id).checked });
 $("raster").onchange = () => {
@@ -580,5 +742,54 @@ $("opacity").oninput = () =>
   viewer.configure({ opacity: Number($("opacity").value) });
 $("threshold").oninput = () =>
   ($("threshold-value").textContent = Number($("threshold").value).toFixed(2));
-window.addEventListener("pagehide", stop);
+$("player-mode").onchange = changePlayerSource;
+$("player-dataset").onchange = () => {
+  state.playerDataset = $("player-dataset").value;
+  $("player-status-filter").value = "";
+  $("player-status-filter").hidden = !state.playerDataset;
+  state.page = 0;
+  changePlayerSource();
+  loadScenes();
+};
+$("player-status-filter").onchange = () => {
+  state.page = 0;
+  resetScene();
+  loadScenes();
+};
+for (const id of ["source-filter", "split-filter", "review-state-filter"])
+  $(id).onchange = () => {
+    state.page = 0;
+    resetScene();
+    loadScenes();
+  };
+$("review-jump-state").onchange = () => updateJumpButtons(state.review, state.frame);
+for (const [id, direction] of [["review-jump-prev", -1], ["review-jump-next", 1]])
+  $(id).onclick = () => {
+    const target = jumpTarget(state.review?.positions[$("review-jump-state").value] || [], state.frame, direction);
+    if (target !== null) { stop(); showFrame(target); }
+  };
+$("dataset-overview-open").onclick = () => {
+  if (courtReview) {
+    courtReview.overview(state.catalog);
+    $("dataset-overview").showModal();
+    return;
+  }
+  renderDatasetOverview(
+    state.catalog.datasets.find((d) => d.id === state.dataset),
+    (state.catalog.player_datasets || []).filter((d) => d.ball_version === state.dataset.replace(/^store\//, "") || !d.available),
+  );
+  $("dataset-overview").showModal();
+};
+$("dataset-overview-close").onclick = () => $("dataset-overview").close();
+$("fps").onchange = () => {
+  if (state.playing)
+    state.clock = new SequentialClock(
+      Number($("fps").value),
+      performance.now(),
+    );
+};
+window.addEventListener("pagehide", resetScene);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stop();
+});
 loadCatalog();

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping, Sequence
+from html import escape
 from pathlib import Path
 from typing import Annotated, Any, Protocol
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from src.tasks.base.visualization.web_assets import mount_scene_assets
@@ -26,12 +29,35 @@ class SceneReviewService(Protocol):
         self, form: str, scene_id: str, revision: str | None = None
     ) -> dict[str, Any]: ...
 
-    def buffer(self, form: str, scene_id: str, revision: str | None = None) -> bytes: ...
+    def buffer(
+        self, form: str, scene_id: str, revision: str | None = None
+    ) -> bytes: ...
 
 
 def create_review_app(
-    service: SceneReviewService, *, title: str, task: str
+    service: SceneReviewService,
+    *,
+    title: str,
+    task: str,
+    extra_static: Mapping[str, Path] | None = None,
+    extra_stylesheets: Sequence[str] = (),
+    extra_modules: Sequence[str] = (),
 ) -> FastAPI:
+    """Bind the common UI, with optional task-owned inspection assets.
+
+    Extra assets cannot replace the common assets. Modules are loaded before
+    ``app.js`` so they can subscribe to its scene/frame lifecycle events.
+    """
+    extensions = dict(extra_static or {})
+    for name, path in extensions.items():
+        if not re.fullmatch(r"[A-Za-z0-9_-]+\.(?:css|js|mjs)", name) or name in ASSETS:
+            raise ValueError(f"Invalid or reserved review asset name: {name!r}.")
+        if not path.is_file():
+            raise FileNotFoundError(path)
+    for name in (*extra_stylesheets, *extra_modules):
+        if name not in extensions:
+            raise ValueError(f"Review extension asset is not declared: {name!r}.")
+
     app = FastAPI(title=title, docs_url=None, redoc_url=None)
     mount_scene_assets(app)
     app.add_middleware(
@@ -52,11 +78,29 @@ def create_review_app(
         return JSONResponse({"detail": "Scene file is missing."}, status_code=404)
 
     @app.get("/")
-    def index() -> FileResponse:
-        return FileResponse(STATIC / "index.html")
+    def index() -> Response:
+        if not extra_stylesheets and not extra_modules:
+            return FileResponse(STATIC / "index.html")
+        html = (STATIC / "index.html").read_text(encoding="utf-8")
+        links = "\n".join(
+            f'<link rel="stylesheet" href="/static/{escape(name, quote=True)}" />'
+            for name in extra_stylesheets
+        )
+        modules = "\n".join(
+            f'<script type="module" src="/static/{escape(name, quote=True)}"></script>'
+            for name in extra_modules
+        )
+        html = html.replace("</head>", f"{links}\n</head>")
+        html = html.replace(
+            '<script type="module" src="/static/app.js"></script>',
+            f'{modules}\n<script type="module" src="/static/app.js"></script>',
+        )
+        return HTMLResponse(html)
 
     @app.get("/static/{name}")
     def static(name: str) -> FileResponse:
+        if name in extensions:
+            return FileResponse(extensions[name])
         if name not in ASSETS:
             raise HTTPException(404)
         return FileResponse(STATIC / name)

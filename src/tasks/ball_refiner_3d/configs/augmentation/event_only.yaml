@@ -1,0 +1,8 @@
+event_probability: 0.5
+isolated_probability: 0.0
+gap_min: 3
+gap_max: 10
+noise_p95_px: 0.0
+jitter_sigma_px: 0.0
+outlier_probability: 0.0
+triangulation_steps: 3

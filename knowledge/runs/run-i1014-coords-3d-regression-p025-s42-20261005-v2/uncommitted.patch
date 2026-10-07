@@ -1,0 +1,21 @@
+diff --git a/knowledge/nodes/ball_refiner/.sequence b/knowledge/nodes/ball_refiner/.sequence
+index f04c001f3..f5c89552b 100644
+--- a/knowledge/nodes/ball_refiner/.sequence
++++ b/knowledge/nodes/ball_refiner/.sequence
+@@ -1 +1 @@
+-29
++32
+diff --git a/src/tasks/OUTPUTS.md b/src/tasks/OUTPUTS.md
+index 979aa64eb..7cdef8f86 100644
+--- a/src/tasks/OUTPUTS.md
++++ b/src/tasks/OUTPUTS.md
+@@ -135,6 +135,9 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
+ | SLCS `evaluate`、`predict_clip`、`analyze_predictions` | OUTPUT / `evaluate.output_dir`、`predict.output_dir`、`analysis.output_dir` |
+ | `src.tasks.slcs.scripts.evaluate_run` | 明示的な絶対 `--output-root` / `--output slcs/evaluate/<experiment>/<run-id>`。選定receipt・条件別config/予測/metricsを保存。入力 `--training-run` も同じrootからの相対train階層 |
+ | BLCS/PLCS `generate_dataset` | DATA / `run.output_dir`。dataset-versionは固定、生成ログだけ独立run |
++| ball_refiner `generate_coordinates` | DATA / `generation.dataset`。2D・3D共通の3D真値・投影・split・manifest。既存datasetは拒否 |
++| ball_refiner `train_coordinates` | 入力はDATA / `data.dataset`、出力はOUTPUT / `run.output_dir`。同じ共有datasetから次元・方式別に学習runを作る |
++| ball_refiner `predict_coordinates` | 明示的な絶対 `--checkpoint`・`--input`・`--output`。各引数の親をCHECKPOINT・DATA・OUTPUT rootとして検証し、新規NPZを保存 |
+ | BLCS `evaluate_real` | OUTPUT / `run.output_dir`（evaluate run）。入力重みはCHECKPOINT / `evaluation.checkpoint`。固定test splitの結果・入力hash・展開済み設定を保存 |
+ | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
+ | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |

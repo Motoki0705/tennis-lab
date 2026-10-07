@@ -150,7 +150,8 @@ def test_scene_order_is_natural_not_lexicographic(tmp_path: Path) -> None:
     assert [ref.local_id for ref in refs] == ["tracknet/game1/Clip1", "tracknet/game1/Clip2", "tracknet/game1/Clip10"]
 
 
-def test_frame_read_rechecks_the_root_boundary(tmp_path: Path, make_clip_dataset: Callable[..., Path]) -> None:
+@pytest.mark.parametrize("reader", ["read_rgb", "read_jpeg"])
+def test_frame_read_rechecks_the_root_boundary(tmp_path: Path, make_clip_dataset: Callable[..., Path], reader: str) -> None:
     make_clip_dataset(tracknet_root(tmp_path))
     scene = catalog_for(tmp_path).resolve("store/test-v1", "tracknet/game1/Clip1")
     shard = tmp_path / "ball_detection" / "test-v1" / "shards" / "clip-00000.bin"
@@ -159,4 +160,40 @@ def test_frame_read_rechecks_the_root_boundary(tmp_path: Path, make_clip_dataset
     shard.unlink()
     shard.symlink_to(secret)
     with pytest.raises(ValueError, match="resolves outside"):
-        scene.read_rgb(0)
+        getattr(scene, reader)(0)
+
+
+def test_preview_supervision_reused_until_catalog_refresh(tmp_path: Path, make_clip_dataset: Callable[..., Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import Mock
+
+    from src.tasks.ball_detection.visualization.review import datasets
+
+    make_clip_dataset(tracknet_root(tmp_path), clips=2)
+    resolve = Mock(wraps=datasets.resolve_frame_supervision)
+    monkeypatch.setattr(datasets, "resolve_frame_supervision", resolve)
+    catalog = catalog_for(tmp_path)
+    for _ in range(3):
+        for ref in catalog.refs("store/test-v1"):
+            assert catalog.resolve("store/test-v1", ref.local_id).supervised(0)
+    assert resolve.call_count == 1
+    catalog.refresh()
+    assert catalog.resolve("store/test-v1", "tracknet/game1/Clip1").supervised(0)
+    assert resolve.call_count == 2
+
+
+def test_image_serves_identical_jpeg_without_codec_round_trip(tmp_path: Path, make_clip_dataset: Callable[..., Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    import cv2
+
+    from src.tasks.ball_detection.visualization.inference.service import (
+        DetectionService,
+    )
+
+    make_clip_dataset(tracknet_root(tmp_path))
+    service = DetectionService(tmp_path, data_root=tmp_path)
+    frames = service.dataset_catalog.resolve("store/test-v1", "tracknet/game1/Clip1")
+    expected = bytes(frames.store.read_jpeg(frames.store.row_of(frames.clip, 2)))
+    def unexpected_codec(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Image serving must preserve the stored JPEG bytes")
+    monkeypatch.setattr(cv2, "imdecode", unexpected_codec)
+    monkeypatch.setattr(cv2, "imencode", unexpected_codec)
+    assert service.image("store/test-v1::tracknet/game1/Clip1", 2) == expected

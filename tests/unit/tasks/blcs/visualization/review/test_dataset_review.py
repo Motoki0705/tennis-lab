@@ -1,4 +1,4 @@
-"""BLCS review data must reproduce the stored 2D projections for all forms."""
+"""The actual current BLCS single_object data preserves the 2D/3D contract."""
 
 from __future__ import annotations
 
@@ -86,9 +86,7 @@ def test_ball_reprojects_exactly(form: str) -> None:
 
 
 def test_api_shapes_and_errors() -> None:
-    service = BLCSDatasetReviewService(
-        DATA_ROOT, forms=["single_object", "multi_object"]
-    )
+    service = BLCSDatasetReviewService(DATA_ROOT)
     client = TestClient(create_dataset_app(service))
 
     catalog = client.get("/api/catalog").json()
@@ -97,7 +95,6 @@ def test_api_shapes_and_errors() -> None:
     assert catalog["skeleton"] is None
     assert {form["name"] for form in catalog["forms"]} == {
         "single_object",
-        "multi_object",
     }
 
     scenes = client.get("/api/scenes", params={"form": "single_object"}).json()
@@ -127,17 +124,23 @@ def test_api_shapes_and_errors() -> None:
     frames = document["entity"]["frames"]
     assert len(response.content) == frames * 3 * 4
 
-    multi = client.get(
-        "/api/scene", params={"form": "multi_object", "scene": SCENE}
+    assert (
+        client.get(
+            "/api/scene", params={"form": "multi_object", "scene": SCENE}
+        ).status_code
+        == 422
+    )
+    evidence = client.get(
+        "/api/inspection",
+        params={"form": "single_object", "scene": SCENE, "revision": revision},
     ).json()
-    slots = multi["entity"]["slots"]
-    frames = multi["entity"]["frames"]
-    assert multi["entity"]["presence"] is True
-    multi_buffer = client.get(
-        "/api/scene/buffer",
-        params={"form": "multi_object", "scene": SCENE, "revision": multi["revision"]},
-    ).content
-    assert len(multi_buffer) == slots * frames * 3 * 4 + slots * frames
+    assert evidence["ball"]["normalization"]["position"]["status"] == "ok"
+    assert evidence["ball"]["normalization"]["velocity"]["status"] == "ok"
+    assert all(
+        c["ball"]["summary"]["visibility_mismatches"] == 0 for c in evidence["cameras"]
+    )
+    assert evidence["cameras"][0]["ball"]["saved_visibility"][248] is False
+    assert evidence["cameras"][0]["ball"]["saved_uv"][248][1] > 1
 
     stale = client.get(
         "/api/scene",

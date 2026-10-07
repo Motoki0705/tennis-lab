@@ -1,7 +1,7 @@
-<!-- knowledge-review: 6ab03ce7febc7bf970211f3c909cf3b3d2fa5aae6366f724d1d1eb091f75550e on 2026-10-02 -->
+<!-- knowledge-review: 41a9636bae49a194a6eb0031db2a1a8287175377d0871b08566b4b3f0bec510b on 2026-10-06 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-02（人物経路・pose蓄積を統合。ユーザー判断でball confidenceフィルタを廃止し、品質未達の記録を保持）
+更新日: 2026-10-06（#988の選手選別後pose生成と3D Refinerの本学習記録を統合。各タスクの結論と未評価事項は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -11,16 +11,20 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
-## 2026-10-02のボール検出用pose蓄積
+## 2026-10-05のボール検出用pose蓄積
 
-ユーザー指定でball-mix-v2の存在率40%以下をpose対象から外し、コートによる人物選別を
-使わず、全画面COCO DINO＋既存StrongSORT++/pose/CLIPのrawトラックをGPTで選別する。
-[GPU動作確認](nodes/player_pose_annotation/000001-run-ball-mix-v2-player-pose-gpu-smoke-20261002.md)と
-[最初の実clip](nodes/player_pose_annotation/000002-run-player-pose-v2-pilot-00034-20261002.md)は完走した。
-初回は20rawトラックから2選手を採用し、欠損を補わずframe/PTSと入力hashを検証した。
-この1clipの機能確認から、全clipのID精度・移動カメラへの頑健性は主張しない。
-対象689clipの処理とレビューは継続中。従来#964のコート選別は過去の比較として維持し、
-今回のposeデータ生成方針とは区別する。次は全対象のcoverage・保留・ID切替の実例を監査する。
+[#988の拡張campaign](nodes/player_pose_annotation/000003-run-i988-pose-after-review-20261005.md)では、
+存在率40%以下のskip条件を維持した1,300 clips snapshotを固定し、データ生成に限って
+poseなし追跡 → GPTによる選手選別 → 選択選手の実観測だけpose生成へ変更した。
+通常sceneの追跡profileとコートによる自動選別は維持する。
+旧815 clips campaignはユーザー停止済みで、そのapproved poseは入力・レビュー・画像・時刻の
+対応が一致するものだけ再利用する。旧subsetに対する#986の学習と拡張後の実験を区別する。
+
+旧方式の[GPU動作確認](nodes/player_pose_annotation/000001-run-ball-mix-v2-player-pose-gpu-smoke-20261002.md)と
+[最初の実clip](nodes/player_pose_annotation/000002-run-player-pose-v2-pilot-00034-20261002.md)は当時の完走記録として保持する。
+今回の機能・データ対応検証は、選手ID・姿勢の正解率や下流学習の改善を示すものではない。
+次は追加clipの公開/保留/失敗coverage、削減したpose crop数、ID切替の実例を監査し、拡張データの
+下流効果を独立した実験で確認する。他タスクの採用判断は今回の生成方式変更では更新しない。
 
 ## 2026-09-30の人物source・コート選別（#964）
 
@@ -277,6 +281,16 @@ AI補助注釈・単一video/seed、手首距離既知36.90%という制約が�
 
 ### Ball Refiner
 
+2026-10-06のユーザー判断で2D Refinerの実装を廃止する。以下の結果は実験履歴として保持し、今後の方針は[3D Ball Refiner](#3d-ball-refiner)にまとめる。
+
+2026-10-06の[位置lossを0へ減衰するGAN-only比較](nodes/ball_refiner/000047-group-i991-i1014-gan-only-eventonly-s42.md)では、GAN最大1・最後の1,000更新をGANのみとして2D/3Dを完走した。最終2Dのtest全体RMSEは289.49pxへ悪化し、観測位置からも大きくずれた。位置loss消失直後のbestは9.48pxで、最終モデルとは区別して保存した。速度誤差も増え、この条件のGAN-onlyを既定には採用しない。GAN最大値も前回から変えたため寄与は未分離で、次は最大1を固定し位置係数を正値で維持する対照・追加seedを比較する。
+
+2026-10-06、[RoPE＋軌道GANのノイズなし学習](nodes/ball_refiner/000044-group-i991-i1014-rope-gan-eventonly-s42.md)で、幅256のGenerator 8層・Discriminator 4層、batch32、GAN係数0→2（500更新待機＋1000更新増加）へ変更し、2D/3Dを各4,000更新完了した。イベント連続欠損のみとした2Dのtest全体RMSEは6.981px、欠損19.227px。入力条件も変えたため旧15条件からGANやRoPE単独の効果は分離できない。画面でGTへの位置一致と欠損付近の速度振動を確認し、加速度過大も残った。GANなし対照・追加seed・実動画への一般化が次の課題で、sceneの既定重みは変更していない。
+
+2026-10-05、#991/#1014の[座標Refiner比較](nodes/ball_refiner/000040-group-i991-i1014-coordinate-refiners-s42.md)で、座標＋欠損maskから全frameの単一軌道を復元する方針へ移行した。共通BLCSデータ1,280ラリーを `data/ball_refiner/single_object` に生成し、旧14datasetはユーザー指定で削除した。2D/3D計15条件が同一split・評価劣化・seed42・4,000更新で完了した。2Dのvalidation選択はイベント選択率75%・GANありで、test RMSEは全体15.188px、欠損29.120px。GANの差は小さく、急変点の丸まりと時間方向の揺れは残る。実動画の精度と追加seedでの再現性は未確認で、sceneの既定重み切替は行っていない。
+
+以下は方針転換前のGMM方式の実験履歴であり、現在の座標モデルの学習仕様ではない。
+
 [#935の教師・既存文脈監査](nodes/ball_refiner/000001-run-i935-data-audit-r2.md)で、
 全storeのsplitを保持し、observed位置教師と明示的out_of_frameの存在負例を分けられた。
 空frameと推定・unknownはamodal負例にしない。確定負例はchatに偏り、Meijiだけでは存在較正を判断できない。
@@ -343,6 +357,16 @@ bank作成frameは配布倍率のfitと重複するため、OOF性能と区別�
 [2026-10-01のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5921216642)で、B FAILを保持したままe9＋anchored seed42＋固定倍率の既定化と、refiner後のconfidence選別を採用する方針へ進んだ。mp4直接入力を維持し再学習しない。#964完了前のcontext着手も許可された。[run28の積み直し・資源監査](nodes/ball_refiner/000027-run-i935-context-budget-r28-20261001.md)で#964の人物既定を取り込んだが、全329 clipの見積22–33時間が4時間枠を超えるためcache jobは登録しなかった。[run29](nodes/ball_refiner/000028-run-i935-confidence-r29-20261001.md)で既定切替・標準scene refinerを追加し、clip_000を除く保存済みMeiji valで存在確率と全GMMの90%包含楕円面積の規則を固定した。保持frameの誤差は低下したがcache入力での選定結果であり、mp4への一般化は未確認。当時のconsumer配線は同じ欠測maskをside・幾何・三角測量へ渡していた（現在は後述の2026-10-02方針で廃止）。[固定filterの安全bench](nodes/court_side/000004-run-i935-filtered-side-safety-r29-20261001.md)は元の全28条件を再現した上で誤判定0→3件、停止率18.58→24.91%となりFAIL。経験的confidence blockを独立に付けた合成回帰試験でE2Eではないが、directiveに従いclip_000 qualificationは投入せず、閾値を変えない。証拠のない区間の改善と文脈ablation、test評価も未完了。
 
 ### 3D Ball Refiner
+
+2026-10-06、2D補完点の誤差を三角測量へ伝えない方針に変更し、観測の不足を3D欠損として保持して3D側で補完する。イベント確率の補助教師を加え、位置lossは維持し、GANは任意の比較条件とした。モデル・損失・Gaussian教師の設定は[3D task README](../src/tasks/ball_refiner_3d/README.md)を正本とする。[GAN-only比較](nodes/ball_refiner/000047-group-i991-i1014-gan-only-eventonly-s42.md)はこの条件で位置教師を外す根拠がないことを示すが、GAN一般の有効性を否定する比較ではない。[イベントヘッド付き回帰の本学習](nodes/ball_refiner_3d/000011-run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.md)は4,000更新を完了し、test RMSEは全体0.158m・欠損0.428m、Gaussian教師へのイベントBrierは0.00324。欠損RMSEは同入力の線形補間より約52%低い一方、正確な観測にも約6.8cmのRMSEを生む。WebUIの本重み・GT・イベント確率表示と再推論を確認したが、欠損付近の速度振動は残る。単一seed・合成データのみで、最終区間もvalidationが改善している。次は同一入力・L1・GANなしでイベント教師の有無を比較し、時刻精度と学習予算を検討する。
+
+同日の[GAN-only移行](nodes/ball_refiner/000047-group-i991-i1014-gan-only-eventonly-s42.md)では、最終3Dのtest全体RMSEが12.31mへ悪化した。bestは位置係数0.5のstep2500で0.226m、最終GAN-onlyモデルとは別に保存した。GTとの対応と速度整合性が崩れ、lastの採用根拠はない。共通入力・評価seed・予算は照合済みで、入力位置との一致を保つlossの下限を次の比較候補とする。
+
+2026-10-06の[ノイズなしRoPE＋軌道GAN](nodes/ball_refiner/000044-group-i991-i1014-rope-gan-eventonly-s42.md)は、共通データの2D観測を三角測量した入力で4,000更新を完了した。test RMSEは全体0.147m・欠損0.402mで、同入力の線形補間より欠損誤差は小さいが、ほぼ正確な観測も再推論するため観測RMSEは0.062mとなった。イベント付近の加速度過大と速度振動が残り、物理的自然さの達成とは判断しない。Flowの方式・旧重みは維持し、今回の再学習対象には含めていない。
+
+同じ[共通座標データ比較](nodes/ball_refiner/000040-group-i991-i1014-coordinate-refiners-s42.md)で、2D画素ノイズを三角測量した座標＋maskから、回帰／GAN／x0予測Flow Matchingの全方式を学習・評価した。validation選択はイベント選択率75%の回帰で、test RMSEは全体0.425m、欠損0.648m、event近傍0.661m。Flow内のvalidation最良は50%条件で全体0.556mだった。単独GPUの128frame推論は回帰がおよそ3〜7ms、Flowが56〜70ms。同一予算では回帰を優先する結果だが、加速度の過大・少数の負高さが残り、物理的な自然さや実動画の品質を保証しない。Flowの方式と重みも保持した。
+
+以下は旧#936の確率分布入力を前提とした比較・計画の履歴。
 
 [確率的三角測量A/B/CのCPU比較](nodes/ball_refiner_3d/000001-run-i936-triangulation-abc-s936.md)では、
 Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel積分と近いNLL/coverageを
