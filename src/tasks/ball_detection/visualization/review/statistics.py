@@ -113,12 +113,12 @@ def statistics_router(service: StatisticsService) -> APIRouter:
     static = Path(__file__).parent.parent / 'static' / 'statistics'
 
     def asset(name: str) -> FileResponse:
-        if name not in {'panel.mjs', 'charts.mjs', 'style.css'}:
+        if name not in {'panel.mjs', 'charts.mjs', 'plot_base.mjs', 'plots.mjs', 'dashboard.mjs', 'style.css'}:
             raise HTTPException(404)
         return FileResponse(static / name, media_type='text/css' if name.endswith('.css') else 'text/javascript')
 
     def settings() -> dict[str, Any]:
-        return StatisticsConfig.shipped().to_dict()
+        return dict(StatisticsConfig.shipped().to_dict())
 
     def start(request: StatisticsRequest) -> dict[str, Any]:
         return service.start(request.dataset, StatisticsConfig.from_mapping(request.settings))
