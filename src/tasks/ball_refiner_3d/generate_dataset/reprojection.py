@@ -82,7 +82,7 @@ def reproject_dataset(
             "source_manifest_sha256": dataset.manifest_hash,
             "seed": seed,
             "camera_sampling": asdict(config),
-            "preserved": "byte-identical xyz, event, time arrays and rally splits",
+            "preserved": "byte-identical xyz, physics record, time arrays and rally splits",
             "seconds": time.monotonic() - start,
         },
     )

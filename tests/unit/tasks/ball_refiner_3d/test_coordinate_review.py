@@ -4,6 +4,7 @@ import hashlib
 import json
 import shutil
 from dataclasses import asdict
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -40,6 +41,7 @@ from src.tasks.ball_refiner_3d.visualization.dataset_review.service import Revie
 from src.tasks.ball_refiner_3d.visualization.dataset_review.web import create_app
 from src.tasks.base.visualization.inference_queue import execute_request
 from src.utils.paths import PROJECT_ROOT
+from tests.support.physics.ball_record import simulated_record
 
 
 @pytest.fixture
@@ -60,8 +62,13 @@ def review(tmp_path):
             camera_config, xyz, np.random.default_rng(index + 88)
         )
         assert cameras is not None
-        events: np.ndarray = np.zeros(frames, dtype=np.uint8)
-        events[[15, 85]], events[45] = 1, 2
+        _, record = simulated_record(
+            frames,
+            output_fps=60,
+            sim_fps=240,
+            hits=(15 * 4, 45 * 4, 85 * 4),
+            hit_kinds=("shot", "bounce", "shot"),
+        )
         path = data / "rallies" / f"rally_{index:06d}.npz"
         np.savez(
             path,
@@ -69,11 +76,11 @@ def review(tmp_path):
             uv_px=np.stack([c.project(xyz)[0] for c in cameras]).astype(np.float32),
             visible=np.ones((4, frames), dtype=bool),
             projection=np.stack([c.matrix for c in cameras]),
-            events=events,
             time_s=time,
             camera_centers=np.stack([c.center for c in cameras]),
             intrinsic=np.stack([c.intrinsic for c in cameras]),
             rotation=np.stack([c.rotation for c in cameras]),
+            **cast("dict[str, Any]", record.to_arrays()),
         )
         records.append(
             {

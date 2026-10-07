@@ -2,7 +2,8 @@
 
 `schema.py` がrally・拡張結果・モデル入力の型を定義し、`dataset.py` が
 `data/ball_refiner/single_object/` のmanifestとNPZを照合する。
-BLCSの3D軌道を一度だけ保存し、多視点投影・camera・event・splitを共有する。
+BLCSの3D軌道と物理記録（[`ball_physics.v1`](../../../utils/README.md#physics)）を一度だけ保存し、多視点投影・camera・event・splitを共有する。
+イベントは物理記録から導出し、shot・bounce・net・fenceの各bitを、イベントのsim step以後で最初の出力frameに置く。
 train/val/test分割はrally単位で固定する。
 
 `augmentation/occlusion.py` はイベントの前後を異なる幅で隠し、選択区間をcamera間で同期する。
@@ -12,7 +13,7 @@ train/val/test分割はrally単位で固定する。
 2D座標はこの生成過程にのみ必要で、2D Refinerは存在しない。
 設定の正本は [augmentation/event_only.yaml](../configs/augmentation/event_only.yaml)。
 
-`targets/events.py` はshot/bounceを区別せず、各イベント時刻で1となるGaussian教師を作る。
+`targets/events.py` はイベント種別を区別せず、各イベントframeで1となるGaussian教師を作る。
 重なる教師はmaxで合成する。ラリー全体で生成してから `sampling.py` が窓を切り出すので、窓外イベントの裾も保持する。
 モデルへ渡す入力は座標・欠損maskだけ。GT座標とイベント教師はloss専用。
 
