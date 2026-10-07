@@ -1,0 +1,64 @@
+{
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/blcs/train/axial_base_physics_v3_t128_v3-6_reprojection_e200/s42-20261007-001/logs/version_0/checkpoints/blcs-epoch=189.ckpt",
+  "checkpoint_sha256": "67e01836b1016ca1d0fb2acf088bfe44aa49a804c91aa8fb9cc132ec115dd197",
+  "selection": {
+    "source": "/home/kamimura/projects/tennis-lab/outputs/blcs/train/axial_base_physics_v3_t128_v3-6_reprojection_e200/s42-20261007-001/logs/version_0/checkpoints/blcs-epoch=189.ckpt",
+    "sha256": "67e01836b1016ca1d0fb2acf088bfe44aa49a804c91aa8fb9cc132ec115dd197",
+    "size_bytes": 621076139,
+    "selected_epoch_zero_based": 189,
+    "selected_optimizer_step": 8550,
+    "completed_epochs": 200,
+    "optimizer_updates": 9000,
+    "validation_count": 40,
+    "selection_monitor": "val/position_error_m",
+    "selection_mode": "min",
+    "selection_score_m": 0.2868194580078125,
+    "selection_split": "val",
+    "selection_used_test": false,
+    "selection_frozen_at_utc": "2026-10-07T02:30:37.775100+00:00",
+    "last_epoch_finished_utc": "2026-10-07T02:30:25.003889+00:00",
+    "training_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+    "dataset_manifest_sha256": "36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544",
+    "validation_metrics": {
+      "val/loss": {
+        "selected": 0.00023353415599558502,
+        "final": 0.00026283186161890626
+      },
+      "val/position_error_m": {
+        "selected": 0.2868194580078125,
+        "final": 0.30332350730895996
+      },
+      "val/position_accuracy_0.3m": {
+        "selected": 0.723760187625885,
+        "final": 0.698369562625885
+      },
+      "val/endpoint_error_m": {
+        "selected": 0.6812239289283752,
+        "final": 0.7190436720848083
+      }
+    },
+    "tennis_scene_integration": "deferred by user; checkpoint and knowledge only"
+  },
+  "split": "test",
+  "scene_count": 88,
+  "sequence_length": [
+    128,
+    128
+  ],
+  "window": "deterministic centre crop from the training dataset reader",
+  "camera_range": [
+    3,
+    6
+  ],
+  "camera_selection": "sample-local RNG with run seed 42",
+  "augmentation": false,
+  "precision": "bf16-mixed",
+  "matmul_precision": "high",
+  "allow_tf32": true,
+  "metrics": {
+    "test/loss": 0.00020756431331392378,
+    "test/position_error_m": 0.26521122455596924,
+    "test/position_accuracy_0.3m": 0.7576349377632141,
+    "test/endpoint_error_m": 0.7294378876686096
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "generated_at": "2026-10-07T00:33:48.475763",
+  "stats": {
+    "total_scenes": 1000,
+    "total_cameras": 6000,
+    "avg_cameras_per_scene": 6.0
+  },
+  "court_keypoints": {
+    "schema_version": 1,
+    "dataset_schema_id": "blcs_generated_dataset_v3",
+    "coordinate_frame": "physical_court",
+    "contract": {
+      "schema_version": 1,
+      "contract_id": "physical_courtkp20_v1",
+      "target_frame_id": "physical_court_v1",
+      "num_keypoints": 20
+    }
+  }
+}

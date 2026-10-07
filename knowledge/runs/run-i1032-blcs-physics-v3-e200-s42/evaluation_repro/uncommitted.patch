@@ -1,0 +1,324 @@
+diff --git a/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/audit_dataset.py b/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/audit_dataset.py
+new file mode 100644
+index 000000000..dd7cc8118
+--- /dev/null
++++ b/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/audit_dataset.py
+@@ -0,0 +1,111 @@
++"""Audit the frozen PR1038 dataset without changing its contents (CPU only)."""
++
++from __future__ import annotations
++
++import argparse
++import gzip
++import hashlib
++import json
++from collections import Counter
++from datetime import UTC, datetime
++from pathlib import Path
++
++import numpy as np
++import torch
++
++from src.utils.physics.ball.record import BallPhysicsRecord, record_keys
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--dataset", type=Path, required=True)
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--verify-physics", action="store_true")
++    args = parser.parse_args()
++    if args.output.exists():
++        raise FileExistsError(args.output)
++    torch.set_num_threads(1)
++    root = args.dataset.resolve()
++    manifest_bytes = gzip.decompress(args.manifest.read_bytes())
++    entries = [json.loads(line) for line in manifest_bytes.splitlines()]
++    actual_files = set()
++    for path in root.rglob("*"):
++        if path.is_symlink():
++            raise ValueError(f"Unexpected symlink: {path}")
++        if path.is_file():
++            actual_files.add(path.relative_to(root).as_posix())
++    if actual_files != {entry["path"] for entry in entries}:
++        raise ValueError("Dataset file inventory changed")
++    for entry in entries:
++        path = root / entry["path"]
++        if path.stat().st_size != entry["size"]:
++            raise ValueError(f"Dataset size changed: {path}")
++        if hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
++            raise ValueError(f"Dataset hash changed: {path}")
++
++    splits = {
++        split: (root / f"{split}.txt").read_text().splitlines()
++        for split in ("train", "val", "test")
++    }
++    all_ids = [scene for ids in splits.values() for scene in ids]
++    if len(set(all_ids)) != len(all_ids):
++        raise ValueError("Duplicate scene or overlapping splits")
++    if set(all_ids) != {path.name for path in (root / "scenes").iterdir()}:
++        raise ValueError("Split inventory does not cover the dataset")
++    expected_schema = "blcs_generated_dataset_v3"
++    root_meta = json.loads((root / "meta.json").read_text())
++    if root_meta["court_keypoints"]["dataset_schema_id"] != expected_schema:
++        raise ValueError("Unexpected root schema")
++    surfaces: Counter[str] = Counter()
++    frame_counts = {}
++    max_error = 0.0
++    for index, scene_id in enumerate(all_ids):
++        scene = root / "scenes" / scene_id
++        meta = json.loads((scene / "meta.json").read_text())
++        if meta["court_keypoints"]["dataset_schema_id"] != expected_schema:
++            raise ValueError(f"Unexpected scene schema: {scene_id}")
++        record = BallPhysicsRecord.from_arrays(
++            {key: np.load(scene / f"{key}.npy", allow_pickle=False) for key in record_keys()}
++        )
++        positions = np.load(scene / "ball_pos_world.npy", allow_pickle=False)
++        if positions.shape != (record.frames, 3) or not np.isfinite(positions).all():
++            raise ValueError(f"Invalid trajectory: {scene_id}")
++        if record.frames != meta["num_frames"] or record.output_fps != 30:
++            raise ValueError(f"Unexpected frames/FPS: {scene_id}")
++        if record.gravity != 9.8 or meta["num_cameras"] != 6:
++            raise ValueError(f"Unexpected physics/cameras: {scene_id}")
++        if args.verify_physics:
++            max_error = max(max_error, record.verify(positions, 1e-6))
++        surfaces[record.surface] += 1
++        frame_counts[scene_id] = record.frames
++        if (index + 1) % 100 == 0:
++            print(f"Audited {index + 1}/{len(all_ids)} scenes", flush=True)
++    result = {
++        "dataset": str(root),
++        "checked_at_utc": datetime.now(UTC).isoformat(),
++        "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
++        "file_count": len(entries),
++        "all_file_hashes_match": True,
++        "schema": expected_schema,
++        "physics_schema": "ball_physics.v1",
++        "surfaces": dict(surfaces),
++        "splits": {
++            split: {
++                "raw_count": len(ids),
++                "eligible_t128": [scene for scene in ids if frame_counts[scene] >= 128],
++                "excluded_short": [scene for scene in ids if frame_counts[scene] < 128],
++                "total_frames": sum(frame_counts[scene] for scene in ids),
++            }
++            for split, ids in splits.items()
++        },
++        "physics_reintegrated": bool(args.verify_physics),
++        "max_physics_error_m": max_error if args.verify_physics else None,
++    }
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(result, indent=2) + "\n")
++    print(json.dumps({key: value for key, value in result.items() if key != "splits"}, indent=2))
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/evaluate_selected.py b/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/evaluate_selected.py
+new file mode 100644
+index 000000000..82d340646
+--- /dev/null
++++ b/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/evaluate_selected.py
+@@ -0,0 +1,94 @@
++"""Evaluate the preselected best-validation checkpoint on the frozen test split."""
++
++from __future__ import annotations
++
++import argparse
++import json
++from pathlib import Path
++
++import pytorch_lightning as pl
++import torch
++from omegaconf import OmegaConf
++from pytorch_lightning.loggers import TensorBoardLogger
++
++from src.tasks.base.configuration import TrainingRuntimeConfig
++from src.tasks.blcs.configuration import validate_training_boundary
++from src.tasks.blcs.model_io.checkpoints import load_checkpoint_runtime
++from src.tasks.blcs.model_io.training import compose_blcs_training
++from src.utils.checksum import dual_sha256
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--repository-root", type=Path, required=True)
++    parser.add_argument("--selection", type=Path, required=True)
++    parser.add_argument("--output-dir", required=True)
++    args = parser.parse_args()
++    root = args.repository_root.resolve()
++    selection = json.loads(args.selection.read_text())
++    checkpoint = Path(selection["source"]).resolve(strict=True)
++    output_fragment = Path(args.output_dir)
++    if output_fragment.is_absolute() or ".." in output_fragment.parts:
++        raise ValueError("Output must be relative to the outputs root")
++    output = root / "outputs" / output_fragment
++    if output.exists():
++        raise FileExistsError(output)
++    digest = dual_sha256(checkpoint)
++    if digest != selection["sha256"] or selection["selection_used_test"]:
++        raise ValueError("Checkpoint does not match the pre-test selection receipt")
++    runtime = load_checkpoint_runtime(checkpoint, runtime_court_keypoints="physical_v1")
++    config = OmegaConf.create(OmegaConf.to_container(runtime.config, resolve=True))
++    config.paths.project_root = str(root)
++    config.paths.data_root = str(root / "data")
++    config.paths.checkpoint_root = str(root / "ckpt")
++    config.paths.artifact_root = str(root / "outputs")
++    config.paths.output_root = str(root / "outputs")
++    config.run.output_dir = args.output_dir
++    config.run.resume = None
++    config.run.init_weights = None
++    TrainingRuntimeConfig.from_config(config, repository_root=root)
++    validate_training_boundary(config)
++    pl.seed_everything(int(config.run.seed), workers=True)
++    torch.set_float32_matmul_precision(str(config.training.matmul_precision))
++    torch.backends.cuda.matmul.allow_tf32 = bool(config.training.allow_tf32)
++    composition = compose_blcs_training(config, generator_config=None)
++    composition.datamodule.setup("test")
++    scene_count = len(composition.datamodule.test_dataset)
++    output.mkdir(parents=True)
++    OmegaConf.save(config, output / "config.yaml", resolve=True)
++    trainer = pl.Trainer(
++        accelerator="gpu",
++        devices=1,
++        precision=str(config.training.trainer.precision),
++        deterministic=True,
++        enable_progress_bar=False,
++        logger=TensorBoardLogger(str(output), name="logs"),
++    )
++    metrics = trainer.test(
++        composition.lightning_module,
++        datamodule=composition.datamodule,
++        ckpt_path=str(checkpoint),
++        weights_only=False,
++    )[0]
++    receipt = {
++        "checkpoint": str(checkpoint),
++        "checkpoint_sha256": digest,
++        "selection": selection,
++        "split": "test",
++        "scene_count": scene_count,
++        "sequence_length": list(config.data.seq_len_range),
++        "window": "deterministic centre crop from the training dataset reader",
++        "camera_range": list(config.data.num_views_range),
++        "camera_selection": "sample-local RNG with run seed 42",
++        "augmentation": False,
++        "precision": str(config.training.trainer.precision),
++        "matmul_precision": str(config.training.matmul_precision),
++        "allow_tf32": bool(config.training.allow_tf32),
++        "metrics": metrics,
++    }
++    (output / "evaluation.json").write_text(json.dumps(receipt, indent=2) + "\n")
++    print(json.dumps(receipt, indent=2))
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/select_checkpoint.py b/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/select_checkpoint.py
+new file mode 100644
+index 000000000..3a2308c56
+--- /dev/null
++++ b/knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/select_checkpoint.py
+@@ -0,0 +1,101 @@
++"""Freeze the completed run's validation-only checkpoint choice before test."""
++
++from __future__ import annotations
++
++import argparse
++import gc
++import json
++import math
++from datetime import UTC, datetime
++from pathlib import Path
++
++import torch
++from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
++
++from src.utils.checksum import dual_sha256
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--training-run", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise FileExistsError(args.output)
++    run = args.training_run.resolve(strict=True)
++    logs = run / "logs/version_0"
++    last_path = logs / "checkpoints/last.ckpt"
++    last = torch.load(last_path, map_location="cpu", weights_only=False)
++    if last["epoch"] != 199 or last["global_step"] != 9000:
++        raise ValueError("Expected a completed 200-epoch, 9000-update run")
++    callbacks = [
++        state
++        for key, state in last["callbacks"].items()
++        if str(key).startswith("ModelCheckpoint") and "val/position_error_m" in str(key)
++    ]
++    if len(callbacks) != 1:
++        raise ValueError("Expected exactly one validation-position checkpoint selector")
++    state = callbacks[0]
++    checkpoint = Path(state["best_model_path"]).resolve(strict=True)
++    if checkpoint.parent != last_path.parent or checkpoint == last_path:
++        raise ValueError("Selected checkpoint must be a saved best candidate in this run")
++    score = float(state["best_model_score"])
++    if not math.isfinite(score):
++        raise ValueError("Selected validation score is nonfinite")
++    del last, state, callbacks
++    gc.collect()
++    selected = torch.load(checkpoint, map_location="cpu", weights_only=False)
++    selected_epoch = int(selected["epoch"])
++    selected_step = int(selected["global_step"])
++    if not all(torch.isfinite(value).all() for value in selected["state_dict"].values()):
++        raise ValueError("Selected checkpoint contains nonfinite tensors")
++    del selected
++    gc.collect()
++    accumulator = EventAccumulator(str(logs), size_guidance={"scalars": 0}).Reload()
++    validations = accumulator.Scalars("val/position_error_m")
++    if len(validations) != 40:
++        raise ValueError("Expected 40 validation measurements")
++    best_event = min(validations, key=lambda event: event.value)
++    if best_event.step + 1 != selected_step or not math.isclose(best_event.value, score, abs_tol=1e-9):
++        raise ValueError("Checkpoint selector and recorded validation minimum disagree")
++    if selected_step != (selected_epoch + 1) * 45:
++        raise ValueError("Selected epoch and optimizer step disagree")
++    epochs = accumulator.Scalars("epoch")
++    if int(epochs[-1].value) != 199:
++        raise ValueError("TensorBoard does not confirm completion")
++    metrics = {}
++    for tag in accumulator.Tags()["scalars"]:
++        if tag.startswith("val/"):
++            series = accumulator.Scalars(tag)
++            chosen = [event for event in series if event.step == best_event.step]
++            if len(chosen) != 1:
++                raise ValueError(f"Missing/duplicate validation metric: {tag}")
++            metrics[tag] = {"selected": chosen[0].value, "final": series[-1].value}
++    receipt = {
++        "source": str(checkpoint),
++        "sha256": dual_sha256(checkpoint),
++        "size_bytes": checkpoint.stat().st_size,
++        "selected_epoch_zero_based": selected_epoch,
++        "selected_optimizer_step": selected_step,
++        "completed_epochs": 200,
++        "optimizer_updates": 9000,
++        "validation_count": len(validations),
++        "selection_monitor": "val/position_error_m",
++        "selection_mode": "min",
++        "selection_score_m": score,
++        "selection_split": "val",
++        "selection_used_test": False,
++        "selection_frozen_at_utc": datetime.now(UTC).isoformat(),
++        "last_epoch_finished_utc": datetime.fromtimestamp(epochs[-1].wall_time, UTC).isoformat(),
++        "training_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
++        "dataset_manifest_sha256": "36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544",
++        "validation_metrics": metrics,
++        "tennis_scene_integration": "deferred by user; checkpoint and knowledge only",
++    }
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(receipt, indent=2) + "\n")
++    print(json.dumps(receipt, indent=2))
++
++
++if __name__ == "__main__":
++    main()

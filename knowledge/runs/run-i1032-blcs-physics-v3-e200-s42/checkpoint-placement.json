@@ -1,0 +1,45 @@
+{
+  "source": "/home/kamimura/projects/tennis-lab/outputs/blcs/train/axial_base_physics_v3_t128_v3-6_reprojection_e200/s42-20261007-001/logs/version_0/checkpoints/blcs-epoch=189.ckpt",
+  "sha256": "67e01836b1016ca1d0fb2acf088bfe44aa49a804c91aa8fb9cc132ec115dd197",
+  "size_bytes": 621076139,
+  "selected_epoch_zero_based": 189,
+  "selected_optimizer_step": 8550,
+  "completed_epochs": 200,
+  "optimizer_updates": 9000,
+  "validation_count": 40,
+  "selection_monitor": "val/position_error_m",
+  "selection_mode": "min",
+  "selection_score_m": 0.2868194580078125,
+  "selection_split": "val",
+  "selection_used_test": false,
+  "selection_frozen_at_utc": "2026-10-07T02:30:37.775100+00:00",
+  "last_epoch_finished_utc": "2026-10-07T02:30:25.003889+00:00",
+  "training_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+  "dataset_manifest_sha256": "36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544",
+  "validation_metrics": {
+    "val/loss": {
+      "selected": 0.00023353415599558502,
+      "final": 0.00026283186161890626
+    },
+    "val/position_error_m": {
+      "selected": 0.2868194580078125,
+      "final": 0.30332350730895996
+    },
+    "val/position_accuracy_0.3m": {
+      "selected": 0.723760187625885,
+      "final": 0.698369562625885
+    },
+    "val/endpoint_error_m": {
+      "selected": 0.6812239289283752,
+      "final": 0.7190436720848083
+    }
+  },
+  "tennis_scene_integration": "deferred by user; checkpoint and knowledge only",
+  "destination": "/home/kamimura/projects/tennis-lab/ckpt/blcs/axial-base-physics-v3-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "checkpoint_root_relative": "blcs/axial-base-physics-v3-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "source_and_destination_sha256_match": true,
+  "superseded_checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/blcs/axial-base-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "superseded_sha256": "c83e56a51c553a10203b509cd307df930ccba59adb72c49cec89d6f42e1d73a8",
+  "superseded_archive": "/home/kamimura/projects/tennis-lab/outputs/blcs/train/axial_base_t128_v3-6_reprojection_e200/s42-20261006-001/superseded_checkpoint/axial-base-kp14-t128-v3-6-e200-s42-epoch189.ckpt",
+  "scope": "BLCS checkpoint replacement and knowledge only; no tennis_scene integration"
+}
