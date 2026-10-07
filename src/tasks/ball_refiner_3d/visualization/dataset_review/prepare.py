@@ -57,6 +57,7 @@ def prepare_saved_predictions(service: ReviewService) -> None:
             torch.device("cpu"),
             seed=profile["flow_seed"],
             batch_size=32,
+            physics=False,
         )
         assert entry.predictions is not None
         write_bundle(

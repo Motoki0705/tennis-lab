@@ -191,7 +191,12 @@ def test_shared_training_roundtrip(
         event_sigma_frames=cfg.loss.event.sigma_frames,
     )
     _, repeated = evaluate(
-        model, test, torch.device("cpu"), seed=cfg.data.evaluation_seed, batch_size=2
+        model,
+        test,
+        torch.device("cpu"),
+        seed=cfg.data.evaluation_seed,
+        batch_size=2,
+        physics=False,
     )
     with np.load(output / "predictions/pred_test.npz") as saved:
         np.testing.assert_array_equal(saved["prediction"], repeated["prediction"])
@@ -207,6 +212,7 @@ def test_shared_training_roundtrip(
         torch.device("cpu"),
         seed=cfg.data.evaluation_seed,
         batch_size=2,
+        physics=False,
     )
     with (
         np.load(output / "predictions_last/pred_test.npz") as final,

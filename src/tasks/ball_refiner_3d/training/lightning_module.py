@@ -90,7 +90,7 @@ class RefinerLightningModule(BaseLightningModule):
         )
 
     def _estimate_total_steps(self) -> int:
-        return self.settings.updates.steps
+        return int(self.settings.updates.steps)
 
     def optimizer_param_groups(self) -> list[dict[str, Any]]:
         return [{"params": self.model.parameters()}]
@@ -288,6 +288,7 @@ class RefinerLightningModule(BaseLightningModule):
             self.device,
             seed=self.settings.raw["data"]["evaluation_seed"],
             batch_size=self.settings.updates.batch_size,
+            physics=False,
         )
         self._validation_arrays.append(arrays)
         self._validation_seconds += report["inference_seconds"]
