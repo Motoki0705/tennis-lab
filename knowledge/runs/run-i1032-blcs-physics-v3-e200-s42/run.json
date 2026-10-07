@@ -1,0 +1,16 @@
+{
+  "run_id": "1791333871983856390_1050674_i1032-blcs-physics-v3-e200-s42-20261007",
+  "name": "i1032-blcs-physics-v3-e200-s42-20261007",
+  "command": "'env' 'MPLBACKEND=Agg' 'OMP_NUM_THREADS=4' 'MKL_NUM_THREADS=4' 'OPENBLAS_NUM_THREADS=4' 'PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True' '.venv/bin/python' '-u' '-m' 'src.tasks.blcs.scripts.train' 'model=multiview_axial_base' 'data=multiview_sequence' 'training=default' 'loss=reprojection' 'paths.data_root=/home/kamimura/projects/tennis-lab/data' 'paths.output_root=/home/kamimura/projects/tennis-lab/outputs' 'paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs' 'paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt' 'data.scene_dir=blcs/single_object-physics-v3-cc863cacd-20261007' 'model.predict_velocity=false' 'model.num_court_tokens=14' 'data.num_court_kp=14' 'data.seq_len_range=[128,128]' 'data.num_views_range=[3,6]' 'data.camera_mode=random' 'data.batch_size=2' 'data.num_workers=4' 'data.augmentation.enabled=true' 'loss.position_weight=1.0' 'loss.reprojection_weight=0.1' 'loss.smoothness_weight=0.0' 'loss.gravity_weight=0.0' 'training.learning_rate=1e-4' 'training.weight_decay=0.01' 'training.warmup_steps=200' 'training.min_lr=1e-6' 'training.compile.enabled=false' 'training.gan.enabled=false' 'training.trainer.precision=bf16-mixed' 'training.trainer.max_epochs=200' 'training.trainer.accumulate_grad_batches=8' 'training.trainer.check_val_every_n_epoch=5' 'training.trainer.enable_progress_bar=false' 'training.trainer.log_every_n_steps=10' 'training.checkpoint.monitor=val/position_error_m' 'training.checkpoint.mode=min' 'training.checkpoint.save_top_k=1' 'training.checkpoint.save_last=true' 'training.qualitative_logging.every_n_epochs=10' 'run.seed=42' 'run.resume=null' 'run.init_weights=null' 'run.test_after_fit=false' 'run.output_dir=blcs/train/axial_base_physics_v3_t128_v3-6_reprojection_e200/s42-20261007-001'",
+  "provider": "codex",
+  "session": "01a113c9-1a0e-7991-a023-196be2e79e54",
+  "issue": "1032",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+  "branch": "codex/blcs-physics-v3-retrain-20261007",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/blcs-physics-v3-retrain-20261007",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/blcs-physics-v3-retrain-20261007",
+  "captured_at": "2026-10-07T09:44:32+09:00"
+}

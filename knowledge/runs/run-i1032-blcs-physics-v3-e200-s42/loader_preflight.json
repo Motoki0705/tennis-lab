@@ -1,0 +1,10 @@
+{
+  "train": {
+    "eligible_scenes": 715,
+    "batches_per_epoch": 357
+  },
+  "val": {
+    "eligible_scenes": 92,
+    "batches_per_epoch": 46
+  }
+}
