@@ -25,7 +25,7 @@ class _IdentityBallModel(torch.nn.Identity):
 
     def __init__(self) -> None:
         super().__init__()
-        self.in_channels = 3
+        self.in_channels = 2
         self.num_classes = 1
 
 
@@ -36,9 +36,9 @@ def _build(
     adapter = BallModelIOAdapter(
         BallModelInputSpec(
             model_name="test_model",
-            input_mode="rgb",
+            input_mode="mdd",
             input_layout=cast(BallInputLayout, layout),
-            in_channels=3,
+            in_channels=2,
             num_classes=1,
             configured_frames=num_frames,
             image_size_hw=None,
@@ -67,13 +67,15 @@ def _build(
     )
 
 
-def test_btchw_model_yields_one_mdd_frame_per_input_frame() -> None:
-    """btchw models must not collapse the MDD panel to the channel count."""
-    frames = _build("btchw", num_frames=5, h=6, w=8)
+def test_mdd_model_yields_one_display_frame_per_input_frame() -> None:
+    frames = _build("bcthw", num_frames=5, h=6, w=8)
     assert len(frames) == 5
     assert frames[0].shape == (6, 8, 3)
 
 
-def test_mdd_frame_count_is_layout_independent() -> None:
-    """bcthw and btchw layouts must produce the same number of MDD frames."""
-    assert len(_build("bcthw", num_frames=5)) == len(_build("btchw", num_frames=5))
+def test_removed_model_layout_is_rejected() -> None:
+    import pytest
+
+    from src.tasks.ball_detection.model_io.contracts import BallModelIOError
+    with pytest.raises(BallModelIOError, match="bcthw"):
+        _build("btchw")

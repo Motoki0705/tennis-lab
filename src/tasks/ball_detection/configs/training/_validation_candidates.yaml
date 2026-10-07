@@ -1,4 +1,4 @@
-# Fixed validation contract shared by normal, GAN, LoRA and staged training.
+# Fixed validation contract shared by ConvNeXt normal and GAN training.
 validation_candidates:
   max_candidates: 8
   nms_kernel: 5

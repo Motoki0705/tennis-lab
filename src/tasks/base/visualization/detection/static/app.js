@@ -1,12 +1,14 @@
 import { ImageViewer } from "./viewer.mjs";
 import { FrameBuffer, SequentialClock } from "./playback.mjs";
 import { fillIcons, icon } from "./icons.mjs";
+import { PlayTimeline } from "./play_intervals.mjs";
 import {
   renderReviewFilters, renderSceneReview, renderFrameReview,
   renderJumpOptions, updateJumpButtons, jumpTarget, renderDatasetOverview,
   sourceLabels,
 } from "./review.mjs";
 const $ = (id) => document.getElementById(id);
+let statisticsPanel = null;
 fillIcons();
 const state = {
   catalog: null,
@@ -14,6 +16,7 @@ const state = {
   scene: null,
   review: null,
   frame: 0,
+  displayedFrame: 0,
   total: 0,
   page: 0,
   sceneTotal: 0,
@@ -37,6 +40,10 @@ const viewer = new ImageViewer(
   $("view"),
   (scale) => ($("zoom").textContent = `${Math.round(scale * 100)}%`),
 );
+const playTimeline = new PlayTimeline($("play-intervals"), (frame) => {
+  stop();
+  showFrame(frame);
+});
 let courtReview = null;
 const query = (values) =>
   new URLSearchParams(
@@ -90,6 +97,7 @@ function stop() {
 }
 function resetScene() {
   stop();
+  playTimeline.clear();
   state.sceneToken++;
   state.frameToken++;
   state.scene = null;
@@ -100,6 +108,7 @@ function resetScene() {
   renderJumpOptions(null);
   state.total = 0;
   state.frame = 0;
+  state.displayedFrame = 0;
   state.resultWarnings = [];
   viewer.clear();
   for (const key of ["scene", "frame", "people", "playerMode"])
@@ -276,6 +285,7 @@ async function loadCatalog() {
     clearTimeout(searchTimer);
     resetScene();
     state.catalog = catalog;
+    $("statistics-open").hidden = !catalog.statistics_ui;
     if (catalog.task === "court_detection" && !courtReview) {
       const { createCourtReview } = await import("/task-static/review.mjs");
       if (token !== state.catalogToken) return;
@@ -377,11 +387,12 @@ async function selectScene(item) {
     b.classList.toggle("selected", b.dataset.scene === item.id);
   updateRun();
   const selection = state.sceneToken;
-  if (state.catalog.task === "ball_detection" && item.review) {
+  if (state.catalog.task === "ball_detection" && (item.review || state.catalog.datasets.find((d) => d.id === state.dataset)?.overview)) {
     try {
       const review = await api(`/api/review?${query({ scene: item.id })}`);
       if (selection !== state.sceneToken) return;
       state.review = review;
+      renderSceneReview({ ...item, review });
       renderJumpOptions(review);
     } catch (error) {
       if (selection !== state.sceneToken) return;
@@ -389,7 +400,27 @@ async function selectScene(item) {
       return;
     }
   }
-  await showFrame(state.review?.positions[$("review-state-filter").value]?.[0] ?? 0, true);
+  await Promise.all([
+    showFrame(state.review?.positions[$("review-state-filter").value]?.[0] ?? 0, true),
+    loadPlayIntervals(),
+  ]);
+}
+async function loadPlayIntervals() {
+  if (!state.catalog.play_intervals_available) return;
+  const selection = state.sceneToken;
+  const scene = state.scene.id;
+  playTimeline.message("プレイ区間の候補を計算中...");
+  try {
+    const result = await api(`/api/play-intervals?${query({ scene })}`);
+    if (selection !== state.sceneToken || scene !== state.scene?.id) return;
+    if (result.scene !== scene || result.frames !== state.total)
+      throw new Error("区間候補と選択clipのフレーム列が一致しません。");
+    playTimeline.render(result);
+    playTimeline.setFrame(state.displayedFrame);
+  } catch (error) {
+    if (selection === state.sceneToken)
+      playTimeline.message(`区間候補を表示できません: ${error.message}`);
+  }
 }
 function configureWindow() {
   const cp = checkpoint();
@@ -464,6 +495,8 @@ async function showFrame(frame, reset = false) {
     $("frame-position").textContent = `${frame + 1} / ${state.total}`;
     $("empty").hidden = true;
     $("frame-name").textContent = item.name;
+    state.displayedFrame = frame;
+    playTimeline.setFrame(frame);
     $("resolution").textContent = `${preview.width} × ${preview.height}`;
     $("buffer-status").textContent = "";
     renderLayers(item.gt, pred);
@@ -631,6 +664,25 @@ $("page-next").onclick = () => {
 };
 // loadCatalog が冒頭で scene をリセットするため、ここでは再読込だけを行う。
 $("refresh").onclick = loadCatalog;
+$("statistics-open").onclick = async () => {
+  try {
+    if (!statisticsPanel) {
+      const { StatisticsPanel } = await import(state.catalog.statistics_ui);
+      statisticsPanel = new StatisticsPanel($("statistics-dialog"), async (clip, frame) => {
+        if (clip.dataset !== state.dataset) {
+          state.dataset = clip.dataset;
+          state.page = 0;
+          resetScene();
+          renderDatasets();
+        }
+        await selectScene({id: `${clip.dataset}::${clip.clip_id}`, label: clip.clip_id, frames: clip.frame_count});
+        stop();
+        await showFrame(frame);
+      });
+    }
+    await statisticsPanel.open(state.dataset);
+  } catch (error) { status(error.message, true); }
+};
 $("infer").onclick = infer;
 $("first").onclick = () => {
   stop();
