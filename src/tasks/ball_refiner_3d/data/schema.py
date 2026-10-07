@@ -8,6 +8,7 @@ from typing import TypeAlias
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.ball_refiner_3d.physics.targets import PhysicsTargets
 from src.utils.physics.ball.record import BallPhysicsRecord
 
 FloatArray: TypeAlias = NDArray[np.float32]
@@ -48,6 +49,7 @@ class PreparedRally:
     missing: NDArray[np.bool_]
     target: NDArray[np.float32]
     event_target: NDArray[np.float32]
+    physics: PhysicsTargets
 
 
 @dataclass(frozen=True)

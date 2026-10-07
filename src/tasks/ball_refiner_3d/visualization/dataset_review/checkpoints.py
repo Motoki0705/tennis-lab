@@ -26,6 +26,26 @@ from src.tasks.ball_refiner_3d.visualization.dataset_review.contracts import (
     evaluation_profile,
 )
 
+SUMMARY_DIRECTORIES = {"best.ckpt": "predictions", "last.ckpt": "predictions_last"}
+
+
+def test_summary(directory: Path, digest: str, manifest_hash: str) -> dict[str, float]:
+    """Headline test metrics the run saved for exactly this checkpoint and data."""
+    try:
+        report = json.loads((directory / "diagnostic_metrics.json").read_text())
+        metrics = json.loads((directory / "metrics.json").read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("学習時のtest評価がありません") from exc
+    if report.get("checkpoint_sha256") != digest:
+        raise ValueError("学習時のtest評価が別のcheckpointのものです")
+    if report.get("dataset_manifest_sha256") != manifest_hash:
+        raise ValueError("学習時のtest評価が別のdatasetのものです")
+    return {
+        key: float(value)
+        for key, value in metrics.items()
+        if isinstance(value, int | float) and not isinstance(value, bool)
+    }
+
 
 @dataclass(frozen=True)
 class Checkpoint:
@@ -45,6 +65,10 @@ def describe(
         "compatible": False,
         "reason": None,
         "recommended": False,
+        "physics_heads": False,
+        "run_name": None,
+        "test_summary": None,
+        "test_summary_reason": "学習時のtest評価と対応付けられません",
     }
     run: Path | None = None
     predictions = None
@@ -82,6 +106,7 @@ def describe(
             event_sigma_frames=payload["event_sigma_frames"],
             dimensions=model.dimensions,
             method=method,
+            physics_heads=model.physics_heads,
             model_config=payload["model_config"],
             step=int(payload["step"]),
             validation_rmse=score,
@@ -121,7 +146,7 @@ def describe(
                 info.update(
                     train_event_probability=float(augmentation["event_probability"]),
                     evaluation_profile=evaluation_profile(config),
-                    run_name=candidate.parent.name,
+                    run_name=f"{candidate.parent.name}/{candidate.name}",
                 )
                 if path.name == "best.ckpt":
                     predictions = bundle_path(
@@ -129,9 +154,11 @@ def describe(
                     )
         rate = info["train_event_probability"]
         suffix = "学習条件不明" if rate is None else f"イベント {rate:.0%}"
+        kind = method.upper() + (" + 物理head" if model.physics_heads else "")
+        run_label = f"{info['run_name']} · " if info["run_name"] else ""
         info.update(
             compatible=True,
-            label=f"{model.dimensions}D · {method.upper()} · {suffix} · {path.name} · val {score:.3f} {info['unit']}",
+            label=f"{run_label}{kind} · {suffix} · {path.name} · val {score:.3f} {info['unit']}",
         )
     except (
         OSError,
@@ -212,6 +239,23 @@ class CheckpointCatalog:
                             )
                         except ValueError as exc:
                             entry.info["saved_unavailable_reason"] = str(exc)
+                    # Re-read every refresh: the run may finish its test evaluation later.
+                    entry.info.update(
+                        test_summary=None,
+                        test_summary_reason="学習時のtest評価と対応付けられません",
+                    )
+                    if entry.run is not None and entry.path.name in SUMMARY_DIRECTORIES:
+                        try:
+                            entry.info.update(
+                                test_summary=test_summary(
+                                    entry.run / SUMMARY_DIRECTORIES[entry.path.name],
+                                    entry.info["sha256"],
+                                    self.manifest_hash,
+                                ),
+                                test_summary_reason=None,
+                            )
+                        except ValueError as exc:
+                            entry.info["test_summary_reason"] = str(exc)
                 entries[identifier] = entry
         self.entries = entries
         # Compare validation scores only within an identical evaluation recipe.

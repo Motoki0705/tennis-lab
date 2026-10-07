@@ -20,11 +20,21 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.tasks.ball_refiner_3d.data.schema import Rally
+from src.tasks.ball_refiner_3d.data.schema import PreparedRally, Rally
+from src.tasks.ball_refiner_3d.physics.units import (
+    SURFACES,
+    State,
+    decode_field,
+    decode_state,
+)
 from src.tasks.ball_refiner_3d.training.metrics import event_neighborhood
 from src.utils.physics.ball.events import event_detection_report, pick_event_frames
 from src.utils.physics.ball.fitting import FitSettings, fit_flight_physics
 from src.utils.physics.ball.kinematics import KinematicThresholds, kinematic_report
+from src.utils.physics.ball.parameters import (
+    field_parameter_report,
+    segment_parameter_report,
+)
 from src.utils.physics.ball.record import EVENT_BITS, EVENT_KINDS
 
 PROTOCOL = "physics_eval.v1"
@@ -251,4 +261,104 @@ def physics_metrics(report: dict[str, Any]) -> dict[str, float]:
     missing = [name for name, value in values.items() if value is None]
     if missing:
         raise ValueError(f"Physics metrics undefined: {missing}")
+    return {name: float(value) for name, value in values.items()}
+
+
+@dataclass(frozen=True)
+class PhysicsParameters:
+    """Predicted network-unit parameters of one rally under its true segmentation."""
+
+    rally: PreparedRally
+    field: NDArray[np.floating]  # (4,)
+    surface_probability: NDArray[np.floating]  # (3,)
+    segment_states: NDArray[np.floating]  # (S,9), true segments first
+
+
+def parameter_report(entries: list[PhysicsParameters]) -> dict[str, Any]:
+    """Field, surface and segment initial-state errors against the record."""
+    if not entries:
+        raise ValueError("Require at least one rally")
+
+    def field_of(values: NDArray[np.floating]) -> dict[str, NDArray[np.float64]]:
+        decoded = decode_field(torch.as_tensor(np.stack(values), dtype=torch.float64))
+        return {
+            "wind": decoded.wind.numpy(),
+            "k_drag": decoded.k_drag.numpy(),
+            "k_magnus": decoded.k_magnus.numpy(),
+        }
+
+    predicted_field = field_of([e.field for e in entries])
+    true_field = field_of([e.rally.physics.field for e in entries])
+    predicted_states: list[State] = []
+    true_states: list[State] = []
+    predicted_magnus: list[NDArray[np.float64]] = []
+    true_magnus: list[NDArray[np.float64]] = []
+    for index, entry in enumerate(entries):
+        segment = entry.rally.physics.segment
+        firsts = np.flatnonzero(np.diff(segment, prepend=-1))
+        if len(entry.segment_states) < len(firsts):
+            raise ValueError("Every true segment needs a predicted state")
+        for states, field, out, magnus in (
+            (
+                entry.segment_states[: len(firsts)],
+                predicted_field,
+                predicted_states,
+                predicted_magnus,
+            ),
+            (entry.rally.physics.state[firsts], true_field, true_states, true_magnus),
+        ):
+            decoded = decode_state(torch.as_tensor(states, dtype=torch.float64))
+            out.append(decoded)
+            magnus.append(field["k_magnus"][index] * decoded.spin.numpy())
+
+    def stack(states: list[State], name: str) -> NDArray[np.float64]:
+        return np.concatenate([getattr(s, name).numpy() for s in states])
+
+    names = ("position", "velocity", "spin")
+    surfaces = np.array([e.rally.physics.surface for e in entries])
+    chosen = np.array([int(np.argmax(e.surface_probability)) for e in entries])
+    return {
+        "field": field_parameter_report(predicted_field, true_field),
+        "surface": {
+            "accuracy": float(np.mean(chosen == surfaces)),
+            "confusion": {
+                truth: {
+                    guess: int(np.sum((surfaces == i) & (chosen == j)))
+                    for j, guess in enumerate(SURFACES)
+                }
+                for i, truth in enumerate(SURFACES)
+            },
+        },
+        "segments": segment_parameter_report(
+            {name: stack(predicted_states, name) for name in names}
+            | {"magnus": np.concatenate(predicted_magnus)},
+            {name: stack(true_states, name) for name in names}
+            | {"magnus": np.concatenate(true_magnus)},
+        ),
+    }
+
+
+def integrated_metrics(report: dict[str, Any]) -> dict[str, float]:
+    """Headline metrics of the integrated trajectory and predicted parameters."""
+    upper = report["integrated_truth_segments"]
+    parameters = report["parameters"]
+    values = {
+        "test_integrated_rmse_m": report["integrated"]["all"]["rmse"],
+        "test_integrated_missing_rmse_m": report["integrated"]["missing"]["rmse"],
+        "test_integrated_fit_residual_rmse_m": report["integrated"]["physics"][
+            "fit_residual_rmse"
+        ]["all"],
+        "test_integrated_truth_segments_rmse_m": upper["all"]["rmse"],
+        "test_surface_accuracy": parameters["surface"]["accuracy"],
+        "test_wind_error_median_mps": parameters["field"]["wind_error_mps"]["median"],
+        "test_k_drag_relative_error_median": parameters["field"][
+            "k_drag_relative_error"
+        ]["median"],
+        "test_segment_velocity_error_median_mps": parameters["segments"][
+            "velocity_error_mps"
+        ]["median"],
+    }
+    missing = [name for name, value in values.items() if value is None]
+    if missing:
+        raise ValueError(f"Integrated metrics undefined: {missing}")
     return {name: float(value) for name, value in values.items()}

@@ -16,6 +16,7 @@ from src.tasks.ball_refiner_3d.data.schema import (
 )
 from src.tasks.ball_refiner_3d.data.targets.events import gaussian_event_target
 from src.tasks.ball_refiner_3d.model_io.adapters import normalization
+from src.tasks.ball_refiner_3d.physics.targets import physics_targets
 from src.utils.geometry.triangulation import triangulate_multiview
 
 
@@ -55,6 +56,7 @@ def prepare(
                 missing,
                 (truth / scale - offset).astype(np.float32),
                 gaussian_event_target(rally.events, event_sigma_frames)[None],
+                physics_targets(rally.physics, rally.xyz),
             )
         )
     return output

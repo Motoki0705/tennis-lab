@@ -12,6 +12,7 @@ import torch
 from src.tasks.ball_refiner_3d.configuration.core import parse_section
 from src.tasks.ball_refiner_3d.configuration.model import ModelConfig
 from src.tasks.ball_refiner_3d.model_io.factory import RefinerModel, build_refiner
+from src.tasks.ball_refiner_3d.physics.targets import FlightClock
 
 CHECKPOINT_SCHEMA = "ball_refiner_3d.events.v1"
 
@@ -29,7 +30,25 @@ def checkpoint_model_config(payload: dict[str, Any]) -> ModelConfig:
         or sigma <= 0
     ):
         raise ValueError("Checkpoint requires positive finite event_sigma_frames")
-    return parse_section(ModelConfig, payload["model_config"])
+    config: ModelConfig = parse_section(
+        ModelConfig, upgrade_model_config(payload["model_config"])
+    )
+    return config
+
+
+def upgrade_model_config(raw: dict[str, Any]) -> dict[str, Any]:
+    """Read model configs saved before physics heads (#1032) explicitly.
+
+    They carry ``window_length``, which became a data setting when inference
+    moved to whole clips, and have no physics heads.
+    """
+    if "physics_heads" in raw:
+        return raw
+    if "window_length" not in raw:
+        raise ValueError("Unrecognized refiner model configuration")
+    upgraded = {key: value for key, value in raw.items() if key != "window_length"}
+    upgraded["physics_heads"] = False
+    return upgraded
 
 
 def load_checkpoint(
@@ -51,13 +70,27 @@ def load_checkpoint(
     return model, payload
 
 
+def checkpoint_flight_clock(payload: dict[str, Any]) -> FlightClock:
+    """Integration constants of the training data, required by physics heads."""
+    if "flight_clock" not in payload:
+        raise ValueError("Checkpoint has no flight clock for physics integration")
+    clock: FlightClock = parse_section(FlightClock, payload["flight_clock"])
+    return clock
+
+
 def checkpoint_metadata(
-    model: RefinerModel, *, event_sigma_frames: float
+    model: RefinerModel, *, event_sigma_frames: float, clock: FlightClock
 ) -> dict[str, Any]:
     return {
         "schema": CHECKPOINT_SCHEMA,
+        "flight_clock": asdict(clock),
         "model_config": asdict(model.config),
         "event_sigma_frames": event_sigma_frames,
         "input_contract": "3D coordinates + missing boolean only; true=missing",
-        "output_contract": "one all-frame 3D trajectory + per-frame softmax(no-event,event) probability",
+        "output_contract": "one all-frame 3D trajectory + per-frame softmax(no-event,event) probability"
+        + (
+            " + rally field/surface and flight-segment initial states"
+            if model.config.physics_heads
+            else ""
+        ),
     }
