@@ -21,6 +21,7 @@ from src.tasks.ball_refiner_3d.data.preprocessing import corrupt_trajectory
 from src.tasks.ball_refiner_3d.data.schema import CorruptedTrajectory, Rally
 from src.tasks.ball_refiner_3d.data.targets.events import gaussian_event_target
 from src.tasks.ball_refiner_3d.inference.predictor import RefinerPredictor
+from src.tasks.ball_refiner_3d.physics.units import decode_field, physical_field
 from src.tasks.ball_refiner_3d.visualization.dataset_review.artifacts import (
     read_receipt,
 )
@@ -33,7 +34,11 @@ from src.tasks.ball_refiner_3d.visualization.dataset_review.contracts import (
     ReviewRequest,
     evaluation_profile,
 )
-from src.tasks.ball_refiner_3d.visualization.dataset_review.payload import scene_payload
+from src.tasks.ball_refiner_3d.visualization.dataset_review.payload import (
+    ModelOutputs,
+    PhysicsOutputs,
+    scene_payload,
+)
 from src.utils.paths import PROJECT_ROOT
 
 
@@ -169,7 +174,7 @@ class ReviewService:
         request: ReviewRequest,
         rally: Rally,
         corruption: CorruptedTrajectory,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> ModelOutputs:
         if (
             rally.split != "test"
             or not checkpoint.info["saved_available"]
@@ -237,7 +242,25 @@ class ReviewService:
             or np.any((probability < 0) | (probability > 1))
         ):
             raise ValueError("保存済みイベント確率・教師が不正です")
-        return cast(np.ndarray, prediction[0]), cast(np.ndarray, probability)
+        if ("integrated" in arrays) != checkpoint.info["physics_heads"]:
+            raise ValueError(
+                "保存済み予測の物理head出力の有無がcheckpointと一致しません"
+            )
+        physics = None
+        if checkpoint.info["physics_heads"]:
+            row = np.flatnonzero(arrays["physics_rally_id"] == rally.index)
+            if len(row) != 1:
+                raise ValueError("保存済みの物理パラメータとラリーの対応が不正です")
+            physics = PhysicsOutputs(
+                integrated=arrays["integrated"][take],
+                segment=arrays["integrated_segment"][take],
+                integrated_truth_segments=arrays["integrated_truth_segments"][take],
+                field=arrays["physics_field"][row[0]],
+                surface_probability=arrays["physics_surface_probability"][row[0]],
+            )
+        return ModelOutputs(
+            cast(np.ndarray, prediction[0]), cast(np.ndarray, probability), physics
+        )
 
     def _result(
         self,
@@ -245,7 +268,7 @@ class ReviewService:
         rally: Rally,
         corruption: CorruptedTrajectory,
         selected: dict[int, Checkpoint],
-        predictions: dict[int, tuple[np.ndarray, np.ndarray]],
+        predictions: dict[int, ModelOutputs],
         source: str,
         seconds: float,
     ) -> dict[str, Any]:
@@ -260,8 +283,7 @@ class ReviewService:
             corruption,
             cameras,
             fps=self.dataset.fps,
-            prediction_3d=predictions[3][0] if 3 in predictions else None,
-            event_probability=predictions[3][1] if 3 in predictions else None,
+            model=predictions.get(3),
             event_sigma_frames=selected[3].info["event_sigma_frames"]
             if selected
             else self.event_sigma_frames,
@@ -330,9 +352,28 @@ class ReviewService:
                     fps=self.dataset.fps,
                     seed=request.flow_seed + rally.index,
                 )
-                predictions[dim] = (
-                    output.coordinates.cpu().numpy()[0],
-                    output.event_probability.cpu().numpy()[0],
+                physics = None
+                if output.physics is not None:
+                    upper = predictor.predict(
+                        torch.from_numpy(coordinates),
+                        torch.from_numpy(missing),
+                        fps=self.dataset.fps,
+                        seed=request.flow_seed + rally.index,
+                        segment=torch.from_numpy(rally.physics.frame_segment()[None]),
+                    ).physics
+                    if upper is None:
+                        raise RuntimeError("物理headが区間指定の推論で出力を返しません")
+                    physics = PhysicsOutputs(
+                        integrated=output.physics.integrated.numpy()[0],
+                        segment=output.physics.segment.numpy()[0],
+                        integrated_truth_segments=upper.integrated.numpy()[0],
+                        field=physical_field(decode_field(upper.field))[0].numpy(),
+                        surface_probability=upper.surface_probability.numpy()[0],
+                    )
+                predictions[dim] = ModelOutputs(
+                    output.coordinates.numpy()[0],
+                    output.event_probability.numpy()[0],
+                    physics,
                 )
                 del predictor
         return self._result(

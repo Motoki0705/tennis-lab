@@ -10,7 +10,8 @@ from typing import Any
 
 import numpy as np
 
-SCHEMA = "ball_refiner_3d.review_predictions.v1"
+# v2 adds the physics-head arrays of ``evaluation.evaluator.evaluate``.
+SCHEMA = "ball_refiner_3d.review_predictions.v2"
 
 
 def sha256(path: Path) -> str:
@@ -22,7 +23,9 @@ def cache_root(outputs_root: Path) -> Path:
 
 
 def bundle_path(root: Path, checkpoint_hash: str, profile: dict[str, Any]) -> Path:
-    recipe = hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest()
+    recipe = hashlib.sha256(
+        json.dumps({"schema": SCHEMA, "profile": profile}, sort_keys=True).encode()
+    ).hexdigest()
     return root / checkpoint_hash / recipe
 
 

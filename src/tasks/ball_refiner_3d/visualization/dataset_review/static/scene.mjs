@@ -1,9 +1,14 @@
 import { PRESETS, Scene3D, frustumFromParams } from "/shared/scene3d.mjs";
 
-export const COLORS = { gt: "#48d597", input: "#a5b3c8", prediction: "#ff9a75", shot: "#bb9cf5", bounce: "#eec365" };
-export const LABELS = { gt: "GT", input: "拡張後入力", prediction: "推論" };
+export const COLORS = { gt: "#48d597", input: "#a5b3c8", prediction: "#ff9a75", integrated: "#4fb3ff",
+  integrated_truth: "#ff6fb5", linear: "#c08457", shot: "#bb9cf5", bounce: "#eec365" };
+export const LABELS = { gt: "GT", input: "拡張後入力", prediction: "推論（直接）", integrated: "積分（予測区間）",
+  integrated_truth: "積分（GT区間）", linear: "線形補間" };
+// Trajectory series in drawing order; a scene carries each as `${kind}_3d` or null.
+export const SERIES = ["gt", "input", "linear", "prediction", "integrated", "integrated_truth"];
+export const present = (scene) => SERIES.filter((kind) => scene[`${kind}_3d`]);
 
-export function canvases(container, separate, kinds = ["gt", "input", "prediction"]) {
+export function canvases(container, separate, kinds) {
   container.replaceChildren();
   return (separate ? kinds : [null]).map((kind) => {
     const wrapper = document.createElement("div");
@@ -27,15 +32,26 @@ export class ScenePanels {
   constructor(container) { this.container = container; this.panels = []; this.syncing = false; }
 
   setup(scene, separate, visibility, showCameras) {
-    const refit = this.rally !== scene.rally || this.separate !== separate;
+    const sameRally = this.rally === scene.rally;
+    let refit = !sameRally || this.separate !== separate;
     this.rally = scene.rally;
     const points = [...scene.gt_3d, ...scene.court.keypoints];
     this.target = [0, 1, 2].map((axis) => (Math.min(...points.map((p) => p[axis])) + Math.max(...points.map((p) => p[axis]))) / 2);
     this.points = points;
-    if (this.separate !== separate || !this.panels.length) {
+    // Side by side, one panel per shown series; overlay keeps one panel for all.
+    const kinds = present(scene).filter((kind) => !separate || visibility[kind]);
+    const layout = separate ? `separate:${kinds.join(",")}` : "overlay";
+    if (this.layout !== layout || !this.panels.length) {
+      const old = this.panels[0]?.view;
+      const keep = old && sameRally && this.separate === separate
+        ? { position: old.camera.position.clone(), quaternion: old.camera.quaternion.clone(), target: old.controls.target.clone() } : null;
       this.panels.forEach(({ view }) => { view.dispose(); view.renderer.forceContextLoss(); });
-      this.panels = canvases(this.container, separate).map(({ canvas, kind }) => ({ view: new Scene3D(canvas), kind }));
-      this.separate = separate;
+      this.panels = canvases(this.container, separate, kinds).map(({ canvas, kind }) => ({ view: new Scene3D(canvas), kind }));
+      this.separate = separate; this.layout = layout; refit = !keep;
+      if (keep) this.panels.forEach(({ view }) => {
+        view.resize(); view.camera.position.copy(keep.position); view.camera.quaternion.copy(keep.quaternion);
+        view.controls.target.copy(keep.target); view.controls.update();
+      });
       this.panels.forEach(({ view }) => view.controls.addEventListener("change", () => {
         if (this.syncing) return;
         this.syncing = true;
@@ -50,7 +66,7 @@ export class ScenePanels {
       }));
     }
     this.panels.forEach(({ view, kind }) => {
-      const entities = ["gt", "input", "prediction"].filter((id) => !kind || kind === id).flatMap((id) => {
+      const entities = kinds.filter((id) => !kind || kind === id).flatMap((id) => {
         const points = scene[`${id}_3d`];
         if (!points) return [];
         const positions = Float32Array.from(points.flat());

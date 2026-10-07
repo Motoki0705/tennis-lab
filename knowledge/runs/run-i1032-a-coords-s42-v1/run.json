@@ -1,0 +1,16 @@
+{
+  "run_id": "1791305832684657095_219669_i1032-a-coords-s42-v1",
+  "name": "i1032-a-coords-s42-v1",
+  "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner_3d.scripts.train paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs run.output_dir=ball_refiner_3d/train/i1032-physics/a-coords-s42-v1",
+  "provider": "claude",
+  "session": "72300f25-ca01-4859-9c8e-1ce0c340f9c3",
+  "issue": "1032",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "6d0cc11313b2c67c0fcbed79265f8aebafeb13b7",
+  "branch": "feat/issue-1032-p5-physics-heads",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1032-physics-refiner",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1032-physics-refiner",
+  "captured_at": "2026-10-07T01:57:20+09:00"
+}

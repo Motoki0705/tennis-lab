@@ -25,15 +25,42 @@ def validate_input(coordinates: Tensor, missing: Tensor, dimensions: int) -> Non
         raise ValueError("Observed coordinates must be finite")
 
 
+class PhysicsOutput(NamedTuple):
+    """Network-unit field ``(B,4)``, surface logits ``(B,3)`` and, when a
+    segmentation was given, segment initial states ``(B,S,9)``."""
+
+    field: Tensor
+    surface_logits: Tensor
+    segment_states: Tensor | None
+
+
 class RefinerOutput(NamedTuple):
     coordinates: Tensor
     event_logits: Tensor
+    physics: PhysicsOutput | None = None
 
     @property
     def event_probability(self) -> Tensor:
         return self.event_logits.softmax(dim=-1)[..., 1]
 
 
+class PhysicsPrediction(NamedTuple):
+    """Predicted physics of whole sequences ``V``.
+
+    ``field (V,4)`` and ``segment_states (V,S,9)`` are in network units (rows
+    beyond a sequence's segments are zero), ``segment (V,T)`` holds the flight
+    labels the states belong to, and ``integrated (V,T,3)`` is their integrated
+    trajectory in the same units as the predicted coordinates.
+    """
+
+    field: Tensor
+    surface_probability: Tensor
+    segment: Tensor
+    segment_states: Tensor
+    integrated: Tensor
+
+
 class RefinerPrediction(NamedTuple):
     coordinates: Tensor
     event_probability: Tensor
+    physics: PhysicsPrediction | None = None

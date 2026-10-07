@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
 
 from src.tasks.ball_refiner_3d.inference.predictor import RefinerPredictor
+from src.tasks.ball_refiner_3d.physics.units import (
+    SURFACES,
+    decode_field,
+    decode_state,
+)
 
 
 def predict_file(
@@ -53,18 +59,39 @@ def predict_file(
             batch_size=batch_size,
         )
     result = predicted.coordinates.cpu().numpy()
+    physics: dict[str, np.ndarray] = {}
+    if predicted.physics is not None:
+        field = decode_field(predicted.physics.field)
+        states = decode_state(predicted.physics.segment_states)
+        physics = {
+            "integrated_coordinates": predicted.physics.integrated.numpy(),
+            "wind_mps": field.wind.numpy(),
+            "k_drag": field.k_drag.numpy(),
+            "k_magnus": field.k_magnus.numpy(),
+            "surface_probability": predicted.physics.surface_probability.numpy(),
+            "surface_names": np.asarray(SURFACES),
+            "segment": predicted.physics.segment.numpy(),
+            "segment_position_m": states.position.numpy(),
+            "segment_velocity_mps": states.velocity.numpy(),
+            "segment_spin_radps": states.spin.numpy(),
+        }
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".partial")
+    arrays: dict[str, Any] = {
+        "coordinates": result,
+        "event_probability": predicted.event_probability.cpu().numpy(),
+        "input_missing": missing,
+        "fps": np.asarray(fps),
+        "checkpoint_sha256": np.asarray(
+            hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+        ),
+        "schema": np.asarray(
+            "ball_refiner_3d.physics_prediction.v1"
+            if physics
+            else "ball_refiner_3d.prediction.v1"
+        ),
+        **physics,
+    }
     with temporary.open("xb") as stream:
-        np.savez_compressed(
-            stream,
-            coordinates=result,
-            event_probability=predicted.event_probability.cpu().numpy(),
-            input_missing=missing,
-            fps=np.asarray(fps),
-            checkpoint_sha256=np.asarray(
-                hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-            ),
-            schema=np.asarray("ball_refiner_3d.prediction.v1"),
-        )
+        np.savez_compressed(stream, **arrays)
     temporary.replace(output)

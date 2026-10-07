@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_refiner_3d/train/i1032-physics/c-recon-consistency-s42-v1/logs/version_0/checkpoints

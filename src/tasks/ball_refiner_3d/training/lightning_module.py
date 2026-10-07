@@ -29,6 +29,10 @@ from src.tasks.ball_refiner_3d.models.generators.flow import FlowRefiner
 from src.tasks.ball_refiner_3d.training.losses.composite import generator_objective
 from src.tasks.ball_refiner_3d.training.losses.events import event_loss
 from src.tasks.ball_refiner_3d.training.losses.flow_matching import flow_matching_loss
+from src.tasks.ball_refiner_3d.training.losses.physics import (
+    physics_losses,
+    weighted_physics,
+)
 from src.tasks.ball_refiner_3d.training.losses.position import position_loss
 from src.tasks.ball_refiner_3d.training.schedules import reconstruction_weight_at
 from src.tasks.base.training.gan_loss import LSGANLoss
@@ -145,20 +149,30 @@ class RefinerLightningModule(BaseLightningModule):
             raise RuntimeError(
                 "Training objective requires the initialized training lifecycle"
             )
+        valid = ~batch["padding"]
+        physics: dict[str, Tensor] = {}
         if isinstance(self.model, FlowRefiner):
             reconstruction, logits = flow_matching_loss(
                 self.model,
                 batch["coordinates"],
                 batch["missing"],
+                batch["padding"],
                 batch["target"],
                 self.flow_rng,
             )
             fake = None
         else:
-            result = self.binding.run(batch)
-            reconstruction = position_loss(result.coordinates, batch["target"])
+            inputs = {key: batch[key] for key in ("coordinates", "missing", "padding")}
+            if self.settings.model.physics_heads:
+                inputs["segment"] = batch["segment"]
+            result = self.binding.run(inputs)
+            reconstruction = position_loss(result.coordinates, batch["target"], valid)
             logits, fake = result.event_logits, result.coordinates
-        events = event_loss(logits, batch["event_target"])
+            if self.settings.physics.enabled:
+                physics = physics_losses(
+                    result, batch, self.data_module.clock, self.settings.physics
+                )
+        events = event_loss(logits, batch["event_target"], valid)
         supervised = generator_objective(
             reconstruction,
             reconstruction.new_zeros(()),
@@ -166,6 +180,12 @@ class RefinerLightningModule(BaseLightningModule):
             gan_weight=0.0,
         )
         loss = supervised + self.settings.event.weight * events
+        weighted = (
+            weighted_physics(physics, self.settings.physics)
+            if physics
+            else loss.new_zeros(())
+        )
+        loss = loss + weighted
         if not torch.isfinite(loss):
             raise RuntimeError(
                 f"Nonfinite objective at generator update {self.generator_updates}"
@@ -173,13 +193,18 @@ class RefinerLightningModule(BaseLightningModule):
         metrics = {
             "event_loss": float(events.detach()),
             "reconstruction": float(reconstruction.detach()),
+            "weighted_physics": float(weighted.detach()),
+            **{
+                f"physics_{name}": float(value.detach())
+                for name, value in physics.items()
+            },
         }
         return {
             "loss": loss,
             "metrics": metrics,
             "gan_fake": fake,
             "gan_real": batch["target"],
-            "gan_padding_mask": torch.zeros_like(batch["missing"]),
+            "gan_padding_mask": batch["padding"],
         }
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
@@ -229,7 +254,14 @@ class RefinerLightningModule(BaseLightningModule):
             "generator_gan": generator_gan,
             "discriminator": discriminator,
             "weighted_gan": self.gan_weight * generator_gan,
+            # GAN steps never carry physics objectives (rejected by the config).
+            "weighted_physics": float(metrics.get("weighted_physics", 0.0)),
             "total": float(loss.detach()),
+            **{
+                key: float(value)
+                for key, value in metrics.items()
+                if key.startswith("physics_")
+            },
         }
         self.log(
             "train/loss",
@@ -354,7 +386,9 @@ class RefinerLightningModule(BaseLightningModule):
             raise RuntimeError("Cannot checkpoint before training RNG initialization")
         checkpoint.update(
             checkpoint_metadata(
-                self.model, event_sigma_frames=self.settings.event.sigma_frames
+                self.model,
+                event_sigma_frames=self.settings.event.sigma_frames,
+                clock=self.data_module.clock,
             )
         )
         checkpoint.update(
