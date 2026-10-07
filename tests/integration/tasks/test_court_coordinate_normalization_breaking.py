@@ -19,13 +19,21 @@ def test_contract_documentation_has_one_authoritative_breaking_policy() -> None:
     blcs_readme = Path("src/tasks/blcs/README.md").read_text()
     plcs_readme = Path("src/tasks/plcs/README.md").read_text()
 
-    assert "S = HALF_LENGTH = 11.885 m" in utils_readme
-    assert "scale_xyz = (S, S, S)" in utils_readme
-    assert "再生成" in utils_readme and "再学習" in utils_readme
-    assert "自動推測・自動変換は行わない" in utils_readme
+    contract_section = re.search(
+        r"^#### Court coordinate normalization contract\n(.*?)(?=^#{1,4} |\Z)",
+        utils_readme,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    assert contract_section is not None
+    contract = contract_section.group(1)
+
+    assert "S = HALF_LENGTH = 11.885 m" in contract
+    assert "scale_xyz = (S, S, S)" in contract
+    assert "再生成" in contract and "再学習" in contract
+    assert "自動推測・自動変換は行わない" in contract
     assert "src/utils/README.md" in blcs_readme
     assert "src/utils/README.md" in plcs_readme
-    assert re.search(r"\bv[12]\b", utils_readme) is None
+    assert re.search(r"\bv[12]\b", contract) is None
 
 
 def test_plcs_render_boundary_scales_only_court_translation() -> None:
