@@ -1,0 +1,9 @@
+strides: [1, 4, 8, 16, 32]
+scope_stride: 16
+grid_x: 8
+grid_y: 6
+pose_min_score: 0.0
+pose_jump_speeds: [5.0, 10.0, 20.0]
+pose_jump_primary: 10.0
+pose_spike_threshold: 0.15
+pose_bone_change_threshold: 0.15

@@ -19,9 +19,6 @@ def test_conv2d_wisewise_block_preserves_spatial_shape() -> None:
 
 def test_task_modules_use_the_shared_classes_directly() -> None:
     """Task modules import the canonical utils blocks without local shims."""
-    from src.tasks.ball_detection.models.spatiotemporal_unet import (
-        Conv2dWiseWiseBlock as BallWiseWise,
-    )
     from src.tasks.court_detection.models.dinov3_dpt import (
         Conv2dWiseWiseBlock as DecoderWiseWise,
     )
@@ -30,4 +27,3 @@ def test_task_modules_use_the_shared_classes_directly() -> None:
     )
 
     assert DecoderWiseWise is EncoderWiseWise is Conv2dWiseWiseBlock
-    assert BallWiseWise is Conv2dWiseWiseBlock

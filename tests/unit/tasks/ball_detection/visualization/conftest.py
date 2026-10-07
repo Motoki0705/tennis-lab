@@ -92,7 +92,7 @@ def tiny_model_config(
     model: dict[str, Any] = {
         "name": model_name,
         "input_mode": input_mode,
-        "in_channels": 3 if input_mode == "rgb" else 2,
+        "in_channels": 2,
         "num_classes": 1,
         "num_frames": num_frames,
         "input_layout": "bcthw",
@@ -103,9 +103,7 @@ def tiny_model_config(
         model.update(
             {"dims": [4, 8, 16, 32], "depth": 1, "drop_path_prob": 0.0}
         )
-    elif model_name != "stunet":
-        # dinov3_rope needs its backbone/decoder bundle and a real pretrained
-        # backbone, so it is deliberately outside this cheap fixture.
+    else:
         raise ValueError(f"tiny_model_config does not support {model_name!r}.")
     return OmegaConf.create(
         {"model": model, "data": {"image_size": list(image_size), "augmentation": {"normalize_imagenet": {"enabled": False}}}}

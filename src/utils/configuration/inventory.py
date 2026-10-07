@@ -274,6 +274,9 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.ball_detection.scripts.train_mdd_pose": (
+        "ball_detection.train_mdd_pose", "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner_3d.scripts.review_dataset": (
         "ball_refiner_3d.review_dataset",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -707,7 +710,10 @@ _RUNTIME_BOUNDARIES += tuple(
     for script in _SLCS_REAL_RGB_ENTRYPOINTS
 )
 
-_RUNTIME_BOUNDARIES += ()
+_RUNTIME_BOUNDARIES += tuple(
+    _non_hydra_boundary(f"src.tasks.ball_detection.scripts.{script}", "main", domain="ball_detection", executable_module=True)
+    for script in ("train_mdd_pose",)
+)
 
 EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES
 

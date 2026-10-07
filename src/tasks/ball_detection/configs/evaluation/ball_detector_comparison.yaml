@@ -68,15 +68,3 @@ models:
     datasets: [tracknet]
     strict: true
     weights_only: false
-
-  # Enable after a TrackNet-only DINOv3 run is available.
-  - id: dinov3-tracknet
-    enabled: false
-    category: architecture-controlled
-    checkpoint:
-      role: artifact
-      path: ball_detection/dinov3_rope_tracknet/checkpoints/last.ckpt
-    expected_model_name: dinov3_rope
-    datasets: [tracknet]
-    strict: true
-    weights_only: false
