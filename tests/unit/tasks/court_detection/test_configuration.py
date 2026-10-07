@@ -78,6 +78,28 @@ def _pose_only_overrides() -> tuple[str, ...]:
     )
 
 
+def test_default_pose_training_disables_unsupported_qualitative_logging() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train")
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.loss.pose.enabled
+    assert not runtime.shared.training.qualitative_logging.enabled
+
+
+def test_pose_training_rejects_enabling_qualitative_logging() -> None:
+    config = _compose(
+        "synthetic_court", *_pose_overrides(), "training.qualitative_logging.enabled=true"
+    )
+    with pytest.raises(SemanticConfigurationError, match="qualitative_logging.enabled=true"):
+        CourtTrainingConfig.from_config(config)
+
+
+def test_dense_training_can_enable_qualitative_logging() -> None:
+    config = _compose("synthetic_court", "training.qualitative_logging.enabled=true")
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.shared.training.qualitative_logging.enabled
+
+
 @pytest.mark.parametrize(
     ("source", "schema"),
     [
