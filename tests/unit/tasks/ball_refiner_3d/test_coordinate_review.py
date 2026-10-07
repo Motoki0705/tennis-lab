@@ -157,6 +157,7 @@ def review(tmp_path):
             torch.device("cpu"),
             seed=20991,
             batch_size=32,
+            physics=False,
         )
         (run / "predictions").mkdir()
         np.savez(run / "predictions/pred_test.npz", allow_pickle=False, **predictions)
