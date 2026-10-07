@@ -14,6 +14,7 @@ from typing import Any, Protocol, runtime_checkable
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from lightning_utilities.core.apply_func import apply_to_collection
 from pytorch_lightning.loggers import TensorBoardLogger
 
 
@@ -21,7 +22,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 class _QualitativeRenderer(Protocol):
     def render_qualitative_samples(
         self,
-        batches: list[dict[str, Any]],
+        batches: list[Any],
         outputs: list[dict[str, Any]],
         artifact_dir: Path,
         tb_writer: Any | None,
@@ -67,7 +68,7 @@ class QualitativeLoggingCallback(pl.Callback):
         self._last_logged_epoch = 0  # One-based training epoch; 0 means no output yet.
 
         # Populated during validation
-        self._collected_batches: list[dict[str, Any]] = []
+        self._collected_batches: list[Any] = []
         self._collected_outputs: list[dict[str, Any]] = []
         self._selected_indices: set[int] = set()
         self._total_val_batches: int | None = None
@@ -255,15 +256,11 @@ class QualitativeLoggingCallback(pl.Callback):
 
 
 def _detach_to_cpu(data: Any) -> Any:
-    """Recursively detach tensors and move to CPU."""
-    if isinstance(data, torch.Tensor):
-        return data.detach().cpu()
-    if isinstance(data, dict):
-        return {k: _detach_to_cpu(v) for k, v in data.items()}
-    if isinstance(data, (list, tuple)):
-        cls = type(data)
-        return cls(_detach_to_cpu(v) for v in data)
-    return data
+    """Detach batch tensors, including mutable dataclasses; retain frozen metadata."""
+    return apply_to_collection(
+        data, dtype=torch.Tensor, function=lambda tensor: tensor.detach().cpu(),
+        allow_frozen=True,
+    )
 
 
 def _get_log_dir(trainer: pl.Trainer) -> Path:

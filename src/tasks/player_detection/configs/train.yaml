@@ -3,6 +3,7 @@ defaults:
   - data: default
   - model: dino_4scale_swin_l
   - training: default
+  - qualitative: default
   - run: train
   - _self_
 

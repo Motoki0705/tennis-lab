@@ -1,0 +1,5 @@
+annotation_root: chat_annotation
+max_frames: 120
+frame_stride: 2
+batch_size: 2
+display_width: 960

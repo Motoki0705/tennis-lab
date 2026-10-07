@@ -41,6 +41,31 @@ DINO の denoising は CUDA 前提のため、学習と評価は GPU（training 
 DINO の構築と前処理は [src/submodules/models/dino/architecture.py](../../submodules/models/dino/architecture.py) を
 推論（`DinoPersonDetector`）と共有します。
 
+## 学習中の定性保存
+
+`training.qualitative_logging.enabled=true`が既定で、選択されたvalidation batchの
+先頭sampleに対応する元動画を、学習中のモデルで推論してbbox・confidence付きGIFに保存します。
+同じクリップが複数batchから選ばれた場合は1回だけ描きます。
+選択batch数は`num_samples`、保存周期は[共通契約](../base/README.md#qualitative-logging)に従います。
+
+入力動画は`qualitative.annotation_root`（OUTPUT root相対、既定`chat_annotation`）の
+prepared manifestと公開済み動画から解決します。frame storeと動画hash・寸法・frame数を照合し、
+元動画のPTS順を検証してdecodeするため、storeにないframeやplayer不在frameも推論対象です。
+manifest・元動画が欠落／不一致なら停止します。
+
+`qualitative.frame_stride`ごとにクリップ先頭から最大`qualitative.max_frames`枚を描き、
+推論batch sizeは`qualitative.batch_size`、表示幅の上限は`qualitative.display_width`です。
+再生FPSは元動画の公称FPSをframe strideで割ります。
+値の正本は[qualitative/default.yaml](configs/qualitative/default.yaml)。
+推論の前処理と閾値は`data.input_size`と`evaluation.score_threshold`／`max_detections`を共有します。
+出力は共通ログ配下の`qualitative/epoch_XXXX/player_clipNNNN.gif`とTensorBoardです。
+`NNNN`はframe storeのclip indexで、GIF内の見出しにもclip ID・元frame indexを記載します。
+このGIFにはGT boxやtracking IDは付与しません。
+
+`visualization/qualitative.py`が元動画の解決とクリップ推論、`visualization/overlays.py`が
+評価と共用するbbox描画を所有します。定性保存を無効にする場合は
+`training.qualitative_logging.enabled=false`を指定します。
+
 ## fine-tuned checkpoint での推論
 
 `inference.DinoPlayerDetector` は export 済みの player checkpoint の出自を検証してから、

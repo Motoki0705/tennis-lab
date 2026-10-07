@@ -1667,12 +1667,6 @@ class CourtTrainingConfig:
         )
         loss_mapping = require_config_mapping(config, "loss", path="configuration")
         loss: CourtAnyLossConfig = CourtLossConfig.from_mapping(loss_mapping)
-        if loss.pose.enabled and shared.training.qualitative_logging.enabled:
-            raise SemanticConfigurationError(
-                "training.qualitative_logging.enabled=true is not supported "
-                "with loss.pose.enabled=true; set "
-                "training.qualitative_logging.enabled=false for Court pose training."
-            )
         render_style = CourtRenderConfig.from_mapping(
             require_config_mapping(config, "render_style", path="configuration")
         )

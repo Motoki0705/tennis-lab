@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -252,3 +253,22 @@ def test_detach_to_cpu_passthrough_non_tensor() -> None:
     assert _detach_to_cpu("hello") == "hello"
     arr = np.zeros(3)
     assert _detach_to_cpu(arr) is arr
+
+
+def test_detach_mutable_dataclass_batch_keeps_frozen_metadata() -> None:
+    @dataclass(frozen=True)
+    class Metadata:
+        clip_id: str
+
+    @dataclass
+    class Batch:
+        images: list[torch.Tensor]
+        metadata: Metadata
+
+    original = Batch([torch.ones(1, requires_grad=True)], Metadata("clip-1"))
+    detached = _detach_to_cpu(original)
+    assert isinstance(detached, Batch)
+    assert not detached.images[0].requires_grad
+    assert detached.images[0].device.type == "cpu"
+    assert original.images[0].requires_grad
+    assert detached.metadata == original.metadata

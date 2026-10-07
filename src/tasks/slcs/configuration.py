@@ -857,6 +857,11 @@ class SLCSTrainingRuntimeConfig(TrainingRuntimeConfig):
         base = TrainingRuntimeConfig.from_config(
             config, repository_root=repository_root
         )
+        if base.training.qualitative_logging.enabled:
+            raise SemanticConfigurationError(
+                "SLCS does not support training.qualitative_logging.enabled=true. "
+                "Use the dedicated SLCS visualization/review tools."
+            )
         data = SLCSDataRuntimeConfig.from_mapping(
             cast(dict[str, object], raw["data"]), base.resolver
         )
