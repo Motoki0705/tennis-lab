@@ -46,11 +46,9 @@ class Vec2(BaseModel):
 
 
 class PhysicsParams(BaseModel):
-    gravity: float | None = None
     k_drag: float | None = None
     k_magnus: float | None = None
-    e_z: float | None = None
-    mu: float | None = None
+    surface: Literal["hard", "clay", "grass"] | None = None
     alpha_net: float | None = None
     alpha_net_cord: float | None = None
     alpha_fence: float | None = None

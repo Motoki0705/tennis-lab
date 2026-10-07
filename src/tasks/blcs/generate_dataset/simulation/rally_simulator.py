@@ -969,8 +969,10 @@ class RallySimulator:
 
             ball_pos_at_return = shot_result["trajectory_sim"][t_return_sim]
 
-            trajectory_to_add = shot_result["trajectory_sim"][: t_return_sim + 1]
-            velocities_to_add = shot_result["velocities_sim"][: t_return_sim + 1]
+            # The hit sample opens the next shot, which starts from this position;
+            # appending it here too would stall the ball for one simulation step.
+            trajectory_to_add = shot_result["trajectory_sim"][:t_return_sim]
+            velocities_to_add = shot_result["velocities_sim"][:t_return_sim]
             all_positions_sim.extend(trajectory_to_add)
             all_velocities_sim.extend(velocities_to_add)
             total_sim_frames += len(trajectory_to_add)
