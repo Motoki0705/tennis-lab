@@ -2,7 +2,7 @@ store_dir: ${data.data_dir}
 clip_id: tracknet/game1/Clip1
 checkpoint:
   role: artifact
-  path: ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+  path: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
 save: ${run.output_dir}/game1_clip1_prediction.gif
 fps: 12
 window_stride: 1

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from src.tasks.base.visualization.detection.cli import (
     add_path_arguments,
@@ -20,6 +21,10 @@ from src.utils.configuration import (
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="ball_detection.review_dataset",
     fields=(
+        BoundaryPathField(
+            "play_poses", PathRole.DATA, PathDirection.INPUT,
+            PathKind.DIRECTORY, must_exist=True, required=False,
+        ),
         BoundaryPathField(
             "project_root",
             PathRole.PROJECT,
@@ -57,8 +62,12 @@ PATH_BOUNDARY = NonHydraPathBoundary(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     add_path_arguments(parser, task="ball_detection", port=8776)
+    parser.add_argument("--play-poses", type=Path,
+                        help="Pose dataset under data-root; review approved clips from its verified snapshot")
     args = parser.parse_args()
     values, resolver = resolve_paths(args, task="ball_detection")
+    if args.play_poses is not None:
+        values["play_poses"] = args.play_poses
     PATH_BOUNDARY.validate(values, resolver=resolver)
     serve("ball_detection", "review", port=args.port, values=values)
 
