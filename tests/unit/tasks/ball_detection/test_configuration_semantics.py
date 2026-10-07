@@ -128,7 +128,7 @@ def test_training_does_not_default_missing_candidate_settings() -> None:
 
 @pytest.mark.parametrize(
     ("name", "overrides"),
-    [("train", []), ("train", ["training=gan"]), ("train", ["training=lora"]),
+    [("train", []), ("train", ["training=gan"]),
      ("train_meiji_mixed", [])],
 )
 def test_all_training_profiles_keep_every_epoch_with_the_same_candidate_metric(
@@ -161,22 +161,18 @@ def test_visualization_rejects_absolute_clip_path() -> None:
 
 
 @pytest.mark.parametrize("initialize_from_run", [False, True])
-def test_training_keeps_backbone_assets_and_initial_weights_in_separate_roots(
+def test_training_resolves_initial_weights_from_declared_root(
     tmp_path: Path, initialize_from_run: bool,
 ) -> None:
     overrides = [
         f"paths.project_root={tmp_path}",
         f"paths.artifact_root={tmp_path / 'previous-runs'}",
-        "model=dinov3_rope",
     ]
     if initialize_from_run:
         overrides.append("run.init_weights={role:artifact,path:ball_detection/train/previous/checkpoints/last.ckpt}")
     config = _compose("train", overrides=overrides)
     validate_training(config)
     paths = BallRuntimePaths.from_config(config)
-    assert paths.checkpoint(str(config.model.backbone.checkpoint_path)) == (
-        tmp_path / "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-    )
     run = BaseRunConfig.from_mapping(config.run, resolver=paths.resolver)
     if initialize_from_run:
         assert run.init_weights == tmp_path / "previous-runs/ball_detection/train/previous/checkpoints/last.ckpt"
@@ -200,3 +196,18 @@ def test_historical_checkpoint_inputs_preserve_the_independent_backbone_root(tmp
         reference = paths.checkpoint_input(section, key, path=location)
         assert reference.role is PathRole.ARTIFACT
         assert reference.path.is_relative_to(tmp_path / "previous-runs")
+
+
+@pytest.mark.parametrize("name", ["stunet", "dinov3_rope"])
+def test_retired_models_are_rejected(name: str) -> None:
+    config = _compose("train")
+    config.model.name = name
+    with pytest.raises(ConfigurationError, match="unsupported heatmap model"):
+        validate_training(config)
+
+
+def test_rgb_model_input_is_rejected() -> None:
+    config = _compose("train")
+    config.model.input_mode = "rgb"
+    with pytest.raises(ConfigurationError, match="RGB model inputs were removed"):
+        validate_training(config)

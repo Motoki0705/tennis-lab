@@ -136,6 +136,9 @@ export function renderDatasetOverview(dataset, playerDatasets = []) {
   const content = $("dataset-overview-content");
   content.replaceChildren();
   if (!overview) return;
+  if (overview.selection?.kind === "pose_approved") {
+    content.append(element("p", `固定snapshot ${number(overview.selection.parent_clips)} clipsからpose承認済みの${number(overview.clips)} clipsを選択しています。以下の件数はこのsubsetだけの集計です。`, "muted"));
+  }
   content.append(
     element("p", `${overview.version} · ${number(overview.clips)} clips · ${number(overview.counts.frames)} frames`, "overview-total"),
     element("p", `コード対応: ${overview.schema} / 現物: 読み込み確認済み`, "muted"),

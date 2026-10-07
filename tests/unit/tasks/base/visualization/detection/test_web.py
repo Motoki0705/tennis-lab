@@ -36,6 +36,21 @@ def test_review_never_runs_inference(service):
     service.infer.assert_not_called()
 
 
+def test_play_interval_capability_requires_explicit_backend(service):
+    web = client(service, "review")
+    assert not web.get("/api/catalog").json()["play_intervals_available"]
+    assert web.get("/api/play-intervals", params={"scene": "s"}).status_code == 404
+    proposal = Mock(return_value={"scene": "s", "play": [[3, 40]]})
+    web = TestClient(create_detection_app(
+        service, task="ball_detection", mode="review", service_config={}, play_intervals=proposal,
+    ))
+    assert web.get("/api/catalog").json()["play_intervals_available"]
+    assert web.get("/api/play-intervals", params={"scene": "s"}).json()["play"] == [[3, 40]]
+    proposal.assert_called_once_with("s")
+    service.infer.assert_not_called()
+    assert web.get("/static/play_intervals.mjs").status_code == 200
+
+
 def test_cpu_preflight_and_execution(service):
     response = client(service).post(
         "/api/infer",
