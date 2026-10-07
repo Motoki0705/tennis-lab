@@ -209,6 +209,98 @@ class HeartbeatTests(unittest.TestCase):
         self.assertFalse(result["changed"])
         self.assertEqual(result["status"], "PAUSED")
 
+    def test_update_cadence_and_resume_preserves_unrelated_fields(self) -> None:
+        extra = '\n# Operator note\nmodel = "chosen-model"\nreasoning_effort = "high"\n'
+        with self.config_path.open("a") as handle:
+            handle.write(extra)
+        heartbeat.set_status(self.home, self.task_id, "PAUSED")
+        before, _ = heartbeat.load_config(self.config_path)
+        result = heartbeat.update_task(
+            self.home, self.task_id, interval_minutes=15, status="ACTIVE"
+        )
+        after, raw = heartbeat.load_config(self.config_path)
+        self.assertTrue(result["changed"])
+        self.assertFalse(result["registration_verified"])
+        self.assertEqual(after["rrule"], "FREQ=MINUTELY;INTERVAL=15")
+        self.assertEqual(after["status"], "ACTIVE")
+        self.assertGreater(after["updated_at"], before["updated_at"])
+        for key in before.keys() - {"rrule", "status", "updated_at"}:
+            self.assertEqual(before[key], after[key], key)
+        self.assertIn(extra, raw.decode())
+        repeated = heartbeat.update_task(
+            self.home, self.task_id, interval_minutes=15, status="ACTIVE"
+        )
+        self.assertFalse(repeated["changed"])
+        self.assertEqual(self.config_path.read_bytes(), raw)
+        self.assertEqual(repeated["config_sha256"], result["config_sha256"])
+
+    def test_update_preserves_omitted_status_and_cadence(self) -> None:
+        heartbeat.set_status(self.home, self.task_id, "PAUSED")
+        heartbeat.update_task(self.home, self.task_id, interval_minutes=15)
+        changed, _ = heartbeat.load_config(self.config_path)
+        self.assertEqual(changed["status"], "PAUSED")
+        heartbeat.update_task(self.home, self.task_id, status="ACTIVE")
+        resumed, _ = heartbeat.load_config(self.config_path)
+        self.assertEqual(resumed["rrule"], "FREQ=MINUTELY;INTERVAL=15")
+
+    def test_update_preserves_multiline_recurrence(self) -> None:
+        rule = "DTSTART;TZID=Asia/Tokyo:20261008T090000\nRRULE:FREQ=WEEKLY;BYDAY=MO,FR"
+        heartbeat.update_task(self.home, self.task_id, rrule=rule)
+        config, _ = heartbeat.load_config(self.config_path)
+        self.assertEqual(config["rrule"], rule)
+        heartbeat.set_status(self.home, self.task_id, "PAUSED")
+        config, _ = heartbeat.load_config(self.config_path)
+        self.assertEqual(config["rrule"], rule)
+
+    def test_invalid_update_cannot_reset_or_modify_existing_task(self) -> None:
+        original = self.config_path.read_bytes()
+        for options in (
+            {},
+            {"rrule": ""},
+            {"interval_minutes": 0},
+            {"interval_hours": 2, "interval_minutes": 15},
+            {"status": "DELETED"},
+        ):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                heartbeat.update_task(self.home, self.task_id, **options)
+            self.assertEqual(self.config_path.read_bytes(), original)
+
+    def test_update_missing_task_does_not_create_it(self) -> None:
+        with self.assertRaises(FileNotFoundError):
+            heartbeat.update_task(self.home, "missing-task", status="ACTIVE")
+        self.assertFalse((self.home / "automations/missing-task").exists())
+
+    def test_cli_update_from_outside_source_and_repeat(self) -> None:
+        command = [
+            sys.executable,
+            str(Path(heartbeat.__file__)),
+            "update",
+            "--codex-home",
+            str(self.home),
+            "--id",
+            self.task_id,
+            "--interval-minutes",
+            "15",
+            "--status",
+            "ACTIVE",
+        ]
+        first = subprocess.run(
+            command, cwd=self.home, text=True, capture_output=True, check=False
+        )
+        self.assertEqual(first.returncode, 0, first.stderr + first.stdout)
+        original = self.config_path.read_bytes()
+        second = subprocess.run(
+            command, cwd=self.home, text=True, capture_output=True, check=False
+        )
+        self.assertEqual(second.returncode, 0, second.stderr + second.stdout)
+        self.assertTrue(json.loads(first.stdout)["changed"])
+        self.assertFalse(json.loads(second.stdout)["changed"])
+        self.assertEqual(
+            json.loads(first.stdout)["config_sha256"],
+            json.loads(second.stdout)["config_sha256"],
+        )
+        self.assertEqual(self.config_path.read_bytes(), original)
+
     def test_verify_reads_wal_without_changing_source(self) -> None:
         files = (self.database, Path(str(self.database) + "-wal"))
         before = [file.read_bytes() for file in files]
