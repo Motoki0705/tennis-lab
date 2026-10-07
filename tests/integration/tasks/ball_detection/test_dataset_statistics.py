@@ -41,6 +41,8 @@ def test_statistics_http_lifecycle_scope_assets_and_origin(dataset):
             assert client.get('/api/catalog').json()['statistics_ui'] == '/statistics-static/panel.mjs'
             settings = client.get('/api/statistics/config').json()
             assert client.get('/statistics-static/panel.mjs').status_code == 200
+            for name in ('plot_base.mjs', 'plots.mjs', 'dashboard.mjs'):
+                assert client.get(f'/statistics-static/{name}').status_code == 200
             assert client.get('/statistics-static/secret.py').status_code == 404
             body = dict(dataset='store/test', settings=settings)
             assert client.post('/api/statistics/jobs', json=body, headers={'Origin': 'http://elsewhere'}).status_code == 403

@@ -7,47 +7,6 @@ export function node(tag, text = '', className = '') {
 export function number(value) {
   return value === null || value === undefined ? '—' : Number(value).toLocaleString(undefined, {maximumFractionDigits: 4});
 }
-export function heatmap(matrix, title) {
-  const box = node('figure', '', 'statistics-figure');
-  box.append(node('figcaption', title));
-  if (!matrix?.length) { box.append(node('p', '対象データなし')); return box; }
-  const grid = node('div', '', 'statistics-heatmap');
-  grid.style.gridTemplateColumns = `repeat(${matrix[0].length}, minmax(0, 1fr))`;
-  const max = Math.max(0, ...matrix.flat());
-  matrix.forEach((row, y) => row.forEach((value, x) => {
-    const cell = node('span', number(value));
-    cell.style.background = `rgba(30, 120, 100, ${max ? 0.08 + 0.8 * value / max : 0.08})`;
-    cell.title = `領域 x=${x}, y=${y}: ${number(value)}`;
-    grid.append(cell);
-  }));
-  box.append(grid);
-  return box;
-}
-export function trajectory(points, boundaries, onFrame) {
-  const box = node('figure', '', 'statistics-figure');
-  box.append(node('figcaption', '実測位置の軌跡（クリックで画像へ移動）'));
-  const canvas = document.createElement('canvas');
-  canvas.width = 720; canvas.height = 405;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#f0f5f2'; ctx.fillRect(0, 0, 720, 405);
-  const cuts = new Set(boundaries);
-  points.forEach(([frame, x, y], i) => {
-    ctx.strokeStyle = '#8cc5b3';
-    const prior = points[i - 1];
-    if (prior && frame === prior[0] + 1 && !cuts.has(frame)) {
-      ctx.beginPath(); ctx.moveTo(prior[1] * 720, prior[2] * 405); ctx.lineTo(x * 720, y * 405); ctx.stroke();
-    }
-    ctx.fillStyle = `hsl(${150 + 100 * i / Math.max(points.length, 1)} 60% 35%)`;
-    ctx.beginPath(); ctx.arc(x * 720, y * 405, 2.5, 0, Math.PI * 2); ctx.fill();
-  });
-  canvas.onclick = event => {
-    const r = canvas.getBoundingClientRect(), x = (event.clientX - r.left) / r.width, y = (event.clientY - r.top) / r.height;
-    const closest = points.reduce((best, p) => !best || Math.hypot(p[1] - x, p[2] - y) < Math.hypot(best[1] - x, best[2] - y) ? p : best, null);
-    if (closest) onFrame(closest[0]);
-  };
-  box.append(canvas);
-  return box;
-}
 export function table(headings, rows) {
   const wrap = node('div', '', 'statistics-table-scroll');
   const t = node('table');
