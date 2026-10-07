@@ -19,7 +19,7 @@ def test_packaged_skill_metadata_and_references() -> None:
     metadata = yaml.safe_load(text.split("---", 2)[1])
     assert metadata["name"] == SKILL.name
     assert isinstance(metadata["description"], str) and metadata["description"].strip()
-    for document in (SKILL / "SKILL.md", SKILL / "references/local-heartbeat.md"):
+    for document in (SKILL / "SKILL.md", *sorted((SKILL / "references").glob("*.md"))):
         for link in re.findall(
             r"\[[^]]+\]\(([^)]+)\)", document.read_text(encoding="utf-8")
         ):

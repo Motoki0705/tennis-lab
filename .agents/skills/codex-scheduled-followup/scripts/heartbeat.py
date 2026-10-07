@@ -139,19 +139,12 @@ def create_task(
         "target_thread_id": thread_id,
     }
     if path.exists():
-        existing, _ = load_config(path)
+        existing, raw = load_config(path)
         if any(existing[key] != value for key, value in desired.items()):
             raise FileExistsError(
                 "A different task already uses this ID; inspect it before updating"
             )
-        return {
-            "configuration_saved": True,
-            "changed": False,
-            "path": str(path),
-            "status": existing["status"],
-            "rrule": existing["rrule"],
-            "registration_verified": False,
-        }
+        return configuration_receipt(path, existing, raw, changed=False)
     now = time.time_ns() // 1_000_000
     config = {
         "version": 1,
@@ -171,47 +164,73 @@ def create_task(
     if tomllib.loads(text) != config:
         raise ValueError("TOML round-trip failed")
     atomic_write(path, text.encode("utf-8"), expected=None)
+    return configuration_receipt(path, config, text.encode("utf-8"), changed=True)
+
+
+def configuration_receipt(
+    path: Path, config: dict[str, Any], raw: bytes, *, changed: bool
+) -> dict[str, Any]:
     return {
         "configuration_saved": True,
-        "changed": True,
+        "changed": changed,
         "path": str(path),
-        "status": "ACTIVE",
-        "rrule": desired["rrule"],
+        "status": config["status"],
+        "rrule": config["rrule"],
+        "config_sha256": hashlib.sha256(raw).hexdigest(),
         "registration_verified": False,
     }
+
+
+def update_task(
+    home: Path,
+    task_id: str,
+    *,
+    status: str | None = None,
+    interval_hours: int | None = None,
+    interval_minutes: int | None = None,
+    rrule: str | None = None,
+) -> dict[str, Any]:
+    """Change only requested fields; omitted cadence never resets an existing task."""
+    path = config_path(home, task_id)
+    config, raw = load_config(path)
+    changes: dict[str, Any] = {}
+    if status is not None:
+        if status not in ("ACTIVE", "PAUSED"):
+            raise ValueError("Unsupported status")
+        changes["status"] = status
+    if any(value is not None for value in (interval_hours, interval_minutes, rrule)):
+        changes["rrule"] = schedule_rrule(
+            interval_hours=interval_hours,
+            interval_minutes=interval_minutes,
+            rrule=rrule,
+        )
+    if not changes:
+        raise ValueError("update requires an explicit schedule or status")
+    if all(config[key] == value for key, value in changes.items()):
+        return configuration_receipt(path, config, raw, changed=False)
+    updated = max(time.time_ns() // 1_000_000, config["updated_at"] + 1)
+    changes["updated_at"] = updated
+    text = raw.decode("utf-8")
+    for key, value in changes.items():
+        pattern = rf"^{key}[ \t]*=[^\r\n]*"
+        replacement = f"{key} = {json.dumps(value, ensure_ascii=False)}"
+        # A callable keeps escaped newlines/backslashes in custom RRULEs literal.
+        def literal_replacement(_match: re.Match[str], literal: str = replacement) -> str:
+            return literal
+
+        text, count = re.subn(pattern, literal_replacement, text, flags=re.MULTILINE)
+        if count != 1:
+            raise ValueError("Unexpected TOML layout; use the native management tool")
+    expected = {**config, **changes}
+    if tomllib.loads(text) != expected:
+        raise ValueError("Update changed unrelated configuration")
+    atomic_write(path, text.encode("utf-8"), expected=raw)
+    return configuration_receipt(path, expected, text.encode("utf-8"), changed=True)
 
 
 def set_status(home: Path, task_id: str, status: str) -> dict[str, Any]:
-    if status not in ("ACTIVE", "PAUSED"):
-        raise ValueError("Unsupported status")
-    path = config_path(home, task_id)
-    config, raw = load_config(path)
-    if config["status"] == status:
-        return {
-            "configuration_saved": True,
-            "changed": False,
-            "status": status,
-            "registration_verified": False,
-        }
-    updated = max(time.time_ns() // 1_000_000, config["updated_at"] + 1)
-    text = raw.decode("utf-8")
-    replacements = {
-        r'^status[ \t]*=[ \t]*"(?:ACTIVE|PAUSED)"[ \t]*(?:#.*)?$': f'status = "{status}"',
-        r"^updated_at[ \t]*=[ \t]*[0-9]+[ \t]*(?:#.*)?$": f"updated_at = {updated}",
-    }
-    for pattern, replacement in replacements.items():
-        text, count = re.subn(pattern, replacement, text, flags=re.MULTILINE)
-        if count != 1:
-            raise ValueError("Unexpected TOML layout; use the native management tool")
-    if tomllib.loads(text) != {**config, "status": status, "updated_at": updated}:
-        raise ValueError("Status edit changed unrelated configuration")
-    atomic_write(path, text.encode("utf-8"), expected=raw)
-    return {
-        "configuration_saved": True,
-        "changed": True,
-        "status": status,
-        "registration_verified": False,
-    }
+    """Compatibility entry point for callers that only change status."""
+    return update_task(home, task_id, status=status)
 
 
 def file_signature(path: Path) -> tuple[int, ...] | None:
@@ -315,7 +334,7 @@ def verify_task(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
-    for action in ("create", "set-status", "verify"):
+    for action in ("create", "update", "set-status", "verify"):
         command = commands.add_parser(action)
         command.add_argument(
             "--codex-home",
@@ -323,17 +342,20 @@ def main() -> int:
             default=Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex"),
         )
         command.add_argument("--id", required=True)
-        if action == "create":
-            command.add_argument("--name", required=True)
-            command.add_argument("--prompt-file", type=Path, required=True)
-            command.add_argument(
-                "--thread-id", default=os.environ.get("CODEX_THREAD_ID", "")
-            )
+        if action in ("create", "update"):
+            if action == "create":
+                command.add_argument("--name", required=True)
+                command.add_argument("--prompt-file", type=Path, required=True)
+                command.add_argument(
+                    "--thread-id", default=os.environ.get("CODEX_THREAD_ID", "")
+                )
+            else:
+                command.add_argument("--status", choices=("ACTIVE", "PAUSED"))
             cadence = command.add_mutually_exclusive_group()
             cadence.add_argument(
                 "--interval-hours",
                 type=int,
-                help="User-requested hours; default 1 only when no schedule is supplied",
+                help="User-requested hours; new tasks default to 1, updates preserve omitted cadence",
             )
             cadence.add_argument(
                 "--interval-minutes",
@@ -364,6 +386,15 @@ def main() -> int:
                 args.prompt_file.read_text(encoding="utf-8"),
                 args.thread_id,
                 args.interval_hours,
+                interval_minutes=args.interval_minutes,
+                rrule=args.rrule,
+            )
+        elif args.action == "update":
+            result = update_task(
+                home,
+                args.id,
+                status=args.status,
+                interval_hours=args.interval_hours,
                 interval_minutes=args.interval_minutes,
                 rrule=args.rrule,
             )
