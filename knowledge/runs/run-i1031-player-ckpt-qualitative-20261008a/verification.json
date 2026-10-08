@@ -1,0 +1,20 @@
+{
+  "task": "player_detection",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_detection/chat-player-v1-e8-best-epoch03.ckpt",
+  "commit": "c751331f589a40432920a4f9fc2bbf34eb3c96db",
+  "status": "failed",
+  "checkpoint_sha256": "f14401da5214c3f32f44171c466b5775e7daebf6bd5236c95508b3c6d68d7e05",
+  "sample_indices": [
+    0,
+    347
+  ],
+  "mode": "standalone validation; interval=1; no optimizer or fit",
+  "checkpoint_epoch": 3,
+  "checkpoint_global_step": 8000,
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "torch": "2.13.0+cu130",
+  "lightning": "2.6.5",
+  "state_tensor_count": 716,
+  "error": "RuntimeError: DINO CUDA extension is not installed. Run: TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python setup.py build_ext --inplace",
+  "elapsed_seconds": 4.13812107800004
+}

@@ -1,0 +1,165 @@
+{
+  "task": "court_detection",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+  "commit": "1dcf9407897cefc38842fe02e57e6895c008e6f6",
+  "status": "passed",
+  "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+  "sample_indices": [
+    0,
+    935
+  ],
+  "mode": "standalone validation; interval=1; no optimizer or fit",
+  "checkpoint_epoch": 17,
+  "checkpoint_global_step": 29844,
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "torch": "2.13.0+cu130",
+  "lightning": "2.6.5",
+  "state_tensor_count": 593,
+  "selected_samples": [
+    {
+      "dataset_index": 0,
+      "sample_id": "B00:court-sample-000448",
+      "source_kind": "synthetic_court"
+    },
+    {
+      "dataset_index": 935,
+      "sample_id": "EF-hx40Q4Mg_700",
+      "source_kind": "tennis_court_detector"
+    }
+  ],
+  "strict_load": true,
+  "artifacts": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_kp_batch00.png",
+      "sha256": "33eeb0986093a93e397f533812e046a243a24c9a1cdb86f6433db5a7f9c0c876",
+      "bytes": 192974,
+      "width": 1036,
+      "height": 348,
+      "frames": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_kp_batch01.png",
+      "sha256": "306aac4ac6529ca7fa70fe2b175b6cccc0e21f62af300742aa9de208608cf5c3",
+      "bytes": 264721,
+      "width": 1292,
+      "height": 420,
+      "frames": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_line_batch00.png",
+      "sha256": "927e24b059d826ebaf68cd9e2eff322bc26c1a1d1d82c8ca9851a70989b957ce",
+      "bytes": 180177,
+      "width": 1036,
+      "height": 348,
+      "frames": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_line_batch01.png",
+      "sha256": "5f6609b424a5f918b68cf0afbd36b2592222299c28259e6fb4ceb605fba2f2c5",
+      "bytes": 239024,
+      "width": 1292,
+      "height": 420,
+      "frames": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_seg_batch00.png",
+      "sha256": "6560d72a9fa31f53f41e0637e4b619d852ac610efdfda923a81953f1259a9aa1",
+      "bytes": 168633,
+      "width": 1036,
+      "height": 348,
+      "frames": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_seg_batch01.png",
+      "sha256": "5c7d96664050f362afab6c6e6a99f82d0f4eda953076822f20d237839a861cda",
+      "bytes": 229054,
+      "width": 1292,
+      "height": 420,
+      "frames": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_semantic_line_batch00.png",
+      "sha256": "d567c469f76f481e25f7711e7d7574f333b89e39139dd1c8aa4d3080aae219a0",
+      "bytes": 168608,
+      "width": 1036,
+      "height": 348,
+      "frames": 1
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/court_semantic_line_batch01.png",
+      "sha256": "34c7af1035d63300e3d95f499ef6308d88a352e691993469bb502b35ea3b40ff",
+      "bytes": 229881,
+      "width": 1292,
+      "height": 420,
+      "frames": 1
+    }
+  ],
+  "tensorboard_image_tags": [
+    "qualitative/court_detection/kp/batch00",
+    "qualitative/court_detection/seg/batch00",
+    "qualitative/court_detection/line/batch00",
+    "qualitative/court_detection/semantic_line/batch00",
+    "qualitative/court_detection/kp/batch01",
+    "qualitative/court_detection/seg/batch01",
+    "qualitative/court_detection/line/batch01",
+    "qualitative/court_detection/semantic_line/batch01"
+  ],
+  "callback_state": {
+    "last_logged_epoch": 1
+  },
+  "weights_unchanged": true,
+  "validation_metrics_subset_only": {
+    "val/loss": 1.3946906328201294,
+    "val/loss_direct_dense_raw": 0.9969273805618286,
+    "val/loss_direct_dense": 0.9969273805618286,
+    "val/loss_direct_pose": 0.3977632522583008,
+    "val/loss_kp_raw": 0.0003297300427220762,
+    "val/loss_seg_raw": 0.15266810357570648,
+    "val/loss_line_raw": 0.3693576455116272,
+    "val/loss_semantic_line_raw": 0.4745718836784363,
+    "val/loss_kp": 0.0003297300427220762,
+    "val/loss_kp_weighted": 0.0003297300427220762,
+    "val/kp_configured_weight": 1.0,
+    "val/kp_effective_weight": 1.0,
+    "val/loss_seg": 0.15266810357570648,
+    "val/loss_seg_weighted": 0.15266810357570648,
+    "val/seg_configured_weight": 1.0,
+    "val/seg_effective_weight": 1.0,
+    "val/loss_line": 0.3693576455116272,
+    "val/loss_line_weighted": 0.3693576455116272,
+    "val/line_configured_weight": 1.0,
+    "val/line_effective_weight": 1.0,
+    "val/loss_semantic_line": 0.4745718836784363,
+    "val/loss_semantic_line_weighted": 0.4745718836784363,
+    "val/semantic_line_configured_weight": 1.0,
+    "val/semantic_line_effective_weight": 1.0,
+    "val/loss_pose_translation": 0.3401317298412323,
+    "val/loss_pose_rotation": 0.396165132522583,
+    "val/loss_pose_focal": 0.05922967940568924,
+    "val/loss_pose_translation_weighted": 0.3401317298412323,
+    "val/loss_pose_rotation_weighted": 0.396165132522583,
+    "val/loss_pose_focal_weighted": 0.05922967940568924,
+    "val/pose_translation_configured_weight": 1.0,
+    "val/pose_rotation_configured_weight": 1.0,
+    "val/pose_focal_configured_weight": 1.0,
+    "val/pose_translation_effective_weight": 1.0,
+    "val/pose_rotation_effective_weight": 1.0,
+    "val/pose_focal_effective_weight": 1.0,
+    "val/kp_mean_dist": 5.036688804626465,
+    "val/kp_mean_distance_px": 5.036688804626465,
+    "val/kp_median_distance_px": 1.5294369459152222,
+    "val/seg_miou": 0.953988254070282,
+    "val/line_dice": 0.7785866856575012,
+    "val/semantic_line_miou": 0.6018306612968445,
+    "val/pose_translation_l2_m": 1.010146141052246,
+    "val/pose_rotation_geodesic_deg": 22.698591232299805,
+    "val/pose_focal_relative_error": 0.2755424380302429,
+    "val/pose_log_focal_abs_error": 0.24337148666381836,
+    "val/pose_reprojection_mean_distance_px": 269.5260314941406,
+    "val/kp_pose_consistency_distance_px": 0.0,
+    "val/invalid_depth_rate": 0.0,
+    "val/visible_point_count": 4.0
+  },
+  "peak_cuda_allocated_mib": 1137.19091796875,
+  "elapsed_seconds": 80.26857681999991
+}
