@@ -1,0 +1,146 @@
+court_keypoints:
+  selector: physical_v1
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: outputs
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+generation:
+  mode: single_object
+  min_balls: 1
+  max_balls: 1
+  maximum_physics_attempts_per_scene: 64
+physics:
+  gravity: 9.8
+  k_drag: 0.01
+  k_magnus: 0.001
+  surface: hard
+  alpha_net: 0.3
+  alpha_net_cord: 0.05
+  alpha_fence: 0.3
+  net_half_thickness: 0.03
+  net_cord_radius: 0.03
+  dt: 0.00416667
+  use_drag: true
+  use_magnus: true
+  wind:
+  - 0.0
+  - 0.0
+  - 0.0
+  k_drag_range:
+  - 0.005
+  - 0.02
+  k_magnus_range:
+  - 0.0005
+  - 0.002
+  wind_speed_range:
+  - 0.0
+  - 3.0
+  wind_direction_range_deg:
+  - 0.0
+  - 360.0
+  surface_choices:
+  - hard
+  - clay
+  - grass
+rally:
+  z_range:
+  - 0.8
+  - 1.4
+  spin_x_range:
+  - -200.0
+  - 200.0
+  spin_y_range:
+  - -80.0
+  - -40.0
+  spin_z_range:
+  - -200.0
+  - 200.0
+  max_sim_frames: 2000
+  output_fps: 30
+  sim_fps: 240
+  max_rallies: 10
+  max_total_frames: 12000
+  hit_timing_range:
+  - 0.2
+  - 0.8
+  return_z_range:
+  - 0.8
+  - 1.4
+  serve_probability: 0.3
+  serve_z_range:
+  - 2.0
+  - 2.8
+  toss_vz_range:
+  - 4.5
+  - 7.0
+  toss_xy_noise_range:
+  - -0.35
+  - 0.35
+  toss_max_frames: 240
+  toss_z0_tolerance: 0.03
+  volley_probability: 0.05
+  normal_return_probability: 0.85
+  late_return_probability: 0.1
+  out_court_target_probability: 0.1
+camera:
+  layout: fixed
+  z_min: 3.0
+  z_max: 5.0
+  hfov_deg: 60.0
+  image_size:
+  - 1280
+  - 720
+  fixed_look_at:
+  - 0.0
+  - 0.0
+  - 0.0
+  fixed_baseline_clear_extra: 0.0
+  fixed_position_noise_radius: 1.5
+  fixed_look_at_xy_radius: 1.0
+  broadcast_setback: 20.0
+  broadcast_height: 7.0
+  broadcast_hfov_deg: 35.0
+  broadcast_look_at_y: 0.0
+  broadcast_look_at_height: 0.5
+  broadcast_position_noise_radius: 1.0
+  broadcast_look_at_xy_radius: 1.0
+  broadcast_hfov_jitter_deg: 2.0
+  broadcast_setback_range: null
+  broadcast_height_range: null
+  broadcast_court_width_frac_range: null
+  fixed_camera_indices: null
+targeted_velocity:
+  drive_elevation_range_deg:
+  - 5.0
+  - 25.0
+  lob_elevation_range_deg:
+  - 35.0
+  - 70.0
+  lob_probability: 0.25
+  max_ballistic_apex_height_m: 8.0
+  gravity: ${physics.gravity}
+  net_elevation_step_deg: 2.0
+  landing_refine_enabled: true
+  landing_refine_max_iters: 14
+  landing_refine_tolerance_m: 0.25
+  landing_sim_max_frames: 1200
+  target_margin_m: 0.35
+generator:
+  num_scenes: 1000
+  court:
+    net_post_offset_x: 0.914
+    net_post_offset_x_range:
+    - -0.3
+    - 0.914
+run:
+  output_dir: ${tennis_dataset:blcs,single_object}
+  seed: 42
+  device: cpu
+  num_workers: 6
+  chunksize: 1
+  train_ratio: 0.8
+  val_ratio: 0.1
