@@ -23,9 +23,16 @@ class FlowRefiner(TemporalTransformer):
         self.flow_time = time_embedding(config.width)
 
     def forward(
-        self, coordinates: Tensor, missing: Tensor, state: Tensor, time: Tensor
+        self,
+        coordinates: Tensor,
+        missing: Tensor,
+        padding: Tensor,
+        state: Tensor,
+        time: Tensor,
     ) -> RefinerOutput:
         features = torch.cat((coordinate_features(coordinates, missing), state), dim=-1)
         return self.encode(
-            features, self.flow_time(sinusoidal(time * 1000, self.config.width))
+            features,
+            padding,
+            self.flow_time(sinusoidal(time * 1000, self.config.width)),
         )

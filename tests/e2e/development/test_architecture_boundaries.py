@@ -210,6 +210,8 @@ PROHIBITED_SYMBOLS = frozenset(
 )
 # Ball detection consumes only the unified store; retired workflows have no import shims.
 BALL_STORE_REMOVED_MODULES = (
+    "src.tasks.ball_detection.models.dinov3_rope",
+    "src.tasks.ball_detection.models.spatiotemporal_unet",
     "src.tasks.ball_detection.data.tracknet_datamodule",
     "src.tasks.ball_detection.data.youtube_datamodule",
     "src.tasks.ball_detection.data.mixed_tracknet_datamodule",

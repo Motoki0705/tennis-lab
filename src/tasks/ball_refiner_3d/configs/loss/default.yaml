@@ -7,3 +7,9 @@ reconstruction:
   final_weight: 1.0
   start_step: 0
   decay_steps: 1
+physics:
+  field_weight: 0.0
+  segment_weight: 0.0
+  reconstruction_weight: 0.0
+  consistency_weight: 0.0
+  consistency_gradient: direct

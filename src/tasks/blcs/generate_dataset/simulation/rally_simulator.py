@@ -9,7 +9,7 @@ Generates rally sequences by chaining multiple shots:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -123,6 +123,26 @@ class ShotEventInfo:
     return_type: str  # "volley" | "normal" | "late_return" | "none"
 
 
+@dataclass(frozen=True)
+class PhysicsEvent:
+    """A discontinuous state change at simulation step ``step``.
+
+    ``step`` indexes the rally's simulation samples; the sample at ``step`` holds
+    the post-event state.  Kinds follow ``src.utils.physics.ball.EVENT_KINDS``.
+    """
+
+    kind: str
+    step: int
+    position: Tensor
+    velocity_before: Tensor
+    velocity_after: Tensor
+    spin_before: Tensor
+    spin_after: Tensor
+
+    def shifted(self, offset: int) -> PhysicsEvent:
+        return replace(self, step=self.step + offset)
+
+
 @dataclass
 class RallyResult:
     """Result of a rally simulation."""
@@ -143,6 +163,8 @@ class RallyResult:
 
     fps_out: int
     sim_fps: int
+    # Every discontinuity of the concatenated simulation samples, in order.
+    physics_events: list[PhysicsEvent]
 
 
 @dataclass
@@ -727,6 +749,20 @@ class RallySimulator:
         hit_fence_before_bounce = False
 
         actual_max_frames = min(cfg.max_sim_frames, max_frames)
+        events: list[PhysicsEvent] = []
+
+        def record(kind: str, step: int, before: BallState, after: BallState) -> None:
+            events.append(
+                PhysicsEvent(
+                    kind=kind,
+                    step=step,
+                    position=after.position.clone(),
+                    velocity_before=before.velocity.clone(),
+                    velocity_after=after.velocity.clone(),
+                    spin_before=before.spin.clone(),
+                    spin_after=after.spin.clone(),
+                )
+            )
 
         for frame in range(actual_max_frames - 1):
             prev_pos = state.position.clone()
@@ -741,17 +777,21 @@ class RallySimulator:
                 if hit_net:
                     t_net_sim = frame + 1
                     hit_net_before_bounce = True
+                    before = state
                     state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
+                    record("net", frame + 1, before, state)
                 hit_fence, pos_at_fence, fence_normal = (
                     self.physics.check_fence_collision(prev_pos, state.position)
                 )
                 if hit_fence and pos_at_fence is not None and fence_normal is not None:
                     hit_fence_before_bounce = True
+                    before = state
                     state = self.physics.apply_fence_collision(
                         state,
                         fence_pos=pos_at_fence,
                         fence_normal=fence_normal,
                     )
+                    record("fence", frame + 1, before, state)
 
             # Record net crossing (even when ball clears net)
             if t_net_sim < 0 and bounce_count == 0:
@@ -760,8 +800,10 @@ class RallySimulator:
                     t_net_sim = frame + 1
 
             # Handle bounce
+            before = state
             state, bounced = self.physics.handle_bounce(state)
             if bounced:
+                record("bounce", frame + 1, before, state)
                 bounce_count += 1
                 if bounce_count == 1:
                     t_bounce1_sim = frame + 1
@@ -800,6 +842,7 @@ class RallySimulator:
             "hit_fence_before_bounce": hit_fence_before_bounce,
             "category": category,
             "to_cell": to_cell,
+            "events": events,
         }
 
     # ------------------------------------------------------------------
@@ -829,6 +872,9 @@ class RallySimulator:
         current_cell = from_cell
         total_sim_frames = 0
         rally_count = 0
+        physics_events: list[PhysicsEvent] = []
+        # Ball state just before the next racket hit (None: no incoming ball).
+        state_before_hit: BallState | None = None
         end_reason = RallyEndReason.ONGOING
         winner_side: str | None = None
 
@@ -849,6 +895,27 @@ class RallySimulator:
                         from_cell=current_cell,
                         from_side=current_side,
                         shot_type=ShotType.SERVE,
+                    )
+                    toss = BallState(
+                        position=init_result.pre_positions_sim[0],
+                        velocity=init_result.pre_velocities_sim[0],
+                        spin=torch.zeros(3, device=self.device),
+                    )
+                    physics_events.append(
+                        PhysicsEvent(
+                            kind="toss",
+                            step=0,
+                            position=toss.position.clone(),
+                            velocity_before=toss.velocity.clone(),
+                            velocity_after=toss.velocity.clone(),
+                            spin_before=toss.spin.clone(),
+                            spin_after=toss.spin.clone(),
+                        )
+                    )
+                    state_before_hit = BallState(
+                        position=init_result.pre_positions_sim[-1],
+                        velocity=init_result.pre_velocities_sim[-1],
+                        spin=toss.spin,
                     )
                     if len(init_result.pre_positions_sim) > 1:
                         all_positions_sim.extend(init_result.pre_positions_sim[:-1])
@@ -885,6 +952,19 @@ class RallySimulator:
             # --- Calculate frame offsets ---
             t_offset = len(all_positions_sim)
             downsample = cfg.sim_fps // cfg.output_fps
+            before_hit = state_before_hit or initial_state
+            physics_events.append(
+                PhysicsEvent(
+                    kind="shot",
+                    step=t_offset,
+                    position=initial_state.position.clone(),
+                    velocity_before=before_hit.velocity.clone(),
+                    velocity_after=initial_state.velocity.clone(),
+                    spin_before=before_hit.spin.clone(),
+                    spin_after=initial_state.spin.clone(),
+                )
+            )
+            shot_physics_events: list[PhysicsEvent] = shot_result["events"]
             match shot_result["to_cell"]:
                 case int() as event_to_cell:
                     pass
@@ -932,6 +1012,7 @@ class RallySimulator:
             )
 
             if should_end:
+                physics_events.extend(e.shifted(t_offset) for e in shot_physics_events)
                 all_positions_sim.extend(shot_result["trajectory_sim"])
                 all_velocities_sim.extend(shot_result["velocities_sim"])
                 total_sim_frames += len(shot_result["trajectory_sim"])
@@ -957,6 +1038,7 @@ class RallySimulator:
                 and shot_result["t_bounce2_sim"] >= 0
                 and shot_result["t_bounce2_sim"] <= t_return_sim
             ):
+                physics_events.extend(e.shifted(t_offset) for e in shot_physics_events)
                 all_positions_sim.extend(shot_result["trajectory_sim"])
                 all_velocities_sim.extend(shot_result["velocities_sim"])
                 total_sim_frames += len(shot_result["trajectory_sim"])
@@ -969,8 +1051,17 @@ class RallySimulator:
 
             ball_pos_at_return = shot_result["trajectory_sim"][t_return_sim]
 
-            trajectory_to_add = shot_result["trajectory_sim"][: t_return_sim + 1]
-            velocities_to_add = shot_result["velocities_sim"][: t_return_sim + 1]
+            # The hit sample opens the next shot, which starts from this position;
+            # appending it here too would stall the ball for one simulation step.
+            trajectory_to_add = shot_result["trajectory_sim"][:t_return_sim]
+            velocities_to_add = shot_result["velocities_sim"][:t_return_sim]
+            kept_events = [e for e in shot_physics_events if e.step < t_return_sim]
+            physics_events.extend(e.shifted(t_offset) for e in kept_events)
+            state_before_hit = BallState(
+                position=ball_pos_at_return,
+                velocity=shot_result["velocities_sim"][t_return_sim],
+                spin=kept_events[-1].spin_after if kept_events else initial_state.spin,
+            )
             all_positions_sim.extend(trajectory_to_add)
             all_velocities_sim.extend(velocities_to_add)
             total_sim_frames += len(trajectory_to_add)
@@ -1022,6 +1113,7 @@ class RallySimulator:
                 initial_from_side=from_side,
                 fps_out=cfg.output_fps,
                 sim_fps=cfg.sim_fps,
+                physics_events=physics_events,
             )
 
         trajectory_sim = torch.stack(all_positions_sim, dim=0)
@@ -1044,6 +1136,7 @@ class RallySimulator:
             initial_from_side=from_side,
             fps_out=cfg.output_fps,
             sim_fps=cfg.sim_fps,
+            physics_events=physics_events,
         )
 
     def _convert_time(self, t_sim: int, downsample: int, offset: int) -> int:

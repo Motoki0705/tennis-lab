@@ -18,23 +18,23 @@ from src.tasks.base.model_io import bind_model_io
 class _CountingBallModel(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.in_channels = 3
+        self.in_channels = 2
         self.num_classes = 1
         self.calls = 0
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         self.calls += 1
-        batch_size, frame_count, _, height, width = images.shape
+        batch_size, _, frame_count, height, width = images.shape
         return images.new_zeros(batch_size, 1, frame_count, height, width)
 
 
-def _rgb_adapter() -> BallModelIOAdapter:
+def _mdd_adapter() -> BallModelIOAdapter:
     return BallModelIOAdapter(
         BallModelInputSpec(
-            model_name="test_rgb",
-            input_mode="rgb",
-            input_layout="btchw",
-            in_channels=3,
+            model_name="test_mdd",
+            input_mode="mdd",
+            input_layout="bcthw",
+            in_channels=2,
             num_classes=1,
             configured_frames=2,
             image_size_hw=None,
@@ -70,7 +70,7 @@ def _run_training_boundary(
 
 def test_bound_lifecycle_rejects_invalid_input_before_forward() -> None:
     model = _CountingBallModel()
-    adapter = _rgb_adapter()
+    adapter = _mdd_adapter()
     adapter.validate_model_pair(model)
     pair = bind_model_io(model, adapter)
 
@@ -93,7 +93,7 @@ def test_image_semantics_fail_before_forward(
     message: str,
 ) -> None:
     model = _CountingBallModel()
-    pair = bind_model_io(model, _rgb_adapter())
+    pair = bind_model_io(model, _mdd_adapter())
 
     with pytest.raises(BallModelIOError, match=message):
         pair.run(images)
@@ -106,7 +106,7 @@ def test_image_range_inclusive_boundaries_enter_forward_once() -> None:
     images = torch.zeros(1, 2, 3, 8, 8)
     images[:, 1] = 1.0
 
-    output = bind_model_io(model, _rgb_adapter()).run(images)
+    output = bind_model_io(model, _mdd_adapter()).run(images)
 
     assert output.shape == (1, 2, 8, 8)
     assert model.calls == 1
@@ -115,7 +115,7 @@ def test_image_range_inclusive_boundaries_enter_forward_once() -> None:
 def test_training_boundary_runs_validated_batch_once() -> None:
     model = _CountingBallModel()
 
-    logits = _run_training_boundary(_rgb_adapter(), model, _valid_training_batch())
+    logits = _run_training_boundary(_mdd_adapter(), model, _valid_training_batch())
 
     assert logits.shape == (1, 2, 8, 8)
     assert model.calls == 1
@@ -149,7 +149,7 @@ def test_training_contract_violations_fail_before_forward(
     model = _CountingBallModel()
 
     with pytest.raises(BallModelIOError, match=message):
-        _run_training_boundary(_rgb_adapter(), model, batch)
+        _run_training_boundary(_mdd_adapter(), model, batch)
 
     assert model.calls == 0
 
@@ -161,13 +161,13 @@ def test_training_heatmap_range_fails_before_forward(value: float) -> None:
     model = _CountingBallModel()
 
     with pytest.raises(BallModelIOError, match=r"heatmaps values must be in \[0, 1\]"):
-        _run_training_boundary(_rgb_adapter(), model, batch)
+        _run_training_boundary(_mdd_adapter(), model, batch)
 
     assert model.calls == 0
 
 
 def test_prediction_decodes_stable_cpu_fields() -> None:
-    adapter = _rgb_adapter()
+    adapter = _mdd_adapter()
     call = adapter.prepare_images(torch.zeros(1, 2, 3, 4, 5))
     logits = torch.zeros(1, 1, 2, 4, 5)
 
@@ -216,5 +216,5 @@ def test_supervision_contract_rejects_invalid_masks_before_forward(mask: torch.T
     batch = _valid_training_batch()
     batch['supervised'] = mask
     with pytest.raises(BallModelIOError, match='supervised'):
-        _run_training_boundary(_rgb_adapter(), model, batch)
+        _run_training_boundary(_mdd_adapter(), model, batch)
     assert model.calls == 0

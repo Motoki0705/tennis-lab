@@ -37,3 +37,20 @@ class CorruptionConfig:
             raise ValueError("Jitter must be small relative to the positive noise P95")
         if self.triangulation_steps < 0:
             raise ValueError("triangulation_steps must be nonnegative")
+
+
+@dataclass(frozen=True)
+class WindowConfig:
+    """Training windows of ``length`` frames; with ``long_probability`` a sample
+    instead draws a uniform length between ``length`` and its whole rally,
+    capped at ``max_length``.  Inference always sees the whole clip."""
+
+    length: int
+    long_probability: float
+    max_length: int
+
+    def __post_init__(self) -> None:
+        if not 3 <= self.length <= self.max_length:
+            raise ValueError("Require 3 <= length <= max_length")
+        if not 0 <= self.long_probability <= 1:
+            raise ValueError("long_probability must be in [0,1]")

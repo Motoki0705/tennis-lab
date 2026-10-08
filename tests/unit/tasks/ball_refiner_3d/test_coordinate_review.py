@@ -4,6 +4,7 @@ import hashlib
 import json
 import shutil
 from dataclasses import asdict
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -23,6 +24,7 @@ from src.tasks.ball_refiner_3d.evaluation.evaluator import evaluate
 from src.tasks.ball_refiner_3d.generate_dataset.cameras import sample_visible_cameras
 from src.tasks.ball_refiner_3d.model_io.checkpoint import checkpoint_metadata
 from src.tasks.ball_refiner_3d.model_io.factory import build_refiner
+from src.tasks.ball_refiner_3d.physics.targets import FlightClock
 from src.tasks.ball_refiner_3d.visualization.dataset_review.artifacts import (
     bundle_path,
     cache_root,
@@ -40,6 +42,7 @@ from src.tasks.ball_refiner_3d.visualization.dataset_review.service import Revie
 from src.tasks.ball_refiner_3d.visualization.dataset_review.web import create_app
 from src.tasks.base.visualization.inference_queue import execute_request
 from src.utils.paths import PROJECT_ROOT
+from tests.support.physics.ball_record import simulated_record
 
 
 @pytest.fixture
@@ -60,8 +63,13 @@ def review(tmp_path):
             camera_config, xyz, np.random.default_rng(index + 88)
         )
         assert cameras is not None
-        events: np.ndarray = np.zeros(frames, dtype=np.uint8)
-        events[[15, 85]], events[45] = 1, 2
+        _, record = simulated_record(
+            frames,
+            output_fps=60,
+            sim_fps=240,
+            hits=(15 * 4, 45 * 4, 85 * 4),
+            hit_kinds=("shot", "bounce", "shot"),
+        )
         path = data / "rallies" / f"rally_{index:06d}.npz"
         np.savez(
             path,
@@ -69,11 +77,11 @@ def review(tmp_path):
             uv_px=np.stack([c.project(xyz)[0] for c in cameras]).astype(np.float32),
             visible=np.ones((4, frames), dtype=bool),
             projection=np.stack([c.matrix for c in cameras]),
-            events=events,
             time_s=time,
             camera_centers=np.stack([c.center for c in cameras]),
             intrinsic=np.stack([c.intrinsic for c in cameras]),
             rotation=np.stack([c.rotation for c in cameras]),
+            **cast("dict[str, Any]", record.to_arrays()),
         )
         records.append(
             {
@@ -111,13 +119,19 @@ def review(tmp_path):
     )
     corruption = CorruptionConfig(**raw["augmentation"])
     outputs = tmp_path / "outputs"
-    for dim, architecture in ((3, "regression"), (3, "flow")):
+    for dim, architecture, physics in (
+        (3, "regression", False),
+        (3, "flow", False),
+        (3, "regression", True),
+    ):
+        torch.manual_seed(len(architecture) + physics)
         model = build_refiner(
             ModelConfig(
-                dim, architecture, 16, 1, 2, 0.0, 32, 3, 64, 8, 10000.0, "swiglu"
+                dim, architecture, 16, 1, 2, 0.0, 3, 64, 8, 10000.0, "swiglu", physics
             )
         ).eval()
-        run = outputs / f"{dim}d-{architecture}" / "run"
+        name = f"{dim}d-{architecture}" + ("-physics" if physics else "")
+        run = outputs / name / "run"
         checkpoints = run / "logs/version_0/checkpoints"
         checkpoints.mkdir(parents=True)
         config = {
@@ -130,12 +144,18 @@ def review(tmp_path):
         }
         (run / "config.yaml").write_text(yaml.safe_dump(config))
         payload = {
-            **checkpoint_metadata(model, event_sigma_frames=2.0),
+            **checkpoint_metadata(
+                model, event_sigma_frames=2.0, clock=FlightClock(9.8, 1 / 240, 4)
+            ),
             "model": model.state_dict(),
             "manifest_sha256": dataset.manifest_hash,
             "fps": 60,
             "step": 100,
-            "validation_rmse": 0.2 if architecture == "regression" else 0.3,
+            "validation_rmse": 0.25
+            if physics
+            else 0.2
+            if architecture == "regression"
+            else 0.3,
             "discriminator": None,
         }
         torch.save(payload, checkpoints / "best.ckpt")
@@ -150,6 +170,7 @@ def review(tmp_path):
             torch.device("cpu"),
             seed=20991,
             batch_size=32,
+            physics=False,
         )
         (run / "predictions").mkdir()
         np.savez(run / "predictions/pred_test.npz", allow_pickle=False, **predictions)
@@ -184,11 +205,11 @@ def review(tmp_path):
 def test_checkpoint_suggestions_are_compatible_and_validation_selected(review):
     service, request = review
     catalog = service.catalog()
-    assert len(catalog["checkpoints"]) == 4
+    assert len(catalog["checkpoints"]) == 6
     selected = [p for p in catalog["checkpoints"] if p["recommended"]]
-    assert {(p["dimensions"], p["method"], p["filename"]) for p in selected} == {
-        (3, "regression", "best.ckpt")
-    }
+    assert [(p["run_name"], p["method"], p["filename"]) for p in selected] == [
+        ("3d-regression/run", "regression", "best.ckpt")
+    ]
     torch.save({"legacy": True}, service.outputs_root / "legacy.ckpt")
     excluded = [
         p for p in service.catalog(refresh=True)["checkpoints"] if not p["compatible"]
@@ -227,7 +248,12 @@ def test_saved_and_real_cpu_inference_share_exact_inputs_and_all_frames(review):
         np.asarray(live["scene"]["prediction_3d"])[observed],
         np.asarray(live["scene"]["input_3d"])[observed],
     )
-    assert live["scene"]["metrics_3d"]["all"]["count"] == 96
+    assert live["scene"]["metrics"]["prediction"]["all"]["count"] == 96
+    # A coordinate-only model has no physics series or predicted parameters.
+    assert live["scene"]["integrated_3d"] is None
+    assert live["scene"]["segments"]["predicted"] is None
+    assert live["scene"]["physics"]["predicted"] is None
+    assert set(live["scene"]["metrics"]) == {"prediction", "linear"}
 
 
 def test_flow_is_single_seeded_reproducible_trajectory(review):
@@ -426,7 +452,7 @@ def test_shared_queue_worker_dispatches_coordinate_review_contract(review):
         )
     )
     assert result["source"] == "live" and result["scene"]["rally"] == request.rally
-    assert result["scene"]["metrics_3d"]["all"]["count"] == 96
+    assert result["scene"]["metrics"]["prediction"]["all"]["count"] == 96
 
 
 def test_review_accepts_zero_noise_event_only_profile(review):
@@ -463,3 +489,115 @@ def test_review_accepts_zero_noise_event_only_profile(review):
         and 'id="camera"' not in html
         and 'id="graph-2d"' not in html
     )
+
+
+def _physics_request(service, request):
+    entry = next(
+        item.info
+        for item in service.checkpoints.entries.values()
+        if item.info["physics_heads"] and item.info["filename"] == "best.ckpt"
+    )
+    return entry, request.model_copy(
+        update={"checkpoint_3d": entry["id"], "checkpoint_hashes": {}}
+    )
+
+
+def test_physics_heads_show_integrated_flights_parameters_and_segments(review):
+    service, request = review
+    entry, request = _physics_request(service, request)
+    assert entry["saved_available"]
+    assert (
+        "3d-regression-physics/run" in entry["label"] and "物理head" in entry["label"]
+    )
+    saved, live = service.saved(request), service.infer(request)
+    assert saved["input_sha256"] == live["input_sha256"]
+    # The saved bundle (evaluator) and the public predictor agree on every output.
+    for key in ("prediction_3d", "integrated_3d", "integrated_truth_3d"):
+        np.testing.assert_allclose(saved["scene"][key], live["scene"][key], atol=1e-4)
+        assert np.asarray(saved["scene"][key]).shape == (96, 3)
+    assert saved["scene"]["segments"] == live["scene"]["segments"]
+    for key in ("predicted", "surface_probability"):
+        np.testing.assert_allclose(
+            saved["scene"]["physics"][key], live["scene"]["physics"][key], atol=1e-5
+        )
+    scene = live["scene"]
+    truth = np.asarray(scene["segments"]["truth"])
+    assert np.flatnonzero(np.diff(truth)).tolist() == [14, 44, 84]
+    # Flights integrated under the true and the predicted segmentation differ
+    # unless the predicted events happen to reproduce the true split.
+    if scene["segments"]["predicted"] != scene["segments"]["truth"]:
+        assert not np.allclose(scene["integrated_3d"], scene["integrated_truth_3d"])
+    assert scene["physics"]["columns"] == [
+        "wind_x_mps",
+        "wind_y_mps",
+        "k_drag",
+        "k_magnus",
+    ]
+    np.testing.assert_allclose(scene["physics"]["truth"], [1.0, -0.5, 0.01, 0.001])
+    assert scene["physics"]["surface"] == "hard"
+    assert sum(scene["physics"]["surface_probability"]) == pytest.approx(1, abs=1e-5)
+    assert set(scene["metrics"]) == {
+        "linear",
+        "prediction",
+        "integrated",
+        "integrated_truth",
+    }
+    kinematics = scene["metrics"]["integrated_truth"]["kinematics"]["all"]
+    assert {"acceleration_rmse", "implausible_acceleration_rate", "jerk_ratio"} <= set(
+        kinematics
+    )
+    observed = ~np.asarray(scene["missing_3d"])
+    np.testing.assert_allclose(
+        np.asarray(scene["linear_3d"])[observed],
+        np.asarray(scene["input_3d"])[observed],
+    )
+
+
+def test_saved_physics_bundle_must_carry_physics_outputs(review):
+    service, request = review
+    entry, request = _physics_request(service, request)
+    checkpoint = service.checkpoints.entries[entry["id"]]
+    bundle = checkpoint.predictions
+    with np.load(bundle / "pred_test.npz") as data:
+        arrays = {key: data[key] for key in data.files if key != "integrated"}
+    (bundle / "pred_test.npz").unlink()
+    np.savez_compressed(bundle / "pred_test.npz", allow_pickle=False, **arrays)
+    receipt = json.loads((bundle / "receipt.json").read_text())
+    receipt["predictions_sha256"] = sha256(bundle / "pred_test.npz")
+    (bundle / "receipt.json").write_text(json.dumps(receipt))
+    with pytest.raises(ValueError, match="物理head"):
+        service.saved(request)
+
+
+def test_catalog_binds_saved_test_summary_to_checkpoint_and_dataset(review):
+    service, request = review
+    entry, _ = _physics_request(service, request)
+    run = service.checkpoints.entries[entry["id"]].run
+    assert entry["test_summary"] is None and "test評価" in entry["test_summary_reason"]
+    (run / "predictions/metrics.json").write_text(
+        json.dumps({"test_rmse_m": 0.5, "test_integrated_rmse_m": 1.5, "note": "x"})
+    )
+    report = {
+        "checkpoint_sha256": entry["sha256"],
+        "dataset_manifest_sha256": service.dataset.manifest_hash,
+    }
+    (run / "predictions/diagnostic_metrics.json").write_text(json.dumps(report))
+    refreshed = next(
+        item
+        for item in service.catalog(refresh=True)["checkpoints"]
+        if item["id"] == entry["id"]
+    )
+    assert refreshed["test_summary"] == {
+        "test_rmse_m": 0.5,
+        "test_integrated_rmse_m": 1.5,
+    }
+    (run / "predictions/diagnostic_metrics.json").write_text(
+        json.dumps({**report, "checkpoint_sha256": "0" * 64})
+    )
+    refreshed = next(
+        item
+        for item in service.catalog(refresh=True)["checkpoints"]
+        if item["id"] == entry["id"]
+    )
+    assert refreshed["test_summary"] is None
+    assert "別のcheckpoint" in refreshed["test_summary_reason"]

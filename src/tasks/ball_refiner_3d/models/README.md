@@ -10,6 +10,12 @@
 確率はクラス軸softmaxのイベント成分。時間軸では正規化せず、複数イベントを表現する。
 欠損座標はゼロ化し、欠損frameもattentionのqueryとして残す。
 
+trunkは任意長（最大4096 frame）を受け、`padding` のframeをattentionのkeyから除く。
+`components/physics_heads.py` は物理head。場headは全frameのattention pooling から
+風（水平2成分）・log k_drag・log k_magnus・surface 3クラスを、区間headは各飛行区間内のattention poolingと
+区間先頭frameのtokenから、その先頭frameの位置・速度・スピンを出力する（単位は `physics/units.py`）。
+区間はforwardの入力 `segment`（区間ラベル、paddingは-1）で与える。
+
 `discriminators/trajectory.py` は生成された3D軌道だけを評価する。
 G/Dの構成値の正本は [model/_base.yaml](../configs/model/_base.yaml) と
 [training/_gan.yaml](../configs/training/_gan.yaml)。

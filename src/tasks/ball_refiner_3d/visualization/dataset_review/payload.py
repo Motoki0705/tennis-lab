@@ -2,39 +2,81 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
 from src.tasks.ball_refiner_3d.data.schema import CorruptedTrajectory, Rally
 from src.tasks.ball_refiner_3d.data.targets.events import gaussian_event_target
+from src.tasks.ball_refiner_3d.evaluation.baselines import linear_baseline
+from src.tasks.ball_refiner_3d.evaluation.physics import DEFAULT_PROTOCOL
+from src.tasks.ball_refiner_3d.physics.units import PHYSICAL_FIELD_COLUMNS, SURFACES
 from src.tasks.ball_refiner_3d.training.metrics import error_metrics, event_neighborhood
 from src.tasks.base.visualization.review.court import court_edges, court_keypoints
+from src.utils.physics.ball.kinematics import KinematicThresholds, kinematic_report
+
+
+@dataclass(frozen=True)
+class PhysicsOutputs:
+    """Physics-head outputs of one rally in physical units."""
+
+    integrated: np.ndarray  # (T,3) m, flights segmented at predicted events
+    segment: np.ndarray  # (T,) predicted flight labels
+    integrated_truth_segments: np.ndarray  # (T,3) m, ground-truth flights
+    field: np.ndarray  # (4,) PHYSICAL_FIELD_COLUMNS
+    surface_probability: np.ndarray  # (3,) SURFACES
+
+    def __post_init__(self) -> None:
+        frames = len(self.segment)
+        if (
+            self.integrated.shape != (frames, 3)
+            or self.integrated_truth_segments.shape != (frames, 3)
+            or self.field.shape != (len(PHYSICAL_FIELD_COLUMNS),)
+            or self.surface_probability.shape != (len(SURFACES),)
+        ):
+            raise ValueError("物理headの出力の形が不正です")
+        if not all(
+            np.isfinite(value).all()
+            for value in (
+                self.integrated,
+                self.integrated_truth_segments,
+                self.field,
+                self.surface_probability,
+            )
+        ):
+            raise ValueError("物理headの出力に非有限値があります")
+        if frames and (
+            self.segment[0] != 0 or np.any(~np.isin(np.diff(self.segment), (0, 1)))
+        ):
+            raise ValueError("予測区間のラベルが0から連続していません")
+
+
+@dataclass(frozen=True)
+class ModelOutputs:
+    """One checkpoint's outputs for one rally; ``physics`` only for physics heads."""
+
+    coordinates: np.ndarray  # (T,3) m
+    event_probability: np.ndarray  # (T,)
+    physics: PhysicsOutputs | None
 
 
 def metrics(
-    prediction: np.ndarray | None,
-    target: np.ndarray,
-    missing: np.ndarray,
-    events: np.ndarray,
-) -> dict[str, Any] | None:
-    if prediction is None:
-        return None
+    prediction: np.ndarray, rally: Rally, missing: np.ndarray
+) -> dict[str, Any]:
+    """Coordinate errors and in-flight kinematics of ``physics_eval.v1``."""
     result: dict[str, Any] = error_metrics(
-        prediction,
-        target,
-        missing,
-        np.broadcast_to(event_neighborhood(events), missing.shape),
+        prediction, rally.xyz, missing, event_neighborhood(rally.events)
     )
-    result["velocity_rmse"] = float(
-        np.sqrt(
-            np.mean(
-                np.sum(
-                    (np.diff(prediction, axis=-2) - np.diff(target, axis=-2)) ** 2,
-                    axis=-1,
-                )
-            )
-        )
+    result["kinematics"] = kinematic_report(
+        prediction.astype(np.float64),
+        rally.xyz.astype(np.float64),
+        rally.physics.frame_segment(),
+        float(rally.physics.output_fps),
+        {"all": np.ones(len(missing), dtype=bool), "missing": missing},
+        KinematicThresholds(
+            DEFAULT_PROTOCOL.acceleration_mps2, DEFAULT_PROTOCOL.below_ground_m
+        ),
     )
     return result
 
@@ -45,8 +87,7 @@ def scene_payload(
     cameras: dict[str, np.ndarray],
     *,
     fps: float,
-    prediction_3d: np.ndarray | None,
-    event_probability: np.ndarray | None,
+    model: ModelOutputs | None,
     event_sigma_frames: float,
 ) -> dict[str, Any]:
     points = court_keypoints(None)
@@ -55,11 +96,20 @@ def scene_payload(
         event_mask[start:end] = True
     observed = ~corruption.missing_2d
     noise = np.linalg.norm(corruption.noise_px[observed], axis=-1)
-    three_metrics = metrics(
-        prediction_3d, rally.xyz, corruption.missing_3d, rally.events
-    )
-    if three_metrics is not None:
-        three_metrics["velocity_rmse"] *= fps
+    missing = corruption.missing_3d
+    linear = linear_baseline(
+        np.where(missing[:, None], 0, corruption.xyz_m)[None], missing[None]
+    )[0]
+    physics = model.physics if model is not None else None
+    series = {
+        "linear": linear,
+        "prediction": model.coordinates if model is not None else None,
+        "integrated": physics.integrated if physics is not None else None,
+        "integrated_truth": physics.integrated_truth_segments
+        if physics is not None
+        else None,
+    }
+    record = rally.physics
     return {
         "rally": rally.name,
         "split": rally.split,
@@ -69,10 +119,32 @@ def scene_payload(
         "events": rally.events.tolist(),
         "intervals": corruption.intervals.tolist(),
         "event_missing": event_mask.tolist(),
-        "missing_3d": corruption.missing_3d.tolist(),
+        "missing_3d": missing.tolist(),
         "gt_3d": rally.xyz.tolist(),
         "input_3d": corruption.xyz_m.tolist(),
-        "prediction_3d": prediction_3d.tolist() if prediction_3d is not None else None,
+        **{
+            f"{kind}_3d": None if values is None else values.tolist()
+            for kind, values in series.items()
+        },
+        "metrics": {
+            kind: metrics(values, rally, missing)
+            for kind, values in series.items()
+            if values is not None
+        },
+        "segments": {
+            "truth": record.frame_segment().tolist(),
+            "predicted": physics.segment.tolist() if physics is not None else None,
+        },
+        "physics": {
+            "columns": list(PHYSICAL_FIELD_COLUMNS),
+            "truth": [*map(float, record.wind[:2]), record.k_drag, record.k_magnus],
+            "predicted": physics.field.tolist() if physics is not None else None,
+            "surfaces": list(SURFACES),
+            "surface": record.surface,
+            "surface_probability": physics.surface_probability.tolist()
+            if physics is not None
+            else None,
+        },
         "court": {"keypoints": points.tolist(), "edges": court_edges()},
         "cameras": [
             {
@@ -90,16 +162,15 @@ def scene_payload(
             }
             for v in range(len(rally.uv))
         ],
-        "metrics_3d": three_metrics,
-        "event_probability": event_probability.tolist()
-        if event_probability is not None
+        "event_probability": model.event_probability.tolist()
+        if model is not None
         else None,
         "event_target": gaussian_event_target(
             rally.events, event_sigma_frames
         ).tolist(),
         "event_sigma_frames": event_sigma_frames,
         "audit": {
-            "frame_missing_rate_3d": float(corruption.missing_3d.mean()),
+            "frame_missing_rate_3d": float(missing.mean()),
             "selected_events": len(corruption.intervals),
             "events": int(np.count_nonzero(rally.events)),
             "noise_p95_px": float(np.quantile(noise, 0.95)) if len(noise) else None,

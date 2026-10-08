@@ -1,7 +1,6 @@
 """Scientific/data contracts for the shared coordinate refiner strategy."""
 
 from dataclasses import replace
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -16,7 +15,6 @@ from src.tasks.ball_refiner_3d.configuration.model import (
 )
 from src.tasks.ball_refiner_3d.data.augmentation.noise import coordinate_noise
 from src.tasks.ball_refiner_3d.data.preprocessing import corrupt_trajectory
-from src.tasks.ball_refiner_3d.generate_dataset.blcs_adapter import event_frames
 from src.tasks.ball_refiner_3d.generate_dataset.cameras import (
     sample_cameras,
     sample_visible_cameras,
@@ -138,28 +136,6 @@ def test_ablation_changes_selection_only_not_noise_or_gap_geometry(corruption):
     np.testing.assert_array_equal(low.uv_px[both], high.uv_px[both])
 
 
-def test_phantom_bounces_after_return_are_excluded_before_rounding():
-    def shot(start, returned, bounces):
-        return SimpleNamespace(
-            t_start=start,
-            t_return=returned,
-            t_bounce1=bounces[0],
-            t_bounce2=bounces[1],
-            t_bounce3=bounces[2],
-        )
-
-    result = SimpleNamespace(
-        trajectory=np.zeros((80, 3)),
-        shot_events=[shot(0, 35, [20, 36, 60]), shot(36, -1, [64, -1, -1])],
-    )
-    events = event_frames(result, stride=4)
-    # 36 is a real next shot but a hypothetical previous bounce, in same output bin.
-    assert events[9] == 1
-    assert events[5] == 2
-    assert events[15] == 0
-    assert events[16] == 2
-
-
 @pytest.mark.parametrize("dimensions,architecture", [(3, "regression"), (3, "flow")])
 def test_masked_values_cannot_leak_and_observed_frames_are_predicted(
     dimensions, architecture
@@ -167,15 +143,15 @@ def test_masked_values_cannot_leak_and_observed_frames_are_predicted(
     torch.set_num_threads(1)
     model = build_refiner(
         ModelConfig(
-            dimensions, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu"
+            dimensions, architecture, 16, 1, 2, 0, 3, 64, 8, 10000.0, "swiglu", False
         )
     ).eval()
     coordinates = torch.randn(1, 43, dimensions)
     missing = torch.zeros(1, 43, dtype=torch.bool)
     missing[:, 10:25] = True
-    first = refine_coordinates(model, coordinates, missing, seed=91)
+    first = refine_coordinates(model, coordinates, missing, seed=91, clock=None)
     coordinates[missing] = float("nan")
-    second = refine_coordinates(model, coordinates, missing, seed=91)
+    second = refine_coordinates(model, coordinates, missing, seed=91, clock=None)
     torch.testing.assert_close(first, second, rtol=0, atol=0)
     assert (
         first.coordinates.shape == coordinates.shape
@@ -185,19 +161,18 @@ def test_masked_values_cannot_leak_and_observed_frames_are_predicted(
     assert not torch.allclose(first.coordinates[~missing], coordinates[~missing])
     # All missing windows are valid inputs and still return one complete trajectory.
     prediction = refine_coordinates(
-        model, coordinates, torch.ones_like(missing), seed=8
+        model, coordinates, torch.ones_like(missing), seed=8, clock=None
     )
     assert torch.isfinite(prediction.coordinates).all()
 
 
 def test_future_observation_influences_past_offline_prediction():
     model = build_refiner(
-        ModelConfig(3, "regression", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu")
+        ModelConfig(3, "regression", 16, 1, 2, 0, 3, 64, 8, 10000.0, "swiglu", False)
     ).eval()
     values = torch.zeros(1, 16, 3, requires_grad=True)
-    model(values, torch.zeros(1, 16, dtype=torch.bool)).coordinates[
-        0, 0
-    ].sum().backward()
+    unpadded = torch.zeros(1, 16, dtype=torch.bool)
+    model(values, unpadded, unpadded).coordinates[0, 0].sum().backward()
     assert values.grad[0, -1].abs().sum() > 0
 
 
@@ -215,13 +190,13 @@ def test_flow_arguments_are_rejected_before_tensor_computation(
     architecture, with_state, with_time
 ):
     model = build_refiner(
-        ModelConfig(3, architecture, 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu")
+        ModelConfig(3, architecture, 16, 1, 2, 0, 3, 64, 8, 10000.0, "swiglu", False)
     ).eval()
     coordinates = torch.zeros(1, 16, 3)
     missing = torch.zeros(1, 16, dtype=torch.bool)
     computed = []
     model.input.register_forward_pre_hook(lambda *_: computed.append(True))
-    batch = {"coordinates": coordinates, "missing": missing}
+    batch = {"coordinates": coordinates, "missing": missing, "padding": missing}
     if with_state:
         batch["state"] = torch.zeros_like(coordinates)
     if with_time:
@@ -235,10 +210,17 @@ def test_flow_and_gan_both_supply_trainable_gradients():
     coords, target = torch.randn(2, 16, 3), torch.randn(2, 16, 3)
     missing = torch.rand(2, 16) < 0.5
     model = build_refiner(
-        ModelConfig(3, "flow", 16, 1, 2, 0, 32, 3, 64, 8, 10000.0, "swiglu")
+        ModelConfig(3, "flow", 16, 1, 2, 0, 3, 64, 8, 10000.0, "swiglu", False)
     )
+    padding = torch.zeros_like(missing)
+    padding[1, 12:] = True
     loss, logits = flow_matching_loss(
-        model, coords, missing, target, torch.Generator().manual_seed(4)
+        model,
+        coords,
+        missing | padding,
+        padding,
+        target,
+        torch.Generator().manual_seed(4),
     )
     (loss + logits.square().mean()).backward()
     assert torch.isfinite(loss) and model.input.weight.grad.abs().sum() > 0
@@ -291,14 +273,16 @@ def test_config_rejects_implicit_or_unknown_fields():
                 "layers": 1,
                 "heads": 2,
                 "dropout": 0,
-                "window_length": 32,
                 "flow_steps": 3,
                 "ffn_dim": 64,
                 "rope_dim": 8,
                 "rope_theta": 10000.0,
                 "ffn_type": "swiglu",
+                "physics_heads": False,
             },
         )
+    with pytest.raises(ValueError, match="only supported by direct regression"):
+        ModelConfig(3, "flow", 16, 1, 2, 0, 3, 64, 8, 10000.0, "swiglu", True)
 
 
 def test_event_only_inputs_preserve_observations_and_shared_3d(corruption):

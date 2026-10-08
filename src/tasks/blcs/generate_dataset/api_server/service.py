@@ -89,17 +89,15 @@ def simulate_shot(
     base_physics = generator_config.physics
     physics = replace(
         base_physics,
-        gravity=float(req.physics.gravity)
-        if req.physics.gravity is not None
-        else base_physics.gravity,
         k_drag=float(req.physics.k_drag)
         if req.physics.k_drag is not None
         else base_physics.k_drag,
         k_magnus=float(req.physics.k_magnus)
         if req.physics.k_magnus is not None
         else base_physics.k_magnus,
-        e_z=float(req.physics.e_z) if req.physics.e_z is not None else base_physics.e_z,
-        mu=float(req.physics.mu) if req.physics.mu is not None else base_physics.mu,
+        surface=req.physics.surface
+        if req.physics.surface is not None
+        else base_physics.surface,
         alpha_net=float(req.physics.alpha_net)
         if req.physics.alpha_net is not None
         else base_physics.alpha_net,
