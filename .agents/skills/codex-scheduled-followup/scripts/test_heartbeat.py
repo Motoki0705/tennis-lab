@@ -252,6 +252,23 @@ class HeartbeatTests(unittest.TestCase):
         config, _ = heartbeat.load_config(self.config_path)
         self.assertEqual(config["rrule"], rule)
 
+    def test_update_preserves_inline_operator_notes(self) -> None:
+        text = self.config_path.read_text()
+        text = text.replace(
+            'status = "ACTIVE"', 'status = "ACTIVE"  # operator state note'
+        )
+        text = text.replace(
+            'rrule = "FREQ=HOURLY;INTERVAL=1"',
+            "rrule = 'FREQ=HOURLY;INTERVAL=1' # cadence note",
+        )
+        self.config_path.write_text(text)
+        heartbeat.update_task(
+            self.home, self.task_id, status="PAUSED", interval_minutes=15
+        )
+        after = self.config_path.read_text()
+        self.assertIn('status = "PAUSED"  # operator state note', after)
+        self.assertIn('rrule = "FREQ=MINUTELY;INTERVAL=15" # cadence note', after)
+
     def test_invalid_update_cannot_reset_or_modify_existing_task(self) -> None:
         original = self.config_path.read_bytes()
         for options in (

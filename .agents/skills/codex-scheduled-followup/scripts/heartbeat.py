@@ -212,11 +212,17 @@ def update_task(
     changes["updated_at"] = updated
     text = raw.decode("utf-8")
     for key, value in changes.items():
-        pattern = rf"^{key}[ \t]*=[^\r\n]*"
+        old_value = r"""(?:"(?:[^"\\\r\n]|\\[^\r\n])*"|'[^'\r\n]*'|[0-9_]+)"""
+        pattern = (
+            rf"^{key}[ \t]*=[ \t]*{old_value}(?P<suffix>[ \t]*(?:#[^\r\n]*)?)(?=\r?$)"
+        )
         replacement = f"{key} = {json.dumps(value, ensure_ascii=False)}"
+
         # A callable keeps escaped newlines/backslashes in custom RRULEs literal.
-        def literal_replacement(_match: re.Match[str], literal: str = replacement) -> str:
-            return literal
+        def literal_replacement(
+            _match: re.Match[str], literal: str = replacement
+        ) -> str:
+            return literal + _match.group("suffix")
 
         text, count = re.subn(pattern, literal_replacement, text, flags=re.MULTILINE)
         if count != 1:
