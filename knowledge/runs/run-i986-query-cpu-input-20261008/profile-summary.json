@@ -262,7 +262,10 @@
         }
       ],
       "rss_max_kib": 1774936,
-      "raw_sha256": "70372daf8707fb42414b57db626d6ddd3cb2a2018ddf124b47c9305ff4a0dbe7"
+      "raw_sha256": "70372daf8707fb42414b57db626d6ddd3cb2a2018ddf124b47c9305ff4a0dbe7",
+      "recorded_window_sequence_sha256_semantics": "Nominal requested sampler sequence in the original diagnostic; cached_input actually reuses only its first window. Original raw JSON is preserved.",
+      "cached_source_window_index": 32178,
+      "actual_source_window_sequence_sha256": "7c9ca30c30a5095e14bcbfa0d1ae8e982d48433c3aabb197ae342db2169b784b"
     }
   },
   "payload_bytes": {
