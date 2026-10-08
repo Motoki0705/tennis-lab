@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
@@ -15,10 +16,12 @@ from src.tasks.player_detection.evaluation.metrics import (
     PlayerDetectionMetrics,
 )
 from src.tasks.player_detection.models.dino_detector import (
+    FrameDetections,
     backbone_parameter_names,
     build_player_dino,
     decode_player_detections,
 )
+from src.tasks.player_detection.visualization.qualitative import PlayerClipRenderer
 
 # Final-decoder-layer components logged besides the weighted total.
 _LOGGED_LOSSES = ("loss_ce", "loss_bbox", "loss_giou", "loss_ce_dn", "loss_bbox_dn", "loss_giou_dn")
@@ -34,6 +37,27 @@ class PlayerDetectionLightningModule(BaseLightningModule):
         self.weight_dict = dict(cast("dict[str, float]", self.criterion.weight_dict))
         self.val_metrics = PlayerDetectionMetrics(runtime.evaluation)
         self.test_metrics = PlayerDetectionMetrics(runtime.evaluation)
+        self.qualitative_renderer = (
+            PlayerClipRenderer(runtime) if runtime.shared.training.qualitative_logging.enabled else None
+        )
+
+    def render_qualitative_samples(
+        self,
+        batches: list[Any],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any | None,
+        global_step: int,
+        epoch: int,
+    ) -> None:
+        del outputs, epoch
+        if self.qualitative_renderer is None:
+            raise RuntimeError("Player qualitative rendering was not enabled for this module.")
+        if any(not isinstance(batch, DetectionBatch) for batch in batches):
+            raise TypeError("Player qualitative logging requires DetectionBatch inputs.")
+        self.qualitative_renderer.render(
+            self.model, batches, artifact_dir, tb_writer, global_step,
+        )
 
     def optimizer_param_groups(self) -> list[dict[str, Any]]:
         backbone = backbone_parameter_names(self.model)
@@ -70,9 +94,9 @@ class PlayerDetectionLightningModule(BaseLightningModule):
             self.log(f"train_components/{name}", losses[name], batch_size=size)
         return loss
 
-    def _evaluate(self, batch: DetectionBatch, metrics: PlayerDetectionMetrics) -> list[Any]:
+    def _evaluate(self, batch: DetectionBatch, metrics: PlayerDetectionMetrics) -> list[FrameDetections]:
         outputs = self.model(batch.images, None)
-        detections = decode_player_detections(
+        detections: list[FrameDetections] = decode_player_detections(
             outputs,
             batch.original_sizes,
             max_detections=self.runtime.evaluation.max_detections,

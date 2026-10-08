@@ -1,4 +1,4 @@
-<!-- knowledge-review: db7c961f75c52e19d64413a01a75d8c6df52bcfbdb6ae67afda9a7a94ac797e1 on 2026-10-07 -->
+<!-- knowledge-review: e40def777d355506feeabdb87eab7c7c10c082ac2df034ae9e90be1d573a95fe on 2026-10-08 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -381,9 +381,13 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Player Detection
 
+2026-10-08の[学習済みcheckpointによる定性保存確認](nodes/player_detection/000008-run-i1031-player-ckpt-qualitative-20261008b.md)では、異なるvalidation元動画2 clipからbbox付きGIFを各60 frame保存し、TensorBoard出力と重み不変を確認した。これは保存経路の実GPU検証であり、既存checkpointの精度・採用判断は変更しない。全frameの検出recallや時間安定性は別途評価する。
+
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+2026-10-08の[pose checkpointの定性保存確認](nodes/court_detection/000035-run-i1031-court-ckpt-qualitative-20261008b.md)では、合成・実画像2 sampleから4 dense headのPNG計8枚とTensorBoard出力を実GPUで確認した。固定batch選択の設定契約不一致も修正した。保存済みschemaと重みを維持した機能確認であり、既存の品質・採用判断は変更しない。合成斜視の点集中・線種分断の観察を全体精度やpose推定品質へ一般化しない。
 
 [Meiji全frame処理の時間分解](nodes/court_detection/000033-run-court-meiji-hybrid-cpu-profile-20260923.md)では、3030frameのCourt工程が約116分だったのに対し、3cameraの各1frameでもCPU hybrid geometry単体が1.77–2.58秒を要した。GPU推論だけの所要時間とは扱わない。精度評価と並行して、同じframeごとの推定契約を保つCPU後処理並列化・GPU batch化を検証する価値がある。静止frameの複製や間引きによる結果変更とは区別する。
 

@@ -1,0 +1,16 @@
+{
+  "run_id": "1791417113966994965_70627_i1031-court-ckpt-qualitative-20261008a",
+  "name": "i1031-court-ckpt-qualitative-20261008a",
+  "command": "MPLBACKEND=Agg OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m scripts.verify_qualitative_checkpoints --task court_detection --asset-root /home/kamimura/projects/tennis-lab --checkpoint /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt --output-dir /home/kamimura/projects/tennis-lab/outputs/court_detection/evaluate/issue-1031-qualitative/20261008a --sample-indices 0 935",
+  "provider": "codex",
+  "session": "01a113c9-1114-71a2-9261-80815f662d33",
+  "issue": "1031",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "c751331f589a40432920a4f9fc2bbf34eb3c96db",
+  "branch": "fix/issue-1031-qualitative-schedule",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1031-qualitative-schedule",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1031-qualitative-schedule",
+  "captured_at": "2026-10-08T08:52:04+09:00"
+}

@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 from typing import Literal, cast
 
@@ -20,6 +22,7 @@ from src.synthetic_data_generation.dataset.court.schema import (
     COURT_DATASET_SCHEMA_V3,
     COURT_SAMPLE_SCHEMA_V2,
     COURT_SAMPLE_SCHEMA_V3,
+    CourtDatasetSchemaVersion,
 )
 from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.contracts import (
@@ -30,6 +33,9 @@ from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.data.inputs.factory import build_court_input
 from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.factory import build_court_detection_pair
+from src.tasks.court_detection.training.lightning_module import (
+    CourtDetectionLightningModule,
+)
 from src.tasks.court_detection.training.runner import (
     resolve_training_config,
 )
@@ -185,7 +191,23 @@ def _write_synthetic_court_singleton(
     workspace_root: Path,
     *,
     schema: Literal["v2", "v3"],
+    calibrated_pose: bool = False,
 ) -> None:
+    calibrated: dict[str, object] | None = None
+    if calibrated_pose:
+        from tests.unit.synthetic_data_generation.dataset.court.test_semantic_manifest import (
+            _singleton_camera as calibrated_camera,
+        )
+        from tests.unit.synthetic_data_generation.dataset.court.test_semantic_manifest import (
+            _singleton_dataset,
+        )
+
+        camera = replace(
+            calibrated_camera(center=(0.0, 30.0, 12.0)), width=64, height=48,
+            intrinsics=(50.0, 0.0, 31.95, 0.0, 50.0, 23.95, 0.0, 0.0, 1.0),
+        )
+        dataset = _singleton_dataset(CourtDatasetSchemaVersion.V3, camera=camera)
+        calibrated = cast(list[dict[str, object]], dataset["samples"])[0]
     scene_id = schema.upper()
     dataset_schema = (
         COURT_DATASET_SCHEMA_V2 if schema == "v2" else COURT_DATASET_SCHEMA_V3
@@ -206,6 +228,13 @@ def _write_synthetic_court_singleton(
         projection = _singleton_projection(sample_id, schema=schema)
         target = _singleton_target()
         camera = _singleton_camera(sample_id, sample_index)
+        if calibrated is not None:
+            projection = deepcopy(cast(dict[str, object], calibrated["projection"]))
+            projection["camera_id"] = sample_id
+            target = deepcopy(cast(dict[str, object], calibrated["target_court"]))
+            camera = deepcopy(cast(dict[str, object], calibrated["camera"]))
+            camera["camera_id"] = sample_id
+            camera["source_frame_index"] = sample_index
         metadata = {"fixture": schema}
         labels = {
             "schema": sample_schema,
@@ -342,16 +371,20 @@ def _source_files(root: Path) -> dict[str, str]:
     }
 
 
-@pytest.fixture
-def court_roots(tmp_path: Path) -> Path:
+def _prepare_court_roots(tmp_path: Path, *, calibrated_pose: bool = False) -> Path:
     data_root = tmp_path / "data"
     _write_tennis_court_detector(data_root / "upstream")
     pack_tennis_fixture(
         data_root / "upstream", data_root / "court_detection/tennis_court_detector-v1"
     )
     singleton_root = data_root / "synthetic_data_generation" / "scenes"
-    _write_synthetic_court_singleton(singleton_root, schema="v3")
+    _write_synthetic_court_singleton(singleton_root, schema="v3", calibrated_pose=calibrated_pose)
     return tmp_path
+
+
+@pytest.fixture
+def court_roots(tmp_path: Path) -> Path:
+    return _prepare_court_roots(tmp_path)
 
 
 def test_mixed_datamodule_uses_both_real_input_pipelines_in_each_batch(
@@ -528,21 +561,9 @@ def test_shared_geometry_keeps_kp_and_line_correspondence(
         assert bool(line[y_start:y_end, x_start:x_end].any())
 
 
-@pytest.mark.parametrize(
-    ("source", "kp_channels"),
-    [
-        ("tennis_court_detector", 14),
-        ("synthetic_court", 14),
-    ],
-)
-def test_pipeline_bound_four_head_forward_loss_backward(
-    monkeypatch: pytest.MonkeyPatch,
-    court_roots: Path,
-    source: str,
-    kp_channels: int,
+def _configure_tiny_model(
+    config: DictConfig, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = _compose(court_roots, source=source, processing="all")
-    batch, bundle = _source_batch(config)
     from src.tasks.court_detection.models import dinov3_dpt
     from tests.unit.tasks.court_detection.models.test_dinov3_dpt import (
         FakeDINOv3,
@@ -564,6 +585,24 @@ def test_pipeline_bound_four_head_forward_loss_backward(
     for kind in ("kp", "seg", "line", "semantic_line"):
         config.model.dense_head[kind].hidden_channels = 8
         config.model.dense_head[kind].depth = 1
+
+
+@pytest.mark.parametrize(
+    ("source", "kp_channels"),
+    [
+        ("tennis_court_detector", 14),
+        ("synthetic_court", 14),
+    ],
+)
+def test_pipeline_bound_four_head_forward_loss_backward(
+    monkeypatch: pytest.MonkeyPatch,
+    court_roots: Path,
+    source: str,
+    kp_channels: int,
+) -> None:
+    config = _compose(court_roots, source=source, processing="all")
+    batch, bundle = _source_batch(config)
+    _configure_tiny_model(config, monkeypatch)
     pair = build_court_detection_pair(
         config,
         target_bundle=bundle,
@@ -583,6 +622,36 @@ def test_pipeline_bound_four_head_forward_loss_backward(
     }
     assert torch.isfinite(result.loss)
     assert any(parameter.grad is not None for parameter in pair.model.parameters())
+
+
+@pytest.mark.parametrize("pose_enabled", [False, True])
+def test_mixed_training_qualitative_saves_only_four_dense_pngs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pose_enabled: bool,
+) -> None:
+    court_roots = _prepare_court_roots(tmp_path, calibrated_pose=True)
+    config = _compose_mixed(court_roots)
+    config.loss.pose.enabled = pose_enabled
+    if pose_enabled:
+        config.loss.pose.translation_weight = 1.0
+        config.loss.pose.rotation_weight = 1.0
+        config.loss.pose.focal_weight = 1.0
+    _configure_tiny_model(config, monkeypatch)
+    standard, mixed = resolve_training_config(config)
+    datamodule = CourtDetectionDataModule(standard, mixed_config=mixed)
+    datamodule.setup("fit")
+    batch = next(iter(datamodule.train_dataloader()))
+    assert cast(torch.Tensor, batch["pose_supervision_mask"]).sum() == int(pose_enabled)
+    module = CourtDetectionLightningModule(config, target_bundle=datamodule.target_bundle_spec)
+    module.eval()
+    output_dir = court_roots / "qualitative"
+    module.render_qualitative_samples([batch], [{}], output_dir, None, 1, 0)
+    assert {path.name for path in output_dir.iterdir()} == {
+        f"court_{kind}_batch00.png" for kind in ("kp", "seg", "line", "semantic_line")
+    }
+    for path in output_dir.iterdir():
+        with Image.open(path) as image:
+            assert image.format == "PNG"
+            assert image.width > 0 and image.height > 0
 
 
 def _source_batch(

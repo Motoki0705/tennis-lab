@@ -1,0 +1,135 @@
+paths:
+  project_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1031-qualitative-schedule
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+  artifact_root: /home/kamimura/projects/tennis-lab/outputs
+  output_root: /home/kamimura/projects/tennis-lab/outputs
+  cache_root: /home/kamimura/projects/tennis-lab/.cache
+  external_asset_root: /home/kamimura/projects/tennis-lab/third_party
+data:
+  dataset_dir: player_detection/chat-player-v1
+  batch_size: 2
+  eval_batch_size: 4
+  num_workers: 0
+  pin_memory: false
+  train_samples_per_epoch: 8000
+  val_frame_stride: 5
+  test_frame_stride: 1
+  selection:
+    require_reviewed: true
+    require_located_players: true
+    min_visible_box_px: 4.0
+  input_size:
+    short_side: 800
+    max_long_side: 1333
+  augmentation:
+    hflip_prob: 0.5
+    short_side_choices:
+    - 608
+    - 640
+    - 672
+    - 704
+    - 736
+    - 800
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+model:
+  name: dino_4scale_swin_l
+  repository: DINO
+  init_checkpoint: dino/checkpoint0029_4scale_swin.pth
+  use_checkpoint: true
+  backbone_freeze_keywords:
+  - patch_embed
+  - layers.0.
+  - layers.1.
+  backbone_lr_scale: 0.1
+training:
+  trainer:
+    max_epochs: 8
+    gradient_clip_val: 0.1
+    deterministic: false
+    precision: 32-true
+    log_every_n_steps: 50
+    check_val_every_n_epoch: 1
+    accumulate_grad_batches: 2
+    reload_dataloaders_every_n_epochs: 0
+    enable_progress_bar: true
+    enable_model_summary: true
+    benchmark: false
+  learning_rate: 3.0e-05
+  weight_decay: 0.0001
+  warmup_steps: 300
+  warmup_epochs: null
+  min_lr: 3.0e-07
+  steps_per_epoch: null
+  optimizer:
+    name: adamw
+    betas:
+    - 0.9
+    - 0.999
+  compile:
+    enabled: false
+    backend: inductor
+    mode: default
+    fullgraph: false
+    dynamic: false
+  matmul_precision: high
+  allow_tf32: true
+  checkpoint:
+    enabled: true
+    filename: player-dino-{epoch:02d}
+    monitor: val/map
+    mode: max
+    save_top_k: 1
+    save_last: true
+  early_stopping:
+    enabled: true
+    monitor: val/map
+    mode: max
+    patience: 3
+    min_delta: 0.0001
+    check_on_train_epoch_end: false
+  lr_monitor:
+    enabled: true
+    interval: step
+  qualitative_logging:
+    enabled: true
+    every_n_epochs: 1
+    num_samples: 2
+    selection_mode: fixed_indices
+    selected_indices:
+    - 0
+    - 1
+  gan:
+    enabled: false
+    target_weight: 0.0
+    warmup_epochs: 1
+    generator_gradient_clip_val: null
+    discriminator_gradient_clip_val: null
+    transition:
+      start_epoch: 0
+qualitative:
+  annotation_root: chat_annotation
+  max_frames: 60
+  frame_stride: 2
+  batch_size: 2
+  display_width: 640
+run:
+  output_dir: player_detection/evaluate/issue-1031-qualitative/20261008b
+  seed: 42
+  gpus: 1
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+  test_after_fit: true
+  artifact_store:
+    mode: local
+    remote: null
+    remote_root: null
+    sync_interval_seconds: null
+evaluation:
+  score_threshold: 0.3
+  iou_threshold: 0.5
+  max_detections: 100

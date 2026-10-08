@@ -111,17 +111,10 @@ class CourtDetectionLightningModule(BaseLightningModule):
             isinstance(self.model_io, CourtPoseModelIOAdapter)
             and self.model_io.consistency_instrumented
         )
-        self.qualitative_renderers: dict[CourtTargetKind, CourtQualitativeRenderer] = (
-            {}
-            if self.pose_variant
-            else {
-                kind: build_court_qualitative_renderer(
-                    self.model_io,
-                    kind=kind,
-                )
-                for kind in resolved_bundle.kinds
-            }
-        )
+        self.qualitative_renderers: dict[CourtTargetKind, CourtQualitativeRenderer] = {
+            kind: build_court_qualitative_renderer(self.model_io, kind=kind)
+            for kind in resolved_bundle.kinds
+        }
         self._stage_metrics: dict[str, dict[CourtTargetKind, CourtDetectionMetrics]] = {
             stage: {
                 kind: CourtDetectionMetrics(
@@ -901,8 +894,6 @@ class CourtDetectionLightningModule(BaseLightningModule):
         epoch: int,
     ) -> None:
         _ = (outputs, epoch)
-        if self.pose_variant:
-            return
         model_io = self.model_io
         device = next(self.parameters()).device
         style = self.qualitative_style.build()
@@ -913,11 +904,12 @@ class CourtDetectionLightningModule(BaseLightningModule):
             )
             with torch.no_grad():
                 call = model_io.prepare_training_batch(batch)
-                logits = cast(
-                    CourtLogits,
+                output = cast(
+                    CourtLogits | CourtModelOutput,
                     self.model(*call.model_call.model_args),
                 )
-            model_io.validate_logits(logits, call.model_call)
+            model_io.validate_logits(output, call.model_call)
+            logits = output.dense_logits if isinstance(output, CourtModelOutput) else output
             for kind in self.target_bundle.kinds:
                 frames_rgb = self.qualitative_renderers[kind].render(
                     batch=batch,
