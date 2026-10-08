@@ -351,6 +351,25 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
     ),
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
+    # Native RGB preprocessing guards only static dtype/shape metadata. These
+    # deliberately reject ambiguous inputs; fullgraph capture is covered by
+    # test_native_mdd.py and the real CUDA/Inductor numerical diagnostic.
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.forward",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.forward",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.luminance_to_mdd",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.luminance_to_mdd",
+        "Python shape/value validation branch",
+    ): 1,
     (
         "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
         "Python assert",
