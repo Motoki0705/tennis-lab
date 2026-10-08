@@ -1,0 +1,83 @@
+{
+  "task": "player_detection",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_detection/chat-player-v1-e8-best-epoch03.ckpt",
+  "commit": "1dcf9407897cefc38842fe02e57e6895c008e6f6",
+  "status": "passed",
+  "checkpoint_sha256": "f14401da5214c3f32f44171c466b5775e7daebf6bd5236c95508b3c6d68d7e05",
+  "sample_indices": [
+    0,
+    347
+  ],
+  "mode": "standalone validation; interval=1; no optimizer or fit",
+  "checkpoint_epoch": 3,
+  "checkpoint_global_step": 8000,
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "torch": "2.13.0+cu130",
+  "lightning": "2.6.5",
+  "state_tensor_count": 716,
+  "selected_samples": [
+    {
+      "dataset_index": 0,
+      "store_row": 21465,
+      "clip_index": 29,
+      "clip_id": "2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621",
+      "source_id": "2Fa16bdg8pI",
+      "split": "val",
+      "video_sha256": "6e276f8f45c014602cde2431c5e4fecdd1e83cb9f41cc36e41dd8536f84bf451",
+      "frame_count": 375,
+      "nominal_fps": "25",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "dataset_index": 347,
+      "store_row": 41343,
+      "clip_index": 64,
+      "clip_id": "5T2anHdqhXU__2d272927448ff473__f000000425-000000750",
+      "source_id": "5T2anHdqhXU",
+      "split": "val",
+      "video_sha256": "b15a34ea448ec65a0c720236cfa65f7298bea7b65b33c5517b6a970da8af8959",
+      "frame_count": 375,
+      "nominal_fps": "25",
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "strict_load": true,
+  "artifacts": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/player_clip0029.gif",
+      "sha256": "1956e1fc3d46ccbef6f4d5d46f09e63a460de72e98bdbc3ed610f7295a97e5b6",
+      "bytes": 6657869,
+      "width": 640,
+      "height": 360,
+      "frames": 60
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/issue-1031-qualitative/20261008b/logs/version_0/qualitative/epoch_0000/player_clip0064.gif",
+      "sha256": "9321b6c14d57f18108a77a70c027006aa7835a2023822509173253891f1ac6b1",
+      "bytes": 6730754,
+      "width": 640,
+      "height": 360,
+      "frames": 60
+    }
+  ],
+  "tensorboard_image_tags": [
+    "qualitative/player_detection/2Fa16bdg8pI__403208cbe9abb73c__f000000296-000000621",
+    "qualitative/player_detection/5T2anHdqhXU__2d272927448ff473__f000000425-000000750"
+  ],
+  "callback_state": {
+    "last_logged_epoch": 1
+  },
+  "weights_unchanged": true,
+  "validation_metrics_subset_only": {
+    "val/map": 0.6225247383117676,
+    "val/map_50": 1.0,
+    "val/map_75": 0.5049505233764648,
+    "val/precision": 1.0,
+    "val/recall": 0.75,
+    "val/f1": 0.8571428656578064
+  },
+  "peak_cuda_allocated_mib": 2644.515625,
+  "elapsed_seconds": 64.6915778409998
+}
