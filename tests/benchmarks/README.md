@@ -17,6 +17,12 @@ pipeline速度が変わるため、GPU計算だけの速度とは分けて扱う
 通常CLIの学習→checkpoint→epoch再開→保存precisionでの評価を通す。testは使わない。
 計測結果と推奨設定は[学習レシピ](../../src/tasks/ball_detection/training/CONV2D_QUERY_ONLY_RECIPE.md)を参照。
 
+`ball_mdd_cpu_profile.py --manifest <frozen.json> --output <new.json> --case normal|preverified|cached_input`
+はCPU readerの検証・JPEG・輝度/MDD・collate/IPCを切り分ける。`CUDA_VISIBLE_DEVICES=''`が必須で、
+GPU/model/pin memory/H2Dを計測しない。先頭96窓を同じworkerで2回読み、事前検証の費用は別に保存する。
+`cached_input`は1個の実MDDを反復して転送側を測る診断であり、通常データの学習速度ではない。
+時間の意味と結果は[CPUボトルネック調査](../../knowledge/nodes/ball_detection/000028-run-i986-query-cpu-input-20261008.md)を参照。
+
 ## 人物対応の再較正準備
 
 `association_recalibration_features.py --phase plan --repo <main root> --report <new output>` は
