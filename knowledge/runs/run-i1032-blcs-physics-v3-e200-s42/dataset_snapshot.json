@@ -1,0 +1,19 @@
+{
+  "source": "data/blcs/single_object",
+  "snapshot": "data/blcs/single_object-physics-v3-cc863cacd-20261007",
+  "source_copy_all_files_equal": true,
+  "file_count": 59006,
+  "total_bytes": 63359688,
+  "manifest_sha256": "36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544",
+  "split_counts": {
+    "train": 800,
+    "val": 100,
+    "test": 100
+  },
+  "scene_schema_counts": {
+    "blcs_generated_dataset_v3": 1000
+  },
+  "training_code_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+  "generator_commit": "not recorded by generator; local data matched to PR1038 via schema and metadata, not independently proven",
+  "captured_utc": "2026-10-07T00:43:49Z"
+}

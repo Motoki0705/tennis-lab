@@ -1,0 +1,24 @@
+{
+  "scene_count": 88,
+  "valid_frames": 11264,
+  "all_frames": 11264,
+  "scene_ids_equal_frozen_test_order": true,
+  "all_predictions_finite": true,
+  "reported": {
+    "position_error_m": 0.265211218629371,
+    "position_accuracy_0.3m": 0.7576349431818182,
+    "endpoint_error_m": 0.7294378669678487
+  },
+  "recomputed_cuda_bf16_arithmetic_on_cpu": {
+    "position_error_m": 0.26521121795204555,
+    "position_accuracy_0.3m": 0.7576349431818182,
+    "endpoint_error_m": 0.7294378709471361
+  },
+  "float64_saved_coordinate_diagnostic": {
+    "position_error_m": 0.2655917613776192,
+    "position_accuracy_0.3m": 0.7570134943181818,
+    "endpoint_error_m": 0.7270064204670785
+  },
+  "diagnostic_note": "Float64 recomputation of stored normalized coordinates omits the original bf16 metric rounding; it is not a second inference or a checkpoint selection criterion.",
+  "predictions_sha256": "43b9f39a3f29a70a2c243e3c525d08ed5f01bb26bfb43316a6c1663f632e9bd9"
+}
