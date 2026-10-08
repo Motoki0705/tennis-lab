@@ -147,6 +147,10 @@ def main() -> None:
                                         process_io_delta={k: v - initial_io[k] for k, v in process_io().items()})
     dataset: Dataset[dict[str, Any]] = data
     if args.case == "cached_input":
+        report["requested_window_sequence_sha256"] = report.pop("window_sequence_sha256")
+        report["cached_source_window_index"] = indices[0]
+        report["window_sequence_sha256"] = hashlib.sha256(
+            json.dumps([indices[0]] * args.windows).encode()).hexdigest()
         sample = data[indices[0]]
         dataset = CachedInput(sample, args.windows)
         indices = list(range(args.windows))
