@@ -6,7 +6,7 @@
 
 `ball_mdd_query_gpu_sweep.sh <frozen-manifest.json> <conv2d-query_only.yaml> <new-report-dir> [compute|pipeline]`
 を共有training queueの`resource=all`で実行する。各BS/精度を独立CUDA processで測り、
-computeは実train入力をGPU上に固定、pipelineはJPEG/hash/MDD生成を含める。
+computeは実train RGBをGPU上に固定、pipelineはCPUのJPEG/hash/uint8読込も含める。MDD生成はモデル内。
 trainだけで短いoptimizer updateを行い、test/validationの精度評価や本学習は行わない。
 OOMもJSONに残す。allocatorはGPU容量の90%を上限とするため、無制限での最大BSの証明ではない。
 各caseの入力hash、環境、warmupを除いた速度、VRAM、lossとgradient normを保存する。
@@ -18,10 +18,15 @@ pipeline速度が変わるため、GPU計算だけの速度とは分けて扱う
 計測結果と推奨設定は[学習レシピ](../../src/tasks/ball_detection/training/CONV2D_QUERY_ONLY_RECIPE.md)を参照。
 
 `ball_mdd_cpu_profile.py --manifest <frozen.json> --output <new.json> --case normal|preverified|cached_input`
-はCPU readerの検証・JPEG・輝度/MDD・collate/IPCを切り分ける。`CUDA_VISIBLE_DEVICES=''`が必須で、
+はCPU readerの検証・JPEG・RGB変換/metadata・collate/IPCを切り分ける。`CUDA_VISIBLE_DEVICES=''`が必須で、
 GPU/model/pin memory/H2Dを計測しない。先頭96窓を同じworkerで2回読み、事前検証の費用は別に保存する。
-`cached_input`は1個の実MDDを反復して転送側を測る診断であり、通常データの学習速度ではない。
+`cached_input`は1個の実入力tensor（現行はRGB uint8）を反復して転送側を測る診断であり、通常データの学習速度ではない。
+旧CPU MDD計測はknowledge bundle内の当時のscript/commitで再現する。
 時間の意味と結果は[CPUボトルネック調査](../../knowledge/nodes/ball_detection/000028-run-i986-query-cpu-input-20261008.md)を参照。
+
+`ball_native_rgb_sweep.sh`はGPU常駐/reader込みの各条件でeagerとcompileを同じBF16・BS1で測る。
+`ball_native_rgb_correctness.py`は3 source×3 FPSのFP32 MDDを旧CPU式と照合し、
+BF16 forward/backward・state復元・compile graphを確認する。いずれも共有queueの`resource=all`で実行する。
 
 ## 人物対応の再較正準備
 

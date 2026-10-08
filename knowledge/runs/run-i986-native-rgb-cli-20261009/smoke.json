@@ -1,0 +1,46 @@
+{
+  "status": "ok",
+  "purpose": "integration diagnostic, not model quality",
+  "queue_run_id": "1791474022025651242_825406_i986-native-rgb-compiled-cli-v1",
+  "train_clips": 3,
+  "val_clips": 3,
+  "test_clips": 0,
+  "train_windows": 9,
+  "val_windows": 9,
+  "optimizer_updates": 24,
+  "precision": "bf16",
+  "batch_size": 1,
+  "workers": 8,
+  "input_contract": {
+    "schema": "rgb_uint8_native_mdd.v1",
+    "layout": "B,T,3,H,W",
+    "color_order": "RGB",
+    "dtype": "uint8",
+    "value_range": [
+      0,
+      255
+    ],
+    "computation_dtype": "float32",
+    "normalization": "divide_255",
+    "luminance": "0.114*B + 0.587*G + 0.299*R",
+    "first_mdd_frame": "zero",
+    "mdd_a": 0.2,
+    "mdd_b": 0.15
+  },
+  "compilation": {
+    "mode": "default",
+    "backend": "inductor",
+    "fullgraph": true,
+    "dynamic": false,
+    "recompile_limit": 8,
+    "backward_pass_autocast": "off",
+    "unique_graphs": 1,
+    "graph_breaks": {}
+  },
+  "cuda_rng_saved": true,
+  "resumed": true,
+  "external_eval_restored_precision": true,
+  "parent_manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "excerpt_sha256": "bf9008c5d616ad8b8f6244efe37aa7373e47b1d229256a23d0adb807d3ff42ff",
+  "checkpoint_sha256": "bc2121b84472eb7f85c9468d6155841afd4d2349881373c35a473b5412ec8c6e"
+}

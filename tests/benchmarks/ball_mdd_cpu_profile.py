@@ -117,18 +117,18 @@ def main() -> None:
     if multiprocessing.get_start_method() != "fork":
         raise ValueError("This diagnostic measures Linux fork workers with inherited caches")
     worker_init(-1)
-    reader.luminance_to_mdd = instrument(reader.luminance_to_mdd, "mdd")
     reader.dual_sha256 = instrument(reader.dual_sha256, "hash")
-    reader.CoordinateWindowDataset._verify_clip = instrument(reader.CoordinateWindowDataset._verify_clip, "verify")
+    reader.CoordinateWindowDataset._verify_clip = instrument(reader.CoordinateWindowDataset._verify_clip, "verify")  # type: ignore[method-assign]
     BallFrameStore.read_bgr = instrument(BallFrameStore.read_bgr, "read_bgr")
     BallFrameStore.read_jpeg = instrument(BallFrameStore.read_jpeg, "jpeg_bytes")
     setup_start = time.perf_counter()
-    data = TimedDataset(args.manifest, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
+    data = TimedDataset(args.manifest, split="train", requires_pose=False)
     indices = list(FPSMixSampler(data, windows_per_epoch=6000, seed=42))[:args.windows]
     code = coordinate_source_identity()
     code["source_sha256"]["src/utils/checksum.py"] = hashlib.sha256(
         (Path(code["directory"]) / "src/utils/checksum.py").read_bytes()).hexdigest()
-    report: dict[str, Any] = dict(schema="mdd_cpu_profile.v1", case=args.case, workers=args.workers,
+    report: dict[str, Any] = dict(schema="mdd_cpu_profile.v2", case=args.case, workers=args.workers,
+        payload_contract="RGB uint8 T,3,H,W; fixed MDD is inside the model, not this CPU reader",
         windows=args.windows, torch_threads_per_process=1, opencv_threads=1,
         manifest_sha256=dual_sha256(args.manifest), source_commit=code["base_commit"], code=code,
         diagnostic_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -173,9 +173,9 @@ def main() -> None:
         seconds = time.perf_counter() - start
         # Stage sums are worker service time, not additive critical-path time:
         # workers overlap and arrival delay includes queue residence and IPC.
-        keys = ("prepare", "verify", "hash", "read_bgr", "jpeg_bytes", "mdd", "collate")
+        keys = ("prepare", "verify", "hash", "read_bgr", "jpeg_bytes", "collate")
         stage_means = {key: statistics.mean(r.get(key + "_seconds", 0.) for r in rows) for key in keys}
-        stage_means["luminance_and_metadata"] = stage_means["prepare"] - stage_means["verify"] - stage_means["read_bgr"] - stage_means["mdd"]
+        stage_means["rgb_and_metadata"] = stage_means["prepare"] - stage_means["verify"] - stage_means["read_bgr"]
         result = dict(repeat=repeat, seconds=seconds, windows_per_second=len(rows) / seconds,
                       first_batch_seconds=rows[0]["consumer_wait_seconds"],
                       without_first_batch_windows_per_second=(len(rows)-1)/(seconds-rows[0]["consumer_wait_seconds"]),
