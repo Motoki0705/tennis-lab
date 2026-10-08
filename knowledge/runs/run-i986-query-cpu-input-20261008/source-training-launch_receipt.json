@@ -1,0 +1,22 @@
+{
+  "stage": "main_training",
+  "authorized_by": "User: では、本学習を開始してください。",
+  "observed_at": "2026-10-08T12:42:39.599725+00:00",
+  "queue_job": "1791463137499163561_670665_i986-query-bf16-s42-u60000-v1",
+  "code_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-train-s42-u60000-v1",
+  "commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+  "total_optimizer_updates": 60000,
+  "progress_at_launch_check": {
+    "epoch": 0,
+    "global_step": 250,
+    "windows": 250,
+    "train_loss": 0.11660055563972392,
+    "grad_norm": 1.5907604694366455,
+    "learning_rate": 0.0001,
+    "train_seconds": 177.0287182259999,
+    "windows_per_second": 1.412200249232121
+  },
+  "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1791463137499163561_670665_i986-query-bf16-s42-u60000-v1.log",
+  "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c"
+}

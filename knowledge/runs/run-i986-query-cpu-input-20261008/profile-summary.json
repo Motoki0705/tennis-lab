@@ -1,0 +1,274 @@
+{
+  "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+  "scope": "CPU-only diagnostic; no CUDA, pinning, H2D or model execution",
+  "cases": {
+    "normal-workers8": {
+      "schema": "mdd_cpu_profile.v1",
+      "case": "normal",
+      "workers": 8,
+      "windows": 96,
+      "torch_threads_per_process": 1,
+      "opencv_threads": 1,
+      "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+      "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+      "window_sequence_sha256": "5afe5531baafaaab0e05726569410366aefe027329cc09c2cd6212294618ad71",
+      "pin_memory": false,
+      "device": "cpu",
+      "prefetch_factor": 1,
+      "model_executed": false,
+      "setup_seconds": 1.254159135001828,
+      "caveat": "first verification does not imply a cold OS page cache; no GPU/H2D/pinned-memory measurement",
+      "rounds": [
+        {
+          "repeat": 0,
+          "seconds": 80.44016952699894,
+          "windows_per_second": 1.193433586285252,
+          "first_batch_seconds": 4.674156238004798,
+          "without_first_batch_windows_per_second": 1.2538603507834272,
+          "hash_misses": 95,
+          "hash_logical_bytes": 11978882934,
+          "mean_stage_seconds": {
+            "prepare": 4.6323573252390515,
+            "verify": 1.548690705646095,
+            "hash": 1.5470639697499184,
+            "read_bgr": 0.13784342332261681,
+            "jpeg_bytes": 0.0025270661973687916,
+            "mdd": 2.347304478364473,
+            "collate": 0.17607809935414784,
+            "luminance_and_metadata": 0.5985187179058666
+          },
+          "mean_prepare_cpu_seconds": 4.55515243778125,
+          "mean_after_collate_seconds": 1.6694923647601172,
+          "assignment_round_robin_verified": true,
+          "mean_stage_cpu_seconds": {
+            "verify": 1.5143648029270829,
+            "hash": 1.5127669812604168,
+            "read_bgr": 0.13561106643750023,
+            "jpeg_bytes": 0.0025825633229159123,
+            "mdd": 2.3162356171354173,
+            "collate": 0.17349360510416653
+          },
+          "max_prepare_seconds": 20.215245940002205
+        },
+        {
+          "repeat": 1,
+          "seconds": 57.25209542799712,
+          "windows_per_second": 1.6767945222325362,
+          "first_batch_seconds": 15.369294049996824,
+          "without_first_batch_windows_per_second": 2.26823414084953,
+          "hash_misses": 0,
+          "hash_logical_bytes": 0,
+          "mean_stage_seconds": {
+            "prepare": 4.00254567777074,
+            "verify": 0.0001453695423000075,
+            "hash": 0.0,
+            "read_bgr": 0.263166057396802,
+            "jpeg_bytes": 0.0034356516025582096,
+            "mdd": 2.822292719937195,
+            "collate": 0.24448848419759392,
+            "luminance_and_metadata": 0.9169415308944435
+          },
+          "mean_prepare_cpu_seconds": 3.929781138447916,
+          "mean_after_collate_seconds": 0.4912219093019606,
+          "assignment_round_robin_verified": true,
+          "mean_stage_cpu_seconds": {
+            "verify": 0.00014384374999965033,
+            "hash": 0.0,
+            "read_bgr": 0.2595748403124974,
+            "jpeg_bytes": 0.0035331440520838253,
+            "mdd": 2.767171476302083,
+            "collate": 0.24114899592708272
+          },
+          "max_prepare_seconds": 14.309572891004791
+        }
+      ],
+      "rss_max_kib": 960032,
+      "raw_sha256": "1cc8864271f3fa55f17477fdb6c536b7dc12d6f273d92132ec6c156b6392afde"
+    },
+    "preverified-workers8": {
+      "schema": "mdd_cpu_profile.v1",
+      "case": "preverified",
+      "workers": 8,
+      "windows": 96,
+      "torch_threads_per_process": 1,
+      "opencv_threads": 1,
+      "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+      "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+      "window_sequence_sha256": "5afe5531baafaaab0e05726569410366aefe027329cc09c2cd6212294618ad71",
+      "pin_memory": false,
+      "device": "cpu",
+      "prefetch_factor": 1,
+      "model_executed": false,
+      "setup_seconds": 1.3190934320009546,
+      "caveat": "first verification does not imply a cold OS page cache; no GPU/H2D/pinned-memory measurement",
+      "preverification": {
+        "seconds": 122.69068309199793,
+        "clips": 89,
+        "process_io_delta": {
+          "rchar": 10853632923,
+          "wchar": 0,
+          "syscr": 10573,
+          "syscw": 0,
+          "read_bytes": 106164224,
+          "write_bytes": 0,
+          "cancelled_write_bytes": 0
+        }
+      },
+      "rounds": [
+        {
+          "repeat": 0,
+          "seconds": 48.35662226899876,
+          "windows_per_second": 1.985250323440089,
+          "first_batch_seconds": 5.206530769995879,
+          "without_first_batch_windows_per_second": 2.2016175794713035,
+          "hash_misses": 0,
+          "hash_logical_bytes": 0,
+          "mean_stage_seconds": {
+            "prepare": 3.372033305792229,
+            "verify": 8.097565622241139e-05,
+            "hash": 0.0,
+            "read_bgr": 0.1936181757984438,
+            "jpeg_bytes": 0.0038377812499372035,
+            "mdd": 2.1085077956663554,
+            "collate": 0.1851318856669574,
+            "luminance_and_metadata": 1.0698263586712073
+          },
+          "mean_prepare_cpu_seconds": 3.3463072970625,
+          "mean_after_collate_seconds": 0.4297718799473387,
+          "assignment_round_robin_verified": true,
+          "mean_stage_cpu_seconds": {
+            "verify": 8.119886458304657e-05,
+            "hash": 0.0,
+            "read_bgr": 0.19208698202083396,
+            "jpeg_bytes": 0.003975303000000032,
+            "mdd": 2.0945701012812497,
+            "collate": 0.1839828997083339
+          },
+          "max_prepare_seconds": 4.567497995994927
+        },
+        {
+          "repeat": 1,
+          "seconds": 46.78963762700005,
+          "windows_per_second": 2.051736343104376,
+          "first_batch_seconds": 4.634185150003759,
+          "without_first_batch_windows_per_second": 2.253563760271351,
+          "hash_misses": 0,
+          "hash_logical_bytes": 0,
+          "mean_stage_seconds": {
+            "prepare": 3.2130406518026575,
+            "verify": 7.327610402777888e-05,
+            "hash": 0.0,
+            "read_bgr": 0.17576915954282413,
+            "jpeg_bytes": 0.0032616535188481066,
+            "mdd": 2.0575716191873803,
+            "collate": 0.20536466064595515,
+            "luminance_and_metadata": 0.9796265969684255
+          },
+          "mean_prepare_cpu_seconds": 3.175913460208333,
+          "mean_after_collate_seconds": 0.42883048416638303,
+          "assignment_round_robin_verified": true,
+          "mean_stage_cpu_seconds": {
+            "verify": 7.397559375066365e-05,
+            "hash": 0.0,
+            "read_bgr": 0.1738100395416652,
+            "jpeg_bytes": 0.00335193131250063,
+            "mdd": 2.03350355715625,
+            "collate": 0.202837253416667
+          },
+          "max_prepare_seconds": 4.005514722004591
+        }
+      ],
+      "rss_max_kib": 962428,
+      "raw_sha256": "82de9eb4eb9d11767dd83b715161fa375b69e29d098e0f90bc46004034cce300"
+    },
+    "cached-input-workers8": {
+      "schema": "mdd_cpu_profile.v1",
+      "case": "cached_input",
+      "workers": 8,
+      "windows": 96,
+      "torch_threads_per_process": 1,
+      "opencv_threads": 1,
+      "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+      "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+      "window_sequence_sha256": "5afe5531baafaaab0e05726569410366aefe027329cc09c2cd6212294618ad71",
+      "pin_memory": false,
+      "device": "cpu",
+      "prefetch_factor": 1,
+      "model_executed": false,
+      "setup_seconds": 0.9566587779991096,
+      "caveat": "first verification does not imply a cold OS page cache; no GPU/H2D/pinned-memory measurement",
+      "rounds": [
+        {
+          "repeat": 0,
+          "seconds": 8.036151063999569,
+          "windows_per_second": 11.946017345301257,
+          "first_batch_seconds": 1.042080059,
+          "without_first_batch_windows_per_second": 13.582933306237697,
+          "hash_misses": 0,
+          "hash_logical_bytes": 0,
+          "mean_stage_seconds": {
+            "prepare": 0.0,
+            "verify": 0.0,
+            "hash": 0.0,
+            "read_bgr": 0.0,
+            "jpeg_bytes": 0.0,
+            "mdd": 0.0,
+            "collate": 0.21227467112536638,
+            "luminance_and_metadata": 0.0
+          },
+          "mean_prepare_cpu_seconds": 0.0,
+          "mean_after_collate_seconds": 0.45536766885372043,
+          "assignment_round_robin_verified": true,
+          "mean_stage_cpu_seconds": {
+            "verify": 0.0,
+            "hash": 0.0,
+            "read_bgr": 0.0,
+            "jpeg_bytes": 0.0,
+            "mdd": 0.0,
+            "collate": 0.20895201860416676
+          },
+          "max_prepare_seconds": 0.0
+        },
+        {
+          "repeat": 1,
+          "seconds": 7.126176288998977,
+          "windows_per_second": 13.471460164155614,
+          "first_batch_seconds": 0.6518538480013376,
+          "without_first_batch_windows_per_second": 14.673350125169437,
+          "hash_misses": 0,
+          "hash_logical_bytes": 0,
+          "mean_stage_seconds": {
+            "prepare": 0.0,
+            "verify": 0.0,
+            "hash": 0.0,
+            "read_bgr": 0.0,
+            "jpeg_bytes": 0.0,
+            "mdd": 0.0,
+            "collate": 0.19413317163487895,
+            "luminance_and_metadata": 0.0
+          },
+          "mean_prepare_cpu_seconds": 0.0,
+          "mean_after_collate_seconds": 0.4004576435105112,
+          "assignment_round_robin_verified": true,
+          "mean_stage_cpu_seconds": {
+            "verify": 0.0,
+            "hash": 0.0,
+            "read_bgr": 0.0,
+            "jpeg_bytes": 0.0,
+            "mdd": 0.0,
+            "collate": 0.19116004220833338
+          },
+          "max_prepare_seconds": 0.0
+        }
+      ],
+      "rss_max_kib": 1774936,
+      "raw_sha256": "70372daf8707fb42414b57db626d6ddd3cb2a2018ddf124b47c9305ff4a0dbe7"
+    }
+  },
+  "payload_bytes": {
+    "mdd_float32": 235929600,
+    "gray_float32": 117964800,
+    "rgb_uint8": 88473600
+  },
+  "diagnostic_script_sha256": "4673c95590b1eb19a20745cef0664b319fe482cf04335005b05d649ab3da95cc"
+}
