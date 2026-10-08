@@ -1,0 +1,414 @@
+{
+  "cold": {
+    "windows": 9,
+    "seconds": 7.07100824900408,
+    "top": [
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/coordinate_dataset.py",
+        "line": 117,
+        "function": "__getitem__",
+        "calls": 9,
+        "self_seconds": 1.221701621,
+        "total_seconds": 6.999350219
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/model_io/mdd.py",
+        "line": 16,
+        "function": "luminance_to_mdd",
+        "calls": 9,
+        "self_seconds": 1.8117549730000002,
+        "total_seconds": 3.3066716620000003
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/coordinate_dataset.py",
+        "line": 74,
+        "function": "_verify_clip",
+        "calls": 9,
+        "self_seconds": 0.000218192,
+        "total_seconds": 1.3490871180000001
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/utils/checksum.py",
+        "line": 43,
+        "function": "dual_sha256",
+        "calls": 4,
+        "self_seconds": 0.001917318,
+        "total_seconds": 1.3449372990000001
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'update' of '_sha256.sha256' objects>",
+        "calls": 242,
+        "self_seconds": 0.981012658,
+        "total_seconds": 0.981012658
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 355,
+        "function": "read_bgr",
+        "calls": 288,
+        "self_seconds": 0.010929101,
+        "total_seconds": 0.9204137000000001
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<imdecode>",
+        "calls": 288,
+        "self_seconds": 0.888996577,
+        "total_seconds": 0.888996577
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'new_zeros' of 'torch._C.TensorBase' objects>",
+        "calls": 9,
+        "self_seconds": 0.43374811700000004,
+        "total_seconds": 0.43374811700000004
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'clamp_min' of 'torch._C.TensorBase' objects>",
+        "calls": 18,
+        "self_seconds": 0.407054852,
+        "total_seconds": 0.407054852
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'sigmoid' of 'torch._C.TensorBase' objects>",
+        "calls": 18,
+        "self_seconds": 0.35985593400000004,
+        "total_seconds": 0.35985593400000004
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'clamp' of 'torch._C.TensorBase' objects>",
+        "calls": 18,
+        "self_seconds": 0.29385831900000003,
+        "total_seconds": 0.29385831900000003
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'astype' of 'numpy.ndarray' objects>",
+        "calls": 314,
+        "self_seconds": 0.19565459200000002,
+        "total_seconds": 0.19565459200000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/utils/checksum.py",
+        "line": 77,
+        "function": "<lambda>",
+        "calls": 246,
+        "self_seconds": 0.00041479,
+        "total_seconds": 0.190077231
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'read' of '_io.BufferedReader' objects>",
+        "calls": 246,
+        "self_seconds": 0.18966244100000001,
+        "total_seconds": 0.18966244100000001
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'update' of '_hashlib.HASH' objects>",
+        "calls": 330,
+        "self_seconds": 0.17122388000000002,
+        "total_seconds": 0.17122388000000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 348,
+        "function": "read_jpeg",
+        "calls": 288,
+        "self_seconds": 0.002879747,
+        "total_seconds": 0.013442708000000001
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/.venv/lib/python3.11/site-packages/numpy/_core/memmap.py",
+        "line": 359,
+        "function": "__getitem__",
+        "calls": 288,
+        "self_seconds": 0.0031360480000000002,
+        "total_seconds": 0.007278757
+      },
+      {
+        "file": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/typing.py",
+        "line": 1054,
+        "function": "__typing_subst__",
+        "calls": 288,
+        "self_seconds": 0.001803724,
+        "total_seconds": 0.005856037000000001
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/.venv/lib/python3.11/site-packages/numpy/_core/memmap.py",
+        "line": 312,
+        "function": "__array_finalize__",
+        "calls": 292,
+        "self_seconds": 0.00344967,
+        "total_seconds": 0.004153413
+      },
+      {
+        "file": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/typing.py",
+        "line": 168,
+        "function": "_type_check",
+        "calls": 288,
+        "self_seconds": 0.002823402,
+        "total_seconds": 0.004005085
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 340,
+        "function": "_shard",
+        "calls": 288,
+        "self_seconds": 0.0008294660000000001,
+        "total_seconds": 0.0022264340000000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/coordinate_manifest.py",
+        "line": 24,
+        "function": "clip_semantic_digest",
+        "calls": 4,
+        "self_seconds": 0.000377455,
+        "total_seconds": 0.001883965
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 311,
+        "function": "row_of",
+        "calls": 288,
+        "self_seconds": 0.0018246730000000002,
+        "total_seconds": 0.0018246730000000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 297,
+        "function": "clip_of",
+        "calls": 576,
+        "self_seconds": 0.001278651,
+        "total_seconds": 0.001278651
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/annotation_states.py",
+        "line": 63,
+        "function": "annotation_states",
+        "calls": 4,
+        "self_seconds": 0.00034838800000000004,
+        "total_seconds": 0.001134922
+      }
+    ]
+  },
+  "warm": {
+    "windows": 9,
+    "seconds": 5.837255213999015,
+    "top": [
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/coordinate_dataset.py",
+        "line": 117,
+        "function": "__getitem__",
+        "calls": 9,
+        "self_seconds": 1.258835369,
+        "total_seconds": 5.757235523
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/model_io/mdd.py",
+        "line": 16,
+        "function": "luminance_to_mdd",
+        "calls": 9,
+        "self_seconds": 1.8302875790000002,
+        "total_seconds": 3.3478896820000004
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 355,
+        "function": "read_bgr",
+        "calls": 288,
+        "self_seconds": 0.011144313000000001,
+        "total_seconds": 0.937110799
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<imdecode>",
+        "calls": 288,
+        "self_seconds": 0.906625962,
+        "total_seconds": 0.906625962
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'new_zeros' of 'torch._C.TensorBase' objects>",
+        "calls": 9,
+        "self_seconds": 0.440968817,
+        "total_seconds": 0.440968817
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'clamp_min' of 'torch._C.TensorBase' objects>",
+        "calls": 18,
+        "self_seconds": 0.41443439400000004,
+        "total_seconds": 0.41443439400000004
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'sigmoid' of 'torch._C.TensorBase' objects>",
+        "calls": 18,
+        "self_seconds": 0.363953756,
+        "total_seconds": 0.363953756
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'clamp' of 'torch._C.TensorBase' objects>",
+        "calls": 18,
+        "self_seconds": 0.297851519,
+        "total_seconds": 0.297851519
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'astype' of 'numpy.ndarray' objects>",
+        "calls": 306,
+        "self_seconds": 0.20580456200000002,
+        "total_seconds": 0.20580456200000002
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 348,
+        "function": "read_jpeg",
+        "calls": 288,
+        "self_seconds": 0.002904629,
+        "total_seconds": 0.012230204000000001
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/.venv/lib/python3.11/site-packages/numpy/_core/memmap.py",
+        "line": 359,
+        "function": "__getitem__",
+        "calls": 288,
+        "self_seconds": 0.0031303890000000003,
+        "total_seconds": 0.00722533
+      },
+      {
+        "file": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/typing.py",
+        "line": 1054,
+        "function": "__typing_subst__",
+        "calls": 288,
+        "self_seconds": 0.0018250620000000001,
+        "total_seconds": 0.005860993
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/.venv/lib/python3.11/site-packages/numpy/_core/memmap.py",
+        "line": 312,
+        "function": "__array_finalize__",
+        "calls": 288,
+        "self_seconds": 0.0034606130000000004,
+        "total_seconds": 0.004094941
+      },
+      {
+        "file": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/typing.py",
+        "line": 168,
+        "function": "_type_check",
+        "calls": 288,
+        "self_seconds": 0.002820679,
+        "total_seconds": 0.003999005
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 311,
+        "function": "row_of",
+        "calls": 288,
+        "self_seconds": 0.001848599,
+        "total_seconds": 0.001848599
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 297,
+        "function": "clip_of",
+        "calls": 576,
+        "self_seconds": 0.001347061,
+        "total_seconds": 0.001347061
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/coordinate_dataset.py",
+        "line": 74,
+        "function": "_verify_clip",
+        "calls": 9,
+        "self_seconds": 0.000133621,
+        "total_seconds": 0.001179271
+      },
+      {
+        "file": "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/typing.py",
+        "line": 159,
+        "function": "_type_convert",
+        "calls": 288,
+        "self_seconds": 0.00062702,
+        "total_seconds": 0.00113301
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/store.py",
+        "line": 340,
+        "function": "_shard",
+        "calls": 288,
+        "self_seconds": 0.0007650630000000001,
+        "total_seconds": 0.001064766
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method numpy.asarray>",
+        "calls": 297,
+        "self_seconds": 0.0009615240000000001,
+        "total_seconds": 0.0009615240000000001
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method builtins.isinstance>",
+        "calls": 1512,
+        "self_seconds": 0.0006566160000000001,
+        "total_seconds": 0.000713326
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method torch.from_numpy>",
+        "calls": 45,
+        "self_seconds": 0.000673362,
+        "total_seconds": 0.000673362
+      },
+      {
+        "file": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training/src/tasks/ball_detection/data/temporal_sampling.py",
+        "line": 33,
+        "function": "indices",
+        "calls": 9,
+        "self_seconds": 0.000376681,
+        "total_seconds": 0.0005945960000000001
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method torch.tensor>",
+        "calls": 9,
+        "self_seconds": 0.0005860710000000001,
+        "total_seconds": 0.0005860710000000001
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'reduce' of 'numpy.ufunc' objects>",
+        "calls": 45,
+        "self_seconds": 0.000532707,
+        "total_seconds": 0.000532707
+      }
+    ]
+  }
+}

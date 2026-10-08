@@ -7,11 +7,9 @@ import json
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader
 
 from src.tasks.ball_detection.data.coordinate_dataset import (
     CoordinateWindowDataset,
-    collate_coordinate_windows,
 )
 from src.tasks.ball_detection.models.mdd_pose import (
     MDDPoseConfig,
@@ -19,6 +17,7 @@ from src.tasks.ball_detection.models.mdd_pose import (
     MDDQueryDetector,
 )
 from src.tasks.ball_detection.training.coordinate_evaluation import evaluate_coordinates
+from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRuntime
 from src.tasks.base.visualization.inference_queue import shared_repository_root
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import (
@@ -56,6 +55,12 @@ def main() -> None:
     parser.add_argument("--split", choices=("val", "test"), required=True)
     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
     parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--precision", choices=("fp32", "bf16"),
+                        help="Defaults to the saved training precision; legacy v2 checkpoints were FP32")
+    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--pin-memory", action="store_true")
+    parser.add_argument("--prefetch-factor", type=int, default=1)
+    parser.add_argument("--cpu-threads", type=int, default=2)
     args = parser.parse_args()
     if args.batch_size < 1:
         parser.error("Batch size must be positive")
@@ -80,14 +85,21 @@ def main() -> None:
     model = MDDPoseDetector(config) if config.requires_pose else MDDQueryDetector(config)
     model.load_state_dict(saved["state_dict"], strict=True)
     device = torch.device(args.device)
+    # v2 checkpoints written before runtime controls existed were always FP32.
+    saved_precision = saved["training_state"]["recipe"]["runtime"]["precision"] if "training_state" in saved else "fp32"
+    precision = saved_precision if args.precision is None else args.precision
+    runtime = CoordinateRuntime(precision=precision, num_workers=args.num_workers, pin_memory=args.pin_memory,
+                                prefetch_factor=args.prefetch_factor, cpu_threads=args.cpu_threads)
+    runtime.configure(device)
     model.to(device)
     dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose,
                                       mdd_a=saved["mdd_a"], mdd_b=saved["mdd_b"])
-    loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=collate_coordinate_windows, num_workers=0)
-    report = evaluate_coordinates(model, loader, device, dataset.frame_steps)
+    loader = runtime.loader(dataset, batch_size=args.batch_size)
+    report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision)
     if dual_sha256(checkpoint) != checkpoint_hash or dual_sha256(manifest) != manifest_hash:
         raise ValueError("Checkpoint or manifest changed during evaluation")
-    report.update(checkpoint_sha256=checkpoint_hash, manifest_sha256=manifest_hash, split=args.split)
+    report.update(checkpoint_sha256=checkpoint_hash, manifest_sha256=manifest_hash, split=args.split,
+                  precision=precision, batch_size=args.batch_size, num_workers=args.num_workers)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("x") as stream:
         json.dump(report, stream, ensure_ascii=False, indent=2, allow_nan=False)

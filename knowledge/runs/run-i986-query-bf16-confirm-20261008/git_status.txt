@@ -1,0 +1,18 @@
+ M knowledge/nodes/ball_detection/.sequence
+ M src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+ M src/tasks/ball_detection/scripts/train_mdd_pose.py
+ M src/tasks/ball_detection/training/COORDINATE_TRAINING.md
+ A src/tasks/ball_detection/training/coordinate_checkpoint.py
+ M src/tasks/ball_detection/training/coordinate_evaluation.py
+ A src/tasks/ball_detection/training/coordinate_runtime.py
+ M tests/benchmarks/README.md
+ A tests/benchmarks/ball_mdd_query_gpu.py
+ A tests/benchmarks/ball_mdd_query_gpu_confirm.sh
+ A tests/benchmarks/ball_mdd_query_gpu_sweep.sh
+ M tests/integration/tasks/ball_detection/test_coordinate_training.py
+ A tests/unit/tasks/ball_detection/test_coordinate_runtime.py
+?? knowledge/nodes/ball_detection/000023-run-i986-query-gpu-capacity-20261008.md
+?? knowledge/nodes/ball_detection/000024-run-i986-query-gpu-reader-20261008.md
+?? knowledge/runs/run-i986-query-gpu-capacity-20261008/
+?? knowledge/runs/run-i986-query-gpu-reader-20261008/
+?? src/tasks/ball_detection/training/CONV2D_QUERY_ONLY_RECIPE.md

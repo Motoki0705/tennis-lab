@@ -1,0 +1,847 @@
+diff --git a/knowledge/nodes/ball_detection/.sequence b/knowledge/nodes/ball_detection/.sequence
+index 2bd5a0a98..a45fd52cc 100644
+--- a/knowledge/nodes/ball_detection/.sequence
++++ b/knowledge/nodes/ball_detection/.sequence
+@@ -1 +1 @@
+-22
++24
+diff --git a/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py b/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+index 739fa4204..d9958073b 100644
+--- a/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
++++ b/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+@@ -7,11 +7,9 @@ import json
+ from pathlib import Path
+ 
+ import torch
+-from torch.utils.data import DataLoader
+ 
+ from src.tasks.ball_detection.data.coordinate_dataset import (
+     CoordinateWindowDataset,
+-    collate_coordinate_windows,
+ )
+ from src.tasks.ball_detection.models.mdd_pose import (
+     MDDPoseConfig,
+@@ -19,6 +17,7 @@ from src.tasks.ball_detection.models.mdd_pose import (
+     MDDQueryDetector,
+ )
+ from src.tasks.ball_detection.training.coordinate_evaluation import evaluate_coordinates
++from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRuntime
+ from src.tasks.base.visualization.inference_queue import shared_repository_root
+ from src.utils.checksum import dual_sha256
+ from src.utils.configuration import (
+@@ -56,6 +55,12 @@ def main() -> None:
+     parser.add_argument("--split", choices=("val", "test"), required=True)
+     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
+     parser.add_argument("--batch-size", type=int, default=1)
++    parser.add_argument("--precision", choices=("fp32", "bf16"),
++                        help="Defaults to the saved training precision; legacy v2 checkpoints were FP32")
++    parser.add_argument("--num-workers", type=int, default=0)
++    parser.add_argument("--pin-memory", action="store_true")
++    parser.add_argument("--prefetch-factor", type=int, default=1)
++    parser.add_argument("--cpu-threads", type=int, default=2)
+     args = parser.parse_args()
+     if args.batch_size < 1:
+         parser.error("Batch size must be positive")
+@@ -80,14 +85,21 @@ def main() -> None:
+     model = MDDPoseDetector(config) if config.requires_pose else MDDQueryDetector(config)
+     model.load_state_dict(saved["state_dict"], strict=True)
+     device = torch.device(args.device)
++    # v2 checkpoints written before runtime controls existed were always FP32.
++    saved_precision = saved["training_state"]["recipe"]["runtime"]["precision"] if "training_state" in saved else "fp32"
++    precision = saved_precision if args.precision is None else args.precision
++    runtime = CoordinateRuntime(precision=precision, num_workers=args.num_workers, pin_memory=args.pin_memory,
++                                prefetch_factor=args.prefetch_factor, cpu_threads=args.cpu_threads)
++    runtime.configure(device)
+     model.to(device)
+     dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose,
+                                       mdd_a=saved["mdd_a"], mdd_b=saved["mdd_b"])
+-    loader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=collate_coordinate_windows, num_workers=0)
+-    report = evaluate_coordinates(model, loader, device, dataset.frame_steps)
++    loader = runtime.loader(dataset, batch_size=args.batch_size)
++    report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision)
+     if dual_sha256(checkpoint) != checkpoint_hash or dual_sha256(manifest) != manifest_hash:
+         raise ValueError("Checkpoint or manifest changed during evaluation")
+-    report.update(checkpoint_sha256=checkpoint_hash, manifest_sha256=manifest_hash, split=args.split)
++    report.update(checkpoint_sha256=checkpoint_hash, manifest_sha256=manifest_hash, split=args.split,
++                  precision=precision, batch_size=args.batch_size, num_workers=args.num_workers)
+     output.parent.mkdir(parents=True, exist_ok=True)
+     with output.open("x") as stream:
+         json.dump(report, stream, ensure_ascii=False, indent=2, allow_nan=False)
+diff --git a/src/tasks/ball_detection/scripts/train_mdd_pose.py b/src/tasks/ball_detection/scripts/train_mdd_pose.py
+index 395300fcc..5db6a7394 100644
+--- a/src/tasks/ball_detection/scripts/train_mdd_pose.py
++++ b/src/tasks/ball_detection/scripts/train_mdd_pose.py
+@@ -8,6 +8,7 @@ from __future__ import annotations
+ 
+ import argparse
+ import json
++import time
+ from dataclasses import asdict, replace
+ from pathlib import Path
+ from typing import Any
+@@ -18,14 +19,17 @@ from torch.utils.data import DataLoader
+ 
+ from src.tasks.ball_detection.data.coordinate_dataset import (
+     CoordinateWindowDataset,
+-    collate_coordinate_windows,
+ )
+-from src.tasks.ball_detection.data.pose_windows import coordinate_loss
+ from src.tasks.ball_detection.models.mdd_pose import (
+     MDDPoseConfig,
+     MDDPoseDetector,
+     MDDQueryDetector,
+ )
++from src.tasks.ball_detection.training.coordinate_checkpoint import (
++    resume_coordinate_training,
++    save_coordinate_checkpoint,
++    write_best,
++)
+ from src.tasks.ball_detection.training.coordinate_evaluation import (
+     CoordinateModel,
+     evaluate_coordinates,
+@@ -35,6 +39,10 @@ from src.tasks.ball_detection.training.coordinate_evaluation import (
+ from src.tasks.ball_detection.training.coordinate_provenance import (
+     coordinate_source_identity,
+ )
++from src.tasks.ball_detection.training.coordinate_runtime import (
++    CoordinateRuntime,
++    coordinate_train_step,
++)
+ from src.tasks.ball_detection.training.coordinate_sampling import FPSMixSampler
+ from src.utils.checksum import dual_sha256
+ from src.utils.configuration import (
+@@ -53,6 +61,8 @@ PATH_BOUNDARY = NonHydraPathBoundary(
+         BoundaryPathField("manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+         BoundaryPathField("model_config", PathRole.PROJECT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+         BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY),
++        BoundaryPathField("resume", PathRole.OUTPUT, PathDirection.INPUT, PathKind.FILE,
++                          must_exist=True, required=False),
+     ),
+ )
+ 
+@@ -62,10 +72,11 @@ def predict(model: CoordinateModel, batch: dict[str, Any], device: torch.device)
+ 
+ 
+ @torch.no_grad()
+-def evaluate(model: CoordinateModel, loader: DataLoader[Any], device: torch.device) -> dict[str, Any]:
++def evaluate(model: CoordinateModel, loader: DataLoader[Any], device: torch.device,
++             *, precision: str = "fp32") -> dict[str, Any]:
+     if not isinstance(loader.dataset, CoordinateWindowDataset):
+         raise ValueError("Evaluation requires a declared coordinate window dataset")
+-    return evaluate_coordinates(model, loader, device, loader.dataset.frame_steps)
++    return evaluate_coordinates(model, loader, device, loader.dataset.frame_steps, precision=precision)
+ 
+ 
+ def main() -> None:
+@@ -81,6 +92,13 @@ def main() -> None:
+     parser.add_argument("--seed", type=int, required=True)
+     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
+     parser.add_argument("--batch-size", type=int, default=1)
++    parser.add_argument("--precision", choices=("fp32", "bf16"), default="fp32")
++    parser.add_argument("--num-workers", type=int, default=0)
++    parser.add_argument("--pin-memory", action="store_true")
++    parser.add_argument("--prefetch-factor", type=int, default=1)
++    parser.add_argument("--cpu-threads", type=int, default=2)
++    parser.add_argument("--log-every", type=int, default=50)
++    parser.add_argument("--resume", type=Path, help="Latest completed epoch in the same --output directory")
+     parser.add_argument("--mdd-a", type=float, default=.2)
+     parser.add_argument("--mdd-b", type=float, default=.15)
+     parser.add_argument("--windows-per-epoch", type=int,
+@@ -94,15 +112,21 @@ def main() -> None:
+         parser.error("Training budget and learning rate must be positive")
+     if args.windows_per_epoch is not None and args.windows_per_epoch < 1:
+         parser.error("Epoch window budget must be positive")
++    if args.log_every < 1:
++        parser.error("Logging interval must be positive")
+     if not args.model_config.is_absolute():
+         parser.error("Model config must be an absolute path")
+     roots = RuntimePathRoots(project_root=args.model_config.parent, data_root=args.manifest.parent,
+                              artifact_root=args.manifest.parent, checkpoint_root=args.output.parent,
+                              cache_root=args.output.parent, output_root=args.output.parent,
+                              external_asset_root=args.output.parent)
+-    paths = PATH_BOUNDARY.validate({"manifest": args.manifest, "model_config": args.model_config,
+-                                   "output": args.output}, resolver=PathResolver(roots))
++    declared = {"manifest": args.manifest, "model_config": args.model_config, "output": args.output}
++    if args.resume is not None:
++        declared["resume"] = args.resume
++    paths = PATH_BOUNDARY.validate(declared, resolver=PathResolver(roots))
+     args.manifest, args.model_config, args.output = (paths.declared(k).path for k in ("manifest", "model_config", "output"))
++    if args.resume is not None:
++        args.resume = paths.declared("resume").path
+     config = MDDPoseConfig.load(args.model_config)
+     overrides = {key: getattr(args, key) for key in ("compression", "pose_pooling", "readout")
+                  if getattr(args, key) is not None}
+@@ -115,17 +139,30 @@ def main() -> None:
+     validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose,
+                                          mdd_a=args.mdd_a, mdd_b=args.mdd_b)
+     device = torch.device(args.device)
++    runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor, args.cpu_threads)
++    runtime.configure(device)
+     torch.manual_seed(args.seed)
+     model = (MDDPoseDetector(config) if config.requires_pose else MDDQueryDetector(config)).to(device)
+     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=.01)
+     epoch_windows = args.windows_per_epoch or sum(window.frame_step == 1 for _, window in training.windows)
+     sampler = FPSMixSampler(training, windows_per_epoch=epoch_windows, seed=args.seed)
+-    train_loader: DataLoader[Any] = DataLoader(training, batch_size=args.batch_size, sampler=sampler,
+-                                               collate_fn=collate_coordinate_windows, num_workers=0)
+-    val_loader: DataLoader[Any] = DataLoader(validation, batch_size=args.batch_size,
+-                                             collate_fn=collate_coordinate_windows, num_workers=0)
+-    args.output.mkdir(parents=True, exist_ok=False)
++    train_loader = runtime.loader(training, batch_size=args.batch_size, sampler=sampler, seed=args.seed)
++    val_loader = runtime.loader(validation, batch_size=args.batch_size, seed=args.seed)
+     code = coordinate_source_identity()
++    recipe = dict(model=asdict(config), runtime=asdict(runtime), batch_size=args.batch_size,
++                  seed=args.seed, learning_rate=args.learning_rate, weight_decay=.01,
++                  windows_per_epoch=epoch_windows, selection_scope=args.selection_scope,
++                  mdd_a=args.mdd_a, mdd_b=args.mdd_b, device=args.device,
++                  evaluation_precision=args.precision, gradient_clip=1., schedule="constant")
++    start_epoch, global_step, best, best_epoch = 0, 0, float("inf"), -1
++    if args.resume is None:
++        args.output.mkdir(parents=True, exist_ok=False)
++    else:
++        start_epoch, global_step, best, best_epoch = resume_coordinate_training(
++            args.resume, args.output, model, optimizer, recipe=recipe, manifest_sha256=identity,
++            code=code, device=device)
++        if start_epoch >= args.epochs:
++            raise ValueError("Total epoch budget must exceed the resumed checkpoint epoch")
+     settings = dict(model=asdict(config), manifest_sha256=identity, code=code,
+                     model_config_sha256=dual_sha256(args.model_config),
+                     arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
+@@ -136,35 +173,58 @@ def main() -> None:
+                     test_usage="no test samples used for training or checkpoint selection",
+                     input_rgb="stored JPEG at native size; [0,1] luminance; no ImageNet normalization",
+                     mdd_first_frame="zero, no RGB predecessor outside the 32-frame window")
+-    (args.output / "config.json").write_text(json.dumps(settings, indent=2) + "\n")
+-    (args.output / "data_manifest.json").write_bytes(args.manifest.read_bytes())
+-    best = float("inf")
+-    for epoch in range(args.epochs):
++    settings["recipe"] = recipe
++    if args.resume is None:
++        (args.output / "config.json").write_text(json.dumps(settings, indent=2) + "\n")
++        (args.output / "data_manifest.json").write_bytes(args.manifest.read_bytes())
++    else:
++        with (args.output / "resume.jsonl").open("a") as stream:
++            stream.write(json.dumps(dict(checkpoint=str(args.resume), next_epoch=start_epoch,
++                                         global_step=global_step, settings=settings)) + "\n")
++    for epoch in range(start_epoch, args.epochs):
+         sampler.set_epoch(epoch)
+         model.train()
++        epoch_start = time.perf_counter()
++        loss_sum, observed_count, windows_seen = 0., 0, 0
+         for batch in train_loader:
+-            optimizer.zero_grad(set_to_none=True)
+-            loss = coordinate_loss(predict(model, batch, device), batch["uv"].to(device), batch["position_valid"].to(device))
+-            loss.backward()
+-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
+-            optimizer.step()
+-        report = evaluate(model, val_loader, device)
++            loss, grad = coordinate_train_step(model, optimizer, batch, device, runtime)
++            observed = int(batch["position_valid"].sum())
++            loss_sum += float(loss) * observed
++            observed_count += observed
++            windows_seen += len(batch["mdd"])
++            global_step += 1
++            if global_step % args.log_every == 0 or windows_seen == epoch_windows:
++                elapsed = time.perf_counter() - epoch_start
++                progress = dict(epoch=epoch, global_step=global_step, windows=windows_seen,
++                                train_loss=loss_sum / observed_count, grad_norm=float(grad),
++                                learning_rate=optimizer.param_groups[0]["lr"],
++                                train_seconds=elapsed, windows_per_second=windows_seen / elapsed)
++                with (args.output / "train.jsonl").open("a") as stream:
++                    stream.write(json.dumps(progress, allow_nan=False) + "\n")
++                print(json.dumps(progress), flush=True)
++        train_seconds = time.perf_counter() - epoch_start
++        report = evaluate(model, val_loader, device, precision=runtime.precision)
++        validation_seconds = time.perf_counter() - epoch_start - train_seconds
+         score = selection_score(report, args.selection_scope)
+         if dual_sha256(args.manifest) != identity:
+             raise ValueError("Training manifest changed during the run")
+         path = args.output / f"epoch-{epoch:03d}.pt"
+-        torch.save(dict(schema="mdd_coordinates.v2", model_config=asdict(config), state_dict=model.state_dict(),
++        improved = score < best
++        if improved:
++            best, best_epoch = score, epoch
++        training_state = dict(recipe=recipe, global_step=global_step, best_epoch=best_epoch,
++                              best_error_px=best, cuda_rng=torch.cuda.get_rng_state_all() if device.type == "cuda" else None)
++        save_coordinate_checkpoint(dict(schema="mdd_coordinates.v2", model_config=asdict(config), state_dict=model.state_dict(),
+                         optimizer=optimizer.state_dict(), epoch=epoch, manifest_sha256=identity,
+                         torch_rng=torch.get_rng_state(), validation=report,
+                         selection_scope=args.selection_scope, selection_error_px=score,
+-                        mdd_a=args.mdd_a, mdd_b=args.mdd_b, code=code), path)
+-        if score < best:
+-            best = score
+-            (args.output / "best.json").write_text(json.dumps(dict(epoch=epoch, checkpoint=path.name,
+-                checkpoint_sha256=dual_sha256(path), selection_scope=args.selection_scope,
+-                selection_error_px=score, **report), indent=2) + "\n")
++                        mdd_a=args.mdd_a, mdd_b=args.mdd_b, code=code, training_state=training_state), path)
++        if improved:
++            write_best(args.output, epoch)
+         with (args.output / "metrics.jsonl").open("a") as stream:
+-            stream.write(json.dumps(dict(epoch=epoch, **report)) + "\n")
++            stream.write(json.dumps(dict(epoch=epoch, global_step=global_step,
++                                         train_loss=loss_sum / observed_count,
++                                         train_seconds=train_seconds, validation_seconds=validation_seconds, **report)) + "\n")
+         print(json.dumps(dict(epoch=epoch, **report)), flush=True)
+ 
+ 
+diff --git a/src/tasks/ball_detection/training/COORDINATE_TRAINING.md b/src/tasks/ball_detection/training/COORDINATE_TRAINING.md
+index 7c3045507..139860519 100644
+--- a/src/tasks/ball_detection/training/COORDINATE_TRAINING.md
++++ b/src/tasks/ball_detection/training/COORDINATE_TRAINING.md
+@@ -102,6 +102,32 @@ poseあり／query-onlyの選択はmodel configとmanifestの明示的な組合
+ 新checkpoint形式は`mdd_coordinates.v2`で、実際のcode hash、MDD変換、データidentity、
+ checkpoint選択scopeを記録する。準備の際に学習やtest評価を自動起動することはない。
+ 
++## 実行時設定・中断からの再開
++
++`--precision fp32|bf16`は学習・validationに適用する。明示的なtest評価も保存された精度を復元し、
++評価CLIの`--precision`で変更した場合は実際の精度を結果へ記録する。
++実行時設定を持たない旧v2 checkpointは旧仕様どおりFP32で読む。
++BF16は対応CUDAデバイスを要求し、別の精度へfallbackしない。MDD・PTS・lossはfloat32を維持する。
++optimizerの重み・状態もfloat32で、FP16/GradScaler・gradient accumulationは使用しない。
++
++train/evaluateの両入口は`--num-workers`、`--pin-memory`、`--prefetch-factor`、
++`--cpu-threads`を受け付ける。worker内のOpenCV/PyTorchは各1 thread、workerはepoch間で維持し、
++clip hashの検証cacheを再利用する。worker間で初回検証cacheは共有しない。
++`prefetch_factor`はworkerごとの先読みbatch数であり、高解像度のhost RAMと共有メモリも消費する。
++
++学習はAdamW（weight decay 0.01）、一定学習率、gradient norm上限1.0。
++`train.jsonl`に`--log-every` updateごとのobserved-frame加重train loss、LR、gradient norm、速度を保存し、
++`metrics.jsonl`にepochごとのvalidation、train loss、学習・評価時間を保存する。
++epoch checkpointと`best.json`は一時ファイルからatomicに公開する。
++
++同じコマンドに`--resume <同じoutput内の最新epoch-NNN.pt>`を付けると、次のepochから再開する。
++総epoch数は`--epochs`で延長できる。モデル・データ・LR・BS・seed・実行時設定・実装hashが変わる再開と、
++過去epochへの巻き戻しは拒否する。optimizer、CPU/CUDA RNG、sampler epoch、更新数、best選択を復元する。
++旧checkpointに再開stateがなければ明示エラーになる。epoch途中からの再開は行わず、
++中断したepochを直前の完了checkpointからやり直す。途中のtrainログは履歴として残り、
++`resume.jsonl`で再開位置を区別する。最初のepochを保存する前に中断した場合は新規runとしてやり直す。
++同じseedはGPUでのbit単位の再現性を保証するものではない。
++
+ ## 実装
+ 
+ - `data/temporal_sampling.py`: native play span内のFPS別32枚と境界の契約。
+@@ -111,3 +137,5 @@ checkpoint選択scopeを記録する。準備の際に学習やtest評価を自
+ - `coordinate_preparation.py`: 準備transactionと構成・入力・コードの記録。
+ - `coordinate_sampling.py`: epoch予算を保った均等FPS混合。
+ - `coordinate_evaluation.py`: FPSごとの一意frame評価、全体／共通／source集計。
++- `coordinate_runtime.py`: 精度、reader並列度、共通のoptimizer update。
++- `coordinate_checkpoint.py`: epoch単位の再開とatomicなcheckpoint/best公開。
+diff --git a/src/tasks/ball_detection/training/coordinate_checkpoint.py b/src/tasks/ball_detection/training/coordinate_checkpoint.py
+new file mode 100644
+index 000000000..880d52cbc
+--- /dev/null
++++ b/src/tasks/ball_detection/training/coordinate_checkpoint.py
+@@ -0,0 +1,71 @@
++"""Epoch-boundary restart for an unchanged coordinate training recipe."""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++from typing import Any
++
++import torch
++
++from src.tasks.ball_detection.training.coordinate_evaluation import CoordinateModel
++from src.utils.checksum import dual_sha256
++
++
++def save_coordinate_checkpoint(payload: dict[str, Any], path: Path) -> None:
++    temporary = path.with_suffix(".pt.tmp")
++    torch.save(payload, temporary)
++    temporary.replace(path)
++
++
++def write_best(output: Path, epoch: int) -> None:
++    path = output / f"epoch-{epoch:03d}.pt"
++    saved = torch.load(path, map_location="cpu", weights_only=True)
++    record = dict(epoch=epoch, checkpoint=path.name, checkpoint_sha256=dual_sha256(path),
++                  selection_scope=saved["selection_scope"], selection_error_px=saved["selection_error_px"],
++                  **saved["validation"])
++    temporary = output / "best.json.tmp"
++    temporary.write_text(json.dumps(record, indent=2) + "\n")
++    temporary.replace(output / "best.json")
++
++
++def resume_coordinate_training(path: Path, output: Path, model: CoordinateModel,
++                               optimizer: torch.optim.Optimizer, *, recipe: dict[str, Any],
++                               manifest_sha256: str, code: dict[str, Any],
++                               device: torch.device) -> tuple[int, int, float, int]:
++    """Return next epoch, optimizer steps, best score and best epoch.
++
++    Only the total epoch budget may change. Keeping the run directory and all
++    completed checkpoints makes the selected best model unambiguous after resume.
++    A partially processed epoch is rerun from its last completed predecessor.
++    """
++    if path.parent != output or not (output / "config.json").is_file():
++        raise ValueError("Resume requires a checkpoint inside the original output directory")
++    saved = torch.load(path, map_location="cpu", weights_only=True)
++    state = saved.get("training_state")
++    if saved.get("schema") != "mdd_coordinates.v2" or not isinstance(state, dict):
++        raise ValueError("Checkpoint lacks the epoch-restart training state")
++    if saved["manifest_sha256"] != manifest_sha256 or state["recipe"] != recipe:
++        raise ValueError("Resume data or training recipe changed")
++    if saved["code"]["source_sha256"] != code["source_sha256"]:
++        raise ValueError("Resume implementation changed; use a new experiment")
++    epoch = int(saved["epoch"])
++    if path.name != f"epoch-{epoch:03d}.pt":
++        raise ValueError("Resume checkpoint filename does not match its epoch")
++    later = [p for p in output.glob("epoch-*.pt") if int(p.stem.removeprefix("epoch-")) > epoch]
++    if later:
++        raise ValueError("Resume must use the latest completed epoch; refusing to overwrite later work")
++    best_epoch = int(state["best_epoch"])
++    best_path = output / f"epoch-{best_epoch:03d}.pt"
++    best_saved = torch.load(best_path, map_location="cpu", weights_only=True)
++    if best_saved["selection_error_px"] != state["best_error_px"]:
++        raise ValueError("Saved best checkpoint differs from restart state")
++    model.load_state_dict(saved["state_dict"], strict=True)
++    optimizer.load_state_dict(saved["optimizer"])
++    torch.set_rng_state(saved["torch_rng"])
++    if device.type == "cuda":
++        if state["cuda_rng"] is None:
++            raise ValueError("CUDA restart requires saved CUDA RNG state")
++        torch.cuda.set_rng_state_all(state["cuda_rng"])
++    write_best(output, best_epoch)
++    return epoch + 1, int(state["global_step"]), float(state["best_error_px"]), best_epoch
+diff --git a/src/tasks/ball_detection/training/coordinate_evaluation.py b/src/tasks/ball_detection/training/coordinate_evaluation.py
+index f5db31109..d3196aa58 100644
+--- a/src/tasks/ball_detection/training/coordinate_evaluation.py
++++ b/src/tasks/ball_detection/training/coordinate_evaluation.py
+@@ -98,12 +98,17 @@ def selection_score(report: dict[str, Any], scope: str) -> float:
+ 
+ 
+ def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device: torch.device,
+-                         frame_steps: tuple[int, ...]) -> dict[str, Any]:
++                         frame_steps: tuple[int, ...], *, precision: str = "fp32") -> dict[str, Any]:
++    if precision not in {"fp32", "bf16"}:
++        raise ValueError("Evaluation precision must be fp32 or bf16")
++    if precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
++        raise ValueError("BF16 evaluation requires a supported CUDA device; no fallback")
+     model.eval()
+     metrics = CoordinateMetrics(frame_steps)
+     with torch.no_grad():
+         for batch in loader:
+-            uv = predict_coordinates(model, batch, device).cpu()
++            with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
++                uv = predict_coordinates(model, batch, device).cpu()
+             errors = ((uv - batch["uv"]) * (batch["source_size"][:, None] - 1)).norm(dim=-1)
+             metrics.add(batch, errors)
+-    return metrics.report()
++    return dict(precision=precision, **metrics.report())
+diff --git a/src/tasks/ball_detection/training/coordinate_runtime.py b/src/tasks/ball_detection/training/coordinate_runtime.py
+new file mode 100644
+index 000000000..5b69e6ad0
+--- /dev/null
++++ b/src/tasks/ball_detection/training/coordinate_runtime.py
+@@ -0,0 +1,77 @@
++"""Explicit precision and CPU input-pipeline controls for coordinate training."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Any
++
++import cv2
++import torch
++from torch import Tensor
++from torch.utils.data import DataLoader, Sampler
++
++from src.tasks.ball_detection.data.coordinate_dataset import (
++    CoordinateWindowDataset,
++    collate_coordinate_windows,
++)
++from src.tasks.ball_detection.data.pose_windows import coordinate_loss
++from src.tasks.ball_detection.training.coordinate_evaluation import (
++    CoordinateModel,
++    predict_coordinates,
++)
++
++
++def coordinate_worker_init(_: int) -> None:
++    cv2.setNumThreads(1)
++    torch.set_num_threads(1)
++
++
++@dataclass(frozen=True)
++class CoordinateRuntime:
++    precision: str = "fp32"
++    num_workers: int = 0
++    pin_memory: bool = False
++    prefetch_factor: int = 1
++    cpu_threads: int = 2
++
++    def __post_init__(self) -> None:
++        if self.precision not in {"fp32", "bf16"}:
++            raise ValueError("Coordinate precision must be fp32 or bf16")
++        if self.num_workers < 0 or min(self.prefetch_factor, self.cpu_threads) < 1:
++            raise ValueError("Invalid input pipeline worker/thread/prefetch configuration")
++
++    def configure(self, device: torch.device) -> None:
++        if self.precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
++            raise ValueError("BF16 coordinate training requires a supported CUDA device; no fallback")
++        if self.pin_memory and device.type != "cuda":
++            raise ValueError("Pinned coordinate inputs require CUDA")
++        torch.set_num_threads(self.cpu_threads)
++        cv2.setNumThreads(1)
++        # Match the measured runtime. Avoid a shape-dependent autotuning phase.
++        torch.backends.cudnn.benchmark = False
++        torch.backends.cuda.matmul.allow_tf32 = False
++        torch.backends.cudnn.allow_tf32 = True
++
++    def loader(self, dataset: CoordinateWindowDataset, *, batch_size: int,
++               sampler: Sampler[int] | None = None, seed: int = 0) -> DataLoader[Any]:
++        if batch_size < 1:
++            raise ValueError("Batch size must be positive")
++        return DataLoader(dataset, batch_size=batch_size, sampler=sampler,
++                          collate_fn=collate_coordinate_windows, num_workers=self.num_workers,
++                          pin_memory=self.pin_memory, worker_init_fn=coordinate_worker_init,
++                          generator=torch.Generator().manual_seed(seed),
++                          prefetch_factor=self.prefetch_factor if self.num_workers else None,
++                          persistent_workers=self.num_workers > 0)
++
++
++def coordinate_train_step(model: CoordinateModel, optimizer: torch.optim.Optimizer,
++                          batch: dict[str, Any], device: torch.device,
++                          runtime: CoordinateRuntime) -> tuple[Tensor, Tensor]:
++    optimizer.zero_grad(set_to_none=True)
++    with torch.autocast(device.type, dtype=torch.bfloat16, enabled=runtime.precision == "bf16"):
++        prediction = predict_coordinates(model, batch, device)
++        loss = coordinate_loss(prediction, batch["uv"].to(device), batch["position_valid"].to(device))
++    loss.backward()
++    grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
++    optimizer.step()
++    return loss.detach(), grad.detach()
+diff --git a/tests/benchmarks/README.md b/tests/benchmarks/README.md
+index d28c5babe..43e138cbd 100644
+--- a/tests/benchmarks/README.md
++++ b/tests/benchmarks/README.md
+@@ -2,6 +2,17 @@
+ 
+ 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
+ 
++## MDD query-onlyのGPU学習効率
++
++`ball_mdd_query_gpu_sweep.sh <frozen-manifest.json> <conv2d-query_only.yaml> <new-report-dir> [compute|pipeline]`
++を共有training queueの`resource=all`で実行する。各BS/精度を独立CUDA processで測り、
++computeは実train入力をGPU上に固定、pipelineはJPEG/hash/MDD生成を含める。
++trainだけで短いoptimizer updateを行い、test/validationの精度評価や本学習は行わない。
++OOMもJSONに残す。allocatorはGPU容量の90%を上限とするため、無制限での最大BSの証明ではない。
++各caseの入力hash、環境、warmupを除いた速度、VRAM、lossとgradient normを保存する。
++同一batchの反復loss低下を汎化性能と解釈しない。readerの初回clip検証とOS cache状態によって
++pipeline速度が変わるため、GPU計算だけの速度とは分けて扱う。
++
+ ## 人物対応の再較正準備
+ 
+ `association_recalibration_features.py --phase plan --repo <main root> --report <new output>` は
+diff --git a/tests/benchmarks/ball_mdd_query_gpu.py b/tests/benchmarks/ball_mdd_query_gpu.py
+new file mode 100644
+index 000000000..7023b2915
+--- /dev/null
++++ b/tests/benchmarks/ball_mdd_query_gpu.py
+@@ -0,0 +1,169 @@
++"""Real-input training throughput diagnostic. Run CUDA only via training queue.
++
++Each invocation measures one configuration in its own process. No validation or
++test labels are used, and no trained checkpoint is retained. Compute mode keeps
++one real batch resident; pipeline mode includes the unchanged JPEG/MDD reader.
++"""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import os
++import platform
++import statistics
++import subprocess
++import time
++from dataclasses import asdict
++from pathlib import Path
++from typing import Any
++
++import cv2
++import torch
++
++from src.tasks.ball_detection.data.coordinate_dataset import (
++    CoordinateWindowDataset,
++    collate_coordinate_windows,
++)
++from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDQueryDetector
++from src.tasks.ball_detection.training.coordinate_evaluation import predict_coordinates
++from src.tasks.ball_detection.training.coordinate_runtime import (
++    CoordinateRuntime,
++    coordinate_train_step,
++)
++from src.tasks.ball_detection.training.coordinate_sampling import FPSMixSampler
++
++
++def chosen_indices(dataset: CoordinateWindowDataset, count: int) -> list[int]:
++    groups: dict[tuple[str, int], list[int]] = {}
++    for index, (record, window) in enumerate(dataset.windows):
++        source = dataset.records[record]["clip"]["source"]
++        groups.setdefault((source, window.frame_step), []).append(index)
++    keys = sorted(groups)
++    return [groups[keys[i % len(keys)]][i // len(keys)] for i in range(count)]
++
++
++def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
++    torch.set_num_threads(args.cpu_threads)
++    cv2.setNumThreads(1)
++    torch.manual_seed(42)
++    torch.backends.cudnn.benchmark = False
++    torch.backends.cuda.matmul.allow_tf32 = False
++    torch.backends.cudnn.allow_tf32 = True
++    device = torch.device("cuda")
++    torch.cuda.set_per_process_memory_fraction(.9)
++    properties = torch.cuda.get_device_properties(device)
++    if args.precision == "bf16" and not torch.cuda.is_bf16_supported():
++        raise ValueError("BF16 is not supported; no precision fallback")
++    report["hardware"] = dict(gpu=properties.name, total_bytes=properties.total_memory,
++                              cuda=torch.version.cuda, torch=str(torch.__version__),
++                              python=platform.python_version(), memory_fraction_limit=.9,
++                              free_before_bytes=torch.cuda.mem_get_info()[0])
++    config = MDDPoseConfig.load(args.model_config)
++    if config.compression != "conv2d" or config.readout != "query_only":
++        raise ValueError("This benchmark is specifically Conv2d + query-only")
++    report["model"] = asdict(config)
++    dataset = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
++    model = MDDQueryDetector(config).to(device).train()
++    report["parameters"] = sum(p.numel() for p in model.parameters())
++    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=.01)
++    first_parameter = next(model.parameters()).detach().clone()
++    total = args.warmup + args.steps
++    if args.mode == "compute":
++        indices = chosen_indices(dataset, args.batch_size)
++        batch = collate_coordinate_windows([dataset[i] for i in indices])
++        report["samples"] = [dict(clip_id=c, start=s, frame_step=f) for c, s, f in
++                             zip(batch["clip_id"], batch["start"], batch["frame_step"], strict=True)]
++        batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
++        iterator = iter([batch] * total)
++    else:
++        sampler = FPSMixSampler(dataset, windows_per_epoch=total * args.batch_size, seed=42)
++        runtime = CoordinateRuntime(precision=args.precision, num_workers=args.workers,
++                                    pin_memory=args.pin_memory, cpu_threads=args.cpu_threads)
++        loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sampler, seed=42)
++        report["window_sequence_sha256"] = hashlib.sha256(json.dumps(list(sampler)).encode()).hexdigest()
++        iterator = iter(loader)
++    report["steps"] = []
++    torch.cuda.synchronize()
++    torch.cuda.reset_peak_memory_stats()
++    for step in range(total):
++        begin = time.perf_counter()
++        batch = next(iterator)
++        loaded = time.perf_counter()
++        loss, grad = coordinate_train_step(model, optimizer, batch, device,
++                                           CoordinateRuntime(precision=args.precision))
++        torch.cuda.synchronize()
++        elapsed = time.perf_counter() - begin
++        row = dict(step=step, warmup=step < args.warmup, seconds=elapsed,
++                   load_wait_seconds=loaded - begin, loss=float(loss.detach()), grad_norm=float(grad))
++        report["steps"].append(row)
++        if step == 0 or step + 1 == total or (step + 1) % 10 == 0:
++            print(json.dumps(row), flush=True)
++    measured = report["steps"][args.warmup:]
++    seconds = sum(row["seconds"] for row in measured)
++    report.update(status="ok", windows_per_second=args.batch_size * args.steps / seconds,
++                  sampled_frames_per_second=32 * args.batch_size * args.steps / seconds,
++                  mean_step_seconds=seconds / args.steps,
++                  median_step_seconds=statistics.median(row["seconds"] for row in measured),
++                  mean_loader_wait_seconds=statistics.mean(row["load_wait_seconds"] for row in measured),
++                  peak_allocated_bytes=torch.cuda.max_memory_allocated(),
++                  peak_reserved_bytes=torch.cuda.max_memory_reserved(),
++                  final_loss=report["steps"][-1]["loss"],
++                  parameter_max_change=float((next(model.parameters()).detach() - first_parameter).abs().max()))
++    model.eval()
++    with torch.no_grad():
++        # Same final weights and input: inference precision difference, not accuracy.
++        reference = predict_coordinates(model, batch, device)
++        with torch.autocast("cuda", dtype=torch.bfloat16):
++            mixed = predict_coordinates(model, batch, device)
++        size = batch["source_size"].to(device)[:, None] - 1
++        delta = ((reference - mixed) * size).norm(dim=-1)
++        report["bf16_vs_fp32_eval_delta_px"] = dict(mean=float(delta.mean()), max=float(delta.max()))
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--model-config", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--batch-size", type=int, required=True)
++    parser.add_argument("--precision", choices=("fp32", "bf16"), required=True)
++    parser.add_argument("--mode", choices=("compute", "pipeline"), default="compute")
++    parser.add_argument("--workers", type=int, default=0)
++    parser.add_argument("--pin-memory", action="store_true")
++    parser.add_argument("--cpu-threads", type=int, default=2)
++    parser.add_argument("--warmup", type=int, default=4)
++    parser.add_argument("--steps", type=int, default=16)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise ValueError("Choose a fresh output file")
++    if min(args.batch_size, args.cpu_threads, args.steps) < 1 or min(args.warmup, args.workers) < 0:
++        raise ValueError("Invalid measurement budget")
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    report: dict[str, Any] = dict(schema="ball_mdd_query_gpu.v1", status="running",
++                                 arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
++                                 manifest_sha256=hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
++                                 model_config_sha256=hashlib.sha256(args.model_config.read_bytes()).hexdigest(),
++                                 script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
++                                 commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
++                                 queue_run_id=os.environ.get("TENNIS_RUN_ID"), seed=42,
++                                 optimizer=dict(name="AdamW", lr=1e-4, weight_decay=.01),
++                                 tf32=dict(matmul=False, cudnn=True), cudnn_benchmark=False,
++                                 train_only=True, checkpoint_saved=False)
++    try:
++        measure(args, report)
++    except torch.cuda.OutOfMemoryError as error:
++        report.update(status="oom", error=str(error),
++                      peak_allocated_bytes=torch.cuda.max_memory_allocated(),
++                      peak_reserved_bytes=torch.cuda.max_memory_reserved())
++    except Exception as error:
++        report.update(status="error", error=repr(error))
++        raise
++    finally:
++        args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
++    print(json.dumps({k: v for k, v in report.items() if k not in {"steps", "samples", "model"}}), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/benchmarks/ball_mdd_query_gpu_confirm.sh b/tests/benchmarks/ball_mdd_query_gpu_confirm.sh
+new file mode 100644
+index 000000000..d7a2dc8ae
+--- /dev/null
++++ b/tests/benchmarks/ball_mdd_query_gpu_confirm.sh
+@@ -0,0 +1,16 @@
++#!/usr/bin/env bash
++# Same 108 sampled windows for every case: 12 warmup + 96 measured.
++set -euo pipefail
++ball_manifest=$1
++ball_model=$2
++ball_report=$3
++mkdir -p "$ball_report"
++for ball_setting in 1:4 2:4 4:4 1:6 2:6 1:8 2:8; do
++  ball_bs=${ball_setting%:*}
++  ball_workers=${ball_setting#*:}
++  PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_mdd_query_gpu.py \
++    --manifest "$ball_manifest" --model-config "$ball_model" \
++    --output "$ball_report/bf16-bs${ball_bs}-workers${ball_workers}.json" \
++    --precision bf16 --batch-size "$ball_bs" --mode pipeline \
++    --workers "$ball_workers" --pin-memory --warmup "$((12 / ball_bs))" --steps "$((96 / ball_bs))"
++done
+diff --git a/tests/benchmarks/ball_mdd_query_gpu_sweep.sh b/tests/benchmarks/ball_mdd_query_gpu_sweep.sh
+new file mode 100644
+index 000000000..e34e481e2
+--- /dev/null
++++ b/tests/benchmarks/ball_mdd_query_gpu_sweep.sh
+@@ -0,0 +1,30 @@
++#!/usr/bin/env bash
++# One exclusive training-queue job; every case gets a fresh CUDA process.
++set -euo pipefail
++ball_manifest=$1
++ball_model=$2
++ball_report=$3
++mkdir -p "$ball_report"
++if [[ "${4:-compute}" == pipeline ]]; then
++  for ball_bs in 1 2 4; do
++    for ball_workers in 0 2 4; do
++      PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_mdd_query_gpu.py \
++        --manifest "$ball_manifest" --model-config "$ball_model" \
++        --output "$ball_report/fp32-bs${ball_bs}-workers${ball_workers}.json" \
++        --precision fp32 --batch-size "$ball_bs" --mode pipeline \
++        --workers "$ball_workers" --pin-memory --steps "$((72 / ball_bs))"
++    done
++  done
++  exit 0
++fi
++for ball_precision in fp32 bf16; do
++  for ball_bs in 1 2 4 6 8 12 16; do
++    ball_case="$ball_report/${ball_precision}-bs${ball_bs}.json"
++    PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_mdd_query_gpu.py \
++      --manifest "$ball_manifest" --model-config "$ball_model" \
++      --output "$ball_case" --precision "$ball_precision" --batch-size "$ball_bs"
++    ball_status=$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$ball_case")
++    if [[ "$ball_status" == oom ]]; then break; fi
++    if [[ "$ball_status" != ok ]]; then exit 1; fi
++  done
++done
+diff --git a/tests/integration/tasks/ball_detection/test_coordinate_training.py b/tests/integration/tasks/ball_detection/test_coordinate_training.py
+index bb476faf8..c5a635b06 100644
+--- a/tests/integration/tasks/ball_detection/test_coordinate_training.py
++++ b/tests/integration/tasks/ball_detection/test_coordinate_training.py
+@@ -184,8 +184,12 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
+     result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train_mdd_pose",
+                              "--manifest", variant["manifest"], "--model-config", variant["model_config"],
+                              "--output", str(output), "--epochs", "1", "--learning-rate", ".001", "--seed", "5",
+-                             "--device", "cpu", "--windows-per-epoch", "3"], env=env, capture_output=True, text=True, timeout=90)
++                             "--device", "cpu", "--windows-per-epoch", "3", "--batch-size", "2",
++                             "--num-workers", "2"], env=env, capture_output=True, text=True, timeout=90)
+     assert result.returncode == 0, result.stdout + result.stderr
++    progress = json.loads((output / "train.jsonl").read_text().splitlines()[-1])
++    assert progress["global_step"] == 2 and progress["windows"] == 3
++    assert np.isfinite(progress["train_loss"])
+     report_path = tmp_path / "evaluation.json"
+     result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate_mdd_coordinates",
+                              "--checkpoint", str(output / "epoch-000.pt"), "--manifest", variant["manifest"],
+@@ -199,3 +203,33 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
+         common = report["scopes"]["common"]["by_frame_step"][step]
+         assert full["observed_frames"] == 2 * common["observed_frames"] > 0
+         assert np.isfinite(full["mean_error_px"]) and np.isfinite(common["mean_error_px"])
++
++
++def test_epoch_resume_matches_uninterrupted_training_and_rejects_changed_recipe(
++    preparation: tuple[Path, dict], tmp_path: Path,
++) -> None:
++    _, plan = preparation
++    variant = next(m for m in plan["models"] if m["id"] == "conv2d-query_only")
++    env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
++    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.train_mdd_pose",
++               "--manifest", variant["manifest"], "--model-config", variant["model_config"],
++               "--learning-rate", ".001", "--seed", "5", "--device", "cpu",
++               "--windows-per-epoch", "6", "--batch-size", "2", "--num-workers", "2"]
++    resumed, full = tmp_path / "resumed", tmp_path / "uninterrupted"
++    for arguments in (["--output", str(resumed), "--epochs", "1"],
++                      ["--output", str(resumed), "--epochs", "2", "--resume", str(resumed / "epoch-000.pt")],
++                      ["--output", str(full), "--epochs", "2"]):
++        result = subprocess.run(command + arguments, env=env, capture_output=True, text=True, timeout=90)
++        assert result.returncode == 0, result.stdout + result.stderr
++    continued = torch.load(resumed / "epoch-001.pt", weights_only=True)
++    reference = torch.load(full / "epoch-001.pt", weights_only=True)
++    assert continued["training_state"]["global_step"] == 6
++    assert continued["validation"] == reference["validation"]
++    for name, tensor in reference["state_dict"].items():
++        torch.testing.assert_close(continued["state_dict"][name], tensor, rtol=0, atol=0)
++    for extra, expected in ((["--learning-rate", ".002"], "training recipe changed"),
++                            ([], "latest completed epoch")):
++        result = subprocess.run(command + ["--output", str(resumed), "--epochs", "3", "--resume",
++                                           str(resumed / "epoch-000.pt"), *extra],
++                                env=env, capture_output=True, text=True, timeout=90)
++        assert result.returncode != 0 and expected in result.stderr
+diff --git a/tests/unit/tasks/ball_detection/test_coordinate_runtime.py b/tests/unit/tasks/ball_detection/test_coordinate_runtime.py
+new file mode 100644
+index 000000000..28637a50c
+--- /dev/null
++++ b/tests/unit/tasks/ball_detection/test_coordinate_runtime.py
+@@ -0,0 +1,20 @@
++"""Unsupported precision and invalid resource settings never fall back silently."""
++
++import pytest
++import torch
++
++from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRuntime
++
++
++@pytest.mark.parametrize("options", [dict(precision="fp16"), dict(num_workers=-1),
++                                    dict(prefetch_factor=0), dict(cpu_threads=0)])
++def test_invalid_runtime_controls_are_rejected(options: dict) -> None:
++    with pytest.raises(ValueError):
++        CoordinateRuntime(**options)
++
++
++def test_cpu_does_not_silently_replace_cuda_precision_or_pinned_inputs() -> None:
++    with pytest.raises(ValueError, match="no fallback"):
++        CoordinateRuntime(precision="bf16").configure(torch.device("cpu"))
++    with pytest.raises(ValueError, match="Pinned"):
++        CoordinateRuntime(pin_memory=True).configure(torch.device("cpu"))

@@ -184,8 +184,12 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
     result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train_mdd_pose",
                              "--manifest", variant["manifest"], "--model-config", variant["model_config"],
                              "--output", str(output), "--epochs", "1", "--learning-rate", ".001", "--seed", "5",
-                             "--device", "cpu", "--windows-per-epoch", "3"], env=env, capture_output=True, text=True, timeout=90)
+                             "--device", "cpu", "--windows-per-epoch", "3", "--batch-size", "2",
+                             "--num-workers", "2"], env=env, capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
+    progress = json.loads((output / "train.jsonl").read_text().splitlines()[-1])
+    assert progress["global_step"] == 2 and progress["windows"] == 3
+    assert np.isfinite(progress["train_loss"])
     report_path = tmp_path / "evaluation.json"
     result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate_mdd_coordinates",
                              "--checkpoint", str(output / "epoch-000.pt"), "--manifest", variant["manifest"],
@@ -199,3 +203,33 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
         common = report["scopes"]["common"]["by_frame_step"][step]
         assert full["observed_frames"] == 2 * common["observed_frames"] > 0
         assert np.isfinite(full["mean_error_px"]) and np.isfinite(common["mean_error_px"])
+
+
+def test_epoch_resume_matches_uninterrupted_training_and_rejects_changed_recipe(
+    preparation: tuple[Path, dict], tmp_path: Path,
+) -> None:
+    _, plan = preparation
+    variant = next(m for m in plan["models"] if m["id"] == "conv2d-query_only")
+    env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
+    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.train_mdd_pose",
+               "--manifest", variant["manifest"], "--model-config", variant["model_config"],
+               "--learning-rate", ".001", "--seed", "5", "--device", "cpu",
+               "--windows-per-epoch", "6", "--batch-size", "2", "--num-workers", "2"]
+    resumed, full = tmp_path / "resumed", tmp_path / "uninterrupted"
+    for arguments in (["--output", str(resumed), "--epochs", "1"],
+                      ["--output", str(resumed), "--epochs", "2", "--resume", str(resumed / "epoch-000.pt")],
+                      ["--output", str(full), "--epochs", "2"]):
+        result = subprocess.run(command + arguments, env=env, capture_output=True, text=True, timeout=90)
+        assert result.returncode == 0, result.stdout + result.stderr
+    continued = torch.load(resumed / "epoch-001.pt", weights_only=True)
+    reference = torch.load(full / "epoch-001.pt", weights_only=True)
+    assert continued["training_state"]["global_step"] == 6
+    assert continued["validation"] == reference["validation"]
+    for name, tensor in reference["state_dict"].items():
+        torch.testing.assert_close(continued["state_dict"][name], tensor, rtol=0, atol=0)
+    for extra, expected in ((["--learning-rate", ".002"], "training recipe changed"),
+                            ([], "latest completed epoch")):
+        result = subprocess.run(command + ["--output", str(resumed), "--epochs", "3", "--resume",
+                                           str(resumed / "epoch-000.pt"), *extra],
+                                env=env, capture_output=True, text=True, timeout=90)
+        assert result.returncode != 0 and expected in result.stderr
