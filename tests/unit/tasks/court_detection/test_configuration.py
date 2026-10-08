@@ -78,6 +78,48 @@ def _pose_only_overrides() -> tuple[str, ...]:
     )
 
 
+def test_default_pose_training_enables_dense_qualitative_logging() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train")
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.loss.pose.enabled
+    assert runtime.shared.training.qualitative_logging.enabled
+
+
+def test_pose_training_accepts_enabling_dense_qualitative_logging() -> None:
+    config = _compose(
+        "synthetic_court", *_pose_overrides(), "training.qualitative_logging.enabled=true"
+    )
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.shared.training.qualitative_logging.enabled
+
+
+def test_dense_training_can_enable_qualitative_logging() -> None:
+    config = _compose("synthetic_court", "training.qualitative_logging.enabled=true")
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.shared.training.qualitative_logging.enabled
+
+
+def test_qualitative_fixed_batch_indices_follow_shared_contract() -> None:
+    config = _compose(
+        "synthetic_court", "training.qualitative_logging.enabled=true",
+        "training.qualitative_logging.selection_mode=fixed_indices",
+        "training.qualitative_logging.selected_indices=[0,2]",
+        "training.qualitative_logging.num_samples=2",
+    )
+    runtime = CourtTrainingConfig.from_config(config)
+    assert runtime.shared.training.qualitative_logging.selected_indices == (0, 2)
+
+
+@pytest.mark.parametrize("selection_mode", ["first", "indices"])
+def test_qualitative_rejects_selection_modes_unsupported_by_callback(selection_mode: str) -> None:
+    config = _compose(
+        "synthetic_court", f"training.qualitative_logging.selection_mode={selection_mode}"
+    )
+    with pytest.raises(SemanticConfigurationError, match="selection_mode"):
+        CourtTrainingConfig.from_config(config)
+
+
 @pytest.mark.parametrize(
     ("source", "schema"),
     [

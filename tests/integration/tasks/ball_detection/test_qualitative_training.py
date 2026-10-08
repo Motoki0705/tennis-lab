@@ -57,12 +57,13 @@ def test_mixed_profile_renders_normalized_validation_and_saves_checkpoint(
                 "training.trainer.log_every_n_steps=1",
                 "training.trainer.enable_model_summary=false",
                 "training.warmup_steps=0",
+                "training.qualitative_logging.every_n_epochs=1",
                 "training.qualitative_logging.num_samples=1",
             ],
         )
     for name, augmentation in cfg.data.augmentation.items():
         augmentation.enabled = name == "normalize_imagenet"
-    # Keep epoch-0 rendering enabled even though the production interval is 4.
+    # This one-epoch smoke explicitly renders at its first completed epoch.
     assert cfg.training.qualitative_logging.enabled
     assert cfg.model.input_mode == "mdd"
     BallDetectionTrainingRunner().run(cfg)

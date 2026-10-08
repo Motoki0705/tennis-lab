@@ -306,11 +306,36 @@ class DetectionEvaluationConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class PlayerQualitativeConfig:
+    annotation_root: Path
+    max_frames: int
+    frame_stride: int
+    batch_size: int
+    display_width: int
+
+    @classmethod
+    def from_mapping(cls, value: ConfigMapping, resolver: PathResolver) -> PlayerQualitativeConfig:
+        path = "qualitative"
+        mapping = exact_config_mapping(
+            value, path=path,
+            required_keys={"annotation_root", "max_frames", "frame_stride", "batch_size", "display_width"},
+        )
+        return cls(
+            annotation_root=resolver.resolve(PathRole.OUTPUT, _text(mapping, "annotation_root", path)),
+            max_frames=_int(mapping, "max_frames", path, minimum=2),
+            frame_stride=_int(mapping, "frame_stride", path, minimum=1),
+            batch_size=_int(mapping, "batch_size", path, minimum=1),
+            display_width=_int(mapping, "display_width", path, minimum=32),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class PlayerTrainingConfig:
     shared: TrainingRuntimeConfig
     data: PlayerDataConfig
     model: DinoModelConfig
     evaluation: DetectionEvaluationConfig
+    qualitative: PlayerQualitativeConfig | None
 
     @classmethod
     def from_config(cls, value: object) -> PlayerTrainingConfig:
@@ -318,9 +343,19 @@ class PlayerTrainingConfig:
             as_config_mapping(value, path="configuration"),
             path="configuration",
             required_keys={"paths", "data", "model", "training", "run", "evaluation"},
-            optional_keys={"hydra"},
+            optional_keys={"hydra", "qualitative"},
         )
         shared = TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
+        qualitative = (
+            PlayerQualitativeConfig.from_mapping(
+                require_config_mapping(config, "qualitative", path="configuration"), shared.resolver
+            )
+            if "qualitative" in config else None
+        )
+        if shared.training.qualitative_logging.enabled and qualitative is None:
+            raise SemanticConfigurationError(
+                "Enabled Player qualitative logging requires an explicit qualitative configuration."
+            )
         if shared.training.compile.enabled:
             raise SemanticConfigurationError(
                 "training.compile.enabled must be false for DINO: batches have "
@@ -329,6 +364,7 @@ class PlayerTrainingConfig:
             )
         return cls(
             shared=shared,
+            qualitative=qualitative,
             data=PlayerDataConfig.from_mapping(
                 require_config_mapping(config, "data", path="configuration"), shared.resolver
             ),

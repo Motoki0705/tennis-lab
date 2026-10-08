@@ -57,9 +57,9 @@ lr_monitor:
   enabled: true
   interval: step
 
-# Disabled: visual checks use scripts.evaluate overlays on deployable exports.
+# Sample validation batches, then render their source video clips.
 qualitative_logging:
-  enabled: false
+  enabled: true
   every_n_epochs: 1
   num_samples: 1
   selection_mode: random

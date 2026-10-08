@@ -1,0 +1,20 @@
+{
+  "task": "court_detection",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+  "commit": "c751331f589a40432920a4f9fc2bbf34eb3c96db",
+  "status": "failed",
+  "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+  "sample_indices": [
+    0,
+    935
+  ],
+  "mode": "standalone validation; interval=1; no optimizer or fit",
+  "checkpoint_epoch": 17,
+  "checkpoint_global_step": 29844,
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "torch": "2.13.0+cu130",
+  "lightning": "2.6.5",
+  "state_tensor_count": 593,
+  "error": "SemanticConfigurationError: training.qualitative_logging.selection_mode is invalid.",
+  "elapsed_seconds": 3.231266124000058
+}

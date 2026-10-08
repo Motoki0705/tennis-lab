@@ -40,6 +40,19 @@ class _TinyModule(BaseLightningModule):
         self.model = nn.Linear(2, 2)
 
 
+def test_enabling_qualitative_logging_requires_renderer(make_training_config) -> None:
+    config = make_training_config()
+    config["training"]["qualitative_logging"]["enabled"] = True
+    with pytest.raises(ValueError, match="_TinyModule to implement render_qualitative_samples"):
+        _TinyModule(config)
+
+
+def test_unimplemented_renderer_raises_when_called_directly(make_training_config) -> None:
+    module = _TinyModule(make_training_config())
+    with pytest.raises(NotImplementedError, match="qualitative rendering"):
+        module.render_qualitative_samples([], [], Path("unused"), None, 0, 0)
+
+
 @dataclass(frozen=True)
 class _FrozenRuntimeDependency:
     value: int
