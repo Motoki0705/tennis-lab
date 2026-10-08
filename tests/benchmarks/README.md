@@ -2,6 +2,21 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+## MDD query-onlyのGPU学習効率
+
+`ball_mdd_query_gpu_sweep.sh <frozen-manifest.json> <conv2d-query_only.yaml> <new-report-dir> [compute|pipeline]`
+を共有training queueの`resource=all`で実行する。各BS/精度を独立CUDA processで測り、
+computeは実train入力をGPU上に固定、pipelineはJPEG/hash/MDD生成を含める。
+trainだけで短いoptimizer updateを行い、test/validationの精度評価や本学習は行わない。
+OOMもJSONに残す。allocatorはGPU容量の90%を上限とするため、無制限での最大BSの証明ではない。
+各caseの入力hash、環境、warmupを除いた速度、VRAM、lossとgradient normを保存する。
+同一batchの反復loss低下を汎化性能と解釈しない。readerの初回clip検証とOS cache状態によって
+pipeline速度が変わるため、GPU計算だけの速度とは分けて扱う。
+`ball_mdd_query_gpu_confirm.sh`はBF16に固定し、全caseで同じ108窓（12 warmup＋96計測）を使う。
+`ball_mdd_query_gpu_smoke.py`は実train/valの3 sourceから各3窓だけを抽出し、
+通常CLIの学習→checkpoint→epoch再開→保存precisionでの評価を通す。testは使わない。
+計測結果と推奨設定は[学習レシピ](../../src/tasks/ball_detection/training/CONV2D_QUERY_ONLY_RECIPE.md)を参照。
+
 ## 人物対応の再較正準備
 
 `association_recalibration_features.py --phase plan --repo <main root> --report <new output>` は

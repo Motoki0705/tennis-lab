@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeAlias
 
 import numpy as np
 import torch
@@ -17,7 +17,7 @@ from src.tasks.ball_detection.model_io.mdd_pose import (
 from src.tasks.ball_detection.model_io.mdd_query import MDDQueryAdapter, MDDQueryInput
 from src.tasks.ball_detection.models.mdd_pose import MDDPoseDetector, MDDQueryDetector
 
-CoordinateModel = MDDPoseDetector | MDDQueryDetector
+CoordinateModel: TypeAlias = MDDPoseDetector | MDDQueryDetector
 
 
 def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: torch.device) -> Tensor:
@@ -98,12 +98,17 @@ def selection_score(report: dict[str, Any], scope: str) -> float:
 
 
 def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device: torch.device,
-                         frame_steps: tuple[int, ...]) -> dict[str, Any]:
+                         frame_steps: tuple[int, ...], *, precision: str = "fp32") -> dict[str, Any]:
+    if precision not in {"fp32", "bf16"}:
+        raise ValueError("Evaluation precision must be fp32 or bf16")
+    if precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
+        raise ValueError("BF16 evaluation requires a supported CUDA device; no fallback")
     model.eval()
     metrics = CoordinateMetrics(frame_steps)
     with torch.no_grad():
         for batch in loader:
-            uv = predict_coordinates(model, batch, device).cpu()
+            with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
+                uv = predict_coordinates(model, batch, device).cpu()
             errors = ((uv - batch["uv"]) * (batch["source_size"][:, None] - 1)).norm(dim=-1)
             metrics.add(batch, errors)
-    return metrics.report()
+    return dict(precision=precision, **metrics.report())

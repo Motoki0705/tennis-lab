@@ -1,4 +1,4 @@
-<!-- knowledge-review: e40def777d355506feeabdb87eab7c7c10c082ac2df034ae9e90be1d573a95fe on 2026-10-08 -->
+<!-- knowledge-review: 08e4d7db7f69f6116ce0789b7c69799d4e7398847c8355f158cdbff7a005d555 on 2026-10-08 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -253,6 +253,17 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 ## タスク別の主要な知見と判断保留事項
 
 ### Ball Detection
+
+新しいMDD座標モデルの初回学習は、ユーザー指定のBF16 AMPを用いる。
+[同一108窓でのGPU比較](nodes/ball_detection/000025-run-i986-query-bf16-confirm-20261008.md)では
+Conv2d＋query-onlyのBS=1・worker=8が成功条件中の最高速度だった。
+[252 update連続確認](nodes/ball_detection/000027-run-i986-query-bf16-sustained-20261008.md)と
+[実CLIの保存・再開・BF16評価](nodes/ball_detection/000026-run-i986-query-bf16-cli-20261008.md)も成立し、
+このBS/reader設定を初回候補とする。BS2/worker8では原因未特定のCUDA unknown errorが発生したため採用しない。
+実データ込みの速度はGPU常駐より大幅に遅く、CPU MDD生成・初回clip hash・I/O待ちが残る。
+本学習・全validation通し・汎化評価は未実施で、診断lossを精度改善の根拠にしない。
+次は[固定レシピ](../src/tasks/ball_detection/training/CONV2D_QUERY_ONLY_RECIPE.md)のpilotで
+common/full validationの学習曲線を確認する。従来deployの判断とは評価契約が異なる。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。

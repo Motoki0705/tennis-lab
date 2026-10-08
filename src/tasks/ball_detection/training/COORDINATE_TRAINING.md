@@ -102,6 +102,35 @@ poseあり／query-onlyの選択はmodel configとmanifestの明示的な組合�
 新checkpoint形式は`mdd_coordinates.v2`で、実際のcode hash、MDD変換、データidentity、
 checkpoint選択scopeを記録する。準備の際に学習やtest評価を自動起動することはない。
 
+Conv2d＋query-onlyの具体的な入力・損失・予算・実行条件は
+[初回学習レシピ](CONV2D_QUERY_ONLY_RECIPE.md)にまとめる。
+
+## 実行時設定・中断からの再開
+
+`--precision fp32|bf16`は学習・validationに適用する。明示的なtest評価も保存された精度を復元し、
+評価CLIの`--precision`で変更した場合は実際の精度を結果へ記録する。
+実行時設定を持たない旧v2 checkpointは旧仕様どおりFP32で読む。
+BF16は対応CUDAデバイスを要求し、別の精度へfallbackしない。MDD・PTS・lossはfloat32を維持する。
+optimizerの重み・状態もfloat32で、FP16/GradScaler・gradient accumulationは使用しない。
+
+train/evaluateの両入口は`--num-workers`、`--pin-memory`、`--prefetch-factor`、
+`--cpu-threads`を受け付ける。worker内のOpenCV/PyTorchは各1 thread、workerはepoch間で維持し、
+clip hashの検証cacheを再利用する。worker間で初回検証cacheは共有しない。
+`prefetch_factor`はworkerごとの先読みbatch数であり、高解像度のhost RAMと共有メモリも消費する。
+
+学習はAdamW（weight decay 0.01）、一定学習率、gradient norm上限1.0。
+`train.jsonl`に`--log-every` updateごとのobserved-frame加重train loss、LR、gradient norm、速度を保存し、
+`metrics.jsonl`にepochごとのvalidation、train loss、学習・評価時間を保存する。
+epoch checkpointと`best.json`は一時ファイルからatomicに公開する。
+
+同じコマンドに`--resume <同じoutput内の最新epoch-NNN.pt>`を付けると、次のepochから再開する。
+総epoch数は`--epochs`で延長できる。モデル・データ・LR・BS・seed・実行時設定・実装hashが変わる再開と、
+過去epochへの巻き戻しは拒否する。optimizer、CPU/CUDA RNG、sampler epoch、更新数、best選択を復元する。
+旧checkpointに再開stateがなければ明示エラーになる。epoch途中からの再開は行わず、
+中断したepochを直前の完了checkpointからやり直す。途中のtrainログは履歴として残り、
+`resume.jsonl`で再開位置を区別する。最初のepochを保存する前に中断した場合は新規runとしてやり直す。
+同じseedはGPUでのbit単位の再現性を保証するものではない。
+
 ## 実装
 
 - `data/temporal_sampling.py`: native play span内のFPS別32枚と境界の契約。
@@ -111,3 +140,5 @@ checkpoint選択scopeを記録する。準備の際に学習やtest評価を自�
 - `coordinate_preparation.py`: 準備transactionと構成・入力・コードの記録。
 - `coordinate_sampling.py`: epoch予算を保った均等FPS混合。
 - `coordinate_evaluation.py`: FPSごとの一意frame評価、全体／共通／source集計。
+- `coordinate_runtime.py`: 精度、reader並列度、共通のoptimizer update。
+- `coordinate_checkpoint.py`: epoch単位の再開とatomicなcheckpoint/best公開。
