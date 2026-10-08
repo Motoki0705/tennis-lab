@@ -8,8 +8,20 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.preprocessing import RGBToMDD
 from src.tasks.ball_detection.training.coordinate_evaluation import CoordinateModel
 from src.utils.checksum import dual_sha256
+
+COORDINATE_CHECKPOINT_SCHEMA = "mdd_coordinates.v3"
+
+
+def validate_coordinate_checkpoint(saved: dict[str, Any]) -> RGBToMDD:
+    if saved.get("schema") != COORDINATE_CHECKPOINT_SCHEMA:
+        raise ValueError("Expected a v3 native RGB coordinate checkpoint; legacy MDD-input v2 is not accepted")
+    preprocessing = RGBToMDD.from_contract(saved["input_contract"])
+    if saved["training_state"]["recipe"]["input_contract"] != preprocessing.input_contract():
+        raise ValueError("Checkpoint input contract and training recipe disagree")
+    return preprocessing
 
 
 def save_coordinate_checkpoint(payload: dict[str, Any], path: Path) -> None:
@@ -21,6 +33,7 @@ def save_coordinate_checkpoint(payload: dict[str, Any], path: Path) -> None:
 def write_best(output: Path, epoch: int) -> None:
     path = output / f"epoch-{epoch:03d}.pt"
     saved = torch.load(path, map_location="cpu", weights_only=True)
+    validate_coordinate_checkpoint(saved)
     record = dict(epoch=epoch, checkpoint=path.name, checkpoint_sha256=dual_sha256(path),
                   selection_scope=saved["selection_scope"], selection_error_px=saved["selection_error_px"],
                   **saved["validation"])
@@ -42,9 +55,12 @@ def resume_coordinate_training(path: Path, output: Path, model: CoordinateModel,
     if path.parent != output or not (output / "config.json").is_file():
         raise ValueError("Resume requires a checkpoint inside the original output directory")
     saved = torch.load(path, map_location="cpu", weights_only=True)
+    preprocessing = validate_coordinate_checkpoint(saved)
     state = saved.get("training_state")
-    if saved.get("schema") != "mdd_coordinates.v2" or not isinstance(state, dict):
+    if not isinstance(state, dict):
         raise ValueError("Checkpoint lacks the epoch-restart training state")
+    if preprocessing.input_contract() != model.mdd.input_contract():
+        raise ValueError("Resume model input preprocessing changed")
     if saved["manifest_sha256"] != manifest_sha256 or state["recipe"] != recipe:
         raise ValueError("Resume data or training recipe changed")
     if saved["code"]["source_sha256"] != code["source_sha256"]:

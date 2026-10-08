@@ -21,12 +21,12 @@ def test_every_ablation_has_finite_masked_gradients(method: str, pool: str, read
     torch.manual_seed(12)
     config = MDDPoseConfig(method, pool, readout, 32, (4, 4, 8, 8), (8, 8), 16, 2, 1, 0., 10000.)
     model = MDDPoseDetector(config)
-    mdd = torch.rand(1, 2, 32, 16, 16)
+    rgb = torch.randint(256, (1, 32, 3, 16, 16), dtype=torch.uint8)
     pose = torch.rand(1, 32, 2, 17, 2)
     valid = torch.ones(1, 32, 2, 17, dtype=torch.bool)
     valid[:, 8:16] = False
     times = torch.arange(32)[None].float() / 30
-    prediction = model(mdd, pose, valid, times)
+    prediction = model(rgb, pose, valid, times)
     target = torch.rand_like(prediction)
     supervision = torch.ones(1, 32, dtype=torch.bool)
     supervision[:, 8:16] = False
@@ -119,7 +119,7 @@ def test_pose_pooling_is_person_order_invariant_and_ignores_missing(method: str)
     assert torch.isfinite(empty).all()
 
 
-@pytest.mark.parametrize("violation", ["rgb", "frames", "time", "mask", "spatial"])
+@pytest.mark.parametrize("violation", ["mdd", "frames", "time", "mask", "spatial"])
 def test_typed_boundary_rejects_bad_inputs_before_model(violation: str, monkeypatch: pytest.MonkeyPatch) -> None:
     from src.tasks.ball_detection.model_io.mdd_pose import (
         MDDPoseInput,
@@ -131,20 +131,20 @@ def test_typed_boundary_rejects_bad_inputs_before_model(violation: str, monkeypa
     def forbidden(*args: object) -> torch.Tensor:
         raise AssertionError("Invalid input entered the model")
     monkeypatch.setattr(pair.model, "forward", forbidden)
-    mdd, pose = torch.zeros(1, 2, 32, 16, 16), torch.zeros(1, 32, 1, 17, 2)
+    rgb, pose = torch.zeros(1, 32, 3, 16, 16, dtype=torch.uint8), torch.zeros(1, 32, 1, 17, 2)
     valid, times = torch.ones(1, 32, 1, 17, dtype=torch.bool), torch.arange(32)[None].float()
-    if violation == "rgb":
-        mdd = torch.zeros(1, 3, 32, 16, 16)
+    if violation == "mdd":
+        rgb = torch.zeros(1, 2, 32, 16, 16)
     elif violation == "frames":
-        mdd = mdd[:, :, :31]
+        rgb = rgb[:, :31]
     elif violation == "time":
         times.zero_()
     elif violation == "mask":
         valid = valid.float()
     else:
-        mdd = mdd[..., :7]
+        rgb = rgb[..., :7]
     with pytest.raises(ValueError):
-        pair.run(MDDPoseInput(mdd, pose, valid, times))
+        pair.run(MDDPoseInput(rgb, pose, valid, times))
 
 
 def test_cross_attention_is_frame_local_before_temporal_mixing() -> None:

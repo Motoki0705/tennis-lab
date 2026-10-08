@@ -16,18 +16,27 @@ from src.tasks.ball_detection.model_io.mdd_pose import (
 )
 from src.tasks.ball_detection.model_io.mdd_query import MDDQueryAdapter, MDDQueryInput
 from src.tasks.ball_detection.models.mdd_pose import MDDPoseDetector, MDDQueryDetector
+from src.tasks.ball_detection.training.coordinate_compilation import (
+    coordinate_compile_scope,
+)
 
 CoordinateModel: TypeAlias = MDDPoseDetector | MDDQueryDetector
 
 
 def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: torch.device) -> Tensor:
     if isinstance(model, MDDQueryDetector):
-        inputs = MDDQueryInput(batch["mdd"].to(device), batch["timestamps"].to(device))
+        inputs = MDDQueryInput(batch["rgb"], batch["timestamps"])
         adapter = MDDQueryAdapter(model.config)
         call = adapter.build_call(inputs)
-        return adapter.decode_output(model(*call.args))
-    pose_inputs = MDDPoseInput(*(batch[key].to(device) for key in ("mdd", "pose", "pose_valid", "timestamps")))
-    return MDDPoseAdapter(model.config).decode_output(model(*prepare_mdd_pose_inputs(model.config, pose_inputs)))
+        rgb, timestamps = call.args
+        if rgb is None or timestamps is None:
+            raise ValueError("Native query requires RGB and timestamps")
+        return adapter.decode_output(model(rgb.to(device, non_blocking=True), timestamps.to(device, non_blocking=True)))
+    pose_inputs = MDDPoseInput(*(batch[key] for key in ("rgb", "pose", "pose_valid", "timestamps")))
+    # Validate the small metadata on CPU before H2D. No value-dependent Python
+    # validation enters the compiled model; uint8 RGB needs no full-image scan.
+    tensors = prepare_mdd_pose_inputs(model.config, pose_inputs)
+    return MDDPoseAdapter(model.config).decode_output(model(*(tensor.to(device, non_blocking=True) for tensor in tensors)))
 
 
 class CoordinateMetrics:
@@ -105,7 +114,7 @@ def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device
         raise ValueError("BF16 evaluation requires a supported CUDA device; no fallback")
     model.eval()
     metrics = CoordinateMetrics(frame_steps)
-    with torch.no_grad():
+    with torch.no_grad(), coordinate_compile_scope(model):
         for batch in loader:
             with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
                 uv = predict_coordinates(model, batch, device).cpu()

@@ -26,6 +26,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--workers", type=int, required=True)
     parser.add_argument("--batch-size", type=int, required=True)
+    parser.add_argument("--compile-mode", choices=("off", "default", "reduce-overhead", "max-autotune"), default="off")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     original = json.loads(args.manifest.read_text())
@@ -57,6 +58,7 @@ def main() -> None:
                "--manifest", str(manifest), "--model-config", str(args.model_config),
                "--output", str(training), "--learning-rate", "0.0001", "--seed", "42",
                "--device", "cuda", "--precision", "bf16", "--batch-size", str(args.batch_size),
+               "--compile-mode", args.compile_mode,
                "--num-workers", str(args.workers), "--pin-memory", "--windows-per-epoch", "12",
                "--selection-scope", "common", "--log-every", "1"]
     subprocess.run([*command, "--epochs", "1"], check=True)
@@ -80,6 +82,7 @@ def main() -> None:
                   queue_run_id=os.environ.get("TENNIS_RUN_ID"), train_clips=3, val_clips=3, test_clips=0,
                   train_windows=9, val_windows=9, optimizer_updates=expected_updates,
                   precision=report["precision"], batch_size=args.batch_size, workers=args.workers,
+                  input_contract=report["input_contract"], compilation=report["compilation"],
                   cuda_rng_saved=True, resumed=True, external_eval_restored_precision=True,
                   parent_manifest_sha256=dual_sha256(args.manifest),
                   excerpt_sha256=dual_sha256(manifest), checkpoint_sha256=dual_sha256(training / "epoch-001.pt"))

@@ -17,6 +17,7 @@ from src.tasks.ball_detection.data.pose_windows import (
 )
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDPoseDetector
+from src.tasks.ball_detection.preprocessing import RGBToMDD
 from src.utils.checksum import dual_sha256
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
@@ -52,19 +53,19 @@ def frozen(tmp_path: Path) -> tuple[Path, Path]:
 
 def test_frozen_dataset_keeps_resolution_alignment_and_masks(frozen: tuple[Path, Path]) -> None:
     manifest, poses = frozen
-    dataset = PoseWindowDataset(manifest, split="train", mdd_a=.2, mdd_b=.15)
+    dataset = PoseWindowDataset(manifest, split="train")
     # New approvals/changes to the live campaign do not change a frozen experiment.
     (poses / "manifest.json").write_text("{}")
     sample = dataset[0]
-    assert sample["mdd"].shape == (2, 32, 32, 32)
-    assert not sample["mdd"][:, 0].any()
+    assert sample["rgb"].shape == (32, 3, 32, 32) and sample["rgb"].dtype == torch.uint8
+    assert "mdd" not in sample and not RGBToMDD()(sample["rgb"][None])[:, :, 0].any()
     torch.testing.assert_close(sample["uv"][0], torch.tensor([8 / 31, 8 / 31]))
     torch.testing.assert_close(sample["pose"][0, 0, 0], torch.tensor([12 / 31, 12 / 31]))
     assert not sample["position_valid"][10:15].any()
     assert not sample["pose_valid"][10:15, 1].any()
     batch = collate_pose_windows([sample])
     model = MDDPoseDetector(MDDPoseConfig("conv2d", "attention", "query", 32, (4, 4, 8, 8), (8, 8), 16, 2, 1, 0., 10000.))
-    output = model(batch["mdd"], batch["pose"], batch["pose_valid"], batch["timestamps"])
+    output = model(batch["rgb"], batch["pose"], batch["pose_valid"], batch["timestamps"])
     loss = coordinate_loss(output, batch["uv"], batch["position_valid"])
     loss.backward()
     assert torch.isfinite(loss)
@@ -72,7 +73,7 @@ def test_frozen_dataset_keeps_resolution_alignment_and_masks(frozen: tuple[Path,
 
 def test_changed_pose_bytes_are_rejected(frozen: tuple[Path, Path]) -> None:
     manifest, poses = frozen
-    dataset = PoseWindowDataset(manifest, split="train", mdd_a=.2, mdd_b=.15)
+    dataset = PoseWindowDataset(manifest, split="train")
     with (poses / "clip.npz").open("ab") as stream:
         stream.write(b"changed")
     with pytest.raises(ValueError, match="identity"):
@@ -81,4 +82,4 @@ def test_changed_pose_bytes_are_rejected(frozen: tuple[Path, Path]) -> None:
 
 def test_no_windows_does_not_fall_back_to_another_split(frozen: tuple[Path, Path]) -> None:
     with pytest.raises(ValueError, match="No accepted windows"):
-        PoseWindowDataset(frozen[0], split="val", mdd_a=.2, mdd_b=.15)
+        PoseWindowDataset(frozen[0], split="val")

@@ -26,9 +26,14 @@ from src.tasks.ball_detection.models.mdd_pose import (
     MDDQueryDetector,
 )
 from src.tasks.ball_detection.training.coordinate_checkpoint import (
+    COORDINATE_CHECKPOINT_SCHEMA,
     resume_coordinate_training,
     save_coordinate_checkpoint,
     write_best,
+)
+from src.tasks.ball_detection.training.coordinate_compilation import (
+    COMPILE_MODES,
+    coordinate_compilation_report,
 )
 from src.tasks.ball_detection.training.coordinate_evaluation import (
     CoordinateModel,
@@ -97,6 +102,8 @@ def main() -> None:
     parser.add_argument("--pin-memory", action="store_true")
     parser.add_argument("--prefetch-factor", type=int, default=1)
     parser.add_argument("--cpu-threads", type=int, default=2)
+    parser.add_argument("--compile-mode", choices=COMPILE_MODES, default="off")
+    parser.add_argument("--compile-recompile-limit", type=int, default=8)
     parser.add_argument("--log-every", type=int, default=50)
     parser.add_argument("--resume", type=Path, help="Latest completed epoch in the same --output directory")
     parser.add_argument("--mdd-a", type=float, default=.2)
@@ -134,15 +141,15 @@ def main() -> None:
         overrides["pose_pooling"] = None
     config = replace(config, **overrides)
     identity = dual_sha256(args.manifest)
-    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose,
-                                       mdd_a=args.mdd_a, mdd_b=args.mdd_b)
-    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose,
-                                         mdd_a=args.mdd_a, mdd_b=args.mdd_b)
+    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose)
+    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose)
     device = torch.device(args.device)
-    runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor, args.cpu_threads)
+    runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
+                                args.cpu_threads, args.compile_mode, args.compile_recompile_limit)
     runtime.configure(device)
     torch.manual_seed(args.seed)
-    model = (MDDPoseDetector(config) if config.requires_pose else MDDQueryDetector(config)).to(device)
+    model = (MDDPoseDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b) if config.requires_pose
+             else MDDQueryDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b)).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=.01)
     epoch_windows = args.windows_per_epoch or sum(window.frame_step == 1 for _, window in training.windows)
     sampler = FPSMixSampler(training, windows_per_epoch=epoch_windows, seed=args.seed)
@@ -152,7 +159,7 @@ def main() -> None:
     recipe = dict(model=asdict(config), runtime=asdict(runtime), batch_size=args.batch_size,
                   seed=args.seed, learning_rate=args.learning_rate, weight_decay=.01,
                   windows_per_epoch=epoch_windows, selection_scope=args.selection_scope,
-                  mdd_a=args.mdd_a, mdd_b=args.mdd_b, device=args.device,
+                  input_contract=model.mdd.input_contract(), device=args.device,
                   evaluation_precision=args.precision, gradient_clip=1., schedule="constant")
     start_epoch, global_step, best, best_epoch = 0, 0, float("inf"), -1
     if args.resume is None:
@@ -163,6 +170,7 @@ def main() -> None:
             code=code, device=device)
         if start_epoch >= args.epochs:
             raise ValueError("Total epoch budget must exceed the resumed checkpoint epoch")
+    runtime.configure_model(model)
     settings = dict(model=asdict(config), manifest_sha256=identity, code=code,
                     model_config_sha256=dual_sha256(args.model_config),
                     arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
@@ -171,7 +179,9 @@ def main() -> None:
                     fps_sampling=dict(frame_steps=training.frame_steps, windows_per_epoch=epoch_windows,
                                       mixture="equal-FPS shuffled cycles; sampled RGB before MDD"),
                     test_usage="no test samples used for training or checkpoint selection",
-                    input_rgb="stored JPEG at native size; [0,1] luminance; no ImageNet normalization",
+                    input_contract=model.mdd.input_contract(),
+                    compilation=coordinate_compilation_report(model),
+                    input_rgb="stored JPEG decoded to RGB uint8; sampled before native FP32 model MDD; no ImageNet normalization",
                     mdd_first_frame="zero, no RGB predecessor outside the 32-frame window")
     settings["recipe"] = recipe
     if args.resume is None:
@@ -191,7 +201,7 @@ def main() -> None:
             observed = int(batch["position_valid"].sum())
             loss_sum += float(loss) * observed
             observed_count += observed
-            windows_seen += len(batch["mdd"])
+            windows_seen += len(batch["rgb"])
             global_step += 1
             if global_step % args.log_every == 0 or windows_seen == epoch_windows:
                 elapsed = time.perf_counter() - epoch_start
@@ -214,17 +224,20 @@ def main() -> None:
             best, best_epoch = score, epoch
         training_state = dict(recipe=recipe, global_step=global_step, best_epoch=best_epoch,
                               best_error_px=best, cuda_rng=torch.cuda.get_rng_state_all() if device.type == "cuda" else None)
-        save_coordinate_checkpoint(dict(schema="mdd_coordinates.v2", model_config=asdict(config), state_dict=model.state_dict(),
+        compilation = coordinate_compilation_report(model)
+        save_coordinate_checkpoint(dict(schema=COORDINATE_CHECKPOINT_SCHEMA, model_config=asdict(config), state_dict=model.state_dict(),
                         optimizer=optimizer.state_dict(), epoch=epoch, manifest_sha256=identity,
                         torch_rng=torch.get_rng_state(), validation=report,
                         selection_scope=args.selection_scope, selection_error_px=score,
-                        mdd_a=args.mdd_a, mdd_b=args.mdd_b, code=code, training_state=training_state), path)
+                        input_contract=model.mdd.input_contract(), compilation=compilation,
+                        code=code, training_state=training_state), path)
         if improved:
             write_best(args.output, epoch)
         with (args.output / "metrics.jsonl").open("a") as stream:
             stream.write(json.dumps(dict(epoch=epoch, global_step=global_step,
                                          train_loss=loss_sum / observed_count,
-                                         train_seconds=train_seconds, validation_seconds=validation_seconds, **report)) + "\n")
+                                         train_seconds=train_seconds, validation_seconds=validation_seconds,
+                                         compilation=compilation, **report)) + "\n")
         print(json.dumps(dict(epoch=epoch, **report)), flush=True)
 
 

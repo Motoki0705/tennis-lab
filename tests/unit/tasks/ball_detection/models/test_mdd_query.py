@@ -27,7 +27,7 @@ def test_query_only_trains_without_pose_or_patch_update_parameters(method: str) 
     torch.manual_seed(26)
     pair = build_mdd_query_detector(config(method))
     times = torch.arange(32)[None].float() / 15
-    prediction = pair.run(MDDQueryInput(torch.rand(1, 2, 32, 32, 32), times))
+    prediction = pair.run(MDDQueryInput(torch.randint(256, (1, 32, 3, 32, 32), dtype=torch.uint8), times))
     target = torch.rand_like(prediction)
     valid = torch.ones(1, 32, dtype=torch.bool)
     valid[:, 5:10] = False
@@ -69,7 +69,7 @@ def test_queries_read_same_time_images_then_mix_over_real_timestamps() -> None:
     assert not torch.allclose(first, slower)
 
 
-@pytest.mark.parametrize("violation", ["rgb", "frames", "time", "dtype", "spatial"])
+@pytest.mark.parametrize("violation", ["mdd", "frames", "time", "dtype", "spatial"])
 def test_query_boundary_validates_before_forward(violation: str, monkeypatch: pytest.MonkeyPatch) -> None:
     pair = build_mdd_query_detector(config())
 
@@ -77,20 +77,20 @@ def test_query_boundary_validates_before_forward(violation: str, monkeypatch: py
         raise AssertionError("Invalid data entered the model")
 
     monkeypatch.setattr(pair.model, "forward", forbidden)
-    mdd = torch.zeros(1, 2, 32, 16, 16)
+    rgb = torch.zeros(1, 32, 3, 16, 16, dtype=torch.uint8)
     times = torch.arange(32)[None].float()
-    if violation == "rgb":
-        mdd = torch.zeros(1, 3, 32, 16, 16)
+    if violation == "mdd":
+        rgb = torch.zeros(1, 2, 32, 16, 16)
     elif violation == "frames":
-        mdd = mdd[:, :, :31]
+        rgb = rgb[:, :31]
     elif violation == "time":
         times.zero_()
     elif violation == "dtype":
-        mdd = mdd.double()
+        rgb = rgb.float()
     else:
-        mdd = mdd[..., :7]
+        rgb = rgb[..., :7]
     with pytest.raises(ValueError):
-        pair.run(MDDQueryInput(mdd, times))
+        pair.run(MDDQueryInput(rgb, times))
 
 
 def test_pose_presence_is_explicit_in_config_and_model_selection() -> None:

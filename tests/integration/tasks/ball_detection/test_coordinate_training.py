@@ -29,6 +29,7 @@ from src.tasks.ball_detection.data.temporal_sampling import (
     select_sampled_windows,
 )
 from src.tasks.ball_detection.model_io.mdd import luminance_to_mdd, mdd_coefficients
+from src.tasks.ball_detection.preprocessing import RGBToMDD
 from src.tasks.ball_detection.training.coordinate_preparation import (
     prepare_coordinate_training,
 )
@@ -73,7 +74,7 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
     data = build_coordinate_manifest(store, PlayIntervalConfig(), TemporalSamplingConfig(), input_kind="mdd_only")
     path = tmp_path / "windows.json"
     path.write_text(json.dumps(data))
-    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
+    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False)
     assert data["semantics"]["clip_presence_gate"] is None
     assert {window.frame_step for _, window in dataset.windows} == {1, 2, 4}
     index = next(i for i, (_, w) in enumerate(dataset.windows) if w.start == 0 and w.frame_step == 4)
@@ -89,10 +90,12 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
     gain, offset = mdd_coefficients(.2, .15)
     expected = luminance_to_mdd(gray_tensor[:, :125:4], gain=gain, offset=offset)[0]
     wrong_order = luminance_to_mdd(gray_tensor, gain=gain, offset=offset)[0, :, :125:4]
-    torch.testing.assert_close(sample["mdd"], expected)
-    assert not torch.allclose(sample["mdd"], wrong_order)
+    native = RGBToMDD()(sample["rgb"][None])[0]
+    assert sample["rgb"].dtype == torch.uint8 and "mdd" not in sample
+    torch.testing.assert_close(native, expected)
+    assert not torch.allclose(native, wrong_order)
     batch = collate_coordinate_windows([sample])
-    assert "pose" not in batch and batch["mdd"].shape == (1, 2, 32, 32, 32)
+    assert "pose" not in batch and batch["rgb"].shape == (1, 32, 3, 32, 32)
     sampler = FPSMixSampler(dataset, windows_per_epoch=30, seed=19)
     first = list(sampler)
     assert Counter(dataset.windows[i][1].frame_step for i in first) == {1: 10, 2: 10, 4: 10}
@@ -140,7 +143,7 @@ def test_snapshot_hardlinks_rgb_but_freezes_indexes_and_detects_modified_bytes(t
         byte = stream.read(1)[0]
         stream.seek(10)
         stream.write(bytes([byte ^ 1]))
-    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
+    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False)
     with pytest.raises(ValueError, match="checksum"):
         dataset[0]
 
@@ -171,7 +174,7 @@ def test_preparation_freezes_36_models_and_pose_free_loading_survives_missing_po
     assert plan["datasets"]["mdd_only"]["clips"] == 6
     assert not (output / "PREPARATION_INCOMPLETE").exists()
     (output / "poses").rename(output / "hidden_poses")
-    data = CoordinateWindowDataset(Path(plan["datasets"]["mdd_only"]["path"]), split="val", requires_pose=False, mdd_a=.2, mdd_b=.15)
+    data = CoordinateWindowDataset(Path(plan["datasets"]["mdd_only"]["path"]), split="val", requires_pose=False)
     assert {data[i]["common_evaluation"] for i in range(len(data))} == {True, False}
     assert all("pose" not in data[i] for i in range(len(data)))
 
@@ -184,9 +187,13 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
     result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train_mdd_pose",
                              "--manifest", variant["manifest"], "--model-config", variant["model_config"],
                              "--output", str(output), "--epochs", "1", "--learning-rate", ".001", "--seed", "5",
+                             "--mdd-a", ".27", "--mdd-b", "-.05",
                              "--device", "cpu", "--windows-per-epoch", "3", "--batch-size", "2",
                              "--num-workers", "2"], env=env, capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
+    saved = torch.load(output / "epoch-000.pt", weights_only=True)
+    assert saved["schema"] == "mdd_coordinates.v3"
+    assert saved["input_contract"]["mdd_a"] == .27 and saved["input_contract"]["mdd_b"] == -.05
     progress = json.loads((output / "train.jsonl").read_text().splitlines()[-1])
     assert progress["global_step"] == 2 and progress["windows"] == 3
     assert np.isfinite(progress["train_loss"])
@@ -198,6 +205,7 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
     assert result.returncode == 0, result.stdout + result.stderr
     report = json.loads(report_path.read_text())
     assert report["split"] == "test"
+    assert report["input_contract"] == saved["input_contract"]
     for step in ("1", "2", "4"):
         full = report["scopes"]["full"]["by_frame_step"][step]
         common = report["scopes"]["common"]["by_frame_step"][step]

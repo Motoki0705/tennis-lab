@@ -108,7 +108,8 @@ def prepare_coordinate_training(
                                                   "--manifest", manifests[kind]["path"], "--model-config", str(path),
                                                   "--output", "<new-absolute-training-run>", "--epochs", "<epochs>",
                                                   "--learning-rate", "<learning-rate>", "--seed", "<seed>",
-                                                  "--device", "cuda", "--selection-scope", "common"]))
+                                                  "--device", "cuda", "--precision", "bf16",
+                                                  "--compile-mode", "default", "--selection-scope", "common"]))
     if coordinate_source_identity()["source_sha256"] != code["source_sha256"]:
         raise ValueError("Coordinate implementation changed during data preparation")
     plan = dict(schema="mdd_coordinate_experiments.v1", models=experiments, datasets=manifests,

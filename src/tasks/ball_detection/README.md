@@ -11,8 +11,8 @@
 
 ### models/ と model_io/
 - **ConvNeXtUNet**: 2ch MDDからnative probability heatmap・候補・局所patchを出す。`model_io/factory.py`の検証済みmodel/adapter経由で使う。
-- **[MDD coordinate detector](models/mdd_pose/README.md)**: frame独立のMDD 1/16圧縮→共通2D/2D/3D blockで1/64、同時刻cross-attention→時間RoPE、座標直接回帰。poseあり32条件＋poseなしquery-only 4条件。
-- **`model_io/mdd.py`**: 共通の正負輝度差＋sigmoid変換。ConvNeXtの保存済みMDD係数・正規化契約は維持する。
+- **[MDD coordinate detector](models/mdd_pose/README.md)**: RGB uint8→モデル内FP32 MDD→frame独立の1/16圧縮→共通2D/2D/3D blockで1/64、同時刻cross-attention→時間RoPE、座標直接回帰。poseあり32条件＋poseなしquery-only 4条件。
+- **[固定前処理](preprocessing/README.md)**: モデル内RGB→MDDと共通の正負輝度差＋sigmoid変換。`model_io/mdd.py`は既存importの互換入口。ConvNeXtの保存済みMDD係数・正規化契約は維持する。
 - **`model_io/adapters.py`**: 元RGBの検証/宣言済み正規化→MDDへの単一経路、heatmap学習・復号。RGBを直接受け取るモデル分岐はない。
 - **`model_io/contracts.py` / `candidates.py`**: heatmap・候補のtyped契約と閾値前局所peak抽出。
 - **`models/discriminators/`**: ConvNeXtの任意GAN学習用discriminator。

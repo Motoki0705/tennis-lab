@@ -8,18 +8,16 @@ from torch import Tensor
 from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
 
 
-def validate_mdd_timestamps(config: MDDPoseConfig, mdd: Tensor, timestamps: Tensor) -> None:
-    if mdd.ndim != 5 or mdd.shape[0] < 1 or mdd.shape[1] != 2:
-        raise ValueError("MDD requires B,2,T,H,W")
-    b, _, t, h, w = mdd.shape
+def validate_rgb_timestamps(config: MDDPoseConfig, rgb: Tensor, timestamps: Tensor) -> None:
+    if rgb.ndim != 5 or rgb.shape[0] < 1 or rgb.shape[2] != 3 or rgb.dtype != torch.uint8:
+        raise ValueError("Native MDD models require RGB uint8 B,T,3,H,W")
+    b, t, _, h, w = rgb.shape
     if min(h, w) < 8 or t != config.frames:
-        raise ValueError("MDD requires 32 frames and spatial sizes at least eight")
-    if timestamps.shape != (b, t) or timestamps.device != mdd.device:
-        raise ValueError("Timestamps must align with MDD batch, frames and device")
-    if any(x.dtype != torch.float32 or not bool(torch.isfinite(x).all()) for x in (mdd, timestamps)):
-        raise ValueError("MDD and timestamps require finite float32 values")
-    if bool(((mdd < 0) | (mdd > 1)).any()):
-        raise ValueError("MDD sigmoid features must be in [0,1]")
+        raise ValueError("RGB requires 32 frames and spatial sizes at least eight")
+    if timestamps.shape != (b, t) or timestamps.device != rgb.device:
+        raise ValueError("Timestamps must align with RGB batch, frames and device")
+    if timestamps.dtype != torch.float32 or not bool(torch.isfinite(timestamps).all()):
+        raise ValueError("Timestamps require finite float32 values")
     if bool((timestamps.diff(dim=1) <= 0).any()):
         raise ValueError("Real timestamps must increase strictly")
 

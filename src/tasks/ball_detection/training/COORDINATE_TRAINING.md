@@ -99,7 +99,7 @@ poseあり／query-onlyの選択はmodel configとmanifestの明示的な組合�
 ```
 
 評価はcheckpointと同じmanifest hashを要求し、MDD設定・モデル状態をstrictに復元する。
-新checkpoint形式は`mdd_coordinates.v2`で、実際のcode hash、MDD変換、データidentity、
+新checkpoint形式は`mdd_coordinates.v3`で、実際のcode hash、native RGB/MDD入力契約、データidentity、
 checkpoint選択scopeを記録する。準備の際に学習やtest評価を自動起動することはない。
 
 Conv2d＋query-onlyの具体的な入力・損失・予算・実行条件は
@@ -109,8 +109,9 @@ Conv2d＋query-onlyの具体的な入力・損失・予算・実行条件は
 
 `--precision fp32|bf16`は学習・validationに適用する。明示的なtest評価も保存された精度を復元し、
 評価CLIの`--precision`で変更した場合は実際の精度を結果へ記録する。
-実行時設定を持たない旧v2 checkpointは旧仕様どおりFP32で読む。
-BF16は対応CUDAデバイスを要求し、別の精度へfallbackしない。MDD・PTS・lossはfloat32を維持する。
+旧v2 checkpointはMDD直接入力の形式として明示的に拒否する。旧診断は保存済みcommit/bundleで再現する。
+BF16は対応CUDAデバイスを要求し、別の精度へfallbackしない。readerはsampled RGB uint8を返し、
+モデル内で正規化・輝度・MDDをFP32で計算する。PTS・lossもfloat32を維持する。
 optimizerの重み・状態もfloat32で、FP16/GradScaler・gradient accumulationは使用しない。
 
 train/evaluateの両入口は`--num-workers`、`--pin-memory`、`--prefetch-factor`、
@@ -131,14 +132,32 @@ epoch checkpointと`best.json`は一時ファイルからatomicに公開する�
 `resume.jsonl`で再開位置を区別する。最初のepochを保存する前に中断した場合は新規runとしてやり直す。
 同じseedはGPUでのbit単位の再現性を保証するものではない。
 
+## torch.compile
+
+`--compile-mode off|default|reduce-overhead|max-autotune`でCUDAモデルのcompileを明示する。
+`off`がCLI既定。モデルをin-placeでcompileし、型判定とstate_dictのparameter名を維持する。
+backendはInductor、`fullgraph=True`、`dynamic=False`で、graph breakを許さない。
+`--compile-recompile-limit`は既定8。train/eval、最終batch、pose人数のshape違いによる特殊化を含み、
+上限を超えた場合はエラーにする。Tensor値をPython boolへ変換する検証はcompiled forwardの外に置く。
+学習はautocast下でforward/loss、その外でbackwardするため、遅延compile・backward時も
+`backward_pass_autocast="off"`を明示する。エラーを隠してeagerへfallbackしない。
+
+評価は保存されたcompile設定を復元する。`--compile-mode off`で明示的なeager評価もできる。
+設定・各epoch checkpoint・評価結果に、compile modeとprocess内のgraph数/graph breakを記録する。
+初回compileを含む時間と、warmup後の定常速度は分けて計測する。
+GPU実行時は`TORCHINDUCTOR_COMPILE_THREADS=2`でhost RAMを制限し、
+`TORCH_LOGS=graph_breaks,recompiles`で意図しない再compileを追跡できる。
+
 ## 実装
 
 - `data/temporal_sampling.py`: native play span内のFPS別32枚と境界の契約。
 - `data/coordinate_manifest.py` / `coordinate_snapshot.py`: GT共通性の照合とsnapshot固定。
-- `data/coordinate_dataset.py`: sampled RGBからMDD、同じindexのpose/教師/PTSを読む。
+- `data/coordinate_dataset.py`: sampled RGB uint8、同じindexのpose/教師/PTSを読む。
 - `models/mdd_pose/variants.py`: 重複のない36モデルの列挙。
 - `coordinate_preparation.py`: 準備transactionと構成・入力・コードの記録。
 - `coordinate_sampling.py`: epoch予算を保った均等FPS混合。
 - `coordinate_evaluation.py`: FPSごとの一意frame評価、全体／共通／source集計。
+- `preprocessing/mdd.py`: 固定FP32 RGB→MDD。モデルのforwardに含める。
+- `coordinate_compilation.py`: fullgraph/AMP backward方針と実行記録。
 - `coordinate_runtime.py`: 精度、reader並列度、共通のoptimizer update。
 - `coordinate_checkpoint.py`: epoch単位の再開とatomicなcheckpoint/best公開。

@@ -12,7 +12,6 @@ import torch
 from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
-from src.tasks.ball_detection.model_io.mdd import luminance_to_mdd, mdd_coefficients
 from src.utils.checksum import dual_sha256
 
 from .annotation_states import AnnotationStates, annotation_states
@@ -24,7 +23,7 @@ from .temporal_sampling import SampledWindow, TemporalSamplingConfig
 class CoordinateWindowDataset(Dataset[dict[str, Any]]):
     """Modality is explicit. MDD-only never opens a pose manifest or artifact."""
 
-    def __init__(self, manifest: Path, *, split: str, requires_pose: bool, mdd_a: float, mdd_b: float) -> None:
+    def __init__(self, manifest: Path, *, split: str, requires_pose: bool) -> None:
         self.manifest = json.loads(manifest.read_text())
         schema = self.manifest.get("schema")
         if schema == "ball_play_windows.v1":
@@ -53,7 +52,6 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
             if dual_sha256(root / name) != expected_digest:
                 raise ValueError("Ball snapshot changed")
         self.store = BallFrameStore(root)
-        self.gain, self.offset = mdd_coefficients(mdd_a, mdd_b)
         if not requires_pose and self.manifest.get("pose_directory") is not None:
             raise ValueError("MDD-only data must not depend on pose artifacts")
         self.pose_directory = Path(self.manifest["pose_directory"]) if requires_pose else None
@@ -127,13 +125,14 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
         if (not states.target[indices].all() or position_valid.sum() < cfg["min_observed_frames"]
                 or states.evidence[indices].mean() < cfg["min_presence_fraction"]):
             raise ValueError("Sampled window no longer satisfies declared teacher/evidence requirements")
-        gray = np.empty((32, clip.height, clip.width), np.float32)
+        rgb = np.empty((32, 3, clip.height, clip.width), np.uint8)
         uv: NDArray[np.float32] = np.zeros((32, 2), np.float32)
         denominator = clip.scale * np.asarray((clip.source_width - 1, clip.source_height - 1), np.float32)
         for position, frame in enumerate(indices):
             row = self.store.row_of(clip, int(frame))
-            image = self.store.read_bgr(row).astype(np.float32) / 255
-            gray[position] = .114 * image[..., 0] + .587 * image[..., 1] + .299 * image[..., 2]
+            image = self.store.read_bgr(row)
+            # Copy BGR HWC directly into the final RGB CHW uint8 allocation.
+            rgb[position] = image[..., ::-1].transpose(2, 0, 1)
             if position_valid[position]:
                 uv[position] = states.xy[frame] / denominator
         if not np.isfinite(uv).all() or ((uv[position_valid] < 0) | (uv[position_valid] > 1)).any():
@@ -141,8 +140,7 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
         rows = self.store.clip_rows(clip)
         pts = self.store.frames["pts"][rows[indices]]
         seconds = ((pts - pts[0]).astype(np.float64) * float(Fraction(clip.time_base))).astype(np.float32)
-        mdd = luminance_to_mdd(torch.from_numpy(gray)[None], gain=self.gain, offset=self.offset)[0]
-        sample = dict(mdd=mdd, timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
+        sample = dict(rgb=torch.from_numpy(rgb), timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
                       position_valid=torch.from_numpy(position_valid), frame_indices=torch.from_numpy(indices),
                       frame_step=window.frame_step, input_kind=self.input_kind,
                       common_evaluation=bool(record["common_evaluation"]),
@@ -156,8 +154,10 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
 def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
     if not samples or len({s["input_kind"] for s in samples}) != 1:
         raise ValueError("Batch must contain one nonempty coordinate input kind")
-    if len({tuple(s["mdd"].shape) for s in samples}) != 1:
+    if len({tuple(s["rgb"].shape) for s in samples}) != 1:
         raise ValueError("Batch images must share native shape; resize/padding is not automatic")
+    if any(s["rgb"].dtype != torch.uint8 or s["rgb"].ndim != 4 or s["rgb"].shape[:2] != (32, 3) for s in samples):
+        raise ValueError("Coordinate samples require RGB uint8 T,3,H,W")
     result: dict[str, Any] = {}
     if samples[0]["input_kind"] == "mdd_pose":
         people = max(sample["pose"].shape[1] for sample in samples)
@@ -171,7 +171,7 @@ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
             result[key] = torch.stack(values)
     elif samples[0]["input_kind"] != "mdd_only" or any("pose" in s or "pose_valid" in s for s in samples):
         raise ValueError("MDD-only batches must not contain pose tensors")
-    for key in ("mdd", "timestamps", "uv", "position_valid", "source_size", "frame_indices"):
+    for key in ("rgb", "timestamps", "uv", "position_valid", "source_size", "frame_indices"):
         result[key] = torch.stack([sample[key] for sample in samples])
     for key in ("clip_id", "start", "source", "frame_step", "common_evaluation", "input_kind"):
         result[key] = [sample[key] for sample in samples]

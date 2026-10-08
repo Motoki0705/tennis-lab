@@ -1,14 +1,19 @@
 # MDD coordinate detector（poseあり32条件＋query-only 4条件）
 
-入力は高解像度の2ch MDD。poseありの32条件はCOCO17の2D座標も使う。
+外部入力はRGB順uint8のclip `B,T,3,H,W`。モデル先頭の固定`RGBToMDD` layerがFP32で2ch MDDを作る。
+poseありの32条件はCOCO17の2D座標も使う。
 query-onlyの4条件にはpose入力・pose module・null pose tokenを設けない。
-RGBはMDD計算の素材で、モデルへ直接渡さない。出力は32枚それぞれのsource正規化座標 `(B,32,2)`。
+学習部が使う画像特徴はMDDだけ。RGBから学習部への別経路はない。出力は32枚それぞれのsource正規化座標 `(B,32,2)`。
 公開境界は`model_io.mdd_pose.build_mdd_pose_detector`のmodel/adapter pairで、
-`MDDPoseInput`を検証してから計算のみのforwardを実行する。
+`MDDPoseInput.rgb`・pose・時刻を検証してから、MDD生成を含むforwardを実行する。
 query-onlyの公開境界は`model_io.mdd_query.build_mdd_query_detector`と`MDDQueryInput`。
 設定の正本は `../../configs/model/mdd_pose.yaml` と `../../configs/model/mdd_query.yaml`。
 全重みをランダム初期化する。
 refinerの候補/patch契約との接続は#986の未決事項で、座標からheatmapを捏造しない。
+
+固定前処理の定義・色順序は[共通前処理](../../preprocessing/README.md)を正本とする。
+RGB→MDDの計算はBF16 autocast下でもFP32を保ち、係数は学習しない。
+`torch.compile`にはこの前処理から座標headまでを含める。
 
 ## Encoder: frame独立の1/16圧縮 → 共通2D/2D/3Dを2回 → 1/64
 
@@ -96,7 +101,7 @@ LayerNorm→Linear(2)→sigmoidでuvを出す。pooling内部のpose queryはbal
 
 MDD tokenをqueryから更新する経路はなく、同じencoder出力を各blockから参照する。
 球queryの初期ベクトルをframe間で共有し、最後に各時刻のqueryからuvを回帰する。
-MDD＋実時刻だけを受け取るtyped adapterで検証し、poseあり設定との取り違えを拒否する。
+RGB uint8＋実時刻を受け取るtyped adapterで検証し、poseあり設定や旧MDD tensorとの取り違えを拒否する。
 
 ## データ・混合FPS・学習入口
 

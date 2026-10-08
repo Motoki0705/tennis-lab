@@ -14,8 +14,8 @@ from .coordinate_dataset import CoordinateWindowDataset, collate_coordinate_wind
 class PoseWindowDataset(CoordinateWindowDataset):
     """Read either the original native-FPS manifest or the mixed-FPS manifest."""
 
-    def __init__(self, manifest: Path, *, split: str, mdd_a: float, mdd_b: float) -> None:
-        super().__init__(manifest, split=split, requires_pose=True, mdd_a=mdd_a, mdd_b=mdd_b)
+    def __init__(self, manifest: Path, *, split: str) -> None:
+        super().__init__(manifest, split=split, requires_pose=True)
 
 
 def collate_pose_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:

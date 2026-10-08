@@ -1,4 +1,4 @@
-<!-- knowledge-review: d1c96c3e2b122b7175ae95d3945bf72a19e288f9e571a72a5e732bf4cff8b64d on 2026-10-08 -->
+<!-- knowledge-review: 0733b65430686b46054a2e98a4f86131c8c9918eae02bec705d24d5aef974bb2 on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -254,19 +254,19 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 ### Ball Detection
 
-新しいMDD座標モデルの初回学習は、ユーザー指定のBF16 AMPを用いる。
-[同一108窓でのGPU比較](nodes/ball_detection/000025-run-i986-query-bf16-confirm-20261008.md)では
-Conv2d＋query-onlyのBS=1・worker=8が成功条件中の最高速度だった。
-[252 update連続確認](nodes/ball_detection/000027-run-i986-query-bf16-sustained-20261008.md)と
-[実CLIの保存・再開・BF16評価](nodes/ball_detection/000026-run-i986-query-bf16-cli-20261008.md)も成立し、
-このBS/reader設定を初回候補とする。BS2/worker8では原因未特定のCUDA unknown errorが発生したため採用しない。
-実データ込みの速度はGPU常駐より大幅に遅く、CPU MDD生成・初回clip hash・I/O待ちが残る。
-本学習は開始後、最終ログ400 updateでユーザー指示により停止した。checkpoint・全validation・汎化評価は未完了。
-[CPU入力の切り分け](nodes/ball_detection/000028-run-i986-query-cpu-input-20261008.md)では、
-CPU上のMDD/輝度生成とworker固有cacheによるclip全体hashの重複を確認した。
-事前検証後もreaderは約2窓/秒、作成済み入力のcollate/IPCだけなら約13.5窓/秒で、入力生成の改善を優先する。
-単に検証を前に移した数字を総時間の改善とみなさず、検証結果の共有とGPU前処理を次の検証候補とする。
-学習は停止を維持し、診断lossを精度改善の根拠にしない。従来deployの判断とは評価契約が異なる。
+新しいMDD座標モデルは、ユーザー指定のBF16を維持し、RGB uint8→モデル内の固定FP32 MDDへ移行した。
+[2026-10-09のcompile診断](nodes/ball_detection/000029-run-i986-native-rgb-compile-20261009.md)では、
+同じnative RGB経路のeagerに比べGPU常駐が約3.3倍、reader込みが約1.6倍となった。
+[実データの数値・勾配確認](nodes/ball_detection/000030-run-i986-native-rgb-numerics-20261009.md)と
+[v3 checkpointの保存・再開・BF16 compile評価](nodes/ball_detection/000031-run-i986-native-rgb-cli-20261009.md)も成立した。
+静的fullgraph compileを初回レシピへ追加するが、BS1/worker8は[旧比較](nodes/ball_detection/000025-run-i986-query-bf16-confirm-20261008.md)からの暫定値で、
+高速化後に最適化し直した値ではない。少数窓・短時間の結果を精度・全epoch時間・長期安定性へ一般化しない。
+
+本学習は旧CPU MDD版の400 updateでユーザー指示により停止し、その後は短い診断だけを実施した。
+checkpoint・全validation・汎化評価は未完了で、停止を維持する。
+[CPU入力調査](nodes/ball_detection/000028-run-i986-query-cpu-input-20261008.md)で確認したworkerごとのclip hash重複は未変更で、
+native RGB compileでも次batch待ちが支配的だった。共有検証cacheとreaderの再計測を次候補とし、
+単に事前検証時間を除外した速度を総時間の改善とは扱わない。従来deployの判断は変更しない。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。

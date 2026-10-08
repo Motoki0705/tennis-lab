@@ -11,12 +11,12 @@ from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
 from src.tasks.ball_detection.models.mdd_pose.model import MDDPoseDetector
 from src.tasks.base.model_io import BoundModelIO, ModelCall, bind_model_io
 
-from .mdd_coordinates import decode_coordinates, validate_mdd_timestamps
+from .mdd_coordinates import decode_coordinates, validate_rgb_timestamps
 
 
 @dataclass(frozen=True)
 class MDDPoseInput:
-    mdd: Tensor
+    rgb: Tensor
     coordinates: Tensor
     valid: Tensor
     timestamps: Tensor
@@ -25,18 +25,18 @@ class MDDPoseInput:
 def prepare_mdd_pose_inputs(config: MDDPoseConfig, inputs: MDDPoseInput) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     if not config.requires_pose:
         raise ValueError("Pose input is not accepted by query_only; use MDDQueryInput")
-    mdd, coordinates, valid, timestamps = inputs.mdd, inputs.coordinates, inputs.valid, inputs.timestamps
-    validate_mdd_timestamps(config, mdd, timestamps)
-    b, _, t, _, _ = mdd.shape
+    rgb, coordinates, valid, timestamps = inputs.rgb, inputs.coordinates, inputs.valid, inputs.timestamps
+    validate_rgb_timestamps(config, rgb, timestamps)
+    b, t, _, _, _ = rgb.shape
     if coordinates.ndim != 5 or coordinates.shape[:2] != (b, t) or coordinates.shape[-2:] != (17, 2):
-        raise ValueError("Expected aligned 32-frame MDD and COCO17 pose windows")
+        raise ValueError("Expected aligned 32-frame RGB and COCO17 pose windows")
     if valid.dtype != torch.bool or valid.shape != coordinates.shape[:-1] or timestamps.shape != (b, t):
         raise ValueError("Invalid pose mask or timestamp shape")
-    if any(x.device != mdd.device for x in (coordinates, valid, timestamps)):
+    if any(x.device != rgb.device for x in (coordinates, valid, timestamps)):
         raise ValueError("All coordinate-model inputs must share one device")
     if coordinates.dtype != torch.float32 or not bool(torch.isfinite(coordinates).all()):
         raise ValueError("Coordinate-model inputs require finite float32 values")
-    return mdd, coordinates, valid, timestamps
+    return rgb, coordinates, valid, timestamps
 
 
 class MDDPoseAdapter:
@@ -60,5 +60,5 @@ class MDDPoseAdapter:
         return decode_coordinates(self.config, output)
 
 
-def build_mdd_pose_detector(config: MDDPoseConfig) -> BoundModelIO[MDDPoseInput, Tensor, Tensor]:
-    return bind_model_io(MDDPoseDetector(config), MDDPoseAdapter(config))
+def build_mdd_pose_detector(config: MDDPoseConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> BoundModelIO[MDDPoseInput, Tensor, Tensor]:
+    return bind_model_io(MDDPoseDetector(config, mdd_a=mdd_a, mdd_b=mdd_b), MDDPoseAdapter(config))
