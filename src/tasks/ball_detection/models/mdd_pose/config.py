@@ -10,7 +10,7 @@ import yaml
 @dataclass(frozen=True)
 class MDDPoseConfig:
     compression: str
-    pose_pooling: str
+    pose_pooling: str | None
     readout: str
     frames: int
     stem_channels: tuple[int, int, int, int]
@@ -35,10 +35,13 @@ class MDDPoseConfig:
     def __post_init__(self) -> None:
         if self.compression not in {"conv2d", "average", "unshuffle", "haar"}:
             raise ValueError("Unknown MDD compression")
-        if self.pose_pooling not in {"deepsets", "attention", "hierarchical", "gnn"}:
-            raise ValueError("Unknown pose pooling")
-        if self.readout not in {"query", "pose"}:
+        if self.readout not in {"query", "pose", "query_only"}:
             raise ValueError("Unknown coordinate readout")
+        if self.readout == "query_only":
+            if self.pose_pooling is not None:
+                raise ValueError("query_only requires pose_pooling: null; no pose branch is constructed")
+        elif self.pose_pooling not in {"deepsets", "attention", "hierarchical", "gnn"}:
+            raise ValueError("Pose-conditioned readouts require a known pose pooling")
         if self.frames != 32:
             raise ValueError("This review architecture uses 32 real frames")
         if len(self.stem_channels) != 4 or len(self.mixed_channels) != 2:
@@ -49,3 +52,7 @@ class MDDPoseConfig:
             raise ValueError("Attention head dimensions must be positive and even")
         if not 0 <= self.dropout < 1 or not self.rope_base > 1:
             raise ValueError("Invalid dropout or RoPE base")
+
+    @property
+    def requires_pose(self) -> bool:
+        return self.readout != "query_only"

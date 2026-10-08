@@ -11,6 +11,8 @@ from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
 from src.tasks.ball_detection.models.mdd_pose.model import MDDPoseDetector
 from src.tasks.base.model_io import BoundModelIO, ModelCall, bind_model_io
 
+from .mdd_coordinates import decode_coordinates, validate_mdd_timestamps
+
 
 @dataclass(frozen=True)
 class MDDPoseInput:
@@ -21,29 +23,26 @@ class MDDPoseInput:
 
 
 def prepare_mdd_pose_inputs(config: MDDPoseConfig, inputs: MDDPoseInput) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    if not config.requires_pose:
+        raise ValueError("Pose input is not accepted by query_only; use MDDQueryInput")
     mdd, coordinates, valid, timestamps = inputs.mdd, inputs.coordinates, inputs.valid, inputs.timestamps
-    if mdd.ndim != 5 or mdd.shape[0] < 1 or mdd.shape[1] != 2:
-        raise ValueError("MDD requires B,2,T,H,W")
-    b, _, t, h, w = mdd.shape
-    if min(h, w) < 8:
-        raise ValueError("MDD spatial sizes must be at least eight; encoder pads the bottom/right")
-    if t != config.frames or coordinates.ndim != 5 or coordinates.shape[:2] != (b, t) or coordinates.shape[-2:] != (17, 2):
+    validate_mdd_timestamps(config, mdd, timestamps)
+    b, _, t, _, _ = mdd.shape
+    if coordinates.ndim != 5 or coordinates.shape[:2] != (b, t) or coordinates.shape[-2:] != (17, 2):
         raise ValueError("Expected aligned 32-frame MDD and COCO17 pose windows")
     if valid.dtype != torch.bool or valid.shape != coordinates.shape[:-1] or timestamps.shape != (b, t):
         raise ValueError("Invalid pose mask or timestamp shape")
     if any(x.device != mdd.device for x in (coordinates, valid, timestamps)):
         raise ValueError("All coordinate-model inputs must share one device")
-    if any(x.dtype != torch.float32 or not bool(torch.isfinite(x).all()) for x in (mdd, coordinates, timestamps)):
+    if coordinates.dtype != torch.float32 or not bool(torch.isfinite(coordinates).all()):
         raise ValueError("Coordinate-model inputs require finite float32 values")
-    if bool(((mdd < 0) | (mdd > 1)).any()):
-        raise ValueError("MDD sigmoid features must be in [0,1]")
-    if bool((timestamps.diff(dim=1) <= 0).any()):
-        raise ValueError("Real timestamps must increase strictly")
     return mdd, coordinates, valid, timestamps
 
 
 class MDDPoseAdapter:
     def __init__(self, config: MDDPoseConfig) -> None:
+        if not config.requires_pose:
+            raise ValueError("MDDPoseAdapter requires pose conditioning")
         self.config = config
 
     @property
@@ -58,9 +57,7 @@ class MDDPoseAdapter:
         return ModelCall(args=prepare_mdd_pose_inputs(self.config, inputs))
 
     def decode_output(self, output: Tensor) -> Tensor:
-        if output.ndim != 3 or output.shape[1:] != (self.config.frames, 2) or not bool(torch.isfinite(output).all()):
-            raise ValueError("Invalid per-frame coordinate output")
-        return output
+        return decode_coordinates(self.config, output)
 
 
 def build_mdd_pose_detector(config: MDDPoseConfig) -> BoundModelIO[MDDPoseInput, Tensor, Tensor]:

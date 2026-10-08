@@ -64,6 +64,8 @@ class MDDPoseDetector(nn.Module):
 
     def __init__(self, config: MDDPoseConfig) -> None:
         super().__init__()
+        if not config.requires_pose or config.pose_pooling is None:
+            raise ValueError("MDDPoseDetector requires pose; use MDDQueryDetector for query_only")
         self.config = config
         self.encoder = MDDTokenEncoder(config.compression, config.stem_channels, config.mixed_channels, config.dim)
         self.pose = PoseTokenizer(config.pose_pooling, config.dim, config.heads)
