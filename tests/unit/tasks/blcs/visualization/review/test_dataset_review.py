@@ -139,8 +139,17 @@ def test_api_shapes_and_errors() -> None:
     assert all(
         c["ball"]["summary"]["visibility_mismatches"] == 0 for c in evidence["cameras"]
     )
-    assert evidence["cameras"][0]["ball"]["saved_visibility"][248] is False
-    assert evidence["cameras"][0]["ball"]["saved_uv"][248][1] > 1
+    # Frames out of view keep their projection outside the normalized image.
+    hidden = [
+        uv
+        for camera in evidence["cameras"]
+        for uv, visible in zip(
+            camera["ball"]["saved_uv"], camera["ball"]["saved_visibility"], strict=True
+        )
+        if not visible
+    ]
+    assert hidden
+    assert all(min(uv) < 0 or max(uv) > 1 for uv in hidden)
 
     stale = client.get(
         "/api/scene",

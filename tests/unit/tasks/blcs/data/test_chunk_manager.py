@@ -35,6 +35,7 @@ from src.utils.schema.court_normalization import (
     normalize_court_position,
     normalize_court_velocity,
 )
+from tests.support.physics.ball_record import simulated_record
 
 
 def _camera_view_scene() -> tuple[
@@ -96,6 +97,7 @@ def _camera_view_scene() -> tuple[
         ball_vel_norm=normalize_court_velocity(velocity),
         cameras=[camera],
         num_cameras_sampled=1,
+        physics_record=simulated_record(len(position))[1],
         fps_out=30,
         sim_fps=120,
         physics_config_dict={},

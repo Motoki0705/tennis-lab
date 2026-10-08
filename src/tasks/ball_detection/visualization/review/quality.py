@@ -56,10 +56,14 @@ class BallReviewIndex:
             **{name: int(mask[rows].sum()) for name, mask in self.masks.items()},
         }
 
-    def overview(self) -> dict[str, Any]:
+    def overview(self, clip_ids: set[str] | None = None) -> dict[str, Any]:
         """Describe the version, source/split composition, and supervision."""
-        clips = self.store.clips
-        all_rows: NDArray[np.int64] = np.arange(len(self.store), dtype=np.int64)
+        clips = [clip for clip in self.store.clips if clip_ids is None or clip.clip_id in clip_ids]
+        if clip_ids is not None and {clip.clip_id for clip in clips} != clip_ids:
+            raise ValueError("Overview contains clip IDs outside the selected store")
+        row_mask = np.isin(self.store.frames["clip"], [clip.index for clip in clips])
+        all_rows = np.flatnonzero(row_mask)
+        point_kinds = self.store.instances["point_kind"][np.repeat(row_mask, self.store.frames["inst_count"])]
         history = self.store.metadata.get("append_history", [])
         if not isinstance(history, list):
             raise ValueError("Ball store append_history must be a list")
@@ -80,13 +84,14 @@ class BallReviewIndex:
             "clips": len(clips), "counts": self.counts(all_rows),
             "sources": sources, "splits": self._splits(list(clips)),
             "point_counts": {
-                name: int((self.store.instances["point_kind"] == code).sum())
+                name: int((point_kinds == code).sum())
                 for name, code in POINT_KIND_CODES.items()
             },
             "append_history": [
                 {key: entry[key] for key in ("base_clips", "added_clips", "at")}
                 for entry in history
             ],
+            **({"selection": {"kind": "pose_approved", "parent_clips": len(self.store.clips)}} if clip_ids is not None else {}),
         }
 
     @staticmethod

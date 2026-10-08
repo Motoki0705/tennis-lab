@@ -192,11 +192,6 @@ def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
 def test_centre_policy_matches_training_owners_without_score_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, batch_size: int,
 ) -> None:
-    from src.tasks.ball_refiner_3d.inference.windowing import (
-        window_owners,
-        window_starts,
-    )
-
     packets = [FramePacket(index=i, frame=np.full((4, 6, 3), i, np.uint8), original_size=(6, 4)) for i in range(11)]
     monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
 
@@ -216,9 +211,12 @@ def test_centre_policy_matches_training_owners_without_score_selection(
     module = BallDetectionModule(config)
     module._pipeline = Predictor()  # type: ignore[assignment]
     coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", 11, 30., 6, 4))
-    starts = window_starts(11, 4, 3)
-    assert starts == (0, 3, 6, 7)  # irregular final backfill
-    expected = np.asarray(starts)[window_owners(11, starts, 4)]
+    starts = (0, 3, 6, 7)  # stride 3 with an irregular final backfill
+    # Independent oracle: nearest window centre, ties to the earlier start.
+    centres = np.asarray(starts) + 1.5
+    distance = np.abs(np.arange(11)[:, None] - centres[None])
+    distance[(np.arange(11)[:, None] < starts) | (np.arange(11)[:, None] >= np.asarray(starts) + 4)] = np.inf
+    expected = np.asarray(starts)[np.argmin(distance, axis=1)]
     np.testing.assert_array_equal(evidence.selected_window_start, expected)
     np.testing.assert_array_equal(evidence.selected_time_index, np.arange(11) - expected)
     np.testing.assert_allclose(scores, (expected + 1) / 10)

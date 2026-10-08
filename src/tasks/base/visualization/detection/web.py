@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
 import torch
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -117,6 +118,9 @@ def create_detection_app(
     task: DetectionTask,
     mode: Literal["review", "inference"],
     service_config: dict[str, Any],
+    play_intervals: Callable[[str], dict[str, Any]] | None = None,
+    review_router: APIRouter | None = None,
+    statistics_ui: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title=f"{task} {mode}", docs_url=None, redoc_url=None)
     app.add_middleware(
@@ -132,6 +136,8 @@ def create_detection_app(
             app, lambda scene: cast(CourtReviewBackend, service).annotation(scene)
         )
     inference_lock = threading.Lock()
+    if review_router is not None:
+        app.include_router(review_router)
 
     @app.middleware("http")
     async def local_requests(request: Request, call_next: Any) -> Response:
@@ -175,6 +181,7 @@ def create_detection_app(
             "playback.mjs",
             "players.mjs",
             "review.mjs",
+            "play_intervals.mjs",
         }:
             raise HTTPException(404)
         return FileResponse(
@@ -188,6 +195,8 @@ def create_detection_app(
             **service.catalog(),
             "mode": mode,
             "cuda_available": torch.cuda.is_available(),
+            "play_intervals_available": play_intervals is not None,
+            "statistics_ui": statistics_ui,
         }
 
     @app.get("/api/scenes")
@@ -258,6 +267,12 @@ def create_detection_app(
     @app.get("/api/image")
     def image(scene: str, frame: int = Query(0, ge=0)) -> Response:
         return Response(service.image(scene, frame), media_type="image/jpeg")
+
+    @app.get("/api/play-intervals")
+    def play_proposals(scene: str) -> dict[str, Any]:
+        if play_intervals is None:
+            raise HTTPException(404, "Play interval review is unavailable.")
+        return play_intervals(scene)
 
     @app.post("/api/infer")
     def infer(request: InferenceRequest) -> dict[str, Any]:

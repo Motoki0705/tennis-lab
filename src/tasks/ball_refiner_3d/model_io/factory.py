@@ -22,8 +22,8 @@ def bind_refiner(model: RefinerModel) -> RefinerBinding:
         model,
         RefinerAdapter(
             type(model),
-            window_length=model.config.window_length,
             flow=isinstance(model, FlowRefiner),
+            physics=model.config.physics_heads,
         ),
     )
 

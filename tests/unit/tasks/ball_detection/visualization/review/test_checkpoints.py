@@ -23,8 +23,8 @@ from src.tasks.ball_detection.visualization.review.checkpoints import (
 
 def test_catalog_minimums_match_model_io_factory() -> None:
     """The catalog mirrors the factory's per-architecture frame minimums."""
-    assert set(MINIMUM_FRAMES_BY_MODEL) == {"stunet", "conv_next_unet", "dinov3_rope"}
-    for model_name, minimum in (("stunet", 8), ("conv_next_unet", 1)):
+    assert set(MINIMUM_FRAMES_BY_MODEL) == {"conv_next_unet"}
+    for model_name, minimum in (("conv_next_unet", 1),):
         model: dict[str, object] = {
             "name": model_name,
             "input_mode": "mdd",
@@ -135,7 +135,7 @@ def test_describe_config_carries_architecture_contract() -> None:
     assert payload["window"] == {"min": 2, "max": 8}
 
 
-def test_describe_config_rejects_short_temporal_window() -> None:
+def test_describe_config_rejects_retired_model() -> None:
     info = describe_config(
         checkpoint_id="short.ckpt",
         path=Path("/tmp/short.ckpt"),
@@ -145,8 +145,7 @@ def test_describe_config_rejects_short_temporal_window() -> None:
         ),
     )
     assert not info.usable
-    assert info.error is not None and "at least 8 frames" in info.error
-    assert MINIMUM_FRAMES_BY_MODEL["stunet"] == 8
+    assert info.error is not None and "unsupported model.name" in info.error
 
 
 def test_describe_config_rejects_unknown_model() -> None:
@@ -243,6 +242,6 @@ def test_scan_checkpoints_skips_directories(tmp_path: Path) -> None:
     assert scan_checkpoints(((tmp_path / "outputs", ""),)) == []
 
 
-@pytest.mark.parametrize("model_name", ["stunet", "conv_next_unet", "dinov3_rope"])
+@pytest.mark.parametrize("model_name", ["conv_next_unet"])
 def test_minimum_frames_mapping_covers_every_factory_model(model_name: str) -> None:
     assert model_name in MINIMUM_FRAMES_BY_MODEL

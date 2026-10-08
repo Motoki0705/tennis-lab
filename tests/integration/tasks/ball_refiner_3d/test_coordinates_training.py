@@ -62,17 +62,27 @@ def test_reprojection_reuses_identical_3d_events_and_splits(shared, tmp_path):
         assert not np.array_equal(before.uv, after.uv)
 
 
+PHYSICS_OVERRIDES = [
+    "model.physics_heads=true",
+    "loss.physics.field_weight=1.0",
+    "loss.physics.segment_weight=1.0",
+    "loss.physics.reconstruction_weight=1.0",
+    "loss.physics.consistency_weight=1.0",
+]
+
+
 @pytest.mark.parametrize(
-    "dimensions,architecture,gan,gan_only",
+    "dimensions,architecture,gan,gan_only,physics",
     [
-        (3, "regression", False, False),
-        (3, "regression", True, False),
-        (3, "flow", False, False),
-        (3, "regression", True, True),
+        (3, "regression", False, False, False),
+        (3, "regression", True, False, False),
+        (3, "flow", False, False, False),
+        (3, "regression", True, True, False),
+        (3, "regression", False, False, True),
     ],
 )
 def test_shared_training_roundtrip(
-    shared, tmp_path, monkeypatch, dimensions, architecture, gan, gan_only
+    shared, tmp_path, monkeypatch, dimensions, architecture, gan, gan_only, physics
 ):
     torch.set_num_threads(1)
     root, dataset_path = shared
@@ -98,6 +108,7 @@ def test_shared_training_roundtrip(
             config_name="train",
             overrides=[
                 *schedule_overrides,
+                *(PHYSICS_OVERRIDES if physics else []),
                 f"paths.data_root={root}",
                 f"paths.output_root={tmp_path}",
                 "run.output_dir=ball_refiner/train/integration/cpu",
@@ -118,7 +129,8 @@ def test_shared_training_roundtrip(
                 "model.width=16",
                 "model.layers=1",
                 "model.heads=2",
-                "model.window_length=32",
+                "data.window.length=32",
+                "data.window.max_length=160",
                 "model.flow_steps=3",
             ],
         )
@@ -143,9 +155,19 @@ def test_shared_training_roundtrip(
         assert row["total"] == pytest.approx(
             row["weighted_reconstruction"]
             + row["weighted_gan"]
-            + row["weighted_event"],
+            + row["weighted_event"]
+            + row["weighted_physics"],
             rel=1e-5,
         )
+        assert (row["weighted_physics"] > 0) == physics
+        if physics:
+            assert row["weighted_physics"] == pytest.approx(
+                sum(
+                    row[f"physics_{name}"]
+                    for name in ("field", "segment", "reconstruction", "consistency")
+                ),
+                rel=1e-5,
+            )
     last = torch.load(
         output / "logs/version_0/checkpoints/last.ckpt", weights_only=True
     )
@@ -191,10 +213,35 @@ def test_shared_training_roundtrip(
         event_sigma_frames=cfg.loss.event.sigma_frames,
     )
     _, repeated = evaluate(
-        model, test, torch.device("cpu"), seed=cfg.data.evaluation_seed, batch_size=2
+        model,
+        test,
+        torch.device("cpu"),
+        seed=cfg.data.evaluation_seed,
+        batch_size=2,
+        physics=False,
     )
     with np.load(output / "predictions/pred_test.npz") as saved:
         np.testing.assert_array_equal(saved["prediction"], repeated["prediction"])
+        physics_arrays = (
+            "integrated",
+            "integrated_segment",
+            "integrated_truth_segments",
+            "physics_rally_id",
+            "physics_field",
+            "physics_surface_probability",
+        )
+        assert all((name in saved.files) == physics for name in physics_arrays)
+        # Saved with physics=True, repeated without: the arrays do not depend on it.
+        for name in physics_arrays if physics else ():
+            np.testing.assert_array_equal(saved[name], repeated[name])
+        if physics:
+            frames = len(saved["prediction"])
+            assert saved["integrated_truth_segments"].shape == (frames, dimensions)
+            assert saved["integrated_segment"].shape == (frames,)
+            assert saved["physics_field"].shape == (len(test), 4)
+            np.testing.assert_array_equal(
+                saved["physics_rally_id"], [r.source.index for r in test]
+            )
         np.testing.assert_array_equal(
             saved["event_probability"], repeated["event_probability"]
         )
@@ -207,6 +254,7 @@ def test_shared_training_roundtrip(
         torch.device("cpu"),
         seed=cfg.data.evaluation_seed,
         batch_size=2,
+        physics=False,
     )
     with (
         np.load(output / "predictions_last/pred_test.npz") as final,
@@ -244,6 +292,8 @@ def test_shared_training_roundtrip(
         assert all(
             type(value) in (int, float) for value in metrics.values()
         )  # knowledge importer contract
+        assert ("test_integrated_rmse_m" in metrics) == physics
+        assert "test_fit_residual_rmse_m" in metrics
     rally = test[0]
     coordinates = rally.corrupted.xyz_m[None]
     missing = rally.corrupted.missing_3d[None]
@@ -260,6 +310,17 @@ def test_shared_training_roundtrip(
             & (predicted["event_probability"] <= 1)
         ).all()
         np.testing.assert_array_equal(predicted["input_missing"], missing)
+        assert ("integrated_coordinates" in predicted.files) == physics
+        if physics:
+            assert str(predicted["schema"]) == "ball_refiner_3d.physics_prediction.v1"
+            assert predicted["integrated_coordinates"].shape == coordinates.shape
+            assert np.isfinite(predicted["integrated_coordinates"]).all()
+            segment = predicted["segment"][0]
+            assert segment[0] == 0 and np.all(np.diff(segment) >= 0)
+            count = segment.max() + 1
+            assert predicted["segment_velocity_mps"].shape == (1, count, 3)
+            assert predicted["surface_probability"].sum() == pytest.approx(1, abs=1e-5)
+            assert (predicted["k_drag"] > 0).all() and (predicted["k_magnus"] > 0).all()
     with pytest.raises(FileExistsError):
         predict_file(
             checkpoint, source, destination, device="cpu", seed=42, batch_size=2
@@ -306,7 +367,8 @@ def test_native_resume_matches_uninterrupted_partial_final_epoch(
                 "model.heads=2",
                 "model.rope_dim=8",
                 "model.ffn_dim=64",
-                "model.window_length=32",
+                "data.window.length=32",
+                "data.window.max_length=160",
                 "model.flow_steps=3",
                 "model.dropout=0.1",
                 f"training.gan.enabled={str(gan).lower()}",

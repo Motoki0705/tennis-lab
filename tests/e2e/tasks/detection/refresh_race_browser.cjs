@@ -136,6 +136,7 @@ async function runScenario(browser, releaseOrder) {
         "review.mjs",
         "players.mjs",
         "playback.mjs",
+        "play_intervals.mjs",
         "icons.mjs",
         "style.css",
       ].includes(file)
