@@ -8,7 +8,9 @@ from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRunti
 
 @pytest.mark.parametrize("options", [dict(precision="fp16"), dict(num_workers=-1),
                                     dict(prefetch_factor=0), dict(cpu_threads=0),
-                                    dict(compile_mode="automatic"), dict(compile_recompile_limit=0)])
+                                    dict(compile_mode="automatic"), dict(compile_recompile_limit=0),
+                                    dict(jpeg_decoder="auto"), dict(input_verification="skip"),
+                                    dict(image_prefetch=True)])
 def test_invalid_runtime_controls_are_rejected(options: dict) -> None:
     with pytest.raises(ValueError):
         CoordinateRuntime(**options)
@@ -21,3 +23,5 @@ def test_cpu_does_not_silently_replace_cuda_precision_or_pinned_inputs() -> None
         CoordinateRuntime(pin_memory=True).configure(torch.device("cpu"))
     with pytest.raises(ValueError, match="no eager fallback"):
         CoordinateRuntime(compile_mode="default").configure(torch.device("cpu"))
+    with pytest.raises(ValueError, match="no CPU fallback"):
+        CoordinateRuntime(jpeg_decoder="nvjpeg").configure(torch.device("cpu"))

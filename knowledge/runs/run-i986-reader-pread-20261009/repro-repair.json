@@ -1,0 +1,9 @@
+{
+  "captured_script_sha256": "614a48017ed932018d28bcd487b4b31339871adced7df5eb1ab7ad06e9e52c69",
+  "repairs": [
+    {
+      "change": "include exact parent report needed to recover the slow-window indices",
+      "sha256": "833461ee28fe7d2ae21cb285920feeac49ed008485fed0b338843000db91eb45"
+    }
+  ]
+}

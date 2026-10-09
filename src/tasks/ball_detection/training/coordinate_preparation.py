@@ -109,7 +109,10 @@ def prepare_coordinate_training(
                                                   "--output", "<new-absolute-training-run>", "--epochs", "<epochs>",
                                                   "--learning-rate", "<learning-rate>", "--seed", "<seed>",
                                                   "--device", "cuda", "--precision", "bf16",
-                                                  "--compile-mode", "default", "--selection-scope", "common"]))
+                                                  "--compile-mode", "default", "--selection-scope", "common",
+                                                  "--jpeg-decoder", "nvjpeg", "--image-prefetch",
+                                                  "--input-verification", "upfront", "--num-workers", "8",
+                                                  "--prefetch-factor", "4", "--pin-memory"]))
     if coordinate_source_identity()["source_sha256"] != code["source_sha256"]:
         raise ValueError("Coordinate implementation changed during data preparation")
     plan = dict(schema="mdd_coordinate_experiments.v1", models=experiments, datasets=manifests,

@@ -1,0 +1,1152 @@
+diff --git a/src/tasks/ball_detection/data/coordinate_dataset.py b/src/tasks/ball_detection/data/coordinate_dataset.py
+index 7161177a7..e6f147fbf 100644
+--- a/src/tasks/ball_detection/data/coordinate_dataset.py
++++ b/src/tasks/ball_detection/data/coordinate_dataset.py
+@@ -10,9 +10,14 @@ from typing import Any
+ import numpy as np
+ import torch
+ from numpy.typing import NDArray
+-from torch.utils.data import Dataset
++from torch.utils.data import Dataset, default_collate
+ 
+ from src.utils.checksum import dual_sha256
++from src.utils.shared_file_verification import (
++    FileVersion,
++    SharedFileVerification,
++    file_version,
++)
+ 
+ from .annotation_states import AnnotationStates, annotation_states
+ from .coordinate_manifest import COORDINATE_MANIFEST_SCHEMA, clip_semantic_digest
+@@ -23,7 +28,10 @@ from .temporal_sampling import SampledWindow, TemporalSamplingConfig
+ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+     """Modality is explicit. MDD-only never opens a pose manifest or artifact."""
+ 
+-    def __init__(self, manifest: Path, *, split: str, requires_pose: bool) -> None:
++    def __init__(self, manifest: Path, *, split: str, requires_pose: bool, jpeg_decoder: str = "opencv") -> None:
++        if jpeg_decoder not in {"opencv", "nvjpeg"}:
++            raise ValueError("JPEG decoder must be explicit: opencv or nvjpeg")
++        self.jpeg_decoder = jpeg_decoder
+         self.manifest = json.loads(manifest.read_text())
+         schema = self.manifest.get("schema")
+         if schema == "ball_play_windows.v1":
+@@ -61,7 +69,11 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+             raise ValueError(f"No accepted windows in {split}")
+         if any(window.frame_step not in self.frame_steps for _, window in self.windows):
+             raise ValueError("Window uses an undeclared frame step")
+-        self._rgb_versions: dict[str, tuple[int, int, int, int]] = {}
++        self._shared_rgb_verification = SharedFileVerification({
++            self.store.directory / "shards" / shard_name(record["clip"]["index"]): record["rgb_shard_sha256"]
++            for record in self.records
++        })
++        self._rgb_versions: dict[str, FileVersion] = {}
+         self._states: dict[str, AnnotationStates] = {}
+         self._pose_clip = ""
+         self._pose: dict[str, np.ndarray] = {}
+@@ -69,13 +81,14 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+     def __len__(self) -> int:
+         return len(self.windows)
+ 
++    def verify_image_files(self, workers: int) -> None:
++        self._shared_rgb_verification.verify_all(max(1, workers))
++
+     def _verify_clip(self, record: dict[str, Any], clip: ClipRecord) -> AnnotationStates:
+         path = self.store.directory / "shards" / shard_name(clip.index)
+-        stat = path.stat()
+-        version = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
++        version = file_version(path)
+         if clip.clip_id not in self._rgb_versions:
+-            if dual_sha256(path) != record["rgb_shard_sha256"]:
+-                raise ValueError("Frozen RGB shard checksum mismatch")
++            version = self._shared_rgb_verification.verify(path)
+             if "semantic_sha256" in record and clip_semantic_digest(self.store, clip) != record["semantic_sha256"]:
+                 raise ValueError("Frozen clip GT/geometry identity mismatch")
+             self._rgb_versions[clip.clip_id] = version
+@@ -125,22 +138,28 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+         if (not states.target[indices].all() or position_valid.sum() < cfg["min_observed_frames"]
+                 or states.evidence[indices].mean() < cfg["min_presence_fraction"]):
+             raise ValueError("Sampled window no longer satisfies declared teacher/evidence requirements")
+-        rgb = np.empty((32, 3, clip.height, clip.width), np.uint8)
++        images: dict[str, Any] = {}
++        if self.jpeg_decoder == "opencv":
++            rgb = np.empty((32, 3, clip.height, clip.width), np.uint8)
++            for position, frame in enumerate(indices):
++                image = self.store.read_bgr(self.store.row_of(clip, int(frame)))
++                rgb[position] = image[..., ::-1].transpose(2, 0, 1)
++            images["rgb"] = torch.from_numpy(rgb)
++        else:
++            encoded = [np.frombuffer(self.store.read_jpeg(self.store.row_of(clip, int(frame))), np.uint8)
++                       for frame in indices]
++            images.update(jpeg=torch.from_numpy(np.concatenate(encoded)),
++                          jpeg_lengths=tuple(len(image) for image in encoded),
++                          image_shape=(32, 3, clip.height, clip.width))
+         uv: NDArray[np.float32] = np.zeros((32, 2), np.float32)
+         denominator = clip.scale * np.asarray((clip.source_width - 1, clip.source_height - 1), np.float32)
+-        for position, frame in enumerate(indices):
+-            row = self.store.row_of(clip, int(frame))
+-            image = self.store.read_bgr(row)
+-            # Copy BGR HWC directly into the final RGB CHW uint8 allocation.
+-            rgb[position] = image[..., ::-1].transpose(2, 0, 1)
+-            if position_valid[position]:
+-                uv[position] = states.xy[frame] / denominator
++        uv[position_valid] = states.xy[indices[position_valid]] / denominator
+         if not np.isfinite(uv).all() or ((uv[position_valid] < 0) | (uv[position_valid] > 1)).any():
+             raise ValueError("Observed coordinates exceed the source endpoint grid")
+         rows = self.store.clip_rows(clip)
+         pts = self.store.frames["pts"][rows[indices]]
+         seconds = ((pts - pts[0]).astype(np.float64) * float(Fraction(clip.time_base))).astype(np.float32)
+-        sample = dict(rgb=torch.from_numpy(rgb), timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
++        sample = dict(**images, timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
+                       position_valid=torch.from_numpy(position_valid), frame_indices=torch.from_numpy(indices),
+                       frame_step=window.frame_step, input_kind=self.input_kind,
+                       common_evaluation=bool(record["common_evaluation"]),
+@@ -154,11 +173,27 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
+     if not samples or len({s["input_kind"] for s in samples}) != 1:
+         raise ValueError("Batch must contain one nonempty coordinate input kind")
+-    if len({tuple(s["rgb"].shape) for s in samples}) != 1:
++    encoded = ["jpeg" in s for s in samples]
++    if len(set(encoded)) != 1 or any(("rgb" in s) == encoded[i] for i, s in enumerate(samples)):
++        raise ValueError("Batch must contain exactly one image representation")
++    shapes = [s["image_shape"] if encoded[0] else tuple(s["rgb"].shape) for s in samples]
++    if len(set(shapes)) != 1:
+         raise ValueError("Batch images must share native shape; resize/padding is not automatic")
+-    if any(s["rgb"].dtype != torch.uint8 or s["rgb"].ndim != 4 or s["rgb"].shape[:2] != (32, 3) for s in samples):
+-        raise ValueError("Coordinate samples require RGB uint8 T,3,H,W")
+     result: dict[str, Any] = {}
++    if encoded[0]:
++        for sample in samples:
++            lengths = sample["jpeg_lengths"]
++            if (sample["jpeg"].dtype != torch.uint8 or sample["jpeg"].ndim != 1
++                    or len(lengths) != 32 or min(lengths) < 1 or sum(lengths) != sample["jpeg"].numel()
++                    or sample["image_shape"][:2] != (32, 3)):
++                raise ValueError("Invalid packed JPEG window")
++        result.update(jpeg=torch.cat([s["jpeg"] for s in samples]),
++                      jpeg_lengths=tuple(length for s in samples for length in s["jpeg_lengths"]),
++                      image_shape=(len(samples), *shapes[0]))
++    else:
++        if any(s["rgb"].dtype != torch.uint8 or s["rgb"].ndim != 4 or s["rgb"].shape[:2] != (32, 3) for s in samples):
++            raise ValueError("Coordinate samples require RGB uint8 T,3,H,W")
++        result["rgb"] = default_collate([s["rgb"] for s in samples])
+     if samples[0]["input_kind"] == "mdd_pose":
+         people = max(sample["pose"].shape[1] for sample in samples)
+         for key in ("pose", "pose_valid"):
+@@ -171,8 +206,10 @@ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
+             result[key] = torch.stack(values)
+     elif samples[0]["input_kind"] != "mdd_only" or any("pose" in s or "pose_valid" in s for s in samples):
+         raise ValueError("MDD-only batches must not contain pose tensors")
+-    for key in ("rgb", "timestamps", "uv", "position_valid", "source_size", "frame_indices"):
+-        result[key] = torch.stack([sample[key] for sample in samples])
++    for key in ("timestamps", "uv", "position_valid", "source_size", "frame_indices"):
++        # PyTorch allocates the result directly in shared memory inside workers.
++        # A plain stack would be copied again by multiprocessing's tensor sender.
++        result[key] = default_collate([sample[key] for sample in samples])
+     for key in ("clip_id", "start", "source", "frame_step", "common_evaluation", "input_kind"):
+         result[key] = [sample[key] for sample in samples]
+     return result
+diff --git a/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py b/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+index 1e81d4c14..2b5c4ff56 100644
+--- a/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
++++ b/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+@@ -24,6 +24,10 @@ from src.tasks.ball_detection.training.coordinate_compilation import (
+     coordinate_compilation_report,
+ )
+ from src.tasks.ball_detection.training.coordinate_evaluation import evaluate_coordinates
++from src.tasks.ball_detection.training.coordinate_images import (
++    JPEG_DECODERS,
++    jpeg_decoder_contract,
++)
+ from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRuntime
+ from src.tasks.base.visualization.inference_queue import shared_repository_root
+ from src.utils.checksum import dual_sha256
+@@ -67,6 +71,9 @@ def main() -> None:
+     parser.add_argument("--compile-mode", choices=COMPILE_MODES,
+                         help="Defaults to the saved compilation mode; off explicitly evaluates eagerly")
+     parser.add_argument("--compile-recompile-limit", type=int)
++    parser.add_argument("--jpeg-decoder", choices=JPEG_DECODERS, help="Defaults to the saved training JPEG decoder")
++    parser.add_argument("--input-verification", choices=("lazy", "upfront"), default="upfront")
++    parser.add_argument("--image-prefetch", action=argparse.BooleanOptionalAction, default=None)
+     parser.add_argument("--num-workers", type=int, default=0)
+     parser.add_argument("--pin-memory", action="store_true")
+     parser.add_argument("--prefetch-factor", type=int, default=1)
+@@ -102,17 +109,25 @@ def main() -> None:
+                                 prefetch_factor=args.prefetch_factor, cpu_threads=args.cpu_threads,
+                                 compile_mode=saved_runtime["compile_mode"] if args.compile_mode is None else args.compile_mode,
+                                 compile_recompile_limit=saved_runtime["compile_recompile_limit"]
+-                                if args.compile_recompile_limit is None else args.compile_recompile_limit)
++                                if args.compile_recompile_limit is None else args.compile_recompile_limit,
++                                jpeg_decoder=saved_runtime["jpeg_decoder"] if args.jpeg_decoder is None else args.jpeg_decoder,
++                                input_verification=args.input_verification,
++                                image_prefetch=saved_runtime["image_prefetch"] if args.image_prefetch is None else args.image_prefetch)
+     runtime.configure(device)
++    active_decoder = jpeg_decoder_contract(runtime.jpeg_decoder)
++    if args.jpeg_decoder is None and active_decoder != saved["image_decode"]:
++        raise ValueError("JPEG decoder implementation/version changed; use an explicit --jpeg-decoder override")
+     model.to(device)
+     runtime.configure_model(model)
+-    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose)
++    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose, jpeg_decoder=runtime.jpeg_decoder)
+     loader = runtime.loader(dataset, batch_size=args.batch_size)
+-    report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision)
++    report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision,
++                                  image_prefetch=runtime.image_prefetch)
+     if dual_sha256(checkpoint) != checkpoint_hash or dual_sha256(manifest) != manifest_hash:
+         raise ValueError("Checkpoint or manifest changed during evaluation")
+     report.update(checkpoint_sha256=checkpoint_hash, manifest_sha256=manifest_hash, split=args.split,
+                   precision=precision, batch_size=args.batch_size, num_workers=args.num_workers,
++                  image_decode=active_decoder, training_image_decode=saved["image_decode"],
+                   input_contract=model.mdd.input_contract(), compilation=coordinate_compilation_report(model))
+     output.parent.mkdir(parents=True, exist_ok=True)
+     with output.open("x") as stream:
+diff --git a/src/tasks/ball_detection/scripts/train_mdd_pose.py b/src/tasks/ball_detection/scripts/train_mdd_pose.py
+index 1e761cd04..3c8a8993a 100644
+--- a/src/tasks/ball_detection/scripts/train_mdd_pose.py
++++ b/src/tasks/ball_detection/scripts/train_mdd_pose.py
+@@ -41,6 +41,11 @@ from src.tasks.ball_detection.training.coordinate_evaluation import (
+     predict_coordinates,
+     selection_score,
+ )
++from src.tasks.ball_detection.training.coordinate_images import (
++    JPEG_DECODERS,
++    coordinate_batches,
++    jpeg_decoder_contract,
++)
+ from src.tasks.ball_detection.training.coordinate_provenance import (
+     coordinate_source_identity,
+ )
+@@ -78,10 +83,12 @@ def predict(model: CoordinateModel, batch: dict[str, Any], device: torch.device)
+ 
+ @torch.no_grad()
+ def evaluate(model: CoordinateModel, loader: DataLoader[Any], device: torch.device,
+-             *, precision: str = "fp32") -> dict[str, Any]:
++             *, precision: str = "fp32", image_prefetch: bool = False) -> dict[str, Any]:
+     if not isinstance(loader.dataset, CoordinateWindowDataset):
+         raise ValueError("Evaluation requires a declared coordinate window dataset")
+-    return evaluate_coordinates(model, loader, device, loader.dataset.frame_steps, precision=precision)
++    report: dict[str, Any] = evaluate_coordinates(model, loader, device, loader.dataset.frame_steps,
++                                                precision=precision, image_prefetch=image_prefetch)
++    return report
+ 
+ 
+ def main() -> None:
+@@ -104,6 +111,9 @@ def main() -> None:
+     parser.add_argument("--cpu-threads", type=int, default=2)
+     parser.add_argument("--compile-mode", choices=COMPILE_MODES, default="off")
+     parser.add_argument("--compile-recompile-limit", type=int, default=8)
++    parser.add_argument("--jpeg-decoder", choices=JPEG_DECODERS, default="opencv")
++    parser.add_argument("--input-verification", choices=("lazy", "upfront"), default="lazy")
++    parser.add_argument("--image-prefetch", action="store_true")
+     parser.add_argument("--log-every", type=int, default=50)
+     parser.add_argument("--resume", type=Path, help="Latest completed epoch in the same --output directory")
+     parser.add_argument("--mdd-a", type=float, default=.2)
+@@ -141,11 +151,12 @@ def main() -> None:
+         overrides["pose_pooling"] = None
+     config = replace(config, **overrides)
+     identity = dual_sha256(args.manifest)
+-    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose)
+-    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose)
++    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose, jpeg_decoder=args.jpeg_decoder)
++    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose, jpeg_decoder=args.jpeg_decoder)
+     device = torch.device(args.device)
+     runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
+-                                args.cpu_threads, args.compile_mode, args.compile_recompile_limit)
++                                args.cpu_threads, args.compile_mode, args.compile_recompile_limit,
++                                args.jpeg_decoder, args.input_verification, args.image_prefetch)
+     runtime.configure(device)
+     torch.manual_seed(args.seed)
+     model = (MDDPoseDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b) if config.requires_pose
+@@ -159,7 +170,7 @@ def main() -> None:
+     recipe = dict(model=asdict(config), runtime=asdict(runtime), batch_size=args.batch_size,
+                   seed=args.seed, learning_rate=args.learning_rate, weight_decay=.01,
+                   windows_per_epoch=epoch_windows, selection_scope=args.selection_scope,
+-                  input_contract=model.mdd.input_contract(), device=args.device,
++                  input_contract=model.mdd.input_contract(), image_decode=jpeg_decoder_contract(args.jpeg_decoder), device=args.device,
+                   evaluation_precision=args.precision, gradient_clip=1., schedule="constant")
+     start_epoch, global_step, best, best_epoch = 0, 0, float("inf"), -1
+     if args.resume is None:
+@@ -180,6 +191,7 @@ def main() -> None:
+                                       mixture="equal-FPS shuffled cycles; sampled RGB before MDD"),
+                     test_usage="no test samples used for training or checkpoint selection",
+                     input_contract=model.mdd.input_contract(),
++                    image_decode=recipe["image_decode"],
+                     compilation=coordinate_compilation_report(model),
+                     input_rgb="stored JPEG decoded to RGB uint8; sampled before native FP32 model MDD; no ImageNet normalization",
+                     mdd_first_frame="zero, no RGB predecessor outside the 32-frame window")
+@@ -196,12 +208,12 @@ def main() -> None:
+         model.train()
+         epoch_start = time.perf_counter()
+         loss_sum, observed_count, windows_seen = 0., 0, 0
+-        for batch in train_loader:
++        for batch in coordinate_batches(train_loader, device, prefetch=runtime.image_prefetch):
+             loss, grad = coordinate_train_step(model, optimizer, batch, device, runtime)
+             observed = int(batch["position_valid"].sum())
+             loss_sum += float(loss) * observed
+             observed_count += observed
+-            windows_seen += len(batch["rgb"])
++            windows_seen += len(batch["timestamps"])
+             global_step += 1
+             if global_step % args.log_every == 0 or windows_seen == epoch_windows:
+                 elapsed = time.perf_counter() - epoch_start
+@@ -213,7 +225,7 @@ def main() -> None:
+                     stream.write(json.dumps(progress, allow_nan=False) + "\n")
+                 print(json.dumps(progress), flush=True)
+         train_seconds = time.perf_counter() - epoch_start
+-        report = evaluate(model, val_loader, device, precision=runtime.precision)
++        report = evaluate(model, val_loader, device, precision=runtime.precision, image_prefetch=runtime.image_prefetch)
+         validation_seconds = time.perf_counter() - epoch_start - train_seconds
+         score = selection_score(report, args.selection_scope)
+         if dual_sha256(args.manifest) != identity:
+@@ -230,6 +242,7 @@ def main() -> None:
+                         torch_rng=torch.get_rng_state(), validation=report,
+                         selection_scope=args.selection_scope, selection_error_px=score,
+                         input_contract=model.mdd.input_contract(), compilation=compilation,
++                        image_decode=recipe["image_decode"],
+                         code=code, training_state=training_state), path)
+         if improved:
+             write_best(args.output, epoch)
+diff --git a/src/tasks/ball_detection/training/coordinate_checkpoint.py b/src/tasks/ball_detection/training/coordinate_checkpoint.py
+index d0f7a4c5f..0619a41fd 100644
+--- a/src/tasks/ball_detection/training/coordinate_checkpoint.py
++++ b/src/tasks/ball_detection/training/coordinate_checkpoint.py
+@@ -12,15 +12,21 @@ from src.tasks.ball_detection.preprocessing import RGBToMDD
+ from src.tasks.ball_detection.training.coordinate_evaluation import CoordinateModel
+ from src.utils.checksum import dual_sha256
+ 
+-COORDINATE_CHECKPOINT_SCHEMA = "mdd_coordinates.v3"
++COORDINATE_CHECKPOINT_SCHEMA = "mdd_coordinates.v4"
+ 
+ 
+ def validate_coordinate_checkpoint(saved: dict[str, Any]) -> RGBToMDD:
+     if saved.get("schema") != COORDINATE_CHECKPOINT_SCHEMA:
+-        raise ValueError("Expected a v3 native RGB coordinate checkpoint; legacy MDD-input v2 is not accepted")
++        raise ValueError("Expected a v4 coordinate checkpoint with explicit JPEG decoder; legacy MDD-input v2 is not accepted")
+     preprocessing = RGBToMDD.from_contract(saved["input_contract"])
+     if saved["training_state"]["recipe"]["input_contract"] != preprocessing.input_contract():
+         raise ValueError("Checkpoint input contract and training recipe disagree")
++    if saved["image_decode"] != saved["training_state"]["recipe"]["image_decode"]:
++        raise ValueError("Checkpoint JPEG decoder and training recipe disagree")
++    decoder = saved["training_state"]["recipe"]["runtime"]["jpeg_decoder"]
++    if decoder not in {"opencv", "nvjpeg"} or saved["image_decode"]["decoder"] != (
++            "opencv" if decoder == "opencv" else "torchvision.io.decode_jpeg/nvjpeg"):
++        raise ValueError("Checkpoint JPEG decoder contract does not match its runtime")
+     return preprocessing
+ 
+ 
+diff --git a/src/tasks/ball_detection/training/coordinate_evaluation.py b/src/tasks/ball_detection/training/coordinate_evaluation.py
+index 0f368833a..b3ff268f6 100644
+--- a/src/tasks/ball_detection/training/coordinate_evaluation.py
++++ b/src/tasks/ball_detection/training/coordinate_evaluation.py
+@@ -19,11 +19,20 @@ from src.tasks.ball_detection.models.mdd_pose import MDDPoseDetector, MDDQueryDe
+ from src.tasks.ball_detection.training.coordinate_compilation import (
+     coordinate_compile_scope,
+ )
++from src.tasks.ball_detection.training.coordinate_images import (
++    coordinate_batches,
++    decode_coordinate_jpegs,
++)
+ 
+ CoordinateModel: TypeAlias = MDDPoseDetector | MDDQueryDetector
+ 
+ 
+ def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: torch.device) -> Tensor:
++    if "jpeg" in batch:
++        batch = dict(batch, rgb=decode_coordinate_jpegs(batch, device))
++        for key in ("timestamps", "pose", "pose_valid"):
++            if key in batch:
++                batch[key] = batch[key].to(device, non_blocking=True)
+     if isinstance(model, MDDQueryDetector):
+         inputs = MDDQueryInput(batch["rgb"], batch["timestamps"])
+         adapter = MDDQueryAdapter(model.config)
+@@ -107,7 +116,7 @@ def selection_score(report: dict[str, Any], scope: str) -> float:
+ 
+ 
+ def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device: torch.device,
+-                         frame_steps: tuple[int, ...], *, precision: str = "fp32") -> dict[str, Any]:
++                         frame_steps: tuple[int, ...], *, precision: str = "fp32", image_prefetch: bool = False) -> dict[str, Any]:
+     if precision not in {"fp32", "bf16"}:
+         raise ValueError("Evaluation precision must be fp32 or bf16")
+     if precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
+@@ -115,7 +124,7 @@ def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device
+     model.eval()
+     metrics = CoordinateMetrics(frame_steps)
+     with torch.no_grad(), coordinate_compile_scope(model):
+-        for batch in loader:
++        for batch in coordinate_batches(loader, device, prefetch=image_prefetch):
+             with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
+                 uv = predict_coordinates(model, batch, device).cpu()
+             errors = ((uv - batch["uv"]) * (batch["source_size"][:, None] - 1)).norm(dim=-1)
+diff --git a/src/tasks/ball_detection/training/coordinate_images.py b/src/tasks/ball_detection/training/coordinate_images.py
+new file mode 100644
+index 000000000..c3230f13f
+--- /dev/null
++++ b/src/tasks/ball_detection/training/coordinate_images.py
+@@ -0,0 +1,96 @@
++"""Explicit JPEG decoder boundary outside the compiled RGB-input model."""
++
++from __future__ import annotations
++
++from collections.abc import Iterable, Iterator
++from concurrent.futures import ThreadPoolExecutor
++from typing import Any
++
++import torch
++from torch import Tensor
++
++JPEG_DECODERS = ("opencv", "nvjpeg")
++
++
++def coordinate_batches(batches: Iterable[dict[str, Any]], device: torch.device,
++                       *, prefetch: bool = False) -> Iterator[dict[str, Any]]:
++    """Overlap next-batch JPEG decode with the current model on a CUDA stream.
++
++    One producer preserves sampler order. Events and record_stream keep tensors
++    alive across streams, including the CPU encoded buffer used by nvJPEG.
++    Exceptions propagate through the future; there is no decoder fallback.
++    """
++    if not prefetch:
++        yield from batches
++        return
++    if device.type != "cuda":
++        raise ValueError("Image prefetch requires CUDA nvJPEG input")
++    iterator = iter(batches)
++    stream = torch.cuda.Stream(device=device)
++
++    def load() -> tuple[dict[str, Any], torch.cuda.Event] | None:
++        batch = next(iterator, None)
++        if batch is None:
++            return None
++        with torch.cuda.device(device), torch.cuda.stream(stream), torch.no_grad():
++            rgb = decode_coordinate_jpegs(batch, device)
++            result = {key: value for key, value in batch.items() if key not in {"jpeg", "jpeg_lengths", "image_shape"}}
++            result.update(rgb=rgb, _encoded_keepalive=batch["jpeg"])
++            for key in ("timestamps", "pose", "pose_valid"):
++                if key in result:
++                    result[key] = result[key].to(device, non_blocking=True)
++            event = torch.cuda.Event()
++            event.record(stream)
++            return result, event
++
++    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="coordinate-jpeg") as pool:
++        future = pool.submit(load)
++        try:
++            while (ready := future.result()) is not None:
++                batch, event = ready
++                current = torch.cuda.current_stream(device)
++                current.wait_event(event)
++                for value in batch.values():
++                    if isinstance(value, Tensor) and value.is_cuda:
++                        value.record_stream(current)
++                future = pool.submit(load)
++                yield batch
++        finally:
++            # Join the producer before releasing encoded buffers on early exit.
++            pool.shutdown(wait=True)
++            stream.synchronize()
++
++
++def decode_coordinate_jpegs(batch: dict[str, Any], device: torch.device) -> Tensor:
++    if device.type != "cuda":
++        raise ValueError("nvJPEG coordinate input requires CUDA; no CPU fallback")
++    from torchvision.io import ImageReadMode, decode_jpeg
++
++    packed = batch["jpeg"]
++    # DataLoader's pin-memory traversal converts plain tuples into lists.
++    lengths = tuple(batch["jpeg_lengths"])
++    shape = tuple(batch["image_shape"])
++    if ("rgb" in batch or packed.dtype != torch.uint8 or packed.device.type != "cpu"
++            or packed.ndim != 1 or sum(lengths) != packed.numel()
++            or len(shape) != 5 or shape[1:3] != (32, 3) or len(lengths) != shape[0] * 32):
++        raise ValueError("Expected CPU packed JPEGs with declared B,32,3,H,W")
++    images = decode_jpeg(list(packed.split(lengths)), mode=ImageReadMode.RGB, device=device,
++                         apply_exif_orientation=False)
++    if any(tuple(image.shape) != shape[2:] or image.dtype != torch.uint8 for image in images):
++        raise ValueError("JPEG dimensions differ from the frozen image geometry")
++    rgb: Tensor = torch.stack(images).view(shape)
++    return rgb
++
++
++def jpeg_decoder_contract(decoder: str) -> dict[str, Any]:
++    if decoder == "opencv":
++        import cv2
++
++        return dict(decoder="opencv", version=cv2.__version__, color_order="BGR_to_RGB", device="cpu")
++    if decoder != "nvjpeg":
++        raise ValueError("Unknown JPEG decoder")
++    import torchvision
++
++    return dict(decoder="torchvision.io.decode_jpeg/nvjpeg", version=torchvision.__version__,
++                color_order="RGB", device="cuda", apply_exif_orientation=False,
++                cuda_version=torch.version.cuda, pixels_identical_to_opencv=False)
+diff --git a/src/tasks/ball_detection/training/coordinate_provenance.py b/src/tasks/ball_detection/training/coordinate_provenance.py
+index fff264d7e..24592eef9 100644
+--- a/src/tasks/ball_detection/training/coordinate_provenance.py
++++ b/src/tasks/ball_detection/training/coordinate_provenance.py
+@@ -18,7 +18,8 @@ def coordinate_source_identity() -> dict[str, Any]:
+                 "data/pose_windows.py", "data/play*.py", "data/annotation_states.py", "data/store.py",
+                 "training/coordinate*.py", "scripts/train_mdd_pose.py", "scripts/prepare_mdd_training.py",
+                 "scripts/evaluate_mdd_coordinates.py")
+-    paths = sorted({path for pattern in patterns for path in task.glob(pattern)})
++    paths = sorted({path for pattern in patterns for path in task.glob(pattern)}
++                   | {root / "src/utils/shared_file_verification.py", root / "src/utils/checksum.py"})
+     commit = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+     return dict(directory=str(root), base_commit=commit, torch_version=str(torch.__version__),
+                 source_sha256={str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})
+diff --git a/src/tasks/ball_detection/training/coordinate_runtime.py b/src/tasks/ball_detection/training/coordinate_runtime.py
+index e648f6652..c62c13cc6 100644
+--- a/src/tasks/ball_detection/training/coordinate_runtime.py
++++ b/src/tasks/ball_detection/training/coordinate_runtime.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++import json
++import time
+ from dataclasses import dataclass
+ from typing import Any
+ 
+@@ -24,6 +26,7 @@ from src.tasks.ball_detection.training.coordinate_evaluation import (
+     CoordinateModel,
+     predict_coordinates,
+ )
++from src.tasks.ball_detection.training.coordinate_images import JPEG_DECODERS
+ 
+ 
+ def coordinate_worker_init(_: int) -> None:
+@@ -40,6 +43,9 @@ class CoordinateRuntime:
+     cpu_threads: int = 2
+     compile_mode: str = "off"
+     compile_recompile_limit: int = 8
++    jpeg_decoder: str = "opencv"
++    input_verification: str = "lazy"
++    image_prefetch: bool = False
+ 
+     def __post_init__(self) -> None:
+         if self.precision not in {"fp32", "bf16"}:
+@@ -48,6 +54,12 @@ class CoordinateRuntime:
+             raise ValueError("Invalid input pipeline worker/thread/prefetch configuration")
+         if self.compile_mode not in COMPILE_MODES or self.compile_recompile_limit < 1:
+             raise ValueError("Invalid coordinate compilation settings")
++        if self.jpeg_decoder not in JPEG_DECODERS:
++            raise ValueError("Invalid JPEG decoder")
++        if self.input_verification not in {"lazy", "upfront"}:
++            raise ValueError("Invalid input verification mode")
++        if self.image_prefetch and self.jpeg_decoder != "nvjpeg":
++            raise ValueError("Image prefetch requires the nvJPEG decoder")
+ 
+     def configure(self, device: torch.device) -> None:
+         if self.precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
+@@ -56,6 +68,8 @@ class CoordinateRuntime:
+             raise ValueError("Pinned coordinate inputs require CUDA")
+         if self.compile_mode != "off" and device.type != "cuda":
+             raise ValueError("Coordinate compilation requires CUDA; no eager fallback")
++        if self.jpeg_decoder == "nvjpeg" and device.type != "cuda":
++            raise ValueError("nvJPEG requires CUDA; no CPU fallback")
+         torch.set_num_threads(self.cpu_threads)
+         cv2.setNumThreads(1)
+         # Match the measured runtime. Avoid a shape-dependent autotuning phase.
+@@ -70,6 +84,14 @@ class CoordinateRuntime:
+                sampler: Sampler[int] | None = None, seed: int = 0) -> DataLoader[Any]:
+         if batch_size < 1:
+             raise ValueError("Batch size must be positive")
++        if dataset.jpeg_decoder != self.jpeg_decoder:
++            raise ValueError("Dataset/runtime JPEG decoder mismatch")
++        if self.input_verification == "upfront":
++            print(json.dumps(dict(phase="verify_inputs_start", clips=len(dataset.records))), flush=True)
++            start = time.perf_counter()
++            dataset.verify_image_files(self.num_workers)
++            print(json.dumps(dict(phase="verify_inputs_done", clips=len(dataset.records),
++                                  seconds=time.perf_counter() - start)), flush=True)
+         return DataLoader(dataset, batch_size=batch_size, sampler=sampler,
+                           collate_fn=collate_coordinate_windows, num_workers=self.num_workers,
+                           pin_memory=self.pin_memory, worker_init_fn=coordinate_worker_init,
+diff --git a/src/utils/README.md b/src/utils/README.md
+index 3e93f47cc..e2eb51985 100644
+--- a/src/utils/README.md
++++ b/src/utils/README.md
+@@ -12,6 +12,7 @@
+ - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
+ - **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
+ - **`checksum.py`**: 独立した2実装とfileのstat・読取長を照合する `dual_sha256()`。不一致は `FileIntegrityError` で停止し、単独実装への切替や自動再試行を行わない。契約と限界は同関数のdocstringを参照。
++- **`shared_file_verification.py`**: 固定ファイル集合の検証成功をfork/spawn worker間で共有する。hashはfileごとに一度、以後はctimeを含むstatを照合し、変更時に停止する。runを跨ぐ永続cacheは作らない。
+ - **`resource_guard.py`**: sampled MemAvailableの継続低下/緊急停止判定と10秒bucketのRAM記録。起動条件は呼出し側が検査する。
+ - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
+ - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
+diff --git a/src/utils/shared_file_verification.py b/src/utils/shared_file_verification.py
+new file mode 100644
+index 000000000..00470f2ee
+--- /dev/null
++++ b/src/utils/shared_file_verification.py
+@@ -0,0 +1,86 @@
++"""Process-shared verification of a fixed file set, including spawned workers."""
++
++from __future__ import annotations
++
++import multiprocessing as mp
++from collections.abc import Sequence
++from concurrent.futures import ProcessPoolExecutor
++from pathlib import Path
++
++from .checksum import dual_sha256
++
++FileVersion = tuple[int, int, int, int, int]
++
++
++def file_version(path: Path) -> FileVersion:
++    stat = path.stat()
++    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
++
++
++class SharedFileVerification:
++    """Hash once per immutable file across workers; fail on later stat changes.
++
++    Construct before starting workers. Only successful dual-provider checks are
++    published. Small striped locks allow different files to be hashed in parallel.
++    No server process or on-disk trust cache is created. The cache lives exactly
++    as long as this dataset and its workers; every new run verifies independently.
++    """
++
++    def __init__(self, files: dict[Path, str]) -> None:
++        self.paths = tuple(files)
++        self.expected = tuple(files.values())
++        self.indices = {path: i for i, path in enumerate(self.paths)}
++        if not files or any(not p.is_absolute() for p in files):
++            raise ValueError("Verification requires a nonempty absolute file set")
++        context = mp.get_context("spawn")
++        self._versions = context.RawArray("q", 6 * len(files))
++        self._locks = [context.Lock() for _ in range(min(32, len(files)))]
++
++    def verify(self, path: Path) -> FileVersion:
++        index = self.indices[path]
++        offset = 6 * index
++        with self._locks[index % len(self._locks)]:
++            version = file_version(path)
++            if self._versions[offset]:
++                if tuple(self._versions[offset + 1:offset + 6]) != version:
++                    raise ValueError("Verified file changed during dataset use")
++            else:
++                if dual_sha256(path) != self.expected[index]:
++                    raise ValueError("Frozen file checksum mismatch")
++                if file_version(path) != version:
++                    raise ValueError("File changed during verification")
++                self._versions[offset + 1:offset + 6] = version
++                self._versions[offset] = 1
++        return version
++
++    def verify_all(self, workers: int = 1, *, paths: Sequence[Path] | None = None) -> None:
++        if workers < 1:
++            raise ValueError("Verification worker count must be positive")
++        indices = [self.indices[path] for path in (self.paths if paths is None else paths)]
++        if not indices:
++            return
++        if workers == 1:
++            for index in indices:
++                self.verify(self.paths[index])
++            return
++        # Pass shared primitives only at process construction, never as task
++        # payloads. Spawn is safe even if the parent has initialized CUDA.
++        with ProcessPoolExecutor(max_workers=min(workers, len(indices)),
++                                 mp_context=mp.get_context("spawn"),
++                                 initializer=_initialize_verifier, initargs=(self,)) as pool:
++            for _ in pool.map(_verify_index, indices):
++                pass
++
++
++_PROCESS_VERIFIER: SharedFileVerification | None = None
++
++
++def _initialize_verifier(verifier: SharedFileVerification) -> None:
++    global _PROCESS_VERIFIER
++    _PROCESS_VERIFIER = verifier
++
++
++def _verify_index(index: int) -> None:
++    if _PROCESS_VERIFIER is None:
++        raise RuntimeError("Verification worker has not been initialized")
++    _PROCESS_VERIFIER.verify(_PROCESS_VERIFIER.paths[index])
+diff --git a/tests/benchmarks/ball_jpeg_decode_probe.py b/tests/benchmarks/ball_jpeg_decode_probe.py
+new file mode 100644
+index 000000000..dfa1230a5
+--- /dev/null
++++ b/tests/benchmarks/ball_jpeg_decode_probe.py
+@@ -0,0 +1,68 @@
++"""Measure nvJPEG decode and its difference from the saved OpenCV RGB contract."""
++
++from __future__ import annotations
++
++import argparse
++import json
++import time
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++import torch
++from torchvision.io import ImageReadMode, decode_jpeg
++
++from src.tasks.ball_detection.data.coordinate_dataset import CoordinateWindowDataset
++from src.tasks.ball_detection.preprocessing import RGBToMDD
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise ValueError("Choose a fresh report")
++    torch.set_num_threads(2)
++    data = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False)
++    chosen: dict[tuple[str, int], int] = {}
++    for i, (record, window) in enumerate(data.windows):
++        chosen.setdefault((data.records[record]["clip"]["source"], window.frame_step), i)
++    result: dict[str, Any] = dict(status="running", rows=[], torch=str(torch.__version__))
++    for (source, step), i in sorted(chosen.items()):
++        record_index, window = data.windows[i]
++        record = data.records[record_index]
++        clip = data.store.clip_by_id(record["clip"]["clip_id"])
++        data._verify_clip(record, clip)
++        jpegs = [torch.from_numpy(np.frombuffer(data.store.read_jpeg(data.store.row_of(clip, int(f))), np.uint8).copy())
++                 for f in window.indices()]
++        reference = data[i]["rgb"]
++        decoded = torch.stack(decode_jpeg(jpegs, mode=ImageReadMode.RGB, device="cuda"))
++        delta = (decoded.cpu().to(torch.int16) - reference.to(torch.int16)).abs().float()
++        rgb_reference = reference.cuda()
++        transform = RGBToMDD().cuda()
++        with torch.no_grad():
++            diff = (transform(decoded[None]) - transform(rgb_reference[None])).abs()
++            mdd_mean, mdd_max = float(diff.mean()), float(diff.max())
++        del rgb_reference, diff
++        torch.cuda.synchronize()
++        begin = time.perf_counter()
++        for _ in range(10):
++            decoded = torch.stack(decode_jpeg(jpegs, mode=ImageReadMode.RGB, device="cuda"))
++        torch.cuda.synchronize()
++        seconds = (time.perf_counter() - begin) / 10
++        row = dict(source=source, frame_step=step, clip_id=clip.clip_id,
++                   rgb_mean_abs=float(delta.mean()), rgb_max_abs=float(delta.max()),
++                   rgb_equal_fraction=float((delta == 0).float().mean()),
++                   rgb_gt2_fraction=float((delta > 2).float().mean()),
++                   mdd_mean_abs=mdd_mean, mdd_max_abs=mdd_max, decode_seconds=seconds,
++                   jpeg_bytes=sum(x.numel() for x in jpegs))
++        result["rows"].append(row)
++        print(json.dumps(row), flush=True)
++    result["status"] = "ok"
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(result, indent=2) + "\n")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/benchmarks/ball_mdd_query_gpu.py b/tests/benchmarks/ball_mdd_query_gpu.py
+index cdc966ea7..50ac9f6fe 100644
+--- a/tests/benchmarks/ball_mdd_query_gpu.py
++++ b/tests/benchmarks/ball_mdd_query_gpu.py
+@@ -27,6 +27,7 @@ from src.tasks.ball_detection.data.coordinate_dataset import (
+     CoordinateWindowDataset,
+     collate_coordinate_windows,
+ )
++from src.tasks.ball_detection.data.store import shard_name
+ from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDQueryDetector
+ from src.tasks.ball_detection.training.coordinate_compilation import (
+     COMPILE_MODES,
+@@ -34,6 +35,11 @@ from src.tasks.ball_detection.training.coordinate_compilation import (
+     coordinate_compile_scope,
+ )
+ from src.tasks.ball_detection.training.coordinate_evaluation import predict_coordinates
++from src.tasks.ball_detection.training.coordinate_images import (
++    JPEG_DECODERS,
++    coordinate_batches,
++    jpeg_decoder_contract,
++)
+ from src.tasks.ball_detection.training.coordinate_runtime import (
+     CoordinateRuntime,
+     coordinate_train_step,
+@@ -50,7 +56,8 @@ def chosen_indices(dataset: CoordinateWindowDataset, count: int) -> list[int]:
+     return [groups[keys[i % len(keys)]][i // len(keys)] for i in range(count)]
+ 
+ 
+-def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
++def measure(args: argparse.Namespace, report: dict[str, Any],
++            dataset: CoordinateWindowDataset | None = None) -> None:
+     torch.set_num_threads(args.cpu_threads)
+     cv2.setNumThreads(1)
+     torch.manual_seed(42)
+@@ -70,19 +77,24 @@ def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
+     if config.compression != "conv2d" or config.readout != "query_only":
+         raise ValueError("This benchmark is specifically Conv2d + query-only")
+     report["model"] = asdict(config)
+-    dataset = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False)
++    if dataset is None:
++        dataset = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False, jpeg_decoder=args.jpeg_decoder)
+     model = MDDQueryDetector(config).to(device).train()
+     runtime = CoordinateRuntime(precision=args.precision, num_workers=args.workers,
+                                 pin_memory=args.pin_memory, cpu_threads=args.cpu_threads,
+-                                compile_mode=args.compile_mode)
++                                compile_mode=args.compile_mode, jpeg_decoder=args.jpeg_decoder,
++                                prefetch_factor=args.prefetch_factor, image_prefetch=args.image_prefetch)
+     runtime.configure(device)
+     runtime.configure_model(model)
+     report["input_contract"] = model.mdd.input_contract()
++    report["jpeg_decoder"] = jpeg_decoder_contract(args.jpeg_decoder)
+     report["parameters"] = sum(p.numel() for p in model.parameters())
+     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=.01)
+     first_parameter = next(model.parameters()).detach().clone()
+     total = args.warmup + args.steps
+     if args.mode == "compute":
++        if args.jpeg_decoder != "opencv":
++            raise ValueError("Use prepared mode for a nvJPEG reference including GPU decode")
+         indices = chosen_indices(dataset, args.batch_size)
+         batch = collate_coordinate_windows([dataset[i] for i in indices])
+         report["samples"] = [dict(clip_id=c, start=s, frame_step=f) for c, s, f in
+@@ -91,9 +103,31 @@ def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
+         iterator = iter([batch] * total)
+     else:
+         sampler = FPSMixSampler(dataset, windows_per_epoch=total * args.batch_size, seed=42)
+-        loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sampler, seed=42)
+-        report["window_sequence_sha256"] = hashlib.sha256(json.dumps(list(sampler)).encode()).hexdigest()
+-        iterator = iter(loader)
++        sequence = list(sampler)
++        report["window_sequence_sha256"] = hashlib.sha256(json.dumps(sequence).encode()).hexdigest()
++        before = time.perf_counter()
++        if args.preverify:
++            records = [dataset.records[i] for i in dict.fromkeys(dataset.windows[i][0] for i in sequence)]
++            paths = [dataset.store.directory / "shards" / shard_name(record["clip"]["index"]) for record in records]
++            print(json.dumps(dict(phase="preverify_start", clips=len(paths))), flush=True)
++            dataset._shared_rgb_verification.verify_all(max(1, args.workers), paths=paths)
++        report["preverification_seconds"] = time.perf_counter() - before
++        report["preverification_workers"] = max(1, args.workers) if args.preverify else 0
++        print(json.dumps(dict(phase="preverify_done", seconds=report["preverification_seconds"])), flush=True)
++        before = time.perf_counter()
++        if args.mode == "prepared":
++            if args.jpeg_decoder != "nvjpeg":
++                raise ValueError("Prepared reference stores compact JPEGs, not decoded RGB")
++            batches = [collate_coordinate_windows([dataset[j] for j in sequence[i:i+args.batch_size]])
++                       for i in range(0, len(sequence), args.batch_size)]
++            if args.pin_memory:
++                batches = [{k: v.pin_memory() if isinstance(v, torch.Tensor) else v for k, v in b.items()} for b in batches]
++            iterator = iter(batches)
++        else:
++            loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sampler, seed=42)
++            iterator = iter(loader)
++        report["input_setup_seconds"] = time.perf_counter() - before
++    iterator = iter(coordinate_batches(iterator, device, prefetch=args.image_prefetch))
+     report["steps"] = []
+     torch.cuda.synchronize()
+     torch.cuda.reset_peak_memory_stats()
+@@ -109,6 +143,7 @@ def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
+         report["steps"].append(row)
+         if step == 0 or step + 1 == total or (step + 1) % 10 == 0:
+             print(json.dumps(row), flush=True)
++    iterator.close()
+     measured = report["steps"][args.warmup:]
+     seconds = sum(row["seconds"] for row in measured)
+     report.update(status="ok", windows_per_second=args.batch_size * args.steps / seconds,
+@@ -139,7 +174,11 @@ def main() -> None:
+     parser.add_argument("--batch-size", type=int, required=True)
+     parser.add_argument("--precision", choices=("fp32", "bf16"), required=True)
+     parser.add_argument("--compile-mode", choices=COMPILE_MODES, default="off")
+-    parser.add_argument("--mode", choices=("compute", "pipeline"), default="compute")
++    parser.add_argument("--mode", choices=("compute", "prepared", "pipeline"), default="compute")
++    parser.add_argument("--jpeg-decoder", choices=JPEG_DECODERS, default="opencv")
++    parser.add_argument("--preverify", action="store_true", help="Time verification of this trial's unique clips before iteration")
++    parser.add_argument("--image-prefetch", action="store_true")
++    parser.add_argument("--prefetch-factor", type=int, default=1)
+     parser.add_argument("--workers", type=int, default=0)
+     parser.add_argument("--pin-memory", action="store_true")
+     parser.add_argument("--cpu-threads", type=int, default=2)
+diff --git a/tests/benchmarks/ball_mdd_query_gpu_smoke.py b/tests/benchmarks/ball_mdd_query_gpu_smoke.py
+index 3cf176e3d..c77afd6af 100644
+--- a/tests/benchmarks/ball_mdd_query_gpu_smoke.py
++++ b/tests/benchmarks/ball_mdd_query_gpu_smoke.py
+@@ -27,6 +27,9 @@ def main() -> None:
+     parser.add_argument("--workers", type=int, required=True)
+     parser.add_argument("--batch-size", type=int, required=True)
+     parser.add_argument("--compile-mode", choices=("off", "default", "reduce-overhead", "max-autotune"), default="off")
++    parser.add_argument("--jpeg-decoder", choices=("opencv", "nvjpeg"), default="opencv")
++    parser.add_argument("--input-verification", choices=("lazy", "upfront"), default="lazy")
++    parser.add_argument("--image-prefetch", action="store_true")
+     args = parser.parse_args()
+     args.output.mkdir(parents=True, exist_ok=False)
+     original = json.loads(args.manifest.read_text())
+@@ -59,8 +62,11 @@ def main() -> None:
+                "--output", str(training), "--learning-rate", "0.0001", "--seed", "42",
+                "--device", "cuda", "--precision", "bf16", "--batch-size", str(args.batch_size),
+                "--compile-mode", args.compile_mode,
++               "--jpeg-decoder", args.jpeg_decoder, "--input-verification", args.input_verification,
+                "--num-workers", str(args.workers), "--pin-memory", "--windows-per-epoch", "12",
+                "--selection-scope", "common", "--log-every", "1"]
++    if args.image_prefetch:
++        command.append("--image-prefetch")
+     subprocess.run([*command, "--epochs", "1"], check=True)
+     subprocess.run([*command, "--epochs", "2", "--resume", str(training / "epoch-000.pt")], check=True)
+     evaluation = args.output / "validation.json"
+@@ -76,6 +82,7 @@ def main() -> None:
+     assert saved["training_state"]["global_step"] == expected_updates
+     assert saved["training_state"]["cuda_rng"] is not None
+     assert report["precision"] == saved["validation"]["precision"] == "bf16"
++    assert report["image_decode"] == saved["image_decode"]
+     assert all(torch.isfinite(t).all() for t in saved["state_dict"].values())
+     assert set(report["scopes"]["common"]["by_frame_step"]) == {"1", "2", "4"}
+     result = dict(status="ok", purpose="integration diagnostic, not model quality",
+@@ -83,6 +90,7 @@ def main() -> None:
+                   train_windows=9, val_windows=9, optimizer_updates=expected_updates,
+                   precision=report["precision"], batch_size=args.batch_size, workers=args.workers,
+                   input_contract=report["input_contract"], compilation=report["compilation"],
++                  image_decode=report["image_decode"],
+                   cuda_rng_saved=True, resumed=True, external_eval_restored_precision=True,
+                   parent_manifest_sha256=dual_sha256(args.manifest),
+                   excerpt_sha256=dual_sha256(manifest), checkpoint_sha256=dual_sha256(training / "epoch-001.pt"))
+diff --git a/tests/benchmarks/ball_reader_sweep.py b/tests/benchmarks/ball_reader_sweep.py
+new file mode 100644
+index 000000000..05c018821
+--- /dev/null
++++ b/tests/benchmarks/ball_reader_sweep.py
+@@ -0,0 +1,77 @@
++"""Matched JPEG reader experiments with one timed verification phase. Queue only."""
++
++from __future__ import annotations
++
++import argparse
++import gc
++import json
++import os
++import sys
++import time
++from pathlib import Path
++from typing import Any
++
++import torch
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from ball_mdd_query_gpu import measure
++
++from src.tasks.ball_detection.data.coordinate_dataset import CoordinateWindowDataset
++from src.tasks.ball_detection.data.store import shard_name
++from src.tasks.ball_detection.training.coordinate_sampling import FPSMixSampler
++from src.utils.checksum import dual_sha256
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--model-config", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--windows", type=int, default=204)
++    args = parser.parse_args()
++    if args.output.exists() or args.windows <= 12 or args.windows % 2:
++        raise ValueError("Use a fresh output and even window count greater than 12")
++    args.output.mkdir(parents=True)
++    dataset = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False, jpeg_decoder="nvjpeg")
++    sequence = list(FPSMixSampler(dataset, windows_per_epoch=args.windows, seed=42))
++    records = [dataset.records[i] for i in dict.fromkeys(dataset.windows[j][0] for j in sequence)]
++    paths = [dataset.store.directory / "shards" / shard_name(record["clip"]["index"]) for record in records]
++    print(json.dumps(dict(phase="verify_start", clips=len(paths))), flush=True)
++    start = time.perf_counter()
++    dataset._shared_rgb_verification.verify_all(8, paths=paths)
++    setup = dict(seconds=time.perf_counter() - start, clips=len(paths), logical_bytes=sum(p.stat().st_size for p in paths),
++                 workers=8, manifest_sha256=dual_sha256(args.manifest), queue_run_id=os.environ.get("TENNIS_RUN_ID"))
++    (args.output / "verification.json").write_text(json.dumps(setup, indent=2) + "\n")
++    print(json.dumps(dict(phase="verify_done", **setup)), flush=True)
++    conditions = [("sync-w2-b1", "pipeline", 2, 1, False),
++                  ("async-w2-b1", "pipeline", 2, 1, True),
++                  ("async-w4-b1", "pipeline", 4, 1, True),
++                  ("async-w2-b2", "pipeline", 2, 2, True),
++                  ("async-prepared-b1", "prepared", 0, 1, True)]
++    for name, mode, workers, batch, prefetch in conditions:
++        torch._dynamo.reset()
++        from torch._dynamo.utils import counters
++
++        counters.clear()
++        gc.collect()
++        torch.cuda.empty_cache()
++        options = argparse.Namespace(manifest=args.manifest, model_config=args.model_config, mode=mode,
++            workers=workers, batch_size=batch, pin_memory=True, precision="bf16", compile_mode="default",
++            cpu_threads=2, jpeg_decoder="nvjpeg", prefetch_factor=2, image_prefetch=prefetch,
++            preverify=False, warmup=12//batch, steps=(args.windows-12)//batch)
++        report: dict[str, Any] = dict(condition=name, arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(options).items()},
++                                    verification_shared=True, counters_reset_per_case=True)
++        print(json.dumps(dict(phase="condition_start", condition=name)), flush=True)
++        try:
++            measure(options, report, dataset)
++        except Exception as error:
++            report.update(status="error", error=repr(error))
++            raise
++        finally:
++            (args.output / f"{name}.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
++        print(json.dumps(dict(condition=name, windows_per_second=report["windows_per_second"],
++                             mean_loader_wait_seconds=report["mean_loader_wait_seconds"])), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/integration/tasks/ball_detection/test_coordinate_training.py b/tests/integration/tasks/ball_detection/test_coordinate_training.py
+index b46edfdb4..f6a722f8f 100644
+--- a/tests/integration/tasks/ball_detection/test_coordinate_training.py
++++ b/tests/integration/tasks/ball_detection/test_coordinate_training.py
+@@ -192,7 +192,8 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
+                              "--num-workers", "2"], env=env, capture_output=True, text=True, timeout=90)
+     assert result.returncode == 0, result.stdout + result.stderr
+     saved = torch.load(output / "epoch-000.pt", weights_only=True)
+-    assert saved["schema"] == "mdd_coordinates.v3"
++    assert saved["schema"] == "mdd_coordinates.v4"
++    assert saved["image_decode"]["decoder"] == "opencv"
+     assert saved["input_contract"]["mdd_a"] == .27 and saved["input_contract"]["mdd_b"] == -.05
+     progress = json.loads((output / "train.jsonl").read_text().splitlines()[-1])
+     assert progress["global_step"] == 2 and progress["windows"] == 3
+@@ -206,6 +207,7 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
+     report = json.loads(report_path.read_text())
+     assert report["split"] == "test"
+     assert report["input_contract"] == saved["input_contract"]
++    assert report["image_decode"] == saved["image_decode"]
+     for step in ("1", "2", "4"):
+         full = report["scopes"]["full"]["by_frame_step"][step]
+         common = report["scopes"]["common"]["by_frame_step"][step]
+@@ -213,6 +215,34 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
+         assert np.isfinite(full["mean_error_px"]) and np.isfinite(common["mean_error_px"])
+ 
+ 
++def test_packed_jpeg_preserves_sample_order_and_teachers_without_cpu_decode(
++    preparation: tuple[Path, dict], monkeypatch: pytest.MonkeyPatch,
++) -> None:
++    _, plan = preparation
++    path = Path(plan["datasets"]["mdd_only"]["path"])
++    reference = CoordinateWindowDataset(path, split="train", requires_pose=False)
++    packed = CoordinateWindowDataset(path, split="train", requires_pose=False, jpeg_decoder="nvjpeg")
++
++    def forbidden_decode(*args: object, **kwargs: object) -> None:
++        raise AssertionError("Encoded input must not call CPU image decode")
++
++    monkeypatch.setattr(packed.store, "read_bgr", forbidden_decode)
++    samples = []
++    for i in (0, 1):
++        sample, old = packed[i], reference[i]
++        for key in ("timestamps", "uv", "position_valid", "frame_indices", "source_size"):
++            torch.testing.assert_close(sample[key], old[key], rtol=0, atol=0)
++        clip = packed.store.clip_by_id(sample["clip_id"])
++        for encoded, frame_index in zip(sample["jpeg"].split(sample["jpeg_lengths"]), sample["frame_indices"], strict=True):
++            assert encoded.numpy().tobytes() == packed.store.read_jpeg(packed.store.row_of(clip, int(frame_index)))
++        samples.append(sample)
++    batch = collate_coordinate_windows(samples)
++    assert batch["image_shape"][:3] == (2, 32, 3) and len(batch["jpeg_lengths"]) == 64
++    assert batch["jpeg"].numel() == sum(batch["jpeg_lengths"])
++    with pytest.raises(ValueError, match="representation"):
++        collate_coordinate_windows([packed[0], reference[0]])
++
++
+ def test_epoch_resume_matches_uninterrupted_training_and_rejects_changed_recipe(
+     preparation: tuple[Path, dict], tmp_path: Path,
+ ) -> None:
+diff --git a/tests/unit/utils/test_shared_file_verification.py b/tests/unit/utils/test_shared_file_verification.py
+new file mode 100644
+index 000000000..53b83e7ec
+--- /dev/null
++++ b/tests/unit/utils/test_shared_file_verification.py
+@@ -0,0 +1,108 @@
++from __future__ import annotations
++
++import hashlib
++import multiprocessing as mp
++import os
++import time
++from pathlib import Path
++from typing import Any
++from unittest.mock import patch
++
++import pytest
++
++from src.utils.checksum import dual_sha256
++from src.utils.shared_file_verification import SharedFileVerification
++
++
++def _verify_worker(cache: SharedFileVerification, path: Path, gate: Any, counter: Any) -> None:
++    def count_hash(p: Path) -> str:
++        with counter.get_lock():
++            counter.value += 1
++        digest: str = dual_sha256(p)
++        return digest
++
++    assert gate.wait(30)
++    with patch("src.utils.shared_file_verification.dual_sha256", count_hash):
++        for _ in range(3):
++            cache.verify(path)
++
++
++@pytest.mark.parametrize("method", ["fork", "spawn"])
++def test_workers_share_successful_hash_once(tmp_path: Path, method: str) -> None:
++    path = tmp_path / "source"
++    path.write_bytes(b"verified content" * 1000)
++    cache = SharedFileVerification({path: hashlib.sha256(path.read_bytes()).hexdigest()})
++    ctx: Any = mp.get_context(method)
++    gate, counter = ctx.Event(), ctx.Value("i", 0)
++    # Bound production methods remain importable under pytest's importlib mode
++    # when a spawned interpreter cannot import the tests namespace.
++    workers = [ctx.Process(target=cache.verify, args=(path,)) if method == "spawn"
++               else ctx.Process(target=_verify_worker, args=(cache, path, gate, counter)) for _ in range(3)]
++    try:
++        for worker in workers:
++            worker.start()
++        gate.set()
++        for worker in workers:
++            worker.join(40)
++            assert worker.exitcode == 0
++        if method == "fork":
++            assert counter.value == 1
++        with patch("src.utils.shared_file_verification.dual_sha256", side_effect=AssertionError("rehash")):
++            cache.verify(path)
++    finally:
++        for worker in workers:
++            if worker.is_alive():
++                worker.terminate()
++            worker.join(5)
++
++
++def test_rejects_mutation_even_if_size_and_mtime_are_restored(tmp_path: Path) -> None:
++    path = tmp_path / "source"
++    path.write_bytes(b"old")
++    cache = SharedFileVerification({path: hashlib.sha256(b"old").hexdigest()})
++    cache.verify(path)
++    stat = path.stat()
++    time.sleep(.02)  # Cross the timestamp granularity of the WSL filesystem.
++    path.write_bytes(b"new")
++    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
++    with pytest.raises(ValueError, match="changed"):
++        cache.verify(path)
++
++
++def test_failed_hash_is_never_published(tmp_path: Path) -> None:
++    path = tmp_path / "source"
++    path.write_bytes(b"wrong")
++    cache = SharedFileVerification({path: hashlib.sha256(b"right").hexdigest()})
++    with pytest.raises(ValueError, match="checksum"):
++        cache.verify(path)
++    path.write_bytes(b"right")
++    cache.verify(path)
++
++
++def test_change_between_hash_and_publication_is_rejected(tmp_path: Path) -> None:
++    path = tmp_path / "source"
++    path.write_bytes(b"original")
++    digest = hashlib.sha256(path.read_bytes()).hexdigest()
++    cache = SharedFileVerification({path: digest})
++
++    def mutate(_: Path) -> str:
++        path.write_bytes(b"changed!longer")
++        return digest
++
++    with patch("src.utils.shared_file_verification.dual_sha256", mutate), pytest.raises(ValueError, match="changed"):
++        cache.verify(path)
++    with pytest.raises(ValueError, match="checksum"):
++        cache.verify(path)
++
++
++def test_upfront_pool_publishes_to_parent_and_future_workers(tmp_path: Path) -> None:
++    files = {}
++    for i in range(3):
++        path = tmp_path / str(i)
++        path.write_bytes(str(i).encode())
++        files[path] = hashlib.sha256(path.read_bytes()).hexdigest()
++    cache = SharedFileVerification(files)
++    cache.verify_all(2)
++    with patch("src.utils.shared_file_verification.dual_sha256", side_effect=AssertionError("rehash")):
++        for path in files:
++            cache.verify(path)

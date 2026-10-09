@@ -192,7 +192,8 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
                              "--num-workers", "2"], env=env, capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
     saved = torch.load(output / "epoch-000.pt", weights_only=True)
-    assert saved["schema"] == "mdd_coordinates.v3"
+    assert saved["schema"] == "mdd_coordinates.v4"
+    assert saved["image_decode"]["decoder"] == "opencv"
     assert saved["input_contract"]["mdd_a"] == .27 and saved["input_contract"]["mdd_b"] == -.05
     progress = json.loads((output / "train.jsonl").read_text().splitlines()[-1])
     assert progress["global_step"] == 2 and progress["windows"] == 3
@@ -206,11 +207,40 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
     report = json.loads(report_path.read_text())
     assert report["split"] == "test"
     assert report["input_contract"] == saved["input_contract"]
+    assert report["image_decode"] == saved["image_decode"]
     for step in ("1", "2", "4"):
         full = report["scopes"]["full"]["by_frame_step"][step]
         common = report["scopes"]["common"]["by_frame_step"][step]
         assert full["observed_frames"] == 2 * common["observed_frames"] > 0
         assert np.isfinite(full["mean_error_px"]) and np.isfinite(common["mean_error_px"])
+
+
+def test_packed_jpeg_preserves_sample_order_and_teachers_without_cpu_decode(
+    preparation: tuple[Path, dict], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, plan = preparation
+    path = Path(plan["datasets"]["mdd_only"]["path"])
+    reference = CoordinateWindowDataset(path, split="train", requires_pose=False)
+    packed = CoordinateWindowDataset(path, split="train", requires_pose=False, jpeg_decoder="nvjpeg")
+
+    def forbidden_decode(*args: object, **kwargs: object) -> None:
+        raise AssertionError("Encoded input must not call CPU image decode")
+
+    monkeypatch.setattr(packed.store, "read_bgr", forbidden_decode)
+    samples = []
+    for i in (0, 1):
+        sample, old = packed[i], reference[i]
+        for key in ("timestamps", "uv", "position_valid", "frame_indices", "source_size"):
+            torch.testing.assert_close(sample[key], old[key], rtol=0, atol=0)
+        clip = packed.store.clip_by_id(sample["clip_id"])
+        for encoded, frame_index in zip(sample["jpeg"].split(sample["jpeg_lengths"]), sample["frame_indices"], strict=True):
+            assert encoded.numpy().tobytes() == packed.store.read_jpeg(packed.store.row_of(clip, int(frame_index))).tobytes()
+        samples.append(sample)
+    batch = collate_coordinate_windows(samples)
+    assert batch["image_shape"][:3] == (2, 32, 3) and len(batch["jpeg_lengths"]) == 64
+    assert batch["jpeg"].numel() == sum(batch["jpeg_lengths"])
+    with pytest.raises(ValueError, match="representation"):
+        collate_coordinate_windows([packed[0], reference[0]])
 
 
 def test_epoch_resume_matches_uninterrupted_training_and_rejects_changed_recipe(

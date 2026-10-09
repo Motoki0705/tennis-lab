@@ -25,8 +25,15 @@ GPU/model/pin memory/H2Dを計測しない。先頭96窓を同じworkerで2回�
 時間の意味と結果は[CPUボトルネック調査](../../knowledge/nodes/ball_detection/000028-run-i986-query-cpu-input-20261008.md)を参照。
 
 `ball_native_rgb_sweep.sh`はGPU常駐/reader込みの各条件でeagerとcompileを同じBF16・BS1で測る。
-`ball_native_rgb_correctness.py`は3 source×3 FPSのFP32 MDDを旧CPU式と照合し、
-BF16 forward/backward・state復元・compile graphを確認する。いずれも共有queueの`resource=all`で実行する。
+`ball_native_rgb_correctness.py`は3 source×3 FPSのFP32 MDDを旧CPU式と照合する。
+
+`ball_jpeg_decode_probe.py`はOpenCVとnvJPEGのRGB/MDD差分、`ball_jpeg_prefetch_check.py`は
+別CUDA streamでのRGB一致・順序・教師・例外伝播・早期終了を確認する。
+`ball_reader_sweep.py`は同じ204窓・一度の事前検証で、同期/先読み、worker数、BS、メモリ内JPEG基準を比較する。
+`ball_mdd_query_gpu.py --jpeg-decoder nvjpeg --image-prefetch --preverify --mode pipeline`で長い窓列も測れる。
+prepared modeはJPEGをRAMに用意する対照で、復号を含む。事前hash・入力準備時間を記録し、定常速度だけで総時間を見積もらない。
+先読み時の`mean_loader_wait_seconds`は復号も含む入力準備完了待ち。CPU側だけの待ちは`mean_reader_wait_seconds`で区別する。
+GPU診断はいずれも共有queueの`resource=all`で実行する。
 
 ## 人物対応の再較正準備
 

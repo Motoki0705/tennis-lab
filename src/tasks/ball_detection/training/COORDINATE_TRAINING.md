@@ -99,7 +99,7 @@ poseあり／query-onlyの選択はmodel configとmanifestの明示的な組合�
 ```
 
 評価はcheckpointと同じmanifest hashを要求し、MDD設定・モデル状態をstrictに復元する。
-新checkpoint形式は`mdd_coordinates.v3`で、実際のcode hash、native RGB/MDD入力契約、データidentity、
+新checkpoint形式は`mdd_coordinates.v4`で、実際のcode hash、native RGB/MDD入力契約、データidentity、
 checkpoint選択scopeを記録する。準備の際に学習やtest評価を自動起動することはない。
 
 Conv2d＋query-onlyの具体的な入力・損失・予算・実行条件は
@@ -109,9 +109,9 @@ Conv2d＋query-onlyの具体的な入力・損失・予算・実行条件は
 
 `--precision fp32|bf16`は学習・validationに適用する。明示的なtest評価も保存された精度を復元し、
 評価CLIの`--precision`で変更した場合は実際の精度を結果へ記録する。
-旧v2 checkpointはMDD直接入力の形式として明示的に拒否する。旧診断は保存済みcommit/bundleで再現する。
-BF16は対応CUDAデバイスを要求し、別の精度へfallbackしない。readerはsampled RGB uint8を返し、
-モデル内で正規化・輝度・MDDをFP32で計算する。PTS・lossもfloat32を維持する。
+旧v2/v3 checkpointはJPEG decoderを固定できないため明示的に拒否する。旧診断は保存済みcommit/bundleで再現する。
+BF16は対応CUDAデバイスを要求し、別の精度へfallbackしない。readerは選択したJPEGまたはRGB uint8を返し、
+JPEGは指定decoderでRGB uint8へ復号する。モデル内で正規化・輝度・MDDをFP32で計算する。PTS・lossもfloat32を維持する。
 optimizerの重み・状態もfloat32で、FP16/GradScaler・gradient accumulationは使用しない。
 
 train/evaluateの両入口は`--num-workers`、`--pin-memory`、`--prefetch-factor`、
@@ -131,6 +131,25 @@ epoch checkpointと`best.json`は一時ファイルからatomicに公開する�
 中断したepochを直前の完了checkpointからやり直す。途中のtrainログは履歴として残り、
 `resume.jsonl`で再開位置を区別する。最初のepochを保存する前に中断した場合は新規runとしてやり直す。
 同じseedはGPUでのbit単位の再現性を保証するものではない。
+
+## JPEG復号と入力の先読み
+
+`--jpeg-decoder opencv|nvjpeg`で復号方式を固定する。opencvはCPUでRGBへ変換し、nvjpegはworkerから
+`preadv`で必要なJPEG範囲を1つのbufferへ読み、圧縮JPEGだけを渡してCUDAで復号する。nvJPEG内部のhost処理は残る。OpenCVへの自動fallbackは行わない。
+復号後はどちらもRGB uint8のモデル入力となり、MDD以降の構造は共通。GT・split・frame番号は変えない。
+OpenCV/libjpeg-turboとnvJPEGの画素値は一致しないため、decoder/API/versionをv4 checkpointの
+`image_decode`と学習recipeへ記録する。評価は保存設定を復元し、無指定で実装versionが変わる場合は拒否する。
+別decoderでの評価は`--jpeg-decoder`で明示し、元・実行時の両契約を結果に残す。
+
+`--image-prefetch`はnvjpeg専用。1 producerが次batchのJPEG復号を別CUDA streamへ送り、現在のモデル計算と重ねる。
+順序を維持し、event・record_stream・CPU byte bufferの保持で寿命を管理する。早期終了時もproducerをjoinし、エラーを伝播する。
+CPU reader待ちと、GPU復号も含む入力準備完了待ちは別物。`train.jsonl`の`mean_reader_wait_seconds`は
+producer内のreader待ち、`mean_input_ready_wait_seconds`はmain内の待ちで、重なりがあるため加算しない。
+
+`--input-verification lazy|upfront`は同じdual SHA-256検証を、初回使用時またはloader開始前に行う指定。
+成功結果だけをfork/spawn worker間で共有し、clipごとに一度検証する。
+範囲読込のdescriptorにも同じstat identityを要求し、path差替え・EOF・読込中の変更を拒否する。以後もdev/inode/size/mtime/ctimeの変更を拒否する。
+新runでは再検証し、検証省略や永続的なtrust cacheは作らない。upfrontのCPU時間は準備費用として記録し、学習速度から除外した場合も総時間へ含める。
 
 ## torch.compile
 
@@ -152,12 +171,13 @@ GPU実行時は`TORCHINDUCTOR_COMPILE_THREADS=2`でhost RAMを制限し、
 
 - `data/temporal_sampling.py`: native play span内のFPS別32枚と境界の契約。
 - `data/coordinate_manifest.py` / `coordinate_snapshot.py`: GT共通性の照合とsnapshot固定。
-- `data/coordinate_dataset.py`: sampled RGB uint8、同じindexのpose/教師/PTSを読む。
+- `data/coordinate_dataset.py`: sampled JPEG/RGB、同じindexのpose/教師/PTS、共有された検証結果を読む。
 - `models/mdd_pose/variants.py`: 重複のない36モデルの列挙。
 - `coordinate_preparation.py`: 準備transactionと構成・入力・コードの記録。
 - `coordinate_sampling.py`: epoch予算を保った均等FPS混合。
 - `coordinate_evaluation.py`: FPSごとの一意frame評価、全体／共通／source集計。
 - `preprocessing/mdd.py`: 固定FP32 RGB→MDD。モデルのforwardに含める。
+- `coordinate_images.py`: JPEG decoder契約とCUDA streamでの先読み。JPEG復号はcompileの外。
 - `coordinate_compilation.py`: fullgraph/AMP backward方針と実行記録。
 - `coordinate_runtime.py`: 精度、reader並列度、共通のoptimizer update。
 - `coordinate_checkpoint.py`: epoch単位の再開とatomicなcheckpoint/best公開。

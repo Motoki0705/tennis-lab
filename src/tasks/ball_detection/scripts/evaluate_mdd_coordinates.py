@@ -24,6 +24,10 @@ from src.tasks.ball_detection.training.coordinate_compilation import (
     coordinate_compilation_report,
 )
 from src.tasks.ball_detection.training.coordinate_evaluation import evaluate_coordinates
+from src.tasks.ball_detection.training.coordinate_images import (
+    JPEG_DECODERS,
+    jpeg_decoder_contract,
+)
 from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRuntime
 from src.tasks.base.visualization.inference_queue import shared_repository_root
 from src.utils.checksum import dual_sha256
@@ -67,6 +71,9 @@ def main() -> None:
     parser.add_argument("--compile-mode", choices=COMPILE_MODES,
                         help="Defaults to the saved compilation mode; off explicitly evaluates eagerly")
     parser.add_argument("--compile-recompile-limit", type=int)
+    parser.add_argument("--jpeg-decoder", choices=JPEG_DECODERS, help="Defaults to the saved training JPEG decoder")
+    parser.add_argument("--input-verification", choices=("lazy", "upfront"), default="upfront")
+    parser.add_argument("--image-prefetch", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--pin-memory", action="store_true")
     parser.add_argument("--prefetch-factor", type=int, default=1)
@@ -102,17 +109,25 @@ def main() -> None:
                                 prefetch_factor=args.prefetch_factor, cpu_threads=args.cpu_threads,
                                 compile_mode=saved_runtime["compile_mode"] if args.compile_mode is None else args.compile_mode,
                                 compile_recompile_limit=saved_runtime["compile_recompile_limit"]
-                                if args.compile_recompile_limit is None else args.compile_recompile_limit)
+                                if args.compile_recompile_limit is None else args.compile_recompile_limit,
+                                jpeg_decoder=saved_runtime["jpeg_decoder"] if args.jpeg_decoder is None else args.jpeg_decoder,
+                                input_verification=args.input_verification,
+                                image_prefetch=saved_runtime["image_prefetch"] if args.image_prefetch is None else args.image_prefetch)
     runtime.configure(device)
+    active_decoder = jpeg_decoder_contract(runtime.jpeg_decoder)
+    if args.jpeg_decoder is None and active_decoder != saved["image_decode"]:
+        raise ValueError("JPEG decoder implementation/version changed; use an explicit --jpeg-decoder override")
     model.to(device)
     runtime.configure_model(model)
-    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose)
+    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose, jpeg_decoder=runtime.jpeg_decoder)
     loader = runtime.loader(dataset, batch_size=args.batch_size)
-    report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision)
+    report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision,
+                                  image_prefetch=runtime.image_prefetch)
     if dual_sha256(checkpoint) != checkpoint_hash or dual_sha256(manifest) != manifest_hash:
         raise ValueError("Checkpoint or manifest changed during evaluation")
     report.update(checkpoint_sha256=checkpoint_hash, manifest_sha256=manifest_hash, split=args.split,
                   precision=precision, batch_size=args.batch_size, num_workers=args.num_workers,
+                  image_decode=active_decoder, training_image_decode=saved["image_decode"],
                   input_contract=model.mdd.input_contract(), compilation=coordinate_compilation_report(model))
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("x") as stream:

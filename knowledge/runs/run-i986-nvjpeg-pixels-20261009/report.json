@@ -1,0 +1,123 @@
+{
+  "status": "ok",
+  "rows": [
+    {
+      "source": "chat_annotation",
+      "frame_step": 1,
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "rgb_mean_abs": 0.4539746642112732,
+      "rgb_max_abs": 64.0,
+      "rgb_equal_fraction": 0.7686594128608704,
+      "rgb_gt2_fraction": 0.04148434102535248,
+      "mdd_mean_abs": 0.0006962320767343044,
+      "mdd_max_abs": 0.2823070287704468,
+      "decode_seconds": 0.03216700439952547,
+      "jpeg_bytes": 6969974
+    },
+    {
+      "source": "chat_annotation",
+      "frame_step": 2,
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "rgb_mean_abs": 0.4583849608898163,
+      "rgb_max_abs": 64.0,
+      "rgb_equal_fraction": 0.766051173210144,
+      "rgb_gt2_fraction": 0.04176166653633118,
+      "mdd_mean_abs": 0.0007022033678367734,
+      "mdd_max_abs": 0.35009679198265076,
+      "decode_seconds": 0.03075079659902258,
+      "jpeg_bytes": 7026663
+    },
+    {
+      "source": "chat_annotation",
+      "frame_step": 4,
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000003127-000003452",
+      "rgb_mean_abs": 0.5137975215911865,
+      "rgb_max_abs": 64.0,
+      "rgb_equal_fraction": 0.7536872625350952,
+      "rgb_gt2_fraction": 0.05176909267902374,
+      "mdd_mean_abs": 0.0007314559770748019,
+      "mdd_max_abs": 0.2970156669616699,
+      "decode_seconds": 0.03440323489921866,
+      "jpeg_bytes": 6700790
+    },
+    {
+      "source": "meiji",
+      "frame_step": 1,
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "rgb_mean_abs": 0.29486575722694397,
+      "rgb_max_abs": 32.0,
+      "rgb_equal_fraction": 0.8443647027015686,
+      "rgb_gt2_fraction": 0.02302301488816738,
+      "mdd_mean_abs": 2.34317994909361e-05,
+      "mdd_max_abs": 0.0440821647644043,
+      "decode_seconds": 0.035805759699724146,
+      "jpeg_bytes": 6592127
+    },
+    {
+      "source": "meiji",
+      "frame_step": 2,
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "rgb_mean_abs": 0.29386216402053833,
+      "rgb_max_abs": 31.0,
+      "rgb_equal_fraction": 0.8449953198432922,
+      "rgb_gt2_fraction": 0.022960882633924484,
+      "mdd_mean_abs": 3.703997936099768e-05,
+      "mdd_max_abs": 0.05270734429359436,
+      "decode_seconds": 0.0373933639988536,
+      "jpeg_bytes": 6586179
+    },
+    {
+      "source": "meiji",
+      "frame_step": 4,
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "rgb_mean_abs": 0.2952636778354645,
+      "rgb_max_abs": 32.0,
+      "rgb_equal_fraction": 0.8441632390022278,
+      "rgb_gt2_fraction": 0.02304041013121605,
+      "mdd_mean_abs": 5.268126915325411e-05,
+      "mdd_max_abs": 0.23655745387077332,
+      "decode_seconds": 0.029922074200294448,
+      "jpeg_bytes": 6592490
+    },
+    {
+      "source": "tracknet",
+      "frame_step": 1,
+      "clip_id": "tracknet/game1/Clip1",
+      "rgb_mean_abs": 0.20623748004436493,
+      "rgb_max_abs": 39.0,
+      "rgb_equal_fraction": 0.8876031041145325,
+      "rgb_gt2_fraction": 0.015144381672143936,
+      "mdd_mean_abs": 2.2145601178635843e-05,
+      "mdd_max_abs": 0.196760356426239,
+      "decode_seconds": 0.03257260150130605,
+      "jpeg_bytes": 3642307
+    },
+    {
+      "source": "tracknet",
+      "frame_step": 2,
+      "clip_id": "tracknet/game1/Clip1",
+      "rgb_mean_abs": 0.2111906111240387,
+      "rgb_max_abs": 39.0,
+      "rgb_equal_fraction": 0.8847905993461609,
+      "rgb_gt2_fraction": 0.01554360892623663,
+      "mdd_mean_abs": 2.943584149761591e-05,
+      "mdd_max_abs": 0.23824891448020935,
+      "decode_seconds": 0.035096158798842224,
+      "jpeg_bytes": 3653584
+    },
+    {
+      "source": "tracknet",
+      "frame_step": 4,
+      "clip_id": "tracknet/game1/Clip1",
+      "rgb_mean_abs": 0.2176697701215744,
+      "rgb_max_abs": 39.0,
+      "rgb_equal_fraction": 0.8818385601043701,
+      "rgb_gt2_fraction": 0.016360530629754066,
+      "mdd_mean_abs": 4.2317271436331794e-05,
+      "mdd_max_abs": 0.22535505890846252,
+      "decode_seconds": 0.02984478269936517,
+      "jpeg_bytes": 3679115
+    }
+  ],
+  "torch": "2.13.0+cu130"
+}

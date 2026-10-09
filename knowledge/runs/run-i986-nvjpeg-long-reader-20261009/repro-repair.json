@@ -1,0 +1,9 @@
+{
+  "captured_script_sha256": "81ad12feb2447a72b8dd918e7448d301ca7a2053118c390fba171bb563a8c52c",
+  "repairs": [
+    {
+      "change": "relocate identical captured model YAML",
+      "sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2"
+    }
+  ]
+}

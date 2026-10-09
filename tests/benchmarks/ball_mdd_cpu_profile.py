@@ -24,6 +24,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset, get_worker_info
 
 import src.tasks.ball_detection.data.coordinate_dataset as reader
+import src.utils.shared_file_verification as verification
 from src.tasks.ball_detection.data.store import BallFrameStore, shard_name
 from src.tasks.ball_detection.training.coordinate_provenance import (
     coordinate_source_identity,
@@ -39,6 +40,8 @@ def instrument(function: Any, key: str) -> Any:
         start, cpu = time.perf_counter(), time.process_time()
         result = function(*args, **kwargs)
         if CURRENT is not None:
+            if key == "hash":
+                CURRENT["hash_miss"] = True
             CURRENT[key + "_seconds"] = CURRENT.get(key + "_seconds", 0.) + time.perf_counter() - start
             CURRENT[key + "_cpu_seconds"] = CURRENT.get(key + "_cpu_seconds", 0.) + time.process_time() - cpu
         return result
@@ -54,7 +57,7 @@ class TimedDataset(reader.CoordinateWindowDataset):
         worker = get_worker_info()
         CURRENT = dict(index=index, clip_id=clip_id, frame_step=window.frame_step,
                        worker=-1 if worker is None else worker.id, pid=os.getpid(),
-                       hash_miss=clip_id not in self._rgb_versions,
+                       hash_miss=False, first_worker_visit=clip_id not in self._rgb_versions,
                        shard_bytes=(self.store.directory / "shards" / shard_name(record["clip"]["index"])).stat().st_size)
         start, cpu = time.perf_counter(), time.process_time()
         sample: dict[str, Any] = super().__getitem__(index)
@@ -109,6 +112,7 @@ def main() -> None:
     parser.add_argument("--case", choices=("normal", "preverified", "cached_input"), required=True)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--windows", type=int, default=96)
+    parser.add_argument("--jpeg-decoder", choices=("opencv", "nvjpeg"), default="opencv")
     args = parser.parse_args()
     if args.output.exists():
         raise ValueError("Output already exists")
@@ -118,17 +122,18 @@ def main() -> None:
         raise ValueError("This diagnostic measures Linux fork workers with inherited caches")
     worker_init(-1)
     reader.dual_sha256 = instrument(reader.dual_sha256, "hash")
+    verification.dual_sha256 = instrument(verification.dual_sha256, "hash")
     reader.CoordinateWindowDataset._verify_clip = instrument(reader.CoordinateWindowDataset._verify_clip, "verify")  # type: ignore[method-assign]
     BallFrameStore.read_bgr = instrument(BallFrameStore.read_bgr, "read_bgr")
     BallFrameStore.read_jpeg = instrument(BallFrameStore.read_jpeg, "jpeg_bytes")
     setup_start = time.perf_counter()
-    data = TimedDataset(args.manifest, split="train", requires_pose=False)
+    data = TimedDataset(args.manifest, split="train", requires_pose=False, jpeg_decoder=args.jpeg_decoder)
     indices = list(FPSMixSampler(data, windows_per_epoch=6000, seed=42))[:args.windows]
     code = coordinate_source_identity()
     code["source_sha256"]["src/utils/checksum.py"] = hashlib.sha256(
         (Path(code["directory"]) / "src/utils/checksum.py").read_bytes()).hexdigest()
-    report: dict[str, Any] = dict(schema="mdd_cpu_profile.v2", case=args.case, workers=args.workers,
-        payload_contract="RGB uint8 T,3,H,W; fixed MDD is inside the model, not this CPU reader",
+    report: dict[str, Any] = dict(schema="mdd_cpu_profile.v3", case=args.case, workers=args.workers,
+        payload_contract="RGB uint8 T,3,H,W" if args.jpeg_decoder == "opencv" else "packed JPEG bytes; no CPU decode",
         windows=args.windows, torch_threads_per_process=1, opencv_threads=1,
         manifest_sha256=dual_sha256(args.manifest), source_commit=code["base_commit"], code=code,
         diagnostic_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),

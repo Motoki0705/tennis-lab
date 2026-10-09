@@ -1,0 +1,9 @@
+{
+  "captured_script_sha256": "9f5bbf55940d9c0bd0edf474e608f23fe13730290e375d02f3df4e40ac27b346",
+  "repairs": [
+    {
+      "change": "complete the patch with the exact two execution sources untracked at queue capture; preserve the original patch separately",
+      "original_patch_sha256": "f8047b3f58256d5923f555aac52d5b35acbe1dbe8e4a76fa720a8c6ae4bbb363"
+    }
+  ]
+}

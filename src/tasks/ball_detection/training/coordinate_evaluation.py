@@ -19,11 +19,20 @@ from src.tasks.ball_detection.models.mdd_pose import MDDPoseDetector, MDDQueryDe
 from src.tasks.ball_detection.training.coordinate_compilation import (
     coordinate_compile_scope,
 )
+from src.tasks.ball_detection.training.coordinate_images import (
+    coordinate_batches,
+    decode_coordinate_jpegs,
+)
 
 CoordinateModel: TypeAlias = MDDPoseDetector | MDDQueryDetector
 
 
 def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: torch.device) -> Tensor:
+    if "jpeg" in batch:
+        batch = dict(batch, rgb=decode_coordinate_jpegs(batch, device))
+        for key in ("timestamps", "pose", "pose_valid"):
+            if key in batch:
+                batch[key] = batch[key].to(device, non_blocking=True)
     if isinstance(model, MDDQueryDetector):
         inputs = MDDQueryInput(batch["rgb"], batch["timestamps"])
         adapter = MDDQueryAdapter(model.config)
@@ -107,7 +116,7 @@ def selection_score(report: dict[str, Any], scope: str) -> float:
 
 
 def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device: torch.device,
-                         frame_steps: tuple[int, ...], *, precision: str = "fp32") -> dict[str, Any]:
+                         frame_steps: tuple[int, ...], *, precision: str = "fp32", image_prefetch: bool = False) -> dict[str, Any]:
     if precision not in {"fp32", "bf16"}:
         raise ValueError("Evaluation precision must be fp32 or bf16")
     if precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
@@ -115,7 +124,7 @@ def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device
     model.eval()
     metrics = CoordinateMetrics(frame_steps)
     with torch.no_grad(), coordinate_compile_scope(model):
-        for batch in loader:
+        for batch in coordinate_batches(loader, device, prefetch=image_prefetch):
             with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
                 uv = predict_coordinates(model, batch, device).cpu()
             errors = ((uv - batch["uv"]) * (batch["source_size"][:, None] - 1)).norm(dim=-1)

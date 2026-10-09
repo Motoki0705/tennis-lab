@@ -27,6 +27,10 @@ def main() -> None:
     parser.add_argument("--workers", type=int, required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--compile-mode", choices=("off", "default", "reduce-overhead", "max-autotune"), default="off")
+    parser.add_argument("--jpeg-decoder", choices=("opencv", "nvjpeg"), default="opencv")
+    parser.add_argument("--input-verification", choices=("lazy", "upfront"), default="lazy")
+    parser.add_argument("--image-prefetch", action="store_true")
+    parser.add_argument("--prefetch-factor", type=int, default=1)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     original = json.loads(args.manifest.read_text())
@@ -59,8 +63,12 @@ def main() -> None:
                "--output", str(training), "--learning-rate", "0.0001", "--seed", "42",
                "--device", "cuda", "--precision", "bf16", "--batch-size", str(args.batch_size),
                "--compile-mode", args.compile_mode,
+               "--jpeg-decoder", args.jpeg_decoder, "--input-verification", args.input_verification,
                "--num-workers", str(args.workers), "--pin-memory", "--windows-per-epoch", "12",
+               "--prefetch-factor", str(args.prefetch_factor),
                "--selection-scope", "common", "--log-every", "1"]
+    if args.image_prefetch:
+        command.append("--image-prefetch")
     subprocess.run([*command, "--epochs", "1"], check=True)
     subprocess.run([*command, "--epochs", "2", "--resume", str(training / "epoch-000.pt")], check=True)
     evaluation = args.output / "validation.json"
@@ -69,6 +77,7 @@ def main() -> None:
                     "--output", str(evaluation), "--split", "val", "--device", "cuda",
                     "--artifact-root", str(args.output), "--output-root", str(args.output),
                     "--batch-size", str(args.batch_size), "--num-workers", str(args.workers),
+                    "--prefetch-factor", str(args.prefetch_factor),
                     "--pin-memory"], check=True)
     saved = torch.load(training / "epoch-001.pt", map_location="cpu", weights_only=True)
     report = json.loads(evaluation.read_text())
@@ -76,6 +85,7 @@ def main() -> None:
     assert saved["training_state"]["global_step"] == expected_updates
     assert saved["training_state"]["cuda_rng"] is not None
     assert report["precision"] == saved["validation"]["precision"] == "bf16"
+    assert report["image_decode"] == saved["image_decode"]
     assert all(torch.isfinite(t).all() for t in saved["state_dict"].values())
     assert set(report["scopes"]["common"]["by_frame_step"]) == {"1", "2", "4"}
     result = dict(status="ok", purpose="integration diagnostic, not model quality",
@@ -83,6 +93,7 @@ def main() -> None:
                   train_windows=9, val_windows=9, optimizer_updates=expected_updates,
                   precision=report["precision"], batch_size=args.batch_size, workers=args.workers,
                   input_contract=report["input_contract"], compilation=report["compilation"],
+                  image_decode=report["image_decode"],
                   cuda_rng_saved=True, resumed=True, external_eval_restored_precision=True,
                   parent_manifest_sha256=dual_sha256(args.manifest),
                   excerpt_sha256=dual_sha256(manifest), checkpoint_sha256=dual_sha256(training / "epoch-001.pt"))

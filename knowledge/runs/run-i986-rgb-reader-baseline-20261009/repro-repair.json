@@ -1,0 +1,8 @@
+{
+  "captured_script_sha256": "43852b0129d3aec888bfbe5f02c61ede531a79b0acd6296b753f2cfe1281bf66",
+  "repairs": [
+    {
+      "change": "make inherited PYTHONPATH=. explicit for standalone reproduction"
+    }
+  ]
+}

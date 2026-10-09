@@ -1,7 +1,7 @@
-# Conv2d＋query-only：初回学習レシピ
+# Conv2d＋query-only：学習レシピ
 
-2026-10-09更新。RGB uint8入力・モデル内FP32 MDD・compileに対応したレシピ。
-本学習はユーザー指示で停止中であり、この更新では再開していない。
+2026-10-09更新。CUDA nvJPEG復号・モデル内FP32 MDD・BF16 compile・入力先読みに対応したレシピ。
+開始・停止と診断結果は[研究の現在地](../../../../knowledge/summary.md#ball-detection)を参照。
 BS・reader設定は実測で選び、学習率・総更新数は未学習モデルに対する初期レシピとして固定する。
 GPU診断のloss低下は、本レシピの収束・精度を保証する根拠にしない。
 
@@ -54,7 +54,8 @@ source/clipの等数化はしないため、窓を多く持つsource/clipほど�
 RGBを先にstep 1/2/4で選び、選択した32枚からMDDを再計算する。
 必要なnative spanは32/63/125 frame。30FPS動画なら入力の先頭〜末尾は約1.03/2.07/4.13秒。
 FPS名だけを変えたり、native MDDを間引いたりしない。
-JPEGはCPUでRGB uint8へdecodeする。モデル内で[0,1]への変換・輝度差・MDDをFP32計算し、
+workerは選択したJPEGのbyte列だけを渡し、CUDA nvJPEGでRGB uint8へdecodeする。
+次batchの復号を現在の学習と重ねる。モデル内で[0,1]への変換・輝度差・MDDをFP32計算し、
 共通MDD実装の`a=0.2, b=0.15`を使う。
 ImageNet正規化なし、窓先頭のMDDは0。PTS/教師/maskも同じ32枚へ揃える。
 FPS混合と窓shuffle以外のaugmentation（flip/crop/色変換/時間反転等）は初回には入れない。
@@ -104,64 +105,54 @@ train loss/LR/grad norm/速度は50 updateごと、validationと学習・評価�
 | GPU | RTX 5060 Ti・16GBを共有queueの`resource=all`で使用 |
 | precision | BF16 AMP、学習・validation・最終評価に同じ精度 |
 | physical/effective BS | **1 / 1**（accumulationなし）。32枚は1窓の文脈で、独立な32 sampleではない |
-| DataLoader | **8 workers、pin_memory=true、prefetch_factor=1、persistent_workers=true** |
+| DataLoader | **8 workers、pin_memory=true、prefetch_factor=4、persistent_workers=true** |
 | CPU | メインPyTorch 2 threads、各workerはPyTorch/OpenCV各1 thread |
+| JPEG復号 | nvjpeg、RGB uint8、EXIF orientationなし。CUDA streamで1 batch先読み |
+| 整合性 | upfront検証、成功をworker間共有。準備時間を別記し、学習中もstat変更を拒否 |
 | Compile | Inductor `default`、fullgraph、静的shape、再compile上限8。backward autocast前提はoff |
 | TF32/autotune | matmul TF32 off、cuDNN TF32 on、cuDNN benchmark off |
 | 定期ログ | 50 updateごと。gradient normはclip前の値を記録 |
 | ディスク | GPU診断でのepoch checkpointは約14MB。データsnapshotは既存のものを再利用 |
 
-GPU速度・待ち時間・VRAM・計測条件は[2026-10-09の実測レポート](../../../../knowledge/nodes/ball_detection/000029-run-i986-native-rgb-compile-20261009.md)を参照。
-旧CPU式との[数値・勾配比較](../../../../knowledge/nodes/ball_detection/000030-run-i986-native-rgb-numerics-20261009.md)と、
-[通常dropoutでの保存・再開・BF16 compile評価](../../../../knowledge/nodes/ball_detection/000031-run-i986-native-rgb-cli-20261009.md)も確認した。
+[1,020窓の最終確認](../../../../knowledge/nodes/ball_detection/000043-run-i986-pread-prefetch-long-20261009.md)に基づき、`preadv`による範囲読込と、8 workers×prefetch 4を使う。
+同期／先読み・worker数・BS・メモリ内JPEG基準の比較は、[同一204窓の計測](../../../../knowledge/nodes/ball_detection/000036-run-i986-jpeg-prefetch-sweep-20261009.md)を参照。
+[先読みの画素・順序検証](../../../../knowledge/nodes/ball_detection/000037-run-i986-jpeg-prefetch-integrity-20261009.md)と
+[v4保存・再開・評価](../../../../knowledge/nodes/ball_detection/000044-run-i986-final-pread-cli-20261009.md)も確認した。
 
-CPU readerのRGB uint8は84.375MiB/窓で、旧FP32 MDDの225MiB/窓から62.5%小さい。
-reader込みではclip全体のhash検証待ちが残る。共有検証cacheは今回の変更に含めない。
-他のBS/workerとの再比較は未実施で、この設定を高速化後の最適値とは扱わない。
-GPU診断はallocatorをGPU容量の90%に制限して実施。本学習CLIはallocator上限を変更しない。
-数日規模の本学習の安定性・収束は未評価。
+nvJPEGはOpenCVと異なる復号結果を持つ。ユーザー承認に基づく変更であり、
+[RGB/MDD差分](../../../../knowledge/nodes/ball_detection/000033-run-i986-nvjpeg-pixels-20261009.md)を記録した。
+画素一致や精度同等性を主張しない。train/val/testでは同じdecoder契約を使う。
 
-最初の精度確認と本学習の提案予算を分ける。今回のnative RGB版では**本学習を起動していない**。
-
-| 段階 | 更新数 | epochの定義 | validation | 目的 |
-|---|---:|---|---|---|
-| pilot | 3,000 | 3,000窓×1 epoch | 全9,735窓を最後に1回 | LR=1e−4で学習が進むか、full/common/source別の誤差・外れ値を確認 |
-| 本学習案 | 60,000 | 6,000窓×10 epochs | 毎epoch、全9,735窓 | 初回の収束曲線とbestを取得 |
-
-本学習案は各FPS 20,000窓、合計1,920,000入力frame（重複を含む）。
-pilot後はレシピを評価し、本学習は別runとしてscratchから開始する。
-pilotと本学習で窓/epochが違うため、pilot checkpointを本学習へresumeする設定ではない。
-LRと60,000 updateは初期提案であり、速度測定から最適値が判明したわけではない。
-pilotで学習が停滞・発散する場合は原因を検討して新しいレシピを作り、未承認の長期runへ自動移行しない。
-
-旧CPU MDD版の24〜33時間という見積りは、この版の確定した所要時間ではない。
-GPU常駐の21.26窓/秒で全学習時間を見積もらず、readerと全validationを含めた測定で更新する。
-現在の短いreader込み測定は1.68窓/秒で、初回hashやOS cache状態による変動を含む。
+学習予算は**60,000 optimizer updates＝6,000窓×10 epochs**、各FPS 20,000窓、
+合計1,920,000入力frame（重複を含む）。毎epochに全9,735 validation窓を評価する。
+LRと予算はユーザー承認済みの初期レシピで、速度測定から収束が保証された値ではない。
+検証済み画像を再利用するbenchmarkの速度と、初回hash・compile・全validationを含む総時間を区別する。
+本学習の長期安定性・汎化は実runで確認する。GPU診断の90% allocator制限は本学習には適用しない。
 
 ## 実行コマンド
 
 以下は本学習案のqueue登録例で、文書を作成しただけでは実行されない。
-実装worktree rootから実行し、`--session`には実行するセッション自身のIDを指定する。
-pilotは出力先を別名にし、`--epochs 1 --windows-per-epoch 3000`へ変更する。
+commitを固定した専用worktree rootから実行し、`--session`には実行するセッション自身のIDを指定する。
 既存の固定bundleはそのまま使える。古い`experiments.json`にはcompile指定がないため、
-ここに示すBF16/compile指定を使う。新しい準備CLIのテンプレートには両方を含める。
+ここに示すBF16/compile/decoder/先読み指定を使う。
 
 ```bash
-cd /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1
 BALL_TRAIN_CMD=$(cat <<'COMMAND'
 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 TORCH_LOGS=graph_breaks,recompiles .venv/bin/python -m src.tasks.ball_detection.scripts.train_mdd_pose \
   --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json \
   --model-config /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml \
-  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/conv2d-query-only-bf16/s42-u60000-native-rgb-v1 \
+  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/conv2d-query-only-bf16/s42-u60000-nvjpeg-v1 \
   --device cuda --precision bf16 --compile-mode default --batch-size 1 \
-  --num-workers 8 --pin-memory --prefetch-factor 1 --cpu-threads 2 \
+  --num-workers 8 --pin-memory --prefetch-factor 4 --cpu-threads 2 \
+  --jpeg-decoder nvjpeg --input-verification upfront --image-prefetch \
   --epochs 10 --windows-per-epoch 6000 --learning-rate 0.0001 --seed 42 \
   --mdd-a 0.2 --mdd-b 0.15 --selection-scope common --log-every 50
 COMMAND
 )
 TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue \
   bash .agents/skills/training-queue/scripts/training_queue.sh add "$BALL_TRAIN_CMD" \
-  --name i986-query-bf16-s42-u60000-native-rgb-v1 --provider codex --session "$CODEX_THREAD_ID" \
+  --name i986-query-bf16-s42-u60000-nvjpeg-v1 --provider codex --session "$CODEX_THREAD_ID" \
   --issue 986 --resource all
 TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue \
   bash .agents/skills/training-queue/scripts/training_queue.sh start
@@ -175,7 +166,8 @@ TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue \
 .venv/bin/python -m src.tasks.ball_detection.scripts.evaluate_mdd_coordinates \
   --checkpoint <best-checkpoint.pt> \
   --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json \
-  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/conv2d-query-only-bf16/s42-u60000-native-rgb-v1/test.json \
+  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/conv2d-query-only-bf16/s42-u60000-nvjpeg-v1/test.json \
   --split test --device cuda --precision bf16 --compile-mode default --batch-size 1 \
-  --num-workers 8 --pin-memory --prefetch-factor 1 --cpu-threads 2
+  --num-workers 8 --pin-memory --prefetch-factor 4 --cpu-threads 2 \
+  --jpeg-decoder nvjpeg --input-verification upfront --image-prefetch
 ```

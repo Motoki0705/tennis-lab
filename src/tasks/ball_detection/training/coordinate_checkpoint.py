@@ -12,15 +12,21 @@ from src.tasks.ball_detection.preprocessing import RGBToMDD
 from src.tasks.ball_detection.training.coordinate_evaluation import CoordinateModel
 from src.utils.checksum import dual_sha256
 
-COORDINATE_CHECKPOINT_SCHEMA = "mdd_coordinates.v3"
+COORDINATE_CHECKPOINT_SCHEMA = "mdd_coordinates.v4"
 
 
 def validate_coordinate_checkpoint(saved: dict[str, Any]) -> RGBToMDD:
     if saved.get("schema") != COORDINATE_CHECKPOINT_SCHEMA:
-        raise ValueError("Expected a v3 native RGB coordinate checkpoint; legacy MDD-input v2 is not accepted")
+        raise ValueError("Expected a v4 coordinate checkpoint with explicit JPEG decoder; legacy MDD-input v2 is not accepted")
     preprocessing = RGBToMDD.from_contract(saved["input_contract"])
     if saved["training_state"]["recipe"]["input_contract"] != preprocessing.input_contract():
         raise ValueError("Checkpoint input contract and training recipe disagree")
+    if saved["image_decode"] != saved["training_state"]["recipe"]["image_decode"]:
+        raise ValueError("Checkpoint JPEG decoder and training recipe disagree")
+    decoder = saved["training_state"]["recipe"]["runtime"]["jpeg_decoder"]
+    if decoder not in {"opencv", "nvjpeg"} or saved["image_decode"]["decoder"] != (
+            "opencv" if decoder == "opencv" else "torchvision.io.decode_jpeg/nvjpeg"):
+        raise ValueError("Checkpoint JPEG decoder contract does not match its runtime")
     return preprocessing
 
 
