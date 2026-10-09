@@ -31,7 +31,7 @@ class RGBToMDD(nn.Module):
 
     The complete transform is part of the model forward/compile graph. AMP must
     not round the RGB/luminance differences before their fixed sigmoid mapping.
-    Coefficients are immutable configuration, saved in the v3 input contract.
+    Coefficients are immutable configuration, saved in the checkpoint input contract.
     """
 
     def __init__(self, a: float = .2, b: float = .15) -> None:

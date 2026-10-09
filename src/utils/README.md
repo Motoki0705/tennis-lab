@@ -12,6 +12,7 @@
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
 - **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
 - **`checksum.py`**: 独立した2実装とfileのstat・読取長を照合する `dual_sha256()`。不一致は `FileIntegrityError` で停止し、単独実装への切替や自動再試行を行わない。契約と限界は同関数のdocstringを参照。
+- **`shared_file_verification.py`**: 固定ファイル集合の検証成功をfork/spawn worker間で共有する。hashはfileごとに一度、以後はctimeを含むstatを照合し、変更時に停止する。runを跨ぐ永続cacheは作らない。
 - **`resource_guard.py`**: sampled MemAvailableの継続低下/緊急停止判定と10秒bucketのRAM記録。起動条件は呼出し側が検査する。
 - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
@@ -25,6 +26,7 @@
 - **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
 
 ### `data/`
+- **`file_ranges.py`**: 検証済みfileの範囲を`preadv`で1つのbufferへ直接読む。descriptor数を制限し、fork/spawn・短いread・path差替え・読込中の変更を扱う。
 - **`image_record_store.py`**: JPEG byte shardとDEFLATE圧縮した疎なJSONレコードindex。offset/length、checksum、worker-local mmap、必要画像だけのdecodeを共有する。dataset schemaと公開トランザクションは呼び出し側が所有する。
 - **`float32_store.py`**: 明示されたNPY/byte-plane NPZの読み込みとfloat32の可逆圧縮。header検査と完全復元を分離し、未知codec・破損・shape不一致を拒否する。
 - **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。

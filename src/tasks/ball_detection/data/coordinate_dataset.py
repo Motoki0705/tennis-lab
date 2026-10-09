@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
@@ -10,9 +11,15 @@ from typing import Any
 import numpy as np
 import torch
 from numpy.typing import NDArray
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, default_collate
 
 from src.utils.checksum import dual_sha256
+from src.utils.data.file_ranges import FileRangeReader
+from src.utils.shared_file_verification import (
+    FileVersion,
+    SharedFileVerification,
+    file_version,
+)
 
 from .annotation_states import AnnotationStates, annotation_states
 from .coordinate_manifest import COORDINATE_MANIFEST_SCHEMA, clip_semantic_digest
@@ -23,7 +30,11 @@ from .temporal_sampling import SampledWindow, TemporalSamplingConfig
 class CoordinateWindowDataset(Dataset[dict[str, Any]]):
     """Modality is explicit. MDD-only never opens a pose manifest or artifact."""
 
-    def __init__(self, manifest: Path, *, split: str, requires_pose: bool) -> None:
+    def __init__(self, manifest: Path, *, split: str, requires_pose: bool, jpeg_decoder: str = "opencv") -> None:
+        if jpeg_decoder not in {"opencv", "nvjpeg"}:
+            raise ValueError("JPEG decoder must be explicit: opencv or nvjpeg")
+        self.jpeg_decoder = jpeg_decoder
+        self._jpeg_reader = FileRangeReader()
         self.manifest = json.loads(manifest.read_text())
         schema = self.manifest.get("schema")
         if schema == "ball_play_windows.v1":
@@ -61,7 +72,11 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
             raise ValueError(f"No accepted windows in {split}")
         if any(window.frame_step not in self.frame_steps for _, window in self.windows):
             raise ValueError("Window uses an undeclared frame step")
-        self._rgb_versions: dict[str, tuple[int, int, int, int]] = {}
+        self._shared_rgb_verification = SharedFileVerification({
+            self.store.directory / "shards" / shard_name(record["clip"]["index"]): record["rgb_shard_sha256"]
+            for record in self.records
+        })
+        self._rgb_versions: dict[str, FileVersion] = {}
         self._states: dict[str, AnnotationStates] = {}
         self._pose_clip = ""
         self._pose: dict[str, np.ndarray] = {}
@@ -69,13 +84,14 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
     def __len__(self) -> int:
         return len(self.windows)
 
+    def verify_image_files(self, workers: int, *, progress: Callable[[int, int], None] | None = None) -> None:
+        self._shared_rgb_verification.verify_all(max(1, workers), progress=progress)
+
     def _verify_clip(self, record: dict[str, Any], clip: ClipRecord) -> AnnotationStates:
         path = self.store.directory / "shards" / shard_name(clip.index)
-        stat = path.stat()
-        version = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+        version = file_version(path)
         if clip.clip_id not in self._rgb_versions:
-            if dual_sha256(path) != record["rgb_shard_sha256"]:
-                raise ValueError("Frozen RGB shard checksum mismatch")
+            version = self._shared_rgb_verification.verify(path)
             if "semantic_sha256" in record and clip_semantic_digest(self.store, clip) != record["semantic_sha256"]:
                 raise ValueError("Frozen clip GT/geometry identity mismatch")
             self._rgb_versions[clip.clip_id] = version
@@ -112,6 +128,24 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
             raise ValueError("Nonfinite pose coordinates")
         return dict(pose=torch.from_numpy(points), pose_valid=torch.from_numpy(valid))
 
+    def _read_images(self, clip: ClipRecord, indices: NDArray[np.int64]) -> dict[str, Any]:
+        images: dict[str, Any] = {}
+        if self.jpeg_decoder == "opencv":
+            rgb = np.empty((32, 3, clip.height, clip.width), np.uint8)
+            for position, frame in enumerate(indices):
+                image = self.store.read_bgr(self.store.row_of(clip, int(frame)))
+                rgb[position] = image[..., ::-1].transpose(2, 0, 1)
+            images["rgb"] = torch.from_numpy(rgb)
+        else:
+            rows = self.store.clip_start[clip.index] + indices
+            ranges = [(int(self.store.frames["offset"][row]), int(self.store.frames["length"][row])) for row in rows]
+            path = self.store.directory / "shards" / shard_name(clip.index)
+            packed = self._jpeg_reader.read(path, ranges, self._rgb_versions[clip.clip_id])
+            images.update(jpeg=torch.from_numpy(packed),
+                          jpeg_lengths=tuple(length for _, length in ranges),
+                          image_shape=(32, 3, clip.height, clip.width))
+        return images
+
     def __getitem__(self, index: int) -> dict[str, Any]:
         record_index, window = self.windows[index]
         record = self.records[record_index]
@@ -125,22 +159,16 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
         if (not states.target[indices].all() or position_valid.sum() < cfg["min_observed_frames"]
                 or states.evidence[indices].mean() < cfg["min_presence_fraction"]):
             raise ValueError("Sampled window no longer satisfies declared teacher/evidence requirements")
-        rgb = np.empty((32, 3, clip.height, clip.width), np.uint8)
+        images = self._read_images(clip, indices)
         uv: NDArray[np.float32] = np.zeros((32, 2), np.float32)
         denominator = clip.scale * np.asarray((clip.source_width - 1, clip.source_height - 1), np.float32)
-        for position, frame in enumerate(indices):
-            row = self.store.row_of(clip, int(frame))
-            image = self.store.read_bgr(row)
-            # Copy BGR HWC directly into the final RGB CHW uint8 allocation.
-            rgb[position] = image[..., ::-1].transpose(2, 0, 1)
-            if position_valid[position]:
-                uv[position] = states.xy[frame] / denominator
+        uv[position_valid] = states.xy[indices[position_valid]] / denominator
         if not np.isfinite(uv).all() or ((uv[position_valid] < 0) | (uv[position_valid] > 1)).any():
             raise ValueError("Observed coordinates exceed the source endpoint grid")
         rows = self.store.clip_rows(clip)
         pts = self.store.frames["pts"][rows[indices]]
         seconds = ((pts - pts[0]).astype(np.float64) * float(Fraction(clip.time_base))).astype(np.float32)
-        sample = dict(rgb=torch.from_numpy(rgb), timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
+        sample = dict(**images, timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
                       position_valid=torch.from_numpy(position_valid), frame_indices=torch.from_numpy(indices),
                       frame_step=window.frame_step, input_kind=self.input_kind,
                       common_evaluation=bool(record["common_evaluation"]),
@@ -154,11 +182,27 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
 def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
     if not samples or len({s["input_kind"] for s in samples}) != 1:
         raise ValueError("Batch must contain one nonempty coordinate input kind")
-    if len({tuple(s["rgb"].shape) for s in samples}) != 1:
+    encoded = ["jpeg" in s for s in samples]
+    if len(set(encoded)) != 1 or any(("rgb" in s) == encoded[i] for i, s in enumerate(samples)):
+        raise ValueError("Batch must contain exactly one image representation")
+    shapes = [s["image_shape"] if encoded[0] else tuple(s["rgb"].shape) for s in samples]
+    if len(set(shapes)) != 1:
         raise ValueError("Batch images must share native shape; resize/padding is not automatic")
-    if any(s["rgb"].dtype != torch.uint8 or s["rgb"].ndim != 4 or s["rgb"].shape[:2] != (32, 3) for s in samples):
-        raise ValueError("Coordinate samples require RGB uint8 T,3,H,W")
     result: dict[str, Any] = {}
+    if encoded[0]:
+        for sample in samples:
+            lengths = sample["jpeg_lengths"]
+            if (sample["jpeg"].dtype != torch.uint8 or sample["jpeg"].ndim != 1
+                    or len(lengths) != 32 or min(lengths) < 1 or sum(lengths) != sample["jpeg"].numel()
+                    or sample["image_shape"][:2] != (32, 3)):
+                raise ValueError("Invalid packed JPEG window")
+        result.update(jpeg=torch.cat([s["jpeg"] for s in samples]),
+                      jpeg_lengths=tuple(length for s in samples for length in s["jpeg_lengths"]),
+                      image_shape=(len(samples), *shapes[0]))
+    else:
+        if any(s["rgb"].dtype != torch.uint8 or s["rgb"].ndim != 4 or s["rgb"].shape[:2] != (32, 3) for s in samples):
+            raise ValueError("Coordinate samples require RGB uint8 T,3,H,W")
+        result["rgb"] = default_collate([s["rgb"] for s in samples])
     if samples[0]["input_kind"] == "mdd_pose":
         people = max(sample["pose"].shape[1] for sample in samples)
         for key in ("pose", "pose_valid"):
@@ -171,8 +215,10 @@ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
             result[key] = torch.stack(values)
     elif samples[0]["input_kind"] != "mdd_only" or any("pose" in s or "pose_valid" in s for s in samples):
         raise ValueError("MDD-only batches must not contain pose tensors")
-    for key in ("rgb", "timestamps", "uv", "position_valid", "source_size", "frame_indices"):
-        result[key] = torch.stack([sample[key] for sample in samples])
+    for key in ("timestamps", "uv", "position_valid", "source_size", "frame_indices"):
+        # PyTorch allocates the result directly in shared memory inside workers.
+        # A plain stack would be copied again by multiprocessing's tensor sender.
+        result[key] = default_collate([sample[key] for sample in samples])
     for key in ("clip_id", "start", "source", "frame_step", "common_evaluation", "input_kind"):
         result[key] = [sample[key] for sample in samples]
     return result

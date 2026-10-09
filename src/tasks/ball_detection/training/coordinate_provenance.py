@@ -18,7 +18,9 @@ def coordinate_source_identity() -> dict[str, Any]:
                 "data/pose_windows.py", "data/play*.py", "data/annotation_states.py", "data/store.py",
                 "training/coordinate*.py", "scripts/train_mdd_pose.py", "scripts/prepare_mdd_training.py",
                 "scripts/evaluate_mdd_coordinates.py")
-    paths = sorted({path for pattern in patterns for path in task.glob(pattern)})
+    paths = sorted({path for pattern in patterns for path in task.glob(pattern)}
+                   | {root / "src/utils/shared_file_verification.py", root / "src/utils/checksum.py",
+                      root / "src/utils/data/file_ranges.py"})
     commit = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
     return dict(directory=str(root), base_commit=commit, torch_version=str(torch.__version__),
                 source_sha256={str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})

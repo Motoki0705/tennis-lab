@@ -41,6 +41,11 @@ from src.tasks.ball_detection.training.coordinate_evaluation import (
     predict_coordinates,
     selection_score,
 )
+from src.tasks.ball_detection.training.coordinate_images import (
+    JPEG_DECODERS,
+    coordinate_batches,
+    jpeg_decoder_contract,
+)
 from src.tasks.ball_detection.training.coordinate_provenance import (
     coordinate_source_identity,
 )
@@ -78,10 +83,12 @@ def predict(model: CoordinateModel, batch: dict[str, Any], device: torch.device)
 
 @torch.no_grad()
 def evaluate(model: CoordinateModel, loader: DataLoader[Any], device: torch.device,
-             *, precision: str = "fp32") -> dict[str, Any]:
+             *, precision: str = "fp32", image_prefetch: bool = False) -> dict[str, Any]:
     if not isinstance(loader.dataset, CoordinateWindowDataset):
         raise ValueError("Evaluation requires a declared coordinate window dataset")
-    return evaluate_coordinates(model, loader, device, loader.dataset.frame_steps, precision=precision)
+    report: dict[str, Any] = evaluate_coordinates(model, loader, device, loader.dataset.frame_steps,
+                                                precision=precision, image_prefetch=image_prefetch)
+    return report
 
 
 def main() -> None:
@@ -104,6 +111,9 @@ def main() -> None:
     parser.add_argument("--cpu-threads", type=int, default=2)
     parser.add_argument("--compile-mode", choices=COMPILE_MODES, default="off")
     parser.add_argument("--compile-recompile-limit", type=int, default=8)
+    parser.add_argument("--jpeg-decoder", choices=JPEG_DECODERS, default="opencv")
+    parser.add_argument("--input-verification", choices=("lazy", "upfront"), default="lazy")
+    parser.add_argument("--image-prefetch", action="store_true")
     parser.add_argument("--log-every", type=int, default=50)
     parser.add_argument("--resume", type=Path, help="Latest completed epoch in the same --output directory")
     parser.add_argument("--mdd-a", type=float, default=.2)
@@ -141,11 +151,12 @@ def main() -> None:
         overrides["pose_pooling"] = None
     config = replace(config, **overrides)
     identity = dual_sha256(args.manifest)
-    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose)
-    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose)
+    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose, jpeg_decoder=args.jpeg_decoder)
+    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose, jpeg_decoder=args.jpeg_decoder)
     device = torch.device(args.device)
     runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
-                                args.cpu_threads, args.compile_mode, args.compile_recompile_limit)
+                                args.cpu_threads, args.compile_mode, args.compile_recompile_limit,
+                                args.jpeg_decoder, args.input_verification, args.image_prefetch)
     runtime.configure(device)
     torch.manual_seed(args.seed)
     model = (MDDPoseDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b) if config.requires_pose
@@ -159,7 +170,7 @@ def main() -> None:
     recipe = dict(model=asdict(config), runtime=asdict(runtime), batch_size=args.batch_size,
                   seed=args.seed, learning_rate=args.learning_rate, weight_decay=.01,
                   windows_per_epoch=epoch_windows, selection_scope=args.selection_scope,
-                  input_contract=model.mdd.input_contract(), device=args.device,
+                  input_contract=model.mdd.input_contract(), image_decode=jpeg_decoder_contract(args.jpeg_decoder), device=args.device,
                   evaluation_precision=args.precision, gradient_clip=1., schedule="constant")
     start_epoch, global_step, best, best_epoch = 0, 0, float("inf"), -1
     if args.resume is None:
@@ -180,6 +191,7 @@ def main() -> None:
                                       mixture="equal-FPS shuffled cycles; sampled RGB before MDD"),
                     test_usage="no test samples used for training or checkpoint selection",
                     input_contract=model.mdd.input_contract(),
+                    image_decode=recipe["image_decode"],
                     compilation=coordinate_compilation_report(model),
                     input_rgb="stored JPEG decoded to RGB uint8; sampled before native FP32 model MDD; no ImageNet normalization",
                     mdd_first_frame="zero, no RGB predecessor outside the 32-frame window")
@@ -196,24 +208,33 @@ def main() -> None:
         model.train()
         epoch_start = time.perf_counter()
         loss_sum, observed_count, windows_seen = 0., 0, 0
-        for batch in train_loader:
+        input_wait, reader_wait = 0., 0.
+        previous_step_end = epoch_start
+        for epoch_updates, batch in enumerate(coordinate_batches(train_loader, device, prefetch=runtime.image_prefetch), 1):
+            waited = time.perf_counter() - previous_step_end
+            input_wait += waited
+            reader_wait += batch["_reader_wait_seconds"] if runtime.image_prefetch else waited
             loss, grad = coordinate_train_step(model, optimizer, batch, device, runtime)
             observed = int(batch["position_valid"].sum())
             loss_sum += float(loss) * observed
             observed_count += observed
-            windows_seen += len(batch["rgb"])
+            windows_seen += len(batch["timestamps"])
             global_step += 1
             if global_step % args.log_every == 0 or windows_seen == epoch_windows:
                 elapsed = time.perf_counter() - epoch_start
                 progress = dict(epoch=epoch, global_step=global_step, windows=windows_seen,
                                 train_loss=loss_sum / observed_count, grad_norm=float(grad),
                                 learning_rate=optimizer.param_groups[0]["lr"],
-                                train_seconds=elapsed, windows_per_second=windows_seen / elapsed)
+                                train_seconds=elapsed, windows_per_second=windows_seen / elapsed,
+                                mean_input_ready_wait_seconds=input_wait / epoch_updates,
+                                mean_reader_wait_seconds=reader_wait / epoch_updates,
+                                input_ready_wait_includes_decode=runtime.image_prefetch)
                 with (args.output / "train.jsonl").open("a") as stream:
                     stream.write(json.dumps(progress, allow_nan=False) + "\n")
                 print(json.dumps(progress), flush=True)
+            previous_step_end = time.perf_counter()
         train_seconds = time.perf_counter() - epoch_start
-        report = evaluate(model, val_loader, device, precision=runtime.precision)
+        report = evaluate(model, val_loader, device, precision=runtime.precision, image_prefetch=runtime.image_prefetch)
         validation_seconds = time.perf_counter() - epoch_start - train_seconds
         score = selection_score(report, args.selection_scope)
         if dual_sha256(args.manifest) != identity:
@@ -230,6 +251,7 @@ def main() -> None:
                         torch_rng=torch.get_rng_state(), validation=report,
                         selection_scope=args.selection_scope, selection_error_px=score,
                         input_contract=model.mdd.input_contract(), compilation=compilation,
+                        image_decode=recipe["image_decode"],
                         code=code, training_state=training_state), path)
         if improved:
             write_best(args.output, epoch)

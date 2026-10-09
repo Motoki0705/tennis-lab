@@ -1,4 +1,4 @@
-<!-- knowledge-review: 0733b65430686b46054a2e98a4f86131c8c9918eae02bec705d24d5aef974bb2 on 2026-10-09 -->
+<!-- knowledge-review: b9fd7a96824f7195e608bdbfd1797ec775f0146c89596280c1daf18538e7b2cc on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -254,19 +254,23 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 ### Ball Detection
 
-新しいMDD座標モデルは、ユーザー指定のBF16を維持し、RGB uint8→モデル内の固定FP32 MDDへ移行した。
-[2026-10-09のcompile診断](nodes/ball_detection/000029-run-i986-native-rgb-compile-20261009.md)では、
-同じnative RGB経路のeagerに比べGPU常駐が約3.3倍、reader込みが約1.6倍となった。
-[実データの数値・勾配確認](nodes/ball_detection/000030-run-i986-native-rgb-numerics-20261009.md)と
-[v3 checkpointの保存・再開・BF16 compile評価](nodes/ball_detection/000031-run-i986-native-rgb-cli-20261009.md)も成立した。
-静的fullgraph compileを初回レシピへ追加するが、BS1/worker8は[旧比較](nodes/ball_detection/000025-run-i986-query-bf16-confirm-20261008.md)からの暫定値で、
-高速化後に最適化し直した値ではない。少数窓・短時間の結果を精度・全epoch時間・長期安定性へ一般化しない。
+新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
+[CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
+ユーザー承認の[CUDA nvJPEG復号](nodes/ball_detection/000033-run-i986-nvjpeg-pixels-20261009.md)へ移行した。
+OpenCVとの画素一致や精度維持は未確認で、decoderをv4 checkpointへ保存して学習・評価を揃える。
 
-本学習は旧CPU MDD版の400 updateでユーザー指示により停止し、その後は短い診断だけを実施した。
-checkpoint・全validation・汎化評価は未完了で、停止を維持する。
-[CPU入力調査](nodes/ball_detection/000028-run-i986-query-cpu-input-20261008.md)で確認したworkerごとのclip hash重複は未変更で、
-native RGB compileでも次batch待ちが支配的だった。共有検証cacheとreaderの再計測を次候補とし、
-単に事前検証時間を除外した速度を総時間の改善とは扱わない。従来deployの判断は変更しない。
+[短い先読み比較](nodes/ball_detection/000036-run-i986-jpeg-prefetch-sweep-20261009.md)は改善したが、
+[1,020窓](nodes/ball_detection/000039-run-i986-nvjpeg-long-reader-20261009.md)ではreader待ちが再発した。
+[初回mmap faultの追跡](nodes/ball_detection/000040-run-i986-reader-pagefaults-20261009.md)から、
+必要範囲の直接読込と深い先読みへ進めた。
+[最終の長い比較](nodes/ball_detection/000043-run-i986-pread-prefetch-long-20261009.md)では、BS1・8 workers・prefetch 4が
+約14.7窓/秒、CPU reader待ちはstepの約0.4%となり、今回の条件ではCPU供給待ちが律速でなくなった。
+初回整合性検証のCPU費用は別途必要で、総時間から除外しない。
+[先読みの画素・順序・終了処理](nodes/ball_detection/000037-run-i986-jpeg-prefetch-integrity-20261009.md)と
+[最終設定のv4保存・再開・評価](nodes/ball_detection/000044-run-i986-final-pread-cli-20261009.md)も確認した。
+
+旧CPU MDD本学習は400更新、native RGB版は850更新で停止し、いずれもepoch checkpointは未保存。
+今回の最適化後も、本学習の収束・全validation・汎化は別途確認する。診断lossや処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
