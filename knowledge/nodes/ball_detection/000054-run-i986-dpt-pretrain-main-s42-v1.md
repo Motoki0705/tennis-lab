@@ -4,12 +4,12 @@ type: run
 task: ball_detection
 sequence: 54
 recorded_at: '2026-10-09'
-title: 深いCNN＋DPTを全プレイ候補で6万更新事前学習（実行中）
+title: 深いCNN＋DPTは18,000更新後CUDA異常で中断、同条件resumeを予約
 issue: 986
 provider: codex
 session: 01a0fb0c-97b5-7851-b805-25dae445a6a2
 date: '2026-10-09'
-status: running
+status: failed
 config:
   model: deep-MDD-CNN+DPT
   precision: bf16
@@ -33,6 +33,11 @@ metrics:
   observed_global_step: 200
   observed_cumulative_train_loss: 0.015022169471532665
   peak_allocated_gib_at_launch: 5.684319019317627
+  last_checkpoint_step: 18000
+  completed_validations: 3
+  best_common_mean_error_px: 29.601507530917303
+  selected_full_mean_error_px: 32.75036181722699
+  first_attempt_exit_code: 134
 repro:
   commit: e3f1356163e7b2009c580fc1727c1a413c5889a3
   branch: HEAD
@@ -71,3 +76,11 @@ tags:
 各epochで全validation、checkpoint、3 validation clipsのGIFを保存する。Transformer decoderへの交換・学習はこのrunでは実行せず、終了時のCOMPLETED.jsonもautomatic_next_stage=falseを記録する。testは未使用、TensorBoardは出力しない。起動確認時点で200更新、累積train loss 0.015022、両3D層に有限・非ゼロ勾配。GPU使用率の一回観測は95%。metricsは起動時点の途中値で、validationは未実施。
 
 採用窓に含まれるframeをFPSを跨いで重複除去した教師監査では、trainは318,861正例・1,410負例・22,977ignore、valは85,627正例・322負例・8,027ignore。対象内に複数instance frameはなく、負例がレビュー済み不在だけであることを照合した（supervision-audit.json）。
+
+## 2026-10-09 18:34監視で確認した中断
+
+初回jobはepoch2のvalidation・epoch-002.pt保存後、次の50更新ログより前にCUDA unknown errorでexit134となった。目的関数のbool(count)で表面化し、prefetch cleanupのstream.synchronizeとallocator insert_eventsでも同エラーを報告した。エラー位置だけでは発生元を断定できず、epoch切替に固有の寿命バグをコードから裏付ける証拠は得られなかった。OOMやGPU resetの根拠も得られていない。
+
+保存済みcheckpointのstate_dict・optimizerはfinite、best SHA-256、manifest、全source hashが一致。epoch2/global_step18000、CPU/CUDA RNGを保持する。共通subset29.6015px、full32.7504pxがここまでのbestで、最終結果ではない。
+
+同じe3f135616の固定コード・recipe・出力先で、epoch-002.ptから1回だけresumeをqueueへ追加した。新jobは1791538837221075032_3695702_i986-dpt-pretrain-s42-resume-e3-v1.job。CUDA_LOG_FILE=stderrだけ診断用に追加し、上限60000更新を維持する。現在のConvNeXt V2本学習と待機FasterNetを止めずFIFOの後ろで実行する。resumeが動き始めるまでは、本ノードの初回attemptをfailedとして記録する。再発したら無条件に反復せず、新ログに基づく限定診断へ進む。

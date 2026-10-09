@@ -1,4 +1,4 @@
-<!-- knowledge-review: 6e177e2ed9e49783f4bba9658036773a437f469fe191bb92a54676177256b654 on 2026-10-09 -->
+<!-- knowledge-review: a262cebc3c3959e2ec7ec8da782199e9dd9eb40c7a9f80869f40311bb2e1b798 on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -280,7 +280,9 @@ testは未評価で、処理速度を精度改善とは扱わず、従来deploy�
 [全trainの事前学習](nodes/ball_detection/000054-run-i986-dpt-pretrain-main-s42-v1.md)をBF16・BS1・6万更新で継続する。
 ユーザーの追加指示に基づき、[ConvNeXt V2系/FasterNet系の構造比較と事後学習準備](nodes/ball_detection/000055-run-i1050-cnn-structure-20261009.md)を追加した。
 3構成のDPT事前学習が揃ったらcommon validationでbestだけを選び、人工遮蔽・滑らかなcamera拡張を使うquery posttrainingへ進む。
-CPU上の構造削減は確認したが、追加構成の実GPU速度・精度は未検証。2時間のCLI監視でGPU probeと各段階の完了を確認する。
+[ConvNeXt V2系のGPU smoke](nodes/ball_detection/000056-run-i1050-convnext-v2-gpu-probe-20261009.md)は成功したが、短時間測定ではresidualより遅くpeak VRAMも増えた。構造削減を実速度改善と扱わず、精度は本学習で確認する。
+baselineは18,000更新後CUDA unknown errorで中断し、同条件のepoch-boundary resumeを1回予約した。原因は未特定。
+ConvNeXt V2本学習は継続、FasterNetは待機。全3構成の完了を2時間ごとに確認し、bestだけ事後学習へ進める。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
