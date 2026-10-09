@@ -1,6 +1,6 @@
 # Local heartbeat quickstart
 
-Use only when the native Codex automation tool is unavailable. This file-based fallback was observed in desktop app 26.930.7945.0; app registration must still be verified. The helper never updates the live SQLite database.
+Use only for a **desktop** follow-up when the native Codex automation tool is unavailable. For an already-open CLI, use [CLI queue heartbeats](cli-heartbeat.md). This file-based fallback was observed in desktop app 26.930.7945.0; app registration must still be verified. The helper never updates the live SQLite database.
 
 ## Resolve once, then use absolute paths
 

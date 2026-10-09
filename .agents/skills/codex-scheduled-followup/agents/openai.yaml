@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Scheduled Follow-up"
-  short_description: "Codexの同じスレッドを定期的に再開し、登録と次回時刻を確認する"
-  default_prompt: "$codex-scheduled-followup を使い、指定した間隔でこの処理を監視し、完了後に残作業を実行してください。間隔を指定していない場合は1時間ごとにしてください。"
+  short_description: "現在のCodex CLIまたはデスクトップ会話を定期再開し、配送を確認する"
+  default_prompt: "$codex-scheduled-followup を使い、指定間隔でこのセッションの作業を確認し、許可済みの続きを進めてください。間隔未指定なら1時間とし、登録だけでなく受信も確認してください。"
