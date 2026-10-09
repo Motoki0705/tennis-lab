@@ -1,0 +1,26 @@
+name: mdd_dpt_pretrain
+stem_channels:
+- 16
+- 32
+- 64
+- 128
+mixed_channels:
+- 192
+- 256
+residual_blocks:
+- 0
+- 1
+- 2
+- 2
+- 1
+- 1
+decoder_channels: 128
+dim: 256
+heads: 8
+layers: 4
+ffn_dim: 704
+dropout: 0.1
+rope_base: 10000.0
+activation_checkpointing: false
+encoder_variant: fasternet
+temporal_mixing: factorized

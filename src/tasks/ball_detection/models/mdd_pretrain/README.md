@@ -5,6 +5,9 @@ SwiGLU query-onlyモデルを提供する。学習は `scripts/pretrain_mdd_dpt.
 
 ## アーキテクチャ
 
+以下は`residual/dense3d` baseline。
+追加CNN・事後学習・比較の実行契約は[posttraining](../../training/posttraining/README.md)を参照。
+
 RGB uint8 32枚 → 固定FP32 MDD → frameごとの残差CNN → 2D/2D/3Dの2段。
 学習部にRGB・pose・courtの直接入力はない。学習可能な重みはランダム初期化。
 
@@ -17,7 +20,7 @@ RGB uint8 32枚 → 固定FP32 MDD → frameごとの残差CNN → 2D/2D/3Dの2�
 | 32 | 192 | 1 |
 | 64 | 256 | 1 |
 
-各残差blockは3×3 Convを2層。encoderは2D Conv 22層、3D Conv 2層。
+baselineの各残差blockは3×3 Convを2層。encoderは2D Conv 22層、3D Conv 2層。
 GroupNormはframeをbatchへ畳んで実施し、時間を跨いで統計を取らない。
 空の先頭MDDでゼロ分散の正規化が連鎖しないよう、空間Convのbiasを学習し、
 初期値もPyTorch標準のランダム初期化を使う。時間stride=1、3D kernel=3、

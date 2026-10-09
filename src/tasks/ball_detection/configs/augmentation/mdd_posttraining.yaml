@@ -1,0 +1,16 @@
+camera_probability: 0.5
+occlusion_probability: 0.5
+targeted_probability: 0.5
+pan_speed: 0.04
+roll_speed_degrees: 3.0
+log_zoom_speed: 0.04
+max_translation: 0.08
+max_roll_degrees: 5.0
+max_log_zoom: 0.12
+jitter_amplitude: 0.002
+occlusion_min_frames: 2
+occlusion_max_frames: 6
+occlusion_min_size: 0.03
+occlusion_max_size: 0.1
+occluder_speed: 0.02
+max_removed_fraction: 0.25
