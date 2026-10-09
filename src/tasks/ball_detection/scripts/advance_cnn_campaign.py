@@ -128,7 +128,7 @@ def main() -> None:
                 raise ValueError(f"Campaign {key} must be absolute")
         declared = {key: Path(plan[key]) for key in ("code_root", "queue_directory", "manifest", "baseline_run",
                                                     "training_root", "smoke_root", "posttraining_run")}
-        validated = CAMPAIGN_PATHS.validate(declared, resolver=resolver(declared["code_root"],
+        validated = CAMPAIGN_PATHS.validate(declared, resolver=resolver(declared["code_root"].parent,
             (declared["manifest"], declared["baseline_run"]),
             (declared["training_root"], declared["smoke_root"], declared["posttraining_run"]), declared["queue_directory"].parent))
         for key in declared:
