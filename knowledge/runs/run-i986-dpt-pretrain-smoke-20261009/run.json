@@ -1,0 +1,16 @@
+{
+  "run_id": "1791526822534955126_2468954_i986-dpt-pretrain-gpu-smoke-v1",
+  "name": "i986-dpt-pretrain-gpu-smoke-v1",
+  "command": "env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 PYTHONUNBUFFERED=1 timeout 2400 .venv/bin/python tests/benchmarks/ball_dpt_preflight.py --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json --model-config /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-dpt-pretrain-s42/src/tasks/ball_detection/configs/model/mdd_dpt_pretrain.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/dpt-pretraining/20261009-smoke-v1 --windows 96 --batch-size 1",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "986",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "e3f1356163e7b2009c580fc1727c1a413c5889a3",
+  "branch": "HEAD",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-dpt-pretrain-s42",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-dpt-pretrain-s42",
+  "captured_at": "2026-10-09T15:20:23+09:00"
+}
