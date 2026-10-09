@@ -29,7 +29,10 @@ config:
   selection_scope: common
   preview_clips: 3
   automatic_next_stage: false
-metrics: {}
+metrics:
+  observed_global_step: 200
+  observed_cumulative_train_loss: 0.015022169471532665
+  peak_allocated_gib_at_launch: 5.684319019317627
 repro:
   commit: e3f1356163e7b2009c580fc1727c1a413c5889a3
   branch: HEAD
@@ -63,6 +66,8 @@ tags:
 
 初期化はencoder/DPTともランダム。BF16固定で、RGB uint8→GPU上FP32 MDD→2D/3D残差CNN→DPT→180×320 logitsを学習する。学習率2e-4、warmup500後cosineで1/10へ、AdamW weight decay0.01、clip1。教師はobserved-only Gaussian＋確認済み不在を負例とするFocal gamma2で、未確定位置を負例にしない。bestはcommon subsetのFPS等重み平均source位置誤差で選択する。
 
-実行コードはe3f1356163e7の固定worktree。GPU smokeは親ノードを参照。開始時点ではupfrontの全JPEG整合性検証を進行中で、本runの精度・最終速度はまだ測定していない。入力検証の時間は総所要時間に含める。3clipのGPU smokeから収束や全val精度を予測しない。
+実行コードはe3f1356163e7の固定worktree。GPU smokeは親ノードを参照。train824 clipsの検証655.62秒、val190 clipsの検証412.07秒を経て、GPU更新開始を確認した。本runのvalidation精度・最終速度はまだ測定していない。入力検証の時間は総所要時間に含める。3clipのGPU smokeから収束や全val精度を予測しない。
 
-各epochで全validation、checkpoint、3 validation clipsのGIFを保存する。Transformer decoderへの交換・学習はこのrunでは実行せず、終了時のCOMPLETED.jsonもautomatic_next_stage=falseを記録する。testは未使用、TensorBoardは出力しない。未完了のためmetricsは空であり、最初の学習更新・validationの観測後に更新する。
+各epochで全validation、checkpoint、3 validation clipsのGIFを保存する。Transformer decoderへの交換・学習はこのrunでは実行せず、終了時のCOMPLETED.jsonもautomatic_next_stage=falseを記録する。testは未使用、TensorBoardは出力しない。起動確認時点で200更新、累積train loss 0.015022、両3D層に有限・非ゼロ勾配。GPU使用率の一回観測は95%。metricsは起動時点の途中値で、validationは未実施。
+
+採用窓に含まれるframeをFPSを跨いで重複除去した教師監査では、trainは318,861正例・1,410負例・22,977ignore、valは85,627正例・322負例・8,027ignore。対象内に複数instance frameはなく、負例がレビュー済み不在だけであることを照合した（supervision-audit.json）。
