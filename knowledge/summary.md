@@ -1,4 +1,4 @@
-<!-- knowledge-review: 10002b7d0ea4f8ffecd67119bd9e722b41cff61edb50be29976074136675a0c8 on 2026-10-09 -->
+<!-- knowledge-review: 6e177e2ed9e49783f4bba9658036773a437f469fe191bb92a54676177256b654 on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -277,7 +277,10 @@ OpenCVとの画素一致や精度維持は未確認で、decoderをv4 checkpoint
 testは未評価で、処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
 [深いCNN＋DPTの事前学習GPU検証](nodes/ball_detection/000053-run-i986-dpt-pretrain-smoke-20261009.md)は実720p・96更新と保存まで成功。
 3D層を含むCNNをheatmapで事前学習し、その後SwiGLU decoderへ移す方針へ進む。少数clipの診断値を全validation精度と比較しない。
-[全trainの事前学習](nodes/ball_detection/000054-run-i986-dpt-pretrain-main-s42-v1.md)をBF16・BS1・6万更新で開始した。学習はDPT事前学習までで、後段Transformerは自動起動しない。
+[全trainの事前学習](nodes/ball_detection/000054-run-i986-dpt-pretrain-main-s42-v1.md)をBF16・BS1・6万更新で継続する。
+ユーザーの追加指示に基づき、[ConvNeXt V2系/FasterNet系の構造比較と事後学習準備](nodes/ball_detection/000055-run-i1050-cnn-structure-20261009.md)を追加した。
+3構成のDPT事前学習が揃ったらcommon validationでbestだけを選び、人工遮蔽・滑らかなcamera拡張を使うquery posttrainingへ進む。
+CPU上の構造削減は確認したが、追加構成の実GPU速度・精度は未検証。2時間のCLI監視でGPU probeと各段階の完了を確認する。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
