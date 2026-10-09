@@ -15,14 +15,14 @@ from .model import TimeAttention
 class QueryFusionBlock(nn.Module):
     """Read image evidence, mix queries over real time, then apply a token FFN."""
 
-    def __init__(self, config: MDDPoseConfig) -> None:
+    def __init__(self, config: MDDPoseConfig, *, ffn: nn.Module | None = None) -> None:
         super().__init__()
         dim = config.dim
         self.cross = nn.MultiheadAttention(dim, config.heads, dropout=config.dropout, batch_first=True)
         self.temporal = TimeAttention(dim, config.heads, config.rope_base, config.dropout)
         self.norms = nn.ModuleList(nn.LayerNorm(dim) for _ in range(4))
-        self.ffn = nn.Sequential(nn.Linear(dim, 4 * dim), nn.GELU(),
-                                 nn.Dropout(config.dropout), nn.Linear(4 * dim, dim))
+        self.ffn = ffn if ffn is not None else nn.Sequential(
+            nn.Linear(dim, 4 * dim), nn.GELU(), nn.Dropout(config.dropout), nn.Linear(4 * dim, dim))
 
     def forward(self, queries: Tensor, patches: Tensor, times: Tensor) -> Tensor:
         b, t, dim = queries.shape

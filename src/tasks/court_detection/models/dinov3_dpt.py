@@ -26,7 +26,6 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetKind,
 )
 from src.tasks.court_detection.geometry.pose import POSE10D_RAW_ORDER
-from src.utils.models.blocks import Conv2dWiseWiseBlock
 from src.utils.models.components import (
     RotaryFrequencyComputer,
     TransformerBlock,
@@ -37,6 +36,7 @@ from src.utils.models.components.ffn_layers import (
     FFNType,
     default_ffn_dim,
 )
+from src.utils.models.dpt import DPTDecoder as CourtDPTDecoder
 from src.utils.models.loading import (
     DINOv3BackboneAdapter,
     DINOv3TrainMode,
@@ -193,121 +193,6 @@ def build_court_encoder(
         raise ValueError("Court detection only supports the DINOv3 encoder.")
     return _build_dinov3_encoder(in_channels=in_channels, config=config)
 
-
-class DPTFeatureFusionBlock(nn.Module):
-    """RefineNet-style residual fusion block used by DPT decoders."""
-
-    def __init__(self, channels: int) -> None:
-        super().__init__()
-        if channels <= 0:
-            raise ValueError("channels must be positive.")
-        self.skip_block = Conv2dWiseWiseBlock(channels, channels)
-        self.output_block = Conv2dWiseWiseBlock(channels, channels)
-
-    def forward(
-        self,
-        x: torch.Tensor,
-        skip: torch.Tensor,
-    ) -> torch.Tensor:
-        x = F.interpolate(
-            x,
-            size=skip.shape[-2:],
-            mode="bilinear",
-            align_corners=False,
-        )
-        x = x + self.skip_block(skip)
-        return cast("torch.Tensor", self.output_block(x))
-
-
-class CourtDPTDecoder(nn.Module):
-    """DPT decoder for ViT features reassembled at multiple image scales."""
-
-    def __init__(
-        self,
-        *,
-        encoder_channels: Sequence[int],
-        decoder_channels: int,
-        reassemble_factors: Sequence[float],
-    ) -> None:
-        super().__init__()
-        self.encoder_channels = tuple(int(channel) for channel in encoder_channels)
-        self.decoder_channels = int(decoder_channels)
-        self.reassemble_factors = tuple(float(factor) for factor in reassemble_factors)
-        self._validate_init_args(
-            encoder_channels=self.encoder_channels,
-            decoder_channels=self.decoder_channels,
-            reassemble_factors=self.reassemble_factors,
-        )
-
-        self.output_channels = self.decoder_channels
-        self.projections = nn.ModuleList(
-            nn.Sequential(
-                nn.Conv2d(
-                    in_channels, self.decoder_channels, kernel_size=1, bias=False
-                ),
-                nn.GroupNorm(1, self.decoder_channels),
-                nn.GELU(),
-            )
-            for in_channels in self.encoder_channels
-        )
-        self.reassembly = nn.ModuleList(
-            nn.Identity()
-            if factor == 1.0
-            else nn.Upsample(
-                scale_factor=factor,
-                mode="bilinear",
-                align_corners=False,
-                recompute_scale_factor=False,
-            )
-            for factor in self.reassemble_factors
-        )
-        self.fusion_blocks = nn.ModuleList(
-            DPTFeatureFusionBlock(self.decoder_channels)
-            for _ in range(len(self.encoder_channels))
-        )
-
-    @staticmethod
-    def _validate_init_args(
-        *,
-        encoder_channels: Sequence[int],
-        decoder_channels: int,
-        reassemble_factors: Sequence[float],
-    ) -> None:
-        if len(encoder_channels) != 4:
-            raise ValueError(
-                "CourtDPTDecoder expects four encoder feature levels, "
-                f"got {len(encoder_channels)}."
-            )
-        if decoder_channels <= 0:
-            raise ValueError("decoder_channels must be positive.")
-        if len(reassemble_factors) != 4:
-            raise ValueError("reassemble_factors must contain exactly four values.")
-        if any(factor <= 0.0 for factor in reassemble_factors):
-            raise ValueError("reassemble_factors must be positive.")
-
-    def forward(self, feats: Sequence[torch.Tensor]) -> torch.Tensor:
-        projected_feats = [
-            _apply_tensor_module(
-                reassemble,
-                _apply_tensor_module(projection, feat),
-            )
-            for projection, reassemble, feat in zip(
-                self.projections,
-                self.reassembly,
-                feats,
-                strict=True,
-            )
-        ]
-
-        deepest_fusion = cast("DPTFeatureFusionBlock", self.fusion_blocks[-1])
-        x = deepest_fusion.output_block(projected_feats[-1])
-        for block, skip in zip(
-            reversed(self.fusion_blocks[:-1]),
-            reversed(projected_feats[:-1]),
-            strict=True,
-        ):
-            x = cast("DPTFeatureFusionBlock", block)(x, skip)
-        return cast("torch.Tensor", x)
 
 
 def _apply_tensor_module(module: nn.Module, tensor: torch.Tensor) -> torch.Tensor:
