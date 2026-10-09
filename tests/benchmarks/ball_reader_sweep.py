@@ -62,7 +62,8 @@ def main() -> None:
         options = argparse.Namespace(manifest=args.manifest, model_config=args.model_config, mode=mode,
             workers=workers, batch_size=batch, pin_memory=True, precision="bf16", compile_mode="default",
             cpu_threads=2, jpeg_decoder="nvjpeg", prefetch_factor=factor, image_prefetch=prefetch,
-            preverify=False, drop_file_cache=args.io_stress and mode == "pipeline", warmup=12//batch, steps=(args.windows-12)//batch)
+            preverify=False, sampler_windows=None, synchronize_steps=True, allocator_fraction=.9,
+            drop_file_cache=args.io_stress and mode == "pipeline", warmup=12//batch, steps=(args.windows-12)//batch)
         report: dict[str, Any] = dict(condition=name, arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(options).items()},
                                     verification_shared=True, counters_reset_per_case=True)
         print(json.dumps(dict(phase="condition_start", condition=name)), flush=True)

@@ -142,14 +142,15 @@ OpenCV/libjpeg-turboとnvJPEGの画素値は一致しないため、decoder/API/
 別decoderでの評価は`--jpeg-decoder`で明示し、元・実行時の両契約を結果に残す。
 
 `--image-prefetch`はnvjpeg専用。1 producerが次batchのJPEG復号を別CUDA streamへ送り、現在のモデル計算と重ねる。
-順序を維持し、event・record_stream・CPU byte bufferの保持で寿命を管理する。早期終了時もproducerをjoinし、エラーを伝播する。
+順序を維持し、event・record_stream・CPU byte bufferの保持で寿命を管理する。
+nvJPEGの内部streamによるstorage再利用に備え、decode直前に画像側streamの以前の処理を完了させる。全GPU同期は追加しない。早期終了時もproducerをjoinし、エラーを伝播する。
 CPU reader待ちと、GPU復号も含む入力準備完了待ちは別物。`train.jsonl`の`mean_reader_wait_seconds`は
 producer内のreader待ち、`mean_input_ready_wait_seconds`はmain内の待ちで、重なりがあるため加算しない。
 
 `--input-verification lazy|upfront`は同じdual SHA-256検証を、初回使用時またはloader開始前に行う指定。
 成功結果だけをfork/spawn worker間で共有し、clipごとに一度検証する。
 範囲読込のdescriptorにも同じstat identityを要求し、path差替え・EOF・読込中の変更を拒否する。以後もdev/inode/size/mtime/ctimeの変更を拒否する。
-新runでは再検証し、検証省略や永続的なtrust cacheは作らない。upfrontのCPU時間は準備費用として記録し、学習速度から除外した場合も総時間へ含める。
+新runでは再検証し、検証省略や永続的なtrust cacheは作らない。upfront検証はCUDA stateの作成前に終える。そのCPU時間は準備費用として記録し、学習速度から除外した場合も総時間へ含める。
 
 ## torch.compile
 

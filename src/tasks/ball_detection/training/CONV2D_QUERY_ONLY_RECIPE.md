@@ -117,7 +117,7 @@ train loss/LR/grad norm/速度は50 updateごと、validationと学習・評価�
 [1,020窓の最終確認](../../../../knowledge/nodes/ball_detection/000043-run-i986-pread-prefetch-long-20261009.md)に基づき、`preadv`による範囲読込と、8 workers×prefetch 4を使う。
 同期／先読み・worker数・BS・メモリ内JPEG基準の比較は、[同一204窓の計測](../../../../knowledge/nodes/ball_detection/000036-run-i986-jpeg-prefetch-sweep-20261009.md)を参照。
 [先読みの画素・順序検証](../../../../knowledge/nodes/ball_detection/000037-run-i986-jpeg-prefetch-integrity-20261009.md)と
-[v4保存・再開・評価](../../../../knowledge/nodes/ball_detection/000044-run-i986-final-pread-cli-20261009.md)も確認した。
+[v4保存・再開・評価](../../../../knowledge/nodes/ball_detection/000051-run-i986-fenced-startup-cli-20261009.md)も確認した。
 
 nvJPEGはOpenCVと異なる復号結果を持つ。ユーザー承認に基づく変更であり、
 [RGB/MDD差分](../../../../knowledge/nodes/ball_detection/000033-run-i986-nvjpeg-pixels-20261009.md)を記録した。
@@ -127,7 +127,7 @@ nvJPEGはOpenCVと異なる復号結果を持つ。ユーザー承認に基づ�
 合計1,920,000入力frame（重複を含む）。毎epochに全9,735 validation窓を評価する。
 LRと予算はユーザー承認済みの初期レシピで、速度測定から収束が保証された値ではない。
 検証済み画像を再利用するbenchmarkの速度と、初回hash・compile・全validationを含む総時間を区別する。
-本学習の長期安定性・汎化は実runで確認する。GPU診断の90% allocator制限は本学習には適用しない。
+本学習の長期安定性・汎化は実runで確認する。以前のGPU診断の90% allocator制限は、本学習prefix確認と本学習には適用しない。
 
 ## 実行コマンド
 
@@ -137,12 +137,12 @@ commitを固定した専用worktree rootから実行し、`--session`には実�
 ここに示すBF16/compile/decoder/先読み指定を使う。
 
 ```bash
-cd /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v2
 BALL_TRAIN_CMD=$(cat <<'COMMAND'
 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 TORCH_LOGS=graph_breaks,recompiles .venv/bin/python -m src.tasks.ball_detection.scripts.train_mdd_pose \
   --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json \
   --model-config /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml \
-  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/conv2d-query-only-bf16/s42-u60000-nvjpeg-v1 \
+  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/conv2d-query-only-bf16/s42-u60000-nvjpeg-v2 \
   --device cuda --precision bf16 --compile-mode default --batch-size 1 \
   --num-workers 8 --pin-memory --prefetch-factor 4 --cpu-threads 2 \
   --jpeg-decoder nvjpeg --input-verification upfront --image-prefetch \
@@ -152,7 +152,7 @@ COMMAND
 )
 TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue \
   bash .agents/skills/training-queue/scripts/training_queue.sh add "$BALL_TRAIN_CMD" \
-  --name i986-query-bf16-s42-u60000-nvjpeg-v1 --provider codex --session "$CODEX_THREAD_ID" \
+  --name i986-query-bf16-s42-u60000-nvjpeg-v2 --provider codex --session "$CODEX_THREAD_ID" \
   --issue 986 --resource all
 TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue \
   bash .agents/skills/training-queue/scripts/training_queue.sh start
@@ -166,7 +166,7 @@ TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue \
 .venv/bin/python -m src.tasks.ball_detection.scripts.evaluate_mdd_coordinates \
   --checkpoint <best-checkpoint.pt> \
   --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json \
-  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/conv2d-query-only-bf16/s42-u60000-nvjpeg-v1/test.json \
+  --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/evaluate/conv2d-query-only-bf16/s42-u60000-nvjpeg-v2/test.json \
   --split test --device cuda --precision bf16 --compile-mode default --batch-size 1 \
   --num-workers 8 --pin-memory --prefetch-factor 4 --cpu-threads 2 \
   --jpeg-decoder nvjpeg --input-verification upfront --image-prefetch

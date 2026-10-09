@@ -1,4 +1,4 @@
-<!-- knowledge-review: b9fd7a96824f7195e608bdbfd1797ec775f0146c89596280c1daf18538e7b2cc on 2026-10-09 -->
+<!-- knowledge-review: 979d559eea8eafd2b6c00248160cdefbedd39ea91dd6bc52f5bc2fbff6cb77c7 on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -270,7 +270,10 @@ OpenCVとの画素一致や精度維持は未確認で、decoderをv4 checkpoint
 [最終設定のv4保存・再開・評価](nodes/ball_detection/000044-run-i986-final-pread-cli-20261009.md)も確認した。
 
 旧CPU MDD本学習は400更新、native RGB版は850更新で停止し、いずれもepoch checkpointは未保存。
-今回の最適化後も、本学習の収束・全validation・汎化は別途確認する。診断lossや処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
+最適化後の[本学習起動](nodes/ball_detection/000045-run-i986-main-nvjpeg-cuda-failure-20261009.md)はCUDA unknown errorで停止した。
+同じprefixでは再現せず、[画像側streamのfenceと256更新確認](nodes/ball_detection/000050-run-i986-cuda-prefix-fenced-20261009.md)を追加したが、元エラーの原因は未確定。
+[CPU検証後のCUDA起動とfence付きCLI確認](nodes/ball_detection/000051-run-i986-fenced-startup-cli-20261009.md)を経て、固定した新runで本学習を再試行する。
+本学習の収束・全validation・汎化は別途確認する。診断lossや処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。

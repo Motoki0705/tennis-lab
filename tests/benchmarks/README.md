@@ -8,7 +8,7 @@
 を共有training queueの`resource=all`で実行する。各BS/精度を独立CUDA processで測り、
 computeは実train RGBをGPU上に固定、pipelineはCPUのJPEG/hash/uint8読込も含める。MDD生成はモデル内。
 trainだけで短いoptimizer updateを行い、test/validationの精度評価や本学習は行わない。
-OOMもJSONに残す。allocatorはGPU容量の90%を上限とするため、無制限での最大BSの証明ではない。
+OOMもJSONに残す。`--allocator-fraction`を指定した場合の上限はJSONへ記録し、無制限での最大BSの証明とはしない。
 各caseの入力hash、環境、warmupを除いた速度、VRAM、lossとgradient normを保存する。
 同一batchの反復loss低下を汎化性能と解釈しない。readerの初回clip検証とOS cache状態によって
 pipeline速度が変わるため、GPU計算だけの速度とは分けて扱う。
@@ -33,7 +33,8 @@ GPU/model/pin memory/H2Dを計測しない。先頭96窓を同じworkerで2回�
 `ball_mdd_query_gpu.py --jpeg-decoder nvjpeg --image-prefetch --preverify --mode pipeline`で長い窓列も測れる。
 prepared modeはJPEGをRAMに用意する対照で、復号を含む。事前hash・入力準備時間を記録し、定常速度だけで総時間を見積もらない。
 先読み時の`mean_loader_wait_seconds`は復号も含む入力準備完了待ち。CPU側だけの待ちは`mean_reader_wait_seconds`で区別する。
-GPU診断はいずれも共有queueの`resource=all`で実行する。
+`--sampler-windows 6000`で本学習epochのprefixを再生でき、`--no-synchronize-steps`でstepごとの全GPU同期を除いて確認できる。
+`ball_jpeg_prefetch_check.py --delay-producer`は画像側streamを遅らせた寿命・順序検証。GPU診断はいずれも共有queueの`resource=all`で実行する。
 
 ## 人物対応の再較正準備
 

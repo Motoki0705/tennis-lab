@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -81,7 +82,7 @@ class CoordinateRuntime:
         compile_coordinate_model(model, mode=self.compile_mode, recompile_limit=self.compile_recompile_limit)
 
     def loader(self, dataset: CoordinateWindowDataset, *, batch_size: int,
-               sampler: Sampler[int] | None = None, seed: int = 0) -> DataLoader[Any]:
+               sampler: Sampler[int] | Iterable[int] | None = None, seed: int = 0) -> DataLoader[Any]:
         if batch_size < 1:
             raise ValueError("Batch size must be positive")
         if dataset.jpeg_decoder != self.jpeg_decoder:

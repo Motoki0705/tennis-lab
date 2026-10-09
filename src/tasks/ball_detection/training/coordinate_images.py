@@ -80,6 +80,11 @@ def decode_coordinate_jpegs(batch: dict[str, Any], device: torch.device) -> Tens
             or packed.ndim != 1 or sum(lengths) != packed.numel()
             or len(shape) != 5 or shape[1:3] != (32, 3) or len(lengths) != shape[0] * 32):
         raise ValueError("Expected CPU packed JPEGs with declared B,32,3,H,W")
+    # torchvision 0.28 allocates outputs on the caller stream but writes them
+    # on an internal nvJPEG stream. Complete prior caller work before those
+    # storage blocks can be reused by that internal stream (e.g. prior stack).
+    # This fences only image preparation; the model's other stream can run.
+    torch.cuda.current_stream(device).synchronize()
     images = decode_jpeg(list(packed.split(lengths)), mode=ImageReadMode.RGB, device=device,
                          apply_exif_orientation=False)
     if any(tuple(image.shape) != shape[2:] or image.dtype != torch.uint8 for image in images):

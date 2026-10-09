@@ -1,0 +1,26 @@
+{
+  "status": "ok",
+  "windows": 9,
+  "batch_sizes": [
+    2,
+    2,
+    2,
+    2,
+    1
+  ],
+  "sources": [
+    "chat_annotation",
+    "meiji",
+    "tracknet"
+  ],
+  "frame_steps": [
+    1,
+    2,
+    4
+  ],
+  "rgb_bit_identical": true,
+  "teachers_and_order_unchanged": true,
+  "reader_error_propagated": true,
+  "early_exit_joined": true,
+  "delayed_producer": true
+}

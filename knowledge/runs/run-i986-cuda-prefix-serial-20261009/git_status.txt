@@ -1,0 +1,4 @@
+ M src/tasks/ball_detection/training/coordinate_images.py
+ M src/tasks/ball_detection/training/coordinate_runtime.py
+ M tests/benchmarks/ball_mdd_query_gpu.py
+ M tests/benchmarks/ball_reader_sweep.py
