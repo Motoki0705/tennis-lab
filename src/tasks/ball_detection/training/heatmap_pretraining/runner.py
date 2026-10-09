@@ -45,6 +45,7 @@ from src.utils.paths import PROJECT_ROOT
 
 from .checkpoint import SCHEMA, save_pretraining
 from .data import HeatmapWindowDataset
+from .diagnostics import batch_identity, record_failure
 from .evaluation import evaluate
 from .objective import heatmap_objective, image_input
 
@@ -82,6 +83,7 @@ def arguments() -> argparse.Namespace:
         p.add_argument(f"--{name}", type=Path, required=True)
     p.add_argument("--resume", type=Path)
     p.add_argument("--epochs", type=int, required=True)
+    p.add_argument("--stop-after-epoch", type=int, help="Diagnostic stop after this zero-based epoch; preserve the full LR budget")
     p.add_argument("--windows-per-epoch", type=int, required=True)
     p.add_argument("--learning-rate", type=float, required=True)
     p.add_argument("--warmup-updates", type=int, default=500)
@@ -105,6 +107,8 @@ def arguments() -> argparse.Namespace:
     args = p.parse_args()
     if min(args.epochs, args.windows_per_epoch, args.batch_size, args.log_every) < 1:
         p.error("Budgets and log interval must be positive")
+    if args.stop_after_epoch is not None and not 0 <= args.stop_after_epoch < args.epochs:
+        p.error("Diagnostic stop epoch must lie within the full run budget")
     if args.preview_clips < 0 or not math.isfinite(args.learning_rate) or args.learning_rate <= 0:
         p.error("Invalid learning rate or preview count")
     if not math.isfinite(args.sigma_ratio) or args.sigma_ratio <= 0 or not math.isfinite(args.focal_gamma) or args.focal_gamma < 0:
@@ -175,74 +179,96 @@ def main() -> None:
         if device.type == "cuda":
             torch.cuda.set_rng_state_all(saved["cuda_rng"])
         step, best, best_epoch = saved["global_step"], saved["best_score"], saved["best_epoch"]
+    if args.stop_after_epoch is not None and args.stop_after_epoch < epoch_start:
+        raise ValueError("Diagnostic stop must be at or after the first resumed epoch")
     compile_coordinate_model(model, mode=args.compile_mode)
     total_steps = args.epochs * len(train_loader)
     print(json.dumps(dict(phase="training_start", stage="heatmap_pretraining", parameters=sum(p.numel() for p in model.parameters()),
         train_clips=len(data.records), validation_clips=len(val.records), total_updates=total_steps,
         cnn_3d_layers=len(model.encoder.temporal), ffn_dim_for_transfer=config.ffn_dim)), flush=True)
-    for epoch in range(epoch_start, args.epochs):
-        sampler.set_epoch(epoch)
-        model.train()
-        begin = previous = time.perf_counter()
-        loss_sum, frames, windows, input_wait, reader_wait = 0., 0, 0, 0., 0.
-        for update, batch in enumerate(coordinate_batches(train_loader, device, prefetch=args.image_prefetch), 1):
-            waited = time.perf_counter() - previous
-            input_wait += waited
-            reader_wait += batch.get("_reader_wait_seconds", waited)
-            lr = learning_rate(step, peak=args.learning_rate, total=total_steps, warmup=args.warmup_updates)
-            for group in optimizer.param_groups:
-                group["lr"] = lr
-            rgb = image_input(batch, device)
-            optimizer.zero_grad(set_to_none=True)
-            with coordinate_compile_scope(model):
-                with torch.autocast(device.type, dtype=torch.bfloat16, enabled=args.precision == "bf16"):
-                    logits = model(rgb)
-                loss, _ = heatmap_objective(logits, batch, sigma_ratio=args.sigma_ratio, gamma=args.focal_gamma)
-                loss.backward()
-            grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
-            optimizer.step()
-            count = int(batch["heatmap_valid"].sum())
-            loss_sum += float(loss.detach()) * count
-            frames += count
-            windows += len(batch["clip_id"])
-            step += 1
-            if step % args.log_every == 0 or update == len(train_loader):
-                elapsed = time.perf_counter() - begin
-                temporal_grad = [float(layer.conv.weight.grad.norm()) if layer.conv.weight.grad is not None else None
-                                 for layer in model.encoder.temporal]
-                progress = dict(epoch=epoch, global_step=step, windows=windows, train_loss=loss_sum / frames,
-                    grad_norm=float(grad), temporal_gradient_norms=temporal_grad, learning_rate=lr,
-                    train_seconds=elapsed, windows_per_second=windows / elapsed,
-                    mean_input_ready_wait_seconds=input_wait / update, mean_reader_wait_seconds=reader_wait / update)
-                if device.type == "cuda":
-                    progress.update(peak_allocated_gib=torch.cuda.max_memory_allocated() / 2**30,
-                                    peak_reserved_gib=torch.cuda.max_memory_reserved() / 2**30)
-                with (args.output / "train.jsonl").open("a") as stream:
-                    stream.write(json.dumps(progress, allow_nan=False) + "\n")
-                print(json.dumps(progress), flush=True)
-            previous = time.perf_counter()
-        train_seconds = time.perf_counter() - begin
-        report = evaluate(model, val_loader, device, frame_steps=val.frame_steps, precision=args.precision,
-                          image_prefetch=args.image_prefetch, output=args.output / "previews" / f"epoch-{epoch:03d}",
-                          preview_clips=args.preview_clips, sigma_ratio=args.sigma_ratio, gamma=args.focal_gamma)
-        validation_seconds = time.perf_counter() - begin - train_seconds
-        score = selection_score(report, args.selection_scope)
-        if dual_sha256(args.manifest) != recipe["manifest_sha256"]:
-            raise ValueError("Frozen manifest changed during training")
-        improved = score < best
-        if improved:
-            best, best_epoch = score, epoch
-        path = args.output / f"epoch-{epoch:03d}.pt"
-        save_pretraining(path, model, optimizer, epoch=epoch, step=step, recipe=recipe, code=code,
-                         report=report, best=best, best_epoch=best_epoch)
-        if improved:
-            best_record = dict(epoch=epoch, global_step=step, checkpoint=path.name, sha256=dual_sha256(path),
-                               selection_error_px=score, selection_scope=args.selection_scope, **report)
-            (args.output / "best.json").write_text(json.dumps(best_record, indent=2))
-        row = dict(epoch=epoch, global_step=step, train_loss=loss_sum / frames, train_seconds=train_seconds,
-                   validation_seconds=validation_seconds, compilation=coordinate_compilation_report(model), **report)
-        with (args.output / "metrics.jsonl").open("a") as stream:
-            stream.write(json.dumps(row, allow_nan=False) + "\n")
-        print(json.dumps(dict(phase="epoch_complete", **row)), flush=True)
+    context: dict[str, Any] = {}
+    with record_failure(args.output, context):
+        for epoch in range(epoch_start, args.epochs):
+            context.update(epoch=epoch, completed_updates=step, attempted_update=step + 1, surface_phase="input", batch=None)
+            sampler.set_epoch(epoch)
+            model.train()
+            begin = previous = time.perf_counter()
+            loss_sum, frames, windows, input_wait, reader_wait = 0., 0, 0, 0., 0.
+            for update, batch in enumerate(coordinate_batches(train_loader, device, prefetch=args.image_prefetch), 1):
+                context.update(batch=batch_identity(batch), surface_phase="rgb_decode")
+                waited = time.perf_counter() - previous
+                input_wait += waited
+                reader_wait += batch.get("_reader_wait_seconds", waited)
+                lr = learning_rate(step, peak=args.learning_rate, total=total_steps, warmup=args.warmup_updates)
+                for group in optimizer.param_groups:
+                    group["lr"] = lr
+                rgb = image_input(batch, device)
+                optimizer.zero_grad(set_to_none=True)
+                context["surface_phase"] = "forward"
+                with coordinate_compile_scope(model):
+                    with torch.autocast(device.type, dtype=torch.bfloat16, enabled=args.precision == "bf16"):
+                        logits = model(rgb)
+                    context["surface_phase"] = "loss"
+                    loss, _ = heatmap_objective(logits, batch, sigma_ratio=args.sigma_ratio, gamma=args.focal_gamma)
+                    context["surface_phase"] = "backward"
+                    loss.backward()
+                context["surface_phase"] = "gradient_norm"
+                grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
+                context["surface_phase"] = "optimizer"
+                optimizer.step()
+                context["surface_phase"] = "logging"
+                count = int(batch["heatmap_valid"].sum())
+                loss_sum += float(loss.detach()) * count
+                frames += count
+                windows += len(batch["clip_id"])
+                step += 1
+                if step % args.log_every == 0 or update == len(train_loader):
+                    elapsed = time.perf_counter() - begin
+                    temporal_grad = [float(layer.conv.weight.grad.norm()) if layer.conv.weight.grad is not None else None
+                                     for layer in model.encoder.temporal]
+                    progress = dict(epoch=epoch, global_step=step, windows=windows, train_loss=loss_sum / frames,
+                        grad_norm=float(grad), temporal_gradient_norms=temporal_grad, learning_rate=lr,
+                        train_seconds=elapsed, windows_per_second=windows / elapsed,
+                        mean_input_ready_wait_seconds=input_wait / update, mean_reader_wait_seconds=reader_wait / update)
+                    if device.type == "cuda":
+                        progress.update(peak_allocated_gib=torch.cuda.max_memory_allocated() / 2**30,
+                                        peak_reserved_gib=torch.cuda.max_memory_reserved() / 2**30)
+                    with (args.output / "train.jsonl").open("a") as stream:
+                        stream.write(json.dumps(progress, allow_nan=False) + "\n")
+                    print(json.dumps(progress), flush=True)
+                previous = time.perf_counter()
+                context.update(completed_updates=step, attempted_update=step + 1, surface_phase="input", batch=None)
+            train_seconds = time.perf_counter() - begin
+            context.update(surface_phase="validation", attempted_update=None, batch=None)
+            report = evaluate(model, val_loader, device, frame_steps=val.frame_steps, precision=args.precision,
+                              image_prefetch=args.image_prefetch, output=args.output / "previews" / f"epoch-{epoch:03d}",
+                              preview_clips=args.preview_clips, sigma_ratio=args.sigma_ratio, gamma=args.focal_gamma)
+            validation_seconds = time.perf_counter() - begin - train_seconds
+            score = selection_score(report, args.selection_scope)
+            if dual_sha256(args.manifest) != recipe["manifest_sha256"]:
+                raise ValueError("Frozen manifest changed during training")
+            improved = score < best
+            if improved:
+                best, best_epoch = score, epoch
+            context["surface_phase"] = "checkpoint"
+            path = args.output / f"epoch-{epoch:03d}.pt"
+            save_pretraining(path, model, optimizer, epoch=epoch, step=step, recipe=recipe, code=code,
+                             report=report, best=best, best_epoch=best_epoch)
+            if improved:
+                best_record = dict(epoch=epoch, global_step=step, checkpoint=path.name, sha256=dual_sha256(path),
+                                   selection_error_px=score, selection_scope=args.selection_scope, **report)
+                (args.output / "best.json").write_text(json.dumps(best_record, indent=2))
+            row = dict(epoch=epoch, global_step=step, train_loss=loss_sum / frames, train_seconds=train_seconds,
+                       validation_seconds=validation_seconds, compilation=coordinate_compilation_report(model), **report)
+            with (args.output / "metrics.jsonl").open("a") as stream:
+                stream.write(json.dumps(row, allow_nan=False) + "\n")
+            print(json.dumps(dict(phase="epoch_complete", **row)), flush=True)
+            if epoch == args.stop_after_epoch and epoch + 1 < args.epochs:
+                receipt = dict(stage="heatmap_pretraining_diagnostic_stop", epoch=epoch, global_step=step,
+                               total_updates=total_steps, checkpoint=path.name, sha256=dual_sha256(path),
+                               complete=False)
+                (args.output / "DIAGNOSTIC_STOP.json").write_text(json.dumps(receipt, indent=2))
+                print(json.dumps(receipt), flush=True)
+                return
     (args.output / "COMPLETED.json").write_text(json.dumps(dict(stage="heatmap_pretraining", global_step=step,
         best_epoch=best_epoch, best_error_px=best, automatic_next_stage=False), indent=2))

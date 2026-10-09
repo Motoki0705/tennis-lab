@@ -58,6 +58,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     for name in ("manifest", "pretraining-run", "augmentation-config", "output"):
         p.add_argument(f"--{name}", type=Path, required=True)
+    p.add_argument("--image-prefetch", action="store_true")
     args = p.parse_args()
     names = ("manifest", "pretraining_run", "augmentation_config", "output")
     paths = PATH_BOUNDARY.validate({k: getattr(args, k) for k in names}, resolver=resolver(args.augmentation_config.parent,
@@ -91,7 +92,7 @@ def main() -> None:
         losses, gradients = [], []
         begin = time.perf_counter()
         sequence = [batches[i % len(batches)] for i in range(16)]
-        for batch in coordinate_batches(sequence, device, prefetch=True):
+        for batch in coordinate_batches(sequence, device, prefetch=args.image_prefetch):
             rgb, target, _ = augmenter(image_input(batch, device), batch, epoch=phase, profile="combined")
             optimizer.zero_grad(set_to_none=True)
             with coordinate_compile_scope(model):
@@ -113,7 +114,7 @@ def main() -> None:
             raise ValueError("CNN update does not match frozen/joint phase")
         phases.append(dict(frozen=not bool(phase), cnn_changed=changed, loss=losses, grad_norm=gradients,
                            seconds=time.perf_counter() - begin))
-    report = dict(phase="posttraining_gpu_probe", precision="bf16", phases=phases,
+    report = dict(phase="posttraining_gpu_probe", precision="bf16", image_prefetch=args.image_prefetch, phases=phases,
                   peak_allocated_gib=torch.cuda.max_memory_allocated() / 2**30,
                   checkpoint=str(path), checkpoint_sha256=dual_sha256(path), steps=32,
                   manifest_sha256=dual_sha256(args.manifest), augmentation_sha256=dual_sha256(args.augmentation_config))

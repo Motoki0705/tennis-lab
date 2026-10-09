@@ -42,11 +42,12 @@ def main() -> None:
             raise ValueError("Incomplete GPU probe requires inspection before retrying")
         subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.probe_mdd_posttraining",
             "--manifest", str(args.manifest), "--pretraining-run", str(args.pretraining_run),
-            "--augmentation-config", str(args.augmentation_config), "--output", str(probe)], check=True)
+            "--augmentation-config", str(args.augmentation_config), "--output", str(probe),
+            *(["--image-prefetch"] if args.image_prefetch else [])], check=True)
     receipt = json.loads((probe / "PROBE_COMPLETED.json").read_text())
     path, _ = completed_pretraining(args.pretraining_run, args.manifest)
     expected = dict(checkpoint_sha256=dual_sha256(path), manifest_sha256=dual_sha256(args.manifest),
-                    augmentation_sha256=dual_sha256(args.augmentation_config))
+                    augmentation_sha256=dual_sha256(args.augmentation_config), image_prefetch=args.image_prefetch)
     if any(receipt.get(key) != value for key, value in expected.items()):
         raise ValueError("GPU probe does not match the selected CNN/data/augmentation")
     # Separate process also ensures full CPU input verification precedes CUDA startup.

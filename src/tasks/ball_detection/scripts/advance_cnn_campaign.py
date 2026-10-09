@@ -41,6 +41,32 @@ CAMPAIGN_PATHS = NonHydraPathBoundary(name="ball_detection.cnn_campaign_plan", f
 ))
 
 
+def normalize_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    required = {"schema", "code_root", "code_commit", "queue_directory", "manifest", "manifest_sha256", "baseline_run",
+                "training_root", "smoke_root", "posttraining_run", "thread_id", "model_config_sha256"}
+    if plan.get("schema") == "mdd_cnn_campaign.v1" and set(plan) == required:
+        # The v1 schema fixes the original attempts and overlapping decode.
+        plan = dict(plan, schema="mdd_cnn_campaign.v2", posttraining_prefetch_mode="overlap", candidates={
+            v: dict(run_id=f"{v}-s42-v1", job_name=f"i1050-{v}-s42-u60000", smoke_id=v, prefetch_mode="overlap")
+            for v in ("convnext_v2", "fasternet")})
+    elif plan.get("schema") != "mdd_cnn_campaign.v2" or set(plan) != required | {"candidates", "posttraining_prefetch_mode"}:
+        raise ValueError("Campaign plan must declare the complete v1 or v2 contract")
+    if set(plan["candidates"]) != {"convnext_v2", "fasternet"}:
+        raise ValueError("Campaign requires exactly the two additional CNNs")
+    if plan["posttraining_prefetch_mode"] not in {"overlap", "serial"}:
+        raise ValueError("Campaign must explicitly select the posttraining prefetch mode")
+    for spec in plan["candidates"].values():
+        if set(spec) != {"run_id", "job_name", "smoke_id", "prefetch_mode"} or spec["prefetch_mode"] not in {"overlap", "serial"}:
+            raise ValueError("Candidate must declare its run/job/smoke identity and prefetch mode")
+        for key in ("run_id", "job_name", "smoke_id"):
+            if not isinstance(spec[key], str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", spec[key]) is None:
+                raise ValueError("Candidate identifiers must be plain names, not paths")
+    for key in ("run_id", "job_name", "smoke_id"):
+        if len({spec[key] for spec in plan["candidates"].values()}) != 2:
+            raise ValueError("Candidate identities must be distinct")
+    return plan
+
+
 def queue_once(plan: dict[str, Any], *, name: str, argv: list[str], issue: int) -> str:
     queue = Path(plan["queue_directory"])
     found = [p for state in ("jobs", "running", "done", "failed", "cancelled") for p in (queue / state).glob(f"*_{name}.job")]
@@ -53,7 +79,7 @@ def queue_once(plan: dict[str, Any], *, name: str, argv: list[str], issue: int) 
     code = Path(plan["code_root"])
     env = dict(os.environ, TRAINING_QUEUE_DIR=str(queue))
     command = shlex.join(["env", "OMP_NUM_THREADS=2", "MKL_NUM_THREADS=2", "TORCHINDUCTOR_COMPILE_THREADS=2",
-                          "PYTHONUNBUFFERED=1", *argv])
+                          "PYTHONUNBUFFERED=1", "CUDA_LOG_FILE=stderr", *argv])
     result = subprocess.run(["bash", str(code / ".agents/skills/training-queue/scripts/training_queue.sh"), "add", command,
         "--name", name, "--resource", "all", "--provider", "codex", "--session", plan["thread_id"], "--issue", str(issue)],
         cwd=code, env=env, check=True, capture_output=True, text=True)
@@ -67,13 +93,15 @@ def advance(plan: dict[str, Any], root: Path) -> dict[str, Any]:
     code = Path(plan["code_root"])
     result: dict[str, Any] = dict(stage="pretraining", candidate_jobs={})
     for variant in ("convnext_v2", "fasternet"):
-        candidate = Path(plan["training_root"]) / f"{variant}-s42-v1"
-        result["candidate_jobs"][variant] = queue_once(plan, name=f"i1050-{variant}-s42-u60000", issue=1050,
+        spec = plan["candidates"][variant]
+        candidate = Path(plan["training_root"]) / spec["run_id"]
+        result["candidate_jobs"][variant] = queue_once(plan, name=spec["job_name"], issue=1050,
             argv=[str(code / ".venv/bin/python"), "-m", "src.tasks.ball_detection.scripts.train_cnn_candidate",
                   "--manifest", plan["manifest"], "--model-config", str(code / f"src/tasks/ball_detection/configs/model/mdd_dpt_{variant}.yaml"),
-                  "--output", str(candidate), "--smoke-output", str(Path(plan["smoke_root"]) / variant)])
+                  "--output", str(candidate), "--smoke-output", str(Path(plan["smoke_root"]) / spec["smoke_id"]),
+                  "--prefetch-mode", spec["prefetch_mode"]])
     runs = {"residual": Path(plan["baseline_run"]),
-            **{v: Path(plan["training_root"]) / f"{v}-s42-v1" for v in ("convnext_v2", "fasternet")}}
+            **{v: Path(plan["training_root"]) / spec["run_id"] for v, spec in plan["candidates"].items()}}
     pending = [name for name, run in runs.items() if not (run / "COMPLETED.json").exists()]
     if pending:
         result["pending"] = pending
@@ -102,8 +130,9 @@ def advance(plan: dict[str, Any], root: Path) -> dict[str, Any]:
               "--augmentation-config", str(code / "src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml"),
               "--output", str(output), "--device", "cuda", "--precision", "bf16", "--epochs", "10", "--freeze-epochs", "1",
               "--windows-per-epoch", "6000", "--learning-rate", ".0001", "--encoder-lr-ratio", ".1", "--warmup-updates", "500",
-              "--seed", "42", "--batch-size", "1", "--jpeg-decoder", "nvjpeg", "--image-prefetch", "--pin-memory",
-              "--num-workers", "8", "--prefetch-factor", "4", "--compile-mode", "default", "--stress-evaluation"])
+              "--seed", "42", "--batch-size", "1", "--jpeg-decoder", "nvjpeg", "--pin-memory",
+              "--num-workers", "8", "--prefetch-factor", "4", "--compile-mode", "default", "--stress-evaluation",
+              *(["--image-prefetch"] if plan["posttraining_prefetch_mode"] == "overlap" else [])])
     return result
 
 
@@ -118,11 +147,7 @@ def main() -> None:
     args.plan, root = paths.declared("plan").path, paths.declared("campaign").path
     with (root / "advance.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        plan = json.loads(args.plan.read_text())
-        required = {"schema", "code_root", "code_commit", "queue_directory", "manifest", "manifest_sha256", "baseline_run",
-                    "training_root", "smoke_root", "posttraining_run", "thread_id", "model_config_sha256"}
-        if set(plan) != required or plan["schema"] != "mdd_cnn_campaign.v1":
-            raise ValueError("Campaign plan must declare the complete v1 contract")
+        plan = normalize_plan(json.loads(args.plan.read_text()))
         for key in ("code_root", "queue_directory", "manifest", "baseline_run", "training_root", "smoke_root", "posttraining_run"):
             if not Path(plan[key]).is_absolute():
                 raise ValueError(f"Campaign {key} must be absolute")
