@@ -1,4 +1,4 @@
-<!-- knowledge-review: 979d559eea8eafd2b6c00248160cdefbedd39ea91dd6bc52f5bc2fbff6cb77c7 on 2026-10-09 -->
+<!-- knowledge-review: 22744527cb7febec47dc61c1fb0fd4e486d7255cf8bccdfe00d914c8b7e01297 on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -272,8 +272,12 @@ OpenCVとの画素一致や精度維持は未確認で、decoderをv4 checkpoint
 旧CPU MDD本学習は400更新、native RGB版は850更新で停止し、いずれもepoch checkpointは未保存。
 最適化後の[本学習起動](nodes/ball_detection/000045-run-i986-main-nvjpeg-cuda-failure-20261009.md)はCUDA unknown errorで停止した。
 同じprefixでは再現せず、[画像側streamのfenceと256更新確認](nodes/ball_detection/000050-run-i986-cuda-prefix-fenced-20261009.md)を追加したが、元エラーの原因は未確定。
-[CPU検証後のCUDA起動とfence付きCLI確認](nodes/ball_detection/000051-run-i986-fenced-startup-cli-20261009.md)を経て、固定した新runで本学習を再試行する。
-本学習の収束・全validation・汎化は別途確認する。診断lossや処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
+[CPU検証後のCUDA起動とfence付きCLI確認](nodes/ball_detection/000051-run-i986-fenced-startup-cli-20261009.md)を経た[本学習](nodes/ball_detection/000052-run-i986-query-main-s42-nvjpeg-v2.md)は、42,000更新まで7回のvalidationを完了したが、平均位置誤差が約237pxで停滞した。
+ユーザー指示で約42,950更新時に中断し、42,000更新checkpointと36,000更新bestを保持した。容量不足は未確定で、入力感度・固定位置への偏りの診断と、残差CNN＋dim256・4層の案を次の候補とする。
+testは未評価で、処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
+[深いCNN＋DPTの事前学習GPU検証](nodes/ball_detection/000053-run-i986-dpt-pretrain-smoke-20261009.md)は実720p・96更新と保存まで成功。
+3D層を含むCNNをheatmapで事前学習し、その後SwiGLU decoderへ移す方針へ進む。少数clipの診断値を全validation精度と比較しない。
+[全trainの事前学習](nodes/ball_detection/000054-run-i986-dpt-pretrain-main-s42-v1.md)をBF16・BS1・6万更新で開始した。学習はDPT事前学習までで、後段Transformerは自動起動しない。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
