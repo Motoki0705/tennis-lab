@@ -113,14 +113,14 @@ def main() -> None:
                                 jpeg_decoder=saved_runtime["jpeg_decoder"] if args.jpeg_decoder is None else args.jpeg_decoder,
                                 input_verification=args.input_verification,
                                 image_prefetch=saved_runtime["image_prefetch"] if args.image_prefetch is None else args.image_prefetch)
+    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose, jpeg_decoder=runtime.jpeg_decoder)
+    loader = runtime.loader(dataset, batch_size=args.batch_size)
     runtime.configure(device)
     active_decoder = jpeg_decoder_contract(runtime.jpeg_decoder)
     if args.jpeg_decoder is None and active_decoder != saved["image_decode"]:
         raise ValueError("JPEG decoder implementation/version changed; use an explicit --jpeg-decoder override")
     model.to(device)
     runtime.configure_model(model)
-    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose, jpeg_decoder=runtime.jpeg_decoder)
-    loader = runtime.loader(dataset, batch_size=args.batch_size)
     report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision,
                                   image_prefetch=runtime.image_prefetch)
     if dual_sha256(checkpoint) != checkpoint_hash or dual_sha256(manifest) != manifest_hash:

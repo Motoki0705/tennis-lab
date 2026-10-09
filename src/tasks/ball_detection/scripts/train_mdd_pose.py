@@ -157,15 +157,16 @@ def main() -> None:
     runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
                                 args.cpu_threads, args.compile_mode, args.compile_recompile_limit,
                                 args.jpeg_decoder, args.input_verification, args.image_prefetch)
+    epoch_windows = args.windows_per_epoch or sum(window.frame_step == 1 for _, window in training.windows)
+    sampler = FPSMixSampler(training, windows_per_epoch=epoch_windows, seed=args.seed)
+    train_loader = runtime.loader(training, batch_size=args.batch_size, sampler=sampler, seed=args.seed)
+    val_loader = runtime.loader(validation, batch_size=args.batch_size, seed=args.seed)
+    # Complete CPU-only integrity work before creating CUDA state/parameters.
     runtime.configure(device)
     torch.manual_seed(args.seed)
     model = (MDDPoseDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b) if config.requires_pose
              else MDDQueryDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b)).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=.01)
-    epoch_windows = args.windows_per_epoch or sum(window.frame_step == 1 for _, window in training.windows)
-    sampler = FPSMixSampler(training, windows_per_epoch=epoch_windows, seed=args.seed)
-    train_loader = runtime.loader(training, batch_size=args.batch_size, sampler=sampler, seed=args.seed)
-    val_loader = runtime.loader(validation, batch_size=args.batch_size, seed=args.seed)
     code = coordinate_source_identity()
     recipe = dict(model=asdict(config), runtime=asdict(runtime), batch_size=args.batch_size,
                   seed=args.seed, learning_rate=args.learning_rate, weight_decay=.01,

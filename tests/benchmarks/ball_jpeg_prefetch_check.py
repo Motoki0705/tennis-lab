@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
+import torchvision.io as image_io
 from torchvision.io import ImageReadMode, decode_jpeg
 
 from src.tasks.ball_detection.data.coordinate_dataset import (
@@ -23,6 +24,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--delay-producer", action="store_true")
     args = parser.parse_args()
     if args.output.exists():
         raise ValueError("Choose a fresh output")
@@ -37,6 +39,17 @@ def main() -> None:
     device = torch.device("cuda")
     references = [torch.stack(decode_jpeg(list(b["jpeg"].split(b["jpeg_lengths"])),
                     mode=ImageReadMode.RGB, device=device)).view(b["image_shape"]) for b in batches]
+    if args.delay_producer:
+        original_decode = image_io.decode_jpeg
+
+        def delayed_decode(*positional: Any, **keywords: Any) -> Any:
+            result = original_decode(*positional, **keywords)
+            # Keep caller-stream stack outstanding while the following decode
+            # could otherwise reuse its intermediate output storage.
+            torch.cuda._sleep(10_000_000)
+            return result
+
+        image_io.decode_jpeg = delayed_decode
     for original, expected, decoded in zip(batches, references,
                                           coordinate_batches(batches, device, prefetch=True), strict=True):
         torch.testing.assert_close(decoded["rgb"], expected, rtol=0, atol=0)
@@ -62,7 +75,8 @@ def main() -> None:
     result = dict(status="ok", windows=len(indices), batch_sizes=[len(b["clip_id"]) for b in batches],
                   sources=sorted({source for source, _ in selected}), frame_steps=[1, 2, 4],
                   rgb_bit_identical=True, teachers_and_order_unchanged=True,
-                  reader_error_propagated=True, early_exit_joined=True)
+                  reader_error_propagated=True, early_exit_joined=True,
+                  delayed_producer=args.delay_producer)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result), flush=True)

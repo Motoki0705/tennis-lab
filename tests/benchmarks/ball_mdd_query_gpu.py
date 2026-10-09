@@ -65,13 +65,14 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = True
     device = torch.device("cuda")
-    torch.cuda.set_per_process_memory_fraction(.9)
+    if args.allocator_fraction is not None:
+        torch.cuda.set_per_process_memory_fraction(args.allocator_fraction)
     properties = torch.cuda.get_device_properties(device)
     if args.precision == "bf16" and not torch.cuda.is_bf16_supported():
         raise ValueError("BF16 is not supported; no precision fallback")
     report["hardware"] = dict(gpu=properties.name, total_bytes=properties.total_memory,
                               cuda=torch.version.cuda, torch=str(torch.__version__),
-                              python=platform.python_version(), memory_fraction_limit=.9,
+                              python=platform.python_version(), memory_fraction_limit=args.allocator_fraction,
                               free_before_bytes=torch.cuda.mem_get_info()[0])
     config = MDDPoseConfig.load(args.model_config)
     if config.compression != "conv2d" or config.readout != "query_only":
@@ -102,8 +103,9 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
         batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
         iterator = iter([batch] * total)
     else:
-        sampler = FPSMixSampler(dataset, windows_per_epoch=total * args.batch_size, seed=42)
-        sequence = list(sampler)
+        sampler_count = total * args.batch_size if args.sampler_windows is None else args.sampler_windows
+        sampler = FPSMixSampler(dataset, windows_per_epoch=sampler_count, seed=42)
+        sequence = list(sampler)[:total * args.batch_size]
         report["window_sequence_sha256"] = hashlib.sha256(json.dumps(sequence).encode()).hexdigest()
         before = time.perf_counter()
         if args.preverify:
@@ -131,7 +133,7 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
                 batches = [{k: v.pin_memory() if isinstance(v, torch.Tensor) else v for k, v in b.items()} for b in batches]
             iterator = iter(batches)
         else:
-            loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sampler, seed=42)
+            loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sequence, seed=42)
             iterator = iter(loader)
         report["input_setup_seconds"] = time.perf_counter() - before
     ready_batches = coordinate_batches(iterator, device, prefetch=args.image_prefetch)
@@ -143,10 +145,12 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
         batch = next(ready_batches)
         loaded = time.perf_counter()
         loss, grad = coordinate_train_step(model, optimizer, batch, device, runtime)
-        torch.cuda.synchronize()
+        if args.synchronize_steps:
+            torch.cuda.synchronize()
+        loss_value, grad_value = float(loss), float(grad)
         elapsed = time.perf_counter() - begin
         row = dict(step=step, warmup=step < args.warmup, seconds=elapsed,
-                   load_wait_seconds=loaded - begin, loss=float(loss.detach()), grad_norm=float(grad))
+                   load_wait_seconds=loaded - begin, loss=loss_value, grad_norm=grad_value)
         row["reader_wait_seconds"] = batch["_reader_wait_seconds"] if args.image_prefetch else loaded - begin
         if args.image_prefetch:
             row["image_prepare_seconds"] = batch["_image_prepare_seconds"]
@@ -192,6 +196,9 @@ def main() -> None:
     parser.add_argument("--image-prefetch", action="store_true")
     parser.add_argument("--prefetch-factor", type=int, default=1)
     parser.add_argument("--drop-file-cache", action="store_true", help="Request eviction of clean selected-file pages after verification")
+    parser.add_argument("--sampler-windows", type=int, help="Use a prefix of this production epoch's sampler")
+    parser.add_argument("--synchronize-steps", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--allocator-fraction", type=float, default=None)
     parser.add_argument("--workers", type=int, default=0)
     parser.add_argument("--pin-memory", action="store_true")
     parser.add_argument("--cpu-threads", type=int, default=2)
@@ -202,6 +209,10 @@ def main() -> None:
         raise ValueError("Choose a fresh output file")
     if min(args.batch_size, args.cpu_threads, args.steps) < 1 or min(args.warmup, args.workers) < 0:
         raise ValueError("Invalid measurement budget")
+    if args.sampler_windows is not None and args.sampler_windows < (args.warmup + args.steps) * args.batch_size:
+        raise ValueError("Sampler budget is shorter than the requested measurement prefix")
+    if args.allocator_fraction is not None and not 0 < args.allocator_fraction <= 1:
+        raise ValueError("Allocator fraction must be in (0,1]")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = dict(schema="ball_native_rgb_gpu.v2", status="running",
                                  arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
