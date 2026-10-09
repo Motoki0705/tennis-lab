@@ -1,0 +1,33 @@
+{
+  "input_shape": [
+    1,
+    32,
+    3,
+    720,
+    1280
+  ],
+  "rows": [
+    {
+      "variant": "residual",
+      "pretraining_parameters": 9572689,
+      "encoder_parameters": 7054544,
+      "posttraining_parameters": 11398610,
+      "conv_linear_macs_per_window": 795184988160
+    },
+    {
+      "variant": "convnext_v2",
+      "pretraining_parameters": 6646033,
+      "encoder_parameters": 4127888,
+      "posttraining_parameters": 8471954,
+      "conv_linear_macs_per_window": 668696985600
+    },
+    {
+      "variant": "fasternet",
+      "pretraining_parameters": 6099601,
+      "encoder_parameters": 3581456,
+      "posttraining_parameters": 7925522,
+      "conv_linear_macs_per_window": 623197224960
+    }
+  ],
+  "limitation": "Conv/Linear MACs only; excludes normalization, activation, MDD, memory traffic and backward. Not measured speed."
+}

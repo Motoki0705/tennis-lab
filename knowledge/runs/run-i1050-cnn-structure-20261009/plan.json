@@ -1,0 +1,17 @@
+{
+  "schema": "mdd_cnn_campaign.v1",
+  "code_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009",
+  "code_commit": "4cb8b70c9cae3e7841944e94295615e584947402",
+  "queue_directory": "/home/kamimura/projects/tennis-lab/.training_queue",
+  "manifest": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json",
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "baseline_run": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-dpt-pretrain/s42-u60000-v1",
+  "training_root": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison",
+  "smoke_root": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/mdd-cnn-smoke/20261009",
+  "posttraining_run": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-query-posttraining/best-s42-v1",
+  "thread_id": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "model_config_sha256": {
+    "convnext_v2": "6b190f09f51dcd0ce4fac177edce55ea2d3a4cd38ac3c2b8d551832f1799c465",
+    "fasternet": "49062633dfbaa9730a8a4cc31f2bbf7b8ada77a6c7ea36c19bbd02e327b87b03"
+  }
+}
