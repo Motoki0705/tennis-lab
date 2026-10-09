@@ -2,6 +2,8 @@
 
 Read only for host, app-startup or storage troubleshooting. These observations came from OpenAI.Codex 26.930.7945.0 on 2026-10-07, not a public file-format API guarantee.
 
+These are desktop-task notes. Sharing `CODEX_HOME` across Windows and WSL does not attach a desktop execution to an existing WSL CLI runtime. For that receiver, follow [CLI queue heartbeats](cli-heartbeat.md) and preserve its `CODEX_SQLITE_HOME` as well as its thread ID.
+
 ## Home, interpreter and working directory
 
 The observed WSL CODEX_HOME was /mnt/c/Users/kamim/.codex, shared with Windows C:\Users\kamim\.codex. Verify the app's home on each machine; WSL homes are not necessarily shared. Use explicit --codex-home and an existing interpreter path rather than changing environment variables.
