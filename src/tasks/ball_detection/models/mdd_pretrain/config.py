@@ -10,17 +10,17 @@ from src.utils.models.components.ffn_layers import default_ffn_dim
 
 @dataclass(frozen=True)
 class MDDPretrainConfig:
-    stem_channels: tuple[int, int, int, int] = (16, 32, 64, 128)
-    mixed_channels: tuple[int, int] = (192, 256)
-    residual_blocks: tuple[int, int, int, int, int, int] = (0, 1, 2, 2, 1, 1)
-    decoder_channels: int = 128
-    dim: int = 256
-    heads: int = 8
-    layers: int = 4
-    ffn_dim: int = 704
-    dropout: float = .1
-    rope_base: float = 10000.
-    activation_checkpointing: bool = False
+    stem_channels: tuple[int, int, int, int]
+    mixed_channels: tuple[int, int]
+    residual_blocks: tuple[int, int, int, int, int, int]
+    decoder_channels: int
+    dim: int
+    heads: int
+    layers: int
+    ffn_dim: int
+    dropout: float
+    rope_base: float
+    activation_checkpointing: bool
 
     def __post_init__(self) -> None:
         if len(self.stem_channels) != 4 or len(self.mixed_channels) != 2 or len(self.residual_blocks) != 6:
