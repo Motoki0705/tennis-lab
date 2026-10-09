@@ -219,6 +219,10 @@ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
         # PyTorch allocates the result directly in shared memory inside workers.
         # A plain stack would be copied again by multiprocessing's tensor sender.
         result[key] = default_collate([sample[key] for sample in samples])
+    if any("heatmap_valid" in sample for sample in samples):
+        if not all("heatmap_valid" in sample for sample in samples):
+            raise ValueError("Cannot mix heatmap and coordinate supervision contracts")
+        result["heatmap_valid"] = default_collate([sample["heatmap_valid"] for sample in samples])
     for key in ("clip_id", "start", "source", "frame_step", "common_evaluation", "input_kind"):
         result[key] = [sample[key] for sample in samples]
     return result
