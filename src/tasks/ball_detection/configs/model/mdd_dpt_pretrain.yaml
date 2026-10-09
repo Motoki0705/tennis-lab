@@ -10,3 +10,5 @@ ffn_dim: 704
 dropout: 0.1
 rope_base: 10000.0
 activation_checkpointing: false
+encoder_variant: residual
+temporal_mixing: dense3d

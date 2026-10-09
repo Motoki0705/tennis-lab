@@ -7,6 +7,11 @@ from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
 
 from .config import MDDPretrainConfig
+from .efficient_blocks import (
+    ConvNeXtV2Residual,
+    FactorizedTemporalMix,
+    PartialSpatialResidual,
+)
 
 
 class SpatialConv(nn.Sequential):
@@ -50,15 +55,18 @@ class DeepMDDEncoder(nn.Module):
         widths = (*config.stem_channels, *config.mixed_channels)
         stages: list[nn.Module] = []
         previous = 2
+        residual = {"residual": SpatialResidual, "convnext_v2": ConvNeXtV2Residual,
+                    "fasternet": PartialSpatialResidual}[config.encoder_variant]
         for i, (width, depth) in enumerate(zip(widths, config.residual_blocks, strict=True)):
             spatial: list[nn.Module] = [SpatialConv(previous, width, stride=2)]
             if i >= 4:
                 spatial.append(SpatialConv(width, width))
-            spatial.extend(SpatialResidual(width) for _ in range(depth))
+            spatial.extend(residual(width) for _ in range(depth))
             stages.append(nn.Sequential(*spatial))
             previous = width
         self.stages = nn.ModuleList(stages)
-        self.temporal = nn.ModuleList(TemporalMix(c) for c in config.mixed_channels)
+        temporal = TemporalMix if config.temporal_mixing == "dense3d" else FactorizedTemporalMix
+        self.temporal = nn.ModuleList(temporal(c) for c in config.mixed_channels)
         self.feature_channels = widths[2:]
 
     def forward(self, mdd: Tensor) -> tuple[Tensor, ...]:
