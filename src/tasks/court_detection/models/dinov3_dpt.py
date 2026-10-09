@@ -26,6 +26,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetKind,
 )
 from src.tasks.court_detection.geometry.pose import POSE10D_RAW_ORDER
+from src.utils.models.blocks import Conv2dWiseWiseBlock as Conv2dWiseWiseBlock
 from src.utils.models.components import (
     RotaryFrequencyComputer,
     TransformerBlock,
