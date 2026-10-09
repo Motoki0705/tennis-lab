@@ -4,7 +4,7 @@ type: run
 task: ball_detection
 sequence: 56
 recorded_at: '2026-10-09'
-title: ConvNeXt V2系CNNのBF16 GPU smoke完了（本学習は継続中）
+title: ConvNeXt V2系CNNのBF16 GPU smoke完了
 issue: 1050
 provider: codex
 status: done
@@ -46,10 +46,10 @@ repro:
     1
 ---
 
-ConvNeXt V2系/factorized時間CNNが実720p・BF16・compile defaultで96更新、validation、checkpoint/GIF保存を完了した。3 train clips・3 val clipsの同じdiagnostic窓を使い、両時間層の勾配はfinite/nonzero。graph breakは0、train/evalで2 graph。これはsmoke substageの完了であり、6万更新の本学習はまだ実行中。
+ConvNeXt V2系/factorized時間CNNが実720p・BF16・compile defaultで96更新、validation、checkpoint/GIF保存を完了した。3 train clips・3 val clipsの同じdiagnostic窓を使い、両時間層の勾配はfinite/nonzero。graph breakは0、train/evalで2 graph。これはsmoke substageの完了であり、6万更新の本学習の完了を保証するものではない。
 
 最初の8更新を除く速度2.662窓/秒、PyTorch peak allocated7.264GiB、reserved9.020GiB。先のresidual smokeは3.088窓/秒・allocated5.680GiBであり、この短時間測定ではConvNeXt V2系の速度/メモリ改善は得られなかった。パラメータ・MAC削減を実速度改善と扱わない。測定時刻・マシン負荷・初期化消費順が違うため、精密な因果的速度比較ではない。
 
 本学習はsmoke成功後にscratchで開始され、最初の監視で700更新まで進行を確認した。少数clipのsmoke精度を全validationの性能とは比較しない。FasterNetは待機中、baselineは18,000更新のcheckpointからresume予定。全3構成が完了するまでbestの選択と事後学習へ進めない。
 
-TensorBoardなし。関連するouter queue jobは1791536294779637822_3429084_i1050-convnext_v2-s42-u60000.jobで、repro bundleはshared queueに保持される。本学習完了時はそのrunを別途登録する。
+TensorBoardなし。関連するouter queue jobは1791536294779637822_3429084_i1050-convnext_v2-s42-u60000.jobで、repro bundleはshared queueに保持される。本学習はその後異常終了し、別の[失敗記録](000057-run-i1050-convnext-v2-s42-u60000.md)に登録した。

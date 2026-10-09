@@ -1,0 +1,76 @@
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/training/coordinate_images.py", line 67, in coordinate_batches
+    stream.synchronize()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/cuda/streams.py", line 108, in synchronize
+    super().synchronize()
+torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+[W1009 19:06:00.746240980 CUDAEvent.h:57] Warning: CUDA warning: unknown error (function ~CUDAEvent)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/scripts/pretrain_mdd_dpt.py", line 10, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/training/heatmap_pretraining/runner.py", line 202, in main
+    grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/nn/utils/clip_grad.py", line 41, in _no_grad_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/nn/utils/clip_grad.py", line 230, in clip_grad_norm_
+    total_norm = _get_total_norm(grads, norm_type, error_if_nonfinite, foreach)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/nn/utils/clip_grad.py", line 41, in _no_grad_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/nn/utils/clip_grad.py", line 109, in _get_total_norm
+    if error_if_nonfinite and torch.logical_or(total_norm.isnan(), total_norm.isinf()):
+torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+terminate called after throwing an instance of 'c10::AcceleratorError'
+  what():  CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+Exception raised from insert_events at /__w/pytorch/pytorch/c10/cuda/CUDACachingAllocator.cpp:4355 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x75dbd6d63bfd in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xc4e9 (0x75dbd716c4e9 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #2: <unknown function> + 0x1869e (0x75dbd717869e in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #3: <unknown function> + 0x1c1a5 (0x75dbd717c1a5 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #4: <unknown function> + 0x1c9ee (0x75dbd717c9ee in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #5: <unknown function> + 0x86ae4 (0x75dbd6d40ae4 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libc10.so)
+frame #6: c10::TensorImpl::~TensorImpl() + 0x9 (0x75dbd6d3b219 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libc10.so)
+frame #7: <unknown function> + 0x8713cd (0x75db54e713cd in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libtorch_python.so)
+frame #8: <unknown function> + 0x871451 (0x75db54e71451 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/lib/python3.11/site-packages/torch/lib/libtorch_python.so)
+frame #9: <unknown function> + 0x35d534 (0x576a00b11534 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #10: <unknown function> + 0x33c403 (0x576a00af0403 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #11: <unknown function> + 0x32199d (0x576a00ad599d in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #12: <unknown function> + 0x3fc893 (0x576a00bb0893 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #13: <unknown function> + 0x3fc887 (0x576a00bb0887 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #14: <unknown function> + 0x3fc887 (0x576a00bb0887 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #15: <unknown function> + 0x3fc887 (0x576a00bb0887 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #16: PyDict_SetItem + 0xa4d (0x576a009b9b4d in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #17: <unknown function> + 0x4fcfd7 (0x576a00cb0fd7 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #18: Py_FinalizeEx + 0x250 (0x576a00cb0a40 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #19: Py_RunMain + 0x1c5 (0x576a00cbf515 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #20: <unknown function> + 0x50c05d (0x576a00cc005d in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #21: <unknown function> + 0x43741c (0x576a00beb41c in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+frame #22: <unknown function> + 0x2a1ca (0x75dbd7c2a1ca in /lib/x86_64-linux-gnu/libc.so.6)
+frame #23: __libc_start_main + 0x8b (0x75dbd7c2a28b in /lib/x86_64-linux-gnu/libc.so.6)
+frame #24: <unknown function> + 0x43732d (0x576a00beb32d in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python)
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/scripts/train_cnn_candidate.py", line 76, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/scripts/train_cnn_candidate.py", line 72, in main
+    subprocess.run(command, check=True)
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python', '-m', 'src.tasks.ball_detection.scripts.pretrain_mdd_dpt', '--manifest', '/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json', '--model-config', '/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/configs/model/mdd_dpt_convnext_v2.yaml', '--output', '/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v1', '--epochs', '10', '--windows-per-epoch', '6000', '--learning-rate', '.0002', '--warmup-updates', '500', '--seed', '42', '--device', 'cuda', '--precision', 'bf16', '--batch-size', '1', '--num-workers', '8', '--prefetch-factor', '4', '--cpu-threads', '2', '--pin-memory', '--jpeg-decoder', 'nvjpeg', '--input-verification', 'upfront', '--image-prefetch', '--compile-mode', 'default', '--selection-scope', 'common', '--log-every', '50', '--preview-clips', '3']' died with <Signals.SIGABRT: 6>.
+exit_code=1

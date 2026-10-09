@@ -46,7 +46,12 @@ stressはclean best選択後だけ実行し、人工遮蔽subsetも同じframe�
 
 すべてのCUDA commandは元repoのshared training queueで直列実行する。
 
-1. `train_cnn_candidate.py`: 720pのGPU smoke成功後、追加CNNをscratchから6万更新。
+1. `train_cnn_candidate.py --prefetch-mode overlap|serial`: GPU入力の実行方式を明示する。
+   `overlap`は720p・96更新のGPU smoke成功後、scratchから6万更新。
+   `serial`はnvJPEGを維持して並列画像先読みを停止し、full manifest・10epochのLRスケジュールのまま
+   `--stop-after-epoch 0`で最初の6000更新＋validation・checkpoint保存後にprocessを終了する。
+   保存hash・source・data・finite重み/勾配を検証し、別processで同じcheckpointから残り54000更新を続ける。
+   短縮診断を本学習完了と扱わず、診断失敗時は再開しない。
 2. `advance_cnn_campaign.py --plan /absolute/campaign/plan.json`: 2候補を重複なくqueueへ投入。
    3runのCOMPLETED・checkpoint hash・data/budget/seed/precision/DPT一致を確認して比較する。
    common誤差、同値ならfull誤差、その次に名前順でbestを1つ選択。
@@ -58,6 +63,9 @@ stressはclean best選択後だけ実行し、人工遮蔽subsetも同じframe�
 planは`code_root`（固定worktree）、`queue_directory`、`manifest`、`baseline_run`、`thread_id`、
 `training_root`、`smoke_root`、`posttraining_run`を持つ。学習はoutputs/ball_detection/train配下、
 GPU probeはanalyze配下、campaign rootには比較成果物と制御情報を配置する。
+v2 planはさらに各候補の`run_id`/`job_name`/`smoke_id`/`prefetch_mode`と、
+`posttraining_prefetch_mode`を明示する。v1は元のrun名・overlapへ明示的に展開される。
+再試行は失敗出力を保持し、新しいrun/job名を指定する。他の実行中jobは名前で再利用する。
 `advance`はファイルlockとqueue名の照合で二重投入を防ぎ、失敗したjobを成功とみなさない。
 失敗は監視側で調査してから、既存checkpointでの再開または新しいrun-idを判断する。
 
@@ -74,3 +82,10 @@ CLIとマシンの稼働が必要。単にtimerがactiveであることと、実
 拡張の2D affineは実カメラの視差・新視点やscene cutを再現しない。論文由来のCNNや拡張の効果は
 このデータで未実証で、単一seedの結果から統計的な優越を主張しない。
 同じDPT構造・seedでもCNNの初期化乱数消費順が異なるため、DPT初期値の完全一致は保証しない。
+
+
+診断停止は`DIAGNOSTIC_STOP.json`へ記録し、全epoch終了までは`COMPLETED.json`を作らない。
+runnerの`failure.json`はCPUのclip/frame情報とエラー表面化時の処理段階を保存する。
+CUDAエラーは非同期に表面化し得るため、段階の記録だけで原因を断定しない。
+serial/overlapが混在する比較では各runの方式を結果・図へ表示し、速度差をCNNだけの効果と扱わない。
+事後学習probeも本学習と同じ先読み設定を使い、receiptの一致を確認する。

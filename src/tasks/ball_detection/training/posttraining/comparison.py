@@ -55,12 +55,15 @@ def compare_pretraining(runs: dict[str, Path], manifest: Path) -> dict[str, Any]
         rows.append(dict(variant=variant, run=str(run), checkpoint=str(path), epoch=checkpoint["epoch"],
             common_error_px=common, full_error_px=full, total_updates=completed["global_step"],
             parameters=sum(v.numel() for v in checkpoint["state_dict"].values() if isinstance(v, torch.Tensor)),
+            image_prefetch=recipe["runtime"]["image_prefetch"],
             steady_epoch0_windows_per_second=rate,
             peak_allocated_gib=max((r.get("peak_allocated_gib", 0.) for r in logs), default=0.)))
     rows.sort(key=lambda r: (r["common_error_px"], r["full_error_px"], r["variant"]))
-    return dict(schema="mdd_cnn_comparison.v1", selection="minimum common error; full error then name break ties",
+    same_pipeline = len({row["image_prefetch"] for row in rows}) == 1
+    return dict(schema="mdd_cnn_comparison.v2", same_image_prefetch=same_pipeline, selection="minimum common error; full error then name break ties",
                 shared=shared, ranking=rows, winner=rows[0]["variant"], selected_run=rows[0]["run"],
-                limitation="single seed; speed excludes only first logged block; not isolated block ablation")
+                limitation="single seed; speed excludes only first logged block; not isolated block ablation"
+                + ("; decode overlap differs: throughput is not a CNN-only comparison" if not same_pipeline else ""))
 
 
 def save_comparison(report: dict[str, Any], directory: Path) -> None:
@@ -82,12 +85,12 @@ def save_comparison(report: dict[str, Any], directory: Path) -> None:
         rate = row["steady_epoch0_windows_per_second"]
         if rate is not None:
             axes[1].scatter(rate, row["common_error_px"], s=95, color=f"C{i}")
-            axes[1].annotate(row["variant"], (rate, row["common_error_px"]), xytext=(5, 7), textcoords="offset points")
+            axes[1].annotate(row["variant"] + (" (overlap)" if row["image_prefetch"] else " (serial)"), (rate, row["common_error_px"]), xytext=(5, 7), textcoords="offset points")
     axes[1].set(xlabel="Training windows / second (higher is better)", ylabel="Common error (pixels)", title="Accuracy and measured throughput")
     for axis in axes:
         axis.grid(alpha=.2)
     fig.suptitle("Three CNNs | Same DPT, frozen data, seed and update budget", fontweight="bold")
-    fig.supxlabel("Single-seed experiment. Speed omits the first logged block; hardware load can vary. Select by accuracy, not FLOPs.", fontsize=9)
+    fig.supxlabel("Single seed. Labels record decode overlap. Throughput includes the input pipeline; it does not isolate CNN speed.", fontsize=9)
     for ext in ("png", "pdf"):
         fig.savefig(directory / f"comparison.{ext}", dpi=180, bbox_inches="tight")
     plt.close(fig)
