@@ -1,4 +1,4 @@
-<!-- knowledge-review: 22744527cb7febec47dc61c1fb0fd4e486d7255cf8bccdfe00d914c8b7e01297 on 2026-10-09 -->
+<!-- knowledge-review: 593fe5f94f98a2bcd0e3ab9d63c90dc066b36f44321fc9850d3aec317afb5ba0 on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）

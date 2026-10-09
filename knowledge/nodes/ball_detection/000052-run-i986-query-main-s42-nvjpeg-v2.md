@@ -77,3 +77,5 @@ validationは位置教師有効frameのsource-pixelユークリッド距離をFP
 dim128・2層、細いCNNでの容量不足は仮説であり、本runだけでは原因を断定できない。固定位置への偏り、入力への感度、座標対応の検証を先に行う価値がある。ユーザーはCNNの深層化とTransformer dim拡大の案を要求した。次候補は残差CNN＋dim256・4層とし、同じseed/split/窓sampling/update budgetを明示して比較する。深さ・幅の拡張による精度やVRAMは未確認で、提案段階。学習の再開はしていない。
 
 数値ログ・設定・best選択をbundleに保存した。TensorBoard・test予測・GIFはこのrunにない。中断によるepoch未完了と教師の存在するframeのみの評価という制約がある。CPU供給の改善を精度改善とは扱わず、既存deployの判断は変更しない。
+
+再現用YAMLをbundleへ保存し、launch receiptのSHA-256一致を確認した。repro.shの設定参照先のみbundle内へ移し、run.jsonの原コマンドと設定内容は保持した。
