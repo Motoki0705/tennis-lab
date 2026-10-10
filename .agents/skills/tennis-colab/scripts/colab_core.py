@@ -241,6 +241,16 @@ class Session:
             self.ssh_argv(remote_argv), data=data or b"", timeout=timeout
         ).stdout
 
+    def kernel_argv(self, source: Path, *, timeout_seconds: int) -> list[str]:
+        """Execute real work in the existing Notebook kernel, without allocation."""
+        self.require_registered()
+        if timeout_seconds <= 0:
+            raise ColabError("Kernel execution timeout must be positive")
+        return self.cli_argv(
+            "exec", "--session", self.name, "--timeout", str(timeout_seconds),
+            "--file", str(source),
+        )
+
     def rpc(self, action: str, *, timeout: int = 180, **fields: Any) -> dict[str, Any]:
         data = json.dumps({"action": action, **fields}).encode()
         raw = self.ssh(

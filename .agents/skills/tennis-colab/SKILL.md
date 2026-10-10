@@ -33,6 +33,8 @@ Driveの配置・版・保持・整理は [tennis-drive](../tennis-drive/SKILL.m
 
 - `exec` の応答は提出receipt。成功終了とは扱わず、`status --job-id ...` の終了状態・returncode・`drive_saved_at` を確認する。
 - sessionでは通常1つの管理対象コマンドを実行する。状態・ログ・ファイル操作はSSH接続を共用して利用できる。
+- 実コマンドは公式CLI経由でNotebook kernelに提出し、kernelがworkerの処理完了を待つ。
+  応答待ち時間は`--kernel-timeout-seconds`で指定する（既定24時間）。状態確認とVM寿命はruntime referenceを参照する。
 - 学習前に成果物の出力directoryを決める。repoの共通training runnerでは `--runner-output <repo-relative-output-dir>` と
   `run.artifact_store` のrclone設定を使い、checkpoint保存直後の永続化を有効にする。
   runner以外の任意処理は `--persist <repo-relative-output-dir>` でworkerの周期保存を使う。
