@@ -211,13 +211,13 @@ def test_dry_run_prints_body_and_creates_nothing(ops_env: Any) -> None:
 def test_cleanup_module_output_is_passed_to_agent(ops_env: Any) -> None:
     cleanup = ops_env.repo / ".agents/ops/cleanup"
     cleanup.mkdir(parents=True)
-    script = cleanup / "cleanup.sh"
-    script.write_text(
-        '#!/usr/bin/env bash\n[[ "$1" == --report-json ]] || exit 9\n'
-        'echo \'{"candidates": [{"worktree": "stale-wt"}]}\'\n',
+    (cleanup / "cleanup.py").write_text(
+        "import json, sys\n"
+        "assert sys.argv[1:3] == ['scan', '--report-json'], sys.argv\n"
+        "with open(sys.argv[3], 'w') as f:\n"
+        "    json.dump({'candidates': [{'worktree': 'stale-wt'}]}, f)\n",
         encoding="utf-8",
     )
-    script.chmod(0o755)
 
     result = ops_env.run("report", "--dry-run")
 
@@ -230,15 +230,24 @@ def test_cleanup_module_output_is_passed_to_agent(ops_env: Any) -> None:
 def test_cleanup_module_failure_fails_report(ops_env: Any) -> None:
     cleanup = ops_env.repo / ".agents/ops/cleanup"
     cleanup.mkdir(parents=True)
-    script = cleanup / "cleanup.sh"
-    script.write_text("#!/usr/bin/env bash\necho boom >&2\nexit 4\n", encoding="utf-8")
-    script.chmod(0o755)
+    (cleanup / "cleanup.py").write_text(
+        "import sys\nprint('boom', file=sys.stderr)\nsys.exit(4)\n", encoding="utf-8"
+    )
 
     result = ops_env.run("report", "--dry-run")
 
     assert result.returncode == 1
     assert "boom" in result.stderr
     assert not (ops_env.tmp / "agent_used.txt").exists()
+
+
+def test_cleanup_dir_without_entry_point_fails_report(ops_env: Any) -> None:
+    (ops_env.repo / ".agents/ops/cleanup").mkdir(parents=True)
+
+    result = ops_env.run("report", "--dry-run")
+
+    assert result.returncode == 1
+    assert "no cleanup.py" in result.stderr
 
 
 def test_report_creates_issue_and_label(ops_env: Any) -> None:
