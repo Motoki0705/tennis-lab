@@ -84,6 +84,10 @@ Colab VM消失後の学習再開には、Drive上の完了したcheckpointと対
 ## 保持と削除
 
 入力資産・確定済み結果・中断runを、容量確保のために自動削除しない。
+学習frameworkのcheckpoint間引きがDrive側の削除へ伝播する設定も、明示依頼なしに使わない。
+共通training runnerで新しいColab runを作る場合は`training.checkpoint.save_top_k=-1`として
+保存済みの世代を保持し、最良checkpointの選択と削除を分離する。`last.ckpt`の更新は
+再開用の可変ファイルとして扱い、採用した世代別checkpointを置き換えない。
 大きいもの・重複候補・参照されなくなった候補を可視化し、依頼された対象だけtrashへ移す。
 ゴミ箱内のファイルも容量を使う。trash操作を容量解放完了と報告しない。
 ゴミ箱全体の空化・永久削除・共有設定変更は通常操作に含めない。
