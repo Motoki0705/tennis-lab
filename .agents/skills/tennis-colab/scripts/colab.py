@@ -189,13 +189,24 @@ def submit(args: argparse.Namespace, session: Session) -> dict[str, Any]:
         raise ColabError("Supply a command argument array after --")
     job_id = validate_name(args.job_id or "j-" + uuid.uuid4().hex[:16])
     receipt = session.rpc(
-        "prepare", job_id=job_id, argv=argv, cwd=args.cwd, persist=args.persist
+        "prepare",
+        job_id=job_id,
+        argv=argv,
+        cwd=args.cwd,
+        persist=args.persist,
+        runner_outputs=args.runner_output,
     )
     local = session.directory / "jobs" / job_id
     local.mkdir(parents=True, exist_ok=False)
     atomic_json(
         local / "request.json",
-        {"argv": argv, "cwd": args.cwd, "persist": args.persist, "job_id": job_id},
+        {
+            "argv": argv,
+            "cwd": args.cwd,
+            "persist": args.persist,
+            "runner_outputs": args.runner_output,
+            "job_id": job_id,
+        },
     )
     with (local / "transport.log").open("ab", buffering=0) as log:
         process = subprocess.Popen(
@@ -319,6 +330,12 @@ def parser() -> argparse.ArgumentParser:
     execute.add_argument("--job-id")
     execute.add_argument("--cwd")
     execute.add_argument("--persist", action="append", default=[])
+    execute.add_argument(
+        "--runner-output",
+        action="append",
+        default=[],
+        help="Output already persisted live by the training runner; copy only after the process stops.",
+    )
     execute.add_argument("argv", nargs=argparse.REMAINDER)
     for name in (
         "status",

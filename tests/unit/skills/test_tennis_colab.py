@@ -241,3 +241,41 @@ def test_sensitive_untracked_files_are_excluded_and_artifact_escape_rejected(
     assert "fix.py" in recovered["untracked"]
     with pytest.raises(RuntimeError, match="relative path"):
         remote._persist_path(remote.config(), "../session/secrets")
+
+
+def test_runner_output_has_one_live_writer_and_is_salvaged_after_exit(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, repo, _ = worker
+    output = repo / "outputs/run"
+    output.mkdir(parents=True)
+    (output / "last.ckpt").write_bytes(b"finished checkpoint")
+    copied: list[Path] = []
+
+    class Store:
+        def __init__(self, path: Path) -> None:
+            self.path = path
+
+        def sync_tree(self) -> None:
+            copied.append(self.path)
+
+        def publish_file(self, path: Path) -> None:
+            pass
+
+    monkeypatch.setattr(remote, "_store", lambda cfg, local, target: Store(local))
+    remote.prepare(
+        {
+            "job_id": "runner",
+            "argv": ["true"],
+            "persist": [],
+            "runner_outputs": ["outputs/run"],
+        }
+    )
+    directory = remote.job_dir("runner")
+    remote.sync_job(remote.config(), directory)
+    assert output not in copied
+    remote.sync_job(remote.config(), directory, final=True, completion="completed")
+    assert output in copied
+    with pytest.raises(RuntimeError, match="existing command"):
+        remote.prepare({"job_id": "another", "argv": ["true"], "persist": []})
