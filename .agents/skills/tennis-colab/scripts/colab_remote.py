@@ -477,10 +477,7 @@ def diff(request: dict[str, Any]) -> dict[str, Any]:
                 continue
             name = raw.decode()
             path = repo / relative(name)
-            if path.is_symlink() or any(
-                marker in name.lower()
-                for marker in (".env", "credential", "secret", "token", ".pem", ".key")
-            ):
+            if path.is_symlink() or _credential_path(name):
                 excluded.append(name)
                 continue
             content = path.read_bytes()
@@ -498,6 +495,22 @@ def diff(request: dict[str, Any]) -> dict[str, Any]:
         "untracked": files,
         "excluded": excluded,
     }
+
+
+def _credential_path(name: str) -> bool:
+    """Exclude credential filenames without dropping code such as tokenizer.py."""
+    for part in PurePosixPath(name.lower()).parts:
+        if part == ".env" or part.startswith(".env."):
+            return True
+        if part in {".secrets", ".ssh", "secrets", "credentials", "id_rsa", "id_ed25519"}:
+            return True
+        if part.endswith((".pem", ".key", ".p12", ".pfx")):
+            return True
+        if not part.endswith((".py", ".sh", ".md")) and re.search(
+            r"(^|[_.-])(credentials?|secrets?|tokens?)([_.-]|$)", part
+        ):
+            return True
+    return False
 
 
 def rpc(request: dict[str, Any]) -> dict[str, Any]:
