@@ -35,6 +35,7 @@ VM内のrclone設定pathは `RCLONE_CONFIG` として管理コマンドへ渡さ
   .venv/bin/python -m src.tasks.court_detection.scripts.train \
   'data.source.scene_ids=[B00,B01,B02,B03]' \
   run.output_dir=court_detection/train/example/s42 \
+  training.checkpoint.save_top_k=-1 \
   run.artifact_store.mode=rclone \
   run.artifact_store.remote=gdrive \
   run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/example/s42 \
