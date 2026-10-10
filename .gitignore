@@ -11,6 +11,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!.agents/ops/lib/
 lib64/
 parts/
 sdist/
