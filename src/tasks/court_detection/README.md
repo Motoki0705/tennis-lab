@@ -33,6 +33,7 @@ V1/V2、all-courtsは拒否します。splitは`train / validation / test`を
 DINOv3の4段の特徴を`transformer_encoder.dim`へ揃え、最深段をTransformerで処理し、DPTが4段を融合します。
 backbone幅と異なる場合は、各段に独立した学習可能な1×1射影を置きます。
 同じ幅ならIdentityです。射影は凍結backboneの外で学習し、4段とも同じdownstream幅になります。
+backbone構築と射影初期化の乱数消費を分離し、同じseedなら共通後段の初期重みも一致させます。
 Transformerのpose queryをpose headへ、DPT特徴を4つのresidual dense headへ渡します。
 DINOv3のロード・LoRA・共通Transformer部品は`src/utils/models`を利用します。
 CNN encoder、FPN、U-Net、Transformerなし、linear headの選択肢はありません。
