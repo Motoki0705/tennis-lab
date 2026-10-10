@@ -118,7 +118,7 @@ def test_recovery_uses_new_identity_and_reuses_the_other_running_job(tmp_path: P
     specs["convnext_v2"] = dict(run_id="convnext_v2-s42-v2-serial", job_name="i1050-convnext_v2-s42-serial-v2",
                                 smoke_id="convnext_v2-serial-v2", prefetch_mode="serial")
     plan = dict(code_root=str(tmp_path), baseline_run=str(tmp_path / "baseline"), manifest="manifest", thread_id="test",
-                queue_directory=str(queue), training_root=str(tmp_path / "train"), smoke_root=str(tmp_path / "smoke"),
+                queue_directory=str(queue), cuda_launch_blocking=True, training_root=str(tmp_path / "train"), smoke_root=str(tmp_path / "smoke"),
                 posttraining_run=str(tmp_path / "post"), candidates=specs, posttraining_prefetch_mode="serial")
     with patch("subprocess.run") as execute:
         execute.return_value.stdout = "queued: 3_i1050-convnext_v2-s42-serial-v2.job"
@@ -128,6 +128,7 @@ def test_recovery_uses_new_identity_and_reuses_the_other_running_job(tmp_path: P
     command = execute.call_args.args[0]
     assert "convnext_v2-s42-v2-serial" in command[3]
     assert "--prefetch-mode serial" in command[3]
+    assert "CUDA_LAUNCH_BLOCKING=1" in command[3]
     with pytest.raises(RuntimeError, match="inspection"):
         queue_once(plan, name="i1050-convnext_v2-s42-u60000", argv=[], issue=1050)
 
@@ -137,6 +138,8 @@ def test_plan_v1_has_explicit_migration_and_v2_rejects_unsafe_ids() -> None:
                 manifest="manifest", manifest_sha256="hash", baseline_run="baseline", training_root="train",
                 smoke_root="smoke", posttraining_run="post", thread_id="thread", model_config_sha256={})
     normalized = normalize_plan(plan)
+    assert normalized["schema"] == "mdd_cnn_campaign.v3"
+    assert normalized["cuda_launch_blocking"] is False
     assert normalized["candidates"] == candidates()
     assert normalized["posttraining_prefetch_mode"] == "overlap"
     normalized["candidates"]["convnext_v2"]["run_id"] = "../escape"

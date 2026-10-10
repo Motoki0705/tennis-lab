@@ -56,6 +56,7 @@ def compare_pretraining(runs: dict[str, Path], manifest: Path) -> dict[str, Any]
             common_error_px=common, full_error_px=full, total_updates=completed["global_step"],
             parameters=sum(v.numel() for v in checkpoint["state_dict"].values() if isinstance(v, torch.Tensor)),
             image_prefetch=recipe["runtime"]["image_prefetch"],
+            execution_recoveries=[json.loads(p.read_text()) for p in sorted((run / "resume_receipts").glob("*.json"))],
             steady_epoch0_windows_per_second=rate,
             peak_allocated_gib=max((r.get("peak_allocated_gib", 0.) for r in logs), default=0.)))
     rows.sort(key=lambda r: (r["common_error_px"], r["full_error_px"], r["variant"]))
@@ -63,7 +64,8 @@ def compare_pretraining(runs: dict[str, Path], manifest: Path) -> dict[str, Any]
     return dict(schema="mdd_cnn_comparison.v2", same_image_prefetch=same_pipeline, selection="minimum common error; full error then name break ties",
                 shared=shared, ranking=rows, winner=rows[0]["variant"], selected_run=rows[0]["run"],
                 limitation="single seed; speed excludes only first logged block; not isolated block ablation"
-                + ("; decode overlap differs: throughput is not a CNN-only comparison" if not same_pipeline else ""))
+                + ("; decode overlap differs: throughput is not a CNN-only comparison" if not same_pipeline else "")
+                + ("; runtime recovery settings changed: epoch-0 speed predates recovery" if any(r["execution_recoveries"] for r in rows) else ""))
 
 
 def save_comparison(report: dict[str, Any], directory: Path) -> None:

@@ -49,8 +49,12 @@ def normalize_plan(plan: dict[str, Any]) -> dict[str, Any]:
         plan = dict(plan, schema="mdd_cnn_campaign.v2", posttraining_prefetch_mode="overlap", candidates={
             v: dict(run_id=f"{v}-s42-v1", job_name=f"i1050-{v}-s42-u60000", smoke_id=v, prefetch_mode="overlap")
             for v in ("convnext_v2", "fasternet")})
-    elif plan.get("schema") != "mdd_cnn_campaign.v2" or set(plan) != required | {"candidates", "posttraining_prefetch_mode"}:
-        raise ValueError("Campaign plan must declare the complete v1 or v2 contract")
+    if plan.get("schema") == "mdd_cnn_campaign.v2" and set(plan) == required | {"candidates", "posttraining_prefetch_mode"}:
+        plan = dict(plan, schema="mdd_cnn_campaign.v3", cuda_launch_blocking=False)
+    elif plan.get("schema") != "mdd_cnn_campaign.v3" or set(plan) != required | {"candidates", "posttraining_prefetch_mode", "cuda_launch_blocking"}:
+        raise ValueError("Campaign plan must declare the complete v1, v2 or v3 contract")
+    if type(plan["cuda_launch_blocking"]) is not bool:
+        raise ValueError("cuda_launch_blocking must be an explicit boolean")
     if set(plan["candidates"]) != {"convnext_v2", "fasternet"}:
         raise ValueError("Campaign requires exactly the two additional CNNs")
     if plan["posttraining_prefetch_mode"] not in {"overlap", "serial"}:
@@ -79,7 +83,8 @@ def queue_once(plan: dict[str, Any], *, name: str, argv: list[str], issue: int) 
     code = Path(plan["code_root"])
     env = dict(os.environ, TRAINING_QUEUE_DIR=str(queue))
     command = shlex.join(["env", "OMP_NUM_THREADS=2", "MKL_NUM_THREADS=2", "TORCHINDUCTOR_COMPILE_THREADS=2",
-                          "PYTHONUNBUFFERED=1", "CUDA_LOG_FILE=stderr", *argv])
+                          "PYTHONUNBUFFERED=1", "CUDA_LOG_FILE=stderr",
+                          *(["CUDA_LAUNCH_BLOCKING=1"] if plan.get("cuda_launch_blocking", False) else []), *argv])
     result = subprocess.run(["bash", str(code / ".agents/skills/training-queue/scripts/training_queue.sh"), "add", command,
         "--name", name, "--resource", "all", "--provider", "codex", "--session", plan["thread_id"], "--issue", str(issue)],
         cwd=code, env=env, check=True, capture_output=True, text=True)
