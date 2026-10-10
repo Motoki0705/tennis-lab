@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tennis Lab Colab"
+  short_description: "Run and debug tennis-lab workloads on Colab GPUs"
+  default_prompt: "Use $tennis-colab to run, inspect, or debug tennis-lab work on a Colab L4 and persist results to Drive."
