@@ -182,7 +182,7 @@ def collect_github(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
         ],
         key="createdAt",
         since=since,
-        limit=500,
+        limit=1000,
         cwd=cwd,
     )  # fmt: skip
     conclusions = Counter(str(r.get("conclusion") or r.get("status")) for r in runs)

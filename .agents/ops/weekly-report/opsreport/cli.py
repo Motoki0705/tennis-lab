@@ -213,3 +213,9 @@ def main(argv: list[str] | None = None) -> int:
         LOG.error("%s failed: %s", args.command, exc)
         LOG.error("logs: %s", run_dir)
         return 1
+    except Exception:
+        # Unexpected shapes (e.g. gh JSON changes) still land in run.log, then fail.
+        LOG.exception(
+            "%s failed with an unexpected error; logs: %s", args.command, run_dir
+        )
+        return 1
