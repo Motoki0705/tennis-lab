@@ -59,11 +59,11 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 | `WEEKLY_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref |
 | `WEEKLY_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
 | `WEEKLY_REPORT_AGENT_TIMEOUT` | `5400` | agent実行のタイムアウト（秒） |
-| `WEEKLY_REPORT_CLEANUP_CMD` | なし | 掃除モジュールのコマンド（`--report-json` は自動付与） |
+| `WEEKLY_REPORT_CLEANUP_CMD` | `<python> .agents/ops/cleanup/cleanup.py scan` | 掃除モジュールのコマンド。`--report-json <一時ファイル>` を自動付与し、そのファイルのJSONを読む |
 | `WEEKLY_REPORT_LOG_DIR` | 上記state dir | ログの保存先 |
 | `WEEKLY_REPORT_AGENT_EXEC` | `../lib/agent_exec.sh` | agentラッパー（テストで差し替える） |
 
-- 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
+- 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。ディレクトリがあるのに `cleanup.py` が無い場合はエラー。
   ディレクトリがあれば、その直下の唯一の実行可能ファイルを `--report-json` 付きで実行し、JSONをそのままagentへ渡す
   （実行可能ファイルが0個または複数ならエラー）。共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。
 - agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutがずれていれば本文の冒頭に注意を出す。
