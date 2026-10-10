@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -19,6 +20,23 @@ def build_artifact_store(
     local_root: Path,
 ) -> ArtifactStore:
     """Build the explicitly selected store without fallback between backends."""
+    expected_value = os.environ.get("TENNIS_COLAB_ARTIFACT_ROOTS")
+    if expected_value is not None:
+        expected = json.loads(expected_value)
+        if (
+            not isinstance(expected, list)
+            or not expected
+            or not all(isinstance(item, str) for item in expected)
+        ):
+            raise RuntimeError(
+                "TENNIS_COLAB_ARTIFACT_ROOTS must name the declared Drive output roots"
+            )
+        actual = f"{config.remote}:{config.remote_root}"
+        if config.mode != "rclone" or actual not in expected:
+            raise RuntimeError(
+                "Colab runner output requires rclone persistence to a declared Drive root; "
+                "set run.artifact_store before starting training"
+            )
     if config.mode == "local":
         return LocalArtifactStore(local_root)
     config_value = os.environ.get("RCLONE_CONFIG")
