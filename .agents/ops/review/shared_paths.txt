@@ -1,0 +1,39 @@
+# 共有基盤パス一覧（merge gate がこれに触れる PR を needs-human にする）。
+# 書式・意味は README.md の「共有基盤パス」を参照。運用で自由に増減してよい。
+
+# 下流に強く影響する共通実装
+src/utils
+src/tasks/base
+
+# 複数モジュールが共有するデータ形式・出力規約の正本
+src/tasks/OUTPUTS.md
+src/tennis_scene/schema.py
+src/tennis_scene/pipeline/contracts.py
+src/synthetic_data_generation/scene_contract.py
+src/synthetic_data_generation/dataset/contracts.py
+src/synthetic_data_generation/dataset/court/schema.py
+scripts/colab/STORAGE_LAYOUT.md
+
+# AI 運用・制御
+AGENTS.md
+CLAUDE.md
+.agents
+.claude
+.codex
+
+# CI・リポジトリ運用
+.github
+.pre-commit-config.yaml
+.gitattributes
+.gitignore
+.gitmodules
+tests/conftest.py
+
+# 依存・実行環境
+pyproject.toml
+uv.lock
+setup.py
+.python-version
+Dockerfile
+.devcontainer
+third_party
