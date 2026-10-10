@@ -9,13 +9,13 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.court_detection.data.bundle_state import serialize_target_bundle
-from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
-from src.tasks.court_detection.evaluation.ablation import evaluate_checkpoint
-from src.tasks.court_detection.evaluation.comparison import (
+from src.tasks.court_detection.ablation.comparison import (
     BACKBONES,
     compare_evaluations,
 )
+from src.tasks.court_detection.ablation.evaluation import evaluate_checkpoint
+from src.tasks.court_detection.data.bundle_state import serialize_target_bundle
+from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
