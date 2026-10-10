@@ -1,0 +1,16 @@
+{
+  "run_id": "1791626374950003350_67338_i1049-convnext-posttrain-s42-v1-20261010",
+  "name": "i1049-convnext-posttrain-s42-v1-20261010",
+  "command": "env CUDA_LAUNCH_BLOCKING=1 CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 PYTHONUNBUFFERED=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-blocking-20261010/.venv/bin/python -m src.tasks.ball_detection.scripts.train_best_mdd_posttraining --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json --pretraining-run /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v2-serial --augmentation-config /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-blocking-20261010/src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-query-posttraining/convnext-v2-s42-v1 --device cuda --precision bf16 --epochs 10 --freeze-epochs 1 --windows-per-epoch 6000 --learning-rate .0001 --encoder-lr-ratio .1 --warmup-updates 500 --seed 42 --batch-size 1 --jpeg-decoder nvjpeg --pin-memory --num-workers 8 --prefetch-factor 4 --cpu-threads 2 --compile-mode default --log-every 50 --preview-clips 3 --stress-evaluation",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "1049",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "8ac45d9f79bf4f6a7feb343d09428a07aa6e8847",
+  "branch": "HEAD",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-blocking-20261010",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-blocking-20261010",
+  "captured_at": "2026-10-10T18:59:35+09:00"
+}

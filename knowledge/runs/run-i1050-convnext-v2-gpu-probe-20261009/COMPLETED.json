@@ -1,0 +1,7 @@
+{
+  "stage": "heatmap_pretraining",
+  "global_step": 96,
+  "best_epoch": 0,
+  "best_error_px": 130.90682862367896,
+  "automatic_next_stage": false
+}

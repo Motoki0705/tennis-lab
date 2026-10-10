@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-posttraining-robust-cnn
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [169 items]
+
+........................................................................ [ 42%]
+........................................................................ [ 85%]
+.........................                                                [100%]
+======================= 169 passed in 168.05s (0:02:48) ========================

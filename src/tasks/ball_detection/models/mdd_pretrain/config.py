@@ -21,8 +21,14 @@ class MDDPretrainConfig:
     dropout: float
     rope_base: float
     activation_checkpointing: bool
+    encoder_variant: str
+    temporal_mixing: str
 
     def __post_init__(self) -> None:
+        if self.encoder_variant not in {"residual", "convnext_v2", "fasternet"}:
+            raise ValueError("Unknown CNN encoder variant")
+        if self.temporal_mixing not in {"dense3d", "factorized"}:
+            raise ValueError("Unknown CNN temporal mixing")
         if len(self.stem_channels) != 4 or len(self.mixed_channels) != 2 or len(self.residual_blocks) != 6:
             raise ValueError("Require four stem, two mixed stages and six residual depths")
         if any(type(v) is not int or v < 1 for v in (*self.stem_channels, *self.mixed_channels, self.decoder_channels)):

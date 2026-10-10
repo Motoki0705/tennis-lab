@@ -1,0 +1,243 @@
+{
+  "checkpoint": "epoch-009.pt",
+  "sha256": "3c250d313b745d6c6430ce544c01f8a630eb146439251b4b83f3028829f22f5d",
+  "epoch": 9,
+  "global_step": 60000,
+  "selection_error_px": 13.489567152302158,
+  "profile": "clean",
+  "precision": "bf16",
+  "schema": "mdd_coordinate_evaluation.v1",
+  "scopes": {
+    "full": {
+      "by_frame_step": {
+        "1": {
+          "observed_frames": 85626,
+          "available": true,
+          "mean_error_px": 16.59785725540444,
+          "median_error_px": 4.874801874160767,
+          "p95_error_px": 45.56209659576416
+        },
+        "2": {
+          "observed_frames": 45199,
+          "available": true,
+          "mean_error_px": 14.07794634773527,
+          "median_error_px": 5.086709976196289,
+          "p95_error_px": 39.44171867370603
+        },
+        "4": {
+          "observed_frames": 24255,
+          "available": true,
+          "mean_error_px": 15.478164064852393,
+          "median_error_px": 6.058809280395508,
+          "p95_error_px": 47.350477600097626
+        }
+      },
+      "frame_fps_pairs": 155080,
+      "unique_observed_frames": 85627,
+      "macro_mean_error_px": 15.384655889330702,
+      "by_source": {
+        "chat_annotation": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 61082,
+              "available": true,
+              "mean_error_px": 11.216551575314355,
+              "median_error_px": 4.686661005020142,
+              "p95_error_px": 29.219080448150624
+            },
+            "2": {
+              "observed_frames": 32346,
+              "available": true,
+              "mean_error_px": 9.902704309596565,
+              "median_error_px": 4.9789698123931885,
+              "p95_error_px": 27.802850246429443
+            },
+            "4": {
+              "observed_frames": 17430,
+              "available": true,
+              "mean_error_px": 11.878683323616817,
+              "median_error_px": 5.989695072174072,
+              "p95_error_px": 36.15451221466064
+            }
+          },
+          "frame_fps_pairs": 110858,
+          "unique_observed_frames": 61082,
+          "macro_mean_error_px": 10.999313069509247
+        },
+        "meiji": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 23006,
+              "available": true,
+              "mean_error_px": 31.699251019245537,
+              "median_error_px": 5.60548734664917,
+              "p95_error_px": 154.16191482543945
+            },
+            "2": {
+              "observed_frames": 12008,
+              "available": true,
+              "mean_error_px": 25.958618213755944,
+              "median_error_px": 5.5719969272613525,
+              "p95_error_px": 126.32495613098126
+            },
+            "4": {
+              "observed_frames": 6475,
+              "available": true,
+              "mean_error_px": 25.63552140769466,
+              "median_error_px": 6.402876853942871,
+              "p95_error_px": 117.3189033508297
+            }
+          },
+          "frame_fps_pairs": 41489,
+          "unique_observed_frames": 23007,
+          "macro_mean_error_px": 27.764463546898714
+        },
+        "tracknet": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 1538,
+              "available": true,
+              "mean_error_px": 4.4250670215514605,
+              "median_error_px": 3.5234508514404297,
+              "p95_error_px": 11.2040198802948
+            },
+            "2": {
+              "observed_frames": 845,
+              "available": true,
+              "mean_error_px": 5.071166700940337,
+              "median_error_px": 4.018648624420166,
+              "p95_error_px": 13.210898208618161
+            },
+            "4": {
+              "observed_frames": 350,
+              "available": true,
+              "mean_error_px": 6.821194135802132,
+              "median_error_px": 4.757427453994751,
+              "p95_error_px": 19.284695816040056
+            }
+          },
+          "frame_fps_pairs": 2733,
+          "unique_observed_frames": 1538,
+          "macro_mean_error_px": 5.439142619431311
+        }
+      }
+    },
+    "common": {
+      "by_frame_step": {
+        "1": {
+          "observed_frames": 20509,
+          "available": true,
+          "mean_error_px": 14.591906312207088,
+          "median_error_px": 4.575680255889893,
+          "p95_error_px": 35.715778350830064
+        },
+        "2": {
+          "observed_frames": 10895,
+          "available": true,
+          "mean_error_px": 11.710549446447535,
+          "median_error_px": 4.783858299255371,
+          "p95_error_px": 30.356330680847137
+        },
+        "4": {
+          "observed_frames": 5921,
+          "available": true,
+          "mean_error_px": 14.166245698251851,
+          "median_error_px": 5.719547748565674,
+          "p95_error_px": 43.55781555175781
+        }
+      },
+      "frame_fps_pairs": 37325,
+      "unique_observed_frames": 20509,
+      "macro_mean_error_px": 13.489567152302158,
+      "by_source": {
+        "chat_annotation": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 12822,
+              "available": true,
+              "mean_error_px": 9.721333734225844,
+              "median_error_px": 4.502643823623657,
+              "p95_error_px": 25.581110954284664
+            },
+            "2": {
+              "observed_frames": 6698,
+              "available": true,
+              "mean_error_px": 7.617947735935205,
+              "median_error_px": 4.7066802978515625,
+              "p95_error_px": 21.74290494918823
+            },
+            "4": {
+              "observed_frames": 3634,
+              "available": true,
+              "mean_error_px": 10.724717694165028,
+              "median_error_px": 5.681640863418579,
+              "p95_error_px": 30.32606477737424
+            }
+          },
+          "frame_fps_pairs": 23154,
+          "unique_observed_frames": 12822,
+          "macro_mean_error_px": 9.354666388108692
+        },
+        "meiji": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 6258,
+              "available": true,
+              "mean_error_px": 26.912168264930745,
+              "median_error_px": 5.141137361526489,
+              "p95_error_px": 136.2083190917966
+            },
+            "2": {
+              "observed_frames": 3407,
+              "available": true,
+              "mean_error_px": 21.304787997413882,
+              "median_error_px": 5.203237533569336,
+              "p95_error_px": 89.21749877929669
+            },
+            "4": {
+              "observed_frames": 1937,
+              "available": true,
+              "mean_error_px": 21.95007678431737,
+              "median_error_px": 6.054378509521484,
+              "p95_error_px": 95.376510620117
+            }
+          },
+          "frame_fps_pairs": 11602,
+          "unique_observed_frames": 6258,
+          "macro_mean_error_px": 23.389011015554
+        },
+        "tracknet": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 1429,
+              "available": true,
+              "mean_error_px": 4.34017943658138,
+              "median_error_px": 3.403702735900879,
+              "p95_error_px": 10.914828300476069
+            },
+            "2": {
+              "observed_frames": 790,
+              "available": true,
+              "mean_error_px": 5.032923514636446,
+              "median_error_px": 3.9431432485580444,
+              "p95_error_px": 13.294148063659662
+            },
+            "4": {
+              "observed_frames": 350,
+              "available": true,
+              "mean_error_px": 6.821194135802132,
+              "median_error_px": 4.757427453994751,
+              "p95_error_px": 19.284695816040056
+            }
+          },
+          "frame_fps_pairs": 2569,
+          "unique_observed_frames": 1429,
+          "macro_mean_error_px": 5.398099029006652
+        }
+      }
+    }
+  },
+  "ownership": "closest window centre, then earliest start; counted separately for each FPS",
+  "aggregate": "equal mean of per-FPS mean source-pixel errors; not a pooled duplicate-frame mean",
+  "artificially_occluded": null
+}

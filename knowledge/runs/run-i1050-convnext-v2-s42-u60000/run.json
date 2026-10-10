@@ -1,0 +1,16 @@
+{
+  "run_id": "1791536294779637822_3429084_i1050-convnext_v2-s42-u60000",
+  "name": "i1050-convnext_v2-s42-u60000",
+  "command": "env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 PYTHONUNBUFFERED=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python -m src.tasks.ball_detection.scripts.train_cnn_candidate --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json --model-config /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/configs/model/mdd_dpt_convnext_v2.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v1 --smoke-output /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/mdd-cnn-smoke/20261009/convnext_v2",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "1050",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "4cb8b70c9cae3e7841944e94295615e584947402",
+  "branch": "HEAD",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009",
+  "captured_at": "2026-10-09T18:14:07+09:00"
+}

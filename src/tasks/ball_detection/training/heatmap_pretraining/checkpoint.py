@@ -9,13 +9,31 @@ import torch
 from src.tasks.ball_detection.models.mdd_pretrain import (
     DeepMDDQueryDetector,
     MDDDPTDetector,
+    MDDPretrainConfig,
 )
 from src.tasks.ball_detection.training.coordinate_checkpoint import (
     save_coordinate_checkpoint,
 )
 from src.utils.checksum import dual_sha256
 
-SCHEMA = "mdd_dpt_pretraining.v1"
+SCHEMA = "mdd_dpt_pretraining.v2"
+
+
+def pretraining_config(saved: dict[str, Any]) -> MDDPretrainConfig:
+    """The v1 schema denotes exactly the original residual/dense3d CNN."""
+    raw = dict(saved["model_config"])
+    expected = set(MDDPretrainConfig.__dataclass_fields__)
+    if saved.get("schema") == "mdd_dpt_pretraining.v1":
+        if set(raw) != expected - {"encoder_variant", "temporal_mixing"}:
+            raise ValueError("Invalid historical v1 pretraining configuration")
+        raw.update(encoder_variant="residual", temporal_mixing="dense3d")
+    elif saved.get("schema") != SCHEMA:
+        raise ValueError("Unsupported pretraining checkpoint schema")
+    if set(raw) != expected:
+        raise ValueError("Incomplete pretraining CNN configuration")
+    for key in ("stem_channels", "mixed_channels", "residual_blocks"):
+        raw[key] = tuple(raw[key])
+    return MDDPretrainConfig(**raw)
 
 
 def save_pretraining(path: Path, model: MDDDPTDetector, optimizer: torch.optim.Optimizer,
@@ -30,8 +48,12 @@ def save_pretraining(path: Path, model: MDDDPTDetector, optimizer: torch.optim.O
 def transfer_encoder(path: Path, model: DeepMDDQueryDetector) -> dict[str, Any]:
     """Weights-only transfer; validate encoder topology and fixed MDD identity before loading."""
     saved = torch.load(path, map_location="cpu", weights_only=True)
-    if saved.get("schema") != SCHEMA or saved.get("stage") != "heatmap_pretraining":
+    if saved.get("stage") != "heatmap_pretraining":
         raise ValueError("Expected a DPT pretraining checkpoint")
+    previous = pretraining_config(saved)
+    for key in ("encoder_variant", "temporal_mixing"):
+        if getattr(previous, key) != getattr(model.config, key):
+            raise ValueError(f"Pretrained encoder topology mismatch: {key}")
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
         if tuple(saved["model_config"][key]) != tuple(getattr(model.config, key)):
             raise ValueError(f"Pretrained encoder topology mismatch: {key}")

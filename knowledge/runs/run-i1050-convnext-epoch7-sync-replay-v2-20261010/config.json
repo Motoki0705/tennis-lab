@@ -1,0 +1,32 @@
+{
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v2-serial/epoch-006.pt",
+  "checkpoint_sha256": "e2125d8eed274a48c5316e8445f4813065ed25187386661e30e90f48f8417454",
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "first_step": 42000,
+  "updates": 16,
+  "target_attempt": 42004,
+  "sampler_indices": [
+    34358,
+    9711,
+    4085,
+    15072,
+    1720,
+    18150,
+    2971,
+    19165,
+    22653,
+    11336,
+    18660,
+    32522,
+    24811,
+    26875,
+    22247,
+    18543
+  ],
+  "precision": "bf16",
+  "launch_blocking": true,
+  "phase_synchronization": true,
+  "input_scheduling": "verified JPEG prefix preloaded on CPU; no DataLoader workers",
+  "modifies_original_run": false,
+  "saves_training_checkpoint": false
+}

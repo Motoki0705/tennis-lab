@@ -1,0 +1,7 @@
+{
+  "stage": "query_posttraining",
+  "global_step": 60000,
+  "best_epoch": 9,
+  "best_error_px": 13.489567152302158,
+  "pretrained_checkpoint": "73f1f0d50693f4d6a84ba451f08cc1918d8fb1a0483a60a97874d916a249745f"
+}

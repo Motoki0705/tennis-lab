@@ -275,6 +275,13 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     "src.tasks.ball_detection.training.heatmap_pretraining.runner": ("ball_detection.pretrain_mdd_dpt", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.training.posttraining.runner": ("ball_detection.posttrain_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.scripts.train_cnn_candidate": ("ball_detection.train_cnn_candidate", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.scripts.advance_cnn_campaign": ("ball_detection.advance_cnn_campaign", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.scripts.profile_mdd_cnn": ("ball_detection.profile_mdd_cnn", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.scripts.preview_posttraining_augmentation": ("ball_detection.preview_posttraining_augmentation", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.scripts.probe_mdd_posttraining": ("ball_detection.probe_mdd_posttraining", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.scripts.train_best_mdd_posttraining": ("ball_detection.train_best_mdd_posttraining", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.scripts.evaluate_mdd_coordinates": (
         "ball_detection.evaluate_mdd_coordinates", "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
@@ -722,7 +729,17 @@ _RUNTIME_BOUNDARIES += tuple(
     for script in ("train_mdd_pose", "prepare_mdd_training", "evaluate_mdd_coordinates")
 )
 
-_RUNTIME_BOUNDARIES += (_non_hydra_boundary("src.tasks.ball_detection.training.heatmap_pretraining.runner", "main", domain="ball_detection", executable_module=False),)
+
+_RUNTIME_BOUNDARIES += (
+    _non_hydra_boundary("src.tasks.ball_detection.training.heatmap_pretraining.runner", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.training.posttraining.runner", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.scripts.train_cnn_candidate", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.scripts.advance_cnn_campaign", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.scripts.profile_mdd_cnn", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.scripts.preview_posttraining_augmentation", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.scripts.probe_mdd_posttraining", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.scripts.train_best_mdd_posttraining", "main", domain="ball_detection", kind=BoundaryKind.CALLABLE, executable_module=True),
+)
 
 EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES
 

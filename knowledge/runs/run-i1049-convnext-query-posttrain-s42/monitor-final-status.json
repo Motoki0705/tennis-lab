@@ -1,0 +1,41 @@
+{
+  "task_dir": "/home/kamimura/.local/state/codex-followups/ball-convnext-posttrain-20261010",
+  "thread_id": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "interval_minutes": 120,
+  "unit": "codex-followup-ball-convnext-posttrain-20261010-70947060",
+  "status": "paused",
+  "blocked_reason": null,
+  "delivery": {
+    "marker": "[codex-heartbeat:ball-convnext-posttrain-20261010:f6cd06bd-bc2a-4547-a7ad-4a3725ef31f1]",
+    "phase": "started",
+    "prepared_at": "2026-10-10T19:35:16.820347+00:00",
+    "boundary": {
+      "identity": [
+        68,
+        7036874418198414
+      ],
+      "offset": 16705393,
+      "sha256": "a1d2a41c0dc74f9ec945dc26a19047e92fb62f4f95cc152fbdf4b50a6a4bb2dd",
+      "line_complete": true
+    },
+    "queue_stdout": "Queued message 01a12750-193e-7062-8aea-49fa4d2cbc55 for thread 01a0fb0c-97b5-7851-b805-25dae445a6a2.\n",
+    "queue_stderr": "",
+    "returncode": 0,
+    "queue_id": "01a12750-193e-7062-8aea-49fa4d2cbc55",
+    "turn_id": "01a12750-2209-77a0-86b0-42649b745115"
+  },
+  "attention_required": false,
+  "delivery_health": "in_progress",
+  "execution_verified": false,
+  "registration_verified": false,
+  "actual_timer": {
+    "NextElapseUSecRealtime": "",
+    "NextElapseUSecMonotonic": "infinity",
+    "Id": "codex-followup-ball-convnext-posttrain-20261010-70947060.timer",
+    "Triggers": "",
+    "LoadState": "not-found",
+    "ActiveState": "inactive"
+  },
+  "timer_listing": "NEXT LEFT LAST PASSED UNIT ACTIVATES\n\n0 timers listed.\n"
+}
