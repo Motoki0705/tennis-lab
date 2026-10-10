@@ -1,7 +1,7 @@
-<!-- knowledge-review: 56c809abd69bfd6a37f002b083f2cd2a4c4a6cd835677fbb42b5427cdda6ff5d on 2026-10-11 -->
+<!-- knowledge-review: a48fbea90f2abe1acaa01407e995ef63078b6e68249c31ed50eacdecca1e87b6 on 2026-10-11 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-10（Court #983のL4容量確認と比較学習の開始を追記。精度比較は実行中）
+更新日: 2026-10-11（Court #983のVM中断と保存checkpointからの復旧を追記。精度比較は実行中）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -387,7 +387,7 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Court Detection
 
-2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)で、凍結ViT-L＋共通1024次元後段の512長辺・batch8が短い学習処理として成立した。容量確認を根拠に[ViT-L本学習](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)へ進んだが、4サイズの精度比較は未完了で、既存の品質・採用判断は変更しない。次はS/S+/B/Lを同じデータ・split・後段容量で揃え、合成testと実画像valを分けて定量・同一画像の定性比較を行う。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
+2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)で、凍結ViT-L＋共通1024次元後段の512長辺・batch8が短い学習処理として成立した。容量確認を根拠に[ViT-L本学習](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)へ進み、初回VM消失後はDrive保存済みの2epoch分のcheckpointから再開した。中断と再開の影響も記録する。4サイズの精度比較は未完了で、既存の品質・採用判断は変更しない。次はS/S+/B/Lを同じデータ・split・後段容量で揃え、合成testと実画像valを分けて定量・同一画像の定性比較を行う。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
 
 2026-10-08の[pose checkpointの定性保存確認](nodes/court_detection/000035-run-i1031-court-ckpt-qualitative-20261008b.md)では、合成・実画像2 sampleから4 dense headのPNG計8枚とTensorBoard出力を実GPUで確認した。固定batch選択の設定契約不一致も修正した。保存済みschemaと重みを維持した機能確認であり、既存の品質・採用判断は変更しない。合成斜視の点集中・線種分断の観察を全体精度やpose推定品質へ一般化しない。
 
