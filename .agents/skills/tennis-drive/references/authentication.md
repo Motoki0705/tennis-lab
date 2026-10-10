@@ -12,8 +12,8 @@ JSONとrclone設定はrepository外に置く。例えば:
 ```bash
 .venv/bin/python .agents/skills/tennis-drive/scripts/configure_oauth.py \
   --client-json /private/path/desktop-client.json \
-  --config-output /private/path/tennis-rclone.conf
-export RCLONE_CONFIG=/private/path/tennis-rclone.conf
+  --config-output "$HOME/.config/tennis-lab/rclone-drive.conf"
+export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.conf"
 rclone config reconnect gdrive: --auto-confirm
 ```
 
