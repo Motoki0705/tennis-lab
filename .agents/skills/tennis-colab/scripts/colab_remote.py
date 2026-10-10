@@ -203,8 +203,23 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
     if not cwd.is_dir():
         raise ColabError(f"Working directory is absent: {cwd}")
     persist = request.get("persist", [])
-    for item in persist:
+    runner_outputs = request.get("runner_outputs", [])
+    if not isinstance(persist, list) or not isinstance(runner_outputs, list):
+        raise ColabError("Output declarations must be arrays of relative directories")
+    outputs = [*persist, *runner_outputs]
+    if not all(isinstance(item, str) for item in outputs):
+        raise ColabError("Output directories must be strings")
+    for index, item in enumerate(outputs):
         _persist_path(cfg, item)
+        for other in outputs[:index]:
+            if (
+                item == other
+                or PurePosixPath(item) in PurePosixPath(other).parents
+                or PurePosixPath(other) in PurePosixPath(item).parents
+            ):
+                raise ColabError(
+                    "Output directories overlap; choose exactly one persistence owner"
+                )
     directory.mkdir(parents=True)
     payload = {
         "schema_version": 1,
@@ -212,6 +227,7 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
         "argv": argv,
         "cwd": str(cwd),
         "persist": persist,
+        "runner_outputs": runner_outputs,
         "created_at": now(),
         "source_commit": checked(["git", "-C", cfg["repo_root"], "rev-parse", "HEAD"])
         .stdout.decode()
@@ -268,7 +284,11 @@ def sync_job(
     completion: str | None = None,
 ) -> dict[str, Any]:
     request = read_json(directory / "request.json")
-    for fragment in request["persist"]:
+    # The runner owns live checkpoint writes. Salvage its files only after exit.
+    fragments = list(request["persist"])
+    if completion is not None:
+        fragments.extend(request.get("runner_outputs", []))
+    for fragment in fragments:
         path = _persist_path(cfg, fragment)
         if not path.exists():
             if final:
@@ -356,6 +376,13 @@ def run_job(job_id: str) -> int:
                 "RCLONE_CONFIG": cfg["rclone_config"],
                 "PYTHONUNBUFFERED": "1",
             }
+            if request.get("runner_outputs"):
+                environment["TENNIS_COLAB_ARTIFACT_ROOTS"] = json.dumps(
+                    [
+                        f"{cfg['drive_remote']}:{cfg['drive_root']}/{fragment}"
+                        for fragment in request["runner_outputs"]
+                    ]
+                )
             process = subprocess.Popen(
                 request["argv"],
                 cwd=request["cwd"],

@@ -32,13 +32,15 @@ Driveの配置・版・保持・整理は [tennis-drive](../tennis-drive/SKILL.m
 
 - `exec` の応答は提出receipt。成功終了とは扱わず、`status --job-id ...` の終了状態・returncode・`drive_saved_at` を確認する。
 - sessionでは通常1つの管理対象コマンドを実行する。状態・ログ・ファイル操作はSSH接続を共用して利用できる。
-- 学習前に成果物の出力directoryを決め、`--persist <repo-relative-output-dir>` を指定する。
-  repoの共通training runnerでは、さらに `run.artifact_store` をrcloneに設定してcheckpoint保存直後の永続化を有効にする。
+- 学習前に成果物の出力directoryを決める。repoの共通training runnerでは `--runner-output <repo-relative-output-dir>` と
+  `run.artifact_store` のrclone設定を使い、checkpoint保存直後の永続化を有効にする。
+  runner以外の任意処理は `--persist <repo-relative-output-dir>` でworkerの周期保存を使う。
   正確な設定例はcommands referenceを参照する。
 - Workerはコマンド・ソース差分・ログ・状態をDriveへ保存し、宣言したoutput treeも周期的にコピーする。
   任意プログラムの書き込み途中のファイルまで整合したcheckpointとは見なさない。checkpointは完了後に公開する実装を使う。
 - 保存失敗はコマンドを停止して報告する。VM内だけの成果を成功完了にしない。
 - 長時間処理を繰り返し起動せず、既存job IDでstatus/logsを確認する。定期監視を依頼された場合は既存のscheduled-followupを使う。
+  exec自体が非同期なので、コマンド側を `&` 等でbackground化せず、代表processが処理完了まで待つ形で実行する。
 
 ## 調査・修正・終了
 

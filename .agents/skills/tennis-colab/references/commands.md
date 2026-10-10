@@ -31,7 +31,7 @@ VM内のrclone設定pathは `RCLONE_CONFIG` として管理コマンドへ渡さ
 ```bash
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py exec \
   --session court-work --job-id court-train \
-  --persist outputs/court_detection/train/example/s42 -- \
+  --runner-output outputs/court_detection/train/example/s42 -- \
   .venv/bin/python -m src.tasks.court_detection.scripts.train \
   'data.source.scene_ids=[B00,B01,B02,B03]' \
   run.output_dir=court_detection/train/example/s42 \
@@ -42,7 +42,8 @@ VM内のrclone設定pathは `RCLONE_CONFIG` として管理コマンドへ渡さ
 ```
 
 ここで使うremote/rootはsession作成時のDrive設定に合わせる。出力pathはtaskの設定を解決して確認する。
-学習runnerのArtifactStoreがcheckpoint保存直後の永続化を担当する。workerの周期コピーだけに依存しない。
+学習runnerのArtifactStoreがcheckpoint保存直後の永続化を担当する。workerはrunner-outputへ並行して書かず、process終了後に残りを保存する。
+独自スクリプト等でrunnerを使わない場合は `--persist` の周期保存を使い、完成したcheckpointを一時名からrenameして公開する。
 学習再開には対応するcheckpoint・設定・出力先を明示し、別の条件へ変える場合は新runとする。
 
 ## ファイル・修正・停止
