@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "job_id": "train-l-s42",
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.tasks.court_detection.scripts.train",
+    "--config-name",
+    "train_i983_l",
+    "run.artifact_store.mode=rclone",
+    "run.artifact_store.remote=gdrive",
+    "run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42",
+    "run.artifact_store.sync_interval_seconds=60"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [],
+  "runner_outputs": [
+    "outputs/court_detection/train/i983-dino-l-shared1024/s42"
+  ],
+  "created_at": "2026-10-10T14:26:59.359596+00:00",
+  "source_commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/i983-l4-ablation-01/colab_core.py",
+      "bytes": 11030,
+      "sha256": "427725099932234bba0f5025747391ae1c919114fbb777928a38fcf092735adf"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/i983-l4-ablation-01/remote.py",
+      "bytes": 22555,
+      "sha256": "f776f36c64825674a1e1b918523c69856e46dfa03524d217bd5bac954f2d9639"
+    }
+  }
+}
