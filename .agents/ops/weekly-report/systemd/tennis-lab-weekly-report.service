@@ -1,0 +1,12 @@
+[Unit]
+Description=tennis-lab weekly ops report (issue #1057)
+Documentation=file://%h/projects/tennis-lab/.agents/ops/weekly-report/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Optional overrides (WEEKLY_REPORT_AGENT etc.); see README.md "設定".
+EnvironmentFile=-%h/.config/tennis-lab-agents/weekly-report.env
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/weekly-report/weekly_report.py report
+TimeoutStartSec=2h
