@@ -21,7 +21,9 @@ def main() -> None:
         for name in ("data_root", "checkpoint_root", "external_asset_root")
         if getattr(args, name) is not None
     }
-    evaluate_checkpoint(args.checkpoint, args.output, device=args.device, path_overrides=overrides)
+    evaluate_checkpoint(
+        args.checkpoint, args.output, device=args.device, path_overrides=overrides
+    )
     print(args.output / "evaluation.json")
 
 

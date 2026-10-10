@@ -114,6 +114,9 @@ Issue #983の対照実験は`--config-name train_i983_s` / `train_i983_splus` /
 `train_i983_b` / `train_i983_l`を使用します。backboneを完全凍結し、後続Transformer・DPT・headを
 同じ容量に揃えます。共通条件は`configs/train_i983.yaml`、backboneと初期重み・中間層は各variantが正本です。
 長辺512での本学習前にL4でViT-Lのメモリ・速度・pose座標整合を確認します。
+`scripts.profile_ablation --output outputs/court_detection/profile/i983-l512/attempt-01`を
+Colab skillの`--persist`付きで実行すると、コンパイルを含む初回と後続stepの時間、
+GPUメモリ、loss/勾配、実際のbatch shape・画像ID・Kを保存します。短い容量確認は本学習結果と区別します。
 
 学習後は各runの同じcheckpoint選択規則（保存configのvalidation monitor最良値）を使い、
 `scripts.evaluate_ablation`で合成testと実画像valを別集計します。
