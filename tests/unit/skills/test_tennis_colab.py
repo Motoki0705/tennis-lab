@@ -235,10 +235,16 @@ def test_sensitive_untracked_files_are_excluded_and_artifact_escape_rejected(
 ) -> None:
     remote, repo, _ = worker
     (repo / ".env").write_text("PRIVATE")
+    (repo / "client_secret.json").write_text("PRIVATE")
+    (repo / "tokenizer.py").write_text("# model code")
+    (repo / "credentials.py").write_text("# credentials handling code")
     (repo / "fix.py").write_text("print('fix')")
     recovered = remote.diff({"include_untracked": True})
     assert ".env" in recovered["excluded"] and ".env" not in recovered["untracked"]
     assert "fix.py" in recovered["untracked"]
+    assert "client_secret.json" in recovered["excluded"]
+    assert "tokenizer.py" in recovered["untracked"]
+    assert "credentials.py" in recovered["untracked"]
     with pytest.raises(RuntimeError, match="relative path"):
         remote._persist_path(remote.config(), "../session/secrets")
 
