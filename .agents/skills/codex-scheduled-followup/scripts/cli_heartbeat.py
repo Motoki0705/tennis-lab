@@ -25,6 +25,10 @@ from typing import Any
 
 ENV_KEYS = ("CODEX_HOME", "CODEX_SQLITE_HOME", "PATH")
 QUEUE_TIMEOUT_SECONDS = 180
+# Delivery phases that block the next send until an operator runs recover.
+UNRESOLVED = frozenset({"uncertain", "failed"})
+# Delivery phases after which the next tick may send a new marker.
+SENDABLE = frozenset({"completed", "superseded"})
 TIMER_PROPERTIES = (
     "Id,LoadState,ActiveState,TimersMonotonic,NextElapseUSecRealtime,"
     "NextElapseUSecMonotonic,Triggers"
@@ -280,8 +284,19 @@ def timer_status(task: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def delivery_health(task: dict[str, Any], delivery: dict[str, Any] | None) -> str:
+    if task.get("blocked_reason") or (delivery and delivery["phase"] in UNRESOLVED):
+        return "needs_recovery"
+    if delivery and delivery["phase"] == "queued":
+        return "waiting_for_runtime"
+    if delivery and delivery["phase"] == "started":
+        return "in_progress"
+    return "ready"
+
+
 def result(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
     delivery = task["deliveries"][-1] if task["deliveries"] else None
+    health = delivery_health(task, delivery)
     return {
         "task_dir": str(task_dir),
         "thread_id": task["thread_id"],
@@ -291,12 +306,8 @@ def result(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
         "status": task["status"],
         "blocked_reason": task.get("blocked_reason"),
         "delivery": delivery,
-        "attention_required": bool(task.get("blocked_reason") or
-            (delivery and delivery["phase"] in {"uncertain", "failed"})),
-        "delivery_health": ("needs_recovery" if task.get("blocked_reason") or
-            (delivery and delivery["phase"] in {"uncertain", "failed"}) else
-            "waiting_for_runtime" if delivery and delivery["phase"] == "queued" else
-            "in_progress" if delivery and delivery["phase"] == "started" else "ready"),
+        "attention_required": health == "needs_recovery",
+        "delivery_health": health,
         "execution_verified": bool(
             delivery
             and delivery["phase"] == "completed"
@@ -418,7 +429,7 @@ def recover(task_dir: Path, *, marker: str, reason: str, allow_duplicate: bool) 
             raise ValueError("Resolve the history/registration problem before delivery recovery")
         if delivery is None or delivery["marker"] != marker:
             raise ValueError("Recovery marker must match the latest delivery")
-        if delivery["phase"] not in {"uncertain", "failed"}:
+        if delivery["phase"] not in UNRESOLVED:
             raise ValueError("Only an uncertain or interrupted delivery can be recovered; queued/started messages must wait")
         delivery["recovery"] = dict(at=now(), previous_phase=delivery["phase"], reason=reason.strip(),
                                     duplicate_risk_acknowledged=True, queue_item_deleted=False)
@@ -434,7 +445,7 @@ def tick(task_dir: Path) -> dict[str, Any]:
         if (
             task["status"] != "active"
             or task.get("blocked_reason")
-            or (delivery and delivery["phase"] not in {"completed", "superseded"})
+            or (delivery and delivery["phase"] not in SENDABLE)
         ):
             return {**result(task_dir, task), "enqueued": False}
         _, boundary = history(
@@ -469,11 +480,7 @@ def tick(task_dir: Path) -> dict[str, Any]:
                 cwd=task["cwd"],
                 timeout=task.get("queue_timeout_seconds", QUEUE_TIMEOUT_SECONDS),
             )
-            delivery.update(
-                queue_stdout=queued.stdout[-4000:],
-                queue_stderr=queued.stderr[-2000:],
-                returncode=queued.returncode,
-            )
+            delivery["returncode"] = queued.returncode
             acknowledge(delivery, task["thread_id"], queued.stdout, queued.stderr)
             if delivery["phase"] == "uncertain":
                 delivery["error"] = "Queue acceptance is uncertain; inspect logs or use explicit recover"
@@ -488,7 +495,7 @@ def tick(task_dir: Path) -> dict[str, Any]:
         reconcile(task_dir, task)
         return {
             **result(task_dir, task),
-            "enqueued": delivery["phase"] in ("queued", "started", "completed"),
+            "enqueued": delivery["phase"] not in UNRESOLVED,
         }
 
 
@@ -536,7 +543,7 @@ def main() -> int:
     create.add_argument(
         "--state-dir", type=Path, default=Path.home() / ".local/state/codex-followups"
     )
-    for action in ("tick", "send", "status", "pause"):
+    for action in ("tick", "status", "pause"):
         commands.add_parser(action).add_argument("--task-dir", type=Path, required=True)
     recovery = commands.add_parser("recover")
     recovery.add_argument("--task-dir", type=Path, required=True)
@@ -551,9 +558,7 @@ def main() -> int:
             output = recover(args.task_dir.expanduser().resolve(strict=True), marker=args.delivery_marker,
                              reason=args.reason, allow_duplicate=args.acknowledge_possible_duplicate)
         else:
-            operation = {"tick": tick, "send": tick, "status": status, "pause": pause}[
-                args.action
-            ]
+            operation = {"tick": tick, "status": status, "pause": pause}[args.action]
             output = operation(args.task_dir.expanduser().resolve(strict=True))
         print(json.dumps(output, ensure_ascii=False, indent=2))
         if args.action == "pause" and output.get("pause_verified"):
@@ -563,7 +568,7 @@ def main() -> int:
         return (
             1
             if output.get("blocked_reason")
-            or (output.get("delivery") or {}).get("phase") in ("uncertain", "failed")
+            or (output.get("delivery") or {}).get("phase") in UNRESOLVED
             else 0
         )
     except BlockingIOError:

@@ -189,7 +189,7 @@ class CliHeartbeatTests(unittest.TestCase):
         self.assertEqual(register[-3:], ["tick", "--task-dir", str(self.task_dir)])
         self.assertFalse(self.queue_calls)
 
-    def test_cli_default_is_sixty_minutes_and_send_alias_is_single_shot(self) -> None:
+    def test_cli_default_is_sixty_minutes_and_tick_is_single_shot(self) -> None:
         argv = [
             "cli_heartbeat.py",
             "create",
@@ -216,7 +216,7 @@ class CliHeartbeatTests(unittest.TestCase):
             patch.object(
                 helper.sys,
                 "argv",
-                ["cli_heartbeat.py", "send", "--task-dir", str(self.task_dir)],
+                ["cli_heartbeat.py", "tick", "--task-dir", str(self.task_dir)],
             ),
             redirect_stdout(io.StringIO()),
         ):
