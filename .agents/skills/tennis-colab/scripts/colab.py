@@ -183,10 +183,19 @@ def start(args: argparse.Namespace, session: Session) -> dict[str, Any]:
         credential.unlink(missing_ok=True)
 
 
+def _kernel_worker_source(remote_helper: str, job_id: str) -> str:
+    # The kernel waits for the actual worker, including its final Drive save.
+    # An SSH-only subprocess is not Notebook kernel execution.
+    command = ["python3", remote_helper, "run", job_id]
+    return "import subprocess\n" + f"subprocess.run({command!r}, check=True)\n"
+
+
 def submit(args: argparse.Namespace, session: Session) -> dict[str, Any]:
     argv = args.argv[1:] if args.argv and args.argv[0] == "--" else args.argv
     if not argv:
         raise ColabError("Supply a command argument array after --")
+    if args.kernel_timeout_seconds <= 0:
+        raise ColabError("Kernel execution timeout must be positive")
     job_id = validate_name(args.job_id or "j-" + uuid.uuid4().hex[:16])
     receipt = session.rpc(
         "prepare",
@@ -195,6 +204,7 @@ def submit(args: argparse.Namespace, session: Session) -> dict[str, Any]:
         cwd=args.cwd,
         persist=args.persist,
         runner_outputs=args.runner_output,
+        execution_backend="notebook_kernel",
     )
     local = session.directory / "jobs" / job_id
     local.mkdir(parents=True, exist_ok=False)
@@ -206,11 +216,15 @@ def submit(args: argparse.Namespace, session: Session) -> dict[str, Any]:
             "persist": args.persist,
             "runner_outputs": args.runner_output,
             "job_id": job_id,
+            "execution_backend": "notebook_kernel",
+            "kernel_timeout_seconds": args.kernel_timeout_seconds,
         },
     )
+    source = local / "kernel_worker.py"
+    source.write_text(_kernel_worker_source(session.remote_helper, job_id))
     with (local / "transport.log").open("ab", buffering=0) as log:
         process = subprocess.Popen(
-            session.ssh_argv(["python3", session.remote_helper, "run", job_id]),
+            session.kernel_argv(source, timeout_seconds=args.kernel_timeout_seconds),
             stdin=subprocess.DEVNULL,
             stdout=log,
             stderr=log,
@@ -223,12 +237,14 @@ def submit(args: argparse.Namespace, session: Session) -> dict[str, Any]:
         "transport_token": process_token(process.pid),
         "submitted_at": now(),
         "local_dir": str(local),
+        "execution_backend": "notebook_kernel",
     }
     session.save(jobs=jobs)
     return {
         "session": session.name,
         "job_id": job_id,
         "status": "submitted",
+        "execution_backend": "notebook_kernel",
         "remote": receipt,
         "transport_log": str(local / "transport.log"),
     }
@@ -344,6 +360,10 @@ def parser() -> argparse.ArgumentParser:
     execute.add_argument("--job-id")
     execute.add_argument("--cwd")
     execute.add_argument("--persist", action="append", default=[])
+    execute.add_argument(
+        "--kernel-timeout-seconds", type=int, default=86400,
+        help="Notebook response wait limit (default: 24h); not a VM lifetime guarantee.",
+    )
     execute.add_argument(
         "--runner-output",
         action="append",
