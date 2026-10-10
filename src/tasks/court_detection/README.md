@@ -121,6 +121,8 @@ GPUメモリ、loss/勾配、実際のbatch shape・画像ID・Kを保存しま�
 
 学習後は各runの同じcheckpoint選択規則（保存configのvalidation monitor最良値）を使い、
 `scripts.evaluate_ablation`で合成testと実画像valを別集計します。
+20epochを終えてから`val/loss`最小のcheckpointを選び、testの値を選択に使いません。
+`test_after_fit`の自動testは終端モデルを使うため、この最良checkpointの評価とは区別します。
 保存config・target schema・strict state dictを復元し、入力manifest・画像ID順序・checkpointのhashと
 backbone／射影／後続のparameter数を残します。実画像のposeを0点として集計しません。
 

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 7aa6c2424cab37e6a662389d875728faa92851b7137d5b89c499441c802e5728 on 2026-10-10 -->
+<!-- knowledge-review: 56c809abd69bfd6a37f002b083f2cd2a4c4a6cd835677fbb42b5427cdda6ff5d on 2026-10-11 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-10（Court #983のL4容量確認と比較学習の開始を追記。精度比較は実行中）
