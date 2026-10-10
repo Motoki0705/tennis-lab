@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import io
 import json
 import os
@@ -567,6 +568,70 @@ class CliHeartbeatTests(unittest.TestCase):
         result = helper.tick(self.task_dir)
         self.assertIn("prefix changed", result["blocked_reason"])
         self.assertFalse(self.queue_calls)
+
+    def pad_rollout(self, size: int) -> None:
+        while self.rollout.stat().st_size < size:
+            self.event("token_count", info="x" * 4000)
+
+    def test_rewrite_inside_anchor_window_is_rejected_in_large_rollout(self) -> None:
+        self.pad_rollout(3 * helper.WINDOW_BYTES)
+        self.create()
+        anchor = self.state()["boundary"]["offset"]
+        with self.rollout.open("r+b") as handle:
+            handle.seek(anchor - 100)
+            handle.write(b"y")
+        result = helper.tick(self.task_dir)
+        self.assertIn("prefix changed", result["blocked_reason"])
+        self.assertFalse(self.queue_calls)
+
+    def test_rewrite_before_anchor_window_is_an_accepted_blind_spot(self) -> None:
+        # Deliberate trade-off: only WINDOW_BYTES before an anchor are hashed, so
+        # an in-place rewrite of older history (which Codex never does) is missed.
+        self.pad_rollout(3 * helper.WINDOW_BYTES)
+        self.create()
+        with self.rollout.open("r+b") as handle:
+            handle.seek(self.rollout.stat().st_size - 2 * helper.WINDOW_BYTES)
+            handle.write(b"y")
+        self.assertTrue(helper.tick(self.task_dir)["enqueued"])
+
+    def downgrade_to_v1(self) -> None:
+        task = self.state()
+        data = self.rollout.read_bytes()
+        anchors = [task["boundary"], task["observed_boundary"]]
+        anchors += [delivery["boundary"] for delivery in task["deliveries"]]
+        for anchor in anchors:
+            del anchor["window_sha256"]
+            anchor["sha256"] = hashlib.sha256(data[: anchor["offset"]]).hexdigest()
+        task["version"] = 1
+        helper.save(self.task_dir, task)
+
+    def test_v1_state_is_verified_and_migrated_for_existing_timers(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        self.start_delivery()
+        self.event("task_complete", turn_id="delivery-turn")
+        helper.status(self.task_dir)
+        self.downgrade_to_v1()
+        result = helper.status(self.task_dir)
+        self.assertIsNone(result["blocked_reason"])
+        self.assertTrue(result["execution_verified"])
+        state = self.state()
+        self.assertEqual(state["version"], helper.STATE_VERSION)
+        self.assertNotIn("sha256", json.dumps(state).replace("window_sha256", ""))
+        self.assertTrue(helper.tick(self.task_dir)["enqueued"])
+        self.assertEqual(len(self.queue_calls), 2)
+
+    def test_v1_state_with_changed_prefix_blocks_after_migration(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        self.downgrade_to_v1()
+        original = self.rollout.read_bytes()
+        with self.rollout.open("r+b") as handle:
+            handle.write(original.replace(b"03:00:00Z", b"04:00:00Z"))
+        result = helper.tick(self.task_dir)
+        self.assertIn("prefix changed", result["blocked_reason"])
+        self.assertEqual(self.state()["version"], helper.STATE_VERSION)
+        self.assertEqual(len(self.queue_calls), 1)
 
     def test_missing_rollout_explicitly_blocks_delivery(self) -> None:
         self.create()
