@@ -223,7 +223,9 @@ class CourtProcessingGeometry:
 
     def _sample_once(self, image_size_wh: tuple[int, int]) -> CourtGeometryPlan:
         width, height = image_size_wh
-        if self.require_pose:
+        if self.config.preserve_fx_fy:
+            # The geometry policy is independent of which labels a source has:
+            # real images and synthetic pose-labelled images use the same resize.
             # Pose-safe query inputs preserve the source aspect ratio.  The target
             # size is the long side; only the minimal right/bottom patch alignment
             # is added so DINOv3/16 receives an integral patch grid.  In particular,
