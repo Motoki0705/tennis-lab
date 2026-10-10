@@ -630,6 +630,7 @@ def test_i983_variants_keep_the_same_downstream_and_training_conditions(
     assert dict(config.mixed.train_batch_counts) == {"synthetic_court": 4, "tennis_court_detector": 4}
     assert runtime.shared.run.seed == 42
     assert runtime.shared.training.trainer.max_epochs == 20
+    assert runtime.shared.training.checkpoint.save_top_k == -1
 
 
 def test_missing_dense_head_never_restores_legacy_linear_architecture() -> None:
