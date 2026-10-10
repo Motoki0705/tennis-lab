@@ -277,6 +277,17 @@ def recover_diff(session: Session, output: Path) -> dict[str, Any]:
     return receipt
 
 
+def reconnect(session: Session) -> dict[str, Any]:
+    """Refresh only an owned assignment, then inspect it without restarting work."""
+    session.require_registered()
+    session.cli("sessions", timeout=90)
+    # The official refresh can prune an expired assignment. The SSH proxy must
+    # never see a missing name, because that would implicitly allocate a new VM.
+    session.require_registered()
+    result = session.rpc("status", timeout=90)
+    return {**result, "connection": "reconnected"}
+
+
 def stop(args: argparse.Namespace, session: Session) -> dict[str, Any]:
     state = session.state()
     if state["phase"] == "stopped":
@@ -350,6 +361,7 @@ def parser() -> argparse.ArgumentParser:
         "diff",
         "stop",
         "setup",
+        "reconnect",
     ):
         command = commands.add_parser(name)
         command.add_argument("--session", required=True)
@@ -393,6 +405,8 @@ def main() -> int:
                     result = submit(args, session)
                 elif args.command == "status":
                     result = status(args, session)
+                elif args.command == "reconnect":
+                    result = reconnect(session)
                 elif args.command in {"logs", "cancel", "save"}:
                     result = session.rpc(
                         args.command,

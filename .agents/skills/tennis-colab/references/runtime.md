@@ -42,6 +42,8 @@ storageの除外と未回収sourceを区別し、前者だけでstopを拒否し
 `--persist`または`--runner-output`へ宣言し、stop前の全job保存確認を必ず通す。
 
 - **提出・通信が失敗:** 同じjobを再投入せず、local transport.log、remote status、Drive運用記録を調べる。
+  SSHが切れた場合は`reconnect --session ...`で公式CLIの既存assignment情報を更新して状態を取得する。
+  更新前後にsessionの存在を検証し、期限切れなら停止する。新VMの割当やコマンドの再実行は行わない。
 - **実行が失敗:** returncodeとログを読み、同じVMで必要な調査・修正を行う。修正差分を回収する。
 - **保存が失敗:** 原因を直して、停止済みjobをsaveする。保存できていない状態でstopしない。
 - **VMが消失:** Drive上の記録・checkpointの保存完了を確認し、新sessionへ同じGit・データ・設定を用意する。
