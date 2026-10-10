@@ -17,6 +17,8 @@ Drive管理方針の正本は [references/storage-policy.md](references/storage-
 
 Python標準ライブラリと認証済みのrcloneを使う。Colabでは利用可能なPythonで同じスクリプトを実行できる。
 認証は既存のrclone設定または `RCLONE_CONFIG`。内容を会話・ログ・成果物へ出さない。
+`RCLONE_CONFIG`が未指定で `~/.config/tennis-lab/rclone-drive.conf` が存在する場合は、
+その専用設定をコマンドの環境変数へ指定する。接続先を確認し、認証失敗時に別設定へ黙って切り替えない。
 初回設定・専用OAuthへの移行は [references/authentication.md](references/authentication.md)。
 既定rootは `gdrive:tennis_lab`。`TENNIS_LAB_DRIVE_REMOTE` または `--remote-root remote:project-root` で明示的に変えられる。
 

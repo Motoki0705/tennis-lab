@@ -20,6 +20,7 @@ Driveの配置・版・保持・整理は [tennis-drive](../tennis-drive/SKILL.m
    未導入なら `bash .agents/skills/tennis-colab/scripts/install_cli.sh`。
    現在のLinux/WSL CLIを対象とする。Google認証の同意が必要なら利用者へ案内し、tokenを会話へ貼らせない。
 2. 専用worktreeでコードを検証・commitし、ColabからfetchできるGitHubの版を用意する。
+   Driveスキルの認証手順で接続設定を選び、その`RCLONE_CONFIG`を引き継いで実行する。
    `start --dry-run` でrepo/commit/GPU/Driveを確認する。作業ツリーの未commit変更は送られない。
 3. 一意なsession名で `start --session ... --ref <commit>`。GPU確保はこの明示操作だけで行う。
    観測GPUが要求と違えば停止して状況を確認し、CPUや別GPUへ切り替えない。
