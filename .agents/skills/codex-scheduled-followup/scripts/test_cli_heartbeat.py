@@ -124,11 +124,17 @@ class CliHeartbeatTests(unittest.TestCase):
             if self.queue_failure:
                 raise self.queue_failure
             returncode = self.queue_returncode
-            output = f"Queued message accepted-id for thread {THREAD}.\n" if not returncode else "Queue RPC failed\n"
+            output = (
+                f"Queued message accepted-id for thread {THREAD}.\n"
+                if not returncode
+                else "Queue RPC failed\n"
+            )
         return subprocess.CompletedProcess(argv, returncode, output, "")
 
     def state(self) -> dict:
-        task: dict[str, Any] = json.loads((self.task_dir / "task.json").read_text(encoding="utf-8"))
+        task: dict[str, Any] = json.loads(
+            (self.task_dir / "task.json").read_text(encoding="utf-8")
+        )
         return task
 
     def create(self) -> dict:
@@ -403,10 +409,16 @@ class CliHeartbeatTests(unittest.TestCase):
         helper.tick(self.task_dir)
         self.assertEqual(len(self.queue_calls), 2)
 
-    def test_timeout_after_acknowledgement_retains_acceptance_and_diagnostics(self) -> None:
+    def test_timeout_after_acknowledgement_retains_acceptance_and_diagnostics(
+        self,
+    ) -> None:
         self.create()
-        self.queue_failure = subprocess.TimeoutExpired("codex", 180,
-            output=f"Queued message accepted-id for thread {THREAD}.\n".encode(), stderr=b"teardown stalled")
+        self.queue_failure = subprocess.TimeoutExpired(
+            "codex",
+            180,
+            output=f"Queued message accepted-id for thread {THREAD}.\n".encode(),
+            stderr=b"teardown stalled",
+        )
         result = helper.tick(self.task_dir)
         self.assertEqual(result["delivery"]["phase"], "queued")
         self.assertEqual(result["delivery"]["queue_id"], "accepted-id")
@@ -419,9 +431,13 @@ class CliHeartbeatTests(unittest.TestCase):
         helper.tick(self.task_dir)
         self.assertEqual(len(self.queue_calls), 1)
 
-    def test_uncertain_timeout_preserves_partial_output_and_reports_attention(self) -> None:
+    def test_uncertain_timeout_preserves_partial_output_and_reports_attention(
+        self,
+    ) -> None:
         self.create()
-        self.queue_failure = subprocess.TimeoutExpired("codex", 180, output=b"starting server", stderr=b"bad byte \xff")
+        self.queue_failure = subprocess.TimeoutExpired(
+            "codex", 180, output=b"starting server", stderr=b"bad byte \xff"
+        )
         result = helper.tick(self.task_dir)
         self.assertEqual(result["delivery"]["queue_stdout"], "starting server")
         self.assertIn("bad byte", result["delivery"]["queue_stderr"])
@@ -429,9 +445,13 @@ class CliHeartbeatTests(unittest.TestCase):
         self.assertEqual(result["delivery_health"], "needs_recovery")
         self.assertTrue(self.active)
 
-    def test_acknowledgement_for_other_thread_or_multiple_receipts_is_not_trusted(self) -> None:
-        for output in ("Queued message x for thread other.\n",
-                       f"Queued message x for thread {THREAD}.\nQueued message y for thread {THREAD}.\n"):
+    def test_acknowledgement_for_other_thread_or_multiple_receipts_is_not_trusted(
+        self,
+    ) -> None:
+        for output in (
+            "Queued message x for thread other.\n",
+            f"Queued message x for thread {THREAD}.\nQueued message y for thread {THREAD}.\n",
+        ):
             delivery = {"phase": "uncertain"}
             helper.acknowledge(delivery, THREAD, output, None)
             self.assertEqual(delivery["phase"], "uncertain")
@@ -440,11 +460,21 @@ class CliHeartbeatTests(unittest.TestCase):
         self.create()
         self.queue_failure = subprocess.TimeoutExpired("codex", 45)
         first = helper.tick(self.task_dir)["delivery"]
-        for marker, reason, allow in ((first["marker"], "authorized recovery", False),
-                                       (first["marker"], "", True), ("wrong", "authorized", True)):
+        for marker, reason, allow in (
+            (first["marker"], "authorized recovery", False),
+            (first["marker"], "", True),
+            ("wrong", "authorized", True),
+        ):
             with self.assertRaises(ValueError):
-                helper.recover(self.task_dir, marker=marker, reason=reason, allow_duplicate=allow)
-        result = helper.recover(self.task_dir, marker=first["marker"], reason="user authorized restoration", allow_duplicate=True)
+                helper.recover(
+                    self.task_dir, marker=marker, reason=reason, allow_duplicate=allow
+                )
+        result = helper.recover(
+            self.task_dir,
+            marker=first["marker"],
+            reason="user authorized restoration",
+            allow_duplicate=True,
+        )
         self.assertTrue(result["recovered"])
         self.assertFalse(result["enqueued"])
         self.assertFalse(result["attention_required"])
@@ -466,7 +496,12 @@ class CliHeartbeatTests(unittest.TestCase):
         marker = helper.tick(self.task_dir)["delivery"]["marker"]
         self.start_delivery()
         with self.assertRaisesRegex(ValueError, "must wait"):
-            helper.recover(self.task_dir, marker=marker, reason="operator requested", allow_duplicate=True)
+            helper.recover(
+                self.task_dir,
+                marker=marker,
+                reason="operator requested",
+                allow_duplicate=True,
+            )
         self.assertEqual(self.state()["deliveries"][-1]["phase"], "started")
         self.assertEqual(len(self.queue_calls), 1)
 
@@ -476,7 +511,12 @@ class CliHeartbeatTests(unittest.TestCase):
         marker = helper.tick(self.task_dir)["delivery"]["marker"]
         self.rollout.unlink()
         with self.assertRaisesRegex(ValueError, "history"):
-            helper.recover(self.task_dir, marker=marker, reason="operator requested", allow_duplicate=True)
+            helper.recover(
+                self.task_dir,
+                marker=marker,
+                reason="operator requested",
+                allow_duplicate=True,
+            )
         self.assertEqual(len(self.queue_calls), 1)
 
     def test_crash_after_durable_preparation_suppresses_future_send(self) -> None:
@@ -659,7 +699,9 @@ class CliHeartbeatTests(unittest.TestCase):
         new_prompt = self.root / "new-prompt.txt"
         new_prompt.write_text("次の段階を確認", encoding="utf-8")
         self.command_mock.reset_mock()
-        result = helper.resume(self.task_dir, interval_minutes=15, prompt_file=new_prompt)
+        result = helper.resume(
+            self.task_dir, interval_minutes=15, prompt_file=new_prompt
+        )
         self.assertEqual(result["status"], "active")
         self.assertTrue(result["registration_verified"])
         self.assertEqual(result["interval_minutes"], 15)
@@ -706,7 +748,11 @@ class CliHeartbeatTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "positive"):
             helper.resume(self.task_dir, interval_minutes=0, prompt_file=None)
         with self.assertRaises(FileNotFoundError):
-            helper.resume(self.task_dir, interval_minutes=None, prompt_file=self.root / "missing.txt")
+            helper.resume(
+                self.task_dir,
+                interval_minutes=None,
+                prompt_file=self.root / "missing.txt",
+            )
         self.assertEqual(self.state()["status"], "paused")
         self.assertFalse(self.active)
 
@@ -714,7 +760,9 @@ class CliHeartbeatTests(unittest.TestCase):
         self.create()
         helper.pause(self.task_dir)
 
-        def unverified(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        def unverified(
+            argv: list[str], **kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
             completed = self.external(argv, **kwargs)
             if argv[0] == "systemd-run":
                 self.interval = 999
@@ -730,9 +778,18 @@ class CliHeartbeatTests(unittest.TestCase):
     def test_cli_resume_reports_registration(self) -> None:
         self.create()
         helper.pause(self.task_dir)
-        argv = ["cli_heartbeat.py", "resume", "--task-dir", str(self.task_dir),
-                "--interval-minutes", "45"]
-        with patch.object(helper.sys, "argv", argv), redirect_stdout(io.StringIO()) as output:
+        argv = [
+            "cli_heartbeat.py",
+            "resume",
+            "--task-dir",
+            str(self.task_dir),
+            "--interval-minutes",
+            "45",
+        ]
+        with (
+            patch.object(helper.sys, "argv", argv),
+            redirect_stdout(io.StringIO()) as output,
+        ):
             self.assertEqual(helper.main(), 0)
         receipt = json.loads(output.getvalue())
         self.assertTrue(receipt["registration_verified"])
