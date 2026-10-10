@@ -1,4 +1,4 @@
-"""Exercise the portable scheduling helper without touching a real scheduler."""
+"""Exercise the CLI follow-up helper without touching a real scheduler or queue."""
 
 from __future__ import annotations
 
@@ -33,9 +33,9 @@ def test_packaged_skill_metadata_and_references() -> None:
     assert 25 <= len(ui["interface"]["short_description"]) <= 64
 
 
-def test_portable_helper_regressions(tmp_path: Path) -> None:
+def test_cli_helper_regressions(tmp_path: Path) -> None:
     result = subprocess.run(
-        [sys.executable, str(SKILL / "scripts/test_heartbeat.py")],
+        [sys.executable, str(SKILL / "scripts/test_cli_heartbeat.py")],
         cwd=tmp_path,
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         text=True,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import io
 import json
 import os
@@ -123,11 +124,17 @@ class CliHeartbeatTests(unittest.TestCase):
             if self.queue_failure:
                 raise self.queue_failure
             returncode = self.queue_returncode
-            output = f"Queued message accepted-id for thread {THREAD}.\n" if not returncode else "Queue RPC failed\n"
+            output = (
+                f"Queued message accepted-id for thread {THREAD}.\n"
+                if not returncode
+                else "Queue RPC failed\n"
+            )
         return subprocess.CompletedProcess(argv, returncode, output, "")
 
     def state(self) -> dict:
-        task: dict[str, Any] = json.loads((self.task_dir / "task.json").read_text(encoding="utf-8"))
+        task: dict[str, Any] = json.loads(
+            (self.task_dir / "task.json").read_text(encoding="utf-8")
+        )
         return task
 
     def create(self) -> dict:
@@ -189,7 +196,7 @@ class CliHeartbeatTests(unittest.TestCase):
         self.assertEqual(register[-3:], ["tick", "--task-dir", str(self.task_dir)])
         self.assertFalse(self.queue_calls)
 
-    def test_cli_default_is_sixty_minutes_and_send_alias_is_single_shot(self) -> None:
+    def test_cli_default_is_sixty_minutes_and_tick_is_single_shot(self) -> None:
         argv = [
             "cli_heartbeat.py",
             "create",
@@ -216,7 +223,7 @@ class CliHeartbeatTests(unittest.TestCase):
             patch.object(
                 helper.sys,
                 "argv",
-                ["cli_heartbeat.py", "send", "--task-dir", str(self.task_dir)],
+                ["cli_heartbeat.py", "tick", "--task-dir", str(self.task_dir)],
             ),
             redirect_stdout(io.StringIO()),
         ):
@@ -402,10 +409,16 @@ class CliHeartbeatTests(unittest.TestCase):
         helper.tick(self.task_dir)
         self.assertEqual(len(self.queue_calls), 2)
 
-    def test_timeout_after_acknowledgement_retains_acceptance_and_diagnostics(self) -> None:
+    def test_timeout_after_acknowledgement_retains_acceptance_and_diagnostics(
+        self,
+    ) -> None:
         self.create()
-        self.queue_failure = subprocess.TimeoutExpired("codex", 180,
-            output=f"Queued message accepted-id for thread {THREAD}.\n".encode(), stderr=b"teardown stalled")
+        self.queue_failure = subprocess.TimeoutExpired(
+            "codex",
+            180,
+            output=f"Queued message accepted-id for thread {THREAD}.\n".encode(),
+            stderr=b"teardown stalled",
+        )
         result = helper.tick(self.task_dir)
         self.assertEqual(result["delivery"]["phase"], "queued")
         self.assertEqual(result["delivery"]["queue_id"], "accepted-id")
@@ -418,9 +431,13 @@ class CliHeartbeatTests(unittest.TestCase):
         helper.tick(self.task_dir)
         self.assertEqual(len(self.queue_calls), 1)
 
-    def test_uncertain_timeout_preserves_partial_output_and_reports_attention(self) -> None:
+    def test_uncertain_timeout_preserves_partial_output_and_reports_attention(
+        self,
+    ) -> None:
         self.create()
-        self.queue_failure = subprocess.TimeoutExpired("codex", 180, output=b"starting server", stderr=b"bad byte \xff")
+        self.queue_failure = subprocess.TimeoutExpired(
+            "codex", 180, output=b"starting server", stderr=b"bad byte \xff"
+        )
         result = helper.tick(self.task_dir)
         self.assertEqual(result["delivery"]["queue_stdout"], "starting server")
         self.assertIn("bad byte", result["delivery"]["queue_stderr"])
@@ -428,9 +445,13 @@ class CliHeartbeatTests(unittest.TestCase):
         self.assertEqual(result["delivery_health"], "needs_recovery")
         self.assertTrue(self.active)
 
-    def test_acknowledgement_for_other_thread_or_multiple_receipts_is_not_trusted(self) -> None:
-        for output in ("Queued message x for thread other.\n",
-                       f"Queued message x for thread {THREAD}.\nQueued message y for thread {THREAD}.\n"):
+    def test_acknowledgement_for_other_thread_or_multiple_receipts_is_not_trusted(
+        self,
+    ) -> None:
+        for output in (
+            "Queued message x for thread other.\n",
+            f"Queued message x for thread {THREAD}.\nQueued message y for thread {THREAD}.\n",
+        ):
             delivery = {"phase": "uncertain"}
             helper.acknowledge(delivery, THREAD, output, None)
             self.assertEqual(delivery["phase"], "uncertain")
@@ -439,11 +460,21 @@ class CliHeartbeatTests(unittest.TestCase):
         self.create()
         self.queue_failure = subprocess.TimeoutExpired("codex", 45)
         first = helper.tick(self.task_dir)["delivery"]
-        for marker, reason, allow in ((first["marker"], "authorized recovery", False),
-                                       (first["marker"], "", True), ("wrong", "authorized", True)):
+        for marker, reason, allow in (
+            (first["marker"], "authorized recovery", False),
+            (first["marker"], "", True),
+            ("wrong", "authorized", True),
+        ):
             with self.assertRaises(ValueError):
-                helper.recover(self.task_dir, marker=marker, reason=reason, allow_duplicate=allow)
-        result = helper.recover(self.task_dir, marker=first["marker"], reason="user authorized restoration", allow_duplicate=True)
+                helper.recover(
+                    self.task_dir, marker=marker, reason=reason, allow_duplicate=allow
+                )
+        result = helper.recover(
+            self.task_dir,
+            marker=first["marker"],
+            reason="user authorized restoration",
+            allow_duplicate=True,
+        )
         self.assertTrue(result["recovered"])
         self.assertFalse(result["enqueued"])
         self.assertFalse(result["attention_required"])
@@ -465,7 +496,12 @@ class CliHeartbeatTests(unittest.TestCase):
         marker = helper.tick(self.task_dir)["delivery"]["marker"]
         self.start_delivery()
         with self.assertRaisesRegex(ValueError, "must wait"):
-            helper.recover(self.task_dir, marker=marker, reason="operator requested", allow_duplicate=True)
+            helper.recover(
+                self.task_dir,
+                marker=marker,
+                reason="operator requested",
+                allow_duplicate=True,
+            )
         self.assertEqual(self.state()["deliveries"][-1]["phase"], "started")
         self.assertEqual(len(self.queue_calls), 1)
 
@@ -475,7 +511,12 @@ class CliHeartbeatTests(unittest.TestCase):
         marker = helper.tick(self.task_dir)["delivery"]["marker"]
         self.rollout.unlink()
         with self.assertRaisesRegex(ValueError, "history"):
-            helper.recover(self.task_dir, marker=marker, reason="operator requested", allow_duplicate=True)
+            helper.recover(
+                self.task_dir,
+                marker=marker,
+                reason="operator requested",
+                allow_duplicate=True,
+            )
         self.assertEqual(len(self.queue_calls), 1)
 
     def test_crash_after_durable_preparation_suppresses_future_send(self) -> None:
@@ -568,6 +609,70 @@ class CliHeartbeatTests(unittest.TestCase):
         self.assertIn("prefix changed", result["blocked_reason"])
         self.assertFalse(self.queue_calls)
 
+    def pad_rollout(self, size: int) -> None:
+        while self.rollout.stat().st_size < size:
+            self.event("token_count", info="x" * 4000)
+
+    def test_rewrite_inside_anchor_window_is_rejected_in_large_rollout(self) -> None:
+        self.pad_rollout(3 * helper.WINDOW_BYTES)
+        self.create()
+        anchor = self.state()["boundary"]["offset"]
+        with self.rollout.open("r+b") as handle:
+            handle.seek(anchor - 100)
+            handle.write(b"y")
+        result = helper.tick(self.task_dir)
+        self.assertIn("prefix changed", result["blocked_reason"])
+        self.assertFalse(self.queue_calls)
+
+    def test_rewrite_before_anchor_window_is_an_accepted_blind_spot(self) -> None:
+        # Deliberate trade-off: only WINDOW_BYTES before an anchor are hashed, so
+        # an in-place rewrite of older history (which Codex never does) is missed.
+        self.pad_rollout(3 * helper.WINDOW_BYTES)
+        self.create()
+        with self.rollout.open("r+b") as handle:
+            handle.seek(self.rollout.stat().st_size - 2 * helper.WINDOW_BYTES)
+            handle.write(b"y")
+        self.assertTrue(helper.tick(self.task_dir)["enqueued"])
+
+    def downgrade_to_v1(self) -> None:
+        task = self.state()
+        data = self.rollout.read_bytes()
+        anchors = [task["boundary"], task["observed_boundary"]]
+        anchors += [delivery["boundary"] for delivery in task["deliveries"]]
+        for anchor in anchors:
+            del anchor["window_sha256"]
+            anchor["sha256"] = hashlib.sha256(data[: anchor["offset"]]).hexdigest()
+        task["version"] = 1
+        helper.save(self.task_dir, task)
+
+    def test_v1_state_is_verified_and_migrated_for_existing_timers(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        self.start_delivery()
+        self.event("task_complete", turn_id="delivery-turn")
+        helper.status(self.task_dir)
+        self.downgrade_to_v1()
+        result = helper.status(self.task_dir)
+        self.assertIsNone(result["blocked_reason"])
+        self.assertTrue(result["execution_verified"])
+        state = self.state()
+        self.assertEqual(state["version"], helper.STATE_VERSION)
+        self.assertNotIn("sha256", json.dumps(state).replace("window_sha256", ""))
+        self.assertTrue(helper.tick(self.task_dir)["enqueued"])
+        self.assertEqual(len(self.queue_calls), 2)
+
+    def test_v1_state_with_changed_prefix_blocks_after_migration(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        self.downgrade_to_v1()
+        original = self.rollout.read_bytes()
+        with self.rollout.open("r+b") as handle:
+            handle.write(original.replace(b"03:00:00Z", b"04:00:00Z"))
+        result = helper.tick(self.task_dir)
+        self.assertIn("prefix changed", result["blocked_reason"])
+        self.assertEqual(self.state()["version"], helper.STATE_VERSION)
+        self.assertEqual(len(self.queue_calls), 1)
+
     def test_missing_rollout_explicitly_blocks_delivery(self) -> None:
         self.create()
         self.rollout.unlink()
@@ -584,6 +689,111 @@ class CliHeartbeatTests(unittest.TestCase):
         self.assertIn("may still run", paused["notice"])
         self.assertFalse(helper.tick(self.task_dir)["enqueued"])
         self.assertEqual(len(self.queue_calls), 1)
+
+    def test_resume_changes_interval_and_prompt_and_keeps_receipts(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        self.start_delivery()
+        self.event("task_complete", turn_id="delivery-turn")
+        helper.pause(self.task_dir)
+        new_prompt = self.root / "new-prompt.txt"
+        new_prompt.write_text("次の段階を確認", encoding="utf-8")
+        self.command_mock.reset_mock()
+        result = helper.resume(
+            self.task_dir, interval_minutes=15, prompt_file=new_prompt
+        )
+        self.assertEqual(result["status"], "active")
+        self.assertTrue(result["registration_verified"])
+        self.assertEqual(result["interval_minutes"], 15)
+        register = next(
+            call.args[0]
+            for call in self.command_mock.call_args_list
+            if call.args[0][0] == "systemd-run"
+        )
+        self.assertIn("--on-unit-active=15min", register)
+        self.assertIn("--unit=" + self.state()["unit"], register)
+        self.assertEqual(self.state()["deliveries"][0]["phase"], "completed")
+        second = helper.tick(self.task_dir)
+        self.assertTrue(second["enqueued"])
+        self.assertTrue(self.queue_calls[-1][0][7].endswith("\n次の段階を確認"))
+
+    def test_resume_omitted_options_keep_interval_and_prompt(self) -> None:
+        self.create()
+        helper.pause(self.task_dir)
+        result = helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.assertEqual(result["interval_minutes"], 30)
+        self.assertEqual(self.state()["prompt"], self.prompt.read_text())
+
+    def test_resume_waits_for_a_queued_delivery_instead_of_resending(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        helper.pause(self.task_dir)
+        result = helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.assertEqual(result["delivery_health"], "waiting_for_runtime")
+        self.assertFalse(helper.tick(self.task_dir)["enqueued"])
+        self.assertEqual(len(self.queue_calls), 1)
+
+    def test_resume_refuses_active_unresolved_or_blocked_tasks(self) -> None:
+        self.create()
+        with self.assertRaisesRegex(ValueError, "Only a paused"):
+            helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.queue_failure = subprocess.TimeoutExpired("codex", 45)
+        helper.tick(self.task_dir)
+        helper.pause(self.task_dir)
+        with self.assertRaisesRegex(ValueError, "Recover"):
+            helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.rollout.unlink()
+        with self.assertRaisesRegex(ValueError, "history"):
+            helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        with self.assertRaisesRegex(ValueError, "positive"):
+            helper.resume(self.task_dir, interval_minutes=0, prompt_file=None)
+        with self.assertRaises(FileNotFoundError):
+            helper.resume(
+                self.task_dir,
+                interval_minutes=None,
+                prompt_file=self.root / "missing.txt",
+            )
+        self.assertEqual(self.state()["status"], "paused")
+        self.assertFalse(self.active)
+
+    def test_failed_resume_registration_keeps_previous_paused_settings(self) -> None:
+        self.create()
+        helper.pause(self.task_dir)
+
+        def unverified(
+            argv: list[str], **kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            completed = self.external(argv, **kwargs)
+            if argv[0] == "systemd-run":
+                self.interval = 999
+            return completed
+
+        self.command_mock.side_effect = unverified
+        with self.assertRaisesRegex(RuntimeError, "did not verify"):
+            helper.resume(self.task_dir, interval_minutes=15, prompt_file=None)
+        state = self.state()
+        self.assertEqual(state["status"], "paused")
+        self.assertEqual(state["interval_minutes"], 30)
+
+    def test_cli_resume_reports_registration(self) -> None:
+        self.create()
+        helper.pause(self.task_dir)
+        argv = [
+            "cli_heartbeat.py",
+            "resume",
+            "--task-dir",
+            str(self.task_dir),
+            "--interval-minutes",
+            "45",
+        ]
+        with (
+            patch.object(helper.sys, "argv", argv),
+            redirect_stdout(io.StringIO()) as output,
+        ):
+            self.assertEqual(helper.main(), 0)
+        receipt = json.loads(output.getvalue())
+        self.assertTrue(receipt["registration_verified"])
+        self.assertEqual(receipt["interval_minutes"], 45)
 
     def test_unavailable_systemd_fails_without_fallback_or_state(self) -> None:
         self.command_mock.side_effect = FileNotFoundError("systemctl unavailable")

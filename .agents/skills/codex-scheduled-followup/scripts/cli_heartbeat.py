@@ -1,7 +1,7 @@
 """Queue follow-ups into an existing Linux CLI and verify their rollout receipts.
 
 Python 3.11+, standard library only. Does not resume threads or write native DBs.
-Only create/pause manage systemd; tick sends at most one outstanding delivery.
+Only create/pause/resume manage systemd; tick sends at most one outstanding delivery.
 """
 
 from __future__ import annotations
@@ -21,10 +21,19 @@ import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 ENV_KEYS = ("CODEX_HOME", "CODEX_SQLITE_HOME", "PATH")
+STATE_VERSION = 2
+# Rollout anchors hash only the bytes just before their offset. Codex only appends
+# to rollouts; inode/size checks catch replacement and truncation, and the window
+# catches rewrites near the anchor without rereading hundreds of MB per tick.
+WINDOW_BYTES = 64 * 1024
 QUEUE_TIMEOUT_SECONDS = 180
+# Delivery phases that block the next send until an operator runs recover.
+UNRESOLVED = frozenset({"uncertain", "failed"})
+# Delivery phases after which the next tick may send a new marker.
+SENDABLE = frozenset({"completed", "superseded"})
 TIMER_PROPERTIES = (
     "Id,LoadState,ActiveState,TimersMonotonic,NextElapseUSecRealtime,"
     "NextElapseUSecMonotonic,Triggers"
@@ -59,7 +68,9 @@ def locked(task_dir: Path) -> Iterator[dict[str, Any]]:
     with (task_dir / "lock").open("a") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         task = json.loads((task_dir / "task.json").read_text(encoding="utf-8"))
-        if task.get("version") != 1:
+        if task.get("version") == 1:
+            migrate_v1(task_dir, task)
+        if task.get("version") != STATE_VERSION:
             raise ValueError("Unsupported helper state version")
         yield task
 
@@ -76,15 +87,50 @@ def checked(argv: list[str]) -> str:
     return result.stdout
 
 
+def hash_range(handle: BinaryIO, digest: Any, start: int, end: int) -> None:
+    handle.seek(start)
+    remaining = end - start
+    while remaining:
+        chunk = handle.read(min(1024 * 1024, remaining))
+        if not chunk:
+            raise ValueError("Rollout truncated during inspection")
+        digest.update(chunk)
+        remaining -= len(chunk)
+
+
+def window_digest(handle: BinaryIO, offset: int) -> str:
+    digest = hashlib.sha256()
+    hash_range(handle, digest, max(0, offset - WINDOW_BYTES), offset)
+    return digest.hexdigest()
+
+
+def verify_anchor(
+    handle: BinaryIO, stat: os.stat_result, anchor: dict[str, Any]
+) -> None:
+    if [stat.st_dev, stat.st_ino] != anchor["identity"] or stat.st_size < anchor[
+        "offset"
+    ]:
+        raise ValueError(
+            "Rollout replaced, migrated, or truncated; delivery is blocked"
+        )
+    if window_digest(handle, anchor["offset"]) != anchor["window_sha256"]:
+        raise ValueError("Rollout prefix changed; delivery is blocked")
+
+
 def history(
-    task: dict[str, Any], anchor: dict[str, Any] | None
+    task: dict[str, Any],
+    start: dict[str, Any] | None,
+    *checks: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Read only append-only JSONL from the verified file and byte boundary."""
+    """Read complete JSONL records after `start` in one pass over the new bytes.
+
+    `start` and every anchor in `checks` must still be intact. Reading begins at
+    the end of the file when `start` is None.
+    """
     path = Path(task["rollout"])
     with path.open("rb") as handle:
         stat = os.fstat(handle.fileno())
-        first = handle.readline()
-        record = json.loads(first)
+        record = json.loads(handle.readline())
         if not isinstance(record, dict):
             raise ValueError("Unsupported rollout metadata record")
         metadata = record.get("payload", {})
@@ -97,24 +143,11 @@ def history(
             raise ValueError("Rollout session_meta.id does not match target thread")
         if metadata.get("cwd") != task["cwd"]:
             raise ValueError("Rollout session_meta.cwd does not match --cwd")
-        offset = anchor["offset"] if anchor else stat.st_size
-        if anchor and (
-            [stat.st_dev, stat.st_ino] != anchor["identity"] or stat.st_size < offset
-        ):
-            raise ValueError(
-                "Rollout replaced, migrated, or truncated; delivery is blocked"
-            )
-        handle.seek(0)
-        prefix = hashlib.sha256()
-        remaining = offset
-        while remaining:
-            chunk = handle.read(min(1024 * 1024, remaining))
-            if not chunk:
-                raise ValueError("Rollout truncated during inspection")
-            prefix.update(chunk)
-            remaining -= len(chunk)
-        if anchor and prefix.hexdigest() != anchor["sha256"]:
-            raise ValueError("Rollout prefix changed; delivery is blocked")
+        for anchor in (start, *checks):
+            if anchor is not None:
+                verify_anchor(handle, stat, anchor)
+        offset = start["offset"] if start else stat.st_size
+        handle.seek(offset)
         tail = handle.read(stat.st_size - offset)
         complete = tail[: tail.rfind(b"\n") + 1]
         records = [json.loads(line) for line in complete.splitlines()]
@@ -125,16 +158,51 @@ def history(
             raise ValueError("Unsupported rollout transition after delivery boundary")
         # A writer may still be appending the last JSON line. Anchor only the
         # complete prefix so the next inspection never starts inside that line.
-        prefix.update(complete)
-        if stat.st_size:
-            handle.seek(stat.st_size - 1)
+        end = offset + len(complete)
         snapshot = {
             "identity": [stat.st_dev, stat.st_ino],
-            "offset": offset + len(complete),
-            "sha256": prefix.hexdigest(),
-            "line_complete": handle.read(1) == b"\n",
+            "offset": end,
+            "window_sha256": window_digest(handle, end),
+            "line_complete": os.pread(handle.fileno(), 1, stat.st_size - 1) == b"\n",
         }
     return records, snapshot
+
+
+def migrate_v1(task_dir: Path, task: dict[str, Any]) -> None:
+    """Verify v1 full-prefix hashes once, then store v2 window hashes.
+
+    Timers created by the v1 helper keep invoking this script, so their state
+    must carry over. A failed verification blocks delivery exactly as v1 would.
+    """
+    anchors = [
+        task["boundary"],
+        task["observed_boundary"],
+        *(delivery["boundary"] for delivery in task["deliveries"]),
+    ]
+    if not task.get("blocked_reason"):
+        try:
+            with Path(task["rollout"]).open("rb") as handle:
+                stat = os.fstat(handle.fileno())
+                digest = hashlib.sha256()
+                position = 0
+                for anchor in sorted(anchors, key=lambda item: item["offset"]):
+                    if [stat.st_dev, stat.st_ino] != anchor[
+                        "identity"
+                    ] or stat.st_size < anchor["offset"]:
+                        raise ValueError(
+                            "Rollout replaced, migrated, or truncated; delivery is blocked"
+                        )
+                    hash_range(handle, digest, position, anchor["offset"])
+                    position = anchor["offset"]
+                    if digest.hexdigest() != anchor["sha256"]:
+                        raise ValueError("Rollout prefix changed; delivery is blocked")
+                for anchor in anchors:
+                    anchor["window_sha256"] = window_digest(handle, anchor["offset"])
+                    del anchor["sha256"]
+        except (OSError, ValueError, KeyError) as error:
+            task["blocked_reason"] = str(error)
+    task["version"] = STATE_VERSION
+    save(task_dir, task)
 
 
 def reconcile(task_dir: Path, task: dict[str, Any]) -> dict[str, Any] | None:
@@ -142,9 +210,9 @@ def reconcile(task_dir: Path, task: dict[str, Any]) -> dict[str, Any] | None:
     if task.get("blocked_reason"):
         return delivery
     try:
-        _, observed = history(task, task["observed_boundary"])
+        observed = task["observed_boundary"]
         records, snapshot = history(
-            task, delivery["boundary"] if delivery else observed
+            task, delivery["boundary"] if delivery else observed, observed
         )
         if snapshot["offset"] < observed["offset"]:
             raise ValueError("Rollout truncated during receipt inspection")
@@ -280,8 +348,19 @@ def timer_status(task: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def delivery_health(task: dict[str, Any], delivery: dict[str, Any] | None) -> str:
+    if task.get("blocked_reason") or (delivery and delivery["phase"] in UNRESOLVED):
+        return "needs_recovery"
+    if delivery and delivery["phase"] == "queued":
+        return "waiting_for_runtime"
+    if delivery and delivery["phase"] == "started":
+        return "in_progress"
+    return "ready"
+
+
 def result(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
     delivery = task["deliveries"][-1] if task["deliveries"] else None
+    health = delivery_health(task, delivery)
     return {
         "task_dir": str(task_dir),
         "thread_id": task["thread_id"],
@@ -291,18 +370,51 @@ def result(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
         "status": task["status"],
         "blocked_reason": task.get("blocked_reason"),
         "delivery": delivery,
-        "attention_required": bool(task.get("blocked_reason") or
-            (delivery and delivery["phase"] in {"uncertain", "failed"})),
-        "delivery_health": ("needs_recovery" if task.get("blocked_reason") or
-            (delivery and delivery["phase"] in {"uncertain", "failed"}) else
-            "waiting_for_runtime" if delivery and delivery["phase"] == "queued" else
-            "in_progress" if delivery and delivery["phase"] == "started" else "ready"),
+        "attention_required": health == "needs_recovery",
+        "delivery_health": health,
         "execution_verified": bool(
             delivery
             and delivery["phase"] == "completed"
             and not task.get("blocked_reason")
         ),
     }
+
+
+def register_timer(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
+    interval = task["interval_minutes"]
+    checked(
+        [
+            "systemd-run",
+            "--user",
+            "--unit=" + task["unit"],
+            "--collect",
+            f"--on-active={interval}min",
+            f"--on-unit-active={interval}min",
+            "--timer-property=AccuracySec=1s",
+            "--property=Type=oneshot",
+            "--working-directory=" + task["cwd"],
+            "--expand-environment=no",
+            "--",
+            os.path.abspath(sys.executable),
+            str(Path(__file__).resolve()),
+            "tick",
+            "--task-dir",
+            str(task_dir),
+        ]
+    )
+    observed = timer_status(task)
+    if not observed["registration_verified"]:
+        raise RuntimeError(
+            "Timer registration/interval/next run did not verify; inspect status or pause"
+        )
+    return observed
+
+
+def read_prompt(path: Path) -> str:
+    prompt = path.read_text(encoding="utf-8")
+    if not prompt.strip():
+        raise ValueError("prompt-file must not be empty")
+    return prompt
 
 
 def create_task(args: argparse.Namespace) -> dict[str, Any]:
@@ -329,12 +441,10 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
     codex = shutil.which("codex")
     if not codex:
         raise RuntimeError("codex executable is unavailable")
-    prompt = args.prompt_file.read_text(encoding="utf-8")
-    if not prompt.strip():
-        raise ValueError("prompt-file must not be empty")
+    prompt = read_prompt(args.prompt_file)
     cwd = str(args.cwd.expanduser().resolve(strict=True))
     task = {
-        "version": 1,
+        "version": STATE_VERSION,
         "id": args.id,
         "thread_id": thread_id,
         "cwd": cwd,
@@ -362,31 +472,7 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
     task_dir.mkdir(parents=True, mode=0o700)
     save(task_dir, task)
     try:
-        checked(
-            [
-                "systemd-run",
-                "--user",
-                "--unit=" + task["unit"],
-                "--collect",
-                f"--on-active={args.interval_minutes}min",
-                f"--on-unit-active={args.interval_minutes}min",
-                "--timer-property=AccuracySec=1s",
-                "--property=Type=oneshot",
-                "--working-directory=" + cwd,
-                "--expand-environment=no",
-                "--",
-                os.path.abspath(sys.executable),
-                str(Path(__file__).resolve()),
-                "tick",
-                "--task-dir",
-                str(task_dir),
-            ]
-        )
-        observed = timer_status(task)
-        if not observed["registration_verified"]:
-            raise RuntimeError(
-                "Timer registration/interval/next run did not verify; inspect status or pause"
-            )
+        observed = register_timer(task_dir, task)
         task["status"] = "active"
         save(task_dir, task)
         return {**result(task_dir, task), **observed}
@@ -396,36 +482,64 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
         raise
 
 
-def acknowledge(delivery: dict[str, Any], thread_id: str,
-                stdout: str | bytes | None, stderr: str | bytes | None) -> None:
+def acknowledge(
+    delivery: dict[str, Any],
+    thread_id: str,
+    stdout: str | bytes | None,
+    stderr: str | bytes | None,
+) -> None:
     def decoded(value: str | bytes | None) -> str:
-        return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value or ""
+        return (
+            value.decode("utf-8", errors="replace")
+            if isinstance(value, bytes)
+            else value or ""
+        )
+
     output = decoded(stdout)
     delivery.update(queue_stdout=output[-4000:], queue_stderr=decoded(stderr)[-2000:])
-    receipts = re.findall(r"^Queued message (\S+) for thread (\S+)\.$", output, re.MULTILINE)
+    receipts = re.findall(
+        r"^Queued message (\S+) for thread (\S+)\.$", output, re.MULTILINE
+    )
     # Queue acceptance remains evidence even when CLI teardown subsequently times out.
     if len(receipts) == 1 and receipts[0][1] == thread_id:
         delivery.update(phase="queued", queue_id=receipts[0][0])
 
 
-def recover(task_dir: Path, *, marker: str, reason: str, allow_duplicate: bool) -> dict[str, Any]:
+def recover(
+    task_dir: Path, *, marker: str, reason: str, allow_duplicate: bool
+) -> dict[str, Any]:
     """Operator-authorized recovery; preserve the uncertain attempt without claiming it failed."""
     if not allow_duplicate or not reason.strip():
-        raise ValueError("Recovery requires a reason and --acknowledge-possible-duplicate")
+        raise ValueError(
+            "Recovery requires a reason and --acknowledge-possible-duplicate"
+        )
     with locked(task_dir) as task:
         delivery = reconcile(task_dir, task)
         if task.get("blocked_reason") or task["status"] != "active":
-            raise ValueError("Resolve the history/registration problem before delivery recovery")
+            raise ValueError(
+                "Resolve the history/registration problem before delivery recovery"
+            )
         if delivery is None or delivery["marker"] != marker:
             raise ValueError("Recovery marker must match the latest delivery")
-        if delivery["phase"] not in {"uncertain", "failed"}:
-            raise ValueError("Only an uncertain or interrupted delivery can be recovered; queued/started messages must wait")
-        delivery["recovery"] = dict(at=now(), previous_phase=delivery["phase"], reason=reason.strip(),
-                                    duplicate_risk_acknowledged=True, queue_item_deleted=False)
+        if delivery["phase"] not in UNRESOLVED:
+            raise ValueError(
+                "Only an uncertain or interrupted delivery can be recovered; queued/started messages must wait"
+            )
+        delivery["recovery"] = dict(
+            at=now(),
+            previous_phase=delivery["phase"],
+            reason=reason.strip(),
+            duplicate_risk_acknowledged=True,
+            queue_item_deleted=False,
+        )
         delivery["phase"] = "superseded"
         save(task_dir, task)
-        return {**result(task_dir, task), "recovered": True, "enqueued": False,
-                "notice": "Old receipt retained. A late delivery remains possible; tick may now submit a new marker."}
+        return {
+            **result(task_dir, task),
+            "recovered": True,
+            "enqueued": False,
+            "notice": "Old receipt retained. A late delivery remains possible; tick may now submit a new marker.",
+        }
 
 
 def tick(task_dir: Path) -> dict[str, Any]:
@@ -434,12 +548,12 @@ def tick(task_dir: Path) -> dict[str, Any]:
         if (
             task["status"] != "active"
             or task.get("blocked_reason")
-            or (delivery and delivery["phase"] not in {"completed", "superseded"})
+            or (delivery and delivery["phase"] not in SENDABLE)
         ):
             return {**result(task_dir, task), "enqueued": False}
-        _, boundary = history(
-            task, delivery["boundary"] if delivery else task["boundary"]
-        )
+        # reconcile just verified the history and advanced observed_boundary to
+        # the last complete record; sending from there needs no second read.
+        boundary = task["observed_boundary"]
         if not boundary["line_complete"]:
             raise ValueError("Rollout has a partial record; no message was sent")
         marker = f"[codex-heartbeat:{task['id']}:{uuid.uuid4()}]"
@@ -469,26 +583,28 @@ def tick(task_dir: Path) -> dict[str, Any]:
                 cwd=task["cwd"],
                 timeout=task.get("queue_timeout_seconds", QUEUE_TIMEOUT_SECONDS),
             )
-            delivery.update(
-                queue_stdout=queued.stdout[-4000:],
-                queue_stderr=queued.stderr[-2000:],
-                returncode=queued.returncode,
-            )
+            delivery["returncode"] = queued.returncode
             acknowledge(delivery, task["thread_id"], queued.stdout, queued.stderr)
             if delivery["phase"] == "uncertain":
-                delivery["error"] = "Queue acceptance is uncertain; inspect logs or use explicit recover"
+                delivery["error"] = (
+                    "Queue acceptance is uncertain; inspect logs or use explicit recover"
+                )
         except subprocess.TimeoutExpired as error:
             delivery.update(timeout_seconds=error.timeout, queue_process_timed_out=True)
             acknowledge(delivery, task["thread_id"], error.stdout, error.stderr)
             if delivery["phase"] == "uncertain":
-                delivery["error"] = "Queue acceptance is uncertain: TimeoutExpired; explicit recovery required"
+                delivery["error"] = (
+                    "Queue acceptance is uncertain: TimeoutExpired; explicit recovery required"
+                )
         except OSError as error:
-            delivery["error"] = f"Queue acceptance is uncertain: {type(error).__name__}: {error}"
+            delivery["error"] = (
+                f"Queue acceptance is uncertain: {type(error).__name__}: {error}"
+            )
         save(task_dir, task)
         reconcile(task_dir, task)
         return {
             **result(task_dir, task),
-            "enqueued": delivery["phase"] in ("queued", "started", "completed"),
+            "enqueued": delivery["phase"] not in UNRESOLVED,
         }
 
 
@@ -523,6 +639,39 @@ def pause(task_dir: Path) -> dict[str, Any]:
         }
 
 
+def resume(
+    task_dir: Path, *, interval_minutes: int | None, prompt_file: Path | None
+) -> dict[str, Any]:
+    """Restart a paused task's timer, optionally with a new interval or prompt.
+
+    Deliveries and receipts are kept. A queued or started delivery may remain:
+    tick still waits for it to complete before sending again.
+    """
+    if interval_minutes is not None and interval_minutes < 1:
+        raise ValueError("interval-minutes must be positive")
+    prompt = read_prompt(prompt_file) if prompt_file is not None else None
+    with locked(task_dir) as task:
+        delivery = reconcile(task_dir, task)
+        if task["status"] != "paused":
+            raise ValueError("Only a paused task can be resumed")
+        if task.get("blocked_reason"):
+            raise ValueError("Resolve the history/registration problem before resuming")
+        if delivery and delivery["phase"] in UNRESOLVED:
+            raise ValueError("Recover the unresolved delivery before resuming")
+        if timer_status(task)["actual_timer"].get("ActiveState") != "inactive":
+            raise RuntimeError("Timer is not inactive; pause it before resuming")
+        if interval_minutes is not None:
+            task["interval_minutes"] = interval_minutes
+        if prompt is not None:
+            task["prompt"] = prompt
+        # Saved only after the timer verifies, so a failure leaves the task
+        # paused with its previous settings.
+        observed = register_timer(task_dir, task)
+        task["status"] = "active"
+        save(task_dir, task)
+        return {**result(task_dir, task), **observed}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
@@ -532,12 +681,18 @@ def main() -> int:
     for name in ("prompt-file", "rollout", "cwd"):
         create.add_argument("--" + name, type=Path, required=True)
     create.add_argument("--interval-minutes", type=int, default=60)
-    create.add_argument("--queue-timeout-seconds", type=int, default=QUEUE_TIMEOUT_SECONDS)
+    create.add_argument(
+        "--queue-timeout-seconds", type=int, default=QUEUE_TIMEOUT_SECONDS
+    )
     create.add_argument(
         "--state-dir", type=Path, default=Path.home() / ".local/state/codex-followups"
     )
-    for action in ("tick", "send", "status", "pause"):
+    for action in ("tick", "status", "pause"):
         commands.add_parser(action).add_argument("--task-dir", type=Path, required=True)
+    resumption = commands.add_parser("resume")
+    resumption.add_argument("--task-dir", type=Path, required=True)
+    resumption.add_argument("--interval-minutes", type=int)
+    resumption.add_argument("--prompt-file", type=Path)
     recovery = commands.add_parser("recover")
     recovery.add_argument("--task-dir", type=Path, required=True)
     recovery.add_argument("--delivery-marker", required=True)
@@ -547,13 +702,21 @@ def main() -> int:
     try:
         if args.action == "create":
             output = create_task(args)
+        elif args.action == "resume":
+            output = resume(
+                args.task_dir.expanduser().resolve(strict=True),
+                interval_minutes=args.interval_minutes,
+                prompt_file=args.prompt_file,
+            )
         elif args.action == "recover":
-            output = recover(args.task_dir.expanduser().resolve(strict=True), marker=args.delivery_marker,
-                             reason=args.reason, allow_duplicate=args.acknowledge_possible_duplicate)
+            output = recover(
+                args.task_dir.expanduser().resolve(strict=True),
+                marker=args.delivery_marker,
+                reason=args.reason,
+                allow_duplicate=args.acknowledge_possible_duplicate,
+            )
         else:
-            operation = {"tick": tick, "send": tick, "status": status, "pause": pause}[
-                args.action
-            ]
+            operation = {"tick": tick, "status": status, "pause": pause}[args.action]
             output = operation(args.task_dir.expanduser().resolve(strict=True))
         print(json.dumps(output, ensure_ascii=False, indent=2))
         if args.action == "pause" and output.get("pause_verified"):
@@ -563,7 +726,7 @@ def main() -> int:
         return (
             1
             if output.get("blocked_reason")
-            or (output.get("delivery") or {}).get("phase") in ("uncertain", "failed")
+            or (output.get("delivery") or {}).get("phase") in UNRESOLVED
             else 0
         )
     except BlockingIOError:
