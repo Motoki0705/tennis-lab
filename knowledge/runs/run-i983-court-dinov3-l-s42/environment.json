@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-10-10T15:05:57.154244+00:00",
+  "python": "3.11.16 (main, Sep 29 2026, 14:59:26) [Clang 22.1.3 ]",
+  "platform": "Linux-6.6.122+-x86_64-with-glibc2.39",
+  "packages": {
+    "torch": "2.14.1",
+    "torchvision": "0.29.1",
+    "pytorch-lightning": "2.6.6",
+    "numpy": "2.3.5",
+    "hydra-core": "1.3.7"
+  },
+  "git_commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "dinov3": "4add255125e6cbf446c6a43c5f3028aa41b63648 third_party/dinov3 (heads/main)",
+  "gpu": "NVIDIA L4, 580.82.07, 23034 MiB",
+  "disk_free_bytes": 190511616000,
+  "checkpoints": [
+    {
+      "path": "outputs/court_detection/train/i983-dino-l-shared1024/s42/logs/version_0/checkpoints/last.ckpt",
+      "bytes": 2734089925,
+      "mtime": 1791644629.15616
+    }
+  ]
+}

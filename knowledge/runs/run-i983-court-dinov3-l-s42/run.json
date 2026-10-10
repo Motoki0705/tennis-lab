@@ -6,5 +6,13 @@
   "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
   "command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_l run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42 run.artifact_store.sync_interval_seconds=60",
   "input_snapshot": "knowledge/runs/run-i983-court-l512-profile-s42/inputs.json",
-  "drive_output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42"
+  "drive_output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42",
+  "checkpoint_selection": {
+    "monitor": "val/loss",
+    "mode": "min",
+    "after_epochs": 20,
+    "uses_test": false
+  },
+  "environment": "environment.json",
+  "first_checkpoint_receipt": "first-checkpoint.json"
 }
