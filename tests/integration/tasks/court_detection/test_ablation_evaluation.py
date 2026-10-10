@@ -40,12 +40,22 @@ def test_checkpoint_evaluation_separates_real_pose_and_enforces_matched_comparis
         data.source_eval_dataloader("tennis_court_detector", "test")
     with pytest.raises(ValueError, match="train augmentation"):
         data.source_eval_dataloader("synthetic_court", "train")
-    module = CourtDetectionLightningModule(config, target_bundle=data.target_bundle_spec)
+    module = CourtDetectionLightningModule(
+        config, target_bundle=data.target_bundle_spec
+    )
     checkpoint = tmp_path / "model.ckpt"
-    torch.save({
-        "hyper_parameters": {"config": config, "target_bundle_state": serialize_target_bundle(data.target_bundle_spec)},
-        "state_dict": module.state_dict(), "epoch": 0, "global_step": 0,
-    }, checkpoint)
+    torch.save(
+        {
+            "hyper_parameters": {
+                "config": config,
+                "target_bundle_state": serialize_target_bundle(data.target_bundle_spec),
+            },
+            "state_dict": module.state_dict(),
+            "epoch": 0,
+            "global_step": 0,
+        },
+        checkpoint,
+    )
     result_dir = tmp_path / "evaluation"
     result = evaluate_checkpoint(checkpoint, result_dir, device="cpu")
     synthetic = result["splits"]["synthetic_court-test"]
@@ -58,7 +68,10 @@ def test_checkpoint_evaluation_separates_real_pose_and_enforces_matched_comparis
     assert not any("pose" in key for key in real["metrics"])
     assert len(synthetic["qualitative"][0]["files"]) == 5
     assert len(real["qualitative"][0]["files"]) == 4
-    assert all((result_dir / "synthetic_court-test" / name).is_file() for name in synthetic["qualitative"][0]["files"].values())
+    assert all(
+        (result_dir / "synthetic_court-test" / name).is_file()
+        for name in synthetic["qualitative"][0]["files"].values()
+    )
 
     inputs = []
     for backbone in BACKBONES:
