@@ -11,6 +11,7 @@ repo rootで実行する。session名・commit・task・run IDは実際の対象
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py exec --session court-work --job-id setup -- bash -lc 'uv sync --locked && git submodule update --init third_party/dinov3'
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py status --session court-work --job-id setup
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py logs --session court-work --job-id setup --lines 80
+.venv/bin/python .agents/skills/tennis-colab/scripts/colab.py reconnect --session court-work
 ```
 
 GitHubのSSH originは同じrepositoryのcredential-free HTTPS URLへ変換する。秘密をURLへ埋め込まない。
