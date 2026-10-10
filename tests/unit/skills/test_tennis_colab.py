@@ -309,6 +309,32 @@ def test_stop_allows_storage_exclusions_but_keeps_source_recovery_guard(
         assert commands == [("stop", "-s", "owned")]
 
 
+@pytest.mark.parametrize("assignment_expired", [False, True])
+def test_reconnect_rechecks_refreshed_ownership_and_never_allocates(
+    modules: tuple[ModuleType, ModuleType], monkeypatch: pytest.MonkeyPatch,
+    assignment_expired: bool,
+) -> None:
+    frontend = importlib.import_module("colab")
+    calls = []
+
+    def require_registered() -> None:
+        calls.append("guard")
+        if assignment_expired and calls.count("guard") == 2:
+            raise RuntimeError("assignment expired")
+
+    session = SimpleNamespace(
+        require_registered=require_registered,
+        cli=lambda command, **kwargs: calls.append(command),
+        rpc=lambda action, **kwargs: {"action": action, "jobs": []},
+    )
+    if assignment_expired:
+        with pytest.raises(RuntimeError, match="assignment expired"):
+            frontend.reconnect(session)
+    else:
+        assert frontend.reconnect(session)["connection"] == "reconnected"
+    assert calls == ["guard", "sessions", "guard"]
+
+
 def test_runner_output_has_one_live_writer_and_is_salvaged_after_exit(
     worker: tuple[ModuleType, Path, list[dict[str, Any]]],
     monkeypatch: pytest.MonkeyPatch,
