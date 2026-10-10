@@ -650,6 +650,94 @@ class CliHeartbeatTests(unittest.TestCase):
         self.assertFalse(helper.tick(self.task_dir)["enqueued"])
         self.assertEqual(len(self.queue_calls), 1)
 
+    def test_resume_changes_interval_and_prompt_and_keeps_receipts(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        self.start_delivery()
+        self.event("task_complete", turn_id="delivery-turn")
+        helper.pause(self.task_dir)
+        new_prompt = self.root / "new-prompt.txt"
+        new_prompt.write_text("次の段階を確認", encoding="utf-8")
+        self.command_mock.reset_mock()
+        result = helper.resume(self.task_dir, interval_minutes=15, prompt_file=new_prompt)
+        self.assertEqual(result["status"], "active")
+        self.assertTrue(result["registration_verified"])
+        self.assertEqual(result["interval_minutes"], 15)
+        register = next(
+            call.args[0]
+            for call in self.command_mock.call_args_list
+            if call.args[0][0] == "systemd-run"
+        )
+        self.assertIn("--on-unit-active=15min", register)
+        self.assertIn("--unit=" + self.state()["unit"], register)
+        self.assertEqual(self.state()["deliveries"][0]["phase"], "completed")
+        second = helper.tick(self.task_dir)
+        self.assertTrue(second["enqueued"])
+        self.assertTrue(self.queue_calls[-1][0][7].endswith("\n次の段階を確認"))
+
+    def test_resume_omitted_options_keep_interval_and_prompt(self) -> None:
+        self.create()
+        helper.pause(self.task_dir)
+        result = helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.assertEqual(result["interval_minutes"], 30)
+        self.assertEqual(self.state()["prompt"], self.prompt.read_text())
+
+    def test_resume_waits_for_a_queued_delivery_instead_of_resending(self) -> None:
+        self.create()
+        helper.tick(self.task_dir)
+        helper.pause(self.task_dir)
+        result = helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.assertEqual(result["delivery_health"], "waiting_for_runtime")
+        self.assertFalse(helper.tick(self.task_dir)["enqueued"])
+        self.assertEqual(len(self.queue_calls), 1)
+
+    def test_resume_refuses_active_unresolved_or_blocked_tasks(self) -> None:
+        self.create()
+        with self.assertRaisesRegex(ValueError, "Only a paused"):
+            helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.queue_failure = subprocess.TimeoutExpired("codex", 45)
+        helper.tick(self.task_dir)
+        helper.pause(self.task_dir)
+        with self.assertRaisesRegex(ValueError, "Recover"):
+            helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        self.rollout.unlink()
+        with self.assertRaisesRegex(ValueError, "history"):
+            helper.resume(self.task_dir, interval_minutes=None, prompt_file=None)
+        with self.assertRaisesRegex(ValueError, "positive"):
+            helper.resume(self.task_dir, interval_minutes=0, prompt_file=None)
+        with self.assertRaises(FileNotFoundError):
+            helper.resume(self.task_dir, interval_minutes=None, prompt_file=self.root / "missing.txt")
+        self.assertEqual(self.state()["status"], "paused")
+        self.assertFalse(self.active)
+
+    def test_failed_resume_registration_keeps_previous_paused_settings(self) -> None:
+        self.create()
+        helper.pause(self.task_dir)
+
+        def unverified(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            completed = self.external(argv, **kwargs)
+            if argv[0] == "systemd-run":
+                self.interval = 999
+            return completed
+
+        self.command_mock.side_effect = unverified
+        with self.assertRaisesRegex(RuntimeError, "did not verify"):
+            helper.resume(self.task_dir, interval_minutes=15, prompt_file=None)
+        state = self.state()
+        self.assertEqual(state["status"], "paused")
+        self.assertEqual(state["interval_minutes"], 30)
+
+    def test_cli_resume_reports_registration(self) -> None:
+        self.create()
+        helper.pause(self.task_dir)
+        argv = ["cli_heartbeat.py", "resume", "--task-dir", str(self.task_dir),
+                "--interval-minutes", "45"]
+        with patch.object(helper.sys, "argv", argv), redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(helper.main(), 0)
+        receipt = json.loads(output.getvalue())
+        self.assertTrue(receipt["registration_verified"])
+        self.assertEqual(receipt["interval_minutes"], 45)
+
     def test_unavailable_systemd_fails_without_fallback_or_state(self) -> None:
         self.command_mock.side_effect = FileNotFoundError("systemctl unavailable")
         with self.assertRaises(FileNotFoundError):
