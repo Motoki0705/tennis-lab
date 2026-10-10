@@ -1115,8 +1115,8 @@ class CourtHierarchicalModel(nn.Module):
             )
         projected = []
         for projection, feature in zip(self.feature_projections, features, strict=True):
-            assert feature is not None
-            projected.append(projection(feature))
+            # The existing all-four check above has already rejected None.
+            projected.append(projection(cast(Tensor, feature)))
         return (projected[0], projected[1], projected[2], projected[3])
 
     def _decode_with_transformer(

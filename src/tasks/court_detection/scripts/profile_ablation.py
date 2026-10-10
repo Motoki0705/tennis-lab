@@ -7,6 +7,7 @@ import json
 import os
 import statistics
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -16,13 +17,31 @@ from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
 from src.tasks.base.training.compilation import compile_modules
+from src.tasks.court_detection.ablation.evaluation import parameter_counts
 from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
-from src.tasks.court_detection.evaluation.ablation import parameter_counts
 from src.tasks.court_detection.model_io.contracts import CourtPoseTrainingResult
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
     _move_to_device,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+)
+from src.utils.paths import PROJECT_ROOT
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="court_detection.ablation_profile",
+    fields=(
+        BoundaryPathField(
+            "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
 )
 
 
@@ -47,15 +66,23 @@ def main() -> None:
     if "L4" not in gpu:
         raise RuntimeError(f"Expected L4, observed {gpu}")
     with initialize_config_dir(
-        config_dir=str(Path(__file__).resolve().parents[1] / "configs"),
+        config_dir=str(PROJECT_ROOT / "src" / "tasks" / "court_detection" / "configs"),
         version_base="1.3",
     ):
         cfg = compose(config_name="train_i983_l")
     runtime = CourtTrainingConfig.from_config(cfg)
+    output_dir = args.output.expanduser().resolve()
+    paths = PATH_BOUNDARY.validate(
+        {"output": output_dir},
+        resolver=PathResolver(
+            replace(runtime.shared.resolver.roots, output_root=output_dir.parent)
+        ),
+    )
+    output_dir = paths.declared("output").path
     pl.seed_everything(int(cfg.run.seed), workers=True)
     torch.set_float32_matmul_precision(str(cfg.training.matmul_precision))
-    args.output.mkdir(parents=True, exist_ok=False)
-    OmegaConf.save(cfg, args.output / "config.yaml", resolve=True)
+    output_dir.mkdir(parents=True, exist_ok=False)
+    OmegaConf.save(cfg, output_dir / "config.yaml", resolve=True)
     evidence: dict[str, Any] = {
         "status": "preparing",
         "gpu": gpu,
@@ -65,9 +92,9 @@ def main() -> None:
     }
 
     def save() -> None:
-        temporary = args.output / "profile.partial"
+        temporary = output_dir / "profile.partial"
         temporary.write_text(json.dumps(evidence, indent=2, allow_nan=False) + "\n")
-        temporary.replace(args.output / "profile.json")
+        temporary.replace(output_dir / "profile.json")
 
     save()
     try:
