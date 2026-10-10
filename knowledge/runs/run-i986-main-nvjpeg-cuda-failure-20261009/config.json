@@ -1,0 +1,219 @@
+{
+  "model": {
+    "compression": "conv2d",
+    "pose_pooling": null,
+    "readout": "query_only",
+    "frames": 32,
+    "stem_channels": [
+      8,
+      16,
+      32,
+      48
+    ],
+    "mixed_channels": [
+      64,
+      96
+    ],
+    "dim": 128,
+    "heads": 4,
+    "layers": 2,
+    "dropout": 0.1,
+    "rope_base": 10000.0
+  },
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "code": {
+    "directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1",
+    "base_commit": "a7c6419d9dd0de01a0612b4bacfee521f23a48b9",
+    "torch_version": "2.13.0+cu130",
+    "source_sha256": {
+      "src/tasks/ball_detection/data/annotation_states.py": "f2b6ef40e2c241e9256276a4d265414c2c921a674fde542daefa139d149ce7ef",
+      "src/tasks/ball_detection/data/coordinate_dataset.py": "d5a426730f4cf5114e0a88629de918e1f2e6afda1188a15e6afe3913e8fb166a",
+      "src/tasks/ball_detection/data/coordinate_manifest.py": "363d5d8d70da5c44108b51863770d6362756e53c3bafd10923a9a5740e712045",
+      "src/tasks/ball_detection/data/coordinate_snapshot.py": "c94b3105f86ae9c785ab39fa328dcad5de950c551df0555603f2d5b360b993c4",
+      "src/tasks/ball_detection/data/play_intervals.py": "91405f503af9c4d0ec001d3ec6a4aaec343c441154cee85bae73ed4af79c3cf5",
+      "src/tasks/ball_detection/data/play_manifest.py": "64f68e2498110b39606a9158165426aa3a6957d2e9141ad4197cdab5cf769d2c",
+      "src/tasks/ball_detection/data/pose_windows.py": "d1b7b67a9f850ff78a374f1471ccb8288a2fd30f15ec8cb9621775c069e0d965",
+      "src/tasks/ball_detection/data/store.py": "ee09d06926708e5fbb08279a996f254c771d77eb58682d63ce1fc313a4c1930d",
+      "src/tasks/ball_detection/data/temporal_sampling.py": "0099391ab99e9ab0b22eb2a20a2092843e6d04efde2877babc3b39b1800326e1",
+      "src/tasks/ball_detection/model_io/mdd.py": "c3953b141bdf9f03aabb5f0aefeaf6bca6744b865d631702dd746626f77ecc9b",
+      "src/tasks/ball_detection/model_io/mdd_coordinates.py": "127577030e99d736b46b5454ec22cce970400072824c49beac6964ff714174f4",
+      "src/tasks/ball_detection/model_io/mdd_pose.py": "52522e1a30a8507faae296635eeaacfddb48662a78b8ef6f74d5b49a41ea9a79",
+      "src/tasks/ball_detection/model_io/mdd_query.py": "4d91c4454f517a820ea3ad4017b2eb145a625ee8972b0aaeac5ee12865ff00dd",
+      "src/tasks/ball_detection/models/mdd_pose/__init__.py": "7e6cf12502930ef1213089696dda4828ec47d09158f6317d732d97fbe5651bf7",
+      "src/tasks/ball_detection/models/mdd_pose/config.py": "96b4a08167f50d8d1cdd236cc8c54ceb4837d708cceedbd2a68f3774c65dc19a",
+      "src/tasks/ball_detection/models/mdd_pose/encoder.py": "5b030abbc9aa1c45f476b2c32ad79a3c4f2c2d6213795c954ce5708a6671357a",
+      "src/tasks/ball_detection/models/mdd_pose/model.py": "bd74d25cf055df0dd32151338ee7448ef2cb9c3f73a97adae8917a813b5c317e",
+      "src/tasks/ball_detection/models/mdd_pose/pooling.py": "70c3b1a74cbfb86e87ec6185c96d3836b812d8c1e895322952746f3f1081f66e",
+      "src/tasks/ball_detection/models/mdd_pose/query.py": "7ede7708c72c6fcf5db6c5e51549e99ca4ab50f4dcb8a6c822426825e42abe2f",
+      "src/tasks/ball_detection/models/mdd_pose/variants.py": "91b1f0cd7bf2a263f787a95c97d2cbb5d5a2ce8489d681c5471172fd65de7c45",
+      "src/tasks/ball_detection/preprocessing/__init__.py": "78c37038d2d7eedbf07c043a30e170dec0a340c539b8c552d604420858e8cd06",
+      "src/tasks/ball_detection/preprocessing/mdd.py": "efd82af03e89808eb17c429a065aaa584f4c00976549630d47ab516f34bc847e",
+      "src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py": "109afd0e7425091a9cd1f8c759f114ef704826bfaa998f89c7a55bc243073f97",
+      "src/tasks/ball_detection/scripts/prepare_mdd_training.py": "41e34e8d25f2340dad87e28c2b685c33498c34161f7de17766ffd2b93a789035",
+      "src/tasks/ball_detection/scripts/train_mdd_pose.py": "b34874f672e00b24090e1d18a0ad46c82dc609f07cd6de07c931f492ab5f6157",
+      "src/tasks/ball_detection/training/coordinate_checkpoint.py": "a5d4496a0b7159676cf2f427dc5838ef48527885442d04aed447581cf607591a",
+      "src/tasks/ball_detection/training/coordinate_compilation.py": "0e85d0e4e4f247ccc3493d1f2eae61412c521f9b7afc9e596fa32f67622abd7f",
+      "src/tasks/ball_detection/training/coordinate_evaluation.py": "2b9e65a04ad0a1fb28f0e0ddc1f6f8adc4f6b3584d3b7815e1db691972d06e5a",
+      "src/tasks/ball_detection/training/coordinate_images.py": "4722ce422265de6626c020b4d85b75ab66eb38419d0882dbe419df66608f42af",
+      "src/tasks/ball_detection/training/coordinate_preparation.py": "ee65d280342306bd2f8356003e08eb85356c583a46c58c3fb34a8fc6cc8a9210",
+      "src/tasks/ball_detection/training/coordinate_provenance.py": "e0c0498e7122914be6c63c865ef76686624e7696c9e11e389182103d7ae93d6d",
+      "src/tasks/ball_detection/training/coordinate_runtime.py": "4c2bef1d7a475c0f4dcd66b3e8ae3aeaf129c5488c2e2466a0e21e131759c769",
+      "src/tasks/ball_detection/training/coordinate_sampling.py": "08c0a63af2af0ca8bfc93acf474bf7bee131f3f504635d17dab5d7e7da1c24ed",
+      "src/utils/checksum.py": "9f13bfba37316d4d26d7d882f53ec905ee7cc69379c8dcc0db68960a439962a3",
+      "src/utils/data/file_ranges.py": "55caf8244d8ba6149ed6d41fec255c1f5898b392c241e4c20b4d2d2cc36888eb",
+      "src/utils/shared_file_verification.py": "02c2b6d7c336fba9b99282be0dce911d63bbe7e2920fe5f934a849fd3a200fc0"
+    }
+  },
+  "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
+  "arguments": {
+    "manifest": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json",
+    "output": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/conv2d-query-only-bf16/s42-u60000-nvjpeg-v1",
+    "model_config": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml",
+    "compression": null,
+    "pose_pooling": null,
+    "readout": null,
+    "epochs": 10,
+    "learning_rate": 0.0001,
+    "seed": 42,
+    "device": "cuda",
+    "batch_size": 1,
+    "precision": "bf16",
+    "num_workers": 8,
+    "pin_memory": true,
+    "prefetch_factor": 4,
+    "cpu_threads": 2,
+    "compile_mode": "default",
+    "compile_recompile_limit": 8,
+    "jpeg_decoder": "nvjpeg",
+    "input_verification": "upfront",
+    "image_prefetch": true,
+    "log_every": 50,
+    "resume": null,
+    "mdd_a": 0.2,
+    "mdd_b": 0.15,
+    "windows_per_epoch": 6000,
+    "selection_scope": "common"
+  },
+  "selection": {
+    "scope": "common",
+    "aggregation": "equal mean of per-FPS means",
+    "ownership": "unique frames within FPS; centre distance, then start"
+  },
+  "fps_sampling": {
+    "frame_steps": [
+      1,
+      2,
+      4
+    ],
+    "windows_per_epoch": 6000,
+    "mixture": "equal-FPS shuffled cycles; sampled RGB before MDD"
+  },
+  "test_usage": "no test samples used for training or checkpoint selection",
+  "input_contract": {
+    "schema": "rgb_uint8_native_mdd.v1",
+    "layout": "B,T,3,H,W",
+    "color_order": "RGB",
+    "dtype": "uint8",
+    "value_range": [
+      0,
+      255
+    ],
+    "computation_dtype": "float32",
+    "normalization": "divide_255",
+    "luminance": "0.114*B + 0.587*G + 0.299*R",
+    "first_mdd_frame": "zero",
+    "mdd_a": 0.2,
+    "mdd_b": 0.15
+  },
+  "image_decode": {
+    "decoder": "torchvision.io.decode_jpeg/nvjpeg",
+    "version": "0.28.0+cu130",
+    "color_order": "RGB",
+    "device": "cuda",
+    "apply_exif_orientation": false,
+    "cuda_version": "13.0",
+    "pixels_identical_to_opencv": false
+  },
+  "compilation": {
+    "mode": "default",
+    "backend": "inductor",
+    "fullgraph": true,
+    "dynamic": false,
+    "recompile_limit": 8,
+    "backward_pass_autocast": "off",
+    "unique_graphs": 0,
+    "graph_breaks": {}
+  },
+  "input_rgb": "stored JPEG decoded to RGB uint8; sampled before native FP32 model MDD; no ImageNet normalization",
+  "mdd_first_frame": "zero, no RGB predecessor outside the 32-frame window",
+  "recipe": {
+    "model": {
+      "compression": "conv2d",
+      "pose_pooling": null,
+      "readout": "query_only",
+      "frames": 32,
+      "stem_channels": [
+        8,
+        16,
+        32,
+        48
+      ],
+      "mixed_channels": [
+        64,
+        96
+      ],
+      "dim": 128,
+      "heads": 4,
+      "layers": 2,
+      "dropout": 0.1,
+      "rope_base": 10000.0
+    },
+    "runtime": {
+      "precision": "bf16",
+      "num_workers": 8,
+      "pin_memory": true,
+      "prefetch_factor": 4,
+      "cpu_threads": 2,
+      "compile_mode": "default",
+      "compile_recompile_limit": 8,
+      "jpeg_decoder": "nvjpeg",
+      "input_verification": "upfront",
+      "image_prefetch": true
+    },
+    "batch_size": 1,
+    "seed": 42,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.01,
+    "windows_per_epoch": 6000,
+    "selection_scope": "common",
+    "input_contract": {
+      "schema": "rgb_uint8_native_mdd.v1",
+      "layout": "B,T,3,H,W",
+      "color_order": "RGB",
+      "dtype": "uint8",
+      "value_range": [
+        0,
+        255
+      ],
+      "computation_dtype": "float32",
+      "normalization": "divide_255",
+      "luminance": "0.114*B + 0.587*G + 0.299*R",
+      "first_mdd_frame": "zero",
+      "mdd_a": 0.2,
+      "mdd_b": 0.15
+    },
+    "image_decode": {
+      "decoder": "torchvision.io.decode_jpeg/nvjpeg",
+      "version": "0.28.0+cu130",
+      "color_order": "RGB",
+      "device": "cuda",
+      "apply_exif_orientation": false,
+      "cuda_version": "13.0",
+      "pixels_identical_to_opencv": false
+    },
+    "device": "cuda",
+    "evaluation_precision": "bf16",
+    "gradient_clip": 1.0,
+    "schedule": "constant"
+  }
+}

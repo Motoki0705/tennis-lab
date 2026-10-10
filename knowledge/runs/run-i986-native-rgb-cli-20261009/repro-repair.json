@@ -1,0 +1,6 @@
+{
+  "reason": "Relocate the exact captured model YAML from a local outputs path into this bundle; command semantics are unchanged. Original script retained in repro.captured.txt.",
+  "captured_script_sha256": "2b7ab78eedba0120e3224612ea097cb0560f0561ecf921062b0dc1d2208720f3",
+  "original_model_path": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml",
+  "model_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2"
+}

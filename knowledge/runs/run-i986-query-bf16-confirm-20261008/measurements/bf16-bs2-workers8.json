@@ -1,0 +1,69 @@
+{
+  "schema": "ball_mdd_query_gpu.v1",
+  "status": "error",
+  "arguments": {
+    "manifest": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json",
+    "model_config": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml",
+    "output": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/conv2d-query-only-gpu/20261008-bf16-confirm-v1/bf16-bs2-workers8.json",
+    "batch_size": 2,
+    "precision": "bf16",
+    "mode": "pipeline",
+    "workers": 8,
+    "pin_memory": true,
+    "cpu_threads": 2,
+    "warmup": 6,
+    "steps": 48
+  },
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
+  "script_sha256": "23a34dc1fe9432de2eaf2f7702dfcf8156edf19e1588ca932bc9132269e6e022",
+  "commit": "c8e6810616f3f31f3cff3dee0df7376d7c9a7a9b",
+  "queue_run_id": "1791458217380495688_524758_i986-conv2d-query-bf16-confirm-v1",
+  "seed": 42,
+  "optimizer": {
+    "name": "AdamW",
+    "lr": 0.0001,
+    "weight_decay": 0.01
+  },
+  "tf32": {
+    "matmul": false,
+    "cudnn": true
+  },
+  "cudnn_benchmark": false,
+  "train_only": true,
+  "checkpoint_saved": false,
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "total_bytes": 17102864384,
+    "cuda": "13.0",
+    "torch": "2.13.0+cu130",
+    "python": "3.11.15",
+    "memory_fraction_limit": 0.9,
+    "free_before_bytes": 15894315008
+  },
+  "model": {
+    "compression": "conv2d",
+    "pose_pooling": null,
+    "readout": "query_only",
+    "frames": 32,
+    "stem_channels": [
+      8,
+      16,
+      32,
+      48
+    ],
+    "mixed_channels": [
+      64,
+      96
+    ],
+    "dim": 128,
+    "heads": 4,
+    "layers": 2,
+    "dropout": 0.1,
+    "rope_base": 10000.0
+  },
+  "parameters": 1126762,
+  "window_sequence_sha256": "3571baf08354e1f05ef411ef75a8bfea57f256f4a3ed9ec0ee2af096f603e774",
+  "steps": [],
+  "error": "AcceleratorError(\"CUDA error: unknown error\\nSearch for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.\\nFor more detailed error information, run with CUDA_LOG_FILE=stderr\\n\")"
+}

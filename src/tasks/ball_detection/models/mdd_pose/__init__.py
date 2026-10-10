@@ -1,6 +1,7 @@
-"""MDD-only visual encoder and pose-conditioned coordinate detector."""
+"""MDD coordinate models with optional pose conditioning."""
 
 from .config import MDDPoseConfig
 from .model import MDDPoseDetector
+from .query import MDDQueryDetector
 
-__all__ = ["MDDPoseConfig", "MDDPoseDetector"]
+__all__ = ["MDDPoseConfig", "MDDPoseDetector", "MDDQueryDetector"]

@@ -1,11 +1,19 @@
-# MDD＋pose coordinate detector（学習前レビュー用）
+# MDD coordinate detector（poseあり32条件＋query-only 4条件）
 
-入力は高解像度の2ch MDDとCOCO17の2D座標のみ。RGBはMDD計算の素材で、
-モデルへ直接渡さない。出力は32実frameそれぞれのsource正規化座標 `(B,32,2)`。
+外部入力はRGB順uint8のclip `B,T,3,H,W`。モデル先頭の固定`RGBToMDD` layerがFP32で2ch MDDを作る。
+poseありの32条件はCOCO17の2D座標も使う。
+query-onlyの4条件にはpose入力・pose module・null pose tokenを設けない。
+学習部が使う画像特徴はMDDだけ。RGBから学習部への別経路はない。出力は32枚それぞれのsource正規化座標 `(B,32,2)`。
 公開境界は`model_io.mdd_pose.build_mdd_pose_detector`のmodel/adapter pairで、
-`MDDPoseInput`を検証してから計算のみのforwardを実行する。
-設定の正本は `../../configs/model/mdd_pose.yaml`。全重みをランダム初期化する。
+`MDDPoseInput.rgb`・pose・時刻を検証してから、MDD生成を含むforwardを実行する。
+query-onlyの公開境界は`model_io.mdd_query.build_mdd_query_detector`と`MDDQueryInput`。
+設定の正本は `../../configs/model/mdd_pose.yaml` と `../../configs/model/mdd_query.yaml`。
+全重みをランダム初期化する。
 refinerの候補/patch契約との接続は#986の未決事項で、座標からheatmapを捏造しない。
+
+固定前処理の定義・色順序は[共通前処理](../../preprocessing/README.md)を正本とする。
+RGB→MDDの計算はBF16 autocast下でもFP32を保ち、係数は学習しない。
+`torch.compile`にはこの前処理から座標headまでを含める。
 
 ## Encoder: frame独立の1/16圧縮 → 共通2D/2D/3Dを2回 → 1/64
 
@@ -55,7 +63,7 @@ MDDをresize/cropせず、1/16の変換に必要な場合だけ下/右を16の�
 位置埋込は実画像内の範囲の中心を使う。pose/教師座標の正規化にはpadding後サイズを使わない。
 最終patch tensorはfloat32約3.75MiB。高解像度stem等のactivation memoryは別途必要。
 
-## pose・融合・座標
+## poseありの集約・融合・座標
 
 `pooling.py` は各frameの全人物を1 pose tokenへ集約する。
 座標をsourceのW−1/H−1で正規化し、confidence/ID値は特徴として入力しない。
@@ -82,26 +90,22 @@ MDDをresize/cropせず、1/16の変換に必要な場合だけ下/右を16の�
 LayerNorm→Linear(2)→sigmoidでuvを出す。pooling内部のpose queryはball queryとは別。
 4種類の1/16圧縮×4pose集約×2readout＝32条件を同じ実装で選べる。
 
-## データと学習入口
+## poseなしのquery-only
 
-先に[プレイ区間・学習窓](../../data/PLAY_INTERVALS.md)をWebUIでレビューし、
-学習対象をmanifestに固定する。コピーされたpose artifact hashを使うため、
-元campaignの承認が進んでも対象は自動で増えない。
-MDDは保存JPEGの解像度で計算し、ImageNet正規化や先行resizeはしない。
-ConvNeXtと共有するsigmoid MDDを使い、最初のframeは参照画像がないため0にする。
-位置教師は単一observedだけ。欠損を補間した座標で学習しない。
+`readout: query_only`と`pose_pooling: null`を一緒に指定し、`MDDQueryDetector`を使う。
+4つの圧縮方式を比較し、pose集約との積は取らない。全体は32＋4＝**36条件**。
 
-レビュー・予算確定後の入口（今回の作業では実行しない）:
+1. 各frameのball queryが**同時刻のMDD patchだけ**をCross-Attentionで読む。
+2. query列の32tokenに、実PTS秒の時間Self-Attentionを適用する。
+3. query側FFNを通す。各更新は残差加算で、既定2 block。
 
-```bash
-# CUDAは元repo共有training queueから実行する。
-.venv/bin/python -m src.tasks.ball_detection.scripts.train_mdd_pose \
-  --manifest <absolute-frozen-selection>/manifest.json --output <absolute-new-run> \
-  --model-config <absolute-code-root>/src/tasks/ball_detection/configs/model/mdd_pose.yaml \
-  --device cuda --epochs <budget> --learning-rate <lr> --seed <seed> \
-  --compression conv2d --pose-pooling attention --readout query
-```
+MDD tokenをqueryから更新する経路はなく、同じencoder出力を各blockから参照する。
+球queryの初期ベクトルをframe間で共有し、最後に各時刻のqueryからuvを回帰する。
+RGB uint8＋実時刻を受け取るtyped adapterで検証し、poseあり設定や旧MDD tensorとの取り違えを拒否する。
 
-初期実装のlossはobserved uvのSmoothL1、val選択は重複frameを中心窓規則で
-一度ずつ数えたsource画素の平均誤差。testはtrainerから読まない。
-これらの設定も学習前レビューの対象であり、まだ実データ学習・性能評価は行っていない。
+## データ・混合FPS・学習入口
+
+元FPS/1/2/1/4を同runで混ぜ、各条件で32枚を保つ。MDDは間引いたRGBから再計算し、
+pose・教師・mask・実PTSも同じframeを読む。40%のpose生成条件からquery-onlyの学習選択を独立させる。
+固定manifestの準備、36構成、全体／共通subsetの評価と実行手順は
+[座標モデルの学習準備](../../training/COORDINATE_TRAINING.md)を参照。

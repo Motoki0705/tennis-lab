@@ -1,0 +1,95 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791511474412814944_1611763_i986-query-bf16-s42-u60000-nvjpeg-v1 (commit=a7c6419d9dd0 provider=codex session=01a0fb0c-97b5-7851-b805-25dae445a6a2)
+{"phase": "verify_inputs_start", "clips": 824}
+{"phase": "verify_inputs_progress", "completed": 50, "clips": 824, "seconds": 47.59798598400084}
+{"phase": "verify_inputs_progress", "completed": 100, "clips": 824, "seconds": 50.42986643301265}
+{"phase": "verify_inputs_progress", "completed": 150, "clips": 824, "seconds": 54.90335288300412}
+{"phase": "verify_inputs_progress", "completed": 200, "clips": 824, "seconds": 65.44485712599999}
+{"phase": "verify_inputs_progress", "completed": 250, "clips": 824, "seconds": 82.0978267800092}
+{"phase": "verify_inputs_progress", "completed": 300, "clips": 824, "seconds": 99.03343499200128}
+{"phase": "verify_inputs_progress", "completed": 350, "clips": 824, "seconds": 113.34656039900437}
+{"phase": "verify_inputs_progress", "completed": 400, "clips": 824, "seconds": 122.53580903400143}
+{"phase": "verify_inputs_progress", "completed": 450, "clips": 824, "seconds": 135.17898514401168}
+{"phase": "verify_inputs_progress", "completed": 500, "clips": 824, "seconds": 147.51047502701113}
+{"phase": "verify_inputs_progress", "completed": 550, "clips": 824, "seconds": 153.70100201301102}
+{"phase": "verify_inputs_progress", "completed": 600, "clips": 824, "seconds": 160.70696541201323}
+{"phase": "verify_inputs_progress", "completed": 650, "clips": 824, "seconds": 166.51231678000477}
+{"phase": "verify_inputs_progress", "completed": 700, "clips": 824, "seconds": 174.01565797100193}
+{"phase": "verify_inputs_progress", "completed": 750, "clips": 824, "seconds": 184.8702864520019}
+{"phase": "verify_inputs_progress", "completed": 800, "clips": 824, "seconds": 199.8366341600049}
+{"phase": "verify_inputs_progress", "completed": 824, "clips": 824, "seconds": 204.53578542200557}
+{"phase": "verify_inputs_done", "clips": 824, "seconds": 258.0657058190118}
+{"phase": "verify_inputs_start", "clips": 190}
+{"phase": "verify_inputs_progress", "completed": 50, "clips": 190, "seconds": 48.822771302991896}
+{"phase": "verify_inputs_progress", "completed": 100, "clips": 190, "seconds": 72.87116072999197}
+{"phase": "verify_inputs_progress", "completed": 150, "clips": 190, "seconds": 85.22957872599363}
+{"phase": "verify_inputs_progress", "completed": 190, "clips": 190, "seconds": 95.12207665499591}
+{"phase": "verify_inputs_done", "clips": 190, "seconds": 104.74419478198979}
+Exception ignored in: <generator object coordinate_batches at 0x76a4720760c0>
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/src/tasks/ball_detection/training/coordinate_images.py", line 67, in coordinate_batches
+    stream.synchronize()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/cuda/streams.py", line 108, in synchronize
+    super().synchronize()
+torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+[W1009 11:11:03.829557933 CUDAEvent.h:57] Warning: CUDA warning: unknown error (function ~CUDAEvent)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/src/tasks/ball_detection/scripts/train_mdd_pose.py", line 267, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/src/tasks/ball_detection/scripts/train_mdd_pose.py", line 217, in main
+    loss, grad = coordinate_train_step(model, optimizer, batch, device, runtime)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/src/tasks/ball_detection/training/coordinate_runtime.py", line 115, in coordinate_train_step
+    prediction = predict_coordinates(model, batch, device)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/src/tasks/ball_detection/training/coordinate_evaluation.py", line 43, in predict_coordinates
+    return adapter.decode_output(model(rgb.to(device, non_blocking=True), timestamps.to(device, non_blocking=True)))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/src/tasks/ball_detection/model_io/mdd_query.py", line 41, in decode_output
+    return decode_coordinates(self.config, output)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/src/tasks/ball_detection/model_io/mdd_coordinates.py", line 26, in decode_coordinates
+    if output.ndim != 3 or output.shape[1:] != (config.frames, 2) or not bool(torch.isfinite(output).all()):
+                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+terminate called after throwing an instance of 'c10::AcceleratorError'
+  what():  CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+Exception raised from insert_events at /__w/pytorch/pytorch/c10/cuda/CUDACachingAllocator.cpp:4355 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x76a564563bfd in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xc4e9 (0x76a5649364e9 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #2: <unknown function> + 0x1869e (0x76a56494269e in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #3: <unknown function> + 0x1c1a5 (0x76a5649461a5 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #4: <unknown function> + 0x1c9ee (0x76a5649469ee in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libc10_cuda.so)
+frame #5: <unknown function> + 0x86ae4 (0x76a564540ae4 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libc10.so)
+frame #6: c10::TensorImpl::~TensorImpl() + 0x9 (0x76a56453b219 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libc10.so)
+frame #7: <unknown function> + 0x8713cd (0x76a4e22713cd in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libtorch_python.so)
+frame #8: <unknown function> + 0x871451 (0x76a4e2271451 in /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v1/.venv/lib/python3.11/site-packages/torch/lib/libtorch_python.so)
+frame #9: <unknown function> + 0x35d534 (0x6158821b6534 in .venv/bin/python)
+frame #10: <unknown function> + 0x33c403 (0x615882195403 in .venv/bin/python)
+frame #11: <unknown function> + 0x32199d (0x61588217a99d in .venv/bin/python)
+frame #12: <unknown function> + 0x3fc893 (0x615882255893 in .venv/bin/python)
+frame #13: <unknown function> + 0x3fc887 (0x615882255887 in .venv/bin/python)
+frame #14: <unknown function> + 0x3fc887 (0x615882255887 in .venv/bin/python)
+frame #15: <unknown function> + 0x3fc887 (0x615882255887 in .venv/bin/python)
+frame #16: PyDict_SetItem + 0xa4d (0x61588205eb4d in .venv/bin/python)
+frame #17: <unknown function> + 0x4fcfd7 (0x615882355fd7 in .venv/bin/python)
+frame #18: Py_FinalizeEx + 0x250 (0x615882355a40 in .venv/bin/python)
+frame #19: Py_RunMain + 0x1c5 (0x615882364515 in .venv/bin/python)
+frame #20: <unknown function> + 0x50c05d (0x61588236505d in .venv/bin/python)
+frame #21: <unknown function> + 0x43741c (0x61588229041c in .venv/bin/python)
+frame #22: <unknown function> + 0x2a1ca (0x76a56502a1ca in /lib/x86_64-linux-gnu/libc.so.6)
+frame #23: __libc_start_main + 0x8b (0x76a56502a28b in /lib/x86_64-linux-gnu/libc.so.6)
+frame #24: <unknown function> + 0x43732d (0x61588229032d in .venv/bin/python)
+
+/home/kamimura/projects/tennis-lab/.training_queue/running/1791511474412814944_1611763_i986-query-bf16-s42-u60000-nvjpeg-v1.job: line 15: 1611979 Aborted                 (core dumped) env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 TORCH_LOGS=graph_breaks,recompiles PYTHONUNBUFFERED=1 .venv/bin/python -m src.tasks.ball_detection.scripts.train_mdd_pose --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json --model-config /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/conv2d-query-only-bf16/s42-u60000-nvjpeg-v1 --device cuda --precision bf16 --compile-mode default --batch-size 1 --num-workers 8 --pin-memory --prefetch-factor 4 --cpu-threads 2 --jpeg-decoder nvjpeg --input-verification upfront --image-prefetch --epochs 10 --windows-per-epoch 6000 --learning-rate 0.0001 --seed 42 --mdd-a 0.2 --mdd-b 0.15 --selection-scope common --log-every 50
+exit_code=134

@@ -11,8 +11,8 @@
 
 ### models/ と model_io/
 - **ConvNeXtUNet**: 2ch MDDからnative probability heatmap・候補・局所patchを出す。`model_io/factory.py`の検証済みmodel/adapter経由で使う。
-- **[MDD＋pose coordinate detector](models/mdd_pose/README.md)**: frame独立のMDD 1/16圧縮→共通2D/2D/3D blockで1/64、同時刻cross-attention→pose/queryの時間RoPE、座標直接回帰。32frame・32条件の学習前レビュー実装。
-- **`model_io/mdd.py`**: 共通の正負輝度差＋sigmoid変換。ConvNeXtの保存済みMDD係数・正規化契約は維持する。
+- **[MDD coordinate detector](models/mdd_pose/README.md)**: RGB uint8→モデル内FP32 MDD→frame独立の1/16圧縮→共通2D/2D/3D blockで1/64、同時刻cross-attention→時間RoPE、座標直接回帰。poseあり32条件＋poseなしquery-only 4条件。
+- **[固定前処理](preprocessing/README.md)**: モデル内RGB→MDDと共通の正負輝度差＋sigmoid変換。`model_io/mdd.py`は既存importの互換入口。ConvNeXtの保存済みMDD係数・正規化契約は維持する。
 - **`model_io/adapters.py`**: 元RGBの検証/宣言済み正規化→MDDへの単一経路、heatmap学習・復号。RGBを直接受け取るモデル分岐はない。
 - **`model_io/contracts.py` / `candidates.py`**: heatmap・候補のtyped契約と閾値前局所peak抽出。
 - **`models/discriminators/`**: ConvNeXtの任意GAN学習用discriminator。
@@ -36,6 +36,7 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 - **[データセット統計](dataset_statistics/README.md)**: 注釈構成、欠損・補間、位置・速度、複数strideの32frame窓、poseの飛び候補をCPUで計算する。全体分布とclip間分布を分離し、レビューUIから原注釈・画像へ戻れる。
 
 ### training/
+- **[座標モデルの学習準備](training/COORDINATE_TRAINING.md)**: 36構成、pose有無で独立したデータ選択、元/1/2/1/4 FPS混合、全体・共通subsetの評価。
 - **`lightning_module.py`**: `BallDetectionLightningModule`。Focal損失によるヒートマップ学習、GAN併用可。
 - **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。
 - **`candidate_recall.py`**: native heatmapから毎epochのvalidation候補recallを集計。source座標・単一observed教師・重複frameの窓選択を検証する。
@@ -78,7 +79,9 @@ STUNetとball用DINOv3 RoPE、専用設定・LoRA学習経路は削除済み。
 
 ### scripts/
 - **`review_dataset.py`**: 画像・GT・プレイ区間候補を閲覧するWebUI。
-- **`train_mdd_pose.py`**: レビュー後に使うMDD＋pose座標モデルの学習入口。epoch/学習率/seedを明示し、testを読まない。
+- **`prepare_mdd_training.py`**: ball/pose/split/GTの対応を検証し、36構成と混合FPSの入力をCPUで固定する。
+- **`train_mdd_pose.py`**: MDD座標モデル（poseあり／なし）の学習入口。epoch/学習率/seedを明示し、test sampleを学習・選択に使わない。
+- **`evaluate_mdd_coordinates.py`**: 選択済みcheckpointをval/testで評価し、FPS・source・全体／共通subsetを分けて保存する。
 - **`generate_dataset.py`**: 統一 frame store の生成エントリポイント。
 - **`train.py`**: 固定長フレーム窓での通常学習エントリポイント。
 - **`eval.py`**: 単一checkpointの詳細診断評価。

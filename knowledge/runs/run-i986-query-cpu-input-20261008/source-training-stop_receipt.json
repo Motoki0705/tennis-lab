@@ -1,0 +1,18 @@
+{
+  "status": "stopped_by_user",
+  "confirmed_at": "2026-10-08T12:48:46.782853+00:00",
+  "queue_state": "cancelled",
+  "remaining_training_processes": 0,
+  "last_logged_progress": {
+    "epoch": 0,
+    "global_step": 400,
+    "windows": 400,
+    "train_loss": 0.11153682119975761,
+    "grad_norm": 2.0252931118011475,
+    "learning_rate": 0.0001,
+    "train_seconds": 376.97800744500273,
+    "windows_per_second": 1.0610698558014846
+  },
+  "checkpoints": [],
+  "reason": "User: 一度学習を止めて"
+}

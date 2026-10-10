@@ -1,4 +1,4 @@
-<!-- knowledge-review: e40def777d355506feeabdb87eab7c7c10c082ac2df034ae9e90be1d573a95fe on 2026-10-08 -->
+<!-- knowledge-review: 979d559eea8eafd2b6c00248160cdefbedd39ea91dd6bc52f5bc2fbff6cb77c7 on 2026-10-09 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -253,6 +253,27 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 ## タスク別の主要な知見と判断保留事項
 
 ### Ball Detection
+
+新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
+[CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
+ユーザー承認の[CUDA nvJPEG復号](nodes/ball_detection/000033-run-i986-nvjpeg-pixels-20261009.md)へ移行した。
+OpenCVとの画素一致や精度維持は未確認で、decoderをv4 checkpointへ保存して学習・評価を揃える。
+
+[短い先読み比較](nodes/ball_detection/000036-run-i986-jpeg-prefetch-sweep-20261009.md)は改善したが、
+[1,020窓](nodes/ball_detection/000039-run-i986-nvjpeg-long-reader-20261009.md)ではreader待ちが再発した。
+[初回mmap faultの追跡](nodes/ball_detection/000040-run-i986-reader-pagefaults-20261009.md)から、
+必要範囲の直接読込と深い先読みへ進めた。
+[最終の長い比較](nodes/ball_detection/000043-run-i986-pread-prefetch-long-20261009.md)では、BS1・8 workers・prefetch 4が
+約14.7窓/秒、CPU reader待ちはstepの約0.4%となり、今回の条件ではCPU供給待ちが律速でなくなった。
+初回整合性検証のCPU費用は別途必要で、総時間から除外しない。
+[先読みの画素・順序・終了処理](nodes/ball_detection/000037-run-i986-jpeg-prefetch-integrity-20261009.md)と
+[最終設定のv4保存・再開・評価](nodes/ball_detection/000044-run-i986-final-pread-cli-20261009.md)も確認した。
+
+旧CPU MDD本学習は400更新、native RGB版は850更新で停止し、いずれもepoch checkpointは未保存。
+最適化後の[本学習起動](nodes/ball_detection/000045-run-i986-main-nvjpeg-cuda-failure-20261009.md)はCUDA unknown errorで停止した。
+同じprefixでは再現せず、[画像側streamのfenceと256更新確認](nodes/ball_detection/000050-run-i986-cuda-prefix-fenced-20261009.md)を追加したが、元エラーの原因は未確定。
+[CPU検証後のCUDA起動とfence付きCLI確認](nodes/ball_detection/000051-run-i986-fenced-startup-cli-20261009.md)を経て、固定した新runで本学習を再試行する。
+本学習の収束・全validation・汎化は別途確認する。診断lossや処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。

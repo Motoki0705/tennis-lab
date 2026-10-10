@@ -2,6 +2,40 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+## MDD query-onlyのGPU学習効率
+
+`ball_mdd_query_gpu_sweep.sh <frozen-manifest.json> <conv2d-query_only.yaml> <new-report-dir> [compute|pipeline]`
+を共有training queueの`resource=all`で実行する。各BS/精度を独立CUDA processで測り、
+computeは実train RGBをGPU上に固定、pipelineはCPUのJPEG/hash/uint8読込も含める。MDD生成はモデル内。
+trainだけで短いoptimizer updateを行い、test/validationの精度評価や本学習は行わない。
+OOMもJSONに残す。`--allocator-fraction`を指定した場合の上限はJSONへ記録し、無制限での最大BSの証明とはしない。
+各caseの入力hash、環境、warmupを除いた速度、VRAM、lossとgradient normを保存する。
+同一batchの反復loss低下を汎化性能と解釈しない。readerの初回clip検証とOS cache状態によって
+pipeline速度が変わるため、GPU計算だけの速度とは分けて扱う。
+`ball_mdd_query_gpu_confirm.sh`はBF16に固定し、全caseで同じ108窓（12 warmup＋96計測）を使う。
+`ball_mdd_query_gpu_smoke.py`は実train/valの3 sourceから各3窓だけを抽出し、
+通常CLIの学習→checkpoint→epoch再開→保存precisionでの評価を通す。testは使わない。
+計測結果と推奨設定は[学習レシピ](../../src/tasks/ball_detection/training/CONV2D_QUERY_ONLY_RECIPE.md)を参照。
+
+`ball_mdd_cpu_profile.py --manifest <frozen.json> --output <new.json> --case normal|preverified|cached_input`
+はCPU readerの検証・JPEG・RGB変換/metadata・collate/IPCを切り分ける。`CUDA_VISIBLE_DEVICES=''`が必須で、
+GPU/model/pin memory/H2Dを計測しない。先頭96窓を同じworkerで2回読み、事前検証の費用は別に保存する。
+`cached_input`は1個の実入力tensor（現行はRGB uint8）を反復して転送側を測る診断であり、通常データの学習速度ではない。
+旧CPU MDD計測はknowledge bundle内の当時のscript/commitで再現する。
+時間の意味と結果は[CPUボトルネック調査](../../knowledge/nodes/ball_detection/000028-run-i986-query-cpu-input-20261008.md)を参照。
+
+`ball_native_rgb_sweep.sh`はGPU常駐/reader込みの各条件でeagerとcompileを同じBF16・BS1で測る。
+`ball_native_rgb_correctness.py`は3 source×3 FPSのFP32 MDDを旧CPU式と照合する。
+
+`ball_jpeg_decode_probe.py`はOpenCVとnvJPEGのRGB/MDD差分、`ball_jpeg_prefetch_check.py`は
+別CUDA streamでのRGB一致・順序・教師・例外伝播・早期終了を確認する。
+`ball_reader_sweep.py`は同じ204窓・一度の事前検証で、同期/先読み、worker数、BS、メモリ内JPEG基準を比較する。
+`ball_mdd_query_gpu.py --jpeg-decoder nvjpeg --image-prefetch --preverify --mode pipeline`で長い窓列も測れる。
+prepared modeはJPEGをRAMに用意する対照で、復号を含む。事前hash・入力準備時間を記録し、定常速度だけで総時間を見積もらない。
+先読み時の`mean_loader_wait_seconds`は復号も含む入力準備完了待ち。CPU側だけの待ちは`mean_reader_wait_seconds`で区別する。
+`--sampler-windows 6000`で本学習epochのprefixを再生でき、`--no-synchronize-steps`でstepごとの全GPU同期を除いて確認できる。
+`ball_jpeg_prefetch_check.py --delay-producer`は画像側streamを遅らせた寿命・順序検証。GPU診断はいずれも共有queueの`resource=all`で実行する。
+
 ## 人物対応の再較正準備
 
 `association_recalibration_features.py --phase plan --repo <main root> --report <new output>` は

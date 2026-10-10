@@ -1,0 +1,1483 @@
+diff --git a/src/tasks/ball_detection/data/coordinate_dataset.py b/src/tasks/ball_detection/data/coordinate_dataset.py
+index 308018a57..7161177a7 100644
+--- a/src/tasks/ball_detection/data/coordinate_dataset.py
++++ b/src/tasks/ball_detection/data/coordinate_dataset.py
+@@ -12,7 +12,6 @@ import torch
+ from numpy.typing import NDArray
+ from torch.utils.data import Dataset
+ 
+-from src.tasks.ball_detection.model_io.mdd import luminance_to_mdd, mdd_coefficients
+ from src.utils.checksum import dual_sha256
+ 
+ from .annotation_states import AnnotationStates, annotation_states
+@@ -24,7 +23,7 @@ from .temporal_sampling import SampledWindow, TemporalSamplingConfig
+ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+     """Modality is explicit. MDD-only never opens a pose manifest or artifact."""
+ 
+-    def __init__(self, manifest: Path, *, split: str, requires_pose: bool, mdd_a: float, mdd_b: float) -> None:
++    def __init__(self, manifest: Path, *, split: str, requires_pose: bool) -> None:
+         self.manifest = json.loads(manifest.read_text())
+         schema = self.manifest.get("schema")
+         if schema == "ball_play_windows.v1":
+@@ -53,7 +52,6 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+             if dual_sha256(root / name) != expected_digest:
+                 raise ValueError("Ball snapshot changed")
+         self.store = BallFrameStore(root)
+-        self.gain, self.offset = mdd_coefficients(mdd_a, mdd_b)
+         if not requires_pose and self.manifest.get("pose_directory") is not None:
+             raise ValueError("MDD-only data must not depend on pose artifacts")
+         self.pose_directory = Path(self.manifest["pose_directory"]) if requires_pose else None
+@@ -127,13 +125,14 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+         if (not states.target[indices].all() or position_valid.sum() < cfg["min_observed_frames"]
+                 or states.evidence[indices].mean() < cfg["min_presence_fraction"]):
+             raise ValueError("Sampled window no longer satisfies declared teacher/evidence requirements")
+-        gray = np.empty((32, clip.height, clip.width), np.float32)
++        rgb = np.empty((32, 3, clip.height, clip.width), np.uint8)
+         uv: NDArray[np.float32] = np.zeros((32, 2), np.float32)
+         denominator = clip.scale * np.asarray((clip.source_width - 1, clip.source_height - 1), np.float32)
+         for position, frame in enumerate(indices):
+             row = self.store.row_of(clip, int(frame))
+-            image = self.store.read_bgr(row).astype(np.float32) / 255
+-            gray[position] = .114 * image[..., 0] + .587 * image[..., 1] + .299 * image[..., 2]
++            image = self.store.read_bgr(row)
++            # Copy BGR HWC directly into the final RGB CHW uint8 allocation.
++            rgb[position] = image[..., ::-1].transpose(2, 0, 1)
+             if position_valid[position]:
+                 uv[position] = states.xy[frame] / denominator
+         if not np.isfinite(uv).all() or ((uv[position_valid] < 0) | (uv[position_valid] > 1)).any():
+@@ -141,8 +140,7 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+         rows = self.store.clip_rows(clip)
+         pts = self.store.frames["pts"][rows[indices]]
+         seconds = ((pts - pts[0]).astype(np.float64) * float(Fraction(clip.time_base))).astype(np.float32)
+-        mdd = luminance_to_mdd(torch.from_numpy(gray)[None], gain=self.gain, offset=self.offset)[0]
+-        sample = dict(mdd=mdd, timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
++        sample = dict(rgb=torch.from_numpy(rgb), timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
+                       position_valid=torch.from_numpy(position_valid), frame_indices=torch.from_numpy(indices),
+                       frame_step=window.frame_step, input_kind=self.input_kind,
+                       common_evaluation=bool(record["common_evaluation"]),
+@@ -156,8 +154,10 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
+     if not samples or len({s["input_kind"] for s in samples}) != 1:
+         raise ValueError("Batch must contain one nonempty coordinate input kind")
+-    if len({tuple(s["mdd"].shape) for s in samples}) != 1:
++    if len({tuple(s["rgb"].shape) for s in samples}) != 1:
+         raise ValueError("Batch images must share native shape; resize/padding is not automatic")
++    if any(s["rgb"].dtype != torch.uint8 or s["rgb"].ndim != 4 or s["rgb"].shape[:2] != (32, 3) for s in samples):
++        raise ValueError("Coordinate samples require RGB uint8 T,3,H,W")
+     result: dict[str, Any] = {}
+     if samples[0]["input_kind"] == "mdd_pose":
+         people = max(sample["pose"].shape[1] for sample in samples)
+@@ -171,7 +171,7 @@ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
+             result[key] = torch.stack(values)
+     elif samples[0]["input_kind"] != "mdd_only" or any("pose" in s or "pose_valid" in s for s in samples):
+         raise ValueError("MDD-only batches must not contain pose tensors")
+-    for key in ("mdd", "timestamps", "uv", "position_valid", "source_size", "frame_indices"):
++    for key in ("rgb", "timestamps", "uv", "position_valid", "source_size", "frame_indices"):
+         result[key] = torch.stack([sample[key] for sample in samples])
+     for key in ("clip_id", "start", "source", "frame_step", "common_evaluation", "input_kind"):
+         result[key] = [sample[key] for sample in samples]
+diff --git a/src/tasks/ball_detection/data/pose_windows.py b/src/tasks/ball_detection/data/pose_windows.py
+index 4500f05c5..cfc411835 100644
+--- a/src/tasks/ball_detection/data/pose_windows.py
++++ b/src/tasks/ball_detection/data/pose_windows.py
+@@ -14,8 +14,8 @@ from .coordinate_dataset import CoordinateWindowDataset, collate_coordinate_wind
+ class PoseWindowDataset(CoordinateWindowDataset):
+     """Read either the original native-FPS manifest or the mixed-FPS manifest."""
+ 
+-    def __init__(self, manifest: Path, *, split: str, mdd_a: float, mdd_b: float) -> None:
+-        super().__init__(manifest, split=split, requires_pose=True, mdd_a=mdd_a, mdd_b=mdd_b)
++    def __init__(self, manifest: Path, *, split: str) -> None:
++        super().__init__(manifest, split=split, requires_pose=True)
+ 
+ 
+ def collate_pose_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
+diff --git a/src/tasks/ball_detection/model_io/mdd.py b/src/tasks/ball_detection/model_io/mdd.py
+index 5eb15be30..5c6ddde11 100644
+--- a/src/tasks/ball_detection/model_io/mdd.py
++++ b/src/tasks/ball_detection/model_io/mdd.py
+@@ -1,28 +1,8 @@
+-"""Shared two-channel luminance difference, independent of detector architecture."""
++"""Existing I/O imports for the shared fixed MDD transform."""
+ 
+-from __future__ import annotations
++from src.tasks.ball_detection.preprocessing.mdd import (
++    luminance_to_mdd,
++    mdd_coefficients,
++)
+ 
+-import math
+-
+-from torch import Tensor
+-
+-
+-def mdd_coefficients(a: float, b: float) -> tuple[float, float]:
+-    if not math.isfinite(a) or not math.isfinite(b):
+-        raise ValueError("MDD parameters must be finite")
+-    return 5.0 / (0.45 * abs(math.tanh(a)) + 1e-6), 0.6 * math.tanh(b)
+-
+-
+-def luminance_to_mdd(luminance: Tensor, *, gain: float, offset: float) -> Tensor:
+-    """B,T,H,W -> B,2,T,H,W; first frame has no fabricated predecessor.
+-
+-    Preserve the existing ConvNeXt sigmoid MDD convention exactly. Normalization
+-    of source RGB is the caller's explicit policy, never inferred here.
+-    """
+-    if luminance.ndim != 4 or luminance.shape[1] < 1:
+-        raise ValueError("Expected nonempty B,T,H,W luminance")
+-    diff = luminance[:, 1:] - luminance[:, :-1]
+-    output = luminance.new_zeros((len(luminance), 2, *luminance.shape[1:]))
+-    for channel, delta in enumerate((diff, -diff)):
+-        output[:, channel, 1:] = ((delta.clamp_min(0) - offset) * gain).clamp(-80, 80).sigmoid()
+-    return output
++__all__ = ["luminance_to_mdd", "mdd_coefficients"]
+diff --git a/src/tasks/ball_detection/model_io/mdd_coordinates.py b/src/tasks/ball_detection/model_io/mdd_coordinates.py
+index d475c4a46..ee740b347 100644
+--- a/src/tasks/ball_detection/model_io/mdd_coordinates.py
++++ b/src/tasks/ball_detection/model_io/mdd_coordinates.py
+@@ -8,18 +8,16 @@ from torch import Tensor
+ from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
+ 
+ 
+-def validate_mdd_timestamps(config: MDDPoseConfig, mdd: Tensor, timestamps: Tensor) -> None:
+-    if mdd.ndim != 5 or mdd.shape[0] < 1 or mdd.shape[1] != 2:
+-        raise ValueError("MDD requires B,2,T,H,W")
+-    b, _, t, h, w = mdd.shape
++def validate_rgb_timestamps(config: MDDPoseConfig, rgb: Tensor, timestamps: Tensor) -> None:
++    if rgb.ndim != 5 or rgb.shape[0] < 1 or rgb.shape[2] != 3 or rgb.dtype != torch.uint8:
++        raise ValueError("Native MDD models require RGB uint8 B,T,3,H,W")
++    b, t, _, h, w = rgb.shape
+     if min(h, w) < 8 or t != config.frames:
+-        raise ValueError("MDD requires 32 frames and spatial sizes at least eight")
+-    if timestamps.shape != (b, t) or timestamps.device != mdd.device:
+-        raise ValueError("Timestamps must align with MDD batch, frames and device")
+-    if any(x.dtype != torch.float32 or not bool(torch.isfinite(x).all()) for x in (mdd, timestamps)):
+-        raise ValueError("MDD and timestamps require finite float32 values")
+-    if bool(((mdd < 0) | (mdd > 1)).any()):
+-        raise ValueError("MDD sigmoid features must be in [0,1]")
++        raise ValueError("RGB requires 32 frames and spatial sizes at least eight")
++    if timestamps.shape != (b, t) or timestamps.device != rgb.device:
++        raise ValueError("Timestamps must align with RGB batch, frames and device")
++    if timestamps.dtype != torch.float32 or not bool(torch.isfinite(timestamps).all()):
++        raise ValueError("Timestamps require finite float32 values")
+     if bool((timestamps.diff(dim=1) <= 0).any()):
+         raise ValueError("Real timestamps must increase strictly")
+ 
+diff --git a/src/tasks/ball_detection/model_io/mdd_pose.py b/src/tasks/ball_detection/model_io/mdd_pose.py
+index 1d247f16f..4579b34c3 100644
+--- a/src/tasks/ball_detection/model_io/mdd_pose.py
++++ b/src/tasks/ball_detection/model_io/mdd_pose.py
+@@ -11,12 +11,12 @@ from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
+ from src.tasks.ball_detection.models.mdd_pose.model import MDDPoseDetector
+ from src.tasks.base.model_io import BoundModelIO, ModelCall, bind_model_io
+ 
+-from .mdd_coordinates import decode_coordinates, validate_mdd_timestamps
++from .mdd_coordinates import decode_coordinates, validate_rgb_timestamps
+ 
+ 
+ @dataclass(frozen=True)
+ class MDDPoseInput:
+-    mdd: Tensor
++    rgb: Tensor
+     coordinates: Tensor
+     valid: Tensor
+     timestamps: Tensor
+@@ -25,18 +25,18 @@ class MDDPoseInput:
+ def prepare_mdd_pose_inputs(config: MDDPoseConfig, inputs: MDDPoseInput) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+     if not config.requires_pose:
+         raise ValueError("Pose input is not accepted by query_only; use MDDQueryInput")
+-    mdd, coordinates, valid, timestamps = inputs.mdd, inputs.coordinates, inputs.valid, inputs.timestamps
+-    validate_mdd_timestamps(config, mdd, timestamps)
+-    b, _, t, _, _ = mdd.shape
++    rgb, coordinates, valid, timestamps = inputs.rgb, inputs.coordinates, inputs.valid, inputs.timestamps
++    validate_rgb_timestamps(config, rgb, timestamps)
++    b, t, _, _, _ = rgb.shape
+     if coordinates.ndim != 5 or coordinates.shape[:2] != (b, t) or coordinates.shape[-2:] != (17, 2):
+-        raise ValueError("Expected aligned 32-frame MDD and COCO17 pose windows")
++        raise ValueError("Expected aligned 32-frame RGB and COCO17 pose windows")
+     if valid.dtype != torch.bool or valid.shape != coordinates.shape[:-1] or timestamps.shape != (b, t):
+         raise ValueError("Invalid pose mask or timestamp shape")
+-    if any(x.device != mdd.device for x in (coordinates, valid, timestamps)):
++    if any(x.device != rgb.device for x in (coordinates, valid, timestamps)):
+         raise ValueError("All coordinate-model inputs must share one device")
+     if coordinates.dtype != torch.float32 or not bool(torch.isfinite(coordinates).all()):
+         raise ValueError("Coordinate-model inputs require finite float32 values")
+-    return mdd, coordinates, valid, timestamps
++    return rgb, coordinates, valid, timestamps
+ 
+ 
+ class MDDPoseAdapter:
+@@ -60,5 +60,5 @@ class MDDPoseAdapter:
+         return decode_coordinates(self.config, output)
+ 
+ 
+-def build_mdd_pose_detector(config: MDDPoseConfig) -> BoundModelIO[MDDPoseInput, Tensor, Tensor]:
+-    return bind_model_io(MDDPoseDetector(config), MDDPoseAdapter(config))
++def build_mdd_pose_detector(config: MDDPoseConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> BoundModelIO[MDDPoseInput, Tensor, Tensor]:
++    return bind_model_io(MDDPoseDetector(config, mdd_a=mdd_a, mdd_b=mdd_b), MDDPoseAdapter(config))
+diff --git a/src/tasks/ball_detection/model_io/mdd_query.py b/src/tasks/ball_detection/model_io/mdd_query.py
+index d852f01a8..39467f6ad 100644
+--- a/src/tasks/ball_detection/model_io/mdd_query.py
++++ b/src/tasks/ball_detection/model_io/mdd_query.py
+@@ -1,4 +1,4 @@
+-"""Typed MDD-only input; pose tensors and pose files are not required."""
++"""Typed RGB input to the native MDD-only model; pose is never required."""
+ 
+ from __future__ import annotations
+ 
+@@ -9,12 +9,12 @@ from torch import Tensor, nn
+ from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDQueryDetector
+ from src.tasks.base.model_io import BoundModelIO, ModelCall, bind_model_io
+ 
+-from .mdd_coordinates import decode_coordinates, validate_mdd_timestamps
++from .mdd_coordinates import decode_coordinates, validate_rgb_timestamps
+ 
+ 
+ @dataclass(frozen=True)
+ class MDDQueryInput:
+-    mdd: Tensor
++    rgb: Tensor
+     timestamps: Tensor
+ 
+ 
+@@ -33,12 +33,12 @@ class MDDQueryAdapter:
+             raise ValueError("MDD-only model/adapter configuration mismatch")
+ 
+     def build_call(self, inputs: MDDQueryInput) -> ModelCall:
+-        validate_mdd_timestamps(self.config, inputs.mdd, inputs.timestamps)
+-        return ModelCall(args=(inputs.mdd, inputs.timestamps))
++        validate_rgb_timestamps(self.config, inputs.rgb, inputs.timestamps)
++        return ModelCall(args=(inputs.rgb, inputs.timestamps))
+ 
+     def decode_output(self, output: Tensor) -> Tensor:
+         return decode_coordinates(self.config, output)
+ 
+ 
+-def build_mdd_query_detector(config: MDDPoseConfig) -> BoundModelIO[MDDQueryInput, Tensor, Tensor]:
+-    return bind_model_io(MDDQueryDetector(config), MDDQueryAdapter(config))
++def build_mdd_query_detector(config: MDDPoseConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> BoundModelIO[MDDQueryInput, Tensor, Tensor]:
++    return bind_model_io(MDDQueryDetector(config, mdd_a=mdd_a, mdd_b=mdd_b), MDDQueryAdapter(config))
+diff --git a/src/tasks/ball_detection/models/mdd_pose/model.py b/src/tasks/ball_detection/models/mdd_pose/model.py
+index 0330c6197..dbb9d0732 100644
+--- a/src/tasks/ball_detection/models/mdd_pose/model.py
++++ b/src/tasks/ball_detection/models/mdd_pose/model.py
+@@ -6,6 +6,8 @@ import torch
+ from torch import Tensor, nn
+ from torch.nn import functional as F
+ 
++from src.tasks.ball_detection.preprocessing import RGBToMDD
++
+ from .config import MDDPoseConfig
+ from .encoder import MDDTokenEncoder
+ from .pooling import PoseTokenizer
+@@ -56,17 +58,18 @@ class FusionBlock(nn.Module):
+ 
+ 
+ class MDDPoseDetector(nn.Module):
+-    """Input MDD B,2,32,H,W; pose B,32,N,17,2; output B,32,2.
++    """RGB uint8 B,32,3,H,W; pose B,32,N,17,2; output B,32,2.
+ 
+     Mask/PTS are metadata, not additional visual features. No pretrained modules,
+     RGB branch, heatmap fabrication or automatic refiner conversion is provided.
+     """
+ 
+-    def __init__(self, config: MDDPoseConfig) -> None:
++    def __init__(self, config: MDDPoseConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
+         super().__init__()
+         if not config.requires_pose or config.pose_pooling is None:
+             raise ValueError("MDDPoseDetector requires pose; use MDDQueryDetector for query_only")
+         self.config = config
++        self.mdd = RGBToMDD(mdd_a, mdd_b)
+         self.encoder = MDDTokenEncoder(config.compression, config.stem_channels, config.mixed_channels, config.dim)
+         self.pose = PoseTokenizer(config.pose_pooling, config.dim, config.heads)
+         if config.readout == "query":
+@@ -74,7 +77,8 @@ class MDDPoseDetector(nn.Module):
+         self.blocks = nn.ModuleList(FusionBlock(config) for _ in range(config.layers))
+         self.head = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, 2))
+ 
+-    def forward(self, mdd: Tensor, coordinates: Tensor, valid: Tensor, timestamps: Tensor) -> Tensor:
++    def forward(self, rgb: Tensor, coordinates: Tensor, valid: Tensor, timestamps: Tensor) -> Tensor:
++        mdd = self.mdd(rgb)
+         pose = self.pose(coordinates, valid)
+         tokens = pose[:, :, None]
+         if self.config.readout == "query":
+diff --git a/src/tasks/ball_detection/models/mdd_pose/query.py b/src/tasks/ball_detection/models/mdd_pose/query.py
+index 5422cdc0a..5565143a0 100644
+--- a/src/tasks/ball_detection/models/mdd_pose/query.py
++++ b/src/tasks/ball_detection/models/mdd_pose/query.py
+@@ -5,6 +5,8 @@ from __future__ import annotations
+ import torch
+ from torch import Tensor, nn
+ 
++from src.tasks.ball_detection.preprocessing import RGBToMDD
++
+ from .config import MDDPoseConfig
+ from .encoder import MDDTokenEncoder
+ from .model import TimeAttention
+@@ -33,19 +35,21 @@ class QueryFusionBlock(nn.Module):
+ 
+ 
+ class MDDQueryDetector(nn.Module):
+-    """Inputs are MDD and real timestamps only; no null/dummy pose path exists."""
++    """RGB clips become fixed FP32 MDD before learned, pose-free processing."""
+ 
+-    def __init__(self, config: MDDPoseConfig) -> None:
++    def __init__(self, config: MDDPoseConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
+         super().__init__()
+         if config.readout != "query_only" or config.pose_pooling is not None:
+             raise ValueError("MDDQueryDetector requires query_only with no pose pooling")
+         self.config = config
++        self.mdd = RGBToMDD(mdd_a, mdd_b)
+         self.encoder = MDDTokenEncoder(config.compression, config.stem_channels, config.mixed_channels, config.dim)
+         self.ball_query = nn.Parameter(torch.randn(config.dim) * .02)
+         self.blocks = nn.ModuleList(QueryFusionBlock(config) for _ in range(config.layers))
+         self.head = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, 2))
+ 
+-    def forward(self, mdd: Tensor, timestamps: Tensor) -> Tensor:
++    def forward(self, rgb: Tensor, timestamps: Tensor) -> Tensor:
++        mdd = self.mdd(rgb)
+         patches = self.encoder(mdd)
+         queries = self.ball_query.expand(mdd.shape[0], mdd.shape[2], -1)
+         times = timestamps - timestamps[:, :1]
+diff --git a/src/tasks/ball_detection/preprocessing/README.md b/src/tasks/ball_detection/preprocessing/README.md
+new file mode 100644
+index 000000000..682679135
+--- /dev/null
++++ b/src/tasks/ball_detection/preprocessing/README.md
+@@ -0,0 +1,7 @@
++# 固定の画像前処理
++
++`mdd.py`は共通の正負輝度差・sigmoid変換の正本。
++`RGBToMDD`はRGB順uint8 `B,T,3,H,W`から、入力と同じdeviceでFP32の2ch MDDを作る固定layer。
++座標モデルのforwardに含めてcompileする。学習parameterはなく、係数・色順序・normalizationを
++checkpointのinput contractに保存する。FPS間引きはreaderが先に行い、窓先頭のMDDは0。
++ConvNeXtの既存model I/Oも同じ変換関数を参照する。
+diff --git a/src/tasks/ball_detection/preprocessing/__init__.py b/src/tasks/ball_detection/preprocessing/__init__.py
+new file mode 100644
+index 000000000..06c39bd87
+--- /dev/null
++++ b/src/tasks/ball_detection/preprocessing/__init__.py
+@@ -0,0 +1,5 @@
++"""Fixed visual transforms shared by detector models and I/O adapters."""
++
++from .mdd import RGBToMDD, luminance_to_mdd, mdd_coefficients
++
++__all__ = ["RGBToMDD", "luminance_to_mdd", "mdd_coefficients"]
+diff --git a/src/tasks/ball_detection/preprocessing/mdd.py b/src/tasks/ball_detection/preprocessing/mdd.py
+new file mode 100644
+index 000000000..d76090d28
+--- /dev/null
++++ b/src/tasks/ball_detection/preprocessing/mdd.py
+@@ -0,0 +1,67 @@
++"""Fixed positive/negative luminance differences; no trainable RGB features."""
++
++from __future__ import annotations
++
++import math
++from typing import Any
++
++import torch
++from torch import Tensor, nn
++
++
++def mdd_coefficients(a: float, b: float) -> tuple[float, float]:
++    if not math.isfinite(a) or not math.isfinite(b):
++        raise ValueError("MDD parameters must be finite")
++    return 5.0 / (0.45 * abs(math.tanh(a)) + 1e-6), 0.6 * math.tanh(b)
++
++
++def luminance_to_mdd(luminance: Tensor, *, gain: float, offset: float) -> Tensor:
++    """B,T,H,W -> B,2,T,H,W. The first frame has no invented predecessor."""
++    if luminance.ndim != 4 or luminance.shape[1] < 1:
++        raise ValueError("Expected nonempty B,T,H,W luminance")
++    diff = luminance[:, 1:] - luminance[:, :-1]
++    output = luminance.new_zeros((len(luminance), 2, *luminance.shape[1:]))
++    for channel, delta in enumerate((diff, -diff)):
++        output[:, channel, 1:] = ((delta.clamp_min(0) - offset) * gain).clamp(-80, 80).sigmoid()
++    return output
++
++
++class RGBToMDD(nn.Module):
++    """RGB uint8 B,T,3,H,W -> FP32 MDD B,2,T,H,W on the input device.
++
++    The complete transform is part of the model forward/compile graph. AMP must
++    not round the RGB/luminance differences before their fixed sigmoid mapping.
++    Coefficients are immutable configuration, saved in the v3 input contract.
++    """
++
++    def __init__(self, a: float = .2, b: float = .15) -> None:
++        super().__init__()
++        if type(a) not in (float, int) or type(b) not in (float, int):
++            raise ValueError("MDD coefficients must be fixed numeric configuration")
++        self.a, self.b = a, b
++        self.gain, self.offset = mdd_coefficients(a, b)
++
++    def input_contract(self) -> dict[str, Any]:
++        return dict(schema="rgb_uint8_native_mdd.v1", layout="B,T,3,H,W", color_order="RGB",
++                    dtype="uint8", value_range=[0, 255], computation_dtype="float32",
++                    normalization="divide_255", luminance="0.114*B + 0.587*G + 0.299*R",
++                    first_mdd_frame="zero", mdd_a=self.a, mdd_b=self.b)
++
++    @classmethod
++    def from_contract(cls, contract: dict[str, Any]) -> RGBToMDD:
++        if contract.get("schema") != "rgb_uint8_native_mdd.v1":
++            raise ValueError("Expected an explicit native RGB/MDD input contract")
++        model = cls(a=contract["mdd_a"], b=contract["mdd_b"])
++        if contract != model.input_contract():
++            raise ValueError("Unsupported RGB order, dtype, normalization or MDD contract")
++        return model
++
++    def forward(self, rgb: Tensor) -> Tensor:
++        # Metadata guards are traceable; uint8 itself guarantees finite [0,255].
++        if rgb.dtype != torch.uint8 or rgb.ndim != 5 or rgb.shape[2] != 3:
++            raise ValueError("Native MDD requires RGB uint8 B,T,3,H,W")
++        with torch.autocast(device_type=rgb.device.type, enabled=False):
++            pixels = rgb.to(torch.float32) / 255
++            # Preserve the old BGR reader's arithmetic order, now with RGB indices.
++            gray = .114 * pixels[:, :, 2] + .587 * pixels[:, :, 1] + .299 * pixels[:, :, 0]
++            return luminance_to_mdd(gray, gain=self.gain, offset=self.offset)
+diff --git a/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py b/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+index d9958073b..1e81d4c14 100644
+--- a/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
++++ b/src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+@@ -16,6 +16,13 @@ from src.tasks.ball_detection.models.mdd_pose import (
+     MDDPoseDetector,
+     MDDQueryDetector,
+ )
++from src.tasks.ball_detection.training.coordinate_checkpoint import (
++    validate_coordinate_checkpoint,
++)
++from src.tasks.ball_detection.training.coordinate_compilation import (
++    COMPILE_MODES,
++    coordinate_compilation_report,
++)
+ from src.tasks.ball_detection.training.coordinate_evaluation import evaluate_coordinates
+ from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRuntime
+ from src.tasks.base.visualization.inference_queue import shared_repository_root
+@@ -56,7 +63,10 @@ def main() -> None:
+     parser.add_argument("--device", choices=("cpu", "cuda"), required=True)
+     parser.add_argument("--batch-size", type=int, default=1)
+     parser.add_argument("--precision", choices=("fp32", "bf16"),
+-                        help="Defaults to the saved training precision; legacy v2 checkpoints were FP32")
++                        help="Defaults to the saved training precision")
++    parser.add_argument("--compile-mode", choices=COMPILE_MODES,
++                        help="Defaults to the saved compilation mode; off explicitly evaluates eagerly")
++    parser.add_argument("--compile-recompile-limit", type=int)
+     parser.add_argument("--num-workers", type=int, default=0)
+     parser.add_argument("--pin-memory", action="store_true")
+     parser.add_argument("--prefetch-factor", type=int, default=1)
+@@ -76,30 +86,34 @@ def main() -> None:
+         raise ValueError("Evaluation output already exists; choose a new report path")
+     checkpoint_hash = dual_sha256(checkpoint)
+     saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
+-    if saved.get("schema") != "mdd_coordinates.v2":
+-        raise ValueError("Expected a v2 coordinate checkpoint with declared FPS/MDD training provenance")
++    preprocessing = validate_coordinate_checkpoint(saved)
+     manifest_hash = dual_sha256(manifest)
+     if manifest_hash != saved["manifest_sha256"]:
+         raise ValueError("Evaluation manifest differs from the checkpoint's frozen data/split identity")
+     config = MDDPoseConfig(**saved["model_config"])
+-    model = MDDPoseDetector(config) if config.requires_pose else MDDQueryDetector(config)
++    model = (MDDPoseDetector(config, mdd_a=preprocessing.a, mdd_b=preprocessing.b) if config.requires_pose
++             else MDDQueryDetector(config, mdd_a=preprocessing.a, mdd_b=preprocessing.b))
+     model.load_state_dict(saved["state_dict"], strict=True)
+     device = torch.device(args.device)
+-    # v2 checkpoints written before runtime controls existed were always FP32.
+-    saved_precision = saved["training_state"]["recipe"]["runtime"]["precision"] if "training_state" in saved else "fp32"
++    saved_runtime = saved["training_state"]["recipe"]["runtime"]
++    saved_precision = saved_runtime["precision"]
+     precision = saved_precision if args.precision is None else args.precision
+     runtime = CoordinateRuntime(precision=precision, num_workers=args.num_workers, pin_memory=args.pin_memory,
+-                                prefetch_factor=args.prefetch_factor, cpu_threads=args.cpu_threads)
++                                prefetch_factor=args.prefetch_factor, cpu_threads=args.cpu_threads,
++                                compile_mode=saved_runtime["compile_mode"] if args.compile_mode is None else args.compile_mode,
++                                compile_recompile_limit=saved_runtime["compile_recompile_limit"]
++                                if args.compile_recompile_limit is None else args.compile_recompile_limit)
+     runtime.configure(device)
+     model.to(device)
+-    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose,
+-                                      mdd_a=saved["mdd_a"], mdd_b=saved["mdd_b"])
++    runtime.configure_model(model)
++    dataset = CoordinateWindowDataset(manifest, split=args.split, requires_pose=config.requires_pose)
+     loader = runtime.loader(dataset, batch_size=args.batch_size)
+     report = evaluate_coordinates(model, loader, device, dataset.frame_steps, precision=precision)
+     if dual_sha256(checkpoint) != checkpoint_hash or dual_sha256(manifest) != manifest_hash:
+         raise ValueError("Checkpoint or manifest changed during evaluation")
+     report.update(checkpoint_sha256=checkpoint_hash, manifest_sha256=manifest_hash, split=args.split,
+-                  precision=precision, batch_size=args.batch_size, num_workers=args.num_workers)
++                  precision=precision, batch_size=args.batch_size, num_workers=args.num_workers,
++                  input_contract=model.mdd.input_contract(), compilation=coordinate_compilation_report(model))
+     output.parent.mkdir(parents=True, exist_ok=True)
+     with output.open("x") as stream:
+         json.dump(report, stream, ensure_ascii=False, indent=2, allow_nan=False)
+diff --git a/src/tasks/ball_detection/scripts/train_mdd_pose.py b/src/tasks/ball_detection/scripts/train_mdd_pose.py
+index 5db6a7394..1e761cd04 100644
+--- a/src/tasks/ball_detection/scripts/train_mdd_pose.py
++++ b/src/tasks/ball_detection/scripts/train_mdd_pose.py
+@@ -26,10 +26,15 @@ from src.tasks.ball_detection.models.mdd_pose import (
+     MDDQueryDetector,
+ )
+ from src.tasks.ball_detection.training.coordinate_checkpoint import (
++    COORDINATE_CHECKPOINT_SCHEMA,
+     resume_coordinate_training,
+     save_coordinate_checkpoint,
+     write_best,
+ )
++from src.tasks.ball_detection.training.coordinate_compilation import (
++    COMPILE_MODES,
++    coordinate_compilation_report,
++)
+ from src.tasks.ball_detection.training.coordinate_evaluation import (
+     CoordinateModel,
+     evaluate_coordinates,
+@@ -97,6 +102,8 @@ def main() -> None:
+     parser.add_argument("--pin-memory", action="store_true")
+     parser.add_argument("--prefetch-factor", type=int, default=1)
+     parser.add_argument("--cpu-threads", type=int, default=2)
++    parser.add_argument("--compile-mode", choices=COMPILE_MODES, default="off")
++    parser.add_argument("--compile-recompile-limit", type=int, default=8)
+     parser.add_argument("--log-every", type=int, default=50)
+     parser.add_argument("--resume", type=Path, help="Latest completed epoch in the same --output directory")
+     parser.add_argument("--mdd-a", type=float, default=.2)
+@@ -134,15 +141,15 @@ def main() -> None:
+         overrides["pose_pooling"] = None
+     config = replace(config, **overrides)
+     identity = dual_sha256(args.manifest)
+-    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose,
+-                                       mdd_a=args.mdd_a, mdd_b=args.mdd_b)
+-    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose,
+-                                         mdd_a=args.mdd_a, mdd_b=args.mdd_b)
++    training = CoordinateWindowDataset(args.manifest, split="train", requires_pose=config.requires_pose)
++    validation = CoordinateWindowDataset(args.manifest, split="val", requires_pose=config.requires_pose)
+     device = torch.device(args.device)
+-    runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor, args.cpu_threads)
++    runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
++                                args.cpu_threads, args.compile_mode, args.compile_recompile_limit)
+     runtime.configure(device)
+     torch.manual_seed(args.seed)
+-    model = (MDDPoseDetector(config) if config.requires_pose else MDDQueryDetector(config)).to(device)
++    model = (MDDPoseDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b) if config.requires_pose
++             else MDDQueryDetector(config, mdd_a=args.mdd_a, mdd_b=args.mdd_b)).to(device)
+     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=.01)
+     epoch_windows = args.windows_per_epoch or sum(window.frame_step == 1 for _, window in training.windows)
+     sampler = FPSMixSampler(training, windows_per_epoch=epoch_windows, seed=args.seed)
+@@ -152,7 +159,7 @@ def main() -> None:
+     recipe = dict(model=asdict(config), runtime=asdict(runtime), batch_size=args.batch_size,
+                   seed=args.seed, learning_rate=args.learning_rate, weight_decay=.01,
+                   windows_per_epoch=epoch_windows, selection_scope=args.selection_scope,
+-                  mdd_a=args.mdd_a, mdd_b=args.mdd_b, device=args.device,
++                  input_contract=model.mdd.input_contract(), device=args.device,
+                   evaluation_precision=args.precision, gradient_clip=1., schedule="constant")
+     start_epoch, global_step, best, best_epoch = 0, 0, float("inf"), -1
+     if args.resume is None:
+@@ -163,6 +170,7 @@ def main() -> None:
+             code=code, device=device)
+         if start_epoch >= args.epochs:
+             raise ValueError("Total epoch budget must exceed the resumed checkpoint epoch")
++    runtime.configure_model(model)
+     settings = dict(model=asdict(config), manifest_sha256=identity, code=code,
+                     model_config_sha256=dual_sha256(args.model_config),
+                     arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
+@@ -171,7 +179,9 @@ def main() -> None:
+                     fps_sampling=dict(frame_steps=training.frame_steps, windows_per_epoch=epoch_windows,
+                                       mixture="equal-FPS shuffled cycles; sampled RGB before MDD"),
+                     test_usage="no test samples used for training or checkpoint selection",
+-                    input_rgb="stored JPEG at native size; [0,1] luminance; no ImageNet normalization",
++                    input_contract=model.mdd.input_contract(),
++                    compilation=coordinate_compilation_report(model),
++                    input_rgb="stored JPEG decoded to RGB uint8; sampled before native FP32 model MDD; no ImageNet normalization",
+                     mdd_first_frame="zero, no RGB predecessor outside the 32-frame window")
+     settings["recipe"] = recipe
+     if args.resume is None:
+@@ -191,7 +201,7 @@ def main() -> None:
+             observed = int(batch["position_valid"].sum())
+             loss_sum += float(loss) * observed
+             observed_count += observed
+-            windows_seen += len(batch["mdd"])
++            windows_seen += len(batch["rgb"])
+             global_step += 1
+             if global_step % args.log_every == 0 or windows_seen == epoch_windows:
+                 elapsed = time.perf_counter() - epoch_start
+@@ -214,17 +224,20 @@ def main() -> None:
+             best, best_epoch = score, epoch
+         training_state = dict(recipe=recipe, global_step=global_step, best_epoch=best_epoch,
+                               best_error_px=best, cuda_rng=torch.cuda.get_rng_state_all() if device.type == "cuda" else None)
+-        save_coordinate_checkpoint(dict(schema="mdd_coordinates.v2", model_config=asdict(config), state_dict=model.state_dict(),
++        compilation = coordinate_compilation_report(model)
++        save_coordinate_checkpoint(dict(schema=COORDINATE_CHECKPOINT_SCHEMA, model_config=asdict(config), state_dict=model.state_dict(),
+                         optimizer=optimizer.state_dict(), epoch=epoch, manifest_sha256=identity,
+                         torch_rng=torch.get_rng_state(), validation=report,
+                         selection_scope=args.selection_scope, selection_error_px=score,
+-                        mdd_a=args.mdd_a, mdd_b=args.mdd_b, code=code, training_state=training_state), path)
++                        input_contract=model.mdd.input_contract(), compilation=compilation,
++                        code=code, training_state=training_state), path)
+         if improved:
+             write_best(args.output, epoch)
+         with (args.output / "metrics.jsonl").open("a") as stream:
+             stream.write(json.dumps(dict(epoch=epoch, global_step=global_step,
+                                          train_loss=loss_sum / observed_count,
+-                                         train_seconds=train_seconds, validation_seconds=validation_seconds, **report)) + "\n")
++                                         train_seconds=train_seconds, validation_seconds=validation_seconds,
++                                         compilation=compilation, **report)) + "\n")
+         print(json.dumps(dict(epoch=epoch, **report)), flush=True)
+ 
+ 
+diff --git a/src/tasks/ball_detection/training/coordinate_checkpoint.py b/src/tasks/ball_detection/training/coordinate_checkpoint.py
+index 880d52cbc..d0f7a4c5f 100644
+--- a/src/tasks/ball_detection/training/coordinate_checkpoint.py
++++ b/src/tasks/ball_detection/training/coordinate_checkpoint.py
+@@ -8,9 +8,21 @@ from typing import Any
+ 
+ import torch
+ 
++from src.tasks.ball_detection.preprocessing import RGBToMDD
+ from src.tasks.ball_detection.training.coordinate_evaluation import CoordinateModel
+ from src.utils.checksum import dual_sha256
+ 
++COORDINATE_CHECKPOINT_SCHEMA = "mdd_coordinates.v3"
++
++
++def validate_coordinate_checkpoint(saved: dict[str, Any]) -> RGBToMDD:
++    if saved.get("schema") != COORDINATE_CHECKPOINT_SCHEMA:
++        raise ValueError("Expected a v3 native RGB coordinate checkpoint; legacy MDD-input v2 is not accepted")
++    preprocessing = RGBToMDD.from_contract(saved["input_contract"])
++    if saved["training_state"]["recipe"]["input_contract"] != preprocessing.input_contract():
++        raise ValueError("Checkpoint input contract and training recipe disagree")
++    return preprocessing
++
+ 
+ def save_coordinate_checkpoint(payload: dict[str, Any], path: Path) -> None:
+     temporary = path.with_suffix(".pt.tmp")
+@@ -21,6 +33,7 @@ def save_coordinate_checkpoint(payload: dict[str, Any], path: Path) -> None:
+ def write_best(output: Path, epoch: int) -> None:
+     path = output / f"epoch-{epoch:03d}.pt"
+     saved = torch.load(path, map_location="cpu", weights_only=True)
++    validate_coordinate_checkpoint(saved)
+     record = dict(epoch=epoch, checkpoint=path.name, checkpoint_sha256=dual_sha256(path),
+                   selection_scope=saved["selection_scope"], selection_error_px=saved["selection_error_px"],
+                   **saved["validation"])
+@@ -42,9 +55,12 @@ def resume_coordinate_training(path: Path, output: Path, model: CoordinateModel,
+     if path.parent != output or not (output / "config.json").is_file():
+         raise ValueError("Resume requires a checkpoint inside the original output directory")
+     saved = torch.load(path, map_location="cpu", weights_only=True)
++    preprocessing = validate_coordinate_checkpoint(saved)
+     state = saved.get("training_state")
+-    if saved.get("schema") != "mdd_coordinates.v2" or not isinstance(state, dict):
++    if not isinstance(state, dict):
+         raise ValueError("Checkpoint lacks the epoch-restart training state")
++    if preprocessing.input_contract() != model.mdd.input_contract():
++        raise ValueError("Resume model input preprocessing changed")
+     if saved["manifest_sha256"] != manifest_sha256 or state["recipe"] != recipe:
+         raise ValueError("Resume data or training recipe changed")
+     if saved["code"]["source_sha256"] != code["source_sha256"]:
+diff --git a/src/tasks/ball_detection/training/coordinate_compilation.py b/src/tasks/ball_detection/training/coordinate_compilation.py
+new file mode 100644
+index 000000000..e2a13a4d9
+--- /dev/null
++++ b/src/tasks/ball_detection/training/coordinate_compilation.py
+@@ -0,0 +1,58 @@
++"""Strict model compilation with the coordinate trainer's AMP/backward policy."""
++
++from __future__ import annotations
++
++from collections.abc import Iterator
++from contextlib import contextmanager
++from typing import Any
++
++from torch import nn
++
++COMPILE_MODES = ("off", "default", "reduce-overhead", "max-autotune")
++
++
++def compile_coordinate_model(model: nn.Module, *, mode: str, recompile_limit: int = 8) -> None:
++    if mode not in COMPILE_MODES or recompile_limit < 1:
++        raise ValueError("Invalid coordinate compilation mode or recompile limit")
++    if getattr(model, "_compiled_call_impl", None) is not None:
++        raise ValueError("Model was already compiled; configure its runtime exactly once")
++    # Execution metadata is neither a parameter nor a registered child module.
++    model.__dict__["_coordinate_compile_mode"] = mode
++    model.__dict__["_coordinate_recompile_limit"] = recompile_limit
++    if mode == "off":
++        return
++    if next(model.parameters()).device.type != "cuda":
++        raise ValueError("Coordinate model compilation is supported on CUDA; no eager fallback")
++    # In-place compilation preserves model type and unprefixed state_dict names.
++    with coordinate_compile_scope(model):
++        model.compile(backend="inductor", mode=mode, fullgraph=True, dynamic=False,
++                      recompile_limit=recompile_limit)
++
++
++@contextmanager
++def coordinate_compile_scope(model: nn.Module) -> Iterator[None]:
++    if getattr(model, "_coordinate_compile_mode", "off") == "off":
++        yield
++        return
++    import torch._dynamo.config as dynamo_config
++    import torch._functorch.config as aot_config
++
++    # Compilation is lazy: keep the policy active during actual forward/backward,
++    # not only when Module.compile() installs its callable. Backward runs outside
++    # autocast in this trainer. Defaults assuming forward's autocast are unsafe.
++    with dynamo_config.patch(suppress_errors=False), aot_config.patch(backward_pass_autocast="off"):
++        yield
++
++
++def coordinate_compilation_report(model: nn.Module) -> dict[str, Any]:
++    mode = getattr(model, "_coordinate_compile_mode", "off")
++    report: dict[str, Any] = dict(mode=mode, backend="inductor" if mode != "off" else None,
++                                 fullgraph=mode != "off", dynamic=False,
++                                 recompile_limit=getattr(model, "_coordinate_recompile_limit", 8),
++                                 backward_pass_autocast="off")
++    if mode != "off":
++        from torch._dynamo.utils import counters
++
++        report.update(unique_graphs=int(counters["stats"]["unique_graphs"]),
++                      graph_breaks=dict(counters["graph_break"]))
++    return report
+diff --git a/src/tasks/ball_detection/training/coordinate_evaluation.py b/src/tasks/ball_detection/training/coordinate_evaluation.py
+index b0a83240e..0f368833a 100644
+--- a/src/tasks/ball_detection/training/coordinate_evaluation.py
++++ b/src/tasks/ball_detection/training/coordinate_evaluation.py
+@@ -16,18 +16,27 @@ from src.tasks.ball_detection.model_io.mdd_pose import (
+ )
+ from src.tasks.ball_detection.model_io.mdd_query import MDDQueryAdapter, MDDQueryInput
+ from src.tasks.ball_detection.models.mdd_pose import MDDPoseDetector, MDDQueryDetector
++from src.tasks.ball_detection.training.coordinate_compilation import (
++    coordinate_compile_scope,
++)
+ 
+ CoordinateModel: TypeAlias = MDDPoseDetector | MDDQueryDetector
+ 
+ 
+ def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: torch.device) -> Tensor:
+     if isinstance(model, MDDQueryDetector):
+-        inputs = MDDQueryInput(batch["mdd"].to(device), batch["timestamps"].to(device))
++        inputs = MDDQueryInput(batch["rgb"], batch["timestamps"])
+         adapter = MDDQueryAdapter(model.config)
+         call = adapter.build_call(inputs)
+-        return adapter.decode_output(model(*call.args))
+-    pose_inputs = MDDPoseInput(*(batch[key].to(device) for key in ("mdd", "pose", "pose_valid", "timestamps")))
+-    return MDDPoseAdapter(model.config).decode_output(model(*prepare_mdd_pose_inputs(model.config, pose_inputs)))
++        rgb, timestamps = call.args
++        if rgb is None or timestamps is None:
++            raise ValueError("Native query requires RGB and timestamps")
++        return adapter.decode_output(model(rgb.to(device, non_blocking=True), timestamps.to(device, non_blocking=True)))
++    pose_inputs = MDDPoseInput(*(batch[key] for key in ("rgb", "pose", "pose_valid", "timestamps")))
++    # Validate the small metadata on CPU before H2D. No value-dependent Python
++    # validation enters the compiled model; uint8 RGB needs no full-image scan.
++    tensors = prepare_mdd_pose_inputs(model.config, pose_inputs)
++    return MDDPoseAdapter(model.config).decode_output(model(*(tensor.to(device, non_blocking=True) for tensor in tensors)))
+ 
+ 
+ class CoordinateMetrics:
+@@ -105,7 +114,7 @@ def evaluate_coordinates(model: CoordinateModel, loader: DataLoader[Any], device
+         raise ValueError("BF16 evaluation requires a supported CUDA device; no fallback")
+     model.eval()
+     metrics = CoordinateMetrics(frame_steps)
+-    with torch.no_grad():
++    with torch.no_grad(), coordinate_compile_scope(model):
+         for batch in loader:
+             with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
+                 uv = predict_coordinates(model, batch, device).cpu()
+diff --git a/src/tasks/ball_detection/training/coordinate_provenance.py b/src/tasks/ball_detection/training/coordinate_provenance.py
+index 7a82ee9f4..fff264d7e 100644
+--- a/src/tasks/ball_detection/training/coordinate_provenance.py
++++ b/src/tasks/ball_detection/training/coordinate_provenance.py
+@@ -14,7 +14,7 @@ from src.utils.paths import PROJECT_ROOT
+ def coordinate_source_identity() -> dict[str, Any]:
+     root = PROJECT_ROOT
+     task = root / "src/tasks/ball_detection"
+-    patterns = ("models/mdd_pose/*.py", "model_io/mdd*.py", "data/coordinate*.py", "data/temporal_sampling.py",
++    patterns = ("models/mdd_pose/*.py", "preprocessing/*.py", "model_io/mdd*.py", "data/coordinate*.py", "data/temporal_sampling.py",
+                 "data/pose_windows.py", "data/play*.py", "data/annotation_states.py", "data/store.py",
+                 "training/coordinate*.py", "scripts/train_mdd_pose.py", "scripts/prepare_mdd_training.py",
+                 "scripts/evaluate_mdd_coordinates.py")
+diff --git a/src/tasks/ball_detection/training/coordinate_runtime.py b/src/tasks/ball_detection/training/coordinate_runtime.py
+index 5b69e6ad0..e648f6652 100644
+--- a/src/tasks/ball_detection/training/coordinate_runtime.py
++++ b/src/tasks/ball_detection/training/coordinate_runtime.py
+@@ -15,6 +15,11 @@ from src.tasks.ball_detection.data.coordinate_dataset import (
+     collate_coordinate_windows,
+ )
+ from src.tasks.ball_detection.data.pose_windows import coordinate_loss
++from src.tasks.ball_detection.training.coordinate_compilation import (
++    COMPILE_MODES,
++    compile_coordinate_model,
++    coordinate_compile_scope,
++)
+ from src.tasks.ball_detection.training.coordinate_evaluation import (
+     CoordinateModel,
+     predict_coordinates,
+@@ -33,18 +38,24 @@ class CoordinateRuntime:
+     pin_memory: bool = False
+     prefetch_factor: int = 1
+     cpu_threads: int = 2
++    compile_mode: str = "off"
++    compile_recompile_limit: int = 8
+ 
+     def __post_init__(self) -> None:
+         if self.precision not in {"fp32", "bf16"}:
+             raise ValueError("Coordinate precision must be fp32 or bf16")
+         if self.num_workers < 0 or min(self.prefetch_factor, self.cpu_threads) < 1:
+             raise ValueError("Invalid input pipeline worker/thread/prefetch configuration")
++        if self.compile_mode not in COMPILE_MODES or self.compile_recompile_limit < 1:
++            raise ValueError("Invalid coordinate compilation settings")
+ 
+     def configure(self, device: torch.device) -> None:
+         if self.precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
+             raise ValueError("BF16 coordinate training requires a supported CUDA device; no fallback")
+         if self.pin_memory and device.type != "cuda":
+             raise ValueError("Pinned coordinate inputs require CUDA")
++        if self.compile_mode != "off" and device.type != "cuda":
++            raise ValueError("Coordinate compilation requires CUDA; no eager fallback")
+         torch.set_num_threads(self.cpu_threads)
+         cv2.setNumThreads(1)
+         # Match the measured runtime. Avoid a shape-dependent autotuning phase.
+@@ -52,6 +63,9 @@ class CoordinateRuntime:
+         torch.backends.cuda.matmul.allow_tf32 = False
+         torch.backends.cudnn.allow_tf32 = True
+ 
++    def configure_model(self, model: CoordinateModel) -> None:
++        compile_coordinate_model(model, mode=self.compile_mode, recompile_limit=self.compile_recompile_limit)
++
+     def loader(self, dataset: CoordinateWindowDataset, *, batch_size: int,
+                sampler: Sampler[int] | None = None, seed: int = 0) -> DataLoader[Any]:
+         if batch_size < 1:
+@@ -68,10 +82,11 @@ def coordinate_train_step(model: CoordinateModel, optimizer: torch.optim.Optimiz
+                           batch: dict[str, Any], device: torch.device,
+                           runtime: CoordinateRuntime) -> tuple[Tensor, Tensor]:
+     optimizer.zero_grad(set_to_none=True)
+-    with torch.autocast(device.type, dtype=torch.bfloat16, enabled=runtime.precision == "bf16"):
+-        prediction = predict_coordinates(model, batch, device)
+-        loss = coordinate_loss(prediction, batch["uv"].to(device), batch["position_valid"].to(device))
+-    loss.backward()
++    with coordinate_compile_scope(model):
++        with torch.autocast(device.type, dtype=torch.bfloat16, enabled=runtime.precision == "bf16"):
++            prediction = predict_coordinates(model, batch, device)
++            loss = coordinate_loss(prediction, batch["uv"].to(device), batch["position_valid"].to(device))
++        loss.backward()
+     grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
+     optimizer.step()
+     return loss.detach(), grad.detach()
+diff --git a/tests/benchmarks/ball_mdd_cpu_profile.py b/tests/benchmarks/ball_mdd_cpu_profile.py
+index 931327c92..b10a5b179 100644
+--- a/tests/benchmarks/ball_mdd_cpu_profile.py
++++ b/tests/benchmarks/ball_mdd_cpu_profile.py
+@@ -117,18 +117,18 @@ def main() -> None:
+     if multiprocessing.get_start_method() != "fork":
+         raise ValueError("This diagnostic measures Linux fork workers with inherited caches")
+     worker_init(-1)
+-    reader.luminance_to_mdd = instrument(reader.luminance_to_mdd, "mdd")
+     reader.dual_sha256 = instrument(reader.dual_sha256, "hash")
+     reader.CoordinateWindowDataset._verify_clip = instrument(reader.CoordinateWindowDataset._verify_clip, "verify")
+     BallFrameStore.read_bgr = instrument(BallFrameStore.read_bgr, "read_bgr")
+     BallFrameStore.read_jpeg = instrument(BallFrameStore.read_jpeg, "jpeg_bytes")
+     setup_start = time.perf_counter()
+-    data = TimedDataset(args.manifest, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
++    data = TimedDataset(args.manifest, split="train", requires_pose=False)
+     indices = list(FPSMixSampler(data, windows_per_epoch=6000, seed=42))[:args.windows]
+     code = coordinate_source_identity()
+     code["source_sha256"]["src/utils/checksum.py"] = hashlib.sha256(
+         (Path(code["directory"]) / "src/utils/checksum.py").read_bytes()).hexdigest()
+-    report: dict[str, Any] = dict(schema="mdd_cpu_profile.v1", case=args.case, workers=args.workers,
++    report: dict[str, Any] = dict(schema="mdd_cpu_profile.v2", case=args.case, workers=args.workers,
++        payload_contract="RGB uint8 T,3,H,W; fixed MDD is inside the model, not this CPU reader",
+         windows=args.windows, torch_threads_per_process=1, opencv_threads=1,
+         manifest_sha256=dual_sha256(args.manifest), source_commit=code["base_commit"], code=code,
+         diagnostic_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+diff --git a/tests/benchmarks/ball_mdd_query_gpu.py b/tests/benchmarks/ball_mdd_query_gpu.py
+index 7023b2915..cdc966ea7 100644
+--- a/tests/benchmarks/ball_mdd_query_gpu.py
++++ b/tests/benchmarks/ball_mdd_query_gpu.py
+@@ -2,7 +2,8 @@
+ 
+ Each invocation measures one configuration in its own process. No validation or
+ test labels are used, and no trained checkpoint is retained. Compute mode keeps
+-one real batch resident; pipeline mode includes the unchanged JPEG/MDD reader.
++one real RGB batch resident; pipeline mode includes the JPEG/uint8 reader.
++Fixed FP32 MDD is part of the model in both modes. BF16 is used when requested.
+ """
+ 
+ from __future__ import annotations
+@@ -27,6 +28,11 @@ from src.tasks.ball_detection.data.coordinate_dataset import (
+     collate_coordinate_windows,
+ )
+ from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDQueryDetector
++from src.tasks.ball_detection.training.coordinate_compilation import (
++    COMPILE_MODES,
++    coordinate_compilation_report,
++    coordinate_compile_scope,
++)
+ from src.tasks.ball_detection.training.coordinate_evaluation import predict_coordinates
+ from src.tasks.ball_detection.training.coordinate_runtime import (
+     CoordinateRuntime,
+@@ -64,8 +70,14 @@ def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
+     if config.compression != "conv2d" or config.readout != "query_only":
+         raise ValueError("This benchmark is specifically Conv2d + query-only")
+     report["model"] = asdict(config)
+-    dataset = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
++    dataset = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False)
+     model = MDDQueryDetector(config).to(device).train()
++    runtime = CoordinateRuntime(precision=args.precision, num_workers=args.workers,
++                                pin_memory=args.pin_memory, cpu_threads=args.cpu_threads,
++                                compile_mode=args.compile_mode)
++    runtime.configure(device)
++    runtime.configure_model(model)
++    report["input_contract"] = model.mdd.input_contract()
+     report["parameters"] = sum(p.numel() for p in model.parameters())
+     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=.01)
+     first_parameter = next(model.parameters()).detach().clone()
+@@ -79,8 +91,6 @@ def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
+         iterator = iter([batch] * total)
+     else:
+         sampler = FPSMixSampler(dataset, windows_per_epoch=total * args.batch_size, seed=42)
+-        runtime = CoordinateRuntime(precision=args.precision, num_workers=args.workers,
+-                                    pin_memory=args.pin_memory, cpu_threads=args.cpu_threads)
+         loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sampler, seed=42)
+         report["window_sequence_sha256"] = hashlib.sha256(json.dumps(list(sampler)).encode()).hexdigest()
+         iterator = iter(loader)
+@@ -91,8 +101,7 @@ def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
+         begin = time.perf_counter()
+         batch = next(iterator)
+         loaded = time.perf_counter()
+-        loss, grad = coordinate_train_step(model, optimizer, batch, device,
+-                                           CoordinateRuntime(precision=args.precision))
++        loss, grad = coordinate_train_step(model, optimizer, batch, device, runtime)
+         torch.cuda.synchronize()
+         elapsed = time.perf_counter() - begin
+         row = dict(step=step, warmup=step < args.warmup, seconds=elapsed,
+@@ -112,14 +121,14 @@ def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
+                   final_loss=report["steps"][-1]["loss"],
+                   parameter_max_change=float((next(model.parameters()).detach() - first_parameter).abs().max()))
+     model.eval()
+-    with torch.no_grad():
+-        # Same final weights and input: inference precision difference, not accuracy.
+-        reference = predict_coordinates(model, batch, device)
+-        with torch.autocast("cuda", dtype=torch.bfloat16):
+-            mixed = predict_coordinates(model, batch, device)
+-        size = batch["source_size"].to(device)[:, None] - 1
+-        delta = ((reference - mixed) * size).norm(dim=-1)
+-        report["bf16_vs_fp32_eval_delta_px"] = dict(mean=float(delta.mean()), max=float(delta.max()))
++    with torch.no_grad(), coordinate_compile_scope(model):
++        with torch.autocast("cuda", dtype=torch.bfloat16, enabled=args.precision == "bf16"):
++            output = predict_coordinates(model, batch, device)
++        report["eval_finite"] = bool(torch.isfinite(output).all())
++    report["compilation"] = coordinate_compilation_report(model)
++    if args.compile_mode != "off":
++        assert report["compilation"]["unique_graphs"] > 0
++        assert not report["compilation"]["graph_breaks"]
+ 
+ 
+ def main() -> None:
+@@ -129,6 +138,7 @@ def main() -> None:
+     parser.add_argument("--output", type=Path, required=True)
+     parser.add_argument("--batch-size", type=int, required=True)
+     parser.add_argument("--precision", choices=("fp32", "bf16"), required=True)
++    parser.add_argument("--compile-mode", choices=COMPILE_MODES, default="off")
+     parser.add_argument("--mode", choices=("compute", "pipeline"), default="compute")
+     parser.add_argument("--workers", type=int, default=0)
+     parser.add_argument("--pin-memory", action="store_true")
+@@ -141,7 +151,7 @@ def main() -> None:
+     if min(args.batch_size, args.cpu_threads, args.steps) < 1 or min(args.warmup, args.workers) < 0:
+         raise ValueError("Invalid measurement budget")
+     args.output.parent.mkdir(parents=True, exist_ok=True)
+-    report: dict[str, Any] = dict(schema="ball_mdd_query_gpu.v1", status="running",
++    report: dict[str, Any] = dict(schema="ball_native_rgb_gpu.v2", status="running",
+                                  arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
+                                  manifest_sha256=hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
+                                  model_config_sha256=hashlib.sha256(args.model_config.read_bytes()).hexdigest(),
+diff --git a/tests/benchmarks/ball_mdd_query_gpu_smoke.py b/tests/benchmarks/ball_mdd_query_gpu_smoke.py
+index 42f2177eb..3cf176e3d 100644
+--- a/tests/benchmarks/ball_mdd_query_gpu_smoke.py
++++ b/tests/benchmarks/ball_mdd_query_gpu_smoke.py
+@@ -26,6 +26,7 @@ def main() -> None:
+     parser.add_argument("--output", type=Path, required=True)
+     parser.add_argument("--workers", type=int, required=True)
+     parser.add_argument("--batch-size", type=int, required=True)
++    parser.add_argument("--compile-mode", choices=("off", "default", "reduce-overhead", "max-autotune"), default="off")
+     args = parser.parse_args()
+     args.output.mkdir(parents=True, exist_ok=False)
+     original = json.loads(args.manifest.read_text())
+@@ -57,6 +58,7 @@ def main() -> None:
+                "--manifest", str(manifest), "--model-config", str(args.model_config),
+                "--output", str(training), "--learning-rate", "0.0001", "--seed", "42",
+                "--device", "cuda", "--precision", "bf16", "--batch-size", str(args.batch_size),
++               "--compile-mode", args.compile_mode,
+                "--num-workers", str(args.workers), "--pin-memory", "--windows-per-epoch", "12",
+                "--selection-scope", "common", "--log-every", "1"]
+     subprocess.run([*command, "--epochs", "1"], check=True)
+@@ -80,6 +82,7 @@ def main() -> None:
+                   queue_run_id=os.environ.get("TENNIS_RUN_ID"), train_clips=3, val_clips=3, test_clips=0,
+                   train_windows=9, val_windows=9, optimizer_updates=expected_updates,
+                   precision=report["precision"], batch_size=args.batch_size, workers=args.workers,
++                  input_contract=report["input_contract"], compilation=report["compilation"],
+                   cuda_rng_saved=True, resumed=True, external_eval_restored_precision=True,
+                   parent_manifest_sha256=dual_sha256(args.manifest),
+                   excerpt_sha256=dual_sha256(manifest), checkpoint_sha256=dual_sha256(training / "epoch-001.pt"))
+diff --git a/tests/benchmarks/ball_native_rgb_correctness.py b/tests/benchmarks/ball_native_rgb_correctness.py
+new file mode 100644
+index 000000000..b38b64e72
+--- /dev/null
++++ b/tests/benchmarks/ball_native_rgb_correctness.py
+@@ -0,0 +1,123 @@
++"""GPU native/compiled MDD numerical and gradient checks; queue execution only."""
++
++from __future__ import annotations
++
++import argparse
++import json
++from dataclasses import replace
++from pathlib import Path
++
++import numpy as np
++import torch
++
++from src.tasks.ball_detection.data.coordinate_dataset import (
++    CoordinateWindowDataset,
++    collate_coordinate_windows,
++)
++from src.tasks.ball_detection.data.pose_windows import coordinate_loss
++from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDQueryDetector
++from src.tasks.ball_detection.preprocessing import (
++    RGBToMDD,
++    luminance_to_mdd,
++    mdd_coefficients,
++)
++from src.tasks.ball_detection.training.coordinate_compilation import (
++    coordinate_compilation_report,
++    coordinate_compile_scope,
++)
++from src.tasks.ball_detection.training.coordinate_evaluation import predict_coordinates
++from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRuntime
++from src.utils.checksum import dual_sha256
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--model-config", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise ValueError("Choose a new correctness report")
++    device = torch.device("cuda")
++    runtime = CoordinateRuntime(precision="bf16", compile_mode="default")
++    runtime.configure(device)
++    torch.manual_seed(42)
++    data = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False)
++    selected = {}
++    for index, (record, window) in enumerate(data.windows):
++        selected.setdefault((data.records[record]["clip"]["source"], window.frame_step), index)
++    transform = RGBToMDD().to(device)
++    compiled_transform = RGBToMDD().to(device)
++    compiled_transform.compile(backend="inductor", fullgraph=True, dynamic=False)
++    differences = []
++    for (source, step), index in sorted(selected.items()):
++        sample = data[index]
++        rgb = sample["rgb"][None].to(device)
++        # Independent reproduction of the previous NumPy BGR/luminance reader.
++        bgr = sample["rgb"].numpy().transpose(0, 2, 3, 1)[..., ::-1].astype(np.float32) / 255
++        gray = .114 * bgr[..., 0] + .587 * bgr[..., 1] + .299 * bgr[..., 2]
++        gain, offset = mdd_coefficients(.2, .15)
++        reference = luminance_to_mdd(torch.from_numpy(gray)[None], gain=gain, offset=offset)
++        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
++            eager = transform(rgb).cpu()
++            compiled = compiled_transform(rgb).cpu()
++        assert eager.dtype == compiled.dtype == torch.float32
++        assert not compiled[:, :, 0].any()
++        torch.testing.assert_close(eager, reference, rtol=1e-5, atol=3e-6)
++        torch.testing.assert_close(compiled, reference, rtol=1e-5, atol=3e-6)
++        row = dict(source=source, frame_step=step, clip_id=sample["clip_id"],
++                   eager_max_abs=float((eager-reference).abs().max()),
++                   compiled_max_abs=float((compiled-reference).abs().max()))
++        differences.append(row)
++        print(json.dumps(row), flush=True)
++        del rgb, bgr, gray, reference, eager, compiled
++    # Dropout is disabled only for this numerical comparison; the throughput
++    # diagnostic uses the unmodified dropout=0.1 training configuration.
++    config = replace(MDDPoseConfig.load(args.model_config), dropout=0.)
++    eager_model = MDDQueryDetector(config).to(device).train()
++    compiled_model = MDDQueryDetector(config).to(device).train()
++    compiled_model.load_state_dict(eager_model.state_dict(), strict=True)
++    names = set(eager_model.state_dict())
++    runtime.configure_model(compiled_model)
++    batch = collate_coordinate_windows([data[next(iter(selected.values()))]])
++    gradients, predictions, losses = [], [], []
++    for model in (eager_model, compiled_model):
++        with coordinate_compile_scope(model):
++            with torch.autocast("cuda", dtype=torch.bfloat16):
++                prediction = predict_coordinates(model, batch, device)
++                loss = coordinate_loss(prediction, batch["uv"].to(device), batch["position_valid"].to(device))
++            loss.backward()
++        gradient = torch.cat([p.grad.detach().float().flatten() for p in model.parameters() if p.grad is not None]).cpu()
++        assert torch.isfinite(gradient).all()
++        gradients.append(gradient)
++        predictions.append(prediction.detach().cpu())
++        losses.append(float(loss.detach()))
++    relative = float((gradients[0]-gradients[1]).norm()/gradients[0].norm().clamp_min(1e-12))
++    uv_delta = float((predictions[0]-predictions[1]).abs().max())
++    assert relative < .05, relative
++    assert uv_delta < .003, uv_delta
++    assert abs(losses[0]-losses[1]) < .002, losses
++    assert set(compiled_model.state_dict()) == names
++    restored = MDDQueryDetector(config).to(device).eval()
++    restored.load_state_dict(compiled_model.state_dict(), strict=True)
++    compiled_model.eval()
++    with torch.no_grad(), coordinate_compile_scope(compiled_model), torch.autocast("cuda", dtype=torch.bfloat16):
++        first = predict_coordinates(compiled_model, batch, device).cpu()
++        second = predict_coordinates(restored, batch, device).cpu()
++    restore_delta = float((first-second).abs().max())
++    assert restore_delta < .003, restore_delta
++    compilation = coordinate_compilation_report(compiled_model)
++    assert compilation["unique_graphs"] > 0 and not compilation["graph_breaks"]
++    report = dict(status="ok", manifest_sha256=dual_sha256(args.manifest), input_contract=transform.input_contract(),
++                  preprocessing=differences, gradient_relative_l2=relative, max_uv_delta=uv_delta,
++                  loss_eager=losses[0], loss_compiled=losses[1], restore_max_uv_delta=restore_delta,
++                  state_dict_names_unchanged=True, compilation=compilation,
++                  tolerances=dict(mdd_atol=3e-6, mdd_rtol=1e-5, gradient_relative_l2=.05, uv_abs=.003, loss_abs=.002),
++                  scope="train-only numerical diagnostic; no production training or test evaluation")
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
++    print(json.dumps(report), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/benchmarks/ball_native_rgb_sweep.sh b/tests/benchmarks/ball_native_rgb_sweep.sh
+new file mode 100644
+index 000000000..b4d8b77e9
+--- /dev/null
++++ b/tests/benchmarks/ball_native_rgb_sweep.sh
+@@ -0,0 +1,19 @@
++#!/usr/bin/env bash
++# Run the complete sweep as one exclusive training-queue job.
++set -euo pipefail
++rgb_manifest=$1
++rgb_model=$2
++rgb_report=$3
++for rgb_compile in off default; do
++  PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_mdd_query_gpu.py \
++    --manifest "$rgb_manifest" --model-config "$rgb_model" \
++    --output "$rgb_report/compute-${rgb_compile}.json" \
++    --precision bf16 --batch-size 1 --compile-mode "$rgb_compile" --warmup 4 --steps 24
++done
++for rgb_compile in off default; do
++  PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_mdd_query_gpu.py \
++    --manifest "$rgb_manifest" --model-config "$rgb_model" \
++    --output "$rgb_report/pipeline-${rgb_compile}.json" \
++    --precision bf16 --batch-size 1 --compile-mode "$rgb_compile" \
++    --mode pipeline --workers 8 --pin-memory --warmup 12 --steps 96
++done
+diff --git a/tests/integration/tasks/ball_detection/test_coordinate_training.py b/tests/integration/tasks/ball_detection/test_coordinate_training.py
+index c5a635b06..01203c777 100644
+--- a/tests/integration/tasks/ball_detection/test_coordinate_training.py
++++ b/tests/integration/tasks/ball_detection/test_coordinate_training.py
+@@ -29,6 +29,7 @@ from src.tasks.ball_detection.data.temporal_sampling import (
+     select_sampled_windows,
+ )
+ from src.tasks.ball_detection.model_io.mdd import luminance_to_mdd, mdd_coefficients
++from src.tasks.ball_detection.preprocessing import RGBToMDD
+ from src.tasks.ball_detection.training.coordinate_preparation import (
+     prepare_coordinate_training,
+ )
+@@ -73,7 +74,7 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
+     data = build_coordinate_manifest(store, PlayIntervalConfig(), TemporalSamplingConfig(), input_kind="mdd_only")
+     path = tmp_path / "windows.json"
+     path.write_text(json.dumps(data))
+-    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
++    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False)
+     assert data["semantics"]["clip_presence_gate"] is None
+     assert {window.frame_step for _, window in dataset.windows} == {1, 2, 4}
+     index = next(i for i, (_, w) in enumerate(dataset.windows) if w.start == 0 and w.frame_step == 4)
+@@ -89,10 +90,12 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
+     gain, offset = mdd_coefficients(.2, .15)
+     expected = luminance_to_mdd(gray_tensor[:, :125:4], gain=gain, offset=offset)[0]
+     wrong_order = luminance_to_mdd(gray_tensor, gain=gain, offset=offset)[0, :, :125:4]
+-    torch.testing.assert_close(sample["mdd"], expected)
+-    assert not torch.allclose(sample["mdd"], wrong_order)
++    native = RGBToMDD()(sample["rgb"][None])[0]
++    assert sample["rgb"].dtype == torch.uint8 and "mdd" not in sample
++    torch.testing.assert_close(native, expected)
++    assert not torch.allclose(native, wrong_order)
+     batch = collate_coordinate_windows([sample])
+-    assert "pose" not in batch and batch["mdd"].shape == (1, 2, 32, 32, 32)
++    assert "pose" not in batch and batch["rgb"].shape == (1, 32, 3, 32, 32)
+     sampler = FPSMixSampler(dataset, windows_per_epoch=30, seed=19)
+     first = list(sampler)
+     assert Counter(dataset.windows[i][1].frame_step for i in first) == {1: 10, 2: 10, 4: 10}
+@@ -140,7 +143,7 @@ def test_snapshot_hardlinks_rgb_but_freezes_indexes_and_detects_modified_bytes(t
+         byte = stream.read(1)[0]
+         stream.seek(10)
+         stream.write(bytes([byte ^ 1]))
+-    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
++    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False)
+     with pytest.raises(ValueError, match="checksum"):
+         dataset[0]
+ 
+@@ -171,7 +174,7 @@ def test_preparation_freezes_36_models_and_pose_free_loading_survives_missing_po
+     assert plan["datasets"]["mdd_only"]["clips"] == 6
+     assert not (output / "PREPARATION_INCOMPLETE").exists()
+     (output / "poses").rename(output / "hidden_poses")
+-    data = CoordinateWindowDataset(Path(plan["datasets"]["mdd_only"]["path"]), split="val", requires_pose=False, mdd_a=.2, mdd_b=.15)
++    data = CoordinateWindowDataset(Path(plan["datasets"]["mdd_only"]["path"]), split="val", requires_pose=False)
+     assert {data[i]["common_evaluation"] for i in range(len(data))} == {True, False}
+     assert all("pose" not in data[i] for i in range(len(data)))
+ 
+diff --git a/tests/integration/tasks/ball_detection/test_pose_windows.py b/tests/integration/tasks/ball_detection/test_pose_windows.py
+index fe6a1d0b4..06d718ac9 100644
+--- a/tests/integration/tasks/ball_detection/test_pose_windows.py
++++ b/tests/integration/tasks/ball_detection/test_pose_windows.py
+@@ -17,6 +17,7 @@ from src.tasks.ball_detection.data.pose_windows import (
+ )
+ from src.tasks.ball_detection.data.store import BallFrameStore
+ from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDPoseDetector
++from src.tasks.ball_detection.preprocessing import RGBToMDD
+ from src.utils.checksum import dual_sha256
+ from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+ 
+@@ -52,19 +53,19 @@ def frozen(tmp_path: Path) -> tuple[Path, Path]:
+ 
+ def test_frozen_dataset_keeps_resolution_alignment_and_masks(frozen: tuple[Path, Path]) -> None:
+     manifest, poses = frozen
+-    dataset = PoseWindowDataset(manifest, split="train", mdd_a=.2, mdd_b=.15)
++    dataset = PoseWindowDataset(manifest, split="train")
+     # New approvals/changes to the live campaign do not change a frozen experiment.
+     (poses / "manifest.json").write_text("{}")
+     sample = dataset[0]
+-    assert sample["mdd"].shape == (2, 32, 32, 32)
+-    assert not sample["mdd"][:, 0].any()
++    assert sample["rgb"].shape == (32, 3, 32, 32) and sample["rgb"].dtype == torch.uint8
++    assert "mdd" not in sample and not RGBToMDD()(sample["rgb"][None])[:, :, 0].any()
+     torch.testing.assert_close(sample["uv"][0], torch.tensor([8 / 31, 8 / 31]))
+     torch.testing.assert_close(sample["pose"][0, 0, 0], torch.tensor([12 / 31, 12 / 31]))
+     assert not sample["position_valid"][10:15].any()
+     assert not sample["pose_valid"][10:15, 1].any()
+     batch = collate_pose_windows([sample])
+     model = MDDPoseDetector(MDDPoseConfig("conv2d", "attention", "query", 32, (4, 4, 8, 8), (8, 8), 16, 2, 1, 0., 10000.))
+-    output = model(batch["mdd"], batch["pose"], batch["pose_valid"], batch["timestamps"])
++    output = model(batch["rgb"], batch["pose"], batch["pose_valid"], batch["timestamps"])
+     loss = coordinate_loss(output, batch["uv"], batch["position_valid"])
+     loss.backward()
+     assert torch.isfinite(loss)
+@@ -72,7 +73,7 @@ def test_frozen_dataset_keeps_resolution_alignment_and_masks(frozen: tuple[Path,
+ 
+ def test_changed_pose_bytes_are_rejected(frozen: tuple[Path, Path]) -> None:
+     manifest, poses = frozen
+-    dataset = PoseWindowDataset(manifest, split="train", mdd_a=.2, mdd_b=.15)
++    dataset = PoseWindowDataset(manifest, split="train")
+     with (poses / "clip.npz").open("ab") as stream:
+         stream.write(b"changed")
+     with pytest.raises(ValueError, match="identity"):
+@@ -81,4 +82,4 @@ def test_changed_pose_bytes_are_rejected(frozen: tuple[Path, Path]) -> None:
+ 
+ def test_no_windows_does_not_fall_back_to_another_split(frozen: tuple[Path, Path]) -> None:
+     with pytest.raises(ValueError, match="No accepted windows"):
+-        PoseWindowDataset(frozen[0], split="val", mdd_a=.2, mdd_b=.15)
++        PoseWindowDataset(frozen[0], split="val")
+diff --git a/tests/unit/tasks/ball_detection/models/test_mdd_pose.py b/tests/unit/tasks/ball_detection/models/test_mdd_pose.py
+index cd6962ca5..516285d07 100644
+--- a/tests/unit/tasks/ball_detection/models/test_mdd_pose.py
++++ b/tests/unit/tasks/ball_detection/models/test_mdd_pose.py
+@@ -21,12 +21,12 @@ def test_every_ablation_has_finite_masked_gradients(method: str, pool: str, read
+     torch.manual_seed(12)
+     config = MDDPoseConfig(method, pool, readout, 32, (4, 4, 8, 8), (8, 8), 16, 2, 1, 0., 10000.)
+     model = MDDPoseDetector(config)
+-    mdd = torch.rand(1, 2, 32, 16, 16)
++    rgb = torch.randint(256, (1, 32, 3, 16, 16), dtype=torch.uint8)
+     pose = torch.rand(1, 32, 2, 17, 2)
+     valid = torch.ones(1, 32, 2, 17, dtype=torch.bool)
+     valid[:, 8:16] = False
+     times = torch.arange(32)[None].float() / 30
+-    prediction = model(mdd, pose, valid, times)
++    prediction = model(rgb, pose, valid, times)
+     target = torch.rand_like(prediction)
+     supervision = torch.ones(1, 32, dtype=torch.bool)
+     supervision[:, 8:16] = False
+@@ -119,7 +119,7 @@ def test_pose_pooling_is_person_order_invariant_and_ignores_missing(method: str)
+     assert torch.isfinite(empty).all()
+ 
+ 
+-@pytest.mark.parametrize("violation", ["rgb", "frames", "time", "mask", "spatial"])
++@pytest.mark.parametrize("violation", ["mdd", "frames", "time", "mask", "spatial"])
+ def test_typed_boundary_rejects_bad_inputs_before_model(violation: str, monkeypatch: pytest.MonkeyPatch) -> None:
+     from src.tasks.ball_detection.model_io.mdd_pose import (
+         MDDPoseInput,
+@@ -131,20 +131,20 @@ def test_typed_boundary_rejects_bad_inputs_before_model(violation: str, monkeypa
+     def forbidden(*args: object) -> torch.Tensor:
+         raise AssertionError("Invalid input entered the model")
+     monkeypatch.setattr(pair.model, "forward", forbidden)
+-    mdd, pose = torch.zeros(1, 2, 32, 16, 16), torch.zeros(1, 32, 1, 17, 2)
++    rgb, pose = torch.zeros(1, 32, 3, 16, 16, dtype=torch.uint8), torch.zeros(1, 32, 1, 17, 2)
+     valid, times = torch.ones(1, 32, 1, 17, dtype=torch.bool), torch.arange(32)[None].float()
+-    if violation == "rgb":
+-        mdd = torch.zeros(1, 3, 32, 16, 16)
++    if violation == "mdd":
++        rgb = torch.zeros(1, 2, 32, 16, 16)
+     elif violation == "frames":
+-        mdd = mdd[:, :, :31]
++        rgb = rgb[:, :31]
+     elif violation == "time":
+         times.zero_()
+     elif violation == "mask":
+         valid = valid.float()
+     else:
+-        mdd = mdd[..., :7]
++        rgb = rgb[..., :7]
+     with pytest.raises(ValueError):
+-        pair.run(MDDPoseInput(mdd, pose, valid, times))
++        pair.run(MDDPoseInput(rgb, pose, valid, times))
+ 
+ 
+ def test_cross_attention_is_frame_local_before_temporal_mixing() -> None:
+diff --git a/tests/unit/tasks/ball_detection/models/test_mdd_query.py b/tests/unit/tasks/ball_detection/models/test_mdd_query.py
+index 94865b163..7ffd7f736 100644
+--- a/tests/unit/tasks/ball_detection/models/test_mdd_query.py
++++ b/tests/unit/tasks/ball_detection/models/test_mdd_query.py
+@@ -27,7 +27,7 @@ def test_query_only_trains_without_pose_or_patch_update_parameters(method: str)
+     torch.manual_seed(26)
+     pair = build_mdd_query_detector(config(method))
+     times = torch.arange(32)[None].float() / 15
+-    prediction = pair.run(MDDQueryInput(torch.rand(1, 2, 32, 32, 32), times))
++    prediction = pair.run(MDDQueryInput(torch.randint(256, (1, 32, 3, 32, 32), dtype=torch.uint8), times))
+     target = torch.rand_like(prediction)
+     valid = torch.ones(1, 32, dtype=torch.bool)
+     valid[:, 5:10] = False
+@@ -69,7 +69,7 @@ def test_queries_read_same_time_images_then_mix_over_real_timestamps() -> None:
+     assert not torch.allclose(first, slower)
+ 
+ 
+-@pytest.mark.parametrize("violation", ["rgb", "frames", "time", "dtype", "spatial"])
++@pytest.mark.parametrize("violation", ["mdd", "frames", "time", "dtype", "spatial"])
+ def test_query_boundary_validates_before_forward(violation: str, monkeypatch: pytest.MonkeyPatch) -> None:
+     pair = build_mdd_query_detector(config())
+ 
+@@ -77,20 +77,20 @@ def test_query_boundary_validates_before_forward(violation: str, monkeypatch: py
+         raise AssertionError("Invalid data entered the model")
+ 
+     monkeypatch.setattr(pair.model, "forward", forbidden)
+-    mdd = torch.zeros(1, 2, 32, 16, 16)
++    rgb = torch.zeros(1, 32, 3, 16, 16, dtype=torch.uint8)
+     times = torch.arange(32)[None].float()
+-    if violation == "rgb":
+-        mdd = torch.zeros(1, 3, 32, 16, 16)
++    if violation == "mdd":
++        rgb = torch.zeros(1, 2, 32, 16, 16)
+     elif violation == "frames":
+-        mdd = mdd[:, :, :31]
++        rgb = rgb[:, :31]
+     elif violation == "time":
+         times.zero_()
+     elif violation == "dtype":
+-        mdd = mdd.double()
++        rgb = rgb.float()
+     else:
+-        mdd = mdd[..., :7]
++        rgb = rgb[..., :7]
+     with pytest.raises(ValueError):
+-        pair.run(MDDQueryInput(mdd, times))
++        pair.run(MDDQueryInput(rgb, times))
+ 
+ 
+ def test_pose_presence_is_explicit_in_config_and_model_selection() -> None:
+diff --git a/tests/unit/tasks/ball_detection/models/test_native_mdd.py b/tests/unit/tasks/ball_detection/models/test_native_mdd.py
+new file mode 100644
+index 000000000..faa9b8f5c
+--- /dev/null
++++ b/tests/unit/tasks/ball_detection/models/test_native_mdd.py
+@@ -0,0 +1,77 @@
++"""RGB order, fixed FP32 preprocessing, and whole-model graph capture."""
++
++from dataclasses import replace
++
++import numpy as np
++import pytest
++import torch
++
++from src.tasks.ball_detection.models.mdd_pose import (
++    MDDPoseConfig,
++    MDDPoseDetector,
++    MDDQueryDetector,
++)
++from src.tasks.ball_detection.preprocessing import RGBToMDD
++from src.tasks.ball_detection.training.coordinate_checkpoint import (
++    validate_coordinate_checkpoint,
++)
++
++
++def test_native_mdd_matches_old_numpy_bgr_and_stays_fp32_under_autocast() -> None:
++    torch.set_num_threads(2)
++    bgr = np.random.default_rng(12).integers(0, 256, (32, 16, 17, 3), dtype=np.uint8)
++    rgb = torch.from_numpy(bgr[..., ::-1].transpose(0, 3, 1, 2).copy())[None]
++    image = bgr.astype(np.float32) / 255
++    gray = .114 * image[..., 0] + .587 * image[..., 1] + .299 * image[..., 2]
++    transform = RGBToMDD(.27, -.05)
++    diff = np.diff(gray, axis=0)
++    expected = np.zeros((1, 2, 32, 16, 17), np.float32)
++    for channel, delta in enumerate((diff, -diff)):
++        logits = np.clip((np.maximum(delta, 0) - transform.offset) * transform.gain, -80, 80)
++        expected[0, channel, 1:] = 1 / (1 + np.exp(-logits))
++    with torch.autocast("cpu", dtype=torch.bfloat16):
++        actual = transform(rgb)
++    assert actual.dtype == torch.float32 and not actual[:, :, 0].any()
++    torch.testing.assert_close(actual, torch.from_numpy(expected), rtol=2e-6, atol=2e-7)
++    assert not torch.allclose(actual, transform(rgb.flip(2)))
++    assert list(transform.parameters()) == []
++    assert RGBToMDD.from_contract(transform.input_contract()).input_contract() == transform.input_contract()
++
++
++@pytest.mark.parametrize("violation", ["dtype", "layout", "legacy_mdd", "contract"])
++def test_native_input_contract_rejects_ambiguous_inputs(violation: str) -> None:
++    transform = RGBToMDD()
++    rgb = torch.zeros(1, 32, 3, 16, 16, dtype=torch.uint8)
++    with pytest.raises(ValueError):
++        if violation == "contract":
++            RGBToMDD.from_contract(dict(transform.input_contract(), color_order="BGR"))
++        elif violation == "dtype":
++            transform(rgb.float())
++        elif violation == "layout":
++            transform(rgb.transpose(1, 2))
++        else:
++            transform(torch.zeros(1, 2, 32, 16, 16))
++
++
++@pytest.mark.parametrize("pose", [False, True])
++def test_whole_native_forward_has_no_graph_break_and_preserves_state_names(pose: bool) -> None:
++    torch.set_num_threads(2)
++    cfg = MDDPoseConfig("conv2d", None, "query_only", 32, (4, 4, 8, 8), (8, 8), 16, 2, 1, 0., 10000.)
++    model = MDDPoseDetector(replace(cfg, pose_pooling="attention", readout="query")) if pose else MDDQueryDetector(cfg)
++    rgb = torch.randint(256, (1, 32, 3, 16, 16), dtype=torch.uint8)
++    times = torch.arange(32)[None].float() / 30
++    args = (rgb, torch.rand(1, 32, 2, 17, 2), torch.ones(1, 32, 2, 17, dtype=torch.bool), times) if pose else (rgb, times)
++    expected = model(*args)
++    names = set(model.state_dict())
++    # CPU graph capture checks structure; GPU Inductor/autocast is measured separately.
++    model.compile(backend="eager", fullgraph=True, dynamic=False)
++    actual = model(*args)
++    torch.testing.assert_close(actual, expected)
++    actual.sum().backward()
++    assert set(model.state_dict()) == names
++    assert all(torch.isfinite(p.grad).all() for p in model.parameters() if p.grad is not None)
++
++
++def test_old_mdd_checkpoint_is_not_silently_loaded_as_rgb() -> None:
++    with pytest.raises(ValueError, match="legacy MDD-input v2"):
++        validate_coordinate_checkpoint({"schema": "mdd_coordinates.v2"})
+diff --git a/tests/unit/tasks/ball_detection/test_coordinate_runtime.py b/tests/unit/tasks/ball_detection/test_coordinate_runtime.py
+index 28637a50c..dc792f96c 100644
+--- a/tests/unit/tasks/ball_detection/test_coordinate_runtime.py
++++ b/tests/unit/tasks/ball_detection/test_coordinate_runtime.py
+@@ -7,7 +7,8 @@ from src.tasks.ball_detection.training.coordinate_runtime import CoordinateRunti
+ 
+ 
+ @pytest.mark.parametrize("options", [dict(precision="fp16"), dict(num_workers=-1),
+-                                    dict(prefetch_factor=0), dict(cpu_threads=0)])
++                                    dict(prefetch_factor=0), dict(cpu_threads=0),
++                                    dict(compile_mode="automatic"), dict(compile_recompile_limit=0)])
+ def test_invalid_runtime_controls_are_rejected(options: dict) -> None:
+     with pytest.raises(ValueError):
+         CoordinateRuntime(**options)
+@@ -18,3 +19,5 @@ def test_cpu_does_not_silently_replace_cuda_precision_or_pinned_inputs() -> None
+         CoordinateRuntime(precision="bf16").configure(torch.device("cpu"))
+     with pytest.raises(ValueError, match="Pinned"):
+         CoordinateRuntime(pin_memory=True).configure(torch.device("cpu"))
++    with pytest.raises(ValueError, match="no eager fallback"):
++        CoordinateRuntime(compile_mode="default").configure(torch.device("cpu"))

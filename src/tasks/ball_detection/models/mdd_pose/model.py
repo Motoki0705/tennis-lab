@@ -6,12 +6,16 @@ import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
+from src.tasks.ball_detection.preprocessing import RGBToMDD
+
 from .config import MDDPoseConfig
 from .encoder import MDDTokenEncoder
 from .pooling import PoseTokenizer
 
 
 class TimeAttention(nn.Module):
+    frequencies: Tensor
+
     def __init__(self, dim: int, heads: int, base: float, dropout: float) -> None:
         super().__init__()
         self.heads, self.dropout = heads, dropout
@@ -29,7 +33,8 @@ class TimeAttention(nn.Module):
                                 even * phase.sin() + odd * phase.cos()), -1).flatten(-2)
         value = F.scaled_dot_product_attention(rotate(q), rotate(k), v,
                                                dropout_p=self.dropout if self.training else 0.)
-        return self.output(value.transpose(1, 2).reshape(b, length, dim))
+        output: Tensor = self.output(value.transpose(1, 2).reshape(b, length, dim))
+        return output
 
 
 class FusionBlock(nn.Module):
@@ -56,15 +61,18 @@ class FusionBlock(nn.Module):
 
 
 class MDDPoseDetector(nn.Module):
-    """Input MDD B,2,32,H,W; pose B,32,N,17,2; output B,32,2.
+    """RGB uint8 B,32,3,H,W; pose B,32,N,17,2; output B,32,2.
 
     Mask/PTS are metadata, not additional visual features. No pretrained modules,
     RGB branch, heatmap fabrication or automatic refiner conversion is provided.
     """
 
-    def __init__(self, config: MDDPoseConfig) -> None:
+    def __init__(self, config: MDDPoseConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
         super().__init__()
+        if not config.requires_pose or config.pose_pooling is None:
+            raise ValueError("MDDPoseDetector requires pose; use MDDQueryDetector for query_only")
         self.config = config
+        self.mdd = RGBToMDD(mdd_a, mdd_b)
         self.encoder = MDDTokenEncoder(config.compression, config.stem_channels, config.mixed_channels, config.dim)
         self.pose = PoseTokenizer(config.pose_pooling, config.dim, config.heads)
         if config.readout == "query":
@@ -72,7 +80,8 @@ class MDDPoseDetector(nn.Module):
         self.blocks = nn.ModuleList(FusionBlock(config) for _ in range(config.layers))
         self.head = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, 2))
 
-    def forward(self, mdd: Tensor, coordinates: Tensor, valid: Tensor, timestamps: Tensor) -> Tensor:
+    def forward(self, rgb: Tensor, coordinates: Tensor, valid: Tensor, timestamps: Tensor) -> Tensor:
+        mdd = self.mdd(rgb)
         pose = self.pose(coordinates, valid)
         tokens = pose[:, :, None]
         if self.config.readout == "query":
@@ -81,4 +90,5 @@ class MDDPoseDetector(nn.Module):
         times = timestamps - timestamps[:, :1]
         for block in self.blocks:
             tokens, patches = block(tokens, patches, times)
-        return self.head(tokens[:, :, -1]).float().sigmoid()
+        output: Tensor = self.head(tokens[:, :, -1])
+        return output.float().sigmoid()

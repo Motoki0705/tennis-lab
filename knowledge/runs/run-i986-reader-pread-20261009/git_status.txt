@@ -1,0 +1,39 @@
+ M knowledge/nodes/ball_detection/.sequence
+ M src/tasks/ball_detection/data/coordinate_dataset.py
+ M src/tasks/ball_detection/preprocessing/mdd.py
+ M src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+ M src/tasks/ball_detection/scripts/train_mdd_pose.py
+ M src/tasks/ball_detection/training/CONV2D_QUERY_ONLY_RECIPE.md
+ M src/tasks/ball_detection/training/COORDINATE_TRAINING.md
+ M src/tasks/ball_detection/training/coordinate_checkpoint.py
+ M src/tasks/ball_detection/training/coordinate_evaluation.py
+ A src/tasks/ball_detection/training/coordinate_images.py
+ M src/tasks/ball_detection/training/coordinate_provenance.py
+ M src/tasks/ball_detection/training/coordinate_runtime.py
+ M src/utils/README.md
+ A src/utils/data/file_ranges.py
+ A src/utils/shared_file_verification.py
+ M tests/benchmarks/README.md
+ A tests/benchmarks/ball_jpeg_decode_probe.py
+ A tests/benchmarks/ball_jpeg_prefetch_check.py
+ M tests/benchmarks/ball_mdd_query_gpu.py
+ M tests/benchmarks/ball_mdd_query_gpu_smoke.py
+ A tests/benchmarks/ball_reader_sweep.py
+ A tests/benchmarks/ball_reader_trace.py
+ M tests/integration/tasks/ball_detection/test_coordinate_training.py
+ M tests/unit/tasks/ball_detection/test_coordinate_runtime.py
+ A tests/unit/utils/test_shared_file_verification.py
+?? knowledge/nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md
+?? knowledge/nodes/ball_detection/000033-run-i986-nvjpeg-pixels-20261009.md
+?? knowledge/nodes/ball_detection/000034-run-i986-nvjpeg-synchronous-20261009.md
+?? knowledge/nodes/ball_detection/000035-run-i986-nvjpeg-prepared-20261009.md
+?? knowledge/nodes/ball_detection/000036-run-i986-jpeg-prefetch-sweep-20261009.md
+?? knowledge/nodes/ball_detection/000037-run-i986-jpeg-prefetch-integrity-20261009.md
+?? knowledge/nodes/ball_detection/000038-run-i986-nvjpeg-cli-v4-20261009.md
+?? knowledge/runs/run-i986-jpeg-prefetch-integrity-20261009/
+?? knowledge/runs/run-i986-jpeg-prefetch-sweep-20261009/
+?? knowledge/runs/run-i986-nvjpeg-cli-v4-20261009/
+?? knowledge/runs/run-i986-nvjpeg-pixels-20261009/
+?? knowledge/runs/run-i986-nvjpeg-prepared-20261009/
+?? knowledge/runs/run-i986-nvjpeg-synchronous-20261009/
+?? knowledge/runs/run-i986-rgb-reader-baseline-20261009/

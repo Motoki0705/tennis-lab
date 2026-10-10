@@ -29,6 +29,11 @@
 pose artifact、JPEG shardのhash、学習窓と全除外範囲を固定できる。
 この保存処理はWebUIの閲覧とは分離し、生成物をソースリポジトリへ追加しない。
 
-`pose_windows.py`は固定したmanifestだけを使う新モデル用dataset。後から承認されたclipを
-足さず、crop/resizeを行わずにMDD・pose・observed座標を同じ32実frameで返す。
-人物軸だけをbatch内paddingし、時間の反復や欠損位置の補完はしない。
+上のAPIと既存WebUIはnative-FPSの候補を扱う。
+`temporal_sampling.py`はそのプレイ区間内で元FPS/1/2/1/4の32枚を選び、
+選んだframeの証拠率・実測教師数を改めて判定する。参照区間と大きいPTS gapは跨がない。
+開始strideの単位、MDD再計算順、poseがない全clipからの選択、学習manifest固定の手順は
+[座標モデルの学習準備](../training/COORDINATE_TRAINING.md)を参照。
+
+`coordinate_dataset.py`は固定manifestからMDD・任意のpose・observed座標を同じ32枚で返す。
+`pose_windows.py`は従来のposeありAPIと座標lossを保持する。crop/resize、時間の反復、欠損位置の補完はしない。
