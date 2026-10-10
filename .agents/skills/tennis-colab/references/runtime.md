@@ -34,6 +34,13 @@ PIDだけでなくprocess start tokenを保持し、別processへ再利用され
 
 ## 障害からの再開
 
+source snapshotはtracked差分と小さなuntrackedコードを扱う。標準の`data/`、`ckpt/`、
+`outputs/`、`.cache/`、`.venv/`配下のuntrackedファイルは対象外で、receiptに理由を記録する。
+これらの入力・成果物はDrive経由で検証・保存する。大量のdataset取得によって次のexecが
+コード差分の16 MiB上限に達しないようにする。対象外treeの新しいコードは別途明示して回収する。
+storageの除外と未回収sourceを区別し、前者だけでstopを拒否しない。成果物は実行時に
+`--persist`または`--runner-output`へ宣言し、stop前の全job保存確認を必ず通す。
+
 - **提出・通信が失敗:** 同じjobを再投入せず、local transport.log、remote status、Drive運用記録を調べる。
 - **実行が失敗:** returncodeとログを読み、同じVMで必要な調査・修正を行う。修正差分を回収する。
 - **保存が失敗:** 原因を直して、停止済みjobをsaveする。保存できていない状態でstopしない。
