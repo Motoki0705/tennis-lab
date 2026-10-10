@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 ENV_KEYS = ("CODEX_HOME", "CODEX_SQLITE_HOME", "PATH")
+QUEUE_TIMEOUT_SECONDS = 180
 TIMER_PROPERTIES = (
     "Id,LoadState,ActiveState,TimersMonotonic,NextElapseUSecRealtime,"
     "NextElapseUSecMonotonic,Triggers"
@@ -64,9 +65,8 @@ def locked(task_dir: Path) -> Iterator[dict[str, Any]]:
 
 
 def command(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        argv, capture_output=True, text=True, timeout=45, check=False, **kwargs
-    )
+    kwargs.setdefault("timeout", 45)
+    return subprocess.run(argv, capture_output=True, text=True, check=False, **kwargs)
 
 
 def checked(argv: list[str]) -> str:
@@ -291,6 +291,12 @@ def result(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
         "status": task["status"],
         "blocked_reason": task.get("blocked_reason"),
         "delivery": delivery,
+        "attention_required": bool(task.get("blocked_reason") or
+            (delivery and delivery["phase"] in {"uncertain", "failed"})),
+        "delivery_health": ("needs_recovery" if task.get("blocked_reason") or
+            (delivery and delivery["phase"] in {"uncertain", "failed"}) else
+            "waiting_for_runtime" if delivery and delivery["phase"] == "queued" else
+            "in_progress" if delivery and delivery["phase"] == "started" else "ready"),
         "execution_verified": bool(
             delivery
             and delivery["phase"] == "completed"
@@ -302,6 +308,8 @@ def result(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
 def create_task(args: argparse.Namespace) -> dict[str, Any]:
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", args.id):
         raise ValueError("id must contain 1–64 lowercase letters, digits or hyphens")
+    if args.queue_timeout_seconds < 1:
+        raise ValueError("queue-timeout-seconds must be positive")
     if args.interval_minutes < 1:
         raise ValueError("interval-minutes must be positive")
     thread_id = str(uuid.UUID(args.thread_id))
@@ -332,6 +340,7 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
         "cwd": cwd,
         "prompt": prompt,
         "interval_minutes": args.interval_minutes,
+        "queue_timeout_seconds": args.queue_timeout_seconds,
         "environment": environment,
         "codex": str(Path(codex).resolve(strict=True)),
         "rollout": str(args.rollout.expanduser().resolve(strict=True)),
@@ -387,13 +396,45 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
         raise
 
 
+def acknowledge(delivery: dict[str, Any], thread_id: str,
+                stdout: str | bytes | None, stderr: str | bytes | None) -> None:
+    def decoded(value: str | bytes | None) -> str:
+        return value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value or ""
+    output = decoded(stdout)
+    delivery.update(queue_stdout=output[-4000:], queue_stderr=decoded(stderr)[-2000:])
+    receipts = re.findall(r"^Queued message (\S+) for thread (\S+)\.$", output, re.MULTILINE)
+    # Queue acceptance remains evidence even when CLI teardown subsequently times out.
+    if len(receipts) == 1 and receipts[0][1] == thread_id:
+        delivery.update(phase="queued", queue_id=receipts[0][0])
+
+
+def recover(task_dir: Path, *, marker: str, reason: str, allow_duplicate: bool) -> dict[str, Any]:
+    """Operator-authorized recovery; preserve the uncertain attempt without claiming it failed."""
+    if not allow_duplicate or not reason.strip():
+        raise ValueError("Recovery requires a reason and --acknowledge-possible-duplicate")
+    with locked(task_dir) as task:
+        delivery = reconcile(task_dir, task)
+        if task.get("blocked_reason") or task["status"] != "active":
+            raise ValueError("Resolve the history/registration problem before delivery recovery")
+        if delivery is None or delivery["marker"] != marker:
+            raise ValueError("Recovery marker must match the latest delivery")
+        if delivery["phase"] not in {"uncertain", "failed"}:
+            raise ValueError("Only an uncertain or interrupted delivery can be recovered; queued/started messages must wait")
+        delivery["recovery"] = dict(at=now(), previous_phase=delivery["phase"], reason=reason.strip(),
+                                    duplicate_risk_acknowledged=True, queue_item_deleted=False)
+        delivery["phase"] = "superseded"
+        save(task_dir, task)
+        return {**result(task_dir, task), "recovered": True, "enqueued": False,
+                "notice": "Old receipt retained. A late delivery remains possible; tick may now submit a new marker."}
+
+
 def tick(task_dir: Path) -> dict[str, Any]:
     with locked(task_dir) as task:
         delivery = reconcile(task_dir, task)
         if (
             task["status"] != "active"
             or task.get("blocked_reason")
-            or (delivery and delivery["phase"] != "completed")
+            or (delivery and delivery["phase"] not in {"completed", "superseded"})
         ):
             return {**result(task_dir, task), "enqueued": False}
         _, boundary = history(
@@ -426,27 +467,23 @@ def tick(task_dir: Path) -> dict[str, Any]:
                 ],
                 env=environment,
                 cwd=task["cwd"],
+                timeout=task.get("queue_timeout_seconds", QUEUE_TIMEOUT_SECONDS),
             )
             delivery.update(
                 queue_stdout=queued.stdout[-4000:],
                 queue_stderr=queued.stderr[-2000:],
                 returncode=queued.returncode,
             )
-            receipt = re.search(
-                r"^Queued message (\S+) for thread (\S+)\.$",
-                queued.stdout,
-                re.MULTILINE,
-            )
-            if queued.returncode == 0 and receipt and receipt[2] == task["thread_id"]:
-                delivery.update(phase="queued", queue_id=receipt[1])
-            else:
-                delivery["error"] = (
-                    "Queue acceptance is uncertain; do not automatically resend"
-                )
-        except (OSError, subprocess.SubprocessError) as error:
-            delivery["error"] = (
-                f"Queue acceptance is uncertain: {type(error).__name__}; do not automatically resend"
-            )
+            acknowledge(delivery, task["thread_id"], queued.stdout, queued.stderr)
+            if delivery["phase"] == "uncertain":
+                delivery["error"] = "Queue acceptance is uncertain; inspect logs or use explicit recover"
+        except subprocess.TimeoutExpired as error:
+            delivery.update(timeout_seconds=error.timeout, queue_process_timed_out=True)
+            acknowledge(delivery, task["thread_id"], error.stdout, error.stderr)
+            if delivery["phase"] == "uncertain":
+                delivery["error"] = "Queue acceptance is uncertain: TimeoutExpired; explicit recovery required"
+        except OSError as error:
+            delivery["error"] = f"Queue acceptance is uncertain: {type(error).__name__}: {error}"
         save(task_dir, task)
         reconcile(task_dir, task)
         return {
@@ -495,15 +532,24 @@ def main() -> int:
     for name in ("prompt-file", "rollout", "cwd"):
         create.add_argument("--" + name, type=Path, required=True)
     create.add_argument("--interval-minutes", type=int, default=60)
+    create.add_argument("--queue-timeout-seconds", type=int, default=QUEUE_TIMEOUT_SECONDS)
     create.add_argument(
         "--state-dir", type=Path, default=Path.home() / ".local/state/codex-followups"
     )
     for action in ("tick", "send", "status", "pause"):
         commands.add_parser(action).add_argument("--task-dir", type=Path, required=True)
+    recovery = commands.add_parser("recover")
+    recovery.add_argument("--task-dir", type=Path, required=True)
+    recovery.add_argument("--delivery-marker", required=True)
+    recovery.add_argument("--reason", required=True)
+    recovery.add_argument("--acknowledge-possible-duplicate", action="store_true")
     args = parser.parse_args()
     try:
         if args.action == "create":
             output = create_task(args)
+        elif args.action == "recover":
+            output = recover(args.task_dir.expanduser().resolve(strict=True), marker=args.delivery_marker,
+                             reason=args.reason, allow_duplicate=args.acknowledge_possible_duplicate)
         else:
             operation = {"tick": tick, "send": tick, "status": status, "pause": pause}[
                 args.action

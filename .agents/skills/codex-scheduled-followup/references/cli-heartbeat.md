@@ -56,7 +56,7 @@ Use the returned `task_dir` in every subsequent operation. The default state loc
   --task-dir "/absolute/returned/task_dir"
 ```
 
-The helper admits at most one outstanding delivery per task. It records a unique marker before invoking `codex queue`, then distinguishes queue acceptance, receipt in the target's user-message history, and the associated turn's completion. A timeout/crash/ambiguous sender result must not cause automatic repeated submissions. Inspect and resolve the uncertain delivery before retrying.
+The helper admits at most one outstanding delivery per task. Queue submission has a separate 180-second timeout (configurable with `create --queue-timeout-seconds`); systemd queries keep their 45-second timeout. It records a unique marker before invoking `codex queue`, then distinguishes queue acceptance, receipt in the target's user-message history, and the associated turn's completion. A timeout/crash/ambiguous sender result must not cause automatic repeated submissions. Inspect and resolve the uncertain delivery before retrying.
 
 To exercise the clock as well as delivery during an explicitly authorized live test, a separate one-shot user timer may invoke the same `tick` command after a few seconds. Keep the requested recurring interval unchanged, give the probe its own unit name, and clean up both test units afterward. A successful one-shot is not proof that a 30-minute recurrence has already fired.
 
@@ -75,6 +75,40 @@ For a probe addressed to the parent while it is working, the child should return
 
 Confirm the timer is inactive with no next run. Preserve receipts. A previously accepted message can still be consumed; pausing the clock is not queue cancellation. Do not delete queue rows or interrupt the user's work to hide it.
 
-The minimal helper has no update/resume or uncertain-delivery reset command. For changed instructions or a resumed schedule, first stop the old timer and resolve its outstanding delivery, then create a distinct task ID while retaining the old receipts. Do not bypass an uncertain delivery by making another task for the same work.
+The helper has no general update/resume command. For changed instructions or a resumed schedule, first stop the old timer and resolve its outstanding delivery, then create a distinct task ID while retaining the old receipts. Do not bypass an uncertain delivery by making another task for the same work.
+
+## Recover delivery without discarding evidence
+
+`status` distinguishes timer registration from delivery health. `attention_required=true` and
+`delivery_health=needs_recovery` mean continuations cannot advance even if the timer is active.
+A timeout preserves stdout/stderr and the timeout duration. An unambiguous queue acknowledgement
+for the target thread remains accepted even if the sending process subsequently times out.
+Acceptance still does not prove receipt or completion.
+
+If no acknowledgement exists, automatic resend remains disabled: the CLI has no verified
+caller-controlled idempotency key. Inspect the exact marker in the target rollout and, when
+available, inspect the same runtime's pending queue read-only. No pending item does not prove
+that the first submission was never accepted.
+
+For a user-authorized restoration where the remaining duplicate risk is accepted, recover the
+**existing task**, specifying the exact unresolved marker and the reason. An explicit user request
+to repair and restore this monitoring authorizes this operation; do not ask the user to approve
+the same restoration again. Otherwise explain the remaining uncertainty before seeking authorization.
+
+```bash
+"$TASK_PY" "$TASK_SKILL_DIR/scripts/cli_heartbeat.py" recover \
+  --task-dir "/absolute/returned/task_dir" \
+  --delivery-marker "[codex-heartbeat:task-id:exact-uuid]" \
+  --reason "User requested repair and restoration; target queue and history inspected" \
+  --acknowledge-possible-duplicate
+```
+
+Recovery reconciles late receipts first and refuses queued/started deliveries, mismatched markers,
+or changed history. It records the old phase and reason, marks that attempt `superseded`, and keeps
+its error/logs. It does not delete a queue item, fabricate completion, send a message, create another
+timer, or change the cadence. The next tick can send once with a new marker; an authorized immediate
+verification may invoke `tick` once. Ensure the continuation itself checks durable job identities
+so a late old message cannot start duplicate training. Verify registration, acceptance and actual
+receiver execution separately. Do not repeatedly recover/resend an unresolved failure automatically.
 
 Run portable unit checks with `scripts/test_cli_heartbeat.py`. Those checks use temporary histories and mocked commands. A separate live test must verify the actual receiving CLI and should remove its scheduling side effects when complete.

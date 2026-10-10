@@ -26,7 +26,7 @@ For monitoring, define three branches:
 
 - Still running or unchanged: inspect once and stay quiet unless the user explicitly requested periodic status reports. Do not start another polling loop or duplicate the job. Notify only on a meaningful change, completion, failure, or required user action.
 - Finished: validate the result, continue the already-authorized remaining work, and retain evidence of partial completion so retries can resume.
-- Failed: inspect the failure; repair within scope where possible and report a real blocker if one remains. Never promote failure to completion.
+- Failed: inspect the failure; repair within scope where possible and report a real blocker if one remains. Never promote failure to completion. For CLI delivery failures, distinguish the active timer from `delivery_health` and use the documented evidence-preserving `recover` route for an authorized restoration; never silently reset or automatically resend an uncertain delivery.
 
 When the requested outcome is complete, stop the chosen route: pause the CLI helper's timer, delete a native desktop automation, or pause a file-managed desktop task. Verify that there is no next scheduled run. Pausing a CLI timer does not retract a message already queued; report that separately. Do not archive the chat unless requested. Monitoring alone does not authorize new training, deployment, or messages to other people.
 
