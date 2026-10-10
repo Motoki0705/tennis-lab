@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import importlib
 import json
 import shlex
@@ -10,7 +11,7 @@ import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
@@ -247,6 +248,65 @@ def test_sensitive_untracked_files_are_excluded_and_artifact_escape_rejected(
     assert "credentials.py" in recovered["untracked"]
     with pytest.raises(RuntimeError, match="relative path"):
         remote._persist_path(remote.config(), "../session/secrets")
+
+
+def test_input_assets_do_not_block_source_snapshot_or_next_command(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, repo, _ = worker
+    asset = repo / "data/example/shards/images.bin"
+    asset.parent.mkdir(parents=True)
+    with asset.open("wb") as stream:
+        stream.truncate(17 * 1024 * 1024)
+    (repo / "fix.py").write_text("print('fix')")
+    state = remote.prepare({"job_id": "after-inputs", "argv": [sys.executable, "-c", "pass"], "persist": []})
+    assert state["status"] == "pending"
+    changes = json.loads((remote.ROOT / "jobs/after-inputs/source_changes.json").read_text())
+    assert "fix.py" in changes["untracked"]
+    assert "data/example/shards/images.bin" in changes["excluded"]
+    assert "Drive" in changes["exclusion_reasons"]["data/example/shards/images.bin"]
+
+
+def test_failed_source_snapshot_does_not_reserve_a_job_id(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    remote, _, _ = worker
+
+    def fail_snapshot(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("snapshot failure")
+
+    monkeypatch.setattr(remote, "diff", fail_snapshot)
+    with pytest.raises(RuntimeError, match="snapshot failure"):
+        remote.prepare({"job_id": "not-created", "argv": [sys.executable], "persist": []})
+    assert not (remote.ROOT / "jobs/not-created").exists()
+
+
+@pytest.mark.parametrize("unrecovered_code", [False, True])
+def test_stop_allows_storage_exclusions_but_keeps_source_recovery_guard(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch, unrecovered_code: bool,
+) -> None:
+    frontend = importlib.import_module("colab")
+    excluded = ["data/images.bin"] + (["private.key"] if unrecovered_code else [])
+    monkeypatch.setattr(frontend, "recover_diff", lambda *a: {
+        "excluded": excluded, "storage_excluded": ["data/images.bin"],
+    })
+    commands = []
+    session = SimpleNamespace(
+        name="owned", directory=tmp_path,
+        state=lambda: {"phase": "ready"},
+        rpc=lambda action: {"jobs": [{"job_id": "train", "status": "completed", "drive_saved_at": "saved"}]},
+        close_transport=lambda: None,
+        cli=lambda *args: commands.append(args),
+        save=lambda **kwargs: None,
+    )
+    if unrecovered_code:
+        with pytest.raises(RuntimeError, match="source files"):
+            frontend.stop(argparse.Namespace(), session)
+        assert not commands
+    else:
+        assert frontend.stop(argparse.Namespace(), session)["status"] == "stopped"
+        assert commands == [("stop", "-s", "owned")]
 
 
 def test_runner_output_has_one_live_writer_and_is_salvaged_after_exit(

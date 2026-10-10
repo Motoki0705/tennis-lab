@@ -220,6 +220,7 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
                 raise ColabError(
                     "Output directories overlap; choose exactly one persistence owner"
                 )
+    source_changes = diff({"include_untracked": True})
     directory.mkdir(parents=True)
     payload = {
         "schema_version": 1,
@@ -235,7 +236,7 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
         "helpers": cfg.get("helpers", {}),
     }
     atomic_json(directory / "request.json", payload)
-    atomic_json(directory / "source_changes.json", diff({"include_untracked": True}))
+    atomic_json(directory / "source_changes.json", source_changes)
     state = {
         "schema_version": 1,
         "job_id": request["job_id"],
@@ -467,6 +468,8 @@ def diff(request: dict[str, Any]) -> dict[str, Any]:
         raise ColabError("Diff is larger than 16 MiB; inspect the changed files first")
     files: dict[str, str] = {}
     excluded = []
+    storage_excluded = []
+    exclusion_reasons: dict[str, str] = {}
     if request.get("include_untracked"):
         names = checked(
             ["git", "-C", str(repo), "ls-files", "--others", "--exclude-standard", "-z"]
@@ -477,8 +480,14 @@ def diff(request: dict[str, Any]) -> dict[str, Any]:
                 continue
             name = raw.decode()
             path = repo / relative(name)
+            if PurePosixPath(name).parts[0] in {"data", "ckpt", "outputs", ".cache", ".venv"}:
+                excluded.append(name)
+                storage_excluded.append(name)
+                exclusion_reasons[name] = "project storage; managed through Drive"
+                continue
             if path.is_symlink() or _credential_path(name):
                 excluded.append(name)
+                exclusion_reasons[name] = "symbolic link or credential path"
                 continue
             content = path.read_bytes()
             total += len(content)
@@ -494,6 +503,8 @@ def diff(request: dict[str, Any]) -> dict[str, Any]:
         "patch": base64.b64encode(patch).decode(),
         "untracked": files,
         "excluded": excluded,
+        "storage_excluded": storage_excluded,
+        "exclusion_reasons": exclusion_reasons,
     }
 
 
