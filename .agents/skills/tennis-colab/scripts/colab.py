@@ -268,6 +268,8 @@ def recover_diff(session: Session, output: Path) -> dict[str, Any]:
     receipt = {
         "commit": response["commit"],
         "excluded": response["excluded"],
+        "storage_excluded": response.get("storage_excluded", []),
+        "exclusion_reasons": response.get("exclusion_reasons", {}),
         "untracked": list(response["untracked"]),
         "output": str(output),
     }
@@ -292,9 +294,10 @@ def stop(args: argparse.Namespace, session: Session) -> dict[str, Any]:
     recovered = recover_diff(
         session, session.directory / "recovered" / uuid.uuid4().hex[:12]
     )
-    if recovered["excluded"]:
+    unrecovered_source = set(recovered["excluded"]) - set(recovered["storage_excluded"])
+    if unrecovered_source:
         raise ColabError(
-            "Some untracked files were excluded from recovery; inspect them before stopping"
+            "Some untracked source files were excluded from recovery; inspect them before stopping"
         )
     session.close_transport()
     session.cli("stop", "-s", session.name)
