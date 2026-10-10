@@ -1,4 +1,4 @@
-<!-- knowledge-review: 5f3f37df5e0baf22fdb64e0a249be3d260b96e2359aff205ae2bc4b02b7fd875 on 2026-10-10 -->
+<!-- knowledge-review: 076353b842d38fa619ac54acedf9eb7ec5c9480a60cb12f853e6031155bb76a2 on 2026-10-11 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -277,9 +277,9 @@ OpenCVとの画素一致や精度維持は未確認で、decoderをv4 checkpoint
 testは未評価で、処理速度を精度改善とは扱わず、従来deployの判断を変更しない。
 [深いCNN＋DPTの事前学習GPU検証](nodes/ball_detection/000053-run-i986-dpt-pretrain-smoke-20261009.md)は実720p・96更新と保存まで成功。
 3D層を含むCNNをheatmapで事前学習し、その後SwiGLU decoderへ移す方針へ進む。少数clipの診断値を全validation精度と比較しない。
-[全trainの事前学習](nodes/ball_detection/000054-run-i986-dpt-pretrain-main-s42-v1.md)をBF16・BS1・6万更新で継続する。
+[全trainの事前学習](nodes/ball_detection/000054-run-i986-dpt-pretrain-main-s42-v1.md)はBF16・BS1・6万更新を計画した（以下の10/11時点の決定でbaselineは取消）。
 ユーザーの追加指示に基づき、[ConvNeXt V2系/FasterNet系の構造比較と事後学習準備](nodes/ball_detection/000055-run-i1050-cnn-structure-20261009.md)を追加した。
-3構成のDPT事前学習が揃ったらcommon validationでbestだけを選び、人工遮蔽・滑らかなcamera拡張を使うquery posttrainingへ進む。
+当初は3構成のDPT事前学習を揃えてからbestだけを事後学習する計画だったが、後のユーザー指示で変更した。
 [ConvNeXt V2系のGPU smoke](nodes/ball_detection/000056-run-i1050-convnext-v2-gpu-probe-20261009.md)は成功したが、短時間測定ではresidualより遅くpeak VRAMも増えた。構造削減を実速度改善と扱わず、精度は本学習で確認する。
 baselineは18,000更新後CUDA unknown errorで中断し、同条件のepoch-boundary resumeを1回予約した。原因は未特定。
 [ConvNeXt V2本学習もCUDA異常終了](nodes/ball_detection/000057-run-i1050-convnext-v2-s42-u60000.md)し、最初のvalidation前でcheckpointがない。epoch境界に限定した問題ではない。
@@ -287,7 +287,15 @@ FasterNetは最初のvalidationを通過した。モデル・BF16・予算を維
 1epochを全6万更新用LRのまま検証し、成功時のみ保存重みから継続する。原因・長期安定性は未確定で、方式が混在する速度比較はCNN単体の差として扱わない。
 10/10時点では3構成ともCUDA異常終了し、保存済み進捗はresidual30000、FasterNet18000、ConvNeXt V2 serial42000更新。
 [同期CUDAでの失敗prefix再生](nodes/ball_detection/000058-run-i1050-convnext-epoch7-sync-replay-v2-20261010.md)は16更新を通過したが、長時間障害の解消は未証明。
-同期設定を明示したcheckpoint再開を1回ずつ予約し、予算は各6万更新のまま継続する。全3構成の完了後にbestだけ事後学習へ進める。
+同期設定で再開後、ユーザー指示によりresidual/FasterNetを取消し、完了済みConvNeXt V2を明示選択した。3構成の優越比較は成立していない。
+
+10/11時点で[ConvNeXt V2＋DPT事前学習](nodes/ball_detection/000059-run-i1050-convnext-v2-pretrain-s42.md)と
+[query Transformer事後学習](nodes/ball_detection/000060-run-i1049-convnext-query-posttrain-s42.md)がそれぞれ60,000更新を完了した。
+事後学習のCommon13.49px/Full15.38pxは親DPTより低いが、decoder・追加予算・拡張の効果は分離していない。
+camera stressはFull32.21px、特に1/4 FPSで41.11pxとなり、通常評価の改善だけで頑健性を満たしたとは判断しない。
+人工遮蔽全点のFull16.64pxに対し、実際に合成遮蔽された点だけでは32.94px。自然遮蔽とは区別する。
+checkpoint・clean/stress3条件・49 GIFを検証し、2時間監視を停止した。test・下流scene・対照拡張なし実験は未実施で、deployは変更しない。
+次は大誤差clipとカメラ変換の棄却・採点集合を確認し、拡張なし対照と比較する判断材料が必要。追加学習は開始していない。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。
