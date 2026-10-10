@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "job_id": "train-l-s42",
+  "status": "running",
+  "updated_at": "2026-10-10T15:40:32.209216+00:00",
+  "returncode": null,
+  "worker_pid": 27002,
+  "worker_token": "541584",
+  "pid": 27163,
+  "process_token": "544380",
+  "started_at": "2026-10-10T14:27:27.519390+00:00"
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "job_id": "train-l-s42-resume-02",
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.tasks.court_detection.scripts.train",
+    "--config-name",
+    "train_i983_l",
+    "run.resume={role:artifact,path:court_detection/train/i983-dino-l-shared1024/s42/resumes/attempt-01-last.ckpt}",
+    "run.artifact_store.mode=rclone",
+    "run.artifact_store.remote=gdrive",
+    "run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42",
+    "run.artifact_store.sync_interval_seconds=60"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [],
+  "runner_outputs": [
+    "outputs/court_detection/train/i983-dino-l-shared1024/s42"
+  ],
+  "execution_backend": "notebook_kernel",
+  "created_at": "2026-10-10T16:42:53.786629+00:00",
+  "source_commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/i983-l4-ablation-02/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/i983-l4-ablation-02/remote.py",
+      "bytes": 22629,
+      "sha256": "98de1af0e67517e31ff9ac3cebfe1bb207a6ba3659b0fe1ce2a7d4f00b420a60"
+    }
+  }
+}

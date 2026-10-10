@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-10T16:20:01.860422+00:00",
+  "event": "assignment_missing",
+  "session": "i983-l4-ablation-01",
+  "job": "train-l-s42",
+  "source_commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "last_published_status": {
+    "schema_version": 1,
+    "job_id": "train-l-s42",
+    "status": "running",
+    "updated_at": "2026-10-10T15:40:32.209216+00:00",
+    "returncode": null,
+    "worker_pid": 27002,
+    "worker_token": "541584",
+    "pid": 27163,
+    "process_token": "544380",
+    "started_at": "2026-10-10T14:27:27.519390+00:00"
+  },
+  "active_assignments": 0,
+  "usage_rate": 0,
+  "training_returncode": null,
+  "resume_snapshot": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42/resumes/attempt-01-last.ckpt",
+  "resume_snapshot_metadata": {
+    "Path": "attempt-01-last.ckpt",
+    "Name": "attempt-01-last.ckpt",
+    "Size": 2734089925,
+    "MimeType": "application/x-zip",
+    "ModTime": "2026-10-10T15:36:14.568Z",
+    "IsDir": false,
+    "Hashes": {
+      "md5": "987e2ba62c8c87c355f6763cd8ed2eb9"
+    },
+    "ID": "1uDlqgJ1PzCHzQ_Ulu-2KmRz93KDSg_IL"
+  },
+  "reason": "Unknown. SSH-only dispatch was not Notebook kernel execution; this is a candidate cause, not a confirmed backend termination reason."
+}
