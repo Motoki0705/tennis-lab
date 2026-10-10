@@ -1,7 +1,7 @@
 """Queue follow-ups into an existing Linux CLI and verify their rollout receipts.
 
 Python 3.11+, standard library only. Does not resume threads or write native DBs.
-Only create/pause manage systemd; tick sends at most one outstanding delivery.
+Only create/pause/resume manage systemd; tick sends at most one outstanding delivery.
 """
 
 from __future__ import annotations
@@ -375,6 +375,43 @@ def result(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def register_timer(task_dir: Path, task: dict[str, Any]) -> dict[str, Any]:
+    interval = task["interval_minutes"]
+    checked(
+        [
+            "systemd-run",
+            "--user",
+            "--unit=" + task["unit"],
+            "--collect",
+            f"--on-active={interval}min",
+            f"--on-unit-active={interval}min",
+            "--timer-property=AccuracySec=1s",
+            "--property=Type=oneshot",
+            "--working-directory=" + task["cwd"],
+            "--expand-environment=no",
+            "--",
+            os.path.abspath(sys.executable),
+            str(Path(__file__).resolve()),
+            "tick",
+            "--task-dir",
+            str(task_dir),
+        ]
+    )
+    observed = timer_status(task)
+    if not observed["registration_verified"]:
+        raise RuntimeError(
+            "Timer registration/interval/next run did not verify; inspect status or pause"
+        )
+    return observed
+
+
+def read_prompt(path: Path) -> str:
+    prompt = path.read_text(encoding="utf-8")
+    if not prompt.strip():
+        raise ValueError("prompt-file must not be empty")
+    return prompt
+
+
 def create_task(args: argparse.Namespace) -> dict[str, Any]:
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,63}", args.id):
         raise ValueError("id must contain 1–64 lowercase letters, digits or hyphens")
@@ -399,9 +436,7 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
     codex = shutil.which("codex")
     if not codex:
         raise RuntimeError("codex executable is unavailable")
-    prompt = args.prompt_file.read_text(encoding="utf-8")
-    if not prompt.strip():
-        raise ValueError("prompt-file must not be empty")
+    prompt = read_prompt(args.prompt_file)
     cwd = str(args.cwd.expanduser().resolve(strict=True))
     task = {
         "version": STATE_VERSION,
@@ -432,31 +467,7 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
     task_dir.mkdir(parents=True, mode=0o700)
     save(task_dir, task)
     try:
-        checked(
-            [
-                "systemd-run",
-                "--user",
-                "--unit=" + task["unit"],
-                "--collect",
-                f"--on-active={args.interval_minutes}min",
-                f"--on-unit-active={args.interval_minutes}min",
-                "--timer-property=AccuracySec=1s",
-                "--property=Type=oneshot",
-                "--working-directory=" + cwd,
-                "--expand-environment=no",
-                "--",
-                os.path.abspath(sys.executable),
-                str(Path(__file__).resolve()),
-                "tick",
-                "--task-dir",
-                str(task_dir),
-            ]
-        )
-        observed = timer_status(task)
-        if not observed["registration_verified"]:
-            raise RuntimeError(
-                "Timer registration/interval/next run did not verify; inspect status or pause"
-            )
+        observed = register_timer(task_dir, task)
         task["status"] = "active"
         save(task_dir, task)
         return {**result(task_dir, task), **observed}
@@ -589,6 +600,39 @@ def pause(task_dir: Path) -> dict[str, Any]:
         }
 
 
+def resume(
+    task_dir: Path, *, interval_minutes: int | None, prompt_file: Path | None
+) -> dict[str, Any]:
+    """Restart a paused task's timer, optionally with a new interval or prompt.
+
+    Deliveries and receipts are kept. A queued or started delivery may remain:
+    tick still waits for it to complete before sending again.
+    """
+    if interval_minutes is not None and interval_minutes < 1:
+        raise ValueError("interval-minutes must be positive")
+    prompt = read_prompt(prompt_file) if prompt_file is not None else None
+    with locked(task_dir) as task:
+        delivery = reconcile(task_dir, task)
+        if task["status"] != "paused":
+            raise ValueError("Only a paused task can be resumed")
+        if task.get("blocked_reason"):
+            raise ValueError("Resolve the history/registration problem before resuming")
+        if delivery and delivery["phase"] in UNRESOLVED:
+            raise ValueError("Recover the unresolved delivery before resuming")
+        if timer_status(task)["actual_timer"].get("ActiveState") != "inactive":
+            raise RuntimeError("Timer is not inactive; pause it before resuming")
+        if interval_minutes is not None:
+            task["interval_minutes"] = interval_minutes
+        if prompt is not None:
+            task["prompt"] = prompt
+        # Saved only after the timer verifies, so a failure leaves the task
+        # paused with its previous settings.
+        observed = register_timer(task_dir, task)
+        task["status"] = "active"
+        save(task_dir, task)
+        return {**result(task_dir, task), **observed}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
@@ -604,6 +648,10 @@ def main() -> int:
     )
     for action in ("tick", "status", "pause"):
         commands.add_parser(action).add_argument("--task-dir", type=Path, required=True)
+    resumption = commands.add_parser("resume")
+    resumption.add_argument("--task-dir", type=Path, required=True)
+    resumption.add_argument("--interval-minutes", type=int)
+    resumption.add_argument("--prompt-file", type=Path)
     recovery = commands.add_parser("recover")
     recovery.add_argument("--task-dir", type=Path, required=True)
     recovery.add_argument("--delivery-marker", required=True)
@@ -613,6 +661,12 @@ def main() -> int:
     try:
         if args.action == "create":
             output = create_task(args)
+        elif args.action == "resume":
+            output = resume(
+                args.task_dir.expanduser().resolve(strict=True),
+                interval_minutes=args.interval_minutes,
+                prompt_file=args.prompt_file,
+            )
         elif args.action == "recover":
             output = recover(args.task_dir.expanduser().resolve(strict=True), marker=args.delivery_marker,
                              reason=args.reason, allow_duplicate=args.acknowledge_possible_duplicate)

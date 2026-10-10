@@ -60,17 +60,21 @@ Each `tick` holds a per-task lock, reconciles the rollout, and sends at most one
 | `failed` | That turn was aborted | No: `recover` |
 | `superseded` | An operator recovered it; the old record is kept | Yes |
 
-Queue submission has its own timeout (`create --queue-timeout-seconds`, default 180); an acknowledgement printed before a timeout still counts as accepted. Assistant echoes and tool output containing the marker never count as receipt. A replaced, truncated or rewritten rollout sets `blocked_reason` and stops delivery; migration is a limitation to report, not permission to edit native state.
+Queue submission has its own timeout (`create --queue-timeout-seconds`, default 180); an acknowledgement printed before a timeout still counts as accepted. Assistant echoes and tool output containing the marker never count as receipt.
 
-## Pause
+Each delivery records a rollout anchor: byte offset, file identity (device/inode) and a SHA-256 of the 64 KiB before the offset. A replaced or truncated rollout, or a rewrite inside that window, sets `blocked_reason` and stops delivery. Codex only appends to rollouts, so older history outside the window is deliberately not rehashed; each tick reads only the new records. Migration is a limitation to report, not permission to edit native state. State files from the earlier full-prefix helper (version 1) are verified once against their old hashes and upgraded automatically.
+
+## Pause and resume
 
 ```bash
 "$TASK_PY" "$TASK_SKILL_DIR/scripts/cli_heartbeat.py" pause --task-dir "<task_dir>"
+"$TASK_PY" "$TASK_SKILL_DIR/scripts/cli_heartbeat.py" resume --task-dir "<task_dir>" \
+  [--interval-minutes 15] [--prompt-file "/absolute/path/to/new-prompt.txt"]
 ```
 
 `pause` stops the timer and verifies it is inactive with no next run. Receipts are preserved. A previously accepted message can still be consumed: pausing the clock is not queue cancellation, so do not delete queue rows or interrupt the user's work to hide it.
 
-The helper has no update/resume command. For changed instructions or a resumed schedule, pause the old task and resolve its outstanding delivery, then create a distinct task ID while retaining the old receipts. Do not bypass an uncertain delivery by creating another task for the same work.
+`resume` re-registers a paused task's timer and verifies it like `create`. Omitted options keep the current interval and prompt; to change either on a running task, pause first. It refuses a task that is not paused, has a `blocked_reason`, or whose latest delivery is `uncertain`/`failed` (recover it first). A queued or started delivery may remain; the next tick still waits for it. If registration does not verify, the task stays paused with its previous settings; run `pause` to clear any partially registered timer. Do not bypass an unresolved delivery by creating another task for the same work.
 
 ## Recover without discarding evidence
 

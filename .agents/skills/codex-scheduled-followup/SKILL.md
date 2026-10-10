@@ -43,4 +43,4 @@ Delivery requires the computer and the receiving CLI runtime to keep running; a 
 
 ## Stop
 
-When the requested outcome is complete, pause the task and verify that there is no next scheduled run. Pausing does not retract a message already queued; report that separately. Do not archive the chat unless requested.
+When the requested outcome is complete, pause the task and verify that there is no next scheduled run. To change the interval or prompt later, pause and `resume` the same task rather than creating a new one. Pausing does not retract a message already queued; report that separately. Do not archive the chat unless requested.
