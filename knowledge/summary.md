@@ -1,7 +1,7 @@
-<!-- knowledge-review: e40def777d355506feeabdb87eab7c7c10c082ac2df034ae9e90be1d573a95fe on 2026-10-08 -->
+<!-- knowledge-review: 7aa6c2424cab37e6a662389d875728faa92851b7137d5b89c499441c802e5728 on 2026-10-10 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
+更新日: 2026-10-10（Court #983のL4容量確認と比較学習の開始を追記。精度比較は実行中）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -386,6 +386,8 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)で、凍結ViT-L＋共通1024次元後段の512長辺・batch8が短い学習処理として成立した。容量確認を根拠に[ViT-L本学習](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)へ進んだが、4サイズの精度比較は未完了で、既存の品質・採用判断は変更しない。次はS/S+/B/Lを同じデータ・split・後段容量で揃え、合成testと実画像valを分けて定量・同一画像の定性比較を行う。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
 
 2026-10-08の[pose checkpointの定性保存確認](nodes/court_detection/000035-run-i1031-court-ckpt-qualitative-20261008b.md)では、合成・実画像2 sampleから4 dense headのPNG計8枚とTensorBoard出力を実GPUで確認した。固定batch選択の設定契約不一致も修正した。保存済みschemaと重みを維持した機能確認であり、既存の品質・採用判断は変更しない。合成斜視の点集中・線種分断の観察を全体精度やpose推定品質へ一般化しない。
 
