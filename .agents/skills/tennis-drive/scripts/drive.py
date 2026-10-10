@@ -149,8 +149,7 @@ def _run_upload(args: argparse.Namespace, backend: RcloneBackend) -> int:
     if normalized_destination == ".":
         raise DriveToolError("The configured Drive root cannot be overwritten.")
     destination = backend.remote_path(normalized_destination)
-    backend.resolve(normalized_destination, must_exist=False)
-    destination_stat = backend.stat(destination)
+    destination_stat = backend.resolve(normalized_destination, must_exist=False)
     if (
         destination_stat is not None
         and bool(destination_stat.get("IsDir")) != source.is_dir()
@@ -174,9 +173,8 @@ def _run_upload(args: argparse.Namespace, backend: RcloneBackend) -> int:
 
 def _run_download(args: argparse.Namespace, backend: RcloneBackend) -> int:
     normalized_source = backend.normalize_relative(args.source)
-    backend.resolve(normalized_source)
+    source_stat = backend.resolve(normalized_source)
     source = backend.remote_path(normalized_source)
-    source_stat = backend.stat(source)
     if source_stat is None:
         raise DriveToolError(f"Drive path does not exist: {args.source}")
     destination = _resolve_local(args.destination, must_exist=False)
@@ -202,9 +200,9 @@ def _run_download(args: argparse.Namespace, backend: RcloneBackend) -> int:
 
 def _run_inspect(args: argparse.Namespace, backend: RcloneBackend) -> int:
     normalized_path = backend.normalize_relative(args.path)
-    backend.resolve(normalized_path)
+    resolved = backend.resolve(normalized_path)
     target = backend.remote_path(normalized_path)
-    stat = backend.stat(target, hashes=args.checksum)
+    stat = backend.stat(target, hashes=True) if args.checksum else resolved
     if stat is None:
         raise DriveToolError(f"Drive path does not exist: {args.path}")
     is_directory = bool(stat.get("IsDir", False))
@@ -217,12 +215,12 @@ def _run_inspect(args: argparse.Namespace, backend: RcloneBackend) -> int:
         "type": "directory" if is_directory else "file",
         "size_bytes": None if is_directory else int(stat.get("Size", 0)),
         "modified": str(stat.get("ModTime", "")),
-        "id": stat.get("ID"),
+        "id": resolved.get("ID") if resolved else None,
         "mime_type": str(stat.get("MimeType", "")),
     }
     if args.checksum:
         payload["hashes"] = _normalized_hashes(stat)
-    if is_directory:
+    if is_directory and not args.metadata_only:
         size = backend.json(["size", target, "--json"])
         payload["file_count"] = int(size.get("count", 0))
         payload["size_bytes"] = int(size.get("bytes", 0))
@@ -339,6 +337,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect_parser = subparsers.add_parser("inspect", help="Inspect one Drive entry.")
     inspect_parser.add_argument("path", help="Existing Drive-relative path.")
+    inspect_parser.add_argument("--metadata-only", action="store_true", help="Return identity without recursively calculating directory size.")
     inspect_parser.add_argument(
         "--checksum", action="store_true", help="Return hashes exposed by rclone."
     )

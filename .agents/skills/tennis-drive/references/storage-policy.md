@@ -16,10 +16,13 @@ Driveもその役割に対応させる。rootの既定値はCLIが所有し、�
 | 採用・事前学習重み | `ckpt/<checkpoint-root相対path>` | 学習や推論で明示的に選ぶ入力weight |
 | 実験出力 | `outputs/<task>/<purpose>/<experiment>/<run-id>` | 学習・評価・可視化の設定、ログ、checkpoint、結果 |
 | 配置・採用前の候補 | `staging/<operation-or-asset-id>` | 検証・移行中のコピーや候補資産 |
+| 遠隔実行の運用記録 | `operations/<executor>/<session>/<job-id>` | コマンド、接続・実行状態、stdout、保存receipt。実験成果物は上記outputsへ |
 
 これらは保存先を解決するための規約であり、未知の資産を無理に分類する固定schemaではない。
 新しい種類が必要なら、所有するタスク、消費側、寿命、既存の役割との差を示して規約を拡張する。
 日付・Issue番号だけを使う今回限りの最上位階層は増やさない。
+運用記録のexecutorにはColab等の実行先を使い、taskやexperimentの内容を埋め込まない。
+session終了後も障害調査・成果物の由来のため記録を保持し、credentialは含めない。
 
 通常の入力はDriveとローカルでrepository相対pathを対応させる。外部ライブラリが特殊な
 pathを要求する場合はstage先を明示する。rootやpathにcredentialを含めない。

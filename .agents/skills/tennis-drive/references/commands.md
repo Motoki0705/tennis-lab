@@ -8,6 +8,7 @@
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py list --path ckpt --max-depth 2
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py search --path outputs --name '*.ckpt' --limit 50
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py inspect data/example-v1
+.venv/bin/python .agents/skills/tennis-drive/scripts/drive.py inspect . --metadata-only
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py quota
 
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py upload ./data/example-v1 data/example-v1 --dry-run
