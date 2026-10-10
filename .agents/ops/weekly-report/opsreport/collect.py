@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import sys
+import tempfile
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -330,17 +332,13 @@ def collect_workspace(cfg: CollectConfig) -> dict[str, Any]:
 def _cleanup_command(cfg: CollectConfig) -> tuple[str, ...]:
     if cfg.cleanup_cmd is not None:
         return cfg.cleanup_cmd
-    cleanup_dir = cfg.repo_root / CLEANUP_DIR
-    entries = sorted(
-        p for p in cleanup_dir.iterdir() if p.is_file() and os.access(p, os.X_OK)
-    )
-    if len(entries) != 1:
+    entry = cfg.repo_root / CLEANUP_DIR / "cleanup.py"
+    if not entry.is_file():
         raise CommandError(
-            f"{CLEANUP_DIR} has {len(entries)} executable entry points "
-            f"({', '.join(p.name for p in entries) or 'none'}); "
-            "set WEEKLY_REPORT_CLEANUP_CMD to the command printing --report-json"
+            f"{CLEANUP_DIR} exists but has no cleanup.py; "
+            "set WEEKLY_REPORT_CLEANUP_CMD to a command accepting --report-json FILE"
         )
-    return (str(entries[0]),)
+    return (sys.executable, str(entry), "scan")
 
 
 def collect_cleanup(cfg: CollectConfig) -> dict[str, Any]:
@@ -349,14 +347,21 @@ def collect_cleanup(cfg: CollectConfig) -> dict[str, Any]:
             "status": "not_installed",
             "note": f"{CLEANUP_DIR} が存在しない（掃除モジュール未導入）",
         }
-    cmd = (*_cleanup_command(cfg), "--report-json")
-    raw = shell.run(cmd, cwd=cfg.repo_root, timeout=900)
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise CommandError(f"{shlex.join(cmd)} did not print valid JSON") from exc
+    # Contract (see .agents/ops/cleanup/README.md): the command writes its report to
+    # the file given after --report-json and never deletes anything in scan mode.
+    with tempfile.TemporaryDirectory(prefix="weekly-report-cleanup-") as tmp:
+        out = Path(tmp) / "cleanup.json"
+        cmd = (*_cleanup_command(cfg), "--report-json", str(out))
+        shell.run(cmd, cwd=cfg.repo_root, timeout=900)
+        if not out.is_file():
+            raise CommandError(f"{shlex.join(cmd)} did not write {out}")
+        try:
+            parsed = json.loads(out.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise CommandError(f"{shlex.join(cmd)} wrote invalid JSON") from exc
     text = json.dumps(parsed, ensure_ascii=False, indent=1)
-    return {"status": "ok", "command": shlex.join(cmd), "report_json": _truncate(text)}
+    shown = shlex.join((*cmd[:-1], "<tmp>"))
+    return {"status": "ok", "command": shown, "report_json": _truncate(text)}
 
 
 def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
