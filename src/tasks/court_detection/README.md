@@ -30,7 +30,9 @@ V1/V2、all-courtsは拒否します。splitは`train / validation / test`を
 ## モデルと教師
 
 タスク固有モデル実装は`models/dinov3_dpt.py`の1ファイルです。
-DINOv3の4段の特徴のうち最深段をTransformerで処理し、DPTが4段を融合します。
+DINOv3の4段の特徴を`transformer_encoder.dim`へ揃え、最深段をTransformerで処理し、DPTが4段を融合します。
+backbone幅と異なる場合は、各段に独立した学習可能な1×1射影を置きます。
+同じ幅ならIdentityです。射影は凍結backboneの外で学習し、4段とも同じdownstream幅になります。
 Transformerのpose queryをpose headへ、DPT特徴を4つのresidual dense headへ渡します。
 DINOv3のロード・LoRA・共通Transformer部品は`src/utils/models`を利用します。
 CNN encoder、FPN、U-Net、Transformerなし、linear headの選択肢はありません。
@@ -59,9 +61,11 @@ LINE幅は通常線7.5 cm・baseline 15 cmです。各schemaの末尾の版番�
 データsourceのV3とは独立です。
 
 モデル設定は`configs/model/dinov3_dpt.yaml`に集約しています。
-既定はViT-B/16、8層のMHA + 2-D RoPE + SwiGLU、DPT large（512 channels）、
+既定はViT-B/16、1024次元・16 heads・8層のMHA + 2-D RoPE + SwiGLU、DPT large（512 channels）、
 各dense headはhidden 256・residual depth 2です。数値設定を変更でき、
 checkpointの読み込みでは保存された値を使用します。
+FFNは2752（共通`default_ffn_dim(1024)`の8/3比を64の倍数へ丸めた値）です。
+旧checkpointの保存dimとbackbone幅が一致する場合、射影のparameter keyは増えずstrict loadできます。
 
 DINOv3の外部sourceは `paths.external_asset_root`、学習済み重みは `paths.checkpoint_root` から読む。
 相対パスの正本は `configs/model/dinov3_dpt.yaml`。旧source配下の重みへのfallbackは行わない。
@@ -99,7 +103,37 @@ DINOv3の学習方法は`training=lora`や`model.encoder.train_mode`で設定で
 合成サンプルだけを対象にします。実画像にposeのゼロ教師を補いません。
 pose教師が必要な合成サンプルで欠落していたら、モデル・worker構築前に失敗します。
 pose学習では`data/augmentation=pose_safe`を使用します。
+`preserve_fx_fy=true`ではpose教師の有無によらず、実画像・合成のtrain/evalすべてを
+クロップなしの等方的な長辺resizeにします。歴史的なキー名`val_short_side`も、この方針では長辺です。
+Kは画像と同じ変換`K'=A K`を受け、外部poseは変更しません。右・下だけの最小patch paddingと
+batch最大寸法へのpaddingを区別し、content maskを後続Transformerと座標復元へ渡します。
+DINO自体にpadding attention maskはないため、比較時の評価順序・batch sizeも固定します。
 `run.test_after_fit=true`は合成の明示的test splitだけを評価します。
+
+Issue #983の対照実験は`--config-name train_i983_s` / `train_i983_splus` /
+`train_i983_b` / `train_i983_l`を使用します。backboneを完全凍結し、後続Transformer・DPT・headを
+同じ容量に揃えます。共通条件は`configs/train_i983.yaml`、backboneと初期重み・中間層は各variantが正本です。
+長辺512での本学習前にL4でViT-Lのメモリ・速度・pose座標整合を確認します。
+
+学習後は各runの同じcheckpoint選択規則（保存configのvalidation monitor最良値）を使い、
+`scripts.evaluate_ablation`で合成testと実画像valを別集計します。
+保存config・target schema・strict state dictを復元し、入力manifest・画像ID順序・checkpointのhashと
+backbone／射影／後続のparameter数を残します。実画像のposeを0点として集計しません。
+
+```bash
+.venv/bin/python -m src.tasks.court_detection.scripts.evaluate_ablation \
+  --checkpoint /path/to/selected.ckpt \
+  --output outputs/court_detection/evaluate/i983-dino-s-shared1024/s42
+.venv/bin/python -m src.tasks.court_detection.scripts.compare_ablation \
+  --evaluations /path/to/s/evaluation.json /path/to/splus/evaluation.json \
+                /path/to/b/evaluation.json /path/to/l/evaluation.json \
+  --output outputs/court_detection/report/i983-shared1024/comparison
+```
+
+比較入口はデータ版・画像順序・前処理・学習条件・後続容量が異なる結果を拒否します。
+固定IDの定性画像はbatch 1で再推論し、4モデルの同じheadを横に並べます。
+pose図は緑がGT KP14、赤が予測poseからの再投影で、正のdepthかつ画像内の点を表示します。
+Colab上ではevaluation/reportの出力をColab skillの`--persist`でDriveへ保存します。
 
 `data/processing`はpreviewや教師検査にも使うtarget選択です。学習の既定は`all`で、
 `loss=default`はpose lossを無効にする明示的なdense-only実験に使用できます。

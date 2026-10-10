@@ -1,0 +1,10 @@
+defaults:
+  - train_i983
+  - _self_
+model:
+  encoder:
+    backbone_name: dinov3_vitb16
+    checkpoint_path: dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+    out_indices: [2, 5, 8, 11]
+run:
+  output_dir: court_detection/train/i983-dino-b-shared1024/s42

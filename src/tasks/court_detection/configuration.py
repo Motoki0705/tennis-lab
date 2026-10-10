@@ -431,6 +431,8 @@ class CourtAugmentationConfig:
             raise SemanticConfigurationError(
                 "data.augmentation.patch_size must be positive."
             )
+        if result.preserve_fx_fy:
+            _validate_pose_safe_augmentation(result)
         return result
 
 
