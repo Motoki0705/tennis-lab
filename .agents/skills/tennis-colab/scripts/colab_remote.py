@@ -229,6 +229,7 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
         "cwd": str(cwd),
         "persist": persist,
         "runner_outputs": runner_outputs,
+        "execution_backend": request.get("execution_backend", "unknown"),
         "created_at": now(),
         "source_commit": checked(["git", "-C", cfg["repo_root"], "rev-parse", "HEAD"])
         .stdout.decode()

@@ -20,9 +20,16 @@ startも既存のstate名を上書きしない。読み取りや再接続をGPU�
 
 ## 非同期コマンド
 
-execはVMにrequestを準備し、ローカルからSSH workerをbackgroundで起動する。
-workerはそのSSH channelでコマンドの終了を待つ。CLIの提出応答と実際のコマンド完了は別である。
+execはVMにrequestを準備し、公式CLIの`exec`をbackgroundで起動して既存Notebook kernelへ提出する。
+kernel内の`subprocess.run`が実workerの処理・最終保存の終了を待つ。
+SSHは状態・ログ・ファイル操作に使い、実ジョブのdispatchには使わない。
+公式CLIはkernelの実行状態に基づくlivenessを案内しているため、この実行経路を使用する。
+[公式CLI 0.7.4 README](https://github.com/googlecolab/google-colab-cli/blob/v0.7.4/README.md#key-features)
+CLIの提出応答と実際のコマンド完了は別である。
 GitのHEAD・差分・選ばれたuntracked sourceも実行記録に残す。コードの正本はローカルGitで維持する。
+
+`--kernel-timeout-seconds`はCLIの応答待ち時間で、既定は86400秒。VMの寿命を延長する設定ではない。
+待機側のtimeoutや切断後もremote workerが続く場合があるため、既存jobの状態を確認してから対応する。
 
 状態はpending → starting → running → finalizing → completed/failed/cancelled。
 Drive保存が失敗した場合はsave_failed。workerが完了receiptを残さず消えた場合はunknownとして扱う。
