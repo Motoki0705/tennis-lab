@@ -460,6 +460,32 @@ def test_backbone_width_does_not_change_downstream_capacity(
         }
 
 
+def test_shared_downstream_initialization_does_not_depend_on_backbone_rng_draws(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    states = []
+    for native_dim in (4, 6, 8):
+        fake = FakeDINOv3()
+        fake.embed_dim = native_dim
+
+        def build_encoder(native_dim=native_dim, fake=fake, **kwargs):
+            # Simulate a size-dependent pretrained backbone constructor.
+            torch.rand(native_dim * 100)
+            return _encoder(fake)
+
+        monkeypatch.setattr(model_module, "build_court_encoder", build_encoder)
+        torch.manual_seed(42)
+        model = CourtHierarchicalModel(_enabled_model_config(), _bundle())
+        states.append({
+            key: value.clone() for key, value in model.state_dict().items()
+            if not key.startswith(("encoder.", "feature_projections."))
+        })
+    for candidate in states[1:]:
+        assert candidate.keys() == states[0].keys()
+        for key, expected in states[0].items():
+            torch.testing.assert_close(candidate[key], expected, rtol=0, atol=0)
+
+
 def test_pose_training_propagates_content_size_as_dino_patch_mask(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -973,10 +973,14 @@ class CourtHierarchicalModel(nn.Module):
         self.in_channels = config.in_channels
         self.target_bundle_spec = target_bundle
 
-        self.encoder = build_court_encoder(
-            config=config.encoder,
-            in_channels=self.in_channels,
-        )
+        # Backbone construction may draw a size-dependent number of random
+        # values before loading pretrained weights. Do not let that change the
+        # initialization of the shared trainable downstream model.
+        with torch.random.fork_rng(devices=[]):
+            self.encoder = build_court_encoder(
+                config=config.encoder,
+                in_channels=self.in_channels,
+            )
         transformer_config = config.transformer_encoder
         if not transformer_config.enabled:
             raise ValueError("Court detection requires the spatial Transformer.")
@@ -985,12 +989,13 @@ class CourtHierarchicalModel(nn.Module):
         # Keep DINO extraction/validation at its native width. These trainable
         # pointwise projections sit outside the frozen backbone boundary and
         # give every downstream stage the same configured feature width.
-        self.feature_projections = nn.ModuleList(
-            nn.Identity()
-            if channels == deepest_dim
-            else nn.Conv2d(channels, deepest_dim, kernel_size=1)
-            for channels in self.encoder.feature_channels
-        )
+        with torch.random.fork_rng(devices=[]):
+            self.feature_projections = nn.ModuleList(
+                nn.Identity()
+                if channels == deepest_dim
+                else nn.Conv2d(channels, deepest_dim, kernel_size=1)
+                for channels in self.encoder.feature_channels
+            )
         self.decoder = build_court_decoder(
             config=config.decoder,
             encoder_channels=(deepest_dim,) * 4,
