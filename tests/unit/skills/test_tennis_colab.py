@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import shlex
 import signal
 import subprocess
@@ -26,18 +27,83 @@ def modules(monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, ModuleType]:
     )
 
 
+@pytest.mark.parametrize("transport", ["ssh", "kernel"])
 def test_missing_registry_cannot_implicitly_allocate(
     modules: tuple[ModuleType, ModuleType],
     tmp_path: Path,
+    transport: str,
 ) -> None:
     core, _ = modules
     session = core.Session("owned", state_root=tmp_path)
     session.save(phase="ready")
     with pytest.raises(core.ColabError, match="refusing an implicit allocation"):
-        session.ssh_argv(["true"])
+        if transport == "ssh":
+            session.ssh_argv(["true"])
+        else:
+            session.kernel_argv(tmp_path / "worker.py", timeout_seconds=86400)
     core.atomic_json(session.registry, {"different": {"token": "PRIVATE"}})
     with pytest.raises(core.ColabError, match="refusing an implicit allocation"):
-        session.ssh_argv(["true"])
+        if transport == "ssh":
+            session.ssh_argv(["true"])
+        else:
+            session.kernel_argv(tmp_path / "worker.py", timeout_seconds=86400)
+
+
+@pytest.mark.parametrize("exit_code", [0, 17])
+def test_submit_uses_owned_kernel_and_waits_for_real_worker_completion(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch, exit_code: int,
+) -> None:
+    core, _ = modules
+    frontend = importlib.import_module("colab")
+    cli = tmp_path / "colab"
+    # Model the CLI boundary: exec reads the local source into a kernel.
+    # Execute that source as a real CPU process, including the worker it waits for.
+    cli.write_text(
+        f"#!{sys.executable}\n"
+        "import runpy, sys\n"
+        "assert sys.argv[1:3] == ['--auth', 'oauth2']\n"
+        "assert sys.argv[5] == 'exec'\n"
+        "assert sys.argv[sys.argv.index('--session')+1] == 'owned'\n"
+        "assert sys.argv[sys.argv.index('--timeout')+1] == '86400'\n"
+        "runpy.run_path(sys.argv[sys.argv.index('--file')+1])\n"
+    )
+    cli.chmod(0o700)
+    finished = tmp_path / "finished"
+    worker_path = tmp_path / "worker's program.py"
+    worker_path.write_text(
+        "import sys, time\nfrom pathlib import Path\n"
+        "assert sys.argv[1:] == ['run', 'work']\n"
+        "time.sleep(0.05)\n"
+        f"Path({str(finished)!r}).write_text('finished')\n"
+        f"raise SystemExit({exit_code})\n"
+    )
+    session = core.Session("owned", state_root=tmp_path / "state", colab_bin=cli)
+    session.save(phase="ready")
+    core.atomic_json(session.registry, {"owned": {"token": "PRIVATE"}})
+    session.remote_helper = str(worker_path)
+    requests: list[dict[str, Any]] = []
+
+    def prepare(action: str, **fields: Any) -> dict[str, Any]:
+        assert action == "prepare"
+        requests.append(fields)
+        return {"status": "pending"}
+
+    monkeypatch.setattr(session, "rpc", prepare)
+    args = frontend.parser().parse_args(
+        ["exec", "--session", "owned", "--job-id", "work", "--", "actual-command"]
+    )
+    receipt = frontend.submit(args, session)
+    job = session.state()["jobs"]["work"]
+    _, child_status = os.waitpid(job["transport_pid"], 0)
+    assert finished.read_text() == "finished"
+    assert (os.waitstatus_to_exitcode(child_status) == 0) == (exit_code == 0)
+    assert receipt["execution_backend"] == "notebook_kernel"
+    assert job["execution_backend"] == "notebook_kernel"
+    assert requests[0]["execution_backend"] == "notebook_kernel"
+    assert requests[0]["argv"] == ["actual-command"]
+    source = (Path(job["local_dir"]) / "kernel_worker.py").read_text()
+    assert "PRIVATE" not in source
 
 
 def test_ssh_preserves_argv_and_uses_owned_registry_and_single_transport(
