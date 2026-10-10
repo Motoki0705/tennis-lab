@@ -13,6 +13,8 @@
 ## 進め方
 
 1. 下の「収集データ」（決定的スクリプトの出力）をまず読む。数値・一覧はこれを正とする。
+   集計対象は `meta.base_ref`（`meta.base_sha`）。`meta.checkout_matches_base` が false の場合、
+   コードの根拠は `git show <base_ref>:<path>` で基準版を読み、checkoutの内容と混同しない。
 2. 必要に応じてコードベースを読む。起点は `AGENTS.md`、`.agents/README.md`（存在すれば）、各ディレクトリのREADME、
    `knowledge/summary.md`。行数の多いファイル・期間内の変更・CI失敗・open issue/PRは深掘りの手がかりになる。
 3. 提案を作る。対象領域は**絞らない**。少なくとも次の観点はすべて検討し、根拠がある場合だけ提案にする（水増ししない）:

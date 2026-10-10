@@ -26,7 +26,13 @@ CLEANUP_DIR = Path(".agents/ops/cleanup")
 MEMORY_DIR = Path(".agents/memory")
 KNOWLEDGE_SUMMARY = Path("knowledge/summary.md")
 CODE_SUFFIXES = ("*.py", "*.sh", "*.ts", "*.tsx", "*.js")
-EXCLUDED_PATHSPECS = (":!third_party", ":!**/vendor/**")
+# Vendored / bundled third-party code would dominate size and TODO statistics.
+EXCLUDED_PATHSPECS = (
+    ":!third_party",
+    ":!**/vendor/**",
+    ":!**/three.*.js",
+    ":!**/*.min.js",
+)
 MAX_TEXT = 20_000
 
 _ISSUE_FIELDS = "number,title,labels,createdAt,updatedAt,author"
