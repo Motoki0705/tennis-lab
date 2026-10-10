@@ -1,4 +1,4 @@
-<!-- knowledge-review: 4dd74b553ac65fcf73a846ab745d22a30e6a76c7f0cfb1fd60561b1d2bfc6675 on 2026-10-09 -->
+<!-- knowledge-review: 5f3f37df5e0baf22fdb64e0a249be3d260b96e2359aff205ae2bc4b02b7fd875 on 2026-10-10 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -285,7 +285,9 @@ baselineは18,000更新後CUDA unknown errorで中断し、同条件のepoch-bou
 [ConvNeXt V2本学習もCUDA異常終了](nodes/ball_detection/000057-run-i1050-convnext-v2-s42-u60000.md)し、最初のvalidation前でcheckpointがない。epoch境界に限定した問題ではない。
 FasterNetは最初のvalidationを通過した。モデル・BF16・予算を維持し、先読みを外したserial nvJPEGでConvNeXt V2を新run名から診断する。
 1epochを全6万更新用LRのまま検証し、成功時のみ保存重みから継続する。原因・長期安定性は未確定で、方式が混在する速度比較はCNN単体の差として扱わない。
-全3構成の完了を2時間ごとに確認し、bestだけ事後学習へ進める。
+10/10時点では3構成ともCUDA異常終了し、保存済み進捗はresidual30000、FasterNet18000、ConvNeXt V2 serial42000更新。
+[同期CUDAでの失敗prefix再生](nodes/ball_detection/000058-run-i1050-convnext-epoch7-sync-replay-v2-20261010.md)は16更新を通過したが、長時間障害の解消は未証明。
+同期設定を明示したcheckpoint再開を1回ずつ予約し、予算は各6万更新のまま継続する。全3構成の完了後にbestだけ事後学習へ進める。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、
 Meiji 1 clipの全3cameraに対するnative heatmap・top-K・局所patchの保存とload-only再開が成立した。

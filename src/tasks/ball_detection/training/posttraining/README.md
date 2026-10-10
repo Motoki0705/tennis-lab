@@ -65,6 +65,10 @@ planは`code_root`（固定worktree）、`queue_directory`、`manifest`、`basel
 GPU probeはanalyze配下、campaign rootには比較成果物と制御情報を配置する。
 v2 planはさらに各候補の`run_id`/`job_name`/`smoke_id`/`prefetch_mode`と、
 `posttraining_prefetch_mode`を明示する。v1は元のrun名・overlapへ明示的に展開される。
+v3はさらに`cuda_launch_blocking`を明示し、新規queue payload（事後学習probeを含む）へ環境変数を渡す。
+v1/v2はFalseへ明示移行する。復旧時の起動環境変更は各runの`resume_receipts/`に保存し、比較へ含める。
+既存checkpointを使う診断は`tests/benchmarks/ball_dpt_checkpoint_replay.py`で、失敗batchを含む少数更新を
+同期実行する。元checkpoint・本学習出力は変更せず、診断重みも本学習へ引き継がない。
 再試行は失敗出力を保持し、新しいrun/job名を指定する。他の実行中jobは名前で再利用する。
 `advance`はファイルlockとqueue名の照合で二重投入を防ぎ、失敗したjobを成功とみなさない。
 失敗は監視側で調査してから、既存checkpointでの再開または新しいrun-idを判断する。
