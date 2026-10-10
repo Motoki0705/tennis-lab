@@ -1,0 +1,10 @@
+[Unit]
+Description=tennis-lab: poll open PRs for cross-review every 10 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=10min
+Persistent=false
+
+[Install]
+WantedBy=timers.target
