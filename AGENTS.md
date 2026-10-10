@@ -1,78 +1,47 @@
 # AGENTS.md
 
+このrepoで働くすべてのAIエージェント（Claude・Codexなど）の入口。AI運用の正本は [.agents/README.md](.agents/README.md)。
+
+## 最初に読むもの
+
+1. このファイル（全作業に効くルール）
+2. [.agents/README.md](.agents/README.md): AI運用の原則、情報の置き場所、GitHub運用ルール
+3. [.agents/memory/INDEX.md](.agents/memory/INDEX.md): 共有memoryの索引。関係するエントリだけを開く。memoryは規則ではなく検証待ちの観察で、コードと食い違ったらコードが正しい
+4. 作業対象ディレクトリの `README.md`
+
 ## プロジェクト概要
 
-このプロジェクトは、テニスシーンの3次元再構成をAIによって解くことを目的とする。入力はマルチカメラの動画であり、各カメラにおけるボール位置・プレーヤーpose検出という2次元検出から始まり、それらを2D → 3Dへ再構築するモデルが最終的に3D空間へ写像する。
-
-### パイプライン構成
+テニスシーンの3次元再構成をAIで解く。入力はマルチカメラの動画である。各カメラでのボール位置・プレーヤーposeの2次元検出から始め、2D → 3Dの再構築モデルで3D空間へ写像する。
 
 | モジュール | 役割 |
 |---|---|
 | `src/tasks/ball_detection` | 2Dボール検出 |
 | `src/tasks/court_detection` | 2Dコート検出 |
-| `src/submodules` | 2Dプレーヤーpose検出 および 3Dプレーヤーpose推定（GVHMR 移植版。重み・body model は `ckpt/` に配置） |
+| `src/submodules` | 2Dプレーヤーpose検出、3Dプレーヤーpose推定（GVHMR 移植版。重み・body model は `ckpt/`） |
 | `src/tasks/blcs` | 2D ball + 2D court から3Dボール軌道を推論 |
 | `src/tasks/plcs` | 2D pose + 2D court から3Dプレーヤーの位置・回転を推論 |
 
-最終的に、GVHMRの3D poseとplcsの3D位置・回転を統合し、コート座標系におけるプレーヤーの軌跡を3D上で再構築する。
+最終的に、GVHMRの3D poseとplcsの3D位置・回転を統合し、コート座標系でプレーヤーの軌跡を3D上に再構築する。
 
 ## 開発環境
 
-- Pythonの実行には `.venv/bin/python` を使用する。
-- テストは `pytest` で実行する。`-n auto` が設定されているため並列実行される。
-- コミット時には `.pre-commit-config.yaml` により以下が実行される。
-  - **ruff**: `select = ["E", "F", "UP", "B", "SIM", "I"]`, `ignore = ["F405", "F403", "E501"]`
-  - **mypy**: `disallow_untyped_defs`, `disallow_incomplete_defs`, `check_untyped_defs`, `no_implicit_optional`, `warn_return_any`, `warn_unused_ignores`, `warn_unreachable`, `strict_equality`
+- Pythonは `.venv/bin/python` で実行する。
+- テストは `pytest` で実行する（`-n auto` で並列実行される）。
+- コミット時に pre-commit が ruff と mypy を実行する。設定の正本は `.pre-commit-config.yaml` と `pyproject.toml`。
 
-## 開発スタイル
+## 開発ルール
 
-### worktreeでの作業
+- **worktreeで作業する**: コードを変更するタスクは、メインworktree配下の `.claude/worktrees/<task-name>` に専用のgit worktreeを作り、その中で行う。メインworktreeのファイルは変更しない。他の場所にworktreeを作らない。
+- **PR本文は日本語で書く。**
+- **意味のあるテストを書く**: モジュールを実装・改善したら、テストを作成・改善する。`src/utils` や `src/tasks/base` など、下流への影響が大きいモジュールでは必須。
+- **静かなフォールバックを禁止する**: 実験的な試みが多いrepoなので、意図しない動作がまかり通る状況を作らない。データの流れとモデルアーキテクチャには特に注意し、必要なら実データで十分に検証する。コードの挙動（分岐・データの流れ）が一意に定まるようにする。これはモデル出力の決定性を求める規則ではない（拡散モデルなど確率的な出力はよい）。
+- **不明点は積極的に質問する**: 方針を人間に明確にしてもらう必要があれば質問する。あいまいなまま動くだけのコードは技術負債になる。時間をかけて品質を追求する。
+- **モジュラーに作る**: 再利用が見込めるものは `src/utils` へ切り出す。タスクドメインに閉じたモジュールは、該当タスクのディレクトリ配下に新しいフォルダを作って置いてよい。
+- **ドキュメントを二重管理しない**: 同じ事柄を2か所に書かない。置き場所は [.agents/README.md](.agents/README.md#ファイル地図情報の住み分け) で決める。
+- **READMEから探索する**: 大きなディレクトリには実装を簡潔にまとめたREADMEがある。まずそれを読む。
+- **リファクタリングを優先する**: 単純な追加を続けるとコードが肥大化する。有効なリファクタリング案があれば、機能実装より先に自律的に行ってよい。
 
-コード変更が必要なタスクは、必ず専用のgit worktreeを作成し、そのworktree内で実施すること。メインworktreeでコードを変更してはならない。
+## 学習の実行
 
-worktreeは、必ずメインworktree配下の `.claude/worktrees/<task-name>` に作成すること。それ以外の場所には作成しない。
-
-### PR本文の言語
-
-Pull Requestの本文は日本語で記述すること。
-
-### テスト
-
-新しくモジュールを実装・改善した際は、**意味のあるテスト**を作成・改善すること。特に `src/utils` や `src/tasks/base` など、下流に強く影響するモジュールでは必須。
-
-
-### 静かなフォールバックの禁止
-
-静かなフォールバックはできるだけ避けること。このrepoでは実験的な試みを多数行うため、意図しない動作がまかり通る状況を作らない。特にデータの流れやモデルアーキテクチャには注意を払い、必要に応じて実データを用いた検証を十分に行うこと。挙動が一意に定まるコードを心がける。
-
-### 不明点は積極的に質問する
-
-上記の制約において、人間による方針の明確化が必要だと感じたら積極的に質問を投げること。あいまいなまま**動くだけのコード**を作ることは、将来的に技術負債となりうる。時間をかけて品質を追求すべき。
-
-### モジュラーな構成
-
-実装は常にモジュラーな構成を目指す。
-
-- 再利用性が期待できる場合は、積極的に `src/utils` へ切り出す。
-- タスクドメインに閉じたモジュールであれば、該当タスクディレクトリ配下に新しいフォルダを作成し、モジュールの提供場所としてよい。そのような構想が思いつくなら積極的に行うべき。
-
-### ドキュメントの二重管理禁止
-
-同じ事柄を2つの場所に記述しない（管理が二重になるため）。
-
-### READMEを起点とした探索
-
-大きなディレクトリにはREADMEを設置し、具体的な実装を簡潔にまとめている。AIが開発に取り組む際は、まずREADMEを読み込むことで効率的な探索ができる。
-
-### リファクタリング優先
-
-ある実装を行う際、必要ならばリファクタリングを先に行うこと。機能実装は既存コードへの単純な追加で足りる場合が多いが、それを続けるとコードが肥大化する。有効なリファクタリング案があるなら、自律的に先行して実施してかまわない。
-
-### colabでの学習
-ユーザーの指定がある場合、学習はローカルのGPUを用いずに、colabで実行します。その時、`scripts/colab`でシェルスクリプトを実装して、colabではそのシェルを実行するだけにします（ドライブのマウントは別途行う）。指定がない場合はローカルGPUを用います。
-
-### ローカルGPUでの学習
-
-ローカルGPUを用いて学習・実験を実行する場合は、**必ず `.agents/skills/training-queue/SKILL.md` を読み、その手順に従って training queue 経由で実行すること**。GPUに対して複数の学習プロセスを直接・同時に起動してはならない。
-
-worktreeで作業している場合でも、queue state はworktree内の `.training_queue/` に作成せず、**元のrepo rootの `.training_queue/` を共有して使用すること**。必要に応じて `TRAINING_QUEUE_DIR` をrepo rootの `.training_queue/` に明示的に設定し、すべてのworktree・agentが同じqueueを参照するようにすること。
+- **ローカルGPU（既定）**: 必ず [.agents/skills/training-queue/SKILL.md](.agents/skills/training-queue/SKILL.md) を読み、training queue 経由で実行する。GPUに対して複数の学習プロセスを直接・同時に起動しない。worktreeで作業していても、queue state はworktree内に作らず、元のrepo rootの `.training_queue/` を共有する（必要なら `TRAINING_QUEUE_DIR` をrepo rootの `.training_queue/` に明示する）。
+- **Colab（ユーザーが指定した場合のみ）**: `scripts/colab` にシェルスクリプトを実装し、Colabではそのシェルを実行するだけにする（ドライブのマウントは別途行う）。
