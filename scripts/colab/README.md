@@ -6,7 +6,7 @@ repository環境の構築、処理実行、成果物の検証・Driveへのatomi
 local download、session停止までを `scripts/colab/run.sh` が管理します。学習jobはVM
 localへ出力し、runnerがcheckpoint・TensorBoard・設定をrcloneでDriveへ同期します。
 入力はVM local diskへcopyします。GUIやOpenCVのinteractive modeはcatalogへ登録しません。
-配置の正本と拡張時の監修手順は [STORAGE_LAYOUT.md](STORAGE_LAYOUT.md) を参照してください。
+配置の正本と拡張時の監修手順は [Drive管理方針](../../.agents/skills/tennis-drive/references/storage-policy.md) を参照してください。
 
 ## 前提条件
 
