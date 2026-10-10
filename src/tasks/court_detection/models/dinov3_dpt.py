@@ -973,24 +973,33 @@ class CourtHierarchicalModel(nn.Module):
         self.in_channels = config.in_channels
         self.target_bundle_spec = target_bundle
 
-        self.encoder = build_court_encoder(
-            config=config.encoder,
-            in_channels=self.in_channels,
-        )
-        self.decoder = build_court_decoder(
-            config=config.decoder,
-            encoder_channels=self.encoder.feature_channels,
-        )
-
+        # Backbone construction may draw a size-dependent number of random
+        # values before loading pretrained weights. Do not let that change the
+        # initialization of the shared trainable downstream model.
+        with torch.random.fork_rng(devices=[]):
+            self.encoder = build_court_encoder(
+                config=config.encoder,
+                in_channels=self.in_channels,
+            )
         transformer_config = config.transformer_encoder
         if not transformer_config.enabled:
             raise ValueError("Court detection requires the spatial Transformer.")
-        deepest_dim = int(self.encoder.feature_channels[-1])
-        if transformer_config.dim != deepest_dim:
-            raise ValueError(
-                "Transformer dimension must match the deepest encoder feature: "
-                f"{transformer_config.dim} != {deepest_dim}."
+        assert transformer_config.dim is not None
+        deepest_dim = transformer_config.dim
+        # Keep DINO extraction/validation at its native width. These trainable
+        # pointwise projections sit outside the frozen backbone boundary and
+        # give every downstream stage the same configured feature width.
+        with torch.random.fork_rng(devices=[]):
+            self.feature_projections = nn.ModuleList(
+                nn.Identity()
+                if channels == deepest_dim
+                else nn.Conv2d(channels, deepest_dim, kernel_size=1)
+                for channels in self.encoder.feature_channels
             )
+        self.decoder = build_court_decoder(
+            config=config.decoder,
+            encoder_channels=(deepest_dim,) * 4,
+        )
         assert transformer_config.depth is not None
         assert transformer_config.num_heads is not None
         assert transformer_config.rope_dim is not None
@@ -1104,7 +1113,11 @@ class CourtHierarchicalModel(nn.Module):
             raise ValueError(
                 "Prepared-feature DINOv3 route requires all four feature maps."
             )
-        return features
+        projected = []
+        for projection, feature in zip(self.feature_projections, features, strict=True):
+            # The existing all-four check above has already rejected None.
+            projected.append(projection(cast(Tensor, feature)))
+        return (projected[0], projected[1], projected[2], projected[3])
 
     def _decode_with_transformer(
         self,

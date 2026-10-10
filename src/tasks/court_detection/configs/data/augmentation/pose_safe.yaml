@@ -1,4 +1,5 @@
-# Pose supervision: isotropic long-side resize plus patch-alignment padding.
+# All sources/splits: isotropic long-side resize plus patch-alignment padding.
+# The legacy key val_short_side denotes the long side under preserve_fx_fy=true.
 train_scales: [256]
 val_short_side: 256
 crop_scale: [1.0, 1.0]

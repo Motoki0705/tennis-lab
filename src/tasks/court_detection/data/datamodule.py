@@ -215,5 +215,18 @@ class CourtDetectionDataModule(pl.LightningDataModule):
     def val_dataloader(self) -> DataLoader[Any]:
         return self._eval_loader(self.val_dataset, stage="validate")
 
+    def source_eval_dataloader(
+        self, source: str, split: CourtSourceSplit
+    ) -> DataLoader[Any]:
+        """Evaluate one declared source/split without manufacturing a real test set."""
+        if split == "train":
+            raise ValueError("Source evaluation requires val or test, not train augmentation.")
+        if source not in self._eval_pipelines:
+            raise ValueError(f"Unknown Court source: {source}")
+        dataset = self._source_dataset(split=split, pipeline=self._eval_pipelines[source])
+        if dataset is None:
+            raise ValueError(f"Court source {source!r} has no {split!r} split.")
+        return self._eval_loader(dataset, stage=f"{source}/{split}")
+
     def test_dataloader(self) -> DataLoader[Any]:
         return self._eval_loader(self.test_dataset, stage="test")

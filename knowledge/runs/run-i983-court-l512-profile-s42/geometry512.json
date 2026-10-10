@@ -1,0 +1,172 @@
+[
+  {
+    "sample_id": "B00:court-sample-000897",
+    "source": "synthetic_court",
+    "image_shape": [
+      3,
+      288,
+      512
+    ],
+    "image_size": [
+      288,
+      512
+    ],
+    "content_size_hw": [
+      288,
+      512
+    ],
+    "intrinsics": [
+      [
+        179.25312978168574,
+        0.0,
+        255.73305526590198
+      ],
+      [
+        0.0,
+        179.25312978168574,
+        143.6162669447341
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  {
+    "sample_id": "B01:court-sample-000721",
+    "source": "synthetic_court",
+    "image_shape": [
+      3,
+      288,
+      512
+    ],
+    "image_size": [
+      288,
+      512
+    ],
+    "content_size_hw": [
+      288,
+      512
+    ],
+    "intrinsics": [
+      [
+        383.1310752423652,
+        0.0,
+        255.73305526590198
+      ],
+      [
+        0.0,
+        383.1310752423652,
+        143.6162669447341
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  {
+    "sample_id": "B02:court-sample-000674",
+    "source": "synthetic_court",
+    "image_shape": [
+      3,
+      288,
+      512
+    ],
+    "image_size": [
+      288,
+      512
+    ],
+    "content_size_hw": [
+      288,
+      512
+    ],
+    "intrinsics": [
+      [
+        333.6256954473487,
+        0.0,
+        255.73305526590198
+      ],
+      [
+        0.0,
+        333.6256954473487,
+        143.6162669447341
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  {
+    "sample_id": "B03:court-sample-000696",
+    "source": "synthetic_court",
+    "image_shape": [
+      3,
+      288,
+      512
+    ],
+    "image_size": [
+      288,
+      512
+    ],
+    "content_size_hw": [
+      288,
+      512
+    ],
+    "intrinsics": [
+      [
+        245.06668601723086,
+        0.0,
+        255.73305526590198
+      ],
+      [
+        0.0,
+        245.06668601723086,
+        143.6162669447341
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  {
+    "sample_id": "EF-hx40Q4Mg_700",
+    "source": "tennis_court_detector",
+    "image_shape": [
+      3,
+      288,
+      512
+    ],
+    "image_size": [
+      288,
+      512
+    ],
+    "content_size_hw": [
+      288,
+      512
+    ]
+  },
+  {
+    "sample_id": "cDzdc6J3jWs_2300",
+    "source": "tennis_court_detector",
+    "image_shape": [
+      3,
+      288,
+      512
+    ],
+    "image_size": [
+      288,
+      512
+    ],
+    "content_size_hw": [
+      288,
+      512
+    ]
+  }
+]

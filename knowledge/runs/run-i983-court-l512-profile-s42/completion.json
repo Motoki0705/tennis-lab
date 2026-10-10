@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "l512-profile-01",
+  "status": "completed",
+  "updated_at": "2026-10-10T14:22:24.792419+00:00",
+  "returncode": 0,
+  "worker_pid": 23207,
+  "worker_token": "474774",
+  "pid": 23369,
+  "process_token": "477616",
+  "started_at": "2026-10-10T14:16:19.880466+00:00",
+  "drive_saved_at": "2026-10-10T14:22:32.932261+00:00",
+  "finished_at": "2026-10-10T14:22:32.932274+00:00"
+}

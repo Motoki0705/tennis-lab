@@ -1,0 +1,33 @@
+# Shared controlled comparison; each variant changes only the frozen backbone.
+defaults:
+  - train
+  - _self_
+
+data:
+  source:
+    scene_ids: [B00, B01, B02, B03]
+  augmentation:
+    train_scales: [512]
+    val_short_side: 512
+model:
+  encoder:
+    train_mode: frozen
+    lora:
+      enabled: false
+  transformer_encoder:
+    dim: 1024
+    depth: 8
+    num_heads: 16
+    head_dim: 64
+    ffn_dim: 2752
+training:
+  checkpoint:
+    # Preserve published generations under the Drive skill's retention policy.
+    save_top_k: -1
+  # Identical fixed sample order for all size comparisons.
+  qualitative_logging:
+    selection_mode: fixed_indices
+    selected_indices: [0, 1, 2, 3]
+run:
+  seed: 42
+  test_after_fit: true

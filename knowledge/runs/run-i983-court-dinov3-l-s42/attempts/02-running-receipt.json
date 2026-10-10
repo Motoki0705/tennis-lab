@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-10T16:54:30.714881+00:00",
+  "local_config_sha256": "c840b73d6c35818cd3fe2ab22c8d676491d7b15cdaac6d31c6e601eab0a542d0",
+  "drive_config_sha256": "c840b73d6c35818cd3fe2ab22c8d676491d7b15cdaac6d31c6e601eab0a542d0",
+  "remote_status": {
+    "schema_version": 1,
+    "job_id": "train-l-s42-resume-02",
+    "status": "running",
+    "updated_at": "2026-10-10T16:54:12.060891+00:00",
+    "returncode": null,
+    "worker_pid": 13534,
+    "worker_token": "226352",
+    "pid": 13700,
+    "process_token": "229213",
+    "started_at": "2026-10-10T16:43:24.090710+00:00"
+  },
+  "drive_status": {
+    "schema_version": 1,
+    "job_id": "train-l-s42-resume-02",
+    "status": "running",
+    "updated_at": "2026-10-10T16:52:51.868446+00:00",
+    "returncode": null,
+    "worker_pid": 13534,
+    "worker_token": "226352",
+    "pid": 13700,
+    "process_token": "229213",
+    "started_at": "2026-10-10T16:43:24.090710+00:00"
+  },
+  "configuration_equal_except": "run.resume"
+}

@@ -415,6 +415,77 @@ def test_prepared_dinov3_features_flow_through_transformer_dpt_and_pose(
     )
 
 
+@pytest.mark.parametrize("native_dim", [4, 6, 8])
+def test_backbone_width_does_not_change_downstream_capacity(
+    monkeypatch: pytest.MonkeyPatch, native_dim: int
+) -> None:
+    fake = FakeDINOv3()
+    fake.embed_dim = native_dim
+    fake.register_parameter("frozen_weight", nn.Parameter(torch.ones(1)))
+    encoder = _encoder(fake)
+    monkeypatch.setattr(model_module, "build_court_encoder", lambda **kwargs: encoder)
+    config = _enabled_model_config()
+    model = CourtHierarchicalModel(config, _bundle())
+    adapter = _adapter(model)
+    call = adapter.prepare_images(torch.zeros(2, 3, 17, 19))
+
+    assert call.model_args[1].shape[1] == native_dim
+    projected = model._feature_forward_values(call.model_args[0], call.model_args[1:5])
+    assert all(feature is not None and feature.shape[1] == 8 for feature in projected)
+    assert all(not parameter.requires_grad for parameter in encoder.parameters())
+    assert fake.grad_enabled is False
+
+    output = model(*call.model_args)
+    (output.dense_logits["kp"].square().mean() + output.pose.values.square().mean()).backward()
+    projection_parameters = list(model.feature_projections.parameters())
+    if native_dim == 8:
+        assert not projection_parameters
+        # Equal-width legacy checkpoints gain no parameter keys.
+        assert not any(key.startswith("feature_projections.") for key in model.state_dict())
+        model.load_state_dict(model.state_dict(), strict=True)
+    else:
+        assert len(projection_parameters) == 8
+        assert all(parameter.grad is not None for parameter in projection_parameters)
+        assert all(torch.isfinite(parameter.grad).all() for parameter in projection_parameters)
+        assert all(torch.count_nonzero(parameter.grad) for parameter in projection_parameters)
+
+    # Projection is the only learned part whose shape depends on native width.
+    fake.embed_dim = 8
+    reference_encoder = _encoder(fake)
+    monkeypatch.setattr(model_module, "build_court_encoder", lambda **kwargs: reference_encoder)
+    reference = CourtHierarchicalModel(config, _bundle())
+    for name in ("transformer_encoder", "decoder", "pose_head", "heads"):
+        assert {key: value.shape for key, value in getattr(model, name).state_dict().items()} == {
+            key: value.shape for key, value in getattr(reference, name).state_dict().items()
+        }
+
+
+def test_shared_downstream_initialization_does_not_depend_on_backbone_rng_draws(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    states = []
+    for native_dim in (4, 6, 8):
+        fake = FakeDINOv3()
+        fake.embed_dim = native_dim
+
+        def build_encoder(native_dim=native_dim, fake=fake, **kwargs):
+            # Simulate a size-dependent pretrained backbone constructor.
+            torch.rand(native_dim * 100)
+            return _encoder(fake)
+
+        monkeypatch.setattr(model_module, "build_court_encoder", build_encoder)
+        torch.manual_seed(42)
+        model = CourtHierarchicalModel(_enabled_model_config(), _bundle())
+        states.append({
+            key: value.clone() for key, value in model.state_dict().items()
+            if not key.startswith(("encoder.", "feature_projections."))
+        })
+    for candidate in states[1:]:
+        assert candidate.keys() == states[0].keys()
+        for key, expected in states[0].items():
+            torch.testing.assert_close(candidate[key], expected, rtol=0, atol=0)
+
+
 def test_pose_training_propagates_content_size_as_dino_patch_mask(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

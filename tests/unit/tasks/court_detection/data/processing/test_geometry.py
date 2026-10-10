@@ -252,6 +252,57 @@ def test_pose_safe_geometry_adds_only_minimal_patch_alignment() -> None:
     assert plan.matrix[1, 1] == pytest.approx(250.0 / 640.0)
 
 
+@pytest.mark.parametrize("is_train", [False, True])
+@pytest.mark.parametrize("require_pose", [False, True])
+@pytest.mark.parametrize(
+    ("source_size", "content_size", "output_size"),
+    [
+        ((1920, 1080), (288, 512), (288, 512)),
+        ((1000, 667), (342, 512), (352, 512)),
+        ((667, 1000), (512, 342), (512, 352)),
+    ],
+)
+def test_long_side_geometry_does_not_depend_on_pose_labels_or_split(
+    is_train: bool,
+    require_pose: bool,
+    source_size: tuple[int, int],
+    content_size: tuple[int, int],
+    output_size: tuple[int, int],
+) -> None:
+    config = replace(_pose_safe_config(), train_scales=(512,), val_short_side=512)
+    geometry = CourtProcessingGeometry(
+        config, is_train=is_train, require_pose=require_pose
+    )
+
+    plan = geometry._sample_once(source_size)
+
+    assert plan.content_size_hw == content_size
+    assert plan.output_size_hw == output_size
+    assert not plan.horizontal_flipped
+    scale = 512.0 / max(source_size)
+    torch.testing.assert_close(
+        plan.matrix,
+        torch.diag(torch.tensor([scale, scale, 1.0], dtype=torch.float64)),
+    )
+
+
+def test_real_image_uses_pose_safe_geometry_without_requiring_pose_authority() -> None:
+    raw = replace(_raw_pose_sample(), pose_authority=None)
+    config = replace(_pose_safe_config(), train_scales=(512,), val_short_side=512)
+    geometry = CourtProcessingGeometry(config, is_train=False, require_pose=False)
+
+    transformed = geometry.apply(raw, dense_targets={})
+
+    assert transformed.pose_target is None
+    assert transformed.image_tensor.shape == (3, 384, 512)
+    assert transformed.keypoint_channels is not None
+    assert raw.keypoint_channels is not None
+    torch.testing.assert_close(
+        transformed.keypoint_channels.points_xy,
+        raw.keypoint_channels.points_xy * 0.8,
+    )
+
+
 def test_pose_safe_geometry_marks_patch_alignment_as_invalid_content() -> None:
     config = replace(_pose_safe_config(), train_scales=(250,), val_short_side=250)
     geometry = CourtProcessingGeometry(config, is_train=True, require_pose=True)
