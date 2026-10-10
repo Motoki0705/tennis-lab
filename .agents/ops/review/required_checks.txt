@@ -1,0 +1,4 @@
+# merge gate が statusCheckRollup に存在・成功を必須とする check 名（CI workflow の job 名）。
+# CI の起動前に他の check（labeler 等）だけが成功して merge される競合を防ぐ。
+# 意味は README.md の「merge gate」を参照。
+Python
