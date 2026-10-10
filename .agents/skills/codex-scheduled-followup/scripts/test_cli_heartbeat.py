@@ -11,8 +11,10 @@ import subprocess
 import tempfile
 import threading
 import unittest
+from collections.abc import Callable
 from contextlib import redirect_stdout
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import cli_heartbeat as helper
@@ -65,7 +67,7 @@ class CliHeartbeatTests(unittest.TestCase):
         self.interval = 30
         self.queue_returncode = 0
         self.queue_failure: Exception | None = None
-        self.queue_hook = None
+        self.queue_hook: Callable[[], None] | None = None
         self.queue_calls: list[tuple[list[str], dict]] = []
         self.task_dir = self.root / "state" / "followup"
 
@@ -77,6 +79,7 @@ class CliHeartbeatTests(unittest.TestCase):
             "rollout": self.rollout,
             "cwd": self.cwd,
             "interval_minutes": 30,
+            "queue_timeout_seconds": 180,
             "state_dir": self.root / "state",
         }
         values.update(overrides)
@@ -120,11 +123,12 @@ class CliHeartbeatTests(unittest.TestCase):
             if self.queue_failure:
                 raise self.queue_failure
             returncode = self.queue_returncode
-            output = f"Queued message accepted-id for thread {THREAD}.\n"
+            output = f"Queued message accepted-id for thread {THREAD}.\n" if not returncode else "Queue RPC failed\n"
         return subprocess.CompletedProcess(argv, returncode, output, "")
 
     def state(self) -> dict:
-        return json.loads((self.task_dir / "task.json").read_text(encoding="utf-8"))
+        task: dict[str, Any] = json.loads((self.task_dir / "task.json").read_text(encoding="utf-8"))
+        return task
 
     def create(self) -> dict:
         return helper.create_task(self.arguments())
@@ -146,7 +150,7 @@ class CliHeartbeatTests(unittest.TestCase):
         self.append("event_msg", {"type": kind, **fields})
 
     def start_delivery(self, turn: str = "delivery-turn") -> str:
-        marker = self.state()["deliveries"][-1]["marker"]
+        marker: str = self.state()["deliveries"][-1]["marker"]
         self.event("task_started", turn_id=turn)
         self.append(
             "response_item",
@@ -398,6 +402,82 @@ class CliHeartbeatTests(unittest.TestCase):
         helper.tick(self.task_dir)
         self.assertEqual(len(self.queue_calls), 2)
 
+    def test_timeout_after_acknowledgement_retains_acceptance_and_diagnostics(self) -> None:
+        self.create()
+        self.queue_failure = subprocess.TimeoutExpired("codex", 180,
+            output=f"Queued message accepted-id for thread {THREAD}.\n".encode(), stderr=b"teardown stalled")
+        result = helper.tick(self.task_dir)
+        self.assertEqual(result["delivery"]["phase"], "queued")
+        self.assertEqual(result["delivery"]["queue_id"], "accepted-id")
+        self.assertEqual(result["delivery"]["queue_stderr"], "teardown stalled")
+        self.assertTrue(result["delivery"]["queue_process_timed_out"])
+        self.assertFalse(result["attention_required"])
+        self.assertEqual(result["delivery_health"], "waiting_for_runtime")
+        self.assertEqual(self.queue_calls[0][1]["timeout"], 180)
+        self.queue_failure = None
+        helper.tick(self.task_dir)
+        self.assertEqual(len(self.queue_calls), 1)
+
+    def test_uncertain_timeout_preserves_partial_output_and_reports_attention(self) -> None:
+        self.create()
+        self.queue_failure = subprocess.TimeoutExpired("codex", 180, output=b"starting server", stderr=b"bad byte \xff")
+        result = helper.tick(self.task_dir)
+        self.assertEqual(result["delivery"]["queue_stdout"], "starting server")
+        self.assertIn("bad byte", result["delivery"]["queue_stderr"])
+        self.assertTrue(result["attention_required"])
+        self.assertEqual(result["delivery_health"], "needs_recovery")
+        self.assertTrue(self.active)
+
+    def test_acknowledgement_for_other_thread_or_multiple_receipts_is_not_trusted(self) -> None:
+        for output in ("Queued message x for thread other.\n",
+                       f"Queued message x for thread {THREAD}.\nQueued message y for thread {THREAD}.\n"):
+            delivery = {"phase": "uncertain"}
+            helper.acknowledge(delivery, THREAD, output, None)
+            self.assertEqual(delivery["phase"], "uncertain")
+
+    def test_recovery_is_explicit_preserves_old_attempt_and_does_not_send(self) -> None:
+        self.create()
+        self.queue_failure = subprocess.TimeoutExpired("codex", 45)
+        first = helper.tick(self.task_dir)["delivery"]
+        for marker, reason, allow in ((first["marker"], "authorized recovery", False),
+                                       (first["marker"], "", True), ("wrong", "authorized", True)):
+            with self.assertRaises(ValueError):
+                helper.recover(self.task_dir, marker=marker, reason=reason, allow_duplicate=allow)
+        result = helper.recover(self.task_dir, marker=first["marker"], reason="user authorized restoration", allow_duplicate=True)
+        self.assertTrue(result["recovered"])
+        self.assertFalse(result["enqueued"])
+        self.assertFalse(result["attention_required"])
+        self.assertEqual(result["delivery"]["recovery"]["previous_phase"], "uncertain")
+        self.assertIn("TimeoutExpired", result["delivery"]["error"])
+        self.assertEqual(result["interval_minutes"], 30)
+        self.assertEqual(len(self.queue_calls), 1)
+        self.queue_failure = None
+        second = helper.tick(self.task_dir)
+        self.assertTrue(second["enqueued"])
+        self.assertNotEqual(first["marker"], second["delivery"]["marker"])
+        self.assertEqual(self.state()["deliveries"][0]["phase"], "superseded")
+        helper.tick(self.task_dir)
+        self.assertEqual(len(self.queue_calls), 2)
+
+    def test_recovery_reconciles_a_late_receipt_before_allowing_retry(self) -> None:
+        self.create()
+        self.queue_failure = subprocess.TimeoutExpired("codex", 45)
+        marker = helper.tick(self.task_dir)["delivery"]["marker"]
+        self.start_delivery()
+        with self.assertRaisesRegex(ValueError, "must wait"):
+            helper.recover(self.task_dir, marker=marker, reason="operator requested", allow_duplicate=True)
+        self.assertEqual(self.state()["deliveries"][-1]["phase"], "started")
+        self.assertEqual(len(self.queue_calls), 1)
+
+    def test_recovery_cannot_bypass_a_changed_rollout(self) -> None:
+        self.create()
+        self.queue_failure = subprocess.TimeoutExpired("codex", 45)
+        marker = helper.tick(self.task_dir)["delivery"]["marker"]
+        self.rollout.unlink()
+        with self.assertRaisesRegex(ValueError, "history"):
+            helper.recover(self.task_dir, marker=marker, reason="operator requested", allow_duplicate=True)
+        self.assertEqual(len(self.queue_calls), 1)
+
     def test_crash_after_durable_preparation_suppresses_future_send(self) -> None:
         self.create()
         self.queue_hook = lambda: (_ for _ in ()).throw(KeyboardInterrupt())
@@ -516,6 +596,7 @@ class CliHeartbeatTests(unittest.TestCase):
         for overrides in (
             {"interval_minutes": 0},
             {"interval_minutes": -1},
+            {"queue_timeout_seconds": 0},
             {"state_dir": Path("/mnt/c/unsafe")},
         ):
             with self.subTest(overrides=overrides), self.assertRaises(ValueError):
