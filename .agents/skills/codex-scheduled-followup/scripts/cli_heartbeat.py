@@ -21,9 +21,14 @@ import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 ENV_KEYS = ("CODEX_HOME", "CODEX_SQLITE_HOME", "PATH")
+STATE_VERSION = 2
+# Rollout anchors hash only the bytes just before their offset. Codex only appends
+# to rollouts; inode/size checks catch replacement and truncation, and the window
+# catches rewrites near the anchor without rereading hundreds of MB per tick.
+WINDOW_BYTES = 64 * 1024
 QUEUE_TIMEOUT_SECONDS = 180
 # Delivery phases that block the next send until an operator runs recover.
 UNRESOLVED = frozenset({"uncertain", "failed"})
@@ -63,7 +68,9 @@ def locked(task_dir: Path) -> Iterator[dict[str, Any]]:
     with (task_dir / "lock").open("a") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         task = json.loads((task_dir / "task.json").read_text(encoding="utf-8"))
-        if task.get("version") != 1:
+        if task.get("version") == 1:
+            migrate_v1(task_dir, task)
+        if task.get("version") != STATE_VERSION:
             raise ValueError("Unsupported helper state version")
         yield task
 
@@ -80,15 +87,44 @@ def checked(argv: list[str]) -> str:
     return result.stdout
 
 
+def hash_range(handle: BinaryIO, digest: Any, start: int, end: int) -> None:
+    handle.seek(start)
+    remaining = end - start
+    while remaining:
+        chunk = handle.read(min(1024 * 1024, remaining))
+        if not chunk:
+            raise ValueError("Rollout truncated during inspection")
+        digest.update(chunk)
+        remaining -= len(chunk)
+
+
+def window_digest(handle: BinaryIO, offset: int) -> str:
+    digest = hashlib.sha256()
+    hash_range(handle, digest, max(0, offset - WINDOW_BYTES), offset)
+    return digest.hexdigest()
+
+
+def verify_anchor(handle: BinaryIO, stat: os.stat_result, anchor: dict[str, Any]) -> None:
+    if [stat.st_dev, stat.st_ino] != anchor["identity"] or stat.st_size < anchor["offset"]:
+        raise ValueError("Rollout replaced, migrated, or truncated; delivery is blocked")
+    if window_digest(handle, anchor["offset"]) != anchor["window_sha256"]:
+        raise ValueError("Rollout prefix changed; delivery is blocked")
+
+
 def history(
-    task: dict[str, Any], anchor: dict[str, Any] | None
+    task: dict[str, Any],
+    start: dict[str, Any] | None,
+    *checks: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Read only append-only JSONL from the verified file and byte boundary."""
+    """Read complete JSONL records after `start` in one pass over the new bytes.
+
+    `start` and every anchor in `checks` must still be intact. Reading begins at
+    the end of the file when `start` is None.
+    """
     path = Path(task["rollout"])
     with path.open("rb") as handle:
         stat = os.fstat(handle.fileno())
-        first = handle.readline()
-        record = json.loads(first)
+        record = json.loads(handle.readline())
         if not isinstance(record, dict):
             raise ValueError("Unsupported rollout metadata record")
         metadata = record.get("payload", {})
@@ -101,24 +137,11 @@ def history(
             raise ValueError("Rollout session_meta.id does not match target thread")
         if metadata.get("cwd") != task["cwd"]:
             raise ValueError("Rollout session_meta.cwd does not match --cwd")
-        offset = anchor["offset"] if anchor else stat.st_size
-        if anchor and (
-            [stat.st_dev, stat.st_ino] != anchor["identity"] or stat.st_size < offset
-        ):
-            raise ValueError(
-                "Rollout replaced, migrated, or truncated; delivery is blocked"
-            )
-        handle.seek(0)
-        prefix = hashlib.sha256()
-        remaining = offset
-        while remaining:
-            chunk = handle.read(min(1024 * 1024, remaining))
-            if not chunk:
-                raise ValueError("Rollout truncated during inspection")
-            prefix.update(chunk)
-            remaining -= len(chunk)
-        if anchor and prefix.hexdigest() != anchor["sha256"]:
-            raise ValueError("Rollout prefix changed; delivery is blocked")
+        for anchor in (start, *checks):
+            if anchor is not None:
+                verify_anchor(handle, stat, anchor)
+        offset = start["offset"] if start else stat.st_size
+        handle.seek(offset)
         tail = handle.read(stat.st_size - offset)
         complete = tail[: tail.rfind(b"\n") + 1]
         records = [json.loads(line) for line in complete.splitlines()]
@@ -129,16 +152,52 @@ def history(
             raise ValueError("Unsupported rollout transition after delivery boundary")
         # A writer may still be appending the last JSON line. Anchor only the
         # complete prefix so the next inspection never starts inside that line.
-        prefix.update(complete)
-        if stat.st_size:
-            handle.seek(stat.st_size - 1)
+        end = offset + len(complete)
         snapshot = {
             "identity": [stat.st_dev, stat.st_ino],
-            "offset": offset + len(complete),
-            "sha256": prefix.hexdigest(),
-            "line_complete": handle.read(1) == b"\n",
+            "offset": end,
+            "window_sha256": window_digest(handle, end),
+            "line_complete": os.pread(handle.fileno(), 1, stat.st_size - 1) == b"\n",
         }
     return records, snapshot
+
+
+def migrate_v1(task_dir: Path, task: dict[str, Any]) -> None:
+    """Verify v1 full-prefix hashes once, then store v2 window hashes.
+
+    Timers created by the v1 helper keep invoking this script, so their state
+    must carry over. A failed verification blocks delivery exactly as v1 would.
+    """
+    anchors = [
+        task["boundary"],
+        task["observed_boundary"],
+        *(delivery["boundary"] for delivery in task["deliveries"]),
+    ]
+    if not task.get("blocked_reason"):
+        try:
+            with Path(task["rollout"]).open("rb") as handle:
+                stat = os.fstat(handle.fileno())
+                digest = hashlib.sha256()
+                position = 0
+                for anchor in sorted(anchors, key=lambda item: item["offset"]):
+                    if (
+                        [stat.st_dev, stat.st_ino] != anchor["identity"]
+                        or stat.st_size < anchor["offset"]
+                    ):
+                        raise ValueError(
+                            "Rollout replaced, migrated, or truncated; delivery is blocked"
+                        )
+                    hash_range(handle, digest, position, anchor["offset"])
+                    position = anchor["offset"]
+                    if digest.hexdigest() != anchor["sha256"]:
+                        raise ValueError("Rollout prefix changed; delivery is blocked")
+                for anchor in anchors:
+                    anchor["window_sha256"] = window_digest(handle, anchor["offset"])
+                    del anchor["sha256"]
+        except (OSError, ValueError, KeyError) as error:
+            task["blocked_reason"] = str(error)
+    task["version"] = STATE_VERSION
+    save(task_dir, task)
 
 
 def reconcile(task_dir: Path, task: dict[str, Any]) -> dict[str, Any] | None:
@@ -146,9 +205,9 @@ def reconcile(task_dir: Path, task: dict[str, Any]) -> dict[str, Any] | None:
     if task.get("blocked_reason"):
         return delivery
     try:
-        _, observed = history(task, task["observed_boundary"])
+        observed = task["observed_boundary"]
         records, snapshot = history(
-            task, delivery["boundary"] if delivery else observed
+            task, delivery["boundary"] if delivery else observed, observed
         )
         if snapshot["offset"] < observed["offset"]:
             raise ValueError("Rollout truncated during receipt inspection")
@@ -345,7 +404,7 @@ def create_task(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("prompt-file must not be empty")
     cwd = str(args.cwd.expanduser().resolve(strict=True))
     task = {
-        "version": 1,
+        "version": STATE_VERSION,
         "id": args.id,
         "thread_id": thread_id,
         "cwd": cwd,
@@ -448,9 +507,9 @@ def tick(task_dir: Path) -> dict[str, Any]:
             or (delivery and delivery["phase"] not in SENDABLE)
         ):
             return {**result(task_dir, task), "enqueued": False}
-        _, boundary = history(
-            task, delivery["boundary"] if delivery else task["boundary"]
-        )
+        # reconcile just verified the history and advanced observed_boundary to
+        # the last complete record; sending from there needs no second read.
+        boundary = task["observed_boundary"]
         if not boundary["line_complete"]:
             raise ValueError("Rollout has a partial record; no message was sent")
         marker = f"[codex-heartbeat:{task['id']}:{uuid.uuid4()}]"
