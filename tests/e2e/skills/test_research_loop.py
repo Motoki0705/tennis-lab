@@ -262,7 +262,10 @@ def test_arxiv_parse_and_query_construction(ls: ModuleType) -> None:
     [paper] = ls.search(
         "ball trajectory", ["arxiv"], 5, ls.YearRange.parse("2020-2021"), fake
     )
-    assert paper.id == paper.arxiv_id == "2008.04524"
+    # The returned revision is kept: id, url and pdf_url name exactly v2.
+    assert paper.id == paper.arxiv_id == "2008.04524v2"
+    assert paper.url == "https://arxiv.org/abs/2008.04524v2"
+    assert paper.pdf_url == "https://arxiv.org/pdf/2008.04524v2"
     assert paper.title == "Vid2Player: Controllable Video Sprites"
     assert paper.abstract == "Tennis sprites."
     assert paper.authors == ["Haotian Zhang", "Kayvon Fatahalian"]
@@ -450,6 +453,7 @@ def test_arxiv_pdf_download_validates_content(ls: ModuleType, tmp_path: Path) ->
     fake = FakeHTTP({"https://arxiv.org/pdf/2008.04524": [pdf]})
     assert ls.download_arxiv_pdf("https://arxiv.org/abs/2008.04524v2", out, fake) == out
     assert out.read_bytes() == pdf
+    assert fake.calls[0][0] == "https://arxiv.org/pdf/2008.04524v2"
     with pytest.raises(FileExistsError):
         ls.download_arxiv_pdf("2008.04524", out, fake)
     html = FakeHTTP({"https://arxiv.org/pdf/": [b"<html>" + b"x" * ls.MIN_PDF_BYTES]})
@@ -458,3 +462,54 @@ def test_arxiv_pdf_download_validates_content(ls: ModuleType, tmp_path: Path) ->
     assert not (tmp_path / "bad.pdf").exists()
     with pytest.raises(ValueError, match="not an arXiv ID"):
         ls.download_arxiv_pdf("../etc/passwd", tmp_path / "x.pdf", html)
+
+
+@pytest.mark.parametrize(
+    ("arxiv_id", "expected_url"),
+    [
+        ("2008.04524v1", "https://arxiv.org/pdf/2008.04524v1"),
+        ("id:2008.04524v1", "https://arxiv.org/pdf/2008.04524v1"),
+        ("hep-ex/0307015v1", "https://arxiv.org/pdf/hep-ex/0307015v1"),
+        ("2008.04524", "https://arxiv.org/pdf/2008.04524"),
+    ],
+)
+def test_arxiv_pdf_keeps_requested_version(
+    ls: ModuleType, tmp_path: Path, arxiv_id: str, expected_url: str
+) -> None:
+    """An explicit vN must not silently become the latest revision."""
+    pdf = b"%PDF-1.5\n" + b"0" * ls.MIN_PDF_BYTES
+    fake = FakeHTTP({"https://arxiv.org/pdf/": [pdf]})
+    ls.download_arxiv_pdf(arxiv_id, tmp_path / "p.pdf", fake)
+    assert [url for url, _ in fake.calls] == [expected_url]
+
+
+def test_arxiv_rejects_unexpected_entry_id(ls: ModuleType) -> None:
+    feed = ARXIV_FEED.replace(b"2008.04524v2", b"not-an-id")
+    with pytest.raises(ls.LitSearchError, match="unexpected entry id"):
+        ls.search("x", ["arxiv"], 1, None, FakeHTTP({ls.ARXIV_API: [feed]}))
+
+
+@pytest.mark.parametrize("with_key", [False, True])
+def test_semantic_scholar_429_explains_api_key(
+    ls: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    with_key: bool,
+) -> None:
+    if with_key:
+        monkeypatch.setenv("SEMANTIC_SCHOLAR_API_KEY", "secret")
+    monkeypatch.setattr("time.sleep", lambda _: None)
+    fake = FakeHTTP({ls.S2_API: [http_error(ls.S2_API, 429)] * 3})
+    assert ls.main(["search", "ball", "--source", "s2"], fetch=fake) == 1
+    err = capsys.readouterr().err
+    assert "HTTP 429" in err and "SEMANTIC_SCHOLAR_API_KEY" in err
+    if with_key:
+        assert "is set but still rate limited" in err
+    else:
+        assert "export SEMANTIC_SCHOLAR_API_KEY=" in err and "api-key-form" in err
+    assert len(fake.calls) == 3
+    # Other HTTP failures are reported unchanged (no misleading key hint).
+    fake = FakeHTTP({ls.S2_API: [http_error(ls.S2_API, 400)]})
+    with pytest.raises(ls.LitSearchError) as info:
+        ls.search("ball", ["s2"], 1, None, fake)
+    assert "SEMANTIC_SCHOLAR_API_KEY" not in str(info.value)
