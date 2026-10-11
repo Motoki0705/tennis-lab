@@ -1,7 +1,7 @@
-<!-- knowledge-review: 3a6508a2588d792e79c8814153588afd0db7e181f9731bbafd06b20e47754c0e on 2026-10-11 -->
+<!-- knowledge-review: 6bac3bd27b4b90fb7a50a683e01f657245122cdf5a3c313b8301ab29bda2a8f5 on 2026-10-12 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-11（Court #983のL学習・最良checkpoint評価を追記。4条件比較は継続中）
+更新日: 2026-10-12（Court #983のS学習・最良checkpoint評価とpose外れ値診断を追記。4条件比較は継続中）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -387,7 +387,7 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Court Detection
 
-2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)で、凍結ViT-L＋共通1024次元後段の512長辺・batch8が短い学習処理として成立した。容量確認を根拠に[ViT-L本学習](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)を20epoch完了し、最小validation lossのepoch17を別途評価した。合成test886件・実画像val2211件の定量結果と固定36枚を保存した。初回VM消失後はDrive保存済みの2epoch分から再開しており、RNG/samplerのbitwise継続は保証しない。実画像valはcheckpoint選択にも使うため独立testとして扱わない。4サイズの精度比較は未完了で、既存の品質・採用判断は変更しない。[S本学習](nodes/court_detection/000038-run-i983-court-dinov3-s-s42.md)は初期validationで射影出力のdtype検査に停止したため、正当なautocast入力を許可するguard修正を検証し、同条件・同seedから再試行中である。修正は演算やLのdtype一致経路を変えない。入力hashと解決済み条件の一致も確認した。次はS/S+/B/Lを同じデータ・split・後段容量で揃え、合成testと実画像valを分けて定量・同一画像の定性比較を行う。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
+2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)を経て、[ViT-L](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)と[ViT-S](nodes/court_detection/000038-run-i983-court-dinov3-s-s42.md)の20epoch学習・最小validation loss checkpoint評価を完了した。同じ合成test886件・実画像val2211件と共通後段条件を照合済み。Sはdense KP平均距離がLより小さい一方、1画像の深度無効な2点がpose再投影誤差総和の91.65%を占め、全点平均184.28pxとなった。点別診断を添え、外れ値を除いて正式指標を置き換えない。Lのcheckpoint再開に伴うRNG/sampler継続の制約と、実画像valが選択データを兼ねる点も保持する。Sの学習前dtype検査障害は、演算を変えないautocast guard修正で解消した。S+/Bを含む4条件比較は未完了で、既存の品質・採用判断は変更しない。次は残る2条件と固定画像比較を揃える。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
 
 2026-10-08の[pose checkpointの定性保存確認](nodes/court_detection/000035-run-i1031-court-ckpt-qualitative-20261008b.md)では、合成・実画像2 sampleから4 dense headのPNG計8枚とTensorBoard出力を実GPUで確認した。固定batch選択の設定契約不一致も修正した。保存済みschemaと重みを維持した機能確認であり、既存の品質・採用判断は変更しない。合成斜視の点集中・線種分断の観察を全体精度やpose推定品質へ一般化しない。
 
