@@ -18,6 +18,7 @@ scripts/colab/STORAGE_LAYOUT.md
 AGENTS.md
 CLAUDE.md
 .agents
+!.agents/memory
 .claude
 .codex
 

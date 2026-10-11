@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import shutil
+import signal
 import string
 import subprocess
 import sys
@@ -45,6 +46,7 @@ from review_policy import (  # noqa: E402
     latest_review_for,
     load_list_file,
     load_shared_patterns,
+    neutralize_markers,
     normalize_rollup,
     parse_review,
     review_marker,
@@ -57,6 +59,10 @@ DEFAULT_REPO = HERE.parents[2]
 EXIT_LOCKED = 75
 MAX_DIFF_CHARS = 200_000
 MAX_COMMENT_CHARS = 60_000
+TERM_GRACE_SECONDS = 10.0
+# Full diff written into the review worktree when the prompt copy is truncated (the
+# read-only reviewer can read files but cannot run git).
+FULL_DIFF_NAME = ".cross-review-full.diff"
 PR_FIELDS = (
     "number,title,body,url,headRefName,headRefOid,baseRefName,baseRefOid,"
     "isDraft,isCrossRepository,labels,mergeable,statusCheckRollup"
@@ -69,23 +75,95 @@ class CommandError(RuntimeError):
     pass
 
 
-def run(cmd: Sequence[str], *, cwd: Path, timeout: float | None = None) -> str:
-    try:
-        proc = subprocess.run(
-            list(cmd),
-            cwd=cwd,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise CommandError(f"timed out after {timeout}s: {' '.join(cmd)}") from exc
+def run(cmd: Sequence[str], *, cwd: Path) -> str:
+    proc = subprocess.run(
+        list(cmd), cwd=cwd, text=True, capture_output=True, check=False
+    )
     if proc.returncode != 0:
         raise CommandError(
             f"exit {proc.returncode}: {' '.join(cmd)}\nstderr:\n{proc.stderr.strip()}"
         )
     return proc.stdout
+
+
+def _live_group_members(pgid: int) -> list[int]:
+    """PIDs of non-zombie processes in process group ``pgid`` (Linux ``/proc``)."""
+    members: list[int] = []
+    for stat_file in Path("/proc").glob("[0-9]*/stat"):
+        try:
+            stat = stat_file.read_text(encoding="utf-8", errors="replace")
+        except (FileNotFoundError, ProcessLookupError):
+            continue  # exited while scanning
+        # Fields after "(comm)": state ppid pgrp ...; comm itself may contain ")".
+        fields = stat[stat.rindex(")") + 2 :].split()
+        if int(fields[2]) == pgid and fields[0] != "Z":
+            members.append(int(stat_file.parent.name))
+    return members
+
+
+def _wait_group_gone(proc: subprocess.Popen[str], pgid: int, seconds: float) -> bool:
+    deadline = time.monotonic() + seconds
+    while True:
+        proc.poll()  # reap the leader so it does not linger as a zombie
+        if not _live_group_members(pgid):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.1)
+
+
+def _terminate_group(proc: subprocess.Popen[str], pgid: int) -> list[int]:
+    """Stop every process in ``pgid`` (TERM, then KILL); return the PIDs found alive.
+
+    Raises when processes survive SIGKILL, so a hung reviewer is never left behind
+    silently.
+    """
+    alive = _live_group_members(pgid)
+    if alive:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(pgid, signal.SIGTERM)
+        if not _wait_group_gone(proc, pgid, TERM_GRACE_SECONDS):
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(pgid, signal.SIGKILL)
+            if not _wait_group_gone(proc, pgid, TERM_GRACE_SECONDS):
+                raise CommandError(
+                    f"process group {pgid} survived SIGKILL: {_live_group_members(pgid)}"
+                )
+    proc.wait()
+    return alive
+
+
+def run_in_process_group(cmd: Sequence[str], *, cwd: Path, timeout: float) -> None:
+    """Run ``cmd`` in its own process group and stop the whole group when it ends.
+
+    Agent CLIs spawn children (``agent_exec.sh`` -> claude/codex -> tools); killing only
+    the direct child on timeout would leave them running after the worktree is removed.
+    """
+    proc = subprocess.Popen(
+        list(cmd),
+        cwd=cwd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    pgid = proc.pid  # session leader: its pid is the process group id
+    try:
+        _, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        _terminate_group(proc, pgid)
+        proc.communicate()
+        raise CommandError(f"timed out after {timeout}s: {' '.join(cmd)}") from exc
+    except BaseException:
+        _terminate_group(proc, pgid)
+        raise
+    leftover = _terminate_group(proc, pgid)
+    if leftover:
+        log.warning("killed processes left behind by %s: %s", cmd[0], leftover)
+    if proc.returncode != 0:
+        raise CommandError(
+            f"exit {proc.returncode}: {' '.join(cmd)}\nstderr:\n{stderr.strip()}"
+        )
 
 
 # --------------------------------------------------------------------------- GitHub
@@ -221,10 +299,18 @@ class Git:
                 ) from exc
 
     def changed_paths(self, pr: PullRequest) -> tuple[str, ...]:
+        # -z: raw NUL-separated names. Without it git quotes and escapes non-ASCII or
+        # special paths, which would then never match the shared-path patterns.
         out = self(
-            "diff", "--name-only", "--no-renames", f"{pr.base_sha}...{pr.head_sha}"
+            "diff",
+            "--name-only",
+            "--no-renames",
+            "-z",
+            f"{pr.base_sha}...{pr.head_sha}",
         )
-        return tuple(line for line in out.splitlines() if line)
+        if out and not out.endswith("\0"):
+            raise CommandError(f"unexpected git diff -z output: {out[-200:]!r}")
+        return tuple(out.split("\0")[:-1]) if out else ()
 
     def diff(self, pr: PullRequest) -> str:
         return self(
@@ -300,7 +386,8 @@ def build_prompt(
     truncated = len(diff) > MAX_DIFF_CHARS
     diff_note = (
         f"diff は {len(diff)} 文字のため先頭 {MAX_DIFF_CHARS} 文字で切っています。"
-        f"残りは `git diff {pr.base_sha}...HEAD` で読んでください。"
+        f"全文はカレントディレクトリの `{FULL_DIFF_NAME}`（呼び出し側が書き出したもので PR の一部ではない）"
+        "をファイルとして読んでください。"
         if truncated
         else "diff 全体を示します。"
     )
@@ -331,7 +418,7 @@ def run_reviewer(
     prompt_file = run_dir / "prompt.md"
     out_file = run_dir / "agent_output.md"
     prompt_file.write_text(prompt, encoding="utf-8")
-    run(
+    run_in_process_group(
         [
             str(settings.agent_exec),
             "--agent", reviewer,
@@ -381,9 +468,12 @@ def format_review_comment(
     ]
     if diff_truncated:
         lines.append(
-            f"- 注意: プロンプト内の diff は {MAX_DIFF_CHARS} 文字で切り、残りは worktree で読ませた"
+            f"- 注意: プロンプト内の diff は {MAX_DIFF_CHARS} 文字で切り、全文は worktree 内の"
+            f" `{FULL_DIFF_NAME}` で読ませた"
         )
-    lines += ["", "### 要約", "", review.summary, "", "### 指摘", ""]
+    # Agent text is untrusted: it must not be able to forge or hide a marker.
+    inert = neutralize_markers
+    lines += ["", "### 要約", "", inert(review.summary), "", "### 指摘", ""]
     if not review.findings:
         lines.append("（なし）")
     for finding in review.findings:
@@ -391,7 +481,8 @@ def format_review_comment(
         if finding.path and finding.line:
             where = f"{finding.path}:{finding.line}"
         lines.append(
-            f"- **{finding.severity}** `{where}` ({finding.rule}): {finding.detail}"
+            f"- **{finding.severity}** `{inert(where)}` ({inert(finding.rule)}): "
+            f"{inert(finding.detail)}"
         )
     if review.verdict == "request_changes":
         lines += [
@@ -432,12 +523,90 @@ def format_gate_comment(pr: PullRequest, result: GateResult, *, action: str) -> 
         lines += [f"- `{reason}`: {REASON_TEXT[reason]}" for reason in result.reasons]
     if result.shared_hits:
         lines += ["", "### 共有基盤に該当したファイル", ""]
-        lines += [f"- `{path}`（`{pattern}`）" for path, pattern in result.shared_hits]
+        lines += [
+            f"- `{neutralize_markers(path)}`（`{pattern}`）"
+            for path, pattern in result.shared_hits
+        ]
     lines += ["", "<sub>.agents/ops/review/cross_review.py による自動判定</sub>"]
     return "\n".join(lines) + "\n"
 
 
 # --------------------------------------------------------------------------- per-PR flow
+
+
+def review_head(
+    settings: Settings,
+    gh: GitHub,
+    git: Git,
+    pr: PullRequest,
+    *,
+    author: str,
+    author_source: str,
+    reviewer: str,
+    changed: Sequence[str],
+    checks: Sequence[Check],
+    report: RunReport,
+) -> str:
+    """Run the reviewer on ``pr``'s head, post the result and return the verdict."""
+    number = pr.number
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    run_dir = settings.state_dir / "runs" / f"{stamp}-pr{number}-{pr.head_sha[:12]}"
+    run_dir.mkdir(parents=True)
+    diff = git.diff(pr)
+    prompt, truncated = build_prompt(
+        settings,
+        pr,
+        author=author,
+        author_source=author_source,
+        reviewer=reviewer,
+        agents_md=git.show(pr.base_sha, "AGENTS.md"),
+        changed=changed,
+        checks=checks,
+        diff=diff,
+    )
+    started = time.monotonic()
+    report.note(
+        f"#{number}: reviewing head {pr.head_sha[:12]} with {reviewer} (author {author}); log {run_dir}"
+    )
+    with git.review_worktree(pr) as worktree:
+        if truncated:
+            full_diff = worktree / FULL_DIFF_NAME
+            if full_diff.exists():
+                raise CommandError(
+                    f"#{number}: PR head already contains {FULL_DIFF_NAME}; cannot write the full diff"
+                )
+            full_diff.write_text(diff, encoding="utf-8")
+        review = run_reviewer(
+            settings,
+            reviewer=reviewer,
+            cwd=worktree,
+            prompt=prompt,
+            run_dir=run_dir,
+        )
+    elapsed = time.monotonic() - started
+    body = format_review_comment(
+        pr,
+        review,
+        author=author,
+        author_source=author_source,
+        reviewer=reviewer,
+        elapsed=elapsed,
+        diff_truncated=truncated,
+    )
+    (run_dir / "review_comment.md").write_text(body, encoding="utf-8")
+    report.note(f"#{number}: {reviewer} verdict={review.verdict} ({elapsed:.0f}s)")
+    if settings.dry_run:
+        print(f"----- [dry-run] review comment for #{number} -----\n{body}")
+    else:
+        gh.comment(number, body)
+        if (
+            review.verdict == "request_changes"
+            and CHANGES_REQUESTED_LABEL not in pr.labels
+        ):
+            gh.add_label(number, CHANGES_REQUESTED_LABEL)
+        if review.verdict != "request_changes" and CHANGES_REQUESTED_LABEL in pr.labels:
+            gh.remove_label(number, CHANGES_REQUESTED_LABEL)
+    return review.verdict
 
 
 def process_pr(
@@ -478,56 +647,29 @@ def process_pr(
             f"#{number}: head {pr.head_sha[:12]} already reviewed by {reviewer}: {verdict}"
         )
     else:
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        run_dir = settings.state_dir / "runs" / f"{stamp}-pr{number}-{pr.head_sha[:12]}"
-        run_dir.mkdir(parents=True)
-        prompt, truncated = build_prompt(
+        verdict = review_head(
             settings,
+            gh,
+            git,
             pr,
             author=author,
             author_source=author_source,
             reviewer=reviewer,
-            agents_md=git.show(pr.base_sha, "AGENTS.md"),
             changed=changed,
             checks=checks,
-            diff=git.diff(pr),
+            report=report,
         )
-        started = time.monotonic()
-        report.note(
-            f"#{number}: reviewing head {pr.head_sha[:12]} with {reviewer} (author {author}); log {run_dir}"
-        )
-        with git.review_worktree(pr) as worktree:
-            review = run_reviewer(
-                settings,
-                reviewer=reviewer,
-                cwd=worktree,
-                prompt=prompt,
-                run_dir=run_dir,
+        # The review takes minutes: gate on the PR / CI state as it is now, not as it
+        # was before the review started.
+        fresh = gh.view(number)
+        if (fresh.head_sha, fresh.base_sha) != (pr.head_sha, pr.base_sha):
+            report.note(
+                f"#{number}: PR moved during the review (head {pr.head_sha[:12]}->{fresh.head_sha[:12]}, "
+                f"base {pr.base_sha[:12]}->{fresh.base_sha[:12]}); gate deferred to the next poll"
             )
-        elapsed = time.monotonic() - started
-        body = format_review_comment(
-            pr,
-            review,
-            author=author,
-            author_source=author_source,
-            reviewer=reviewer,
-            elapsed=elapsed,
-            diff_truncated=truncated,
-        )
-        (run_dir / "review_comment.md").write_text(body, encoding="utf-8")
-        verdict = review.verdict
-        report.note(f"#{number}: {reviewer} verdict={verdict} ({elapsed:.0f}s)")
-        if settings.dry_run:
-            print(f"----- [dry-run] review comment for #{number} -----\n{body}")
-        else:
-            gh.comment(number, body)
-            if (
-                verdict == "request_changes"
-                and CHANGES_REQUESTED_LABEL not in pr.labels
-            ):
-                gh.add_label(number, CHANGES_REQUESTED_LABEL)
-            if verdict != "request_changes" and CHANGES_REQUESTED_LABEL in pr.labels:
-                gh.remove_label(number, CHANGES_REQUESTED_LABEL)
+            return
+        pr = fresh
+        checks = normalize_rollup(pr.rollup)
 
     result = evaluate_gate(
         GateInput(

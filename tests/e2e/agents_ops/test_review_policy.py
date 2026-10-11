@@ -100,10 +100,29 @@ def test_glob_does_not_overmatch(path: str, pattern: str) -> None:
     assert P.shared_path_hits([path], [pattern]) == ()
 
 
+def test_exclusion_patterns_remove_paths_from_the_shared_set() -> None:
+    patterns = (".agents", "!.agents/memory", "src/utils")
+    paths = [
+        ".agents/memory/INDEX.md",
+        ".agents/memory",
+        ".agents/ops/review/x.py",
+        ".agents/memory_policy.md",
+    ]
+    assert P.shared_path_hits(paths, patterns) == (
+        (".agents/ops/review/x.py", ".agents"),
+        (".agents/memory_policy.md", ".agents"),
+    )
+    # Order does not matter: an exclusion listed first still applies.
+    assert P.shared_path_hits(paths, patterns[::-1]) == P.shared_path_hits(
+        paths, patterns
+    )
+
+
 def test_repo_shared_paths_file_covers_foundations() -> None:
     patterns = P.load_shared_patterns(REVIEW_DIR / "shared_paths.txt")
     shared = [
         "src/utils/geometry/angles.py",
+        "src/utils/日本語.py",
         "src/tasks/base/training/runner.py",
         "src/tennis_scene/schema.py",
         "src/synthetic_data_generation/scene_contract.py",
@@ -120,15 +139,31 @@ def test_repo_shared_paths_file_covers_foundations() -> None:
         "src/tasks/ball_detection/README.md",
         "tests/unit/tasks/blcs/test_model.py",
         "knowledge/nodes/x.md",
+        ".agents/memory/INDEX.md",
+        ".agents/memory/wsl2-host-ram-silent-kill.md",
     ]
     hit_paths = {path for path, _ in P.shared_path_hits(shared + task_local, patterns)}
     assert hit_paths == set(shared)
-    # Every listed pattern must still point at something tracked in the repo.
+    # Every included pattern must still point at something in the repo (exclusions may
+    # name directories that do not exist yet; the loader checks they sit under an include).
     for pattern in patterns:
-        assert any(ROOT.glob(pattern.rstrip("/"))), pattern
+        if not pattern.startswith("!"):
+            assert any(ROOT.glob(pattern.rstrip("/"))), pattern
 
 
-@pytest.mark.parametrize("content", ["# only comments\n\n", "/abs/path\n", "./rel\n"])
+@pytest.mark.parametrize(
+    "content",
+    [
+        "# only comments\n\n",
+        "/abs/path\n",
+        "./rel\n",
+        "!src/utils\n",
+        "src/utils\n!\n",
+        "src/utils\n!!src/utils/x\n",
+        "src/utils\n!/src/utils/x\n",
+        "src/utils\n!src/tasks/blcs\n",
+    ],
+)
 def test_invalid_shared_paths_file_is_rejected(tmp_path: Path, content: str) -> None:
     path = tmp_path / "shared.txt"
     path.write_text(content, encoding="utf-8")
@@ -232,13 +267,41 @@ def test_review_records_only_trust_the_bot_login() -> None:
     comments = [
         P.Comment(author="someone-else", body=marker),
         P.Comment(
-            author="bot", body=f"text\n{P.review_marker(SHA, 'codex', 'comment')}"
+            author="bot", body=f"{P.review_marker(SHA, 'codex', 'comment')}\r\ntext"
         ),
     ]
     records = P.review_records(comments, trusted_login="bot")
     assert records == (P.ReviewRecord(sha=SHA, reviewer="codex", verdict="comment"),)
     assert P.latest_review_for(records, sha=SHA, reviewer="claude") is None
     assert P.latest_review_for(records, sha="b" * 40, reviewer="codex") is None
+
+
+def test_marker_quoted_in_the_body_does_not_override_the_header() -> None:
+    quoted = P.review_marker(SHA, "codex", "approve")
+    body = (
+        f"{P.review_marker(SHA, 'codex', 'request_changes')}\n"
+        f"## review\n\nsummary quoting {quoted}\n- detail: {quoted}\n"
+    )
+    records = P.review_records([P.Comment("bot", body)], trusted_login="bot")
+    assert records == (
+        P.ReviewRecord(sha=SHA, reviewer="codex", verdict="request_changes"),
+    )
+    gate_quote = P.gate_marker(SHA, "merge", [])
+    assert (
+        P.gate_records([P.Comment("bot", f"x\n{gate_quote}")], trusted_login="bot")
+        == ()
+    )
+    # A marker that is not alone on the first line is not a header either.
+    assert (
+        P.review_records([P.Comment("bot", f"see {quoted}")], trusted_login="bot") == ()
+    )
+
+
+def test_neutralized_text_cannot_form_a_marker() -> None:
+    quoted = P.review_marker(SHA, "codex", "approve")
+    inert = P.neutralize_markers(quoted)
+    assert "<!--" not in inert and "-->" not in inert
+    assert P.review_records([P.Comment("bot", inert)], trusted_login="bot") == ()
 
 
 def test_gate_marker_round_trip() -> None:
@@ -269,6 +332,50 @@ def test_rollup_keeps_latest_run_per_check() -> None:
         "label": P.CheckState.PENDING,
         "ext": P.CheckState.FAILURE,
     }
+
+
+def _run(state: str, started: str | None, conclusion: str = "") -> dict[str, Any]:
+    return {"__typename": "CheckRun", "name": "Python", "workflowName": "CI",
+            "status": state, "conclusion": conclusion, "startedAt": started}  # fmt: skip
+
+
+@pytest.mark.parametrize("unset", [None, "", "0001-01-01T00:00:00Z"])
+def test_rollup_queued_rerun_without_start_time_blocks(unset: str | None) -> None:
+    # gh prints a queued run's unset startedAt as Go's zero time: it must not lose
+    # against an older finished run.
+    rollup = [
+        _run("COMPLETED", "2026-10-10T01:00:00Z", "SUCCESS"),
+        _run("QUEUED", unset),
+    ]
+    for items in (rollup, rollup[::-1]):
+        [check] = P.normalize_rollup(items)
+        assert check.state is P.CheckState.PENDING
+
+
+def test_rollup_unordered_runs_take_the_most_pessimistic_state() -> None:
+    [check] = P.normalize_rollup(
+        [
+            _run("COMPLETED", "2026-10-10T01:00:00Z", "SUCCESS"),
+            _run("COMPLETED", None, "FAILURE"),
+        ]
+    )
+    assert check.state is P.CheckState.FAILURE
+    # Same start time: order is unknown as well.
+    [tie] = P.normalize_rollup(
+        [
+            _run("COMPLETED", "2026-10-10T01:00:00Z", "FAILURE"),
+            _run("COMPLETED", "2026-10-10T01:00:00Z", "SUCCESS"),
+        ]
+    )
+    assert tie.state is P.CheckState.FAILURE
+    # Timestamps are compared as times, not strings.
+    [newer] = P.normalize_rollup(
+        [
+            _run("COMPLETED", "2026-10-10T02:00:00+00:00", "FAILURE"),
+            _run("COMPLETED", "2026-10-10T10:30:00+09:00", "SUCCESS"),
+        ]
+    )
+    assert newer.state is P.CheckState.FAILURE
 
 
 def test_rollup_rejects_unknown_shapes() -> None:
