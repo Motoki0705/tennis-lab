@@ -206,6 +206,21 @@ def test_parse_plain_and_fenced_json() -> None:
     assert plain.findings[0].line == 3
 
 
+@pytest.mark.parametrize("severity", ["blocker", "major"])
+def test_approve_with_merge_blocking_finding_is_rejected(severity: str) -> None:
+    finding = {
+        "severity": severity,
+        "path": "a.py",
+        "line": 1,
+        "rule": "正しさ",
+        "detail": "d",
+    }
+    with pytest.raises(P.ReviewParseError, match="approve"):
+        P.parse_review(json.dumps(_review(findings=[finding]), ensure_ascii=False))
+    # comment may carry them: the gate blocks comment anyway.
+    assert P.parse_review(json.dumps(_review(verdict="comment", findings=[finding])))
+
+
 @pytest.mark.parametrize(
     "text",
     [

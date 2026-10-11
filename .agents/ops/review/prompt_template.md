@@ -44,7 +44,7 @@ $author が作成した Pull Request #$pr_number をレビューし、判定を�
 }
 
 - request_changes なら blocker か major の指摘を1件以上含めること。
-- approve なら blocker を含めないこと。指摘が無ければ findings は空配列。
+- approve なら blocker・major を含めないこと（merge 判定は verdict だけを見るため）。指摘が無ければ findings は空配列。
 
 ## AGENTS.md（base: $base_ref）
 

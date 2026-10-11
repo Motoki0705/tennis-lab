@@ -49,15 +49,17 @@ PR を作る agent は branch 名に自分の prefix を付ける。
    残った子孫（claude / codex 本体やそのツール）もグループごと終了させる。worktree はレビュー後に必ず削除する。
 3. agent の最終メッセージは JSON 1 つ（`prompt_template.md` のスキーマ。` ```json ` フェンスは可）。
    `verdict` は `approve` / `request_changes` / `comment`。キーの過不足、未知の値、
-   `request_changes` なのに blocker/major の指摘が無い、`approve` なのに blocker がある、はすべてパース失敗で、
+   `request_changes` なのに blocker/major の指摘が無い、`approve` なのに blocker/major がある（gate は verdict だけを見るため）、はすべてパース失敗で、
    その PR には何も投稿せず poll は非ゼロ終了する（次回の poll で再レビューされる）。
 4. 結果を PR コメントとして投稿する。コメント**先頭行**の不可視マーカー
    `<!-- agent-cross-review:v2 sha=<head> base=<merge-base> diff=<diffのSHA-256> reviewer=<agent> verdict=<verdict> -->`
    が状態の正本。
    先頭行以外のマーカー（要約や指摘に引用されたもの）は読まない。加えて、agent の出力やファイル名を
    コメントに埋め込むときは `<!--` / `-->` を無害化する。
-5. レビューには数分以上かかるので、gate の前に PR と CI 状態を取り直す。head か base が
-   レビュー開始時から動いていれば、その poll では gate を判定しない（次の poll で判定する）。
+5. gate の直前に、新規レビュー・既存レビューのどちらの場合も PR と CI 状態を取り直す。head か base が
+   最初の取得から動いていれば対象（head・merge-base・diff）を計算し直し、レビューした対象と違えば
+   その poll では gate を判定しない（次の poll で新しい対象をレビューする）。base branch が進んだだけで
+   対象が同じなら、取り直した状態で gate を判定する。
 
 **二重レビューの防止**: poll を実行している gh アカウントが投稿したコメントに、現在のレビュー対象
 （head SHA・merge-base・diff の SHA-256 の組）と期待するレビュー agent のマーカーがあれば再レビューしない。

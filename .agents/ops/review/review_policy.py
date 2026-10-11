@@ -249,8 +249,10 @@ def parse_review(text: str) -> Review:
         raise ReviewParseError("findings must be a list")
     findings = tuple(_parse_finding(raw, i) for i, raw in enumerate(data["findings"]))
     severities = {finding.severity for finding in findings}
-    if verdict == "approve" and "blocker" in severities:
-        raise ReviewParseError("verdict approve contradicts a blocker finding")
+    if verdict == "approve" and severities & {"blocker", "major"}:
+        # The gate trusts the verdict alone, so an approve must not carry merge-blocking
+        # findings.
+        raise ReviewParseError("verdict approve contradicts a blocker/major finding")
     if verdict == "request_changes" and not severities & {"blocker", "major"}:
         raise ReviewParseError(
             "verdict request_changes needs at least one blocker/major finding"
