@@ -1,0 +1,35 @@
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]   File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 831, in forward
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     valid_grid = self._validate_patch_valid_mask(
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]   File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 816, in _validate_patch_valid_mask
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     if bool(torch.any(~patch_valid_mask.flatten(1).any(dim=1))):
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0] 
+W1011 15:57:33.561000 10536 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0] 
+W1011 15:57:36.477000 10536 .venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1806] [0/0_1] Not enough SMs to use max_autotune_gemm mode
+/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/lowering.py:2774: UserWarning: Torchinductor does not support code generation for complex operators. Performance may be worse than eager.
+  warnings.warn(
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 8. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+
+Sanity Checking DataLoader 0: 100%|██████████| 2/2 [00:44<00:00,  0.05it/s]
+                                                                           
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+Training: |          | 0/? [00:00<?, ?it/s]
+Training: |          | 0/? [00:00<?, ?it/s]
+Epoch 0:   0%|          | 0/1658 [00:00<?, ?it/s]/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/autograd/graph.py:1072: UserWarning: Memory Efficient attention defaults to a non-deterministic algorithm. To explicitly enable determinism call torch.use_deterministic_algorithms(True, warn_only=False). (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/transformers/cuda/attention_backward.cu:910.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+
+Epoch 0:   1%|          | 20/1658 [02:07<2:54:43,  0.16it/s]
+Epoch 0:   1%|          | 20/1658 [02:08<2:54:57,  0.16it/s, v_num=0, train/loss=64.70]
+Epoch 0:   2%|▏         | 40/1658 [02:24<1:37:15,  0.28it/s, v_num=0, train/loss=64.70]
+Epoch 0:   2%|▏         | 40/1658 [02:24<1:37:22,  0.28it/s, v_num=0, train/loss=75.40]
+Epoch 0:   4%|▎         | 60/1658 [02:40<1:11:18,  0.37it/s, v_num=0, train/loss=75.40]
+Epoch 0:   4%|▎         | 60/1658 [02:40<1:11:22,  0.37it/s, v_num=0, train/loss=46.10]
+Epoch 0:   5%|▍         | 80/1658 [03:04<1:00:36,  0.43it/s, v_num=0, train/loss=46.10]
+Epoch 0:   5%|▍         | 80/1658 [03:04<1:00:40,  0.43it/s, v_num=0, train/loss=48.90]
+Epoch 0:   6%|▌         | 100/1658 [03:20<52:09,  0.50it/s, v_num=0, train/loss=48.90] 
+Epoch 0:   6%|▌         | 100/1658 [03:21<52:11,  0.50it/s, v_num=0, train/loss=17.30]
+Epoch 0:   7%|▋         | 120/1658 [03:37<46:26,  0.55it/s, v_num=0, train/loss=17.30]
+Epoch 0:   7%|▋         | 120/1658 [03:37<46:28,  0.55it/s, v_num=0, train/loss=43.40]

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "status": "running",
+  "session": "i983-l4-ablation-04",
+  "job": "train-splus-s42",
+  "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "orchestrator_commit": "4b62c6d981f176d5391cdc7a2a1d3c19decceee6",
+  "execution_backend": "notebook_kernel",
+  "started_at": "2026-10-11T15:53:43.328900+00:00",
+  "command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_splus run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-splus-shared1024/s42 run.artifact_store.sync_interval_seconds=60",
+  "input_snapshot": "knowledge/runs/run-i983-court-l512-profile-s42/inputs.json",
+  "input_verification": "input-verification.json",
+  "input_request": "input-request.json",
+  "environment": "environment.json",
+  "condition_comparison": "condition-comparison.json",
+  "drive_output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-splus-shared1024/s42",
+  "running_receipt": "running-receipt.json",
+  "startup_status": "startup-status.json",
+  "checkpoint_selection": {
+    "monitor": "val/loss",
+    "mode": "min",
+    "after_epochs": 20,
+    "uses_test": false
+  },
+  "startup_log": "startup.log",
+  "startup_observation": {
+    "sanity_batches": 2,
+    "training_epoch": 0,
+    "training_batches": 120,
+    "displayed_train_loss": 43.4,
+    "scope": "Startup confirmation, not a final metric"
+  }
+}
