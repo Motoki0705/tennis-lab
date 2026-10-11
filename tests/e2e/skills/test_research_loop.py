@@ -441,7 +441,10 @@ def test_year_range_parse(
     assert (years.start, years.end) == expected
 
 
-@pytest.mark.parametrize("text", ["", "-", "20", "2021-2019", "2020--2021"])
+@pytest.mark.parametrize(
+    "text",
+    ["", "-", "20", "2021-2019", "2020--2021", "20202021", "2020-21", "2020 2021", "-2020-"],
+)
 def test_year_range_rejects_invalid(ls: ModuleType, text: str) -> None:
     with pytest.raises(ValueError):
         ls.YearRange.parse(text)
@@ -513,3 +516,19 @@ def test_semantic_scholar_429_explains_api_key(
     with pytest.raises(ls.LitSearchError) as info:
         ls.search("ball", ["s2"], 1, None, fake)
     assert "SEMANTIC_SCHOLAR_API_KEY" not in str(info.value)
+
+
+def test_arxiv_empty_feed_vs_non_atom_response(ls: ModuleType) -> None:
+    """A legitimate empty Atom feed is 0 results; a 200 non-Atom document is an error."""
+    empty = (
+        b'<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">'
+        b"<title>query</title></feed>"
+    )
+    assert ls.search("x", ["arxiv"], 3, None, FakeHTTP({ls.ARXIV_API: [empty]})) == []
+    for body in [
+        b"<html><body>Service unavailable</body></html>",
+        b'<?xml version="1.0"?><error><message>maintenance</message></error>',
+        b'<feed><entry><id>http://arxiv.org/abs/2008.04524v2</id></entry></feed>',
+    ]:
+        with pytest.raises(ls.LitSearchError, match="not an Atom <feed>"):
+            ls.search("x", ["arxiv"], 3, None, FakeHTTP({ls.ARXIV_API: [body]}))

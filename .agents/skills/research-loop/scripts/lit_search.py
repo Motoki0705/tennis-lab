@@ -57,7 +57,8 @@ MIN_PDF_BYTES = 10_240
 _ATOM = "{http://www.w3.org/2005/Atom}"
 _ARXIV_FIELD = re.compile(r"\b(?:ti|au|abs|co|jr|cat|rn|id|all):")
 _ARXIV_ID = re.compile(r"^(?:\d{4}\.\d{4,5}|[A-Za-z.-]+/\d{7})(?:v\d+)?$")
-_YEAR = re.compile(r"^(\d{4})?(-)?(\d{4})?$")
+# Either a single YYYY (group 1) or a range with a mandatory hyphen (groups 2, 3).
+_YEAR = re.compile(r"(\d{4})|(\d{4})?-(\d{4})?")
 
 
 class LitSearchError(RuntimeError):
@@ -99,12 +100,14 @@ class YearRange:
     @classmethod
     def parse(cls, text: str) -> YearRange:
         match = _YEAR.fullmatch(text.strip())
-        if not match or not (match.group(1) or match.group(3)):
+        if not match or not any(match.groups()):
             raise ValueError(f"year must be YYYY, YYYY-, -YYYY or YYYY-YYYY: {text!r}")
-        start = int(match.group(1)) if match.group(1) else None
-        end = int(match.group(3)) if match.group(3) else None
-        if not match.group(2):
-            end = start
+        single, first, last = match.groups()
+        if single is not None:
+            start = end = int(single)
+        else:
+            start = int(first) if first else None
+            end = int(last) if last else None
         if start is not None and end is not None and start > end:
             raise ValueError(f"year range is reversed: {text!r}")
         return cls(start, end)
@@ -214,6 +217,12 @@ def search_arxiv(
         raise LitSearchError(
             f"arxiv: response is not Atom XML: {body[:200]!r}"
         ) from exc
+    # An HTTP 200 HTML/XML error page parses fine but has no entries; without this
+    # check it would silently read as "0 results". A real empty result is a <feed>.
+    if root.tag != f"{_ATOM}feed":
+        raise LitSearchError(
+            f"arxiv: response root is <{root.tag}>, not an Atom <feed>: {body[:200]!r}"
+        )
     papers = []
     for entry in root.findall(f"{_ATOM}entry"):
         raw_id = _required(entry.findtext(f"{_ATOM}id"), "arxiv", "id")
