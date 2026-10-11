@@ -22,13 +22,16 @@ main() {
   ops_dir="$(cd "$(dirname "$0")" && pwd)"
   unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
+  # Enumerate into a file first so a find/sort failure aborts here (pipefail) instead of
+  # being lost inside a process substitution and installing a partial set.
+  UNIT_LIST="$(mktemp)"
+  trap 'rm -f "$UNIT_LIST"' EXIT
+  find "$ops_dir" -path '*/systemd/*' \( -name '*.service' -o -name '*.timer' \) -print0 | sort -z >"$UNIT_LIST"
   local -a units=()
-  local f
-  while IFS= read -r -d '' f; do units+=("$f"); done < <(
-    find "$ops_dir" -path '*/systemd/*' \( -name '*.service' -o -name '*.timer' \) -print0 | sort -z
-  )
+  mapfile -d '' -t units <"$UNIT_LIST"
   ((${#units[@]})) || { echo "install_units: no units found under $ops_dir" >&2; exit 1; }
 
+  local f
   ((dry_run)) || mkdir -p "$unit_dir"
   for f in "${units[@]}"; do
     echo "link $(basename "$f") -> $f"
@@ -39,7 +42,9 @@ main() {
   systemctl --user daemon-reload
   if ((enable)); then
     for f in "${units[@]}"; do
-      [[ "$f" == *.timer ]] && systemctl --user enable --now "$(basename "$f")"
+      if [[ "$f" == *.timer ]]; then
+        systemctl --user enable --now "$(basename "$f")"
+      fi
     done
   fi
 }

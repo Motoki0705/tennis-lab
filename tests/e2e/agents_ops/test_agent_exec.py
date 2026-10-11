@@ -188,6 +188,57 @@ def test_stale_output_is_not_reported_as_success(tmp_path: Path) -> None:
     assert "empty final message" in result.stderr
 
 
+def _run_installer(
+    tmp_path: Path, unit_names: list[str], *args: str, systemctl_status: int = 0
+) -> tuple[subprocess.CompletedProcess[str], Path]:
+    ops = tmp_path / "ops"
+    (ops / "demo/systemd").mkdir(parents=True)
+    for name in unit_names:
+        (ops / "demo/systemd" / name).write_text("[Unit]\n", encoding="utf-8")
+    installer = ops / "install_units.sh"
+    installer.write_text(
+        (ROOT / ".agents/ops/install_units.sh").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "systemctl_calls.txt"
+    _install_fake(
+        bin_dir,
+        "systemctl",
+        f'#!/usr/bin/env bash\necho "$*" >> {calls}\n'
+        f'[[ "$*" == *enable* ]] && exit {systemctl_status}\nexit 0\n',
+    )
+    result = subprocess.run(
+        ["bash", str(installer), *args],
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+             "XDG_CONFIG_HOME": str(tmp_path / "config")},
+        text=True, capture_output=True, check=False,
+    )  # fmt: skip
+    return result, calls
+
+
+@pytest.mark.parametrize(
+    "unit_names", [["demo.service"], ["demo.service", "demo.timer", "zz.service"]]
+)
+def test_install_units_enable_succeeds_and_enables_only_timers(
+    tmp_path: Path, unit_names: list[str]
+) -> None:
+    result, calls = _run_installer(tmp_path, unit_names, "--enable")
+
+    assert result.returncode == 0, result.stderr
+    enabled = [c for c in calls.read_text(encoding="utf-8").splitlines() if "enable" in c]
+    assert enabled == (["--user enable --now demo.timer"] if "demo.timer" in unit_names else [])
+
+
+def test_install_units_propagates_enable_failure(tmp_path: Path) -> None:
+    result, _ = _run_installer(
+        tmp_path, ["demo.service", "demo.timer"], "--enable", systemctl_status=5
+    )
+
+    assert result.returncode == 5
+
+
 def test_install_units_creates_missing_unit_dir(tmp_path: Path) -> None:
     ops = tmp_path / "ops"
     (ops / "demo/systemd").mkdir(parents=True)
