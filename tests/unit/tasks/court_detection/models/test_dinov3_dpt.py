@@ -416,8 +416,9 @@ def test_prepared_dinov3_features_flow_through_transformer_dpt_and_pose(
 
 
 @pytest.mark.parametrize("native_dim", [4, 6, 8])
+@pytest.mark.parametrize("mixed_precision", [False, True])
 def test_backbone_width_does_not_change_downstream_capacity(
-    monkeypatch: pytest.MonkeyPatch, native_dim: int
+    monkeypatch: pytest.MonkeyPatch, native_dim: int, mixed_precision: bool
 ) -> None:
     fake = FakeDINOv3()
     fake.embed_dim = native_dim
@@ -430,13 +431,23 @@ def test_backbone_width_does_not_change_downstream_capacity(
     call = adapter.prepare_images(torch.zeros(2, 3, 17, 19))
 
     assert call.model_args[1].shape[1] == native_dim
-    projected = model._feature_forward_values(call.model_args[0], call.model_args[1:5])
+    with torch.autocast("cpu", dtype=torch.bfloat16, enabled=mixed_precision):
+        projected = model._feature_forward_values(call.model_args[0], call.model_args[1:5])
+        output = model(*call.model_args)
     assert all(feature is not None and feature.shape[1] == 8 for feature in projected)
+    projected_dtype = (
+        torch.bfloat16 if mixed_precision and native_dim != 8 else torch.float32
+    )
+    assert all(feature is not None and feature.dtype == projected_dtype for feature in projected)
     assert all(not parameter.requires_grad for parameter in encoder.parameters())
     assert fake.grad_enabled is False
 
-    output = model(*call.model_args)
+    assert torch.isfinite(output.dense_logits["kp"]).all()
+    assert output.pose is not None and torch.isfinite(output.pose.values).all()
     (output.dense_logits["kp"].square().mean() + output.pose.values.square().mean()).backward()
+    query_grad = model.transformer_encoder.pose_query.grad
+    assert query_grad is not None
+    assert torch.isfinite(query_grad).all() and torch.count_nonzero(query_grad)
     projection_parameters = list(model.feature_projections.parameters())
     if native_dim == 8:
         assert not projection_parameters
