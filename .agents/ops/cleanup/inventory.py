@@ -6,8 +6,10 @@ Every probe either returns a definite answer or raises :class:`CleanupError`
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import stat
 import subprocess
 import time
 import tomllib
@@ -443,6 +445,47 @@ def worktree_state(path: str, cfg: Config) -> WorktreeState:
     )
 
 
+def discard_fingerprint(worktree: Path, state: WorktreeState) -> dict[str, str]:
+    """Content digest of everything ``--discard-changes`` would destroy.
+
+    Covers modified tracked paths and non-disposable untracked/ignored entries
+    (directories recursively, symlinks by target). Each regular file is keyed by
+    size, mtime_ns, ctime_ns and the SHA-256 of its content, so a rewrite that
+    keeps the path list (and even the mtime) unchanged is still detected.
+    """
+    out: dict[str, str] = {}
+
+    def record(path: Path) -> None:
+        key = os.path.relpath(path, worktree)
+        try:
+            st = os.lstat(path)
+            if stat.S_ISLNK(st.st_mode):
+                out[key] = f"link:{os.readlink(path)}"
+            elif stat.S_ISDIR(st.st_mode):
+                out[key] = "dir"
+                for child in sorted(os.listdir(path)):
+                    record(path / child)
+            elif stat.S_ISREG(st.st_mode):
+                digest = hashlib.sha256()
+                with open(path, "rb") as handle:
+                    for block in iter(lambda: handle.read(1 << 20), b""):
+                        digest.update(block)
+                out[key] = (
+                    f"file:{st.st_size}:{st.st_mtime_ns}:{st.st_ctime_ns}:"
+                    f"{digest.hexdigest()}"
+                )
+            else:
+                out[key] = f"other:{st.st_mode}:{st.st_mtime_ns}:{st.st_ctime_ns}"
+        except FileNotFoundError:
+            out[key] = "missing"
+        except OSError as exc:
+            raise CleanupError(f"cannot fingerprint {path}: {exc}") from exc
+
+    for rel in (*state.dirty_tracked, *state.untracked, *state.ignored):
+        record(worktree / rel.rstrip("/"))
+    return out
+
+
 # ------------------------------------------------------------------------ gh PRs
 
 
@@ -721,18 +764,66 @@ def shell_words(text: str) -> list[str]:
     return words
 
 
+_EXPANSION = re.compile(r"[$`]|^~")
+
+
+def job_paths(words: Sequence[str]) -> tuple[str, ...]:
+    """Every word of a job script (and each ``KEY=``/``--opt=`` value) as absolute paths.
+
+    Relative words are resolved against every directory the script ``cd``s or
+    ``pushd``es into (a subshell or a conditional ``cd`` cannot be told apart
+    statically, so all of them count). Words with expansions are skipped.
+    Raises ``ValueError`` when a relative word or ``cd`` target appears before
+    any absolute ``cd`` (the working directory is unknown) or when a ``cd``
+    target cannot be resolved without running the script.
+    """
+    cwds: list[str] = []
+    out: list[str] = []
+
+    def resolve(word: str) -> list[str]:
+        if word.startswith("/"):
+            return [os.path.normpath(word)]
+        if not cwds:
+            raise ValueError(
+                f"relative word {word!r} appears before the job's first absolute cd"
+            )
+        return [os.path.normpath(os.path.join(c, word)) for c in cwds]
+
+    i = 0
+    while i < len(words):
+        word = words[i]
+        if word in ("cd", "pushd") and i + 1 < len(words):
+            target = words[i + 1]
+            if not target or target.startswith("-") or _EXPANSION.search(target):
+                raise ValueError(f"cannot resolve `{word} {target}` statically")
+            for d in resolve(target):
+                if d not in cwds:
+                    cwds.append(d)
+                out.append(d)
+            i += 2
+            continue
+        _, sep, value = word.partition("=")
+        for cand in (word, value) if sep else (word,):
+            if cand and not _EXPANSION.search(cand):
+                out.extend(resolve(cand))
+        i += 1
+    return tuple(dict.fromkeys(out))
+
+
 @dataclass(frozen=True)
 class QueueJob:
     label: str
     text: str
     words: tuple[str, ...]  # the job script's shell words, quoting removed
+    paths: tuple[str, ...]  # words resolved to absolute paths (see job_paths)
 
 
 def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
     """Pending (``jobs/``) and running (``running/``) training-queue job files.
 
-    ``training_queue.sh add`` writes the job's CWD and paths with ``printf %q``
-    (e.g. ``cd /a\\ b``), so jobs are matched on decoded shell words, not raw text.
+    ``training_queue.sh add`` writes ``cd <job cwd>`` and paths with ``printf %q``
+    (e.g. ``cd /a\\ b``), so jobs are matched on decoded shell words, with
+    relative words resolved against the job's ``cd`` targets, not on raw text.
     """
     jobs: list[QueueJob] = []
     for state in ("jobs", "running"):
@@ -748,23 +839,17 @@ def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
                 continue  # job moved to done/ while scanning
             try:
                 words = tuple(shell_words(text))
+                paths = job_paths(words)
             except ValueError as exc:
                 raise CleanupError(
                     f"cannot parse training-queue job {path}: {exc}"
                 ) from exc
             match = re.search(r"^# name: (.*)$", text, flags=re.MULTILINE)
             name = match.group(1).strip() if match else path.name
-            jobs.append(QueueJob(label=f"{state}/{name}", text=text, words=words))
+            jobs.append(
+                QueueJob(label=f"{state}/{name}", text=text, words=words, paths=paths)
+            )
     return jobs
-
-
-def _path_candidates(word: str) -> list[str]:
-    """Absolute paths in a shell word: the word itself or the value of KEY=/--opt=."""
-    found = [word] if word.startswith("/") else []
-    _, sep, value = word.partition("=")
-    if sep and value.startswith("/"):
-        found.append(value)
-    return found
 
 
 def queue_refs_for(jobs: Sequence[QueueJob], worktree: str) -> list[str]:
@@ -777,11 +862,12 @@ def queue_refs_for(jobs: Sequence[QueueJob], worktree: str) -> list[str]:
             pattern.search(w) for w in job.words
         )
         if not hit:
-            # Paths spelled through symlinks (e.g. a logical $PWD) still count.
+            # Relative words (resolved against the job's cd) and paths spelled
+            # through symlinks (e.g. a logical $PWD) count too.
             hit = any(
-                path_is_within(os.path.realpath(p), real_root)
-                for w in job.words
-                for p in _path_candidates(w)
+                path_is_within(p, root)
+                or path_is_within(os.path.realpath(p), real_root)
+                for p in job.paths
             )
         if hit:
             refs.append(job.label)
