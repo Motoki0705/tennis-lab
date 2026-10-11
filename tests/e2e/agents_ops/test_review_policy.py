@@ -28,6 +28,7 @@ def _load_policy() -> ModuleType:
 
 P = _load_policy()
 SHA = "a" * 40
+TARGET = P.ReviewTarget(head=SHA, merge_base="b" * 40, diff_sha256="c" * 64)
 
 
 # --------------------------------------------------------------------------- authorship
@@ -82,6 +83,10 @@ def test_reviewer_is_the_other_agent() -> None:
         ("a/b/c/pyproject.toml", "**/pyproject.toml"),
         ("pyproject.toml", "**/pyproject.toml"),
         (".github/workflows/ci.yml", ".github/"),
+        ("src/utils/new\nline.py", "src/utils"),
+        ("src/utils/a\n/b.py", "src/utils"),
+        ("x/\n/pyproject.toml", "**/pyproject.toml"),
+        ("src/tasks/a\nb/model_io/x.py", "src/tasks/*/model_io"),
     ],
 )
 def test_glob_matches(path: str, pattern: str) -> None:
@@ -263,30 +268,46 @@ def test_parse_failures_raise(text: str) -> None:
 
 
 def test_review_records_only_trust_the_bot_login() -> None:
-    marker = P.review_marker(SHA, "claude", "approve")
+    marker = P.review_marker(TARGET, "claude", "approve")
     comments = [
         P.Comment(author="someone-else", body=marker),
         P.Comment(
-            author="bot", body=f"{P.review_marker(SHA, 'codex', 'comment')}\r\ntext"
+            author="bot", body=f"{P.review_marker(TARGET, 'codex', 'comment')}\r\ntext"
         ),
     ]
     records = P.review_records(comments, trusted_login="bot")
-    assert records == (P.ReviewRecord(sha=SHA, reviewer="codex", verdict="comment"),)
-    assert P.latest_review_for(records, sha=SHA, reviewer="claude") is None
-    assert P.latest_review_for(records, sha="b" * 40, reviewer="codex") is None
+    assert records == (
+        P.ReviewRecord(target=TARGET, reviewer="codex", verdict="comment"),
+    )
+    assert P.latest_review_for(records, target=TARGET, reviewer="claude") is None
+    other_head = P.ReviewTarget("d" * 40, TARGET.merge_base, TARGET.diff_sha256)
+    assert P.latest_review_for(records, target=other_head, reviewer="codex") is None
+
+
+def test_review_of_the_same_head_against_another_base_does_not_count() -> None:
+    # Retargeting a stacked PR keeps the head but changes the merge-base and the diff.
+    records = P.review_records(
+        [P.Comment("bot", P.review_marker(TARGET, "codex", "approve"))],
+        trusted_login="bot",
+    )
+    retargeted = P.ReviewTarget(SHA, "e" * 40, "f" * 64)
+    same_base_other_diff = P.ReviewTarget(SHA, TARGET.merge_base, "f" * 64)
+    assert P.latest_review_for(records, target=TARGET, reviewer="codex") is not None
+    for target in (retargeted, same_base_other_diff):
+        assert P.latest_review_for(records, target=target, reviewer="codex") is None
 
 
 def test_marker_quoted_in_the_body_does_not_override_the_header() -> None:
-    quoted = P.review_marker(SHA, "codex", "approve")
+    quoted = P.review_marker(TARGET, "codex", "approve")
     body = (
-        f"{P.review_marker(SHA, 'codex', 'request_changes')}\n"
+        f"{P.review_marker(TARGET, 'codex', 'request_changes')}\n"
         f"## review\n\nsummary quoting {quoted}\n- detail: {quoted}\n"
     )
     records = P.review_records([P.Comment("bot", body)], trusted_login="bot")
     assert records == (
-        P.ReviewRecord(sha=SHA, reviewer="codex", verdict="request_changes"),
+        P.ReviewRecord(target=TARGET, reviewer="codex", verdict="request_changes"),
     )
-    gate_quote = P.gate_marker(SHA, "merge", [])
+    gate_quote = P.gate_marker(TARGET, "merge", [])
     assert (
         P.gate_records([P.Comment("bot", f"x\n{gate_quote}")], trusted_login="bot")
         == ()
@@ -298,19 +319,25 @@ def test_marker_quoted_in_the_body_does_not_override_the_header() -> None:
 
 
 def test_neutralized_text_cannot_form_a_marker() -> None:
-    quoted = P.review_marker(SHA, "codex", "approve")
+    quoted = P.review_marker(TARGET, "codex", "approve")
     inert = P.neutralize_markers(quoted)
     assert "<!--" not in inert and "-->" not in inert
     assert P.review_records([P.Comment("bot", inert)], trusted_login="bot") == ()
 
 
 def test_gate_marker_round_trip() -> None:
-    body = P.gate_marker(SHA, "blocked", ["conflict", "ci_failed"])
+    body = P.gate_marker(TARGET, "blocked", ["conflict", "ci_failed"])
     assert P.gate_records([P.Comment("bot", body)], trusted_login="bot") == (
-        P.GateRecord(sha=SHA, decision="blocked", reasons=("conflict", "ci_failed")),
+        P.GateRecord(
+            target=TARGET, decision="blocked", reasons=("conflict", "ci_failed")
+        ),
     )
     with pytest.raises(ValueError):
-        P.review_marker("short", "claude", "approve")
+        P.review_marker(
+            P.ReviewTarget("short", "b" * 40, "c" * 64), "claude", "approve"
+        )
+    with pytest.raises(ValueError):
+        P.review_marker(P.ReviewTarget(SHA, "b" * 40, "c" * 40), "claude", "approve")
 
 
 # --------------------------------------------------------------------------- CI rollup
