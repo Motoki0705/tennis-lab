@@ -47,7 +47,8 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 | パス | 内容 |
 |---|---|
-| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | `claude -p` / `codex exec` を read-only または write モードで headless 起動する共通wrapper。失敗や空の出力は非ゼロで終了する |
+| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | `claude -p` / `codex exec` を read-only（Claudeは Read/Grep/Glob のみ、Codexは read-only sandbox）または write モードで headless 起動する共通wrapper。失敗や空の出力は非ゼロで終了する |
+| [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する |
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
 | [ops/weekly-report/](ops/weekly-report/README.md) | 週次の運用レポートissue（逆提案）。#1057で実装中 |
 | [ops/review/](ops/review/README.md) | クロスレビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧。#1058で実装中 |
