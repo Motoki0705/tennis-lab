@@ -1,4 +1,4 @@
-<!-- knowledge-review: f7666cab4fe7ccff6b158df22f1ac7eb19efff63ac2fa2a7963138dbf4660558 on 2026-10-11 -->
+<!-- knowledge-review: 3a6508a2588d792e79c8814153588afd0db7e181f9731bbafd06b20e47754c0e on 2026-10-11 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-11（Court #983のL学習・最良checkpoint評価を追記。4条件比較は継続中）
@@ -387,7 +387,7 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Court Detection
 
-2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)で、凍結ViT-L＋共通1024次元後段の512長辺・batch8が短い学習処理として成立した。容量確認を根拠に[ViT-L本学習](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)を20epoch完了し、最小validation lossのepoch17を別途評価した。合成test886件・実画像val2211件の定量結果と固定36枚を保存した。初回VM消失後はDrive保存済みの2epoch分から再開しており、RNG/samplerのbitwise継続は保証しない。実画像valはcheckpoint選択にも使うため独立testとして扱わない。4サイズの精度比較は未完了で、既存の品質・採用判断は変更しない。次はS/S+/B/Lを同じデータ・split・後段容量で揃え、合成testと実画像valを分けて定量・同一画像の定性比較を行う。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
+2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)で、凍結ViT-L＋共通1024次元後段の512長辺・batch8が短い学習処理として成立した。容量確認を根拠に[ViT-L本学習](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)を20epoch完了し、最小validation lossのepoch17を別途評価した。合成test886件・実画像val2211件の定量結果と固定36枚を保存した。初回VM消失後はDrive保存済みの2epoch分から再開しており、RNG/samplerのbitwise継続は保証しない。実画像valはcheckpoint選択にも使うため独立testとして扱わない。4サイズの精度比較は未完了で、既存の品質・採用判断は変更しない。[S本学習](nodes/court_detection/000038-run-i983-court-dinov3-s-s42.md)は初期validationで射影出力のdtype検査に停止したため、正当なautocast入力を許可するguard修正を検証し、同条件・同seedから再試行中である。修正は演算やLのdtype一致経路を変えない。入力hashと解決済み条件の一致も確認した。次はS/S+/B/Lを同じデータ・split・後段容量で揃え、合成testと実画像valを分けて定量・同一画像の定性比較を行う。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
 
 2026-10-08の[pose checkpointの定性保存確認](nodes/court_detection/000035-run-i1031-court-ckpt-qualitative-20261008b.md)では、合成・実画像2 sampleから4 dense headのPNG計8枚とTensorBoard出力を実GPUで確認した。固定batch選択の設定契約不一致も修正した。保存済みschemaと重みを維持した機能確認であり、既存の品質・採用判断は変更しない。合成斜視の点集中・線種分断の観察を全体精度やpose推定品質へ一般化しない。
 

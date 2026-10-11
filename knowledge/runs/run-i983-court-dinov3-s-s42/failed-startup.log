@@ -1,0 +1,111 @@
+Seed set to 42
+[2026-10-11 04:16:47,957][dinov3][INFO] - using base=100 for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using min_period=None for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using max_period=None for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using shift_coords=None for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-10-11 04:16:47,957][dinov3][INFO] - using mlp layer as FFN
+[torch.compile] enabled targets=[model] backend=inductor mode=default fullgraph=False dynamic=False
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name     ┃ Type                         ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model    │ CourtHierarchicalModel       │  151 M │ train │     0 │
+│ 1 │ model_io │ MixedCourtPoseModelIOAdapter │      0 │ train │     0 │
+└───┴──────────┴──────────────────────────────┴────────┴───────┴───────┘
+Trainable params: 130 M                                                         
+Non-trainable params: 21.6 M                                                    
+Total params: 151 M                                                             
+Total estimated model params size (MB): 607.254                                 
+Modules in train mode: 546                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]
+Sanity Checking DataLoader 0:   0%|          | 0/2 [00:00<?, ?it/s]W1011 04:18:06.842000 8969 .venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1806] [1/0] Not enough SMs to use max_autotune_gemm mode
+Error executing job with overrides: ['run.artifact_store.mode=rclone', 'run.artifact_store.remote=gdrive', 'run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42', 'run.artifact_store.sync_interval_seconds=60']
+Traceback (most recent call last):
+  File "/content/tennis-lab/src/utils/hydra.py", line 115, in validated
+    return function(config)
+           ^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/scripts/train.py", line 26, in main
+    runner.run(cfg)
+  File "/content/tennis-lab/src/tasks/court_detection/training/runner.py", line 55, in run
+    super().run(standard)
+  File "/content/tennis-lab/src/tasks/base/training/runner.py", line 107, in run
+    trainer.fit(
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 49, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1121, in _run_stage
+    self._run_sanity_check()
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1150, in _run_sanity_check
+    val_loop.run()
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/utilities.py", line 179, in _decorator
+    return loop_run(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 146, in run
+    self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 441, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 329, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py", line 412, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/training/lightning_module.py", line 801, in validation_step
+    self._shared_step(batch, "val")
+  File "/content/tennis-lab/src/tasks/court_detection/training/lightning_module.py", line 170, in _shared_step
+    self.model(*pose_call.model_call.model_args),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1781, in _wrapped_call_impl
+    return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 1261, in compile_wrapper
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 1070, in forward
+    output, transformed = self._decode_with_transformer(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 1133, in _decode_with_transformer
+    transformed = self.transformer_encoder(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 822, in forward
+    batch, _, height, width = self._validate_input(features)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 773, in _validate_input
+    raise TypeError(
+TypeError: Transformer features and parameters must share a dtype: torch.bfloat16 != torch.float32.
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+
+                                                                   
