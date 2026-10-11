@@ -1,40 +1,46 @@
 ---
 name: codex-scheduled-followup
-description: Schedule recurring follow-ups in an existing Codex thread at the user's requested cadence, defaulting to one hour only when unspecified. Monitor a long process and continue already-authorized work afterward. Prefer the native Codex automation tool; otherwise use the verified local heartbeat-file workflow and confirm app registration. Use for Codex scheduling requests, not OS cron, Sites schedules, or merely running a long command.
+description: Schedule recurring follow-ups into an open Codex CLI session through codex queue, so the existing runtime continues the work. Honor the requested cadence and verify receipt as well as registration. Use for Codex CLI heartbeats and follow-ups, not generic OS scheduling, desktop automations, or merely running a long command.
 ---
 
 # Codex Scheduled Follow-up
 
-Create a recurring return to the intended thread and verify that the scheduler accepted it. A scheduled prompt describes the work; it does not grant permission for additional work.
+Deliver periodic work to an already-open Codex CLI session. A user systemd timer is the clock, `codex queue` is the delivery path, and the existing runtime consumes the message when its thread is idle. Do not substitute `codex exec resume`, a new agent, or a desktop automation. If this route is unavailable on the host, report the specific limitation instead of switching products. A scheduled prompt describes authorized work; it does not grant additional permissions.
+
+Commands, prerequisites, delivery phases and recovery: [CLI queue heartbeats](references/cli-heartbeat.md).
 
 ## Preserve the user's schedule
 
-Use the interval, calendar times, days and timezone specified by the user. Only when no cadence was given, default to once per hour and state that choice. The one-hour default must not override an explicit request or replace a requested schedule that the current tool cannot represent. If a specified schedule is ambiguous or unsupported, clarify the missing detail or report the limitation; do not silently round it to hours or discard its timezone.
+Use the interval specified by the user. Only when no cadence was given, default to 60 minutes and state that choice. The helper supports fixed minute intervals only: if the user asked for calendar times, days or a timezone, report that limitation; do not round it into an interval.
 
-## Choose the route
+## Target the owning session
 
-1. Search once for the native Codex `automation_update` tool unless its availability is already established. If available, use its schema to create/update the task and its view operation to confirm the result; the file helper and database inspection are unnecessary. Use an existing task when it already covers this thread and purpose. A Sites schedule or a shell cron job is a different product.
-2. If the native tool is unavailable and this is a local desktop follow-up, read [the local file procedure](references/local-heartbeat.md). This fallback was verified on Windows/WSL with app `26.930.7945.0`; it is not a documented public API and may not be accepted by other versions or account migration states.
-3. If neither route produces a confirmed scheduler entry, report the saved configuration and the registration problem separately. Do not claim that a file's existence guarantees execution. Do not write the native SQLite database or change security settings to force acceptance.
-
-Use an explicitly supplied and verified target thread ID, otherwise the request's current thread from `CODEX_THREAD_ID`. When delegated, preserve the owning chat's identity rather than scheduling the child agent's chat. Do not infer it from the newest rollout file. Keep the task's model/effort unspecified unless the user requested a change.
+Reuse an existing task for the same purpose and target; resume it if it is paused. Use an explicitly supplied, verified thread ID, otherwise the owning session's `CODEX_THREAD_ID`. A delegated operator must receive that ID, the original cwd, the matching rollout path and the runtime environment from its parent, not substitute its own. Never select the newest rollout. Keep model/effort unchanged unless requested. Never edit native state or relax security settings to force delivery.
 
 ## Make the continuation useful
 
-Keep durable instructions in the prompt or an explicitly referenced `memory.md`. Include the actual worktree, host/shell/interpreter, process/job identifiers, output locations, already-completed checks, remaining authorized actions, and a clear completion condition. Use absolute paths valid on the execution host and reuse stable identifiers across runs. Separate setup-only restrictions from instructions for future monitoring turns.
+Keep durable instructions in the prompt or an explicitly referenced `memory.md`. Include the actual worktree, host/shell/interpreter, process/job identifiers, output locations, already-completed checks, remaining authorized actions, and a clear completion condition. Use absolute paths valid on the execution host and reuse stable identifiers across runs. Separate setup-only restrictions from instructions for future monitoring turns. Do not embed a generic instruction to keep working forever or create new work when none remains.
 
 For monitoring, define three branches:
 
 - Still running or unchanged: inspect once and stay quiet unless the user explicitly requested periodic status reports. Do not start another polling loop or duplicate the job. Notify only on a meaningful change, completion, failure, or required user action.
 - Finished: validate the result, continue the already-authorized remaining work, and retain evidence of partial completion so retries can resume.
-- Failed: inspect the failure; repair within scope where possible and report a real blocker if one remains. Never promote failure to completion.
+- Failed: inspect the failure; repair within scope where possible and report a real blocker if one remains. Never promote failure to completion. For delivery failures, distinguish the active timer from `delivery_health` and use the evidence-preserving `recover` route for an authorized restoration; never silently reset or automatically resend an uncertain delivery.
 
-When the requested outcome is complete, delete the finished heartbeat using the native tool as required by the app. If only the file route is available, stop a file-managed task with `update --status PAUSED` and verify that the next run is cleared; this is a pause, not deletion. Do not archive the chat unless requested. A monitoring request alone does not authorize new training, deployment, messages to others, or destructive cleanup.
+Monitoring alone does not authorize new training, deployment, or messages to other people.
 
 ## Verify and report
 
-Confirm the task identity, intended thread, recurrence, status, and actual next run. The desktop app may apply jitter; report the scheduler's timestamp, not a calculated promise of execution exactly on the hour. Registration and a successful future run are separate facts.
+Distinguish these observable stages:
 
-For local tasks, the computer and desktop app must remain running. The CLI alone does not provide the Scheduled management interface. See [official scheduled-task documentation](https://learn.chatgpt.com/docs/automations?surface=app).
+- **Scheduled:** task identity, target, interval, active timer and its reported next run.
+- **Accepted:** the queue accepted the delivery. This does not prove that the receiving runtime ran it.
+- **Received and completed:** the target rollout contains the unique delivery marker as user input and the associated turn completed. Check the receiving side, not a sender's successful exit; then assess the response/artifacts to decide whether the work itself succeeded.
 
-The Python 3.11+ helper accepts minute/hour intervals or RFC 5545 recurrence. New tasks default to one hour; updates preserve an omitted cadence and change only explicit fields. Use the linked quickstart rather than writing ad hoc TOML edits or repeatedly inspecting the implementation. A no-op does not require restarting/re-importing the app; reuse its existing state and verify when needed. Run tests against temporary directories, never by creating real test schedules.
+For a live test aimed at your **own active turn**, the message waits until that turn ends. Save a handoff with the task directory and verification command, yield once, then finish verification from the queued continuation. Do not keep the sending turn busy polling for its own queued successor, or claim receipt before it happens. Run a live test only when the user explicitly requests one; keep it bounded and identifiable and clean up its timer. Otherwise use the helper's unit tests, which mock all delivery.
+
+Delivery requires the computer and the receiving CLI runtime to keep running; a user interruption can suspend automatic queue consumption, and the transient timer does not survive a reboot. Do not present this route as waking a powered-off computer or guaranteeing exactly-once task completion.
+
+## Stop
+
+When the requested outcome is complete, pause the task and verify that there is no next scheduled run. To change the interval or prompt later, pause and `resume` the same task rather than creating a new one. Pausing does not retract a message already queued; report that separately. Do not archive the chat unless requested.
