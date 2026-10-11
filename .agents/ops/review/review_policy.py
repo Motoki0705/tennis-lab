@@ -131,8 +131,9 @@ def _glob_regex(pattern: str) -> re.Pattern[str]:
         else:
             parts.append(re.escape(body[index]))
             index += 1
-    # A pattern matches the path itself or anything below it.
-    return re.compile("".join(parts) + "(?:/.*)?")
+    # A pattern matches the path itself or anything below it. DOTALL: file names may
+    # contain newlines, and `.*` must still cover them.
+    return re.compile("".join(parts) + "(?:/.*)?", re.DOTALL)
 
 
 def shared_path_hits(
@@ -264,12 +265,14 @@ def parse_review(text: str) -> Review:
 # --------------------------------------------------------------------------- comment markers
 
 _SHA = r"[0-9a-f]{40}"
+_DIGEST = r"[0-9a-f]{64}"
+_TARGET = rf"sha=({_SHA}) base=({_SHA}) diff=({_DIGEST})"
 REVIEW_MARKER_RE = re.compile(
-    rf"<!-- agent-cross-review:v1 sha=({_SHA}) reviewer=(claude|codex) "
+    rf"<!-- agent-cross-review:v2 {_TARGET} reviewer=(claude|codex) "
     r"verdict=(approve|request_changes|comment) -->"
 )
 GATE_MARKER_RE = re.compile(
-    rf"<!-- agent-merge-gate:v1 sha=({_SHA}) decision=(merge|needs_human|blocked) "
+    rf"<!-- agent-merge-gate:v2 {_TARGET} decision=(merge|needs_human|blocked) "
     r"reasons=([a-z_,]*) -->"
 )
 
@@ -281,33 +284,56 @@ class Comment:
 
 
 @dataclass(frozen=True)
+class ReviewTarget:
+    """What a review judged: the PR head, its merge-base with the base branch, and the
+    SHA-256 of the ``merge_base..head`` diff given to the reviewer.
+
+    A retargeted base (e.g. from an unmerged parent branch to main) keeps the head but
+    changes the merge-base and the diff, so the earlier review no longer applies.
+    """
+
+    head: str
+    merge_base: str
+    diff_sha256: str
+
+    def marker_fields(self) -> str:
+        return f"sha={self.head} base={self.merge_base} diff={self.diff_sha256}"
+
+
+@dataclass(frozen=True)
 class ReviewRecord:
-    sha: str
+    target: ReviewTarget
     reviewer: str
     verdict: str
 
 
 @dataclass(frozen=True)
 class GateRecord:
-    sha: str
+    target: ReviewTarget
     decision: str
     reasons: tuple[str, ...]
 
 
-def review_marker(sha: str, reviewer: str, verdict: str) -> str:
-    marker = f"<!-- agent-cross-review:v1 sha={sha} reviewer={reviewer} verdict={verdict} -->"
+def review_marker(target: ReviewTarget, reviewer: str, verdict: str) -> str:
+    marker = (
+        f"<!-- agent-cross-review:v2 {target.marker_fields()} "
+        f"reviewer={reviewer} verdict={verdict} -->"
+    )
     if REVIEW_MARKER_RE.fullmatch(marker) is None:
         raise ValueError(
-            f"invalid review marker fields: {sha!r} {reviewer!r} {verdict!r}"
+            f"invalid review marker fields: {target!r} {reviewer!r} {verdict!r}"
         )
     return marker
 
 
-def gate_marker(sha: str, decision: str, reasons: Sequence[str]) -> str:
-    marker = f"<!-- agent-merge-gate:v1 sha={sha} decision={decision} reasons={','.join(reasons)} -->"
+def gate_marker(target: ReviewTarget, decision: str, reasons: Sequence[str]) -> str:
+    marker = (
+        f"<!-- agent-merge-gate:v2 {target.marker_fields()} "
+        f"decision={decision} reasons={','.join(reasons)} -->"
+    )
     if GATE_MARKER_RE.fullmatch(marker) is None:
         raise ValueError(
-            f"invalid gate marker fields: {sha!r} {decision!r} {reasons!r}"
+            f"invalid gate marker fields: {target!r} {decision!r} {reasons!r}"
         )
     return marker
 
@@ -340,8 +366,14 @@ def review_records(
             continue
         match = REVIEW_MARKER_RE.fullmatch(_header_line(comment.body))
         if match is not None:
-            sha, reviewer, verdict = match.groups()
-            records.append(ReviewRecord(sha=sha, reviewer=reviewer, verdict=verdict))
+            head, base, diff, reviewer, verdict = match.groups()
+            records.append(
+                ReviewRecord(
+                    target=ReviewTarget(head, base, diff),
+                    reviewer=reviewer,
+                    verdict=verdict,
+                )
+            )
     return tuple(records)
 
 
@@ -355,10 +387,10 @@ def gate_records(
             continue
         match = GATE_MARKER_RE.fullmatch(_header_line(comment.body))
         if match is not None:
-            sha, decision, reasons = match.groups()
+            head, base, diff, decision, reasons = match.groups()
             records.append(
                 GateRecord(
-                    sha=sha,
+                    target=ReviewTarget(head, base, diff),
                     decision=decision,
                     reasons=tuple(r for r in reasons.split(",") if r),
                 )
@@ -367,9 +399,10 @@ def gate_records(
 
 
 def latest_review_for(
-    records: Sequence[ReviewRecord], *, sha: str, reviewer: str
+    records: Sequence[ReviewRecord], *, target: ReviewTarget, reviewer: str
 ) -> ReviewRecord | None:
-    matching = [r for r in records if r.sha == sha and r.reviewer == reviewer]
+    """The last review of exactly ``target`` (head, merge-base and diff) by ``reviewer``."""
+    matching = [r for r in records if r.target == target and r.reviewer == reviewer]
     return matching[-1] if matching else None
 
 

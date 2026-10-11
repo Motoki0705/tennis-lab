@@ -35,10 +35,12 @@ PR を作る agent は branch 名に自分の prefix を付ける。
 
 ## レビュー
 
-1. base ブランチと `refs/pull/<N>/head` を fetch し、PR の差分（`base...head`、rename は削除と追加に分解）、
+1. base ブランチと `refs/pull/<N>/head` を fetch し、PR の差分（base と head の merge-base から head まで、
+   rename は削除と追加に分解）、
    base 版の `AGENTS.md`、タイトル・本文、CI 状態をプロンプトに埋め込む。diff が 20 万文字を超える場合は
    先頭だけを埋め込み、全文を worktree 直下の `.cross-review-full.diff` に書き出して、切ったことを
-   プロンプトとレビューコメントに明記する。
+   プロンプトとレビューコメントに明記する。この名前は PR 側のファイルやシンボリックリンクと衝突し得るので、
+   既存のものは（リンク先が無いシンボリックリンクも含め）辿らずにエラーにする（`O_EXCL | O_NOFOLLOW`）。
 2. PR head を detached で checkout したレビュー用 worktree（`.claude/worktrees/review-pr<N>-<sha12>`）を作り、
    `../lib/agent_exec.sh --mode read-only` で逆の agent を起動する。read-only の agent はファイルを読むことしか
    できない（git・gh も実行できない）ので、判断材料はすべてこのスクリプトが集めてプロンプトか worktree に置く。
@@ -50,20 +52,26 @@ PR を作る agent は branch 名に自分の prefix を付ける。
    `request_changes` なのに blocker/major の指摘が無い、`approve` なのに blocker がある、はすべてパース失敗で、
    その PR には何も投稿せず poll は非ゼロ終了する（次回の poll で再レビューされる）。
 4. 結果を PR コメントとして投稿する。コメント**先頭行**の不可視マーカー
-   `<!-- agent-cross-review:v1 sha=<head> reviewer=<agent> verdict=<verdict> -->` が状態の正本。
+   `<!-- agent-cross-review:v2 sha=<head> base=<merge-base> diff=<diffのSHA-256> reviewer=<agent> verdict=<verdict> -->`
+   が状態の正本。
    先頭行以外のマーカー（要約や指摘に引用されたもの）は読まない。加えて、agent の出力やファイル名を
    コメントに埋め込むときは `<!--` / `-->` を無害化する。
 5. レビューには数分以上かかるので、gate の前に PR と CI 状態を取り直す。head か base が
    レビュー開始時から動いていれば、その poll では gate を判定しない（次の poll で判定する）。
 
-**二重レビューの防止**: poll を実行している gh アカウントが投稿したコメントに、現在の head SHA と
-期待するレビュー agent のマーカーがあれば再レビューしない。他アカウントが書いたマーカーは無視する。
-新しい commit が push されると head SHA が変わるので再レビューされる。
+**二重レビューの防止**: poll を実行している gh アカウントが投稿したコメントに、現在のレビュー対象
+（head SHA・merge-base・diff の SHA-256 の組）と期待するレビュー agent のマーカーがあれば再レビューしない。
+他アカウントが書いたマーカーは無視する。新しい commit が push されると head が変わり、base の付け替え
+（未 merge の親 branch から main へ等）では head が同じでも merge-base と diff が変わるので、どちらも再レビューされる。
+base branch が先へ進んだだけなら merge-base と diff は変わらないので既存レビューを使う。
+
+**ラベルの同期**: `agent-review:changes-requested` は毎 poll、現在の対象に対する判定（既存レビューを含む）に
+合わせて付け外しする。レビュー投稿後にラベル操作が失敗しても次の poll で直る。
 
 ## 共有基盤パス
 
 `shared_paths.txt` に 1 行 1 パターンで書く（`#` 以降はコメント）。パターンは repo 相対の POSIX glob で、
-`*` は `/` を跨がず、`**` は跨ぐ。パターンは**そのパス自身とその配下**に一致する（`src/utils` は
+`*` は `/` を跨がず、`**` は跨ぐ（ファイル名中の改行も他の文字と同様に一致する）。パターンは**そのパス自身とその配下**に一致する（`src/utils` は
 `src/utils/io.py` にも一致）。`!` で始まる行は除外で、書く順序に関係なく一致したパスを共有基盤から外す
 （除外はいずれかの通常パターンの配下でなければエラー）。変更ファイル（rename の旧パスを含む）が 1 つでも
 一致すると共有基盤に触れたとみなす。変更ファイルは `git diff --name-only -z` で取り、非 ASCII や引用符を含む
@@ -98,8 +106,8 @@ PR を作る agent は branch 名に自分の prefix を付ける。
 - `review_missing` / `review_request_changes` / `review_not_approved`（`comment`）: 最新 head への
   逆 agent の approve が無い。
 
-gate コメントにもマーカー `<!-- agent-merge-gate:v1 sha=... decision=... reasons=... -->` を付け、
-同じ head・判定・理由の組では再投稿しない。`blocked` は `ci_failed` か `conflict` を含むときだけコメントする
+gate コメントにもマーカー `<!-- agent-merge-gate:v2 sha=... base=... diff=... decision=... reasons=... -->` を付け、
+同じレビュー対象・判定・理由の組では再投稿しない。`blocked` は `ci_failed` か `conflict` を含むときだけコメントする
 （他の理由は次の poll で解消するか、レビューコメント自体が理由を伝えている）。
 
 ### 自動 merge フラグ
@@ -110,7 +118,7 @@ gate コメントにもマーカー `<!-- agent-merge-gate:v1 sha=... decision=.
 ## request_changes の後（v1）
 
 v1 では `agent-review:changes-requested` ラベルとレビューコメントを付けるところまで。作成 agent や人間が
-修正を push すると新しい head を再レビューし、`approve` / `comment` ならラベルを外す。
+修正を push すると新しい head を再レビューし、`approve` / `comment` ならラベルを外す（上記「ラベルの同期」）。
 
 将来の拡張点: ラベルの付いた PR を作成 agent に差し戻す（`agent_exec.sh --mode write` で PR branch の
 worktree を作り、レビューコメントを入力に修正 commit を push させる）。差し戻し回数の上限と、
@@ -129,7 +137,7 @@ worktree を作り、レビューコメントを入力に修正 commit を push 
 - 必要なラベル: `needs-human`、`agent-review:changes-requested`（判別用に `agent:claude`、`agent:codex` も）。
   書き込みを伴う実行は前 2 つが repo に無いと開始前にエラーになる。
   `gh label create agent-review:changes-requested --color FBCA04 --description "クロスレビューが修正を要求"` 等で作る。
-- ログ・成果物: `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/review/runs/<UTC時刻>-pr<N>-<sha12>/`
+- ログ・成果物: `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/review/runs/<UTC時刻>-pr<N>-<head12>-<merge-base12>/`
   に `prompt.md`、`agent_output.md`（生出力）、`review.json`、`review_comment.md`、agent_exec のログを残す。
 - 多重起動防止: state dir の `poll.lock` を flock で取り、取れなければ終了コード 75（unit は成功扱い）。
 - 終了コード: 0 = 全 PR 正常、1 = 1 つ以上の PR でエラー（他の PR は処理を続ける）、2 = 設定エラー、75 = 実行中。

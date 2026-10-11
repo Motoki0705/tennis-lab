@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import fcntl
+import hashlib
 import json
 import logging
 import os
@@ -38,6 +39,7 @@ from review_policy import (  # noqa: E402
     GateInput,
     GateResult,
     Review,
+    ReviewTarget,
     detect_author_agent,
     evaluate_gate,
     gate_marker,
@@ -298,24 +300,19 @@ class Git:
                     f"#{pr.number}: commit {sha} not available after fetch (PR moved during poll?)"
                 ) from exc
 
-    def changed_paths(self, pr: PullRequest) -> tuple[str, ...]:
+    def merge_base(self, pr: PullRequest) -> str:
+        return self("merge-base", pr.base_sha, pr.head_sha).strip()
+
+    def changed_paths(self, merge_base: str, head: str) -> tuple[str, ...]:
         # -z: raw NUL-separated names. Without it git quotes and escapes non-ASCII or
         # special paths, which would then never match the shared-path patterns.
-        out = self(
-            "diff",
-            "--name-only",
-            "--no-renames",
-            "-z",
-            f"{pr.base_sha}...{pr.head_sha}",
-        )
+        out = self("diff", "--name-only", "--no-renames", "-z", merge_base, head)
         if out and not out.endswith("\0"):
             raise CommandError(f"unexpected git diff -z output: {out[-200:]!r}")
         return tuple(out.split("\0")[:-1]) if out else ()
 
-    def diff(self, pr: PullRequest) -> str:
-        return self(
-            "diff", "--no-color", "--no-ext-diff", f"{pr.base_sha}...{pr.head_sha}"
-        )
+    def diff(self, merge_base: str, head: str) -> str:
+        return self("diff", "--no-color", "--no-ext-diff", merge_base, head)
 
     def show(self, sha: str, path: str) -> str:
         return self("show", f"{sha}:{path}")
@@ -449,6 +446,7 @@ def run_reviewer(
 
 def format_review_comment(
     pr: PullRequest,
+    target: ReviewTarget,
     review: Review,
     *,
     author: str,
@@ -458,11 +456,11 @@ def format_review_comment(
     diff_truncated: bool,
 ) -> str:
     lines = [
-        review_marker(pr.head_sha, reviewer, review.verdict),
+        review_marker(target, reviewer, review.verdict),
         f"## クロスレビュー（{reviewer} → {author} 作成PR）",
         "",
         f"- 判定: **{review.verdict}**",
-        f"- 対象 head: `{pr.head_sha}`",
+        f"- 対象 head: `{target.head}`（merge-base `{target.merge_base}`、base `{pr.base_ref}`）",
         f"- 作成 agent の判別根拠: {author_source}",
         f"- 所要時間: {elapsed:.0f} 秒",
     ]
@@ -509,13 +507,15 @@ REASON_TEXT = {
 }
 
 
-def format_gate_comment(pr: PullRequest, result: GateResult, *, action: str) -> str:
+def format_gate_comment(
+    target: ReviewTarget, result: GateResult, *, action: str
+) -> str:
     lines = [
-        gate_marker(pr.head_sha, result.decision.value, result.reasons),
+        gate_marker(target, result.decision.value, result.reasons),
         "## merge gate",
         "",
         f"- 判定: **{result.decision.value}**",
-        f"- 対象 head: `{pr.head_sha}`",
+        f"- 対象 head: `{target.head}`（merge-base `{target.merge_base}`）",
         f"- 動作: {action}",
     ]
     if result.reasons:
@@ -543,16 +543,21 @@ def review_head(
     author: str,
     author_source: str,
     reviewer: str,
+    target: ReviewTarget,
+    diff: str,
     changed: Sequence[str],
     checks: Sequence[Check],
     report: RunReport,
 ) -> str:
-    """Run the reviewer on ``pr``'s head, post the result and return the verdict."""
+    """Run the reviewer on ``target``, post the result and return the verdict."""
     number = pr.number
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    run_dir = settings.state_dir / "runs" / f"{stamp}-pr{number}-{pr.head_sha[:12]}"
+    run_dir = (
+        settings.state_dir
+        / "runs"
+        / f"{stamp}-pr{number}-{target.head[:12]}-{target.merge_base[:12]}"
+    )
     run_dir.mkdir(parents=True)
-    diff = git.diff(pr)
     prompt, truncated = build_prompt(
         settings,
         pr,
@@ -570,12 +575,7 @@ def review_head(
     )
     with git.review_worktree(pr) as worktree:
         if truncated:
-            full_diff = worktree / FULL_DIFF_NAME
-            if full_diff.exists():
-                raise CommandError(
-                    f"#{number}: PR head already contains {FULL_DIFF_NAME}; cannot write the full diff"
-                )
-            full_diff.write_text(diff, encoding="utf-8")
+            write_new_file(worktree / FULL_DIFF_NAME, diff)
         review = run_reviewer(
             settings,
             reviewer=reviewer,
@@ -586,6 +586,7 @@ def review_head(
     elapsed = time.monotonic() - started
     body = format_review_comment(
         pr,
+        target,
         review,
         author=author,
         author_source=author_source,
@@ -599,14 +600,40 @@ def review_head(
         print(f"----- [dry-run] review comment for #{number} -----\n{body}")
     else:
         gh.comment(number, body)
-        if (
-            review.verdict == "request_changes"
-            and CHANGES_REQUESTED_LABEL not in pr.labels
-        ):
-            gh.add_label(number, CHANGES_REQUESTED_LABEL)
-        if review.verdict != "request_changes" and CHANGES_REQUESTED_LABEL in pr.labels:
-            gh.remove_label(number, CHANGES_REQUESTED_LABEL)
     return review.verdict
+
+
+def write_new_file(path: Path, text: str) -> None:
+    """Create ``path`` exclusively, refusing any existing entry including symlinks.
+
+    The directory is a PR checkout, so the name may already exist as a file or as a
+    (dangling) symlink pointing outside the worktree; never write through it.
+    """
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+    except FileExistsError as exc:
+        raise CommandError(
+            f"{path} already exists in the PR checkout (file or symlink); refusing to write"
+        ) from exc
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
+def sync_review_label(
+    settings: Settings, gh: GitHub, pr: PullRequest, verdict: str
+) -> None:
+    """Make the changes-requested label match the current target's verdict.
+
+    Runs on every poll, not only right after a review, so a label update that failed
+    once is retried instead of being lost behind the review dedup.
+    """
+    if settings.dry_run:
+        return
+    has_label = CHANGES_REQUESTED_LABEL in pr.labels
+    if verdict == "request_changes" and not has_label:
+        gh.add_label(pr.number, CHANGES_REQUESTED_LABEL)
+    if verdict != "request_changes" and has_label:
+        gh.remove_label(pr.number, CHANGES_REQUESTED_LABEL)
 
 
 def process_pr(
@@ -633,19 +660,28 @@ def process_pr(
     reviewer = reviewer_for(author)
     comments = gh.comments(number)
     git.fetch_pr(pr)
-    changed = git.changed_paths(pr)
+    merge_base = git.merge_base(pr)
+    diff = git.diff(merge_base, pr.head_sha)
+    changed = git.changed_paths(merge_base, pr.head_sha)
+    target = ReviewTarget(
+        head=pr.head_sha,
+        merge_base=merge_base,
+        diff_sha256=hashlib.sha256(diff.encode("utf-8")).hexdigest(),
+    )
     checks = normalize_rollup(pr.rollup)
 
     existing = latest_review_for(
         review_records(comments, trusted_login=login),
-        sha=pr.head_sha,
+        target=target,
         reviewer=reviewer,
     )
     if existing is not None:
         verdict = existing.verdict
         report.note(
-            f"#{number}: head {pr.head_sha[:12]} already reviewed by {reviewer}: {verdict}"
+            f"#{number}: head {pr.head_sha[:12]} (merge-base {merge_base[:12]}) "
+            f"already reviewed by {reviewer}: {verdict}"
         )
+        sync_review_label(settings, gh, pr, verdict)
     else:
         verdict = review_head(
             settings,
@@ -655,10 +691,13 @@ def process_pr(
             author=author,
             author_source=author_source,
             reviewer=reviewer,
+            target=target,
+            diff=diff,
             changed=changed,
             checks=checks,
             report=report,
         )
+        sync_review_label(settings, gh, pr, verdict)
         # The review takes minutes: gate on the PR / CI state as it is now, not as it
         # was before the review started.
         fresh = gh.view(number)
@@ -687,7 +726,7 @@ def process_pr(
         f"#{number}: gate={result.decision.value} reasons={list(result.reasons)} "
         f"shared={[path for path, _ in result.shared_hits]}"
     )
-    apply_gate(settings, gh, login, pr, result, comments, report)
+    apply_gate(settings, gh, login, pr, target, result, comments, report)
 
 
 def apply_gate(
@@ -695,6 +734,7 @@ def apply_gate(
     gh: GitHub,
     login: str,
     pr: PullRequest,
+    target: ReviewTarget,
     result: GateResult,
     comments: Sequence[Comment],
     report: RunReport,
@@ -714,12 +754,12 @@ def apply_gate(
         action = "merge しない"
 
     already = any(
-        record.sha == pr.head_sha
+        record.target == target
         and record.decision == result.decision.value
         and record.reasons == result.reasons
         for record in gate_records(comments, trusted_login=login)
     )
-    body = format_gate_comment(pr, result, action=action)
+    body = format_gate_comment(target, result, action=action)
     if settings.dry_run:
         print(
             f"----- [dry-run] gate for #{pr.number} (would comment: {gate_should_comment(result) and not already}) -----\n{body}"
