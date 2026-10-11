@@ -58,7 +58,7 @@ def _run(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
 @pytest.mark.parametrize(
     ("mode", "claude_flag", "codex_flag"),
     [
-        ("read-only", "--disallowedTools", "read-only"),
+        ("read-only", "--tools", "read-only"),
         ("write", "bypassPermissions", "--dangerously-bypass-approvals-and-sandbox"),
     ],
 )
@@ -85,6 +85,12 @@ def test_prompt_round_trips_to_output(
     assert out.read_text(encoding="utf-8") == "hello agent\n"
     args = (tmp_path / "args.txt").read_text(encoding="utf-8").splitlines()
     assert (claude_flag if agent == "claude" else codex_flag) in args
+    if agent == "claude" and mode == "read-only":
+        assert "bypassPermissions" not in args
+        tools = args[args.index("--tools") + 1 : args.index("--permission-mode")]
+        assert tools == ["Read", "Grep", "Glob"]
+    model = args[args.index("--model") + 1]
+    assert model == ("claude-opus-5-5" if agent == "claude" else "gpt-6-astra")
     if agent == "claude":
         assert (tmp_path / "cwd.txt").read_text(encoding="utf-8").strip() == str(work)
     else:
@@ -134,3 +140,74 @@ def test_invalid_arguments_are_rejected(tmp_path: Path, bad_args: list[str]) -> 
     result = _run(tmp_path, *args)
 
     assert result.returncode == 2
+
+
+def test_relative_paths_resolve_against_caller_cwd(tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    (tmp_path / "prompt.md").write_text("relative\n", encoding="utf-8")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _install_fake(bin_dir, "claude", FAKE_CLAUDE)
+    env = {
+        **os.environ,
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "FAKE_ARGS": str(tmp_path / "args.txt"),
+        "FAKE_CWD": str(tmp_path / "cwd.txt"),
+    }
+
+    result = subprocess.run(
+        ["bash", str(AGENT_EXEC), "--agent", "claude", "--cwd", "work",
+         "--prompt-file", "prompt.md", "--out", "out/result.md", "--log-dir", "logs"],
+        cwd=tmp_path, env=env, text=True, capture_output=True, check=False,
+    )  # fmt: skip
+
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "out/result.md").read_text(encoding="utf-8") == "relative\n"
+    assert not (work / "out").exists()
+
+
+def test_stale_output_is_not_reported_as_success(tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    prompt = tmp_path / "prompt.md"
+    prompt.write_text("", encoding="utf-8")
+    out = tmp_path / "out.md"
+    out.write_text("stale result\n", encoding="utf-8")
+
+    result = _run(
+        tmp_path,
+        "--agent", "codex",
+        "--cwd", str(work),
+        "--prompt-file", str(prompt),
+        "--out", str(out),
+        "--log-dir", str(tmp_path / "logs"),
+    )  # fmt: skip
+
+    assert result.returncode != 0
+    assert "empty final message" in result.stderr
+
+
+def test_install_units_creates_missing_unit_dir(tmp_path: Path) -> None:
+    ops = tmp_path / "ops"
+    (ops / "demo/systemd").mkdir(parents=True)
+    (ops / "demo/systemd/demo.service").write_text("[Service]\n", encoding="utf-8")
+    installer = ops / "install_units.sh"
+    installer.write_text(
+        (ROOT / ".agents/ops/install_units.sh").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _install_fake(bin_dir, "systemctl", "#!/usr/bin/env bash\nexit 0\n")
+    config = tmp_path / "config"
+
+    result = subprocess.run(
+        ["bash", str(installer)],
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+             "XDG_CONFIG_HOME": str(config)},
+        text=True, capture_output=True, check=False,
+    )  # fmt: skip
+
+    assert result.returncode == 0, result.stderr
+    assert (config / "systemd/user/demo.service").is_symlink()
