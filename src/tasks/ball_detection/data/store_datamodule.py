@@ -24,7 +24,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, RandomSampler
 
 from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_data
-from src.tasks.ball_detection.data.components.augmentation import (
+from src.tasks.ball_detection.data.augmentation.spatial import (
     BallDetectionAugmentation,
 )
 from src.tasks.ball_detection.data.components.source_mix_sampler import (
@@ -66,7 +66,7 @@ class BallStoreDataModule(pl.LightningDataModule):
         self.pin_memory = bool(data_cfg["pin_memory"])
         self.store = BallFrameStore(paths.data(str(data_cfg["data_dir"])))
         self.sources: tuple[Source, ...] = tuple(
-            str(name) for name in cast(Sequence[object], data_cfg["sources"])
+            cast(Source, str(name)) for name in cast(Sequence[object], data_cfg["sources"])
         )
         missing = sorted(set(self.sources) - {clip.source for clip in self.store.clips})
         if missing:

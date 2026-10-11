@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from src.utils.data.file_ranges import FileRangeReader
-from src.utils.shared_file_verification import file_version
+from src.utils.data.verification import file_version
 
 
 def test_disjoint_repeated_ranges_keep_exact_order_and_survive_pickle(tmp_path: Path) -> None:

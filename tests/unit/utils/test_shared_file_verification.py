@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 
 from src.utils.checksum import dual_sha256
-from src.utils.shared_file_verification import SharedFileVerification
+from src.utils.data.verification import SharedFileVerification
 
 
 def _verify_worker(cache: SharedFileVerification, path: Path, gate: Any, counter: Any) -> None:
@@ -22,7 +22,7 @@ def _verify_worker(cache: SharedFileVerification, path: Path, gate: Any, counter
         return digest
 
     assert gate.wait(30)
-    with patch("src.utils.shared_file_verification.dual_sha256", count_hash):
+    with patch("src.utils.data.verification.dual_sha256", count_hash):
         for _ in range(3):
             cache.verify(path)
 
@@ -47,7 +47,7 @@ def test_workers_share_successful_hash_once(tmp_path: Path, method: str) -> None
             assert worker.exitcode == 0
         if method == "fork":
             assert counter.value == 1
-        with patch("src.utils.shared_file_verification.dual_sha256", side_effect=AssertionError("rehash")):
+        with patch("src.utils.data.verification.dual_sha256", side_effect=AssertionError("rehash")):
             cache.verify(path)
     finally:
         for worker in workers:
@@ -89,7 +89,7 @@ def test_change_between_hash_and_publication_is_rejected(tmp_path: Path) -> None
         path.write_bytes(b"changed!longer")
         return digest
 
-    with patch("src.utils.shared_file_verification.dual_sha256", mutate), pytest.raises(ValueError, match="changed"):
+    with patch("src.utils.data.verification.dual_sha256", mutate), pytest.raises(ValueError, match="changed"):
         cache.verify(path)
     with pytest.raises(ValueError, match="checksum"):
         cache.verify(path)
@@ -103,7 +103,7 @@ def test_upfront_pool_publishes_to_parent_and_future_workers(tmp_path: Path) -> 
         files[path] = hashlib.sha256(path.read_bytes()).hexdigest()
     cache = SharedFileVerification(files)
     cache.verify_all(2)
-    with patch("src.utils.shared_file_verification.dual_sha256", side_effect=AssertionError("rehash")):
+    with patch("src.utils.data.verification.dual_sha256", side_effect=AssertionError("rehash")):
         for path in files:
             cache.verify(path)
 

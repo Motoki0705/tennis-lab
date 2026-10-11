@@ -103,13 +103,13 @@ def predict_store_clip(
         stride=stride, tail_policy="backfill",
     )
     n, k = clip.frame_count, candidates.max_candidates
-    uv = np.zeros((n, 2), np.float32)
-    scores = np.zeros(n, np.float32)
-    candidate_uv = np.zeros((n, k, 2), np.float32)
-    candidate_scores = np.zeros((n, k), np.float32)
-    valid = np.zeros((n, k), bool)
-    starts = np.full(n, -1, np.int64)
-    times = np.full(n, -1, np.int64)
+    uv: NDArray[np.float32] = np.zeros((n, 2), np.float32)
+    scores: NDArray[np.float32] = np.zeros(n, np.float32)
+    candidate_uv: NDArray[np.float32] = np.zeros((n, k, 2), np.float32)
+    candidate_scores: NDArray[np.float32] = np.zeros((n, k), np.float32)
+    valid: NDArray[np.bool_] = np.zeros((n, k), bool)
+    starts: NDArray[np.int64] = np.full(n, -1, np.int64)
+    times: NDArray[np.int64] = np.full(n, -1, np.int64)
     # Decode in stored-image pixels first, then undo the store's resize.
     scale = np.asarray((clip.width - 1, clip.height - 1), np.float32) / clip.scale
     for batch in iter_temporal_batches(windows, batch_size=batch_size):

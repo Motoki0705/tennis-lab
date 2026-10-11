@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from src.tasks.ball_detection.data.components.augmentation import (
+from src.tasks.ball_detection.data.augmentation.spatial import (
     BallDetectionAugmentation,
 )
 from src.tasks.ball_detection.data.dataset import (

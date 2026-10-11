@@ -12,7 +12,7 @@
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
 - **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
 - **`checksum.py`**: 独立した2実装とfileのstat・読取長を照合する `dual_sha256()`。不一致は `FileIntegrityError` で停止し、単独実装への切替や自動再試行を行わない。契約と限界は同関数のdocstringを参照。
-- **`shared_file_verification.py`**: 固定ファイル集合の検証成功をfork/spawn worker間で共有する。hashはfileごとに一度、以後はctimeを含むstatを照合し、変更時に停止する。runを跨ぐ永続cacheは作らない。
+- **`data/verification.py`**: 固定ファイル集合の検証成功をfork/spawn worker間で共有する。hashはfileごとに一度、以後はctimeを含むstatを照合し、変更時に停止する。runを跨ぐ永続cacheは作らない。
 - **`resource_guard.py`**: sampled MemAvailableの継続低下/緊急停止判定と10秒bucketのRAM記録。起動条件は呼出し側が検査する。
 - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
@@ -20,6 +20,7 @@
 - **`artifact_store/`**: taskやLightningに依存しないlocal artifact treeの永続化契約と、headlessな`RcloneArtifactStore`。credentialはconfig値ではなく呼び出し側が安全なfileとして渡し、失敗時のbackend fallbackは行わない。
 
 ### `configuration/`
+- **`cli.py`**: 明示されたselectorで操作を選ぶ。literalな委譲先mapを`discovery.py`が再帰的に追跡し、全ての終端のschema/path validatorをcatalogと監査へ結び付ける。未知・動的・循環する経路は検証済みとして扱わない。
 - **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
 - **`discovery.py`**: runtime boundary を source-only に列挙する下位 discovery の唯一の実装。`catalog.py` と `audit.py` はこの module を一方向に参照する。
 - **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。

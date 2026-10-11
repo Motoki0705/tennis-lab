@@ -1395,3 +1395,17 @@ __all__ = [
     "validate_training",
     "validate_visualization",
 ]
+
+
+
+
+def research_path_resolver(project: Path, artifacts: tuple[Path, ...], outputs: tuple[Path, ...], cache: Path) -> PathResolver:
+    """Resolve explicit artifact/output roots for standalone preview and analysis."""
+    import os
+
+    if not all(path.is_absolute() for path in (project, *artifacts, *outputs, cache)):
+        raise ValueError("Research CLI paths must be explicit absolute paths")
+    artifact_root = Path(os.path.commonpath([path.parent for path in artifacts]))
+    output_root = Path(os.path.commonpath([path.parent for path in outputs]))
+    return PathResolver(RuntimePathRoots(project_root=project, data_root=artifact_root, artifact_root=artifact_root,
+        output_root=output_root, checkpoint_root=output_root, cache_root=cache, external_asset_root=project))

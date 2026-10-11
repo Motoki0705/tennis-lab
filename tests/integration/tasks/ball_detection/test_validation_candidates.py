@@ -12,10 +12,12 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 
 from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
-from src.tasks.ball_detection.training.lightning_module import (
+from src.tasks.ball_detection.training.convnext_heatmap.module import (
     BallDetectionLightningModule,
 )
-from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
+from src.tasks.ball_detection.training.convnext_heatmap.runner import (
+    BallDetectionTrainingRunner,
+)
 from tests.support.tasks.ball_detection.store import (
     ball,
     frame,

@@ -11,10 +11,12 @@ from PIL import Image, ImageSequence
 from torch.utils.data import default_collate
 
 from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
-from src.tasks.ball_detection.training.lightning_module import (
+from src.tasks.ball_detection.training.convnext_heatmap.module import (
     BallDetectionLightningModule,
 )
-from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
+from src.tasks.ball_detection.training.convnext_heatmap.runner import (
+    BallDetectionTrainingRunner,
+)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
 _ASSET_ROOT = Path("/home/kamimura/projects/tennis-lab")
