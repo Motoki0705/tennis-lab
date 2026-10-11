@@ -29,6 +29,7 @@ main() {
   )
   ((${#units[@]})) || { echo "install_units: no units found under $ops_dir" >&2; exit 1; }
 
+  ((dry_run)) || mkdir -p "$unit_dir"
   for f in "${units[@]}"; do
     echo "link $(basename "$f") -> $f"
     ((dry_run)) || ln -sfn "$f" "$unit_dir/$(basename "$f")"
