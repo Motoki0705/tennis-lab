@@ -41,6 +41,17 @@ S2_API = "https://api.semanticscholar.org/graph/v1/paper/search"
 OPENALEX_API = "https://api.openalex.org/works"
 S2_FIELDS = "paperId,title,abstract,year,venue,url,openAccessPdf,authors,externalIds,citationCount"
 SOURCES = ("arxiv", "s2", "openalex")
+S2_RATE_LIMIT_HINT = (
+    "s2: no SEMANTIC_SCHOLAR_API_KEY is set, so requests use the shared "
+    "unauthenticated rate limit. Request a key at "
+    "https://www.semanticscholar.org/product/api#api-key-form and run "
+    "'export SEMANTIC_SCHOLAR_API_KEY=<key>' (e.g. in ~/.bashrc), or rerun without "
+    "--source s2 and record that s2 was skipped."
+)
+S2_RATE_LIMIT_HINT_KEYED = (
+    "s2: SEMANTIC_SCHOLAR_API_KEY is set but still rate limited; wait and retry "
+    "with fewer queries, or rerun without --source s2 and record that s2 was skipped."
+)
 RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
 MIN_PDF_BYTES = 10_240
 _ATOM = "{http://www.w3.org/2005/Atom}"
@@ -107,9 +118,13 @@ def get(
     headers: dict[str, str] | None = None,
     retries: int = 2,
     backoff: float = 3.0,
-    sleep: Callable[[float], None] = time.sleep,
+    sleep: Callable[[float], None] | None = None,
 ) -> bytes:
-    """GET with bounded retry on rate-limit/server errors; every retry is logged."""
+    """GET with bounded retry on rate-limit/server errors; every retry is logged.
+
+    ``sleep`` defaults to ``time.sleep`` looked up at call time (patchable in tests).
+    """
+    pause = time.sleep if sleep is None else sleep
     merged = {"User-Agent": USER_AGENT, **(headers or {})}
     for attempt in range(retries + 1):
         try:
@@ -121,7 +136,7 @@ def get(
                     f"[{source}] HTTP {exc.code}; retry {attempt + 1}/{retries} in {delay:.0f}s",
                     file=sys.stderr,
                 )
-                sleep(delay)
+                pause(delay)
                 continue
             raise LitSearchError(f"{source}: HTTP {exc.code} for {url}") from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
@@ -206,7 +221,11 @@ def search_arxiv(
             raise LitSearchError(
                 f"arxiv: API error: {_text(entry.findtext(f'{_ATOM}summary'))}"
             )
-        arxiv_id = re.sub(r"v\d+$", "", raw_id.split("/abs/", 1)[-1])
+        # The Atom <id> is the versioned abs URL; keep the version so url/pdf_url
+        # name exactly the revision that was returned (arXiv API manual 5.1.1).
+        arxiv_id = raw_id.split("/abs/", 1)[-1]
+        if not _ARXIV_ID.fullmatch(arxiv_id):
+            raise LitSearchError(f"arxiv: unexpected entry id {raw_id!r}")
         published = entry.findtext(f"{_ATOM}published") or ""
         doi = entry.findtext("{http://arxiv.org/schemas/atom}doi")
         venue = entry.findtext("{http://arxiv.org/schemas/atom}journal_ref")
@@ -234,10 +253,12 @@ def search_arxiv(
 
 
 def download_arxiv_pdf(arxiv_id: str, out: Path, fetch: Fetch) -> Path:
-    """Save an arXiv PDF (e.g. for knowledge-control's kg_papers.py --pdf)."""
-    clean = re.sub(
-        r"v\d+$", "", arxiv_id.strip().removeprefix("id:").split("/abs/")[-1]
-    )
+    """Save an arXiv PDF (e.g. for knowledge-control's kg_papers.py --pdf).
+
+    An explicit version (``<ID>vN``) is kept in the request URL so the saved PDF
+    is exactly that revision; an unversioned ID gets arXiv's latest version.
+    """
+    clean = arxiv_id.strip().removeprefix("id:").split("/abs/")[-1]
     if not _ARXIV_ID.fullmatch(clean):
         raise ValueError(f"not an arXiv ID: {arxiv_id!r}")
     if out.exists():
@@ -266,15 +287,20 @@ def search_s2(
     headers = {"Accept": "application/json"}
     if key := os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "").strip():
         headers["x-api-key"] = key
-    payload = _json(
-        get(
+    try:
+        body = get(
             f"{S2_API}?{urllib.parse.urlencode(params)}",
             source="s2",
             fetch=fetch,
             headers=headers,
-        ),
-        "s2",
-    )
+        )
+    except LitSearchError as exc:
+        cause = exc.__cause__
+        if isinstance(cause, urllib.error.HTTPError) and cause.code == 429:
+            hint = S2_RATE_LIMIT_HINT_KEYED if key else S2_RATE_LIMIT_HINT
+            raise LitSearchError(f"{exc}\n{hint}") from cause
+        raise
+    payload = _json(body, "s2")
     if "data" not in payload:
         raise LitSearchError(f"s2: response has no 'data': {payload}")
     papers = []
