@@ -126,7 +126,8 @@ while (($#)); do
     *) shift ;;
   esac
 done
-cp "$prompt" "$FAKE_AGENT_PROMPT_COPY"
+# tmp + rename: concurrent runs in one test must not race on the copy.
+cp "$prompt" "$FAKE_AGENT_PROMPT_COPY.$$" && mv -f "$FAKE_AGENT_PROMPT_COPY.$$" "$FAKE_AGENT_PROMPT_COPY"
 echo "$agent" > "$FAKE_AGENT_USED"
 if [[ -n "${FAKE_AGENT_FAIL:-}" ]]; then
   echo "fake agent: quota exhausted" >&2

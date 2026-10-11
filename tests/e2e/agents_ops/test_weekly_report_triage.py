@@ -155,7 +155,7 @@ def test_existing_child_of_another_report_is_not_linked(ops_env: Any) -> None:
         {
             "number": 60,
             "title": "[R-2026W42-02] 別レポートの提案",
-            "body": "<!-- ops-report-proposal: R-2026W42-02 report=#40 -->\nold",
+            "body": "<!-- ops-report-proposal: R-2026W42-02 report=#40 option= -->\nold",
             "labels": ["ai-proposed"],
             "state": "CLOSED",
             "createdAt": "2026-10-01T00:00:00Z",
@@ -265,3 +265,41 @@ def test_forged_child_annotation_is_an_error(ops_env: Any) -> None:
     assert "existing issue #50 is not this proposal's child" in result.stderr
     assert "found no marker" in result.stderr
     assert _children(ops_env) == []
+
+
+def test_reused_child_must_match_current_option(ops_env: Any) -> None:
+    """Child created for "close", report edit fails, human switches to "継続":
+    the rerun must not link the "close" child to the new selection."""
+    report = _report_issue(ops_env)
+    _edit_body(
+        ops_env,
+        report["number"],
+        lambda b: b.replace("  - [ ] close", "  - [x] close", 1),
+    )
+    crashed = ops_env.run("triage", FAKE_GH_FAIL="issue edit")
+    assert crashed.returncode == 1
+    (child,) = _children(ops_env)
+    assert child["body"].startswith(
+        "<!-- ops-report-proposal: R-2026W42-01 report=#100 option=close -->\n"
+    )
+    _edit_body(
+        ops_env,
+        report["number"],
+        lambda b: b.replace("  - [x] close", "  - [ ] close", 1).replace(
+            "  - [ ] 継続", "  - [x] 継続", 1
+        ),
+    )
+
+    result = ops_env.run("triage")
+
+    assert result.returncode == 1
+    assert (
+        f"existing child #{child['number']} was filed for option 'close' "
+        "but the report now selects '継続'" in result.stderr
+    )
+    assert json.loads(result.stdout)["linked_existing"] == []
+    assert len(_children(ops_env)) == 1
+    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
+        "body"
+    ]
+    assert not re.search(r"→ #\d", body)
