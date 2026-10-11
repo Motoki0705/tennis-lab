@@ -19,11 +19,13 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 import re
 import shutil
 import socket
+import subprocess
 import sys
 import time
 from collections import Counter
@@ -51,6 +53,10 @@ EXIT_FAILURE, EXIT_USAGE, EXIT_LOCKED = 1, 2, 3
 
 class LockedError(CleanupError):
     pass
+
+
+class DriftError(CleanupError):
+    """The entry changed between classification and deletion; nothing was removed."""
 
 
 def default_state_dir() -> Path:
@@ -224,6 +230,66 @@ def _remove_disposable(worktree: Path, rels: Sequence[str]) -> None:
             )
 
 
+def backup_name(entry_id: str) -> str:
+    """Unique per entry and per call: the slug is lossy, so the id hash disambiguates."""
+    digest = hashlib.sha256(entry_id.encode("utf-8")).hexdigest()[:16]
+    stamp = time.strftime("%Y%m%dT%H%M%S")
+    return f"{stamp}-{time.time_ns()}-{_slug(entry_id)}-{digest}.patch"
+
+
+def write_backup(state_dir: Path, entry_id: str, worktree: Path) -> Path:
+    """Save ``git diff --binary HEAD`` of ``worktree``; never overwrites a file."""
+    proc = subprocess.run(
+        ["git", "--no-optional-locks", "diff", "--binary", "HEAD"],
+        cwd=worktree,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise CleanupError(
+            f"git diff in {worktree} exited {proc.returncode}: "
+            f"{proc.stderr.decode(errors='replace').strip()}"
+        )
+    backup = state_dir / "backups"
+    backup.mkdir(parents=True, exist_ok=True)
+    target = backup / backup_name(entry_id)
+    try:
+        fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise CleanupError(
+            f"backup {target} already exists; refusing to overwrite"
+        ) from exc
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(proc.stdout)
+        handle.flush()
+        os.fsync(handle.fileno())
+    return target
+
+
+def _assert_unmoved(repo: Path, entry: Entry) -> None:
+    """Compare tips before anything is removed (update-ref -d re-checks atomically)."""
+    f = entry.facts
+    if f.branch is not None:
+        now = git(
+            repo,
+            "rev-parse",
+            "--verify",
+            "-q",
+            f"refs/heads/{f.branch}",
+            ok_codes=(0, 1),
+        ).stdout.strip()
+        if now != f.tip:
+            raise DriftError(
+                f"{entry.id}: branch tip is {now or '(deleted)'}, classified at {f.tip}"
+            )
+    if f.worktree is not None and not f.worktree_missing:
+        head = git(Path(f.worktree), "rev-parse", "HEAD").stdout.strip()
+        if head != f.tip:
+            raise DriftError(
+                f"{entry.id}: worktree HEAD is {head}, classified at {f.tip}"
+            )
+
+
 def delete_entry(
     repo: Path, entry: Entry, state_dir: Path, *, approved: bool, discard: bool
 ) -> None:
@@ -239,13 +305,7 @@ def delete_entry(
         )
     patch_path: str | None = None
     if f.worktree is not None and state is not None and state.dirty_tracked:
-        backup = state_dir / "backups"
-        backup.mkdir(parents=True, exist_ok=True)
-        target = backup / f"{time.strftime('%Y%m%dT%H%M%S')}-{_slug(entry.id)}.patch"
-        target.write_text(
-            git(Path(f.worktree), "diff", "--binary", "HEAD").stdout, encoding="utf-8"
-        )
-        patch_path = str(target)
+        patch_path = str(write_backup(state_dir, entry.id, Path(f.worktree)))
     base = {
         "id": entry.id,
         "repo": str(repo),
@@ -264,6 +324,7 @@ def delete_entry(
     }
     append_log(state_dir, {**base, "phase": "intent"})
     try:
+        _assert_unmoved(repo, entry)
         if f.worktree is not None:
             force = approved and (
                 has_changes or bool(state and state.submodule_populated)
@@ -303,12 +364,35 @@ def reverify(repo: Path, cfg: Config, inv: Inventory, entry: Entry, cwd: Path) -
         prs=inv.prs,
     )
     if not fresh.entries:
-        raise CleanupError(f"{entry.id}: no longer exists")
+        raise DriftError(f"{entry.id}: no longer exists")
     new = fresh.entries[0]
     if new.facts.tip != entry.facts.tip or new.facts.worktree != entry.facts.worktree:
-        raise CleanupError(f"{entry.id}: tip or worktree changed since classification")
+        raise DriftError(
+            f"{entry.id}: tip or worktree changed since classification "
+            f"({entry.facts.tip} -> {new.facts.tip}, {entry.facts.worktree} -> {new.facts.worktree})"
+        )
     new.disk = entry.disk
     return new
+
+
+def describe_drift(old: Entry, new: Entry) -> str | None:
+    """What changed in the verdict or worktree contents between two snapshots."""
+    changes: list[str] = []
+    if old.decision.category != new.decision.category:
+        changes.append(f"category {old.decision.category} -> {new.decision.category}")
+    before = {r.code for r in old.decision.reasons if r.kind != "info"}
+    after = {r.code for r in new.decision.reasons if r.kind != "info"}
+    if before != after:
+        changes.append(
+            "reasons "
+            + " ".join(
+                [f"+{c}" for c in sorted(after - before)]
+                + [f"-{c}" for c in sorted(before - after)]
+            )
+        )
+    if old.facts.worktree_state != new.facts.worktree_state:
+        changes.append("worktree contents changed")
+    return "; ".join(changes) or None
 
 
 # ---------------------------------------------------------------------------- CLI
@@ -373,12 +457,28 @@ def cmd_delete(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
             measure_disk=False,
             only_ids={i for i, _ in wanted},
         )
-        by_id = {e.id: e for e in inv.entries}
+        index = {e.id: i for i, e in enumerate(inv.entries)}
         failed = False
         for entry_id, expect in wanted:
-            entry = by_id.get(entry_id)
-            if entry is None:
+            if entry_id not in index:
                 print(f"error: {entry_id}: no such branch/worktree", file=sys.stderr)
+                failed = True
+                continue
+            i = index[entry_id]
+            snapshot = inv.entries[i]
+            try:
+                # Earlier deletions in this run can take minutes; re-collect tip,
+                # worktree status, processes and queue jobs for this entry now.
+                entry = reverify(repo, cfg, inv, snapshot, Path.cwd())
+                inv.entries[i] = entry
+                drift = describe_drift(snapshot, entry)
+                if drift is not None:
+                    raise DriftError(f"changed since classification: {drift}")
+            except CleanupError as exc:
+                # Report on the newest snapshot (the re-collected one when it exists).
+                current = inv.entries[i]
+                current.action = "refused" if isinstance(exc, DriftError) else "failed"
+                current.action_error = str(exc)
                 failed = True
                 continue
             if entry.decision.category == "protected":
@@ -406,6 +506,9 @@ def cmd_delete(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
                     discard=args.discard_changes,
                 )
                 entry.action = "deleted"
+            except DriftError as exc:
+                entry.action, entry.action_error = "refused", str(exc)
+                failed = True
             except CleanupError as exc:
                 entry.action = "failed"
                 entry.action_error = str(exc)

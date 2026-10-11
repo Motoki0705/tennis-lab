@@ -166,31 +166,36 @@ class Lab:
         return number
 
     # -- running cleanup ---------------------------------------------------------
-    def run(
-        self, *args: str, cwd: Path | None = None
-    ) -> subprocess.CompletedProcess[str]:
+    def write_inputs(self) -> Path:
+        """Write the fake gh PR list and config.toml; return the config path."""
         (self.tmp / "prs.json").write_text(json.dumps(self.prs), encoding="utf-8")
         cfg = self.tmp / "config.toml"
         cfg.write_text(
             "".join(f"{k} = {json.dumps(v)}\n" for k, v in self.config.items()),
             encoding="utf-8",
         )
+        return cfg
+
+    def argv(self, *args: str) -> list[str]:
         command, *rest = args
+        return [
+            command,
+            "--repo",
+            str(self.repo),
+            "--config",
+            str(self.write_inputs()),
+            "--state-dir",
+            str(self.state),
+            "--report-json",
+            str(self.tmp / "report.json"),
+            *rest,
+        ]
+
+    def run(
+        self, *args: str, cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [
-                sys.executable,
-                str(CLEANUP),
-                command,
-                "--repo",
-                str(self.repo),
-                "--config",
-                str(cfg),
-                "--state-dir",
-                str(self.state),
-                "--report-json",
-                str(self.tmp / "report.json"),
-                *rest,
-            ],
+            [sys.executable, str(CLEANUP), *self.argv(*args)],
             cwd=cwd or self.repo,
             env=self.env,
             text=True,
@@ -720,3 +725,332 @@ def test_report_json_schema(lab: Lab) -> None:
         assert f"`{code}`" in readme, (
             f"reason code {code} is not documented in README.md"
         )
+
+
+# ------------------------------------------------- in-process helpers (review fixes)
+
+TRAINING_QUEUE = ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
+
+
+def _import_cleanup(lab: Lab, monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Import cleanup.py in-process (same env/cwd as ``lab.run``) so tests can hook it."""
+    monkeypatch.syspath_prepend(str(CLEANUP_DIR))
+    for name in ("cleanup", "inventory", "classify"):
+        monkeypatch.delitem(sys.modules, name, raising=False)
+    import cleanup  # type: ignore[import-not-found]
+
+    assert Path(cleanup.__file__).resolve() == CLEANUP.resolve()
+    for key, value in lab.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(lab.repo)
+    return cleanup
+
+
+def _git_status(lab: Lab, *args: str, cwd: Path) -> int:
+    """Run git where failure is expected (rebase stopping); return the exit code."""
+    return subprocess.run(
+        ["git", "-c", "commit.gpgsign=false", *args],
+        cwd=cwd,
+        env=lab.env,
+        capture_output=True,
+        check=False,
+    ).returncode
+
+
+def _commit(lab: Lab, cwd: Path, rel: str, text: str) -> str:
+    (cwd / rel).write_text(text, encoding="utf-8")
+    lab.git("add", "-A", cwd=cwd)
+    lab.git("commit", "-qm", f"edit {rel}", cwd=cwd)
+    return lab.git("rev-parse", "HEAD", cwd=cwd)
+
+
+# ----------------------------------------- re-verification right before deletion
+
+
+@pytest.mark.parametrize("change", ["process", "queue", "commit"])
+def test_approved_delete_rechecks_each_entry_right_before_deleting(
+    lab: Lab,
+    background: list[subprocess.Popen[bytes]],
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    lab.branch("feat/one")
+    one = lab.worktree("one", "feat/one")
+    lab.branch("feat/two")
+    two = lab.worktree("two", "feat/two")
+    argv = lab.argv("delete", "feat/one", "feat/two")
+    cleanup = _import_cleanup(lab, monkeypatch)
+    real_delete = cleanup.delete_entry
+
+    def delete_then_change(repo: Path, entry: Any, state_dir: Path, **kw: Any) -> None:
+        real_delete(repo, entry, state_dir, **kw)
+        if entry.id != "branch:feat/one":
+            return
+        # Something starts using feat/two while feat/one is being removed.
+        if change == "process":
+            background.append(subprocess.Popen(["sleep", "60"], cwd=two))
+        elif change == "queue":
+            (lab.queue / "jobs" / "9_9_late.job").write_text(
+                f"# name: late\ncd {two}\npython train.py\n", encoding="utf-8"
+            )
+        else:
+            _commit(lab, two, "late.txt", "late\n")
+
+    monkeypatch.setattr(cleanup, "delete_entry", delete_then_change)
+    assert cleanup.main(argv) == 1
+
+    assert not one.exists() and not lab.has_branch("feat/one")
+    assert two.exists() and lab.has_branch("feat/two")
+    entries = {e["id"]: e for e in lab.report()["entries"]}
+    assert entries["branch:feat/one"]["action"] == "deleted"
+    refused = entries["branch:feat/two"]
+    assert refused["action"] == "refused", refused
+    expected = {
+        "process": "+process_using_worktree",
+        "queue": "+queue_job_references",
+        "commit": "tip or worktree changed",
+    }[change]
+    assert expected in refused["action_error"]
+    assert [r["branch"] for r in lab.log() if r["phase"] == "done"] == ["feat/one"]
+
+
+def test_delete_entry_compares_tip_before_removing_the_worktree(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lab.branch("feat/moving")
+    wt = lab.worktree("moving", "feat/moving")
+    cleanup = _import_cleanup(lab, monkeypatch)
+    cfg = cleanup.load_config(lab.write_inputs())
+    (entry,) = cleanup.build_inventory(
+        lab.repo,
+        cfg,
+        invoking_cwd=lab.tmp,
+        measure_disk=False,
+        only_ids={"branch:feat/moving"},
+        prs={},
+    ).entries
+    _commit(lab, wt, "new.txt", "new\n")  # tip moves after classification
+    with pytest.raises(cleanup.DriftError, match="branch tip is"):
+        cleanup.delete_entry(lab.repo, entry, lab.state, approved=True, discard=False)
+    assert wt.exists() and lab.has_branch("feat/moving")
+    assert [r["phase"] for r in lab.log()] == ["intent", "failed"]
+
+
+# ----------------------------------------------- branches held by rebase / bisect
+
+
+@pytest.mark.parametrize(
+    "mode", ["merge-conflict", "merge-exec-stop", "apply-conflict"]
+)
+def test_branch_held_by_rebase_in_progress_is_protected(lab: Lab, mode: str) -> None:
+    lab.branch("feat/rb")
+    wt = lab.worktree("rb", "feat/rb")
+    conflict = mode.endswith("conflict")
+    tip = _commit(lab, wt, "README", "feat\n") if conflict else lab.tip("feat/rb")
+    lab.pr("feat/rb", tip)  # merged on GitHub: an auto_delete candidate when idle
+    _commit(lab, lab.repo, "README" if conflict else "other.txt", "main\n")
+    assert lab.scan()["branch:feat/rb"]["category"] == "auto_delete"
+
+    rebase = {
+        "merge-conflict": ["rebase", "main"],
+        "merge-exec-stop": ["rebase", "-x", "false", "main"],
+        "apply-conflict": ["rebase", "--apply", "main"],
+    }[mode]
+    assert _git_status(lab, *rebase, cwd=wt) != 0  # stopped mid-rebase
+    assert _git_status(lab, "symbolic-ref", "-q", "HEAD", cwd=wt) != 0  # detached
+
+    entries = lab.scan()
+    held = entries["branch:feat/rb"]
+    assert held["worktree"] is None  # git worktree list no longer shows the branch
+    assert held["category"] == "protected" and "branch_in_use" in codes(held)
+    assert f"rebase in progress in worktree {wt}" in str(held["reasons"])
+    detached = entries[f"worktree:{wt}"]
+    assert detached["category"] == "protected"
+    assert "operation_in_progress" in codes(detached)
+
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert lab.has_branch("feat/rb") and wt.exists()
+    proc = lab.run("delete", "feat/rb")
+    assert proc.returncode == 1 and "branch_in_use" in proc.stderr
+
+
+def test_branches_held_by_bisect_and_update_refs_are_protected(lab: Lab) -> None:
+    bs_tip = lab.branch("feat/bs", commits=3)
+    lab.pr("feat/bs", bs_tip)
+    bs = lab.worktree("bs", "feat/bs")
+    base_tip = lab.branch("feat/stack-base")
+    lab.pr("feat/stack-base", base_tip)
+    lab.branch("feat/stack-top", base="feat/stack-base")
+    top = lab.worktree("top", "feat/stack-top")
+    _commit(lab, lab.repo, "other.txt", "main\n")
+    before = lab.scan()
+    assert before["branch:feat/bs"]["category"] == "auto_delete"
+    assert before["branch:feat/stack-base"]["category"] == "auto_delete"
+
+    lab.git("bisect", "start", "feat/bs", "main", cwd=bs)
+    assert _git_status(lab, "symbolic-ref", "-q", "HEAD", cwd=bs) != 0
+    # Stops after the first pick; stack-base is still pending in update-refs.
+    assert _git_status(lab, "rebase", "--update-refs", "-x", "false", "main", cwd=top)
+    assert "refs/heads/feat/stack-base" in (
+        Path(lab.git("rev-parse", "--absolute-git-dir", cwd=top))
+        / "rebase-merge"
+        / "update-refs"
+    ).read_text(encoding="utf-8")
+
+    entries = lab.scan()
+    for entry_id, detail in (
+        ("branch:feat/bs", f"bisect in progress in worktree {bs}"),
+        (
+            "branch:feat/stack-base",
+            f"rebase --update-refs in progress in worktree {top}",
+        ),
+        ("branch:feat/stack-top", f"rebase in progress in worktree {top}"),
+    ):
+        e = entries[entry_id]
+        assert e["category"] == "protected" and "branch_in_use" in codes(e), e
+        assert detail in str(e["reasons"])
+    assert "operation_in_progress" in codes(entries[f"worktree:{bs}"])
+
+
+# --------------------------------------------- queue jobs written by the real tool
+
+
+def _enqueue(
+    lab: Lab, command: str, cwd: Path, name: str, pwd: Path | None = None
+) -> str:
+    env = {**lab.env, "TRAINING_QUEUE_DIR": str(lab.queue), "PWD": str(pwd or cwd)}
+    proc = subprocess.run(
+        ["bash", str(TRAINING_QUEUE), "add", command, "--name", name],
+        cwd=cwd,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    (job,) = sorted((lab.queue / "jobs").glob(f"*_{name}.job"))
+    return job.read_text(encoding="utf-8")
+
+
+def test_queue_jobs_written_by_training_queue_sh_protect_paths_with_spaces(
+    lab: Lab,
+) -> None:
+    def merged(branch: str, dirname: str) -> Path:
+        tip = lab.branch(branch)
+        lab.pr(branch, tip)
+        return lab.worktree(dirname, branch)
+
+    by_cwd = merged("feat/q-cwd", "queued cwd")
+    by_arg = merged("feat/q-arg", "queued arg")
+    by_link = merged("feat/q-link", "queued link")
+    lookalike = merged("feat/q-lookalike", "queued cwd-x")
+
+    text = _enqueue(lab, "python train.py", by_cwd, "from-cwd")
+    assert "queued\\ cwd" in text and str(by_cwd) not in text  # printf %q form
+    escaped = str(by_arg).replace(" ", "\\ ")
+    text = _enqueue(
+        lab, f"python x.py --out {escaped}/outputs\necho done", lab.tmp, "arg"
+    )
+    assert str(by_arg) not in text and "$'" in text  # only escaped spellings
+    link = lab.tmp / "wts link"
+    link.symlink_to(lab.wts)
+    text = _enqueue(
+        lab, "python train.py", by_link, "via-link", pwd=link / "queued link"
+    )
+    assert "wts\\ link/queued\\ link" in text  # logical $PWD through the symlink
+
+    entries = lab.scan()
+    for entry_id, job in (
+        ("branch:feat/q-cwd", "jobs/from-cwd"),
+        ("branch:feat/q-arg", "jobs/arg"),
+        ("branch:feat/q-link", "jobs/via-link"),
+    ):
+        e = entries[entry_id]
+        assert e["category"] == "protected", (entry_id, e["reasons"])
+        assert "queue_job_references" in codes(e) and job in str(e["reasons"])
+    assert entries["branch:feat/q-lookalike"]["category"] == "auto_delete"
+
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert by_cwd.exists() and by_arg.exists() and by_link.exists()
+    assert not lookalike.exists()
+
+
+def test_unparsable_queue_job_stops_the_run(lab: Lab) -> None:
+    (lab.queue / "running" / "1_1_bad.job").write_text(
+        "# name: bad\ncd '/unterminated\n", encoding="utf-8"
+    )
+    proc = lab.run("scan")
+    assert proc.returncode == 1 and "cannot parse training-queue job" in proc.stderr
+
+
+@pytest.mark.parametrize("locale", ["C", "C.UTF-8"])
+def test_shell_words_decodes_bash_printf_q(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, locale: str
+) -> None:
+    cleanup = _import_cleanup(lab, monkeypatch)
+    inventory = sys.modules["inventory"]
+    samples = [
+        "/a b/c",
+        "it's",
+        'dq"x',
+        "tab\tx",
+        "nl\nx",
+        "back\\slash",
+        "$HOME/`x`",
+        "ünï código",
+        "",
+        "*glob?[x]",
+        "a;b&c|d(e)<f>",
+        "#notcomment",
+        "\x01ctl\x7f",
+    ]
+    out = subprocess.run(
+        ["bash", "-c", 'for a in "$@"; do printf "%q " "$a"; done', "_", *samples],
+        env={**lab.env, "LC_ALL": locale},
+        capture_output=True,
+        check=True,
+    ).stdout.decode("utf-8", errors="surrogateescape")
+    assert inventory.shell_words(out) == samples, out
+    assert cleanup is not None
+
+
+# ------------------------------------------------------------------- patch backups
+
+
+def test_backups_for_ids_with_colliding_slugs_never_overwrite(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lab.branch("feat/a")
+    slash = lab.worktree("a-slash", "feat/a")
+    lab.branch("feat_a")
+    underscore = lab.worktree("a-underscore", "feat_a")
+    (slash / "README").write_text("from feat/a\n", encoding="utf-8")
+    (underscore / "README").write_text("from feat_a\n", encoding="utf-8")
+
+    # One run, so both backups are written within the same second.
+    proc = lab.run("delete", "feat/a", "feat_a", "--discard-changes")
+    assert proc.returncode == 0, proc.stderr
+    patches = {
+        r["branch"]: Path(r["discarded_patch"])
+        for r in lab.log()
+        if r["phase"] == "done"
+    }
+    assert set(patches) == {"feat/a", "feat_a"}
+    assert patches["feat/a"] != patches["feat_a"]
+    assert "from feat/a" in patches["feat/a"].read_text(encoding="utf-8")
+    assert "from feat_a" in patches["feat_a"].read_text(encoding="utf-8")
+
+    cleanup = _import_cleanup(lab, monkeypatch)
+    assert cleanup._slug("branch:feat/a") == cleanup._slug("branch:feat_a")
+    # Even if two names ever coincided, the second write fails instead of overwriting.
+    lab.branch("feat/c")
+    wt = lab.worktree("c", "feat/c")
+    (wt / "README").write_text("first\n", encoding="utf-8")
+    monkeypatch.setattr(cleanup, "backup_name", lambda entry_id: "fixed.patch")
+    first = cleanup.write_backup(lab.state, "branch:feat/c", wt)
+    (wt / "README").write_text("second\n", encoding="utf-8")
+    with pytest.raises(cleanup.CleanupError, match="refusing to overwrite"):
+        cleanup.write_backup(lab.state, "branch:feat_c", wt)
+    assert "first" in first.read_text(encoding="utf-8")

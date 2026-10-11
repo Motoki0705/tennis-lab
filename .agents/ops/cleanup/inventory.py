@@ -285,6 +285,111 @@ def common_dir(repo: Path) -> Path:
     )
 
 
+def worktree_admin_dirs(
+    common: Path, worktrees: Sequence[WorktreeInfo]
+) -> dict[str, Path]:
+    """Worktree path -> its git administrative dir (``.git`` or ``.git/worktrees/<id>``).
+
+    Read from ``<common>/worktrees/*/gitdir`` (as git does) so it also works for
+    worktrees whose directory is gone.
+    """
+    linked: dict[str, Path] = {}
+    base = common / "worktrees"
+    if base.is_dir():
+        for admin in sorted(base.iterdir()):
+            try:
+                raw = (admin / "gitdir").read_text(encoding="utf-8").strip()
+            except (FileNotFoundError, NotADirectoryError):
+                continue
+            gitfile = Path(raw) if Path(raw).is_absolute() else admin / raw
+            wt_path = (
+                str(gitfile)[: -len("/.git")]
+                if str(gitfile).endswith("/.git")
+                else str(gitfile)
+            )
+            linked[os.path.realpath(wt_path)] = admin
+    result: dict[str, Path] = {}
+    for w in worktrees:
+        if w.is_main:
+            result[w.path] = common
+            continue
+        admin_dir = linked.get(os.path.realpath(w.path))
+        if admin_dir is None:
+            raise CleanupError(
+                f"no administrative directory under {base} for worktree {w.path}"
+            )
+        result[w.path] = admin_dir
+    return result
+
+
+@dataclass(frozen=True)
+class InProgress:
+    operations: tuple[
+        str, ...
+    ]  # rebase, am, bisect, merge, cherry-pick, revert, sequencer
+    held: tuple[tuple[str, str], ...]  # (local branch, operation holding it)
+
+
+def _read_state_file(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return None
+
+
+def in_progress(admin: Path, branch_names: set[str]) -> InProgress:
+    """Operations in progress in one worktree and the branches they hold.
+
+    Mirrors git's own "branch is in use" check (``branch.c``
+    ``prepare_checked_out_branches``): a rebase holds the branch named in
+    ``rebase-{merge,apply}/head-name`` plus ``rebase-merge/update-refs``, and a
+    bisect holds the branch named in ``BISECT_START``. HEAD is detached while
+    these run, so ``git worktree list`` does not show those branches.
+    """
+    ops: list[str] = []
+    held: list[tuple[str, str]] = []
+    for sub in ("rebase-merge", "rebase-apply"):
+        state_dir = admin / sub
+        if not state_dir.is_dir():
+            continue
+        if sub == "rebase-apply" and (state_dir / "applying").exists():
+            ops.append("am")
+            continue
+        ops.append("rebase")
+        head = _read_state_file(state_dir / "head-name")
+        if head is None:
+            if state_dir.is_dir():
+                raise CleanupError(
+                    f"{state_dir} exists without head-name; cannot tell which branch the rebase holds"
+                )
+            continue  # finished while scanning
+        if head.startswith("refs/heads/"):
+            held.append((head[len("refs/heads/") :], "rebase"))
+        elif head != "detached HEAD":
+            raise CleanupError(
+                f"unexpected {state_dir / 'head-name'} content: {head!r}"
+            )
+        for line in (_read_state_file(state_dir / "update-refs") or "").splitlines():
+            if line.startswith("refs/heads/"):
+                held.append((line[len("refs/heads/") :], "rebase --update-refs"))
+    if (admin / "BISECT_LOG").exists():
+        ops.append("bisect")
+        start = _read_state_file(admin / "BISECT_START") or ""
+        name = start.removeprefix("refs/heads/")
+        if name in branch_names:  # otherwise BISECT_START holds a detached commit id
+            held.append((name, "bisect"))
+    for marker, op in (
+        ("MERGE_HEAD", "merge"),
+        ("CHERRY_PICK_HEAD", "cherry-pick"),
+        ("REVERT_HEAD", "revert"),
+    ):
+        if (admin / marker).exists():
+            ops.append(op)
+    if (admin / "sequencer").is_dir():
+        ops.append("sequencer")
+    return InProgress(operations=tuple(ops), held=tuple(held))
+
+
 def worktree_state(path: str, cfg: Config) -> WorktreeState:
     wt = Path(path)
     out = git(
@@ -491,14 +596,144 @@ def scan_processes(proc_root: Path = Path("/proc")) -> ProcessScan:
     return scan
 
 
+_ANSI_C_ESCAPES = {
+    "a": b"\a",
+    "b": b"\b",
+    "e": b"\x1b",
+    "E": b"\x1b",
+    "f": b"\f",
+    "n": b"\n",
+    "r": b"\r",
+    "t": b"\t",
+    "v": b"\v",
+    "\\": b"\\",
+    "'": b"'",
+    '"': b'"',
+    "?": b"?",
+}
+_WORD_BREAKS = frozenset(" \t\n;&|<>()")
+
+
+def _ansi_c(text: str, i: int) -> tuple[str, int]:
+    """Decode a bash ``$'...'`` body starting at ``text[i]``; return (value, index after ')."""
+    out = bytearray()
+    n = len(text)
+    while i < n:
+        c = text[i]
+        if c == "'":
+            return out.decode("utf-8", errors="surrogateescape"), i + 1
+        if c != "\\":
+            out += c.encode("utf-8", errors="surrogateescape")
+            i += 1
+            continue
+        if i + 1 >= n:
+            break
+        e = text[i + 1]
+        i += 2
+        if e in _ANSI_C_ESCAPES:
+            out += _ANSI_C_ESCAPES[e]
+        elif e in "01234567":
+            m = re.match(r"[0-7]{0,2}", text[i:])
+            assert m is not None
+            out.append(int(e + m.group(0), 8) & 0xFF)
+            i += m.end()
+        elif e in "xuU":
+            width = {"x": 2, "u": 4, "U": 8}[e]
+            m = re.match(rf"[0-9A-Fa-f]{{1,{width}}}", text[i:])
+            if m is None:
+                out += ("\\" + e).encode()
+                continue
+            value = int(m.group(0), 16)
+            out += bytes([value]) if e == "x" else chr(value).encode("utf-8")
+            i += m.end()
+        elif e == "c" and i < n:
+            out.append(ord(text[i]) & 0x1F)
+            i += 1
+        else:
+            out += ("\\" + e).encode("utf-8", errors="surrogateescape")
+    raise ValueError("unterminated $'...' quote")
+
+
+def shell_words(text: str) -> list[str]:
+    """Split shell source into words with quoting removed, without executing anything.
+
+    Covers everything bash's ``printf %q`` emits (backslash escapes, ``'...'``,
+    ``$'...'``) plus ``"..."``, line continuations and comments. Expansions
+    (``$VAR``, ``$(...)``, globs) stay literal; operators split words. Raises
+    ``ValueError`` on an unterminated quote.
+    """
+    words: list[str] = []
+    cur: list[str] | None = None
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c in _WORD_BREAKS:
+            if cur is not None:
+                words.append("".join(cur))
+                cur = None
+            i += 1
+            continue
+        if c == "#" and cur is None:
+            end = text.find("\n", i)
+            i = n if end < 0 else end
+            continue
+        if cur is None:
+            cur = []
+        if c == "\\":
+            if i + 1 < n and text[i + 1] == "\n":
+                i += 2  # line continuation
+            elif i + 1 < n:
+                cur.append(text[i + 1])
+                i += 2
+            else:
+                cur.append(c)
+                i += 1
+        elif c == "'":
+            end = text.find("'", i + 1)
+            if end < 0:
+                raise ValueError("unterminated '...' quote")
+            cur.append(text[i + 1 : end])
+            i = end + 1
+        elif c == "$" and text.startswith("$'", i):
+            value, i = _ansi_c(text, i + 2)
+            cur.append(value)
+        elif c == '"' or (c == "$" and text.startswith('$"', i)):
+            i += 1 if c == '"' else 2
+            while True:
+                if i >= n:
+                    raise ValueError('unterminated "..." quote')
+                d = text[i]
+                if d == '"':
+                    i += 1
+                    break
+                if d == "\\" and i + 1 < n and text[i + 1] in '$`"\\\n':
+                    if text[i + 1] != "\n":
+                        cur.append(text[i + 1])
+                    i += 2
+                    continue
+                cur.append(d)
+                i += 1
+        else:
+            cur.append(c)
+            i += 1
+    if cur is not None:
+        words.append("".join(cur))
+    return words
+
+
 @dataclass(frozen=True)
 class QueueJob:
     label: str
     text: str
+    words: tuple[str, ...]  # the job script's shell words, quoting removed
 
 
 def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
-    """Pending (``jobs/``) and running (``running/``) training-queue job files."""
+    """Pending (``jobs/``) and running (``running/``) training-queue job files.
+
+    ``training_queue.sh add`` writes the job's CWD and paths with ``printf %q``
+    (e.g. ``cd /a\\ b``), so jobs are matched on decoded shell words, not raw text.
+    """
     jobs: list[QueueJob] = []
     for state in ("jobs", "running"):
         directory = queue_dir / state
@@ -508,18 +743,49 @@ def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
             if not path.is_file():
                 continue
             try:
-                text = path.read_text(encoding="utf-8", errors="replace")
+                text = path.read_text(encoding="utf-8", errors="surrogateescape")
             except FileNotFoundError:
                 continue  # job moved to done/ while scanning
+            try:
+                words = tuple(shell_words(text))
+            except ValueError as exc:
+                raise CleanupError(
+                    f"cannot parse training-queue job {path}: {exc}"
+                ) from exc
             match = re.search(r"^# name: (.*)$", text, flags=re.MULTILINE)
             name = match.group(1).strip() if match else path.name
-            jobs.append(QueueJob(label=f"{state}/{name}", text=text))
+            jobs.append(QueueJob(label=f"{state}/{name}", text=text, words=words))
     return jobs
 
 
+def _path_candidates(word: str) -> list[str]:
+    """Absolute paths in a shell word: the word itself or the value of KEY=/--opt=."""
+    found = [word] if word.startswith("/") else []
+    _, sep, value = word.partition("=")
+    if sep and value.startswith("/"):
+        found.append(value)
+    return found
+
+
 def queue_refs_for(jobs: Sequence[QueueJob], worktree: str) -> list[str]:
-    pattern = re.compile(re.escape(worktree.rstrip("/")) + r"(?![\w.\-])")
-    return [job.label for job in jobs if pattern.search(job.text)]
+    root = worktree.rstrip("/")
+    real_root = os.path.realpath(root)
+    pattern = re.compile(re.escape(root) + r"(?![\w.\-])")
+    refs: list[str] = []
+    for job in jobs:
+        hit = bool(pattern.search(job.text)) or any(
+            pattern.search(w) for w in job.words
+        )
+        if not hit:
+            # Paths spelled through symlinks (e.g. a logical $PWD) still count.
+            hit = any(
+                path_is_within(os.path.realpath(p), real_root)
+                for w in job.words
+                for p in _path_candidates(w)
+            )
+        if hit:
+            refs.append(job.label)
+    return refs
 
 
 # ------------------------------------------------------------------- activity/disk
@@ -673,6 +939,17 @@ def build_inventory(
     for w in worktrees:
         if w.branch is not None:
             by_branch.setdefault(w.branch, []).append(w)
+    branch_names = {b.name for b in branches}
+    admin_dirs = worktree_admin_dirs(common, worktrees)
+    ops_by_worktree = {
+        w.path: in_progress(admin_dirs[w.path], branch_names) for w in worktrees
+    }
+    held_by: dict[str, list[str]] = {}
+    for w in worktrees:
+        for held_branch, op in ops_by_worktree[w.path].held:
+            held_by.setdefault(held_branch, []).append(
+                f"{op} in progress in worktree {w.path}"
+            )
     invoking = _worktree_for_cwd(worktrees, invoking_cwd)
     main = worktrees[0]
 
@@ -762,6 +1039,10 @@ def build_inventory(
             protected_worktree=wt is not None
             and matches_any(wt.path, cfg.protected_worktree_globs),
             current_checkout=current,
+            branch_in_use=tuple(held_by.get(name, [])) if name is not None else (),
+            operations_in_progress=ops_by_worktree[wt.path].operations
+            if wt is not None
+            else (),
             process_refs=tuple(procs.refs_for(wt.path))
             if live and wt is not None
             else (),

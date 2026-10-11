@@ -24,6 +24,8 @@ REASON_KINDS: dict[str, ReasonKind] = {
     "protected_worktree": "protect",
     "worktree_locked": "protect",
     "worktree_missing": "protect",
+    "branch_in_use": "protect",
+    "operation_in_progress": "protect",
     "process_using_worktree": "protect",
     "queue_job_references": "protect",
     "open_pr": "protect",
@@ -97,6 +99,12 @@ class Facts:
     protected_branch: bool = False
     protected_worktree: bool = False
     current_checkout: str | None = None  # why it counts as the current checkout
+    # Branch held by an in-progress rebase/bisect of some worktree (HEAD is detached
+    # there, so `git worktree list` does not report the branch as checked out).
+    branch_in_use: tuple[str, ...] = ()
+    operations_in_progress: tuple[
+        str, ...
+    ] = ()  # rebase/merge/bisect/... in this worktree
     process_refs: tuple[str, ...] = ()
     queue_refs: tuple[str, ...] = ()
     open_prs: tuple[int, ...] = ()
@@ -228,6 +236,15 @@ def classify(facts: Facts, policy: Policy) -> Decision:
             Reason(
                 "worktree_missing",
                 "worktree directory is missing; run `git worktree prune` by hand",
+            )
+        )
+    if facts.branch_in_use:
+        reasons.append(Reason("branch_in_use", _short(facts.branch_in_use)))
+    if facts.operations_in_progress:
+        reasons.append(
+            Reason(
+                "operation_in_progress",
+                "in progress: " + ", ".join(facts.operations_in_progress),
             )
         )
     if facts.process_refs:
