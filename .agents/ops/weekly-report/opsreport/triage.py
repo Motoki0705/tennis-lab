@@ -15,6 +15,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote, unquote
 
 from . import shell
 from .collect import AI_PROPOSED_LABEL, REPORT_LABEL
@@ -32,13 +33,19 @@ from .shell import CommandError
 LOG = logging.getLogger("weekly_report.triage")
 MAX_TITLE = 200
 _ISSUE_URL_RE = re.compile(r"/issues/(\d+)\s*$")
+# ``option`` is the percent-encoded selected option ("" = proposal without options),
+# so a reused child can be checked against the report's current selection.
 _CHILD_MARKER_RE = re.compile(
-    rf"^<!-- ops-report-proposal: (?P<id>{ID_PATTERN}) report=#(?P<report>\d+) -->$"
+    rf"^<!-- ops-report-proposal: (?P<id>{ID_PATTERN}) report=#(?P<report>\d+)"
+    r" option=(?P<option>\S*) -->$"
 )
 
 
-def child_marker(pid: str, report_number: int) -> str:
-    return f"<!-- ops-report-proposal: {pid} report=#{report_number} -->"
+def child_marker(pid: str, report_number: int, option: str | None) -> str:
+    encoded = quote(option or "", safe="")
+    return (
+        f"<!-- ops-report-proposal: {pid} report=#{report_number} option={encoded} -->"
+    )
 
 
 LABEL_SPECS: dict[str, tuple[str, str]] = {
@@ -101,7 +108,7 @@ def child_body(prop: ParsedProposal, option: str | None, report_number: int) -> 
     head = re.sub(r"^- (\[[ xX]\] )?", "- ", prop.block[0])
     rest = [line[2:] if line.startswith("  ") else line for line in prop.block[1:]]
     lines = [
-        child_marker(prop.pid, report_number),
+        child_marker(prop.pid, report_number, option),
         f"週次運用レポート #{report_number} の提案 `{prop.pid}` から日次triageが起票。",
         "",
         "## 提案",
@@ -137,8 +144,11 @@ def _create_issue(title: str, body: str, *, repo_root: Path, work_dir: Path) -> 
     return int(m.group(1))
 
 
-def verify_child(pid: str, child: int, report_number: int, repo_root: Path) -> None:
-    """Raise ValueError unless issue ``child`` was filed for ``pid`` of this report."""
+def verify_child(
+    pid: str, child: int, report_number: int, repo_root: Path
+) -> str | None:
+    """Raise ValueError unless issue ``child`` was filed for ``pid`` of this report;
+    return the option recorded in its marker (None for a proposal without options)."""
     body = shell.gh_json(
         ["issue", "view", str(child), "--json", "body"], cwd=repo_root
     )["body"]
@@ -149,6 +159,7 @@ def verify_child(pid: str, child: int, report_number: int, repo_root: Path) -> N
             f"{pid}: existing issue #{child} is not this proposal's child "
             f"(expected {pid} of #{report_number}, found {found}); resolve by hand"
         )
+    return unquote(m.group("option")) or None
 
 
 def triage(*, repo_root: Path, work_dir: Path, dry_run: bool) -> TriageResult:
@@ -213,7 +224,15 @@ def _triage_report(
             continue
         if prop.pid in children:
             try:
-                verify_child(prop.pid, children[prop.pid], number, repo_root)
+                recorded = verify_child(prop.pid, children[prop.pid], number, repo_root)
+                if recorded != option:
+                    # e.g. the report edit failed after creating a "close" child and
+                    # the human then switched to "継続": never relink the stale child.
+                    raise ValueError(
+                        f"{prop.pid}: existing child #{children[prop.pid]} was filed for "
+                        f"option {recorded!r} but the report now selects {option!r}; "
+                        "resolve by hand (close the child or restore the selection)"
+                    )
             except ValueError as exc:
                 result.errors.append(f"#{number} {exc}")
                 LOG.error("#%d %s", number, exc)

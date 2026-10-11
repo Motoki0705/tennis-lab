@@ -494,7 +494,7 @@ def test_concurrent_reports_create_one_issue(ops_env: Any) -> None:
     results = [(p.wait(timeout=120), p.communicate()[1]) for p in runs]
 
     assert sorted(code for code, _ in results) == [0, 1]
-    assert any("report for 2026W42 already exists" in err for _, err in results)
+    assert any("report for 2026W42 already exists" in err for _, err in results), results
     assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
 
 
