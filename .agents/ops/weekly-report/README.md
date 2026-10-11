@@ -40,6 +40,10 @@ model / effort は [`../lib/agents.conf`](../lib/agents.conf) で固定され、
   `<!-- ops-report-proposal: <ID> report=#<レポート番号> -->` がIDとレポートの両方に一致する場合だけで、
   一致しなければその提案はエラーにする。同じIDの子issueが2件見つかった場合は停止する。
 - レポートをcloseするとtriage対象外になる。不要な提案は放置でよい。
+- 同時実行（timerと手動実行など）: `report` の「同週チェック → issue作成」と `triage` の「子issue走査 → 作成 → 本文追記」は
+  マシン共通のロックファイル（flock）で排他する。`report` は agent 実行前にも同週チェックをし、ロック内で再確認する。
+- 行末の `→ #番号` はtriageだけが付ける。PRタイトル等に同じ形があれば `→ \#番号` にエスケープして描画する。
+  title走査で見つかった子issueと一致しない `→ #番号` は、子issue本文のマーカーで検証し、不一致ならエラーにする。
 
 ## 手動実行
 
@@ -74,6 +78,8 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 | `WEEKLY_REPORT_CLEANUP_CMD` | `<python> .agents/ops/cleanup/cleanup.py scan` | 掃除モジュールのコマンド。`--report-json <一時ファイル>` を自動付与し、そのファイルのJSONを読む |
 | `WEEKLY_REPORT_LOG_DIR` | 上記state dir | ログの保存先 |
 | `WEEKLY_REPORT_AGENT_EXEC` | `../lib/agent_exec.sh` | agentラッパー（テストで差し替える） |
+| `WEEKLY_REPORT_LOCK_FILE` | `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/weekly-report.lock` | issue書き込みの排他ロック（下記） |
+| `WEEKLY_REPORT_LOCK_TIMEOUT` | `600` | ロック待ちの上限（秒）。超えたら非ゼロ終了 |
 
 - 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
   ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。

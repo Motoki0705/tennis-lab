@@ -255,15 +255,12 @@ def collect_github(
             "total": len(issues),
             "by_label": dict(sorted(label_counts.items())),
             "ai_proposed": ai_proposed,
-            # All open issues, so the agent can refer to existing ones without gh.
+            # Every open issue (gh_list fails rather than truncates), one compact
+            # line each, so the agent can refer to existing ones without gh.
             "items": [
-                {
-                    "number": i["number"],
-                    "title": i["title"],
-                    "labels": _names(i["labels"]),
-                    "idle_days": _days(cfg.now, i["updatedAt"]),
-                }
-                for i in sorted(issues, key=lambda r: int(r["number"]))[:400]
+                f"#{i['number']} [{','.join(_names(i['labels']))}] {i['title']}"
+                f"（{_days(cfg.now, i['updatedAt'])}日更新なし）"
+                for i in sorted(issues, key=lambda r: int(r["number"]))
             ],
         },
         "ci_runs_in_period": {

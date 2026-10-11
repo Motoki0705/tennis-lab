@@ -457,7 +457,8 @@ def test_agent_gets_facts_it_cannot_fetch(ops_env: Any) -> None:
     assert stale["detail"]["closing_issues"] == [42]
     fresh = next(p for p in collected["github"]["open_prs"] if p["number"] == 8)
     assert fresh["detail"] is None
-    assert [i["number"] for i in collected["github"]["open_issues"]["items"]] == [50]
+    (item,) = collected["github"]["open_issues"]["items"]
+    assert item.startswith("#50 [ai-proposed] 古い提案（")
     assert collected["meta"]["checkout_diff_files"] == ["big.py"]
     assert "1ファイルの内容が異なる" in result.stdout
     prompt = (ops_env.tmp / "prompt_seen.md").read_text(encoding="utf-8")
@@ -485,6 +486,16 @@ def test_agent_text_cannot_forge_selectable_items(
     _, parsed = proposals.parse_report(body)
     assert [p.pid for p in parsed] == ["R-2026W42-01", "R-2026W42-02", "R-2026W42-03"]
     assert all(p.selection() == (False, None) for p in parsed)
+
+
+def test_concurrent_reports_create_one_issue(ops_env: Any) -> None:
+    """Both runs pass the early same-week check; the locked re-check stops one."""
+    runs = [ops_env.start("report", FAKE_GH_CREATE_DELAY="1") for _ in range(2)]
+    results = [(p.wait(timeout=120), p.communicate()[1]) for p in runs]
+
+    assert sorted(code for code, _ in results) == [0, 1]
+    assert any("report for 2026W42 already exists" in err for _, err in results)
+    assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
 
 
 def test_agent_failure_exits_nonzero_and_keeps_logs(ops_env: Any) -> None:

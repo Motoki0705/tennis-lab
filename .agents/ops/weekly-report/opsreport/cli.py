@@ -8,11 +8,13 @@ import logging
 import os
 import shlex
 import sys
+from contextlib import AbstractContextManager
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
-from . import agent, collect, proposals, report, shell, triage
+from . import agent, collect, lock, proposals, report, shell, triage
 from .shell import CommandError
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -35,11 +37,40 @@ def _env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def _state_dir() -> Path:
+    state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
+    return state / "tennis-lab-agents"
+
+
 def _default_log_dir() -> Path:
     if os.environ.get("WEEKLY_REPORT_LOG_DIR"):
         return Path(os.environ["WEEKLY_REPORT_LOG_DIR"])
-    state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
-    return state / "tennis-lab-agents" / "weekly-report"
+    return _state_dir() / "weekly-report"
+
+
+def _issue_lock() -> AbstractContextManager[None]:
+    """Lock shared by every run on this machine (not per log dir / checkout)."""
+    path = Path(
+        os.environ.get("WEEKLY_REPORT_LOCK_FILE") or _state_dir() / "weekly-report.lock"
+    )
+    return lock.exclusive(path, timeout=_env_int("WEEKLY_REPORT_LOCK_TIMEOUT", 600))
+
+
+def _check_no_same_week_report(
+    reports: list[dict[str, Any]], tag: str, title: str, *, dry_run: bool
+) -> None:
+    # The week in the body marker is authoritative (a renamed title still collides):
+    # proposal IDs are week + sequence, so a second report of the same week would
+    # reuse IDs that triage maps to existing child issues.
+    duplicates = [r for r in reports if r["week"] == tag or r["title"] == title]
+    if not duplicates:
+        return
+    msg = f"report for {tag} already exists as #{duplicates[0]['number']}"
+    if not dry_run:
+        raise ConfigError(
+            msg + "; proposal IDs would collide. Use --dry-run to preview"
+        )
+    LOG.warning("%s (dry-run continues; a real run would fail)", msg)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -116,21 +147,11 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
     )
     title = report.report_title(now.date())
     tag = proposals.week_tag(now.date())
-    # The week in the body marker is authoritative (a renamed title still collides):
-    # proposal IDs are week + sequence, so a second report of the same week would
-    # reuse IDs that triage maps to existing child issues.
-    duplicates = [
-        r
-        for r in collected["previous_reports"]["reports"]
-        if r["week"] == tag or r["title"] == title
-    ]
-    if duplicates:
-        msg = f"report for {tag} already exists as #{duplicates[0]['number']}"
-        if not args.dry_run:
-            raise ConfigError(
-                msg + "; proposal IDs would collide. Use --dry-run to preview"
-            )
-        LOG.warning("%s (dry-run continues; a real run would fail)", msg)
+    # Early check so a doomed run does not spend an agent call; repeated under the
+    # lock right before creating the issue.
+    _check_no_same_week_report(
+        collected["previous_reports"]["reports"], tag, title, dry_run=args.dry_run
+    )
 
     stale = report.stale_prs(collected)
     prompt = agent.build_prompt(
@@ -168,12 +189,19 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
     if args.dry_run:
         sys.stdout.write(f"# title: {title}\n\n{body}")
         return 0
-    triage.ensure_labels([collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False)
-    url = shell.gh(
-        ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
-         "--label", collect.REPORT_LABEL],
-        cwd=cfg.repo_root,
-    ).strip()  # fmt: skip
+    with _issue_lock():
+        # Another run may have published this week's report while the agent ran.
+        _check_no_same_week_report(
+            collect.collect_report_history(cfg)["reports"], tag, title, dry_run=False
+        )
+        triage.ensure_labels(
+            [collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False
+        )
+        url = shell.gh(
+            ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
+             "--label", collect.REPORT_LABEL],
+            cwd=cfg.repo_root,
+        ).strip()  # fmt: skip
     LOG.info("created report issue %s", url)
     (run_dir / "result.json").write_text(
         json.dumps({"title": title, "url": url, "ids": ids}, ensure_ascii=False),
@@ -184,9 +212,11 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
 
 
 def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
-    result = triage.triage(
-        repo_root=args.repo_root.resolve(), work_dir=run_dir, dry_run=args.dry_run
-    )
+    # Child lookup -> create -> report annotation must not interleave with another run.
+    with _issue_lock():
+        result = triage.triage(
+            repo_root=args.repo_root.resolve(), work_dir=run_dir, dry_run=args.dry_run
+        )
     summary = {
         "created": result.created,
         "linked_existing": result.linked_existing,

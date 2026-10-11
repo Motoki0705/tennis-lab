@@ -20,7 +20,7 @@ WEEKLY_REPORT = ROOT / ".agents/ops/weekly-report/weekly_report.py"
 NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
 FAKE_GH = r"""
-import json, os, sys
+import json, os, sys, time
 
 args = sys.argv[1:]
 with open(os.environ["FAKE_GH_CALLS"], "a", encoding="utf-8") as fh:
@@ -70,6 +70,10 @@ elif head == ["issue", "view"]:
     issue = next(r for r in state["issues"] if r["number"] == int(args[2]))
     print(json.dumps({k: gh_issue(issue)[k] for k in opt("--json").split(",")}))
 elif head == ["issue", "create"]:
+    # Widen the check-then-create window so unlocked concurrent runs would race.
+    time.sleep(float(os.environ.get("FAKE_GH_CREATE_DELAY", "0")))
+    with open(path, encoding="utf-8") as fh:
+        state = json.load(fh)
     number = state["next_number"]
     state["next_number"] += 1
     with open(opt("--body-file"), encoding="utf-8") as fh:
@@ -307,17 +311,30 @@ class OpsEnv:
         )
         Path(self.env["FAKE_AGENT_OUTPUT"]).write_text(text, encoding="utf-8")
 
-    def run(self, *args: str, **extra_env: str) -> subprocess.CompletedProcess[str]:
+    def _cmd(self, args: tuple[str, ...]) -> list[str]:
         cmd = [sys.executable, str(WEEKLY_REPORT), *args]
         cmd += ["--repo-root", str(self.repo), "--log-dir", str(self.tmp / "logs")]
         if args[0] == "report":
             cmd += ["--base-ref", "main", "--now", NOW]
+        return cmd
+
+    def run(self, *args: str, **extra_env: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            cmd,
+            self._cmd(args),
             env={**self.env, **extra_env},
             text=True,
             capture_output=True,
             check=False,
+        )
+
+    def start(self, *args: str, **extra_env: str) -> subprocess.Popen[str]:
+        """Start a run in the background (for concurrency tests)."""
+        return subprocess.Popen(
+            self._cmd(args),
+            env={**self.env, **extra_env},
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
 
     def run_dirs(self) -> list[Path]:
@@ -352,6 +369,7 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
             "FAKE_AGENT_PROMPT_COPY": str(tmp_path / "prompt_seen.md"),
             "FAKE_AGENT_USED": str(tmp_path / "agent_used.txt"),
             "WEEKLY_REPORT_AGENT_EXEC": str(fake_exec),
+            "WEEKLY_REPORT_LOCK_FILE": str(tmp_path / "state" / "weekly-report.lock"),
         }
     )
     ops = OpsEnv(

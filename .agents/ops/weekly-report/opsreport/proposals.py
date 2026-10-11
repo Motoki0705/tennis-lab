@@ -43,6 +43,9 @@ _HEAD_RE = re.compile(
 )
 _OPTION_RE = re.compile(r"^  - \[(?P<check>[ xX])\] (?P<label>.+?)\s*$")
 _CHILD_RE = re.compile(r"\s→ #(?P<num>\d+)\s*$")
+# Text that would read as a child annotation (``→ #123``); escaped as ``→ \#123``,
+# which GitHub renders identically but _CHILD_RE does not match.
+_ANNOTATION_LIKE_RE = re.compile(r"→(\s*)#(?=\d)")
 _CHECKBOX_IN_TEXT_RE = re.compile(r"^(\s*(?:[-*+]|\d+[.)])) \[[ xX]\] ")
 
 REPORT_MARKER_PREFIX = "<!-- ops-report:v1 "
@@ -98,6 +101,17 @@ def _one_line(text: str) -> str:
     return " ".join(neutralize(text).split())
 
 
+def _head_text(text: str) -> str:
+    """One-line text for a proposal head line, where only triage may append
+    ``→ #N``; title-derived text (e.g. a PR titled "移管 → #123") is escaped."""
+    return _ANNOTATION_LIKE_RE.sub(r"→\1\\#", _one_line(text))
+
+
+def unescape_head_text(text: str) -> str:
+    """Inverse of the annotation escape, for plain-text uses (issue titles)."""
+    return re.sub(r"→(\s*)\\#(?=\d)", r"→\1#", text)
+
+
 def render_proposals(proposals: list[Proposal], tag: str) -> tuple[str, list[str]]:
     """Render proposals grouped by section, assigning IDs in rendered order.
 
@@ -122,7 +136,7 @@ def render_proposals(proposals: list[Proposal], tag: str) -> tuple[str, list[str
             ids.append(pid)
             prio = f"（優先度: {PRIORITIES[p.priority]}）" if p.priority else ""
             box = "" if p.options else "[ ] "
-            out.append(f"- {box}**{pid}** {_one_line(p.title)}{prio}")
+            out.append(f"- {box}**{pid}** {_head_text(p.title)}{prio}")
             out.extend(f"  {line}" for line in _plain_lines(p.detail))
             if p.evidence.strip():
                 out.append(f"  - 根拠: {_one_line(p.evidence)}")
