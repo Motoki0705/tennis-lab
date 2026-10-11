@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from src.utils.shared_file_verification import FileVersion, file_version, stat_version
+from src.utils.data.verification import FileVersion, file_version, stat_version
 
 
 class FileRangeReader:

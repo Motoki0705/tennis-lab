@@ -108,7 +108,9 @@ def test_training_rejects_conflicting_checkpoint_inputs() -> None:
     ],
 )
 def test_training_rejects_policy_that_loses_epoch_candidates(key: str, value: object) -> None:
-    from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
+    from src.tasks.ball_detection.training.convnext_heatmap.runner import (
+        BallDetectionTrainingRunner,
+    )
 
     config = _compose("train")
     OmegaConf.update(config, key, value)

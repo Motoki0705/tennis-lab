@@ -3,10 +3,10 @@ from typing import Any
 import pytest
 import torch
 
-from src.tasks.ball_detection.training.heatmap_pretraining.diagnostics import (
+from src.tasks.ball_detection.training.runtime.diagnostics import (
     batch_identity,
 )
-from tests.benchmarks.ball_dpt_checkpoint_replay import verify_target
+from tests.benchmarks.ball_detection.checkpoint_replay import verify_target
 
 
 def prefix() -> list[dict[str, Any]]:
@@ -15,7 +15,7 @@ def prefix() -> list[dict[str, Any]]:
 
 def test_replay_requires_the_exact_failed_window_at_the_correct_update() -> None:
     batches = prefix()
-    failure = dict(attempted_update=42004, batch=batch_identity(batches[3]))
+    failure: dict[str, Any] = dict(attempted_update=42004, batch=batch_identity(batches[3]))
     verify_target(batches, first_step=42000, failure=failure)
     with pytest.raises(ValueError, match="failed batch"):
         verify_target(batches, first_step=42001, failure=failure)

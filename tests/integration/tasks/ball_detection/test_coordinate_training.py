@@ -13,27 +13,30 @@ import pytest
 import torch
 
 from src.tasks.ball_detection.data.annotation_states import annotation_states
-from src.tasks.ball_detection.data.coordinate_dataset import (
-    CoordinateWindowDataset,
-    collate_coordinate_windows,
+from src.tasks.ball_detection.data.store import BallFrameStore, shard_name
+from src.tasks.ball_detection.data.windows.dataset import (
+    FrozenBallWindowDataset,
+    collate_window_samples,
 )
-from src.tasks.ball_detection.data.coordinate_manifest import (
+from src.tasks.ball_detection.data.windows.intervals import PlayIntervalConfig
+from src.tasks.ball_detection.data.windows.manifest import (
     build_coordinate_manifest,
     shared_pose_reference,
 )
-from src.tasks.ball_detection.data.coordinate_snapshot import snapshot_ball_store
-from src.tasks.ball_detection.data.play_intervals import PlayIntervalConfig
-from src.tasks.ball_detection.data.store import BallFrameStore, shard_name
-from src.tasks.ball_detection.data.temporal_sampling import (
+from src.tasks.ball_detection.data.windows.preparation import (
+    prepare_coordinate_training,
+)
+from src.tasks.ball_detection.data.windows.snapshot import snapshot_ball_store
+from src.tasks.ball_detection.data.windows.temporal import (
     TemporalSamplingConfig,
     select_sampled_windows,
 )
-from src.tasks.ball_detection.model_io.mdd import luminance_to_mdd, mdd_coefficients
 from src.tasks.ball_detection.preprocessing import RGBToMDD
-from src.tasks.ball_detection.training.coordinate_preparation import (
-    prepare_coordinate_training,
+from src.tasks.ball_detection.preprocessing.mdd import (
+    luminance_to_mdd,
+    mdd_coefficients,
 )
-from src.tasks.ball_detection.training.coordinate_sampling import FPSMixSampler
+from src.tasks.ball_detection.training.sampling import FPSMixSampler
 from src.utils.checksum import dual_sha256
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
@@ -74,7 +77,7 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
     data = build_coordinate_manifest(store, PlayIntervalConfig(), TemporalSamplingConfig(), input_kind="mdd_only")
     path = tmp_path / "windows.json"
     path.write_text(json.dumps(data))
-    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False)
+    dataset = FrozenBallWindowDataset(path, split="train", requires_pose=False)
     assert data["semantics"]["clip_presence_gate"] is None
     assert {window.frame_step for _, window in dataset.windows} == {1, 2, 4}
     index = next(i for i, (_, w) in enumerate(dataset.windows) if w.start == 0 and w.frame_step == 4)
@@ -94,7 +97,7 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
     assert sample["rgb"].dtype == torch.uint8 and "mdd" not in sample
     torch.testing.assert_close(native, expected)
     assert not torch.allclose(native, wrong_order)
-    batch = collate_coordinate_windows([sample])
+    batch = collate_window_samples([sample])
     assert "pose" not in batch and batch["rgb"].shape == (1, 32, 3, 32, 32)
     sampler = FPSMixSampler(dataset, windows_per_epoch=30, seed=19)
     first = list(sampler)
@@ -143,7 +146,7 @@ def test_snapshot_hardlinks_rgb_but_freezes_indexes_and_detects_modified_bytes(t
         byte = stream.read(1)[0]
         stream.seek(10)
         stream.write(bytes([byte ^ 1]))
-    dataset = CoordinateWindowDataset(path, split="train", requires_pose=False)
+    dataset = FrozenBallWindowDataset(path, split="train", requires_pose=False)
     with pytest.raises(ValueError, match="checksum"):
         dataset[0]
 
@@ -174,7 +177,7 @@ def test_preparation_freezes_36_models_and_pose_free_loading_survives_missing_po
     assert plan["datasets"]["mdd_only"]["clips"] == 6
     assert not (output / "PREPARATION_INCOMPLETE").exists()
     (output / "poses").rename(output / "hidden_poses")
-    data = CoordinateWindowDataset(Path(plan["datasets"]["mdd_only"]["path"]), split="val", requires_pose=False)
+    data = FrozenBallWindowDataset(Path(plan["datasets"]["mdd_only"]["path"]), split="val", requires_pose=False)
     assert {data[i]["common_evaluation"] for i in range(len(data))} == {True, False}
     assert all("pose" not in data[i] for i in range(len(data)))
 
@@ -184,7 +187,7 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
     variant = next(m for m in plan["models"] if m["id"] == "conv2d-query_only")
     output = tmp_path / "training"
     env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
-    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train_mdd_pose",
+    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "coordinates", "--initialize", "scratch",
                              "--manifest", variant["manifest"], "--model-config", variant["model_config"],
                              "--output", str(output), "--epochs", "1", "--learning-rate", ".001", "--seed", "5",
                              "--mdd-a", ".27", "--mdd-b", "-.05",
@@ -199,7 +202,7 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
     assert progress["global_step"] == 2 and progress["windows"] == 3
     assert np.isfinite(progress["train_loss"])
     report_path = tmp_path / "evaluation.json"
-    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate_mdd_coordinates",
+    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate", "--mode", "coordinates",
                              "--checkpoint", str(output / "epoch-000.pt"), "--manifest", variant["manifest"],
                              "--output", str(report_path), "--artifact-root", str(tmp_path), "--output-root", str(tmp_path),
                              "--split", "test", "--device", "cpu"], env=env, capture_output=True, text=True, timeout=90)
@@ -220,8 +223,8 @@ def test_packed_jpeg_preserves_sample_order_and_teachers_without_cpu_decode(
 ) -> None:
     _, plan = preparation
     path = Path(plan["datasets"]["mdd_only"]["path"])
-    reference = CoordinateWindowDataset(path, split="train", requires_pose=False)
-    packed = CoordinateWindowDataset(path, split="train", requires_pose=False, jpeg_decoder="nvjpeg")
+    reference = FrozenBallWindowDataset(path, split="train", requires_pose=False)
+    packed = FrozenBallWindowDataset(path, split="train", requires_pose=False, jpeg_decoder="nvjpeg")
 
     def forbidden_decode(*args: object, **kwargs: object) -> None:
         raise AssertionError("Encoded input must not call CPU image decode")
@@ -236,11 +239,11 @@ def test_packed_jpeg_preserves_sample_order_and_teachers_without_cpu_decode(
         for encoded, frame_index in zip(sample["jpeg"].split(sample["jpeg_lengths"]), sample["frame_indices"], strict=True):
             assert encoded.numpy().tobytes() == packed.store.read_jpeg(packed.store.row_of(clip, int(frame_index))).tobytes()
         samples.append(sample)
-    batch = collate_coordinate_windows(samples)
+    batch = collate_window_samples(samples)
     assert batch["image_shape"][:3] == (2, 32, 3) and len(batch["jpeg_lengths"]) == 64
     assert batch["jpeg"].numel() == sum(batch["jpeg_lengths"])
     with pytest.raises(ValueError, match="representation"):
-        collate_coordinate_windows([packed[0], reference[0]])
+        collate_window_samples([packed[0], reference[0]])
 
 
 def test_epoch_resume_matches_uninterrupted_training_and_rejects_changed_recipe(
@@ -249,7 +252,7 @@ def test_epoch_resume_matches_uninterrupted_training_and_rejects_changed_recipe(
     _, plan = preparation
     variant = next(m for m in plan["models"] if m["id"] == "conv2d-query_only")
     env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
-    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.train_mdd_pose",
+    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "coordinates", "--initialize", "scratch",
                "--manifest", variant["manifest"], "--model-config", variant["model_config"],
                "--learning-rate", ".001", "--seed", "5", "--device", "cpu",
                "--windows-per-epoch", "6", "--batch-size", "2", "--num-workers", "2"]

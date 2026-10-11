@@ -7,8 +7,8 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor, nn
 
-from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
-from src.tasks.ball_detection.models.mdd_pose.model import MDDPoseDetector
+from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig
+from src.tasks.ball_detection.models.mdd.detectors import MDDPoseDetector
 from src.tasks.base.model_io import BoundModelIO, ModelCall, bind_model_io
 
 from .mdd_coordinates import decode_coordinates, validate_rgb_timestamps

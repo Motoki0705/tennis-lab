@@ -12,7 +12,7 @@ from pathlib import Path
 import cv2
 import torch
 
-from src.tasks.ball_detection.data.components.augmentation import (
+from src.tasks.ball_detection.data.augmentation.spatial import (
     normalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.data.store import BallFrameStore

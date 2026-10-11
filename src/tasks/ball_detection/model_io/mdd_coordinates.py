@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.models.mdd_pose.config import MDDPoseConfig
+from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig
 
 
 def validate_rgb_timestamps(config: MDDPoseConfig, rgb: Tensor, timestamps: Tensor) -> None:

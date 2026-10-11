@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tasks.ball_detection.data.play_intervals import PlaySelection, mask_intervals
+from src.tasks.ball_detection.data.windows.intervals import (
+    PlaySelection,
+    mask_intervals,
+)
 
 from ..configuration import StatisticsConfig
 from ..contracts import ClipInput, Measurements
@@ -19,8 +24,8 @@ def compute(data: ClipInput, choices: dict[int, PlaySelection], config: Statisti
     good_edge = s.visible_observation[1:] & s.visible_observation[:-1] & ~data.breaks[1:] & (s.track[1:] == s.track[:-1])
     for stride, selection in choices.items():
         prefix = f'windows/stride_{stride}'
-        coverage = np.zeros(data.clip.frame_count, np.int64)
-        records = []
+        coverage: NDArray[np.int64] = np.zeros(data.clip.frame_count, np.int64)
+        records: list[dict[str, Any]] = []
         position_supervision: NDArray[np.int64] = np.zeros(length, np.int64)
         position_missing: NDArray[np.int64] = np.zeros(length, np.int64)
         for start in selection.window_starts:

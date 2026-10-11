@@ -11,7 +11,7 @@ import torch
 from omegaconf import DictConfig
 from torch import nn
 
-from src.tasks.ball_detection.inference.checkpoint import (
+from src.tasks.ball_detection.checkpoints.heatmap import (
     BallInferenceCheckpointError,
     load_ball_checkpoint,
 )

@@ -7,7 +7,7 @@
 
 ```bash
 ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-./scripts/run_in_repo_venv.sh python -m src.tasks.ball_detection.scripts.review_dataset \
+./scripts/run_in_repo_venv.sh python -m src.tasks.ball_detection.scripts.review --mode dataset \
   --project-root "$ROOT" --data-root "$ROOT/data" \
   --port 8776
 ```
@@ -55,13 +55,13 @@ clipを選ぶと、画像の下に「プレイ／除外候補」「教師窓の�
 再生・シークにも現在位置と拡大欄が追従します。frame表示は0始まり、時刻は先頭からの実PTS秒です。
 推定条件と件数を併記します。除外候補は非プレイの確定ラベルではなく、
 短いプレイや位置教師不足も含み得ます。これは表示機能で、区間の編集・承認・保存は行いません。
-区間アルゴリズムと学習対象の固定方法は[プレイ区間の契約](../data/PLAY_INTERVALS.md)を参照。
+区間アルゴリズムと学習対象の固定方法は[プレイ区間の契約](../data/windows/README.md)を参照。
 
 今回のpose承認済みsubsetを確認する場合:
 
 ```bash
 ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-./scripts/run_in_repo_venv.sh python -m src.tasks.ball_detection.scripts.review_dataset \
+./scripts/run_in_repo_venv.sh python -m src.tasks.ball_detection.scripts.review --mode dataset \
   --project-root "$ROOT" --data-root "$ROOT/data" \
   --play-poses "$ROOT/data/ball_detection/ball-mix-v2-player-pose-v1" \
   --port 8776
@@ -75,7 +75,7 @@ liveの`ball-mix-v2`とは別に表示します。`--play-poses`はdata root内�
 
 ```bash
 ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-./scripts/run_in_repo_venv.sh python -m src.tasks.ball_detection.scripts.inference_ui \
+./scripts/run_in_repo_venv.sh python -m src.tasks.ball_detection.scripts.review --mode inference \
   --project-root "$ROOT" --data-root "$ROOT/data" \
   --outputs-root "$ROOT/outputs/ball_detection" \
   --checkpoints-root "$ROOT/ckpt/ball_detection" \

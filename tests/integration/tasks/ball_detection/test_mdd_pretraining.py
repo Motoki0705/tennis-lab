@@ -8,14 +8,14 @@ from pathlib import Path
 import torch
 import yaml
 
-from src.tasks.ball_detection.models.mdd_pretrain import DeepMDDQueryDetector
-from src.tasks.ball_detection.training.heatmap_pretraining.checkpoint import (
+from src.tasks.ball_detection.checkpoints.pretraining import (
     transfer_encoder,
 )
+from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from tests.integration.tasks.ball_detection.test_coordinate_training import (
     preparation as preparation_fixture,
 )
-from tests.unit.tasks.ball_detection.models.test_mdd_pretrain import small_config
+from tests.unit.tasks.ball_detection.models.mdd.test_cnn import small_config
 
 
 def test_pretraining_cli_saves_evaluation_gif_and_transferable_encoder(tmp_path: Path) -> None:
@@ -24,7 +24,7 @@ def test_pretraining_cli_saves_evaluation_gif_and_transferable_encoder(tmp_path:
     model_config.write_text(yaml.safe_dump(dict(name="mdd_dpt_pretrain", **asdict(small_config()))))
     output = tmp_path / "pretrained"
     env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
-    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.pretrain_mdd_dpt",
+    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "dpt_pretrain",
         "--manifest", plan["datasets"]["mdd_only"]["path"], "--model-config", str(model_config),
         "--output", str(output), "--epochs", "1", "--windows-per-epoch", "3", "--warmup-updates", "0",
         "--learning-rate", ".001", "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv",
@@ -49,7 +49,7 @@ def test_diagnostic_prefix_resumes_with_the_original_schedule_and_weights(tmp_pa
     model_config = tmp_path / "pretraining.yaml"
     model_config.write_text(yaml.safe_dump(dict(name="mdd_dpt_pretrain", **asdict(small_config()))))
     env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
-    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.pretrain_mdd_dpt",
+    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "dpt_pretrain",
         "--manifest", plan["datasets"]["mdd_only"]["path"], "--model-config", str(model_config),
         "--epochs", "2", "--windows-per-epoch", "3", "--warmup-updates", "1", "--learning-rate", ".001",
         "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv", "--num-workers", "0",
