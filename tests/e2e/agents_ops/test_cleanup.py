@@ -977,12 +977,61 @@ def test_queue_jobs_written_by_training_queue_sh_protect_paths_with_spaces(
     assert not lookalike.exists()
 
 
-def test_unparsable_queue_job_stops_the_run(lab: Lab) -> None:
+@pytest.mark.parametrize(
+    "body",
+    [
+        "cd '/unterminated\n",  # unterminated quote
+        "python train.py\n",  # no cd: relative words have no known base directory
+        "cd $HOME/x\npython train.py\n",  # cd target needs expansion
+    ],
+)
+def test_unparsable_queue_job_stops_the_run(lab: Lab, body: str) -> None:
     (lab.queue / "running" / "1_1_bad.job").write_text(
-        "# name: bad\ncd '/unterminated\n", encoding="utf-8"
+        "#!/usr/bin/env bash\n# name: bad\n" + body, encoding="utf-8"
     )
     proc = lab.run("scan")
     assert proc.returncode == 1 and "cannot parse training-queue job" in proc.stderr
+
+
+def test_queue_job_relative_references_resolve_against_job_cwd(lab: Lab) -> None:
+    def merged_in_repo(branch: str) -> Path:
+        tip = lab.branch(branch)
+        lab.pr(branch, tip)
+        path = lab.repo / ".claude/worktrees" / branch.split("/", 1)[1]
+        lab.git("worktree", "add", "-q", str(path), branch)
+        return path
+
+    feature = merged_in_repo("feat/feature")
+    other = merged_in_repo("feat/other")
+    lookalike = merged_in_repo("feat/feature-x")
+
+    # Enqueued from the main checkout; the worktree appears only as a relative path.
+    text = _enqueue(
+        lab, "python .claude/worktrees/feature/scripts/train.py", lab.repo, "rel"
+    )
+    assert str(feature) not in text
+    # A cd inside the command moves the base directory.
+    text = _enqueue(
+        lab,
+        "cd .claude/worktrees && python other/train.py --cfg=feature-x-y/a.yaml",
+        lab.repo,
+        "rel-cd",
+    )
+    assert str(other) not in text
+
+    entries = lab.scan()
+    for entry_id, job in (
+        ("branch:feat/feature", "jobs/rel"),
+        ("branch:feat/other", "jobs/rel-cd"),
+    ):
+        e = entries[entry_id]
+        assert e["category"] == "protected", (entry_id, e["reasons"])
+        assert "queue_job_references" in codes(e) and job in str(e["reasons"])
+    assert entries["branch:feat/feature-x"]["category"] == "auto_delete"
+
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert feature.exists() and other.exists() and not lookalike.exists()
 
 
 @pytest.mark.parametrize("locale", ["C", "C.UTF-8"])
@@ -1054,3 +1103,38 @@ def test_backups_for_ids_with_colliding_slugs_never_overwrite(
     with pytest.raises(cleanup.CleanupError, match="refusing to overwrite"):
         cleanup.write_backup(lab.state, "branch:feat_c", wt)
     assert "first" in first.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("target", ["notes.md", "outputs/metrics.json"])
+def test_approved_discard_refuses_when_discarded_content_changes(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, target: str
+) -> None:
+    lab.branch("feat/one")
+    one = lab.worktree("one", "feat/one")
+    (one / "notes.md").write_text("scratch\n", encoding="utf-8")
+    lab.branch("feat/two")
+    two = lab.worktree("two", "feat/two")
+    victim = two / target  # untracked file, or a file inside an ignored directory
+    victim.parent.mkdir(parents=True, exist_ok=True)
+    victim.write_text("original\n", encoding="utf-8")
+    before = victim.stat()
+    argv = lab.argv("delete", "feat/one", "feat/two", "--discard-changes")
+    cleanup = _import_cleanup(lab, monkeypatch)
+    real_delete = cleanup.delete_entry
+
+    def delete_then_edit(repo: Path, entry: Any, state_dir: Path, **kw: Any) -> None:
+        real_delete(repo, entry, state_dir, **kw)
+        if entry.id == "branch:feat/one":
+            # Same path, same size, mtime restored: only the content differs.
+            victim.write_text("rewrite!\n", encoding="utf-8")
+            os.utime(victim, ns=(before.st_atime_ns, before.st_mtime_ns))
+
+    monkeypatch.setattr(cleanup, "delete_entry", delete_then_edit)
+    assert cleanup.main(argv) == 1
+
+    assert not one.exists() and not lab.has_branch("feat/one")
+    assert victim.read_text(encoding="utf-8") == "rewrite!\n"
+    assert lab.has_branch("feat/two")
+    refused = {e["id"]: e for e in lab.report()["entries"]}["branch:feat/two"]
+    assert refused["action"] == "refused", refused
+    assert f"local files changed: {target}" in refused["action_error"]

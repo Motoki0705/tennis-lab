@@ -70,7 +70,7 @@ reflog 最新エントリ、worktree の `HEAD`/`index` と worktree ディレ�
 | `branch_in_use` | protect | どこかの worktree の rebase（`rebase-{merge,apply}/head-name`、`rebase-merge/update-refs`）・bisect（`BISECT_START`）が保持中の branch。HEAD が detached なので `git worktree list` には出ない（git の `branch.c` と同じ判定） |
 | `operation_in_progress` | protect | worktree で rebase / am / bisect / merge / cherry-pick / revert / sequencer が進行中 |
 | `process_using_worktree` | protect | `/proc/*/{cwd,root,fd/*}` が配下を指す、または argv に worktree パスを含むプロセスがいる |
-| `queue_job_references` | protect | training queue の `jobs/`（待機中）・`running/`（実行中）の job ファイルが worktree パスを含む。job は `training_queue.sh add` が `printf %q` で書くため、シェルの単語に復号（`\ `・`'...'`・`$'...'`・`"..."`）してから照合し、絶対パスは symlink を解決しても照合する。復号できない job があれば実行全体を 1 で止める |
+| `queue_job_references` | protect | training queue の `jobs/`（待機中）・`running/`（実行中）の job ファイルが worktree パスを含む。job は `training_queue.sh add` が `printf %q` で書くため、シェルの単語に復号（`\ `・`'...'`・`$'...'`・`"..."`）してから照合する。相対パスの単語（`KEY=`/`--opt=` の値も）は job 内のすべての `cd`/`pushd` 先を基準に解決し、絶対パスは symlink を解決しても照合する。復号できない job、最初の絶対 `cd` より前に相対の単語がある job（旧形式）、展開が必要な `cd` 先を持つ job があれば実行全体を 1 で止める |
 | `open_pr` | protect | open PR がある |
 | `undetermined` | protect | 判定不能（理由を表示） |
 | `no_pr` | approval | PR が無く default branch にも含まれない |
@@ -100,7 +100,8 @@ symlink（`.venv`, `.training_queue` など）と `disposable_untracked` / `disp
   分類後に tip が動いていれば失敗する。worktree は auto では `--force` なしの `git worktree remove`
   （git 自身も未commit・untracked を再確認する）。
 - `delete` も1件ごとに削除直前に同じ再収集を行い、実行冒頭の収集から tip・worktree・分類・理由コード
-  （info 以外）・worktree の中身のどれかが変わっていれば `refused`（先行する大きな worktree の削除中に
+  （info 以外）・worktree の中身（パス一覧に加え、破棄対象となる変更済み tracked・untracked・ignored
+  ファイルのサイズ・mtime_ns・ctime_ns・SHA-256。ディレクトリは再帰）のどれかが変わっていれば `refused`（先行する大きな worktree の削除中に
   プロセス起動や queue 追加があっても後続を消さない）。
 - どちらも worktree を消す前に branch の ref と worktree の HEAD が分類時の tip のままかを確認する
   （最後の `update-ref -d <ref> <tip>` も原子的に再確認する）。
@@ -179,8 +180,8 @@ branch が進んでいた場合に削除を拒否できる。
 
 `tests/e2e/agents_ops/test_cleanup.py`：一時repo＋worktree＋fake `gh` で、通常/squash merge 判定、
 未push検出、各保護条件（cwd・open fd・argv・queue 実行中/待機中・実際の `training_queue.sh add` が書く
-空白入りパス・lock・保護branch/worktree・current checkout・rebase/bisect 中の branch）、承認削除の途中で
-後続が使用中・更新済みになった場合の拒否、退避 patch の名前衝突、worktree の clean 判定、削除ログと復元、承認削除の tip ガード、ロック、失敗時の非ゼロ終了、
+空白入りパスや job の cwd 基準の相対パス・lock・保護branch/worktree・current checkout・rebase/bisect 中の branch）、承認削除の途中で
+後続が使用中・更新済み・破棄対象ファイルの内容変更になった場合の拒否、退避 patch の名前衝突、worktree の clean 判定、削除ログと復元、承認削除の tip ガード、ロック、失敗時の非ゼロ終了、
 レポートスキーマ（理由コードがこのREADMEに載っていること）を確認する。
 
 ```bash

@@ -40,6 +40,7 @@ from inventory import (
     Entry,
     Inventory,
     build_inventory,
+    discard_fingerprint,
     git,
     iso,
     load_config,
@@ -375,6 +376,13 @@ def reverify(repo: Path, cfg: Config, inv: Inventory, entry: Entry, cwd: Path) -
     return new
 
 
+def fingerprint(entry: Entry) -> dict[str, str]:
+    f = entry.facts
+    if f.worktree is None or f.worktree_state is None:
+        return {}
+    return discard_fingerprint(Path(f.worktree), f.worktree_state)
+
+
 def describe_drift(old: Entry, new: Entry) -> str | None:
     """What changed in the verdict or worktree contents between two snapshots."""
     changes: list[str] = []
@@ -458,6 +466,9 @@ def cmd_delete(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
             only_ids={i for i, _ in wanted},
         )
         index = {e.id: i for i, e in enumerate(inv.entries)}
+        # Content of the files a --discard-changes deletion would destroy, taken
+        # before anything is removed; re-taken right before each deletion.
+        contents = {e.id: fingerprint(e) for e in inv.entries}
         failed = False
         for entry_id, expect in wanted:
             if entry_id not in index:
@@ -472,6 +483,23 @@ def cmd_delete(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
                 entry = reverify(repo, cfg, inv, snapshot, Path.cwd())
                 inv.entries[i] = entry
                 drift = describe_drift(snapshot, entry)
+                if drift is None:
+                    now = fingerprint(entry)
+                    changed = sorted(
+                        k
+                        for k in contents[entry_id].keys() | now.keys()
+                        if contents[entry_id].get(k) != now.get(k)
+                    )
+                    if changed:
+                        drift = (
+                            "local files changed: "
+                            + ", ".join(changed[:5])
+                            + (
+                                f" (+{len(changed) - 5} more)"
+                                if len(changed) > 5
+                                else ""
+                            )
+                        )
                 if drift is not None:
                     raise DriftError(f"changed since classification: {drift}")
             except CleanupError as exc:
