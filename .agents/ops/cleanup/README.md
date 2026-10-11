@@ -67,8 +67,10 @@ reflog 最新エントリ、worktree の `HEAD`/`index` と worktree ディレ�
 | `protected_worktree` | protect | `protected_worktree_globs` に一致 |
 | `worktree_locked` | protect | `git worktree lock` 済み（理由を表示） |
 | `worktree_missing` | protect | worktree ディレクトリが無い（手で `git worktree prune`） |
+| `branch_in_use` | protect | どこかの worktree の rebase（`rebase-{merge,apply}/head-name`、`rebase-merge/update-refs`）・bisect（`BISECT_START`）が保持中の branch。HEAD が detached なので `git worktree list` には出ない（git の `branch.c` と同じ判定） |
+| `operation_in_progress` | protect | worktree で rebase / am / bisect / merge / cherry-pick / revert / sequencer が進行中 |
 | `process_using_worktree` | protect | `/proc/*/{cwd,root,fd/*}` が配下を指す、または argv に worktree パスを含むプロセスがいる |
-| `queue_job_references` | protect | training queue の `jobs/`（待機中）・`running/`（実行中）の job ファイルが worktree パスを含む |
+| `queue_job_references` | protect | training queue の `jobs/`（待機中）・`running/`（実行中）の job ファイルが worktree パスを含む。job は `training_queue.sh add` が `printf %q` で書くため、シェルの単語に復号（`\ `・`'...'`・`$'...'`・`"..."`）してから照合し、絶対パスは symlink を解決しても照合する。復号できない job があれば実行全体を 1 で止める |
 | `open_pr` | protect | open PR がある |
 | `undetermined` | protect | 判定不能（理由を表示） |
 | `no_pr` | approval | PR が無く default branch にも含まれない |
@@ -97,8 +99,14 @@ symlink（`.venv`, `.training_queue` など）と `disposable_untracked` / `disp
   auto_delete でなくなっていれば `skipped`。branch は `git update-ref -d <ref> <tip>` で消すため、
   分類後に tip が動いていれば失敗する。worktree は auto では `--force` なしの `git worktree remove`
   （git 自身も未commit・untracked を再確認する）。
+- `delete` も1件ごとに削除直前に同じ再収集を行い、実行冒頭の収集から tip・worktree・分類・理由コード
+  （info 以外）・worktree の中身のどれかが変わっていれば `refused`（先行する大きな worktree の削除中に
+  プロセス起動や queue 追加があっても後続を消さない）。
+- どちらも worktree を消す前に branch の ref と worktree の HEAD が分類時の tip のままかを確認する
+  （最後の `update-ref -d <ref> <tip>` も原子的に再確認する）。
 - `delete` は protected を承認があっても拒否する。未commit・untracked・ignored ファイルがある worktree は
-  `--discard-changes` が必要で、tracked の差分は `backups/*.patch` に退避する（untracked は名前のみ記録）。
+  `--discard-changes` が必要で、tracked の差分は `backups/<時刻>-<ns>-<slug>-<id の sha256>.patch` に退避する（`O_EXCL` で作成し、
+  既存ファイルは決して上書きしない。untracked は名前のみ記録）。
 - 削除系（`apply-auto`, `delete`）は `<state-dir>/cleanup.lock` を flock し、多重起動は終了コード 3。
 
 ## ログと復元
@@ -170,8 +178,9 @@ branch が進んでいた場合に削除を拒否できる。
 ## テスト
 
 `tests/e2e/agents_ops/test_cleanup.py`：一時repo＋worktree＋fake `gh` で、通常/squash merge 判定、
-未push検出、各保護条件（cwd・open fd・argv・queue 実行中/待機中・lock・保護branch/worktree・current
-checkout）、worktree の clean 判定、削除ログと復元、承認削除の tip ガード、ロック、失敗時の非ゼロ終了、
+未push検出、各保護条件（cwd・open fd・argv・queue 実行中/待機中・実際の `training_queue.sh add` が書く
+空白入りパス・lock・保護branch/worktree・current checkout・rebase/bisect 中の branch）、承認削除の途中で
+後続が使用中・更新済みになった場合の拒否、退避 patch の名前衝突、worktree の clean 判定、削除ログと復元、承認削除の tip ガード、ロック、失敗時の非ゼロ終了、
 レポートスキーマ（理由コードがこのREADMEに載っていること）を確認する。
 
 ```bash
