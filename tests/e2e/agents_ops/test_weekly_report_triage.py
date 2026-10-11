@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 
@@ -192,4 +194,74 @@ def test_malformed_report_body_is_an_error_not_a_skip(ops_env: Any) -> None:
 
     assert result.returncode == 1
     assert "proposal region" in result.stderr
+    assert _children(ops_env) == []
+
+
+def _check_02(body: str) -> str:
+    return body.replace("- [ ] **R-2026W42-02**", "- [x] **R-2026W42-02**")
+
+
+def test_concurrent_triage_runs_create_one_child(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(ops_env, report["number"], _check_02)
+
+    runs = [ops_env.start("triage", FAKE_GH_CREATE_DELAY="1") for _ in range(2)]
+    results = [(p.wait(timeout=120), p.communicate()[1]) for p in runs]
+
+    assert [code for code, _ in results] == [0, 0], results
+    # The runs really overlapped: one of them had to wait for the other.
+    assert any("waiting for lock" in err for _, err in results)
+    assert [c["title"] for c in _children(ops_env)] == [
+        "[R-2026W42-02] big.py を分割する"
+    ]
+    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
+        "body"
+    ]
+    assert len(re.findall(r"→ #\d", body)) == 1
+
+
+def test_triage_fails_when_lock_is_held(ops_env: Any) -> None:
+    lock_path = Path(ops_env.env["WEEKLY_REPORT_LOCK_FILE"])
+    lock_path.parent.mkdir(parents=True)
+    with lock_path.open("a") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        result = ops_env.run("triage", WEEKLY_REPORT_LOCK_TIMEOUT="1")
+
+    assert result.returncode == 1
+    assert "still held by another run" in result.stderr
+
+
+def test_annotation_like_pr_title_is_not_a_child_link(ops_env: Any) -> None:
+    state = ops_env.state
+    state["prs"][0]["title"] = "対応を移管 → #123"
+    ops_env.write_state(state)
+    report = _report_issue(ops_env)
+    assert "#7 対応を移管 → \\#123\n" in report["body"]
+    _edit_body(ops_env, report["number"], _check)
+
+    result = ops_env.run("triage")
+
+    assert result.returncode == 0, result.stderr
+    titles = sorted(c["title"] for c in _children(ops_env))
+    assert titles == [
+        "[R-2026W42-01] #7 対応を移管 → #123（選択: close）",
+        "[R-2026W42-02] big.py を分割する",
+    ]
+
+
+def test_forged_child_annotation_is_an_error(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(
+        ops_env,
+        report["number"],
+        lambda b: _check_02(b).replace(
+            "big.py を分割する（優先度: 高）", "big.py を分割する（優先度: 高） → #50"
+        ),
+    )
+
+    result = ops_env.run("triage")
+
+    assert result.returncode == 1
+    assert "existing issue #50 is not this proposal's child" in result.stderr
+    assert "found no marker" in result.stderr
     assert _children(ops_env) == []

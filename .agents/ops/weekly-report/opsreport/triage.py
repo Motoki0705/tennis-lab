@@ -25,6 +25,7 @@ from .proposals import (
     SelectionError,
     annotate_children,
     parse_report,
+    unescape_head_text,
 )
 from .shell import CommandError
 
@@ -89,7 +90,7 @@ def existing_children(repo_root: Path) -> dict[str, int]:
 
 
 def child_title(prop: ParsedProposal, option: str | None) -> str:
-    title = re.sub(r"（優先度: .）$", "", prop.title).strip()
+    title = unescape_head_text(re.sub(r"（優先度: .）$", "", prop.title).strip())
     if option:
         title = f"{title}（選択: {option}）"
     full = f"[{prop.pid}] {title}"
@@ -193,6 +194,14 @@ def _triage_report(
     to_link: dict[str, int] = {}
     for prop in parsed:
         if prop.child is not None:
+            # A "→ #N" not produced by triage must not silently mark the proposal
+            # done: unless N is the child found by title scan, check its marker.
+            if children.get(prop.pid) != prop.child:
+                try:
+                    verify_child(prop.pid, prop.child, number, repo_root)
+                except ValueError as exc:
+                    result.errors.append(f"#{number} {exc}")
+                    LOG.error("#%d %s", number, exc)
             continue
         try:
             selected, option = prop.selection()
