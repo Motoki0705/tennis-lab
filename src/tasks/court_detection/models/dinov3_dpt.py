@@ -770,10 +770,18 @@ class CourtTransformerEncoder(nn.Module):
                     f"{features.device} != {parameter.device}."
                 )
             if features.dtype != parameter.dtype:
-                raise TypeError(
-                    "Transformer features and parameters must share a dtype: "
-                    f"{features.dtype} != {parameter.dtype}."
+                # Learned feature projections emit the autocast dtype while
+                # the Transformer's parameters remain in float32.
+                autocast_input = (
+                    parameter.dtype == torch.float32
+                    and torch.is_autocast_enabled(features.device.type)
+                    and features.dtype == torch.get_autocast_dtype(features.device.type)
                 )
+                if not autocast_input:
+                    raise TypeError(
+                        "Transformer features and parameters must share a dtype: "
+                        f"{features.dtype} != {parameter.dtype}."
+                    )
         return batch, channels, height, width
 
     @staticmethod
