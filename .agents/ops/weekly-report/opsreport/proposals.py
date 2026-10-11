@@ -1,17 +1,22 @@
 """Proposal model, stable IDs, report rendering and parsing of checked items.
 
-The report issue body is the single source of truth for triage: a proposal is a
-list item whose head line carries a bold stable ID (``**R-2026W41-03**``). It is
-selected either by its own checkbox, or -- for proposals with options -- by
-checking exactly one option checkbox. Triage appends ``→ #<child>`` to the head
-line once the child issue exists.
+The report issue body is the single source of truth for triage. Its first line is
+a metadata marker (week, collection boundary, number of proposals), and proposals
+live only between the ``PROPOSALS_BEGIN`` / ``PROPOSALS_END`` marker lines. A
+proposal is a list item whose head line carries a bold stable ID
+(``**R-2026W41-03**``). It is selected either by its own checkbox, or -- for
+proposals with options -- by checking exactly one option checkbox. Triage appends
+``→ #<child>`` to the head line once the child issue exists.
+
+Agent-written text is neutralized (no checkbox syntax, no HTML comments) so it can
+neither create selectable items nor forge the markers.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 
 ID_PATTERN = r"R-\d{4}W\d{2}-\d{2,3}"
 CHILD_TITLE_RE = re.compile(rf"^\[({ID_PATTERN})\]")
@@ -38,7 +43,13 @@ _HEAD_RE = re.compile(
 )
 _OPTION_RE = re.compile(r"^  - \[(?P<check>[ xX])\] (?P<label>.+?)\s*$")
 _CHILD_RE = re.compile(r"\s→ #(?P<num>\d+)\s*$")
-_CHECKBOX_IN_TEXT_RE = re.compile(r"^(\s*[-*+]) \[[ xX]\] ")
+_CHECKBOX_IN_TEXT_RE = re.compile(r"^(\s*(?:[-*+]|\d+[.)])) \[[ xX]\] ")
+
+REPORT_MARKER_PREFIX = "<!-- ops-report:v1 "
+_REPORT_MARKER_RE = re.compile(r"^<!-- ops-report:v1 (?P<fields>[^<>]*?) -->$")
+_REQUIRED_META = ("week", "since", "until", "proposals")
+PROPOSALS_BEGIN = "<!-- ops-report:proposals:begin -->"
+PROPOSALS_END = "<!-- ops-report:proposals:end -->"
 
 
 class SelectionError(ValueError):
@@ -67,19 +78,24 @@ class Proposal:
     options: tuple[str, ...] = ()
 
 
+def neutralize(text: str) -> str:
+    """Make agent-written text inert: drop checkbox syntax at line starts and escape
+    HTML comment openers, so it can neither be selected nor forge a marker line."""
+    escaped = text.replace("<!--", "&lt;!--")
+    return "\n".join(
+        _CHECKBOX_IN_TEXT_RE.sub(r"\1 ", line) for line in escaped.splitlines()
+    )
+
+
 def _plain_lines(text: str) -> list[str]:
-    """Free text as list-item continuation lines; strips checkbox syntax so agent
-    prose can never be mistaken for a selectable option."""
-    lines = []
-    for raw in text.strip().splitlines():
-        if not raw.strip():
-            continue
-        lines.append(_CHECKBOX_IN_TEXT_RE.sub(r"\1 ", raw.rstrip()))
-    return lines
+    """Free text as list-item continuation lines (neutralized, blank lines dropped)."""
+    return [
+        line.rstrip() for line in neutralize(text.strip()).splitlines() if line.strip()
+    ]
 
 
 def _one_line(text: str) -> str:
-    return " ".join(text.split())
+    return " ".join(neutralize(text).split())
 
 
 def render_proposals(proposals: list[Proposal], tag: str) -> tuple[str, list[str]]:
@@ -139,8 +155,95 @@ class ParsedProposal:
         return (True, chosen[0]) if chosen else (False, None)
 
 
-def parse_proposals(body: str) -> list[ParsedProposal]:
+@dataclass(frozen=True)
+class ReportMeta:
+    """Metadata from a report body's first line."""
+
+    week: str
+    since: datetime
+    until: datetime
+    proposal_count: int
+
+    def proposal_ids(self) -> set[str]:
+        return {proposal_id(self.week, i) for i in range(1, self.proposal_count + 1)}
+
+
+def report_marker(
+    *, week: str, since: datetime, until: datetime, proposals: int, **extra: str
+) -> str:
+    fields = {
+        "week": week,
+        "since": since.isoformat(timespec="seconds"),
+        "until": until.isoformat(timespec="seconds"),
+        "proposals": str(proposals),
+        **extra,
+    }
+    for key, value in fields.items():
+        if not value or any(c.isspace() or c in "<>" for c in value):
+            raise ValueError(f"report marker field {key}={value!r} is not a token")
+    return (
+        REPORT_MARKER_PREFIX + " ".join(f"{k}={v}" for k, v in fields.items()) + " -->"
+    )
+
+
+def parse_report_meta(body: str) -> ReportMeta:
+    first = body.split("\n", 1)[0].rstrip("\r")
+    m = _REPORT_MARKER_RE.match(first)
+    if not m:
+        raise ValueError("report body does not start with an ops-report:v1 marker")
+    fields: dict[str, str] = {}
+    for part in m.group("fields").split():
+        key, sep, value = part.partition("=")
+        if not sep:
+            raise ValueError(f"malformed report marker field {part!r}")
+        fields[key] = value
+    missing = [k for k in _REQUIRED_META if k not in fields]
+    if missing:
+        raise ValueError(f"report marker lacks {missing}")
+    if not re.fullmatch(r"\d{4}W\d{2}", fields["week"]):
+        raise ValueError(f"report marker has invalid week {fields['week']!r}")
+    if not fields["proposals"].isdigit():
+        raise ValueError(f"report marker has invalid proposals={fields['proposals']!r}")
+    since = datetime.fromisoformat(fields["since"])
+    until = datetime.fromisoformat(fields["until"])
+    if since.tzinfo is None or until.tzinfo is None or since > until:
+        raise ValueError(f"report marker has invalid period {since}..{until}")
+    return ReportMeta(
+        week=fields["week"],
+        since=since,
+        until=until,
+        proposal_count=int(fields["proposals"]),
+    )
+
+
+def parse_report(body: str) -> tuple[ReportMeta, list[ParsedProposal]]:
+    """Parse a report body: metadata plus the proposals inside the marked region.
+
+    Only the region between ``PROPOSALS_BEGIN`` and ``PROPOSALS_END`` is scanned,
+    and every ID found there must be one the report generated for its week.
+    """
+    meta = parse_report_meta(body)
     lines = body.splitlines()
+    begins = [i for i, line in enumerate(lines) if line.rstrip() == PROPOSALS_BEGIN]
+    ends = [i for i, line in enumerate(lines) if line.rstrip() == PROPOSALS_END]
+    if len(begins) != 1 or len(ends) != 1 or begins[0] > ends[0]:
+        raise ValueError(
+            f"report body must contain exactly one proposal region "
+            f"(found {len(begins)} begin / {len(ends)} end markers)"
+        )
+    start = begins[0] + 1
+    found = _parse_region(lines[start : ends[0]], offset=start)
+    allowed = meta.proposal_ids()
+    unknown = [p.pid for p in found if p.pid not in allowed]
+    if unknown:
+        raise ValueError(
+            f"proposal IDs {unknown} were not generated by the {meta.week} report "
+            f"({meta.proposal_count} proposals)"
+        )
+    return meta, found
+
+
+def _parse_region(lines: list[str], *, offset: int) -> list[ParsedProposal]:
     found: list[ParsedProposal] = []
     seen: set[str] = set()
     i = 0
@@ -158,7 +261,7 @@ def parse_proposals(body: str) -> list[ParsedProposal]:
         title = _CHILD_RE.sub("", rest).strip()
         prop = ParsedProposal(
             pid=pid,
-            head_index=i,
+            head_index=offset + i,
             head_checked=(m.group("check") or " ").lower() == "x",
             title=title,
             child=int(child_m.group("num")) if child_m else None,
@@ -181,7 +284,8 @@ def parse_proposals(body: str) -> list[ParsedProposal]:
 def annotate_children(body: str, children: dict[str, int]) -> str:
     """Append ``→ #N`` to each proposal head line in ``children`` lacking one."""
     lines = body.splitlines()
-    for prop in parse_proposals(body):
+    _, parsed = parse_report(body)
+    for prop in parsed:
         num = children.get(prop.pid)
         if num is None:
             continue

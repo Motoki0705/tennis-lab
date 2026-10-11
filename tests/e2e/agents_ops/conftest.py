@@ -87,7 +87,18 @@ elif head == ["issue", "edit"]:
         issue["body"] = fh.read()
     save()
 elif head == ["pr", "list"]:
-    emit(state["prs"] if opt("--state") == "open" else state["merged_prs"])
+    if opt("--state") == "open":
+        emit(state["prs"])
+    else:
+        rows = state["merged_prs"]
+        search = opt("--search")
+        if search:
+            assert search.startswith("merged:>="), search
+            rows = [r for r in rows if r["mergedAt"][:10] >= search[len("merged:>="):]]
+        emit(rows)
+elif head == ["pr", "view"]:
+    detail = state["pr_details"][args[2]]
+    print(json.dumps({k: detail[k] for k in opt("--json").split(",")}))
 elif head == ["run", "list"]:
     emit(state["runs"])
 elif head == ["label", "list"]:
@@ -183,6 +194,22 @@ def base_state() -> dict[str, Any]:
                 "url": "https://github.com/o/r/pull/8",
             },
         ],
+        "pr_details": {
+            "7": {
+                "additions": 40,
+                "deletions": 3,
+                "changedFiles": 2,
+                "files": [{"path": "src/a.py"}, {"path": "tests/test_a.py"}],
+                "mergeable": "CONFLICTING",
+                "mergeStateStatus": "DIRTY",
+                "statusCheckRollup": [
+                    {"conclusion": "FAILURE", "status": "COMPLETED"},
+                    {"state": "SUCCESS"},
+                ],
+                "closingIssuesReferences": [{"number": 42}],
+                "body": "Fixes #42",
+            }
+        },
         "merged_prs": [
             {
                 "number": 6,

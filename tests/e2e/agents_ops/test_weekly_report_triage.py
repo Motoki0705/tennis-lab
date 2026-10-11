@@ -143,3 +143,53 @@ def test_gh_failure_in_triage_exits_nonzero(ops_env: Any) -> None:
 
     assert result.returncode == 1
     assert "injected failure" in result.stderr
+
+
+def test_existing_child_of_another_report_is_not_linked(ops_env: Any) -> None:
+    """An issue whose title claims a proposal ID but whose marker names another
+    report (e.g. a regenerated week) must not be linked to this report."""
+    state = ops_env.state
+    state["issues"].append(
+        {
+            "number": 60,
+            "title": "[R-2026W42-02] 別レポートの提案",
+            "body": "<!-- ops-report-proposal: R-2026W42-02 report=#40 -->\nold",
+            "labels": ["ai-proposed"],
+            "state": "CLOSED",
+            "createdAt": "2026-10-01T00:00:00Z",
+            "updatedAt": "2026-10-01T00:00:00Z",
+            "url": "https://github.com/o/r/issues/60",
+        }
+    )
+    ops_env.write_state(state)
+    report = _report_issue(ops_env)
+    _edit_body(ops_env, report["number"], _check)
+
+    result = ops_env.run("triage")
+
+    assert result.returncode == 1
+    assert "existing issue #60 is not this proposal's child" in result.stderr
+    assert "found R-2026W42-02 of #40" in result.stderr
+    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
+        "body"
+    ]
+    assert "→ #60" not in body
+    # The other selected proposal still gets its child.
+    assert [c["title"] for c in _children(ops_env) if c["number"] != 60] == [
+        "[R-2026W42-01] #7 放置されたPR（選択: close）"
+    ]
+
+
+def test_malformed_report_body_is_an_error_not_a_skip(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(
+        ops_env,
+        report["number"],
+        lambda b: _check(b).replace("<!-- ops-report:proposals:end -->", ""),
+    )
+
+    result = ops_env.run("triage")
+
+    assert result.returncode == 1
+    assert "proposal region" in result.stderr
+    assert _children(ops_env) == []

@@ -19,17 +19,26 @@
 
 分担: 収集はスクリプト（同じrepo状態なら同じ事実）、コードベース読解と提案文の生成はagent（read-only）、
 issue作成・編集はスクリプト。agentはJSONだけを返し、IDとMarkdownはスクリプトが付ける。
+read-only のagentは git / gh / ネットワークを使えないため、GitHub・git履歴の事実（放置PRの差分規模・mergeable・CI、
+全open issue、checkoutと基準refで内容が異なるファイル一覧など）はすべて `collect.py` が集めてプロンプトに埋め込む。
+model / effort は [`../lib/agents.conf`](../lib/agents.conf) で固定され、このツールからは変更しない。
 
 ## 提案ID・チェック・triage
 
 - ID は `R-<ISO年>W<ISO週>-<連番>`（例 `R-2026W41-03`）。放置PR → カテゴリ順に連番を振る。
-  同じ週のレポートが既にあると `report` は失敗する（IDが衝突するため）。
+  同じ週のレポートが既にあると `report` は失敗する（IDが衝突するため）。判定は本文1行目のメタデータ
+  （`<!-- ops-report:v1 week=… since=… until=… proposals=… -->`）の週で行い、タイトルを変えても再生成できない。
+- 本文のうちtriageが解析するのは `<!-- ops-report:proposals:begin -->` 〜 `end -->` の間だけで、
+  そこにあるIDもメタデータの週・提案数の範囲内でなければエラーになる。agentが書いた文章（概要・提案本文・選択肢など）は
+  チェックボックス記法とHTMLコメントを無害化してから埋め込むので、選択可能な項目やマーカーを偽造できない。
 - 通常の提案は行頭のチェックボックスで選ぶ。選択肢つきの提案（放置PRの「継続 / rebaseして仕上げ / close」など）は
   **選択肢を1つだけ**チェックする。2つ以上、または見出しだけのチェックはエラーとしてtriageが非ゼロ終了する（他の提案は処理する）。
 - `triage` は open な `ops-report` issueをすべて走査し、選ばれた提案ごとに
   タイトル `[<ID>] <提案タイトル>`・ラベル `ai-proposed` の子issueを作り、レポートの該当行末に `→ #番号` を追記する。
 - 重複防止: 作成前に全issue（open/closed）のタイトル先頭 `[<ID>]` を走査する。作成後の本文編集が失敗しても、
-  再実行時は既存の子issueを再利用して追記だけ行う。同じIDの子issueが2件見つかった場合は停止する。
+  再実行時は既存の子issueを再利用して追記だけ行う。再利用するのは子issue本文1行目の
+  `<!-- ops-report-proposal: <ID> report=#<レポート番号> -->` がIDとレポートの両方に一致する場合だけで、
+  一致しなければその提案はエラーにする。同じIDの子issueが2件見つかった場合は停止する。
 - レポートをcloseするとtriage対象外になる。不要な提案は放置でよい。
 
 ## 手動実行
@@ -48,6 +57,10 @@ cd ~/projects/tennis-lab
 `run.log`、`collected.json`、`prompt.md`、`agent_output.md`、agent CLIのログ、`report.md`、`result.json` を残す。
 gh・git・agent・掃除モジュールの失敗、agent出力の形式違反、設定値の不正はすべて非ゼロ終了になる（黙ってskipしない）。
 
+集計期間は `[前回レポートの until, 今回の実行時刻)`。境界は issue 作成時刻ではなく本文メタデータの `until`
+（収集の基準時刻）で引き継ぐので、収集〜公開の間のイベントも欠落・重複しない。merge済みPRは
+`--search merged:>=<日付>` でmerge期間を検索条件に含めて取得し、件数上限に達したらエラーにする。
+
 ## 設定
 
 CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-report.env`（任意）に書く。
@@ -55,7 +68,6 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 | 環境変数 | 既定 | 意味 |
 |---|---|---|
 | `WEEKLY_REPORT_AGENT` | `alternate` | `claude` / `codex` / `alternate`（ISO週が偶数→claude、奇数→codex） |
-| `WEEKLY_REPORT_MODEL` | なし | agent CLIへ渡すモデル名 |
 | `WEEKLY_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref |
 | `WEEKLY_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
 | `WEEKLY_REPORT_AGENT_TIMEOUT` | `5400` | agent実行のタイムアウト（秒） |
@@ -63,10 +75,11 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 | `WEEKLY_REPORT_LOG_DIR` | 上記state dir | ログの保存先 |
 | `WEEKLY_REPORT_AGENT_EXEC` | `../lib/agent_exec.sh` | agentラッパー（テストで差し替える） |
 
-- 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。ディレクトリがあるのに `cleanup.py` が無い場合はエラー。
-  ディレクトリがあれば、その直下の唯一の実行可能ファイルを `--report-json` 付きで実行し、JSONをそのままagentへ渡す
-  （実行可能ファイルが0個または複数ならエラー）。共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。
-- agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutがずれていれば本文の冒頭に注意を出す。
+- 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
+  ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。
+  共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。
+- agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutで内容が異なるファイルがあれば、
+  一覧をagentへ渡し、本文の冒頭に注意を出す。
 
 ## systemd --user への導入（merge後に人間が行う）
 

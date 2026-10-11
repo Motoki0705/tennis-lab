@@ -72,12 +72,14 @@ class AgentRun:
     prompt_file: Path
     out_file: Path
     log_dir: Path
-    model: str | None
     timeout: float
 
 
 def execute(run: AgentRun) -> str:
-    """Run agent_exec.sh read-only; non-zero status / timeout raises CommandError."""
+    """Run agent_exec.sh read-only; non-zero status / timeout raises CommandError.
+
+    Model and effort come from ``.agents/ops/lib/agents.conf`` (no override here).
+    """
     cmd = [
         "bash", str(run.agent_exec),
         "--agent", run.agent,
@@ -87,8 +89,6 @@ def execute(run: AgentRun) -> str:
         "--mode", "read-only",
         "--log-dir", str(run.log_dir),
     ]  # fmt: skip
-    if run.model:
-        cmd += ["--model", run.model]
     shell.run(cmd, cwd=run.repo_root, timeout=run.timeout)
     return run.out_file.read_text(encoding="utf-8")
 
