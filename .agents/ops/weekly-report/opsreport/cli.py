@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from . import agent, collect, report, shell, triage
+from . import agent, collect, proposals, report, shell, triage
 from .shell import CommandError
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -59,7 +59,6 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="default: $WEEKLY_REPORT_AGENT or 'alternate'",
     )
-    rep.add_argument("--model", default=None, help="default: $WEEKLY_REPORT_MODEL")
     rep.add_argument(
         "--base-ref",
         default=None,
@@ -116,14 +115,20 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
         json.dumps(collected, ensure_ascii=False, indent=1), encoding="utf-8"
     )
     title = report.report_title(now.date())
+    tag = proposals.week_tag(now.date())
+    # The week in the body marker is authoritative (a renamed title still collides):
+    # proposal IDs are week + sequence, so a second report of the same week would
+    # reuse IDs that triage maps to existing child issues.
     duplicates = [
-        r for r in collected["previous_reports"]["reports"] if r["title"] == title
+        r
+        for r in collected["previous_reports"]["reports"]
+        if r["week"] == tag or r["title"] == title
     ]
     if duplicates:
-        msg = f"report {title!r} already exists as #{duplicates[0]['number']}"
+        msg = f"report for {tag} already exists as #{duplicates[0]['number']}"
         if not args.dry_run:
             raise ConfigError(
-                msg + "; IDs would collide. Close/rename it or use --dry-run"
+                msg + "; proposal IDs would collide. Use --dry-run to preview"
             )
         LOG.warning("%s (dry-run continues; a real run would fail)", msg)
 
@@ -147,7 +152,6 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
             prompt_file=prompt_file,
             out_file=run_dir / "agent_output.md",
             log_dir=run_dir,
-            model=args.model or os.environ.get("WEEKLY_REPORT_MODEL") or None,
             timeout=_env_int("WEEKLY_REPORT_AGENT_TIMEOUT", 5400),
         )
     )

@@ -8,13 +8,12 @@ this data and reads the codebase (read-only) for deeper analysis.
 from __future__ import annotations
 
 import json
-import os
 import shlex
 import sys
 import tempfile
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +35,11 @@ EXCLUDED_PATHSPECS = (
     ":!**/*.min.js",
 )
 MAX_TEXT = 20_000
+MERGED_PR_LIMIT = 300
+STALE_PR_DETAIL_FIELDS = (
+    "additions,deletions,changedFiles,files,mergeable,mergeStateStatus,"
+    "statusCheckRollup,closingIssuesReferences,body"
+)
 
 _ISSUE_FIELDS = "number,title,labels,createdAt,updatedAt,author"
 _PR_FIELDS = "number,title,headRefName,author,createdAt,updatedAt,isDraft,labels,url"
@@ -80,14 +84,21 @@ def collect_report_history(cfg: CollectConfig) -> dict[str, Any]:
     rows.sort(key=lambda r: parse_ts(r["createdAt"]))
     summarized = []
     for i, row in enumerate(rows):
+        try:
+            meta, parsed = proposals.parse_report(row["body"])
+        except ValueError as exc:
+            raise CommandError(
+                f"{REPORT_LABEL} issue #{row['number']} has a malformed body: {exc}"
+            ) from exc
         item: dict[str, Any] = {
             k: row[k] for k in ("number", "title", "state", "createdAt", "url")
         }
+        item["week"] = meta.week
+        item["period_start"] = meta.since.isoformat()
+        item["period_end"] = meta.until.isoformat()
         # Proposal status only for the two most recent reports to bound prompt size.
         if i >= len(rows) - 2:
-            item["proposals"] = [
-                _proposal_status(p) for p in proposals.parse_proposals(row["body"])
-            ]
+            item["proposals"] = [_proposal_status(p) for p in parsed]
         summarized.append(item)
     return {"reports": summarized}
 
@@ -107,27 +118,61 @@ def _proposal_status(p: proposals.ParsedProposal) -> dict[str, Any]:
     }
 
 
-def _list_since(
-    args: list[str], *, key: str, since: datetime, limit: int, cwd: Path
-) -> list[dict[str, Any]]:
-    """List newest-first gh rows and keep those with ``key >= since``.
+def _in_period(ts: str, since: datetime, until: datetime) -> bool:
+    return since <= parse_ts(ts) < until
 
-    Fails if the limit was hit while every returned row is still inside the period
+
+def _list_since(
+    args: list[str],
+    *,
+    key: str,
+    since: datetime,
+    until: datetime,
+    limit: int,
+    cwd: Path,
+) -> list[dict[str, Any]]:
+    """List gh rows sorted newest-first by ``key`` and keep ``since <= key < until``.
+
+    Fails if the limit was hit before any row older than ``since`` was returned
     (i.e. older in-period rows may be missing).
     """
     rows = shell.gh_json([*args, "--limit", str(limit)], cwd=cwd)
     if not isinstance(rows, list):
         raise CommandError(f"gh {shlex.join(args)} did not return a JSON list")
     dated = [r for r in rows if r.get(key)]
-    kept = [r for r in dated if parse_ts(r[key]) >= since]
-    if len(rows) >= limit and len(kept) == len(dated):
+    if len(rows) >= limit and all(parse_ts(r[key]) >= since for r in dated):
         raise CommandError(
             f"gh {shlex.join(args)} hit --limit {limit} inside the report period"
         )
-    return kept
+    return [r for r in dated if _in_period(r[key], since, until)]
 
 
-def collect_github(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
+def _stale_pr_detail(number: int, cwd: Path) -> dict[str, Any]:
+    """Facts the agent cannot fetch itself (it runs without gh / network)."""
+    d = shell.gh_json(
+        ["pr", "view", str(number), "--json", STALE_PR_DETAIL_FIELDS], cwd=cwd
+    )
+    checks = Counter(
+        str(c.get("conclusion") or c.get("state") or c.get("status") or "UNKNOWN")
+        for c in d["statusCheckRollup"]
+    )
+    files = [f["path"] for f in d["files"]]
+    return {
+        "additions": d["additions"],
+        "deletions": d["deletions"],
+        "changed_files": d["changedFiles"],
+        "files": files[:40],
+        "mergeable": d["mergeable"],
+        "merge_state": d["mergeStateStatus"],
+        "checks": dict(sorted(checks.items())),
+        "closing_issues": [int(i["number"]) for i in d["closingIssuesReferences"]],
+        "body": _truncate(d["body"] or "", 2000),
+    }
+
+
+def collect_github(
+    cfg: CollectConfig, since: datetime, until: datetime
+) -> dict[str, Any]:
     cwd = cfg.repo_root
     open_prs = shell.gh_list(
         ["pr", "list", "--state", "open", "--json", _PR_FIELDS], limit=300, cwd=cwd
@@ -135,6 +180,7 @@ def collect_github(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
     prs = []
     for pr in sorted(open_prs, key=lambda r: int(r["number"])):
         idle = _days(cfg.now, pr["updatedAt"])
+        stale = idle >= cfg.stale_pr_days
         prs.append(
             {
                 "number": pr["number"],
@@ -146,24 +192,27 @@ def collect_github(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
                 "created_at": pr["createdAt"],
                 "updated_at": pr["updatedAt"],
                 "idle_days": idle,
-                "stale": idle >= cfg.stale_pr_days,
+                "stale": stale,
                 "url": pr["url"],
+                "detail": _stale_pr_detail(int(pr["number"]), cwd) if stale else None,
             }
         )
-    merged = _list_since(
-        [
-            "pr",
-            "list",
-            "--state",
-            "merged",
-            "--json",
-            "number,title,headRefName,mergedAt",
-        ],
-        key="mergedAt",
-        since=since,
-        limit=300,
-        cwd=cwd,
-    )
+    # gh pr list sorts by creation date, so the merge window must be part of the
+    # search; the date-granular qualifier is a superset, refined by mergedAt below.
+    merged_since = since.astimezone(UTC).date().isoformat()
+    merged = [
+        p
+        for p in shell.gh_list(
+            [
+                "pr", "list", "--state", "merged",
+                "--search", f"merged:>={merged_since}",
+                "--json", "number,title,headRefName,mergedAt",
+            ],
+            limit=MERGED_PR_LIMIT,
+            cwd=cwd,
+        )
+        if _in_period(p["mergedAt"], since, until)
+    ]  # fmt: skip
     issues = shell.gh_list(
         ["issue", "list", "--state", "open", "--json", _ISSUE_FIELDS],
         limit=2000,
@@ -182,7 +231,6 @@ def collect_github(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
         for i in sorted(issues, key=lambda r: int(r["number"]))
         if AI_PROPOSED_LABEL in _names(i["labels"])
     ]
-    oldest_idle = sorted(issues, key=lambda r: parse_ts(r["updatedAt"]))[:15]
     runs = _list_since(
         [
             "run", "list",
@@ -190,6 +238,7 @@ def collect_github(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
         ],
         key="createdAt",
         since=since,
+        until=until,
         limit=1000,
         cwd=cwd,
     )  # fmt: skip
@@ -206,13 +255,15 @@ def collect_github(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
             "total": len(issues),
             "by_label": dict(sorted(label_counts.items())),
             "ai_proposed": ai_proposed,
-            "least_recently_updated": [
+            # All open issues, so the agent can refer to existing ones without gh.
+            "items": [
                 {
                     "number": i["number"],
                     "title": i["title"],
+                    "labels": _names(i["labels"]),
                     "idle_days": _days(cfg.now, i["updatedAt"]),
                 }
-                for i in oldest_idle
+                for i in sorted(issues, key=lambda r: int(r["number"]))[:400]
             ],
         },
         "ci_runs_in_period": {
@@ -239,13 +290,14 @@ def _last_commit_date(cfg: CollectConfig, path: Path) -> str:
     return out or "uncommitted"
 
 
-def collect_git(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
+def collect_git(cfg: CollectConfig, since: datetime, until: datetime) -> dict[str, Any]:
     cwd = cfg.repo_root
     log = shell.git(
         [
             "log",
             cfg.base_ref,
             f"--since={since.isoformat()}",
+            f"--until={until.isoformat()}",
             "--format=%h%x09%an%x09%s",
         ],
         cwd=cwd,
@@ -255,6 +307,7 @@ def collect_git(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
             "log",
             cfg.base_ref,
             f"--since={since.isoformat()}",
+            f"--until={until.isoformat()}",
             "--shortstat",
             "--format=",
         ],
@@ -391,13 +444,16 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
     }
 
 
-def collect_knowledge(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
+def collect_knowledge(
+    cfg: CollectConfig, since: datetime, until: datetime
+) -> dict[str, Any]:
     summary = cfg.repo_root / KNOWLEDGE_SUMMARY
     if not summary.is_file():
         return {"status": "not_found", "note": f"{KNOWLEDGE_SUMMARY} が存在しない"}
     changed = shell.git(
         [
-            "log", cfg.base_ref, f"--since={since.isoformat()}", "--name-only", "--format=",
+            "log", cfg.base_ref, f"--since={since.isoformat()}",
+            f"--until={until.isoformat()}", "--name-only", "--format=",
             "--", "knowledge/nodes", "knowledge/reports",
         ],
         cwd=cfg.repo_root,
@@ -437,40 +493,60 @@ def collect_ai_env(cfg: CollectConfig) -> dict[str, Any]:
     }
 
 
-def collect_meta(cfg: CollectConfig, since: datetime) -> dict[str, Any]:
+def collect_meta(
+    cfg: CollectConfig, since: datetime, until: datetime
+) -> dict[str, Any]:
     cwd = cfg.repo_root
     base_sha = shell.git(["rev-parse", "--short", cfg.base_ref], cwd=cwd).strip()
     head_sha = shell.git(["rev-parse", "--short", "HEAD"], cwd=cwd).strip()
     branch = shell.git(["branch", "--show-current"], cwd=cwd).strip() or "(detached)"
     dirty = shell.git(["status", "--porcelain", "--untracked-files=no"], cwd=cwd)
+    # Tracked files whose checkout content differs from the base (committed or not).
+    # The agent cannot run git, so it needs this list to avoid citing them as base.
+    diff_files = shell.git(["diff", "--name-only", cfg.base_ref], cwd=cwd).splitlines()
     return {
         "generated_at": cfg.now.isoformat(timespec="minutes"),
-        "period_start": since.isoformat(timespec="minutes"),
+        "period_start": since.isoformat(timespec="seconds"),
+        "period_end": until.isoformat(timespec="seconds"),
         "base_ref": cfg.base_ref,
         "base_sha": base_sha,
         "checkout_branch": branch,
         "checkout_sha": head_sha,
         "checkout_matches_base": base_sha == head_sha,
         "checkout_modified_files": len(dirty.splitlines()),
+        "checkout_diff_files": diff_files[:200],
+        "checkout_diff_files_total": len(diff_files),
     }
 
 
 def collect_all(cfg: CollectConfig) -> dict[str, Any]:
+    """Collect the period ``[since, until)``.
+
+    ``until`` is this run's ``now`` and is stored in the report's marker; the next
+    run starts exactly there (not at the issue's createdAt, which is later than the
+    collection), so consecutive reports neither drop nor double-count events.
+    """
     history = collect_report_history(cfg)
     reports = history["reports"]
+    until = cfg.now
     since = (
-        parse_ts(reports[-1]["createdAt"]).astimezone(cfg.now.tzinfo)
+        datetime.fromisoformat(reports[-1]["period_end"]).astimezone(cfg.now.tzinfo)
         if reports
-        else cfg.now - timedelta(days=DEFAULT_PERIOD_DAYS)
+        else until - timedelta(days=DEFAULT_PERIOD_DAYS)
     )
+    if since > until:
+        raise CommandError(
+            f"previous report #{reports[-1]['number']} was collected until {since}, "
+            f"after this run's time {until}"
+        )
     return {
-        "meta": collect_meta(cfg, since),
+        "meta": collect_meta(cfg, since, until),
         "previous_reports": history,
-        "github": collect_github(cfg, since),
-        "git": collect_git(cfg, since),
+        "github": collect_github(cfg, since, until),
+        "git": collect_git(cfg, since, until),
         "workspace": collect_workspace(cfg),
         "cleanup": collect_cleanup(cfg),
         "memory": collect_memory(cfg),
-        "knowledge": collect_knowledge(cfg, since),
+        "knowledge": collect_knowledge(cfg, since, until),
         "ai_env": collect_ai_env(cfg),
     }

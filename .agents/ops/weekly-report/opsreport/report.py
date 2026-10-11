@@ -8,10 +8,14 @@ from typing import Any
 
 from .agent import AgentReport
 from .proposals import (
+    PROPOSALS_BEGIN,
+    PROPOSALS_END,
     STALE_PR_OPTIONS,
     STALE_PR_SECTION,
     Proposal,
+    neutralize,
     render_proposals,
+    report_marker,
     week_tag,
 )
 
@@ -129,17 +133,26 @@ def render_report(
         stale_pr_proposals(collected, analysis.stale_pr_notes) + analysis.proposals
     )
     proposal_md, ids = render_proposals(proposals, tag)
+    marker = report_marker(
+        week=tag,
+        since=datetime.fromisoformat(meta["period_start"]),
+        until=datetime.fromisoformat(meta["period_end"]),
+        proposals=len(ids),
+        agent=agent_name,
+        base=meta["base_sha"],
+    )
     header = [
-        f"<!-- ops-report:v1 week={tag} agent={agent_name} base={meta['base_sha']} -->",
+        marker,
         f"# {report_title(day)}",
         "",
         f"- 生成: {meta['generated_at']} / agent: `{agent_name}` / 対象: `{meta['base_ref']}`"
-        f" @ `{meta['base_sha']}` / 期間: {meta['period_start'][:10]} 〜 {meta['generated_at'][:10]}",
+        f" @ `{meta['base_sha']}` / 集計期間: {meta['period_start']} 〜 {meta['period_end']}",
     ]
-    if not meta["checkout_matches_base"] or meta["checkout_modified_files"]:
+    if meta["checkout_diff_files_total"]:
         header.append(
             f"- **注意**: agentが読んだcheckoutは `{meta['checkout_branch']}` @ `{meta['checkout_sha']}`"
-            f"（変更ファイル {meta['checkout_modified_files']}件）で、`{meta['base_ref']}` と一致しない。"
+            f"（未commitの変更 {meta['checkout_modified_files']}件）で、`{meta['base_ref']}` と"
+            f" {meta['checkout_diff_files_total']}ファイルの内容が異なる。"
         )
     header += [
         "- 使い方: 子issue化したい提案にチェックを入れる。選択肢つきの提案は選択肢を**1つだけ**チェックする。"
@@ -152,11 +165,15 @@ def render_report(
             "",
             "## 概要",
             "",
-            analysis.summary.strip(),
+            neutralize(analysis.summary.strip()),
             "",
             "## 提案",
             "",
+            PROPOSALS_BEGIN,
+            "",
             proposal_md.rstrip() if ids else "（提案なし）",
+            "",
+            PROPOSALS_END,
             "",
             "## 観察データ（決定的に収集）",
             "",
