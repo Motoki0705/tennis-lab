@@ -10,6 +10,7 @@ import json
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -78,12 +79,34 @@ def load_list_file(path: Path) -> tuple[str, ...]:
     return tuple(entries)
 
 
+EXCLUDE_PREFIX = "!"
+
+
 def load_shared_patterns(path: Path) -> tuple[str, ...]:
+    """Read shared-foundation patterns; ``!pattern`` lines exclude paths from the set."""
     patterns = load_list_file(path)
     for pattern in patterns:
-        if pattern.startswith("/") or "\\" in pattern or pattern.startswith("./"):
+        body = pattern.removeprefix(EXCLUDE_PREFIX)
+        if (
+            not body
+            or body.startswith(EXCLUDE_PREFIX)
+            or body.startswith("/")
+            or "\\" in body
+            or body.startswith("./")
+        ):
             raise ValueError(
                 f"{path}: patterns must be repo-relative POSIX globs: {pattern!r}"
+            )
+    includes = [p for p in patterns if not p.startswith(EXCLUDE_PREFIX)]
+    if not includes:
+        raise ValueError(f"{path} contains only exclusion patterns")
+    for pattern in patterns:
+        body = pattern.removeprefix(EXCLUDE_PREFIX)
+        if pattern.startswith(EXCLUDE_PREFIX) and not shared_path_hits(
+            [body], includes
+        ):
+            raise ValueError(
+                f"{path}: exclusion {pattern!r} is not under any included pattern"
             )
     return patterns
 
@@ -115,11 +138,22 @@ def _glob_regex(pattern: str) -> re.Pattern[str]:
 def shared_path_hits(
     paths: Iterable[str], patterns: Sequence[str]
 ) -> tuple[tuple[str, str], ...]:
-    """Return ``(path, first matching pattern)`` for every path under shared foundations."""
-    compiled = [(pattern, _glob_regex(pattern)) for pattern in patterns]
+    """Return ``(path, first matching include)`` for every path under shared foundations.
+
+    ``!pattern`` entries exclude matching paths regardless of their position in the list.
+    """
+    includes: list[tuple[str, re.Pattern[str]]] = []
+    excludes: list[re.Pattern[str]] = []
+    for pattern in patterns:
+        if pattern.startswith(EXCLUDE_PREFIX):
+            excludes.append(_glob_regex(pattern.removeprefix(EXCLUDE_PREFIX)))
+        else:
+            includes.append((pattern, _glob_regex(pattern)))
     hits: list[tuple[str, str]] = []
     for path in paths:
-        for pattern, regex in compiled:
+        if any(regex.fullmatch(path) for regex in excludes):
+            continue
+        for pattern, regex in includes:
             if regex.fullmatch(path):
                 hits.append((path, pattern))
                 break
@@ -278,15 +312,35 @@ def gate_marker(sha: str, decision: str, reasons: Sequence[str]) -> str:
     return marker
 
 
+def _header_line(body: str) -> str:
+    """The first line of a comment, where the caller places its marker."""
+    return body.partition("\n")[0].rstrip("\r")
+
+
+def neutralize_markers(text: str) -> str:
+    """Make untrusted text (agent output, file names) unable to form an HTML comment.
+
+    Markers are only read from a comment's first line, which the caller writes; this is
+    defence in depth so quoted text can neither look like a marker nor hide content.
+    """
+    return text.replace("<!--", "&lt;!--").replace("-->", "--&gt;")
+
+
 def review_records(
     comments: Iterable[Comment], *, trusted_login: str
 ) -> tuple[ReviewRecord, ...]:
-    """Review markers posted by ``trusted_login`` (markers from anyone else are ignored)."""
+    """Review markers on the first line of comments by ``trusted_login``.
+
+    Markers from other accounts, and markers anywhere but the first line (e.g. quoted
+    in a review summary), are ignored.
+    """
     records: list[ReviewRecord] = []
     for comment in comments:
         if comment.author != trusted_login:
             continue
-        for sha, reviewer, verdict in REVIEW_MARKER_RE.findall(comment.body):
+        match = REVIEW_MARKER_RE.fullmatch(_header_line(comment.body))
+        if match is not None:
+            sha, reviewer, verdict = match.groups()
             records.append(ReviewRecord(sha=sha, reviewer=reviewer, verdict=verdict))
     return tuple(records)
 
@@ -294,11 +348,14 @@ def review_records(
 def gate_records(
     comments: Iterable[Comment], *, trusted_login: str
 ) -> tuple[GateRecord, ...]:
+    """Gate markers on the first line of comments by ``trusted_login``."""
     records: list[GateRecord] = []
     for comment in comments:
         if comment.author != trusted_login:
             continue
-        for sha, decision, reasons in GATE_MARKER_RE.findall(comment.body):
+        match = GATE_MARKER_RE.fullmatch(_header_line(comment.body))
+        if match is not None:
+            sha, decision, reasons = match.groups()
             records.append(
                 GateRecord(
                     sha=sha,
@@ -349,9 +406,26 @@ _CONTEXT_STATES = {
 }
 
 
-def _check_from_rollup(item: Mapping[str, Any]) -> tuple[tuple[str, str], str, Check]:
+# gh prints an unset GraphQL DateTime (e.g. a queued CheckRun's startedAt) as Go's zero
+# time instead of null.
+_ZERO_TIME = datetime(1, 1, 1, tzinfo=UTC)
+# Pessimism order used when the latest run of a check cannot be determined.
+_SEVERITY = {CheckState.SUCCESS: 0, CheckState.PENDING: 1, CheckState.FAILURE: 2}
+
+
+def _started_at(item: Mapping[str, Any]) -> datetime | None:
+    """``startedAt`` as an aware datetime, or ``None`` when unset (null, "" or zero time)."""
+    raw = item.get("startedAt")
+    if raw is None or raw == "":
+        return None
+    started = datetime.fromisoformat(str(raw))
+    if started.tzinfo is None:
+        raise ValueError(f"statusCheckRollup startedAt without timezone: {raw!r}")
+    return None if started == _ZERO_TIME else started
+
+
+def _check_from_rollup(item: Mapping[str, Any]) -> tuple[tuple[str, str], Check]:
     kind = item.get("__typename")
-    started = item.get("startedAt") or "9999"  # queued: newer than anything started
     if kind == "CheckRun":
         name = str(item["name"])
         status = item.get("status")
@@ -363,28 +437,36 @@ def _check_from_rollup(item: Mapping[str, Any]) -> tuple[tuple[str, str], str, C
             state = CheckState.FAILURE
         else:
             raise ValueError(f"unknown CheckRun conclusion: {item.get('conclusion')!r}")
-        return (
-            (str(item.get("workflowName") or ""), name),
-            str(started),
-            Check(name, state),
-        )
+        return (str(item.get("workflowName") or ""), name), Check(name, state)
     if kind == "StatusContext":
         name = str(item["context"])
         raw_state = item.get("state")
         if raw_state not in _CONTEXT_STATES:
             raise ValueError(f"unknown StatusContext state: {raw_state!r}")
-        return ("", name), str(started), Check(name, _CONTEXT_STATES[raw_state])
+        return ("", name), Check(name, _CONTEXT_STATES[raw_state])
     raise ValueError(f"unknown statusCheckRollup entry type: {kind!r}")
 
 
 def normalize_rollup(items: Iterable[Mapping[str, Any]]) -> tuple[Check, ...]:
-    """Collapse a ``statusCheckRollup`` to the latest run per (workflow, check name)."""
-    latest: dict[tuple[str, str], tuple[str, Check]] = {}
+    """Collapse a ``statusCheckRollup`` to the latest run per (workflow, check name).
+
+    When the latest run cannot be determined (runs without ``startedAt``, or several runs
+    sharing the latest time) the most pessimistic state among the candidates is used
+    (failure > pending > success), so an unordered queued re-run blocks the merge.
+    """
+    runs: dict[tuple[str, str], list[tuple[datetime | None, Check]]] = {}
     for item in items:
-        key, started, check = _check_from_rollup(item)
-        if key not in latest or started >= latest[key][0]:
-            latest[key] = (started, check)
-    return tuple(check for _, check in latest.values())
+        key, check = _check_from_rollup(item)
+        runs.setdefault(key, []).append((_started_at(item), check))
+    result: list[Check] = []
+    for entries in runs.values():
+        dated = [started for started, _ in entries if started is not None]
+        newest = max(dated) if dated else None
+        candidates = [
+            check for started, check in entries if started is None or started == newest
+        ]
+        result.append(max(candidates, key=lambda check: _SEVERITY[check.state]))
+    return tuple(result)
 
 
 # --------------------------------------------------------------------------- merge gate

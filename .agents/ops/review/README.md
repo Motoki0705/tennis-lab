@@ -37,15 +37,24 @@ PR を作る agent は branch 名に自分の prefix を付ける。
 
 1. base ブランチと `refs/pull/<N>/head` を fetch し、PR の差分（`base...head`、rename は削除と追加に分解）、
    base 版の `AGENTS.md`、タイトル・本文、CI 状態をプロンプトに埋め込む。diff が 20 万文字を超える場合は
-   先頭だけを埋め込み、切ったことをプロンプトとレビューコメントに明記する。
+   先頭だけを埋め込み、全文を worktree 直下の `.cross-review-full.diff` に書き出して、切ったことを
+   プロンプトとレビューコメントに明記する。
 2. PR head を detached で checkout したレビュー用 worktree（`.claude/worktrees/review-pr<N>-<sha12>`）を作り、
-   `../lib/agent_exec.sh --mode read-only` で逆の agent を起動する。worktree はレビュー後に必ず削除する。
+   `../lib/agent_exec.sh --mode read-only` で逆の agent を起動する。read-only の agent はファイルを読むことしか
+   できない（git・gh も実行できない）ので、判断材料はすべてこのスクリプトが集めてプロンプトか worktree に置く。
+   model・effort は [`../lib/agents.conf`](../lib/agents.conf) で固定される。
+   agent は専用のプロセスグループで起動し、タイムアウト（`--agent-timeout`）時や終了後に
+   残った子孫（claude / codex 本体やそのツール）もグループごと終了させる。worktree はレビュー後に必ず削除する。
 3. agent の最終メッセージは JSON 1 つ（`prompt_template.md` のスキーマ。` ```json ` フェンスは可）。
    `verdict` は `approve` / `request_changes` / `comment`。キーの過不足、未知の値、
    `request_changes` なのに blocker/major の指摘が無い、`approve` なのに blocker がある、はすべてパース失敗で、
    その PR には何も投稿せず poll は非ゼロ終了する（次回の poll で再レビューされる）。
-4. 結果を PR コメントとして投稿する。コメント先頭の不可視マーカー
+4. 結果を PR コメントとして投稿する。コメント**先頭行**の不可視マーカー
    `<!-- agent-cross-review:v1 sha=<head> reviewer=<agent> verdict=<verdict> -->` が状態の正本。
+   先頭行以外のマーカー（要約や指摘に引用されたもの）は読まない。加えて、agent の出力やファイル名を
+   コメントに埋め込むときは `<!--` / `-->` を無害化する。
+5. レビューには数分以上かかるので、gate の前に PR と CI 状態を取り直す。head か base が
+   レビュー開始時から動いていれば、その poll では gate を判定しない（次の poll で判定する）。
 
 **二重レビューの防止**: poll を実行している gh アカウントが投稿したコメントに、現在の head SHA と
 期待するレビュー agent のマーカーがあれば再レビューしない。他アカウントが書いたマーカーは無視する。
@@ -55,7 +64,13 @@ PR を作る agent は branch 名に自分の prefix を付ける。
 
 `shared_paths.txt` に 1 行 1 パターンで書く（`#` 以降はコメント）。パターンは repo 相対の POSIX glob で、
 `*` は `/` を跨がず、`**` は跨ぐ。パターンは**そのパス自身とその配下**に一致する（`src/utils` は
-`src/utils/io.py` にも一致）。変更ファイル（rename の旧パスを含む）が 1 つでも一致すると共有基盤に触れたとみなす。
+`src/utils/io.py` にも一致）。`!` で始まる行は除外で、書く順序に関係なく一致したパスを共有基盤から外す
+（除外はいずれかの通常パターンの配下でなければエラー）。変更ファイル（rename の旧パスを含む）が 1 つでも
+一致すると共有基盤に触れたとみなす。変更ファイルは `git diff --name-only -z` で取り、非 ASCII や引用符を含む
+パスもエスケープされない生の名前で照合する。
+
+`.agents/memory` は除外している。memory は検証待ちの観察で、古いものは安く消せる設計（#1063）なので、
+追加・削除のたびに人間の承認を求めない。
 
 一覧は運用で自由に増減してよい（固めすぎない。週次レポートで見直す）。テストは「代表的な共有基盤パスが一致し、
 タスク内のパスが一致しないこと」と「各パターンが repo 内の実在パスを指すこと」だけを確認する。
@@ -76,6 +91,8 @@ PR を作る agent は branch 名に自分の prefix を付ける。
 - `conflict`（mergeable=CONFLICTING）、`mergeable_unknown`（GitHub が計算中）
 - `ci_failed` / `ci_pending`: `statusCheckRollup` を check ごと（workflow 名＋check 名）に最新 run へ畳み、
   1 つでも失敗・未完了があれば該当。成功扱いは SUCCESS / NEUTRAL / SKIPPED のみ。
+  `startedAt` が無い run（null、または gh が未開始 run に出すゼロ時刻 `0001-01-01T00:00:00Z`）や
+  開始時刻が同じ run があって最新が決まらないときは、候補の中で最も悲観的な状態（失敗 > 未完了 > 成功）を採る。
 - `ci_missing_required`: `required_checks.txt` の check が rollup に無い（CI 起動前に labeler 等だけが
   成功して merge される競合を防ぐ。main に branch protection の required checks は無いのでこのファイルで持つ）。
 - `review_missing` / `review_request_changes` / `review_not_approved`（`comment`）: 最新 head への
