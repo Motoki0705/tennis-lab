@@ -636,6 +636,55 @@ def sync_review_label(
         gh.remove_label(pr.number, CHANGES_REQUESTED_LABEL)
 
 
+@dataclass(frozen=True)
+class ReviewInput:
+    """The diff of a PR and the identity a review of it is recorded under."""
+
+    target: ReviewTarget
+    diff: str
+    changed: tuple[str, ...]
+
+
+def review_input(git: Git, pr: PullRequest) -> ReviewInput:
+    git.fetch_pr(pr)
+    merge_base = git.merge_base(pr)
+    diff = git.diff(merge_base, pr.head_sha)
+    return ReviewInput(
+        target=ReviewTarget(
+            head=pr.head_sha,
+            merge_base=merge_base,
+            diff_sha256=hashlib.sha256(diff.encode("utf-8")).hexdigest(),
+        ),
+        diff=diff,
+        changed=git.changed_paths(merge_base, pr.head_sha),
+    )
+
+
+def refetch_for_gate(
+    gh: GitHub, git: Git, pr: PullRequest, reviewed: ReviewTarget, report: RunReport
+) -> PullRequest | None:
+    """Re-read the PR right before the gate; ``None`` when the reviewed target is stale.
+
+    Used whether the verdict comes from a fresh review (minutes old) or an existing
+    one: the PR may have been retargeted, pushed or re-run CI since the first view.
+    The base branch merely moving on keeps the merge-base and diff, so it is not stale.
+    """
+    fresh = gh.view(pr.number)
+    if (fresh.head_sha, fresh.base_sha) == (pr.head_sha, pr.base_sha):
+        return fresh
+    current = review_input(git, fresh).target
+    if current != reviewed:
+        report.note(
+            f"#{pr.number}: PR changed since its review target was computed "
+            f"(head {reviewed.head[:12]}->{current.head[:12]}, "
+            f"merge-base {reviewed.merge_base[:12]}->{current.merge_base[:12]}, "
+            f"diff {reviewed.diff_sha256[:12]}->{current.diff_sha256[:12]}); "
+            "gate deferred to the next poll"
+        )
+        return None
+    return fresh
+
+
 def process_pr(
     settings: Settings, gh: GitHub, git: Git, login: str, number: int, report: RunReport
 ) -> None:
@@ -659,16 +708,8 @@ def process_pr(
     )
     reviewer = reviewer_for(author)
     comments = gh.comments(number)
-    git.fetch_pr(pr)
-    merge_base = git.merge_base(pr)
-    diff = git.diff(merge_base, pr.head_sha)
-    changed = git.changed_paths(merge_base, pr.head_sha)
-    target = ReviewTarget(
-        head=pr.head_sha,
-        merge_base=merge_base,
-        diff_sha256=hashlib.sha256(diff.encode("utf-8")).hexdigest(),
-    )
-    checks = normalize_rollup(pr.rollup)
+    reviewed = review_input(git, pr)
+    target = reviewed.target
 
     existing = latest_review_for(
         review_records(comments, trusted_login=login),
@@ -678,7 +719,7 @@ def process_pr(
     if existing is not None:
         verdict = existing.verdict
         report.note(
-            f"#{number}: head {pr.head_sha[:12]} (merge-base {merge_base[:12]}) "
+            f"#{number}: head {pr.head_sha[:12]} (merge-base {target.merge_base[:12]}) "
             f"already reviewed by {reviewer}: {verdict}"
         )
         sync_review_label(settings, gh, pr, verdict)
@@ -692,33 +733,28 @@ def process_pr(
             author_source=author_source,
             reviewer=reviewer,
             target=target,
-            diff=diff,
-            changed=changed,
-            checks=checks,
+            diff=reviewed.diff,
+            changed=reviewed.changed,
+            checks=normalize_rollup(pr.rollup),
             report=report,
         )
         sync_review_label(settings, gh, pr, verdict)
-        # The review takes minutes: gate on the PR / CI state as it is now, not as it
-        # was before the review started.
-        fresh = gh.view(number)
-        if (fresh.head_sha, fresh.base_sha) != (pr.head_sha, pr.base_sha):
-            report.note(
-                f"#{number}: PR moved during the review (head {pr.head_sha[:12]}->{fresh.head_sha[:12]}, "
-                f"base {pr.base_sha[:12]}->{fresh.base_sha[:12]}); gate deferred to the next poll"
-            )
-            return
-        pr = fresh
-        checks = normalize_rollup(pr.rollup)
+
+    # Gate on the PR / CI state as it is now, for the exact target that was reviewed.
+    fresh = refetch_for_gate(gh, git, pr, target, report)
+    if fresh is None:
+        return
+    pr = fresh
 
     result = evaluate_gate(
         GateInput(
             is_draft=pr.is_draft,
             is_cross_repository=pr.is_cross_repository,
             mergeable=pr.mergeable,
-            checks=checks,
+            checks=normalize_rollup(pr.rollup),
             required_checks=settings.required_checks,
             review_verdict=verdict,
-            changed_paths=changed,
+            changed_paths=reviewed.changed,
             shared_patterns=settings.shared_patterns,
         )
     )

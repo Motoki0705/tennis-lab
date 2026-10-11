@@ -50,7 +50,14 @@ if args[:2] == ["label", "list"]:
 if args[:2] == ["pr", "list"]:
     out([{"number": int(n)} for n in state["prs"]])
 if args[:2] == ["pr", "view"]:
-    out(state["prs"][args[2]])
+    view = state["prs"][args[2]]
+    after = json.loads(os.environ.get("FAKE_GH_AFTER_FIRST_VIEW", "{}"))
+    if args[2] in after and args[2] not in state.setdefault("_viewed", []):
+        # The PR changes on GitHub right after the poller's first look at it.
+        state["_viewed"].append(args[2])
+        state["prs"][args[2]] = {**view, **after[args[2]]}
+        save()
+    out(view)
 if args[:3] == ["api", "--paginate", "--slurp"]:
     number = args[3].split("/")[-2]
     out([state["comments"].get(number, [])])
@@ -441,6 +448,7 @@ def test_marker_from_another_account_does_not_count(env: Env) -> None:
     "output",
     [
         "LGTM, ship it",
+        json.dumps({**REQUEST_CHANGES, "verdict": "approve"}),
         json.dumps({"verdict": "approve"}),
         json.dumps({**REQUEST_CHANGES, "findings": []}),
     ],
@@ -664,22 +672,42 @@ def test_gate_uses_pr_state_refetched_after_the_review(
     assert "merged" not in env.state
 
 
-@pytest.mark.parametrize("moved", ["headRefOid", "baseRefOid"])
-def test_gate_is_deferred_when_the_pr_moves_during_the_review(
-    env: Env, moved: str
+def test_gate_is_deferred_when_a_new_head_is_pushed_during_the_review(
+    env: Env,
 ) -> None:
     env.add_pr(7, "codex/feature", {"src/tasks/blcs/a.py": "x = 2\n"})
-    after = {"7": {moved: "f" * 40}}
+    old = env.state["prs"]["7"]["headRefOid"]
+    # The new head is already on the PR ref; GitHub reports it only mid-review.
+    env.write("src/tasks/blcs/a.py", "x = 3\n")
+    new_head = env.commit("pr 7 update")
+    env.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+    after = {"7": {"headRefOid": new_head}}
 
     result = env.run(
         env={"AGENT_AUTO_MERGE": "1", "FAKE_PR_AFTER_REVIEW": json.dumps(after)}
     )
 
     assert result.returncode == 0, result.stderr
-    assert "PR moved during the review" in result.stderr
+    assert [c["head"] for c in env.agent_calls()] == [old]
     assert "gate deferred to the next poll" in result.stderr
     [review] = env.comments(7)  # the review is posted, the gate is not
     assert "agent-cross-review" in review
+    assert "merged" not in env.state
+
+
+def test_gate_is_deferred_when_the_pr_is_retargeted_during_the_review(
+    env: Env,
+) -> None:
+    _stacked_pr(env, 7)
+    after = {"7": {"baseRefName": "main", "baseRefOid": env.base_sha}}
+
+    result = env.run(
+        env={"AGENT_AUTO_MERGE": "1", "FAKE_PR_AFTER_REVIEW": json.dumps(after)}
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "gate deferred to the next poll" in result.stderr
+    assert "gate=" not in result.stderr
     assert "merged" not in env.state
 
 
@@ -865,3 +893,84 @@ def test_full_diff_is_not_written_through_a_pr_provided_symlink(env: Env) -> Non
     assert env.agent_calls() == []
     assert env.gh_writes() == []
     assert env.review_worktrees() == []
+
+
+def _stacked_pr(env: Env, number: int) -> tuple[str, str]:
+    """A PR whose head sits on an unmerged parent branch that touches src/utils."""
+    env.git("checkout", "-q", "-B", "parent", env.base_sha)
+    env.write("src/utils/u.py", "y = 99\n")
+    parent_sha = env.commit("parent")
+    env.git("push", "-q", "-f", "origin", "parent")
+    env.write("src/tasks/blcs/a.py", "x = 2\n")
+    head = env.commit("child")
+    env.git("push", "-q", "-f", "origin", f"{head}:refs/pull/{number}/head")
+    env.add_pr(number, "codex/child", {"src/tasks/blcs/a.py": "unused\n"})
+    env.git("push", "-q", "-f", "origin", f"{head}:refs/pull/{number}/head")
+    env.state["prs"][str(number)].update(
+        headRefOid=head, baseRefName="parent", baseRefOid=parent_sha
+    )
+    return head, parent_sha
+
+
+def test_reused_review_is_not_gated_after_a_retarget_mid_poll(env: Env) -> None:
+    _stacked_pr(env, 7)
+    assert env.run().returncode == 0  # approve for the narrow diff against parent
+    assert len(env.agent_calls()) == 1
+
+    retarget = {"7": {"baseRefName": "main", "baseRefOid": env.base_sha}}
+    result = env.run(
+        env={"AGENT_AUTO_MERGE": "1", "FAKE_GH_AFTER_FIRST_VIEW": json.dumps(retarget)}
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "already reviewed by claude: approve" in result.stderr
+    assert "gate deferred to the next poll" in result.stderr
+    assert "gate=" not in result.stderr
+    assert "merged" not in env.state
+
+    # The next poll reviews the widened diff, which now touches src/utils.
+    third = env.run(env={"AGENT_AUTO_MERGE": "1"})
+    assert third.returncode == 0, third.stderr
+    assert len(env.agent_calls()) == 2
+    assert "gate=needs_human" in third.stderr
+    assert "merged" not in env.state
+
+
+def test_reused_review_gates_on_refetched_ci(env: Env) -> None:
+    env.add_pr(7, "codex/feature", {"src/tasks/blcs/a.py": "x = 2\n"})
+    assert env.run().returncode == 0  # approve; auto-merge off
+
+    rerun = {"7": {"statusCheckRollup": [
+        {"__typename": "CheckRun", "name": "Python", "workflowName": "CI",
+         "status": "IN_PROGRESS", "conclusion": "", "startedAt": "2026-10-10T03:00:00Z"}
+    ]}}  # fmt: skip
+    result = env.run(
+        env={"AGENT_AUTO_MERGE": "1", "FAKE_GH_AFTER_FIRST_VIEW": json.dumps(rerun)}
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert len(env.agent_calls()) == 1
+    assert "gate=blocked reasons=['ci_pending']" in result.stderr
+    assert "merged" not in env.state
+
+
+def test_reused_review_still_gates_when_only_the_base_branch_advanced(
+    env: Env,
+) -> None:
+    sha = env.add_pr(7, "codex/feature", {"src/tasks/blcs/a.py": "x = 2\n"})
+    assert env.run().returncode == 0
+    env.git("checkout", "-q", "main")
+    env.write("src/tasks/ball_detection/other.py", "o = 1\n")
+    new_main = env.commit("main moves")
+    env.git("push", "-q", "origin", "main")
+
+    result = env.run(
+        env={
+            "AGENT_AUTO_MERGE": "1",
+            "FAKE_GH_AFTER_FIRST_VIEW": json.dumps({"7": {"baseRefOid": new_main}}),
+        }
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "gate deferred" not in result.stderr
+    assert env.state["merged"] == [["7", sha]]
