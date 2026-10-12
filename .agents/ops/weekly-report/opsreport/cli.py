@@ -116,28 +116,36 @@ def _setup_logging(run_dir: Path) -> None:
 
 
 def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
+    # Whole seconds: the boundary is stored with second precision in the report
+    # marker and becomes the next run's start, so sub-second parts would make
+    # events in that gap count in both reports.
     now = (
         datetime.fromisoformat(args.now).astimezone(JST)
         if args.now
         else datetime.now(JST)
-    )
+    ).replace(microsecond=0)
     setting = args.agent or os.environ.get("WEEKLY_REPORT_AGENT") or "alternate"
     agent_name = agent.resolve_agent(setting, now.date())
     cleanup_env = os.environ.get("WEEKLY_REPORT_CLEANUP_CMD")
+    repo_root = args.repo_root.resolve()
+    base = collect.pin_base(
+        repo_root,
+        args.base_ref or os.environ.get("WEEKLY_REPORT_BASE_REF") or "origin/main",
+    )
     cfg = collect.CollectConfig(
-        repo_root=args.repo_root.resolve(),
+        repo_root=repo_root,
         now=now,
-        base_ref=args.base_ref
-        or os.environ.get("WEEKLY_REPORT_BASE_REF")
-        or "origin/main",
+        base=base,
         stale_pr_days=_env_int("WEEKLY_REPORT_STALE_PR_DAYS", 7),
         cleanup_cmd=tuple(shlex.split(cleanup_env)) if cleanup_env else None,
     )
     LOG.info(
-        "report: agent=%s (setting=%s) base=%s dry_run=%s",
+        "report: agent=%s (setting=%s) base=%s@%s (fetched: %s) dry_run=%s",
         agent_name,
         setting,
-        cfg.base_ref,
+        base.name,
+        base.sha,
+        base.fetched_from or "no, local ref",
         args.dry_run,
     )
 

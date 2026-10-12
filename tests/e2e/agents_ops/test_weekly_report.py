@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
+import subprocess
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -211,7 +213,9 @@ def test_agent_output_accepts_single_json_fence(agent_output: dict[str, Any]) ->
         "big.py を分割する",
         "週次レポートのプロンプトを改善する",
     ]
-    assert parsed.stale_pr_notes == {7: "rebaseして仕上げを推奨。差分が小さい。"}
+    assert parsed.stale_pr_notes == {
+        7: agent.StalePrNote(recommendation="rebaseして仕上げ", reason="差分が小さい。")
+    }
 
 
 @pytest.mark.parametrize(
@@ -222,7 +226,27 @@ def test_agent_output_accepts_single_json_fence(agent_output: dict[str, Any]) ->
         (lambda d: d["proposals"][0].update(options=["only one"]), "options"),
         (lambda d: d["proposals"][0].pop("evidence"), "evidence"),
         (lambda d: d.update(extra=1), "unexpected top-level"),
-        (lambda d: d["stale_pr_notes"].update({"999": "x"}), "non-stale PR"),
+        (
+            lambda d: d["stale_pr_notes"].update(
+                {"999": {"recommendation": "close", "reason": "x"}}
+            ),
+            r"unexpected \[999\]",
+        ),
+        (lambda d: d.update(stale_pr_notes={}), r"missing \[7\]"),
+        (lambda d: d.pop("stale_pr_notes"), "must be an object"),
+        (
+            lambda d: d["stale_pr_notes"].update({"7": "close。古い"}),
+            "recommendation and reason",
+        ),
+        (
+            lambda d: d["stale_pr_notes"]["7"].pop("reason"),
+            "recommendation and reason",
+        ),
+        (
+            lambda d: d["stale_pr_notes"]["7"].update(recommendation="merge"),
+            "recommendation 'merge' not in",
+        ),
+        (lambda d: d["stale_pr_notes"]["7"].update(reason=" "), "reason"),
     ],
 )
 def test_agent_output_contract_violations_fail(
@@ -258,7 +282,8 @@ def test_dry_run_prints_body_and_creates_nothing(ops_env: Any) -> None:
     # Stale PR #7 (22 days idle) becomes proposal 01 with the three options; #8 is fresh.
     assert "- **R-2026W42-01** #7 放置されたPR" in out
     assert "  - [ ] rebaseして仕上げ" in out
-    assert "推奨: rebaseして仕上げを推奨。差分が小さい。" in out
+    assert "推奨: **rebaseして仕上げ** — 差分が小さい。" in out
+    assert "ローカルref、fetchなし" in out
     assert "#8 新しいPR" not in out
     assert "- [ ] **R-2026W42-02** big.py を分割する（優先度: 高）" in out
     assert "- **R-2026W42-03** 週次レポートのプロンプトを改善する（優先度: 低）" in out
@@ -542,6 +567,89 @@ def test_agent_leftover_descendants_are_killed(ops_env: Any) -> None:
     assert result.returncode == 0, result.stderr
     assert "killed processes left behind" in result.stderr
     assert _gone_soon(int(pid_file.read_text()))
+
+
+def _git(repo: Path, *args: str, **env: str) -> str:
+    out = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+        env={**os.environ, **env},
+    )
+    return out.stdout.strip()
+
+
+def _with_upstream(ops_env: Any) -> Path:
+    """Give the test repo an ``origin`` (bare) and fetch it once."""
+    upstream: Path = ops_env.tmp / "upstream.git"
+    _git(ops_env.tmp, "clone", "-q", "--bare", str(ops_env.repo), str(upstream))
+    _git(ops_env.repo, "remote", "add", "origin", str(upstream))
+    _git(ops_env.repo, "fetch", "-q", "origin")
+    return upstream
+
+
+def test_stale_tracking_ref_is_fetched_and_pinned(ops_env: Any) -> None:
+    upstream = _with_upstream(ops_env)
+    other = ops_env.tmp / "other"
+    _git(ops_env.tmp, "clone", "-q", str(upstream), str(other))
+    (other / "new.py").write_text("z = 3\n", encoding="utf-8")
+    _git(other, "add", ".")
+    in_period = "2026-10-10T00:00:00+09:00"
+    _git(
+        other,
+        "-c", "user.name=t", "-c", "user.email=t@example.com",
+        "commit", "-q", "-m", "upstream only",
+        GIT_AUTHOR_DATE=in_period, GIT_COMMITTER_DATE=in_period,
+    )  # fmt: skip
+    _git(other, "push", "-q", "origin", "HEAD:main")
+    new_sha = _git(other, "rev-parse", "HEAD")
+    assert _git(ops_env.repo, "rev-parse", "origin/main") != new_sha  # stale
+
+    result = ops_env.run("report", "--dry-run", "--base-ref", "origin/main")
+
+    assert result.returncode == 0, result.stderr
+    (run_dir,) = ops_env.run_dirs()
+    collected = json.loads((run_dir / "collected.json").read_text(encoding="utf-8"))
+    meta = collected["meta"]
+    assert meta["base_sha"] == new_sha
+    assert meta["base_fetched_from"] == "origin main"
+    assert any("upstream only" in c for c in collected["git"]["commit_subjects"])
+    assert "new.py" in meta["checkout_diff_files"]
+    body = result.stdout.split("\n", 2)[2]
+    assert f"base={new_sha}" in body.splitlines()[0]
+    assert f"`{new_sha[:10]}`（実行時に `origin main` をfetch）" in body
+
+
+def test_base_fetch_failure_fails_report(ops_env: Any) -> None:
+    _with_upstream(ops_env)
+    _git(ops_env.repo, "remote", "set-url", "origin", str(ops_env.tmp / "missing.git"))
+
+    result = ops_env.run("report", "--dry-run", "--base-ref", "origin/main")
+
+    assert result.returncode == 1
+    assert "git fetch --no-tags origin" in result.stderr
+    assert not (ops_env.tmp / "agent_used.txt").exists()
+
+
+def test_period_end_has_no_subsecond_gap(ops_env: Any) -> None:
+    """An event exactly at the stored boundary belongs to the next report only."""
+    state = ops_env.state
+    state["merged_prs"] = [_merged(12, "2026-10-11T23:00:00Z")]  # 08:00:00 JST
+    ops_env.write_state(state)
+
+    result = ops_env.run(
+        "report", "--dry-run", "--now", "2026-10-12T08:00:00.600000+09:00"
+    )
+
+    assert result.returncode == 0, result.stderr
+    (run_dir,) = ops_env.run_dirs()
+    collected = json.loads((run_dir / "collected.json").read_text(encoding="utf-8"))
+    assert collected["meta"]["period_end"] == "2026-10-12T08:00:00+09:00"
+    assert collected["github"]["merged_prs_in_period"] == []
+    meta = proposals.parse_report_meta(result.stdout.split("\n", 2)[2])
+    assert meta.until == datetime(2026, 10, 12, 8, tzinfo=JST)
 
 
 def test_agent_failure_exits_nonzero_and_keeps_logs(ops_env: Any) -> None:

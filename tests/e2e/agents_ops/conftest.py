@@ -168,7 +168,9 @@ AGENT_OUTPUT: dict[str, Any] = {
             "options": ["5件に絞る", "上限なし"],
         },
     ],
-    "stale_pr_notes": {"7": "rebaseして仕上げを推奨。差分が小さい。"},
+    "stale_pr_notes": {
+        "7": {"recommendation": "rebaseして仕上げ", "reason": "差分が小さい。"}
+    },
 }
 
 
@@ -329,7 +331,11 @@ class OpsEnv:
         cmd = [sys.executable, str(WEEKLY_REPORT), *args]
         cmd += ["--repo-root", str(self.repo), "--log-dir", str(self.tmp / "logs")]
         if args[0] == "report":
-            cmd += ["--base-ref", "main", "--now", NOW]
+            # Defaults for tests; a test may pass its own --base-ref / --now.
+            if "--base-ref" not in args:
+                cmd += ["--base-ref", "main"]
+            if "--now" not in args:
+                cmd += ["--now", NOW]
         return cmd
 
     def run(self, *args: str, **extra_env: str) -> subprocess.CompletedProcess[str]:

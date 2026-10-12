@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from .agent import AgentReport
+from .agent import AgentReport, StalePrNote
 from .proposals import (
     PROPOSALS_BEGIN,
     PROPOSALS_END,
@@ -33,7 +33,7 @@ def stale_prs(collected: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def stale_pr_proposals(
-    collected: dict[str, Any], notes: dict[int, str]
+    collected: dict[str, Any], notes: dict[int, StalePrNote]
 ) -> list[Proposal]:
     props = []
     for pr in stale_prs(collected):
@@ -42,9 +42,8 @@ def stale_pr_proposals(
             f"`{pr['branch']}`（{pr['author']}{draft}）/ 最終更新 {pr['updated_at'][:10]}"
             f"（{pr['idle_days']}日前）"
         )
-        note = notes.get(int(pr["number"]))
-        if note:
-            detail += f"\n推奨: {note}"
+        note = notes[int(pr["number"])]  # parse_agent_output requires every stale PR
+        detail += f"\n推奨: **{note.recommendation}** — {note.reason}"
         props.append(
             Proposal(
                 section=STALE_PR_SECTION,
@@ -141,12 +140,17 @@ def render_report(
         agent=agent_name,
         base=meta["base_sha"],
     )
+    fetched = (
+        f"実行時に `{meta['base_fetched_from']}` をfetch"
+        if meta["base_fetched_from"]
+        else "ローカルref、fetchなし"
+    )
     header = [
         marker,
         f"# {report_title(day)}",
         "",
         f"- 生成: {meta['generated_at']} / agent: `{agent_name}` / 対象: `{meta['base_ref']}`"
-        f" @ `{meta['base_sha']}` / 集計期間: {meta['period_start']} 〜 {meta['period_end']}",
+        f" @ `{meta['base_sha'][:10]}`（{fetched}） / 集計期間: {meta['period_start']} 〜 {meta['period_end']}",
     ]
     if meta["checkout_diff_files_total"]:
         header.append(
