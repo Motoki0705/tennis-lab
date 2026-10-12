@@ -103,19 +103,40 @@ def _compose_boundary(boundary: RuntimeBoundary, overrides: list[str]) -> DictCo
         )
 
 
-def _expected_kind(module: str) -> str:
-    name = module.rsplit(".", 1)[1]
-    if name.startswith("precompute"):
-        return "precompute"
-    if name.startswith("train"):
-        return "train"
-    if name == "eval" or name.startswith("evaluate"):
-        return "evaluate"
-    if name.startswith("analyze") or name == "visualize_rotation_error_samples":
-        return "analyze"
-    if name.startswith(("preview", "visualize", "predict")):
-        return "visualize"
-    return "generate"
+# Expectations name the semantic validator contract, not a module basename.
+# A new contract must declare its expected output kind rather than defaulting to generate.
+_OUTPUT_KIND_CONTRACTS = {
+    "train": (
+        "ball_refiner_3d.train", "ball.train", "blcs.train", "court_detection.train",
+        "player_detection.train", "plcs.train", "slcs.train",
+    ),
+    "generate": (
+        "ball_refiner_3d.generate_dataset", "ball_detection.generate_dataset",
+        "blcs.api_server", "blcs.generate_dataset", "blcs.generate_dataset_samples",
+        "player_detection.generate_dataset", "player_detection.export_checkpoint",
+        "plcs.generate_dataset", "plcs.generate_dataset_samples",
+        "slcs.generate_dataset", "slcs.make_splits",
+    ),
+    "evaluate": ("ball.eval", "ball.evaluate_manifest", "player_detection.evaluate", "slcs.evaluate"),
+    "visualize": (
+        "ball.preview", "ball.visualize", "blcs.preview_augmentation", "blcs.visualize",
+        "court_detection.preview_augmentation", "court_detection.visualize",
+        "player_detection.preview_dataset", "plcs.preview_augmentation", "plcs.visualize", "slcs.predict_clip",
+    ),
+    "analyze": (
+        "plcs.analyze_angle_velocity", "plcs.analyze_dataset_distribution", "plcs.analyze_loss_dominance",
+        "plcs.analyze_rotation_error_samples", "slcs.analyze_predictions",
+    ),
+    "precompute": ("slcs.precompute_dino_tokens",),
+}
+_EXPECTED_KIND_BY_CONTRACT = {
+    contract: kind for kind, contracts in _OUTPUT_KIND_CONTRACTS.items() for contract in contracts
+}
+
+
+def _expected_kind(boundary: RuntimeBoundary) -> str:
+    assert boundary.validator_key is not None
+    return _EXPECTED_KIND_BY_CONTRACT[boundary.validator_key]
 
 
 @pytest.mark.parametrize(
@@ -176,7 +197,7 @@ def test_all_task_cli_output_contracts(
         assert log.name == "hydra"
         run = log.parent
     assert len(run.parts) == 4
-    assert run.parts[:2] == (boundary.domain, _expected_kind(boundary.module))
+    assert run.parts[:2] == (boundary.domain, _expected_kind(boundary))
     assert re.fullmatch(r"\d{8}T\d{6}\.\d{6}Z-[a-f0-9]{8}", run.parts[3])
     job = deepcopy(cfg)
     with open_dict(job):
@@ -303,7 +324,7 @@ def test_evaluation_manifest_keeps_artifact_models_and_pretrained_roots_separate
     from src.tasks.ball_detection.evaluation.contracts import load_evaluation_manifest
 
     boundary = next(
-        b for b in _TASK_BOUNDARIES if b.module.endswith(".evaluate_manifest")
+        b for b in _TASK_BOUNDARIES if b.validator_key == "ball.evaluate_manifest"
     )
     cfg = _compose_boundary(
         boundary,

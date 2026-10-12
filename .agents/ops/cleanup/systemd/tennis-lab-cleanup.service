@@ -1,0 +1,12 @@
+[Unit]
+Description=tennis-lab: delete merged, clean branches/worktrees (auto_delete only; issue #1060)
+Documentation=file://%h/projects/tennis-lab/.agents/ops/cleanup/README.md
+
+[Service]
+# oneshot: the timer never starts a second instance while one is active, and
+# cleanup.py additionally holds an flock on <state-dir>/cleanup.lock.
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/cleanup/cleanup.py apply-auto --report-json %S/tennis-lab-agents/cleanup/report-latest.json
+Nice=10
+IOSchedulingClass=idle

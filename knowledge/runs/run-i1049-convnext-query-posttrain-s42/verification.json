@@ -1,0 +1,497 @@
+{
+  "schema": "posttraining_completion_verification.v1",
+  "at": "2026-10-11T04:39:21.309681+09:00",
+  "status": "passed",
+  "job": "1791626374950003350_67338_i1049-convnext-posttrain-s42-v1-20261010.job",
+  "queue_state": "done",
+  "run": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-query-posttraining/convnext-v2-s42-v1",
+  "code_commit": "8ac45d9f79bf4f6a7feb343d09428a07aa6e8847",
+  "verified_source_files": 63,
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "parent_checkpoint_sha256": "73f1f0d50693f4d6a84ba451f08cc1918d8fb1a0483a60a97874d916a249745f",
+  "best_checkpoint": "epoch-009.pt",
+  "best_checkpoint_sha256": "3c250d313b745d6c6430ce544c01f8a630eb146439251b4b83f3028829f22f5d",
+  "best_epoch": 9,
+  "global_step": 60000,
+  "validation_epochs": 10,
+  "train_records": 1200,
+  "checkpoint_count": 10,
+  "frozen_train_records": 120,
+  "joint_train_records": 1080,
+  "finite_tensors": {
+    "model": 205,
+    "optimizer": 603
+  },
+  "strict_cpu_model_load": true,
+  "no_gpu_execution": true,
+  "test_usage": "none",
+  "metrics": {
+    "clean": {
+      "full": 15.384655889330702,
+      "common": 13.489567152302158
+    },
+    "camera": {
+      "full": 32.21476681549612,
+      "common": 30.631441379873106
+    },
+    "occlusion": {
+      "full": 16.638173320828948,
+      "common": 14.813183330321593
+    },
+    "combined": {
+      "full": 32.04009401491686,
+      "common": 30.651325366936092
+    }
+  },
+  "previews": [
+    {
+      "path": "previews/camera/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "a2d5996cfd34ab3e888b479e34b6532d5536e5c753cd57b0caa204a9cc89e79c"
+    },
+    {
+      "path": "previews/camera/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "df7c5ee853c4303f7fff456d32b752247af7a5b67728dd6348a7c347ae87f88e"
+    },
+    {
+      "path": "previews/camera/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "f5c20ba6c446eeaa8b5b024bce67d55534176c81b91be88539126d093e200d6b"
+    },
+    {
+      "path": "previews/combined/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "ddbadc60344eb66eb421f722679d61c2da0f42a1e695934a233092727fe315fe"
+    },
+    {
+      "path": "previews/combined/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "39d3e8a7de71410ace6c3e7bd33d70f53911e3e59c198f9140a1bf7706c8ccfb"
+    },
+    {
+      "path": "previews/combined/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "a8630f573740e2f77326e63690378313fdfe3a34df112896d5b8b9edb623688d"
+    },
+    {
+      "path": "previews/occlusion/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "bb479a2f9707a47789f36f88d313b3ec7651631edd036d691a4057b7736302fc"
+    },
+    {
+      "path": "previews/occlusion/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "817828e81d7a831fd22a58357740eea5558638ee479879ecec6e34a415ad13c6"
+    },
+    {
+      "path": "previews/occlusion/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "1b08784d4fffc934c82af346c38fe5f9fbfe4b80707c73a8240da61bbd3e00dd"
+    },
+    {
+      "path": "previews/train-epoch-000.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "2f8b5068530a1e6332c710bde33ad085a2c301a52e71fd79908529d5127e9f90"
+    },
+    {
+      "path": "previews/train-epoch-001.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "353794d09ae8c73d7faf194e0037884f2f4e9f14d9d3798c0fa94212342dca82"
+    },
+    {
+      "path": "previews/train-epoch-002.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "2f721f2f40a72aa0e99031a009df509d2ecba4f9869ce5c2b3e3d15bb7008134"
+    },
+    {
+      "path": "previews/train-epoch-003.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "ef05f918e7597391c0bf8d1cdd37386f0a5b30cdd7521df39ccd5eadf9a85047"
+    },
+    {
+      "path": "previews/train-epoch-004.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "4d5ed0e158d4e39ce6d3d1e6005fd91e314d4da114918afad4b77668cb5fd122"
+    },
+    {
+      "path": "previews/train-epoch-005.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "4043ba43d791605765baaae1cf26747457f4acc15d6d02f4796ef6a4a784c49a"
+    },
+    {
+      "path": "previews/train-epoch-006.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "bb7d7d07e3f11aafa1af4e2d7ac5892246054cba0d1fdb3aad78257cf806c70e"
+    },
+    {
+      "path": "previews/train-epoch-007.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "7d70a9032471647cb6f75bc6c208d34a3a689f962096f81a2d6bee0b0a1bf721"
+    },
+    {
+      "path": "previews/train-epoch-008.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "017b918a7025d40b9066f1f7971b0618497fc0963596c19a560956e040af4ccd"
+    },
+    {
+      "path": "previews/train-epoch-009.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "dfdad672120648b3856a28524cf00c8deeca2923f3baf6b2c698fdae8a522fca"
+    },
+    {
+      "path": "previews/val-epoch-000/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "2187e28acb7e41c6e7774ece38f47313d4d6c2337c35abd5d80857d00828211e"
+    },
+    {
+      "path": "previews/val-epoch-000/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "77f23d09d297ea7f197ea1175cc277dcfb7f2047c904af4fe9830090549cf9d4"
+    },
+    {
+      "path": "previews/val-epoch-000/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "35f71721d387f5b1d37d944e0f5b24f7d700b37ce7256495bf4505394dd8b3ab"
+    },
+    {
+      "path": "previews/val-epoch-001/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "1fa7d2143bbc092a7843bdde5135e1c25efdc568fb63691d07acebb58fb0aeb9"
+    },
+    {
+      "path": "previews/val-epoch-001/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "a95dbcd05e4b8efdd3ea4d0f56fe104e26c7b427f2f8aa1c08245cc7725b27e4"
+    },
+    {
+      "path": "previews/val-epoch-001/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "2cfdce06dfd320344d8b5256e5ba78bf3fb9eaa1b72a84b16ab411982565e986"
+    },
+    {
+      "path": "previews/val-epoch-002/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "ce5e4e998c8dec2631d1a6a4d227df583ad7eb948a2cf44cfc8d958f213c2d26"
+    },
+    {
+      "path": "previews/val-epoch-002/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "546d95675c49a20f926f755d7650424afdc61717bc68e18f6d9731a5c85d21a2"
+    },
+    {
+      "path": "previews/val-epoch-002/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "0f4ac4a92d8b15dc234cfd88242d6845a14a4fb283d9483a61bb6acfe2b117d5"
+    },
+    {
+      "path": "previews/val-epoch-003/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "e5d6a01f3e918289ba301ffa750f31830ae3b82e21bc57f8a16d307ead13311c"
+    },
+    {
+      "path": "previews/val-epoch-003/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "4283d1f9f225f99e2e6a022d443696f822e38307becbfc4ffed86d55ceb69495"
+    },
+    {
+      "path": "previews/val-epoch-003/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "c07882c494432f4cb3078414b915a54787da03223174b170276c277fb783914f"
+    },
+    {
+      "path": "previews/val-epoch-004/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "98b5472f0046d3fa754a83e36e7c8892c43a0a997d0b40c2c9cc9d0f4db6e557"
+    },
+    {
+      "path": "previews/val-epoch-004/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "249220efe44fed254bf537b2ba489044c20d113bb7549214d32e8c109d02e265"
+    },
+    {
+      "path": "previews/val-epoch-004/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "639e3615c8b3dded97bb7615982f95b5288f6fe10bfebde77b58106ff4abe13c"
+    },
+    {
+      "path": "previews/val-epoch-005/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "90e2be577cfc4e25ffc149f989ccdc74f7d65d72c95928a260eeb44b77b9c4a3"
+    },
+    {
+      "path": "previews/val-epoch-005/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "41887495f03f4e82473de7d13eb547888bf67819b95cfcb0731ce9721f6884dc"
+    },
+    {
+      "path": "previews/val-epoch-005/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "c57a9ab8af36028177f4eb4d54565ab76c7c263338ac2e1ac8220f850e9d25b0"
+    },
+    {
+      "path": "previews/val-epoch-006/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "26ccae0a51c0da8ae8a102f48d069e866434dd5080a2a74d9b49874e1879c897"
+    },
+    {
+      "path": "previews/val-epoch-006/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "e4db02dfda8b011e17ca71cbaaf2c9230f0930492259a05b7a83653da61bf5ca"
+    },
+    {
+      "path": "previews/val-epoch-006/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "76058ef6a68ae77408f8b530ff9e375ad4f57e6f328d5073613ccb95fee17f86"
+    },
+    {
+      "path": "previews/val-epoch-007/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "b1a361d3695e49d7510210d3cd534f1a2e9e8ac7c5cbcd17ecd900e59633d696"
+    },
+    {
+      "path": "previews/val-epoch-007/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "ef581f77bca6bb54560e0a458019df826bf598087b07ea05b4d46a33a27c295b"
+    },
+    {
+      "path": "previews/val-epoch-007/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "26ddc260ae007b956c2c3392f9c1ee320f18a26a196f204c9e96f63b5952fc9a"
+    },
+    {
+      "path": "previews/val-epoch-008/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "397ae0ddb02eb5dbb95270811c2944e467627b1f189f9ba6364efc12958522bf"
+    },
+    {
+      "path": "previews/val-epoch-008/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "15f95110d30dc280d7a2d930e7d6cd1a0fcaa1c1fb0c7df0fd5713bc7992d1db"
+    },
+    {
+      "path": "previews/val-epoch-008/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "a41e1e0158f1687405b302b85f81132225e19442deb16080d8a03ac0871617fc"
+    },
+    {
+      "path": "previews/val-epoch-009/clip-00.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "b881a881e8544fe660b5fae6703c435f2768e21fc333c9f7eb294ddfcc4f631d"
+    },
+    {
+      "path": "previews/val-epoch-009/clip-01.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "209991fd954cd512af35ffaec98de22cff25baa25adb6467f22503ca4cf6884d"
+    },
+    {
+      "path": "previews/val-epoch-009/clip-02.gif",
+      "frames": 32,
+      "size": [
+        640,
+        384
+      ],
+      "sha256": "4f21172cc40730cb108e2ed4299502c0c7eb1c6b2abef2357374274af345775a"
+    }
+  ],
+  "artifact_sha256": {
+    "COMPLETED.json": "0e0c244c08ee3e65b5a675b52c7346e934cd8fc922758206f1585b9df14ecafe",
+    "best.json": "c86d4d6f128402314b4917e8769664429253ed7e2fda90ee3167c3a2d45cdb12",
+    "config.json": "cc727aac879a8671a9f59873dc8f5f9d742eecbfd3b3ce141f90fbbb5e3b3ffe",
+    "metrics.jsonl": "462f923678a2fffb240f8d010ac70eeba91ffc9e650004ff9b2a7ee81a1e8c09",
+    "stress.json": "64e80d1901325f174ac8dd0be723fd3e1df2d846cda5cfee31020aa24e3e93d1",
+    "train.jsonl": "5499378b6be75be0a871f6307fcf62f06437161f541e8864262eb340450634ba"
+  }
+}

@@ -661,6 +661,8 @@ def _inspect_boundaries(
         expected_boundary = expected[key]
         actual_boundary = actual[key]
         boundary_id = f"{expected_boundary.module}:{expected_boundary.callable_name}"
+        if expected_boundary.routes != actual_boundary.routes:
+            issues.append(BoundaryAuditIssue(boundary_id, "CLI selector routes differ from the declared entry points"))
         if expected_boundary.kind is not actual_boundary.kind:
             issues.append(
                 BoundaryAuditIssue(

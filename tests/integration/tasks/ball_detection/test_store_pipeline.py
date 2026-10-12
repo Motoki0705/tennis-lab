@@ -18,10 +18,10 @@ from src.tasks.ball_detection.evaluation.evaluator import (
     DefaultJobEvaluator,
     evaluate_dataloader,
 )
+from src.tasks.ball_detection.evaluation.heatmap_cli import _forward_batch
 from src.tasks.ball_detection.evaluation.runner import EvaluationPipeline
 from src.tasks.ball_detection.model_io.evaluation import CheckpointBallHeatmapPredictor
-from src.tasks.ball_detection.scripts.eval import _forward_batch
-from src.tasks.ball_detection.training.lightning_module import (
+from src.tasks.ball_detection.training.convnext_heatmap.module import (
     BallDetectionLightningModule,
 )
 from tests.support.tasks.ball_detection.store import (

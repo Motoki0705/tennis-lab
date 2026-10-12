@@ -55,6 +55,7 @@ def _boundary_contracts() -> tuple[RuntimeBoundaryContract, ...]:
             callable_name=boundary.callable_name,
             validator_key=boundary.validator_key,
             validator_callable=boundary.validator_callable,
+            delegated_boundaries=boundary.delegated_boundaries,
         )
         for boundary in discovered
     )

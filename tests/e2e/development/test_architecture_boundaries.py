@@ -209,6 +209,70 @@ PROHIBITED_SYMBOLS = frozenset(
     }
 )
 # Ball detection consumes only the unified store; retired workflows have no import shims.
+BALL_MDD_CONSOLIDATION_REMOVED_MODULES = (
+    'src.tasks.ball_detection.training.runner',
+    'src.tasks.ball_detection.data.components.augmentation',
+    'src.tasks.ball_detection.data.coordinate_dataset',
+    'src.tasks.ball_detection.data.coordinate_manifest',
+    'src.tasks.ball_detection.data.coordinate_snapshot',
+    'src.tasks.ball_detection.data.play_intervals',
+    'src.tasks.ball_detection.data.play_manifest',
+    'src.tasks.ball_detection.data.pose_windows',
+    'src.tasks.ball_detection.data.temporal_sampling',
+    'src.tasks.ball_detection.inference.checkpoint',
+    'src.tasks.ball_detection.model_io.mdd',
+    'src.tasks.ball_detection.models.mdd_pose.config',
+    'src.tasks.ball_detection.models.mdd_pose.encoder',
+    'src.tasks.ball_detection.models.mdd_pose.model',
+    'src.tasks.ball_detection.models.mdd_pose.pooling',
+    'src.tasks.ball_detection.models.mdd_pose.query',
+    'src.tasks.ball_detection.models.mdd_pose.variants',
+    'src.tasks.ball_detection.models.mdd_pretrain.config',
+    'src.tasks.ball_detection.models.mdd_pretrain.efficient_blocks',
+    'src.tasks.ball_detection.models.mdd_pretrain.encoder',
+    'src.tasks.ball_detection.models.mdd_pretrain.model',
+    'src.tasks.ball_detection.scripts.advance_cnn_campaign',
+    'src.tasks.ball_detection.scripts.eval',
+    'src.tasks.ball_detection.scripts.evaluate_manifest',
+    'src.tasks.ball_detection.scripts.evaluate_mdd_coordinates',
+    'src.tasks.ball_detection.scripts.inference_ui',
+    'src.tasks.ball_detection.scripts.posttrain_mdd_query',
+    'src.tasks.ball_detection.scripts.prepare_mdd_training',
+    'src.tasks.ball_detection.scripts.pretrain_mdd_dpt',
+    'src.tasks.ball_detection.scripts.preview_augmentation',
+    'src.tasks.ball_detection.scripts.preview_heatmaps',
+    'src.tasks.ball_detection.scripts.preview_posttraining_augmentation',
+    'src.tasks.ball_detection.scripts.probe_mdd_posttraining',
+    'src.tasks.ball_detection.scripts.profile_mdd_cnn',
+    'src.tasks.ball_detection.scripts.review_dataset',
+    'src.tasks.ball_detection.scripts.train_best_mdd_posttraining',
+    'src.tasks.ball_detection.scripts.train_cnn_candidate',
+    'src.tasks.ball_detection.scripts.train_mdd_pose',
+    'src.tasks.ball_detection.training.candidate_recall',
+    'src.tasks.ball_detection.training.coordinate_checkpoint',
+    'src.tasks.ball_detection.training.coordinate_compilation',
+    'src.tasks.ball_detection.training.coordinate_evaluation',
+    'src.tasks.ball_detection.training.coordinate_images',
+    'src.tasks.ball_detection.training.coordinate_preparation',
+    'src.tasks.ball_detection.training.coordinate_provenance',
+    'src.tasks.ball_detection.training.coordinate_runtime',
+    'src.tasks.ball_detection.training.coordinate_sampling',
+    'src.tasks.ball_detection.training.heatmap_pretraining.checkpoint',
+    'src.tasks.ball_detection.training.heatmap_pretraining.data',
+    'src.tasks.ball_detection.training.heatmap_pretraining.diagnostics',
+    'src.tasks.ball_detection.training.heatmap_pretraining.evaluation',
+    'src.tasks.ball_detection.training.heatmap_pretraining.objective',
+    'src.tasks.ball_detection.training.heatmap_pretraining.runner',
+    'src.tasks.ball_detection.training.lightning_module',
+    'src.tasks.ball_detection.training.metrics',
+    'src.tasks.ball_detection.training.posttraining.augmentation',
+    'src.tasks.ball_detection.training.posttraining.checkpoint',
+    'src.tasks.ball_detection.training.posttraining.comparison',
+    'src.tasks.ball_detection.training.posttraining.evaluation',
+    'src.tasks.ball_detection.training.posttraining.runner',
+    'src.utils.shared_file_verification',
+)
+
 BALL_STORE_REMOVED_MODULES = (
     "src.tasks.ball_detection.models.dinov3_rope",
     "src.tasks.ball_detection.models.spatiotemporal_unet",
@@ -351,6 +415,25 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
     ),
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
+    # Native RGB preprocessing guards only static dtype/shape metadata. These
+    # deliberately reject ambiguous inputs; fullgraph capture is covered by
+    # test_native_mdd.py and the real CUDA/Inductor numerical diagnostic.
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.forward",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.forward",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.luminance_to_mdd",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.luminance_to_mdd",
+        "Python shape/value validation branch",
+    ): 1,
     (
         "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
         "Python assert",
@@ -1495,6 +1578,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
     removed = (
         *REMOVED_MODULES,
         *BALL_STORE_REMOVED_MODULES,
+        *BALL_MDD_CONSOLIDATION_REMOVED_MODULES,
         *COURT_INFERENCE_REMOVED_MODULES,
         *COURT_SINGLE_MODEL_REMOVED_MODULES,
         *COURT_OFFLINE_TARGET_REMOVED_MODULES,
@@ -1518,7 +1602,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
         text = path.read_text(encoding="utf-8", errors="replace")
         for module in removed:
             references = (module, module.replace(".", "/"))
-            if any(reference in text for reference in references):
+            if any(re.search(re.escape(reference) + r"(?![A-Za-z0-9_])", text) for reference in references):
                 stale.append(f"{path.relative_to(REPOSITORY_ROOT)}: {module}")
     assert not stale, "stale removed-module references:\n" + "\n".join(stale)
 

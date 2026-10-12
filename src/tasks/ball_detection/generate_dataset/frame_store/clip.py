@@ -203,4 +203,3 @@ class ClipSpec:
             raise ValueError(f"{self.clip_id}: events given for a source without event labels")
         if self.has_events and (events == EVENT_CODES["unlabeled"]).all():
             raise ValueError(f"{self.clip_id}: declared with events but every frame is unlabeled")
-
