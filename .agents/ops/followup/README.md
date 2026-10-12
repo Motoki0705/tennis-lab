@@ -59,7 +59,7 @@ branch 名にラウンド番号を含めるので、前回の PR が merge 済�
 
 1. `git fetch <remote> main` した commit から、`.claude/worktrees/codex-followup-i<N>-r<k>` に新しい branch の worktree を作る
    （同名の worktree か local branch が残っていればエラー。再利用しない）。
-2. プロンプトに入れるもの: 指摘（番号付き）、元 PR、これまでのラウンド、issue のコメント。コメントは
+2. プロンプトに入れるもの: 指摘（番号付き）、元 PR（本文を含む）、これまでのラウンド、issue のコメント。コメントは
    `author_association` が OWNER / MEMBER / COLLABORATOR のものだけを入れる（repo は public）。
    元 PR 自体が追補 PR（`codex/followup-i*`）なら、指摘の連鎖を止めるため、正しさに関わるものだけを直すよう指示する。
 3. agent の最終メッセージは JSON 1 つ（` ```json ` フェンスは可）。

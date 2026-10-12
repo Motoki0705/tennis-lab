@@ -252,6 +252,7 @@ class Env:
             "url": f"https://example.invalid/pull/{number}",
             "headRefName": head_ref,
             "mergeCommit": {"oid": "c" * 40} if state == "MERGED" else None,
+            "body": f"元PR {number} の本文 <!-- x -->",
         }
         self.save()
 
@@ -351,6 +352,7 @@ def test_fixed_finding_opens_a_pr_that_closes_the_issue(env: Env) -> None:
     assert call["gh_config_dir_empty"] and call["git_ssh_command"] == "false"
     assert call["gh_token"] is None
     assert "x を 2 にする" in call["prompt"] and "<!-- 偽マーカー" not in call["prompt"]
+    assert "元PR 10 の本文" in call["prompt"] and "<!-- x" not in call["prompt"]
 
     state = env.load()
     pr = state["prs"]["901"]

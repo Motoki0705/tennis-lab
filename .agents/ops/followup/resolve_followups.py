@@ -67,6 +67,7 @@ EXIT_LOCKED = 75
 SCRUBBED_ENV = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "SSH_AUTH_SOCK")
 PROFILE = "followup"
 AGENT = "codex"
+MAX_SOURCE_BODY_CHARS = 20_000
 
 log = logging.getLogger("resolve_followups")
 
@@ -90,6 +91,7 @@ class SourcePR:
     url: str
     head_ref: str
     merge_commit: str | None
+    body: str
 
 
 class GitHub:
@@ -143,7 +145,7 @@ class GitHub:
             "view",
             str(number),
             "--json",
-            "number,state,title,url,headRefName,mergeCommit",
+            "number,state,title,url,headRefName,mergeCommit,body",
         )
         merge = data.get("mergeCommit")
         return SourcePR(
@@ -153,6 +155,7 @@ class GitHub:
             url=str(data["url"]),
             head_ref=str(data["headRefName"]),
             merge_commit=str(merge["oid"]) if merge else None,
+            body=str(data["body"] or ""),
         )
 
     def pr_state(self, number: int) -> str:
@@ -380,6 +383,7 @@ def build_prompt(
         source_title=neutralize_markers(source.title),
         source_url=source.url,
         source_merge_commit=source.merge_commit or "(不明)",
+        source_body=source_body(source.body),
         issue_number=candidate.issue.number,
         issue_url=candidate.issue.url,
         round_no=len(rounds) + 1,
@@ -388,6 +392,18 @@ def build_prompt(
         comments=format_comments(comments),
         n_findings=len(findings),
     )
+
+
+def source_body(body: str) -> str:
+    if not body.strip():
+        return "（本文なし）"
+    text = neutralize_markers(body)
+    if len(text) > MAX_SOURCE_BODY_CHARS:
+        text = (
+            text[:MAX_SOURCE_BODY_CHARS]
+            + f"\n\n（{MAX_SOURCE_BODY_CHARS} 文字で切り詰め）"
+        )
+    return text
 
 
 def agent_env(run_dir: Path) -> dict[str, str]:
