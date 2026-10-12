@@ -388,17 +388,27 @@ def test_reconnect_rechecks_refreshed_ownership_and_never_allocates(
         if assignment_expired and calls.count("guard") == 2:
             raise RuntimeError("assignment expired")
 
+    def rpc(action: str, **kwargs: Any) -> dict[str, Any]:
+        if "close_transport" not in calls:
+            raise RuntimeError("stale SSH transport")
+        calls.append(action)
+        return {"jobs": [{"job_id": "train", "status": "running"}]}
+
     session = SimpleNamespace(
         require_registered=require_registered,
         cli=lambda command, **kwargs: calls.append(command),
-        rpc=lambda action, **kwargs: {"action": action, "jobs": []},
+        close_transport=lambda: calls.append("close_transport"),
+        rpc=rpc,
     )
     if assignment_expired:
         with pytest.raises(RuntimeError, match="assignment expired"):
             frontend.reconnect(session)
+        assert calls == ["guard", "sessions", "guard"]
     else:
-        assert frontend.reconnect(session)["connection"] == "reconnected"
-    assert calls == ["guard", "sessions", "guard"]
+        result = frontend.reconnect(session)
+        assert result["connection"] == "reconnected"
+        assert result["jobs"] == [{"job_id": "train", "status": "running"}]
+        assert calls == ["guard", "sessions", "guard", "close_transport", "status"]
 
 
 def test_runner_output_has_one_live_writer_and_is_salvaged_after_exit(
