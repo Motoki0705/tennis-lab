@@ -1,0 +1,20 @@
+{
+  "status": "ok",
+  "purpose": "integration diagnostic, not model quality",
+  "queue_run_id": "1791459169012987085_613576_i986-query-bf16-production-smoke-v1",
+  "train_clips": 3,
+  "val_clips": 3,
+  "test_clips": 0,
+  "train_windows": 9,
+  "val_windows": 9,
+  "optimizer_updates": 24,
+  "precision": "bf16",
+  "batch_size": 1,
+  "workers": 8,
+  "cuda_rng_saved": true,
+  "resumed": true,
+  "external_eval_restored_precision": true,
+  "parent_manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "excerpt_sha256": "bf9008c5d616ad8b8f6244efe37aa7373e47b1d229256a23d0adb807d3ff42ff",
+  "checkpoint_sha256": "5b2f8e20c7c3251d91929949c0585b92bacb536ef5a2e76c7f5b5d8ec13f70e8"
+}

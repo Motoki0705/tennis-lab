@@ -1,0 +1,39 @@
+{
+  "stage": "main_training",
+  "authorized_by": "User requested main training, then elimination of CPU bottlenecks; retry after validated input and stream fixes",
+  "observed_at": "2026-10-09T02:57:45.746896+00:00",
+  "queue_job": "1791513534641157109_1753998_i986-query-bf16-s42-u60000-nvjpeg-v2",
+  "commit": "e75f81a4e3831af6f0ca175f71c0ccb90fd2b021",
+  "code_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-nvjpeg-train-s42-u60000-v2",
+  "total_optimizer_updates": 60000,
+  "initialization": "scratch",
+  "precision": "bf16",
+  "jpeg_decoder": "nvjpeg",
+  "image_prefetch": true,
+  "batch_size": 1,
+  "workers": 8,
+  "prefetch_factor": 4,
+  "progress_at_launch_check": {
+    "epoch": 0,
+    "global_step": 2200,
+    "windows": 2200,
+    "train_loss": 0.10611267136504861,
+    "grad_norm": 1.6882275342941284,
+    "learning_rate": 0.0001,
+    "train_seconds": 256.5227898229932,
+    "windows_per_second": 8.576236058862653,
+    "mean_input_ready_wait_seconds": 0.04042415327641886,
+    "mean_reader_wait_seconds": 0.005524580293217282,
+    "input_ready_wait_includes_decode": true
+  },
+  "recent_interval": {
+    "updates": 1000,
+    "from_step": 1200,
+    "through_step": 2200,
+    "windows_per_second": 9.671090733886402,
+    "mean_reader_wait_seconds": 0.0022949133753427304
+  },
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
+  "log": "/home/kamimura/projects/tennis-lab/.training_queue/logs/1791513534641157109_1753998_i986-query-bf16-s42-u60000-nvjpeg-v2.log"
+}

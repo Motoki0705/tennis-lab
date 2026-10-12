@@ -1,0 +1,15 @@
+ M src/tasks/ball_detection/data/coordinate_dataset.py
+ M src/tasks/ball_detection/scripts/evaluate_mdd_coordinates.py
+ M src/tasks/ball_detection/scripts/train_mdd_pose.py
+ M src/tasks/ball_detection/training/coordinate_checkpoint.py
+ M src/tasks/ball_detection/training/coordinate_evaluation.py
+ A src/tasks/ball_detection/training/coordinate_images.py
+ M src/tasks/ball_detection/training/coordinate_provenance.py
+ M src/tasks/ball_detection/training/coordinate_runtime.py
+ M src/utils/README.md
+ A src/utils/shared_file_verification.py
+ A tests/benchmarks/ball_jpeg_decode_probe.py
+ M tests/benchmarks/ball_mdd_query_gpu.py
+ M tests/benchmarks/ball_mdd_query_gpu_smoke.py
+ M tests/integration/tasks/ball_detection/test_coordinate_training.py
+ A tests/unit/utils/test_shared_file_verification.py

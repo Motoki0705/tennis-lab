@@ -8,7 +8,7 @@ import torch
 from torch import Tensor
 
 from src.tasks.ball_detection.evaluation.contracts import MetricsSpec
-from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
+from src.tasks.ball_detection.evaluation.detection import BallDetectionMetrics
 from src.utils.data.heatmaps import heatmaps_to_peaks
 
 
