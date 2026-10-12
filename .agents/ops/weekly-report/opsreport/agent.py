@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from . import shell
-from .proposals import CATEGORIES, PRIORITIES, Proposal
+from .proposals import CATEGORIES, PRIORITIES, STALE_PR_OPTIONS, Proposal
 
 AGENT_CHOICES = ("claude", "codex", "alternate")
 PROMPT_PLACEHOLDERS = (
@@ -94,10 +94,16 @@ def execute(run: AgentRun) -> str:
 
 
 @dataclass(frozen=True)
+class StalePrNote:
+    recommendation: str  # one of STALE_PR_OPTIONS
+    reason: str
+
+
+@dataclass(frozen=True)
 class AgentReport:
     summary: str
     proposals: list[Proposal]
-    stale_pr_notes: dict[int, str]
+    stale_pr_notes: dict[int, StalePrNote]
 
 
 def _extract_json(text: str) -> Any:
@@ -171,16 +177,44 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
                 options=tuple(options),
             )
         )
-    raw_notes = data.get("stale_pr_notes", {})
-    if not isinstance(raw_notes, dict):
+    return AgentReport(
+        summary=summary,
+        proposals=props,
+        stale_pr_notes=_parse_stale_pr_notes(
+            data.get("stale_pr_notes"), stale_pr_numbers
+        ),
+    )
+
+
+def _parse_stale_pr_notes(
+    raw: Any, stale_pr_numbers: set[int]
+) -> dict[int, StalePrNote]:
+    """Exactly one note per stale PR, each with a recommendation and a reason."""
+    if not isinstance(raw, dict):
         raise AgentOutputError("$.stale_pr_notes must be an object")
-    notes: dict[int, str] = {}
-    for key, note in raw_notes.items():
-        if not str(key).isdigit() or int(key) not in stale_pr_numbers:
-            raise AgentOutputError(f"$.stale_pr_notes has non-stale PR key {key!r}")
-        if not isinstance(note, str) or not note.strip():
+    bad_keys = [k for k in raw if not (isinstance(k, str) and k.isdigit())]
+    if bad_keys:
+        raise AgentOutputError(f"$.stale_pr_notes keys must be PR numbers: {bad_keys}")
+    keys = {int(k) for k in raw}
+    if keys != stale_pr_numbers:
+        raise AgentOutputError(
+            "$.stale_pr_notes keys must be exactly the stale PRs "
+            f"{sorted(stale_pr_numbers)}: missing {sorted(stale_pr_numbers - keys)}, "
+            f"unexpected {sorted(keys - stale_pr_numbers)}"
+        )
+    notes: dict[int, StalePrNote] = {}
+    for key, note in raw.items():
+        where = f"$.stale_pr_notes[{key!r}]"
+        if not isinstance(note, dict) or set(note) != {"recommendation", "reason"}:
             raise AgentOutputError(
-                f"$.stale_pr_notes[{key!r}] must be a non-empty string"
+                f"{where} must be an object with exactly recommendation and reason"
             )
-        notes[int(key)] = note
-    return AgentReport(summary=summary, proposals=props, stale_pr_notes=notes)
+        recommendation = _req_str(note, "recommendation", where)
+        if recommendation not in STALE_PR_OPTIONS:
+            raise AgentOutputError(
+                f"{where}.recommendation {recommendation!r} not in {list(STALE_PR_OPTIONS)}"
+            )
+        notes[int(key)] = StalePrNote(
+            recommendation=recommendation, reason=_req_str(note, "reason", where)
+        )
+    return notes

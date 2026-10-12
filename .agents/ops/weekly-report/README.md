@@ -66,7 +66,7 @@ gh・git・agent・掃除モジュールの失敗、agent出力の形式違反�
 agentと掃除モジュールは専用のプロセスグループで起動し、タイムアウト・失敗・終了時にグループ全体を
 SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子プロセスを残さない）。
 
-集計期間は `[前回レポートの until, 今回の実行時刻)`。境界は issue 作成時刻ではなく本文メタデータの `until`
+集計期間は `[前回レポートの until, 今回の実行時刻)`（実行時刻は秒単位に切り捨て、メタデータと同じ精度にする）。境界は issue 作成時刻ではなく本文メタデータの `until`
 （収集の基準時刻）で引き継ぐので、収集〜公開の間のイベントも欠落・重複しない。merge済みPRは
 `--search merged:>=<日付>` でmerge期間を検索条件に含めて取得し、件数上限に達したらエラーにする。
 
@@ -77,7 +77,7 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 | 環境変数 | 既定 | 意味 |
 |---|---|---|
 | `WEEKLY_REPORT_AGENT` | `alternate` | `claude` / `codex` / `alternate`（ISO週が偶数→claude、奇数→codex） |
-| `WEEKLY_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref |
+| `WEEKLY_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref。remote追跡refなら実行開始時に `git fetch <remote> <branch>` し（失敗はエラー）、そのcommit SHAを実行中固定して本文メタデータ `base=` に記録する。ローカルref/SHAはfetchせず、本文に「ローカルref、fetchなし」と明記する |
 | `WEEKLY_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
 | `WEEKLY_REPORT_AGENT_TIMEOUT` | `5400` | agent実行のタイムアウト（秒） |
 | `WEEKLY_REPORT_CLEANUP_CMD` | `<python> .agents/ops/cleanup/cleanup.py scan` | 掃除モジュールのコマンド。`--report-json <一時ファイル>` を自動付与し、そのファイルのJSONを読む |
@@ -86,6 +86,7 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 | `WEEKLY_REPORT_LOCK_FILE` | `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/weekly-report.lock` | issue書き込みの排他ロック（下記） |
 | `WEEKLY_REPORT_LOCK_TIMEOUT` | `600` | ロック待ちの上限（秒）。超えたら非ゼロ終了 |
 
+- 放置PRへの推奨: agentは対象の放置PRすべてについて `{"recommendation": "継続|rebaseして仕上げ|close", "reason": …}` を返す必要があり、欠け・余分・形式違反は出力形式エラーになる。
 - 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
   ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。
   共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。

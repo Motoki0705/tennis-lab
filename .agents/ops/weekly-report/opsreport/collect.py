@@ -45,13 +45,67 @@ _ISSUE_FIELDS = "number,title,labels,createdAt,updatedAt,author"
 _PR_FIELDS = "number,title,headRefName,author,createdAt,updatedAt,isDraft,labels,url"
 
 
+FETCH_TIMEOUT = 600
+
+
+@dataclass(frozen=True)
+class BaseRef:
+    """The base ref as given and the commit pinned for the whole run."""
+
+    name: str
+    sha: str
+    # "<remote> <branch>" when a remote-tracking ref was fetched first; None for a
+    # local ref / SHA, which is used as is (recorded in the report, not hidden).
+    fetched_from: str | None
+
+
+def pin_base(repo_root: Path, name: str) -> BaseRef:
+    """Fetch ``name`` if it is a remote-tracking ref, then pin its commit SHA.
+
+    A stale local ``origin/main`` would silently drop commits while the period still
+    advances, so a failed fetch is an error.
+    """
+    full = shell.git(["rev-parse", "--symbolic-full-name", name], cwd=repo_root).strip()
+    fetched_from = None
+    if full.startswith("refs/remotes/"):
+        tracking = full.removeprefix("refs/remotes/")
+        remotes = shell.git(["remote"], cwd=repo_root).split()
+        remote = max(
+            (r for r in remotes if tracking.startswith(r + "/")), key=len, default=None
+        )
+        if remote is None:
+            raise CommandError(
+                f"{name} ({full}) does not belong to a configured remote"
+            )
+        branch = tracking.removeprefix(remote + "/")
+        shell.run_process_group(
+            ["git", "fetch", "--no-tags", remote, f"+refs/heads/{branch}:{full}"],
+            cwd=repo_root,
+            timeout=FETCH_TIMEOUT,
+        )
+        fetched_from = f"{remote} {branch}"
+    sha = shell.git(
+        ["rev-parse", "--verify", f"{name}^{{commit}}"], cwd=repo_root
+    ).strip()
+    return BaseRef(name=name, sha=sha, fetched_from=fetched_from)
+
+
 @dataclass(frozen=True)
 class CollectConfig:
     repo_root: Path
     now: datetime
-    base_ref: str
+    base: BaseRef
     stale_pr_days: int
     cleanup_cmd: tuple[str, ...] | None
+
+    @property
+    def base_ref(self) -> str:
+        return self.base.name
+
+    @property
+    def rev(self) -> str:
+        """What every git query reads: the pinned SHA, never the moving ref."""
+        return self.base.sha
 
 
 def parse_ts(value: str) -> datetime:
@@ -282,7 +336,7 @@ def collect_github(
 
 def _last_commit_date(cfg: CollectConfig, path: Path) -> str:
     out = shell.git(
-        ["log", "-1", "--format=%cs", cfg.base_ref, "--", str(path)], cwd=cfg.repo_root
+        ["log", "-1", "--format=%cs", cfg.rev, "--", str(path)], cwd=cfg.repo_root
     ).strip()
     return out or "uncommitted"
 
@@ -292,7 +346,7 @@ def collect_git(cfg: CollectConfig, since: datetime, until: datetime) -> dict[st
     log = shell.git(
         [
             "log",
-            cfg.base_ref,
+            cfg.rev,
             f"--since={since.isoformat()}",
             f"--until={until.isoformat()}",
             "--format=%h%x09%an%x09%s",
@@ -302,7 +356,7 @@ def collect_git(cfg: CollectConfig, since: datetime, until: datetime) -> dict[st
     shortstat = shell.git(
         [
             "log",
-            cfg.base_ref,
+            cfg.rev,
             f"--since={since.isoformat()}",
             f"--until={until.isoformat()}",
             "--shortstat",
@@ -319,18 +373,18 @@ def collect_git(cfg: CollectConfig, since: datetime, until: datetime) -> dict[st
             elif len(words) >= 2 and words[1].startswith("deletion"):
                 removed += int(words[0])
     line_counts = shell.git(
-        ["grep", "-c", "", cfg.base_ref, "--", *CODE_SUFFIXES, *EXCLUDED_PATHSPECS],
+        ["grep", "-c", "", cfg.rev, "--", *CODE_SUFFIXES, *EXCLUDED_PATHSPECS],
         cwd=cwd,
         ok_codes=(0, 1),
     )
     files: list[tuple[str, int]] = []
     for row in line_counts.splitlines():
-        path, _, count = row.removeprefix(f"{cfg.base_ref}:").rpartition(":")
+        path, _, count = row.removeprefix(f"{cfg.rev}:").rpartition(":")
         files.append((path, int(count)))
     files.sort(key=lambda item: (-item[1], item[0]))
     todo = shell.git(
         [
-            "grep", "-I", "-c", "-E", r"\b(TODO|FIXME|XXX|HACK)\b", cfg.base_ref,
+            "grep", "-I", "-c", "-E", r"\b(TODO|FIXME|XXX|HACK)\b", cfg.rev,
             "--", *EXCLUDED_PATHSPECS,
         ],
         cwd=cwd,
@@ -338,7 +392,7 @@ def collect_git(cfg: CollectConfig, since: datetime, until: datetime) -> dict[st
     )  # fmt: skip
     todo_files: list[tuple[str, int]] = []
     for row in todo.splitlines():
-        path, _, count = row.removeprefix(f"{cfg.base_ref}:").rpartition(":")
+        path, _, count = row.removeprefix(f"{cfg.rev}:").rpartition(":")
         todo_files.append((path, int(count)))
     todo_files.sort(key=lambda item: (-item[1], item[0]))
     return {
@@ -362,7 +416,7 @@ def collect_workspace(cfg: CollectConfig) -> dict[str, Any]:
         ["for-each-ref", "refs/heads", "--format=%(refname:short)"], cwd=cwd
     ).splitlines()
     merged = shell.git(
-        ["branch", "--merged", cfg.base_ref, "--format=%(refname:short)"], cwd=cwd
+        ["branch", "--merged", cfg.rev, "--format=%(refname:short)"], cwd=cwd
     ).splitlines()
     return {
         "worktrees": len(worktrees),
@@ -449,7 +503,7 @@ def collect_knowledge(
         return {"status": "not_found", "note": f"{KNOWLEDGE_SUMMARY} が存在しない"}
     changed = shell.git(
         [
-            "log", cfg.base_ref, f"--since={since.isoformat()}",
+            "log", cfg.rev, f"--since={since.isoformat()}",
             f"--until={until.isoformat()}", "--name-only", "--format=",
             "--", "knowledge/nodes", "knowledge/reports",
         ],
@@ -468,7 +522,7 @@ def collect_knowledge(
 def collect_ai_env(cfg: CollectConfig) -> dict[str, Any]:
     tracked = shell.git(
         [
-            "ls-tree", "-r", "--name-only", cfg.base_ref, "--",
+            "ls-tree", "-r", "--name-only", cfg.rev, "--",
             "AGENTS.md", "CLAUDE.md", ".agents", ".github/agents",
             ".github/copilot-instructions.md", ".claude",
         ],
@@ -494,22 +548,22 @@ def collect_meta(
     cfg: CollectConfig, since: datetime, until: datetime
 ) -> dict[str, Any]:
     cwd = cfg.repo_root
-    base_sha = shell.git(["rev-parse", "--short", cfg.base_ref], cwd=cwd).strip()
-    head_sha = shell.git(["rev-parse", "--short", "HEAD"], cwd=cwd).strip()
+    head_sha = shell.git(["rev-parse", "HEAD"], cwd=cwd).strip()
     branch = shell.git(["branch", "--show-current"], cwd=cwd).strip() or "(detached)"
     dirty = shell.git(["status", "--porcelain", "--untracked-files=no"], cwd=cwd)
     # Tracked files whose checkout content differs from the base (committed or not).
     # The agent cannot run git, so it needs this list to avoid citing them as base.
-    diff_files = shell.git(["diff", "--name-only", cfg.base_ref], cwd=cwd).splitlines()
+    diff_files = shell.git(["diff", "--name-only", cfg.rev], cwd=cwd).splitlines()
     return {
         "generated_at": cfg.now.isoformat(timespec="minutes"),
         "period_start": since.isoformat(timespec="seconds"),
         "period_end": until.isoformat(timespec="seconds"),
         "base_ref": cfg.base_ref,
-        "base_sha": base_sha,
+        "base_sha": cfg.rev,
+        "base_fetched_from": cfg.base.fetched_from,
         "checkout_branch": branch,
-        "checkout_sha": head_sha,
-        "checkout_matches_base": base_sha == head_sha,
+        "checkout_sha": head_sha[:10],
+        "checkout_matches_base": cfg.rev == head_sha,
         "checkout_modified_files": len(dirty.splitlines()),
         "checkout_diff_files": diff_files[:200],
         "checkout_diff_files_total": len(diff_files),

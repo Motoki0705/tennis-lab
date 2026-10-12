@@ -44,8 +44,9 @@
 
 次のPRは一定期間更新がありません。各PRの現状（差分規模・変更ファイル・mergeable・CI・関連issue・本文）は
 収集データの `github.open_prs[].detail` にあります（PRのbranchの内容はcheckoutに無い）。それをもとに、
-「継続 / rebaseして仕上げ / close」のどれを推奨するかと理由を `stale_pr_notes` に1〜3文で書いてください
-（キーはPR番号の文字列）。放置PR自体を `proposals` に重複して入れないでください。
+「継続 / rebaseして仕上げ / close」のどれを推奨するか（`recommendation`）と理由（`reason`、1〜3文）を
+`stale_pr_notes` に書いてください。キーはPR番号の文字列で、下の放置PRすべてについて**ちょうど1件ずつ**必要です
+（放置PRが無ければ `{}`）。放置PR自体を `proposals` に重複して入れないでください。
 
 {{STALE_PRS}}
 
@@ -67,7 +68,7 @@
       "options": ["任意。2〜5個の選択肢"]
     }
   ],
-  "stale_pr_notes": {"123": "推奨: close。理由..."}
+  "stale_pr_notes": {"123": {"recommendation": "継続 | rebaseして仕上げ | close", "reason": "理由（1〜3文）"}}
 }
 ```
 
