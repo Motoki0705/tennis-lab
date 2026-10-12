@@ -6,7 +6,7 @@ from dataclasses import replace
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tasks.ball_detection.data.play_intervals import (
+from src.tasks.ball_detection.data.windows.intervals import (
     PlayIntervalConfig,
     PlaySelection,
     infer_play_intervals,

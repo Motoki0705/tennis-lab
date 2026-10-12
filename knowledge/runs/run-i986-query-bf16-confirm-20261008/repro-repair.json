@@ -1,0 +1,6 @@
+{
+  "reason": "Bundle the byte-identical generated model YAML; preserve the captured script and run.json. No implementation or input values changed.",
+  "captured_script_sha256": "aad47ec0089302b357fd0dc3976cc5f8329e3d7905a8bc2259f1ca2db034fa24",
+  "model_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
+  "original_model": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml"
+}

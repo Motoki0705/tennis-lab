@@ -1,0 +1,16 @@
+{
+  "run_id": "1791456329552391447_371303_i986-conv2d-query-gpu-bs-sweep-v1",
+  "name": "i986-conv2d-query-gpu-bs-sweep-v1",
+  "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 timeout -k 20s 2400s bash tests/benchmarks/ball_mdd_query_gpu_sweep.sh /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/conv2d-query-only-gpu/20261008-sweep-v1",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "986",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "c8e6810616f3f31f3cff3dee0df7376d7c9a7a9b",
+  "branch": "codex/ball-query-only-training",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training",
+  "captured_at": "2026-10-08T19:45:29+09:00"
+}

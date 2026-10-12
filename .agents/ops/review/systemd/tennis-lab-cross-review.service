@@ -1,0 +1,16 @@
+[Unit]
+Description=tennis-lab: cross-review open PRs and evaluate the merge gate
+Documentation=file://%h/projects/tennis-lab/.agents/ops/review/README.md
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Auto-merge stays disabled until a human enables it here (AGENT_AUTO_MERGE=1).
+Environment=AGENT_AUTO_MERGE=0
+# cross_review.py takes an flock on its state dir and exits 75 when another run
+# (timer or manual) holds it.
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/review/cross_review.py --repo %h/projects/tennis-lab
+SuccessExitStatus=75
+TimeoutStartSec=3h

@@ -11,11 +11,11 @@ from typing import Any
 
 import numpy as np
 
-from src.tasks.ball_detection.data.play_intervals import (
+from src.tasks.ball_detection.data.store import BallFrameStore
+from src.tasks.ball_detection.data.windows.intervals import (
     PlayIntervalConfig,
     mask_intervals,
 )
-from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tennis_scene.chat_annotation.player_pose.dataset import PlayerPoseStore
 from src.utils.checksum import dual_sha256
 

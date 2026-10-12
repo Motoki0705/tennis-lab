@@ -1,34 +1,14 @@
-"""Train a ball detection model with PyTorch Lightning.
+"""Select a training family; each family owns its objective and restart policy."""
 
-Usage:
-    python -m src.tasks.ball_detection.scripts.train
-    python -m src.tasks.ball_detection.scripts.train run.dry_run=true
-    python -m src.tasks.ball_detection.scripts.train training.trainer.max_epochs=1
-
-Notes:
-    - Hydra loads configuration from `src/tasks/ball_detection/configs/train.yaml`.
-    - The script forwards the resolved config to the training runner.
-"""
-
-from __future__ import annotations
-
-from omegaconf import DictConfig
-
-from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
-from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
-from src.utils.hydra import hydra_main
+from src.utils.configuration.cli import dispatch_cli
 
 
-@hydra_main(
-    version_base="1.3",
-    config_path="../configs",
-    config_name="train",
-    validation_boundary="ball.train",
-)
-def main(cfg: DictConfig) -> None:
-    """Train ball detection model."""
-    runner = BallDetectionTrainingRunner()
-    runner.run(cfg)
+def main() -> None:
+    dispatch_cli("stage", {
+        "convnext_heatmap": "src.tasks.ball_detection.training.convnext_heatmap.cli",
+        "dpt_pretrain": "src.tasks.ball_detection.training.dpt_pretrain.runner",
+        "coordinates": "src.tasks.ball_detection.training.coordinates",
+    }, description="Ball detection training; choose an explicit learning stage.")
 
 
 if __name__ == "__main__":

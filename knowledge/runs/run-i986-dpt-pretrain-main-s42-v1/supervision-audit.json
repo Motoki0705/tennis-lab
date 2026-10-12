@@ -1,0 +1,18 @@
+{
+  "train": {
+    "clips": 824,
+    "unique_selected_frames": 343248,
+    "positive": 318861,
+    "negative": 1410,
+    "ignored": 22977,
+    "multiple_instance_frames": 0
+  },
+  "val": {
+    "clips": 190,
+    "unique_selected_frames": 93976,
+    "positive": 85627,
+    "negative": 322,
+    "ignored": 8027,
+    "multiple_instance_frames": 0
+  }
+}

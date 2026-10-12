@@ -1,0 +1,45 @@
+diff --git a/tests/benchmarks/ball_mdd_query_gpu.py b/tests/benchmarks/ball_mdd_query_gpu.py
+index 16b454a25..bdb98dc7b 100644
+--- a/tests/benchmarks/ball_mdd_query_gpu.py
++++ b/tests/benchmarks/ball_mdd_query_gpu.py
+@@ -102,8 +102,8 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
+         batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+         iterator = iter([batch] * total)
+     else:
+-        sampler = FPSMixSampler(dataset, windows_per_epoch=total * args.batch_size, seed=42)
+-        sequence = list(sampler)
++        sampler = FPSMixSampler(dataset, windows_per_epoch=args.sampler_windows or total * args.batch_size, seed=42)
++        sequence = list(sampler)[:total * args.batch_size]
+         report["window_sequence_sha256"] = hashlib.sha256(json.dumps(sequence).encode()).hexdigest()
+         before = time.perf_counter()
+         if args.preverify:
+@@ -131,7 +131,7 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
+                 batches = [{k: v.pin_memory() if isinstance(v, torch.Tensor) else v for k, v in b.items()} for b in batches]
+             iterator = iter(batches)
+         else:
+-            loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sampler, seed=42)
++            loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sequence, seed=42)
+             iterator = iter(loader)
+         report["input_setup_seconds"] = time.perf_counter() - before
+     ready_batches = coordinate_batches(iterator, device, prefetch=args.image_prefetch)
+@@ -192,6 +192,7 @@ def main() -> None:
+     parser.add_argument("--image-prefetch", action="store_true")
+     parser.add_argument("--prefetch-factor", type=int, default=1)
+     parser.add_argument("--drop-file-cache", action="store_true", help="Request eviction of clean selected-file pages after verification")
++    parser.add_argument("--sampler-windows", type=int, help="Use a prefix of this production epoch's sampler")
+     parser.add_argument("--workers", type=int, default=0)
+     parser.add_argument("--pin-memory", action="store_true")
+     parser.add_argument("--cpu-threads", type=int, default=2)
+diff --git a/tests/benchmarks/ball_reader_sweep.py b/tests/benchmarks/ball_reader_sweep.py
+index febc35b3e..d547d6045 100644
+--- a/tests/benchmarks/ball_reader_sweep.py
++++ b/tests/benchmarks/ball_reader_sweep.py
+@@ -62,7 +62,7 @@ def main() -> None:
+         options = argparse.Namespace(manifest=args.manifest, model_config=args.model_config, mode=mode,
+             workers=workers, batch_size=batch, pin_memory=True, precision="bf16", compile_mode="default",
+             cpu_threads=2, jpeg_decoder="nvjpeg", prefetch_factor=factor, image_prefetch=prefetch,
+-            preverify=False, drop_file_cache=args.io_stress and mode == "pipeline", warmup=12//batch, steps=(args.windows-12)//batch)
++            preverify=False, sampler_windows=None, drop_file_cache=args.io_stress and mode == "pipeline", warmup=12//batch, steps=(args.windows-12)//batch)
+         report: dict[str, Any] = dict(condition=name, arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(options).items()},
+                                     verification_shared=True, counters_reset_per_case=True)
+         print(json.dumps(dict(phase="condition_start", condition=name)), flush=True)
