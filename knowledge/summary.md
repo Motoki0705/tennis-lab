@@ -1,4 +1,4 @@
-<!-- knowledge-review: 076353b842d38fa619ac54acedf9eb7ec5c9480a60cb12f853e6031155bb76a2 on 2026-10-11 -->
+<!-- knowledge-review: b441fd06fbb5debb708e7658500cc3818550789aa416e7af71b687bfccb11c5d on 2026-10-13 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -295,6 +295,7 @@ FasterNetは最初のvalidationを通過した。モデル・BF16・予算を維
 camera stressはFull32.21px、特に1/4 FPSで41.11pxとなり、通常評価の改善だけで頑健性を満たしたとは判断しない。
 人工遮蔽全点のFull16.64pxに対し、実際に合成遮蔽された点だけでは32.94px。自然遮蔽とは区別する。
 checkpoint・clean/stress3条件・49 GIFを検証し、2時間監視を停止した。test・下流scene・対照拡張なし実験は未実施で、deployは変更しない。
+10/13に同ノードへ固定validation窓のRGB/MDD比較を追加した。カメラ変換による背景差分と、人工遮蔽時の教師保持を可視化したもので、追加の精度評価はなく、頑健性・deployの判断は変更しない。
 次は大誤差clipとカメラ変換の棄却・採点集合を確認し、拡張なし対照と比較する判断材料が必要。追加学習は開始していない。
 
 [#934の実clip契約検証](nodes/ball_detection/000019-run-i934-evidence-meiji-clip000.md)で、

@@ -81,6 +81,7 @@ artifacts:
   checkpoint_sha256: 3c250d313b745d6c6430ce544c01f8a630eb146439251b4b83f3028829f22f5d
   verification: knowledge/runs/run-i1049-convnext-query-posttrain-s42/verification.json
   figures: knowledge/runs/run-i1049-convnext-query-posttrain-s42/validation-figures.pdf
+  input_examples: knowledge/runs/run-i1049-convnext-query-posttrain-s42/input-examples/inputs.json
 parents:
 - run-i1050-convnext-v2-pretrain-s42
 relations: []
@@ -121,6 +122,27 @@ Full cleanの元/1/2/1/4 FPS平均は16.5979 / 14.0779 / 15.4782px、中央値4.
 ![FPS・分布・データ源別の誤差](../../runs/run-i1049-convnext-query-posttrain-s42/fps-and-error-distribution.png)
 
 [印刷用2ページPDF](../../runs/run-i1049-convnext-query-posttrain-s42/validation-figures.pdf)。図は保存したJSONから `plot_results.py` で再生成する。
+
+## 入力の可視化（2026-10-13）
+
+保存済みレシピで、validationの `tracknet/game9/Clip2`、frame 0, 4, …, 124（30→7.5fps、32枚、4.133秒）を4条件へ変換した。
+[RGBの比較GIF](../../runs/run-i1049-convnext-query-posttrain-s42/input-examples/input-rgb.gif)、
+[MDDの比較GIF](../../runs/run-i1049-convnext-query-posttrain-s42/input-examples/input-mdd.gif)、
+[遮蔽前・最中・解除後の拡大図](../../runs/run-i1049-convnext-query-posttrain-s42/input-examples/occlusion-detail.png)を保存した。
+GIFは4fpsでゆっくり表示し、実入力のPTSを各フレームに示す。元入力解像度は1280×720。MDDは変換後RGBからFP32で再計算し、緑をM+、赤をM−として全条件で同じ[0,1]スケールを使用する。座標の目印は拡大図への後付けで、モデル入力には含まれない。
+
+この例ではcamera変換によりコート線・観客席まで差分が広がる。遮蔽中の矩形内部は差分が小さく、矩形が消えるとその領域にもMDDが出る。人工遮蔽のみでは元frame 8のGT中心が隠れるが、全32枚の座標教師は保持される。カメラ変換の端の引き伸ばしは `padding_mode="border"` の挙動である。
+
+seed42・epoch0の固定stress profileであり、camera/occlusionの適用確率は条件に応じて1または0（学習時は各0.5）。変形量・遮蔽サイズ等は学習設定のまま。profile別の乱数なので、camera単体とcombinedのカメラ軌道は異なる。CPU/OpenCVでJPEGを復号し、augmentationとMDDのコードhashは学習時に保存したhashとの一致を検証した。学習時のnvJPEG復号と画素値が完全一致する再生ではない。これは入力の説明用で、追加の推論・精度評価は行っていない。
+
+設定、各frameの行列・GT・遮蔽フラグ、画像hashは [inputs.json](../../runs/run-i1049-convnext-query-posttrain-s42/input-examples/inputs.json) に保存した。再生成:
+
+```bash
+CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python \
+  knowledge/runs/run-i1049-convnext-query-posttrain-s42/render_input_examples.py \
+  --run /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-query-posttraining/convnext-v2-s42-v1 \
+  --output knowledge/runs/run-i1049-convnext-query-posttrain-s42/input-examples
+```
 
 ## 完了検証と運用
 
