@@ -88,7 +88,10 @@ worktree ディレクトリの mtime の最大値。どれも取れなければ 
 
 - `git status --porcelain --ignored --ignore-submodules=none` に何も出ない。例外は最上位の `.venv`
   が symlink の場合だけ（削除時に symlink だけを外し、参照先は触らない）。`__pycache__` や `outputs/`、
-  他の symlink も作業物として扱う。submodule は展開されていれば `submodule_populated` で拒否する。
+  他の symlink も作業物として扱う。submodule は展開されていれば `submodule_populated` で拒否する
+  （展開済みなら拒否なので submodule の中は調べない）。
+- `assume-unchanged` / `skip-worktree` の付いた tracked ファイルが無い（`git ls-files -v` の小文字タグ・`S`）。
+  これらの変更は `git status` に出ないため、付いていれば `hidden_index_flags` で拒否する。
 - HEAD が push 済み: `refs/remotes/*` のどれかに含まれる、または branch の PR の head と一致・その祖先。
   ローカルの main に含まれるだけでは push 済みとみなさない。
 - 使用中でない（下表の protect 系が無い）。
@@ -116,6 +119,7 @@ worktree ディレクトリの mtime の最大値。どれも取れなければ 
 | `untracked_files` | block | worktree | untracked（`.venv` symlink 以外） |
 | `ignored_files` | block | worktree | gitignore 対象（`outputs/`、`__pycache__` など。`.venv` symlink 以外） |
 | `submodule_populated` | block | worktree | submodule が展開済み |
+| `hidden_index_flags` | block | worktree | `assume-unchanged` / `skip-worktree` の tracked ファイルがある（変更が `git status` に出ない） |
 | `unpushed_commits` | block | worktree | HEAD がどの `refs/remotes/*` にも PR head にも含まれない |
 | `worktree_needs_approval` | approval | worktree | worktree は承認した `delete` でのみ消す（push 済みの根拠を表示） |
 | `no_pr` | approval | branch | PR が無く default branch にも含まれない |
@@ -142,12 +146,15 @@ worktree ディレクトリの mtime の最大値。どれも取れなければ 
 ## ログと復元
 
 削除前に `<state-dir>/deleted.jsonl` へ `phase: "intent"`、完了後に `"done"`（失敗時 `"failed"` と
-`error`）を1行ずつ追記する。各行は `ts, id, repo, branch, tip, worktree, category, approved, reasons, phase`
-（worktree の削除では `tip` は HEAD、`branch` は checkout していた branch）。
+`error`）を1行ずつ追記する。各行は `ts, id, repo, branch, tip, worktree, category, approved, reasons,
+branch_config, phase`（worktree の削除では `tip` は HEAD、`branch` は checkout していた branch）。
+`branch_config` は branch 削除時に一緒に消す `branch.<name>.*` 設定（upstream・description など）の
+`[key, value]` の列で、worktree の削除では空。
 
 ```bash
 jq -c 'select(.phase=="done")' ~/.local/state/tennis-lab-agents/cleanup/deleted.jsonl
 git branch <branch> <tip>                # branch の復元（tip は gc されるまで残る）
+git config --add <key> <value>           # branch_config の各組を順に戻す（upstream・description など）
 git worktree add <worktree> <branch>     # worktree の復元（detached なら --detach <worktree> <tip>）
 ```
 
@@ -191,7 +198,8 @@ worktree は clean なものしか消さないので、復元は `git worktree a
     "last_activity": "ISO8601" | null, "activity_source": "tip commit date|branch reflog|...|none",
     "idle_days": 1.5,
     "worktree_state": null | {"dirty_tracked": [], "untracked": [], "ignored": [],
-                              "disposable": [".venv"], "submodule_populated": []},
+                              "disposable": [".venv"], "submodule_populated": [],
+                              "hidden_index_flags": []},
     "disk_bytes": 0 | null, "disk_error": null | "du: ...",
     "action": "none" | "would_delete" | "deleted" | "skipped" | "failed" | "refused",
     "action_error": null | "..."
@@ -214,9 +222,9 @@ worktree は clean なものしか消さないので、復元は `git worktree a
 `tests/e2e/agents_ops/test_cleanup.py`：一時repo＋worktree＋fake `gh` で、通常/squash merge 判定と
 tip 一致の要件、`apply-auto` が worktree を一切消さず worktree の無い merge 済み branch だけを消すこと、
 worktree の削除条件（dirty・untracked・ignored・`__pycache__`・`.venv` 以外の symlink・submodule・
-未push の各拒否と、clean な worktree の削除で branch が残ること）、各保護条件（cwd・open fd・argv・
+assume-unchanged / skip-worktree・未push の各拒否と、clean な worktree の削除で branch が残ること）、各保護条件（cwd・open fd・argv・
 相対 argv・queue・lock・保護branch/worktree・current checkout・rebase/bisect 中の branch・シンボリック参照・
-解決しきれない queue job）、削除途中の変化による拒否、削除ログと復元、tip ガード、ロック、
+解決しきれない queue job）、削除途中の変化による拒否、削除ログと復元（branch 設定を含む）、tip ガード、ロック、
 失敗時の非ゼロ終了、レポートスキーマ（理由コードがこのREADMEに載っていること）を確認する。
 
 ```bash

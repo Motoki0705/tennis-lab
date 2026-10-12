@@ -43,6 +43,7 @@ REASON_KINDS: dict[str, ReasonKind] = {
     "untracked_files": "block",
     "ignored_files": "block",
     "submodule_populated": "block",
+    "hidden_index_flags": "block",
     "unpushed_commits": "block",
     # approval: deleted only by an explicit `delete <id>` command
     "worktree_needs_approval": "approval",
@@ -95,6 +96,9 @@ class WorktreeState:
     ignored: tuple[str, ...]
     disposable: tuple[str, ...]  # the top-level `.venv` symlink, when present
     submodule_populated: tuple[str, ...]
+    # tracked paths flagged assume-unchanged / skip-worktree: `git status` does not
+    # report edits to them, so the worktree may only look clean
+    hidden_index_flags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -296,6 +300,10 @@ def classify_worktree(f: WorktreeFacts, policy: Policy) -> Decision:
         if state.submodule_populated:
             reasons.append(
                 Reason("submodule_populated", _short(state.submodule_populated))
+            )
+        if state.hidden_index_flags:
+            reasons.append(
+                Reason("hidden_index_flags", _short(state.hidden_index_flags))
             )
     if f.pushed is None:
         reasons.append(

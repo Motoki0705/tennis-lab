@@ -463,7 +463,9 @@ def test_apply_auto_deletes_only_branches_without_worktrees(lab: Lab) -> None:
 def test_apply_auto_logs_tip_and_branch_is_restorable(lab: Lab) -> None:
     tip = lab.branch("feat/logged")
     lab.pr("feat/logged", tip)
-    lab.git("config", "branch.feat/logged.description", "x")
+    lab.git("config", "branch.feat/logged.description", "line one\nline two")
+    lab.git("config", "branch.feat/logged.remote", "origin")
+    lab.git("config", "branch.feat/logged.merge", "refs/heads/feat/logged")
     proc = lab.run("apply-auto")
     assert proc.returncode == 0, proc.stderr
     assert not lab.has_branch("feat/logged")
@@ -482,9 +484,19 @@ def test_apply_auto_logs_tip_and_branch_is_restorable(lab: Lab) -> None:
         assert "merged_pr" in {x["code"] for x in r["reasons"]}
     assert any(e["action"] == "deleted" for e in lab.report()["entries"])
 
-    # README's restore procedure.
+    assert records[0]["branch_config"] == [
+        ["branch.feat/logged.description", "line one\nline two"],
+        ["branch.feat/logged.remote", "origin"],
+        ["branch.feat/logged.merge", "refs/heads/feat/logged"],
+    ]
+
+    # README's restore procedure: the ref, then each logged config value.
     lab.git("branch", "feat/logged", records[0]["tip"])
+    for key, value in records[0]["branch_config"]:
+        lab.git("config", "--add", key, value)
     assert lab.tip("feat/logged") == tip
+    assert lab.git("config", "branch.feat/logged.merge") == "refs/heads/feat/logged"
+    assert lab.git("config", "branch.feat/logged.description") == "line one\nline two"
 
 
 # ----------------------------------------------- approved worktree removal: clean only
@@ -535,6 +547,26 @@ def test_only_completely_clean_worktrees_can_be_removed(lab: Lab) -> None:
     assert record["worktree"] == str(clean) and record["tip"] == head
     # With the worktree gone, the merged branch becomes an auto_delete candidate.
     assert lab.scan()["branch:feat/clean"]["category"] == "auto_delete"
+
+
+@pytest.mark.parametrize("flag", ["--assume-unchanged", "--skip-worktree"])
+def test_hidden_index_flags_block_removal(lab: Lab, flag: str) -> None:
+    wt = _merged_worktree(lab, "hidden")
+    lab.git("update-index", flag, "README", cwd=wt)
+    (wt / "README").write_text(
+        "local edit git status does not show\n", encoding="utf-8"
+    )
+    assert lab.git("status", "--porcelain", "--ignored", cwd=wt) == ""  # looks clean
+
+    entry = lab.scan()[wt_id(wt)]
+    assert entry["category"] == "approval_required"
+    assert "hidden_index_flags" in codes(entry)
+    assert entry["worktree_state"]["hidden_index_flags"] == ["README"]
+    proc = lab.run("delete", wt_id(wt))
+    assert proc.returncode == 1 and "blocked: hidden_index_flags" in proc.stderr
+    assert (wt / "README").read_text(encoding="utf-8") == (
+        "local edit git status does not show\n"
+    )
 
 
 def test_populated_submodule_blocks_removal(lab: Lab) -> None:
@@ -1241,6 +1273,7 @@ def test_report_json_schema(lab: Lab) -> None:
                 "ignored",
                 "disposable",
                 "submodule_populated",
+                "hidden_index_flags",
             }
         else:
             assert e["worktree"] is None and e["worktree_state"] is None
