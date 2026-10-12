@@ -21,6 +21,9 @@ AGENT_LABELS: Mapping[str, str] = {"agent:claude": "claude", "agent:codex": "cod
 
 NEEDS_HUMAN_LABEL = "needs-human"
 CHANGES_REQUESTED_LABEL = "agent-review:changes-requested"
+FOLLOWUP_LABEL = "ai-proposed"
+# Consecutive request_changes by the cross reviewer that hand the PR to a human.
+ESCALATION_STREAK = 3
 
 
 # --------------------------------------------------------------------------- authorship
@@ -165,6 +168,7 @@ def shared_path_hits(
 
 VERDICTS = ("approve", "request_changes", "comment")
 SEVERITIES = ("blocker", "major", "minor", "nit")
+BLOCKING_SEVERITIES = frozenset({"blocker", "major"})
 _FENCE = re.compile(r"```(?:json)?[ \t]*\n(.*)\n```", re.DOTALL)
 
 
@@ -182,10 +186,46 @@ class Finding:
 
 
 @dataclass(frozen=True)
+class ReviewOutcome:
+    """What the gate needs from a review: the verdict and its blocker/major count.
+
+    A review passes when it is ``approve`` (never with blocker/major findings), or
+    ``comment`` without blocker/major findings; minor/nit findings do not block.
+    """
+
+    verdict: str
+    blocking: int
+
+    def __post_init__(self) -> None:
+        if self.verdict not in VERDICTS:
+            raise ValueError(f"unknown review verdict: {self.verdict!r}")
+        if self.blocking < 0:
+            raise ValueError(f"negative blocking count: {self.blocking}")
+        if self.verdict == "approve" and self.blocking:
+            raise ValueError("approve cannot carry blocker/major findings")
+        if self.verdict == "request_changes" and not self.blocking:
+            raise ValueError("request_changes needs blocker/major findings")
+
+    @property
+    def passed(self) -> bool:
+        return self.verdict != "request_changes" and self.blocking == 0
+
+
+@dataclass(frozen=True)
 class Review:
     verdict: str
     summary: str
     findings: tuple[Finding, ...]
+
+    @property
+    def outcome(self) -> ReviewOutcome:
+        blocking = sum(f.severity in BLOCKING_SEVERITIES for f in self.findings)
+        return ReviewOutcome(self.verdict, blocking)
+
+    @property
+    def light_findings(self) -> tuple[Finding, ...]:
+        """minor / nit findings: they never block, and become a follow-up issue."""
+        return tuple(f for f in self.findings if f.severity not in BLOCKING_SEVERITIES)
 
 
 def _require_str(obj: Mapping[str, Any], key: str, *, where: str) -> str:
@@ -270,12 +310,19 @@ _SHA = r"[0-9a-f]{40}"
 _DIGEST = r"[0-9a-f]{64}"
 _TARGET = rf"sha=({_SHA}) base=({_SHA}) diff=({_DIGEST})"
 REVIEW_MARKER_RE = re.compile(
-    rf"<!-- agent-cross-review:v2 {_TARGET} reviewer=(claude|codex) "
-    r"verdict=(approve|request_changes|comment) -->"
+    rf"<!-- agent-cross-review:v3 {_TARGET} reviewer=(claude|codex) "
+    r"verdict=(approve|request_changes|comment) blocking=(0|[1-9][0-9]*) -->"
 )
+# Second line of a review comment: the minor/nit findings as JSON, so a later poll can
+# file the follow-up issue from the comment alone.
+LIGHT_FINDINGS_RE = re.compile(r"<!-- agent-cross-review-light:v1 (\[.*\]) -->")
 GATE_MARKER_RE = re.compile(
     rf"<!-- agent-merge-gate:v2 {_TARGET} decision=(merge|needs_human|blocked) "
     r"reasons=([a-z_,]*) -->"
+)
+ESCALATION_MARKER_RE = re.compile(rf"<!-- agent-review-escalation:v1 {_TARGET} -->")
+FOLLOWUP_MARKER_RE = re.compile(
+    rf"<!-- agent-review-followup:v1 pr=([1-9][0-9]*) sha=({_SHA}) -->"
 )
 
 
@@ -283,6 +330,14 @@ GATE_MARKER_RE = re.compile(
 class Comment:
     author: str
     body: str
+    url: str
+
+
+@dataclass(frozen=True)
+class Issue:
+    author: str
+    body: str
+    url: str
 
 
 @dataclass(frozen=True)
@@ -306,7 +361,9 @@ class ReviewTarget:
 class ReviewRecord:
     target: ReviewTarget
     reviewer: str
-    verdict: str
+    outcome: ReviewOutcome
+    light_findings: tuple[Finding, ...]
+    url: str | None  # the review comment; None for a dry-run review that was not posted
 
 
 @dataclass(frozen=True)
@@ -316,16 +373,21 @@ class GateRecord:
     reasons: tuple[str, ...]
 
 
-def review_marker(target: ReviewTarget, reviewer: str, verdict: str) -> str:
+def review_header(target: ReviewTarget, reviewer: str, review: Review) -> str:
+    """The two marker lines that start a review comment (state for later polls)."""
+    outcome = review.outcome
     marker = (
-        f"<!-- agent-cross-review:v2 {target.marker_fields()} "
-        f"reviewer={reviewer} verdict={verdict} -->"
+        f"<!-- agent-cross-review:v3 {target.marker_fields()} "
+        f"reviewer={reviewer} verdict={outcome.verdict} blocking={outcome.blocking} -->"
     )
     if REVIEW_MARKER_RE.fullmatch(marker) is None:
         raise ValueError(
-            f"invalid review marker fields: {target!r} {reviewer!r} {verdict!r}"
+            f"invalid review marker fields: {target!r} {reviewer!r} {outcome!r}"
         )
-    return marker
+    payload = json.dumps([vars(f) for f in review.light_findings], ensure_ascii=False)
+    # JSON escapes keep the payload on one line and unable to close the HTML comment.
+    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e")
+    return f"{marker}\n<!-- agent-cross-review-light:v1 {payload} -->"
 
 
 def gate_marker(target: ReviewTarget, decision: str, reasons: Sequence[str]) -> str:
@@ -340,9 +402,34 @@ def gate_marker(target: ReviewTarget, decision: str, reasons: Sequence[str]) -> 
     return marker
 
 
-def _header_line(body: str) -> str:
-    """The first line of a comment, where the caller places its marker."""
-    return body.partition("\n")[0].rstrip("\r")
+def escalation_marker(streak_start: ReviewTarget) -> str:
+    return f"<!-- agent-review-escalation:v1 {streak_start.marker_fields()} -->"
+
+
+def followup_marker(pr_number: int, head: str) -> str:
+    marker = f"<!-- agent-review-followup:v1 pr={pr_number} sha={head} -->"
+    if FOLLOWUP_MARKER_RE.fullmatch(marker) is None:
+        raise ValueError(f"invalid follow-up marker fields: {pr_number!r} {head!r}")
+    return marker
+
+
+def _header_line(body: str, index: int = 0) -> str:
+    """Line ``index`` of a comment; markers live in the first lines the caller writes."""
+    lines = body.split("\n", index + 1)
+    return lines[index].rstrip("\r") if len(lines) > index else ""
+
+
+def _light_findings(line: str, *, where: str) -> tuple[Finding, ...]:
+    match = LIGHT_FINDINGS_RE.fullmatch(line)
+    if match is None:
+        raise ValueError(f"{where}: review marker without the findings line")
+    raw = json.loads(match.group(1))
+    if not isinstance(raw, list):
+        raise ValueError(f"{where}: findings line is not a JSON list")
+    findings = tuple(_parse_finding(item, i) for i, item in enumerate(raw))
+    if any(f.severity in BLOCKING_SEVERITIES for f in findings):
+        raise ValueError(f"{where}: findings line contains blocker/major findings")
+    return findings
 
 
 def neutralize_markers(text: str) -> str:
@@ -368,12 +455,16 @@ def review_records(
             continue
         match = REVIEW_MARKER_RE.fullmatch(_header_line(comment.body))
         if match is not None:
-            head, base, diff, reviewer, verdict = match.groups()
+            head, base, diff, reviewer, verdict, blocking = match.groups()
             records.append(
                 ReviewRecord(
                     target=ReviewTarget(head, base, diff),
                     reviewer=reviewer,
-                    verdict=verdict,
+                    outcome=ReviewOutcome(verdict, int(blocking)),
+                    light_findings=_light_findings(
+                        _header_line(comment.body, 1), where=comment.url
+                    ),
+                    url=comment.url,
                 )
             )
     return tuple(records)
@@ -398,6 +489,53 @@ def gate_records(
                 )
             )
     return tuple(records)
+
+
+def escalated_streaks(
+    comments: Iterable[Comment], *, trusted_login: str
+) -> frozenset[ReviewTarget]:
+    """Streak starts (first request_changes target) that were already escalated."""
+    started: set[ReviewTarget] = set()
+    for comment in comments:
+        if comment.author != trusted_login:
+            continue
+        match = ESCALATION_MARKER_RE.fullmatch(_header_line(comment.body))
+        if match is not None:
+            started.add(ReviewTarget(*match.groups()))
+    return frozenset(started)
+
+
+def followup_issues(
+    issues: Iterable[Issue], *, trusted_login: str
+) -> dict[tuple[int, str], str]:
+    """``(PR number, head) -> issue URL`` for follow-up issues filed by ``trusted_login``."""
+    filed: dict[tuple[int, str], str] = {}
+    for issue in issues:
+        if issue.author != trusted_login:
+            continue
+        match = FOLLOWUP_MARKER_RE.fullmatch(_header_line(issue.body))
+        if match is not None:
+            filed.setdefault((int(match.group(1)), match.group(2)), issue.url)
+    return filed
+
+
+def request_changes_streak(
+    records: Sequence[ReviewRecord], *, reviewer: str
+) -> tuple[ReviewRecord, ...]:
+    """The current run of consecutive request_changes reviews by ``reviewer``.
+
+    Across head SHAs, in comment order. A passing review resets the run; a ``comment``
+    with blocker/major findings neither extends nor resets it.
+    """
+    streak: list[ReviewRecord] = []
+    for record in records:
+        if record.reviewer != reviewer:
+            continue
+        if record.outcome.passed:
+            streak = []
+        elif record.outcome.verdict == "request_changes":
+            streak.append(record)
+    return tuple(streak)
 
 
 def latest_review_for(
@@ -525,7 +663,7 @@ class GateInput:
     mergeable: str
     checks: tuple[Check, ...]
     required_checks: tuple[str, ...]
-    review_verdict: str | None
+    review: ReviewOutcome | None
     changed_paths: tuple[str, ...]
     shared_patterns: tuple[str, ...]
 
@@ -560,14 +698,12 @@ def evaluate_gate(gate: GateInput) -> GateResult:
     if any(name not in present for name in gate.required_checks):
         reasons.append("ci_missing_required")
 
-    if gate.review_verdict is None:
+    if gate.review is None:
         reasons.append("review_missing")
-    elif gate.review_verdict == "request_changes":
+    elif gate.review.verdict == "request_changes":
         reasons.append("review_request_changes")
-    elif gate.review_verdict == "comment":
-        reasons.append("review_not_approved")
-    elif gate.review_verdict != "approve":
-        raise ValueError(f"unknown review verdict: {gate.review_verdict!r}")
+    elif not gate.review.passed:
+        reasons.append("review_comment_blocking")
 
     hits = shared_path_hits(gate.changed_paths, gate.shared_patterns)
     if reasons:

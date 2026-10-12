@@ -31,6 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from review_policy import (  # noqa: E402
     CHANGES_REQUESTED_LABEL,
+    ESCALATION_STREAK,
+    FOLLOWUP_LABEL,
     NEEDS_HUMAN_LABEL,
     AuthorConflictError,
     Check,
@@ -38,10 +40,16 @@ from review_policy import (  # noqa: E402
     GateDecision,
     GateInput,
     GateResult,
+    Issue,
     Review,
+    ReviewRecord,
     ReviewTarget,
     detect_author_agent,
+    escalated_streaks,
+    escalation_marker,
     evaluate_gate,
+    followup_issues,
+    followup_marker,
     gate_marker,
     gate_records,
     gate_should_comment,
@@ -51,7 +59,8 @@ from review_policy import (  # noqa: E402
     neutralize_markers,
     normalize_rollup,
     parse_review,
-    review_marker,
+    request_changes_streak,
+    review_header,
     review_records,
     reviewer_for,
 )
@@ -242,22 +251,64 @@ class GitHub:
             f"repos/{{owner}}/{{repo}}/issues/{number}/comments",
         )
         return [
-            Comment(author=str(item["user"]["login"]), body=str(item["body"] or ""))
+            Comment(
+                author=str(item["user"]["login"]),
+                body=str(item["body"] or ""),
+                url=str(item["html_url"]),
+            )
             for page in pages
             for item in page
         ]
 
-    def comment(self, number: int, body: str) -> None:
+    def _body_file(self, kind: str, number: int, body: str) -> Path:
         if len(body) > MAX_COMMENT_CHARS:
             raise ValueError(
-                f"comment for #{number} is {len(body)} chars (> {MAX_COMMENT_CHARS})"
+                f"{kind} for #{number} is {len(body)} chars (> {MAX_COMMENT_CHARS})"
             )
-        body_file = self.scratch / f"comment-{number}-{time.time_ns()}.md"
+        body_file = self.scratch / f"{kind}-{number}-{time.time_ns()}.md"
         body_file.write_text(body, encoding="utf-8")
-        run(
-            ["gh", "pr", "comment", str(number), "--body-file", str(body_file)],
+        return body_file
+
+    def comment(self, number: int, body: str) -> str:
+        """Post a PR comment and return its URL (``gh pr comment`` prints it)."""
+        out = run(
+            [
+                "gh", "pr", "comment", str(number),
+                "--body-file", str(self._body_file("comment", number, body)),
+            ],
             cwd=self.repo,
+        )  # fmt: skip
+        return _printed_url(out, f"gh pr comment {number}")
+
+    def followup_candidates(self, author: str) -> list[Issue]:
+        """Issues (not PRs) with the follow-up label opened by ``author``, any state."""
+        pages = self._json(
+            "api",
+            "--paginate",
+            "--slurp",
+            f"repos/{{owner}}/{{repo}}/issues?labels={FOLLOWUP_LABEL}"
+            f"&state=all&creator={author}&per_page=100",
         )
+        return [
+            Issue(
+                author=str(item["user"]["login"]),
+                body=str(item["body"] or ""),
+                url=str(item["html_url"]),
+            )
+            for page in pages
+            for item in page
+            if "pull_request" not in item
+        ]
+
+    def create_issue(self, number: int, title: str, body: str, label: str) -> str:
+        out = run(
+            [
+                "gh", "issue", "create", "--title", title, "--label", label,
+                "--body-file", str(self._body_file("issue", number, body)),
+            ],
+            cwd=self.repo,
+        )  # fmt: skip
+        return _printed_url(out, f"gh issue create for #{number}")
 
     def add_label(self, number: int, label: str) -> None:
         run(["gh", "pr", "edit", str(number), "--add-label", label], cwd=self.repo)
@@ -270,6 +321,13 @@ class GitHub:
             ["gh", "pr", "merge", str(number), "--merge", "--match-head-commit", sha],
             cwd=self.repo,
         )
+
+
+def _printed_url(out: str, what: str) -> str:
+    lines = [line for line in out.splitlines() if line.strip()]
+    if not lines or not lines[-1].startswith("https://"):
+        raise CommandError(f"{what} did not print a URL: {out!r}")
+    return lines[-1].strip()
 
 
 # --------------------------------------------------------------------------- git
@@ -456,7 +514,7 @@ def format_review_comment(
     diff_truncated: bool,
 ) -> str:
     lines = [
-        review_marker(target, reviewer, review.verdict),
+        review_header(target, reviewer, review),
         f"## クロスレビュー（{reviewer} → {author} 作成PR）",
         "",
         f"- 判定: **{review.verdict}**",
@@ -502,13 +560,13 @@ REASON_TEXT = {
     "ci_missing_required": "必須 check（required_checks.txt）が未登録",
     "review_missing": "最新 head へのクロスレビューが無い",
     "review_request_changes": "クロスレビューが request_changes",
-    "review_not_approved": "クロスレビューが comment（approve ではない）",
+    "review_comment_blocking": "クロスレビューが comment で、blocker/major の指摘がある",
     "touches_shared": "共有基盤パスに触れている",
 }
 
 
 def format_gate_comment(
-    target: ReviewTarget, result: GateResult, *, action: str
+    target: ReviewTarget, result: GateResult, *, action: str, followup: str | None
 ) -> str:
     lines = [
         gate_marker(target, result.decision.value, result.reasons),
@@ -518,6 +576,8 @@ def format_gate_comment(
         f"- 対象 head: `{target.head}`（merge-base `{target.merge_base}`）",
         f"- 動作: {action}",
     ]
+    if followup is not None:
+        lines.append(f"- 軽微指摘の追補 issue: {followup}")
     if result.reasons:
         lines += ["", "### 理由", ""]
         lines += [f"- `{reason}`: {REASON_TEXT[reason]}" for reason in result.reasons]
@@ -548,8 +608,8 @@ def review_head(
     changed: Sequence[str],
     checks: Sequence[Check],
     report: RunReport,
-) -> str:
-    """Run the reviewer on ``target``, post the result and return the verdict."""
+) -> ReviewRecord:
+    """Run the reviewer on ``target``, post the result and return it as a record."""
     number = pr.number
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     run_dir = (
@@ -596,11 +656,18 @@ def review_head(
     )
     (run_dir / "review_comment.md").write_text(body, encoding="utf-8")
     report.note(f"#{number}: {reviewer} verdict={review.verdict} ({elapsed:.0f}s)")
+    url = None
     if settings.dry_run:
         print(f"----- [dry-run] review comment for #{number} -----\n{body}")
     else:
-        gh.comment(number, body)
-    return review.verdict
+        url = gh.comment(number, body)
+    return ReviewRecord(
+        target=target,
+        reviewer=reviewer,
+        outcome=review.outcome,
+        light_findings=review.light_findings,
+        url=url,
+    )
 
 
 def write_new_file(path: Path, text: str) -> None:
@@ -711,20 +778,15 @@ def process_pr(
     reviewed = review_input(git, pr)
     target = reviewed.target
 
-    existing = latest_review_for(
-        review_records(comments, trusted_login=login),
-        target=target,
-        reviewer=reviewer,
-    )
-    if existing is not None:
-        verdict = existing.verdict
+    records = review_records(comments, trusted_login=login)
+    current = latest_review_for(records, target=target, reviewer=reviewer)
+    if current is not None:
         report.note(
             f"#{number}: head {pr.head_sha[:12]} (merge-base {target.merge_base[:12]}) "
-            f"already reviewed by {reviewer}: {verdict}"
+            f"already reviewed by {reviewer}: {current.outcome.verdict}"
         )
-        sync_review_label(settings, gh, pr, verdict)
     else:
-        verdict = review_head(
+        current = review_head(
             settings,
             gh,
             git,
@@ -738,7 +800,12 @@ def process_pr(
             checks=normalize_rollup(pr.rollup),
             report=report,
         )
-        sync_review_label(settings, gh, pr, verdict)
+        records = (*records, current)
+    # Label, escalation and follow-up are re-derived from the recorded reviews on every
+    # poll, so a step that failed once is retried without reviewing again.
+    sync_review_label(settings, gh, pr, current.outcome.verdict)
+    escalate_streak(settings, gh, login, pr, reviewer, records, comments, report)
+    followup = ensure_followup_issue(settings, gh, login, pr, current, report)
 
     # Gate on the PR / CI state as it is now, for the exact target that was reviewed.
     fresh = refetch_for_gate(gh, git, pr, target, report)
@@ -753,7 +820,7 @@ def process_pr(
             mergeable=pr.mergeable,
             checks=normalize_rollup(pr.rollup),
             required_checks=settings.required_checks,
-            review_verdict=verdict,
+            review=current.outcome,
             changed_paths=reviewed.changed,
             shared_patterns=settings.shared_patterns,
         )
@@ -762,7 +829,109 @@ def process_pr(
         f"#{number}: gate={result.decision.value} reasons={list(result.reasons)} "
         f"shared={[path for path, _ in result.shared_hits]}"
     )
-    apply_gate(settings, gh, login, pr, target, result, comments, report)
+    apply_gate(settings, gh, login, pr, target, result, comments, followup, report)
+
+
+def escalate_streak(
+    settings: Settings,
+    gh: GitHub,
+    login: str,
+    pr: PullRequest,
+    reviewer: str,
+    records: Sequence[ReviewRecord],
+    comments: Sequence[Comment],
+    report: RunReport,
+) -> None:
+    """Hand the PR to a human after ESCALATION_STREAK request_changes in a row.
+
+    Once per streak (keyed by the streak's first review); a passing review starts over.
+    """
+    streak = request_changes_streak(records, reviewer=reviewer)
+    if len(streak) < ESCALATION_STREAK:
+        return
+    start = streak[0].target
+    if start in escalated_streaks(comments, trusted_login=login):
+        return
+    lines = [
+        escalation_marker(start),
+        "## 人間の判断が必要です",
+        "",
+        f"クロスレビュー（{reviewer}）が {len(streak)} 回連続で request_changes を返しました。"
+        f"自動の修正・再レビューでは収束していないため、ラベル `{NEEDS_HUMAN_LABEL}` を付けました。"
+        "merge gate は request_changes のあいだ blocked のままです。",
+        "",
+        "### 連続した request_changes",
+        "",
+    ]
+    lines += [
+        f"- `{record.target.head[:12]}`: {record.url or '(dry-run)'}"
+        for record in streak
+    ]
+    lines += ["", "<sub>.agents/ops/review/cross_review.py による自動判定</sub>"]
+    body = "\n".join(lines) + "\n"
+    report.note(f"#{pr.number}: escalated after {len(streak)} request_changes in a row")
+    if settings.dry_run:
+        print(f"----- [dry-run] escalation for #{pr.number} -----\n{body}")
+        return
+    # Label first: the comment is the record that the escalation is complete.
+    if NEEDS_HUMAN_LABEL not in pr.labels:
+        gh.add_label(pr.number, NEEDS_HUMAN_LABEL)
+    gh.comment(pr.number, body)
+
+
+def format_followup_issue(pr: PullRequest, review: ReviewRecord) -> str:
+    inert = neutralize_markers
+    lines = [
+        followup_marker(pr.number, review.target.head),
+        f"PR #{pr.number}（{pr.url}）のクロスレビューは merge を止めない判定"
+        f"（`{review.outcome.verdict}`）でしたが、次の軽微な指摘がありました。"
+        "別 PR で対応するか、不要なら close してください。",
+        "",
+        f"- レビューコメント: {review.url}",
+        f"- 対象 head: `{review.target.head}`",
+        "",
+        "### 指摘",
+        "",
+    ]
+    for finding in review.light_findings:
+        where = finding.path or "(全体)"
+        if finding.path and finding.line:
+            where = f"{finding.path}:{finding.line}"
+        lines.append(
+            f"- **{finding.severity}** `{inert(where)}` ({inert(finding.rule)}): "
+            f"{inert(finding.detail)}"
+        )
+    lines += ["", "<sub>.agents/ops/review/cross_review.py による自動起票</sub>"]
+    return "\n".join(lines) + "\n"
+
+
+def ensure_followup_issue(
+    settings: Settings,
+    gh: GitHub,
+    login: str,
+    pr: PullRequest,
+    review: ReviewRecord,
+    report: RunReport,
+) -> str | None:
+    """File (once per PR head) the follow-up issue for a passing review's minor/nit
+    findings and return its URL; ``None`` when the review needs none."""
+    if not (review.outcome.passed and review.light_findings):
+        return None
+    if settings.dry_run or review.url is None:
+        report.note(f"#{pr.number}: would file a follow-up issue (dry-run)")
+        return "（dry-run のため起票しない）"
+    filed = followup_issues(gh.followup_candidates(login), trusted_login=login)
+    existing = filed.get((pr.number, review.target.head))
+    if existing is not None:
+        return existing
+    url = gh.create_issue(
+        pr.number,
+        f"[追補] PR #{pr.number} のレビュー軽微指摘",
+        format_followup_issue(pr, review),
+        FOLLOWUP_LABEL,
+    )
+    report.note(f"#{pr.number}: filed follow-up issue {url}")
+    return url
 
 
 def apply_gate(
@@ -773,6 +942,7 @@ def apply_gate(
     target: ReviewTarget,
     result: GateResult,
     comments: Sequence[Comment],
+    followup: str | None,
     report: RunReport,
 ) -> None:
     if result.decision is GateDecision.MERGE:
@@ -795,7 +965,7 @@ def apply_gate(
         and record.reasons == result.reasons
         for record in gate_records(comments, trusted_login=login)
     )
-    body = format_gate_comment(target, result, action=action)
+    body = format_gate_comment(target, result, action=action, followup=followup)
     if settings.dry_run:
         print(
             f"----- [dry-run] gate for #{pr.number} (would comment: {gate_should_comment(result) and not already}) -----\n{body}"
@@ -907,7 +1077,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         git = Git(repo, args.remote)
         login = gh.login()
         if not settings.dry_run:
-            missing = {NEEDS_HUMAN_LABEL, CHANGES_REQUESTED_LABEL} - gh.label_names()
+            required = {NEEDS_HUMAN_LABEL, CHANGES_REQUESTED_LABEL, FOLLOWUP_LABEL}
+            missing = required - gh.label_names()
             if missing:
                 log.error(
                     "required labels missing in the repo (see README): %s",

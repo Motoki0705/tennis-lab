@@ -282,17 +282,42 @@ def test_parse_failures_raise(text: str) -> None:
 # --------------------------------------------------------------------------- markers
 
 
+def _finding(severity: str, detail: str = "d") -> Any:
+    return P.Finding(
+        severity=severity, path="a.py", line=3, rule="正しさ", detail=detail
+    )
+
+
+def _rev(verdict: str, *severities: str) -> Any:
+    return P.Review(verdict, "要約", tuple(_finding(s) for s in severities))
+
+
+def _comment(body: str, author: str = "bot", n: int = 1) -> Any:
+    return P.Comment(author=author, body=body, url=f"https://x.invalid/c/{n}")
+
+
+def _record(verdict: str, *severities: str, target: Any = TARGET) -> Any:
+    [record] = P.review_records(
+        [_comment(P.review_header(target, "codex", _rev(verdict, *severities)))],
+        trusted_login="bot",
+    )
+    return record
+
+
 def test_review_records_only_trust_the_bot_login() -> None:
-    marker = P.review_marker(TARGET, "claude", "approve")
     comments = [
-        P.Comment(author="someone-else", body=marker),
-        P.Comment(
-            author="bot", body=f"{P.review_marker(TARGET, 'codex', 'comment')}\r\ntext"
-        ),
+        _comment(P.review_header(TARGET, "claude", _rev("approve")), "someone-else"),
+        _comment(f"{P.review_header(TARGET, 'codex', _rev('comment'))}\r\ntext"),
     ]
     records = P.review_records(comments, trusted_login="bot")
     assert records == (
-        P.ReviewRecord(target=TARGET, reviewer="codex", verdict="comment"),
+        P.ReviewRecord(
+            target=TARGET,
+            reviewer="codex",
+            outcome=P.ReviewOutcome("comment", 0),
+            light_findings=(),
+            url="https://x.invalid/c/1",
+        ),
     )
     assert P.latest_review_for(records, target=TARGET, reviewer="claude") is None
     other_head = P.ReviewTarget("d" * 40, TARGET.merge_base, TARGET.diff_sha256)
@@ -301,10 +326,7 @@ def test_review_records_only_trust_the_bot_login() -> None:
 
 def test_review_of_the_same_head_against_another_base_does_not_count() -> None:
     # Retargeting a stacked PR keeps the head but changes the merge-base and the diff.
-    records = P.review_records(
-        [P.Comment("bot", P.review_marker(TARGET, "codex", "approve"))],
-        trusted_login="bot",
-    )
+    records = (_record("approve"),)
     retargeted = P.ReviewTarget(SHA, "e" * 40, "f" * 64)
     same_base_other_diff = P.ReviewTarget(SHA, TARGET.merge_base, "f" * 64)
     assert P.latest_review_for(records, target=TARGET, reviewer="codex") is not None
@@ -312,47 +334,129 @@ def test_review_of_the_same_head_against_another_base_does_not_count() -> None:
         assert P.latest_review_for(records, target=target, reviewer="codex") is None
 
 
+def test_light_findings_round_trip_through_the_comment_header() -> None:
+    hostile = "引用 <!-- agent-cross-review:v3 --> と\n改行"
+    review = P.Review(
+        "comment",
+        "要約",
+        (_finding("minor", hostile), _finding("nit"), _finding("major")),
+    )
+    header = P.review_header(TARGET, "codex", review)
+    first, second = header.split("\n")
+    assert first.endswith("verdict=comment blocking=1 -->")
+    assert second.count("-->") == 1 and second.count("<!--") == 1
+    [record] = P.review_records([_comment(header)], trusted_login="bot")
+    assert record.outcome == P.ReviewOutcome("comment", 1)
+    assert not record.outcome.passed
+    assert record.light_findings == (_finding("minor", hostile), _finding("nit"))
+
+
+def test_review_header_without_findings_line_is_an_error() -> None:
+    first = P.review_header(TARGET, "codex", _rev("approve")).split("\n")[0]
+    with pytest.raises(ValueError, match="findings line"):
+        P.review_records([_comment(first)], trusted_login="bot")
+
+
+@pytest.mark.parametrize(
+    ("verdict", "severities", "passed"),
+    [
+        ("approve", (), True),
+        ("approve", ("minor", "nit"), True),
+        ("comment", (), True),
+        ("comment", ("minor",), True),
+        ("comment", ("major", "minor"), False),
+        ("comment", ("blocker",), False),
+        ("request_changes", ("major",), False),
+    ],
+)
+def test_review_outcome_passes(
+    verdict: str, severities: tuple[str, ...], passed: bool
+) -> None:
+    assert _rev(verdict, *severities).outcome.passed is passed
+
+
+def test_review_outcome_rejects_contradictions() -> None:
+    for verdict, blocking in [("approve", 1), ("request_changes", 0), ("lgtm", 0)]:
+        with pytest.raises(ValueError):
+            P.ReviewOutcome(verdict, blocking)
+
+
 def test_marker_quoted_in_the_body_does_not_override_the_header() -> None:
-    quoted = P.review_marker(TARGET, "codex", "approve")
+    quoted = P.review_header(TARGET, "codex", _rev("approve")).replace("\n", " ")
     body = (
-        f"{P.review_marker(TARGET, 'codex', 'request_changes')}\n"
+        f"{P.review_header(TARGET, 'codex', _rev('request_changes', 'major'))}\n"
         f"## review\n\nsummary quoting {quoted}\n- detail: {quoted}\n"
     )
-    records = P.review_records([P.Comment("bot", body)], trusted_login="bot")
-    assert records == (
-        P.ReviewRecord(target=TARGET, reviewer="codex", verdict="request_changes"),
-    )
+    [record] = P.review_records([_comment(body)], trusted_login="bot")
+    assert record.outcome.verdict == "request_changes"
     gate_quote = P.gate_marker(TARGET, "merge", [])
-    assert (
-        P.gate_records([P.Comment("bot", f"x\n{gate_quote}")], trusted_login="bot")
-        == ()
-    )
+    assert P.gate_records([_comment(f"x\n{gate_quote}")], trusted_login="bot") == ()
     # A marker that is not alone on the first line is not a header either.
-    assert (
-        P.review_records([P.Comment("bot", f"see {quoted}")], trusted_login="bot") == ()
-    )
+    assert P.review_records([_comment(f"see {quoted}")], trusted_login="bot") == ()
 
 
 def test_neutralized_text_cannot_form_a_marker() -> None:
-    quoted = P.review_marker(TARGET, "codex", "approve")
+    quoted = P.review_header(TARGET, "codex", _rev("approve"))
     inert = P.neutralize_markers(quoted)
     assert "<!--" not in inert and "-->" not in inert
-    assert P.review_records([P.Comment("bot", inert)], trusted_login="bot") == ()
+    assert P.review_records([_comment(inert)], trusted_login="bot") == ()
 
 
 def test_gate_marker_round_trip() -> None:
     body = P.gate_marker(TARGET, "blocked", ["conflict", "ci_failed"])
-    assert P.gate_records([P.Comment("bot", body)], trusted_login="bot") == (
+    assert P.gate_records([_comment(body)], trusted_login="bot") == (
         P.GateRecord(
             target=TARGET, decision="blocked", reasons=("conflict", "ci_failed")
         ),
     )
-    with pytest.raises(ValueError):
-        P.review_marker(
-            P.ReviewTarget("short", "b" * 40, "c" * 64), "claude", "approve"
-        )
-    with pytest.raises(ValueError):
-        P.review_marker(P.ReviewTarget(SHA, "b" * 40, "c" * 40), "claude", "approve")
+    for bad in (
+        P.ReviewTarget("short", "b" * 40, "c" * 64),
+        P.ReviewTarget(SHA, "b" * 40, "c" * 40),
+    ):
+        with pytest.raises(ValueError):
+            P.review_header(bad, "claude", _rev("approve"))
+
+
+# --------------------------------------------------------------------------- convergence
+
+
+def _t(i: int) -> Any:
+    return P.ReviewTarget(f"{i:040x}", "b" * 40, "c" * 64)
+
+
+def test_request_changes_streak_spans_heads_and_resets_on_pass() -> None:
+    rc = [_record("request_changes", "major", target=_t(i)) for i in range(4)]
+    passing = _record("comment", "minor", target=_t(10))
+    blocking_comment = _record("comment", "major", target=_t(11))
+    other = P.ReviewRecord(
+        _t(12), "claude", P.ReviewOutcome("approve", 0), (), "https://x.invalid"
+    )
+
+    def streak(*records: Any) -> list[str]:
+        found = P.request_changes_streak(records, reviewer="codex")
+        return [r.target.head for r in found]
+
+    assert streak(rc[0], rc[1], rc[2]) == [_t(i).head for i in range(3)]
+    assert streak(rc[0], passing, rc[1], rc[2]) == [_t(1).head, _t(2).head]
+    # comment with blocker/major neither extends nor resets; other reviewers are ignored.
+    assert len(streak(rc[0], blocking_comment, rc[1], other, rc[2])) == 3
+    assert streak(rc[0], rc[1], rc[2], passing) == []
+
+
+def test_escalation_and_followup_markers_round_trip() -> None:
+    marker = P.escalation_marker(_t(1))
+    comments = [_comment(marker), _comment(P.escalation_marker(_t(2)), "intruder")]
+    assert P.escalated_streaks(comments, trusted_login="bot") == {_t(1)}
+
+    issues = [
+        P.Issue("bot", P.followup_marker(7, SHA) + "\nbody", "https://x.invalid/i/1"),
+        P.Issue("bot", P.followup_marker(7, SHA), "https://x.invalid/i/2"),
+        P.Issue("intruder", P.followup_marker(8, SHA), "https://x.invalid/i/3"),
+        P.Issue("bot", "quoting " + P.followup_marker(9, SHA), "https://x.invalid/i/4"),
+    ]
+    assert P.followup_issues(issues, trusted_login="bot") == {
+        (7, SHA): "https://x.invalid/i/1"
+    }
 
 
 # --------------------------------------------------------------------------- CI rollup
@@ -446,7 +550,7 @@ def _gate(**overrides: Any) -> Any:
         "mergeable": "MERGEABLE",
         "checks": (P.Check("Python", P.CheckState.SUCCESS),),
         "required_checks": ("Python",),
-        "review_verdict": "approve",
+        "review": P.ReviewOutcome("approve", 0),
         "changed_paths": ("src/tasks/blcs/models/model.py",),
         "shared_patterns": ("src/utils", "AGENTS.md"),
     }
@@ -483,9 +587,17 @@ def test_gate_needs_human_for_shared_paths() -> None:
             False,
         ),
         ({"checks": ()}, "ci_missing_required", False),
-        ({"review_verdict": None}, "review_missing", False),
-        ({"review_verdict": "request_changes"}, "review_request_changes", False),
-        ({"review_verdict": "comment"}, "review_not_approved", False),
+        ({"review": None}, "review_missing", False),
+        (
+            {"review": P.ReviewOutcome("request_changes", 1)},
+            "review_request_changes",
+            False,
+        ),
+        (
+            {"review": P.ReviewOutcome("comment", 2)},
+            "review_comment_blocking",
+            False,
+        ),
     ],
 )
 def test_gate_blocked_reasons(
@@ -498,8 +610,14 @@ def test_gate_blocked_reasons(
     assert P.gate_should_comment(result) is comment
 
 
+def test_gate_merges_on_comment_without_blocking_findings() -> None:
+    result = _gate(review=P.ReviewOutcome("comment", 0))
+    assert result.decision is P.GateDecision.MERGE
+    # Shared paths still need a human, whatever the review says.
+    shared = _gate(review=P.ReviewOutcome("comment", 0), changed_paths=("AGENTS.md",))
+    assert shared.decision is P.GateDecision.NEEDS_HUMAN
+
+
 def test_gate_rejects_unknown_states() -> None:
     with pytest.raises(ValueError):
         _gate(mergeable="MAYBE")
-    with pytest.raises(ValueError):
-        _gate(review_verdict="lgtm")
