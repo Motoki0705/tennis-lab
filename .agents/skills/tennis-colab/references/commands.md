@@ -20,6 +20,9 @@ private repositoryのGit認証は自動注入しない。fetchできない場合
 `start` はGPUを確保してGit checkout・rclone/uvの準備を行う。taskのPython環境や入力データは後続execで準備する。
 同名のlocal stateがあればnewで上書きしない。setupの一部が失敗した場合は、状態を調べて `setup --session ...` で残りを再実行できる。
 このsetupは、既存checkoutの未commit変更や異なるcommitを上書きしない。
+Git取得・checkoutは一時pathで完了を確認してから確定するため、途中失敗後もsetupを再試行できる。
+setup失敗時にcheckoutとjobがまだ無いことを確認できれば、`stop`でその理由を記録してVMを解放できる。
+checkoutやjobが存在する場合は通常の保存・差分回収の確認を省略しない。
 
 ## 学習の入力と保存先
 
