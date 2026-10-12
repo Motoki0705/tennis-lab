@@ -148,6 +148,106 @@ def test_git_credentials_and_ambiguous_urls_rejected(
         core.github_url(url)
 
 
+def test_bootstrap_fetch_failure_leaves_setup_retryable_and_preserves_edits(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    core, remote = modules
+    origin = tmp_path / "origin"
+    subprocess.run(["git", "init", "-q", str(origin)], check=True)
+    for value in ["requested", "newer"]:
+        (origin / "model.py").write_text(value)
+        subprocess.run(["git", "-C", str(origin), "add", "model.py"], check=True)
+        subprocess.run(["git", "-C", str(origin), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", value], check=True)
+        if value == "requested":
+            commit = subprocess.check_output(["git", "-C", str(origin), "rev-parse", "HEAD"], text=True).strip()
+    root = tmp_path / "session"
+    repo = tmp_path / "checkout"
+    secret = tmp_path / "credentials"
+    secret.write_text("private test configuration")
+    secret.chmod(0o600)
+    core.atomic_json(root / "session.json", {
+        "repo_root": str(repo), "repo_url": "https://github.com/test/project.git",
+        "commit": commit, "gpu": "L4", "rclone_config": str(secret), "drive_remote": "test",
+    })
+    monkeypatch.setattr(remote, "ROOT", root)
+    monkeypatch.setattr(remote.shutil, "which", lambda name: "/bin/" + name)
+    fail_fetch = True
+
+    def checked(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        nonlocal fail_fetch
+        if argv[0] == "nvidia-smi":
+            return subprocess.CompletedProcess(argv, 0, b"NVIDIA L4, 23034 MiB")
+        if argv[0] == "rclone":
+            return subprocess.CompletedProcess(argv, 0, b"{}")
+        if argv[1] == "clone":
+            argv = [*argv[:-2], str(origin), argv[-1]]
+        if "fetch" in argv and fail_fetch:
+            fail_fetch = False
+            raise core.ColabError("temporary fetch failure")
+        result: subprocess.CompletedProcess[bytes] = core.checked(argv, **kwargs)
+        return result
+
+    monkeypatch.setattr(remote, "checked", checked)
+    with pytest.raises(core.ColabError, match="temporary fetch"):
+        remote.bootstrap({})
+    assert not repo.exists()
+    assert not list(tmp_path.glob(".tennis-colab-checkout-*"))
+    assert remote.bootstrap({})["commit"] == commit
+    assert (repo / "model.py").read_text() == "requested"
+    (repo / "model.py").write_text("remote fix")
+    with pytest.raises(core.ColabError, match="has changes"):
+        remote.bootstrap({})
+    assert (repo / "model.py").read_text() == "remote fix"
+
+
+@pytest.mark.parametrize("phase, evidence", [
+    ("setup_failed", "absent"), ("allocated", "absent"),
+    ("setup_failed", "checkout"), ("setup_failed", "job"),
+    ("setup_failed", "job_symlink"), ("ready", "absent"),
+])
+def test_stop_can_release_only_a_proven_uninitialized_session(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path, phase: str, evidence: str,
+) -> None:
+    frontend = importlib.import_module("colab")
+    repo = tmp_path / "checkout"
+    remote_root = tmp_path / "remote"
+    if evidence == "checkout":
+        repo.mkdir()
+        (repo / "fix.py").write_text("preserve")
+    if evidence == "job":
+        (remote_root / "jobs" / "pending").mkdir(parents=True)
+    if evidence == "job_symlink":
+        remote_root.mkdir()
+        (remote_root / "jobs").symlink_to(tmp_path / "missing-job-records")
+    commands: list[tuple[str, ...]] = []
+    saved: dict[str, Any] = {}
+
+    def unavailable_helper(action: str, **kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("RPC helper unavailable")
+
+    session = SimpleNamespace(
+        name="owned", directory=tmp_path / "local", remote_root=str(remote_root),
+        state=lambda: {"phase": phase, "repo_root": str(repo), "jobs": {}},
+        ssh=lambda argv: subprocess.check_output([sys.executable, *argv[1:]]),
+        rpc=unavailable_helper, close_transport=lambda: None,
+        cli=lambda *args: commands.append(args), save=lambda **kwargs: saved.update(kwargs),
+    )
+    if evidence == "absent" and phase != "ready":
+        result = frontend.stop(argparse.Namespace(), session)
+        assert result["recovered_diff"]["checkout_absent"] is True
+        receipt = Path(result["recovered_diff"]["output"]) / "receipt.json"
+        assert json.loads(receipt.read_text())["commit"] is None
+        assert commands == [("stop", "-s", "owned")]
+        assert saved["phase"] == "stopped"
+    else:
+        with pytest.raises(RuntimeError, match="helper unavailable"):
+            frontend.stop(argparse.Namespace(), session)
+        assert not commands and not saved
+        if evidence == "checkout":
+            assert (repo / "fix.py").read_text() == "preserve"
+
+
 @pytest.fixture
 def worker(
     modules: tuple[ModuleType, ModuleType],
