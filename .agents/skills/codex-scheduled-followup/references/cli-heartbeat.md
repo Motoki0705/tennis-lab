@@ -95,33 +95,3 @@ For a user-authorized restoration where the remaining duplicate risk is accepted
 ## Tests
 
 `"$TASK_PY" "$TASK_SKILL_DIR/scripts/test_cli_heartbeat.py"` uses temporary rollouts and mocked commands; `tests/e2e/skills/test_codex_scheduled_followup.py` runs it under pytest. Neither touches a live queue or timer.
-
-## A completed receipt moved to a continuation rollout
-
-Codex can continue the same thread in another JSONL file with a
-`session_meta.history_base`. The original file can remain intact but stop growing,
-leaving the helper's delivery `queued` even though the continuation completed it.
-Inspect the exact thread and continuation; do not choose the newest file or resend.
-
-`scripts/adopt_rollout.py` previews an evidence-preserving rebind of helper-owned
-state. It requires matching thread/cwd, an intact original anchor, a history-base
-byte/record boundary matching the original file, and the pending nonce as user input
-with a completed matching turn after submission. Missing, interrupted, duplicate,
-or assistant-echo receipts are rejected. It never writes native Codex state, changes
-the runtime/model/interval, registers a timer, or queues a message.
-
-```bash
-"$TASK_PY" "$TASK_SKILL_DIR/scripts/adopt_rollout.py" \
-  --task-dir "<task_dir>" --rollout "/exact/verified/continuation.jsonl"
-# After reviewing the preview, repeat with --apply, then inspect normal status.
-```
-
-Use `--helper /absolute/path/to/cli_heartbeat.py` if the installed task-owning helper
-differs from this checkout's version. `--apply` preserves the old state in a mode-0600
-backup and records both rollout paths, original anchors and completion evidence in
-`rollout_adoptions`. The existing timer then continues from that verified receipt.
-This operation only supports a pending nonce whose successful completion is proved;
-it does not waive the recovery rules for an uncertain or missing delivery.
-
-`test_adopt_rollout.py` uses temporary logs/state. Set `FOLLOWUP_TEST_HELPER` to an
-explicit helper path to run the same checks against another installed helper version.
