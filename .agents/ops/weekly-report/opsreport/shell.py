@@ -1,134 +1,23 @@
-"""Subprocess helpers: every external command fails loudly with its stderr."""
+"""Subprocess helpers: every external command fails loudly with its stderr.
+
+``run`` / ``run_process_group`` / ``CommandError`` live in ``.agents/ops/lib/opsproc.py``
+(shared with the other ops jobs); this module adds the gh/git conveniences.
+"""
 
 from __future__ import annotations
 
-import contextlib
 import json
-import logging
-import os
 import shlex
-import signal
-import subprocess
-import time
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-LOG = logging.getLogger("weekly_report.shell")
-TERM_GRACE_SECONDS = 5.0
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
 
+from opsproc import CommandError, run, run_process_group  # noqa: E402
 
-class CommandError(RuntimeError):
-    """An external command (gh, git, agent) exited non-zero or returned unusable output."""
-
-
-def run(
-    cmd: Sequence[str],
-    *,
-    cwd: Path,
-    ok_codes: tuple[int, ...] = (0,),
-) -> str:
-    """Run a short-lived ``cmd`` (gh/git) and return stdout; raise
-    :class:`CommandError` on any failure.
-
-    ``ok_codes`` lists exit statuses that are not failures (``git grep`` uses 1
-    for "no match"). Long-running commands use :func:`run_process_group`.
-    """
-    try:
-        proc = subprocess.run(
-            list(cmd), cwd=cwd, text=True, capture_output=True, check=False
-        )
-    except FileNotFoundError as exc:
-        raise CommandError(f"{cmd[0]}: command not found") from exc
-    if proc.returncode not in ok_codes:
-        raise CommandError(
-            f"{shlex.join(cmd)} exited {proc.returncode}: {proc.stderr.strip()}"
-        )
-    return proc.stdout
-
-
-def _live_group_members(pgid: int) -> list[int]:
-    """PIDs of non-zombie processes in process group ``pgid`` (Linux ``/proc``)."""
-    members: list[int] = []
-    for stat_file in Path("/proc").glob("[0-9]*/stat"):
-        try:
-            stat = stat_file.read_text(encoding="utf-8", errors="replace")
-        except (FileNotFoundError, ProcessLookupError):
-            continue  # exited while scanning
-        # Fields after "(comm)": state ppid pgrp ...; comm itself may contain ")".
-        fields = stat[stat.rindex(")") + 2 :].split()
-        if int(fields[2]) == pgid and fields[0] != "Z":
-            members.append(int(stat_file.parent.name))
-    return members
-
-
-def _wait_group_gone(proc: subprocess.Popen[str], pgid: int, seconds: float) -> bool:
-    deadline = time.monotonic() + seconds
-    while True:
-        proc.poll()  # reap the leader so it does not linger as a zombie
-        if not _live_group_members(pgid):
-            return True
-        if time.monotonic() >= deadline:
-            return False
-        time.sleep(0.1)
-
-
-def _terminate_group(proc: subprocess.Popen[str], pgid: int) -> list[int]:
-    """Stop every process in ``pgid`` (TERM, then KILL), reap the leader, and return
-    the PIDs that were still alive. Raises if anything survives SIGKILL."""
-    alive = _live_group_members(pgid)
-    if alive:
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(pgid, signal.SIGTERM)
-        if not _wait_group_gone(proc, pgid, TERM_GRACE_SECONDS):
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(pgid, signal.SIGKILL)
-            if not _wait_group_gone(proc, pgid, TERM_GRACE_SECONDS):
-                raise CommandError(
-                    f"process group {pgid} survived SIGKILL: {_live_group_members(pgid)}"
-                )
-    proc.wait()
-    return alive
-
-
-def run_process_group(cmd: Sequence[str], *, cwd: Path, timeout: float) -> str:
-    """Run ``cmd`` in its own process group and return stdout.
-
-    Agent CLIs spawn descendants (``agent_exec.sh`` -> claude/codex -> tools);
-    killing only the direct child on timeout would leave them running. On timeout,
-    error or exit, the whole group is terminated (SIGTERM, then SIGKILL) and reaped.
-    """
-    try:
-        proc = subprocess.Popen(
-            list(cmd),
-            cwd=cwd,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
-        )
-    except FileNotFoundError as exc:
-        raise CommandError(f"{cmd[0]}: command not found") from exc
-    pgid = proc.pid  # session leader: its pid is the process group id
-    try:
-        stdout, stderr = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as exc:
-        killed = _terminate_group(proc, pgid)
-        proc.communicate()
-        raise CommandError(
-            f"{shlex.join(cmd)} timed out after {timeout}s (killed {killed})"
-        ) from exc
-    except BaseException:
-        _terminate_group(proc, pgid)
-        raise
-    leftover = _terminate_group(proc, pgid)
-    if leftover:
-        LOG.warning("killed processes left behind by %s: %s", cmd[0], leftover)
-    if proc.returncode != 0:
-        raise CommandError(
-            f"{shlex.join(cmd)} exited {proc.returncode}: {stderr.strip()}"
-        )
-    return stdout
+__all__ = ["CommandError", "gh", "gh_json", "gh_list", "git", "run", "run_process_group"]
 
 
 def gh(args: Sequence[str], *, cwd: Path) -> str:
