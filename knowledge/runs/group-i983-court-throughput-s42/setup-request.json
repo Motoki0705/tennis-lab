@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "bash",
+    "-lc",
+    "uv sync --locked --python 3.11 && git submodule update --init third_party/dinov3"
+  ],
+  "cwd": null,
+  "persist": [],
+  "runner_outputs": [],
+  "job_id": "setup",
+  "execution_backend": "notebook_kernel",
+  "kernel_timeout_seconds": 86400
+}
