@@ -1,0 +1,215 @@
+diff --git a/src/tasks/ball_detection/data/coordinate_dataset.py b/src/tasks/ball_detection/data/coordinate_dataset.py
+index 7161177a7..2a39fc5a9 100644
+--- a/src/tasks/ball_detection/data/coordinate_dataset.py
++++ b/src/tasks/ball_detection/data/coordinate_dataset.py
+@@ -10,9 +10,14 @@ from typing import Any
+ import numpy as np
+ import torch
+ from numpy.typing import NDArray
+-from torch.utils.data import Dataset
++from torch.utils.data import Dataset, default_collate
+ 
+ from src.utils.checksum import dual_sha256
++from src.utils.shared_file_verification import (
++    FileVersion,
++    SharedFileVerification,
++    file_version,
++)
+ 
+ from .annotation_states import AnnotationStates, annotation_states
+ from .coordinate_manifest import COORDINATE_MANIFEST_SCHEMA, clip_semantic_digest
+@@ -61,7 +66,11 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+             raise ValueError(f"No accepted windows in {split}")
+         if any(window.frame_step not in self.frame_steps for _, window in self.windows):
+             raise ValueError("Window uses an undeclared frame step")
+-        self._rgb_versions: dict[str, tuple[int, int, int, int]] = {}
++        self._shared_rgb_verification = SharedFileVerification({
++            self.store.directory / "shards" / shard_name(record["clip"]["index"]): record["rgb_shard_sha256"]
++            for record in self.records
++        })
++        self._rgb_versions: dict[str, FileVersion] = {}
+         self._states: dict[str, AnnotationStates] = {}
+         self._pose_clip = ""
+         self._pose: dict[str, np.ndarray] = {}
+@@ -71,11 +80,9 @@ class CoordinateWindowDataset(Dataset[dict[str, Any]]):
+ 
+     def _verify_clip(self, record: dict[str, Any], clip: ClipRecord) -> AnnotationStates:
+         path = self.store.directory / "shards" / shard_name(clip.index)
+-        stat = path.stat()
+-        version = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
++        version = file_version(path)
+         if clip.clip_id not in self._rgb_versions:
+-            if dual_sha256(path) != record["rgb_shard_sha256"]:
+-                raise ValueError("Frozen RGB shard checksum mismatch")
++            version = self._shared_rgb_verification.verify(path)
+             if "semantic_sha256" in record and clip_semantic_digest(self.store, clip) != record["semantic_sha256"]:
+                 raise ValueError("Frozen clip GT/geometry identity mismatch")
+             self._rgb_versions[clip.clip_id] = version
+@@ -172,7 +179,9 @@ def collate_coordinate_windows(samples: list[dict[str, Any]]) -> dict[str, Any]:
+     elif samples[0]["input_kind"] != "mdd_only" or any("pose" in s or "pose_valid" in s for s in samples):
+         raise ValueError("MDD-only batches must not contain pose tensors")
+     for key in ("rgb", "timestamps", "uv", "position_valid", "source_size", "frame_indices"):
+-        result[key] = torch.stack([sample[key] for sample in samples])
++        # PyTorch allocates the result directly in shared memory inside workers.
++        # A plain stack would be copied again by multiprocessing's tensor sender.
++        result[key] = default_collate([sample[key] for sample in samples])
+     for key in ("clip_id", "start", "source", "frame_step", "common_evaluation", "input_kind"):
+         result[key] = [sample[key] for sample in samples]
+     return result
+diff --git a/src/tasks/ball_detection/training/coordinate_provenance.py b/src/tasks/ball_detection/training/coordinate_provenance.py
+index fff264d7e..24592eef9 100644
+--- a/src/tasks/ball_detection/training/coordinate_provenance.py
++++ b/src/tasks/ball_detection/training/coordinate_provenance.py
+@@ -18,7 +18,8 @@ def coordinate_source_identity() -> dict[str, Any]:
+                 "data/pose_windows.py", "data/play*.py", "data/annotation_states.py", "data/store.py",
+                 "training/coordinate*.py", "scripts/train_mdd_pose.py", "scripts/prepare_mdd_training.py",
+                 "scripts/evaluate_mdd_coordinates.py")
+-    paths = sorted({path for pattern in patterns for path in task.glob(pattern)})
++    paths = sorted({path for pattern in patterns for path in task.glob(pattern)}
++                   | {root / "src/utils/shared_file_verification.py", root / "src/utils/checksum.py"})
+     commit = subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
+     return dict(directory=str(root), base_commit=commit, torch_version=str(torch.__version__),
+                 source_sha256={str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})
+diff --git a/src/utils/README.md b/src/utils/README.md
+index 3e93f47cc..e2eb51985 100644
+--- a/src/utils/README.md
++++ b/src/utils/README.md
+@@ -12,6 +12,7 @@
+ - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
+ - **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
+ - **`checksum.py`**: 独立した2実装とfileのstat・読取長を照合する `dual_sha256()`。不一致は `FileIntegrityError` で停止し、単独実装への切替や自動再試行を行わない。契約と限界は同関数のdocstringを参照。
++- **`shared_file_verification.py`**: 固定ファイル集合の検証成功をfork/spawn worker間で共有する。hashはfileごとに一度、以後はctimeを含むstatを照合し、変更時に停止する。runを跨ぐ永続cacheは作らない。
+ - **`resource_guard.py`**: sampled MemAvailableの継続低下/緊急停止判定と10秒bucketのRAM記録。起動条件は呼出し側が検査する。
+ - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
+ - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
+diff --git a/src/utils/shared_file_verification.py b/src/utils/shared_file_verification.py
+new file mode 100644
+index 000000000..70bf57df6
+--- /dev/null
++++ b/src/utils/shared_file_verification.py
+@@ -0,0 +1,52 @@
++"""Process-shared verification of a fixed file set, including spawned workers."""
++
++from __future__ import annotations
++
++import multiprocessing as mp
++from pathlib import Path
++
++from .checksum import dual_sha256
++
++FileVersion = tuple[int, int, int, int, int]
++
++
++def file_version(path: Path) -> FileVersion:
++    stat = path.stat()
++    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
++
++
++class SharedFileVerification:
++    """Hash once per immutable file across workers; fail on later stat changes.
++
++    Construct before starting workers. Only successful dual-provider checks are
++    published. Small striped locks allow different files to be hashed in parallel.
++    No server process or on-disk trust cache is created. The cache lives exactly
++    as long as this dataset and its workers; every new run verifies independently.
++    """
++
++    def __init__(self, files: dict[Path, str]) -> None:
++        self.paths = tuple(files)
++        self.expected = tuple(files.values())
++        self.indices = {path: i for i, path in enumerate(self.paths)}
++        if not files or any(not p.is_absolute() for p in files):
++            raise ValueError("Verification requires a nonempty absolute file set")
++        context = mp.get_context("spawn")
++        self._versions = context.RawArray("q", 6 * len(files))
++        self._locks = [context.Lock() for _ in range(min(32, len(files)))]
++
++    def verify(self, path: Path) -> FileVersion:
++        index = self.indices[path]
++        offset = 6 * index
++        with self._locks[index % len(self._locks)]:
++            version = file_version(path)
++            if self._versions[offset]:
++                if tuple(self._versions[offset + 1:offset + 6]) != version:
++                    raise ValueError("Verified file changed during dataset use")
++            else:
++                if dual_sha256(path) != self.expected[index]:
++                    raise ValueError("Frozen file checksum mismatch")
++                if file_version(path) != version:
++                    raise ValueError("File changed during verification")
++                self._versions[offset + 1:offset + 6] = version
++                self._versions[offset] = 1
++        return version
+diff --git a/tests/benchmarks/ball_jpeg_decode_probe.py b/tests/benchmarks/ball_jpeg_decode_probe.py
+new file mode 100644
+index 000000000..12fbebbf1
+--- /dev/null
++++ b/tests/benchmarks/ball_jpeg_decode_probe.py
+@@ -0,0 +1,67 @@
++"""Measure nvJPEG decode and its difference from the saved OpenCV RGB contract."""
++
++from __future__ import annotations
++
++import argparse
++import json
++import time
++from pathlib import Path
++
++import numpy as np
++import torch
++from torchvision.io import ImageReadMode, decode_jpeg
++
++from src.tasks.ball_detection.data.coordinate_dataset import CoordinateWindowDataset
++from src.tasks.ball_detection.preprocessing import RGBToMDD
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise ValueError("Choose a fresh report")
++    torch.set_num_threads(2)
++    data = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False)
++    chosen: dict[tuple[str, int], int] = {}
++    for i, (record, window) in enumerate(data.windows):
++        chosen.setdefault((data.records[record]["clip"]["source"], window.frame_step), i)
++    result = dict(status="running", rows=[], torch=str(torch.__version__))
++    for (source, step), i in sorted(chosen.items()):
++        record_index, window = data.windows[i]
++        record = data.records[record_index]
++        clip = data.store.clip_by_id(record["clip"]["clip_id"])
++        data._verify_clip(record, clip)
++        jpegs = [torch.from_numpy(np.frombuffer(data.store.read_jpeg(data.store.row_of(clip, int(f))), np.uint8).copy())
++                 for f in window.indices()]
++        reference = data[i]["rgb"]
++        decoded = torch.stack(decode_jpeg(jpegs, mode=ImageReadMode.RGB, device="cuda"))
++        delta = (decoded.cpu().to(torch.int16) - reference.to(torch.int16)).abs().float()
++        rgb_reference = reference.cuda()
++        transform = RGBToMDD().cuda()
++        with torch.no_grad():
++            diff = (transform(decoded[None]) - transform(rgb_reference[None])).abs()
++            mdd_mean, mdd_max = float(diff.mean()), float(diff.max())
++        del rgb_reference, diff
++        torch.cuda.synchronize()
++        begin = time.perf_counter()
++        for _ in range(10):
++            decoded = torch.stack(decode_jpeg(jpegs, mode=ImageReadMode.RGB, device="cuda"))
++        torch.cuda.synchronize()
++        seconds = (time.perf_counter() - begin) / 10
++        row = dict(source=source, frame_step=step, clip_id=clip.clip_id,
++                   rgb_mean_abs=float(delta.mean()), rgb_max_abs=float(delta.max()),
++                   rgb_equal_fraction=float((delta == 0).float().mean()),
++                   rgb_gt2_fraction=float((delta > 2).float().mean()),
++                   mdd_mean_abs=mdd_mean, mdd_max_abs=mdd_max, decode_seconds=seconds,
++                   jpeg_bytes=sum(x.numel() for x in jpegs))
++        result["rows"].append(row)
++        print(json.dumps(row), flush=True)
++    result["status"] = "ok"
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(result, indent=2) + "\n")
++
++
++if __name__ == "__main__":
++    main()

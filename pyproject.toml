@@ -282,6 +282,11 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = [
     "src.tasks.*.scripts.*",
+    "src.tasks.ball_detection.training.convnext_heatmap.cli",
+    "src.tasks.ball_detection.evaluation.heatmap_cli",
+    "src.tasks.ball_detection.evaluation.manifest_cli",
+    "src.tasks.ball_detection.visualization.preview.spatial",
+    "src.tasks.ball_detection.visualization.preview.heatmaps",
     "src.tennis_scene.scripts.*",
     "src.synthetic_data_generation.scripts.*",
     "experiments.*.scripts.*",

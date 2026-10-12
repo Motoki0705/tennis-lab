@@ -1,0 +1,300 @@
+diff --git a/src/tasks/ball_detection/training/coordinate_runtime.py b/src/tasks/ball_detection/training/coordinate_runtime.py
+new file mode 100644
+index 000000000..3379bb927
+--- /dev/null
++++ b/src/tasks/ball_detection/training/coordinate_runtime.py
+@@ -0,0 +1,77 @@
++"""Explicit precision and CPU input-pipeline controls for coordinate training."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Any
++
++import cv2
++import torch
++from torch import Tensor
++from torch.utils.data import DataLoader, Sampler
++
++from src.tasks.ball_detection.data.coordinate_dataset import (
++    CoordinateWindowDataset,
++    collate_coordinate_windows,
++)
++from src.tasks.ball_detection.data.pose_windows import coordinate_loss
++from src.tasks.ball_detection.training.coordinate_evaluation import (
++    CoordinateModel,
++    predict_coordinates,
++)
++
++
++def coordinate_worker_init(_: int) -> None:
++    cv2.setNumThreads(1)
++    torch.set_num_threads(1)
++
++
++@dataclass(frozen=True)
++class CoordinateRuntime:
++    precision: str = "fp32"
++    num_workers: int = 0
++    pin_memory: bool = False
++    prefetch_factor: int = 1
++    cpu_threads: int = 2
++
++    def __post_init__(self) -> None:
++        if self.precision not in {"fp32", "bf16"}:
++            raise ValueError("Coordinate precision must be fp32 or bf16")
++        if self.num_workers < 0 or min(self.prefetch_factor, self.cpu_threads) < 1:
++            raise ValueError("Invalid input pipeline worker/thread/prefetch configuration")
++
++    def configure(self, device: torch.device) -> None:
++        if self.precision == "bf16" and (device.type != "cuda" or not torch.cuda.is_bf16_supported()):
++            raise ValueError("BF16 coordinate training requires a supported CUDA device; no fallback")
++        if self.pin_memory and device.type != "cuda":
++            raise ValueError("Pinned coordinate inputs require CUDA")
++        torch.set_num_threads(self.cpu_threads)
++        cv2.setNumThreads(1)
++        # Match the measured runtime. Avoid a shape-dependent autotuning phase.
++        torch.backends.cudnn.benchmark = False
++        torch.backends.cuda.matmul.allow_tf32 = False
++        torch.backends.cudnn.allow_tf32 = True
++
++    def loader(self, dataset: CoordinateWindowDataset, *, batch_size: int,
++               sampler: Sampler[int] | None = None, seed: int = 0) -> DataLoader[Any]:
++        if batch_size < 1:
++            raise ValueError("Batch size must be positive")
++        return DataLoader(dataset, batch_size=batch_size, sampler=sampler,
++                          collate_fn=collate_coordinate_windows, num_workers=self.num_workers,
++                          pin_memory=self.pin_memory, worker_init_fn=coordinate_worker_init,
++                          generator=torch.Generator().manual_seed(seed),
++                          **({"prefetch_factor": self.prefetch_factor, "persistent_workers": True}
++                             if self.num_workers else {}))
++
++
++def coordinate_train_step(model: CoordinateModel, optimizer: torch.optim.Optimizer,
++                          batch: dict[str, Any], device: torch.device,
++                          runtime: CoordinateRuntime) -> tuple[Tensor, Tensor]:
++    optimizer.zero_grad(set_to_none=True)
++    with torch.autocast(device.type, dtype=torch.bfloat16, enabled=runtime.precision == "bf16"):
++        prediction = predict_coordinates(model, batch, device)
++        loss = coordinate_loss(prediction, batch["uv"].to(device), batch["position_valid"].to(device))
++    loss.backward()
++    grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 1., error_if_nonfinite=True)
++    optimizer.step()
++    return loss.detach(), grad.detach()
+diff --git a/tests/benchmarks/ball_mdd_query_gpu.py b/tests/benchmarks/ball_mdd_query_gpu.py
+new file mode 100644
+index 000000000..8e9c28139
+--- /dev/null
++++ b/tests/benchmarks/ball_mdd_query_gpu.py
+@@ -0,0 +1,175 @@
++"""Real-input training throughput diagnostic. Run CUDA only via training queue.
++
++Each invocation measures one configuration in its own process. No validation or
++test labels are used, and no trained checkpoint is retained. Compute mode keeps
++one real batch resident; pipeline mode includes the unchanged JPEG/MDD reader.
++"""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import os
++import platform
++import statistics
++import subprocess
++import time
++from dataclasses import asdict
++from pathlib import Path
++from typing import Any
++
++import cv2
++import torch
++from torch.utils.data import DataLoader
++
++from src.tasks.ball_detection.data.coordinate_dataset import (
++    CoordinateWindowDataset,
++    collate_coordinate_windows,
++)
++from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDQueryDetector
++from src.tasks.ball_detection.training.coordinate_evaluation import predict_coordinates
++from src.tasks.ball_detection.training.coordinate_runtime import (
++    CoordinateRuntime,
++    coordinate_train_step,
++)
++from src.tasks.ball_detection.training.coordinate_sampling import FPSMixSampler
++
++
++def worker_init(_: int) -> None:
++    cv2.setNumThreads(1)
++    torch.set_num_threads(1)
++
++
++def chosen_indices(dataset: CoordinateWindowDataset, count: int) -> list[int]:
++    groups: dict[tuple[str, int], list[int]] = {}
++    for index, (record, window) in enumerate(dataset.windows):
++        source = dataset.records[record]["clip"]["source"]
++        groups.setdefault((source, window.frame_step), []).append(index)
++    keys = sorted(groups)
++    return [groups[keys[i % len(keys)]][i // len(keys)] for i in range(count)]
++
++
++def measure(args: argparse.Namespace, report: dict[str, Any]) -> None:
++    torch.set_num_threads(args.cpu_threads)
++    cv2.setNumThreads(1)
++    torch.manual_seed(42)
++    torch.backends.cudnn.benchmark = False
++    torch.backends.cuda.matmul.allow_tf32 = False
++    torch.backends.cudnn.allow_tf32 = True
++    device = torch.device("cuda")
++    torch.cuda.set_per_process_memory_fraction(.9)
++    properties = torch.cuda.get_device_properties(device)
++    if args.precision == "bf16" and not torch.cuda.is_bf16_supported():
++        raise ValueError("BF16 is not supported; no precision fallback")
++    report["hardware"] = dict(gpu=properties.name, total_bytes=properties.total_memory,
++                              cuda=torch.version.cuda, torch=str(torch.__version__),
++                              python=platform.python_version(), memory_fraction_limit=.9,
++                              free_before_bytes=torch.cuda.mem_get_info()[0])
++    config = MDDPoseConfig.load(args.model_config)
++    if config.compression != "conv2d" or config.readout != "query_only":
++        raise ValueError("This benchmark is specifically Conv2d + query-only")
++    report["model"] = asdict(config)
++    dataset = CoordinateWindowDataset(args.manifest, split="train", requires_pose=False, mdd_a=.2, mdd_b=.15)
++    model = MDDQueryDetector(config).to(device).train()
++    report["parameters"] = sum(p.numel() for p in model.parameters())
++    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=.01)
++    first_parameter = next(model.parameters()).detach().clone()
++    total = args.warmup + args.steps
++    if args.mode == "compute":
++        indices = chosen_indices(dataset, args.batch_size)
++        batch = collate_coordinate_windows([dataset[i] for i in indices])
++        report["samples"] = [dict(clip_id=c, start=s, frame_step=f) for c, s, f in
++                             zip(batch["clip_id"], batch["start"], batch["frame_step"], strict=True)]
++        batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
++        iterator = iter([batch] * total)
++    else:
++        sampler = FPSMixSampler(dataset, windows_per_epoch=total * args.batch_size, seed=42)
++        loader = DataLoader(dataset, batch_size=args.batch_size, sampler=sampler,
++                            collate_fn=collate_coordinate_windows, num_workers=args.workers,
++                            pin_memory=args.pin_memory, worker_init_fn=worker_init,
++                            **({"prefetch_factor": 1, "persistent_workers": True} if args.workers else {}))
++        iterator = iter(loader)
++    report["steps"] = []
++    torch.cuda.synchronize()
++    torch.cuda.reset_peak_memory_stats()
++    for step in range(total):
++        begin = time.perf_counter()
++        batch = next(iterator)
++        loaded = time.perf_counter()
++        loss, grad = coordinate_train_step(model, optimizer, batch, device,
++                                           CoordinateRuntime(precision=args.precision))
++        torch.cuda.synchronize()
++        elapsed = time.perf_counter() - begin
++        row = dict(step=step, warmup=step < args.warmup, seconds=elapsed,
++                   load_wait_seconds=loaded - begin, loss=float(loss.detach()), grad_norm=float(grad))
++        report["steps"].append(row)
++        if step == 0 or step + 1 == total or (step + 1) % 10 == 0:
++            print(json.dumps(row), flush=True)
++    measured = report["steps"][args.warmup:]
++    seconds = sum(row["seconds"] for row in measured)
++    report.update(status="ok", windows_per_second=args.batch_size * args.steps / seconds,
++                  sampled_frames_per_second=32 * args.batch_size * args.steps / seconds,
++                  mean_step_seconds=seconds / args.steps,
++                  median_step_seconds=statistics.median(row["seconds"] for row in measured),
++                  mean_loader_wait_seconds=statistics.mean(row["load_wait_seconds"] for row in measured),
++                  peak_allocated_bytes=torch.cuda.max_memory_allocated(),
++                  peak_reserved_bytes=torch.cuda.max_memory_reserved(),
++                  final_loss=report["steps"][-1]["loss"],
++                  parameter_max_change=float((next(model.parameters()).detach() - first_parameter).abs().max()))
++    model.eval()
++    with torch.no_grad():
++        # Same final weights and input: inference precision difference, not accuracy.
++        reference = predict_coordinates(model, batch, device)
++        with torch.autocast("cuda", dtype=torch.bfloat16):
++            mixed = predict_coordinates(model, batch, device)
++        size = batch["source_size"].to(device)[:, None] - 1
++        delta = ((reference - mixed) * size).norm(dim=-1)
++        report["bf16_vs_fp32_eval_delta_px"] = dict(mean=float(delta.mean()), max=float(delta.max()))
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--model-config", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--batch-size", type=int, required=True)
++    parser.add_argument("--precision", choices=("fp32", "bf16"), required=True)
++    parser.add_argument("--mode", choices=("compute", "pipeline"), default="compute")
++    parser.add_argument("--workers", type=int, default=0)
++    parser.add_argument("--pin-memory", action="store_true")
++    parser.add_argument("--cpu-threads", type=int, default=2)
++    parser.add_argument("--warmup", type=int, default=4)
++    parser.add_argument("--steps", type=int, default=16)
++    args = parser.parse_args()
++    if args.output.exists():
++        raise ValueError("Choose a fresh output file")
++    if min(args.batch_size, args.cpu_threads, args.steps) < 1 or min(args.warmup, args.workers) < 0:
++        raise ValueError("Invalid measurement budget")
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    report: dict[str, Any] = dict(schema="ball_mdd_query_gpu.v1", status="running",
++                                 arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
++                                 manifest_sha256=hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
++                                 model_config_sha256=hashlib.sha256(args.model_config.read_bytes()).hexdigest(),
++                                 script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
++                                 commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
++                                 queue_run_id=os.environ.get("TENNIS_RUN_ID"), seed=42,
++                                 optimizer=dict(name="AdamW", lr=1e-4, weight_decay=.01),
++                                 tf32=dict(matmul=False, cudnn=True), cudnn_benchmark=False,
++                                 train_only=True, checkpoint_saved=False)
++    try:
++        measure(args, report)
++    except torch.cuda.OutOfMemoryError as error:
++        report.update(status="oom", error=str(error),
++                      peak_allocated_bytes=torch.cuda.max_memory_allocated(),
++                      peak_reserved_bytes=torch.cuda.max_memory_reserved())
++    except Exception as error:
++        report.update(status="error", error=repr(error))
++        raise
++    finally:
++        args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
++    print(json.dumps({k: v for k, v in report.items() if k not in {"steps", "samples", "model"}}), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/benchmarks/ball_mdd_query_gpu_sweep.sh b/tests/benchmarks/ball_mdd_query_gpu_sweep.sh
+new file mode 100644
+index 000000000..e34e481e2
+--- /dev/null
++++ b/tests/benchmarks/ball_mdd_query_gpu_sweep.sh
+@@ -0,0 +1,30 @@
++#!/usr/bin/env bash
++# One exclusive training-queue job; every case gets a fresh CUDA process.
++set -euo pipefail
++ball_manifest=$1
++ball_model=$2
++ball_report=$3
++mkdir -p "$ball_report"
++if [[ "${4:-compute}" == pipeline ]]; then
++  for ball_bs in 1 2 4; do
++    for ball_workers in 0 2 4; do
++      PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_mdd_query_gpu.py \
++        --manifest "$ball_manifest" --model-config "$ball_model" \
++        --output "$ball_report/fp32-bs${ball_bs}-workers${ball_workers}.json" \
++        --precision fp32 --batch-size "$ball_bs" --mode pipeline \
++        --workers "$ball_workers" --pin-memory --steps "$((72 / ball_bs))"
++    done
++  done
++  exit 0
++fi
++for ball_precision in fp32 bf16; do
++  for ball_bs in 1 2 4 6 8 12 16; do
++    ball_case="$ball_report/${ball_precision}-bs${ball_bs}.json"
++    PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_mdd_query_gpu.py \
++      --manifest "$ball_manifest" --model-config "$ball_model" \
++      --output "$ball_case" --precision "$ball_precision" --batch-size "$ball_bs"
++    ball_status=$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$ball_case")
++    if [[ "$ball_status" == oom ]]; then break; fi
++    if [[ "$ball_status" != ok ]]; then exit 1; fi
++  done
++done

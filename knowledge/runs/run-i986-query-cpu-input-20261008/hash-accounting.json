@@ -1,0 +1,87 @@
+{
+  "ball_store": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/ball_snapshot",
+  "epoch0_all_6000": {
+    "jpeg_bytes_exact_from_index_length": 34041719842,
+    "jpeg_frame_reads": 192000,
+    "sampler_index_sha256": "9f80572fc45ecbff59a611355b817dc6d822416b97547941e02c413d1538e89c",
+    "sampler_index_sha256_encoding": "SHA256 of concatenated unsigned 64-bit little-endian dataset-window indices, no separators",
+    "shared_cache_once_hash_logical_bytes": 83586784095,
+    "shared_once_hash_to_jpeg_bytes_ratio": 2.4554218906376253,
+    "unique_clips_across_workers": 789,
+    "windows": 6000,
+    "worker_hash_to_jpeg_bytes_ratio": 12.591037295923469,
+    "worker_local_hash_checks": 3546,
+    "worker_local_hash_logical_bytes": 428620564148
+  },
+  "epoch1_all_6000_if_cache_empty": {
+    "jpeg_bytes_exact_from_index_length": 34000367193,
+    "jpeg_frame_reads": 192000,
+    "sampler_index_sha256": "0a88b5f134d812f057a8d69a57c752edc2b4867ac755ecd7edca156115676a43",
+    "sampler_index_sha256_encoding": "SHA256 of concatenated unsigned 64-bit little-endian dataset-window indices, no separators",
+    "shared_cache_once_hash_logical_bytes": 83274941576,
+    "shared_once_hash_to_jpeg_bytes_ratio": 2.4492365362790744,
+    "unique_clips_across_workers": 783,
+    "windows": 6000,
+    "worker_hash_to_jpeg_bytes_ratio": 12.744019475272259,
+    "worker_local_hash_checks": 3579,
+    "worker_local_hash_logical_bytes": 433301341674
+  },
+  "epoch1_incremental_with_persistent_worker_cache": {
+    "shared_cache_once_hash_logical_bytes": 1086155667,
+    "unique_clip_shards_new_across_workers": 20,
+    "worker_local_check_counts_by_worker": [
+      156,
+      145,
+      162,
+      175,
+      174,
+      163,
+      173,
+      167
+    ],
+    "worker_local_hash_logical_bytes": 133249294432,
+    "worker_local_new_clip_checks": 1315,
+    "worker_local_to_shared_new_hash_bytes_ratio": 122.67973963625234
+  },
+  "first_400_epoch0": {
+    "jpeg_bytes_exact_from_index_length": 2265283108,
+    "jpeg_frame_reads": 12800,
+    "sampler_index_sha256": "a8886527e2632544f0cdc5d671812bbd18f122edae66e10aa27b15bbbb8cf807",
+    "sampler_index_sha256_encoding": "SHA256 of concatenated unsigned 64-bit little-endian dataset-window indices, no separators",
+    "shared_cache_once_hash_logical_bytes": 37243134338,
+    "shared_once_hash_to_jpeg_bytes_ratio": 16.440829937094115,
+    "unique_clips_across_workers": 301,
+    "windows": 400,
+    "worker_hash_to_jpeg_bytes_ratio": 21.291001228355075,
+    "worker_local_hash_checks": 377,
+    "worker_local_hash_logical_bytes": 48230145435
+  },
+  "manifest": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json",
+  "method": {
+    "clip_cache": "worker-local persistent cache; hash event is first sampled use of a clip by that worker",
+    "index_read": "read only index.npz length column; metadata.json used for frame row offsets; no media data read",
+    "io_interpretation": "logical bytes requested/read by file hashing or JPEG frame access. OS page cache can satisfy reads; physical disk I/O was not measured.",
+    "jpeg_bytes": "sum index.npz length column for exactly the 32 sampled frame rows in every window; duplicate frame reads across windows counted repeatedly; no JPEG decode",
+    "loader_assignment_assumption": "batch_size=1, num_workers=8, prefetch_factor=1, persistent_workers=true; sampler position i assigned round-robin to worker i mod 8",
+    "sampler": "FPSMixSampler source logic reproduced on CPU with torch.Generator; seed=42+epoch, windows_per_epoch=6000",
+    "shard_bytes": "stat size summed for each worker-local first-use event; shared-cache baseline sums each clip shard once across workers"
+  },
+  "sample_population": {
+    "train_clips_with_windows": 824,
+    "train_frames_all_clips": 814657,
+    "train_shard_stat_bytes": 89632189263,
+    "train_windows_by_frame_step": {
+      "1": 20661,
+      "2": 10047,
+      "4": 4640
+    }
+  },
+  "schema": "query_cpu_hash_accounting_v1",
+  "two_epoch_cumulative": {
+    "one_shared_validation_per_clip_logical_bytes": 84672939762,
+    "unique_clip_shards_seen": 809,
+    "worker_local_hash_logical_bytes": 561869858580,
+    "worker_local_to_shared_hash_bytes_ratio": 6.635766517134193
+  },
+  "worktree_head": "0008c6d0b6123ce1c555523a4de6133255cc5151"
+}

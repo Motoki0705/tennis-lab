@@ -158,7 +158,7 @@ def _label(
     draw: DrawStyle,
     layout: LayoutStyle,
 ) -> np.ndarray:
-    return label_panel(
+    return cast(np.ndarray, label_panel(
         panel,
         text=text,
         label_height=layout.panel_label_height,
@@ -166,7 +166,7 @@ def _label(
         text_color_rgb=draw.text_color_rgb,
         text_scale=layout.text_scale,
         text_thickness=layout.text_thickness,
-    )
+    ))
 
 
 def _render_prediction_panel(

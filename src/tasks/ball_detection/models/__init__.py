@@ -6,7 +6,7 @@ from src.tasks.ball_detection.models.conv_next_unet import ConvNeXtUNet
 from src.tasks.ball_detection.models.discriminators import (
     build_ball_detection_discriminator,
 )
-from src.tasks.ball_detection.models.mdd_pose import MDDPoseConfig, MDDPoseDetector
+from src.tasks.ball_detection.models.mdd import MDDPoseConfig, MDDPoseDetector
 
 __all__ = [
     "ConvNeXtUNet",
