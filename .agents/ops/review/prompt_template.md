@@ -22,7 +22,9 @@ $author が作成した Pull Request #$pr_number をレビューし、判定を�
    - モジュラーな構成、旧経路を残した後方互換の温存
 3. 根拠のない指摘や好みの問題で request_changes にしないでください。
    merge を止めるべき問題（blocker / major）があるときだけ request_changes、
-   問題がなければ approve、判断材料が不足する・軽微な指摘のみで判断を人間に委ねたいときは comment。
+   問題がなければ approve、軽微な指摘（minor / nit）だけがあるときは comment。
+   approve と、blocker / major を含まない comment はどちらも merge を止めません。
+   minor / nit の指摘は呼び出し側が追補 issue にまとめるので、後で対応できる粒度で書いてください。
 
 ## 出力形式（厳守）
 
@@ -44,7 +46,7 @@ $author が作成した Pull Request #$pr_number をレビューし、判定を�
 }
 
 - request_changes なら blocker か major の指摘を1件以上含めること。
-- approve なら blocker・major を含めないこと（merge 判定は verdict だけを見るため）。指摘が無ければ findings は空配列。
+- approve なら blocker・major を含めないこと。指摘が無ければ findings は空配列。
 
 ## AGENTS.md（base: $base_ref）
 
