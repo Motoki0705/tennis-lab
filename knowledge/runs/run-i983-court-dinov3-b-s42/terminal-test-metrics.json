@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "scope": "Automatic test of the final epoch model; not the best-checkpoint comparison evaluation.",
+  "metrics": {
+    "test/loss": {
+      "step": 33160,
+      "wall_time": 1791838501.122487,
+      "value": 1.473559021949768
+    },
+    "test/loss_direct_dense_raw": {
+      "step": 33160,
+      "wall_time": 1791838501.1225634,
+      "value": 1.2324447631835938
+    },
+    "test/loss_direct_dense": {
+      "step": 33160,
+      "wall_time": 1791838501.122579,
+      "value": 1.2324447631835938
+    },
+    "test/loss_direct_pose": {
+      "step": 33160,
+      "wall_time": 1791838501.1225917,
+      "value": 0.2411140650510788
+    },
+    "test/loss_kp_raw": {
+      "step": 33160,
+      "wall_time": 1791838501.1226032,
+      "value": 0.00023944037093315274
+    },
+    "test/loss_seg_raw": {
+      "step": 33160,
+      "wall_time": 1791838501.122614,
+      "value": 0.09253373742103577
+    },
+    "test/loss_line_raw": {
+      "step": 33160,
+      "wall_time": 1791838501.1226244,
+      "value": 0.5518319606781006
+    },
+    "test/loss_semantic_line_raw": {
+      "step": 33160,
+      "wall_time": 1791838501.1226346,
+      "value": 0.5878397822380066
+    },
+    "test/loss_kp": {
+      "step": 33160,
+      "wall_time": 1791838501.1226451,
+      "value": 0.00023944037093315274
+    },
+    "test/loss_kp_weighted": {
+      "step": 33160,
+      "wall_time": 1791838501.122656,
+      "value": 0.00023944037093315274
+    },
+    "test/kp_configured_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1226666,
+      "value": 1.0
+    },
+    "test/kp_effective_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1229317,
+      "value": 1.0
+    },
+    "test/loss_seg": {
+      "step": 33160,
+      "wall_time": 1791838501.1290915,
+      "value": 0.09253373742103577
+    },
+    "test/loss_seg_weighted": {
+      "step": 33160,
+      "wall_time": 1791838501.1292179,
+      "value": 0.09253373742103577
+    },
+    "test/seg_configured_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.129316,
+      "value": 1.0
+    },
+    "test/seg_effective_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.129411,
+      "value": 1.0
+    },
+    "test/loss_line": {
+      "step": 33160,
+      "wall_time": 1791838501.12951,
+      "value": 0.5518319606781006
+    },
+    "test/loss_line_weighted": {
+      "step": 33160,
+      "wall_time": 1791838501.1295917,
+      "value": 0.5518319606781006
+    },
+    "test/line_configured_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1296716,
+      "value": 1.0
+    },
+    "test/line_effective_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1297488,
+      "value": 1.0
+    },
+    "test/loss_semantic_line": {
+      "step": 33160,
+      "wall_time": 1791838501.1298301,
+      "value": 0.5878397822380066
+    },
+    "test/loss_semantic_line_weighted": {
+      "step": 33160,
+      "wall_time": 1791838501.1299171,
+      "value": 0.5878397822380066
+    },
+    "test/semantic_line_configured_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.129998,
+      "value": 1.0
+    },
+    "test/semantic_line_effective_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1300743,
+      "value": 1.0
+    },
+    "test/loss_pose_translation": {
+      "step": 33160,
+      "wall_time": 1791838501.1301517,
+      "value": 0.20632551610469818
+    },
+    "test/loss_pose_rotation": {
+      "step": 33160,
+      "wall_time": 1791838501.130229,
+      "value": 0.028596293181180954
+    },
+    "test/loss_pose_focal": {
+      "step": 33160,
+      "wall_time": 1791838501.130307,
+      "value": 0.006192323751747608
+    },
+    "test/loss_pose_translation_weighted": {
+      "step": 33160,
+      "wall_time": 1791838501.1304033,
+      "value": 0.20632551610469818
+    },
+    "test/loss_pose_rotation_weighted": {
+      "step": 33160,
+      "wall_time": 1791838501.1304986,
+      "value": 0.028596293181180954
+    },
+    "test/loss_pose_focal_weighted": {
+      "step": 33160,
+      "wall_time": 1791838501.1305807,
+      "value": 0.006192323751747608
+    },
+    "test/pose_translation_configured_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1306627,
+      "value": 1.0
+    },
+    "test/pose_rotation_configured_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1307414,
+      "value": 1.0
+    },
+    "test/pose_focal_configured_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1308217,
+      "value": 1.0
+    },
+    "test/pose_translation_effective_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.130905,
+      "value": 1.0
+    },
+    "test/pose_rotation_effective_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1309865,
+      "value": 1.0
+    },
+    "test/pose_focal_effective_weight": {
+      "step": 33160,
+      "wall_time": 1791838501.1310644,
+      "value": 1.0
+    },
+    "test/kp_mean_dist": {
+      "step": 33160,
+      "wall_time": 1791838501.1311421,
+      "value": 3.73567271232605
+    },
+    "test/kp_mean_distance_px": {
+      "step": 33160,
+      "wall_time": 1791838501.131219,
+      "value": 3.73567271232605
+    },
+    "test/kp_median_distance_px": {
+      "step": 33160,
+      "wall_time": 1791838501.1312988,
+      "value": 2.1791021823883057
+    },
+    "test/seg_miou": {
+      "step": 33160,
+      "wall_time": 1791838501.1313875,
+      "value": 0.9529544711112976
+    },
+    "test/line_dice": {
+      "step": 33160,
+      "wall_time": 1791838501.131467,
+      "value": 0.6475188136100769
+    },
+    "test/semantic_line_miou": {
+      "step": 33160,
+      "wall_time": 1791838501.1315606,
+      "value": 0.4598572254180908
+    },
+    "test/pose_translation_l2_m": {
+      "step": 33160,
+      "wall_time": 1791838501.1316397,
+      "value": 0.5185012817382812
+    },
+    "test/pose_rotation_geodesic_deg": {
+      "step": 33160,
+      "wall_time": 1791838501.1317184,
+      "value": 1.638446569442749
+    },
+    "test/pose_focal_relative_error": {
+      "step": 33160,
+      "wall_time": 1791838501.131798,
+      "value": 0.0511104017496109
+    },
+    "test/pose_log_focal_abs_error": {
+      "step": 33160,
+      "wall_time": 1791838501.1318812,
+      "value": 0.04902349039912224
+    },
+    "test/pose_reprojection_mean_distance_px": {
+      "step": 33160,
+      "wall_time": 1791838501.1319642,
+      "value": 10.109537124633789
+    },
+    "test/kp_pose_consistency_distance_px": {
+      "step": 33160,
+      "wall_time": 1791838501.1320493,
+      "value": 0.0
+    },
+    "test/invalid_depth_rate": {
+      "step": 33160,
+      "wall_time": 1791838501.1321247,
+      "value": 0.0
+    },
+    "test/visible_point_count": {
+      "step": 33160,
+      "wall_time": 1791838501.132199,
+      "value": 7928.0
+    }
+  }
+}

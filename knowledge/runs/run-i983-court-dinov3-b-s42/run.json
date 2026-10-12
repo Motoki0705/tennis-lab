@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "status": "running",
-  "training_status": "running",
-  "evaluation_status": "pending",
+  "status": "completed",
+  "training_status": "completed",
+  "evaluation_status": "completed",
   "session": "i983-l4-ablation-07",
   "job": "train-b-s42",
   "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
@@ -41,5 +41,16 @@
     "transformation": "Remove trailing whitespace from each line",
     "received_excerpt_sha256": "5eed050934e945efd24bb0fc9a9b1be4726b97aad549010734ddb4cbcbcfcb47",
     "raw_stdout": "gdrive:tennis_lab/operations/colab/i983-l4-ablation-07/train-b-s42/stdout.log"
-  }
+  },
+  "training_completion": "training-completion.json",
+  "training_session_expired_after_completion": true,
+  "evaluation_session": "i983-l4-ablation-08",
+  "evaluation_job": "eval-b-s42",
+  "evaluation_pipeline_request": "evaluation-pipeline-request.json",
+  "checkpoint_selection": "checkpoint-selection.json",
+  "evaluation": "evaluation/evaluation.json",
+  "evaluation_completion": "evaluation-completion.json",
+  "evaluation_verification": "evaluation-verification.json",
+  "tensorboard_sources": "tensorboard-sources.json",
+  "evaluation_session_stop": "evaluation-session-stop.json"
 }
