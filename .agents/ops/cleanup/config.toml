@@ -15,14 +15,6 @@ stale_days = 14
 # PR-merged entries need this much idle time before auto deletion.
 min_idle_hours = 24
 
-# Untracked / gitignored entries (fnmatch on path or basename) that do not count
-# as local work. Symlinks are always disposable (removal never follows them).
-disposable_untracked = [".training_queue", ".venv"]
-disposable_ignored = [
-  ".venv", ".training_queue", "__pycache__", "*.pyc", ".pytest_cache",
-  ".mypy_cache", ".ruff_cache", "*.egg-info", ".ipynb_checkpoints",
-]
-
 # Training queue whose jobs/ and running/ files protect referenced worktrees
 # (relative to the main checkout, or absolute).
 queue_dir = ".training_queue"
