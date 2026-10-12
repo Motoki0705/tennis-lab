@@ -395,9 +395,11 @@ def in_progress(admin: Path, branch_names: set[str]) -> InProgress:
 
 
 def worktree_state(path: str) -> WorktreeState:
-    """Everything ``git status --ignored`` reports, plus populated submodules.
+    """Everything ``git status --ignored`` reports, plus populated submodules and
+    index entries whose edits ``git status`` hides.
 
     Nothing is treated as disposable except the top-level ``.venv`` symlink.
+    Submodules are not inspected recursively: a populated one already blocks.
     """
     wt = Path(path)
     out = git(
@@ -430,6 +432,14 @@ def worktree_state(path: str) -> WorktreeState:
         if xy[0] in "RC":
             i += 1  # skip the rename/copy source path
         dirty.append(rel)
+    hidden: list[str] = []
+    for item in git(wt, "ls-files", "-v", "-z").stdout.split("\0"):
+        if not item:
+            continue
+        tag, rel = item[0], item[2:]
+        # lowercase tag = assume-unchanged; S/s = skip-worktree (see git ls-files -v)
+        if tag.islower() or tag == "S":
+            hidden.append(rel)
     populated: list[str] = []
     stage = git(wt, "ls-files", "-s", "-z").stdout
     for item in stage.split("\0"):
@@ -443,6 +453,7 @@ def worktree_state(path: str) -> WorktreeState:
         ignored=tuple(ignored),
         disposable=tuple(disposable),
         submodule_populated=tuple(populated),
+        hidden_index_flags=tuple(hidden),
     )
 
 

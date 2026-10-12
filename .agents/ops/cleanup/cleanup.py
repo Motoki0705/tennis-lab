@@ -110,6 +110,7 @@ def entry_json(entry: Entry) -> dict[str, Any]:
             "ignored": list(state.ignored),
             "disposable": list(state.disposable),
             "submodule_populated": list(state.submodule_populated),
+            "hidden_index_flags": list(state.hidden_index_flags),
         },
         "disk_bytes": entry.disk.bytes if entry.disk else None,
         "disk_error": entry.disk.error if entry.disk else None,
@@ -212,7 +213,27 @@ def append_log(state_dir: Path, record: dict[str, Any]) -> None:
         os.fsync(handle.fileno())
 
 
-def _delete_branch(repo: Path, entry: Entry, f: BranchFacts) -> None:
+def branch_config(repo: Path, branch: str) -> list[list[str]]:
+    """``[key, value]`` pairs of the ``branch.<name>.*`` config (upstream, description)."""
+    out = git(
+        repo,
+        "config",
+        "-z",
+        "--get-regexp",
+        "^" + re.escape(f"branch.{branch}") + r"\.",
+        ok_codes=(0, 1),
+    ).stdout
+    pairs: list[list[str]] = []
+    for item in out.split("\0"):
+        if item:
+            key, _, value = item.partition("\n")
+            pairs.append([key, value])
+    return pairs
+
+
+def _delete_branch(
+    repo: Path, entry: Entry, f: BranchFacts, config: list[list[str]]
+) -> None:
     ref = f"refs/heads/{f.branch}"
     symbolic = git(repo, "symbolic-ref", "-q", ref, ok_codes=(0, 1)).stdout.strip()
     if symbolic:
@@ -225,15 +246,8 @@ def _delete_branch(repo: Path, entry: Entry, f: BranchFacts) -> None:
     # Compare-and-delete (fails if the tip moved); --no-deref never follows a
     # symbolic ref to its target (e.g. main).
     git(repo, "update-ref", "--no-deref", "-d", ref, f.tip)
-    section = f"branch.{f.branch}"
-    if git(
-        repo,
-        "config",
-        "--get-regexp",
-        "^" + re.escape(section) + r"\.",
-        ok_codes=(0, 1),
-    ).stdout:
-        git(repo, "config", "--remove-section", section)
+    if config:  # logged as branch_config; see README for restoring it
+        git(repo, "config", "--remove-section", f"branch.{f.branch}")
 
 
 def _remove_worktree(repo: Path, entry: Entry, f: WorktreeFacts) -> None:
@@ -265,6 +279,7 @@ def delete_entry(repo: Path, entry: Entry, state_dir: Path, *, approved: bool) -
     when no worktree checks it out.
     """
     f = entry.facts
+    config = branch_config(repo, f.branch) if isinstance(f, BranchFacts) else []
     base = {
         "id": entry.id,
         "repo": str(repo),
@@ -276,11 +291,12 @@ def delete_entry(repo: Path, entry: Entry, state_dir: Path, *, approved: bool) -
         "reasons": [
             {"code": r.code, "detail": r.detail} for r in entry.decision.reasons
         ],
+        "branch_config": config,
     }
     append_log(state_dir, {**base, "phase": "intent"})
     try:
         if isinstance(f, BranchFacts):
-            _delete_branch(repo, entry, f)
+            _delete_branch(repo, entry, f, config)
         else:
             _remove_worktree(repo, entry, f)
     except CleanupError as exc:
