@@ -37,6 +37,8 @@ from review_policy import (  # noqa: E402
     AuthorConflictError,
     Check,
     Comment,
+    Finding,
+    FollowupData,
     GateDecision,
     GateInput,
     GateResult,
@@ -58,6 +60,7 @@ from review_policy import (  # noqa: E402
     load_shared_patterns,
     neutralize_markers,
     normalize_rollup,
+    parse_followup_data,
     parse_review,
     request_changes_streak,
     review_header,
@@ -291,6 +294,7 @@ class GitHub:
         )
         return [
             Issue(
+                number=int(item["number"]),
                 author=str(item["user"]["login"]),
                 body=str(item["body"] or ""),
                 url=str(item["html_url"]),
@@ -299,6 +303,15 @@ class GitHub:
             for item in page
             if "pull_request" not in item
         ]
+
+    def edit_issue(self, number: int, issue: int, body: str) -> None:
+        run(
+            [
+                "gh", "issue", "edit", str(issue),
+                "--body-file", str(self._body_file("issue", number, body)),
+            ],
+            cwd=self.repo,
+        )  # fmt: skip
 
     def create_issue(self, number: int, title: str, body: str, label: str) -> str:
         out = run(
@@ -728,15 +741,29 @@ def review_input(git: Git, pr: PullRequest) -> ReviewInput:
 
 
 def refetch_for_gate(
-    gh: GitHub, git: Git, pr: PullRequest, reviewed: ReviewTarget, report: RunReport
+    gh: GitHub,
+    git: Git,
+    pr: PullRequest,
+    reviewed: ReviewTarget,
+    reviewer: str,
+    report: RunReport,
 ) -> PullRequest | None:
-    """Re-read the PR right before the gate; ``None`` when the reviewed target is stale.
+    """Re-read the PR right before the gate; ``None`` when the review no longer applies.
 
     Used whether the verdict comes from a fresh review (minutes old) or an existing
-    one: the PR may have been retargeted, pushed or re-run CI since the first view.
-    The base branch merely moving on keeps the merge-base and diff, so it is not stale.
+    one: the PR may have been retargeted, pushed, relabelled or re-run CI since the
+    first view. The base branch merely moving on keeps the merge-base and diff, so it
+    is not stale. Contradicting author signals raise, as on the first view.
     """
     fresh = gh.view(pr.number)
+    author = detect_author_agent(fresh.head_ref, fresh.labels)
+    if author is None or reviewer_for(author) != reviewer:
+        report.note(
+            f"#{pr.number}: author changed since the first view "
+            f"(branch={fresh.head_ref!r} labels={list(fresh.labels)}; reviewed by {reviewer}); "
+            "gate deferred to the next poll"
+        )
+        return None
     if (fresh.head_sha, fresh.base_sha) == (pr.head_sha, pr.base_sha):
         return fresh
     current = review_input(git, fresh).target
@@ -808,7 +835,7 @@ def process_pr(
     followup = ensure_followup_issue(settings, gh, login, pr, current, report)
 
     # Gate on the PR / CI state as it is now, for the exact target that was reviewed.
-    fresh = refetch_for_gate(gh, git, pr, target, report)
+    fresh = refetch_for_gate(gh, git, pr, target, reviewer, report)
     if fresh is None:
         return
     pr = fresh
@@ -879,10 +906,26 @@ def escalate_streak(
     gh.comment(pr.number, body)
 
 
-def format_followup_issue(pr: PullRequest, review: ReviewRecord) -> str:
+def _finding_lines(findings: Sequence[Finding]) -> list[str]:
     inert = neutralize_markers
+    lines = []
+    for finding in findings:
+        where = finding.path or "(全体)"
+        if finding.path and finding.line:
+            where = f"{finding.path}:{finding.line}"
+        lines.append(
+            f"- **{finding.severity}** `{inert(where)}` ({inert(finding.rule)}): "
+            f"{inert(finding.detail)}"
+        )
+    return lines
+
+
+def format_followup_issue(pr: PullRequest, review: ReviewRecord) -> str:
+    if review.url is None:
+        raise ValueError("a follow-up needs a posted review comment")
     lines = [
         followup_marker(pr.number, review.target.head),
+        FollowupData((review.url,), review.light_findings).line(),
         f"PR #{pr.number}（{pr.url}）のクロスレビューは merge を止めない判定"
         f"（`{review.outcome.verdict}`）でしたが、次の軽微な指摘がありました。"
         "別 PR で対応するか、不要なら close してください。",
@@ -892,17 +935,33 @@ def format_followup_issue(pr: PullRequest, review: ReviewRecord) -> str:
         "",
         "### 指摘",
         "",
+        *_finding_lines(review.light_findings),
+        "",
+        "<sub>.agents/ops/review/cross_review.py による自動起票</sub>",
     ]
-    for finding in review.light_findings:
-        where = finding.path or "(全体)"
-        if finding.path and finding.line:
-            where = f"{finding.path}:{finding.line}"
-        lines.append(
-            f"- **{finding.severity}** `{inert(where)}` ({inert(finding.rule)}): "
-            f"{inert(finding.detail)}"
-        )
-    lines += ["", "<sub>.agents/ops/review/cross_review.py による自動起票</sub>"]
     return "\n".join(lines) + "\n"
+
+
+def extend_followup_issue(issue: Issue, review: ReviewRecord) -> str | None:
+    """The issue body with ``review``'s link and new findings appended, or ``None``
+    when the issue already lists that review. Text below the data line is kept."""
+    if review.url is None:
+        raise ValueError("a follow-up needs a posted review comment")
+    data = parse_followup_data(issue)
+    if review.url in data.reviews:
+        return None
+    merged = data.merged_with(review.url, review.light_findings)
+    new = merged.findings[len(data.findings) :]
+    first, _, rest = issue.body.split("\n", 2)
+    section = [
+        "",
+        f"### 再レビューでの追加（merge-base `{review.target.merge_base[:12]}`）",
+        "",
+        f"- レビューコメント: {review.url}",
+        "",
+        *(_finding_lines(new) or ["（新しい指摘なし）"]),
+    ]
+    return "\n".join([first, merged.line(), rest.rstrip("\n"), *section]) + "\n"
 
 
 def ensure_followup_issue(
@@ -914,7 +973,8 @@ def ensure_followup_issue(
     report: RunReport,
 ) -> str | None:
     """File (once per PR head) the follow-up issue for a passing review's minor/nit
-    findings and return its URL; ``None`` when the review needs none."""
+    findings, or extend it for a later review of the same head; return its URL, or
+    ``None`` when the review needs none."""
     if not (review.outcome.passed and review.light_findings):
         return None
     if settings.dry_run or review.url is None:
@@ -923,7 +983,12 @@ def ensure_followup_issue(
     filed = followup_issues(gh.followup_candidates(login), trusted_login=login)
     existing = filed.get((pr.number, review.target.head))
     if existing is not None:
-        return existing
+        # Same head re-reviewed (e.g. after a base retarget): extend the one issue.
+        body = extend_followup_issue(existing, review)
+        if body is not None:
+            gh.edit_issue(pr.number, existing.number, body)
+            report.note(f"#{pr.number}: extended follow-up issue {existing.url}")
+        return existing.url
     url = gh.create_issue(
         pr.number,
         f"[追補] PR #{pr.number} のレビュー軽微指摘",

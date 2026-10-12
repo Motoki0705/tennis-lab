@@ -324,6 +324,14 @@ ESCALATION_MARKER_RE = re.compile(rf"<!-- agent-review-escalation:v1 {_TARGET} -
 FOLLOWUP_MARKER_RE = re.compile(
     rf"<!-- agent-review-followup:v1 pr=([1-9][0-9]*) sha=({_SHA}) -->"
 )
+# Second line of a follow-up issue: the review links and findings it already holds.
+FOLLOWUP_DATA_RE = re.compile(r"<!-- agent-review-followup-data:v1 (\{.*\}) -->")
+
+
+def _inline_json(obj: Any) -> str:
+    """One-line JSON that cannot open or close an HTML comment."""
+    text = json.dumps(obj, ensure_ascii=False)
+    return text.replace("<", "\\u003c").replace(">", "\\u003e")
 
 
 @dataclass(frozen=True)
@@ -335,6 +343,7 @@ class Comment:
 
 @dataclass(frozen=True)
 class Issue:
+    number: int
     author: str
     body: str
     url: str
@@ -384,9 +393,7 @@ def review_header(target: ReviewTarget, reviewer: str, review: Review) -> str:
         raise ValueError(
             f"invalid review marker fields: {target!r} {reviewer!r} {outcome!r}"
         )
-    payload = json.dumps([vars(f) for f in review.light_findings], ensure_ascii=False)
-    # JSON escapes keep the payload on one line and unable to close the HTML comment.
-    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e")
+    payload = _inline_json([vars(f) for f in review.light_findings])
     return f"{marker}\n<!-- agent-cross-review-light:v1 {payload} -->"
 
 
@@ -507,16 +514,59 @@ def escalated_streaks(
 
 def followup_issues(
     issues: Iterable[Issue], *, trusted_login: str
-) -> dict[tuple[int, str], str]:
-    """``(PR number, head) -> issue URL`` for follow-up issues filed by ``trusted_login``."""
-    filed: dict[tuple[int, str], str] = {}
+) -> dict[tuple[int, str], Issue]:
+    """``(PR number, head) -> issue`` for follow-up issues filed by ``trusted_login``."""
+    filed: dict[tuple[int, str], Issue] = {}
     for issue in issues:
         if issue.author != trusted_login:
             continue
         match = FOLLOWUP_MARKER_RE.fullmatch(_header_line(issue.body))
         if match is not None:
-            filed.setdefault((int(match.group(1)), match.group(2)), issue.url)
+            filed.setdefault((int(match.group(1)), match.group(2)), issue)
     return filed
+
+
+@dataclass(frozen=True)
+class FollowupData:
+    """What a follow-up issue already lists: review comment links and findings."""
+
+    reviews: tuple[str, ...]
+    findings: tuple[Finding, ...]
+
+    def line(self) -> str:
+        payload = _inline_json(
+            {
+                "reviews": list(self.reviews),
+                "findings": [vars(f) for f in self.findings],
+            }
+        )
+        return f"<!-- agent-review-followup-data:v1 {payload} -->"
+
+    def merged_with(self, review_url: str, findings: Iterable[Finding]) -> FollowupData:
+        """Add a review link and the findings not listed yet (order kept)."""
+        new = tuple(dict.fromkeys(f for f in findings if f not in self.findings))
+        reviews = self.reviews + (
+            (review_url,) if review_url not in self.reviews else ()
+        )
+        return FollowupData(reviews, self.findings + new)
+
+
+def parse_followup_data(issue: Issue) -> FollowupData:
+    match = FOLLOWUP_DATA_RE.fullmatch(_header_line(issue.body, 1))
+    if match is None:
+        raise ValueError(f"{issue.url}: follow-up issue without its data line")
+    raw = json.loads(match.group(1))
+    if not isinstance(raw, dict) or set(raw) != {"reviews", "findings"}:
+        raise ValueError(f"{issue.url}: malformed follow-up data")
+    reviews = raw["reviews"]
+    if not isinstance(reviews, list) or not all(isinstance(r, str) for r in reviews):
+        raise ValueError(f"{issue.url}: follow-up reviews must be a list of URLs")
+    findings = raw["findings"]
+    if not isinstance(findings, list):
+        raise ValueError(f"{issue.url}: follow-up findings must be a list")
+    return FollowupData(
+        tuple(reviews), tuple(_parse_finding(f, i) for i, f in enumerate(findings))
+    )
 
 
 def request_changes_streak(
