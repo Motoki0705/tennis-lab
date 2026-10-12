@@ -449,14 +449,39 @@ def test_escalation_and_followup_markers_round_trip() -> None:
     assert P.escalated_streaks(comments, trusted_login="bot") == {_t(1)}
 
     issues = [
-        P.Issue("bot", P.followup_marker(7, SHA) + "\nbody", "https://x.invalid/i/1"),
-        P.Issue("bot", P.followup_marker(7, SHA), "https://x.invalid/i/2"),
-        P.Issue("intruder", P.followup_marker(8, SHA), "https://x.invalid/i/3"),
-        P.Issue("bot", "quoting " + P.followup_marker(9, SHA), "https://x.invalid/i/4"),
+        P.Issue(
+            1, "bot", P.followup_marker(7, SHA) + "\nbody", "https://x.invalid/i/1"
+        ),
+        P.Issue(2, "bot", P.followup_marker(7, SHA), "https://x.invalid/i/2"),
+        P.Issue(3, "intruder", P.followup_marker(8, SHA), "https://x.invalid/i/3"),
+        P.Issue(
+            4, "bot", "quoting " + P.followup_marker(9, SHA), "https://x.invalid/i/4"
+        ),
     ]
-    assert P.followup_issues(issues, trusted_login="bot") == {
-        (7, SHA): "https://x.invalid/i/1"
-    }
+    assert P.followup_issues(issues, trusted_login="bot") == {(7, SHA): issues[0]}
+
+
+def test_followup_data_round_trip_and_merge() -> None:
+    hostile = _finding("minor", "x --> <!-- y\nz")
+    data = P.FollowupData(("https://x.invalid/c/1",), (hostile, _finding("nit")))
+    line = data.line()
+    assert line.count("<!--") == 1 and line.count("-->") == 1
+    issue = P.Issue(1, "bot", f"{P.followup_marker(7, SHA)}\n{line}\nbody", "u")
+    assert P.parse_followup_data(issue) == data
+
+    merged = data.merged_with(
+        "https://x.invalid/c/2", [_finding("nit"), _finding("minor", "new"), hostile]
+    )
+    assert merged.reviews == ("https://x.invalid/c/1", "https://x.invalid/c/2")
+    assert merged.findings == (hostile, _finding("nit"), _finding("minor", "new"))
+    # The same review is not listed twice.
+    assert merged.merged_with("https://x.invalid/c/2", []).reviews == merged.reviews
+
+
+def test_followup_issue_without_data_line_is_an_error() -> None:
+    issue = P.Issue(1, "bot", f"{P.followup_marker(7, SHA)}\nedited by a human", "u")
+    with pytest.raises(ValueError, match="data line"):
+        P.parse_followup_data(issue)
 
 
 # --------------------------------------------------------------------------- CI rollup

@@ -57,7 +57,10 @@ PR を作る agent は branch 名に自分の prefix を付ける。
    （2 行目は後の poll で追補 issue を起票するため。`<` `>` は JSON エスケープして 1 行に収める）。
    先頭 2 行以外のマーカー（要約や指摘に引用されたもの）は読まない。加えて、agent の出力やファイル名を
    コメントに埋め込むときは `<!--` / `-->` を無害化する。
-5. gate の直前に、新規レビュー・既存レビューのどちらの場合も PR と CI 状態を取り直す。head か base が
+5. gate の直前に、新規レビュー・既存レビューのどちらの場合も PR と CI 状態を取り直す。取り直した PR で
+   作成 agent を判別し直し、判別できない・必要なレビュー agent が変わった（ラベル付け替え等）ときは
+   その poll では gate を判定しない（次の poll で正しい agent がレビューする）。手がかりが食い違えば初回と同じくエラー。
+   head か base が
    最初の取得から動いていれば対象（head・merge-base・diff）を計算し直し、レビューした対象と違えば
    その poll では gate を判定しない（次の poll で新しい対象をレビューする）。base branch が進んだだけで
    対象が同じなら、取り直した状態で gate を判定する。
@@ -118,7 +121,10 @@ base branch が先へ進んだだけなら merge-base と diff は変わらな�
 通過したレビューに minor/nit の指摘があれば、PR head ごとに 1 件、`ai-proposed` ラベルの issue
 `[追補] PR #<N> のレビュー軽微指摘` を起票する（本文に `path:line` 付きの指摘とレビューコメントへのリンク）。
 本文先頭のマーカー `<!-- agent-review-followup:v1 pr=<N> sha=<head> -->` で、poll を実行するアカウントが
-起票した同じ PR・head の issue が（close 済みも含め）あれば再起票しない。gate コメントに issue へのリンクを載せる。
+起票した同じ PR・head の issue が（close 済みも含め）あれば再起票しない。同じ head が base の付け替えなどで
+再レビューされたときは、その issue に新しいレビューへのリンクと未掲載の指摘だけを追記する（本文 2 行目の
+`<!-- agent-review-followup-data:v1 ... -->` に掲載済みのレビューと指摘を持ち、指摘は内容が同じものを重複させない。
+2 行目が無い issue はエラー）。gate コメントに issue へのリンクを載せる。
 dry-run では起票しない。
 
 ### request_changes の連続（エスカレーション）

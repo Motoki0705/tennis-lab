@@ -80,11 +80,17 @@ if args[:2] == ["issue", "create"]:
         sys.exit(1)
     with open(opt("--body-file"), encoding="utf-8") as fh:
         body = fh.read()
-    url = f"https://example.invalid/issues/{len(state['issues']) + 1}"
-    state["issues"].append({"title": opt("--title"), "labels": [opt("--label")], "body": body,
-                            "user": {"login": state["login"]}, "html_url": url})
+    number = len(state["issues"]) + 1
+    url = f"https://example.invalid/issues/{number}"
+    state["issues"].append({"number": number, "title": opt("--title"), "labels": [opt("--label")],
+                            "body": body, "user": {"login": state["login"]}, "html_url": url})
     save()
     print(url)
+    sys.exit(0)
+if args[:2] == ["issue", "edit"]:
+    with open(opt("--body-file"), encoding="utf-8") as fh:
+        state["issues"][int(args[2]) - 1]["body"] = fh.read()
+    save()
     sys.exit(0)
 if args[:2] == ["pr", "edit"]:
     if os.environ.get("FAKE_GH_FAIL_EDIT"):
@@ -345,6 +351,12 @@ class Env:
             c
             for c in calls
             if c[:2] in (["pr", "comment"], ["pr", "edit"], ["pr", "merge"])
+        ]
+
+    def gh_calls(self) -> list[list[str]]:
+        path = self.tmp / "gh_calls.jsonl"
+        return [
+            json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
         ]
 
     def comments(self, number: int) -> list[str]:
@@ -1153,3 +1165,91 @@ def test_three_request_changes_in_a_row_escalate_once_per_streak(env: Env) -> No
     env.push_new_head(7, "src/tasks/blcs/a.py", "x = 8\n")
     assert env.run().returncode == 0
     assert len(_escalations(env, 7)) == 2
+
+
+def test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews(
+    env: Env,
+) -> None:
+    # A prefix-less PR labelled as Codex's is reviewed by Claude; mid-review it is
+    # relabelled as Claude's, which needs a Codex review instead.
+    sha = env.add_pr(
+        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("agent:codex",)
+    )
+    relabel = {"9": {"labels": [{"name": "agent:claude"}]}}
+
+    first = env.run(
+        env={"AGENT_AUTO_MERGE": "1", "FAKE_PR_AFTER_REVIEW": json.dumps(relabel)}
+    )
+
+    assert first.returncode == 0, first.stderr
+    assert "author changed since the first view" in first.stderr
+    assert "gate=" not in first.stderr
+    assert "merged" not in env.state
+
+    second = env.run(env={"AGENT_AUTO_MERGE": "1"})
+    assert second.returncode == 0, second.stderr
+    assert [c["agent"] for c in env.agent_calls()] == ["claude", "codex"]
+    assert env.state["merged"] == [["9", sha]]
+
+
+@pytest.mark.parametrize(
+    ("labels", "returncode", "message"),
+    [
+        (
+            [{"name": "agent:codex"}, {"name": "agent:claude"}],
+            1,
+            "multiple agent labels",
+        ),
+        ([], 0, "author changed since the first view"),
+    ],
+)
+def test_author_conflict_or_loss_during_review_blocks_the_gate(
+    env: Env, labels: list[dict[str, str]], returncode: int, message: str
+) -> None:
+    env.add_pr(
+        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("agent:codex",)
+    )
+
+    result = env.run(
+        env={
+            "AGENT_AUTO_MERGE": "1",
+            "FAKE_PR_AFTER_REVIEW": json.dumps({"9": {"labels": labels}}),
+        }
+    )
+
+    assert result.returncode == returncode
+    assert message in result.stderr
+    assert "gate=" not in result.stderr
+    assert "merged" not in env.state
+
+
+def test_rereview_after_retarget_extends_the_same_followup_issue(env: Env) -> None:
+    _stacked_pr(env, 7)
+    env.set_review(MINOR_COMMENT)
+    assert env.run().returncode == 0
+    [issue] = _issues(env)
+    first_body = issue["body"]
+
+    kept = MINOR_COMMENT["findings"][0]
+    added = {"severity": "minor", "path": "src/utils/u.py", "line": 1,
+             "rule": "命名", "detail": "親 branch 由来の変更も見直す。"}  # fmt: skip
+    env.set_review({**MINOR_COMMENT, "findings": [kept, added]})
+    env.state["prs"]["7"].update(baseRefName="main", baseRefOid=env.base_sha)
+    assert env.run().returncode == 0
+    assert len(env.agent_calls()) == 2
+
+    [issue] = _issues(env)  # still one issue for the head
+    body = issue["body"]
+    assert body.startswith(first_body.split("\n")[0] + "\n")
+    assert "#issuecomment-1" in body and "#issuecomment-" in body.split("再レビュー")[1]
+    visible = body.split("\n", 2)[2]  # below the marker and data lines
+    assert visible.count("変数名を具体的にする。") == 1  # an already listed finding
+    assert visible.count("親 branch 由来の変更も見直す。") == 1
+    assert body.split("\n")[1].count("親 branch 由来の変更も見直す。") == 1
+    assert "### 再レビューでの追加" in body
+
+    # Re-polls do not touch the issue again.
+    edits = [c for c in env.gh_calls() if c[:2] == ["issue", "edit"]]
+    assert env.run().returncode == 0
+    assert [c for c in env.gh_calls() if c[:2] == ["issue", "edit"]] == edits
+    assert len(edits) == 1
