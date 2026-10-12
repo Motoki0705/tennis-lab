@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -36,6 +37,20 @@ def test_packaged_skill_metadata_and_references() -> None:
 def test_portable_helper_regressions(tmp_path: Path) -> None:
     result = subprocess.run(
         [sys.executable, str(SKILL / "scripts/test_heartbeat.py")],
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        text=True,
+        capture_output=True,
+        timeout=45,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("script_name", ["test_cli_heartbeat.py", "test_adopt_rollout.py"])
+def test_cli_helper_regressions(tmp_path: Path, script_name: str) -> None:
+    result = subprocess.run(
+        [sys.executable, str(SKILL / "scripts" / script_name)],
         cwd=tmp_path,
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         text=True,
