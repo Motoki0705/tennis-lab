@@ -275,10 +275,6 @@ def commit_contained(repo: Path, oid: str, refs: Sequence[str]) -> str | None:
     return None
 
 
-def worktree_gitdir(path: str) -> Path:
-    return Path(git(Path(path), "rev-parse", "--absolute-git-dir").stdout.strip())
-
-
 def common_dir(repo: Path) -> Path:
     return Path(
         git(
@@ -567,25 +563,62 @@ def merge_relation(repo: Path, tip: str, head: str) -> tuple[MergeRelation, int 
 # ----------------------------------------------------------- processes and queue
 
 
+def component_pattern(name: str) -> re.Pattern[str]:
+    """``name`` used as a path component: ``name/...`` or ``.../name``."""
+    n = re.escape(name)
+    return re.compile(rf"(?<![\w.\-]){n}/|/{n}(?![\w.\-])")
+
+
+def token_pattern(name: str) -> re.Pattern[str]:
+    """``name`` as a whole token (not part of a longer name)."""
+    n = re.escape(name)
+    return re.compile(rf"(?<![\w.\-]){n}(?![\w.\-])")
+
+
+def _relative_candidates(word: str) -> list[str]:
+    """Non-empty relative paths in a word: the word itself or a KEY=/--opt= value."""
+    _, sep, value = word.partition("=")
+    return [
+        c for c in ((word, value) if sep else (word,)) if c and not c.startswith("/")
+    ]
+
+
 @dataclass
 class ProcessScan:
     paths: list[tuple[str, str]] = field(
         default_factory=list
     )  # (path, holder description)
-    args: list[tuple[str, str]] = field(
+    argvs: list[tuple[tuple[str, ...], str | None, str]] = field(
         default_factory=list
-    )  # (argv element, holder description)
+    )  # (argv, cwd if readable, holder description)
     unreadable: list[str] = field(default_factory=list)
 
     def refs_for(self, worktree: str) -> list[str]:
+        """Holders whose cwd/root/fd lies in ``worktree`` or whose argv names it.
+
+        argv counts when it contains the absolute path, a relative path that
+        resolves into the worktree from the process's cwd, or (conservatively,
+        since argv may be relative to a directory we cannot see) the worktree's
+        directory name as a path component, e.g. ``.claude/worktrees/<name>/x``.
+        """
+        root = worktree.rstrip("/")
         hits: list[str] = []
-        pattern = re.compile(re.escape(worktree.rstrip("/")) + r"(?![\w.\-])")
+        pattern = re.compile(re.escape(root) + r"(?![\w.\-])")
+        component = component_pattern(os.path.basename(root))
         for target, desc in self.paths:
-            if path_is_within(target, worktree):
+            if path_is_within(target, root):
                 hits.append(desc)
-        for arg, desc in self.args:
-            if pattern.search(arg):
-                hits.append(f"{desc} argv")
+        for argv, cwd, desc in self.argvs:
+            for arg in argv:
+                if pattern.search(arg) or component.search(arg):
+                    hits.append(f"{desc} argv")
+                    break
+                if cwd is not None and any(
+                    path_is_within(os.path.normpath(os.path.join(cwd, c)), root)
+                    for c in _relative_candidates(arg)
+                ):
+                    hits.append(f"{desc} argv (relative to cwd {cwd})")
+                    break
         return sorted(set(hits))
 
 
@@ -610,10 +643,18 @@ def scan_processes(proc_root: Path = Path("/proc")) -> ProcessScan:
             scan.unreadable.append(f"pid {entry.name} (cmdline unreadable)")
             continue
         desc = f"pid {entry.name} [{' '.join(argv)[:80]}]"
-        for arg in argv:
-            scan.args.append((arg, desc))
-        links: list[Path] = [entry / "cwd", entry / "root"]
         hidden: list[str] = []
+        try:
+            cwd: str | None = os.readlink(entry / "cwd").removesuffix(" (deleted)")
+        except (FileNotFoundError, ProcessLookupError):
+            cwd = None
+        except PermissionError:
+            cwd = None
+            hidden.append("cwd")
+        scan.argvs.append((tuple(argv), cwd, desc))
+        if cwd is not None and cwd.startswith("/"):
+            scan.paths.append((cwd, f"{desc} cwd"))
+        links: list[Path] = [entry / "root"]
         try:
             links += sorted((entry / "fd").iterdir())
         except (FileNotFoundError, ProcessLookupError):
@@ -810,12 +851,32 @@ def job_paths(words: Sequence[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(out))
 
 
+_SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh"})
+
+
+def has_nested_code(text: str, words: Sequence[str]) -> bool:
+    """Whether the job runs shell code held in a string (paths there are not resolvable)."""
+    if "$(" in text or "`" in text:
+        return True
+    for i, word in enumerate(words):
+        if word in ("eval", "source"):
+            return True
+        if os.path.basename(word) in _SHELLS:
+            for opt in words[i + 1 :]:
+                if not opt.startswith("-"):
+                    break
+                if "c" in opt.lstrip("-") and not opt.startswith("--"):
+                    return True
+    return False
+
+
 @dataclass(frozen=True)
 class QueueJob:
     label: str
     text: str
     words: tuple[str, ...]  # the job script's shell words, quoting removed
     paths: tuple[str, ...]  # words resolved to absolute paths (see job_paths)
+    nested: bool  # runs code we cannot resolve statically (sh -c, eval, $(...), ...)
 
 
 def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
@@ -847,19 +908,34 @@ def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
             match = re.search(r"^# name: (.*)$", text, flags=re.MULTILINE)
             name = match.group(1).strip() if match else path.name
             jobs.append(
-                QueueJob(label=f"{state}/{name}", text=text, words=words, paths=paths)
+                QueueJob(
+                    label=f"{state}/{name}",
+                    text=text,
+                    words=words,
+                    paths=paths,
+                    nested=has_nested_code(text, words),
+                )
             )
     return jobs
 
 
 def queue_refs_for(jobs: Sequence[QueueJob], worktree: str) -> list[str]:
+    """Jobs that may use ``worktree``.
+
+    Besides exact resolution, any mention of the worktree's directory name as a
+    path component counts, and in jobs with nested shell code (``bash -c``,
+    ``eval``, ``$(...)``) any mention of the name as a word counts.
+    """
     root = worktree.rstrip("/")
     real_root = os.path.realpath(root)
     pattern = re.compile(re.escape(root) + r"(?![\w.\-])")
+    name = os.path.basename(root)
+    component, token = component_pattern(name), token_pattern(name)
     refs: list[str] = []
     for job in jobs:
-        hit = bool(pattern.search(job.text)) or any(
-            pattern.search(w) for w in job.words
+        mention = token if job.nested else component
+        hit = any(
+            pattern.search(t) or mention.search(t) for t in (job.text, *job.words)
         )
         if not hit:
             # Relative words (resolved against the job's cd) and paths spelled
@@ -902,13 +978,19 @@ def _reflog_time(path: Path) -> float | None:
     return float(match.group(1))
 
 
+def commit_time(repo: Path, oid: str) -> float | None:
+    proc = git(repo, "show", "-s", "--format=%ct", oid, ok_codes=(0, 128))
+    return float(proc.stdout.strip()) if proc.returncode == 0 else None
+
+
 def last_activity(
     commit_time: float | None,
     branch: str | None,
     common: Path,
-    wt_gitdir: Path | None,
+    admin_dir: Path | None,
     wt_path: str | None,
-) -> tuple[float, str]:
+) -> tuple[float, str] | None:
+    """Newest activity timestamp and its source, or None when there is none."""
     candidates: list[tuple[float, str]] = []
     if commit_time is not None:
         candidates.append((commit_time, "tip commit date"))
@@ -916,23 +998,19 @@ def last_activity(
         t = _reflog_time(common / "logs" / "refs" / "heads" / branch)
         if t is not None:
             candidates.append((t, "branch reflog"))
-    if wt_gitdir is not None:
-        t = _reflog_time(wt_gitdir / "logs" / "HEAD")
+    if admin_dir is not None:
+        t = _reflog_time(admin_dir / "logs" / "HEAD")
         if t is not None:
             candidates.append((t, "worktree HEAD reflog"))
         for name in ("HEAD", "index"):
-            t = _mtime(wt_gitdir / name)
+            t = _mtime(admin_dir / name)
             if t is not None:
                 candidates.append((t, f"worktree {name} mtime"))
     if wt_path is not None:
         t = _mtime(Path(wt_path))
         if t is not None:
             candidates.append((t, "worktree directory"))
-    if not candidates:
-        raise CleanupError(
-            f"no activity timestamp for branch={branch} worktree={wt_path}"
-        )
-    return max(candidates)
+    return max(candidates) if candidates else None
 
 
 @dataclass(frozen=True)
@@ -965,7 +1043,7 @@ class Entry:
     facts: Facts
     decision: Decision
     prs: list[PrInfo]
-    last_activity: float
+    last_activity: float | None
     activity_source: str
     disk: DiskUsage | None = None
     action: str = "none"
@@ -1056,12 +1134,10 @@ def build_inventory(
     ]
     with ThreadPoolExecutor(max_workers=8) as pool:
         state_jobs = {p: pool.submit(worktree_state, p, cfg) for p in live_paths}
-        gitdir_jobs = {p: pool.submit(worktree_gitdir, p) for p in live_paths}
         disk_jobs = (
             {p: pool.submit(disk_usage, p) for p in live_paths} if measure_disk else {}
         )
         states = {p: f.result() for p, f in state_jobs.items()}
-        gitdirs = {p: f.result() for p, f in gitdir_jobs.items()}
         disks = {p: f.result() for p, f in disk_jobs.items()}
 
     entries: list[Entry] = []
@@ -1102,13 +1178,19 @@ def build_inventory(
         )
 
         live = wt is not None and not wt.is_main and not wt.prunable
-        activity, source = last_activity(
-            br.commit_time if br is not None else None,
+        found = last_activity(
+            br.commit_time if br is not None else commit_time(repo, tip),
             name,
             common,
-            gitdirs.get(wt.path) if live and wt is not None else None,
+            admin_dirs[wt.path] if wt is not None else None,
             wt.path if live and wt is not None else None,
         )
+        activity: float | None = None
+        source = "none"
+        if found is None:
+            undetermined.append("no activity timestamp (commit, reflog or mtime)")
+        else:
+            activity, source = found
         facts = Facts(
             branch=name,
             tip=tip,
@@ -1139,7 +1221,7 @@ def build_inventory(
             closed_prs=tuple(p.number for p in branch_prs if p.state == "CLOSED"),
             merged_prs=tuple(merged),
             ancestor_of=ancestor,
-            idle_hours=max(0.0, (now - activity) / 3600.0),
+            idle_hours=0.0 if activity is None else max(0.0, (now - activity) / 3600.0),
             undetermined=tuple(undetermined),
         )
         entries.append(
@@ -1156,5 +1238,7 @@ def build_inventory(
     return Inventory(repo=repo, entries=entries, warnings=warnings, prs=prs)
 
 
-def iso(ts: float) -> str:
+def iso(ts: float | None) -> str | None:
+    if ts is None:
+        return None
     return datetime.fromtimestamp(ts, tz=UTC).isoformat(timespec="seconds")

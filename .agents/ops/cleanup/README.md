@@ -55,7 +55,9 @@ $PY $C delete 'worktree:/abs/path' --discard-changes   # 未commit変更ごと�
 PR による merge は `min_idle_hours`、祖先関係のみは `stale_days` だけ無更新でなければ
 `recently_active`（承認待ち）になる。前者は merge 直後に作業継続中のセッション、後者は main から
 切ったばかりの空branchを守るため。無更新時間は tip の commit 日時、branch と worktree HEAD の
-reflog 最新エントリ、worktree の `HEAD`/`index` と worktree ディレクトリの mtime の最大値。
+reflog 最新エントリ、worktree の管理ディレクトリ（`.git` / `.git/worktrees/<id>`）の `HEAD`/`index` と
+worktree ディレクトリの mtime の最大値（detached・消失した worktree でも commit 日時と管理ディレクトリを使う）。
+どれも取れなければ `undetermined`（保護）にして `last_activity` は null。
 
 ### 理由コード
 
@@ -69,8 +71,8 @@ reflog 最新エントリ、worktree の `HEAD`/`index` と worktree ディレ�
 | `worktree_missing` | protect | worktree ディレクトリが無い（手で `git worktree prune`） |
 | `branch_in_use` | protect | どこかの worktree の rebase（`rebase-{merge,apply}/head-name`、`rebase-merge/update-refs`）・bisect（`BISECT_START`）が保持中の branch。HEAD が detached なので `git worktree list` には出ない（git の `branch.c` と同じ判定） |
 | `operation_in_progress` | protect | worktree で rebase / am / bisect / merge / cherry-pick / revert / sequencer が進行中 |
-| `process_using_worktree` | protect | `/proc/*/{cwd,root,fd/*}` が配下を指す、または argv に worktree パスを含むプロセスがいる |
-| `queue_job_references` | protect | training queue の `jobs/`（待機中）・`running/`（実行中）の job ファイルが worktree パスを含む。job は `training_queue.sh add` が `printf %q` で書くため、シェルの単語に復号（`\ `・`'...'`・`$'...'`・`"..."`）してから照合する。相対パスの単語（`KEY=`/`--opt=` の値も）は job 内のすべての `cd`/`pushd` 先を基準に解決し、絶対パスは symlink を解決しても照合する。復号できない job、最初の絶対 `cd` より前に相対の単語がある job（旧形式）、展開が必要な `cd` 先を持つ job があれば実行全体を 1 で止める |
+| `process_using_worktree` | protect | `/proc/*/{cwd,root,fd/*}` が配下を指す、または argv が worktree を指すプロセスがいる。argv は絶対パス、プロセスの cwd 基準で配下に解決される相対パス（`KEY=`/`--opt=` の値も）、worktree のディレクトリ名をパス要素として含むもの（`.claude/worktrees/<name>/...`、`.../<name>`。cwd が見えない場合に備えた保守的な一致）のどれでも保護する |
+| `queue_job_references` | protect | training queue の `jobs/`（待機中）・`running/`（実行中）の job ファイルが worktree パスを含む。job は `training_queue.sh add` が `printf %q` で書くため、シェルの単語に復号（`\ `・`'...'`・`$'...'`・`"..."`）してから照合する。相対パスの単語（`KEY=`/`--opt=` の値も）は job 内のすべての `cd`/`pushd` 先を基準に解決し、絶対パスは symlink を解決しても照合する。加えて worktree のディレクトリ名をパス要素として含む job、`bash -c`・`sh -c`・`eval`・`source`・`$(...)`・バッククォートを含む job ではディレクトリ名が単語として現れるだけで保護する（文字列内のコードは解決しない）。復号できない job、最初の絶対 `cd` より前に相対の単語がある job（旧形式）、展開が必要な `cd` 先を持つ job があれば実行全体を 1 で止める |
 | `open_pr` | protect | open PR がある |
 | `undetermined` | protect | 判定不能（理由を表示） |
 | `no_pr` | approval | PR が無く default branch にも含まれない |
@@ -155,7 +157,7 @@ git -C <worktree> apply <discarded_patch>     # --discard-changes で退避し�
     "branch": "name" | null, "tip": "<40 hex>", "worktree": "/abs" | null,
     "reasons": [{"code": "<理由コード>", "kind": "protect|approval|auto|info", "detail": "..."}],
     "prs": [{"number": 1, "state": "OPEN|CLOSED|MERGED", "head_oid": "...", "merged_at": "..." | null, "base_ref": "main"}],
-    "last_activity": "ISO8601", "activity_source": "tip commit date|branch reflog|...",
+    "last_activity": "ISO8601" | null, "activity_source": "tip commit date|branch reflog|...|none",
     "idle_days": 1.5,
     "worktree_state": null | {"dirty_tracked": [], "untracked": [], "ignored": [],
                               "disposable_untracked": [], "disposable_ignored": [], "submodule_populated": []},
@@ -180,7 +182,7 @@ branch が進んでいた場合に削除を拒否できる。
 
 `tests/e2e/agents_ops/test_cleanup.py`：一時repo＋worktree＋fake `gh` で、通常/squash merge 判定、
 未push検出、各保護条件（cwd・open fd・argv・queue 実行中/待機中・実際の `training_queue.sh add` が書く
-空白入りパスや job の cwd 基準の相対パス・lock・保護branch/worktree・current checkout・rebase/bisect 中の branch）、承認削除の途中で
+空白入りパスや job の cwd 基準の相対パス・入れ子のシェルコード・プロセスの cwd 基準の相対 argv・lock・保護branch/worktree・current checkout・rebase/bisect 中の branch・detached な main checkout と消失した detached worktree）、承認削除の途中で
 後続が使用中・更新済み・破棄対象ファイルの内容変更になった場合の拒否、退避 patch の名前衝突、worktree の clean 判定、削除ログと復元、承認削除の tip ガード、ロック、失敗時の非ゼロ終了、
 レポートスキーマ（理由コードがこのREADMEに載っていること）を確認する。
 
