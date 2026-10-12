@@ -10,9 +10,11 @@ import fcntl
 import importlib.util
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -48,6 +50,9 @@ class Lab:
         self.tmp = tmp
         self.repo = tmp / "repo"
         self.wts = tmp / "wts"
+        # Worktree basenames are unique per run: name mentions in any process's argv
+        # protect a worktree, so a concurrent run of this file must not collide.
+        self.uid = uuid.uuid4().hex[:8]
         self.queue = tmp / "queue"
         self.state = tmp / "state"
         self.bin = tmp / "bin"
@@ -82,7 +87,7 @@ class Lab:
         self.config: dict[str, Any] = {
             "protected_branches": ["main", "ai-env/base"],
             "protected_branch_globs": ["keep/*"],
-            "protected_worktree_globs": [str(self.wts / "pinned-*")],
+            "protected_worktree_globs": [str(self.wts / f"{self.uid}-pinned-*")],
             "default_branch_refs": ["refs/heads/main"],
             "stale_days": 14,
             "min_idle_hours": 0,
@@ -139,13 +144,16 @@ class Lab:
     def worktree(
         self, name: str, branch: str | None = None, *, detach: str | None = None
     ) -> Path:
-        path = self.wts / name
+        path = self.wts / self.wt_name(name)
         if detach is not None:
             self.git("worktree", "add", "-q", "--detach", str(path), detach)
         else:
             assert branch is not None
             self.git("worktree", "add", "-q", str(path), branch)
         return path
+
+    def wt_name(self, name: str) -> str:
+        return f"{self.uid}-{name}"
 
     def pr(
         self, branch: str, head: str, state: str = "MERGED", *, cross: bool = False
@@ -439,14 +447,22 @@ def test_protection_conditions(
     ready = lab.tmp / "fd-ready"
     holder = (
         "import sys, time, pathlib\n"
-        "f = open(sys.argv[1] + '/by-fd/README')\n"
+        "f = open(sys.argv[1] + '/' + sys.argv[3] + '/README')\n"
         "pathlib.Path(sys.argv[2]).touch()\n"
         "time.sleep(60)\n"
     )
     # argv names a parent dir so only the open fd can match the worktree path.
     background.append(
         subprocess.Popen(
-            [sys.executable, "-c", holder, str(lab.wts), str(ready)], cwd=lab.tmp
+            [
+                sys.executable,
+                "-c",
+                holder,
+                str(lab.wts),
+                str(ready),
+                lab.wt_name("by-fd"),  # a bare name: neither a path nor a component
+            ],
+            cwd=lab.tmp,
         )
     )
     _wait_ready(ready)
@@ -956,9 +972,11 @@ def test_queue_jobs_written_by_training_queue_sh_protect_paths_with_spaces(
     link = lab.tmp / "wts link"
     link.symlink_to(lab.wts)
     text = _enqueue(
-        lab, "python train.py", by_link, "via-link", pwd=link / "queued link"
+        lab, "python train.py", by_link, "via-link", pwd=link / by_link.name
     )
-    assert "wts\\ link/queued\\ link" in text  # logical $PWD through the symlink
+    assert (
+        f"wts\\ link/{lab.uid}-queued\\ link" in text
+    )  # logical $PWD through the symlink
 
     entries = lab.scan()
     for entry_id, job in (
@@ -993,27 +1011,33 @@ def test_unparsable_queue_job_stops_the_run(lab: Lab, body: str) -> None:
     assert proc.returncode == 1 and "cannot parse training-queue job" in proc.stderr
 
 
-def test_queue_job_relative_references_resolve_against_job_cwd(lab: Lab) -> None:
-    def merged_in_repo(branch: str) -> Path:
-        tip = lab.branch(branch)
-        lab.pr(branch, tip)
-        path = lab.repo / ".claude/worktrees" / branch.split("/", 1)[1]
-        lab.git("worktree", "add", "-q", str(path), branch)
-        return path
+def _merged_in_repo(lab: Lab, branch: str) -> Path:
+    """A PR-merged branch checked out at ``<repo>/.claude/worktrees/<name>``."""
+    tip = lab.branch(branch)
+    lab.pr(branch, tip)
+    path = lab.repo / ".claude/worktrees" / lab.wt_name(branch.split("/", 1)[1])
+    lab.git("worktree", "add", "-q", str(path), branch)
+    return path
 
-    feature = merged_in_repo("feat/feature")
-    other = merged_in_repo("feat/other")
-    lookalike = merged_in_repo("feat/feature-x")
+
+def test_queue_job_relative_references_resolve_against_job_cwd(lab: Lab) -> None:
+    feature = _merged_in_repo(lab, "feat/feature")
+    other = _merged_in_repo(lab, "feat/other")
+    lookalike = _merged_in_repo(lab, "feat/feature-x")
 
     # Enqueued from the main checkout; the worktree appears only as a relative path.
     text = _enqueue(
-        lab, "python .claude/worktrees/feature/scripts/train.py", lab.repo, "rel"
+        lab,
+        f"python .claude/worktrees/{feature.name}/scripts/train.py",
+        lab.repo,
+        "rel",
     )
     assert str(feature) not in text
     # A cd inside the command moves the base directory.
     text = _enqueue(
         lab,
-        "cd .claude/worktrees && python other/train.py --cfg=feature-x-y/a.yaml",
+        f"cd .claude/worktrees && python {other.name}/train.py"
+        f" --cfg={lookalike.name}-y/a.yaml",
         lab.repo,
         "rel-cd",
     )
@@ -1138,3 +1162,94 @@ def test_approved_discard_refuses_when_discarded_content_changes(
     refused = {e["id"]: e for e in lab.report()["entries"]}["branch:feat/two"]
     assert refused["action"] == "refused", refused
     assert f"local files changed: {target}" in refused["action_error"]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "bash -c 'python .claude/worktrees/{foo}/train.py && cd .claude/worktrees; cd {bar}; python t.py'",
+        'sh -lc "python .claude/worktrees/{foo}/train.py; cd .claude/worktrees && cd {bar}"',
+        "eval 'python .claude/worktrees/{foo}/train.py; cd .claude/worktrees; cd {bar}'",
+        "python .claude/worktrees/{foo}/train.py --dir $(cd .claude/worktrees && cd {bar} && pwd)",
+    ],
+)
+def test_queue_job_with_nested_shell_code_protects_mentioned_worktrees(
+    lab: Lab, command: str
+) -> None:
+    foo = _merged_in_repo(lab, "feat/foo")
+    bar = _merged_in_repo(
+        lab, "feat/bar"
+    )  # named only as a bare word inside the string
+    lookalike = _merged_in_repo(lab, "feat/bar-x")
+    command = command.format(foo=foo.name, bar=bar.name)
+    _enqueue(lab, f"cd {lab.repo}; {command}", lab.repo, "nested")
+
+    entries = lab.scan()
+    for entry_id in ("branch:feat/foo", "branch:feat/bar"):
+        e = entries[entry_id]
+        assert e["category"] == "protected", (entry_id, e["reasons"])
+        assert "queue_job_references" in codes(e)
+    assert entries["branch:feat/bar-x"]["category"] == "auto_delete"
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert foo.exists() and bar.exists() and not lookalike.exists()
+
+
+def test_process_argv_relative_to_its_cwd_protects_worktree(
+    lab: Lab, background: list[subprocess.Popen[bytes]]
+) -> None:
+    by_fragment = _merged_in_repo(lab, "feat/proc-frag")
+    by_cwd = _merged_in_repo(lab, "feat/proc-rel")
+    lookalike = _merged_in_repo(lab, "feat/proc-rel-x")
+    sleeper = "import time; time.sleep(60)"
+    # Started from the main checkout; no fd stays open in the worktree.
+    background.append(
+        subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                sleeper,
+                f".claude/worktrees/{by_fragment.name}/t.py",
+            ],
+            cwd=lab.repo,
+        )
+    )
+    # Neither the absolute path nor the name as a path component: only resolving
+    # the argument against the process's cwd finds the worktree.
+    background.append(
+        subprocess.Popen(
+            [sys.executable, "-c", sleeper, f"--dir={by_cwd.name}"],
+            cwd=lab.repo / ".claude/worktrees",
+        )
+    )
+    entries = lab.scan()
+    frag = entries["branch:feat/proc-frag"]
+    assert frag["category"] == "protected" and "process_using_worktree" in codes(frag)
+    rel = entries["branch:feat/proc-rel"]
+    assert rel["category"] == "protected" and "process_using_worktree" in codes(rel)
+    assert "relative to cwd" in str(rel["reasons"])
+    assert entries["branch:feat/proc-rel-x"]["category"] == "auto_delete"
+
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert by_fragment.exists() and by_cwd.exists() and not lookalike.exists()
+
+
+def test_detached_main_and_missing_detached_worktree_do_not_crash(lab: Lab) -> None:
+    head = lab.branch("feat/gone")
+    lab.git("branch", "-D", "feat/gone")
+    gone = lab.worktree("gone", detach=head)
+    shutil.rmtree(gone)  # now prunable
+    lab.git("checkout", "-q", "--detach")  # main checkout on a detached HEAD
+
+    entries = lab.scan()
+    main = entries[f"worktree:{lab.repo}"]
+    assert main["category"] == "protected" and "main_worktree" in codes(main)
+    assert main["last_activity"] is not None
+    missing = entries[f"worktree:{gone}"]
+    assert missing["category"] == "protected" and "worktree_missing" in codes(missing)
+    assert missing["last_activity"] is not None
+
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert str(gone) in lab.git("worktree", "list")  # left for a manual prune
