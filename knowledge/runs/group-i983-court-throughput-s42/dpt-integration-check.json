@@ -1,0 +1,38 @@
+{
+  "legacy_commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "scope": "CPU compatibility check during latest-main integration; scientific Colab runs remain pinned to legacy commit.",
+  "shared_dpt_sha256": "31f971642ce4fcaf5ea4ebb2581d7766161dcfdff546b86de304194c2d2e6c50",
+  "court_model_sha256": "f5336a0e78b93cc27814c3a128f50501cda2c0d2215b11a80210033fcc6a6bc3",
+  "unchanged_wise_block_source": true,
+  "checks": [
+    {
+      "encoder_channels": [
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "decoder_channels": 512,
+      "state_dict_keys": 252,
+      "parameters": 25284608,
+      "same_initial_tensors": true,
+      "strict_load": true
+    },
+    {
+      "encoder_channels": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "decoder_channels": 8,
+      "state_dict_keys": 252,
+      "parameters": 7744,
+      "same_initial_tensors": true,
+      "strict_load": true,
+      "same_forward": true,
+      "same_input_gradients": true,
+      "same_parameter_gradients": true
+    }
+  ]
+}

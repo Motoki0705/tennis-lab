@@ -18,6 +18,7 @@ from src.tasks.ball_detection.data.store import (
     BallFrameStore,
 )
 from src.tasks.ball_detection.generate_dataset.frame_store.builder import build_dataset
+from src.utils.paths import PROJECT_ROOT
 from tests.support.tasks.ball_detection.frame_sources import (
     CHAT_SOURCE,
     MEIJI_SOURCE,
@@ -212,7 +213,7 @@ def test_shipped_config_composes_into_a_strict_build_config() -> None:
         FrameStoreBuildConfig,
     )
 
-    configs = Path(__file__).resolve().parents[5] / "src" / "tasks" / "ball_detection" / "configs"
+    configs = PROJECT_ROOT / "src" / "tasks" / "ball_detection" / "configs"
     with initialize_config_dir(config_dir=str(configs), version_base="1.3"):
         raw = compose("generate_dataset")
     container = OmegaConf.to_container(raw, resolve=False)

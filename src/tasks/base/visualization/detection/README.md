@@ -9,7 +9,7 @@ repoのPython環境から、次のmoduleを実行します。既定のproject ro
 | Task | Dataset Review | Inference | Ports |
 |---|---|---|---|
 | Court | `src.tasks.court_detection.scripts.review_dataset` | `src.tasks.court_detection.scripts.inference_ui` | 8774 / 8775 |
-| Ball | `src.tasks.ball_detection.scripts.review_dataset` | `src.tasks.ball_detection.scripts.inference_ui` | 8776 / 8777 |
+| Ball | `src.tasks.ball_detection.scripts.review --mode dataset` | `src.tasks.ball_detection.scripts.review --mode inference` | 8776 / 8777 |
 
 コピー可能なコマンドは[Court利用ガイド](../../../court_detection/visualization/README.md)・[Ball利用ガイド](../../../ball_detection/visualization/README.md)を参照してください。
 

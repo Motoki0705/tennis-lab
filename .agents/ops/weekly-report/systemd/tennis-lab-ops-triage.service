@@ -1,0 +1,11 @@
+[Unit]
+Description=tennis-lab ops report triage: checked proposals -> ai-proposed issues (issue #1057)
+Documentation=file://%h/projects/tennis-lab/.agents/ops/weekly-report/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-%h/.config/tennis-lab-agents/weekly-report.env
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/weekly-report/weekly_report.py triage
+TimeoutStartSec=15min

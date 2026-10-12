@@ -1,0 +1,16 @@
+{
+  "run_id": "1791594512988227844_2629034_i1050-convnext-v2-resume-e7-blocking-20261010",
+  "name": "i1050-convnext-v2-resume-e7-blocking-20261010",
+  "command": "env CUDA_LAUNCH_BLOCKING=1 CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 PYTHONUNBUFFERED=1 /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-serial-20261009/.venv/bin/python -m src.tasks.ball_detection.scripts.pretrain_mdd_dpt --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json --model-config /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-serial-20261009/src/tasks/ball_detection/configs/model/mdd_dpt_convnext_v2.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v2-serial --epochs 10 --windows-per-epoch 6000 --learning-rate 0.0002 --warmup-updates 500 --seed 42 --device cuda --precision bf16 --batch-size 1 --num-workers 8 --prefetch-factor 4 --cpu-threads 2 --pin-memory --jpeg-decoder nvjpeg --input-verification upfront --compile-mode default --selection-scope common --sigma-ratio 0.012 --focal-gamma 2.0 --log-every 50 --preview-clips 3 --resume /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v2-serial/epoch-006.pt",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "1050",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "5f8746b49cee4af6f5c4155105c259893ff32c1e",
+  "branch": "HEAD",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-serial-20261009",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-serial-20261009",
+  "captured_at": "2026-10-10T10:08:33+09:00"
+}

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.ball_detection.inference.checkpoint import (
+from src.tasks.ball_detection.checkpoints.heatmap import (
     BallInferenceCheckpointError,
     load_ball_checkpoint,
 )

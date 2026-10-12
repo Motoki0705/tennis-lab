@@ -1,4 +1,4 @@
-"""Exercise the portable scheduling helper without touching a real scheduler."""
+"""Exercise the CLI follow-up helper without touching a real scheduler or queue."""
 
 from __future__ import annotations
 
@@ -32,19 +32,6 @@ def test_packaged_skill_metadata_and_references() -> None:
     ui = yaml.safe_load((SKILL / "agents/openai.yaml").read_text(encoding="utf-8"))
     assert f"${SKILL.name}" in ui["interface"]["default_prompt"]
     assert 25 <= len(ui["interface"]["short_description"]) <= 64
-
-
-def test_portable_helper_regressions(tmp_path: Path) -> None:
-    result = subprocess.run(
-        [sys.executable, str(SKILL / "scripts/test_heartbeat.py")],
-        cwd=tmp_path,
-        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
-        text=True,
-        capture_output=True,
-        timeout=45,
-        check=False,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
 
 
 @pytest.mark.parametrize("script_name", ["test_cli_heartbeat.py", "test_adopt_rollout.py"])

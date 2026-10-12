@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from src.utils.configuration.inventory import BoundaryKind
@@ -23,6 +23,81 @@ class DiscoveredRuntimeBoundary:
     validator_key: str | None
     validator_callable: str | None
     subprocess_invokers: tuple[str, ...] = ()
+    routes: tuple[tuple[str, str, str], ...] = ()
+    delegated_boundaries: tuple[tuple[str, str, str, str], ...] = ()
+
+
+CLI_DISPATCH = "src.utils.configuration.cli.dispatch_cli"
+
+
+def _cli_routes(tree: ast.Module, function: ast.AST) -> tuple[tuple[str, str, str], ...] | None:
+    """Only literal, nonempty route maps are auditable; never execute imports."""
+    imports = {
+        alias.asname or alias.name: f"{statement.module}.{alias.name}"
+        for statement in tree.body if isinstance(statement, ast.ImportFrom)
+        for alias in statement.names
+    }
+    calls = [node for node in ast.walk(function) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name) and imports.get(node.func.id) == CLI_DISPATCH]
+    if not calls:
+        return None
+    if len(calls) != 1 or len(calls[0].args) < 2:
+        return ()
+    selector, mapping = calls[0].args[:2]
+    if not isinstance(selector, ast.Constant) or not isinstance(selector.value, str) or not selector.value:
+        return ()
+    if not isinstance(mapping, ast.Dict) or not mapping.keys:
+        return ()
+    routes: list[tuple[str, str, str]] = []
+    for key, value in zip(mapping.keys, mapping.values, strict=True):
+        if not isinstance(key, ast.Constant) or not isinstance(value, ast.Constant):
+            return ()
+        if not isinstance(key.value, str) or not key.value or not isinstance(value.value, str) or not value.value:
+            return ()
+        routes.append((selector.value, key.value, value.value))
+    if len({choice for _, choice, _ in routes}) != len(routes):
+        return ()
+    return tuple(sorted(routes))
+
+
+def _bind_cli_routes(trees: Mapping[str, ast.Module], discovered: dict[tuple[str, str], DiscoveredRuntimeBoundary]) -> None:
+    routes: dict[tuple[str, str], tuple[tuple[str, str, str], ...]] = {}
+    for module, tree in trees.items():
+        for function in tree.body:
+            if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                choices = _cli_routes(tree, function)
+                if choices is not None:
+                    routes[module, function.name] = choices
+
+    def leaves(key: tuple[str, str], seen: frozenset[tuple[str, str]]) -> tuple[tuple[str, str, str, str], ...] | None:
+        if key in seen:
+            return None
+        if key not in routes:
+            boundary = discovered.get(key)
+            if boundary is None or boundary.validator_key is None or boundary.validator_callable is None:
+                return None
+            return ((key[0], key[1], boundary.validator_key, boundary.validator_callable),)
+        if not routes[key]:
+            return None
+        result: set[tuple[str, str, str, str]] = set()
+        for _, _, target in routes[key]:
+            module = target if target in trees else f"{target}.__init__"
+            child = leaves((module, "main"), seen | {key})
+            if child is None:
+                return None
+            result.update(child)
+        return tuple(sorted(result))
+
+    for key, choices in routes.items():
+        terminal = leaves(key, frozenset())
+        previous = discovered.get(key)
+        if previous is None:
+            previous = DiscoveredRuntimeBoundary(key[0], key[1], BoundaryKind.CALLABLE,
+                _has_executable_edge(trees[key[0]]), None, None)
+        discovered[key] = replace(previous, kind=BoundaryKind.CALLABLE, routes=choices,
+            validator_key=f"{key[0]}.{key[1]}.routes" if terminal else None,
+            validator_callable=CLI_DISPATCH if terminal else None,
+            delegated_boundaries=terminal or ())
 
 
 def source_module_name(source_root: Path, path: Path) -> str:
@@ -323,6 +398,7 @@ def discover_runtime_boundaries(
             function
             for function in functions.values()
             if _contains_named_call(function, "ArgumentParser")
+            and f"{module}.{function.name}" != CLI_DISPATCH
         )
         path_validation_functions = tuple(
             function
@@ -467,4 +543,5 @@ def discover_runtime_boundaries(
                         sorted(subprocess_invokers.get(module, ()))
                     ),
                 )
+    _bind_cli_routes(trees, discovered)
     return tuple(sorted(discovered.values()))

@@ -1,0 +1,165 @@
+diff --git a/src/tasks/ball_detection/training/coordinate_images.py b/src/tasks/ball_detection/training/coordinate_images.py
+index 90992d69b..8dab2fbf4 100644
+--- a/src/tasks/ball_detection/training/coordinate_images.py
++++ b/src/tasks/ball_detection/training/coordinate_images.py
+@@ -80,6 +80,11 @@ def decode_coordinate_jpegs(batch: dict[str, Any], device: torch.device) -> Tens
+             or packed.ndim != 1 or sum(lengths) != packed.numel()
+             or len(shape) != 5 or shape[1:3] != (32, 3) or len(lengths) != shape[0] * 32):
+         raise ValueError("Expected CPU packed JPEGs with declared B,32,3,H,W")
++    # torchvision 0.28 allocates outputs on the caller stream but writes them
++    # on an internal nvJPEG stream. Complete prior caller work before those
++    # storage blocks can be reused by that internal stream (e.g. prior stack).
++    # This fences only image preparation; the model's other stream can run.
++    torch.cuda.current_stream(device).synchronize()
+     images = decode_jpeg(list(packed.split(lengths)), mode=ImageReadMode.RGB, device=device,
+                          apply_exif_orientation=False)
+     if any(tuple(image.shape) != shape[2:] or image.dtype != torch.uint8 for image in images):
+diff --git a/src/tasks/ball_detection/training/coordinate_runtime.py b/src/tasks/ball_detection/training/coordinate_runtime.py
+index 91ffc659c..febb0fa8d 100644
+--- a/src/tasks/ball_detection/training/coordinate_runtime.py
++++ b/src/tasks/ball_detection/training/coordinate_runtime.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ import json
+ import time
++from collections.abc import Iterable
+ from dataclasses import dataclass
+ from typing import Any
+ 
+@@ -81,7 +82,7 @@ class CoordinateRuntime:
+         compile_coordinate_model(model, mode=self.compile_mode, recompile_limit=self.compile_recompile_limit)
+ 
+     def loader(self, dataset: CoordinateWindowDataset, *, batch_size: int,
+-               sampler: Sampler[int] | None = None, seed: int = 0) -> DataLoader[Any]:
++               sampler: Sampler[int] | Iterable[int] | None = None, seed: int = 0) -> DataLoader[Any]:
+         if batch_size < 1:
+             raise ValueError("Batch size must be positive")
+         if dataset.jpeg_decoder != self.jpeg_decoder:
+diff --git a/tests/benchmarks/ball_jpeg_prefetch_check.py b/tests/benchmarks/ball_jpeg_prefetch_check.py
+index 15d107cb0..23eedfd34 100644
+--- a/tests/benchmarks/ball_jpeg_prefetch_check.py
++++ b/tests/benchmarks/ball_jpeg_prefetch_check.py
+@@ -10,6 +10,7 @@ from pathlib import Path
+ from typing import Any
+ 
+ import torch
++import torchvision.io as image_io
+ from torchvision.io import ImageReadMode, decode_jpeg
+ 
+ from src.tasks.ball_detection.data.coordinate_dataset import (
+@@ -23,6 +24,7 @@ def main() -> None:
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--manifest", type=Path, required=True)
+     parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--delay-producer", action="store_true")
+     args = parser.parse_args()
+     if args.output.exists():
+         raise ValueError("Choose a fresh output")
+@@ -37,6 +39,17 @@ def main() -> None:
+     device = torch.device("cuda")
+     references = [torch.stack(decode_jpeg(list(b["jpeg"].split(b["jpeg_lengths"])),
+                     mode=ImageReadMode.RGB, device=device)).view(b["image_shape"]) for b in batches]
++    if args.delay_producer:
++        original_decode = image_io.decode_jpeg
++
++        def delayed_decode(*positional: Any, **keywords: Any) -> Any:
++            result = original_decode(*positional, **keywords)
++            # Keep caller-stream stack outstanding while the following decode
++            # could otherwise reuse its intermediate output storage.
++            torch.cuda._sleep(10_000_000)
++            return result
++
++        image_io.decode_jpeg = delayed_decode
+     for original, expected, decoded in zip(batches, references,
+                                           coordinate_batches(batches, device, prefetch=True), strict=True):
+         torch.testing.assert_close(decoded["rgb"], expected, rtol=0, atol=0)
+@@ -62,7 +75,8 @@ def main() -> None:
+     result = dict(status="ok", windows=len(indices), batch_sizes=[len(b["clip_id"]) for b in batches],
+                   sources=sorted({source for source, _ in selected}), frame_steps=[1, 2, 4],
+                   rgb_bit_identical=True, teachers_and_order_unchanged=True,
+-                  reader_error_propagated=True, early_exit_joined=True)
++                  reader_error_propagated=True, early_exit_joined=True,
++                  delayed_producer=args.delay_producer)
+     args.output.parent.mkdir(parents=True, exist_ok=True)
+     args.output.write_text(json.dumps(result, indent=2) + "\n")
+     print(json.dumps(result), flush=True)
+diff --git a/tests/benchmarks/ball_mdd_query_gpu.py b/tests/benchmarks/ball_mdd_query_gpu.py
+index 16b454a25..1e1245af8 100644
+--- a/tests/benchmarks/ball_mdd_query_gpu.py
++++ b/tests/benchmarks/ball_mdd_query_gpu.py
+@@ -65,13 +65,14 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
+     torch.backends.cuda.matmul.allow_tf32 = False
+     torch.backends.cudnn.allow_tf32 = True
+     device = torch.device("cuda")
+-    torch.cuda.set_per_process_memory_fraction(.9)
++    if args.allocator_fraction is not None:
++        torch.cuda.set_per_process_memory_fraction(args.allocator_fraction)
+     properties = torch.cuda.get_device_properties(device)
+     if args.precision == "bf16" and not torch.cuda.is_bf16_supported():
+         raise ValueError("BF16 is not supported; no precision fallback")
+     report["hardware"] = dict(gpu=properties.name, total_bytes=properties.total_memory,
+                               cuda=torch.version.cuda, torch=str(torch.__version__),
+-                              python=platform.python_version(), memory_fraction_limit=.9,
++                              python=platform.python_version(), memory_fraction_limit=args.allocator_fraction,
+                               free_before_bytes=torch.cuda.mem_get_info()[0])
+     config = MDDPoseConfig.load(args.model_config)
+     if config.compression != "conv2d" or config.readout != "query_only":
+@@ -102,8 +103,8 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
+         batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+         iterator = iter([batch] * total)
+     else:
+-        sampler = FPSMixSampler(dataset, windows_per_epoch=total * args.batch_size, seed=42)
+-        sequence = list(sampler)
++        sampler = FPSMixSampler(dataset, windows_per_epoch=args.sampler_windows or total * args.batch_size, seed=42)
++        sequence = list(sampler)[:total * args.batch_size]
+         report["window_sequence_sha256"] = hashlib.sha256(json.dumps(sequence).encode()).hexdigest()
+         before = time.perf_counter()
+         if args.preverify:
+@@ -131,7 +132,7 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
+                 batches = [{k: v.pin_memory() if isinstance(v, torch.Tensor) else v for k, v in b.items()} for b in batches]
+             iterator = iter(batches)
+         else:
+-            loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sampler, seed=42)
++            loader = runtime.loader(dataset, batch_size=args.batch_size, sampler=sequence, seed=42)
+             iterator = iter(loader)
+         report["input_setup_seconds"] = time.perf_counter() - before
+     ready_batches = coordinate_batches(iterator, device, prefetch=args.image_prefetch)
+@@ -143,10 +144,12 @@ def measure(args: argparse.Namespace, report: dict[str, Any],
+         batch = next(ready_batches)
+         loaded = time.perf_counter()
+         loss, grad = coordinate_train_step(model, optimizer, batch, device, runtime)
+-        torch.cuda.synchronize()
++        if args.synchronize_steps:
++            torch.cuda.synchronize()
++        loss_value, grad_value = float(loss), float(grad)
+         elapsed = time.perf_counter() - begin
+         row = dict(step=step, warmup=step < args.warmup, seconds=elapsed,
+-                   load_wait_seconds=loaded - begin, loss=float(loss.detach()), grad_norm=float(grad))
++                   load_wait_seconds=loaded - begin, loss=loss_value, grad_norm=grad_value)
+         row["reader_wait_seconds"] = batch["_reader_wait_seconds"] if args.image_prefetch else loaded - begin
+         if args.image_prefetch:
+             row["image_prepare_seconds"] = batch["_image_prepare_seconds"]
+@@ -192,6 +195,9 @@ def main() -> None:
+     parser.add_argument("--image-prefetch", action="store_true")
+     parser.add_argument("--prefetch-factor", type=int, default=1)
+     parser.add_argument("--drop-file-cache", action="store_true", help="Request eviction of clean selected-file pages after verification")
++    parser.add_argument("--sampler-windows", type=int, help="Use a prefix of this production epoch's sampler")
++    parser.add_argument("--synchronize-steps", action=argparse.BooleanOptionalAction, default=True)
++    parser.add_argument("--allocator-fraction", type=float, default=None)
+     parser.add_argument("--workers", type=int, default=0)
+     parser.add_argument("--pin-memory", action="store_true")
+     parser.add_argument("--cpu-threads", type=int, default=2)
+diff --git a/tests/benchmarks/ball_reader_sweep.py b/tests/benchmarks/ball_reader_sweep.py
+index febc35b3e..1f4f7b46b 100644
+--- a/tests/benchmarks/ball_reader_sweep.py
++++ b/tests/benchmarks/ball_reader_sweep.py
+@@ -62,7 +62,8 @@ def main() -> None:
+         options = argparse.Namespace(manifest=args.manifest, model_config=args.model_config, mode=mode,
+             workers=workers, batch_size=batch, pin_memory=True, precision="bf16", compile_mode="default",
+             cpu_threads=2, jpeg_decoder="nvjpeg", prefetch_factor=factor, image_prefetch=prefetch,
+-            preverify=False, drop_file_cache=args.io_stress and mode == "pipeline", warmup=12//batch, steps=(args.windows-12)//batch)
++            preverify=False, sampler_windows=None, synchronize_steps=True, allocator_fraction=.9,
++            drop_file_cache=args.io_stress and mode == "pipeline", warmup=12//batch, steps=(args.windows-12)//batch)
+         report: dict[str, Any] = dict(condition=name, arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(options).items()},
+                                     verification_shared=True, counters_reset_per_case=True)
+         print(json.dumps(dict(phase="condition_start", condition=name)), flush=True)

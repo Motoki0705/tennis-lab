@@ -6,7 +6,7 @@ import argparse
 import math
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -33,7 +33,7 @@ def read_cache(path: Path) -> dict[str, Any]:
         )
     from .configuration import json_object
 
-    return json_object(path)
+    return cast(dict[str, Any], json_object(path))
 
 
 class BallModel:
@@ -43,7 +43,7 @@ class BallModel:
     def __init__(self, threads: int = 2, device: str = "cpu") -> None:
         import torch
 
-        from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
+        from src.tasks.ball_detection.checkpoints.heatmap import load_ball_checkpoint
         from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
 
         self.torch = torch
