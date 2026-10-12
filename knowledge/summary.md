@@ -1,7 +1,7 @@
-<!-- knowledge-review: 4228e8281d3e89817f06cecb6f5124f4cb341dd746c4e6baaf509dbc3de8f812 on 2026-10-12 -->
+<!-- knowledge-review: 6f563d23048bf60e0aa44e6ca52a73f74e7919a4f8c2f6abee9c154b1a6ca654 on 2026-10-12 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-12（Court #983のS+正式評価と速度診断を追記。4条件比較は継続中）
+更新日: 2026-10-12（Court #983のS+正式評価・速度診断とB学習開始を記録。4条件比較は継続中）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -430,7 +430,7 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Court Detection
 
-2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)を経て、[ViT-L](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)、[ViT-S](nodes/court_detection/000038-run-i983-court-dinov3-s-s42.md)、[ViT-S+](nodes/court_detection/000039-run-i983-court-dinov3-splus-s42.md)の20epoch学習・最小validation loss checkpoint評価を完了した。同じ合成test886件・実画像val2211件と共通後段条件を照合済み。Sはdense KP平均距離がLより小さい一方、1画像の深度無効な2点がpose再投影誤差総和の91.65%を占め、全点平均184.28pxとなった。点別診断を添え、外れ値を除いて正式指標を置き換えない。Lのcheckpoint再開に伴うRNG/sampler継続の制約と、実画像valが選択データを兼ねる点も保持する。Sの学習前dtype検査障害は、演算を変えないautocast guard修正で解消した。Bを含む4条件比較は未完了で、既存の品質・採用判断は変更しない。S+は選択epoch17でpose再投影平均14.26px・無効depth0となり、L/Sと同じ評価条件を照合した。[速度の切り分け](nodes/court_detection/000042-group-i983-court-throughput-s42.md)では入力のVM内配置を確認し、S+のbatch8→16はOOMなく動く一方、画像/秒の改善は約3%だった。32stepの入力待ちは小さく、共通後段の計算が時間の多くを占めた。学習中の指標計算を主因とする仮説は実測の約4.5%から支持せず、保存と終端予測出力にも改善候補を残す。本学習条件は維持し、次はBと4条件の固定画像比較を揃える。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
+2026-10-10の[#983 L4 preflight](nodes/court_detection/000036-run-i983-court-l512-profile-s42.md)を経て、[ViT-L](nodes/court_detection/000037-run-i983-court-dinov3-l-s42.md)、[ViT-S](nodes/court_detection/000038-run-i983-court-dinov3-s-s42.md)、[ViT-S+](nodes/court_detection/000039-run-i983-court-dinov3-splus-s42.md)の20epoch学習・最小validation loss checkpoint評価を完了した。同じ合成test886件・実画像val2211件と共通後段条件を照合済み。Sはdense KP平均距離がLより小さい一方、1画像の深度無効な2点がpose再投影誤差総和の91.65%を占め、全点平均184.28pxとなった。点別診断を添え、外れ値を除いて正式指標を置き換えない。Lのcheckpoint再開に伴うRNG/sampler継続の制約と、実画像valが選択データを兼ねる点も保持する。Sの学習前dtype検査障害は、演算を変えないautocast guard修正で解消した。Bを含む4条件比較は未完了で、既存の品質・採用判断は変更しない。S+は選択epoch17でpose再投影平均14.26px・無効depth0となり、L/Sと同じ評価条件を照合した。[速度の切り分け](nodes/court_detection/000042-group-i983-court-throughput-s42.md)では入力のVM内配置を確認し、S+のbatch8→16はOOMなく動く一方、画像/秒の改善は約3%だった。32stepの入力待ちは小さく、共通後段の計算が時間の多くを占めた。学習中の指標計算を主因とする仮説は実測の約4.5%から支持せず、保存と終端予測出力にも改善候補を残す。本学習条件は維持し、[Bの同条件学習](nodes/court_detection/000043-run-i983-court-dinov3-b-s42.md)をL4で開始した。準備から学習を連続実行し、現在は進行中である。次はBの最良checkpoint評価と4条件の固定画像比較を揃える。過去LoRA Bの異なる条件を今回のbaselineへ流用しない。
 
 2026-10-08の[pose checkpointの定性保存確認](nodes/court_detection/000035-run-i1031-court-ckpt-qualitative-20261008b.md)では、合成・実画像2 sampleから4 dense headのPNG計8枚とTensorBoard出力を実GPUで確認した。固定batch選択の設定契約不一致も修正した。保存済みschemaと重みを維持した機能確認であり、既存の品質・採用判断は変更しない。合成斜視の点集中・線種分断の観察を全体精度やpose推定品質へ一般化しない。
 
