@@ -85,9 +85,7 @@ def _wait_group_gone(proc: subprocess.Popen[str], pgid: int, seconds: float) -> 
         time.sleep(0.1)
 
 
-def _terminate_group(
-    proc: subprocess.Popen[str], pgid: int, grace: float
-) -> list[int]:
+def _terminate_group(proc: subprocess.Popen[str], pgid: int, grace: float) -> list[int]:
     """Stop every process in ``pgid`` (TERM, then KILL), reap the leader, and return
     the PIDs that were still alive. Raises if anything survives SIGKILL."""
     alive = _live_group_members(pgid)

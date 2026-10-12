@@ -125,7 +125,8 @@ base branch が先へ進んだだけなら merge-base と diff は変わらな�
 再レビューされたときは、その issue に新しいレビューへのリンクと未掲載の指摘だけを追記する（本文 2 行目の
 `<!-- agent-review-followup-data:v1 ... -->` に掲載済みのレビューと指摘を持ち、指摘は内容が同じものを重複させない。
 2 行目が無い issue はエラー）。gate コメントに issue へのリンクを載せる。
-dry-run では起票しない。
+dry-run では起票しない。起票された追補 issue は [`../followup/`](../followup/README.md) が定期的に処理する
+（このマーカーと 2 行目のデータ行がその入力になる）。
 
 ### request_changes の連続（エスカレーション）
 
