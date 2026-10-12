@@ -62,6 +62,7 @@ class RuntimeBoundary:
     optional_policy: str
     default_authority: str
     precedence_authority: str
+    routes: tuple[tuple[str, str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,12 +145,12 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
     "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
-    "src.tasks.ball_detection.scripts.eval": "ball.eval",
-    "src.tasks.ball_detection.scripts.evaluate_manifest": "ball.evaluate_manifest",
+    "src.tasks.ball_detection.evaluation.heatmap_cli": "ball.eval",
+    "src.tasks.ball_detection.evaluation.manifest_cli": "ball.evaluate_manifest",
     "src.tasks.ball_detection.scripts.generate_dataset": "ball_detection.generate_dataset",
-    "src.tasks.ball_detection.scripts.preview_augmentation": "ball.preview",
-    "src.tasks.ball_detection.scripts.preview_heatmaps": "ball.preview",
-    "src.tasks.ball_detection.scripts.train": "ball.train",
+    "src.tasks.ball_detection.visualization.preview.spatial": "ball.preview",
+    "src.tasks.ball_detection.visualization.preview.heatmaps": "ball.preview",
+    "src.tasks.ball_detection.training.convnext_heatmap.cli": "ball.train",
     "src.tasks.ball_detection.scripts.visualize": "ball.visualize",
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.train": "court_detection.train",
@@ -197,12 +198,12 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "src.synthetic_data_generation.visualization.publication.configuration.validate_publication_boundary",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary",
     "src.synthetic_data_generation.scripts.visualize_dataset": "src.synthetic_data_generation.visualization.configuration.validate_dataset_visualization_boundary",
-    "src.tasks.ball_detection.scripts.eval": "src.tasks.ball_detection.configuration.validate_eval",
-    "src.tasks.ball_detection.scripts.evaluate_manifest": "src.tasks.ball_detection.configuration.validate_manifest_boundary",
+    "src.tasks.ball_detection.evaluation.heatmap_cli": "src.tasks.ball_detection.configuration.validate_eval",
+    "src.tasks.ball_detection.evaluation.manifest_cli": "src.tasks.ball_detection.configuration.validate_manifest_boundary",
     "src.tasks.ball_detection.scripts.generate_dataset": "src.tasks.ball_detection.generate_dataset.frame_store.config.validate_generate_boundary",
-    "src.tasks.ball_detection.scripts.preview_augmentation": "src.tasks.ball_detection.configuration.validate_preview",
-    "src.tasks.ball_detection.scripts.preview_heatmaps": "src.tasks.ball_detection.configuration.validate_preview",
-    "src.tasks.ball_detection.scripts.train": "src.tasks.ball_detection.configuration.validate_training",
+    "src.tasks.ball_detection.visualization.preview.spatial": "src.tasks.ball_detection.configuration.validate_preview",
+    "src.tasks.ball_detection.visualization.preview.heatmaps": "src.tasks.ball_detection.configuration.validate_preview",
+    "src.tasks.ball_detection.training.convnext_heatmap.cli": "src.tasks.ball_detection.configuration.validate_training",
     "src.tasks.ball_detection.scripts.visualize": "src.tasks.ball_detection.configuration.validate_visualization",
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.training.runner.validate_train_boundary",
@@ -249,6 +250,7 @@ def _runtime_boundary(
     *,
     callable_name: str = "main",
     path_authority: str = _PATH_AUTHORITY,
+    executable_module: bool = True,
 ) -> RuntimeBoundary:
     validator_key = _BOUNDARY_VALIDATOR_KEYS.get(module)
     validator_callable = _BOUNDARY_VALIDATOR_CALLABLES.get(module)
@@ -257,7 +259,7 @@ def _runtime_boundary(
         module=module,
         callable_name=callable_name,
         kind=BoundaryKind.HYDRA,
-        executable_module=True,
+        executable_module=executable_module,
         validator_key=validator_key,
         validator_callable=validator_callable,
         configuration_authority=validator_callable,
@@ -274,7 +276,18 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.tasks.ball_detection.scripts.train_mdd_pose": (
+    "src.tasks.ball_detection.visualization.review.cli": ("ball_detection.review_dataset", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.visualization.inference.cli": ("ball_detection.inference_ui", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.training.dpt_pretrain.runner": ("ball_detection.pretrain_mdd_dpt", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.training.coordinates.finetune": ("ball_detection.posttrain_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.visualization.preview.video": ("ball_detection.preview_posttraining_augmentation", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.evaluation.coordinate_cli": (
+        "ball_detection.evaluate_mdd_coordinates", "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.ball_detection.scripts.prepare_data": (
+        "ball_detection.prepare_mdd_training", "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.ball_detection.training.coordinates.scratch": (
         "ball_detection.train_mdd_pose", "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.ball_refiner_3d.scripts.review_dataset": (
@@ -350,7 +363,7 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
             f"{task}.{script}",
             "src.utils.configuration.paths.NonHydraPathBoundary.validate",
         )
-        for task in ("ball_detection", "court_detection")
+        for task in ("court_detection",)
         for script in ("review_dataset", "inference_ui")
     },
     "src.synthetic_data_generation.scripts.edit_alignment": (
@@ -615,20 +628,20 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.visualize_dataset",
     ),
-    _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.eval"),
+    _runtime_boundary("ball_detection", "src.tasks.ball_detection.evaluation.heatmap_cli", executable_module=False),
     _runtime_boundary(
         "ball_detection", "src.tasks.ball_detection.scripts.generate_dataset"
     ),
     _runtime_boundary(
-        "ball_detection", "src.tasks.ball_detection.scripts.evaluate_manifest"
+        "ball_detection", "src.tasks.ball_detection.evaluation.manifest_cli", executable_module=False
     ),
     _runtime_boundary(
-        "ball_detection", "src.tasks.ball_detection.scripts.preview_augmentation"
+        "ball_detection", "src.tasks.ball_detection.visualization.preview.spatial", executable_module=False
     ),
     _runtime_boundary(
-        "ball_detection", "src.tasks.ball_detection.scripts.preview_heatmaps"
+        "ball_detection", "src.tasks.ball_detection.visualization.preview.heatmaps", executable_module=False
     ),
-    _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.train"),
+    _runtime_boundary("ball_detection", "src.tasks.ball_detection.training.convnext_heatmap.cli", executable_module=False),
     _runtime_boundary("ball_detection", "src.tasks.ball_detection.scripts.visualize"),
     _runtime_boundary("blcs", "src.tasks.blcs.generate_dataset.api_server.__main__"),
     _runtime_boundary("blcs", "src.tasks.blcs.scripts.generate_dataset"),
@@ -696,7 +709,7 @@ _RUNTIME_BOUNDARIES += tuple(
         domain=task,
         executable_module=True,
     )
-    for task in ("ball_detection", "court_detection")
+    for task in ("court_detection",)
     for script in ("review_dataset", "inference_ui")
 )
 
@@ -711,8 +724,61 @@ _RUNTIME_BOUNDARIES += tuple(
 )
 
 _RUNTIME_BOUNDARIES += tuple(
-    _non_hydra_boundary(f"src.tasks.ball_detection.scripts.{script}", "main", domain="ball_detection", executable_module=True)
-    for script in ("train_mdd_pose",)
+    _non_hydra_boundary(module, "main", domain="ball_detection", executable_module=False)
+    for module in ("src.tasks.ball_detection.training.coordinates.scratch",
+                   "src.tasks.ball_detection.evaluation.coordinate_cli",
+                   "src.tasks.ball_detection.visualization.review.cli",
+                   "src.tasks.ball_detection.visualization.inference.cli")
+)
+_RUNTIME_BOUNDARIES += (_non_hydra_boundary("src.tasks.ball_detection.scripts.prepare_data", "main", domain="ball_detection", executable_module=True),)
+
+
+
+_RUNTIME_BOUNDARIES += (
+    _non_hydra_boundary("src.tasks.ball_detection.training.dpt_pretrain.runner", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.finetune", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.visualization.preview.video", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+)
+
+
+
+def _cli_dispatch(module: str, selector: str, entries: dict[str, str], *, executable: bool) -> RuntimeBoundary:
+    return RuntimeBoundary(domain="ball_detection", module=module, callable_name="main", kind=BoundaryKind.CALLABLE,
+        executable_module=executable, validator_key=f"{module}.main.routes",
+        validator_callable="src.utils.configuration.cli.dispatch_cli",
+        configuration_authority="literal selector map; every terminal command's validator",
+        path_authority="source-verified terminal commands and their path contracts",
+        validation_target="explicit selector and all reachable leaf validators",
+        required_policy="selector required; terminal command owns remaining arguments",
+        optional_policy="terminal command's declared policy", default_authority="terminal command's configuration",
+        precedence_authority="one literal route per selector value",
+        routes=tuple(sorted((selector, choice, target) for choice, target in entries.items())))
+
+
+_RUNTIME_BOUNDARIES += (
+    _cli_dispatch("src.tasks.ball_detection.scripts.train", "stage", {
+        "convnext_heatmap": "src.tasks.ball_detection.training.convnext_heatmap.cli",
+        "dpt_pretrain": "src.tasks.ball_detection.training.dpt_pretrain.runner",
+        "coordinates": "src.tasks.ball_detection.training.coordinates",
+    }, executable=True),
+    _cli_dispatch("src.tasks.ball_detection.training.coordinates.__init__", "initialize", {
+        "scratch": "src.tasks.ball_detection.training.coordinates.scratch",
+        "encoder": "src.tasks.ball_detection.training.coordinates.finetune",
+    }, executable=False),
+    _cli_dispatch("src.tasks.ball_detection.scripts.evaluate", "mode", {
+        "heatmap": "src.tasks.ball_detection.evaluation.heatmap_cli",
+        "manifest": "src.tasks.ball_detection.evaluation.manifest_cli",
+        "coordinates": "src.tasks.ball_detection.evaluation.coordinate_cli",
+    }, executable=True),
+    _cli_dispatch("src.tasks.ball_detection.scripts.review", "mode", {
+        "dataset": "src.tasks.ball_detection.visualization.review.cli",
+        "inference": "src.tasks.ball_detection.visualization.inference.cli",
+    }, executable=True),
+    _cli_dispatch("src.tasks.ball_detection.scripts.preview", "kind", {
+        "spatial": "src.tasks.ball_detection.visualization.preview.spatial",
+        "heatmaps": "src.tasks.ball_detection.visualization.preview.heatmaps",
+        "video": "src.tasks.ball_detection.visualization.preview.video",
+    }, executable=True),
 )
 
 EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES

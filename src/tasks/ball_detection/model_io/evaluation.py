@@ -8,7 +8,7 @@ from typing import cast
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.inference.checkpoint import (
+from src.tasks.ball_detection.checkpoints.heatmap import (
     LoadedBallCheckpoint,
     load_ball_checkpoint,
 )

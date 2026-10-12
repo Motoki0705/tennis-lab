@@ -1,0 +1,267 @@
+{
+  "precision": "bf16",
+  "schema": "mdd_coordinate_evaluation.v1",
+  "scopes": {
+    "full": {
+      "by_frame_step": {
+        "1": {
+          "observed_frames": 76,
+          "available": true,
+          "mean_error_px": 301.9173470547325,
+          "median_error_px": 279.5658721923828,
+          "p95_error_px": 605.9738922119141
+        },
+        "2": {
+          "observed_frames": 78,
+          "available": true,
+          "mean_error_px": 240.05081719618576,
+          "median_error_px": 236.58709716796875,
+          "p95_error_px": 523.6164764404293
+        },
+        "4": {
+          "observed_frames": 79,
+          "available": true,
+          "mean_error_px": 214.05568137349962,
+          "median_error_px": 194.8252410888672,
+          "p95_error_px": 419.5739288330076
+        }
+      },
+      "frame_fps_pairs": 233,
+      "unique_observed_frames": 156,
+      "macro_mean_error_px": 252.00794854147262,
+      "by_source": {
+        "chat_annotation": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 457.97735595703125,
+              "median_error_px": 421.6858215332031,
+              "p95_error_px": 665.5591186523437
+            },
+            "2": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 384.8255548477173,
+              "median_error_px": 337.9393768310547,
+              "p95_error_px": 624.4639587402344
+            },
+            "4": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 300.17988008260727,
+              "median_error_px": 281.2044677734375,
+              "p95_error_px": 556.4664245605468
+            }
+          },
+          "frame_fps_pairs": 96,
+          "unique_observed_frames": 64,
+          "macro_mean_error_px": 380.9942636291186
+        },
+        "meiji": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 12,
+              "available": true,
+              "mean_error_px": 252.0863914489746,
+              "median_error_px": 251.04324340820312,
+              "p95_error_px": 300.0267166137695
+            },
+            "2": {
+              "observed_frames": 14,
+              "available": true,
+              "mean_error_px": 199.06588636125838,
+              "median_error_px": 186.85423278808594,
+              "p95_error_px": 293.5898178100586
+            },
+            "4": {
+              "observed_frames": 15,
+              "available": true,
+              "mean_error_px": 158.75538177490233,
+              "median_error_px": 126.09561920166016,
+              "p95_error_px": 278.0556396484375
+            }
+          },
+          "frame_fps_pairs": 41,
+          "unique_observed_frames": 28,
+          "macro_mean_error_px": 203.3025531950451
+        },
+        "tracknet": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 164.5439465045929,
+              "median_error_px": 169.4288101196289,
+              "p95_error_px": 285.74721374511716
+            },
+            "2": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 113.206986784935,
+              "median_error_px": 79.89945602416992,
+              "p95_error_px": 264.0928955078125
+            },
+            "4": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 153.85349810123444,
+              "median_error_px": 164.96559143066406,
+              "p95_error_px": 279.75973358154295
+            }
+          },
+          "frame_fps_pairs": 96,
+          "unique_observed_frames": 64,
+          "macro_mean_error_px": 143.86814379692078
+        }
+      }
+    },
+    "common": {
+      "by_frame_step": {
+        "1": {
+          "observed_frames": 76,
+          "available": true,
+          "mean_error_px": 301.9173470547325,
+          "median_error_px": 279.5658721923828,
+          "p95_error_px": 605.9738922119141
+        },
+        "2": {
+          "observed_frames": 78,
+          "available": true,
+          "mean_error_px": 240.05081719618576,
+          "median_error_px": 236.58709716796875,
+          "p95_error_px": 523.6164764404293
+        },
+        "4": {
+          "observed_frames": 79,
+          "available": true,
+          "mean_error_px": 214.05568137349962,
+          "median_error_px": 194.8252410888672,
+          "p95_error_px": 419.5739288330076
+        }
+      },
+      "frame_fps_pairs": 233,
+      "unique_observed_frames": 156,
+      "macro_mean_error_px": 252.00794854147262,
+      "by_source": {
+        "chat_annotation": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 457.97735595703125,
+              "median_error_px": 421.6858215332031,
+              "p95_error_px": 665.5591186523437
+            },
+            "2": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 384.8255548477173,
+              "median_error_px": 337.9393768310547,
+              "p95_error_px": 624.4639587402344
+            },
+            "4": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 300.17988008260727,
+              "median_error_px": 281.2044677734375,
+              "p95_error_px": 556.4664245605468
+            }
+          },
+          "frame_fps_pairs": 96,
+          "unique_observed_frames": 64,
+          "macro_mean_error_px": 380.9942636291186
+        },
+        "meiji": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 12,
+              "available": true,
+              "mean_error_px": 252.0863914489746,
+              "median_error_px": 251.04324340820312,
+              "p95_error_px": 300.0267166137695
+            },
+            "2": {
+              "observed_frames": 14,
+              "available": true,
+              "mean_error_px": 199.06588636125838,
+              "median_error_px": 186.85423278808594,
+              "p95_error_px": 293.5898178100586
+            },
+            "4": {
+              "observed_frames": 15,
+              "available": true,
+              "mean_error_px": 158.75538177490233,
+              "median_error_px": 126.09561920166016,
+              "p95_error_px": 278.0556396484375
+            }
+          },
+          "frame_fps_pairs": 41,
+          "unique_observed_frames": 28,
+          "macro_mean_error_px": 203.3025531950451
+        },
+        "tracknet": {
+          "by_frame_step": {
+            "1": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 164.5439465045929,
+              "median_error_px": 169.4288101196289,
+              "p95_error_px": 285.74721374511716
+            },
+            "2": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 113.206986784935,
+              "median_error_px": 79.89945602416992,
+              "p95_error_px": 264.0928955078125
+            },
+            "4": {
+              "observed_frames": 32,
+              "available": true,
+              "mean_error_px": 153.85349810123444,
+              "median_error_px": 164.96559143066406,
+              "p95_error_px": 279.75973358154295
+            }
+          },
+          "frame_fps_pairs": 96,
+          "unique_observed_frames": 64,
+          "macro_mean_error_px": 143.86814379692078
+        }
+      }
+    }
+  },
+  "ownership": "closest window centre, then earliest start; counted separately for each FPS",
+  "aggregate": "equal mean of per-FPS mean source-pixel errors; not a pooled duplicate-frame mean",
+  "checkpoint_sha256": "bc2121b84472eb7f85c9468d6155841afd4d2349881373c35a473b5412ec8c6e",
+  "manifest_sha256": "bf9008c5d616ad8b8f6244efe37aa7373e47b1d229256a23d0adb807d3ff42ff",
+  "split": "val",
+  "batch_size": 1,
+  "num_workers": 8,
+  "input_contract": {
+    "schema": "rgb_uint8_native_mdd.v1",
+    "layout": "B,T,3,H,W",
+    "color_order": "RGB",
+    "dtype": "uint8",
+    "value_range": [
+      0,
+      255
+    ],
+    "computation_dtype": "float32",
+    "normalization": "divide_255",
+    "luminance": "0.114*B + 0.587*G + 0.299*R",
+    "first_mdd_frame": "zero",
+    "mdd_a": 0.2,
+    "mdd_b": 0.15
+  },
+  "compilation": {
+    "mode": "default",
+    "backend": "inductor",
+    "fullgraph": true,
+    "dynamic": false,
+    "recompile_limit": 8,
+    "backward_pass_autocast": "off",
+    "unique_graphs": 1,
+    "graph_breaks": {}
+  }
+}

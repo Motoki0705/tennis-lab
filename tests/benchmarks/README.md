@@ -2,6 +2,11 @@
 
 通常の単体テストには含めない、実データ・固定bundleでの数値診断です。
 
+## Ball Detection
+
+現行の性能・数値診断は [ball_detection/README.md](ball_detection/README.md) を参照。
+過去の固定case sweep・障害切分けはknowledgeに記録されたcommitで再現する。
+
 ## 人物対応の再較正準備
 
 `association_recalibration_features.py --phase plan --repo <main root> --report <new output>` は
@@ -72,7 +77,7 @@ KPRは各検出の6×512特徴・可視性と元row/box/score/poseを保存し�
 
 ## Meiji ball holdout
 
-`ball_detection_holdout.py` はball frame storeのMeiji test全体で、ft-e13と
+`ball_detection/detection_holdout.py` はball frame storeのMeiji test全体で、ft-e13と
 混合FTのvalidation選択checkpointを同じ条件で比較する。checkpointの選択は学習側で済ませる。
 既定のtestはvideo_001、63 camera-clip / 36,006 frameで、数が違う入力は停止する。
 モデル・入力サイズ・保存された正規化の一致、train/valへのvideo漏れ、全frameの一意性を検証する。
@@ -94,7 +99,7 @@ KPRは各検出の6×512特徴・可視性と元row/box/score/poseを保存し�
   絶対値を直接同一視しない。poseは層別だけに使い、検出器の入力はRGBのまま。
 
 ```bash
-PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
+PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.py \
     --store <元repo>/data/ball_detection/ball-mix-v2 \
     --poses <元repo>/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores \
     --baseline <ft-e13 checkpoint> --treatment <validation選択checkpoint> \
@@ -134,14 +139,14 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_holdout.py \
   `--config-commit --config --bundle --tracks --report`を明示する。既存reportへの再実行は拒否し、
   未決定は理由と全ID=-1の採点を残す。設定選択・再fit・既定変更は行わない。
 
-- `ball_detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
+- `ball_detection/detection_evidence.py`: [ball検出証拠](../../src/tennis_scene/pipeline/README.md#ball検出証拠)の
   実clip検証。既定pipelineのball nodeだけを全cameraで実行し、native heatmap・候補・patchを
   `--report/store` に保存する。checksum/型/shapeを検証してdiskからload-onlyで再開し、
   `qualification.json` に各cameraのartifact参照・shape・候補数・gateで非観測になったframeの
   生候補数を記録する。精度比較ではない。GPU実行は共有training queue経由:
 
   ```bash
-  PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection_evidence.py \
+  PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_evidence.py \
       --repo <元repo> --clip <構造化clip> --report <検証出力先>
   ```
 

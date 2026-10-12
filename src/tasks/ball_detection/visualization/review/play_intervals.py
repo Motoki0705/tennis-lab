@@ -6,7 +6,7 @@ from dataclasses import asdict
 from typing import Any
 
 from src.tasks.ball_detection.data.annotation_states import annotation_states
-from src.tasks.ball_detection.data.play_intervals import (
+from src.tasks.ball_detection.data.windows.intervals import (
     PlayIntervalConfig,
     infer_play_intervals,
     mask_intervals,

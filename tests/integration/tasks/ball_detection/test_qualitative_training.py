@@ -7,7 +7,9 @@ import torch
 from hydra import compose, initialize_config_dir
 from PIL import Image, ImageSequence
 
-from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
+from src.tasks.ball_detection.training.convnext_heatmap.runner import (
+    BallDetectionTrainingRunner,
+)
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]

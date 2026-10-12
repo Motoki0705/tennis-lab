@@ -1,0 +1,226 @@
+"""Render qualitative ball heatmap previews for multiple sigma ratios.
+
+Usage:
+    python -m src.tasks.ball_detection.visualization.preview.heatmaps
+    python -m src.tasks.ball_detection.visualization.preview.heatmaps preview.ratios=[0.004,0.008,0.016]
+    python -m src.tasks.ball_detection.visualization.preview.heatmaps preview.sample_indices=[10,20] preview.split=val
+
+Notes:
+    - Hydra loads configuration from `src/tasks/ball_detection/configs/preview_heatmaps.yaml`.
+    - The script renders one representative frame per selected sample window.
+    - Each panel overlays a generated heatmap and argmax point on the source frame.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import cv2
+import numpy as np
+import torch
+from omegaconf import DictConfig
+
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import BallRuntimePaths
+from src.tasks.ball_detection.data import build_ball_detection_datamodule
+from src.tasks.ball_detection.data.store import split_names
+from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
+from src.tasks.base.visualization.preview import (
+    compose_titled_row as _compose_row,
+)
+from src.tasks.base.visualization.preview import (
+    draw_normalized_point as _draw_point,
+)
+from src.tasks.base.visualization.preview import resolve_sample_indices
+from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
+from src.utils.hydra import hydra_main
+from src.utils.io import save_json
+
+
+@hydra_main(
+    config_path="../../configs",
+    config_name="preview_heatmaps",
+    version_base="1.3",
+    validation_boundary="ball.preview",
+)
+def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
+    """Hydra entry point."""
+    output_dir = BallRuntimePaths.from_config(cfg).output(str(cfg.preview.output_dir))
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    (split_name,) = split_names([str(cfg.preview.split)])
+    datamodule = build_ball_detection_datamodule(cfg)
+    if not isinstance(datamodule, BallStoreDataModule):
+        raise TypeError("Heatmap previews require data.source=store.")
+    dataset = datamodule.create_dataset(split_name, augmentation=None)
+    sample_indices = resolve_sample_indices(cfg, len(dataset))
+
+    manifest: list[dict[str, Any]] = []
+    for sample_index in sample_indices:
+        sample = dataset[sample_index]
+        frame_index = _select_frame_index(sample["visibility"])
+        image = _tensor_to_image(sample["images"][frame_index])
+        height, width = image.shape[:2]
+
+        original_size = sample["original_size"].cpu().numpy()
+        original_w = float(original_size[0])
+        original_h = float(original_size[1])
+        centers_xy = _frame_centers_xy(
+            sample["coords"][frame_index],
+            original_w=original_w,
+            original_h=original_h,
+        )
+        visibility = sample["visibility"][frame_index].detach().cpu().tolist()
+        visible = any(float(value) > 0.5 for value in visibility)
+
+        panels = [_annotate_original(image, centers_xy, visibility, cfg)]
+        ratios = [float(value) for value in cfg.preview.ratios]
+        ratio_records: list[dict[str, Any]] = []
+        for sigma_ratio in ratios:
+            instance_heatmaps = generate_gaussian_heatmaps(
+                size_hw=(height, width),
+                centers_xy=torch.tensor(centers_xy, dtype=torch.float32),
+                sigma_ratio=sigma_ratio,
+                visibility=torch.tensor(visibility, dtype=torch.bool),
+            )
+            heatmap = (
+                instance_heatmaps.amax(dim=0)
+                if instance_heatmaps.numel() > 0
+                else torch.zeros((height, width), dtype=torch.float32)
+            )
+            argmax_xy, peak_value = heatmaps_to_argmax(heatmap)
+            panel = _render_ratio_panel(
+                image=image,
+                heatmap=heatmap,
+                sigma_ratio=sigma_ratio,
+                gt_centers_xy=centers_xy,
+                gt_visibility=visibility,
+                argmax_xy=(float(argmax_xy[0].item()), float(argmax_xy[1].item())),
+                peak_value=float(peak_value.item()),
+                cfg=cfg,
+            )
+            panels.append(panel)
+            ratio_records.append(
+                {
+                    "sigma_ratio": sigma_ratio,
+                    "argmax_xy": tuple(float(v) for v in argmax_xy.tolist()),
+                    "peak_value": float(peak_value.item()),
+                }
+            )
+
+        canvas = _compose_row(
+            panels, ["original", *[f"ratio={ratio:.4f}" for ratio in ratios]], cfg
+        )
+        file_stem = f"sample_{sample_index:05d}_frame_{frame_index:02d}"
+        image_path = output_dir / f"{file_stem}.png"
+        cv2.imwrite(str(image_path), cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
+
+        window = dataset.windows[sample_index]
+        manifest.append(
+            {
+                "sample_index": sample_index,
+                "frame_index": frame_index,
+                "clip_id": dataset.store.clips[window.clip].clip_id,
+                "clip_frame_index": window.start + frame_index,
+                "output_image": str(image_path),
+                "visible": visible,
+                "centers_xy": centers_xy,
+                "ratios": ratio_records,
+            }
+        )
+
+    save_json(manifest, output_dir / "manifest.json")
+    print(f"Saved {len(manifest)} ball heatmap preview(s) to {output_dir}")
+    return 0
+
+
+def _select_frame_index(visibility: torch.Tensor) -> int:
+    frame_visibility = (
+        (visibility > 0.5).any(dim=-1) if visibility.ndim == 2 else visibility > 0.5
+    )
+    visible_indices = torch.nonzero(frame_visibility, as_tuple=False).flatten()
+    if len(visible_indices) > 0:
+        return int(visible_indices[0].item())
+    return 0
+
+
+def _frame_centers_xy(
+    coords: torch.Tensor,
+    *,
+    original_w: float,
+    original_h: float,
+) -> list[tuple[float, float]]:
+    return [
+        (
+            float(coord[0].item() / max(original_w - 1.0, 1.0)),
+            float(coord[1].item() / max(original_h - 1.0, 1.0)),
+        )
+        for coord in coords
+    ]
+
+
+def _tensor_to_image(image: torch.Tensor) -> np.ndarray:
+    image_np = image.detach().cpu().permute(1, 2, 0).numpy()
+    rendered: np.ndarray = np.clip(image_np * 255.0, 0, 255).astype(np.uint8)
+    return rendered
+
+
+def _annotate_original(
+    image: np.ndarray,
+    centers_xy: list[tuple[float, float]],
+    visibility: list[float],
+    cfg: DictConfig,
+) -> np.ndarray:
+    canvas = image.copy()
+    for center_xy, visible in zip(centers_xy, visibility, strict=True):
+        if float(visible) <= 0.5:
+            continue
+        _draw_point(
+            canvas,
+            center_xy,
+            radius=int(cfg.preview.draw.gt_radius),
+            color=(255, 80, 80),
+            thickness=int(cfg.preview.draw.thickness),
+        )
+    return canvas
+
+
+def _render_ratio_panel(
+    *,
+    image: np.ndarray,
+    heatmap: torch.Tensor,
+    sigma_ratio: float,
+    gt_centers_xy: list[tuple[float, float]],
+    gt_visibility: list[float],
+    argmax_xy: tuple[float, float],
+    peak_value: float,
+    cfg: DictConfig,
+) -> np.ndarray:
+    overlay = image.copy()
+    heatmap_np = np.clip(heatmap.detach().cpu().numpy(), 0.0, 1.0)
+    heatmap_cm = cv2.applyColorMap(
+        (heatmap_np * 255).astype(np.uint8), cv2.COLORMAP_JET
+    )
+    heatmap_cm = cv2.cvtColor(heatmap_cm, cv2.COLOR_BGR2RGB)
+    overlay = cv2.addWeighted(overlay, 0.55, heatmap_cm, 0.45, 0.0)
+
+    if peak_value > 0:
+        _draw_point(
+            overlay,
+            argmax_xy,
+            radius=int(cfg.preview.draw.argmax_radius),
+            color=(80, 255, 120),
+            thickness=int(cfg.preview.draw.thickness),
+        )
+    for center_xy, visible in zip(gt_centers_xy, gt_visibility, strict=True):
+        if float(visible) <= 0.5:
+            continue
+        _draw_point(
+            overlay,
+            center_xy,
+            radius=int(cfg.preview.draw.gt_radius),
+            color=(255, 80, 80),
+            thickness=1,
+        )
+    rendered: np.ndarray = np.asarray(overlay)
+    return rendered
