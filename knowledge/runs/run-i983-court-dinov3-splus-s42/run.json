@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "running",
+  "status": "completed",
   "session": "i983-l4-ablation-04",
   "job": "train-splus-s42",
   "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
@@ -16,12 +16,7 @@
   "drive_output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-splus-shared1024/s42",
   "running_receipt": "running-receipt.json",
   "startup_status": "startup-status.json",
-  "checkpoint_selection": {
-    "monitor": "val/loss",
-    "mode": "min",
-    "after_epochs": 20,
-    "uses_test": false
-  },
+  "checkpoint_selection": "checkpoint-selection.json",
   "startup_log": "startup.log",
   "startup_observation": {
     "sanity_batches": 2,
@@ -29,5 +24,14 @@
     "training_batches": 120,
     "displayed_train_loss": 43.4,
     "scope": "Startup confirmation, not a final metric"
-  }
+  },
+  "training_status": "completed",
+  "training_completion": "training-completion.json",
+  "evaluation_status": "completed",
+  "evaluation_session": "i983-l4-ablation-05",
+  "evaluation": "evaluation/evaluation.json",
+  "evaluation_completion": "evaluation-completion.json",
+  "evaluation_verification": "evaluation-verification.json",
+  "tensorboard_sources": "tensorboard-sources.json",
+  "evaluation_session_stop": "knowledge/runs/group-i983-court-throughput-s42/session-stop.json"
 }
