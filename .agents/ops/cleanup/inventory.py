@@ -6,10 +6,8 @@ Every probe either returns a definite answer or raises :class:`CleanupError`
 
 from __future__ import annotations
 
-import hashlib
 import os
 import re
-import stat
 import subprocess
 import time
 import tomllib
@@ -21,16 +19,22 @@ from pathlib import Path
 from typing import Any
 
 from classify import (
+    BranchFacts,
     Decision,
-    Facts,
     MergedPr,
     MergeRelation,
     Policy,
+    WorktreeFacts,
     WorktreeState,
-    classify,
-    is_disposable,
+    classify_branch,
+    classify_worktree,
     matches_any,
 )
+
+# The only untracked/ignored entry a removable worktree may contain: the
+# top-level `.venv` symlink to the shared environment (unlinking it never
+# touches its target).
+DISPOSABLE_SYMLINK = ".venv"
 
 
 class CleanupError(RuntimeError):
@@ -48,8 +52,6 @@ class Config:
     default_branch_refs: tuple[str, ...]
     stale_days: float
     min_idle_hours: float
-    disposable_untracked: tuple[str, ...]
-    disposable_ignored: tuple[str, ...]
     queue_dir: str
     pr_limit: int
 
@@ -68,8 +70,6 @@ _STR_LISTS = (
     "protected_branch_globs",
     "protected_worktree_globs",
     "default_branch_refs",
-    "disposable_untracked",
-    "disposable_ignored",
 )
 _NUMBERS = ("stale_days", "min_idle_hours")
 
@@ -281,24 +281,6 @@ def merged_into(repo: Path, refs: Sequence[str]) -> dict[str, str]:
     return found
 
 
-def commit_contained(repo: Path, oid: str, refs: Sequence[str]) -> str | None:
-    for ref in refs:
-        exists = (
-            git(
-                repo,
-                "rev-parse",
-                "--verify",
-                "-q",
-                f"{ref}^{{commit}}",
-                ok_codes=(0, 1),
-            ).returncode
-            == 0
-        )
-        if exists and is_ancestor(repo, oid, ref):
-            return ref
-    return None
-
-
 def common_dir(repo: Path) -> Path:
     return Path(
         git(
@@ -412,7 +394,11 @@ def in_progress(admin: Path, branch_names: set[str]) -> InProgress:
     return InProgress(operations=tuple(ops), held=tuple(held))
 
 
-def worktree_state(path: str, cfg: Config) -> WorktreeState:
+def worktree_state(path: str) -> WorktreeState:
+    """Everything ``git status --ignored`` reports, plus populated submodules.
+
+    Nothing is treated as disposable except the top-level ``.venv`` symlink.
+    """
     wt = Path(path)
     out = git(
         wt,
@@ -427,7 +413,7 @@ def worktree_state(path: str, cfg: Config) -> WorktreeState:
     dirty: list[str] = []
     untracked: list[str] = []
     ignored: list[str] = []
-    disposable: dict[str, list[str]] = {"??": [], "!!": []}
+    disposable: list[str] = []
     i = 0
     while i < len(fields):
         entry = fields[i]
@@ -436,12 +422,8 @@ def worktree_state(path: str, cfg: Config) -> WorktreeState:
             continue
         xy, rel = entry[:2], entry[3:]
         if xy in ("??", "!!"):
-            patterns = (
-                cfg.disposable_untracked if xy == "??" else cfg.disposable_ignored
-            )
-            # Removing a worktree unlinks symlinks without touching their targets.
-            if (wt / rel.rstrip("/")).is_symlink() or is_disposable(rel, patterns):
-                disposable[xy].append(rel)
+            if rel == DISPOSABLE_SYMLINK and (wt / rel).is_symlink():
+                disposable.append(rel)
             else:
                 (untracked if xy == "??" else ignored).append(rel)
             continue
@@ -459,51 +441,9 @@ def worktree_state(path: str, cfg: Config) -> WorktreeState:
         dirty_tracked=tuple(dirty),
         untracked=tuple(untracked),
         ignored=tuple(ignored),
-        disposable_untracked=tuple(disposable["??"]),
-        disposable_ignored=tuple(disposable["!!"]),
+        disposable=tuple(disposable),
         submodule_populated=tuple(populated),
     )
-
-
-def discard_fingerprint(worktree: Path, state: WorktreeState) -> dict[str, str]:
-    """Content digest of everything ``--discard-changes`` would destroy.
-
-    Covers modified tracked paths and non-disposable untracked/ignored entries
-    (directories recursively, symlinks by target). Each regular file is keyed by
-    size, mtime_ns, ctime_ns and the SHA-256 of its content, so a rewrite that
-    keeps the path list (and even the mtime) unchanged is still detected.
-    """
-    out: dict[str, str] = {}
-
-    def record(path: Path) -> None:
-        key = os.path.relpath(path, worktree)
-        try:
-            st = os.lstat(path)
-            if stat.S_ISLNK(st.st_mode):
-                out[key] = f"link:{os.readlink(path)}"
-            elif stat.S_ISDIR(st.st_mode):
-                out[key] = "dir"
-                for child in sorted(os.listdir(path)):
-                    record(path / child)
-            elif stat.S_ISREG(st.st_mode):
-                digest = hashlib.sha256()
-                with open(path, "rb") as handle:
-                    for block in iter(lambda: handle.read(1 << 20), b""):
-                        digest.update(block)
-                out[key] = (
-                    f"file:{st.st_size}:{st.st_mtime_ns}:{st.st_ctime_ns}:"
-                    f"{digest.hexdigest()}"
-                )
-            else:
-                out[key] = f"other:{st.st_mode}:{st.st_mtime_ns}:{st.st_ctime_ns}"
-        except FileNotFoundError:
-            out[key] = "missing"
-        except OSError as exc:
-            raise CleanupError(f"cannot fingerprint {path}: {exc}") from exc
-
-    for rel in (*state.dirty_tracked, *state.untracked, *state.ignored):
-        record(worktree / rel.rstrip("/"))
-    return out
 
 
 # ------------------------------------------------------------------------ gh PRs
@@ -582,6 +522,33 @@ def merge_relation(repo: Path, tip: str, head: str) -> tuple[MergeRelation, int 
         count = int(git(repo, "rev-list", "--count", f"{head}..{tip}").stdout.strip())
         return "tip_ahead", count
     return "diverged", None
+
+
+def pushed_evidence(repo: Path, head: str, prs: Sequence[PrInfo]) -> str | None:
+    """Why ``head`` exists outside this machine, or None (unpushed commits).
+
+    Evidence: a remote-tracking ref contains it, or it is (an ancestor of) the
+    head of one of the branch's PRs. Local refs such as refs/heads/main do not
+    count.
+    """
+    if not has_commit(repo, head):
+        return None
+    remote = git(
+        repo,
+        "for-each-ref",
+        "--count=1",
+        f"--contains={head}",
+        "--format=%(refname)",
+        "refs/remotes",
+    ).stdout.strip()
+    if remote:
+        return f"contained in {remote}"
+    for pr in prs:
+        if pr.head_oid == head:
+            return f"PR #{pr.number} head"
+        if has_commit(repo, pr.head_oid) and is_ancestor(repo, head, pr.head_oid):
+            return f"ancestor of PR #{pr.number} head"
+    return None
 
 
 # ----------------------------------------------------------- processes and queue
@@ -1102,7 +1069,7 @@ def disk_usage(path: str) -> DiskUsage:
 @dataclass
 class Entry:
     id: str
-    facts: Facts
+    facts: BranchFacts | WorktreeFacts
     decision: Decision
     prs: list[PrInfo]
     last_activity: float | None
@@ -1110,6 +1077,25 @@ class Entry:
     disk: DiskUsage | None = None
     action: str = "none"
     action_error: str | None = None
+
+    @property
+    def branch(self) -> str | None:
+        return self.facts.branch
+
+    @property
+    def tip(self) -> str:
+        f = self.facts
+        return f.tip if isinstance(f, BranchFacts) else f.head
+
+    @property
+    def worktree(self) -> str | None:
+        f = self.facts
+        return f.worktree if isinstance(f, WorktreeFacts) else None
+
+    @property
+    def state(self) -> WorktreeState | None:
+        f = self.facts
+        return f.state if isinstance(f, WorktreeFacts) else None
 
 
 @dataclass
@@ -1133,6 +1119,16 @@ def _worktree_for_cwd(
     return best
 
 
+def _activity(
+    found: tuple[float, str] | None, now: float, undetermined: list[str]
+) -> tuple[float | None, str, float]:
+    if found is None:
+        undetermined.append("no activity timestamp (commit, reflog or mtime)")
+        return None, "none", 0.0
+    activity, source = found
+    return activity, source, max(0.0, (now - activity) / 3600.0)
+
+
 def build_inventory(
     repo: Path,
     cfg: Config,
@@ -1143,7 +1139,7 @@ def build_inventory(
     only_ids: set[str] | None = None,
     prs: dict[str, list[PrInfo]] | None = None,
 ) -> Inventory:
-    """Collect facts and classify every local branch and linked worktree."""
+    """Collect facts and classify every local branch and every linked worktree."""
     now = time.time() if now is None else now
     warnings: list[str] = []
     worktrees = list_worktrees(repo)
@@ -1185,23 +1181,14 @@ def build_inventory(
     invoking = _worktree_for_cwd(worktrees, invoking_cwd)
     main = worktrees[0]
 
-    targets: list[tuple[str, BranchInfo | None, WorktreeInfo | None]] = []
-    for b in branches:
-        checked_out = by_branch.get(b.name)
-        targets.append((f"branch:{b.name}", b, checked_out[0] if checked_out else None))
-    for w in worktrees:
-        if w.branch is None:
-            targets.append((f"worktree:{w.path}", None, w))
-    if only_ids is not None:
-        targets = [t for t in targets if t[0] in only_ids]
+    def wanted(entry_id: str) -> bool:
+        return only_ids is None or entry_id in only_ids
 
-    live_paths = [
-        t[2].path
-        for t in targets
-        if t[2] is not None and not t[2].is_main and not t[2].prunable
-    ]
+    target_branches = [b for b in branches if wanted(f"branch:{b.name}")]
+    target_worktrees = [w for w in worktrees[1:] if wanted(f"worktree:{w.path}")]
+    live_paths = [w.path for w in target_worktrees if not w.prunable]
     with ThreadPoolExecutor(max_workers=8) as pool:
-        state_jobs = {p: pool.submit(worktree_state, p, cfg) for p in live_paths}
+        state_jobs = {p: pool.submit(worktree_state, p) for p in live_paths}
         disk_jobs = (
             {p: pool.submit(disk_usage, p) for p in live_paths} if measure_disk else {}
         )
@@ -1209,100 +1196,92 @@ def build_inventory(
         disks = {p: f.result() for p, f in disk_jobs.items()}
 
     entries: list[Entry] = []
-    for entry_id, br, wt in targets:
-        tip = br.tip if br is not None else (wt.head if wt is not None else None)
-        if tip is None:
-            raise CleanupError(f"{entry_id}: no commit to inspect")
-        name = br.name if br is not None else None
+    for b in target_branches:
         undetermined: list[str] = []
-        if name is not None and len(by_branch.get(name, [])) > 1:
-            undetermined.append(
-                f"branch checked out in several worktrees: {[w.path for w in by_branch[name]]}"
-            )
-
-        current = None
-        if wt is not None and wt.path == main.path:
-            current = None  # covered by main_worktree
-        elif name is not None and main.branch == name:
-            current = "checked out in the main checkout"
-        if (
-            wt is not None
-            and invoking is not None
-            and wt.path == invoking.path
-            and not wt.is_main
-        ):
-            current = "worktree containing the invoking working directory"
-
-        branch_prs = prs.get(name, []) if name is not None else []
+        branch_prs = prs.get(b.name, [])
         merged: list[MergedPr] = []
         for pr in branch_prs:
             if pr.state == "MERGED":
-                relation, count = merge_relation(repo, tip, pr.head_oid)
+                relation, count = merge_relation(repo, b.tip, pr.head_oid)
                 merged.append(MergedPr(pr.number, pr.head_oid, relation, count))
-        ancestor = (
-            in_default.get(name)
-            if name is not None
-            else commit_contained(repo, tip, cfg.default_branch_refs)
+        activity, source, idle = _activity(
+            last_activity(b.commit_time, b.name, common, None, None), now, undetermined
         )
-
-        live = wt is not None and not wt.is_main and not wt.prunable
-        found = last_activity(
-            br.commit_time if br is not None else commit_time(repo, tip),
-            name,
-            common,
-            admin_dirs[wt.path] if wt is not None else None,
-            wt.path if live and wt is not None else None,
-        )
-        activity: float | None = None
-        source = "none"
-        if found is None:
-            undetermined.append("no activity timestamp (commit, reflog or mtime)")
-        else:
-            activity, source = found
-        facts = Facts(
-            branch=name,
-            tip=tip,
-            worktree=wt.path if wt is not None else None,
-            is_main_worktree=wt is not None and wt.is_main,
-            worktree_locked=wt.locked if wt is not None else None,
-            worktree_missing=wt is not None and wt.prunable,
-            worktree_state=states.get(wt.path) if wt is not None else None,
-            protected_branch=name is not None
-            and (
-                name in cfg.protected_branches
-                or matches_any(name, cfg.protected_branch_globs)
+        bfacts = BranchFacts(
+            branch=b.name,
+            tip=b.tip,
+            protected_branch=b.name in cfg.protected_branches
+            or matches_any(b.name, cfg.protected_branch_globs),
+            current_checkout="checked out in the main checkout"
+            if main.branch == b.name
+            else None,
+            checked_out_in=tuple(
+                w.path for w in by_branch.get(b.name, []) if not w.is_main
             ),
-            protected_worktree=wt is not None
-            and matches_any(wt.path, cfg.protected_worktree_globs),
-            current_checkout=current,
-            symbolic_ref=tuple(symrefs.get(name, [])) if name is not None else (),
-            branch_in_use=tuple(held_by.get(name, [])) if name is not None else (),
-            operations_in_progress=ops_by_worktree[wt.path].operations
-            if wt is not None
-            else (),
-            process_refs=tuple(procs.refs_for(wt.path))
-            if live and wt is not None
-            else (),
-            queue_unparseable=tuple(blockers) if live else (),
-            queue_refs=tuple(queue_refs_for(queue_jobs, wt.path))
-            if live and wt is not None
-            else (),
+            symbolic_ref=tuple(symrefs.get(b.name, [])),
+            branch_in_use=tuple(held_by.get(b.name, [])),
             open_prs=tuple(p.number for p in branch_prs if p.state == "OPEN"),
             closed_prs=tuple(p.number for p in branch_prs if p.state == "CLOSED"),
             merged_prs=tuple(merged),
-            ancestor_of=ancestor,
-            idle_hours=0.0 if activity is None else max(0.0, (now - activity) / 3600.0),
+            ancestor_of=in_default.get(b.name),
+            idle_hours=idle,
             undetermined=tuple(undetermined),
         )
         entries.append(
             Entry(
-                id=entry_id,
-                facts=facts,
-                decision=classify(facts, cfg.policy),
+                id=f"branch:{b.name}",
+                facts=bfacts,
+                decision=classify_branch(bfacts, cfg.policy),
                 prs=branch_prs,
                 last_activity=activity,
                 activity_source=source,
-                disk=disks.get(wt.path) if wt is not None else None,
+            )
+        )
+    for w in target_worktrees:
+        if w.head is None:
+            raise CleanupError(f"worktree {w.path}: no HEAD commit to inspect")
+        undetermined = []
+        alive = not w.prunable
+        branch_prs = prs.get(w.branch, []) if w.branch is not None else []
+        activity, source, idle = _activity(
+            last_activity(
+                commit_time(repo, w.head),
+                w.branch,
+                common,
+                admin_dirs[w.path],
+                w.path if alive else None,
+            ),
+            now,
+            undetermined,
+        )
+        wfacts = WorktreeFacts(
+            worktree=w.path,
+            head=w.head,
+            branch=w.branch,
+            locked=w.locked,
+            missing=w.prunable,
+            state=states.get(w.path),
+            protected_worktree=matches_any(w.path, cfg.protected_worktree_globs),
+            current_checkout="worktree containing the invoking working directory"
+            if invoking is not None and invoking.path == w.path
+            else None,
+            operations_in_progress=ops_by_worktree[w.path].operations,
+            process_refs=tuple(procs.refs_for(w.path)) if alive else (),
+            queue_refs=tuple(queue_refs_for(queue_jobs, w.path)) if alive else (),
+            queue_unparseable=tuple(blockers) if alive else (),
+            pushed=pushed_evidence(repo, w.head, branch_prs),
+            idle_hours=idle,
+            undetermined=tuple(undetermined),
+        )
+        entries.append(
+            Entry(
+                id=f"worktree:{w.path}",
+                facts=wfacts,
+                decision=classify_worktree(wfacts, cfg.policy),
+                prs=branch_prs,
+                last_activity=activity,
+                activity_source=source,
+                disk=disks.get(w.path),
             )
         )
     return Inventory(repo=repo, entries=entries, warnings=warnings, prs=prs)

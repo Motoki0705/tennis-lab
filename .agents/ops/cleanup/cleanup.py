@@ -1,31 +1,32 @@
 #!/usr/bin/env python3
-"""Classify and clean up local branches and git worktrees (issue #1060).
+"""Classify local branches and git worktrees and delete the safe ones (issue #1060).
 
 Subcommands (see README.md for the policy and the report schema):
 
     cleanup.py scan        [--report-json FILE] [--no-disk]   # dry run, never deletes
-    cleanup.py apply-auto  [--report-json FILE] [--no-disk]   # delete auto_delete entries only
-    cleanup.py delete ID [ID ...] [--discard-changes]         # delete approved entries
+    cleanup.py apply-auto  [--report-json FILE] [--no-disk]   # delete auto_delete branches
+    cleanup.py delete ID [ID ...]                             # delete approved entries
+
+``apply-auto`` only deletes branch refs that have no worktree; it never removes a
+worktree. A worktree is removed only by ``delete worktree:<path>[@<sha>]`` and
+only when it is completely clean (see README.md).
 
 Common options: --repo DIR (default: main checkout of the cwd's repository),
 --config FILE (default: config.toml next to this script), --state-dir DIR
 (default: ${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/cleanup).
 
-Exit status: 0 on success, 1 when a probe or a deletion failed, 2 on usage
-errors, 3 when another mutating cleanup run holds the lock.
+Exit status: 0 on success, 1 when a probe or a deletion failed or was refused,
+2 on usage errors, 3 when another mutating cleanup run holds the lock.
 """
 
 from __future__ import annotations
 
 import argparse
 import fcntl
-import hashlib
 import json
 import os
 import re
-import shutil
 import socket
-import subprocess
 import sys
 import time
 from collections import Counter
@@ -34,20 +35,21 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from classify import BranchFacts, WorktreeFacts
 from inventory import (
+    DISPOSABLE_SYMLINK,
     CleanupError,
     Config,
     Entry,
     Inventory,
     build_inventory,
-    discard_fingerprint,
     git,
     iso,
     load_config,
     main_checkout,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SCRIPT_DIR = Path(__file__).resolve().parent
 EXIT_FAILURE, EXIT_USAGE, EXIT_LOCKED = 1, 2, 3
 
@@ -57,7 +59,7 @@ class LockedError(CleanupError):
 
 
 class DriftError(CleanupError):
-    """The entry changed between classification and deletion; nothing was removed."""
+    """The entry changed since it was classified, or may not be deleted; nothing was removed."""
 
 
 def default_state_dir() -> Path:
@@ -84,14 +86,14 @@ def exclusive_lock(state_dir: Path) -> Iterator[None]:
 
 
 def entry_json(entry: Entry) -> dict[str, Any]:
-    f = entry.facts
-    state = f.worktree_state
+    state = entry.state
     return {
         "id": entry.id,
+        "kind": "branch" if isinstance(entry.facts, BranchFacts) else "worktree",
         "category": entry.decision.category,
-        "branch": f.branch,
-        "tip": f.tip,
-        "worktree": f.worktree,
+        "branch": entry.branch,
+        "tip": entry.tip,
+        "worktree": entry.worktree,
         "reasons": [
             {"code": r.code, "kind": r.kind, "detail": r.detail}
             for r in entry.decision.reasons
@@ -99,15 +101,14 @@ def entry_json(entry: Entry) -> dict[str, Any]:
         "prs": [p.as_json() for p in entry.prs],
         "last_activity": iso(entry.last_activity),
         "activity_source": entry.activity_source,
-        "idle_days": round(f.idle_hours / 24.0, 2),
+        "idle_days": round(entry.facts.idle_hours / 24.0, 2),
         "worktree_state": None
         if state is None
         else {
             "dirty_tracked": list(state.dirty_tracked),
             "untracked": list(state.untracked),
             "ignored": list(state.ignored),
-            "disposable_untracked": list(state.disposable_untracked),
-            "disposable_ignored": list(state.disposable_ignored),
+            "disposable": list(state.disposable),
             "submodule_populated": list(state.submodule_populated),
         },
         "disk_bytes": entry.disk.bytes if entry.disk else None,
@@ -138,8 +139,8 @@ def build_report(inv: Inventory, cfg: Config, mode: str) -> dict[str, Any]:
         "mode": mode,
         "config": cfg.as_json(),
         "summary": {
-            "branches": sum(1 for e in entries if e.facts.branch is not None),
-            "worktrees": sum(1 for e in entries if e.facts.worktree is not None),
+            "branches": sum(1 for e in entries if isinstance(e.facts, BranchFacts)),
+            "worktrees": sum(1 for e in entries if isinstance(e.facts, WorktreeFacts)),
             "categories": {
                 c: counts.get(c, 0)
                 for c in ("auto_delete", "approval_required", "protected")
@@ -153,7 +154,7 @@ def build_report(inv: Inventory, cfg: Config, mode: str) -> dict[str, Any]:
         },
         "worktrees_by_size": [
             {
-                "worktree": e.facts.worktree,
+                "worktree": e.worktree,
                 "id": e.id,
                 "category": e.decision.category,
                 "disk_bytes": e.disk.bytes if e.disk else None,
@@ -211,155 +212,77 @@ def append_log(state_dir: Path, record: dict[str, Any]) -> None:
         os.fsync(handle.fileno())
 
 
-def _slug(text: str) -> str:
-    return re.sub(r"[^A-Za-z0-9._-]+", "_", text)[:80]
-
-
-def _remove_disposable(worktree: Path, rels: Sequence[str]) -> None:
-    root = worktree.resolve()
-    for rel in rels:
-        path = worktree / rel.rstrip("/")
-        if path.parent.resolve() != root and root not in path.parent.resolve().parents:
-            raise CleanupError(f"refusing to remove {path}: outside {root}")
-        if path.is_symlink() or path.is_file():
-            path.unlink()
-        elif path.is_dir():
-            shutil.rmtree(path)
-        else:
-            raise CleanupError(
-                f"disposable entry vanished or has an unknown type: {path}"
-            )
-
-
-def backup_name(entry_id: str) -> str:
-    """Unique per entry and per call: the slug is lossy, so the id hash disambiguates."""
-    digest = hashlib.sha256(entry_id.encode("utf-8")).hexdigest()[:16]
-    stamp = time.strftime("%Y%m%dT%H%M%S")
-    return f"{stamp}-{time.time_ns()}-{_slug(entry_id)}-{digest}.patch"
-
-
-def write_backup(state_dir: Path, entry_id: str, worktree: Path) -> Path:
-    """Save ``git diff --binary HEAD`` of ``worktree``; never overwrites a file."""
-    proc = subprocess.run(
-        ["git", "--no-optional-locks", "diff", "--binary", "HEAD"],
-        cwd=worktree,
-        capture_output=True,
-        check=False,
-    )
-    if proc.returncode != 0:
-        raise CleanupError(
-            f"git diff in {worktree} exited {proc.returncode}: "
-            f"{proc.stderr.decode(errors='replace').strip()}"
+def _delete_branch(repo: Path, entry: Entry, f: BranchFacts) -> None:
+    ref = f"refs/heads/{f.branch}"
+    symbolic = git(repo, "symbolic-ref", "-q", ref, ok_codes=(0, 1)).stdout.strip()
+    if symbolic:
+        raise DriftError(f"{entry.id}: {ref} is now a symbolic ref to {symbolic}")
+    now = git(repo, "rev-parse", "--verify", "-q", ref, ok_codes=(0, 1)).stdout.strip()
+    if now != f.tip:
+        raise DriftError(
+            f"{entry.id}: branch tip is {now or '(deleted)'}, classified at {f.tip}"
         )
-    backup = state_dir / "backups"
-    backup.mkdir(parents=True, exist_ok=True)
-    target = backup / backup_name(entry_id)
+    # Compare-and-delete (fails if the tip moved); --no-deref never follows a
+    # symbolic ref to its target (e.g. main).
+    git(repo, "update-ref", "--no-deref", "-d", ref, f.tip)
+    section = f"branch.{f.branch}"
+    if git(
+        repo,
+        "config",
+        "--get-regexp",
+        "^" + re.escape(section) + r"\.",
+        ok_codes=(0, 1),
+    ).stdout:
+        git(repo, "config", "--remove-section", section)
+
+
+def _remove_worktree(repo: Path, entry: Entry, f: WorktreeFacts) -> None:
+    wt = Path(f.worktree)
+    head = git(wt, "rev-parse", "HEAD").stdout.strip()
+    if head != f.head:
+        raise DriftError(f"{entry.id}: worktree HEAD is {head}, classified at {f.head}")
+    venv = wt / DISPOSABLE_SYMLINK
+    target: str | None = None
+    if f.state is not None and f.state.disposable:
+        if not venv.is_symlink():
+            raise DriftError(f"{entry.id}: {venv} is no longer a symlink")
+        # `git worktree remove` counts the symlink as untracked; unlink only it
+        # (never its target) so git still re-checks everything else.
+        target = os.readlink(venv)
+        venv.unlink()
     try:
-        fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError as exc:
-        raise CleanupError(
-            f"backup {target} already exists; refusing to overwrite"
-        ) from exc
-    with os.fdopen(fd, "wb") as handle:
-        handle.write(proc.stdout)
-        handle.flush()
-        os.fsync(handle.fileno())
-    return target
+        git(repo, "worktree", "remove", f.worktree)  # never --force
+    except CleanupError:
+        if target is not None and not venv.is_symlink():
+            venv.symlink_to(target)
+        raise
 
 
-def _assert_unmoved(repo: Path, entry: Entry) -> None:
-    """Compare tips before anything is removed (update-ref -d re-checks atomically)."""
+def delete_entry(repo: Path, entry: Entry, state_dir: Path, *, approved: bool) -> None:
+    """Delete one branch ref or remove one worktree, logging before and after.
+
+    A worktree removal never deletes its branch, and a branch is only deleted
+    when no worktree checks it out.
+    """
     f = entry.facts
-    if f.branch is not None:
-        ref = f"refs/heads/{f.branch}"
-        symbolic = git(repo, "symbolic-ref", "-q", ref, ok_codes=(0, 1)).stdout.strip()
-        if symbolic:
-            raise DriftError(f"{entry.id}: {ref} is now a symbolic ref to {symbolic}")
-        now = git(
-            repo,
-            "rev-parse",
-            "--verify",
-            "-q",
-            f"refs/heads/{f.branch}",
-            ok_codes=(0, 1),
-        ).stdout.strip()
-        if now != f.tip:
-            raise DriftError(
-                f"{entry.id}: branch tip is {now or '(deleted)'}, classified at {f.tip}"
-            )
-    if f.worktree is not None and not f.worktree_missing:
-        head = git(Path(f.worktree), "rev-parse", "HEAD").stdout.strip()
-        if head != f.tip:
-            raise DriftError(
-                f"{entry.id}: worktree HEAD is {head}, classified at {f.tip}"
-            )
-
-
-def delete_entry(
-    repo: Path, entry: Entry, state_dir: Path, *, approved: bool, discard: bool
-) -> None:
-    """Remove the worktree (if any) and the branch ref, logging before and after."""
-    f = entry.facts
-    state = f.worktree_state
-    has_changes = state is not None and bool(
-        state.dirty_tracked or state.untracked or state.ignored
-    )
-    if has_changes and not discard:
-        raise CleanupError(
-            f"{entry.id}: worktree has uncommitted/untracked/ignored files; pass --discard-changes"
-        )
-    patch_path: str | None = None
-    if f.worktree is not None and state is not None and state.dirty_tracked:
-        patch_path = str(write_backup(state_dir, entry.id, Path(f.worktree)))
     base = {
         "id": entry.id,
         "repo": str(repo),
-        "branch": f.branch,
-        "tip": f.tip,
-        "worktree": f.worktree,
+        "branch": entry.branch,
+        "tip": entry.tip,
+        "worktree": entry.worktree,
         "category": entry.decision.category,
         "approved": approved,
         "reasons": [
             {"code": r.code, "detail": r.detail} for r in entry.decision.reasons
         ],
-        "discarded_patch": patch_path,
-        "discarded_untracked": list(state.untracked + state.ignored)
-        if state is not None and discard
-        else [],
     }
     append_log(state_dir, {**base, "phase": "intent"})
     try:
-        _assert_unmoved(repo, entry)
-        if f.worktree is not None:
-            force = approved and (
-                has_changes or bool(state and state.submodule_populated)
-            )
-            if not force and state is not None:
-                # `git worktree remove` refuses untracked entries even when they are
-                # disposable symlinks; drop exactly those so git still re-checks
-                # that nothing else is untracked or modified.
-                _remove_disposable(Path(f.worktree), state.disposable_untracked)
-            git(repo, "worktree", "remove", *(["--force"] if force else []), f.worktree)
-        if f.branch is not None:
-            # Compare-and-delete: fails if the tip moved since classification.
-            # --no-deref: never follow a symbolic ref to its target (e.g. main).
-            git(
-                repo,
-                "update-ref",
-                "--no-deref",
-                "-d",
-                f"refs/heads/{f.branch}",
-                f.tip or "",
-            )
-            section = f"branch.{f.branch}"
-            if git(
-                repo,
-                "config",
-                "--get-regexp",
-                "^" + re.escape(section) + r"\.",
-                ok_codes=(0, 1),
-            ).stdout:
-                git(repo, "config", "--remove-section", section)
+        if isinstance(f, BranchFacts):
+            _delete_branch(repo, entry, f)
+        else:
+            _remove_worktree(repo, entry, f)
     except CleanupError as exc:
         append_log(state_dir, {**base, "phase": "failed", "error": str(exc)})
         raise
@@ -379,20 +302,13 @@ def reverify(repo: Path, cfg: Config, inv: Inventory, entry: Entry, cwd: Path) -
     if not fresh.entries:
         raise DriftError(f"{entry.id}: no longer exists")
     new = fresh.entries[0]
-    if new.facts.tip != entry.facts.tip or new.facts.worktree != entry.facts.worktree:
+    if new.tip != entry.tip or new.branch != entry.branch:
         raise DriftError(
-            f"{entry.id}: tip or worktree changed since classification "
-            f"({entry.facts.tip} -> {new.facts.tip}, {entry.facts.worktree} -> {new.facts.worktree})"
+            f"{entry.id}: tip or branch changed since classification "
+            f"({entry.tip} -> {new.tip}, {entry.branch} -> {new.branch})"
         )
     new.disk = entry.disk
     return new
-
-
-def fingerprint(entry: Entry) -> dict[str, str]:
-    f = entry.facts
-    if f.worktree is None or f.worktree_state is None:
-        return {}
-    return discard_fingerprint(Path(f.worktree), f.worktree_state)
 
 
 def describe_drift(old: Entry, new: Entry) -> str | None:
@@ -410,24 +326,32 @@ def describe_drift(old: Entry, new: Entry) -> str | None:
                 + [f"-{c}" for c in sorted(before - after)]
             )
         )
-    if old.facts.worktree_state != new.facts.worktree_state:
+    if old.state != new.state:
         changes.append("worktree contents changed")
     return "; ".join(changes) or None
+
+
+def refusal(entry: Entry) -> str | None:
+    """Why an approved ``delete`` must not touch this entry, or None."""
+    for kind, label in (("protect", "protected"), ("block", "blocked")):
+        found = [r for r in entry.decision.reasons if r.kind == kind]
+        if found:
+            return f"{label}: " + "; ".join(f"{r.code}: {r.detail}" for r in found)
+    return None
 
 
 # ---------------------------------------------------------------------------- CLI
 
 
 def parse_id(raw: str) -> tuple[str, str | None]:
-    """``branch:<name>[@<sha>]``, ``worktree:<path>`` or a bare branch name."""
-    if raw.startswith("worktree:"):
-        return raw, None
-    name = raw.removeprefix("branch:")
-    expect: str | None = None
-    m = re.fullmatch(r"(.+)@([0-9a-f]{7,40})", name)
+    """``branch:<name>[@<sha>]``, ``worktree:<path>[@<sha>]`` or a bare branch name."""
+    entry_id = (
+        raw if raw.startswith("worktree:") else "branch:" + raw.removeprefix("branch:")
+    )
+    m = re.fullmatch(r"(.+)@([0-9a-f]{7,40})", entry_id)
     if m:
-        name, expect = m.group(1), m.group(2)
-    return f"branch:{name}", expect
+        return m.group(1), m.group(2)
+    return entry_id, None
 
 
 def cmd_scan(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
@@ -449,6 +373,8 @@ def cmd_apply_auto(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
         for i, e in enumerate(inv.entries):
             if e.decision.category != "auto_delete":
                 continue
+            if not isinstance(e.facts, BranchFacts):
+                raise CleanupError(f"{e.id}: only branches can be auto_delete")
             try:
                 live = reverify(repo, cfg, inv, e, Path.cwd())
                 inv.entries[i] = live
@@ -458,7 +384,7 @@ def cmd_apply_auto(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
                         f"reclassified as {live.decision.category} on re-check"
                     )
                     continue
-                delete_entry(repo, live, args.state_dir, approved=False, discard=False)
+                delete_entry(repo, live, args.state_dir, approved=False)
                 live.action = "deleted"
             except CleanupError as exc:
                 inv.entries[i].action = "failed"
@@ -478,9 +404,6 @@ def cmd_delete(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
             only_ids={i for i, _ in wanted},
         )
         index = {e.id: i for i, e in enumerate(inv.entries)}
-        # Content of the files a --discard-changes deletion would destroy, taken
-        # before anything is removed; re-taken right before each deletion.
-        contents = {e.id: fingerprint(e) for e in inv.entries}
         failed = False
         for entry_id, expect in wanted:
             if entry_id not in index:
@@ -490,68 +413,29 @@ def cmd_delete(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
             i = index[entry_id]
             snapshot = inv.entries[i]
             try:
-                # Earlier deletions in this run can take minutes; re-collect tip,
-                # worktree status, processes and queue jobs for this entry now.
+                # Earlier deletions in this run take time; re-collect tip, worktree
+                # status, processes and queue jobs for this entry now.
                 entry = reverify(repo, cfg, inv, snapshot, Path.cwd())
                 inv.entries[i] = entry
-                drift = describe_drift(snapshot, entry)
-                if drift is None:
-                    now = fingerprint(entry)
-                    changed = sorted(
-                        k
-                        for k in contents[entry_id].keys() | now.keys()
-                        if contents[entry_id].get(k) != now.get(k)
-                    )
-                    if changed:
-                        drift = (
-                            "local files changed: "
-                            + ", ".join(changed[:5])
-                            + (
-                                f" (+{len(changed) - 5} more)"
-                                if len(changed) > 5
-                                else ""
-                            )
-                        )
-                if drift is not None:
-                    raise DriftError(f"changed since classification: {drift}")
+                problem = describe_drift(snapshot, entry)
+                if problem is not None:
+                    problem = f"changed since classification: {problem}"
+                else:
+                    problem = refusal(entry)
+                if (
+                    problem is None
+                    and expect is not None
+                    and not entry.tip.startswith(expect)
+                ):
+                    problem = f"tip is {entry.tip}, approval was for {expect}"
+                if problem is not None:
+                    raise DriftError(problem)
+                delete_entry(repo, entry, args.state_dir, approved=True)
+                entry.action = "deleted"
             except CleanupError as exc:
-                # Report on the newest snapshot (the re-collected one when it exists).
                 current = inv.entries[i]
                 current.action = "refused" if isinstance(exc, DriftError) else "failed"
                 current.action_error = str(exc)
-                failed = True
-                continue
-            if entry.decision.category == "protected":
-                entry.action = "refused"
-                entry.action_error = "protected: " + "; ".join(
-                    f"{r.code}: {r.detail}"
-                    for r in entry.decision.reasons
-                    if r.kind == "protect"
-                )
-                failed = True
-                continue
-            if expect is not None and not (entry.facts.tip or "").startswith(expect):
-                entry.action = "refused"
-                entry.action_error = (
-                    f"tip is {entry.facts.tip}, approval was for {expect}"
-                )
-                failed = True
-                continue
-            try:
-                delete_entry(
-                    repo,
-                    entry,
-                    args.state_dir,
-                    approved=True,
-                    discard=args.discard_changes,
-                )
-                entry.action = "deleted"
-            except DriftError as exc:
-                entry.action, entry.action_error = "refused", str(exc)
-                failed = True
-            except CleanupError as exc:
-                entry.action = "failed"
-                entry.action_error = str(exc)
                 failed = True
         return finish(args, inv, cfg, "delete", failed=failed)
 
@@ -593,12 +477,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "ids",
         nargs="+",
-        help="branch:<name>[@<sha>], worktree:<path>, or a bare branch name",
-    )
-    p.add_argument(
-        "--discard-changes",
-        action="store_true",
-        help="allow removing worktrees with local changes",
+        help="branch:<name>[@<sha>], worktree:<path>[@<sha>], or a bare branch name",
     )
     return parser
 

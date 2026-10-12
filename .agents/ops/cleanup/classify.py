@@ -1,47 +1,56 @@
-"""Pure classification of local branches / worktrees into cleanup categories.
+"""Pure classification of local branches and linked worktrees into cleanup categories.
 
 This module has no side effects: ``inventory.py`` gathers the facts (git, gh,
-/proc, training queue) and this module turns one :class:`Facts` record into a
-category plus the reasons behind it. The policy is documented in README.md.
+/proc, training queue) and this module turns one :class:`BranchFacts` or
+:class:`WorktreeFacts` record into a category plus the reasons behind it. The
+policy is documented in README.md.
+
+Scope (see README.md for why): only a *branch* without a worktree can be
+``auto_delete``. A worktree is never deleted automatically; at best it is
+``approval_required`` and then removable by ``cleanup.py delete worktree:<path>``
+when no ``block`` reason applies.
 """
 
 from __future__ import annotations
 
 import fnmatch
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 Category = Literal["auto_delete", "approval_required", "protected"]
-ReasonKind = Literal["protect", "approval", "auto", "info"]
+ReasonKind = Literal["protect", "block", "approval", "auto", "info"]
 
 # Every reason code and the category it pushes an entry towards. The report JSON
 # exposes ``code``; README.md documents the meaning of each.
 REASON_KINDS: dict[str, ReasonKind] = {
     # protect: never deleted, not even with approval
-    "main_worktree": "protect",
     "protected_branch": "protect",
     "current_checkout": "protect",
+    "symbolic_ref": "protect",
+    "branch_in_use": "protect",
+    "open_pr": "protect",
     "protected_worktree": "protect",
     "worktree_locked": "protect",
     "worktree_missing": "protect",
-    "branch_in_use": "protect",
-    "symbolic_ref": "protect",
     "operation_in_progress": "protect",
     "process_using_worktree": "protect",
     "queue_job_references": "protect",
     "queue_job_unparseable": "protect",
-    "open_pr": "protect",
     "undetermined": "protect",
+    # block: the tool refuses until a human resolves it (it never discards work)
+    "checked_out_in_worktree": "block",
+    "uncommitted_changes": "block",
+    "untracked_files": "block",
+    "ignored_files": "block",
+    "submodule_populated": "block",
+    "unpushed_commits": "block",
     # approval: deleted only by an explicit `delete <id>` command
+    "worktree_needs_approval": "approval",
     "no_pr": "approval",
     "pr_closed_unmerged": "approval",
+    "behind_merged_pr": "approval",
     "commits_after_merge": "approval",
     "diverged_from_merged_pr": "approval",
-    "detached_head": "approval",
-    "uncommitted_changes": "approval",
-    "untracked_files": "approval",
-    "ignored_files": "approval",
-    "submodule_populated": "approval",
     "recently_active": "approval",
     # auto: evidence that everything on the branch is merged
     "merged_pr": "auto",
@@ -79,44 +88,49 @@ class MergedPr:
 
 @dataclass(frozen=True)
 class WorktreeState:
-    """``git status`` digest of one worktree (paths relative to the worktree)."""
+    """``git status --ignored`` digest of one worktree (paths relative to it)."""
 
     dirty_tracked: tuple[str, ...]
-    untracked: tuple[str, ...]  # non-disposable untracked entries
-    ignored: tuple[str, ...]  # non-disposable ignored entries
-    disposable_untracked: tuple[str, ...]  # symlinks / config-matched untracked entries
-    disposable_ignored: tuple[str, ...]  # symlinks / config-matched ignored entries
+    untracked: tuple[str, ...]
+    ignored: tuple[str, ...]
+    disposable: tuple[str, ...]  # the top-level `.venv` symlink, when present
     submodule_populated: tuple[str, ...]
 
 
 @dataclass(frozen=True)
-class Facts:
-    branch: str | None
-    tip: str | None  # branch tip, or worktree HEAD for a detached worktree
-    worktree: str | None
-    is_main_worktree: bool = False
-    worktree_locked: str | None = None  # lock reason ("" when locked without one)
-    worktree_missing: bool = False
-    worktree_state: WorktreeState | None = None
+class BranchFacts:
+    branch: str
+    tip: str
     protected_branch: bool = False
-    protected_worktree: bool = False
-    current_checkout: str | None = None  # why it counts as the current checkout
-    # Branch held by an in-progress rebase/bisect of some worktree (HEAD is detached
-    # there, so `git worktree list` does not report the branch as checked out).
-    branch_in_use: tuple[str, ...] = ()
-    symbolic_ref: tuple[str, ...] = ()  # branch is a symbolic ref or the target of one
-    operations_in_progress: tuple[
-        str, ...
-    ] = ()  # rebase/merge/bisect/... in this worktree
-    process_refs: tuple[str, ...] = ()
-    queue_refs: tuple[str, ...] = ()
-    queue_unparseable: tuple[str, ...] = ()  # jobs blocking every worktree removal
+    current_checkout: str | None = None  # checked out in the main checkout
+    checked_out_in: tuple[str, ...] = ()  # linked worktrees that check it out
+    symbolic_ref: tuple[str, ...] = ()  # it is a symbolic ref or the target of one
+    branch_in_use: tuple[str, ...] = ()  # held by a rebase/bisect somewhere
     open_prs: tuple[int, ...] = ()
     closed_prs: tuple[int, ...] = ()
     merged_prs: tuple[MergedPr, ...] = ()
     ancestor_of: str | None = None  # default-branch ref that contains the tip
     idle_hours: float = 0.0
-    undetermined: tuple[str, ...] = field(default=())
+    undetermined: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class WorktreeFacts:
+    worktree: str
+    head: str
+    branch: str | None  # checked-out branch (None when detached)
+    locked: str | None = None  # lock reason ("" when locked without one)
+    missing: bool = False
+    state: WorktreeState | None = None
+    protected_worktree: bool = False
+    current_checkout: str | None = None  # contains the invoking working directory
+    operations_in_progress: tuple[str, ...] = ()
+    process_refs: tuple[str, ...] = ()
+    queue_refs: tuple[str, ...] = ()
+    queue_unparseable: tuple[str, ...] = ()  # jobs blocking every worktree removal
+    pushed: str | None = None  # evidence that HEAD exists outside this machine
+    idle_hours: float = 0.0
+    undetermined: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -136,140 +150,142 @@ def _short(items: tuple[str, ...], limit: int = 5) -> str:
     return shown + (f" (+{len(items) - limit} more)" if len(items) > limit else "")
 
 
-def _merge_reasons(facts: Facts) -> tuple[list[Reason], bool]:
-    """Return merge-related reasons and whether the tip is fully merged."""
-    reasons: list[Reason] = []
+def _merge_reasons(f: BranchFacts) -> tuple[list[Reason], bool]:
+    """Return merge-related reasons and whether the tip is proven merged."""
     by_relation: dict[str, list[MergedPr]] = {}
-    for pr in facts.merged_prs:
+    for pr in f.merged_prs:
         by_relation.setdefault(pr.relation, []).append(pr)
-
-    merged = by_relation.get("equal", []) + by_relation.get("tip_behind_head", [])
-    if merged:
-        pr = merged[0]
-        how = (
-            "tip == PR head"
-            if pr.relation == "equal"
-            else "tip is an ancestor of PR head"
-        )
-        reasons.append(Reason("merged_pr", f"PR #{pr.number} merged ({how})"))
-        return reasons, True
-    if facts.ancestor_of is not None:
-        reasons.append(
-            Reason(
-                "ancestor_of_default_branch", f"tip is contained in {facts.ancestor_of}"
-            )
-        )
-        return reasons, True
+    if "equal" in by_relation:
+        pr = by_relation["equal"][0]
+        return [Reason("merged_pr", f"PR #{pr.number} merged; tip == PR head")], True
+    if f.ancestor_of is not None:
+        return [
+            Reason("ancestor_of_default_branch", f"tip is contained in {f.ancestor_of}")
+        ], True
+    if "tip_behind_head" in by_relation:
+        pr = by_relation["tip_behind_head"][0]
+        detail = f"tip is an ancestor of merged PR #{pr.number} head"
+        return [Reason("behind_merged_pr", detail)], False
     if "tip_ahead" in by_relation:
         pr = by_relation["tip_ahead"][0]
-        reasons.append(
-            Reason(
-                "commits_after_merge",
-                f"{pr.commits_after} commit(s) after merged PR #{pr.number} head",
-            )
-        )
-    elif "diverged" in by_relation:
+        detail = f"{pr.commits_after} commit(s) after merged PR #{pr.number} head"
+        return [Reason("commits_after_merge", detail)], False
+    if "diverged" in by_relation:
         pr = by_relation["diverged"][0]
-        reasons.append(
-            Reason(
-                "diverged_from_merged_pr",
-                f"tip diverged from merged PR #{pr.number} head",
-            )
-        )
-    elif "head_missing" in by_relation:
+        detail = f"tip diverged from merged PR #{pr.number} head"
+        return [Reason("diverged_from_merged_pr", detail)], False
+    if "head_missing" in by_relation:
         pr = by_relation["head_missing"][0]
-        reasons.append(
-            Reason(
-                "undetermined",
-                f"merged PR #{pr.number} head {pr.head_oid[:12]} is not in the local object store "
-                "(git fetch to decide)",
-            )
+        detail = (
+            f"merged PR #{pr.number} head {pr.head_oid[:12]} is not in the local "
+            "object store (git fetch to decide)"
         )
-    elif facts.open_prs:
-        pass  # unmerged work under review; `open_pr` already protects it
-    elif facts.closed_prs:
-        reasons.append(
-            Reason(
-                "pr_closed_unmerged",
-                "closed without merge: " + ", ".join(f"#{n}" for n in facts.closed_prs),
-            )
-        )
-    elif facts.branch is None:
-        reasons.append(
-            Reason(
-                "detached_head",
-                "detached worktree whose HEAD is not in the default branch",
-            )
-        )
-    else:
-        reasons.append(
-            Reason(
-                "no_pr", "no PR for this branch and tip is not in the default branch"
-            )
-        )
-    return reasons, False
+        return [Reason("undetermined", detail)], False
+    if f.open_prs:
+        return [], False  # unmerged work under review; `open_pr` protects it
+    if f.closed_prs:
+        closed = ", ".join(f"#{n}" for n in f.closed_prs)
+        return [Reason("pr_closed_unmerged", f"closed without merge: {closed}")], False
+    detail = "no PR for this branch and tip is not in the default branch"
+    return [Reason("no_pr", detail)], False
 
 
-def classify(facts: Facts, policy: Policy) -> Decision:
+def _category(reasons: list[Reason], auto_allowed: bool) -> Category:
+    kinds = {r.kind for r in reasons}
+    if "protect" in kinds:
+        return "protected"
+    if auto_allowed and not kinds & {"block", "approval"}:
+        return "auto_delete"
+    return "approval_required"
+
+
+def _stale(idle_hours: float, policy: Policy) -> list[Reason]:
+    days = idle_hours / 24.0
+    if days >= policy.stale_days:
+        return [Reason("stale", f"no activity for {days:.1f} days")]
+    return []
+
+
+def classify_branch(f: BranchFacts, policy: Policy) -> Decision:
     reasons: list[Reason] = []
-    if facts.is_main_worktree:
-        reasons.append(Reason("main_worktree", "main checkout is never removed"))
-    if facts.protected_branch:
+    if f.protected_branch:
+        reasons.append(
+            Reason("protected_branch", f"{f.branch} is in the protected branch list")
+        )
+    if f.current_checkout is not None:
+        reasons.append(Reason("current_checkout", f.current_checkout))
+    if f.symbolic_ref:
+        reasons.append(Reason("symbolic_ref", _short(f.symbolic_ref)))
+    if f.branch_in_use:
+        reasons.append(Reason("branch_in_use", _short(f.branch_in_use)))
+    if f.open_prs:
+        opened = ", ".join(f"#{n}" for n in f.open_prs)
+        reasons.append(Reason("open_pr", f"open: {opened}"))
+    for detail in f.undetermined:
+        reasons.append(Reason("undetermined", detail))
+    if f.checked_out_in:
         reasons.append(
             Reason(
-                "protected_branch", f"{facts.branch} is in the protected branch list"
+                "checked_out_in_worktree",
+                "remove the worktree first: " + _short(f.checked_out_in),
             )
         )
-    if facts.current_checkout is not None:
-        reasons.append(Reason("current_checkout", facts.current_checkout))
-    if facts.protected_worktree:
+    merge_reasons, merged = _merge_reasons(f)
+    reasons.extend(merge_reasons)
+    if merged:
+        via_pr = any(r.code == "merged_pr" for r in merge_reasons)
+        # A PR merge proves intent; plain ancestry (e.g. a branch freshly cut from
+        # main) does not, so it additionally needs the stale threshold.
+        required = policy.min_idle_hours if via_pr else policy.stale_days * 24.0
+        if f.idle_hours < required:
+            reasons.append(
+                Reason(
+                    "recently_active",
+                    f"idle {f.idle_hours:.1f}h < {required:.1f}h required for auto deletion",
+                )
+            )
+    reasons.extend(_stale(f.idle_hours, policy))
+    return Decision(_category(reasons, auto_allowed=merged), tuple(reasons))
+
+
+def classify_worktree(f: WorktreeFacts, policy: Policy) -> Decision:
+    reasons: list[Reason] = []
+    if f.current_checkout is not None:
+        reasons.append(Reason("current_checkout", f.current_checkout))
+    if f.protected_worktree:
         reasons.append(
             Reason(
-                "protected_worktree",
-                f"{facts.worktree} matches protected_worktree_globs",
+                "protected_worktree", f"{f.worktree} matches protected_worktree_globs"
             )
         )
-    if facts.worktree_locked is not None:
+    if f.locked is not None:
         reasons.append(
-            Reason(
-                "worktree_locked", facts.worktree_locked or "locked (no reason given)"
-            )
+            Reason("worktree_locked", f.locked or "locked (no reason given)")
         )
-    if facts.worktree_missing:
+    if f.missing:
         reasons.append(
             Reason(
                 "worktree_missing",
                 "worktree directory is missing; run `git worktree prune` by hand",
             )
         )
-    if facts.symbolic_ref:
-        reasons.append(Reason("symbolic_ref", _short(facts.symbolic_ref)))
-    if facts.branch_in_use:
-        reasons.append(Reason("branch_in_use", _short(facts.branch_in_use)))
-    if facts.operations_in_progress:
+    if f.operations_in_progress:
         reasons.append(
             Reason(
                 "operation_in_progress",
-                "in progress: " + ", ".join(facts.operations_in_progress),
+                "in progress: " + ", ".join(f.operations_in_progress),
             )
         )
-    if facts.process_refs:
-        reasons.append(Reason("process_using_worktree", _short(facts.process_refs)))
-    if facts.queue_refs:
-        reasons.append(Reason("queue_job_references", _short(facts.queue_refs)))
-    if facts.queue_unparseable:
-        reasons.append(Reason("queue_job_unparseable", _short(facts.queue_unparseable)))
-    if facts.open_prs:
-        reasons.append(
-            Reason("open_pr", "open: " + ", ".join(f"#{n}" for n in facts.open_prs))
-        )
-    for detail in facts.undetermined:
+    if f.process_refs:
+        reasons.append(Reason("process_using_worktree", _short(f.process_refs)))
+    if f.queue_refs:
+        reasons.append(Reason("queue_job_references", _short(f.queue_refs)))
+    if f.queue_unparseable:
+        reasons.append(Reason("queue_job_unparseable", _short(f.queue_unparseable)))
+    for detail in f.undetermined:
         reasons.append(Reason("undetermined", detail))
 
-    merge_reasons, fully_merged = _merge_reasons(facts)
-    reasons.extend(merge_reasons)
-
-    state = facts.worktree_state
+    state = f.state
     if state is not None:
         if state.dirty_tracked:
             reasons.append(Reason("uncommitted_changes", _short(state.dirty_tracked)))
@@ -281,39 +297,23 @@ def classify(facts: Facts, policy: Policy) -> Decision:
             reasons.append(
                 Reason("submodule_populated", _short(state.submodule_populated))
             )
-
-    idle_days = facts.idle_hours / 24.0
-    if fully_merged:
-        via_pr = any(r.code == "merged_pr" for r in merge_reasons)
-        # A PR merge proves intent; plain ancestry (e.g. a branch freshly cut from
-        # main) does not, so it additionally needs the stale threshold.
-        required_hours = policy.min_idle_hours if via_pr else policy.stale_days * 24.0
-        if facts.idle_hours < required_hours:
-            reasons.append(
-                Reason(
-                    "recently_active",
-                    f"idle {facts.idle_hours:.1f}h < {required_hours:.1f}h required for auto deletion",
-                )
+    if f.pushed is None:
+        reasons.append(
+            Reason(
+                "unpushed_commits",
+                f"HEAD {f.head[:12]} is in no remote-tracking ref and no PR head",
             )
-    if idle_days >= policy.stale_days:
-        reasons.append(Reason("stale", f"no activity for {idle_days:.1f} days"))
-
-    kinds = {r.kind for r in reasons}
-    category: Category
-    if "protect" in kinds:
-        category = "protected"
-    elif "approval" in kinds or not fully_merged:
-        category = "approval_required"
-    else:
-        category = "auto_delete"
-    return Decision(category, tuple(reasons))
+        )
+    reasons.append(
+        Reason(
+            "worktree_needs_approval",
+            "worktrees are removed only by `delete worktree:<path>`"
+            + (f" (pushed: {f.pushed})" if f.pushed else ""),
+        )
+    )
+    reasons.extend(_stale(f.idle_hours, policy))
+    return Decision(_category(reasons, auto_allowed=False), tuple(reasons))
 
 
 def matches_any(value: str, patterns: tuple[str, ...]) -> bool:
     return any(fnmatch.fnmatchcase(value, p) for p in patterns)
-
-
-def is_disposable(relpath: str, patterns: tuple[str, ...]) -> bool:
-    """Match a status path (dirs end with '/') by full path or by basename."""
-    path = relpath.rstrip("/")
-    return matches_any(path, patterns) or matches_any(path.rsplit("/", 1)[-1], patterns)
