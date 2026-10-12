@@ -89,7 +89,7 @@ def execute(run: AgentRun) -> str:
         "--mode", "read-only",
         "--log-dir", str(run.log_dir),
     ]  # fmt: skip
-    shell.run(cmd, cwd=run.repo_root, timeout=run.timeout)
+    shell.run_process_group(cmd, cwd=run.repo_root, timeout=run.timeout)
     return run.out_file.read_text(encoding="utf-8")
 
 

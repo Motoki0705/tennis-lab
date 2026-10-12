@@ -83,6 +83,11 @@ elif head == ["issue", "create"]:
         "state": "OPEN", "createdAt": "2026-10-12T00:00:00Z", "updatedAt": "2026-10-12T00:00:00Z",
         "url": f"https://github.com/o/r/issues/{number}",
     })
+    # Simulate a human editing report checkboxes while triage is filing children.
+    for old, new in json.loads(os.environ.get("FAKE_GH_CREATE_EDIT", "[]")):
+        for issue in state["issues"]:
+            if "ops-report" in issue["labels"]:
+                issue["body"] = issue["body"].replace(old, new)
     save()
     print(f"https://github.com/o/r/issues/{number}")
 elif head == ["issue", "edit"]:
@@ -129,6 +134,14 @@ done
 # tmp + rename: concurrent runs in one test must not race on the copy.
 cp "$prompt" "$FAKE_AGENT_PROMPT_COPY.$$" && mv -f "$FAKE_AGENT_PROMPT_COPY.$$" "$FAKE_AGENT_PROMPT_COPY"
 echo "$agent" > "$FAKE_AGENT_USED"
+if [[ -n "${FAKE_AGENT_SPAWN:-}" ]]; then
+  # A descendant like the tools a real agent CLI starts; it must not outlive the run.
+  sleep 300 >/dev/null 2>&1 &
+  echo $! > "$FAKE_AGENT_SPAWN"
+fi
+if [[ -n "${FAKE_AGENT_HANG:-}" ]]; then
+  sleep 300
+fi
 if [[ -n "${FAKE_AGENT_FAIL:-}" ]]; then
   echo "fake agent: quota exhausted" >&2
   exit 3

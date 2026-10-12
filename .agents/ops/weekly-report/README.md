@@ -39,7 +39,9 @@ model / effort は [`../lib/agents.conf`](../lib/agents.conf) で固定され、
   再実行時は既存の子issueを再利用して追記だけ行う。再利用するのは子issue本文1行目の
   `<!-- ops-report-proposal: <ID> report=#<レポート番号> option=<選択肢(%エンコード)> -->` が
   ID・レポート・現在選ばれている選択肢のすべてに一致する場合だけで、一致しなければその提案はエラーにする
-  （例: 子issue作成後に本文追記が失敗し、その間に選択肢が close → 継続 に変わった場合）。同じIDの子issueが2件見つかった場合は停止する。
+  （例: 子issue作成後に本文追記が失敗し、その間に選択肢が close → 継続 に変わった場合）。
+  `→ #番号` の追記直前にも最新の本文を読み直して同じ照合をし、triage実行中に選択が変わっていれば追記せずエラーにする。
+  追記済みの提案も毎回この照合を行うので、後から選択を変えた場合もエラーとして表に出る。同じIDの子issueが2件見つかった場合は停止する。
 - レポートをcloseするとtriage対象外になる。不要な提案は放置でよい。
 - 同時実行（timerと手動実行など）: `report` の「同週チェック → issue作成」と `triage` の「子issue走査 → 作成 → 本文追記」は
   マシン共通のロックファイル（flock）で排他する。`report` は agent 実行前にも同週チェックをし、ロック内で再確認する。
@@ -61,6 +63,8 @@ cd ~/projects/tennis-lab
 実行ごとに `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/weekly-report/<時刻>-<command>[-dry]-<pid>/` へ
 `run.log`、`collected.json`、`prompt.md`、`agent_output.md`、agent CLIのログ、`report.md`、`result.json` を残す。
 gh・git・agent・掃除モジュールの失敗、agent出力の形式違反、設定値の不正はすべて非ゼロ終了になる（黙ってskipしない）。
+agentと掃除モジュールは専用のプロセスグループで起動し、タイムアウト・失敗・終了時にグループ全体を
+SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子プロセスを残さない）。
 
 集計期間は `[前回レポートの until, 今回の実行時刻)`。境界は issue 作成時刻ではなく本文メタデータの `until`
 （収集の基準時刻）で引き継ぐので、収集〜公開の間のイベントも欠落・重複しない。merge済みPRは
