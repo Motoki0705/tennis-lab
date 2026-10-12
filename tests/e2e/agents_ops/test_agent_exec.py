@@ -227,8 +227,12 @@ def test_install_units_enable_succeeds_and_enables_only_timers(
     result, calls = _run_installer(tmp_path, unit_names, "--enable")
 
     assert result.returncode == 0, result.stderr
-    enabled = [c for c in calls.read_text(encoding="utf-8").splitlines() if "enable" in c]
-    assert enabled == (["--user enable --now demo.timer"] if "demo.timer" in unit_names else [])
+    enabled = [
+        c for c in calls.read_text(encoding="utf-8").splitlines() if "enable" in c
+    ]
+    assert enabled == (
+        ["--user enable --now demo.timer"] if "demo.timer" in unit_names else []
+    )
 
 
 def test_install_units_propagates_enable_failure(tmp_path: Path) -> None:
