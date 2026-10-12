@@ -162,6 +162,23 @@ def verify_child(
     return unquote(m.group("option")) or None
 
 
+def check_selection(prop: ParsedProposal, child: int, recorded: str | None) -> None:
+    """Raise ValueError unless ``prop`` is still selected with the option ``child``
+    was filed for (a human may change the checkboxes at any time)."""
+    selected, option = prop.selection()  # SelectionError is a ValueError
+    if not selected:
+        raise ValueError(
+            f"{prop.pid}: child #{child} was filed for option {recorded!r} but the "
+            "proposal is no longer selected; resolve by hand"
+        )
+    if option != recorded:
+        raise ValueError(
+            f"{prop.pid}: existing child #{child} was filed for option {recorded!r} "
+            f"but the report now selects {option!r}; resolve by hand "
+            "(close the child or restore the selection)"
+        )
+
+
 def triage(*, repo_root: Path, work_dir: Path, dry_run: bool) -> TriageResult:
     result = TriageResult()
     reports = shell.gh_list(
@@ -202,17 +219,18 @@ def _triage_report(
 ) -> None:
     number = int(report["number"])
     _, parsed = parse_report(report["body"])
-    to_link: dict[str, int] = {}
+    # proposal ID -> (child issue, option the child was filed for)
+    to_link: dict[str, tuple[int, str | None]] = {}
     for prop in parsed:
         if prop.child is not None:
-            # A "→ #N" not produced by triage must not silently mark the proposal
-            # done: unless N is the child found by title scan, check its marker.
-            if children.get(prop.pid) != prop.child:
-                try:
-                    verify_child(prop.pid, prop.child, number, repo_root)
-                except ValueError as exc:
-                    result.errors.append(f"#{number} {exc}")
-                    LOG.error("#%d %s", number, exc)
+            # A linked "→ #N" must still be backed by a child filed for this proposal
+            # and the option selected now (forged notes, later checkbox changes).
+            try:
+                recorded = verify_child(prop.pid, prop.child, number, repo_root)
+                check_selection(prop, prop.child, recorded)
+            except ValueError as exc:
+                result.errors.append(f"#{number} {exc}")
+                LOG.error("#%d %s", number, exc)
             continue
         try:
             selected, option = prop.selection()
@@ -224,20 +242,15 @@ def _triage_report(
             continue
         if prop.pid in children:
             try:
+                # e.g. the report edit failed after creating a "close" child and the
+                # human then switched to "継続": never relink the stale child.
                 recorded = verify_child(prop.pid, children[prop.pid], number, repo_root)
-                if recorded != option:
-                    # e.g. the report edit failed after creating a "close" child and
-                    # the human then switched to "継続": never relink the stale child.
-                    raise ValueError(
-                        f"{prop.pid}: existing child #{children[prop.pid]} was filed for "
-                        f"option {recorded!r} but the report now selects {option!r}; "
-                        "resolve by hand (close the child or restore the selection)"
-                    )
+                check_selection(prop, children[prop.pid], recorded)
             except ValueError as exc:
                 result.errors.append(f"#{number} {exc}")
                 LOG.error("#%d %s", number, exc)
                 continue
-            to_link[prop.pid] = children[prop.pid]
+            to_link[prop.pid] = (children[prop.pid], recorded)
             result.linked_existing.append((prop.pid, children[prop.pid]))
             LOG.info(
                 "%s: child #%d already exists, linking",
@@ -256,7 +269,7 @@ def _triage_report(
             work_dir=work_dir,
         )
         children[prop.pid] = child
-        to_link[prop.pid] = child
+        to_link[prop.pid] = (child, option)
         result.created.append((prop.pid, child))
         LOG.info("%s: created child issue #%d", prop.pid, child)
     if not to_link or dry_run:
@@ -265,7 +278,25 @@ def _triage_report(
     fresh = shell.gh_json(
         ["issue", "view", str(number), "--json", "body"], cwd=repo_root
     )
-    new_body = annotate_children(fresh["body"], to_link)
+    # The human may have changed the checkboxes while children were being filed.
+    _, current = parse_report(fresh["body"])
+    annotate: dict[str, int] = {}
+    for prop in current:
+        if prop.pid not in to_link:
+            continue
+        child, recorded = to_link[prop.pid]
+        try:
+            check_selection(prop, child, recorded)
+        except ValueError as exc:
+            result.errors.append(f"#{number} {exc}")
+            LOG.error("#%d %s (not annotated)", number, exc)
+            continue
+        annotate[prop.pid] = child
+    for pid in sorted(set(to_link) - {prop.pid for prop in current}):
+        msg = f"{pid}: child #{to_link[pid][0]} exists but the proposal vanished from the report"
+        result.errors.append(f"#{number} {msg}")
+        LOG.error("#%d %s", number, msg)
+    new_body = annotate_children(fresh["body"], annotate)
     if new_body == fresh["body"]:
         return
     body_file = work_dir / f"report-{number}.md"
@@ -273,4 +304,4 @@ def _triage_report(
     shell.gh(
         ["issue", "edit", str(number), "--body-file", str(body_file)], cwd=repo_root
     )
-    LOG.info("#%d: annotated %d proposal(s)", number, len(to_link))
+    LOG.info("#%d: annotated %d proposal(s)", number, len(annotate))

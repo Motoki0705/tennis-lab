@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib
 import json
 import sys
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -494,8 +495,53 @@ def test_concurrent_reports_create_one_issue(ops_env: Any) -> None:
     results = [(p.wait(timeout=120), p.communicate()[1]) for p in runs]
 
     assert sorted(code for code, _ in results) == [0, 1]
-    assert any("report for 2026W42 already exists" in err for _, err in results), results
+    assert any("report for 2026W42 already exists" in err for _, err in results), (
+        results
+    )
     assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
+
+
+def _alive(pid: int) -> bool:
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return False
+    return stat[stat.rindex(")") + 2] != "Z"
+
+
+def _gone_soon(pid: int) -> bool:
+    deadline = time.monotonic() + 5
+    while _alive(pid):
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(0.05)
+    return True
+
+
+def test_agent_timeout_kills_its_descendants(ops_env: Any) -> None:
+    pid_file = ops_env.tmp / "agent_child.pid"
+
+    result = ops_env.run(
+        "report",
+        "--dry-run",
+        FAKE_AGENT_SPAWN=str(pid_file),
+        FAKE_AGENT_HANG="1",
+        WEEKLY_REPORT_AGENT_TIMEOUT="1",
+    )
+
+    assert result.returncode == 1
+    assert "timed out after 1s" in result.stderr
+    assert _gone_soon(int(pid_file.read_text()))
+
+
+def test_agent_leftover_descendants_are_killed(ops_env: Any) -> None:
+    pid_file = ops_env.tmp / "agent_child.pid"
+
+    result = ops_env.run("report", "--dry-run", FAKE_AGENT_SPAWN=str(pid_file))
+
+    assert result.returncode == 0, result.stderr
+    assert "killed processes left behind" in result.stderr
+    assert _gone_soon(int(pid_file.read_text()))
 
 
 def test_agent_failure_exits_nonzero_and_keeps_logs(ops_env: Any) -> None:

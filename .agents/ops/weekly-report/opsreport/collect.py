@@ -402,7 +402,7 @@ def collect_cleanup(cfg: CollectConfig) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="weekly-report-cleanup-") as tmp:
         out = Path(tmp) / "cleanup.json"
         cmd = (*_cleanup_command(cfg), "--report-json", str(out))
-        shell.run(cmd, cwd=cfg.repo_root, timeout=900)
+        shell.run_process_group(cmd, cwd=cfg.repo_root, timeout=900)
         if not out.is_file():
             raise CommandError(f"{shlex.join(cmd)} did not write {out}")
         try:

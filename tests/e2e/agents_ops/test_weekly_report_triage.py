@@ -303,3 +303,61 @@ def test_reused_child_must_match_current_option(ops_env: Any) -> None:
         "body"
     ]
     assert not re.search(r"→ #\d", body)
+
+
+_SWITCH_TO_CONTINUE = [
+    ["  - [x] close", "  - [ ] close"],
+    ["  - [ ] 継続", "  - [x] 継続"],
+]
+
+
+def _select_close(body: str) -> str:
+    return body.replace("  - [ ] close", "  - [x] close", 1)
+
+
+def _switch_to_continue(body: str) -> str:
+    for old, new in _SWITCH_TO_CONTINUE:
+        body = body.replace(old, new, 1)
+    return body
+
+
+def _report_body(ops_env: Any, number: int) -> str:
+    body: str = next(i for i in ops_env.state["issues"] if i["number"] == number)[
+        "body"
+    ]
+    return body
+
+
+def test_selection_changed_during_triage_is_not_annotated(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(ops_env, report["number"], _select_close)
+
+    result = ops_env.run("triage", FAKE_GH_CREATE_EDIT=json.dumps(_SWITCH_TO_CONTINUE))
+
+    assert result.returncode == 1
+    (child,) = _children(ops_env)
+    assert child["title"].endswith("（選択: close）")
+    assert (
+        f"existing child #{child['number']} was filed for option 'close' "
+        "but the report now selects '継続'" in result.stderr
+    )
+    body = _report_body(ops_env, report["number"])
+    assert "  - [x] 継続" in body  # the human's edit is kept
+    assert not re.search(r"→ #\d", body)
+
+
+def test_selection_changed_after_link_is_an_error(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(ops_env, report["number"], _select_close)
+    assert ops_env.run("triage").returncode == 0
+    (child,) = _children(ops_env)
+    _edit_body(ops_env, report["number"], _switch_to_continue)
+
+    result = ops_env.run("triage")
+
+    assert result.returncode == 1
+    assert (
+        f"existing child #{child['number']} was filed for option 'close' "
+        "but the report now selects '継続'" in result.stderr
+    )
+    assert len(_children(ops_env)) == 1
