@@ -300,6 +300,9 @@ def reconnect(session: Session) -> dict[str, Any]:
     # The official refresh can prune an expired assignment. The SSH proxy must
     # never see a missing name, because that would implicitly allocate a new VM.
     session.require_registered()
+    # A cached ControlMaster can retain the stale proxy after registry refresh.
+    # Only replace this local transport; the Notebook job continues on the VM.
+    session.close_transport()
     result = session.rpc("status", timeout=90)
     return {**result, "connection": "reconnected"}
 

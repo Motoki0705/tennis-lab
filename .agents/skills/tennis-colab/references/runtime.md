@@ -50,7 +50,8 @@ storageの除外と未回収sourceを区別し、前者だけでstopを拒否し
 
 - **提出・通信が失敗:** 同じjobを再投入せず、local transport.log、remote status、Drive運用記録を調べる。
   SSHが切れた場合は`reconnect --session ...`で公式CLIの既存assignment情報を更新して状態を取得する。
-  更新前後にsessionの存在を検証し、期限切れなら停止する。新VMの割当やコマンドの再実行は行わない。
+  更新前後にsessionの存在を検証し、期限切れなら停止する。有効なら古いローカルSSH接続を閉じて張り直す。
+  実行中のNotebook jobには触れず、新VMの割当やコマンドの再実行は行わない。
   `transport_alive`は提出client processの生存だけを示す。Notebook接続エラー後もclientのthreadが残り、
   remoteが`pending`のままになることがある。remoteが`running`ならその処理を監視する。
   提出のやり直しが必要な場合は元jobをcancelし、terminal状態とDrive保存を確認してから新しいjob IDを使う。
