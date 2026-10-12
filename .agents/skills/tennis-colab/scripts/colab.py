@@ -307,23 +307,51 @@ def reconnect(session: Session) -> dict[str, Any]:
     return {**result, "connection": "reconnected"}
 
 
+def _recover_uncreated_checkout(session: Session, state: dict[str, Any]) -> dict[str, Any] | None:
+    """Prove that a failed setup has neither a checkout nor any remote job."""
+    if state["phase"] not in {"allocated", "setup_failed"} or state.get("jobs"):
+        return None
+    # This probe does not require bootstrap or even the uploaded RPC helper.
+    code = (
+        "import json; from pathlib import Path; "
+        f"repo=Path({state['repo_root']!r}); jobs=Path({session.remote_root + '/jobs'!r}); "
+        "print(json.dumps({'repo_present':repo.exists() or repo.is_symlink(), "
+        "'jobs_present':jobs.is_symlink() or (jobs.exists() and any(jobs.iterdir()))}))"
+    )
+    observed = json.loads(session.ssh(["python3", "-c", code]))
+    if observed != {"repo_present": False, "jobs_present": False}:
+        return None
+    output = session.directory / "recovered" / uuid.uuid4().hex[:12]
+    output.mkdir(parents=True, exist_ok=False)
+    (output / "changes.patch").write_bytes(b"")
+    receipt = {
+        "commit": None, "excluded": [], "storage_excluded": [], "untracked": [],
+        "output": str(output), "checkout_absent": True,
+        "reason": "Setup did not create a checkout; no local or remote jobs exist",
+    }
+    atomic_json(output / "receipt.json", receipt)
+    return receipt
+
+
 def stop(args: argparse.Namespace, session: Session) -> dict[str, Any]:
     state = session.state()
     if state["phase"] == "stopped":
         return {"session": session.name, "status": "already_stopped"}
-    response = session.rpc("status")
-    unsaved = [
-        job["job_id"]
-        for job in response["jobs"]
-        if job["status"] not in TERMINAL or not job.get("drive_saved_at")
-    ]
-    if unsaved:
-        raise ColabError(
-            f"Commands are active or lack a saved receipt: {unsaved}; cancel/save and inspect before stopping"
+    recovered = _recover_uncreated_checkout(session, state)
+    if recovered is None:
+        response = session.rpc("status")
+        unsaved = [
+            job["job_id"]
+            for job in response["jobs"]
+            if job["status"] not in TERMINAL or not job.get("drive_saved_at")
+        ]
+        if unsaved:
+            raise ColabError(
+                f"Commands are active or lack a saved receipt: {unsaved}; cancel/save and inspect before stopping"
+            )
+        recovered = recover_diff(
+            session, session.directory / "recovered" / uuid.uuid4().hex[:12]
         )
-    recovered = recover_diff(
-        session, session.directory / "recovered" / uuid.uuid4().hex[:12]
-    )
     unrecovered_source = set(recovered["excluded"]) - set(recovered["storage_excluded"])
     if unrecovered_source:
         raise ColabError(
