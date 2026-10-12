@@ -10,7 +10,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 2. **正本は1つ**: Claude と Codex は対等。`AGENTS.md` と `.agents/` を共通の正本とする。ツール固有のファイル（`CLAUDE.md`, `.github/copilot-instructions.md`, `.github/agents/`）には差分だけを書く。
 3. **memoryは消去可能**: memoryは規則ではなく、検証待ちの観察である。古いもの・誤っているもの・固定観念になったものは安く消す（git履歴が保険）。詳細は [memory/README.md](memory/README.md)。
 4. **既定コンテキストは小さく**: 常に読み込むのは、汎用で頻繁に使うskillだけにする。大きなskill群（例: ARIS）は既定のskill置き場に置かず、必要なときに明示的に読み込む。
-5. **破壊的変更は積極的に**: 後方互換は保たず、旧経路は同じPRで削除する。ただし共有基盤を壊す変更は人間が承認する。どのパスが共有基盤かは [review/README.md](ops/review/README.md) を参照（#1058で実装中）。
+5. **破壊的変更は積極的に**: 後方互換は保たず、旧経路は同じPRで削除する。ただし共有基盤を壊す変更は人間が承認する。どのパスが共有基盤かは [review/README.md](ops/review/README.md) を参照。
 
 ## 読む順序
 
@@ -50,9 +50,9 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | `claude -p` / `codex exec` を read-only（Claudeは Read/Grep/Glob のみ、Codexは read-only sandbox）または write モードで headless 起動する共通wrapper。失敗や空の出力は非ゼロで終了する |
 | [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する |
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
-| [ops/weekly-report/](ops/weekly-report/README.md) | 週次の運用レポートissue（逆提案）。#1057で実装中 |
-| [ops/review/](ops/review/README.md) | クロスレビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧。#1058で実装中 |
-| [ops/cleanup/](ops/cleanup/README.md) | merge済みbranch・worktreeの自動掃除と、承認制の削除候補一覧。#1060で実装中 |
+| [ops/weekly-report/](ops/weekly-report/README.md) | 週次の運用レポートissue（逆提案）と、チェックされた提案の日次triage |
+| [ops/review/](ops/review/README.md) | クロスレビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（追補issue・人間への差し戻し） |
+| [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。
 
@@ -62,7 +62,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **担当の排他**: 仕組みは作らない（衝突は今の痛みではない）。問題が観測されたら週次レポートで見直す。
 - **放置PR**: N日動きのないPRは、週次レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
-- **merge**: CI通過とクロスレビュー（Claude作成のPRはCodexが、Codex作成のPRはClaudeがレビューする）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細は [review/README.md](ops/review/README.md)（#1058で実装中）。
+- **merge**: CI通過とクロスレビュー（Claude作成のPRはCodexが、Codex作成のPRはClaudeがレビューする）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細（収束基準を含む）は [review/README.md](ops/review/README.md)。
 
 ## 研究ループ（概要）
 
@@ -70,7 +70,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **人間が介入するのはテーマ設定だけ**: 問題提起・目標指標・評価条件・収束/停止条件を人間とAIが一緒に決め、テーマissueに固定する。以降の手法調査・選定・実験・次の調査は、AIが自律で回す。途中経過は週次レポートで観察する。
 - **収束判定**: 共通のルールは持たない。テーマ設定時に、AIが指標の性質に応じた閾値・seed数・停止条件を提案し、合意して固定する。
 - **ARIS**: そのまま導入しない。training-queue と knowledge に合わせた軽い自前skillとして作り直し、ARISからは有用な部品だけを取り込む。既定のskill群は肥大させない。
-- 手順の正本: [skills/research-loop/SKILL.md](skills/research-loop/SKILL.md)（#1059で実装中）
+- 手順の正本: [skills/research-loop/SKILL.md](skills/research-loop/SKILL.md)
 
 ## このファイルの改訂
 
