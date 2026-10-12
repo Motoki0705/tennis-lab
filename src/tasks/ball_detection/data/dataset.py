@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
 from src.tasks.ball_detection.configuration import validate_data
-from src.tasks.ball_detection.data.components.augmentation import (
+from src.tasks.ball_detection.data.augmentation.spatial import (
     BallDetectionAugmentation,
     make_sample_rng,
 )

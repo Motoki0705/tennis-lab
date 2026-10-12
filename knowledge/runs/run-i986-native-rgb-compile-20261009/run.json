@@ -1,0 +1,16 @@
+{
+  "run_id": "1791473000057428324_784409_i986-native-rgb-compile-sweep-v1",
+  "name": "i986-native-rgb-compile-sweep-v1",
+  "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 TORCH_LOGS=graph_breaks,recompiles PYTHONUNBUFFERED=1 timeout -k 20s 2400s bash tests/benchmarks/ball_native_rgb_sweep.sh /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/native-rgb-compile/20261009-sweep-v1",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "986",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "524cef6b95645881ed04174639b6b5a71f4e6a77",
+  "branch": "codex/ball-query-only-training",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training",
+  "captured_at": "2026-10-09T00:23:20+09:00"
+}

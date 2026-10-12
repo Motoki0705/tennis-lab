@@ -29,7 +29,7 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.ball_detection.data.store import SOURCES, SPLIT_CODES
-from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
+from src.tasks.ball_detection.evaluation.detection import BallDetectionMetrics
 from src.tasks.ball_detection.visualization.inference.loader import (
     LoadedBallModel,
     load_ball_model,

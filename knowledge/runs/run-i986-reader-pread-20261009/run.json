@@ -1,0 +1,16 @@
+{
+  "run_id": "1791508438788667904_1403726_i986-reader-pread-trace-v2",
+  "name": "i986-reader-pread-trace-v2",
+  "command": "env PYTHONPATH=. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 PYTHONUNBUFFERED=1 timeout 600 .venv/bin/python tests/benchmarks/ball_reader_trace.py --sustained-report /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/native-rgb-reader/20261009-sustained-v1/report.json --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/native-rgb-reader/20261009-reader-trace-pread-v2/report.json",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "986",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "2da3351a28cf6c685767338f0f768d3c357c402e",
+  "branch": "codex/ball-query-only-training",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training",
+  "captured_at": "2026-10-09T10:13:59+09:00"
+}

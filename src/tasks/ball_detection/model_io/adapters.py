@@ -19,10 +19,13 @@ from src.tasks.ball_detection.model_io.contracts import (
     BallPrediction,
     BallTrainingCall,
 )
-from src.tasks.ball_detection.model_io.mdd import luminance_to_mdd, mdd_coefficients
 from src.tasks.ball_detection.model_io.normalization import (
     IDENTITY_NORMALIZATION,
     BallImageNormalization,
+)
+from src.tasks.ball_detection.preprocessing.mdd import (
+    luminance_to_mdd,
+    mdd_coefficients,
 )
 from src.tasks.base.model_io import ModelCall
 from src.utils.data.heatmaps import (

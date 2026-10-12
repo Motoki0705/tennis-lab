@@ -3,7 +3,7 @@
 from typing import Any
 
 from src.tasks.ball_detection.configuration import validate_data
-from src.tasks.ball_detection.data.components.augmentation import (
+from src.tasks.ball_detection.data.augmentation.spatial import (
     BallDetectionAugmentation,
 )
 from src.tasks.ball_detection.data.dataset import (

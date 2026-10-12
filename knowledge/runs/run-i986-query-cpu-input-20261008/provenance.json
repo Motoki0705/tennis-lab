@@ -1,0 +1,7 @@
+{
+  "production_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+  "source_training_job": "1791463137499163561_670665_i986-query-bf16-s42-u60000-v1",
+  "source_training_queue_state": "cancelled",
+  "script_sha256": "4673c95590b1eb19a20745cef0664b319fe482cf04335005b05d649ab3da95cc",
+  "scope": "CPU-only inputs; no training, CUDA, pinned-memory or H2D benchmark"
+}

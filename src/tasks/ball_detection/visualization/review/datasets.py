@@ -15,7 +15,6 @@ from typing import Any, Final, Literal, Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tasks.ball_detection.data.play_manifest import load_pose_snapshot
 from src.tasks.ball_detection.data.store import (
     METADATA_FILE,
     SHARDS_DIR,
@@ -28,6 +27,7 @@ from src.tasks.ball_detection.data.supervision import (
     resolve_frame_supervision,
 )
 from src.tasks.ball_detection.data.types import FrameLabel
+from src.tasks.ball_detection.data.windows.pose_manifest import load_pose_snapshot
 from src.tasks.ball_detection.visualization.io.store_frames import StoreSceneFrames
 from src.tasks.ball_detection.visualization.review.quality import BallReviewIndex
 from src.utils.checksum import FileIntegrityError

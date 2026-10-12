@@ -15,7 +15,11 @@ from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.tennis_scene.pipeline.observation_types import ObjectObservations
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
-from tests.benchmarks.ball_detection_holdout import pose_reference, sha256, summarize
+from tests.benchmarks.ball_detection.detection_holdout import (
+    pose_reference,
+    sha256,
+    summarize,
+)
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
