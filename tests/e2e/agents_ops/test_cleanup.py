@@ -487,7 +487,7 @@ def test_protection_conditions(
     )
     pending = _merged_worktree(lab, "queue-pending")
     (lab.queue / "jobs" / "2_2_train.job").write_text(
-        f"#!/usr/bin/env bash\n# name: train-b\ncd /elsewhere\npython x.py --out {pending}/outputs\n",
+        f"#!/usr/bin/env bash\n# name: train-b\ncd {lab.repo}\npython x.py --out {pending}/outputs\n",
         encoding="utf-8",
     )
     # A path that only shares a prefix must not match (queue-pending vs queue-pending-x).
@@ -966,7 +966,7 @@ def test_queue_jobs_written_by_training_queue_sh_protect_paths_with_spaces(
     assert "queued\\ cwd" in text and str(by_cwd) not in text  # printf %q form
     escaped = str(by_arg).replace(" ", "\\ ")
     text = _enqueue(
-        lab, f"python x.py --out {escaped}/outputs\necho done", lab.tmp, "arg"
+        lab, f"python x.py --out {escaped}/outputs\necho done", lab.repo, "arg"
     )
     assert str(by_arg) not in text and "$'" in text  # only escaped spellings
     link = lab.tmp / "wts link"
@@ -1188,11 +1188,15 @@ def test_queue_job_with_nested_shell_code_protects_mentioned_worktrees(
     for entry_id in ("branch:feat/foo", "branch:feat/bar"):
         e = entries[entry_id]
         assert e["category"] == "protected", (entry_id, e["reasons"])
-        assert "queue_job_references" in codes(e)
-    assert entries["branch:feat/bar-x"]["category"] == "auto_delete"
+        assert {"queue_job_references", "queue_job_unparseable"} <= codes(e)
+    # Not named anywhere, but nested code could still reach it: blocked, not referenced.
+    other = entries["branch:feat/bar-x"]
+    assert other["category"] == "protected"
+    assert "queue_job_unparseable" in codes(other)
+    assert "queue_job_references" not in codes(other)
     proc = lab.run("apply-auto")
     assert proc.returncode == 0, proc.stderr
-    assert foo.exists() and bar.exists() and not lookalike.exists()
+    assert foo.exists() and bar.exists() and lookalike.exists()
 
 
 def test_process_argv_relative_to_its_cwd_protects_worktree(
@@ -1253,3 +1257,91 @@ def test_detached_main_and_missing_detached_worktree_do_not_crash(lab: Lab) -> N
     proc = lab.run("apply-auto")
     assert proc.returncode == 0, proc.stderr
     assert str(gone) in lab.git("worktree", "list")  # left for a manual prune
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "bash -lc 'cd {link} && python train.py'",  # the review's example
+        "source $HOME/env.sh && python train.py",
+        "cd {outside} && python train.py",
+    ],
+)
+def test_unparseable_queue_job_blocks_every_worktree_removal(
+    lab: Lab, command: str
+) -> None:
+    target = _merged_in_repo(lab, "feat/target")
+    link = lab.tmp / "run-link"
+    link.symlink_to(target)  # reachable only through a symlink outside the repo
+    outside = lab.tmp / "elsewhere"
+    outside.mkdir()
+    plain_tip = lab.branch("feat/plain")  # merged branch without a worktree
+    lab.pr("feat/plain", plain_tip)
+    command = command.format(link=link, outside=outside)
+    _enqueue(lab, f"cd {lab.repo}; {command}", lab.repo, "opaque")
+
+    entries = lab.scan()
+    e = entries["branch:feat/target"]
+    assert e["category"] == "protected", e["reasons"]
+    assert "queue_job_unparseable" in codes(e) and "jobs/opaque" in str(e["reasons"])
+    assert entries["branch:feat/plain"]["category"] == "auto_delete"
+    assert any("blocks worktree removal" in w for w in lab.report()["warnings"])
+
+    proc = lab.run("delete", "feat/target")
+    assert proc.returncode == 1 and "queue_job_unparseable" in proc.stderr
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert target.exists() and lab.has_branch("feat/target")
+    assert not lab.has_branch("feat/plain")  # branches without worktrees proceed
+
+    for job in (lab.queue / "jobs").glob("*.job"):
+        job.unlink()
+    assert lab.scan()["branch:feat/target"]["category"] == "auto_delete"
+
+
+# ------------------------------------------------------------------ symbolic refs
+
+
+def test_symbolic_ref_branches_are_protected_and_never_dereferenced(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lab.config["stale_days"] = 0  # alias -> main would otherwise be auto_delete
+    main_tip = lab.tip("main")
+    lab.git("symbolic-ref", "refs/heads/alias", "refs/heads/main")
+    target_tip = lab.branch("feat/target")
+    lab.pr("feat/target", target_tip)
+    lab.git("symbolic-ref", "refs/heads/alias2", "refs/heads/feat/target")
+
+    entries = lab.scan()
+    for entry_id in ("branch:alias", "branch:alias2", "branch:feat/target"):
+        e = entries[entry_id]
+        assert e["category"] == "protected", (entry_id, e["reasons"])
+        assert "symbolic_ref" in codes(e)
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    proc = lab.run("delete", f"branch:alias@{main_tip[:12]}")
+    assert proc.returncode == 1 and "symbolic_ref" in proc.stderr
+    assert lab.tip("main") == main_tip and lab.has_branch("feat/target")
+
+    # A ref that turns symbolic after classification is refused before deletion.
+    lab.git("branch", "feat/racy", "main")
+    cleanup = _import_cleanup(lab, monkeypatch)
+    cfg = cleanup.load_config(lab.write_inputs())
+    (entry,) = cleanup.build_inventory(
+        lab.repo,
+        cfg,
+        invoking_cwd=lab.tmp,
+        measure_disk=False,
+        only_ids={"branch:feat/racy"},
+        prs={},
+    ).entries
+    lab.git("symbolic-ref", "refs/heads/feat/racy", "refs/heads/main")
+    with pytest.raises(cleanup.DriftError, match="symbolic ref"):
+        cleanup.delete_entry(lab.repo, entry, lab.state, approved=True, discard=False)
+    assert lab.tip("main") == main_tip
+
+    # Even with that check bypassed, update-ref --no-deref removes only the alias.
+    monkeypatch.setattr(cleanup, "_assert_unmoved", lambda repo, entry: None)
+    cleanup.delete_entry(lab.repo, entry, lab.state, approved=True, discard=False)
+    assert not lab.has_branch("feat/racy")
+    assert lab.tip("main") == main_tip

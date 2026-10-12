@@ -271,6 +271,10 @@ def _assert_unmoved(repo: Path, entry: Entry) -> None:
     """Compare tips before anything is removed (update-ref -d re-checks atomically)."""
     f = entry.facts
     if f.branch is not None:
+        ref = f"refs/heads/{f.branch}"
+        symbolic = git(repo, "symbolic-ref", "-q", ref, ok_codes=(0, 1)).stdout.strip()
+        if symbolic:
+            raise DriftError(f"{entry.id}: {ref} is now a symbolic ref to {symbolic}")
         now = git(
             repo,
             "rev-parse",
@@ -338,7 +342,15 @@ def delete_entry(
             git(repo, "worktree", "remove", *(["--force"] if force else []), f.worktree)
         if f.branch is not None:
             # Compare-and-delete: fails if the tip moved since classification.
-            git(repo, "update-ref", "-d", f"refs/heads/{f.branch}", f.tip or "")
+            # --no-deref: never follow a symbolic ref to its target (e.g. main).
+            git(
+                repo,
+                "update-ref",
+                "--no-deref",
+                "-d",
+                f"refs/heads/{f.branch}",
+                f.tip or "",
+            )
             section = f"branch.{f.branch}"
             if git(
                 repo,

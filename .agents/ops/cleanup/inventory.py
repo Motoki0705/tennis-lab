@@ -219,16 +219,40 @@ class BranchInfo:
     name: str
     tip: str
     commit_time: float
+    symref: str  # full target ref when refs/heads/<name> is a symbolic ref, else ""
 
 
 def list_branches(repo: Path) -> list[BranchInfo]:
-    fmt = "%(refname:lstrip=2)%00%(objectname)%00%(committerdate:unix)"
+    fmt = "%(refname:lstrip=2)%00%(objectname)%00%(committerdate:unix)%00%(symref)"
     out = git(repo, "for-each-ref", f"--format={fmt}", "refs/heads").stdout
     branches = []
     for line in out.splitlines():
-        name, tip, ts = line.split("\0")
-        branches.append(BranchInfo(name=name, tip=tip, commit_time=float(ts)))
+        name, tip, ts, symref = line.split("\0")
+        branches.append(
+            BranchInfo(name=name, tip=tip, commit_time=float(ts), symref=symref)
+        )
     return branches
+
+
+def symref_reasons(branches: Sequence[BranchInfo]) -> dict[str, list[str]]:
+    """Branch -> why it is involved in a symbolic ref (as the alias or its target).
+
+    Ref deletion follows symbolic refs, and deleting a target leaves a dangling
+    alias, so both sides are protected.
+    """
+    found: dict[str, list[str]] = {}
+    for b in branches:
+        if not b.symref:
+            continue
+        found.setdefault(b.name, []).append(
+            f"refs/heads/{b.name} is a symbolic ref to {b.symref}"
+        )
+        if b.symref.startswith("refs/heads/"):
+            target = b.symref[len("refs/heads/") :]
+            found.setdefault(target, []).append(
+                f"target of symbolic ref refs/heads/{b.name}"
+            )
+    return found
 
 
 def merged_into(repo: Path, refs: Sequence[str]) -> dict[str, str]:
@@ -808,8 +832,9 @@ def shell_words(text: str) -> list[str]:
 _EXPANSION = re.compile(r"[$`]|^~")
 
 
-def job_paths(words: Sequence[str]) -> tuple[str, ...]:
-    """Every word of a job script (and each ``KEY=``/``--opt=`` value) as absolute paths.
+def job_paths(words: Sequence[str]) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Every word of a job script (and each ``KEY=``/``--opt=`` value) as absolute
+    paths, plus every directory the script ``cd``s into.
 
     Relative words are resolved against every directory the script ``cd``s or
     ``pushd``es into (a subshell or a conditional ``cd`` cannot be told apart
@@ -848,26 +873,38 @@ def job_paths(words: Sequence[str]) -> tuple[str, ...]:
             if cand and not _EXPANSION.search(cand):
                 out.extend(resolve(cand))
         i += 1
-    return tuple(dict.fromkeys(out))
+    return tuple(dict.fromkeys(out)), tuple(cwds)
 
 
 _SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh"})
 
 
-def has_nested_code(text: str, words: Sequence[str]) -> bool:
-    """Whether the job runs shell code held in a string (paths there are not resolvable)."""
-    if "$(" in text or "`" in text:
-        return True
+def nested_code(text: str, words: Sequence[str]) -> str | None:
+    """The construct that makes a job run shell code held in a string, if any.
+
+    Paths inside such code (``bash -lc 'cd /tmp/link && ...'``) cannot be resolved
+    statically, so the caller treats the job as unparseable.
+    """
+    if "$(" in text:
+        return "$(...)"
+    if "`" in text:
+        return "backticks"
     for i, word in enumerate(words):
-        if word in ("eval", "source"):
-            return True
+        if word == "eval":
+            return "eval"
+        if (
+            word in ("source", ".")
+            and i + 1 < len(words)
+            and _EXPANSION.search(words[i + 1])
+        ):
+            return f"{word} {words[i + 1]}"
         if os.path.basename(word) in _SHELLS:
             for opt in words[i + 1 :]:
                 if not opt.startswith("-"):
                     break
                 if "c" in opt.lstrip("-") and not opt.startswith("--"):
-                    return True
-    return False
+                    return f"{word} {opt}"
+    return None
 
 
 @dataclass(frozen=True)
@@ -876,7 +913,8 @@ class QueueJob:
     text: str
     words: tuple[str, ...]  # the job script's shell words, quoting removed
     paths: tuple[str, ...]  # words resolved to absolute paths (see job_paths)
-    nested: bool  # runs code we cannot resolve statically (sh -c, eval, $(...), ...)
+    cd_targets: tuple[str, ...]  # directories the script cd/pushd-es into
+    nested: str | None  # construct running code we cannot resolve (sh -c, eval, ...)
 
 
 def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
@@ -900,7 +938,7 @@ def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
                 continue  # job moved to done/ while scanning
             try:
                 words = tuple(shell_words(text))
-                paths = job_paths(words)
+                paths, cd_targets = job_paths(words)
             except ValueError as exc:
                 raise CleanupError(
                     f"cannot parse training-queue job {path}: {exc}"
@@ -913,10 +951,34 @@ def load_queue_jobs(queue_dir: Path) -> list[QueueJob]:
                     text=text,
                     words=words,
                     paths=paths,
-                    nested=has_nested_code(text, words),
+                    cd_targets=cd_targets,
+                    nested=nested_code(text, words),
                 )
             )
     return jobs
+
+
+def unparseable_jobs(jobs: Sequence[QueueJob], roots: Sequence[str]) -> list[str]:
+    """Jobs whose worktree references cannot be resolved with certainty.
+
+    A job is unparseable when it runs nested shell code, or ``cd``s outside the
+    main checkout and every worktree (``roots``), where a symlink or script could
+    lead back into any worktree. While one exists, no worktree is removed.
+    """
+    real_roots = [os.path.realpath(r) for r in roots]
+    found: list[str] = []
+    for job in jobs:
+        if job.nested is not None:
+            found.append(f"{job.label}: nested shell code ({job.nested})")
+            continue
+        outside = [
+            d
+            for d in job.cd_targets
+            if not any(path_is_within(os.path.realpath(d), r) for r in real_roots)
+        ]
+        if outside:
+            found.append(f"{job.label}: cd outside the repository ({outside[0]})")
+    return found
 
 
 def queue_refs_for(jobs: Sequence[QueueJob], worktree: str) -> list[str]:
@@ -1095,6 +1157,11 @@ def build_inventory(
         if not Path(cfg.queue_dir).is_absolute()
         else Path(cfg.queue_dir)
     )
+    blockers = unparseable_jobs(queue_jobs, [w.path for w in worktrees])
+    for item in blockers:
+        warnings.append(
+            f"unparseable training-queue job blocks worktree removal: {item}"
+        )
     procs = scan_processes()
     for item in procs.unreadable:
         warnings.append(f"process scan could not inspect {item}")
@@ -1104,6 +1171,7 @@ def build_inventory(
         if w.branch is not None:
             by_branch.setdefault(w.branch, []).append(w)
     branch_names = {b.name for b in branches}
+    symrefs = symref_reasons(branches)
     admin_dirs = worktree_admin_dirs(common, worktrees)
     ops_by_worktree = {
         w.path: in_progress(admin_dirs[w.path], branch_names) for w in worktrees
@@ -1207,6 +1275,7 @@ def build_inventory(
             protected_worktree=wt is not None
             and matches_any(wt.path, cfg.protected_worktree_globs),
             current_checkout=current,
+            symbolic_ref=tuple(symrefs.get(name, [])) if name is not None else (),
             branch_in_use=tuple(held_by.get(name, [])) if name is not None else (),
             operations_in_progress=ops_by_worktree[wt.path].operations
             if wt is not None
@@ -1214,6 +1283,7 @@ def build_inventory(
             process_refs=tuple(procs.refs_for(wt.path))
             if live and wt is not None
             else (),
+            queue_unparseable=tuple(blockers) if live else (),
             queue_refs=tuple(queue_refs_for(queue_jobs, wt.path))
             if live and wt is not None
             else (),

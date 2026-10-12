@@ -25,9 +25,11 @@ REASON_KINDS: dict[str, ReasonKind] = {
     "worktree_locked": "protect",
     "worktree_missing": "protect",
     "branch_in_use": "protect",
+    "symbolic_ref": "protect",
     "operation_in_progress": "protect",
     "process_using_worktree": "protect",
     "queue_job_references": "protect",
+    "queue_job_unparseable": "protect",
     "open_pr": "protect",
     "undetermined": "protect",
     # approval: deleted only by an explicit `delete <id>` command
@@ -102,11 +104,13 @@ class Facts:
     # Branch held by an in-progress rebase/bisect of some worktree (HEAD is detached
     # there, so `git worktree list` does not report the branch as checked out).
     branch_in_use: tuple[str, ...] = ()
+    symbolic_ref: tuple[str, ...] = ()  # branch is a symbolic ref or the target of one
     operations_in_progress: tuple[
         str, ...
     ] = ()  # rebase/merge/bisect/... in this worktree
     process_refs: tuple[str, ...] = ()
     queue_refs: tuple[str, ...] = ()
+    queue_unparseable: tuple[str, ...] = ()  # jobs blocking every worktree removal
     open_prs: tuple[int, ...] = ()
     closed_prs: tuple[int, ...] = ()
     merged_prs: tuple[MergedPr, ...] = ()
@@ -238,6 +242,8 @@ def classify(facts: Facts, policy: Policy) -> Decision:
                 "worktree directory is missing; run `git worktree prune` by hand",
             )
         )
+    if facts.symbolic_ref:
+        reasons.append(Reason("symbolic_ref", _short(facts.symbolic_ref)))
     if facts.branch_in_use:
         reasons.append(Reason("branch_in_use", _short(facts.branch_in_use)))
     if facts.operations_in_progress:
@@ -251,6 +257,8 @@ def classify(facts: Facts, policy: Policy) -> Decision:
         reasons.append(Reason("process_using_worktree", _short(facts.process_refs)))
     if facts.queue_refs:
         reasons.append(Reason("queue_job_references", _short(facts.queue_refs)))
+    if facts.queue_unparseable:
+        reasons.append(Reason("queue_job_unparseable", _short(facts.queue_unparseable)))
     if facts.open_prs:
         reasons.append(
             Reason("open_pr", "open: " + ", ".join(f"#{n}" for n in facts.open_prs))
