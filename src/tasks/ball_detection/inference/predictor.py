@@ -9,7 +9,7 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
+from src.tasks.ball_detection.checkpoints.heatmap import load_ball_checkpoint
 from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
 from src.tasks.ball_detection.model_io.contracts import (
     DEFAULT_CANDIDATE_CONFIG,

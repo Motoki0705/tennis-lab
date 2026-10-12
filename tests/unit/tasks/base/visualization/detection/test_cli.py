@@ -1,6 +1,6 @@
-"""Focused coverage for the shared detection CLI and its four task scripts.
+"""Coverage for public detection commands and their validated task handlers.
 
-Each review/inference script owns its ``argparse`` parser and validates its
+Each task handler owns its ``argparse`` parser and validates its
 module-level ``NonHydraPathBoundary`` before the shared launcher imports a task
 service, so these tests pin both the runtime ordering and the source-level
 boundary binding the configuration audit discovers.
@@ -31,7 +31,22 @@ _NON_HYDRA_VALIDATOR = "src.utils.configuration.paths.NonHydraPathBoundary.valid
 
 
 def _script_module(task: str, script: str) -> ModuleType:
+    if task == "ball_detection":
+        handler = {"review_dataset": "review", "inference_ui": "inference"}[script]
+        return importlib.import_module(f"src.tasks.ball_detection.visualization.{handler}.cli")
     return importlib.import_module(f"src.tasks.{task}.scripts.{script}")
+
+
+def _run_cli(task: str, script: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exercise the public ball router, while court keeps its direct commands."""
+    if task == "ball_detection":
+        module = importlib.import_module("src.tasks.ball_detection.scripts.review")
+        mode = {"review_dataset": "dataset", "inference_ui": "inference"}[script]
+        with monkeypatch.context() as context:
+            context.setattr(sys, "argv", [sys.argv[0], "--mode", mode, *sys.argv[1:]])
+            module.main()
+    else:
+        _script_module(task, script).main()
 
 
 def _record_serve_calls(
@@ -60,7 +75,7 @@ def test_help_exits_without_serving(
     monkeypatch.setattr(sys, "argv", [script, "--help"])
 
     with pytest.raises(SystemExit) as exit_info:
-        module.main()
+        _run_cli(task, script, monkeypatch)
 
     assert exit_info.value.code == 0
     assert calls == []
@@ -81,7 +96,7 @@ def test_validated_defaults_reach_serve(
     (repository / "data").mkdir(parents=True)
     monkeypatch.setattr(sys, "argv", [script, "--project-root", str(repository)])
 
-    module.main()
+    _run_cli(task, script, monkeypatch)
 
     assert len(calls) == 1
     args, kwargs = calls[0]
@@ -128,7 +143,7 @@ def test_explicit_path_options_override_defaults(
         ],
     )
 
-    module.main()
+    _run_cli(task, script, monkeypatch)
 
     assert len(calls) == 1
     values = calls[0][1]["values"]
@@ -155,7 +170,7 @@ def test_invalid_root_is_rejected_before_serve(
     )
 
     with pytest.raises(PathContractError):
-        module.main()
+        _run_cli(task, script, monkeypatch)
 
     assert calls == []
 
@@ -172,13 +187,13 @@ def test_detection_scripts_bind_their_inventory_boundary() -> None:
     }
 
     for task, script, _mode, _port in SCRIPTS:
-        key = (f"src.tasks.{task}.scripts.{script}", "main")
+        key = (_script_module(task, script).__name__, "main")
         source = discovered[key]
         declared = inventory[key]
         assert source.kind is BoundaryKind.ARGPARSE
         assert source.validator_key == f"{task}.{script}"
         assert source.validator_callable == _NON_HYDRA_VALIDATOR
-        assert source.executable_module
+        assert source.executable_module == (task != "ball_detection")
         assert (
             source.kind,
             source.validator_key,
@@ -191,6 +206,16 @@ def test_detection_scripts_bind_their_inventory_boundary() -> None:
             declared.executable_module,
         )
 
+    router = discovered[("src.tasks.ball_detection.scripts.review", "main")]
+    assert router.executable_module
+    assert router.routes == (
+        ("mode", "dataset", "src.tasks.ball_detection.visualization.review.cli"),
+        ("mode", "inference", "src.tasks.ball_detection.visualization.inference.cli"),
+    )
+    assert {entry[0] for entry in router.delegated_boundaries} == {
+        _script_module("ball_detection", script).__name__
+        for script in ("review_dataset", "inference_ui")
+    }
     assert ("src.tasks.base.visualization.detection.cli", "serve") not in discovered
 
 
@@ -205,9 +230,9 @@ def test_ball_pose_review_path_is_checked_before_serving(tmp_path, monkeypatch, 
     monkeypatch.setattr(sys, "argv", ["review_dataset", "--project-root", str(tmp_path),
                                      "--play-poses", str(poses)])
     if valid:
-        module.main()
+        _run_cli("ball_detection", "review_dataset", monkeypatch)
         assert calls[0][1]["values"]["play_poses"] == poses
     else:
         with pytest.raises(PathContractError):
-            module.main()
+            _run_cli("ball_detection", "review_dataset", monkeypatch)
         assert calls == []

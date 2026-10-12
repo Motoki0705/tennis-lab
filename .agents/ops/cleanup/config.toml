@@ -1,0 +1,23 @@
+# Policy for cleanup.py (issue #1060). Every key is required; see README.md.
+
+# Branches that are never deleted (exact names and fnmatch globs).
+protected_branches = ["main", "ai-env/base"]
+protected_branch_globs = []
+# Worktree absolute paths (fnmatch) that are never removed.
+protected_worktree_globs = []
+
+# A tip contained in one of these refs counts as merged (in addition to PR evidence).
+default_branch_refs = ["refs/remotes/origin/main", "refs/heads/main"]
+
+# Entries idle for this many days get the `stale` reason; ancestry-only merges
+# (no PR) need this much idle time before auto deletion.
+stale_days = 14
+# PR-merged entries need this much idle time before auto deletion.
+min_idle_hours = 24
+
+# Training queue whose jobs/ and running/ files protect referenced worktrees
+# (relative to the main checkout, or absolute).
+queue_dir = ".training_queue"
+
+# `gh pr list --limit`; the run fails if the limit is reached.
+pr_limit = 5000

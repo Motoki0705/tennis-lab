@@ -63,6 +63,7 @@ class RuntimeBoundaryReference:
     callable_name: str
     validator_key: str | None
     validator_callable: str | None
+    delegated_boundaries: tuple[tuple[str, str, str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -653,6 +654,9 @@ def discover_boundary_authorities(
     bindings: dict[str, BoundaryAuthorityBinding] = {}
     for boundary in boundaries:
         pending: deque[str] = deque()
+        for module, callable_name, _, validator in boundary.delegated_boundaries:
+            pending.extend((f"{module}.{callable_name}", _callable_symbol(validator)[0]))
+            pending.extend(symbol for symbol in contract_symbols if symbol.startswith(f"{module}."))
         literal_arguments: tuple[str, ...] = ()
         local_path_contracts = tuple(
             symbol

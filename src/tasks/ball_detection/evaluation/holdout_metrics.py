@@ -47,8 +47,8 @@ def clip_references(store: BallFrameStore, clip: ClipRecord) -> HoldoutReference
     """Meiji single-ball references; reject multi-instance data, never choose a GT."""
     rows = store.clip_rows(clip)
     kinds: list[str] = []
-    uv = np.full((clip.frame_count, 2), np.nan, np.float32)
-    occluded = np.zeros(clip.frame_count, bool)
+    uv: NDArray[np.float32] = np.full((clip.frame_count, 2), np.nan, np.float32)
+    occluded: NDArray[np.bool_] = np.zeros(clip.frame_count, bool)
     for i, row in enumerate(rows):
         instances = store.instances_of(int(row))
         if len(instances.xy) > 1:
