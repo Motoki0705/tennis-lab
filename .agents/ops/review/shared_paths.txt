@@ -12,7 +12,6 @@ src/tennis_scene/pipeline/contracts.py
 src/synthetic_data_generation/scene_contract.py
 src/synthetic_data_generation/dataset/contracts.py
 src/synthetic_data_generation/dataset/court/schema.py
-scripts/colab/STORAGE_LAYOUT.md
 
 # AI 運用・制御
 AGENTS.md
