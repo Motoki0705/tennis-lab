@@ -30,6 +30,12 @@ $generation_note
 - #$source_number $source_title（$source_url）
 - merge commit: `$source_merge_commit`
 
+<details><summary>元 PR の本文（現在のもの）</summary>
+
+$source_body
+
+</details>
+
 ## 追補 issue
 
 - #$issue_number（$issue_url）、今回は第 $round_no 回目の処理です。
