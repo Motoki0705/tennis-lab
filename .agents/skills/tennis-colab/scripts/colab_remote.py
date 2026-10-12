@@ -11,6 +11,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path, PurePosixPath
@@ -116,21 +117,24 @@ def bootstrap(request: dict[str, Any]) -> dict[str, Any]:
                 "Remote checkout has changes; recover/inspect them before setup"
             )
     else:
-        checked(
-            [
-                "git",
-                "clone",
-                "--filter=blob:none",
-                "--no-checkout",
-                cfg["repo_url"],
-                str(repo),
-            ],
-            timeout=600,
-        )
-        checked(["git", "-C", str(repo), "fetch", "origin", cfg["commit"]], timeout=600)
-        checked(
-            ["git", "-C", str(repo), "checkout", "--detach", cfg["commit"]], timeout=600
-        )
+        # Publish only a complete checkout. A failed clone/fetch/checkout must
+        # leave setup retryable without overwriting an existing working tree.
+        with tempfile.TemporaryDirectory(
+            prefix=".tennis-colab-checkout-", dir=repo.parent
+        ) as temporary:
+            staging = Path(temporary) / "repo"
+            checked(
+                ["git", "clone", "--filter=blob:none", "--no-checkout", cfg["repo_url"], str(staging)],
+                timeout=600,
+            )
+            checked(["git", "-C", str(staging), "fetch", "origin", cfg["commit"]], timeout=600)
+            checked(["git", "-C", str(staging), "checkout", "--detach", cfg["commit"]], timeout=600)
+            staged_commit = checked(["git", "-C", str(staging), "rev-parse", "HEAD"]).stdout.decode().strip()
+            if staged_commit != cfg["commit"]:
+                raise ColabError("Prepared checkout differs from requested commit")
+            if repo.exists() or repo.is_symlink():
+                raise ColabError("Checkout path appeared during setup; inspect it before retrying")
+            staging.rename(repo)
     observed = (
         checked(["git", "-C", str(repo), "rev-parse", "HEAD"]).stdout.decode().strip()
     )
