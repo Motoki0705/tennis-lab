@@ -142,6 +142,51 @@ def test_invalid_arguments_are_rejected(tmp_path: Path, bad_args: list[str]) -> 
     assert result.returncode == 2
 
 
+def _codex_args(tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    work = tmp_path / "work"
+    work.mkdir(exist_ok=True)
+    prompt = tmp_path / "prompt.md"
+    prompt.write_text("profile\n", encoding="utf-8")
+    return _run(
+        tmp_path,
+        "--agent", "codex",
+        "--cwd", str(work),
+        "--prompt-file", str(prompt),
+        "--out", str(tmp_path / "out.md"),
+        "--log-dir", str(tmp_path / "logs"),
+        *extra,
+    )  # fmt: skip
+
+
+def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
+    result = _codex_args(tmp_path, "--mode", "write", "--profile", "followup")
+
+    assert result.returncode == 0, result.stderr
+    args = (tmp_path / "args.txt").read_text(encoding="utf-8").splitlines()
+    assert args[args.index("--model") + 1] == "gpt-6.1-sol"
+    assert 'model_reasoning_effort="max"' in args
+    assert 'service_tier="default"' in args
+    assert "profile=followup" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("extra", "message"),
+    [
+        (["--profile", "nosuch"], "agents.conf must set NOSUCH_CODEX_MODEL"),
+        (["--profile", "followup", "--model", "x"], "cannot be combined"),
+        (["--profile", "Bad-Name"], "invalid --profile"),
+    ],
+)
+def test_profile_errors_never_fall_back(
+    tmp_path: Path, extra: list[str], message: str
+) -> None:
+    result = _codex_args(tmp_path, *extra)
+
+    assert result.returncode == 2
+    assert message in result.stderr
+    assert not (tmp_path / "args.txt").exists()
+
+
 def test_relative_paths_resolve_against_caller_cwd(tmp_path: Path) -> None:
     work = tmp_path / "work"
     work.mkdir()
