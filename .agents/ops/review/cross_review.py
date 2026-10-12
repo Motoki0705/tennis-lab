@@ -534,7 +534,7 @@ def review_head(
 ) -> ReviewRecord:
     """Run the reviewer on ``target``, post the result and return it as a record."""
     number = pr.number
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     run_dir = (
         settings.state_dir
         / "runs"
