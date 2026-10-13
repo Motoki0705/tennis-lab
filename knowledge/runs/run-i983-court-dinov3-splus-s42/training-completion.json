@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "train-splus-s42",
+  "status": "completed",
+  "updated_at": "2026-10-12T02:54:25.095855+00:00",
+  "returncode": 0,
+  "worker_pid": 10362,
+  "worker_token": "169587",
+  "pid": 10536,
+  "process_token": "172706",
+  "started_at": "2026-10-11T15:53:43.328900+00:00",
+  "drive_saved_at": "2026-10-12T02:54:39.107705+00:00",
+  "finished_at": "2026-10-12T02:54:39.107721+00:00"
+}

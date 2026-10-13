@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "profile-splus-b8",
+  "status": "failed",
+  "updated_at": "2026-10-12T08:02:22.695090+00:00",
+  "returncode": -15,
+  "worker_pid": 11389,
+  "worker_token": "170467",
+  "pid": 11567,
+  "process_token": "173587",
+  "started_at": "2026-10-12T07:57:46.461428+00:00",
+  "error": "rclone copy failed with exit code 1:  being updated (size changed from 4680 to 4760)\n2026/10/12 07:59:01 ERROR : Attempt 2/3 failed with 1 errors and: Post \"https://www.googleapis.com/upload/drive/v3/files?alt=json&fields=id%2Cname%2Csize%2Cmd5Checksum%2Ctrashed%2CexplicitlyTrashed%2CmodifiedTime%2CcreatedTime%2CmimeType%2Cparents%2CwebViewLink%2CshortcutDetails%2CexportLinks%2CresourceKey&keepRevisionForever=false&prettyPrint=false&supportsAllDrives=true&uploadType=multipart\": googleapi: Copy failed: can't copy - source file is being updated (size changed from 4680 to 4760)\n2026/10/12 07:59:02 ERROR : gpu-samples.csv: Failed to copy: Post \"https://www.googleapis.com/upload/drive/v3/files?alt=json&fields=id%2Cname%2Csize%2Cmd5Checksum%2Ctrashed%2CexplicitlyTrashed%2CmodifiedTime%2CcreatedTime%2CmimeType%2Cparents%2CwebViewLink%2CshortcutDetails%2CexportLinks%2CresourceKey&keepRevisionForever=false&prettyPrint=false&supportsAllDrives=true&uploadType=multipart\": googleapi: Copy failed: can't copy - source file is being updated (size changed from 4760 to 4840)\n2026/10/12 07:59:02 ERROR : Attempt 3/3 failed with 1 errors and: Post \"https://www.googleapis.com/upload/drive/v3/files?alt=json&fields=id%2Cname%2Csize%2Cmd5Checksum%2Ctrashed%2CexplicitlyTrashed%2CmodifiedTime%2CcreatedTime%2CmimeType%2Cparents%2CwebViewLink%2CshortcutDetails%2CexportLinks%2CresourceKey&keepRevisionForever=false&prettyPrint=false&supportsAllDrives=true&uploadType=multipart\": googleapi: Copy failed: can't copy - source file is being updated (size changed from 4760 to 4840)\n2026/10/12 07:59:02 Failed to copy: Post \"https://www.googleapis.com/upload/drive/v3/files?alt=json&fields=id%2Cname%2Csize%2Cmd5Checksum%2Ctrashed%2CexplicitlyTrashed%2CmodifiedTime%2CcreatedTime%2CmimeType%2Cparents%2CwebViewLink%2CshortcutDetails%2CexportLinks%2CresourceKey&keepRevisionForever=false&prettyPrint=false&supportsAllDrives=true&uploadType=multipart\": googleapi: Copy failed: can't copy - source file is being updated (size changed from 4760 to 4840)",
+  "failure_stage": "periodic_save",
+  "drive_saved_at": "2026-10-12T08:02:35.763432+00:00",
+  "finished_at": "2026-10-12T08:02:35.763446+00:00"
+}

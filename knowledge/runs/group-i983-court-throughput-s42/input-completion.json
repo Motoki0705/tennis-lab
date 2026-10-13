@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "prepare-inputs",
+  "status": "completed",
+  "updated_at": "2026-10-12T07:54:12.362542+00:00",
+  "returncode": 0,
+  "worker_pid": 4053,
+  "worker_token": "65131",
+  "pid": 4210,
+  "process_token": "67888",
+  "started_at": "2026-10-12T07:40:09.473902+00:00",
+  "drive_saved_at": "2026-10-12T07:54:24.421125+00:00",
+  "finished_at": "2026-10-12T07:54:24.421141+00:00"
+}

@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "bash",
+    "-lc",
+    "git diff --exit-code && git fetch origin codex/i983-court-ablation && git checkout --detach c4b12f923b243da6b502149aa6f3912c706045e7 && git rev-parse HEAD"
+  ],
+  "cwd": null,
+  "persist": [],
+  "runner_outputs": [],
+  "job_id": "update-autocast-fix",
+  "execution_backend": "notebook_kernel",
+  "kernel_timeout_seconds": 86400
+}

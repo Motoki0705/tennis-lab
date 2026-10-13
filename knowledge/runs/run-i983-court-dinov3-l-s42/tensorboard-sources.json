@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "drive_root": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42/logs/version_0",
+  "resume_global_step": 3316,
+  "sources": [
+    {
+      "name": "events.out.tfevents.1791642597.8828523389fc.27163.0",
+      "role": "attempt_01",
+      "bytes": 187568,
+      "sha256": "bead4c82f7933f3970e53436ac8da49c7d9f6ffda1e4d248a650e450a57fca34",
+      "keep_step_before": 3316
+    },
+    {
+      "name": "events.out.tfevents.1791650760.ccbe68b49d66.13700.0",
+      "role": "attempt_02",
+      "bytes": 10972846,
+      "sha256": "d554f66667fe2c0bbd67a2a84d3ea870b560a682912c1a74d5e302570e2ec762"
+    },
+    {
+      "name": "events.out.tfevents.1791688413.ccbe68b49d66.13700.1",
+      "role": "terminal_test",
+      "bytes": 25717,
+      "sha256": "ed78f25b29bb04ffb13326670c89e1a223f894aaaced2d9feb3f0be052ed1373"
+    }
+  ]
+}

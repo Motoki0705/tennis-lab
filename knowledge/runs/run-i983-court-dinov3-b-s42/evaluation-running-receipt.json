@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "session": "i983-l4-ablation-08",
+  "jobs": [
+    {
+      "schema_version": 1,
+      "job_id": "eval-b-s42",
+      "status": "running",
+      "updated_at": "2026-10-12T22:14:05.367587+00:00",
+      "returncode": null,
+      "worker_pid": 11303,
+      "worker_token": "254375",
+      "pid": 11483,
+      "process_token": "257631",
+      "started_at": "2026-10-12T22:09:26.398139+00:00"
+    }
+  ],
+  "repo_root": "/content/tennis-lab"
+}

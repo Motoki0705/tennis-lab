@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "train-l-s42-resume-02",
+  "status": "completed",
+  "updated_at": "2026-10-11T03:35:23.458346+00:00",
+  "returncode": 0,
+  "worker_pid": 13534,
+  "worker_token": "226352",
+  "pid": 13700,
+  "process_token": "229213",
+  "started_at": "2026-10-10T16:43:24.090710+00:00",
+  "drive_saved_at": "2026-10-11T03:35:36.036464+00:00",
+  "finished_at": "2026-10-11T03:35:36.036486+00:00"
+}

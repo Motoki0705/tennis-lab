@@ -1,0 +1,21 @@
+{
+  "compared_to": "config.yaml",
+  "columns": [
+    "path",
+    "attempt_01",
+    "attempt_02"
+  ],
+  "differences": [
+    [
+      "run.artifact_store.remote_root",
+      "tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42",
+      "tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02"
+    ],
+    [
+      "run.output_dir",
+      "court_detection/train/i983-dino-s-shared1024/s42",
+      "court_detection/train/i983-dino-s-shared1024/s42/attempt-02"
+    ]
+  ],
+  "other_config_equal": true
+}

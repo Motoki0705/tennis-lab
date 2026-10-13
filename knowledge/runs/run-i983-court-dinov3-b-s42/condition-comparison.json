@@ -1,0 +1,31 @@
+{
+  "compared_to": "knowledge/runs/run-i983-court-dinov3-splus-s42/config.yaml",
+  "columns": [
+    "path",
+    "S+",
+    "B"
+  ],
+  "differences": [
+    [
+      "model.encoder.backbone_name",
+      "dinov3_vits16plus",
+      "dinov3_vitb16"
+    ],
+    [
+      "model.encoder.checkpoint_path",
+      "dinov3/dinov3_vits16plus_pretrain_lvd1689m-4057cbaa.pth",
+      "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
+    ],
+    [
+      "run.artifact_store.remote_root",
+      "tennis_lab/outputs/court_detection/train/i983-dino-splus-shared1024/s42",
+      "tennis_lab/outputs/court_detection/train/i983-dino-b-shared1024/s42"
+    ],
+    [
+      "run.output_dir",
+      "court_detection/train/i983-dino-splus-shared1024/s42",
+      "court_detection/train/i983-dino-b-shared1024/s42"
+    ]
+  ],
+  "other_config_equal": true
+}

@@ -1,0 +1,7 @@
+{
+  "observed_at": "2026-10-12T10:32:37.137082+00:00",
+  "training_pid": 9470,
+  "process_token": "153517",
+  "expected_training_argv_verified": true,
+  "gpu": "NVIDIA L4, 2302 MiB, 0 %"
+}

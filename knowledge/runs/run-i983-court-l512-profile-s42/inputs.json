@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "kind": "court_ablation_inputs",
+  "assets": [
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/datasets/court",
+      "destination": "data/synthetic_data_generation/scenes/B00/datasets/court",
+      "manifest_sha256": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad",
+      "files": [
+        [
+          "index.npz",
+          "24721bcc3e621b536fd0673d606143384eca941d1052dcf6773e2a4d60d57e63"
+        ],
+        [
+          "shards/images-00000.bin",
+          "c8d14485fd68e2d8e50532ce7b7908f0b97f2aaf7abf8e91a15507b6871173f7"
+        ]
+      ]
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/datasets/court",
+      "destination": "data/synthetic_data_generation/scenes/B01/datasets/court",
+      "manifest_sha256": "a2f7ee3a04bb3c6e39732b7917a1af5af0ad093446b36a0f7974e4569f436f4e",
+      "files": [
+        [
+          "index.npz",
+          "422b18d17e38b47560daf055e21c9562de96662ecef5dee0316feaa38b5e40cd"
+        ],
+        [
+          "shards/images-00000.bin",
+          "90ccd58fcadd3fe43bee040a7dae3adb8a7710440a1b10fe08d9cd71363ee451"
+        ]
+      ]
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B02/datasets/court",
+      "destination": "data/synthetic_data_generation/scenes/B02/datasets/court",
+      "manifest_sha256": "40f17dd3345570c5f4897d2ee454909a678583e0a8237f4dca352e34cfc9b568",
+      "files": [
+        [
+          "index.npz",
+          "c6761029a4b20132e8c0eb873c6945e518a608f8f9bc0dff8c361afe901c062b"
+        ],
+        [
+          "shards/images-00000.bin",
+          "31f90f965e43be72712956db140755f544569c81338a26e54c77e0f90ee7fd14"
+        ]
+      ]
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B03/datasets/court",
+      "destination": "data/synthetic_data_generation/scenes/B03/datasets/court",
+      "manifest_sha256": "84c8195ac34c4cf0a9eb4852ec85e37ce7940a58cc2b29a7637c1fa087d12607",
+      "files": [
+        [
+          "index.npz",
+          "062dceb390c2fbb1be86540bd2637623860ce3e2d5dc4a0306c105a19ae4807d"
+        ],
+        [
+          "shards/images-00000.bin",
+          "cc1f59f745bed650c2a4d40248d6b9e56d11ba4f90b3b86a0f68ef67219e52f3"
+        ]
+      ]
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1",
+      "destination": "data/court_detection/tennis_court_detector-v1",
+      "manifest_sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+      "files": [
+        [
+          "index.npz",
+          "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b"
+        ],
+        [
+          "shards/images-00000.bin",
+          "20e190037abe7bf91cb06c556814b2d41348750894d52784208878abd2dabf05"
+        ],
+        [
+          "shards/images-00001.bin",
+          "ecfb50d97ee343a40d516921a5f53ef172a0a433e358fb348e93bf4b79f475f9"
+        ],
+        [
+          "shards/images-00002.bin",
+          "42aa2cc096bb4c0ba68d52e29e6b188ac478c06750ae7823755c8495240fe173"
+        ],
+        [
+          "shards/images-00003.bin",
+          "f6d362b234739f0587407c79692bbff9a559afd33b7bacda9d51845c6a9c5831"
+        ],
+        [
+          "shards/images-00004.bin",
+          "62bbb5e9016fe79e4e1a35815e0e6249c76ef1b3d95be5433d9c24dffef22d1d"
+        ],
+        [
+          "shards/images-00005.bin",
+          "5d8cc6725736fd6e9b3b0667e9c7224152962322a4a50e704e9116c353955d5d"
+        ],
+        [
+          "shards/images-00006.bin",
+          "53e33c7a2cb3160b641c5a40dda5c9cd3af84d49be40cf5b2d31b64f1be4b2f3"
+        ],
+        [
+          "shards/images-00007.bin",
+          "62ee6757833d30b48320b44c00fe335f809cfafceb44b2fae5a3267b176c92ec"
+        ]
+      ]
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/ckpt/dinov3/dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
+      "destination": "ckpt/dinov3/dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
+      "sha256": "08c60483bc63c04f533611e34bf70b120eedb7240f469bc16e9e20bf344b941d",
+      "bytes": 86531063
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/ckpt/dinov3/dinov3_vits16plus_pretrain_lvd1689m-4057cbaa.pth",
+      "destination": "ckpt/dinov3/dinov3_vits16plus_pretrain_lvd1689m-4057cbaa.pth",
+      "sha256": "4057cbaaad8c16657adb09d6815f28d4164eeba30532fde23f0d17313124caea",
+      "bytes": 114924783
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "destination": "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+      "bytes": 342860279
+    },
+    {
+      "source": "/home/kamimura/projects/tennis-lab/ckpt/dinov3/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth",
+      "destination": "ckpt/dinov3/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth",
+      "sha256": "8aa4cbddda325040fc78db2c272754af6ebe8ff2c55f6ec4f1964d8890f66035",
+      "bytes": 1213050671
+    }
+  ]
+}

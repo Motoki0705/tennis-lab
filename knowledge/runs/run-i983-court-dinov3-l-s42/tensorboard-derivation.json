@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "kind": "derived_training_curves",
+  "source_manifest": "tensorboard-sources.json",
+  "policy": "Keep attempt 1 steps < 3316 and all attempt 2 train/val scalars; retain original tag, step, value and wall_time.",
+  "sources": [
+    {
+      "source": "events.out.tfevents.1791642597.8828523389fc.27163.0",
+      "included": 2404,
+      "discarded": 72
+    },
+    {
+      "source": "events.out.tfevents.1791650760.ccbe68b49d66.13700.0",
+      "included": 22044,
+      "discarded": 0
+    },
+    {
+      "source": "events.out.tfevents.1791688413.ccbe68b49d66.13700.1",
+      "included": 0,
+      "discarded": 0
+    }
+  ],
+  "selected_scalars": 24448,
+  "duplicate_tag_steps": 0,
+  "terminal_test_scalars": 50
+}
