@@ -25,7 +25,7 @@
 - **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築、明示的なcompile target契約、qualitative/test予測保存の拡張点。
 - **`compilation.py`**: `compile_modules()`。primary modelやGAN discriminatorなど、名前付きtargetへidentity/state_dictを保つ`nn.Module.compile()`を適用する。重複参照はobject identityで一度だけ処理し、失敗時にeagerへfallbackしない。
 - **`runner.py`**: `BaseTrainingRunner`。configをsingle source of truthとする学習実行の共通フロー。`init_weights`読込後・`Trainer`構築前に全compile targetを処理し、local outputへ別責務の`ArtifactStore`をcompositionする。
-- **`artifact_store/`**: LightningModuleから保存責務を分離した永続化adapter。checkpoint直後のatomic publish、非checkpoint成果物の周期同期、Trainer plugin/callback組み立てを所有する。Drive配置規約は [`scripts/colab/STORAGE_LAYOUT.md`](../../../scripts/colab/STORAGE_LAYOUT.md) が正本。
+- **`artifact_store/`**: LightningModuleから保存責務を分離した永続化adapter。checkpoint直後のatomic publish、非checkpoint成果物の周期同期、Trainer plugin/callback組み立てを所有する。Drive配置規約は [Drive管理方針](../../../.agents/skills/tennis-drive/references/storage-policy.md) が正本。
 - **`chunk_rotation_callback.py`**: `ChunkRotationCallback`。epoch終端でchunked datamoduleを回転。
 - **`gan_training.py` / `gan_loss.py` / `gan_transition_callback.py`**: 手動最適化ベースのGAN学習共通実装(`LSGANLoss`含む)。
 - **`qualitative_callback.py` / `qualitative_saving.py`**: validationサンプルの可視化描画・GIF/画像保存。

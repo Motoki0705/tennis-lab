@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-10-12T09:40:49.053985+00:00",
+  "session": "i983-l4-ablation-06",
+  "credential_mode": "0o600",
+  "drive_root_id": "1gWS1fLDgKGyknpBj_n4h9dE_4wonv_r_",
+  "same_root": true,
+  "read_succeeded": true,
+  "source": "Dedicated production OAuth reauthentication; secrets omitted."
+}

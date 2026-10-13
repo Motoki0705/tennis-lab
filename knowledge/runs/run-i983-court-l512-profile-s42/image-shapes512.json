@@ -1,0 +1,57 @@
+{
+  "tennis_court_detector": {
+    "source_wh_counts": {
+      "1280x720": 8840
+    },
+    "padded_wh_counts": {
+      "512x288": 8840
+    },
+    "example_ids": {
+      "512x288": "PuXlxKdUIes_2450"
+    }
+  },
+  "B00": {
+    "source_wh_counts": {
+      "959x539": 2176
+    },
+    "padded_wh_counts": {
+      "512x288": 2176
+    },
+    "example_ids": {
+      "512x288": "court-sample-000000"
+    }
+  },
+  "B01": {
+    "source_wh_counts": {
+      "959x539": 2052
+    },
+    "padded_wh_counts": {
+      "512x288": 2052
+    },
+    "example_ids": {
+      "512x288": "court-sample-000000"
+    }
+  },
+  "B02": {
+    "source_wh_counts": {
+      "959x539": 2094
+    },
+    "padded_wh_counts": {
+      "512x288": 2094
+    },
+    "example_ids": {
+      "512x288": "court-sample-000000"
+    }
+  },
+  "B03": {
+    "source_wh_counts": {
+      "959x539": 2093
+    },
+    "padded_wh_counts": {
+      "512x288": 2093
+    },
+    "example_ids": {
+      "512x288": "court-sample-000001"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "argv": [
+    ".venv/bin/python",
+    "-c",
+    "import hashlib\nimport json\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\n\ncommit = \"c4b12f923b243da6b502149aa6f3912c706045e7\"\nobserved = subprocess.check_output([\"git\", \"rev-parse\", \"HEAD\"], text=True).strip()\nif observed != commit:\n    raise RuntimeError(f\"Unexpected source commit: {observed}\")\nmanifest = Path(\".i983_inputs.json\")\nif (\n    hashlib.sha256(manifest.read_bytes()).hexdigest()\n    != \"4d75a2256088a12f8112cf1718d68bd3c649d71f64ad61429b66dba0add8dc7e\"\n):\n    raise RuntimeError(\"Input manifest changed\")\nitems = json.loads(manifest.read_text())\nitems = [\n    item\n    for item in items\n    if \"manifest_sha256\" in item\n    or item[\"destination\"].endswith(\"dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth\")\n]\nif len(items) != 6:\n    raise RuntimeError(\"Expected five datasets and the B pretrained weight\")\noutput = Path(\"outputs/court_detection/prepare/i983-inputs/verified-06\")\noutput.mkdir(parents=True, exist_ok=False)\nshutil.copyfile(\".i983_inputs.json\", output / \"inputs.json\")\nfor index, item in enumerate(items):\n    destination = item[\"destination\"]\n    print(\n        json.dumps(\n            {\"asset\": index, \"destination\": destination, \"status\": \"downloading\"}\n        ),\n        flush=True,\n    )\n    subprocess.run(\n        [\n            sys.executable,\n            \".agents/skills/tennis-drive/scripts/drive.py\",\n            \"download\",\n            destination,\n            destination,\n            \"--verify\",\n        ],\n        check=True,\n    )\n\n\ndef digest(path, algorithm=\"sha256\"):\n    with path.open(\"rb\") as stream:\n        return hashlib.file_digest(stream, algorithm).hexdigest()\n\n\nverified = []\nfor item in items:\n    path = Path(item[\"destination\"])\n    if \"manifest_sha256\" in item:\n        if digest(path / \"dataset.json\") != item[\"manifest_sha256\"]:\n            raise RuntimeError(f\"Manifest mismatch: {path}\")\n        base = (\n            path / \"samples\"\n            if item[\"destination\"].startswith(\"data/synthetic_data_generation/\")\n            else path\n        )\n        for rel, expected in item[\"files\"]:\n            if digest(base / rel) != expected:\n                raise RuntimeError(f\"Asset mismatch: {base / rel}\")\n    elif digest(path) != item[\"sha256\"]:\n        raise RuntimeError(f\"Weight mismatch: {path}\")\n    verified.append(item[\"destination\"])\nreceipt = {\n    \"status\": \"all_selected_inputs_verified\",\n    \"commit\": commit,\n    \"input_manifest_sha256\": hashlib.sha256(manifest.read_bytes()).hexdigest(),\n    \"assets\": verified,\n}\n(output / \"verification.json\").write_text(json.dumps(receipt, indent=2) + \"\\n\")\nprint(json.dumps(receipt), flush=True)\n"
+  ],
+  "cwd": null,
+  "persist": [
+    "outputs/court_detection/prepare/i983-inputs/verified-06"
+  ],
+  "runner_outputs": [],
+  "job_id": "prepare-inputs-attempt02",
+  "execution_backend": "notebook_kernel",
+  "kernel_timeout_seconds": 86400
+}

@@ -431,6 +431,8 @@ class CourtAugmentationConfig:
             raise SemanticConfigurationError(
                 "data.augmentation.patch_size must be positive."
             )
+        if result.preserve_fx_fy:
+            _validate_pose_safe_augmentation(result)
         return result
 
 
@@ -1468,9 +1470,10 @@ class CourtInferenceConfig:
         patch_size = _integer(augmentation, "patch_size", path="data.augmentation")
         if patch_size <= 0:
             raise SemanticConfigurationError("Validation patch size must be positive")
-        if loss.pose.enabled and not _bool(
+        preserve_fx_fy = _bool(
             augmentation, "preserve_fx_fy", path="data.augmentation"
-        ):
+        )
+        if loss.pose.enabled and not preserve_fx_fy:
             raise SemanticConfigurationError(
                 "Pose inference requires preserve_fx_fy=true"
             )
@@ -1481,7 +1484,7 @@ class CourtInferenceConfig:
             ),
             loss,
             short_side,
-            loss.pose.enabled,
+            preserve_fx_fy,
             patch_size,
         )
 
@@ -1764,7 +1767,7 @@ def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
         )
     if config.canvas_size is not None:
         raise SemanticConfigurationError(
-            "Pose-safe augmentation must not use a square canvas_size; "
+            "preserve_fx_fy=true must not use a square canvas_size; "
             "padding is restricted to patch alignment."
         )
     unsupported = (
@@ -1780,12 +1783,12 @@ def _validate_pose_safe_augmentation(config: CourtAugmentationConfig) -> None:
     )
     if unsupported:
         raise SemanticConfigurationError(
-            "Pose supervision rejects horizontal flip, random-resized crop, unequal "
+            "preserve_fx_fy=true rejects horizontal flip, random-resized crop, unequal "
             "axes, affine, shear, and perspective transforms."
         )
     if len(config.train_scales) != 1 or config.train_scales[0] != config.val_short_side:
         raise SemanticConfigurationError(
-            "Pose-safe train_scales must contain exactly the validation long-side size."
+            "preserve_fx_fy=true requires train_scales to contain exactly the validation long-side size."
         )
 
 
