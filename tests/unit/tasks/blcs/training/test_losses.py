@@ -131,3 +131,14 @@ def test_physics_warmup_is_explicit():
         1,
         1,
     ]
+
+
+@pytest.mark.parametrize("head", ["velocity", "physics"])
+def test_active_terms_reject_missing_heads_in_standalone_loss(head):
+    _, target = prepared_samples([physics_sample()])
+    cfg = loss_config(parameters_weight=0.01 if head == "physics" else 0.0)
+    prediction = BLCSTrajectoryPrediction(
+        target.position, target.velocity if head == "physics" else None
+    )
+    with pytest.raises(ValueError, match="require"):
+        BLCSLoss(cfg)(prediction, target, step=1000)

@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import argparse
 import json
-import os
-import sys
 from pathlib import Path
 from typing import Any
 
 from .issue1044 import ARMS
-from .issue1044 import main as train_main
 
 
 def select_additional_arm(root: Path) -> dict[str, Any]:
@@ -44,38 +40,3 @@ def select_additional_arm(root: Path) -> dict[str, Any]:
     else:
         path.write_text(json.dumps(selection, indent=2, allow_nan=False) + "\n")
     return selection
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seed", type=int, choices=(43, 44))
-    parser.add_argument("--data-root", type=Path)
-    parser.add_argument("--select-only", action="store_true")
-    args = parser.parse_args()
-    if not os.environ.get("TENNIS_RUN_ID"):
-        raise RuntimeError("Additional training must run through the shared queue")
-    selection = select_additional_arm(Path("outputs/blcs/i1044"))
-    arm = selection["selected_arm"]
-    print(json.dumps(selection), flush=True)
-    if args.select_only:
-        return
-    if args.seed is None or args.data_root is None:
-        parser.error("Training requires --seed and --data-root")
-    sys.argv = [
-        "issue1044",
-        "--arm",
-        arm,
-        "--seed",
-        str(args.seed),
-        "--steps",
-        "4000",
-        "--data-root",
-        str(args.data_root),
-        "--output",
-        f"blcs/i1044/{arm}-s{args.seed}-u4000",
-    ]
-    train_main()
-
-
-if __name__ == "__main__":
-    main()

@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
-import os
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
@@ -664,46 +662,3 @@ def recompute(bundle: Path, *, include_diagnostics: bool = False) -> dict[str, A
             )
             result["diagnostics"] = diagnostics
         return cast("dict[str, Any]", clean_json(result))
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-root", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--split", choices=("val", "test"), default="test")
-    choice = parser.add_mutually_exclusive_group(required=True)
-    choice.add_argument("--checkpoint", type=Path)
-    choice.add_argument(
-        "--baseline",
-        choices=("gt", "geometry", "jitter", "time_shift", "collision_crossing"),
-    )
-    parser.add_argument("--historical", action="store_true")
-    parser.add_argument("--limit", type=int)
-    parser.add_argument("--fitting-clips", type=int, default=12)
-    args = parser.parse_args()
-    if not os.environ.get("TENNIS_RUN_ID"):
-        raise RuntimeError("Evaluation must run through the shared training queue")
-    torch.set_num_threads(2)
-    result = evaluate(
-        data_root=args.data_root,
-        output=args.output,
-        split=args.split,
-        checkpoint=args.checkpoint,
-        baseline=args.baseline,
-        historical=args.historical,
-        limit=args.limit,
-        fitting_clips=args.fitting_clips,
-    )
-    print(
-        json.dumps(
-            {
-                "split": args.split,
-                "trajectory_rmse_m": result["metrics"]["trajectory_rmse_m"],
-            }
-        ),
-        flush=True,
-    )
-
-
-if __name__ == "__main__":
-    main()
