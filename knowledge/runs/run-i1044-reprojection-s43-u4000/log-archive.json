@@ -1,0 +1,12 @@
+{
+  "raw_filename": "1791857517204098327_3137844_i1044-reprojection-s43-u4000-v3-cli.log",
+  "raw_bytes": 486492379,
+  "raw_sha256": "0285c71052106d7b1418f75802abb1991c4d9a982f455670f76baa3abc7940f8",
+  "compressed_filename": "queue.log.gz",
+  "compressed_bytes": 2410358,
+  "decompressed_sha256_matches_raw": true,
+  "view_filename": "queue-summary.log",
+  "view_excludes": "driver diagnostic lines containing ][CUDA][",
+  "view_excluded_lines": 4938966,
+  "original_queue_log_sha256_matches": true
+}
