@@ -1,0 +1,12 @@
+{
+  "raw_filename": "1791904031787910613_1392671_i1044-selected-new-s43-u4000-retry-cli.log",
+  "raw_bytes": 494988072,
+  "raw_sha256": "bcadd0930e6b426a7c7c46bcfd1487f5d5ed583a3b1cf46506f0113d20f76c1e",
+  "compressed_filename": "queue.log.gz",
+  "compressed_bytes": 2480543,
+  "decompressed_sha256_matches_raw": true,
+  "view_filename": "queue-summary.log",
+  "view_excludes": "driver diagnostic lines containing ][CUDA][",
+  "view_excluded_lines": 5025178,
+  "original_queue_log_sha256_matches": true
+}

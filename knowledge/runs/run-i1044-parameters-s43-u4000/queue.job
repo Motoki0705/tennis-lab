@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i1044-selected-new-s43-u4000-retry-cli
+# added: 2026-10-14T00:07:11+09:00
+# provider: codex
+# session: 01a1327c-d543-7673-8143-2764d9f62447
+# issue: 1044
+# resource: half
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics
+export TENNIS_RUN_ID=1791904031787910613_1392671_i1044-selected-new-s43-u4000-retry-cli
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1791904031787910613_1392671_i1044-selected-new-s43-u4000-retry-cli
+export TENNIS_GPU_RESOURCE=half
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1791904031787910613_1392671_i1044-selected-new-s43-u4000-retry-cli --name i1044-selected-new-s43-u4000-retry-cli --provider codex --session 01a1327c-d543-7673-8143-2764d9f62447 --issue 1044 --cmd CUDA_LOG_FILE=stderr\ OMP_NUM_THREADS=2\ MKL_NUM_THREADS=2\ MPLCONFIGDIR=/tmp/i1044-mpl\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ CUBLAS_WORKSPACE_CONFIG=:4096:8\ .venv/bin/python\ -m\ src.tasks.blcs.experiments.scripts.repeat_selected\ --seed\ 43\ --data-root\ /home/kamimura/projects/tennis-lab/data
+CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -m src.tasks.blcs.experiments.scripts.repeat_selected --seed 43 --data-root /home/kamimura/projects/tennis-lab/data
