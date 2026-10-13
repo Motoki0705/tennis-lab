@@ -1,0 +1,13 @@
+{
+  "compared_to": "environment.json",
+  "equal_fields": [
+    "git_commit",
+    "python",
+    "platform",
+    "packages",
+    "gpu",
+    "dinov3",
+    "matrix_instrumentation_enabled"
+  ],
+  "all_equal": true
+}

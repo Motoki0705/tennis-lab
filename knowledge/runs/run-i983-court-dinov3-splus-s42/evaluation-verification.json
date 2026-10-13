@@ -1,0 +1,68 @@
+{
+  "comparison_contract_matches": {
+    "l": true,
+    "s": true
+  },
+  "selected_checkpoint_sha256": "075ecaf156c38174cc0c66856c3ba02043a0ad094f0c38e4643dfb00e28a58d8",
+  "epoch": 17,
+  "global_step": 29844,
+  "evaluation_json_sha256": "df094a03dd112e54884b6170b81c97dfb9cdb07b00ade35bf8caafa476e1cca8",
+  "png_count": 36,
+  "parameters": {
+    "backbone": {
+      "total": 28697472,
+      "trainable": 0
+    },
+    "projection": {
+      "total": 1576960,
+      "trainable": 1576960
+    },
+    "transformer": {
+      "total": 101204992,
+      "trainable": 101204992
+    },
+    "dpt": {
+      "total": 25284608,
+      "trainable": 25284608
+    },
+    "pose_head": {
+      "total": 1059850,
+      "trainable": 1059850
+    },
+    "dense_heads": {
+      "total": 1085986,
+      "trainable": 1085986
+    }
+  },
+  "splits": {
+    "synthetic_court-test": {
+      "count": 886,
+      "ordered_sample_ids_sha256": "8a11fe880be524af810e08be7cc85d957e0ca842be2e19616f62c8bba77b9859",
+      "metrics": {
+        "kp_mean_distance_px": 4.126668930053711,
+        "kp_median_distance_px": 2.270092248916626,
+        "pose_reprojection_mean_distance_px": 14.25533390045166,
+        "pose_translation_l2_m": 0.680153489112854,
+        "pose_rotation_geodesic_deg": 2.3257951736450195,
+        "pose_focal_relative_error": 0.06442432850599289,
+        "line_dice": 0.6443001627922058,
+        "seg_miou": 0.9494113922119141,
+        "semantic_line_miou": 0.45498406887054443,
+        "kp_pose_consistency_distance_px": 0.0,
+        "invalid_depth_rate": 0.0,
+        "visible_point_count": 7928.0
+      }
+    },
+    "tennis_court_detector-val": {
+      "count": 2211,
+      "ordered_sample_ids_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8",
+      "metrics": {
+        "kp_mean_distance_px": 1.34260094165802,
+        "kp_median_distance_px": 1.1999969482421875,
+        "seg_miou": 0.9695714712142944,
+        "line_dice": 0.7055452466011047,
+        "semantic_line_miou": 0.4845685362815857
+      }
+    }
+  }
+}

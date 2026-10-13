@@ -6,9 +6,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import numpy as np
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
+from numpy.typing import NDArray
 from omegaconf import OmegaConf
 from torch import nn
 
@@ -21,13 +23,19 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
     CourtTargetSpec,
 )
+from src.tasks.court_detection.data.processing.geometry import CourtProcessingGeometry
 from src.tasks.court_detection.inference.checkpoint import (
     CourtInferenceSpec,
     file_sha256,
     load_court_checkpoint,
     load_court_pair,
 )
-from src.tasks.court_detection.model_io.contracts import CourtModelIOError
+from src.tasks.court_detection.model_io import factory
+from src.tasks.court_detection.model_io.contracts import (
+    CourtModelIOError,
+    CourtModelSpec,
+)
+from src.tasks.court_detection.model_io.images import prepare_court_input
 from src.tasks.court_detection.models.dinov3_dpt import (
     CourtDINOv3Encoder,
     CourtHierarchicalModel,
@@ -298,3 +306,32 @@ def test_pose_inference_keeps_saved_resize_and_padding_contract() -> None:
     assert spec.pose_long_side is True
     assert spec.patch_size == 32
     assert spec.short_side == config.data.augmentation.val_short_side
+
+
+@pytest.mark.parametrize("width,height", [(1920, 1080), (1080, 1920), (848, 361)])
+def test_dense_only_checkpoint_and_training_share_long_side_geometry(
+    monkeypatch: pytest.MonkeyPatch, width: int, height: int,
+) -> None:
+    config = _compose(
+        "synthetic_court", "data/augmentation=pose_safe",
+        "data.augmentation.train_scales=[512]", "data.augmentation.val_short_side=512",
+    )
+    runtime = CourtTrainingConfig.from_config(config)
+    assert not runtime.loss.pose.enabled
+    spec = CourtInferenceSpec.from_checkpoint_config(config, serialize_target_bundle(_bundle()))
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(factory, "build_court_inference_pair", lambda **kwargs: captured.update(kwargs))
+    factory.build_court_detection_pair(config, target_bundle=_bundle())
+    assert captured["pose_long_side"] == spec.pose_long_side is True
+    assert captured["short_side"] == spec.short_side == 512
+    assert captured["patch_size"] == spec.patch_size
+    image: NDArray[np.uint8] = np.zeros((height, width, 3), dtype=np.uint8)
+    model_spec = CourtModelSpec(_bundle(), 3, spec.short_side,
+                               pose_long_side=spec.pose_long_side, patch_size=spec.patch_size)
+    prepared = prepare_court_input(image, spec=model_spec, device=torch.device("cpu"))
+    for is_train in (True, False):
+        plan = CourtProcessingGeometry(runtime.data.augmentation, is_train=is_train,
+                                       require_pose=False)._sample_once((width, height))
+        assert prepared.images.shape[-2:] == plan.output_size_hw
+        assert prepared.content_size_hw == plan.content_size_hw
+        assert prepared.source_from_model_xy == pytest.approx((max(width, height) / 512,) * 2)
