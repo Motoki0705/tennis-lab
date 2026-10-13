@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-import argparse
+import gzip
+import hashlib
 import json
 import os
+import time
+from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +18,45 @@ from .evaluation import clean_json, evaluate, file_sha256, recompute, save_json
 from .issue1044 import ARMS
 from .real_observations import evaluate_real, recompute_real
 from .repeat_selected import select_additional_arm
+
+
+def verify_dataset_snapshot(data_root: Path, output: Path) -> None:
+    """Reject a changed snapshot before evaluating the frozen checkpoints."""
+    manifest = Path(
+        "knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/dataset_files.jsonl.gz"
+    )
+    raw = gzip.decompress(manifest.read_bytes())
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != "36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544":
+        raise ValueError("The fixed dataset manifest changed")
+    root = data_root / "blcs/single_object-physics-v3-cc863cacd-20261007"
+    began = time.monotonic()
+    records = [json.loads(line) for line in raw.splitlines()]
+    expected = {row["path"] for row in records}
+    actual = {str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()}
+    mismatches = [
+        {"path": name, "reason": "missing"} for name in sorted(expected - actual)
+    ] + [{"path": name, "reason": "unexpected"} for name in sorted(actual - expected)]
+    for row in records:
+        path = root / row["path"]
+        if not path.is_file():
+            continue
+        if path.stat().st_size != row["size"] or file_sha256(path) != row["sha256"]:
+            mismatches.append({"path": row["path"], "reason": "content changed"})
+    save_json(
+        output,
+        {
+            "manifest": str(manifest),
+            "manifest_decompressed_sha256": digest,
+            "root": str(root),
+            "file_count": len(records),
+            "total_bytes": sum(row["size"] for row in records),
+            "mismatches": mismatches,
+            "elapsed_s": time.monotonic() - began,
+        },
+    )
+    if mismatches:
+        raise ValueError(f"Dataset snapshot changed: see {output}")
 
 
 def trained_runs(root: Path) -> list[dict[str, Any]]:
@@ -92,17 +134,13 @@ def validate_real_metrics(directory: Path) -> None:
     save_json(directory / "recomputed.json", restored)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data-root", type=Path, required=True)
-    parser.add_argument("--historical-checkpoint", type=Path, required=True)
-    parser.add_argument("--real-store", type=Path, required=True)
-    args = parser.parse_args()
+def run_final_evaluation(args: Namespace) -> None:
     if not os.environ.get("TENNIS_RUN_ID"):
         raise RuntimeError("Final evaluation must run through the shared queue")
     torch.set_num_threads(2)
-    root = Path("outputs/blcs/i1044")
+    root = args.run_root
     runs = trained_runs(root)
+    verify_dataset_snapshot(args.data_root, root / "final-dataset-verification.json")
     save_json(root / "completed-training.json", runs)
     conditions = [
         {
@@ -183,7 +221,3 @@ def main() -> None:
             "run_id": os.environ["TENNIS_RUN_ID"],
         },
     )
-
-
-if __name__ == "__main__":
-    main()

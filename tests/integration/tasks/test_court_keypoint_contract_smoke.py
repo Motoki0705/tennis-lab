@@ -82,6 +82,7 @@ _BLCS_CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 _PLCS_CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 _PHYSICAL_COURT_UV = np.linspace(0.05, 0.95, 40, dtype=np.float32).reshape(20, 2)
 _CENTERS = ((0.5, 12.0, -5.0), (-0.75, -12.0, -5.0))
+_BLCS_POSITIONS, _BLCS_PHYSICS = simulated_record(2)
 
 
 def _contract_document(contract: CourtKeypointContract) -> dict[str, object]:
@@ -132,13 +133,9 @@ def _write_blcs_dataset(
     root: Path,
     contract: CourtKeypointContract,
 ) -> None:
-    physical_position = torch.tensor(
-        [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]], dtype=torch.float32
-    )
+    physical_position = torch.from_numpy(_BLCS_POSITIONS)
     normalized = normalize_court_position(physical_position)
-    physical_velocity = torch.tensor(
-        [[0.5, 1.0, 0.25], [0.75, 1.25, 0.0]], dtype=torch.float32
-    )
+    physical_velocity = torch.from_numpy(_BLCS_PHYSICS.velocity)
     scene = BLCSSceneData(
         scene_id="scene_000000",
         initial_from_cell=0,
@@ -153,7 +150,7 @@ def _write_blcs_dataset(
         ball_vel_norm=normalize_court_velocity(physical_velocity),
         cameras=[_blcs_camera(0, contract), _blcs_camera(1, contract)],
         num_cameras_sampled=2,
-        physics_record=simulated_record(len(physical_position))[1],
+        physics_record=_BLCS_PHYSICS,
         fps_out=30,
         sim_fps=120,
         physics_config_dict={},
@@ -359,20 +356,8 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     reference_sign = torch.tensor(
         [-1.0, -1.0, 1.0] if selector == "camera_view_v2" else [1.0, 1.0, 1.0]
     )
-    expected_blcs_position = (
-        torch.tensor(
-            [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]],
-            dtype=torch.float32,
-        )
-        * reference_sign
-    )
-    expected_blcs_velocity = (
-        torch.tensor(
-            [[0.5, 1.0, 0.25], [0.75, 1.25, 0.0]],
-            dtype=torch.float32,
-        )
-        * reference_sign
-    )
+    expected_blcs_position = torch.from_numpy(_BLCS_POSITIONS) * reference_sign
+    expected_blcs_velocity = torch.from_numpy(_BLCS_PHYSICS.velocity) * reference_sign
     torch.testing.assert_close(
         blcs_sample["position_3d"],
         normalize_court_position(expected_blcs_position),
@@ -422,6 +407,9 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     assert torch.isfinite(physical_blcs.position).all()
 
     plcs_root = tmp_path / "plcs"
+    expected_plcs_position = (
+        torch.tensor([[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]]) * reference_sign
+    )
     _write_plcs_dataset(plcs_root, contract)
     plcs_config = _plcs_config(selector)
     plcs_dataset = SceneDataset(
@@ -447,7 +435,7 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     )
     torch.testing.assert_close(
         plcs_sample["position"],
-        normalize_court_position(expected_blcs_position),
+        normalize_court_position(expected_plcs_position),
     )
     torch.testing.assert_close(
         plcs_sample["rotation"],
@@ -458,7 +446,7 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     )
     torch.testing.assert_close(
         plcs_sample["human_kp_3d"][:, 0],
-        expected_blcs_position,
+        expected_plcs_position,
     )
     _assert_projection_round_trip(plcs_sample, plcs_provenance)
 
@@ -520,7 +508,10 @@ def test_single_camera_keeps_the_physical_court_frame(
         blcs_sample["court_kp"][0, 0],
         torch.from_numpy(_PHYSICAL_COURT_UV),
     )
-    torch.testing.assert_close(blcs_sample["position_3d"], expected_position)
+    torch.testing.assert_close(
+        blcs_sample["position_3d"],
+        normalize_court_position(torch.from_numpy(_BLCS_POSITIONS) @ half_turn.T),
+    )
     torch.testing.assert_close(blcs_sample["camera_C"][0], expected_center)
     torch.testing.assert_close(blcs_sample["camera_R"][0], half_turn)
 

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import os
 import time
+from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,7 @@ from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
+from src.utils.paths import PROJECT_ROOT
 
 ARMS = (
     "position",
@@ -40,7 +41,7 @@ def experiment_config(
     if arm not in ARMS:
         raise ValueError(f"Unknown experiment arm: {arm}")
     with initialize_config_dir(
-        config_dir=str(Path(__file__).resolve().parents[1] / "configs"),
+        config_dir=str(PROJECT_ROOT / "src/tasks/blcs/configs"),
         version_base="1.3",
     ):
         config = compose(
@@ -125,17 +126,7 @@ class FixedUpdateRunner(BLCSTrainingRunner):
         return trainer
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--arm", choices=ARMS, required=True)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--steps", type=int, default=4000)
-    parser.add_argument("--data-root", type=Path, required=True)
-    parser.add_argument("--output", required=True)
-    parser.add_argument("--smoke", action="store_true")
-    parser.add_argument("--chunked", action="store_true")
-    parser.add_argument("--gan", action="store_true")
-    args = parser.parse_args()
+def run_experiment(args: Namespace) -> None:
     if args.steps <= 0:
         raise ValueError("Optimizer update budget must be positive")
     if args.gan and not args.smoke:
@@ -207,7 +198,3 @@ def main() -> None:
     (output / "selection.json").write_text(json.dumps(receipt, indent=2) + "\n")
     OmegaConf.save(config, output / "experiment-config.yaml", resolve=True)
     print(json.dumps(receipt), flush=True)
-
-
-if __name__ == "__main__":
-    main()

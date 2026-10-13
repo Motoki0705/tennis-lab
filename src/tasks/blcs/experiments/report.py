@@ -39,6 +39,9 @@ def fit_summary(report: dict[str, Any]) -> dict[str, Any]:
         "fit_support_rate": count / requested if requested else None,
         "fit_clip_count": len(fits),
         "fit_failed_clips": sum(row["failed"] for row in fits),
+        "fit_failure_rate": sum(row["failed"] for row in fits) / len(fits)
+        if fits
+        else None,
     }
 
 
@@ -64,6 +67,10 @@ def physics_head_summary(report: dict[str, Any]) -> dict[str, Any]:
             else None,
             "clip_count": len(events),
             "partition_failed_clips": sum(row["partition_failed"] for row in events),
+            "partition_failure_rate": sum(row["partition_failed"] for row in events)
+            / len(events)
+            if events
+            else None,
         },
         "parameters": {
             key: value
@@ -72,11 +79,13 @@ def physics_head_summary(report: dict[str, Any]) -> dict[str, Any]:
         },
     }
     for mode in ("oracle", "predicted"):
+        failed = sum(
+            clip.get(f"{mode}_integration_failed", False) for clip in report["clips"]
+        )
         result[f"integrated_{mode}"] = {
-            "failed_clips": sum(
-                clip.get(f"{mode}_integration_failed", False)
-                for clip in report["clips"]
-            ),
+            "failed_clips": failed,
+            "requested_clips": len(report["clips"]),
+            "failure_rate": failed / len(report["clips"]) if report["clips"] else None,
             "metrics": report.get(f"integrated_{mode}", {}).get("metrics"),
         }
     return result
@@ -134,6 +143,7 @@ def create_report(root: Path) -> None:
         "fit_support_rate",
         "fit_clip_count",
         "fit_failed_clips",
+        "fit_failure_rate",
         "validation_trajectory_rmse_m",
         "training_seconds",
     ]

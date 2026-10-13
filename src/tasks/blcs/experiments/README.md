@@ -25,10 +25,12 @@ GT自己評価、位置ジッター・時間ずれ・イベント越境の摂動
 
 GPU実行は共有training queue経由。最初のposition runは`all`、計測したVRAM使用量に基づき残り9 runは`half`（最大2並列）とする。更新数・batch・学習条件は同一だが、所要時間は競合の影響を受けるため速度性能の比較には使わない。6条件の終了後に`repeat_selected --select-only`を`all`で実行してvalidationによる選択を保存する。10 run後の`final_evaluation`も`all`とし、checkpointのSHA・更新数を確認してからtestを初めて評価する。
 
-実行時の補足: 最初のposition runはCUDA unknown errorで途中停止した。失敗ログと途中checkpointを別の出力先に保持し、同じseed・条件で最初から4,000更新を`half`予約でやり直す。途中のrunは比較対象10件へ混ぜない。
+実行時の補足: positionとreprojectionの初回runはCUDA unknown errorで途中停止した。失敗ログと途中checkpointを別の出力先に保持し、同じseed・条件で最初から4,000更新を`half`予約でやり直す。途中のrunは比較対象10件へ混ぜない。
 
-全長評価・保存値の再計算・実観測診断・図表作成は `python -m src.tasks.blcs.experiments.final_evaluation --data-root <data> --historical-checkpoint <ckpt> --real-store <Meiji store>`。各runの`selection.json`と`additional-seed-selection.json`を入力とし、出力は`outputs/blcs/i1044/{evaluations,real,report}`。`pred_test.npz`はモデルなしで`evaluation.recompute(path)`により指標を再計算できる。実観測は同じ保存2D注釈を2frameごとに使用し、コート点は保存校正から生成する。このため生検出器入力のend-to-end評価ではなく、条件を固定した観測診断である。
+全長評価・保存値の再計算・実観測診断・図表作成は `python -m src.tasks.blcs.experiments.scripts.final_evaluation --data-root <data> --historical-checkpoint <ckpt> --real-store <Meiji store>`。各runの`selection.json`と`additional-seed-selection.json`を入力とし、出力は`outputs/blcs/i1044/{evaluations,real,report}`。`pred_test.npz`はモデルなしで`evaluation.recompute(path)`により指標を再計算できる。実観測は同じ保存2D注釈を2frameごとに使用し、コート点は保存校正から生成する。このため生検出器入力のend-to-end評価ではなく、条件を固定した観測診断である。
 
 Bの積分位置・速度をともに保存し、`evaluation.recompute(path, include_diagnostics=True)`でGT区間／予測区間別の指標とイベント診断も再計算する。実観測は投影行列も保存し、`real_observations.recompute_real(directory)`により元のstoreやcheckpointなしで診断を再計算できる。一括評価では、これらの値・支持数・未定義状態が保存JSONと一致することを確認する。
 
 一次資料: [TT3D](https://arxiv.org/html/2504.10035v2)は空力とバウンド状態の最適化による再構成、[APHYNITY](https://arxiv.org/html/2010.04456v6)は微分可能な積分軌道による物理と学習補正の学習を示す。短horizonのBLCS損失はそれらから着想した本実験の仮説。[PINNsの収束分析](https://arxiv.org/abs/2007.14527)を踏まえ項ごとの尺度・warmup・勾配到達を検証する。各論文の別問題での成果をBLCSの改善保証とはしない。
+
+実行入口は `experiments.scripts.{issue1044,evaluation,repeat_selected,final_evaluation}` に置き、入力は絶対パス、学習outputはcheckoutのoutputs下の相対パスとして検証する。旧入口は初期runの再現commitにのみ残る。学習の演算・設定は移設時にも変更していない。最終評価直前にsnapshotの全ファイルと既存manifestのSHA-256を再照合し、変更があれば停止する。
