@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [82 items]
+
+................F....................................................... [ 87%]
+..........                                                               [100%]
+=================================== FAILURES ===================================
+________________ test_repository_source_satisfies_current_audit ________________
+[gw1] linux -- Python 3.11.15 /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/bin/python
+
+    def test_repository_source_satisfies_current_audit() -> None:
+        report = inspect_source((PROJECT_ROOT / "src").resolve())
+    
+>       assert report.passed
+E       AssertionError: assert False
+E        +  where False = AuditReport(findings=(AuditFinding(module='src.tasks.blcs.experiments.issue1044', qualified_name='experiment_config', ...s_scene.configuration.validate_visualize_tasks_boundary', subprocess_invokers=(), routes=(), delegated_boundaries=()))).passed
+
+tests/unit/utils/configuration/test_audit.py:22: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit
+=================== 1 failed, 81 passed in 251.88s (0:04:11) ===================

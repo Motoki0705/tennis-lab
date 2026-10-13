@@ -1,4 +1,4 @@
-<!-- knowledge-review: 090890727d91c94b6a7946d51d77493b7f188c1cdeec2c5c05678fe3488ebdce on 2026-10-13 -->
+<!-- knowledge-review: bb2e7b9761853f0ee3758003a7d9dc7f6be671e649f2994925c8fa456877a916 on 2026-10-13 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -546,3 +546,5 @@ CPUの契約回帰は検証し、安全bench全11,200件は元dataset欠測で�
 merge方針の変更は品質合格の新観測ではない。
 
 人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価run16は完了した。clip_000全pipelineは当時未検証で、今回のmerge許可後も新たな品質測定は行っていない。
+
+<!-- 2026-10-13: BLCS qualificationの保存診断roundtrip追加・CUDA中断追加を確認。短い処理確認と未完了runなので比較・採用に関する結論は変更しない。 -->

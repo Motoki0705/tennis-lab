@@ -1,0 +1,9 @@
+{
+  "manifest": "knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/dataset_files.jsonl.gz",
+  "manifest_decompressed_sha256": "36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544",
+  "root": "/home/kamimura/projects/tennis-lab/data/blcs/single_object-physics-v3-cc863cacd-20261007",
+  "file_count": 59006,
+  "total_bytes": 63359688,
+  "mismatches": [],
+  "elapsed_s": 7.890998610004317
+}
