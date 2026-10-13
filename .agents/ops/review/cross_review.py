@@ -20,6 +20,7 @@ import signal
 import string
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
@@ -625,12 +626,12 @@ def review_head(
     """Run the reviewer on ``target``, post the result and return it as a record."""
     number = pr.number
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    run_dir = (
-        settings.state_dir
-        / "runs"
-        / f"{stamp}-pr{number}-{target.head[:12]}-{target.merge_base[:12]}"
-    )
-    run_dir.mkdir(parents=True)
+    runs_root = settings.state_dir / "runs"
+    runs_root.mkdir(parents=True, exist_ok=True)
+    run_dir = Path(tempfile.mkdtemp(
+        prefix=f"{stamp}-pr{number}-{target.head[:12]}-{target.merge_base[:12]}-",
+        dir=runs_root,
+    ))
     prompt, truncated = build_prompt(
         settings,
         pr,

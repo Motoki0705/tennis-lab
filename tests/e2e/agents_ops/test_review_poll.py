@@ -1190,6 +1190,11 @@ def test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews(
     assert second.returncode == 0, second.stderr
     assert [c["agent"] for c in env.agent_calls()] == ["claude", "codex"]
     assert env.state["merged"] == [["9", sha]]
+    # Re-reviewing the same head must preserve both attempts, even when they
+    # start within the same second (the original directory key collided).
+    run_dirs = list((env.state_dir / "runs").iterdir())
+    assert len(run_dirs) == 2
+    assert all((directory / "review.json").is_file() for directory in run_dirs)
 
 
 @pytest.mark.parametrize(
