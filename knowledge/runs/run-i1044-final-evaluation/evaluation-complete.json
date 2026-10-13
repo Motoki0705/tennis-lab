@@ -1,0 +1,24 @@
+{
+  "conditions": [
+    "position-s42-u4000",
+    "reprojection-s42-u4000",
+    "velocity-s42-u4000",
+    "rollout_position-s42-u4000",
+    "rollout_velocity-s42-u4000",
+    "parameters-s42-u4000",
+    "reprojection-s43-u4000",
+    "parameters-s43-u4000",
+    "reprojection-s44-u4000",
+    "parameters-s44-u4000",
+    "historical-u9000",
+    "gt",
+    "geometry",
+    "jitter",
+    "time_shift",
+    "collision_crossing"
+  ],
+  "training_runs": 10,
+  "optimizer_updates_per_run": 4000,
+  "used_test_for_selection": false,
+  "run_id": "1791904031966211422_1392693_i1044-final-comparison-v4-cli"
+}

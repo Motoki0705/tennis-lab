@@ -1,0 +1,2210 @@
+[
+  {
+    "condition": "collision_crossing",
+    "stratum": "observed",
+    "rmse_m": 0.0,
+    "frames": 34923.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "missing",
+    "rmse_m": 0.0,
+    "frames": 781.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "event_near",
+    "rmse_m": 0.0,
+    "frames": 5951.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "free_flight",
+    "rmse_m": 0.0,
+    "frames": 29753.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "views_0",
+    "rmse_m": 0.0,
+    "frames": 781.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "views_1",
+    "rmse_m": 0.0,
+    "frames": 1343.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "views_2",
+    "rmse_m": 0.0,
+    "frames": 3136.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "views_3",
+    "rmse_m": 0.0,
+    "frames": 10216.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "views_4",
+    "rmse_m": 0.0,
+    "frames": 6382.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "views_5",
+    "rmse_m": 0.0,
+    "frames": 8011.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "views_6",
+    "rmse_m": 0.0,
+    "frames": 5835.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "surface_hard",
+    "rmse_m": 0.0,
+    "frames": 8085.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "surface_clay",
+    "rmse_m": 0.0,
+    "frames": 16460.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "surface_grass",
+    "rmse_m": 0.0,
+    "frames": 11159.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "length_lt128",
+    "rmse_m": 0.0,
+    "frames": 1019.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "length_128_511",
+    "rmse_m": 0.0,
+    "frames": 17057.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "length_ge512",
+    "rmse_m": 0.0,
+    "frames": 17628.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.0,
+    "frames": 35704.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.0,
+    "frames": 20.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "gap_5_15",
+    "rmse_m": 0.0,
+    "frames": 144.0
+  },
+  {
+    "condition": "collision_crossing",
+    "stratum": "gap_ge16",
+    "rmse_m": 0.0,
+    "frames": 617.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "observed",
+    "rmse_m": 0.7413267373008328,
+    "frames": 34923.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "missing",
+    "rmse_m": 3.3378563724080172,
+    "frames": 781.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "event_near",
+    "rmse_m": 0.7315541719879677,
+    "frames": 5951.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "free_flight",
+    "rmse_m": 0.9113018987629219,
+    "frames": 29753.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "views_0",
+    "rmse_m": 3.3378563724080172,
+    "frames": 781.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "views_1",
+    "rmse_m": 3.780310126625459,
+    "frames": 1343.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "views_2",
+    "rmse_m": 5.779029050031512e-06,
+    "frames": 3136.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "views_3",
+    "rmse_m": 2.14838686508683e-06,
+    "frames": 10216.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "views_4",
+    "rmse_m": 1.170676642433681e-06,
+    "frames": 6382.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "views_5",
+    "rmse_m": 9.192377345818511e-07,
+    "frames": 8011.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "views_6",
+    "rmse_m": 8.481562327747921e-07,
+    "frames": 5835.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "surface_hard",
+    "rmse_m": 0.8519207859370097,
+    "frames": 8085.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "surface_clay",
+    "rmse_m": 0.8977429511482115,
+    "frames": 16460.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "surface_grass",
+    "rmse_m": 0.8860196641563735,
+    "frames": 11159.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "length_lt128",
+    "rmse_m": 0.7898534763127981,
+    "frames": 1019.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "length_128_511",
+    "rmse_m": 1.0444840858243705,
+    "frames": 17057.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "length_ge512",
+    "rmse_m": 0.7004896619820011,
+    "frames": 17628.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.8838844870280936,
+    "frames": 35704.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.3710739461888994,
+    "frames": 20.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "gap_5_15",
+    "rmse_m": 2.706766635442637,
+    "frames": 144.0
+  },
+  {
+    "condition": "geometry",
+    "stratum": "gap_ge16",
+    "rmse_m": 3.519697171295746,
+    "frames": 617.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "observed",
+    "rmse_m": 0.0,
+    "frames": 34923.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "missing",
+    "rmse_m": 0.0,
+    "frames": 781.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "event_near",
+    "rmse_m": 0.0,
+    "frames": 5951.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "free_flight",
+    "rmse_m": 0.0,
+    "frames": 29753.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "views_0",
+    "rmse_m": 0.0,
+    "frames": 781.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "views_1",
+    "rmse_m": 0.0,
+    "frames": 1343.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "views_2",
+    "rmse_m": 0.0,
+    "frames": 3136.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "views_3",
+    "rmse_m": 0.0,
+    "frames": 10216.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "views_4",
+    "rmse_m": 0.0,
+    "frames": 6382.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "views_5",
+    "rmse_m": 0.0,
+    "frames": 8011.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "views_6",
+    "rmse_m": 0.0,
+    "frames": 5835.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "surface_hard",
+    "rmse_m": 0.0,
+    "frames": 8085.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "surface_clay",
+    "rmse_m": 0.0,
+    "frames": 16460.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "surface_grass",
+    "rmse_m": 0.0,
+    "frames": 11159.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "length_lt128",
+    "rmse_m": 0.0,
+    "frames": 1019.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "length_128_511",
+    "rmse_m": 0.0,
+    "frames": 17057.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "length_ge512",
+    "rmse_m": 0.0,
+    "frames": 17628.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.0,
+    "frames": 35704.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.0,
+    "frames": 20.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "gap_5_15",
+    "rmse_m": 0.0,
+    "frames": 144.0
+  },
+  {
+    "condition": "gt",
+    "stratum": "gap_ge16",
+    "rmse_m": 0.0,
+    "frames": 617.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "observed",
+    "rmse_m": 0.6422165173719804,
+    "frames": 34923.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "missing",
+    "rmse_m": 5.202039575984217,
+    "frames": 781.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "event_near",
+    "rmse_m": 0.8257253971744519,
+    "frames": 5951.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "free_flight",
+    "rmse_m": 1.0286292399428294,
+    "frames": 29753.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "views_0",
+    "rmse_m": 5.202039575984217,
+    "frames": 781.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "views_1",
+    "rmse_m": 2.3702460515594974,
+    "frames": 1343.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "views_2",
+    "rmse_m": 1.0086085387941135,
+    "frames": 3136.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "views_3",
+    "rmse_m": 0.5215785007672313,
+    "frames": 10216.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "views_4",
+    "rmse_m": 0.2605702256943746,
+    "frames": 6382.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "views_5",
+    "rmse_m": 0.19658255400479877,
+    "frames": 8011.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "views_6",
+    "rmse_m": 0.15835618476017688,
+    "frames": 5835.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.8193685333676979,
+    "frames": 8085.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.5548263998035857,
+    "frames": 16460.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "surface_grass",
+    "rmse_m": 1.498083096411674,
+    "frames": 11159.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.0354379606902953,
+    "frames": 1019.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "length_128_511",
+    "rmse_m": 1.2685786213222099,
+    "frames": 17057.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.6299900535318347,
+    "frames": 17628.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.9976799688508623,
+    "frames": 35704.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.5478136533256747,
+    "frames": 20.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "gap_5_15",
+    "rmse_m": 4.615298655432046,
+    "frames": 144.0
+  },
+  {
+    "condition": "historical-u9000",
+    "stratum": "gap_ge16",
+    "rmse_m": 5.4104566120223305,
+    "frames": 617.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "observed",
+    "rmse_m": 0.07076837118938324,
+    "frames": 34923.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "missing",
+    "rmse_m": 0.07039309390319372,
+    "frames": 781.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "event_near",
+    "rmse_m": 0.07094201200932579,
+    "frames": 5951.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "free_flight",
+    "rmse_m": 0.07072375931636174,
+    "frames": 29753.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "views_0",
+    "rmse_m": 0.07039309390319372,
+    "frames": 781.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "views_1",
+    "rmse_m": 0.07078955909462939,
+    "frames": 1343.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "views_2",
+    "rmse_m": 0.0708233097245361,
+    "frames": 3136.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "views_3",
+    "rmse_m": 0.07078679196703637,
+    "frames": 10216.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "views_4",
+    "rmse_m": 0.07071069750354811,
+    "frames": 6382.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "views_5",
+    "rmse_m": 0.07075040280854215,
+    "frames": 8011.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "views_6",
+    "rmse_m": 0.07078941776163696,
+    "frames": 5835.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "surface_hard",
+    "rmse_m": 0.07075003158697916,
+    "frames": 8085.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "surface_clay",
+    "rmse_m": 0.07076221950881728,
+    "frames": 16460.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "surface_grass",
+    "rmse_m": 0.07076453510461303,
+    "frames": 11159.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "length_lt128",
+    "rmse_m": 0.07095311974113594,
+    "frames": 1019.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "length_128_511",
+    "rmse_m": 0.07077077137925739,
+    "frames": 17057.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "length_ge512",
+    "rmse_m": 0.07073876664873896,
+    "frames": 17628.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.07076018355342203,
+    "frames": 35704.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.07071073449012945,
+    "frames": 20.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "gap_5_15",
+    "rmse_m": 0.06922187858993793,
+    "frames": 144.0
+  },
+  {
+    "condition": "jitter",
+    "stratum": "gap_ge16",
+    "rmse_m": 0.07065336606122886,
+    "frames": 617.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.6743769196498415,
+    "frames": 34923.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.2900476207128877,
+    "frames": 781.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.6231251118604324,
+    "frames": 5951.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 0.770589149339877,
+    "frames": 29753.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.2900476207128877,
+    "frames": 781.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "views_1",
+    "rmse_m": 2.0124770492438304,
+    "frames": 1343.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.2583081500855107,
+    "frames": 3136.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.578928374865487,
+    "frames": 10216.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.3924442008418822,
+    "frames": 6382.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.2929909093294674,
+    "frames": 8011.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.25628872376088324,
+    "frames": 5835.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.7956105396826846,
+    "frames": 8085.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.6919441588474614,
+    "frames": 16460.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 0.7908677041109671,
+    "frames": 11159.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.5522678899166917,
+    "frames": 1019.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 0.8441034293945725,
+    "frames": 17057.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.5519131495594519,
+    "frames": 17628.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.7480320378437714,
+    "frames": 35704.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.7228631344397893,
+    "frames": 20.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 3.933561120454286,
+    "frames": 144.0
+  },
+  {
+    "condition": "parameters-s42-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 1.734978957347068,
+    "frames": 617.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.7623576718535864,
+    "frames": 34923.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "missing",
+    "rmse_m": 6.297631320551327,
+    "frames": 781.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.9904779657114505,
+    "frames": 5951.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 1.2357240849089868,
+    "frames": 29753.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "views_0",
+    "rmse_m": 6.297631320551327,
+    "frames": 781.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "views_1",
+    "rmse_m": 2.469072408319747,
+    "frames": 1343.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.3450384820144525,
+    "frames": 3136.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.6605959850597461,
+    "frames": 10216.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.39171989750416564,
+    "frames": 6382.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.27903385397485897,
+    "frames": 8011.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.25348973387741,
+    "frames": 5835.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.9253036428020781,
+    "frames": 8085.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.801967802553695,
+    "frames": 16460.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 1.7394310543127758,
+    "frames": 11159.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.0315878583411742,
+    "frames": 1019.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 1.5588953760190016,
+    "frames": 17057.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.7039675384029351,
+    "frames": 17628.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 1.198338160933549,
+    "frames": 35704.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.6078925212994581,
+    "frames": 20.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 5.405057581978848,
+    "frames": 144.0
+  },
+  {
+    "condition": "parameters-s43-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 6.585712797638825,
+    "frames": 617.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.7379578278345265,
+    "frames": 34923.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.8721075557938516,
+    "frames": 781.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.7547271225595157,
+    "frames": 5951.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 0.8612850764851817,
+    "frames": 29753.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.8721075557938516,
+    "frames": 781.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "views_1",
+    "rmse_m": 2.3906634135135163,
+    "frames": 1343.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.318355220666085,
+    "frames": 3136.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.6277838727904571,
+    "frames": 10216.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.36968325105779565,
+    "frames": 6382.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.27801902959629765,
+    "frames": 8011.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.2533746899672981,
+    "frames": 5835.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.9608450298686074,
+    "frames": 8085.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.676948916991664,
+    "frames": 16460.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 0.9678811251858508,
+    "frames": 11159.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.0625105685379184,
+    "frames": 1019.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 0.9904269507615119,
+    "frames": 17057.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.6556786452757132,
+    "frames": 17628.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.8444587318205643,
+    "frames": 35704.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.6830506527758944,
+    "frames": 20.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 4.737450923567744,
+    "frames": 144.0
+  },
+  {
+    "condition": "parameters-s44-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 2.277820516655537,
+    "frames": 617.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.923385703516492,
+    "frames": 34923.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.5512633435448917,
+    "frames": 781.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.8256808190737761,
+    "frames": 5951.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 1.0174953566465719,
+    "frames": 29753.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.5512633435448917,
+    "frames": 781.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "views_1",
+    "rmse_m": 3.7360261480511037,
+    "frames": 1343.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.299403913926902,
+    "frames": 3136.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.6183582858146792,
+    "frames": 10216.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.3748659698986699,
+    "frames": 6382.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.27822631708735335,
+    "frames": 8011.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.23165855740394434,
+    "frames": 5835.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.9870432804527717,
+    "frames": 8085.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.7309278144972796,
+    "frames": 16460.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 1.2767289488141185,
+    "frames": 11159.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.1980586139809275,
+    "frames": 1019.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 0.9445062675450505,
+    "frames": 17057.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 1.0155709152250199,
+    "frames": 17628.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.9881137767300336,
+    "frames": 35704.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.80089970129723,
+    "frames": 20.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 4.873259059282669,
+    "frames": 144.0
+  },
+  {
+    "condition": "position-s42-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 1.6357289167000006,
+    "frames": 617.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.9730399303114415,
+    "frames": 34923.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.6708977957984263,
+    "frames": 781.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.9325368871380018,
+    "frames": 5951.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 1.060493524371768,
+    "frames": 29753.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.6708977957984263,
+    "frames": 781.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "views_1",
+    "rmse_m": 3.4007885364812767,
+    "frames": 1343.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.5787712180001332,
+    "frames": 3136.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.8423404890146958,
+    "frames": 10216.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.4548725752851138,
+    "frames": 6382.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.3107233622354676,
+    "frames": 8011.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.2531472882678532,
+    "frames": 5835.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 1.0933241547053631,
+    "frames": 8085.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.8255626974147723,
+    "frames": 16460.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 1.2613461879005607,
+    "frames": 11159.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.05446364569832,
+    "frames": 1019.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 1.1387049306127366,
+    "frames": 17057.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.9342700769633133,
+    "frames": 17628.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 1.0402598502881262,
+    "frames": 35704.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.9482296441030964,
+    "frames": 20.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 4.396481826444625,
+    "frames": 144.0
+  },
+  {
+    "condition": "reprojection-s42-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 2.118854725971068,
+    "frames": 617.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.8977298574931393,
+    "frames": 34923.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "missing",
+    "rmse_m": 6.756117877286119,
+    "frames": 781.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "event_near",
+    "rmse_m": 1.1220095475024945,
+    "frames": 5951.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 1.375616324132395,
+    "frames": 29753.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "views_0",
+    "rmse_m": 6.756117877286119,
+    "frames": 781.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "views_1",
+    "rmse_m": 2.8602223569800147,
+    "frames": 1343.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.5439170510254279,
+    "frames": 3136.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.8451897225629231,
+    "frames": 10216.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.4481182019130799,
+    "frames": 6382.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.29363335528210877,
+    "frames": 8011.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.2660245676913456,
+    "frames": 5835.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 1.0146329126196894,
+    "frames": 8085.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.9301680383024348,
+    "frames": 16460.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 1.9221613964533513,
+    "frames": 11159.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.0353588518583865,
+    "frames": 1019.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 1.7209451699472216,
+    "frames": 17057.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.8313925538478917,
+    "frames": 17628.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 1.3366918929041638,
+    "frames": 35704.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.7973558502035505,
+    "frames": 20.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 5.83967442937053,
+    "frames": 144.0
+  },
+  {
+    "condition": "reprojection-s43-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 7.056781881440814,
+    "frames": 617.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "observed",
+    "rmse_m": 1.0122250386607907,
+    "frames": 34923.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.370717399418132,
+    "frames": 781.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "event_near",
+    "rmse_m": 1.0178000705785586,
+    "frames": 5951.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 1.0690980025606742,
+    "frames": 29753.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.370717399418132,
+    "frames": 781.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "views_1",
+    "rmse_m": 3.832822060051356,
+    "frames": 1343.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.4003057699085542,
+    "frames": 3136.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.8606135757173639,
+    "frames": 10216.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.42566806319234085,
+    "frames": 6382.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.31720799916858766,
+    "frames": 8011.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.2533343900131252,
+    "frames": 5835.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.9654223005269135,
+    "frames": 8085.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.7460764811627284,
+    "frames": 16460.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 1.4503729322093493,
+    "frames": 11159.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.053941598057417,
+    "frames": 1019.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 1.0498199963601629,
+    "frames": 17057.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 1.0715483974609132,
+    "frames": 17628.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 1.0607201706340585,
+    "frames": 35704.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.7973878912829526,
+    "frames": 20.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 3.855873070268367,
+    "frames": 144.0
+  },
+  {
+    "condition": "reprojection-s44-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 1.9035842228463187,
+    "frames": 617.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.8012071591645725,
+    "frames": 34923.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.7328673099234457,
+    "frames": 781.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.748650413841879,
+    "frames": 5951.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 0.9151067869658253,
+    "frames": 29753.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.7328673099234457,
+    "frames": 781.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "views_1",
+    "rmse_m": 2.767867504563447,
+    "frames": 1343.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.3340769784284408,
+    "frames": 3136.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.6640425325402947,
+    "frames": 10216.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.40392239276875863,
+    "frames": 6382.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.2855188289905413,
+    "frames": 8011.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.24455234107447552,
+    "frames": 5835.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 1.0038241745080583,
+    "frames": 8085.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.7664009237950431,
+    "frames": 16460.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 0.9670667992837636,
+    "frames": 11159.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.3813364247306021,
+    "frames": 1019.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 0.991998894408196,
+    "frames": 17057.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.7349459247220336,
+    "frames": 17628.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.8895283475551307,
+    "frames": 35704.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.7688483966787607,
+    "frames": 20.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 4.976363788115901,
+    "frames": 144.0
+  },
+  {
+    "condition": "rollout_position-s42-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 1.9117827159469913,
+    "frames": 617.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.7193827215618888,
+    "frames": 34923.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.6362963471222742,
+    "frames": 781.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.6992175359099291,
+    "frames": 5951.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 0.8319158586433151,
+    "frames": 29753.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.6362963471222742,
+    "frames": 781.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "views_1",
+    "rmse_m": 2.2883385305430624,
+    "frames": 1343.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.2875944410212574,
+    "frames": 3136.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.6198682017409994,
+    "frames": 10216.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.38923314599714326,
+    "frames": 6382.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.27854005465652726,
+    "frames": 8011.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.23690794571260113,
+    "frames": 5835.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.9001218212932964,
+    "frames": 8085.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.7299889915759357,
+    "frames": 16460.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 0.8561337972287142,
+    "frames": 11159.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.2308215868044197,
+    "frames": 1019.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 0.9240890282892514,
+    "frames": 17057.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.6475451891612622,
+    "frames": 17628.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.8113069456688073,
+    "frames": 35704.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.7044254555765235,
+    "frames": 20.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 4.934499454440018,
+    "frames": 144.0
+  },
+  {
+    "condition": "rollout_velocity-s42-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 1.7602555751238773,
+    "frames": 617.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "observed",
+    "rmse_m": 1.2227740218037475,
+    "frames": 34923.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "missing",
+    "rmse_m": 0.2572037023750094,
+    "frames": 781.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "event_near",
+    "rmse_m": 2.4924794942703916,
+    "frames": 5951.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "free_flight",
+    "rmse_m": 0.7170399453282812,
+    "frames": 29753.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "views_0",
+    "rmse_m": 0.2572037023750094,
+    "frames": 781.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "views_1",
+    "rmse_m": 1.0499178910849347,
+    "frames": 1343.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "views_2",
+    "rmse_m": 1.2767963877007997,
+    "frames": 3136.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "views_3",
+    "rmse_m": 1.0879271822552763,
+    "frames": 10216.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "views_4",
+    "rmse_m": 1.446338449005367,
+    "frames": 6382.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "views_5",
+    "rmse_m": 1.0392582948813123,
+    "frames": 8011.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "views_6",
+    "rmse_m": 1.4056413708336426,
+    "frames": 5835.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "surface_hard",
+    "rmse_m": 1.1275225445647474,
+    "frames": 8085.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "surface_clay",
+    "rmse_m": 1.2495854717309,
+    "frames": 16460.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "surface_grass",
+    "rmse_m": 1.2081323553956247,
+    "frames": 11159.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "length_lt128",
+    "rmse_m": 2.838270315437819,
+    "frames": 1019.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "length_128_511",
+    "rmse_m": 1.451189101159383,
+    "frames": 17057.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "length_ge512",
+    "rmse_m": 0.6794365356084194,
+    "frames": 17628.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "bounces_2plus",
+    "rmse_m": 1.2099245598041004,
+    "frames": 35704.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.2677105648639914,
+    "frames": 20.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "gap_5_15",
+    "rmse_m": 0.24464632986116794,
+    "frames": 144.0
+  },
+  {
+    "condition": "time_shift",
+    "stratum": "gap_ge16",
+    "rmse_m": 0.2597032107627203,
+    "frames": 617.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "observed",
+    "rmse_m": 0.7796433948344551,
+    "frames": 34923.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "missing",
+    "rmse_m": 2.626247913801927,
+    "frames": 781.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "event_near",
+    "rmse_m": 0.7170719191946272,
+    "frames": 5951.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "free_flight",
+    "rmse_m": 0.8897567134983836,
+    "frames": 29753.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "views_0",
+    "rmse_m": 2.626247913801927,
+    "frames": 781.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "views_1",
+    "rmse_m": 2.7208319762774273,
+    "frames": 1343.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "views_2",
+    "rmse_m": 1.278432901474369,
+    "frames": 3136.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "views_3",
+    "rmse_m": 0.6270310427178151,
+    "frames": 10216.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "views_4",
+    "rmse_m": 0.4170795485180261,
+    "frames": 6382.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "views_5",
+    "rmse_m": 0.28845982244862467,
+    "frames": 8011.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "views_6",
+    "rmse_m": 0.2507147334701682,
+    "frames": 5835.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "surface_hard",
+    "rmse_m": 0.9919014325975126,
+    "frames": 8085.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "surface_clay",
+    "rmse_m": 0.7675986986892119,
+    "frames": 16460.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "surface_grass",
+    "rmse_m": 0.8961433100342668,
+    "frames": 11159.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "length_lt128",
+    "rmse_m": 1.2218153240654137,
+    "frames": 1019.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "length_128_511",
+    "rmse_m": 0.9676029240360449,
+    "frames": 17057.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "length_ge512",
+    "rmse_m": 0.7194153684963507,
+    "frames": 17628.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "bounces_0",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "bounces_1",
+    "rmse_m": null,
+    "frames": 0.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "bounces_2plus",
+    "rmse_m": 0.8633762833884054,
+    "frames": 35704.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "gap_1_4",
+    "rmse_m": 0.8601975792389552,
+    "frames": 20.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "gap_5_15",
+    "rmse_m": 4.9949747156873725,
+    "frames": 144.0
+  },
+  {
+    "condition": "velocity-s42-u4000",
+    "stratum": "gap_ge16",
+    "rmse_m": 1.6980922058964407,
+    "frames": 617.0
+  }
+]
