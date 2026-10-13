@@ -195,6 +195,9 @@ def evaluate_real(
         "direct": observation_metrics(position, batch, cameras, fps),
     }
     arrays = {key: value.numpy() for key, value in batch.items()}
+    arrays["projection_K"] = np.stack([camera.intrinsic for camera in cameras])
+    arrays["projection_R"] = np.stack([camera.rotation for camera in cameras])
+    arrays["projection_t"] = np.stack([camera.translation for camera in cameras])
     arrays["position_m"] = position
     if prediction.velocity is not None:
         arrays["velocity_mps"] = prediction.velocity[0].numpy() * 11.885
@@ -223,3 +226,38 @@ def evaluate_real(
     np.savez_compressed(output / "real_predictions.npz", **arrays)
     save_json(output / "evaluation.json", report)
     return report
+
+
+def recompute_real(directory: Path) -> dict[str, Any]:
+    """Recompute real diagnostics without the source store or model weights."""
+    metadata = json.loads((directory / "evaluation.json").read_text())
+    with np.load(directory / "real_predictions.npz", allow_pickle=False) as arrays:
+        batch = {
+            key: torch.from_numpy(arrays[key].copy())
+            for key in ("ball_uv", "ball_vis", "camera_w", "camera_h")
+        }
+        cameras = tuple(
+            PinholeCamera(str(index), K, R, t)
+            for index, (K, R, t) in enumerate(
+                zip(
+                    arrays["projection_K"],
+                    arrays["projection_R"],
+                    arrays["projection_t"],
+                    strict=True,
+                )
+            )
+        )
+        fps = metadata["evaluation_fps"]
+        result: dict[str, Any] = {
+            "direct": observation_metrics(arrays["position_m"], batch, cameras, fps)
+        }
+        if "integrated_position_m" in arrays:
+            p = arrays["integrated_position_m"]
+            finite = bool(np.isfinite(p).all())
+            result["integration_failed"] = not finite
+            result["predicted_event_count"] = int(arrays["predicted_event"][1:].sum())
+            if finite:
+                result["integrated_predicted"] = observation_metrics(
+                    p, batch, cameras, fps
+                )
+        return result

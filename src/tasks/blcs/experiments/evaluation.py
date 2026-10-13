@@ -486,6 +486,9 @@ def evaluate(
                     extra[f"{name}_integrated_position"] = np.full_like(
                         p[0].numpy(), np.nan
                     )
+                    extra[f"{name}_integrated_velocity"] = np.full_like(
+                        v[0].numpy(), np.nan
+                    )
                     continue
                 integrated = replace(
                     prediction,
@@ -503,10 +506,11 @@ def evaluate(
                 integrated_clip.update(integrated, target, observed=batch["ball_vis"])
                 extra[f"{name}_integrated_metrics"] = integrated_clip.compute()
                 extra[f"{name}_integrated_position"] = p[0].numpy()
+                extra[f"{name}_integrated_velocity"] = v[0].numpy()
         integrated_arrays = {
             key: torch.as_tensor(extra.pop(key))[None]
             for key in tuple(extra)
-            if key.endswith("_integrated_position")
+            if key.endswith(("_integrated_position", "_integrated_velocity"))
         }
         clips.append(
             {"scene_id": sample["scene_id"], "metrics": clip_tracker.compute(), **extra}
@@ -572,7 +576,7 @@ def evaluate(
             "fit_minimum_segment_frames": 6,
         },
     }
-    if oracle_tracker.records:
+    if rows and "physics_parameters" in rows[0]:
         report["integrated_oracle"] = oracle_tracker.report()
         report["integrated_predicted"] = predicted_tracker.report()
     save_json(output / "evaluation.json", report)
@@ -580,14 +584,16 @@ def evaluate(
     return report
 
 
-def recompute(bundle: Path) -> dict[str, Any]:
-    """Recompute ordinary full-clip metrics using only the portable bundle."""
+def recompute(bundle: Path, *, include_diagnostics: bool = False) -> dict[str, Any]:
+    """Recompute metrics from saved states, including B's separate populations."""
     with np.load(bundle, allow_pickle=False) as data:
         config = experiment_config(
             data_root=Path("/tmp"), output="unused", arm="reprojection", seed=42
         )
         binding = compose_blcs_model_io(config)
         tracker = BLCSMetrics()
+        integrated_trackers = {mode: BLCSMetrics() for mode in ("oracle", "predicted")}
+        diagnostics = []
         for i, scene in enumerate(data["scene_ids"]):
             batch = {
                 key: torch.from_numpy(data[key][i : i + 1].copy())
@@ -605,7 +611,59 @@ def recompute(bundle: Path) -> dict[str, Any]:
             tracker.update(
                 prediction, target, observed=batch["ball_vis"], scene_ids=[str(scene)]
             )
-        return cast("dict[str, Any]", tracker.report())
+            if include_diagnostics and prediction.physics_parameters is not None:
+                assert prediction.event_logits is not None
+                valid = target.loss_mask[0]
+                resets = torch.zeros_like(target.loss_mask)
+                resets[:, 1:] = (
+                    target.physics.segment[:, 1:] != target.physics.segment[:, :-1]
+                )
+                clip: dict[str, Any] = {
+                    "scene_id": str(scene),
+                    "events": event_diagnostic(
+                        (prediction.event_logits[0, valid, 0] >= 0).numpy(),
+                        resets[0, valid].numpy(),
+                        float(target.physics.frame_dt()[0]),
+                    ),
+                }
+                for mode, metric in integrated_trackers.items():
+                    # Older smoke bundles saved only integrated positions and
+                    # cannot reproduce velocity metrics; reject that explicitly.
+                    if f"{mode}_integrated_velocity" not in batch:
+                        raise ValueError(
+                            "B diagnostics require saved integrated velocity states"
+                        )
+                    p = batch[f"{mode}_integrated_position"]
+                    v = batch[f"{mode}_integrated_velocity"]
+                    failed = not bool(torch.isfinite(p).all() & torch.isfinite(v).all())
+                    clip[f"{mode}_integration_failed"] = failed
+                    if failed:
+                        continue
+                    integrated = replace(
+                        prediction,
+                        position=normalize_court_position(p),
+                        velocity=v / 11.885,
+                    )
+                    metric.update(
+                        integrated,
+                        target,
+                        observed=batch["ball_vis"],
+                        scene_ids=[str(scene)],
+                    )
+                    clip_metric = BLCSMetrics()
+                    clip_metric.update(integrated, target, observed=batch["ball_vis"])
+                    clip[f"{mode}_integrated_metrics"] = clip_metric.compute()
+                diagnostics.append(clip)
+        result = cast("dict[str, Any]", tracker.report())
+        if diagnostics:
+            result.update(
+                {
+                    f"integrated_{mode}": metric.report()
+                    for mode, metric in integrated_trackers.items()
+                }
+            )
+            result["diagnostics"] = diagnostics
+        return cast("dict[str, Any]", clean_json(result))
 
 
 def main() -> None:
