@@ -1,4 +1,4 @@
-<!-- knowledge-review: 076353b842d38fa619ac54acedf9eb7ec5c9480a60cb12f853e6031155bb76a2 on 2026-10-11 -->
+<!-- knowledge-review: 090890727d91c94b6a7946d51d77493b7f188c1cdeec2c5c05678fe3488ebdce on 2026-10-13 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -449,6 +449,8 @@ reprojection lossは一方向な改善ではありません。[`group-plcs-multi
 camera-view v2のreference selectorも決着していません。PLCSではreferenceがpositionとID switchesで良い一方、selector-zeroがY-sign、heading、presenceで良く、指標ごとに優位が逆転しました。このselector比較単独ではv1からの移行根拠になりません。2026-09-21のpipelineは上記の入力契約移行によりv2へ変更しています。
 
 ### BLCS
+
+2026-10-13の[#1044実装検証](nodes/blcs/000053-group-i1044-qualification.md)では、通常・chunked・GANの短いGPUスモークと、全validationの物理GT自己評価が成立した。rollout残差は位置約3.84e-7 m・速度約4.17e-7 m/sで、保存clockと尺度を接続できている。短い学習の結果から新損失の優位は判断しない。初回比較のCUDA中断と初期スモークの不完全なsource captureも記録した。各4,000更新の10 runで既存戦略と段階的損失追加を比較するまで、方式や本番checkpointの採用判断は保留する。採用閾値は設けず、結果の観測後に人間が判断する。
 
 2026-10-07、[#1038の物理GT付きv3データでの再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)を完了し、validation選定ckptをローカルckpt/blcs/へ置換した。旧#1036はデータ変更と組み込み方針の未確定により不採用とし、tennis_sceneの実装・既定設定は変更していない。データsnapshotを固定した200 epoch学習と88シーンの中心窓testが完走したが、旧実験とはシーン集合・更新数が異なるため精度改善の因果比較には使わない。短いtestシーン・全長・実検出・実動画3D精度・追加seedは未評価。次は組み込み経路の確定後に入力契約と受入条件を別途定める。以下の旧deploy・associationの知見は当時の構成に限定した履歴であり、今回の採用範囲を拡張しない。
 

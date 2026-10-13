@@ -1,0 +1,260 @@
+[
+  {
+    "run": "run-i1044-gt-val-preflight",
+    "file": "knowledge/runs/run-i1044-gt-val-preflight/run.json",
+    "sha256": "5a0a6a7ed13bfa67c61646878b55f1cf8f7c957d9eb5a609824df19fa18ba19a",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-gt-val-preflight",
+    "file": "knowledge/runs/run-i1044-gt-val-preflight/repro.sh",
+    "sha256": "041f43fb46c3fff27ceac113e3a12eb1f48d7defbd1b37f1a250faf02886038e",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-gt-val-preflight",
+    "file": "knowledge/runs/run-i1044-gt-val-preflight/uncommitted.patch",
+    "sha256": "b9610e507642d5d34b10bcb00eda095861868544bea97b6e7daef7b56c5bebe1",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-gt-val-preflight",
+    "file": "knowledge/runs/run-i1044-gt-val-preflight/git_status.txt",
+    "sha256": "884f074c81a90f1214e82a988b5655f9b9e84ef1fdee13de8fd1bf8170384796",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-position-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-position-s42-cuda-interrupted/run.json",
+    "sha256": "5db48d4f3bd8ae90490749ccd3cb10f5180722097bc4d0b07f31381bb9224981",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-position-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-position-s42-cuda-interrupted/repro.sh",
+    "sha256": "b4c2efdb2ba2cf83653b766a1deb373efea40c601d86c3e29980280f735837bb",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-position-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-position-s42-cuda-interrupted/uncommitted.patch",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-position-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-position-s42-cuda-interrupted/git_status.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-position-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-position-s42-cuda-interrupted/output_dir.txt",
+    "sha256": "3779e568166345822ff802752056ddd008190ab8c05952c23fafb1351c881571",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v1",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v1/run.json",
+    "sha256": "75b4b856bdc0346d7bd1d461854a23f35b5cfe5993fa41223e3d72897e458d8e",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v1",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v1/repro.sh",
+    "sha256": "a0dbc5292dda2a7af96d7283e22856327ba71ca94f5484658ac3f6dbb8893936",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v1",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v1/uncommitted.patch",
+    "sha256": "98167e0537aacd64c6d2a408ba402ee6602295bb885c9405898f42acf2cfbd71",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v1",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v1/git_status.txt",
+    "sha256": "14b7fc12c19b001bfdae723f5e7f531dda5bead03b2b3577c39c6a858332f5dd",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v1",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v1/output_dir.txt",
+    "sha256": "afa79cba88c9ec8e3c4f088029213e25b11c651084be08538fcb5957ffdbd841",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v2",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v2/run.json",
+    "sha256": "d65cebedc61bbadfe63ffd0781f28d27d75f337f3ba62c64d070295a4a06ef3d",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v2",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v2/repro.sh",
+    "sha256": "d7e7e12f1d66c0b127c692bb2f450099bc169719fc9936dfce3e36cbef8bd579",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v2",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v2/uncommitted.patch",
+    "sha256": "b9610e507642d5d34b10bcb00eda095861868544bea97b6e7daef7b56c5bebe1",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v2",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v2/git_status.txt",
+    "sha256": "884f074c81a90f1214e82a988b5655f9b9e84ef1fdee13de8fd1bf8170384796",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-chunked-v2",
+    "file": "knowledge/runs/run-i1044-smoke-chunked-v2/output_dir.txt",
+    "sha256": "bf7ae2087b9d1674bc73454dcec13e5f868a1779f6f5a40813979d1d90ce560f",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-evaluation-v1",
+    "file": "knowledge/runs/run-i1044-smoke-evaluation-v1/run.json",
+    "sha256": "186e9c7e2358e81d83dba59f844f1ae535bb02e67e97f39eb0e4ea08f0415bb9",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-evaluation-v1",
+    "file": "knowledge/runs/run-i1044-smoke-evaluation-v1/repro.sh",
+    "sha256": "d505c022c91b9c954422bf1d18f8473b2b8eb23bc7cbf4c92c5cfba573b23a8a",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-evaluation-v1",
+    "file": "knowledge/runs/run-i1044-smoke-evaluation-v1/uncommitted.patch",
+    "sha256": "d4ea987e5b9ef261640b8c21c46fab67058dd3664fd6edddb40d13348fea0bef",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-evaluation-v1",
+    "file": "knowledge/runs/run-i1044-smoke-evaluation-v1/git_status.txt",
+    "sha256": "2ecec4ba304663c9a6def99b736e149a4f4920be90643c7d9661897b61b19f7a",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-gan-v1",
+    "file": "knowledge/runs/run-i1044-smoke-gan-v1/run.json",
+    "sha256": "97c81e7246f249786005e01ea63f87d90501938674e0e59589445311092e0616",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-gan-v1",
+    "file": "knowledge/runs/run-i1044-smoke-gan-v1/repro.sh",
+    "sha256": "7d5d6743fe5f61b3ef52d3f4c46b774753eed19eb626f6008331a3ede61d575c",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-gan-v1",
+    "file": "knowledge/runs/run-i1044-smoke-gan-v1/uncommitted.patch",
+    "sha256": "d4ea987e5b9ef261640b8c21c46fab67058dd3664fd6edddb40d13348fea0bef",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-gan-v1",
+    "file": "knowledge/runs/run-i1044-smoke-gan-v1/git_status.txt",
+    "sha256": "2ecec4ba304663c9a6def99b736e149a4f4920be90643c7d9661897b61b19f7a",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-gan-v1",
+    "file": "knowledge/runs/run-i1044-smoke-gan-v1/output_dir.txt",
+    "sha256": "bab30de2970954f94c555ff45c81bd8d4c629a6a5aeaa101dc78c29ee083fdbf",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v1",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v1/original_capture/run.json",
+    "sha256": "ebbfec3bb97760dfbb7293b6d403bd3631e3c686b383b4325907b50b6319ea2e",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v1",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v1/original_capture/repro.sh",
+    "sha256": "2e187f744df37a037ca112d239eb7a21497d11c5db74dff1a68e0c4ce4f7936c",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v1",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v1/original_capture/uncommitted.patch",
+    "sha256": "9e0281a27c0ab8334cb1ac9c50ba4c4f2ae23947ab733b5dd0534a83020b2aab",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v1",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v1/original_capture/git_status.txt",
+    "sha256": "673dea4dabeecf80d9e3f3e27a58be28b70726dd560db04cce6444f64a7e3ce8",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v1",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v1/original_capture/output_dir.txt",
+    "sha256": "914cc9ddde46c61aa70341aee53ec20508a2ef396a6d56dc8cc756b058e05dad",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v2",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v2/original_capture/run.json",
+    "sha256": "612df4f3e6adbe0009682a3b4e8c066947aa510570daf10ec6986994e6693adb",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v2",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v2/original_capture/repro.sh",
+    "sha256": "30617b313c4e15de9a4f14be5110366626a545bd39c280e2079bd575481e1f31",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v2",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v2/original_capture/uncommitted.patch",
+    "sha256": "9e0281a27c0ab8334cb1ac9c50ba4c4f2ae23947ab733b5dd0534a83020b2aab",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v2",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v2/original_capture/git_status.txt",
+    "sha256": "673dea4dabeecf80d9e3f3e27a58be28b70726dd560db04cce6444f64a7e3ce8",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v2",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v2/original_capture/output_dir.txt",
+    "sha256": "827617b6213f7110ffdb63a859f9fc230eec16f4173ec1c302de74fdede178cf",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v3",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v3/original_capture/run.json",
+    "sha256": "3c20e236666053a96db27c1fcf1d4c2a58ab0133e92938ee3e202f0d0e0ff76a",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v3",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v3/original_capture/repro.sh",
+    "sha256": "3aa269181230a50f7fee01293af7cf0b7ece9dd1de2938dc300526901db8e2f9",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v3",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v3/original_capture/uncommitted.patch",
+    "sha256": "e51b5b7b1bd78cae022b69c8a13bef1d6f0353360cad560238a9a256edfabc44",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v3",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v3/original_capture/git_status.txt",
+    "sha256": "01e24f8ed7fc8ed0a03f6c4d2fb22b98aa2bb0de718701f354551ef7af940b14",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-smoke-parameters-v3",
+    "file": "knowledge/runs/run-i1044-smoke-parameters-v3/original_capture/output_dir.txt",
+    "sha256": "7aaa285d6a668914ff5391e44448450e3ef6ec99d92f35eacb2eef7c7c8018eb",
+    "matches_queue_original": true
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "run_id": "1791852429060241508_2_i1044-gt-val-preflight",
+  "name": "i1044-gt-val-preflight",
+  "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl .venv/bin/python -m src.tasks.blcs.experiments.evaluation --baseline gt --data-root /home/kamimura/projects/tennis-lab/data --output outputs/blcs/i1044/gt-val-preflight --split val --fitting-clips 2",
+  "provider": "codex",
+  "session": "01a1327c-d543-7673-8143-2764d9f62447",
+  "issue": "1044",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "e25ce1c8702a37febafea375b10fd3f162f16e6c",
+  "branch": "codex/issue-1044-blcs-physics",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "captured_at": "2026-10-13T09:49:10+09:00"
+}

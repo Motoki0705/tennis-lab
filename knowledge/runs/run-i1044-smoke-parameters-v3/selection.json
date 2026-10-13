@@ -1,0 +1,12 @@
+{
+  "protocol": "issue1044-v1",
+  "arm": "parameters",
+  "seed": 42,
+  "optimizer_updates": 4,
+  "elapsed_seconds": 66.55643222099752,
+  "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-parameters-v3/checkpoints/final-selected.ckpt",
+  "validation_trajectory_rmse_m": 9.313501358032227,
+  "selection_used_test": false,
+  "run_id": "1791851355965076951_2_i1044-smoke-parameters-v3",
+  "smoke": true
+}
