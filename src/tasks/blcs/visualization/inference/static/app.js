@@ -858,9 +858,9 @@ function renderResults(errorMessage) {
     const rows = [
       ["device", state.deviceUsed || state.device],
       ["elapsed", state.elapsedMs !== null ? `${Math.round(state.elapsedMs)} ms` : "–"],
-      ["position_error_m", formatMetric(state.metrics.position_error_m)],
-      ["endpoint_error_m", formatMetric(state.metrics.endpoint_error_m)],
-      ["accuracy_0p3m", formatMetric(state.metrics.accuracy_0p3m, 3)],
+      ["trajectory_rmse_m", formatMetric(state.metrics.trajectory_rmse_m)],
+      ["trajectory_mean_m", formatMetric(state.metrics.trajectory_mean_m)],
+      ["trajectory_p95_m", formatMetric(state.metrics.trajectory_p95_m)],
       ["tracks", state.prediction?.tracks ?? "–"],
     ];
     for (const [label, value] of rows) {
@@ -969,7 +969,7 @@ function renderHud() {
   dom.hudDevice.textContent = state.deviceUsed || state.device;
   dom.hudWindow.textContent = state.window !== null ? String(state.window) : "–";
   dom.hudError.textContent = state.metrics
-    ? `${formatMetric(state.metrics.position_error_m)} m`
+    ? `${formatMetric(state.metrics.trajectory_rmse_m)} m`
     : "–";
 }
 

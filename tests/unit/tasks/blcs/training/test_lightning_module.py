@@ -12,7 +12,7 @@ from src.tasks.blcs.training.lightning_module import (
 )
 
 
-def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
+def test_stage_logging_records_loss_components_without_batch_metric_aliases() -> None:
     class _Recorder:
         metric_logging_contract = BLCS_TRAJECTORY_METRIC_CONTRACT
 
@@ -34,12 +34,12 @@ def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
         cast("BLCSLightningModule", recorder),
         "val",
         torch.tensor(1.0),
-        {"position_error_m": 0.1, "loss_position": 0.5},
+        {"trajectory_rmse_m": 0.1, "loss_position": 0.5},
     )
 
-    assert recorder.names == ["val/loss"]
+    assert recorder.names == ["val/loss", "val/loss_position"]
     assert "val/pos_error_m" not in recorder.names
-    assert "val/loss_position" not in recorder.names
+    assert "val/loss_position" in recorder.names
 
     recorder.names.clear()
     BLCSLightningModule._log_stage_metrics(
@@ -47,7 +47,7 @@ def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
         "train",
         torch.tensor(1.0),
         {
-            "position_error_m": 0.1,
+            "trajectory_rmse_m": 0.1,
             "loss_position": 0.5,
             "loss_gan_generator": 0.2,
             "loss_gan_discriminator": 0.3,
@@ -55,13 +55,18 @@ def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
             "gan_phase_active": 1.0,
         },
     )
-    assert recorder.names == ["train/loss"]
+    assert recorder.names == [
+        "train/loss",
+        "train/loss_position",
+        "train/loss_gan_generator",
+        "train/loss_gan_discriminator",
+    ]
 
     recorder.names.clear()
     BLCSLightningModule._log_stage_metrics(
         cast("BLCSLightningModule", recorder),
         "test",
         torch.tensor(1.0),
-        {"position_error_m": 0.1, "loss_position": 0.5},
+        {"trajectory_rmse_m": 0.1, "loss_position": 0.5},
     )
-    assert recorder.names == ["test/loss"]
+    assert recorder.names == ["test/loss", "test/loss_position"]

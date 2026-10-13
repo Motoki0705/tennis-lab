@@ -825,9 +825,9 @@ class InferenceService:
                 "presence": None,
             },
             metrics={
-                "position_error_m": float(error.mean()),
-                "endpoint_error_m": float(error[-1]),
-                "accuracy_0p3m": float(np.mean(error <= 0.3)),
+                "trajectory_rmse_m": float(np.sqrt(np.mean(error**2))),
+                "trajectory_mean_m": float(error.mean()),
+                "trajectory_p95_m": float(np.quantile(error, 0.95)),
             },
             gt=gt,
             frames=frames,

@@ -2,5 +2,6 @@ defaults:
   - default
   - _self_
 
-# Enable differentiable 2D reprojection supervision for chunked training.
-reprojection_weight: 0.1
+velocity_weight: 0.0
+rollout_position_weight: 0.0
+rollout_velocity_weight: 0.0

@@ -36,14 +36,14 @@ compile:
 checkpoint:
   enabled: true
   filename: "blcs-{epoch:02d}"
-  monitor: val/loss
+  monitor: val/trajectory_rmse_m
   mode: min
   save_top_k: 3
   save_last: true
 
 early_stopping:
   enabled: false
-  monitor: val/position_error_m
+  monitor: val/trajectory_rmse_m
   mode: min
   patience: 10
   min_delta: 1.0e-3

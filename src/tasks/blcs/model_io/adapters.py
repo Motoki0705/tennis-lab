@@ -38,6 +38,7 @@ from src.tasks.blcs.model_io.contracts import (
     blcs_reference_metadata_from_batch,
 )
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
+from src.tasks.blcs.physics.targets import PhysicsTargets
 
 RawBLCSOutput = Mapping[str, Tensor]
 FloatDtypes = frozenset({torch.float16, torch.float32, torch.float64, torch.bfloat16})
@@ -169,6 +170,7 @@ class TrajectoryModelIOAdapter(ABC):
         num_court_tokens: int,
         max_seq_len: int,
         predict_velocity: bool,
+        physics_head: bool = False,
         input_profile: Literal["single", "multiview"],
         max_num_cameras: int | None,
         court_keypoint_contract: CourtKeypointContract = (
@@ -178,6 +180,7 @@ class TrajectoryModelIOAdapter(ABC):
         self.num_court_tokens = num_court_tokens
         self.max_seq_len = max_seq_len
         self.predict_velocity = predict_velocity
+        self.physics_head = physics_head
         self.input_profile = input_profile
         self.max_num_cameras = max_num_cameras
         canonical_contract = resolve_court_keypoint_contract(
@@ -202,6 +205,8 @@ class TrajectoryModelIOAdapter(ABC):
         """Validate exact raw keys and decode position/velocity semantics."""
         result = _raw_output(output)
         expected = {"position", "velocity"} if self.predict_velocity else {"position"}
+        if self.physics_head:
+            expected |= {"physics_parameters", "event_logits"}
         if set(result) != expected:
             raise ModelOutputContractError(
                 f"BLCS trajectory output keys must be {sorted(expected)}, got {sorted(result)}."
@@ -230,7 +235,25 @@ class TrajectoryModelIOAdapter(ABC):
             raise ModelOutputContractError(
                 "velocity must match position dtype/device and contain finite values."
             )
-        return BLCSTrajectoryPrediction(position=position, velocity=velocity)
+        parameters, events = (
+            result.get("physics_parameters"),
+            result.get("event_logits"),
+        )
+        for key, value, size in (
+            ("physics_parameters", parameters, 7),
+            ("event_logits", events, 1),
+        ):
+            if value is not None and (
+                value.shape != (*position.shape[:2], size)
+                or not bool(torch.isfinite(value).all())
+            ):
+                raise ModelOutputContractError(f"Invalid {key} output")
+        return BLCSTrajectoryPrediction(
+            position=position,
+            velocity=velocity,
+            physics_parameters=parameters,
+            event_logits=events,
+        )
 
     def build_training_batch(
         self, batch: Mapping[str, object]
@@ -250,12 +273,12 @@ class TrajectoryModelIOAdapter(ABC):
         loss_mask = self._loss_mask(batch)
         target_uv = require_tensor(
             batch,
-            "ball_uv_target" if "ball_uv_target" in batch else "ball_uv",
+            "ball_uv_target",
             spec=TensorSpec(dtypes=FloatDtypes),
         )
         target_vis = require_tensor(
             batch,
-            "ball_vis_target" if "ball_vis_target" in batch else "ball_vis",
+            "ball_vis_target",
             spec=TensorSpec(dtypes=MaskDtypes),
         )
         if self.input_profile == "single":
@@ -351,6 +374,7 @@ class TrajectoryModelIOAdapter(ABC):
             camera_cy=cameras["camera_cy"],
             camera_w=cameras["camera_w"],
             camera_h=cameras["camera_h"],
+            physics=PhysicsTargets.from_batch(batch, loss_mask),
             court_reference_provenance=_batch_court_provenance(
                 batch,
                 batch_size=batch_size,
