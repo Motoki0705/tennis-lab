@@ -109,6 +109,10 @@ pose学習では`data/augmentation=pose_safe`を使用します。
 Kは画像と同じ変換`K'=A K`を受け、外部poseは変更しません。右・下だけの最小patch paddingと
 batch最大寸法へのpaddingを区別し、content maskを後続Transformerと座標復元へ渡します。
 DINO自体にpadding attention maskはないため、比較時の評価順序・batch sizeも固定します。
+推論も保存configの`preserve_fx_fy`を参照し、pose lossの有効・無効でresizeを切り替えません。
+この共通化より前に学習したdense-only＋`preserve_fx_fy=true`のcheckpointは、短辺resizeを
+使用した可能性があるため、記録された学習時のGit版で再現します。過去のconfigや実験証跡を
+現行契約へ書き換えません。今回の4条件はすべてpose有効で、保存済みの入力寸法は変わりません。
 `run.test_after_fit=true`は合成の明示的test splitだけを評価します。
 
 Issue #983の対照実験は`--config-name train_i983_s` / `train_i983_splus` /
