@@ -10,6 +10,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -295,7 +296,7 @@ def worker(
 
         def publish_file(self, path: Path) -> None:
             state = json.loads(path.read_text())
-            if state["status"] in {"completed", "failed", "cancelled"}:
+            if state["status"] in {"completed", "failed", "cancelled", "abandoned"}:
                 local = json.loads((path.parent.parent / "status.json").read_text())
                 assert local["status"] == "finalizing", (
                     "Do not expose completion before durable publication"
@@ -395,6 +396,183 @@ def test_pending_cancel_is_saved_and_prevents_execution(
     assert published[-1]["status"] == "cancelled"
     with pytest.raises(RuntimeError, match="pending job"):
         remote.run_job("pending")
+
+
+def test_killed_worker_orphan_can_be_recovered_saved_and_stopped(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, repo, published = worker
+    frontend = importlib.import_module("colab")
+    assert frontend.parser().parse_args(["recover", "--session", "test", "--job-id", "orphan"]).command == "recover"
+    cfg_path = remote.ROOT / "session.json"
+    cfg = json.loads(cfg_path.read_text())
+    cfg["rclone_config"] = str(repo / "unused")
+    cfg_path.write_text(json.dumps(cfg))
+    started = repo / "started"
+    remote.prepare({"job_id": "orphan", "persist": [], "argv": [sys.executable, "-c",
+        f"from pathlib import Path; import time; Path({str(started)!r}).touch(); time.sleep(120)"]})
+    worker_pid = os.fork()
+    if worker_pid == 0:
+        os._exit(remote.run_job("orphan"))
+    reaped = False
+    command_pid: int | None = None
+    command_token: str | None = None
+    try:
+        deadline = time.monotonic() + 10
+        while not started.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert started.exists()
+        state = json.loads((remote.job_dir("orphan") / "status.json").read_text())
+        command_pid, command_token = state["pid"], state["process_token"]
+        with pytest.raises(remote.JobBusy):
+            remote.rpc({"action": "recover", "job_id": "orphan"})
+        os.kill(worker_pid, signal.SIGKILL)
+        os.waitpid(worker_pid, 0)
+        reaped = True
+        assert remote.process_token(command_pid) == command_token
+        assert remote.jobs()[0]["status"] == "unknown"
+        with pytest.raises(RuntimeError, match="use recover"):
+            remote.rpc({"action": "cancel", "job_id": "orphan"})
+        commands: list[tuple[str, ...]] = []
+        monkeypatch.setattr(frontend, "recover_diff", lambda *args: {"excluded": [], "storage_excluded": []})
+        session = SimpleNamespace(
+            name="test", directory=repo / "local", state=lambda: {"phase": "ready"},
+            rpc=lambda action: remote.rpc({"action": action}), close_transport=lambda: None,
+            cli=lambda *args: commands.append(args), save=lambda **kwargs: None,
+        )
+        with pytest.raises(RuntimeError, match="lack a saved receipt"):
+            frontend.stop(argparse.Namespace(), session)
+        receipt = remote.rpc({"action": "recover", "job_id": "orphan"})
+        assert remote.process_token(command_pid) is None
+        assert receipt["status"] == "abandoned" and receipt["returncode"] is None
+        assert receipt["drive_saved_at"] and receipt["recovery"]["command_pid"] == command_pid
+        assert published[-1]["status"] == "abandoned"
+        assert frontend.stop(argparse.Namespace(), session)["status"] == "stopped"
+        assert commands == [("stop", "-s", "test")]
+        assert remote.prepare({"job_id": "next", "argv": ["true"]})["status"] == "pending"
+    finally:
+        if not reaped:
+            os.kill(worker_pid, signal.SIGKILL)
+            os.waitpid(worker_pid, 0)
+        if command_pid and remote.process_token(command_pid) == command_token:
+            os.killpg(command_pid, signal.SIGKILL)
+
+
+@pytest.mark.parametrize("token", [None, "reused-pid"])
+def test_recovery_never_signals_an_unverified_command(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], token: str | None,
+) -> None:
+    remote, _, published = worker
+    state = remote.prepare({"job_id": "unverified", "argv": ["true"]})
+    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], start_new_session=True)
+    try:
+        state.update(status="running", worker_pid=99_999_999, worker_token="gone",
+                     pid=process.pid, process_token=token)
+        remote.atomic_json(remote.job_dir("unverified") / "status.json", state)
+        with pytest.raises(RuntimeError, match="identity"):
+            remote.rpc({"action": "recover", "job_id": "unverified"})
+        assert process.poll() is None
+        assert not published
+    finally:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
+
+
+def test_failed_recovery_save_blocks_new_execution_and_keeps_unknown_outcome(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "interrupted", "argv": ["true"]})
+    state.update(status="starting", worker_pid=99_999_999, worker_token="gone", launch_guarded=True)
+    remote.atomic_json(remote.job_dir("interrupted") / "status.json", state)
+    real_sync = remote.sync_job
+
+    def failed_sync(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("Drive unavailable")
+
+    monkeypatch.setattr(remote, "sync_job", failed_sync)
+    with pytest.raises(RuntimeError, match="Drive unavailable"):
+        remote.rpc({"action": "recover", "job_id": "interrupted"})
+    saved = remote.jobs()[0]
+    assert saved["status"] == "save_failed" and not saved.get("drive_saved_at")
+    with pytest.raises(RuntimeError, match="existing command"):
+        remote.prepare({"job_id": "next", "argv": ["true"]})
+    monkeypatch.setattr(remote, "sync_job", real_sync)
+    receipt = remote.rpc({"action": "save", "job_id": "interrupted"})
+    assert receipt["status"] == "abandoned" and receipt["returncode"] is None
+    assert receipt["drive_saved_at"]
+
+
+def test_interrupted_pending_cancel_can_finish_persistence(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "cancel-save", "argv": ["false"]})
+    state.update(status="finalizing", completion_target="cancelled", returncode=130)
+    remote.atomic_json(remote.job_dir("cancel-save") / "status.json", state)
+    assert remote.jobs()[0]["status"] == "unknown"
+    receipt = remote.rpc({"action": "recover", "job_id": "cancel-save"})
+    assert receipt["status"] == "cancelled" and receipt["drive_saved_at"]
+    with pytest.raises(RuntimeError, match="pending job"):
+        remote.run_job("cancel-save")
+
+
+def test_launch_gate_does_not_run_command_when_worker_disappears_before_permission(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, repo, _ = worker
+    marker = repo / "must-not-run"
+    remote.prepare({"job_id": "gate", "argv": [sys.executable, "-c",
+        f"from pathlib import Path; Path({str(marker)!r}).touch()"]})
+    assert remote.__file__ is not None
+    result = subprocess.run([sys.executable, remote.__file__, "launch",
+        str(remote.job_dir("gate") / "request.json")], input=b"", capture_output=True)
+    assert result.returncode == 125 and not marker.exists()
+
+
+def test_legacy_starting_without_command_identity_requires_inspection(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "legacy", "argv": ["true"]})
+    state.update(status="starting", worker_pid=99_999_999, worker_token="gone")
+    remote.atomic_json(remote.job_dir("legacy") / "status.json", state)
+    with pytest.raises(RuntimeError, match="Legacy worker"):
+        remote.rpc({"action": "recover", "job_id": "legacy"})
+
+
+def test_recovery_refuses_remaining_children_without_a_verifiable_group_leader(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "lost-leader", "argv": ["true"]})
+    code = (
+        "import subprocess, sys\n"
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], "
+        "stdout=subprocess.DEVNULL)\n"
+        "print(child.pid, flush=True)\n"
+        "sys.stdin.read(1)\n"
+    )
+    leader = subprocess.Popen([sys.executable, "-c", code], start_new_session=True,
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        assert leader.stdout is not None and leader.stdin is not None
+        child_pid = int(leader.stdout.readline())
+        token = remote.process_token(leader.pid)
+        assert token is not None
+        state.update(status="running", worker_pid=99_999_999, worker_token="gone",
+                     pid=leader.pid, process_token=token)
+        remote.atomic_json(remote.job_dir("lost-leader") / "status.json", state)
+        leader.stdin.close()
+        leader.wait(timeout=5)
+        with pytest.raises(RuntimeError, match="leader is absent"):
+            remote.rpc({"action": "recover", "job_id": "lost-leader"})
+        assert remote.process_token(child_pid) is not None
+    finally:
+        os.killpg(leader.pid, signal.SIGKILL)
+        leader.wait(timeout=5)
+        if leader.stdout is not None:
+            leader.stdout.close()
 
 
 def test_sensitive_untracked_files_are_excluded_and_artifact_escape_rejected(
