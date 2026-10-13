@@ -558,7 +558,25 @@ def test_pose_unsafe_augmentation_is_rejected_at_typed_boundary(
 ) -> None:
     config = _compose("synthetic_court", *_pose_overrides(), override)
 
-    with pytest.raises(SemanticConfigurationError, match="Pose|pose"):
+    with pytest.raises(SemanticConfigurationError, match="preserve_fx_fy"):
+        CourtTrainingConfig.from_config(config)
+
+
+@pytest.mark.parametrize("override", [
+    "data.augmentation.hflip_prob=0.1",
+    "data.augmentation.crop_scale=[0.5,1.0]",
+    "data.augmentation.affine_degrees=1.0",
+    "data.augmentation.train_scales=[256]",
+    "data.augmentation.canvas_size=512",
+])
+def test_dense_only_preserved_intrinsics_reject_incompatible_geometry(override: str) -> None:
+    config = _compose(
+        "synthetic_court", "data/augmentation=pose_safe",
+        "data.augmentation.train_scales=[512]", "data.augmentation.val_short_side=512",
+        override,
+    )
+    assert not config.loss.pose.enabled
+    with pytest.raises(SemanticConfigurationError, match="preserve_fx_fy"):
         CourtTrainingConfig.from_config(config)
 
 
