@@ -256,5 +256,35 @@
     "file": "knowledge/runs/run-i1044-smoke-parameters-v3/original_capture/output_dir.txt",
     "sha256": "7aaa285d6a668914ff5391e44448450e3ef6ec99d92f35eacb2eef7c7c8018eb",
     "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-reprojection-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/run.json",
+    "sha256": "a044bb7350e1172026e0aa0cee07ad68c87d728db77e0bb3fbd52afc32fe3d5f",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-reprojection-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/repro.sh",
+    "sha256": "0b23c67c0ea2057ea83a96dbc00a61cc9e95c4b9e7467aa0c2fd7bed03c5afc5",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-reprojection-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/uncommitted.patch",
+    "sha256": "df7872a06dde7611a921cb53169a45553029b11e08f30f3a9dab089ab439b4ef",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-reprojection-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/git_status.txt",
+    "sha256": "bb6687eb2a860e653802a5ea7bc62b098a667ab55799862999436c61a7d240c8",
+    "matches_queue_original": true
+  },
+  {
+    "run": "run-i1044-reprojection-s42-cuda-interrupted",
+    "file": "knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/output_dir.txt",
+    "sha256": "54c8255c8077ce27743d4fc950b77eaf435c243a480e5e18e58443a4d0178af4",
+    "matches_queue_original": true
   }
 ]

@@ -1,0 +1,4 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/experiments/report.py:341: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  axis.legend(fontsize=6)
+RENDERER SCHEMA FIXTURE (not actual results): /tmp/i1044-report-schema-fixture-d7tj18ri
+['display_selection.json', 'metrics.csv', 'metrics.json', 'observations.md', 'physics_head.json', 'progressive_losses.png', 'real_metrics.json', 'real_trajectories.png', 'repeated_seeds.json', 'strata.json', 'training_curves.json', 'trajectory_0.png', 'trajectory_1.png', 'trajectory_2.png', 'validation_learning.png', 'weighted_output_gradients.png']
