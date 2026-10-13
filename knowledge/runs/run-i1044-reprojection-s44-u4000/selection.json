@@ -1,0 +1,15 @@
+{
+  "protocol": "issue1044-v1",
+  "arm": "reprojection",
+  "seed": 44,
+  "optimizer_updates": 4000,
+  "elapsed_seconds": 5255.944294176006,
+  "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s44-u4000/checkpoints/final-selected.ckpt",
+  "checkpoint_sha256": "c739a0fa8cc11a543f9fc9bb29288966665221d9b6825b2bbeac0d7b723893c9",
+  "validation_trajectory_rmse_m": 0.8502911329269409,
+  "selection_used_test": false,
+  "run_id": "1791857517322816057_3137894_i1044-reprojection-s44-u4000-v3-cli",
+  "smoke": false,
+  "chunked": false,
+  "gan": false
+}
