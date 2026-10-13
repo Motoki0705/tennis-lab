@@ -1,0 +1,16 @@
+{
+  "run_id": "1791904031966211422_1392693_i1044-final-comparison-v4-cli",
+  "name": "i1044-final-comparison-v4-cli",
+  "command": "CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -m src.tasks.blcs.experiments.scripts.final_evaluation --data-root /home/kamimura/projects/tennis-lab/data --historical-checkpoint /home/kamimura/projects/tennis-lab/ckpt/blcs/axial-base-physics-v3-kp14-t128-v3-6-e200-s42-epoch189.ckpt --real-store /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store",
+  "provider": "codex",
+  "session": "01a1327c-d543-7673-8143-2764d9f62447",
+  "issue": "1044",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "9948985912f3f2dd1a62f212b30fd92db8e57f2e",
+  "branch": "codex/issue-1044-blcs-physics",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "captured_at": "2026-10-14T04:59:22+09:00"
+}

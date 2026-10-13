@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i1044-final-comparison-v4-cli
+# added: 2026-10-14T00:07:11+09:00
+# provider: codex
+# session: 01a1327c-d543-7673-8143-2764d9f62447
+# issue: 1044
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics
+export TENNIS_RUN_ID=1791904031966211422_1392693_i1044-final-comparison-v4-cli
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1791904031966211422_1392693_i1044-final-comparison-v4-cli
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1791904031966211422_1392693_i1044-final-comparison-v4-cli --name i1044-final-comparison-v4-cli --provider codex --session 01a1327c-d543-7673-8143-2764d9f62447 --issue 1044 --cmd CUDA_LOG_FILE=stderr\ OMP_NUM_THREADS=2\ MKL_NUM_THREADS=2\ MPLCONFIGDIR=/tmp/i1044-mpl\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ CUBLAS_WORKSPACE_CONFIG=:4096:8\ .venv/bin/python\ -m\ src.tasks.blcs.experiments.scripts.final_evaluation\ --data-root\ /home/kamimura/projects/tennis-lab/data\ --historical-checkpoint\ /home/kamimura/projects/tennis-lab/ckpt/blcs/axial-base-physics-v3-kp14-t128-v3-6-e200-s42-epoch189.ckpt\ --real-store\ /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store
+CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -m src.tasks.blcs.experiments.scripts.final_evaluation --data-root /home/kamimura/projects/tennis-lab/data --historical-checkpoint /home/kamimura/projects/tennis-lab/ckpt/blcs/axial-base-physics-v3-kp14-t128-v3-6-e200-s42-epoch189.ckpt --real-store /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store

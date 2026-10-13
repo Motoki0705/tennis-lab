@@ -1,0 +1,182 @@
+{
+  "direct": {
+    "reprojection_count": 1389,
+    "eligible_observation_count": 1389,
+    "reprojection_rmse_px": 163.62718974521383,
+    "reprojection_p95_px": 296.90722720756924,
+    "reprojection_evaluable_rate": 1.0,
+    "frame_count": 505,
+    "all_view_missing_frames": 0,
+    "view_count_frames": {
+      "0": 0,
+      "1": 2,
+      "2": 122,
+      "3": 381
+    },
+    "below_ground_rate": 0.0,
+    "difference_acceleration_rms_mps2": 347.70709228515625,
+    "fit": {
+      "spans": [
+        [
+          0,
+          32
+        ],
+        [
+          32,
+          64
+        ],
+        [
+          64,
+          96
+        ],
+        [
+          96,
+          128
+        ],
+        [
+          128,
+          160
+        ],
+        [
+          160,
+          192
+        ],
+        [
+          192,
+          224
+        ],
+        [
+          224,
+          256
+        ],
+        [
+          256,
+          288
+        ],
+        [
+          288,
+          320
+        ],
+        [
+          320,
+          352
+        ],
+        [
+          352,
+          384
+        ],
+        [
+          384,
+          416
+        ],
+        [
+          416,
+          448
+        ],
+        [
+          448,
+          480
+        ],
+        [
+          480,
+          505
+        ]
+      ],
+      "supported_frames": 505,
+      "requested_frames": 505,
+      "failed": false,
+      "rmse_m": 1.5194974954168916
+    }
+  },
+  "integration_failed": false,
+  "predicted_event_count": 22,
+  "integrated_predicted": {
+    "reprojection_count": 1389,
+    "eligible_observation_count": 1389,
+    "reprojection_rmse_px": 136.4486792472876,
+    "reprojection_p95_px": 279.2549996123517,
+    "reprojection_evaluable_rate": 1.0,
+    "frame_count": 505,
+    "all_view_missing_frames": 0,
+    "view_count_frames": {
+      "0": 0,
+      "1": 2,
+      "2": 122,
+      "3": 381
+    },
+    "below_ground_rate": 0.05742574257425743,
+    "difference_acceleration_rms_mps2": 726.5119018554688,
+    "fit": {
+      "spans": [
+        [
+          0,
+          32
+        ],
+        [
+          32,
+          64
+        ],
+        [
+          64,
+          96
+        ],
+        [
+          96,
+          128
+        ],
+        [
+          128,
+          160
+        ],
+        [
+          160,
+          192
+        ],
+        [
+          192,
+          224
+        ],
+        [
+          224,
+          256
+        ],
+        [
+          256,
+          288
+        ],
+        [
+          288,
+          320
+        ],
+        [
+          320,
+          352
+        ],
+        [
+          352,
+          384
+        ],
+        [
+          384,
+          416
+        ],
+        [
+          416,
+          448
+        ],
+        [
+          448,
+          480
+        ],
+        [
+          480,
+          505
+        ]
+      ],
+      "supported_frames": 505,
+      "requested_frames": 505,
+      "failed": false,
+      "rmse_m": 1.3777732267069975
+    }
+  }
+}
