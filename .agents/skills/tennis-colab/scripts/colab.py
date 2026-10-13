@@ -324,7 +324,7 @@ def _recover_uncreated_checkout(session: Session, state: dict[str, Any]) -> dict
     output = session.directory / "recovered" / uuid.uuid4().hex[:12]
     output.mkdir(parents=True, exist_ok=False)
     (output / "changes.patch").write_bytes(b"")
-    receipt = {
+    receipt: dict[str, Any] = {
         "commit": None, "excluded": [], "storage_excluded": [], "untracked": [],
         "output": str(output), "checkout_absent": True,
         "reason": "Setup did not create a checkout; no local or remote jobs exist",
@@ -347,7 +347,7 @@ def stop(args: argparse.Namespace, session: Session) -> dict[str, Any]:
         ]
         if unsaved:
             raise ColabError(
-                f"Commands are active or lack a saved receipt: {unsaved}; cancel/save and inspect before stopping"
+                f"Commands are active or lack a saved receipt: {unsaved}; cancel/recover/save and inspect before stopping"
             )
         recovered = recover_diff(
             session, session.directory / "recovered" / uuid.uuid4().hex[:12]
@@ -406,6 +406,7 @@ def parser() -> argparse.ArgumentParser:
         "status",
         "logs",
         "cancel",
+        "recover",
         "save",
         "upload",
         "download",
@@ -416,7 +417,7 @@ def parser() -> argparse.ArgumentParser:
     ):
         command = commands.add_parser(name)
         command.add_argument("--session", required=True)
-        if name in {"status", "logs", "cancel", "save"}:
+        if name in {"status", "logs", "cancel", "recover", "save"}:
             command.add_argument("--job-id", required=name != "status")
         if name == "logs":
             command.add_argument("--lines", type=int, default=80)
@@ -458,12 +459,12 @@ def main() -> int:
                     result = status(args, session)
                 elif args.command == "reconnect":
                     result = reconnect(session)
-                elif args.command in {"logs", "cancel", "save"}:
+                elif args.command in {"logs", "cancel", "recover", "save"}:
                     result = session.rpc(
                         args.command,
                         job_id=args.job_id,
                         lines=getattr(args, "lines", 80),
-                        timeout=1800 if args.command == "save" else 180,
+                        timeout=1800 if args.command in {"recover", "save"} else 180,
                     )
                 elif args.command == "upload":
                     if (
