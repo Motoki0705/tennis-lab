@@ -18,6 +18,8 @@ def select_additional_arm(root: Path) -> dict[str, Any]:
             or receipt["seed"] != 42
             or receipt["optimizer_updates"] != 4000
             or receipt["smoke"]
+            or receipt.get("chunked") is not False
+            or receipt.get("gan") is not False
             or receipt["selection_used_test"]
             or receipt["protocol"] != "issue1044-v1"
         ):

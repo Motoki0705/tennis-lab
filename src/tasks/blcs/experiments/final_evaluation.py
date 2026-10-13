@@ -75,6 +75,8 @@ def trained_runs(root: Path) -> list[dict[str, Any]]:
             or receipt["seed"] != seed
             or receipt["arm"] != arm
             or receipt["smoke"]
+            or receipt.get("chunked") is not False
+            or receipt.get("gan") is not False
             or receipt["selection_used_test"]
         ):
             raise ValueError(f"Invalid completed run: {name}")
