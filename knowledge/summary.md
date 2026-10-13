@@ -1,4 +1,4 @@
-<!-- knowledge-review: 505f479899b224a58248a2d916db8f05eaaad54c77032571130adfc974058ac9 on 2026-10-14 -->
+<!-- knowledge-review: 6ea56d1f9b4a26eb6abc63053340c74a89fd5bb887cc61039ea048a63ac02f9d on 2026-10-14 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-14（BLCS #1044の10run学習と全長評価を記録。Court #983の比較記録を保持）
@@ -452,11 +452,11 @@ camera-view v2のreference selectorも決着していません。PLCSではrefer
 
 ### BLCS
 
-2026-10-13の[#1044実装検証](nodes/blcs/000053-group-i1044-qualification.md)では、通常・chunked・GANの短いGPUスモークと、全validationの物理GT自己評価が成立した。rollout残差は位置約3.84e-7 m・速度約4.17e-7 m/sで、保存clockと尺度を接続できている。短い学習の結果から新損失の優位は判断しない。初回比較のCUDA中断と初期スモークの不完全なsource captureも記録した。各4,000更新の10 runで既存戦略と段階的損失追加を比較するまで、方式や本番checkpointの採用判断は保留する。採用閾値は設けず、結果の観測後に人間が判断する。
+2026-10-14、[#1044の段階的損失比較](nodes/blcs/000068-group-i1044-progressive-losses-u4000.md)で10run各4,000更新と最終評価を完了した。位置のみ→clean再投影（既存戦略の主対照）→速度教師→rollout位置→rollout速度（A）→最小物理head等（B）の6条件をseed42で比較し、validationだけでBを選んで主対照とseed43/44を追加した。[事前スモーク・GT自己評価](nodes/blcs/000053-group-i1044-qualification.md)、CUDA中断3試行と同seedの初期化からの再試行を記録し、失敗を成功10runに混ぜていない。testは全100scene・35,704frame、合成16条件と固定Meiji観測12条件を保存し、指標・支持数・nullの再計算照合が成立した。図表16ファイルも保存bundleだけから同一内容で再生成できる。
 
-[seed42の正式6条件比較と追加seed選択](nodes/blcs/000061-group-i1044-seed42-selection.md)が完了し、各4,000更新の新方式4候補からvalidation位置RMSE最小のBを選んだ。位置のみからclean再投影を加えた主対照では位置RMSEが大きくなり、その後の速度教師・rollout位置・rollout速度・B追加では順に小さくなった。ただしrollout位置追加の差は小さく、位置精度の改善は全長testと追加seedの結果を合わせて判断する。未教師の速度headでもrollout速度残差が小さい例があり、整合残差単独では運動の正確さを判断できない。Bはheadと複数補助損失を一群で追加した比較で、内部の各項の独立効果は切り分けていない。次は全長test・支持数・層別・実観測診断を比較する。seed42は方式選択にも使っているため確認seedと区別し、採用は結論しない。
+主対照→Bのtest軌道RMSEは3seed平均±標本SDで1.146±0.166→0.930±0.237 m。方式選択にも使ったseed42を除く確認seed43/44では1.199±0.195→1.021±0.250 mとなり、両seedで改善した。ただし同じtest集合を使った少数seedの結果である。rollout位置だけを加えたseed42は位置が退行し、Bもrollout速度残差・一部の欠損/短clip層・実再投影seed43で退行した。Bの積分出力はGT区間で4.23–4.34 m、予測区間で2.37–2.75 mと直接座標より大きく外れ、event過検出も残る。B内部の各補助損失は分離していない。採用閾値はユーザー指定で設けず、結果の観測後に人間が判断する。本番checkpointは置換していない。
 
-[主対照seed43](nodes/blcs/000063-run-i1044-reprojection-s43-u4000.md)の選定validation軌道RMSEは0.763100 m、[主対照seed44](nodes/blcs/000064-run-i1044-reprojection-s44-u4000.md)は0.850291 mだった。[B seed44](nodes/blcs/000065-run-i1044-parameters-s44-u4000.md)は0.712541 m、[B seed43の再試行](nodes/blcs/000066-run-i1044-parameters-s43-u4000.md)は0.648959 mとなり、**全10 runが各4,000更新を完了した**。主対照とBの3seedが揃ったが、これらはcheckpoint選択に使ったvalidationの値である。[B seed43の初回CUDA中断](nodes/blcs/000062-run-i1044-parameters-s43-cuda-interrupted.md)は原因未特定のまま記録を保持し、成功10 runに含めていない。同じseed・設定でcheckpointを引き継がず再実行した根拠も保存した。[最終評価](nodes/blcs/000067-run-i1044-final-evaluation.md)も完了し、全100scene・35,704frameの合成16条件と実観測12条件を保存した。保存配列からの指標再計算と支持数・未定義状態の照合が成立した。主対照とBの3seed平均test軌道RMSEは1.145891 mと0.930276 mだが、rollout速度残差は悪化し、欠損層ではseed44に退行がある。全長推論の窓境界による差分誤差も診断中で、採用判断は保留する。
+全長推論は固定128frameの非重複窓であり、窓境界の事後診断では主対照の差分速度/加速度SSEの80.55%/93.87%が少数の境界跨ぎstencilに集中した。速度head・座標の連続性・位置精度を分けて解釈し、全frameの主指標は変更していない。次の検証候補は窓の結合、A/Bの長い同予算比較、B内部損失の分離、独立した実3D/校正データでの一般化である。固定実観測はmodel-assistedな2D注釈と校正由来court点を使い、独立3D GTがないため実3D改善は未確認。小さい物理fitや再投影だけを採用根拠としない。
 
 2026-10-07、[#1038の物理GT付きv3データでの再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)を完了し、validation選定ckptをローカルckpt/blcs/へ置換した。旧#1036はデータ変更と組み込み方針の未確定により不採用とし、tennis_sceneの実装・既定設定は変更していない。データsnapshotを固定した200 epoch学習と88シーンの中心窓testが完走したが、旧実験とはシーン集合・更新数が異なるため精度改善の因果比較には使わない。短いtestシーン・全長・実検出・実動画3D精度・追加seedは未評価。次は組み込み経路の確定後に入力契約と受入条件を別途定める。以下の旧deploy・associationの知見は当時の構成に限定した履歴であり、今回の採用範囲を拡張しない。
 

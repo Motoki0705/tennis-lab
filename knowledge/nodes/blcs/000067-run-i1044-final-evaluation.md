@@ -106,4 +106,4 @@ repro:
 
 このrunは追加学習をしない。学習曲線と出力勾配の図は10件の学習TensorBoardから生成したもので、元の全scalarと個別runの再現記録は各学習ノードにある。図表再生成用に20個の元TensorBoard eventファイルも、このbundle内で元と同じrun相対パスに保存した。元の学習出力・checkpoint・data/storeを入力にせず、一時出力先でreportを再生成し、16ファイルすべてのSHA-256が元reportと一致した（report-regeneration-audit.json）。旧9,000更新重みは予算・head構成が異なる参考対照で、同条件の主対照はreprojectionである。実観測は保存注釈と校正由来のcourt点を用い、独立3D GTがないため実3D精度の改善を結論しない。
 
-主対照とBの3seed平均test軌道RMSEは1.145891 mと0.930276 mだった。seed42は方式選択にも用いたため、seed43/44の確認結果と分けて解釈する。段階比較、支持数、退行、積分出力の限界と次の実験案は最終比較groupに集約する。採用閾値は事前に設けず、本番checkpointも置換しない。
+主対照とBの3seed平均test軌道RMSEは1.145891 mと0.930276 mだった。seed42は方式選択にも用いたため、seed43/44の確認結果と分けて解釈する。段階比較、支持数、退行、積分出力の限界と次の実験案は[最終比較group](000068-group-i1044-progressive-losses-u4000.md)に集約した。採用閾値は事前に設けず、本番checkpointも置換しない。
