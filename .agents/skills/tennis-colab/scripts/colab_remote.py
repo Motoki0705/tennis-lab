@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import fcntl
 import hashlib
 import json
 import os
@@ -14,6 +15,8 @@ import sys
 import tempfile
 import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -28,7 +31,30 @@ from colab_core import (
 )
 
 ROOT = Path(__file__).resolve().parent
-TERMINAL = {"completed", "failed", "cancelled", "save_failed"}
+TERMINAL = {"completed", "failed", "cancelled", "abandoned", "save_failed"}
+
+
+class JobBusy(ColabError):
+    """A worker or a persistence operation still owns the job."""
+
+
+@contextmanager
+def job_lock(directory: Path) -> Iterator[None]:
+    with (directory / "worker.lock").open("a") as stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise JobBusy("The worker or save operation is still active") from error
+        try:
+            yield
+        finally:
+            fcntl.flock(stream, fcntl.LOCK_UN)
+
+
+def owner_alive(state: dict[str, Any]) -> bool:
+    prefix = "save" if state.get("save_pid") else "worker"
+    pid, token = state.get(f"{prefix}_pid"), state.get(f"{prefix}_token")
+    return bool(pid and token and process_token(pid) == token)
 
 
 def config() -> dict[str, Any]:
@@ -58,6 +84,17 @@ def process_token(pid: int) -> str | None:
     except FileNotFoundError:
         return None
     return None if fields[0] == "Z" else fields[19]
+
+
+def group_alive(pgid: int) -> bool:
+    for path in Path("/proc").glob("[0-9]*/stat"):
+        try:
+            fields = path.read_text().rsplit(")", 1)[1].split()
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        if fields[0] != "Z" and int(fields[2]) == pgid:
+            return True
+    return False
 
 
 def safe_file(path: str) -> Path:
@@ -171,24 +208,22 @@ def jobs() -> list[dict[str, Any]]:
     result = []
     for state_path in sorted((ROOT / "jobs").glob("*/status.json")):
         state = read_json(state_path)
-        if state["status"] in {"starting", "running", "finalizing"} and state.get(
-            "worker_pid"
-        ):
-            token = state.get("worker_token")
-            alive = token is not None and process_token(state["worker_pid"]) == token
-            if not alive:
-                state = {
-                    **state,
-                    "status": "unknown",
-                    "reason": "worker exited without a durable completion receipt",
-                }
+        if state["status"] in {"starting", "running", "finalizing"} and not owner_alive(state):
+            state = {
+                **state,
+                "status": "unknown",
+                "reason": "worker exited without a durable completion receipt",
+            }
         result.append(state)
     return result
 
 
 def prepare(request: dict[str, Any]) -> dict[str, Any]:
     cfg = config()
-    pending = [item for item in jobs() if item["status"] not in TERMINAL]
+    pending = [
+        item for item in jobs()
+        if item["status"] not in TERMINAL or not item.get("drive_saved_at")
+    ]
     if pending:
         raise ColabError(
             f"Inspect the existing command before starting another: {[item['job_id'] for item in pending]}"
@@ -330,6 +365,21 @@ def sync_job(
 
 
 def run_job(job_id: str) -> int:
+    with job_lock(job_dir(job_id)):
+        return _run_job(job_id)
+
+
+def launch_command(request_path: Path) -> int:
+    """Do not execute user code until the parent has durably recorded our identity."""
+    if sys.stdin.buffer.read(1) != b"1":
+        return 125
+    with open(os.devnull, "rb") as stream:
+        os.dup2(stream.fileno(), 0)
+    request = read_json(request_path)
+    os.execvpe(request["argv"][0], request["argv"], os.environ)
+
+
+def _run_job(job_id: str) -> int:
     cfg = config()
     directory = job_dir(job_id)
     request = read_json(directory / "request.json")
@@ -340,6 +390,7 @@ def run_job(job_id: str) -> int:
         status="starting",
         worker_pid=os.getpid(),
         worker_token=process_token(os.getpid()),
+        launch_guarded=True,
         updated_at=now(),
     )
     atomic_json(directory / "status.json", state)
@@ -370,7 +421,7 @@ def run_job(job_id: str) -> int:
     try:
         sync_job(cfg, directory)  # Confirm Drive writes before starting the command.
         if cancelled.is_set() or (directory / "cancel").exists():
-            state.update(status="finalizing", returncode=130, updated_at=now())
+            state.update(status="finalizing", returncode=130, completion_target="cancelled", updated_at=now())
             atomic_json(directory / "status.json", state)
             saved = sync_job(cfg, directory, completion="cancelled")
             atomic_json(directory / "status.json", saved)
@@ -390,10 +441,10 @@ def run_job(job_id: str) -> int:
                     ]
                 )
             process = subprocess.Popen(
-                request["argv"],
+                [sys.executable, str(Path(__file__).resolve()), "launch", str(directory / "request.json")],
                 cwd=request["cwd"],
                 env=environment,
-                stdin=subprocess.DEVNULL,
+                stdin=subprocess.PIPE,
                 stdout=output,
                 stderr=subprocess.STDOUT,
                 start_new_session=True,
@@ -405,6 +456,9 @@ def run_job(job_id: str) -> int:
                 started_at=now(),
             )
             atomic_json(directory / "status.json", state)
+            assert process.stdin is not None
+            process.stdin.write(b"1")
+            process.stdin.close()
             publisher = threading.Thread(target=persist_periodically, daemon=True)
             publisher.start()
             while process.poll() is None:
@@ -422,16 +476,13 @@ def run_job(job_id: str) -> int:
             returncode = process.wait()
         state["returncode"] = returncode
         stop.set()
+        phase = "periodic_save"
         if publisher:
-            publisher.join(timeout=650)
-            if publisher.is_alive():
-                raise ColabError("Drive synchronization has not settled")
+            publisher.join()
         if sync_errors:
             phase = "periodic_save"
             raise ColabError(sync_errors[0])
         phase = "final_save"
-        state.update(status="finalizing", returncode=returncode, updated_at=now())
-        atomic_json(directory / "status.json", state)
         with sync_lock:
             completion = (
                 "cancelled"
@@ -440,6 +491,9 @@ def run_job(job_id: str) -> int:
                 if returncode == 0
                 else "failed"
             )
+            state.update(status="finalizing", returncode=returncode,
+                         completion_target=completion, updated_at=now())
+            atomic_json(directory / "status.json", state)
             saved = sync_job(
                 cfg, directory, final=returncode == 0, completion=completion
             )
@@ -464,6 +518,73 @@ def run_job(job_id: str) -> int:
         return 1
     finally:
         stop.set()
+        if publisher:
+            publisher.join()
+
+
+def save_completion(directory: Path, state: dict[str, Any], completion: str) -> dict[str, Any]:
+    """Caller holds job_lock; persist an explicit outcome before releasing the job."""
+    state.pop("drive_saved_at", None)
+    state.pop("finished_at", None)
+    state.update(status="finalizing", completion_target=completion, updated_at=now(),
+                 save_pid=os.getpid(), save_token=process_token(os.getpid()))
+    atomic_json(directory / "status.json", state)
+    try:
+        saved = sync_job(config(), directory,
+                         final=completion == "completed", completion=completion)
+        atomic_json(directory / "status.json", saved)
+        return saved
+    except Exception as error:
+        state.update(status="save_failed", error=str(error))
+        atomic_json(directory / "status.json", state)
+        raise
+
+
+def recover_job(job_id: str) -> dict[str, Any]:
+    """Explicitly abandon an orphan, without inventing an execution exit code."""
+    directory = job_dir(job_id)
+    with job_lock(directory):
+        state = read_json(directory / "status.json")
+        if state["status"] in TERMINAL and state.get("drive_saved_at"):
+            return state
+        if owner_alive(state):
+            raise ColabError("The recorded worker/save process is alive; cancel or wait")
+        if state.get("worker_pid") and not state.get("worker_token"):
+            raise ColabError("Missing worker identity; cannot prove it exited")
+        if state.get("save_pid") and not state.get("save_token"):
+            raise ColabError("Missing save identity; cannot prove it exited")
+        if state["status"] in {"starting", "running"} and not state.get("worker_pid"):
+            raise ColabError("Missing worker identity; inspect the job before recovery")
+        (directory / "cancel").touch()  # Also prevents a delayed dispatch from executing.
+        pid, token = state.get("pid"), state.get("process_token")
+        if pid:
+            if not token:
+                raise ColabError("Missing command identity; refusing to signal a PID")
+            current = process_token(pid)
+            if current is None and group_alive(pid):
+                raise ColabError("Command leader is absent but its process group remains; inspect it before recovery")
+            if current is not None:
+                if current != token or os.getpgid(pid) != pid:
+                    raise ColabError("Command identity changed; refusing to signal a PID")
+                # Recovery is explicit: the supervisor is gone, so terminate its entire
+                # verified command group before copying any potentially live outputs.
+                os.killpg(pid, signal.SIGKILL)
+                deadline = time.monotonic() + 10
+                while group_alive(pid) and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                if group_alive(pid):
+                    raise ColabError("Orphan command did not exit; artifacts remain unsaved")
+        elif state.get("started_at") or not (state.get("launch_guarded") or not state.get("worker_pid")):
+            raise ColabError("Legacy worker has no command identity; inspect it before recovery")
+        completion = state.get("completion_target", "abandoned")
+        if state["status"] == "pending":
+            completion = "cancelled"
+        state["recovery"] = {
+            "at": now(), "previous_status": state["status"],
+            "reason": "Worker/save owner is absent; recorded command stopped before persistence",
+            "command_pid": pid, "command_token": token,
+        }
+        return save_completion(directory, state, completion)
 
 
 def diff(request: dict[str, Any]) -> dict[str, Any]:
@@ -561,41 +682,30 @@ def rpc(request: dict[str, Any]) -> dict[str, Any]:
         if requested:
             (directory / "cancel").touch()
         if state["status"] == "pending":
-            state.update(status="finalizing", returncode=130, updated_at=now())
-            atomic_json(directory / "status.json", state)
             try:
-                saved = sync_job(config(), directory, completion="cancelled")
-                atomic_json(directory / "status.json", saved)
-            except Exception as error:
-                state.update(status="save_failed", error=str(error))
-                atomic_json(directory / "status.json", state)
-                raise
+                with job_lock(directory):
+                    state = read_json(directory / "status.json")
+                    if state["status"] == "pending":
+                        state["returncode"] = 130
+                        save_completion(directory, state, "cancelled")
+            except JobBusy:
+                # A worker claimed the pending request and will read the marker.
+                pass
+        elif requested and not owner_alive(state):
+            raise ColabError("Worker is absent; use recover to stop the orphan and save its artifacts")
         return {"job_id": request["job_id"], "requested": requested}
+    if action == "recover":
+        return recover_job(request["job_id"])
     if action == "save":
         directory = job_dir(request["job_id"])
-        state = read_json(directory / "status.json")
-        if state["status"] not in TERMINAL:
-            raise ColabError(
-                "Cancel the active command and wait for its worker before explicit recovery save"
-            )
-        completion = state["status"]
-        if completion == "save_failed":
-            completion = "completed" if state.get("returncode") == 0 else "failed"
-        state.update(status="finalizing", updated_at=now())
-        atomic_json(directory / "status.json", state)
-        try:
-            saved = sync_job(
-                config(),
-                directory,
-                final=state.get("returncode") == 0,
-                completion=completion,
-            )
-            atomic_json(directory / "status.json", saved)
-            return saved
-        except Exception as error:
-            state.update(status="save_failed", error=str(error))
-            atomic_json(directory / "status.json", state)
-            raise
+        with job_lock(directory):
+            state = read_json(directory / "status.json")
+            if state["status"] not in TERMINAL:
+                raise ColabError("Cancel and wait for the worker, or recover an unknown job before save")
+            completion = state.get("completion_target", state["status"])
+            if completion == "save_failed":
+                completion = "completed" if state.get("returncode") == 0 else "failed"
+            return save_completion(directory, state, completion)
     if action == "read_file":
         path = safe_file(request["path"])
         if path.stat().st_size > request["max_bytes"]:
@@ -613,6 +723,8 @@ def rpc(request: dict[str, Any]) -> dict[str, Any]:
 def main() -> int:
     if len(sys.argv) == 3 and sys.argv[1] == "run":
         return run_job(sys.argv[2])
+    if len(sys.argv) == 3 and sys.argv[1] == "launch":
+        return launch_command(Path(sys.argv[2]))
     try:
         response = rpc(json.load(sys.stdin))
         print(json.dumps({"ok": True, **response}, ensure_ascii=False))

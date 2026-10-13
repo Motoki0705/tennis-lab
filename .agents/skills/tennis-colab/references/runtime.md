@@ -33,11 +33,15 @@ GitのHEAD・差分・選ばれたuntracked sourceも実行記録に残す。コ
 
 状態はpending → starting → running → finalizing → completed/failed/cancelled。
 Drive保存が失敗した場合はsave_failed。workerが完了receiptを残さず消えた場合はunknownとして扱う。
+`recover`で結果不明のjobを整理した後はabandoned。正常終了やreturncodeを推定しない。
 local SSH dispatcherだけが終了したpendingはdispatch_failedと表示する。
 
 workerは実行前にDriveへ書けることを確認し、実行中はログと指定outputを周期保存する。
 コマンドが失敗しても生成済みの成果物とログを残す。最終成果物の保存後に完了statusを公開する。
 PIDだけでなくprocess start tokenを保持し、別processへ再利用されたPIDを稼働中と誤認しない。
+実コマンドはPID/tokenを永続化してから起動許可を渡す。保存前にworkerが消えた場合は、
+起動待ちの子processがEOFで終了し、未記録のユーザーコマンドを残さない。
+workerと明示的な保存・復旧はjob単位のlockで排他する。未保存jobが残る間は次のexecを拒否する。
 
 ## 障害からの再開
 
@@ -57,6 +61,12 @@ storageの除外と未回収sourceを区別し、前者だけでstopを拒否し
   提出のやり直しが必要な場合は元jobをcancelし、terminal状態とDrive保存を確認してから新しいjob IDを使う。
   cancel markerにより遅れて届いた元要求も実コマンドを開始しない。clientの終了だけをremoteの終了とは扱わない。
 - **実行が失敗:** returncodeとログを読み、同じVMで必要な調査・修正を行う。修正差分を回収する。
+- **workerが消失・保存が中断:** `status`がunknownなら、既存jobに`recover`を実行する。
+  worker/save操作の不在を確かめ、記録済みPID/tokenが一致する孤立コマンドのprocess groupを
+  強制終了してから成果物を保存する。結果不明はabandonedと理由を記録し、Drive保存成功後だけ
+  stopや次のexecを許す。復旧の保存に失敗した場合は原因を直して同jobをsaveし、abandonedを保つ。
+  PID/token欠落・再利用、旧workerの未記録コマンドなど停止対象を検証できない場合は拒否する。
+  実行中のworkerにrecoverを使わず、通常はcancelして終了を待つ。
 - **保存が失敗:** 原因を直して、停止済みjobをsaveする。保存できていない状態でstopしない。
 - **VMが消失:** Drive上の記録・checkpointの保存完了を確認し、新sessionへ同じGit・データ・設定を用意する。
   任意processのメモリ状態は復元しない。学習側が対応するcheckpoint再開を使う。
