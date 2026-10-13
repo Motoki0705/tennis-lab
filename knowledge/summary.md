@@ -1,4 +1,4 @@
-<!-- knowledge-review: a62f12aad7e9fc3624eda6a2755970a5ce3bab0e5a2a5b18642cd8092b549486 on 2026-10-14 -->
+<!-- knowledge-review: 02fecefd2d521495059f7d419243e8c72a2d4c4271d61d3bb0b51ffb88774172 on 2026-10-14 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -454,7 +454,7 @@ camera-view v2のreference selectorも決着していません。PLCSではrefer
 
 [seed42の正式6条件比較と追加seed選択](nodes/blcs/000061-group-i1044-seed42-selection.md)が完了し、各4,000更新の新方式4候補からvalidation位置RMSE最小のBを選んだ。位置のみからclean再投影を加えた主対照では位置RMSEが大きくなり、その後の速度教師・rollout位置・rollout速度・B追加では順に小さくなった。ただしrollout位置追加の差は小さく、Bの位置精度改善も全長testとseed43/44で未確認である。未教師の速度headでもrollout速度残差が小さい例があり、整合残差単独では運動の正確さを判断できない。Bはheadと複数補助損失を一群で追加した比較で、内部の各項の独立効果は切り分けていない。次は主対照とBのseed43/44の計4 runを完了し、全長test・支持数・層別・実観測診断を比較する。seed42は方式選択にも使っているため確認seedと区別し、採用は結論しない。
 
-[主対照seed43](nodes/blcs/000063-run-i1044-reprojection-s43-u4000.md)も4,000更新を完了した。選定validation軌道RMSEは0.763100 mで、3,825更新時点のcheckpointと選定callback・hashを照合した。[主対照seed44](nodes/blcs/000064-run-i1044-reprojection-s44-u4000.md)は最終4,000更新の明示validationが最小の0.850291 mとなり、選定checkpointを検証した。主対照は3seedが揃った。[B seed43の初回](nodes/blcs/000062-run-i1044-parameters-s43-cuda-interrupted.md)はbackward中のCUDA unknown errorで中断し、根本原因は未特定。最後の記録step2,609と途中checkpoint・ログを保存し、失敗試行を成功10 runに含めず同じseed・設定で最初から再実行する。成功分は8 runで、Bの追加seedと全長test・実観測評価は未完了である。
+[主対照seed43](nodes/blcs/000063-run-i1044-reprojection-s43-u4000.md)も4,000更新を完了した。選定validation軌道RMSEは0.763100 mで、3,825更新時点のcheckpointと選定callback・hashを照合した。[主対照seed44](nodes/blcs/000064-run-i1044-reprojection-s44-u4000.md)は最終4,000更新の明示validationが最小の0.850291 mとなり、選定checkpointを検証した。主対照は3seedが揃った。[B seed44](nodes/blcs/000065-run-i1044-parameters-s44-u4000.md)も完了し、最終4,000更新の選定validation値は0.712541 mだった。[B seed43の初回](nodes/blcs/000062-run-i1044-parameters-s43-cuda-interrupted.md)はbackward中のCUDA unknown errorで中断し、根本原因は未特定。最後の記録step2,609と途中checkpoint・ログを保存し、失敗試行を成功10 runに含めず同じseed・設定で最初から再実行している。成功分は9 runで、残るB seed43と全長test・実観測評価は未完了である。
 
 2026-10-07、[#1038の物理GT付きv3データでの再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)を完了し、validation選定ckptをローカルckpt/blcs/へ置換した。旧#1036はデータ変更と組み込み方針の未確定により不採用とし、tennis_sceneの実装・既定設定は変更していない。データsnapshotを固定した200 epoch学習と88シーンの中心窓testが完走したが、旧実験とはシーン集合・更新数が異なるため精度改善の因果比較には使わない。短いtestシーン・全長・実検出・実動画3D精度・追加seedは未評価。次は組み込み経路の確定後に入力契約と受入条件を別途定める。以下の旧deploy・associationの知見は当時の構成に限定した履歴であり、今回の採用範囲を拡張しない。
 

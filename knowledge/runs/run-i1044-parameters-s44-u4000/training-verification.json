@@ -1,0 +1,33 @@
+{
+  "checked_at_utc": "2026-10-13T18:04:33+00:00",
+  "queue_done_job": "1791857517390940136_3137919_i1044-selected-new-s44-u4000-v3-cli.job",
+  "optimizer_updates": 4000,
+  "checkpoint_global_step": 4000,
+  "checkpoint_epoch": 89,
+  "checkpoint_monitored_callbacks": [
+    {
+      "callback": "ModelCheckpoint{'monitor': 'val/trajectory_rmse_m', 'mode': 'min', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}",
+      "best_model_score": 0.7344199419021606,
+      "best_model_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s44-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt"
+    }
+  ],
+  "selection_step_convention": "explicit final validation logs the completed optimizer step",
+  "last_checkpoint": "outputs/blcs/i1044/parameters-s44-u4000/logs/version_0/checkpoints/last.ckpt",
+  "last_checkpoint_global_step": 4000,
+  "checkpoint_bytes": 625885579,
+  "checkpoint_sha256": "1cf4067a297e2e46d2999efb5fc2df4c3dd5485d42cda35a1b3a028425ce281a",
+  "checkpoint_sha256_matches_selection": true,
+  "selected_score_matches_minimum_logged_validation": true,
+  "matched_validation_entries": [
+    {
+      "step": 4000,
+      "value": 0.712540864944458,
+      "wall_time": 1791913178.82014
+    }
+  ],
+  "last_logged_step": 4000,
+  "validation_scalar_entries": 18,
+  "scalar_tags": 121,
+  "test_evaluation_performed": false,
+  "original_capture_checksums_match": true
+}
