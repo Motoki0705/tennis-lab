@@ -21,6 +21,12 @@
 
 位置損失は物理mに戻し、scale=beta=11.885 mで無次元化するため旧標準Smooth L1と同値。再投影は各軸を画像幅/高さで正規化したSmooth L1（beta=1画像幅/高さ）、重み0.1。速度はscale30 m/s・beta10 m/s、重み0.1。rolloutはhorizon1/3frame、記録dt×strideを使用（このsnapshotでは約0.0333/0.1秒）。両端に勾配を流し、200更新後から400更新かけて物理項を線形増加する。重みと尺度の正本は `configs/loss/default.yaml` と `issue1044.py`。
 
-GT自己評価、位置ジッター・時間ずれ・イベント越境の摂動、同じ観測からの三角測量＋線形補間を対照にする。重い共有ODE fittingは保存評価で固定支持集合を使う。Bの積分出力はGT区間（oracle）と予測イベント区間を区別する。実観測はMeiji固定clipに対して再投影・物理診断・軌道図を作るが、独立3D GTがないため実3D改善とは解釈しない。
+GT自己評価、位置ジッター・時間ずれ・イベント越境の摂動、同じ観測からの三角測量＋線形補間を対照にする。幾何対照は同じ2D CourtKP14から共有planar fitterでカメラを推定し、保存カメラGTを入力しない。校正・三角測量の支持不足clipは除外理由と母数を保存し、成功clipだけのスコアを全sceneのモデル結果と同一視しない。重い共有ODE fittingは保存評価で固定支持集合を使う。Bの積分出力はGT区間（oracle）と予測イベント区間を区別する。イベントは±2frame以内の一対一対応数を最大化し、その中で時刻差を最小化する。実観測はMeiji固定clipに対して再投影・物理診断・軌道図を作るが、独立3D GTがないため実3D改善とは解釈しない。
+
+GPU実行は共有training queue経由。最初のposition runは`all`、計測したVRAM使用量に基づき残り9 runは`half`（最大2並列）とする。更新数・batch・学習条件は同一だが、所要時間は競合の影響を受けるため速度性能の比較には使わない。6条件の終了後に`repeat_selected --select-only`を`all`で実行してvalidationによる選択を保存する。10 run後の`final_evaluation`も`all`とし、checkpointのSHA・更新数を確認してからtestを初めて評価する。
+
+実行時の補足: 最初のposition runはCUDA unknown errorで途中停止した。失敗ログと途中checkpointを別の出力先に保持し、同じseed・条件で最初から4,000更新を`half`予約でやり直す。途中のrunは比較対象10件へ混ぜない。
+
+全長評価・保存値の再計算・実観測診断・図表作成は `python -m src.tasks.blcs.experiments.final_evaluation --data-root <data> --historical-checkpoint <ckpt> --real-store <Meiji store>`。各runの`selection.json`と`additional-seed-selection.json`を入力とし、出力は`outputs/blcs/i1044/{evaluations,real,report}`。`pred_test.npz`はモデルなしで`evaluation.recompute(path)`により指標を再計算できる。実観測は同じ保存2D注釈を2frameごとに使用し、コート点は保存校正から生成する。このため生検出器入力のend-to-end評価ではなく、条件を固定した観測診断である。
 
 一次資料: [TT3D](https://arxiv.org/html/2504.10035v2)は空力とバウンド状態の最適化による再構成、[APHYNITY](https://arxiv.org/html/2010.04456v6)は微分可能な積分軌道による物理と学習補正の学習を示す。短horizonのBLCS損失はそれらから着想した本実験の仮説。[PINNsの収束分析](https://arxiv.org/abs/2007.14527)を踏まえ項ごとの尺度・warmup・勾配到達を検証する。各論文の別問題での成果をBLCSの改善保証とはしない。
