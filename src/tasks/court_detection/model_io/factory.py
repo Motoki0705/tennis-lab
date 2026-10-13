@@ -49,7 +49,7 @@ def build_court_detection_pair(
         model_config=runtime.model,
         loss_config=runtime.loss,
         short_side=runtime.data.augmentation.val_short_side,
-        pose_long_side=runtime.loss.pose.enabled,
+        pose_long_side=runtime.data.augmentation.preserve_fx_fy,
         patch_size=runtime.data.augmentation.patch_size,
         target_bundle=target_bundle,
     )

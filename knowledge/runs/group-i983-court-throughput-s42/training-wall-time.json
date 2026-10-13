@@ -1,0 +1,71 @@
+{
+  "schema": "i983_training_wall_time_v1",
+  "source": {
+    "log": "gdrive:tennis_lab/operations/colab/i983-l4-ablation-04/train-splus-s42/stdout.log",
+    "log_bytes": 681570,
+    "log_sha256": "3331ff37c8f3f675d13e953d533ac77610d63bdcb902638b90831cb00d471466",
+    "receipt": {
+      "schema_version": 1,
+      "job_id": "train-splus-s42",
+      "status": "completed",
+      "updated_at": "2026-10-12T02:54:25.095855+00:00",
+      "returncode": 0,
+      "worker_pid": 10362,
+      "worker_token": "169587",
+      "pid": 10536,
+      "process_token": "172706",
+      "started_at": "2026-10-11T15:53:43.328900+00:00",
+      "drive_saved_at": "2026-10-12T02:54:39.107705+00:00",
+      "finished_at": "2026-10-12T02:54:39.107721+00:00"
+    }
+  },
+  "method": "CR-delimited tqdm: first 1658/1658 per epoch; six final 394/394 validation times; test 111/111 before/after epoch-end handling. Log times are rounded seconds, not a GPU profiler.",
+  "epoch_train_elapsed_seconds": [
+    1715,
+    1618,
+    1614,
+    1613,
+    1608,
+    1619,
+    1646,
+    1624,
+    1623,
+    1619,
+    1627,
+    1622,
+    1644,
+    1622,
+    1626,
+    1673,
+    1656,
+    1662,
+    1671,
+    1678
+  ],
+  "validation_elapsed_seconds": [
+    236,
+    197,
+    201,
+    202,
+    204,
+    203
+  ],
+  "train_bar_total_seconds": 32780,
+  "train_steps": 33160,
+  "train_bar_steps_per_second": 1.0115924344112264,
+  "train_bar_images_per_second": 8.092739475289811,
+  "validation_total_seconds": 1243,
+  "validation_epoch_tail_total_seconds": 2190,
+  "validation_tail_other_seconds": 947,
+  "terminal_test_first_111_batches_seconds": 100,
+  "terminal_test_with_end_hooks_seconds": 1542,
+  "terminal_test_end_hooks_seconds": 1442,
+  "job_wall_seconds": 39655.778821,
+  "unattributed_wall_seconds": 3143.778821,
+  "limitations": [
+    "Train progress elapsed includes data loading, model/loss/metrics, progress/logging and in-epoch synchronous Drive waits; it is not pure GPU computation.",
+    "Validation tail includes checkpoint/callback overhead; individual operations are not timed.",
+    "Test end combines concatenation/compression and sync; compression alone is unmeasured.",
+    "Unattributed time cannot be assigned solely to Drive; it includes epoch boundaries, startup and finalization."
+  ]
+}

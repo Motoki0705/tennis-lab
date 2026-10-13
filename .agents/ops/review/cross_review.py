@@ -626,12 +626,15 @@ def review_head(
     """Run the reviewer on ``target``, post the result and return it as a record."""
     number = pr.number
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    runs_root = settings.state_dir / "runs"
-    runs_root.mkdir(parents=True, exist_ok=True)
-    run_dir = Path(tempfile.mkdtemp(
-        prefix=f"{stamp}-pr{number}-{target.head[:12]}-{target.merge_base[:12]}-",
-        dir=runs_root,
-    ))
+    runs_dir = settings.state_dir / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    # Repeated reviews can have the same timestamp and target; preserve each one.
+    run_dir = Path(
+        tempfile.mkdtemp(
+            prefix=f"{stamp}-pr{number}-{target.head[:12]}-{target.merge_base[:12]}-",
+            dir=runs_dir,
+        )
+    )
     prompt, truncated = build_prompt(
         settings,
         pr,

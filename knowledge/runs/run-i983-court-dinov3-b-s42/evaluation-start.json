@@ -1,0 +1,17 @@
+{
+  "evaluation_command_started_at": "2026-10-12T22:23:45.786999+00:00",
+  "pid": 18054,
+  "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.tasks.court_detection.scripts.evaluate_ablation",
+    "--checkpoint",
+    "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=17.ckpt",
+    "--output",
+    "outputs/court_detection/evaluate/i983-dino-b-shared1024/s42",
+    "--device",
+    "cuda"
+  ],
+  "selected_checkpoint_sha256": "b8f36ed60b59d11083aaf1001292a7f4f88791efe59bc6ef087693645ec4fae9"
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "session": "i983-l4-ablation-01",
+  "job": "l512-profile-01",
+  "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "command": ".venv/bin/python -m src.tasks.court_detection.scripts.profile_ablation --output outputs/court_detection/profile/i983-l512/attempt-01 --steps 3",
+  "finite_loss_and_gradient": true,
+  "profile_sha256": "ad0557dd61603a3561eea1b707c8236bd053ce16a2f92aea5296ae48139f0276",
+  "drive_output": "gdrive:tennis_lab/outputs/court_detection/profile/i983-l512/attempt-01",
+  "scope": "three-step capacity diagnostic, not an accuracy comparison"
+}

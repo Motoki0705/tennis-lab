@@ -1,0 +1,10 @@
+defaults:
+  - train_dinov3_size_ablation
+  - _self_
+model:
+  encoder:
+    backbone_name: dinov3_vitl16
+    checkpoint_path: dinov3/dinov3_vitl16_pretrain_lvd1689m-8aa4cbdd.pth
+    out_indices: [5, 11, 17, 23]
+run:
+  output_dir: court_detection/train/dinov3-size-ablation-l-shared1024/s42

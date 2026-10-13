@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "profile-splus-b16",
+  "status": "completed",
+  "updated_at": "2026-10-12T08:19:49.487431+00:00",
+  "returncode": 0,
+  "worker_pid": 16346,
+  "worker_token": "262859",
+  "pid": 16500,
+  "process_token": "265578",
+  "started_at": "2026-10-12T08:13:06.371732+00:00",
+  "drive_saved_at": "2026-10-12T08:20:25.959244+00:00",
+  "finished_at": "2026-10-12T08:20:25.959265+00:00"
+}

@@ -28,11 +28,12 @@ encoder:
 transformer_encoder:
   name: transformer
   enabled: true
-  dim: 768
+  # Shared downstream width; each native DINO feature is projected when needed.
+  dim: 1024
   depth: 8
-  num_heads: 12
+  num_heads: 16
   head_dim: 64
-  ffn_dim: 2048
+  ffn_dim: 2752
   rope_dim: 64
   rope_theta: 10000.0
   dropout: 0.0

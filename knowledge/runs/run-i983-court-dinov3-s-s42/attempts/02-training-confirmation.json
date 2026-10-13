@@ -1,0 +1,43 @@
+{
+  "observed_at": "2026-10-11T04:36:21.781418+00:00",
+  "remote_status": {
+    "schema_version": 1,
+    "ok": true,
+    "phase": "ready",
+    "session": "i983-l4-ablation-03",
+    "jobs": [
+      {
+        "schema_version": 1,
+        "job_id": "train-s-s42-attempt02",
+        "status": "running",
+        "updated_at": "2026-10-11T04:36:09.295344+00:00",
+        "returncode": null,
+        "worker_pid": 12837,
+        "worker_token": "217401",
+        "pid": 12960,
+        "process_token": "219304",
+        "started_at": "2026-10-11T04:27:56.059534+00:00",
+        "transport_alive": true
+      }
+    ],
+    "repo_root": "/content/tennis-lab"
+  },
+  "drive_operation_status": {
+    "schema_version": 1,
+    "job_id": "train-s-s42-attempt02",
+    "status": "running",
+    "updated_at": "2026-10-11T04:35:29.207408+00:00",
+    "returncode": null,
+    "worker_pid": 12837,
+    "worker_token": "217401",
+    "pid": 12960,
+    "process_token": "219304",
+    "started_at": "2026-10-11T04:27:56.059534+00:00"
+  },
+  "startup_log": "02-startup.log",
+  "observed_sanity_batches": 2,
+  "observed_training_epoch": 0,
+  "observed_training_batches": 80,
+  "observed_displayed_loss": 48.6,
+  "scope": "Startup/AMP regression confirmation, not a final accuracy evaluation."
+}

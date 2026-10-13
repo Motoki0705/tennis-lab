@@ -1,0 +1,120 @@
+{"asset": 2, "destination": "data/synthetic_data_generation/scenes/B02/datasets/court", "status": "downloading"}
+{
+  "schema_version": 1,
+  "action": "download",
+  "source": "gdrive:tennis_lab/data/synthetic_data_generation/scenes/B02/datasets/court",
+  "destination": "/content/tennis-lab/data/synthetic_data_generation/scenes/B02/datasets/court",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}
+{"asset": 3, "destination": "data/synthetic_data_generation/scenes/B03/datasets/court", "status": "downloading"}
+{
+  "schema_version": 1,
+  "action": "download",
+  "source": "gdrive:tennis_lab/data/synthetic_data_generation/scenes/B03/datasets/court",
+  "destination": "/content/tennis-lab/data/synthetic_data_generation/scenes/B03/datasets/court",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}
+{"asset": 4, "destination": "data/court_detection/tennis_court_detector-v1", "status": "downloading"}
+{
+  "schema_version": 1,
+  "action": "download",
+  "source": "gdrive:tennis_lab/data/court_detection/tennis_court_detector-v1",
+  "destination": "/content/tennis-lab/data/court_detection/tennis_court_detector-v1",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}
+{"asset": 5, "destination": "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth", "status": "downloading"}
+{
+  "schema_version": 1,
+  "action": "download",
+  "source": "gdrive:tennis_lab/ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+  "destination": "/content/tennis-lab/ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}
+{"status": "all_selected_inputs_verified", "commit": "c4b12f923b243da6b502149aa6f3912c706045e7", "input_manifest_sha256": "4d75a2256088a12f8112cf1718d68bd3c649d71f64ad61429b66dba0add8dc7e", "assets": ["data/synthetic_data_generation/scenes/B00/datasets/court", "data/synthetic_data_generation/scenes/B01/datasets/court", "data/synthetic_data_generation/scenes/B02/datasets/court", "data/synthetic_data_generation/scenes/B03/datasets/court", "data/court_detection/tennis_court_detector-v1", "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"]}
+{"training_command_started_at": "2026-10-12T10:27:51.677391+00:00", "pid": 9470, "commit": "c4b12f923b243da6b502149aa6f3912c706045e7", "argv": [".venv/bin/python", "-m", "src.tasks.court_detection.scripts.train", "--config-name", "train_i983_b", "run.artifact_store.mode=rclone", "run.artifact_store.remote=gdrive", "run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-b-shared1024/s42", "run.artifact_store.sync_interval_seconds=60"], "input_verification": "outputs/court_detection/prepare/i983-inputs/verified-07/verification.json"}
+Seed set to 42
+[2026-10-12 10:30:25,513][dinov3][INFO] - using base=100 for rope new
+[2026-10-12 10:30:25,513][dinov3][INFO] - using min_period=None for rope new
+[2026-10-12 10:30:25,513][dinov3][INFO] - using max_period=None for rope new
+[2026-10-12 10:30:25,513][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-10-12 10:30:25,513][dinov3][INFO] - using shift_coords=None for rope new
+[2026-10-12 10:30:25,513][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-10-12 10:30:25,513][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-10-12 10:30:25,513][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-10-12 10:30:25,514][dinov3][INFO] - using mlp layer as FFN
+[torch.compile] enabled targets=[model] backend=inductor mode=default fullgraph=False dynamic=False
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name     ┃ Type                         ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model    │ CourtHierarchicalModel       │  217 M │ train │     0 │
+│ 1 │ model_io │ MixedCourtPoseModelIOAdapter │      0 │ train │     0 │
+└───┴──────────┴──────────────────────────────┴────────┴───────┴───────┘
+Trainable params: 131 M
+Non-trainable params: 85.7 M
+Total params: 217 M
+Total estimated model params size (MB): 869.820
+Modules in train mode: 546
+Modules in eval mode: 0
+Total FLOPs: 0
+
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]
+Sanity Checking DataLoader 0:   0%|          | 0/2 [00:00<?, ?it/s]W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0] Graph break from `Tensor.item()`, consider setting:
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     torch._dynamo.config.capture_scalar_outputs = True
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0] or:
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     env TORCHDYNAMO_CAPTURE_SCALAR_OUTPUTS=1
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0] to include these operations in the captured graph.
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0] Graph break: from user code at:
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]   File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 1078, in forward
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     output, transformed = self._decode_with_transformer(
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]   File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 1141, in _decode_with_transformer
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     transformed = self.transformer_encoder(
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]   File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 831, in forward
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     valid_grid = self._validate_patch_valid_mask(
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]   File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 816, in _validate_patch_valid_mask
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]     if bool(torch.any(~patch_valid_mask.flatten(1).any(dim=1))):
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]
+W1012 10:31:44.437000 9470 .venv/lib/python3.11/site-packages/torch/_dynamo/variables/tensor.py:1841] [0/0]
+W1012 10:31:47.346000 9470 .venv/lib/python3.11/site-packages/torch/_inductor/utils.py:1806] [0/0_1] Not enough SMs to use max_autotune_gemm mode
+/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_inductor/lowering.py:2774: UserWarning: Torchinductor does not support code generation for complex operators. Performance may be worse than eager.
+  warnings.warn(
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 8. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+
+Sanity Checking DataLoader 0: 100%|██████████| 2/2 [00:45<00:00,  0.04it/s]
+
+/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+Training: |          | 0/? [00:00<?, ?it/s]
+Training: |          | 0/? [00:00<?, ?it/s]
+Epoch 0:   0%|          | 0/1658 [00:00<?, ?it/s]/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/autograd/graph.py:1072: UserWarning: Memory Efficient attention defaults to a non-deterministic algorithm. To explicitly enable determinism call torch.use_deterministic_algorithms(True, warn_only=False). (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/transformers/cuda/attention_backward.cu:910.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+
+Epoch 0:   1%|          | 20/1658 [02:08<2:55:01,  0.16it/s]
+Epoch 0:   1%|          | 20/1658 [02:08<2:55:16,  0.16it/s, v_num=0, train/loss=63.00]
+Epoch 0:   2%|▏         | 40/1658 [02:25<1:37:48,  0.28it/s, v_num=0, train/loss=63.00]
+Epoch 0:   2%|▏         | 40/1658 [02:25<1:37:55,  0.28it/s, v_num=0, train/loss=72.40]
+Epoch 0:   4%|▎         | 60/1658 [02:42<1:11:56,  0.37it/s, v_num=0, train/loss=72.40]
+Epoch 0:   4%|▎         | 60/1658 [02:42<1:12:01,  0.37it/s, v_num=0, train/loss=44.10]
+Epoch 0:   5%|▍         | 80/1658 [03:05<1:01:05,  0.43it/s, v_num=0, train/loss=44.10]
+Epoch 0:   5%|▍         | 80/1658 [03:05<1:01:08,  0.43it/s, v_num=0, train/loss=45.40]

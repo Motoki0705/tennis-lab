@@ -135,6 +135,12 @@ def test_input_channel_shape_dtype_and_device_are_strict() -> None:
         encoder(torch.zeros(1, 16, 2, 2, dtype=torch.int64))
     with pytest.raises(TypeError, match="dtype"):
         encoder(torch.zeros(1, 16, 2, 2, dtype=torch.float64))
+    with pytest.raises(TypeError, match="dtype"):
+        encoder(torch.zeros(1, 16, 2, 2, dtype=torch.bfloat16))
+    with torch.autocast("cpu", dtype=torch.bfloat16):
+        for dtype in (torch.float64, torch.float16):
+            with pytest.raises(TypeError, match="dtype"):
+                encoder(torch.zeros(1, 16, 2, 2, dtype=dtype))
 
 
 def test_padding_token_perturbation_cannot_reach_pose_query_or_gradients() -> None:
