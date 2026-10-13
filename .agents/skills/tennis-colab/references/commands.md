@@ -68,4 +68,12 @@ diffは `changes.patch`、`untracked/`、元commitと除外pathを記録したre
 
 `cancel` は対象のprocess groupへ終了要求を出す。statusで終了・保存まで確認する。
 保存に失敗した場合は原因を直し、停止済みjobに `save` を実行して保存を再確認する。
+workerが消えて`unknown`になった場合は、同じjobを再投入せず次を実行する。
+
+```bash
+.venv/bin/python .agents/skills/tennis-colab/scripts/colab.py recover --session court-work --job-id court-train
+```
+
+孤立processの強制終了とDrive保存を行う操作。成否不明は`abandoned`として記録する。
+拒否条件と保存再試行は[runtime.md](runtime.md#障害からの再開)を参照する。
 stopは稼働中jobや保存receiptのないjobがあれば拒否する。
