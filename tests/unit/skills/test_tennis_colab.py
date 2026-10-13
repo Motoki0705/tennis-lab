@@ -1,0 +1,727 @@
+"""Colab ownership and worker persistence invariants, with real CPU subprocesses."""
+
+from __future__ import annotations
+
+import argparse
+import importlib
+import json
+import os
+import shlex
+import signal
+import subprocess
+import sys
+import time
+from collections.abc import Iterator
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from typing import Any
+
+import pytest
+
+
+@pytest.fixture
+def modules(monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, ModuleType]:
+    root = Path(__file__).resolve().parents[3]
+    monkeypatch.syspath_prepend(str(root / ".agents/skills/tennis-colab/scripts"))
+    return importlib.import_module("colab_core"), importlib.import_module(
+        "colab_remote"
+    )
+
+
+@pytest.mark.parametrize("transport", ["ssh", "kernel"])
+def test_missing_registry_cannot_implicitly_allocate(
+    modules: tuple[ModuleType, ModuleType],
+    tmp_path: Path,
+    transport: str,
+) -> None:
+    core, _ = modules
+    session = core.Session("owned", state_root=tmp_path)
+    session.save(phase="ready")
+    with pytest.raises(core.ColabError, match="refusing an implicit allocation"):
+        if transport == "ssh":
+            session.ssh_argv(["true"])
+        else:
+            session.kernel_argv(tmp_path / "worker.py", timeout_seconds=86400)
+    core.atomic_json(session.registry, {"different": {"token": "PRIVATE"}})
+    with pytest.raises(core.ColabError, match="refusing an implicit allocation"):
+        if transport == "ssh":
+            session.ssh_argv(["true"])
+        else:
+            session.kernel_argv(tmp_path / "worker.py", timeout_seconds=86400)
+
+
+@pytest.mark.parametrize("exit_code", [0, 17])
+def test_submit_uses_owned_kernel_and_waits_for_real_worker_completion(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch, exit_code: int,
+) -> None:
+    core, _ = modules
+    frontend = importlib.import_module("colab")
+    cli = tmp_path / "colab"
+    # Model the CLI boundary: exec reads the local source into a kernel.
+    # Execute that source as a real CPU process, including the worker it waits for.
+    cli.write_text(
+        f"#!{sys.executable}\n"
+        "import runpy, sys\n"
+        "assert sys.argv[1:3] == ['--auth', 'oauth2']\n"
+        "assert sys.argv[5] == 'exec'\n"
+        "assert sys.argv[sys.argv.index('--session')+1] == 'owned'\n"
+        "assert sys.argv[sys.argv.index('--timeout')+1] == '86400'\n"
+        "runpy.run_path(sys.argv[sys.argv.index('--file')+1])\n"
+    )
+    cli.chmod(0o700)
+    finished = tmp_path / "finished"
+    worker_path = tmp_path / "worker's program.py"
+    worker_path.write_text(
+        "import sys, time\nfrom pathlib import Path\n"
+        "assert sys.argv[1:] == ['run', 'work']\n"
+        "time.sleep(0.05)\n"
+        f"Path({str(finished)!r}).write_text('finished')\n"
+        f"raise SystemExit({exit_code})\n"
+    )
+    session = core.Session("owned", state_root=tmp_path / "state", colab_bin=cli)
+    session.save(phase="ready")
+    core.atomic_json(session.registry, {"owned": {"token": "PRIVATE"}})
+    session.remote_helper = str(worker_path)
+    requests: list[dict[str, Any]] = []
+
+    def prepare(action: str, **fields: Any) -> dict[str, Any]:
+        assert action == "prepare"
+        requests.append(fields)
+        return {"status": "pending"}
+
+    monkeypatch.setattr(session, "rpc", prepare)
+    args = frontend.parser().parse_args(
+        ["exec", "--session", "owned", "--job-id", "work", "--", "actual-command"]
+    )
+    receipt = frontend.submit(args, session)
+    job = session.state()["jobs"]["work"]
+    _, child_status = os.waitpid(job["transport_pid"], 0)
+    assert finished.read_text() == "finished"
+    assert (os.waitstatus_to_exitcode(child_status) == 0) == (exit_code == 0)
+    assert receipt["execution_backend"] == "notebook_kernel"
+    assert job["execution_backend"] == "notebook_kernel"
+    assert requests[0]["execution_backend"] == "notebook_kernel"
+    assert requests[0]["argv"] == ["actual-command"]
+    source = (Path(job["local_dir"]) / "kernel_worker.py").read_text()
+    assert "PRIVATE" not in source
+
+
+def test_ssh_preserves_argv_and_uses_owned_registry_and_single_transport(
+    modules: tuple[ModuleType, ModuleType],
+    tmp_path: Path,
+) -> None:
+    core, _ = modules
+    binary = tmp_path / "colab"
+    binary.touch()
+    session = core.Session("owned", state_root=tmp_path, colab_bin=binary)
+    session.save(phase="ready")
+    core.atomic_json(session.registry, {"owned": {"token": "PRIVATE"}})
+    command = ["python3", "-c", "print('quoted $HOME `literal`')"]
+    argv = session.ssh_argv(command)
+    assert shlex.split(argv[-1]) == command
+    proxy = next(item for item in argv if item.startswith("ProxyCommand=")).split(
+        "=", 1
+    )[1]
+    parsed = shlex.split(proxy)
+    assert parsed[parsed.index("--config") + 1] == str(session.registry)
+    assert parsed[parsed.index("--auth") + 1] == "oauth2"
+    assert "--proxy-mode" in parsed and "--rm" not in parsed
+    assert "ControlMaster=auto" in argv
+    assert "PRIVATE" not in " ".join(argv)
+    assert argv == session.ssh_argv(command)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://token@github.com/x/y",
+        "git@github.com:x/y",
+        "https://github.com/x/y?token=x",
+        "https://github.com/../x",
+    ],
+)
+def test_git_credentials_and_ambiguous_urls_rejected(
+    modules: tuple[ModuleType, ModuleType], url: str
+) -> None:
+    core, _ = modules
+    with pytest.raises(core.ColabError):
+        core.github_url(url)
+
+
+def test_bootstrap_fetch_failure_leaves_setup_retryable_and_preserves_edits(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    core, remote = modules
+    origin = tmp_path / "origin"
+    subprocess.run(["git", "init", "-q", str(origin)], check=True)
+    for value in ["requested", "newer"]:
+        (origin / "model.py").write_text(value)
+        subprocess.run(["git", "-C", str(origin), "add", "model.py"], check=True)
+        subprocess.run(["git", "-C", str(origin), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", value], check=True)
+        if value == "requested":
+            commit = subprocess.check_output(["git", "-C", str(origin), "rev-parse", "HEAD"], text=True).strip()
+    root = tmp_path / "session"
+    repo = tmp_path / "checkout"
+    secret = tmp_path / "credentials"
+    secret.write_text("private test configuration")
+    secret.chmod(0o600)
+    core.atomic_json(root / "session.json", {
+        "repo_root": str(repo), "repo_url": "https://github.com/test/project.git",
+        "commit": commit, "gpu": "L4", "rclone_config": str(secret), "drive_remote": "test",
+    })
+    monkeypatch.setattr(remote, "ROOT", root)
+    monkeypatch.setattr(remote.shutil, "which", lambda name: "/bin/" + name)
+    fail_fetch = True
+
+    def checked(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        nonlocal fail_fetch
+        if argv[0] == "nvidia-smi":
+            return subprocess.CompletedProcess(argv, 0, b"NVIDIA L4, 23034 MiB")
+        if argv[0] == "rclone":
+            return subprocess.CompletedProcess(argv, 0, b"{}")
+        if argv[1] == "clone":
+            argv = [*argv[:-2], str(origin), argv[-1]]
+        if "fetch" in argv and fail_fetch:
+            fail_fetch = False
+            raise core.ColabError("temporary fetch failure")
+        result: subprocess.CompletedProcess[bytes] = core.checked(argv, **kwargs)
+        return result
+
+    monkeypatch.setattr(remote, "checked", checked)
+    with pytest.raises(core.ColabError, match="temporary fetch"):
+        remote.bootstrap({})
+    assert not repo.exists()
+    assert not list(tmp_path.glob(".tennis-colab-checkout-*"))
+    assert remote.bootstrap({})["commit"] == commit
+    assert (repo / "model.py").read_text() == "requested"
+    (repo / "model.py").write_text("remote fix")
+    with pytest.raises(core.ColabError, match="has changes"):
+        remote.bootstrap({})
+    assert (repo / "model.py").read_text() == "remote fix"
+
+
+@pytest.mark.parametrize("phase, evidence", [
+    ("setup_failed", "absent"), ("allocated", "absent"),
+    ("setup_failed", "checkout"), ("setup_failed", "job"),
+    ("setup_failed", "job_symlink"), ("ready", "absent"),
+])
+def test_stop_can_release_only_a_proven_uninitialized_session(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path, phase: str, evidence: str,
+) -> None:
+    frontend = importlib.import_module("colab")
+    repo = tmp_path / "checkout"
+    remote_root = tmp_path / "remote"
+    if evidence == "checkout":
+        repo.mkdir()
+        (repo / "fix.py").write_text("preserve")
+    if evidence == "job":
+        (remote_root / "jobs" / "pending").mkdir(parents=True)
+    if evidence == "job_symlink":
+        remote_root.mkdir()
+        (remote_root / "jobs").symlink_to(tmp_path / "missing-job-records")
+    commands: list[tuple[str, ...]] = []
+    saved: dict[str, Any] = {}
+
+    def unavailable_helper(action: str, **kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("RPC helper unavailable")
+
+    session = SimpleNamespace(
+        name="owned", directory=tmp_path / "local", remote_root=str(remote_root),
+        state=lambda: {"phase": phase, "repo_root": str(repo), "jobs": {}},
+        ssh=lambda argv: subprocess.check_output([sys.executable, *argv[1:]]),
+        rpc=unavailable_helper, close_transport=lambda: None,
+        cli=lambda *args: commands.append(args), save=lambda **kwargs: saved.update(kwargs),
+    )
+    if evidence == "absent" and phase != "ready":
+        result = frontend.stop(argparse.Namespace(), session)
+        assert result["recovered_diff"]["checkout_absent"] is True
+        receipt = Path(result["recovered_diff"]["output"]) / "receipt.json"
+        assert json.loads(receipt.read_text())["commit"] is None
+        assert commands == [("stop", "-s", "owned")]
+        assert saved["phase"] == "stopped"
+    else:
+        with pytest.raises(RuntimeError, match="helper unavailable"):
+            frontend.stop(argparse.Namespace(), session)
+        assert not commands and not saved
+        if evidence == "checkout":
+            assert (repo / "fix.py").read_text() == "preserve"
+
+
+@pytest.fixture
+def worker(
+    modules: tuple[ModuleType, ModuleType],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> Iterator[tuple[ModuleType, Path, list[dict[str, Any]]]]:
+    core, remote = modules
+    root = tmp_path / "session"
+    root.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture",
+        ],
+        check=True,
+    )
+    core.atomic_json(
+        root / "session.json",
+        {
+            "session": "test",
+            "repo_root": str(repo),
+            "drive_remote": "test",
+            "drive_root": "project",
+            "sync_interval_seconds": 60,
+        },
+    )
+    monkeypatch.setattr(remote, "ROOT", root)
+    published: list[dict[str, Any]] = []
+
+    class Store:
+        def sync_tree(self) -> None:
+            pass
+
+        def publish_file(self, path: Path) -> None:
+            state = json.loads(path.read_text())
+            if state["status"] in {"completed", "failed", "cancelled", "abandoned"}:
+                local = json.loads((path.parent.parent / "status.json").read_text())
+                assert local["status"] == "finalizing", (
+                    "Do not expose completion before durable publication"
+                )
+            published.append(state)
+
+    monkeypatch.setattr(remote, "_store", lambda *a: Store())
+    # Tests call the worker in-process; restore the test runner's signal handlers.
+    handlers = {
+        sig: signal.getsignal(sig)
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+    }
+    try:
+        yield remote, repo, published
+    finally:
+        for sig, handler in handlers.items():
+            signal.signal(sig, handler)
+
+
+@pytest.mark.parametrize("exit_code", [0, 17])
+def test_remote_exit_code_and_completion_follow_final_persistence(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+    exit_code: int,
+) -> None:
+    remote, repo, published = worker
+    remote.prepare(
+        {
+            "job_id": "cpu-command",
+            "argv": [
+                sys.executable,
+                "-c",
+                f"print('result'); raise SystemExit({exit_code})",
+            ],
+            "persist": [],
+        }
+    )
+    cfg = json.loads((remote.ROOT / "session.json").read_text())
+    cfg["rclone_config"] = str(repo / "unused-test-config")
+    (remote.ROOT / "session.json").write_text(json.dumps(cfg))
+    assert remote.run_job("cpu-command") == exit_code
+    state = json.loads((remote.ROOT / "jobs/cpu-command/status.json").read_text())
+    assert state["returncode"] == exit_code
+    assert state["status"] == ("completed" if exit_code == 0 else "failed")
+    assert state["drive_saved_at"]
+    assert published[0]["status"] == "starting"
+    assert published[-1]["status"] == state["status"]
+    assert remote.process_token(state["pid"]) is None
+    assert "result" in remote.rpc({"action": "logs", "job_id": "cpu-command"})["text"]
+
+
+def test_storage_failure_stops_running_process_and_never_reports_completion(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, repo, _ = worker
+    cfg_path = remote.ROOT / "session.json"
+    cfg = json.loads(cfg_path.read_text())
+    cfg.update(
+        sync_interval_seconds=0.01, rclone_config=str(repo / "unused-test-config")
+    )
+    cfg_path.write_text(json.dumps(cfg))
+    remote.prepare(
+        {
+            "job_id": "running",
+            "argv": [sys.executable, "-c", "import time; time.sleep(120)"],
+            "persist": [],
+        }
+    )
+    calls = 0
+
+    def fail_after_initial_save(*args: Any, **kwargs: Any) -> None:
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            raise RuntimeError("storage unavailable")
+
+    monkeypatch.setattr(remote, "sync_job", fail_after_initial_save)
+    assert remote.run_job("running") == 1
+    state = json.loads((remote.ROOT / "jobs/running/status.json").read_text())
+    assert state["status"] == "save_failed"
+    assert not state.get("drive_saved_at")
+    assert remote.process_token(state["pid"]) is None
+
+
+def test_pending_cancel_is_saved_and_prevents_execution(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, _, published = worker
+    remote.prepare(
+        {
+            "job_id": "pending",
+            "argv": [sys.executable, "-c", "raise RuntimeError('must not run')"],
+            "persist": [],
+        }
+    )
+    assert remote.rpc({"action": "cancel", "job_id": "pending"})["requested"]
+    assert published[-1]["status"] == "cancelled"
+    with pytest.raises(RuntimeError, match="pending job"):
+        remote.run_job("pending")
+
+
+def test_killed_worker_orphan_can_be_recovered_saved_and_stopped(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, repo, published = worker
+    frontend = importlib.import_module("colab")
+    assert frontend.parser().parse_args(["recover", "--session", "test", "--job-id", "orphan"]).command == "recover"
+    cfg_path = remote.ROOT / "session.json"
+    cfg = json.loads(cfg_path.read_text())
+    cfg["rclone_config"] = str(repo / "unused")
+    cfg_path.write_text(json.dumps(cfg))
+    started = repo / "started"
+    remote.prepare({"job_id": "orphan", "persist": [], "argv": [sys.executable, "-c",
+        f"from pathlib import Path; import time; Path({str(started)!r}).touch(); time.sleep(120)"]})
+    worker_pid = os.fork()
+    if worker_pid == 0:
+        os._exit(remote.run_job("orphan"))
+    reaped = False
+    command_pid: int | None = None
+    command_token: str | None = None
+    try:
+        deadline = time.monotonic() + 10
+        while not started.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert started.exists()
+        state = json.loads((remote.job_dir("orphan") / "status.json").read_text())
+        command_pid, command_token = state["pid"], state["process_token"]
+        with pytest.raises(remote.JobBusy):
+            remote.rpc({"action": "recover", "job_id": "orphan"})
+        os.kill(worker_pid, signal.SIGKILL)
+        os.waitpid(worker_pid, 0)
+        reaped = True
+        assert remote.process_token(command_pid) == command_token
+        assert remote.jobs()[0]["status"] == "unknown"
+        with pytest.raises(RuntimeError, match="use recover"):
+            remote.rpc({"action": "cancel", "job_id": "orphan"})
+        commands: list[tuple[str, ...]] = []
+        monkeypatch.setattr(frontend, "recover_diff", lambda *args: {"excluded": [], "storage_excluded": []})
+        session = SimpleNamespace(
+            name="test", directory=repo / "local", state=lambda: {"phase": "ready"},
+            rpc=lambda action: remote.rpc({"action": action}), close_transport=lambda: None,
+            cli=lambda *args: commands.append(args), save=lambda **kwargs: None,
+        )
+        with pytest.raises(RuntimeError, match="lack a saved receipt"):
+            frontend.stop(argparse.Namespace(), session)
+        receipt = remote.rpc({"action": "recover", "job_id": "orphan"})
+        assert remote.process_token(command_pid) is None
+        assert receipt["status"] == "abandoned" and receipt["returncode"] is None
+        assert receipt["drive_saved_at"] and receipt["recovery"]["command_pid"] == command_pid
+        assert published[-1]["status"] == "abandoned"
+        assert frontend.stop(argparse.Namespace(), session)["status"] == "stopped"
+        assert commands == [("stop", "-s", "test")]
+        assert remote.prepare({"job_id": "next", "argv": ["true"]})["status"] == "pending"
+    finally:
+        if not reaped:
+            os.kill(worker_pid, signal.SIGKILL)
+            os.waitpid(worker_pid, 0)
+        if command_pid and remote.process_token(command_pid) == command_token:
+            os.killpg(command_pid, signal.SIGKILL)
+
+
+@pytest.mark.parametrize("token", [None, "reused-pid"])
+def test_recovery_never_signals_an_unverified_command(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], token: str | None,
+) -> None:
+    remote, _, published = worker
+    state = remote.prepare({"job_id": "unverified", "argv": ["true"]})
+    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], start_new_session=True)
+    try:
+        state.update(status="running", worker_pid=99_999_999, worker_token="gone",
+                     pid=process.pid, process_token=token)
+        remote.atomic_json(remote.job_dir("unverified") / "status.json", state)
+        with pytest.raises(RuntimeError, match="identity"):
+            remote.rpc({"action": "recover", "job_id": "unverified"})
+        assert process.poll() is None
+        assert not published
+    finally:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait()
+
+
+def test_failed_recovery_save_blocks_new_execution_and_keeps_unknown_outcome(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "interrupted", "argv": ["true"]})
+    state.update(status="starting", worker_pid=99_999_999, worker_token="gone", launch_guarded=True)
+    remote.atomic_json(remote.job_dir("interrupted") / "status.json", state)
+    real_sync = remote.sync_job
+
+    def failed_sync(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("Drive unavailable")
+
+    monkeypatch.setattr(remote, "sync_job", failed_sync)
+    with pytest.raises(RuntimeError, match="Drive unavailable"):
+        remote.rpc({"action": "recover", "job_id": "interrupted"})
+    saved = remote.jobs()[0]
+    assert saved["status"] == "save_failed" and not saved.get("drive_saved_at")
+    with pytest.raises(RuntimeError, match="existing command"):
+        remote.prepare({"job_id": "next", "argv": ["true"]})
+    monkeypatch.setattr(remote, "sync_job", real_sync)
+    receipt = remote.rpc({"action": "save", "job_id": "interrupted"})
+    assert receipt["status"] == "abandoned" and receipt["returncode"] is None
+    assert receipt["drive_saved_at"]
+
+
+def test_interrupted_pending_cancel_can_finish_persistence(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "cancel-save", "argv": ["false"]})
+    state.update(status="finalizing", completion_target="cancelled", returncode=130)
+    remote.atomic_json(remote.job_dir("cancel-save") / "status.json", state)
+    assert remote.jobs()[0]["status"] == "unknown"
+    receipt = remote.rpc({"action": "recover", "job_id": "cancel-save"})
+    assert receipt["status"] == "cancelled" and receipt["drive_saved_at"]
+    with pytest.raises(RuntimeError, match="pending job"):
+        remote.run_job("cancel-save")
+
+
+def test_launch_gate_does_not_run_command_when_worker_disappears_before_permission(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, repo, _ = worker
+    marker = repo / "must-not-run"
+    remote.prepare({"job_id": "gate", "argv": [sys.executable, "-c",
+        f"from pathlib import Path; Path({str(marker)!r}).touch()"]})
+    assert remote.__file__ is not None
+    result = subprocess.run([sys.executable, remote.__file__, "launch",
+        str(remote.job_dir("gate") / "request.json")], input=b"", capture_output=True)
+    assert result.returncode == 125 and not marker.exists()
+
+
+def test_legacy_starting_without_command_identity_requires_inspection(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "legacy", "argv": ["true"]})
+    state.update(status="starting", worker_pid=99_999_999, worker_token="gone")
+    remote.atomic_json(remote.job_dir("legacy") / "status.json", state)
+    with pytest.raises(RuntimeError, match="Legacy worker"):
+        remote.rpc({"action": "recover", "job_id": "legacy"})
+
+
+def test_recovery_refuses_remaining_children_without_a_verifiable_group_leader(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, _, _ = worker
+    state = remote.prepare({"job_id": "lost-leader", "argv": ["true"]})
+    code = (
+        "import subprocess, sys\n"
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], "
+        "stdout=subprocess.DEVNULL)\n"
+        "print(child.pid, flush=True)\n"
+        "sys.stdin.read(1)\n"
+    )
+    leader = subprocess.Popen([sys.executable, "-c", code], start_new_session=True,
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        assert leader.stdout is not None and leader.stdin is not None
+        child_pid = int(leader.stdout.readline())
+        token = remote.process_token(leader.pid)
+        assert token is not None
+        state.update(status="running", worker_pid=99_999_999, worker_token="gone",
+                     pid=leader.pid, process_token=token)
+        remote.atomic_json(remote.job_dir("lost-leader") / "status.json", state)
+        leader.stdin.close()
+        leader.wait(timeout=5)
+        with pytest.raises(RuntimeError, match="leader is absent"):
+            remote.rpc({"action": "recover", "job_id": "lost-leader"})
+        assert remote.process_token(child_pid) is not None
+    finally:
+        os.killpg(leader.pid, signal.SIGKILL)
+        leader.wait(timeout=5)
+        if leader.stdout is not None:
+            leader.stdout.close()
+
+
+def test_sensitive_untracked_files_are_excluded_and_artifact_escape_rejected(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, repo, _ = worker
+    (repo / ".env").write_text("PRIVATE")
+    (repo / "client_secret.json").write_text("PRIVATE")
+    (repo / "tokenizer.py").write_text("# model code")
+    (repo / "credentials.py").write_text("# credentials handling code")
+    (repo / "fix.py").write_text("print('fix')")
+    recovered = remote.diff({"include_untracked": True})
+    assert ".env" in recovered["excluded"] and ".env" not in recovered["untracked"]
+    assert "fix.py" in recovered["untracked"]
+    assert "client_secret.json" in recovered["excluded"]
+    assert "tokenizer.py" in recovered["untracked"]
+    assert "credentials.py" in recovered["untracked"]
+    with pytest.raises(RuntimeError, match="relative path"):
+        remote._persist_path(remote.config(), "../session/secrets")
+
+
+def test_input_assets_do_not_block_source_snapshot_or_next_command(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+) -> None:
+    remote, repo, _ = worker
+    asset = repo / "data/example/shards/images.bin"
+    asset.parent.mkdir(parents=True)
+    with asset.open("wb") as stream:
+        stream.truncate(17 * 1024 * 1024)
+    (repo / "fix.py").write_text("print('fix')")
+    state = remote.prepare({"job_id": "after-inputs", "argv": [sys.executable, "-c", "pass"], "persist": []})
+    assert state["status"] == "pending"
+    changes = json.loads((remote.ROOT / "jobs/after-inputs/source_changes.json").read_text())
+    assert "fix.py" in changes["untracked"]
+    assert "data/example/shards/images.bin" in changes["excluded"]
+    assert "Drive" in changes["exclusion_reasons"]["data/example/shards/images.bin"]
+
+
+def test_failed_source_snapshot_does_not_reserve_a_job_id(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    remote, _, _ = worker
+
+    def fail_snapshot(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("snapshot failure")
+
+    monkeypatch.setattr(remote, "diff", fail_snapshot)
+    with pytest.raises(RuntimeError, match="snapshot failure"):
+        remote.prepare({"job_id": "not-created", "argv": [sys.executable], "persist": []})
+    assert not (remote.ROOT / "jobs/not-created").exists()
+
+
+@pytest.mark.parametrize("unrecovered_code", [False, True])
+def test_stop_allows_storage_exclusions_but_keeps_source_recovery_guard(
+    modules: tuple[ModuleType, ModuleType], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch, unrecovered_code: bool,
+) -> None:
+    frontend = importlib.import_module("colab")
+    excluded = ["data/images.bin"] + (["private.key"] if unrecovered_code else [])
+    monkeypatch.setattr(frontend, "recover_diff", lambda *a: {
+        "excluded": excluded, "storage_excluded": ["data/images.bin"],
+    })
+    commands = []
+    session = SimpleNamespace(
+        name="owned", directory=tmp_path,
+        state=lambda: {"phase": "ready"},
+        rpc=lambda action: {"jobs": [{"job_id": "train", "status": "completed", "drive_saved_at": "saved"}]},
+        close_transport=lambda: None,
+        cli=lambda *args: commands.append(args),
+        save=lambda **kwargs: None,
+    )
+    if unrecovered_code:
+        with pytest.raises(RuntimeError, match="source files"):
+            frontend.stop(argparse.Namespace(), session)
+        assert not commands
+    else:
+        assert frontend.stop(argparse.Namespace(), session)["status"] == "stopped"
+        assert commands == [("stop", "-s", "owned")]
+
+
+@pytest.mark.parametrize("assignment_expired", [False, True])
+def test_reconnect_rechecks_refreshed_ownership_and_never_allocates(
+    modules: tuple[ModuleType, ModuleType], monkeypatch: pytest.MonkeyPatch,
+    assignment_expired: bool,
+) -> None:
+    frontend = importlib.import_module("colab")
+    calls = []
+
+    def require_registered() -> None:
+        calls.append("guard")
+        if assignment_expired and calls.count("guard") == 2:
+            raise RuntimeError("assignment expired")
+
+    def rpc(action: str, **kwargs: Any) -> dict[str, Any]:
+        if "close_transport" not in calls:
+            raise RuntimeError("stale SSH transport")
+        calls.append(action)
+        return {"jobs": [{"job_id": "train", "status": "running"}]}
+
+    session = SimpleNamespace(
+        require_registered=require_registered,
+        cli=lambda command, **kwargs: calls.append(command),
+        close_transport=lambda: calls.append("close_transport"),
+        rpc=rpc,
+    )
+    if assignment_expired:
+        with pytest.raises(RuntimeError, match="assignment expired"):
+            frontend.reconnect(session)
+        assert calls == ["guard", "sessions", "guard"]
+    else:
+        result = frontend.reconnect(session)
+        assert result["connection"] == "reconnected"
+        assert result["jobs"] == [{"job_id": "train", "status": "running"}]
+        assert calls == ["guard", "sessions", "guard", "close_transport", "status"]
+
+
+def test_runner_output_has_one_live_writer_and_is_salvaged_after_exit(
+    worker: tuple[ModuleType, Path, list[dict[str, Any]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    remote, repo, _ = worker
+    output = repo / "outputs/run"
+    output.mkdir(parents=True)
+    (output / "last.ckpt").write_bytes(b"finished checkpoint")
+    copied: list[Path] = []
+
+    class Store:
+        def __init__(self, path: Path) -> None:
+            self.path = path
+
+        def sync_tree(self) -> None:
+            copied.append(self.path)
+
+        def publish_file(self, path: Path) -> None:
+            pass
+
+    monkeypatch.setattr(remote, "_store", lambda cfg, local, target: Store(local))
+    remote.prepare(
+        {
+            "job_id": "runner",
+            "argv": ["true"],
+            "persist": [],
+            "runner_outputs": ["outputs/run"],
+        }
+    )
+    directory = remote.job_dir("runner")
+    remote.sync_job(remote.config(), directory)
+    assert output not in copied
+    remote.sync_job(remote.config(), directory, final=True, completion="completed")
+    assert output in copied
+    with pytest.raises(RuntimeError, match="existing command"):
+        remote.prepare({"job_id": "another", "argv": ["true"], "persist": []})
