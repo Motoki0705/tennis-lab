@@ -29,7 +29,9 @@ GPU実行は共有training queue経由。最初のposition runは`all`、計測�
 
 全長評価・保存値の再計算・実観測診断・図表作成は `python -m src.tasks.blcs.experiments.scripts.final_evaluation --data-root <data> --historical-checkpoint <ckpt> --real-store <Meiji store>`。各runの`selection.json`と`additional-seed-selection.json`を入力とし、出力は`outputs/blcs/i1044/{evaluations,real,report}`。`pred_test.npz`はモデルなしで`evaluation.recompute(path)`により指標を再計算できる。実観測は同じ保存2D注釈を2frameごとに使用し、コート点は保存校正から生成する。このため生検出器入力のend-to-end評価ではなく、条件を固定した観測診断である。
 
-Bの積分位置・速度をともに保存し、`evaluation.recompute(path, include_diagnostics=True)`でGT区間／予測区間別の指標とイベント診断も再計算する。実観測は投影行列も保存し、`real_observations.recompute_real(directory)`により元のstoreやcheckpointなしで診断を再計算できる。一括評価では、これらの値・支持数・未定義状態が保存JSONと一致することを確認する。
+Bの積分位置・速度をともに保存し、`evaluation.recompute(path, include_diagnostics=True)`でGT区間／予測区間別の指標とイベント診断も再計算する。保存済みの積分位置・速度から指標を再計算するもので、積分器自体は再実行しない。実観測は投影行列も保存し、`real_observations.recompute_real(directory)`により元のstoreやcheckpointなしで診断を再計算できる。一括評価では、これらの値・支持数・未定義状態が保存JSONと一致することを確認する。
+
+10runと最終評価の結果・退行・事後診断は[最終比較](../../../../knowledge/nodes/blcs/000068-group-i1044-progressive-losses-u4000.md)を参照。ここに定めた評価窓・支持集合・方式選択は結果を見て変更していない。
 
 一次資料: [TT3D](https://arxiv.org/html/2504.10035v2)は空力とバウンド状態の最適化による再構成、[APHYNITY](https://arxiv.org/html/2010.04456v6)は微分可能な積分軌道による物理と学習補正の学習を示す。短horizonのBLCS損失はそれらから着想した本実験の仮説。[PINNsの収束分析](https://arxiv.org/abs/2007.14527)を踏まえ項ごとの尺度・warmup・勾配到達を検証する。各論文の別問題での成果をBLCSの改善保証とはしない。
 
