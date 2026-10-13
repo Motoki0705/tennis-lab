@@ -115,11 +115,11 @@ DINO自体にpadding attention maskはないため、比較時の評価順序・
 現行契約へ書き換えません。今回の4条件はすべてpose有効で、保存済みの入力寸法は変わりません。
 `run.test_after_fit=true`は合成の明示的test splitだけを評価します。
 
-Issue #983の対照実験は`--config-name train_i983_s` / `train_i983_splus` /
-`train_i983_b` / `train_i983_l`を使用します。backboneを完全凍結し、後続Transformer・DPT・headを
-同じ容量に揃えます。共通条件は`configs/train_i983.yaml`、backboneと初期重み・中間層は各variantが正本です。
+DINOv3サイズの対照実験は`--config-name train_dinov3_size_ablation_s` / `train_dinov3_size_ablation_splus` /
+`train_dinov3_size_ablation_b` / `train_dinov3_size_ablation_l`を使用します。backboneを完全凍結し、後続Transformer・DPT・headを
+同じ容量に揃えます。共通条件は`configs/train_dinov3_size_ablation.yaml`、backboneと初期重み・中間層は各variantが正本です。
 長辺512での本学習前にL4でViT-Lのメモリ・速度・pose座標整合を確認します。
-`scripts.profile_ablation --output outputs/court_detection/profile/i983-l512/attempt-01`を
+`scripts.profile_ablation --output outputs/court_detection/profile/dinov3-size-ablation-l512/attempt-01`を
 Colab skillの`--persist`付きで実行すると、コンパイルを含む初回と後続stepの時間、
 GPUメモリ、loss/勾配、実際のbatch shape・画像ID・Kを保存します。短い容量確認は本学習結果と区別します。
 
@@ -133,11 +133,11 @@ backbone／射影／後続のparameter数を残します。実画像のposeを0�
 ```bash
 .venv/bin/python -m src.tasks.court_detection.scripts.evaluate_ablation \
   --checkpoint /path/to/selected.ckpt \
-  --output outputs/court_detection/evaluate/i983-dino-s-shared1024/s42
+  --output outputs/court_detection/evaluate/dinov3-size-ablation-s-shared1024/s42
 .venv/bin/python -m src.tasks.court_detection.scripts.compare_ablation \
   --evaluations /path/to/s/evaluation.json /path/to/splus/evaluation.json \
                 /path/to/b/evaluation.json /path/to/l/evaluation.json \
-  --output outputs/court_detection/report/i983-shared1024/comparison
+  --output outputs/court_detection/report/dinov3-size-ablation-shared1024/comparison
 ```
 
 比較入口はデータ版・画像順序・前処理・学習条件・後続容量が異なる結果を拒否します。

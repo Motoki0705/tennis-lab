@@ -624,11 +624,11 @@ def test_only_one_model_configuration_is_published() -> None:
         ("l", "dinov3_vitl16", (5, 11, 17, 23)),
     ],
 )
-def test_i983_variants_keep_the_same_downstream_and_training_conditions(
+def test_dinov3_size_ablation_variants_keep_the_same_downstream_and_training_conditions(
     variant: str, backbone: str, indices: tuple[int, ...]
 ) -> None:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        config = compose(config_name=f"train_i983_{variant}")
+        config = compose(config_name=f"train_dinov3_size_ablation_{variant}")
     runtime = CourtTrainingConfig.from_config(config)
     model = runtime.model
     assert model.encoder.backbone_name == backbone
@@ -647,6 +647,7 @@ def test_i983_variants_keep_the_same_downstream_and_training_conditions(
     assert list(config.data.source.scene_ids) == ["B00", "B01", "B02", "B03"]
     assert dict(config.mixed.train_batch_counts) == {"synthetic_court": 4, "tennis_court_detector": 4}
     assert runtime.shared.run.seed == 42
+    assert config.run.output_dir == f"court_detection/train/dinov3-size-ablation-{variant}-shared1024/s42"
     assert runtime.shared.training.trainer.max_epochs == 20
     assert runtime.shared.training.checkpoint.save_top_k == -1
 

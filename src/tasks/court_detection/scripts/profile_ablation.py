@@ -69,7 +69,7 @@ def main() -> None:
         config_dir=str(PROJECT_ROOT / "src" / "tasks" / "court_detection" / "configs"),
         version_base="1.3",
     ):
-        cfg = compose(config_name="train_i983_l")
+        cfg = compose(config_name="train_dinov3_size_ablation_l")
     runtime = CourtTrainingConfig.from_config(cfg)
     output_dir = args.output.expanduser().resolve()
     paths = PATH_BOUNDARY.validate(
