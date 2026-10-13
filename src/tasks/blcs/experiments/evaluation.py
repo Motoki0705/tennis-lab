@@ -12,10 +12,16 @@ from typing import Any, cast
 
 import numpy as np
 import torch
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
+from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 
 from src.tasks.base.generate_dataset import build_physical_court_provenance
+from src.tasks.base.model_io import validate_model_artifact_court_keypoint_contract
+from src.tasks.base.model_io.court_keypoint_contract import (
+    validate_neural_court_observation_order,
+)
+from src.tasks.blcs.configuration import parse_court_keypoint_contract
 from src.tasks.blcs.data.dataset import (
     BallTrajectoryDataset,
     collate_multiview_trajectories,
@@ -27,12 +33,14 @@ from src.tasks.blcs.model_io.factory import (
 )
 from src.tasks.blcs.physics.rollout import reconstruct_segments
 from src.tasks.blcs.training.metrics import BLCSMetrics
+from src.utils.geometry.planar_camera import PlanarCameraFitError, fit_planar_camera
 from src.utils.geometry.triangulation import (
     PinholeCamera,
     PointTriangulationConfig,
     triangulate_points,
 )
 from src.utils.physics.ball.fitting import FitSettings, fit_flight_physics
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 from src.utils.schema.court_normalization import (
     denormalize_court_position,
     normalize_court_position,
@@ -78,12 +86,18 @@ def load_binding(
     raw = torch.load(checkpoint, map_location="cpu", weights_only=False)
     validate_court_coordinate_normalization(raw, artifact="BLCS evaluation checkpoint")
     config = OmegaConf.create(raw["hyper_parameters"]["config"])
+    contract = parse_court_keypoint_contract(config)
+    validate_model_artifact_court_keypoint_contract(
+        raw, contract, location="BLCS evaluation checkpoint"
+    )
+    validate_neural_court_observation_order(raw, contract)
     if historical:
         # Only the known pre-1044 model contract is adapted for a reference run;
         # the public training/inference checkpoint APIs remain strict.
         if "physics_head" in config.model:
             raise ValueError("Historical option was supplied for a new checkpoint")
-        config.model.physics_head = False
+        with open_dict(config.model):
+            config.model.physics_head = False
     elif "physics_head" not in config.model:
         raise ValueError(
             "Old checkpoint requires explicit --historical reference evaluation"
@@ -147,26 +161,46 @@ def geometric_baseline(
     batch: dict[str, Any],
 ) -> tuple[BLCSTrajectoryPrediction, dict[str, Any]]:
     """Triangulate the same input, then explicitly interpolate/extrapolate gaps."""
-    cameras = []
+    cameras, selected_views, calibration = [], [], []
+    court = court_keypoints_3d(STANDARD_COURT_CONFIG).double().numpy()[:14]
     for view in range(batch["ball_uv"].shape[1]):
-        f, cx, cy = (
-            float(batch[key][0, view]) for key in ("camera_f", "camera_cx", "camera_cy")
-        )
-        rotation = batch["camera_R"][0, view].double().numpy()
-        center = batch["camera_C"][0, view].double().numpy()
-        cameras.append(
-            PinholeCamera(
-                str(view),
-                np.array([[f, 0, cx], [0, f, cy], [0, 0, 1]]),
-                rotation,
-                -rotation @ center,
+        scores = batch["court_vis"][0, view].double().numpy()
+        frame = int(scores.sum(-1).argmax())
+        size = tuple(int(batch[key][0, view]) for key in ("camera_w", "camera_h"))
+        pixels = batch["court_kp"][0, view, frame].double().numpy() * np.array(size)
+        try:
+            fit = fit_planar_camera(
+                court,
+                pixels,
+                scores[frame],
+                size,
+                min_score=0.3,
+                min_points=6,
+                require_in_image=True,
             )
+        except PlanarCameraFitError as error:
+            calibration.append({"view": view, "failed": True, "reason": str(error)})
+            continue
+        cameras.append(PinholeCamera(str(view), fit.K, fit.R, fit.t))
+        selected_views.append(view)
+        calibration.append(
+            {
+                "view": view,
+                "frame": frame,
+                "failed": False,
+                "rmse_px": fit.rmse_px,
+                "used_points": int(fit.used_mask.sum()),
+            }
+        )
+    if len(cameras) < 2:
+        raise ValueError(
+            f"Fewer than two cameras calibrated from input court observations: {calibration}"
         )
     size = torch.stack((batch["camera_w"], batch["camera_h"]), dim=-1).unsqueeze(2)
-    uv = (batch["ball_uv"] * size)[0].numpy()
+    uv = (batch["ball_uv"] * size)[0, selected_views].numpy()
     result = triangulate_points(
         uv,
-        batch["ball_vis"][0].bool().numpy(),
+        batch["ball_vis"][0, selected_views].bool().numpy(),
         tuple(cameras),
         config=PointTriangulationConfig(
             max_reprojection_px=20.0, height_range_m=(-1.0, 30.0)
@@ -187,6 +221,9 @@ def geometric_baseline(
         axis=-1,
     ).astype(np.float32)
     receipt = {
+        "calibration": calibration,
+        "calibration_uses_ground_truth_camera": False,
+        "calibration_method": "shared planar fit from physical_v1 CourtKP14; best visible frame; image-centre principal point; fx=fy; no distortion",
         "triangulated_frames": len(indices),
         "interpolated_frames": int((~result.valid).sum()),
         "endpoint_extrapolation": "constant",
@@ -261,14 +298,13 @@ def event_diagnostic(
         np.flatnonzero(predicted)[1:] if predicted[0] else np.flatnonzero(predicted),
         np.flatnonzero(target)[1:] if target[0] else np.flatnonzero(target),
     )
-    remaining = set(b.tolist())
-    offsets = []
-    for index in a:
-        matches = sorted(remaining, key=lambda value: abs(value - index))
-        if matches and abs(matches[0] - index) <= 2:
-            match = matches[0]
-            offsets.append(abs(match - index) * dt)
-            remaining.remove(match)
+    distances = np.abs(a[:, None] - b[None, :])
+    # Maximize valid one-to-one matches before minimizing total timing error.
+    # Nearest-first matching can consume a target needed by a later event.
+    penalty = (len(a) + len(b) + 1) * 3
+    rows, columns = linear_sum_assignment(np.where(distances <= 2, distances, penalty))
+    matched = distances[rows, columns]
+    offsets = (matched[matched <= 2] * dt).tolist()
     tp = len(offsets)
     return {
         "true_positive": tp,
@@ -569,7 +605,7 @@ def recompute(bundle: Path) -> dict[str, Any]:
             tracker.update(
                 prediction, target, observed=batch["ball_vis"], scene_ids=[str(scene)]
             )
-        return tracker.report()
+        return cast("dict[str, Any]", tracker.report())
 
 
 def main() -> None:
