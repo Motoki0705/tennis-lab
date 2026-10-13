@@ -1,0 +1,23 @@
+{
+  "checked_at_utc": "2026-10-13T04:34:03+00:00",
+  "queue_done_job": "1791853065654432895_1326446_i1044-velocity-s42-u4000.job",
+  "optimizer_updates": 4000,
+  "checkpoint_global_step": 4000,
+  "checkpoint_epoch": 89,
+  "checkpoint_bytes": 623471451,
+  "checkpoint_sha256": "2a2242ffea76302e1c0c1d5d2732fa814fa7137ac5a96c84de3a2e667a8ca735",
+  "checkpoint_sha256_matches_selection": true,
+  "selected_score_matches_minimum_logged_validation": true,
+  "matched_validation_entries": [
+    {
+      "step": 4000,
+      "value": 0.7142558097839355,
+      "wall_time": 1791862406.795499
+    }
+  ],
+  "last_logged_step": 4000,
+  "validation_scalar_entries": 18,
+  "scalar_tags": 61,
+  "test_evaluation_performed": false,
+  "original_capture_checksums_match": true
+}

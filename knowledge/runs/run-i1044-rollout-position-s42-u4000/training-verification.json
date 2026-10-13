@@ -1,0 +1,23 @@
+{
+  "checked_at_utc": "2026-10-13T04:34:10+00:00",
+  "queue_done_job": "1791853065891624636_1326740_i1044-rollout_position-s42-u4000.job",
+  "optimizer_updates": 4000,
+  "checkpoint_global_step": 4000,
+  "checkpoint_epoch": 89,
+  "checkpoint_bytes": 623471515,
+  "checkpoint_sha256": "0cdb43a5c0fa75c0663f6ffb60509fbe377fe838138a0c64ec446bb042f71574",
+  "checkpoint_sha256_matches_selection": true,
+  "selected_score_matches_minimum_logged_validation": true,
+  "matched_validation_entries": [
+    {
+      "step": 4000,
+      "value": 0.7140101194381714,
+      "wall_time": 1791865535.4290562
+    }
+  ],
+  "last_logged_step": 4000,
+  "validation_scalar_entries": 18,
+  "scalar_tags": 65,
+  "test_evaluation_performed": false,
+  "original_capture_checksums_match": true
+}

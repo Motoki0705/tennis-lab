@@ -1,0 +1,15 @@
+{
+  "protocol": "issue1044-v1",
+  "arm": "rollout_position",
+  "seed": 42,
+  "optimizer_updates": 4000,
+  "elapsed_seconds": 9415.11455994402,
+  "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/rollout_position-s42-u4000/checkpoints/final-selected.ckpt",
+  "checkpoint_sha256": "0cdb43a5c0fa75c0663f6ffb60509fbe377fe838138a0c64ec446bb042f71574",
+  "validation_trajectory_rmse_m": 0.7140101194381714,
+  "selection_used_test": false,
+  "run_id": "1791853065891624636_1326740_i1044-rollout_position-s42-u4000",
+  "smoke": false,
+  "chunked": false,
+  "gan": false
+}

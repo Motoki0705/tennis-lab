@@ -1,4 +1,4 @@
-<!-- knowledge-review: bb2e7b9761853f0ee3758003a7d9dc7f6be671e649f2994925c8fa456877a916 on 2026-10-13 -->
+<!-- knowledge-review: e7e17df405fbcbba6459c2b35f64a69ce83f4d314d628d016a05b078a4ea16a6 on 2026-10-13 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -451,6 +451,8 @@ camera-view v2のreference selectorも決着していません。PLCSではrefer
 ### BLCS
 
 2026-10-13の[#1044実装検証](nodes/blcs/000053-group-i1044-qualification.md)では、通常・chunked・GANの短いGPUスモークと、全validationの物理GT自己評価が成立した。rollout残差は位置約3.84e-7 m・速度約4.17e-7 m/sで、保存clockと尺度を接続できている。短い学習の結果から新損失の優位は判断しない。初回比較のCUDA中断と初期スモークの不完全なsource captureも記録した。各4,000更新の10 runで既存戦略と段階的損失追加を比較するまで、方式や本番checkpointの採用判断は保留する。採用閾値は設けず、結果の観測後に人間が判断する。
+
+同日の正式比較では、[速度教師追加](nodes/blcs/000055-run-i1044-velocity-s42-u4000.md)と[rollout位置整合追加](nodes/blcs/000056-run-i1044-rollout-position-s42-u4000.md)のseed42が4,000更新を完了した。選定validationの位置RMSEは近い値だったが、既存戦略の主対照・残りの段階条件・追加seed・全長testは未完了であり、追加損失の効果や採用を結論しない。完了2 runの選定台帳・checkpoint hash・学習曲線・queue原本を照合して保存した。次は残りの学習と、validationによる追加seed対象の選択を進める。
 
 2026-10-07、[#1038の物理GT付きv3データでの再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)を完了し、validation選定ckptをローカルckpt/blcs/へ置換した。旧#1036はデータ変更と組み込み方針の未確定により不採用とし、tennis_sceneの実装・既定設定は変更していない。データsnapshotを固定した200 epoch学習と88シーンの中心窓testが完走したが、旧実験とはシーン集合・更新数が異なるため精度改善の因果比較には使わない。短いtestシーン・全長・実検出・実動画3D精度・追加seedは未評価。次は組み込み経路の確定後に入力契約と受入条件を別途定める。以下の旧deploy・associationの知見は当時の構成に限定した履歴であり、今回の採用範囲を拡張しない。
 

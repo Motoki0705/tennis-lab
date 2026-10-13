@@ -1,0 +1,7 @@
+{
+  "git_status.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "repro.sh": "ec8abbad86605ccae2d4a1f82f86e0ca58ae398f77ffb8b30deb92324521dbc5",
+  "output_dir.txt": "5672caf4787aaac64f7511024fb3818b2d9c113f2ac4994022ea392d6e7153ad",
+  "run.json": "0030011118c15e05197bf7f243fdbdc740b83dc141b3eb03aba5d28b55a0d17f",
+  "uncommitted.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
