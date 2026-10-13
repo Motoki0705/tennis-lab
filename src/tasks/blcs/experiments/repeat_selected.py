@@ -48,14 +48,19 @@ def select_additional_arm(root: Path) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seed", type=int, choices=(43, 44), required=True)
-    parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--seed", type=int, choices=(43, 44))
+    parser.add_argument("--data-root", type=Path)
+    parser.add_argument("--select-only", action="store_true")
     args = parser.parse_args()
     if not os.environ.get("TENNIS_RUN_ID"):
         raise RuntimeError("Additional training must run through the shared queue")
     selection = select_additional_arm(Path("outputs/blcs/i1044"))
     arm = selection["selected_arm"]
     print(json.dumps(selection), flush=True)
+    if args.select_only:
+        return
+    if args.seed is None or args.data_root is None:
+        parser.error("Training requires --seed and --data-root")
     sys.argv = [
         "issue1044",
         "--arm",
