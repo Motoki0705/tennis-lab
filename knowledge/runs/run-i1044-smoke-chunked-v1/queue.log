@@ -1,0 +1,100 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791852317296125200_2_i1044-smoke-chunked-v1 (commit=e25ce1c8702a provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py:321: The number of training batches (2) is smaller than the logging interval Trainer(log_every_n_steps=100). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name    ┃ Type                    ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model   │ BLCSMultiViewAxialModel │ 51.9 M │ train │     0 │
+│ 1 │ loss_fn │ BLCSLoss                │      0 │ train │     0 │
+└───┴─────────┴─────────────────────────┴────────┴───────┴───────┘
+Trainable params: 51.9 M                                                        
+Non-trainable params: 0                                                         
+Total params: 51.9 M                                                            
+Total estimated model params size (MB): 207.743                                 
+Modules in train mode: 229                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 2. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/experiments/issue1044.py", line 211, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/experiments/issue1044.py", line 168, in main
+    runner.run(config)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/training/runner.py", line 107, in run
+    trainer.fit(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 49, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1123, in _run_stage
+    self.fit_loop.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 217, in run
+    self.advance()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 469, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 153, in run
+    self.advance(data_fetcher)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 311, in advance
+    batch, _, __ = next(data_fetcher)
+                   ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fetchers.py", line 134, in __next__
+    batch = super().__next__()
+            ^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fetchers.py", line 61, in __next__
+    batch = next(self.iterator)
+            ^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/combined_loader.py", line 341, in __next__
+    out = next(self._iterator)
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/combined_loader.py", line 78, in __next__
+    out[i] = next(self.iterators[i])
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/torch/utils/data/dataloader.py", line 725, in __next__
+    data = self._next_data()
+           ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/torch/utils/data/dataloader.py", line 785, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/torch/utils/data/_utils/fetch.py", line 54, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/torch/utils/data/_utils/fetch.py", line 54, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/data/scene_dataset.py", line 657, in __getitem__
+    sample = self.build_sample(scene)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/data/dataset.py", line 163, in build_sample
+    primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/data/scene_dataset.py", line 204, in get_camera_array
+    return self._copy_temporal_array(key, window=window)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/data/scene_dataset.py", line 175, in _copy_temporal_array
+    arr = self._copy_array(key)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/data/scene_dataset.py", line 166, in _copy_array
+    self.require_key(key)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/data/scene_dataset.py", line 114, in require_key
+    raise KeyError(
+KeyError: "Missing key 'cam_5_ball_uv' in /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-chunked-v1-chunks/session_e3cd95243ae04c72b1217ca518dff17d/scene_0/scenes/scene_000002. Available: "
+exit_code=1

@@ -1,0 +1,26 @@
+ M src/tasks/blcs/configs/loss/default.yaml
+ M src/tasks/blcs/configs/loss/reprojection.yaml
+ M src/tasks/blcs/configs/metrics/default.yaml
+ M src/tasks/blcs/configs/model/_multiview_axial.yaml
+ M src/tasks/blcs/configs/train_chunked.yaml
+ M src/tasks/blcs/configs/training/default.yaml
+ M src/tasks/blcs/configuration.py
+ M src/tasks/blcs/data/datamodule.py
+ M src/tasks/blcs/data/dataset.py
+ M src/tasks/blcs/data/types.py
+ M src/tasks/blcs/model_io/adapters.py
+ M src/tasks/blcs/model_io/contracts.py
+ M src/tasks/blcs/model_io/factory.py
+ M src/tasks/blcs/models/blcs_multiview_axial_model.py
+ M src/tasks/blcs/models/components/heads.py
+ M src/tasks/blcs/training/lightning_module.py
+ M src/tasks/blcs/training/losses.py
+ M src/tasks/blcs/training/metrics.py
+ M tests/integration/tasks/blcs/test_generation_config.py
+ M tests/unit/tasks/blcs/models/test_blcs_multiview_axial_model.py
+ M tests/unit/tasks/blcs/training/test_lightning_module.py
+ M tests/unit/tasks/blcs/training/test_losses.py
+ M tests/unit/tasks/blcs/training/test_metrics.py
+?? src/tasks/blcs/experiments/
+?? src/tasks/blcs/physics/
+?? tests/support/tasks/blcs_physics.py

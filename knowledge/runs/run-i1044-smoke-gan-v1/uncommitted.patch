@@ -1,0 +1,4637 @@
+diff --git a/src/tasks/blcs/configs/loss/default.yaml b/src/tasks/blcs/configs/loss/default.yaml
+index 1a5280a21..8ef4e6e51 100644
+--- a/src/tasks/blcs/configs/loss/default.yaml
++++ b/src/tasks/blcs/configs/loss/default.yaml
+@@ -1,12 +1,20 @@
+-# Standard BLCS trajectory loss configuration.
++# xyz is measured in metres before this explicit normalization. These scales
++# exactly reproduce the old default Smooth L1 position supervision.
+ position_weight: 1.0
+-position_axis_weights: null
+-reprojection_weight: 0.0
+-
+-# Physics priors (temporal); disabled by default.
+-smoothness_weight: 0.0
+-gravity_weight: 0.0
+-smoothness_order: 3
+-smoothness_beta: 1.0e-3
+-gravity_beta: 5.0e-3
+-smoothness_axis_weights: null
++position_scale_m: 11.885
++position_beta_m: 11.885
++reprojection_weight: 0.1
++reprojection_beta_fraction: 1.0
++velocity_weight: 0.1
++velocity_scale_mps: 30.0
++velocity_beta_mps: 10.0
++rollout_position_weight: 1.0
++rollout_velocity_weight: 0.1
++rollout_horizons: [1, 3]
++physics_start_step: 200
++physics_warmup_steps: 400
++parameters_weight: 0.0
++event_weight: 0.0
++reconstruction_weight: 0.0
++parameter_consistency_weight: 0.0
++event_positive_weight: 10.0
+diff --git a/src/tasks/blcs/configs/loss/reprojection.yaml b/src/tasks/blcs/configs/loss/reprojection.yaml
+index a9cf3c52f..ab118383d 100644
+--- a/src/tasks/blcs/configs/loss/reprojection.yaml
++++ b/src/tasks/blcs/configs/loss/reprojection.yaml
+@@ -2,5 +2,6 @@ defaults:
+   - default
+   - _self_
+ 
+-# Enable differentiable 2D reprojection supervision for chunked training.
+-reprojection_weight: 0.1
++velocity_weight: 0.0
++rollout_position_weight: 0.0
++rollout_velocity_weight: 0.0
+diff --git a/src/tasks/blcs/configs/metrics/default.yaml b/src/tasks/blcs/configs/metrics/default.yaml
+index e5c008bb2..745aec882 100644
+--- a/src/tasks/blcs/configs/metrics/default.yaml
++++ b/src/tasks/blcs/configs/metrics/default.yaml
+@@ -1,3 +1,4 @@
+-position_threshold_m: 0.3
+-endpoint_threshold_m: 0.5
+-
++schema: blcs.physics_metrics.v1
++rollout_horizons: [1, 3]
++event_radius_frames: 2
++evaluation_seed: 42
+diff --git a/src/tasks/blcs/configs/model/_multiview_axial.yaml b/src/tasks/blcs/configs/model/_multiview_axial.yaml
+index 8afc7548d..aa2f02658 100644
+--- a/src/tasks/blcs/configs/model/_multiview_axial.yaml
++++ b/src/tasks/blcs/configs/model/_multiview_axial.yaml
+@@ -32,5 +32,6 @@ time_window_radius: 16
+ max_seq_len: 10240
+ max_num_cameras: 6
+ predict_velocity: true
++physics_head: false
+ invisible_init_std: 0.02
+ num_court_tokens: 14
+diff --git a/src/tasks/blcs/configs/train_chunked.yaml b/src/tasks/blcs/configs/train_chunked.yaml
+index 35b86f7a3..7f417e00d 100644
+--- a/src/tasks/blcs/configs/train_chunked.yaml
++++ b/src/tasks/blcs/configs/train_chunked.yaml
+@@ -4,7 +4,7 @@ defaults:
+   - model: multiview_axial_base
+   - data: multiview_chunked_sequence
+   - training: default
+-  - loss: reprojection
++  - loss: default
+   - metrics: default
+   - run: train
+   - physics: default
+diff --git a/src/tasks/blcs/configs/training/default.yaml b/src/tasks/blcs/configs/training/default.yaml
+index 491d91883..5232cf355 100644
+--- a/src/tasks/blcs/configs/training/default.yaml
++++ b/src/tasks/blcs/configs/training/default.yaml
+@@ -36,14 +36,14 @@ compile:
+ checkpoint:
+   enabled: true
+   filename: "blcs-{epoch:02d}"
+-  monitor: val/loss
++  monitor: val/trajectory_rmse_m
+   mode: min
+   save_top_k: 3
+   save_last: true
+ 
+ early_stopping:
+   enabled: false
+-  monitor: val/position_error_m
++  monitor: val/trajectory_rmse_m
+   mode: min
+   patience: 10
+   min_delta: 1.0e-3
+diff --git a/src/tasks/blcs/configuration.py b/src/tasks/blcs/configuration.py
+index 894a5008a..d8d42031e 100644
+--- a/src/tasks/blcs/configuration.py
++++ b/src/tasks/blcs/configuration.py
+@@ -257,6 +257,7 @@ class AxialModelConfig:
+     max_seq_len: int
+     max_num_cameras: int
+     predict_velocity: bool
++    physics_head: bool
+     invisible_init_std: float
+     num_court_tokens: int
+     time_window_radius: int
+@@ -305,6 +306,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
+             "max_seq_len",
+             "max_num_cameras",
+             "predict_velocity",
++            "physics_head",
+             "invisible_init_std",
+             "num_court_tokens",
+             "time_window_radius",
+@@ -332,6 +334,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
+                 "max_seq_len": int,
+                 "max_num_cameras": int,
+                 "predict_velocity": bool,
++                "physics_head": bool,
+                 "invisible_init_std": (float, int),
+                 "num_court_tokens": int,
+                 "time_window_radius": int,
+@@ -369,6 +372,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
+             max_seq_len=int(model["max_seq_len"]),
+             max_num_cameras=int(model["max_num_cameras"]),
+             predict_velocity=bool(model["predict_velocity"]),
++            physics_head=bool(model["physics_head"]),
+             invisible_init_std=float(model["invisible_init_std"]),
+             num_court_tokens=int(model["num_court_tokens"]),
+             time_window_radius=int(model["time_window_radius"]),
+@@ -382,6 +386,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
+                 model["time_global_stage_mask"], path="model.time_global_stage_mask"
+             ),
+         )
++        if result.physics_head and not result.predict_velocity:
++            raise SemanticConfigurationError("Physics heads require velocity output")
+         if not (
+             len(result.camera_layers_per_stage)
+             == len(result.time_layers_per_stage)
+@@ -1405,49 +1411,44 @@ def validate_generator_sections(
+ 
+ 
+ def _validate_standard_loss_config(loss: Mapping[str, object]) -> None:
+-    """Validate the loss section used by standard BLCS trajectory training."""
+-    loss_keys = {
+-        "position_weight",
+-        "position_axis_weights",
+-        "reprojection_weight",
+-        "smoothness_weight",
+-        "gravity_weight",
+-        "smoothness_order",
+-        "smoothness_beta",
+-        "gravity_beta",
+-        "smoothness_axis_weights",
++    from src.tasks.blcs.training.losses import LOSS_TERMS
++
++    floats = {f"{term}_weight" for term in LOSS_TERMS} | {
++        "position_scale_m",
++        "position_beta_m",
++        "velocity_scale_mps",
++        "velocity_beta_mps",
++        "reprojection_beta_fraction",
++        "event_positive_weight",
+     }
+-    _exact(loss, loss_keys, path="loss")
++    ints = {"physics_start_step", "physics_warmup_steps"}
++    _exact(loss, floats | ints | {"rollout_horizons"}, path="loss")
+     _validate_types(
+         loss,
+         {
+-            "position_weight": float,
+-            "position_axis_weights": (list, type(None)),
+-            "reprojection_weight": float,
+-            "smoothness_weight": float,
+-            "gravity_weight": float,
+-            "smoothness_order": int,
+-            "smoothness_beta": float,
+-            "gravity_beta": float,
+-            "smoothness_axis_weights": (list, type(None)),
++            **{key: (float, int) for key in floats},
++            **{key: int for key in ints},
++            "rollout_horizons": list,
+         },
+         path="loss",
+     )
+-    for key in ("position_axis_weights", "smoothness_axis_weights"):
+-        weights = _optional_numeric_sequence(loss[key], path=f"loss.{key}", length=3)
+-        if weights is not None and any(weight < 0.0 for weight in weights):
+-            raise SemanticConfigurationError(f"loss.{key} values must be non-negative.")
+-    for key in (
+-        "position_weight",
+-        "reprojection_weight",
+-        "smoothness_weight",
+-        "gravity_weight",
+-        "smoothness_beta",
+-        "gravity_beta",
++    for key in floats:
++        if key.endswith("_weight"):
++            _non_negative(float(cast("float", loss[key])), path=f"loss.{key}")
++        else:
++            _positive(float(cast("float", loss[key])), path=f"loss.{key}")
++    for key in ints:
++        if cast("int", loss[key]) < 0:
++            raise SemanticConfigurationError(f"loss.{key} must be nonnegative")
++    horizons = _int_sequence(loss["rollout_horizons"], path="loss.rollout_horizons")
++    if (
++        not horizons
++        or any(h < 1 for h in horizons)
++        or len(set(horizons)) != len(horizons)
+     ):
+-        _non_negative(cast("float", loss[key]), path=f"loss.{key}")
+-    if cast("int", loss["smoothness_order"]) < 1:
+-        raise SemanticConfigurationError("loss.smoothness_order must be >= 1.")
++        raise SemanticConfigurationError(
++            "loss.rollout_horizons must be distinct positive integers"
++        )
+ 
+ 
+ def validate_training_boundary(config: object) -> BLCSModelConfig:
+@@ -1712,16 +1713,48 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
+     metrics = require_config_mapping(root, "metrics", path="configuration")
+     _exact(
+         metrics,
+-        {"position_threshold_m", "endpoint_threshold_m"},
++        {"schema", "rollout_horizons", "event_radius_frames", "evaluation_seed"},
+         path="metrics",
+     )
+-    _validate_types(
+-        metrics,
+-        {"position_threshold_m": float, "endpoint_threshold_m": float},
+-        path="metrics",
++    if metrics["schema"] != "blcs.physics_metrics.v1":
++        raise SemanticConfigurationError("Unknown BLCS metric schema")
++    horizons = _int_sequence(
++        metrics["rollout_horizons"], path="metrics.rollout_horizons"
+     )
+-    for key in ("position_threshold_m", "endpoint_threshold_m"):
+-        _positive(cast("float", metrics[key]), path=f"metrics.{key}")
++    if (
++        not horizons
++        or any(h < 1 for h in horizons)
++        or len(set(horizons)) != len(horizons)
++    ):
++        raise SemanticConfigurationError("Invalid metric horizons")
++    _value(metrics, "evaluation_seed", int, path="metrics")
++    radius = _value(metrics, "event_radius_frames", int, path="metrics")
++    if cast("int", radius) < 0:
++        raise SemanticConfigurationError("Event radius must be nonnegative")
++    loss = require_config_mapping(root, "loss", path="configuration")
++    if not model.predict_velocity and any(
++        float(cast("float", loss[k]))
++        for k in (
++            "velocity_weight",
++            "rollout_position_weight",
++            "rollout_velocity_weight",
++        )
++    ):
++        raise SemanticConfigurationError(
++            "Velocity and physics objectives require model.predict_velocity"
++        )
++    if not model.physics_head and any(
++        float(cast("float", loss[k]))
++        for k in (
++            "parameters_weight",
++            "event_weight",
++            "reconstruction_weight",
++            "parameter_consistency_weight",
++        )
++    ):
++        raise SemanticConfigurationError(
++            "Parameter objectives require model.physics_head"
++        )
+     validate_generator_sections(config, include_generation=False)
+     return model
+ 
+diff --git a/src/tasks/blcs/data/datamodule.py b/src/tasks/blcs/data/datamodule.py
+index 0dc13174a..454c277a0 100644
+--- a/src/tasks/blcs/data/datamodule.py
++++ b/src/tasks/blcs/data/datamodule.py
+@@ -35,7 +35,9 @@ class BLCSDataModuleHooks:
+             scene_dir=scene_dir,
+             split_file=split_file,
+             config=self.config,
+-            seed=(
++            seed=int(self.config.metrics.evaluation_seed)
++            if not augment
++            else (
+                 cast("SceneDirectoryDataModule", self)._dataset_seed(
+                     scene_dir, split_file
+                 )
+diff --git a/src/tasks/blcs/data/dataset.py b/src/tasks/blcs/data/dataset.py
+index ec957fc8c..ffa5da251 100644
+--- a/src/tasks/blcs/data/dataset.py
++++ b/src/tasks/blcs/data/dataset.py
+@@ -35,6 +35,7 @@ from src.tasks.blcs.data.court_view import (
+     validate_blcs_dataset_court_keypoints,
+ )
+ from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
++from src.tasks.blcs.physics.targets import collate_teachers, record_teachers
+ from src.utils.data.camera_sampling import camera_candidate_indices
+ from src.utils.schema.court_normalization import (
+     validate_court_coordinate_normalization,
+@@ -124,7 +125,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
+             num_views_range=self.num_views_range,
+             camera_mode=self.camera_mode,
+             crop_mode=("random" if self.augment else "center"),
+-            min_num_frames=self.seq_len_range[0],
++            min_num_frames=self.seq_len_range[0] if self.augment else 1,
+             min_num_cameras=self.num_views_range[0],
+         )
+ 
+@@ -163,7 +164,14 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
+         pos_len = int(scene.data["ball_pos_norm"].shape[0])
+         vel_len = int(scene.data["ball_vel_norm"].shape[0])
+         full_len = scene.effective_num_frames(primary_len, pos_len, vel_len)
+-        window = self.select_window(scene, full_len=full_len)
++        if len({primary_len, pos_len, vel_len, full_len}) != 1:
++            raise ValueError("BLCS observation and trajectory lengths disagree")
++        length = min(full_len, self.seq_len_range[1])
++        window = self.select_window(
++            scene,
++            full_len=full_len,
++            seq_len_range=self.seq_len_range if self.augment else (length, length),
++        )
+         ball_uv_list: list[Tensor] = []
+         ball_vis_list: list[Tensor] = []
+         court_kp_list: list[Tensor] = []
+@@ -239,30 +247,47 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
+                 frame.provenance,
+             )
+ 
+-        sample: BLCSMultiViewSample = {
+-            "ball_uv": torch.stack(ball_uv_list, dim=0),
+-            "ball_vis": torch.stack(ball_vis_list, dim=0),
+-            "padding_mask": torch.zeros(
+-                len(cams.indices), window.seq_len, dtype=torch.bool
+-            ),
+-            "court_kp": torch.stack(court_kp_list, dim=0),
+-            "court_vis": torch.stack(court_vis_list, dim=0),
+-            "position_3d": position_3d,
+-            "velocity_3d": velocity_3d,
+-            "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
+-            "camera_R": torch.stack(cam_R_list, dim=0),
+-            "camera_C": torch.stack(cam_C_list, dim=0),
+-            "camera_f": torch.stack(cam_f_list, dim=0),
+-            "camera_cx": torch.stack(cam_cx_list, dim=0),
+-            "camera_cy": torch.stack(cam_cy_list, dim=0),
+-            "camera_w": torch.stack(cam_w_list, dim=0),
+-            "camera_h": torch.stack(cam_h_list, dim=0),
+-            "court_reference_provenance": frame.provenance,
+-            "selected_camera_ids": tuple(
+-                view.camera_id for view in frame.selected_views
++        sample = cast(
++            "BLCSMultiViewSample",
++            {
++                "scene_id": scene.path.name,
++                "ball_uv": torch.stack(ball_uv_list, dim=0),
++                "ball_vis": torch.stack(ball_vis_list, dim=0),
++                "padding_mask": torch.zeros(
++                    len(cams.indices), window.seq_len, dtype=torch.bool
++                ),
++                "court_kp": torch.stack(court_kp_list, dim=0),
++                "court_vis": torch.stack(court_vis_list, dim=0),
++                "position_3d": position_3d,
++                "velocity_3d": velocity_3d,
++                "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
++                "camera_R": torch.stack(cam_R_list, dim=0),
++                "camera_C": torch.stack(cam_C_list, dim=0),
++                "camera_f": torch.stack(cam_f_list, dim=0),
++                "camera_cx": torch.stack(cam_cx_list, dim=0),
++                "camera_cy": torch.stack(cam_cy_list, dim=0),
++                "camera_w": torch.stack(cam_w_list, dim=0),
++                "camera_h": torch.stack(cam_h_list, dim=0),
++                "court_reference_provenance": frame.provenance,
++                "selected_camera_ids": tuple(
++                    view.camera_id for view in frame.selected_views
++                )
++                or tuple(f"camera_{index}" for index in cams.indices),
++            },
++        )
++        sample["ball_uv_target"] = sample["ball_uv"].clone()
++        sample["ball_vis_target"] = sample["ball_vis"].clone()
++        sample.update(
++            cast(
++                "BLCSMultiViewSample",
++                record_teachers(
++                    scene.data,
++                    start=window.start,
++                    end=window.end,
++                    full_length=full_len,
++                ),
+             )
+-            or tuple(f"camera_{index}" for index in cams.indices),
+-        }
++        )
+         if frame.reference_selection is not None:
+             sample.update(
+                 cast(
+@@ -296,9 +321,11 @@ def collate_multiview_trajectories(
+     """Collate canonical BLCS samples into padded canonical batch tensors."""
+     max_views = max(int(sample["ball_uv"].shape[0]) for sample in batch)
+     max_seq_len = max(int(sample["seq_len"].item()) for sample in batch)
+-    has_clean_targets = any(
++    if not all(
+         "ball_uv_target" in sample and "ball_vis_target" in sample for sample in batch
+-    )
++    ):
++        raise ValueError("Every BLCS training sample requires clean 2D targets")
++    has_clean_targets = True
+ 
+     ball_uv_batch = []
+     ball_vis_batch = []
+@@ -325,12 +352,8 @@ def collate_multiview_trajectories(
+ 
+         ball_uv = sample["ball_uv"]
+         ball_vis = sample["ball_vis"]
+-        ball_uv_target = (
+-            sample.get("ball_uv_target", ball_uv) if has_clean_targets else None
+-        )
+-        ball_vis_target = (
+-            sample.get("ball_vis_target", ball_vis) if has_clean_targets else None
+-        )
++        ball_uv_target = sample["ball_uv_target"]
++        ball_vis_target = sample["ball_vis_target"]
+         padding_mask = sample["padding_mask"]
+         court_kp = sample["court_kp"]
+         court_vis = sample["court_vis"]
+@@ -433,6 +456,7 @@ def collate_multiview_trajectories(
+         cam_w_batch.append(cam_w)
+         cam_h_batch.append(cam_h)
+     collated: dict[str, object] = {
++        "scene_id": tuple(sample["scene_id"] for sample in batch),
+         "ball_uv": torch.stack(ball_uv_batch, dim=0),
+         "ball_vis": torch.stack(ball_vis_batch, dim=0),
+         "padding_mask": torch.stack(padding_mask_batch, dim=0),
+@@ -464,4 +488,5 @@ def collate_multiview_trajectories(
+     if has_clean_targets:
+         collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
+         collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
++    collated.update(collate_teachers(batch, max_seq_len))
+     return cast("BLCSMultiViewBatch", collated)
+diff --git a/src/tasks/blcs/data/types.py b/src/tasks/blcs/data/types.py
+index 78367172c..ea417c709 100644
+--- a/src/tasks/blcs/data/types.py
++++ b/src/tasks/blcs/data/types.py
+@@ -53,6 +53,8 @@ class BLCSBatch(TypedDict):
+ class BLCSMultiViewSample(TypedDict):
+     """Schema for multi-view BLCS dataset sample.
+ 
++
++
+     Used by BallTrajectoryDataset.__getitem__() in multiview mode. Contains observations
+     from multiple cameras for the same ball trajectory.
+ 
+@@ -61,6 +63,17 @@ class BLCSMultiViewSample(TypedDict):
+     without temporal aggregation.
+     """
+ 
++    scene_id: str
++    physics_spin: torch.Tensor
++    physics_segment: torch.Tensor
++    physics_event: torch.Tensor
++    physics_field: torch.Tensor
++    physics_clock: torch.Tensor
++    physics_surface: torch.Tensor
++    frame_index: torch.Tensor
++    clip_frames: torch.Tensor
++    bounce_count: torch.Tensor
++
+     ball_uv: torch.Tensor  # (N_cam, T, 2) ball 2D trajectories from each camera
+     ball_vis: torch.Tensor  # (N_cam, T) ball visibility masks (1=visible)
+     ball_uv_target: NotRequired[torch.Tensor]  # (N_cam, T, 2) clean pre-augmentation UV
+@@ -95,6 +108,17 @@ class BLCSMultiViewSample(TypedDict):
+ class BLCSMultiViewBatch(TypedDict):
+     """Schema for batched multi-view BLCS dataset samples."""
+ 
++    scene_id: tuple[str, ...]
++    physics_spin: torch.Tensor
++    physics_segment: torch.Tensor
++    physics_event: torch.Tensor
++    physics_field: torch.Tensor
++    physics_clock: torch.Tensor
++    physics_surface: torch.Tensor
++    frame_index: torch.Tensor
++    clip_frames: torch.Tensor
++    bounce_count: torch.Tensor
++
+     ball_uv: torch.Tensor  # (B, N_max, T_max, 2)
+     ball_vis: torch.Tensor  # (B, N_max, T_max)
+     ball_uv_target: NotRequired[torch.Tensor]  # (B, N_max, T_max, 2)
+diff --git a/src/tasks/blcs/experiments/README.md b/src/tasks/blcs/experiments/README.md
+new file mode 100644
+index 000000000..8e4e83c71
+--- /dev/null
++++ b/src/tasks/blcs/experiments/README.md
+@@ -0,0 +1,26 @@
++# Issue #1044 比較プロトコル（学習前固定）
++
++2026-10-13のユーザー指定: 各4,000 optimizer updates、計10 run。採用閾値は設けず、結果を観測してから判断する。方式採用・本番checkpoint置換は行わない。
++
++評価軸は全有効frameの3D軌道RMSE[m]を主軸とし、平均/p95距離、clip別RMSE、速度head RMSE[m/s]、位置の同じ差分演算による速度/加速度誤差、共有積分器の残差[m,m/s]、clean観測の再投影[px]と評価可能率、地面下率を併記する。欠損/観測、イベント±2frame/飛行、view数、surface、clip長、バウンド数、欠損区間長を層別する。支持数0は未定義（保存JSONではnull）。batch平均は使わない。
++
++固定snapshotは `data/blcs/single_object-physics-v3-cc863cacd-20261007`。既存runのmanifestは `knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/dataset_files.jsonl.gz`。train/validation/testは800/100/100 scene。trainは128frame以上の715 sceneを従来どおりランダム128frame cropで学習。validationは固定中心128frame（短いsceneは全長）で全100 scene、カメラ抽選の評価seedは42固定。最終保存評価は全100 sceneの全frameを固定128frame窓で推論し、連結後に計測する。従来の88 scene中心窓の値とは直接比較しない。
++
++全条件でaxial base、xyz/velocity head、3–6 view、batch2×accum8、AdamW LR1e-4・WD0.01、200 update warmup→4,000 update cosine、bf16、GAN/compileなし。checkpoint選定は同じ `val/trajectory_rmse_m` 最小。全runのtestは選定後のみ。
++
++| arm | 前段への追加 |
++|---|---|
++| position | 位置教師のみ |
++| reprojection | ＋clean再投影（既存v3学習戦略の主対照） |
++| velocity | ＋sim速度教師 |
++| rollout_position | ＋GT場/spinによる短積分位置整合 |
++| rollout_velocity | ＋同じ積分の速度整合（候補A） |
++| parameters | ＋最小drag/wind/有効Magnus/event headと教師・再構成・整合（候補B） |
++
++最初に6条件×seed42、その後reprojectionとvalidation位置RMSE最良の新方式をseed43/44で追加する（計10）。これは追加seed対象の選択であり採用判定ではない。候補Bはアーキテクチャ全体の比較で、B内部の各auxiliary lossの独立効果はこの予算では切り分けない。全条件に同じ速度headを置き、その有効/無効によるモデル容量の交絡を避ける。旧9,000更新checkpointは更新数・head構成の異なる参考対照とする。
++
++位置損失は物理mに戻し、scale=beta=11.885 mで無次元化するため旧標準Smooth L1と同値。再投影は各軸を画像幅/高さで正規化したSmooth L1（beta=1画像幅/高さ）、重み0.1。速度はscale30 m/s・beta10 m/s、重み0.1。rolloutはhorizon1/3frame、記録dt×strideを使用（このsnapshotでは約0.0333/0.1秒）。両端に勾配を流し、200更新後から400更新かけて物理項を線形増加する。重みと尺度の正本は `configs/loss/default.yaml` と `issue1044.py`。
++
++GT自己評価、位置ジッター・時間ずれ・イベント越境の摂動、同じ観測からの三角測量＋線形補間を対照にする。重い共有ODE fittingは保存評価で固定支持集合を使う。Bの積分出力はGT区間（oracle）と予測イベント区間を区別する。実観測はMeiji固定clipに対して再投影・物理診断・軌道図を作るが、独立3D GTがないため実3D改善とは解釈しない。
++
++一次資料: [TT3D](https://arxiv.org/html/2504.10035v2)は空力とバウンド状態の最適化による再構成、[APHYNITY](https://arxiv.org/html/2010.04456v6)は微分可能な積分軌道による物理と学習補正の学習を示す。短horizonのBLCS損失はそれらから着想した本実験の仮説。[PINNsの収束分析](https://arxiv.org/abs/2007.14527)を踏まえ項ごとの尺度・warmup・勾配到達を検証する。各論文の別問題での成果をBLCSの改善保証とはしない。
+diff --git a/src/tasks/blcs/experiments/__init__.py b/src/tasks/blcs/experiments/__init__.py
+new file mode 100644
+index 000000000..73f94427a
+--- /dev/null
++++ b/src/tasks/blcs/experiments/__init__.py
+@@ -0,0 +1 @@
++"""Reproducible BLCS experiment protocols and saved evaluation."""
+diff --git a/src/tasks/blcs/experiments/evaluation.py b/src/tasks/blcs/experiments/evaluation.py
+new file mode 100644
+index 000000000..41ae7c25a
+--- /dev/null
++++ b/src/tasks/blcs/experiments/evaluation.py
+@@ -0,0 +1,615 @@
++"""Full-clip evaluation, explicit baselines and offline physical diagnostics."""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import os
++from dataclasses import replace
++from pathlib import Path
++from typing import Any, cast
++
++import numpy as np
++import torch
++from omegaconf import DictConfig, OmegaConf
++from torch import Tensor
++
++from src.tasks.base.generate_dataset import build_physical_court_provenance
++from src.tasks.blcs.data.dataset import (
++    BallTrajectoryDataset,
++    collate_multiview_trajectories,
++)
++from src.tasks.blcs.model_io.contracts import BLCSTrajectoryPrediction
++from src.tasks.blcs.model_io.factory import (
++    TrajectoryBoundModelIO,
++    compose_blcs_model_io,
++)
++from src.tasks.blcs.physics.rollout import reconstruct_segments
++from src.tasks.blcs.training.metrics import BLCSMetrics
++from src.utils.geometry.triangulation import (
++    PinholeCamera,
++    PointTriangulationConfig,
++    triangulate_points,
++)
++from src.utils.physics.ball.fitting import FitSettings, fit_flight_physics
++from src.utils.schema.court_normalization import (
++    denormalize_court_position,
++    normalize_court_position,
++    validate_court_coordinate_normalization,
++)
++
++from .issue1044 import experiment_config
++
++
++def clean_json(value: Any) -> Any:
++    if isinstance(value, dict):
++        return {key: clean_json(item) for key, item in value.items()}
++    if isinstance(value, (tuple, list)):
++        return [clean_json(item) for item in value]
++    if isinstance(value, np.ndarray):
++        return clean_json(value.tolist())
++    if isinstance(value, (float, np.floating)):
++        return float(value) if np.isfinite(value) else None
++    if isinstance(value, np.integer):
++        return int(value)
++    return value
++
++
++def save_json(path: Path, value: Any) -> None:
++    path.write_text(
++        json.dumps(clean_json(value), ensure_ascii=False, indent=2, allow_nan=False)
++        + "\n"
++    )
++
++
++def file_sha256(path: Path) -> str:
++    digest = hashlib.sha256()
++    with path.open("rb") as source:
++        for chunk in iter(lambda: source.read(1024 * 1024), b""):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def load_binding(
++    checkpoint: Path, data_root: Path, *, historical: bool = False
++) -> tuple[TrajectoryBoundModelIO, DictConfig]:
++    """Load exact model weights. Historical evaluation is an explicit experiment arm."""
++    raw = torch.load(checkpoint, map_location="cpu", weights_only=False)
++    validate_court_coordinate_normalization(raw, artifact="BLCS evaluation checkpoint")
++    config = OmegaConf.create(raw["hyper_parameters"]["config"])
++    if historical:
++        # Only the known pre-1044 model contract is adapted for a reference run;
++        # the public training/inference checkpoint APIs remain strict.
++        if "physics_head" in config.model:
++            raise ValueError("Historical option was supplied for a new checkpoint")
++        config.model.physics_head = False
++    elif "physics_head" not in config.model:
++        raise ValueError(
++            "Old checkpoint requires explicit --historical reference evaluation"
++        )
++    config.paths.data_root = str(data_root)
++    config.data.seq_len_range = [1, 10240]
++    config.data.num_workers = 0
++    binding = compose_blcs_model_io(config)
++    state = {
++        key.removeprefix("model."): value
++        for key, value in raw["state_dict"].items()
++        if key.startswith("model.")
++    }
++    binding.model.load_state_dict(state, strict=True)
++    del raw, state
++    return binding, config
++
++
++@torch.no_grad()  # type: ignore[untyped-decorator]
++def predict_windows(
++    binding: Any, batch: dict[str, Any], *, device: str, width: int = 128
++) -> BLCSTrajectoryPrediction:
++    """Nonoverlapping, fixed-width context windows; every real frame occurs once."""
++    length = batch["ball_uv"].shape[2]
++    values: dict[str, list[Tensor]] = {"position": []}
++    for start in range(0, length, width):
++        end = min(start + width, length)
++        window = {
++            key: batch[key][:, :, start:end].to(device)
++            for key in ("ball_uv", "ball_vis", "court_kp", "court_vis", "padding_mask")
++        }
++        # Pad the last window as in training; all GT fields are excluded by construction.
++        for key, tensor in window.items():
++            padded = tensor.new_full(
++                (*tensor.shape[:2], width, *tensor.shape[3:]), key == "padding_mask"
++            )
++            padded[:, :, : end - start] = tensor
++            window[key] = padded
++        with torch.autocast(
++            device_type=device, dtype=torch.bfloat16, enabled=device == "cuda"
++        ):
++            out = binding.run(window)
++        for key, value in (
++            ("position", out.position),
++            ("velocity", out.velocity),
++            ("physics_parameters", out.physics_parameters),
++            ("event_logits", out.event_logits),
++        ):
++            if value is not None:
++                values.setdefault(key, []).append(value[:, : end - start].float().cpu())
++    combined = {key: torch.cat(chunks, dim=1) for key, chunks in values.items()}
++    return BLCSTrajectoryPrediction(
++        position=combined["position"],
++        velocity=combined.get("velocity"),
++        physics_parameters=combined.get("physics_parameters"),
++        event_logits=combined.get("event_logits"),
++    )
++
++
++def geometric_baseline(
++    batch: dict[str, Any],
++) -> tuple[BLCSTrajectoryPrediction, dict[str, Any]]:
++    """Triangulate the same input, then explicitly interpolate/extrapolate gaps."""
++    cameras = []
++    for view in range(batch["ball_uv"].shape[1]):
++        f, cx, cy = (
++            float(batch[key][0, view]) for key in ("camera_f", "camera_cx", "camera_cy")
++        )
++        rotation = batch["camera_R"][0, view].double().numpy()
++        center = batch["camera_C"][0, view].double().numpy()
++        cameras.append(
++            PinholeCamera(
++                str(view),
++                np.array([[f, 0, cx], [0, f, cy], [0, 0, 1]]),
++                rotation,
++                -rotation @ center,
++            )
++        )
++    size = torch.stack((batch["camera_w"], batch["camera_h"]), dim=-1).unsqueeze(2)
++    uv = (batch["ball_uv"] * size)[0].numpy()
++    result = triangulate_points(
++        uv,
++        batch["ball_vis"][0].bool().numpy(),
++        tuple(cameras),
++        config=PointTriangulationConfig(
++            max_reprojection_px=20.0, height_range_m=(-1.0, 30.0)
++        ),
++    )
++    indices = np.flatnonzero(result.valid)
++    if len(indices) < 2:
++        raise ValueError(
++            "Geometric baseline requires at least two triangulated frames; report clip as unsupported"
++        )
++    coordinates = np.stack(
++        [
++            np.interp(
++                np.arange(len(result.valid)), indices, result.positions[indices, axis]
++            )
++            for axis in range(3)
++        ],
++        axis=-1,
++    ).astype(np.float32)
++    receipt = {
++        "triangulated_frames": len(indices),
++        "interpolated_frames": int((~result.valid).sum()),
++        "endpoint_extrapolation": "constant",
++        "rejection_counts": np.bincount(result.reasons, minlength=8).tolist(),
++    }
++    return BLCSTrajectoryPrediction(
++        torch.from_numpy(normalize_court_position(coordinates))[None], None
++    ), receipt
++
++
++def fit_diagnostic(
++    position_m: np.ndarray,
++    segment: np.ndarray,
++    clock: np.ndarray,
++    gravity: float,
++    *,
++    device: str = "cpu",
++) -> dict[str, Any]:
++    """Bounded diagnostic on the first 32 frames of each flight (same GT support).
++
++    The nonlinear fit has no guaranteed global optimum. Its settings and failed
++    supports are saved, so a small residual is never used as a 3D accuracy proxy.
++    """
++    boundaries = [
++        0,
++        *(np.flatnonzero(np.diff(segment) != 0) + 1).tolist(),
++        len(segment),
++    ]
++    spans = [
++        (a, min(b, a + 32))
++        for a, b in zip(boundaries[:-1], boundaries[1:], strict=True)
++        if b - a >= 6
++    ]
++    settings = FitSettings(
++        gravity=gravity,
++        dt=float(clock[0]),
++        substeps=int(clock[3]),
++        segment_iterations=4,
++        iterations=8,
++        minimum_segment_frames=6,
++        field_starts=((0.01, 0.001, 0.0, 0.0), (0.03, 0.001, 0.0, 0.0)),
++    )
++    receipt: dict[str, Any] = {
++        "spans": spans,
++        "supported_frames": 0,
++        "requested_frames": sum(b - a for a, b in spans),
++        "failed": False,
++        "rmse_m": None,
++    }
++    if not spans:
++        receipt.update(failed=True, reason="no_segment_with_six_frames")
++        return receipt
++    try:
++        fit = fit_flight_physics([position_m], [spans], settings, torch.device(device))[
++            0
++        ]
++        residual = fit.residual[fit.fitted]
++        receipt["supported_frames"] = len(residual)
++        if not len(residual):
++            receipt.update(failed=True, reason="no_finite_fit")
++        else:
++            receipt["rmse_m"] = float(np.sqrt(np.mean(np.sum(residual**2, axis=-1))))
++    except (ValueError, RuntimeError, np.linalg.LinAlgError) as error:
++        receipt.update(failed=True, reason=f"{type(error).__name__}: {error}")
++    return receipt
++
++
++def event_diagnostic(
++    predicted: np.ndarray, target: np.ndarray, dt: float
++) -> dict[str, Any]:
++    a, b = (
++        np.flatnonzero(predicted)[1:] if predicted[0] else np.flatnonzero(predicted),
++        np.flatnonzero(target)[1:] if target[0] else np.flatnonzero(target),
++    )
++    remaining = set(b.tolist())
++    offsets = []
++    for index in a:
++        matches = sorted(remaining, key=lambda value: abs(value - index))
++        if matches and abs(matches[0] - index) <= 2:
++            match = matches[0]
++            offsets.append(abs(match - index) * dt)
++            remaining.remove(match)
++    tp = len(offsets)
++    return {
++        "true_positive": tp,
++        "predicted_events": len(a),
++        "target_events": len(b),
++        "f1": 2 * tp / (len(a) + len(b)) if len(a) + len(b) else None,
++        "timing_mean_s": np.mean(offsets) if offsets else None,
++        "partition_failed": len(a) != tp or len(b) != tp,
++    }
++
++
++def save_prediction_rows(path: Path, rows: list[dict[str, Any]]) -> None:
++    """A self-contained, non-pickle full-clip bundle with explicit padding."""
++    maximum = max(row["pred_position"].shape[1] for row in rows)
++    arrays: dict[str, Any] = {"scene_ids": np.array([row["scene_id"] for row in rows])}
++    static = {
++        "physics_field",
++        "physics_clock",
++        "physics_surface",
++        "clip_frames",
++        "bounce_count",
++    }
++    camera = {
++        "camera_R",
++        "camera_C",
++        "camera_f",
++        "camera_cx",
++        "camera_cy",
++        "camera_w",
++        "camera_h",
++    }
++    view_time = {
++        "ball_uv",
++        "ball_vis",
++        "ball_uv_target",
++        "ball_vis_target",
++        "court_kp",
++        "court_vis",
++        "padding_mask",
++    }
++    for key in rows[0]:
++        if key == "scene_id":
++            continue
++        padded_rows = []
++        for row in rows:
++            value = row[key].detach().cpu().numpy()
++            shape = list(value.shape)
++            if key in camera | view_time:
++                shape[1] = 6
++            if key in view_time:
++                shape[2] = maximum
++            elif key not in camera | static:
++                shape[1] = maximum
++            fill = (
++                True
++                if key == "padding_mask"
++                else (
++                    -1
++                    if key in {"physics_segment", "frame_index"}
++                    else (1 if key in {"camera_w", "camera_h"} else 0)
++                )
++            )
++            padded = np.full(shape, fill, dtype=value.dtype)
++            padded[tuple(slice(0, n) for n in value.shape)] = value
++            padded_rows.append(padded)
++        arrays[key] = np.concatenate(padded_rows)
++    np.savez_compressed(path, **arrays)
++
++
++def evaluate(
++    *,
++    data_root: Path,
++    output: Path,
++    split: str,
++    checkpoint: Path | None,
++    baseline: str | None,
++    historical: bool = False,
++    device: str = "cuda",
++    limit: int | None = None,
++    fitting_clips: int = 12,
++) -> dict[str, Any]:
++    if output.exists():
++        raise FileExistsError(output)
++    output.mkdir(parents=True)
++    if checkpoint is not None:
++        binding, config = load_binding(checkpoint, data_root, historical=historical)
++        binding.model.to(device).eval()
++    else:
++        config = experiment_config(
++            data_root=data_root, output="unused", arm="rollout_velocity", seed=42
++        )
++        config.data.seq_len_range = [1, 10240]
++        binding = compose_blcs_model_io(config)
++    dataset = BallTrajectoryDataset(
++        scene_dir=data_root / str(config.data.scene_dir),
++        split_file=f"{split}.txt",
++        config=config,
++        seed=42,
++        augment=False,
++    )
++    tracker = BLCSMetrics()
++    oracle_tracker, predicted_tracker = BLCSMetrics(), BLCSMetrics()
++    rows, clips, failures = [], [], []
++    for index in range(len(dataset) if limit is None else min(limit, len(dataset))):
++        sample = dataset[index]
++        batch = cast("dict[str, Any]", collate_multiview_trajectories([sample]))
++        target = binding.adapter.build_training_batch(batch)
++        extra: dict[str, Any] = {}
++        if baseline is None:
++            prediction = predict_windows(binding, batch, device=device)
++        elif baseline == "geometry":
++            try:
++                prediction, extra["geometry"] = geometric_baseline(batch)
++            except ValueError as error:
++                failures.append({"scene_id": sample["scene_id"], "reason": str(error)})
++                continue
++        else:
++            prediction = BLCSTrajectoryPrediction(
++                target.position.clone(), target.velocity.clone()
++            )
++            if baseline == "jitter":
++                prediction.position[:, ::2, 0] += 0.1 / 11.885
++            elif baseline == "time_shift":
++                prediction = replace(
++                    prediction,
++                    position=prediction.position.roll(1, 1),
++                    velocity=target.velocity.roll(1, 1),
++                )
++            elif baseline == "collision_crossing":
++                batch["physics_segment"] = torch.zeros_like(batch["physics_segment"])
++                target = replace(
++                    target,
++                    physics=replace(
++                        target.physics, segment=torch.zeros_like(target.physics.segment)
++                    ),
++                )
++            elif baseline != "gt":
++                raise ValueError(baseline)
++        tracker.update(
++            prediction, target, observed=batch["ball_vis"], scene_ids=batch["scene_id"]
++        )
++        clip_tracker = BLCSMetrics()
++        clip_tracker.update(
++            prediction, target, observed=batch["ball_vis"], scene_ids=batch["scene_id"]
++        )
++        if index < fitting_clips:
++            extra["fit"] = fit_diagnostic(
++                denormalize_court_position(prediction.position)[0].numpy(),
++                target.physics.segment[0].numpy(),
++                target.physics.clock[0].numpy(),
++                float(target.physics.field[0, 0]),
++            )
++        if prediction.physics_parameters is not None:
++            resets = torch.zeros_like(target.loss_mask)
++            resets[:, 1:] = (
++                target.physics.segment[:, 1:] != target.physics.segment[:, :-1]
++            )
++            estimated = prediction.event_logits[..., 0] >= 0
++            extra["events"] = event_diagnostic(
++                estimated[0].numpy(),
++                resets[0].numpy(),
++                float(target.physics.frame_dt()[0]),
++            )
++            for name, events, metric in (
++                ("oracle", resets, oracle_tracker),
++                ("predicted", estimated, predicted_tracker),
++            ):
++                p, v = reconstruct_segments(
++                    denormalize_court_position(prediction.position),
++                    prediction.velocity * 11.885,
++                    prediction.physics_parameters,
++                    events,
++                    target.loss_mask,
++                    target.physics.clock,
++                    gravity=float(config.physics.gravity),
++                )
++                if not bool(torch.isfinite(p).all() & torch.isfinite(v).all()):
++                    extra[f"{name}_integration_failed"] = True
++                    extra[f"{name}_integrated_position"] = np.full_like(
++                        p[0].numpy(), np.nan
++                    )
++                    continue
++                integrated = replace(
++                    prediction,
++                    position=normalize_court_position(p),
++                    velocity=v / 11.885,
++                )
++                metric.update(
++                    integrated,
++                    target,
++                    observed=batch["ball_vis"],
++                    scene_ids=batch["scene_id"],
++                )
++                extra[f"{name}_integration_failed"] = False
++                integrated_clip = BLCSMetrics()
++                integrated_clip.update(integrated, target, observed=batch["ball_vis"])
++                extra[f"{name}_integrated_metrics"] = integrated_clip.compute()
++                extra[f"{name}_integrated_position"] = p[0].numpy()
++        integrated_arrays = {
++            key: torch.as_tensor(extra.pop(key))[None]
++            for key in tuple(extra)
++            if key.endswith("_integrated_position")
++        }
++        clips.append(
++            {"scene_id": sample["scene_id"], "metrics": clip_tracker.compute(), **extra}
++        )
++        keys = (
++            "ball_uv",
++            "ball_vis",
++            "ball_uv_target",
++            "ball_vis_target",
++            "court_kp",
++            "court_vis",
++            "padding_mask",
++            "position_3d",
++            "velocity_3d",
++            "physics_spin",
++            "physics_segment",
++            "physics_event",
++            "physics_field",
++            "physics_clock",
++            "physics_surface",
++            "frame_index",
++            "clip_frames",
++            "bounce_count",
++            "camera_R",
++            "camera_C",
++            "camera_f",
++            "camera_cx",
++            "camera_cy",
++            "camera_w",
++            "camera_h",
++        )
++        row = {key: batch[key] for key in keys}
++        row.update(scene_id=sample["scene_id"], pred_position=prediction.position)
++        row.update(integrated_arrays)
++        if prediction.velocity is not None:
++            row["pred_velocity"] = prediction.velocity
++        if prediction.physics_parameters is not None:
++            row.update(
++                physics_parameters=prediction.physics_parameters,
++                event_logits=prediction.event_logits,
++            )
++        rows.append(row)
++        if index % 10 == 0:
++            print(f"evaluation {split} {index + 1}/{len(dataset)}", flush=True)
++    report = {
++        **tracker.report(),
++        "split": split,
++        "checkpoint": str(checkpoint),
++        "checkpoint_sha256": file_sha256(checkpoint) if checkpoint else None,
++        "baseline": baseline,
++        "scene_count": len(rows),
++        "unsupported_clips": failures,
++        "clips": clips,
++        "condition": {
++            "window_frames": 128,
++            "full_clips": True,
++            "evaluation_seed": 42,
++            "fit_first_clips": fitting_clips,
++            "fit_max_frames_per_segment": 32,
++            "fit_iterations": 8,
++            "fit_segment_iterations": 4,
++            "fit_field_starts": [[0.01, 0.001, 0.0, 0.0], [0.03, 0.001, 0.0, 0.0]],
++            "fit_minimum_segment_frames": 6,
++        },
++    }
++    if oracle_tracker.records:
++        report["integrated_oracle"] = oracle_tracker.report()
++        report["integrated_predicted"] = predicted_tracker.report()
++    save_json(output / "evaluation.json", report)
++    save_prediction_rows(output / f"pred_{split}.npz", rows)
++    return report
++
++
++def recompute(bundle: Path) -> dict[str, Any]:
++    """Recompute ordinary full-clip metrics using only the portable bundle."""
++    with np.load(bundle, allow_pickle=False) as data:
++        config = experiment_config(
++            data_root=Path("/tmp"), output="unused", arm="reprojection", seed=42
++        )
++        binding = compose_blcs_model_io(config)
++        tracker = BLCSMetrics()
++        for i, scene in enumerate(data["scene_ids"]):
++            batch = {
++                key: torch.from_numpy(data[key][i : i + 1].copy())
++                for key in data.files
++                if key != "scene_ids"
++            }
++            batch["court_reference_provenance"] = (build_physical_court_provenance(),)
++            target = binding.adapter.build_training_batch(batch)
++            prediction = BLCSTrajectoryPrediction(
++                batch["pred_position"],
++                batch.get("pred_velocity"),
++                batch.get("physics_parameters"),
++                batch.get("event_logits"),
++            )
++            tracker.update(
++                prediction, target, observed=batch["ball_vis"], scene_ids=[str(scene)]
++            )
++        return tracker.report()
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--data-root", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    parser.add_argument("--split", choices=("val", "test"), default="test")
++    choice = parser.add_mutually_exclusive_group(required=True)
++    choice.add_argument("--checkpoint", type=Path)
++    choice.add_argument(
++        "--baseline",
++        choices=("gt", "geometry", "jitter", "time_shift", "collision_crossing"),
++    )
++    parser.add_argument("--historical", action="store_true")
++    parser.add_argument("--limit", type=int)
++    parser.add_argument("--fitting-clips", type=int, default=12)
++    args = parser.parse_args()
++    if not os.environ.get("TENNIS_RUN_ID"):
++        raise RuntimeError("Evaluation must run through the shared training queue")
++    torch.set_num_threads(2)
++    result = evaluate(
++        data_root=args.data_root,
++        output=args.output,
++        split=args.split,
++        checkpoint=args.checkpoint,
++        baseline=args.baseline,
++        historical=args.historical,
++        limit=args.limit,
++        fitting_clips=args.fitting_clips,
++    )
++    print(
++        json.dumps(
++            {
++                "split": args.split,
++                "trajectory_rmse_m": result["metrics"]["trajectory_rmse_m"],
++            }
++        ),
++        flush=True,
++    )
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/tasks/blcs/experiments/issue1044.py b/src/tasks/blcs/experiments/issue1044.py
+new file mode 100644
+index 000000000..4ba0418f0
+--- /dev/null
++++ b/src/tasks/blcs/experiments/issue1044.py
+@@ -0,0 +1,211 @@
++"""Fixed 4,000-update progressive-loss experiment, always launched by the queue."""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import os
++import time
++from pathlib import Path
++from typing import Any
++
++import pytorch_lightning as pl
++import torch
++from hydra import compose, initialize_config_dir
++from omegaconf import DictConfig, OmegaConf
++
++from src.tasks.blcs.training.runner import BLCSTrainingRunner
++
++ARMS = (
++    "position",
++    "reprojection",
++    "velocity",
++    "rollout_position",
++    "rollout_velocity",
++    "parameters",
++)
++
++
++def experiment_config(
++    *,
++    data_root: Path,
++    output: str,
++    arm: str,
++    seed: int,
++    smoke: bool = False,
++    chunked: bool = False,
++    gan: bool = False,
++) -> DictConfig:
++    if arm not in ARMS:
++        raise ValueError(f"Unknown experiment arm: {arm}")
++    with initialize_config_dir(
++        config_dir=str(Path(__file__).resolve().parents[1] / "configs"),
++        version_base="1.3",
++    ):
++        config = compose(
++            config_name="train_chunked" if chunked else "train",
++            overrides=["training=gan_small"] if gan else [],
++        )
++    config.paths.data_root = str(data_root)
++    config.data.scene_dir = "blcs/single_object-physics-v3-cc863cacd-20261007"
++    config.data.seq_len_range = [128, 128]
++    config.data.num_views_range = [3, 6]
++    config.data.batch_size = 2
++    config.data.num_workers = 0 if smoke else 2
++    config.model.predict_velocity = True
++    config.model.physics_head = arm == "parameters"
++    config.run.seed = seed
++    config.run.output_dir = output
++    config.run.test_after_fit = False
++    config.training.weight_decay = 0.01
++    config.training.compile.enabled = False
++    config.training.trainer.accumulate_grad_batches = 1 if smoke else 8
++    config.training.trainer.max_epochs = 200
++    config.training.trainer.check_val_every_n_epoch = 1 if smoke else 5
++    config.training.trainer.enable_progress_bar = False
++    config.training.qualitative_logging.enabled = False
++    config.training.checkpoint.monitor = "val/trajectory_rmse_m"
++    config.training.checkpoint.save_top_k = 1
++    config.training.checkpoint.save_last = True
++    config.training.checkpoint.filename = "blcs-{epoch:03d}-{step:05d}"
++    config.training.early_stopping.enabled = False
++    index = ARMS.index(arm)
++    config.loss.reprojection_weight = 0.1 if index >= 1 else 0.0
++    config.loss.velocity_weight = 0.1 if index >= 2 else 0.0
++    config.loss.rollout_position_weight = 1.0 if index >= 3 else 0.0
++    config.loss.rollout_velocity_weight = 0.1 if index >= 4 else 0.0
++    if arm == "parameters":
++        # B is a separate architecture package. The first five arms isolate A's
++        # loss additions; this arm does not identify individual B auxiliary effects.
++        config.loss.parameters_weight = 0.01
++        config.loss.event_weight = 0.01
++        config.loss.reconstruction_weight = 0.1
++        config.loss.parameter_consistency_weight = 0.1
++    if chunked and smoke:
++        config.data.chunk.scenes_per_chunk = 4
++        config.data.chunk.epochs_per_chunk = 1
++        config.data.chunk.prefetch_chunks = 1
++        config.data.chunk.generation_workers = 2
++        config.data.chunk.chunks_dir = "blcs/i1044/" + output.split("/")[-1] + "-chunks"
++    if smoke:
++        config.training.warmup_steps = 0
++        config.loss.physics_start_step = 0
++        config.loss.physics_warmup_steps = 0
++        if gan:
++            config.training.gan.transition.start_epoch = 0
++            config.training.gan.warmup_epochs = 1
++    return config
++
++
++class FixedUpdateRunner(BLCSTrainingRunner):
++    def __init__(
++        self, *, steps: int, smoke: bool, generator_config: Any = None
++    ) -> None:
++        super().__init__(generator_config=generator_config)
++        self.steps, self.smoke = steps, smoke
++        self.trainer: Any = None
++
++    def build_trainer(
++        self,
++        config: Any,
++        callbacks: list[Any],
++        logger: Any,
++        *,
++        artifact_store: Any = None,
++    ) -> pl.Trainer:
++        trainer = super().build_trainer(
++            config, callbacks, logger, artifact_store=artifact_store
++        )
++        trainer.fit_loop.epoch_loop.max_steps = self.steps
++        if self.smoke:
++            trainer.limit_val_batches = 2
++            trainer.num_sanity_val_steps = 1
++        self.trainer = trainer
++        return trainer
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--arm", choices=ARMS, required=True)
++    parser.add_argument("--seed", type=int, default=42)
++    parser.add_argument("--steps", type=int, default=4000)
++    parser.add_argument("--data-root", type=Path, required=True)
++    parser.add_argument("--output", required=True)
++    parser.add_argument("--smoke", action="store_true")
++    parser.add_argument("--chunked", action="store_true")
++    parser.add_argument("--gan", action="store_true")
++    args = parser.parse_args()
++    if args.steps <= 0:
++        raise ValueError("Optimizer update budget must be positive")
++    if args.gan and not args.smoke:
++        raise ValueError("The fixed comparison protocol disables GAN")
++    if not os.environ.get("TENNIS_RUN_ID"):
++        raise RuntimeError("GPU experiments must run through the shared training queue")
++    torch.set_num_threads(2)
++    config = experiment_config(
++        data_root=args.data_root,
++        output=args.output,
++        arm=args.arm,
++        seed=args.seed,
++        smoke=args.smoke,
++        chunked=args.chunked,
++        gan=args.gan,
++    )
++    from src.tasks.blcs.model_io.training import optional_standard_generator_config
++
++    runner = FixedUpdateRunner(
++        steps=args.steps,
++        smoke=args.smoke,
++        generator_config=optional_standard_generator_config(config),
++    )
++    output = Path(config.paths.output_root) / args.output
++    if output.exists():
++        raise FileExistsError(output)
++    output.mkdir(parents=True)
++    OmegaConf.save(config, output / "experiment-config.yaml", resolve=True)
++    began = time.monotonic()
++    runner.run(config)
++    trainer = runner.trainer
++    if trainer.global_step != args.steps:
++        raise RuntimeError(f"Budget mismatch: {trainer.global_step} != {args.steps}")
++    # Includes the partial final epoch in checkpoint selection without using test.
++    final_metrics = trainer.validate(
++        trainer.lightning_module, datamodule=trainer.datamodule, verbose=False
++    )[0]
++    checkpoint = trainer.checkpoint_callback
++    final_score = float(final_metrics["val/trajectory_rmse_m"])
++    if not torch.isfinite(torch.tensor(final_score)):
++        raise RuntimeError("Final validation trajectory RMSE is undefined/nonfinite")
++    if checkpoint.best_model_score is None or final_score < float(
++        checkpoint.best_model_score
++    ):
++        selected = output / "checkpoints" / "final-selected.ckpt"
++        trainer.save_checkpoint(selected)
++        selected_score = final_score
++    else:
++        selected = Path(checkpoint.best_model_path)
++        selected_score = float(checkpoint.best_model_score)
++    receipt = {
++        "protocol": "issue1044-v1",
++        "arm": args.arm,
++        "seed": args.seed,
++        "optimizer_updates": trainer.global_step,
++        "elapsed_seconds": time.monotonic() - began,
++        "checkpoint": str(selected.resolve()),
++        "checkpoint_sha256": hashlib.sha256(selected.read_bytes()).hexdigest(),
++        "validation_trajectory_rmse_m": selected_score,
++        "selection_used_test": False,
++        "run_id": os.environ["TENNIS_RUN_ID"],
++        "smoke": args.smoke,
++        "chunked": args.chunked,
++        "gan": args.gan,
++    }
++    output.mkdir(parents=True, exist_ok=True)
++    (output / "selection.json").write_text(json.dumps(receipt, indent=2) + "\n")
++    OmegaConf.save(config, output / "experiment-config.yaml", resolve=True)
++    print(json.dumps(receipt), flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/src/tasks/blcs/model_io/adapters.py b/src/tasks/blcs/model_io/adapters.py
+index b94ec4593..9bbcc4412 100644
+--- a/src/tasks/blcs/model_io/adapters.py
++++ b/src/tasks/blcs/model_io/adapters.py
+@@ -38,6 +38,7 @@ from src.tasks.blcs.model_io.contracts import (
+     blcs_reference_metadata_from_batch,
+ )
+ from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
++from src.tasks.blcs.physics.targets import PhysicsTargets
+ 
+ RawBLCSOutput = Mapping[str, Tensor]
+ FloatDtypes = frozenset({torch.float16, torch.float32, torch.float64, torch.bfloat16})
+@@ -169,6 +170,7 @@ class TrajectoryModelIOAdapter(ABC):
+         num_court_tokens: int,
+         max_seq_len: int,
+         predict_velocity: bool,
++        physics_head: bool = False,
+         input_profile: Literal["single", "multiview"],
+         max_num_cameras: int | None,
+         court_keypoint_contract: CourtKeypointContract = (
+@@ -178,6 +180,7 @@ class TrajectoryModelIOAdapter(ABC):
+         self.num_court_tokens = num_court_tokens
+         self.max_seq_len = max_seq_len
+         self.predict_velocity = predict_velocity
++        self.physics_head = physics_head
+         self.input_profile = input_profile
+         self.max_num_cameras = max_num_cameras
+         canonical_contract = resolve_court_keypoint_contract(
+@@ -202,6 +205,8 @@ class TrajectoryModelIOAdapter(ABC):
+         """Validate exact raw keys and decode position/velocity semantics."""
+         result = _raw_output(output)
+         expected = {"position", "velocity"} if self.predict_velocity else {"position"}
++        if self.physics_head:
++            expected |= {"physics_parameters", "event_logits"}
+         if set(result) != expected:
+             raise ModelOutputContractError(
+                 f"BLCS trajectory output keys must be {sorted(expected)}, got {sorted(result)}."
+@@ -230,7 +235,25 @@ class TrajectoryModelIOAdapter(ABC):
+             raise ModelOutputContractError(
+                 "velocity must match position dtype/device and contain finite values."
+             )
+-        return BLCSTrajectoryPrediction(position=position, velocity=velocity)
++        parameters, events = (
++            result.get("physics_parameters"),
++            result.get("event_logits"),
++        )
++        for key, value, size in (
++            ("physics_parameters", parameters, 7),
++            ("event_logits", events, 1),
++        ):
++            if value is not None and (
++                value.shape != (*position.shape[:2], size)
++                or not bool(torch.isfinite(value).all())
++            ):
++                raise ModelOutputContractError(f"Invalid {key} output")
++        return BLCSTrajectoryPrediction(
++            position=position,
++            velocity=velocity,
++            physics_parameters=parameters,
++            event_logits=events,
++        )
+ 
+     def build_training_batch(
+         self, batch: Mapping[str, object]
+@@ -250,12 +273,12 @@ class TrajectoryModelIOAdapter(ABC):
+         loss_mask = self._loss_mask(batch)
+         target_uv = require_tensor(
+             batch,
+-            "ball_uv_target" if "ball_uv_target" in batch else "ball_uv",
++            "ball_uv_target",
+             spec=TensorSpec(dtypes=FloatDtypes),
+         )
+         target_vis = require_tensor(
+             batch,
+-            "ball_vis_target" if "ball_vis_target" in batch else "ball_vis",
++            "ball_vis_target",
+             spec=TensorSpec(dtypes=MaskDtypes),
+         )
+         if self.input_profile == "single":
+@@ -351,6 +374,7 @@ class TrajectoryModelIOAdapter(ABC):
+             camera_cy=cameras["camera_cy"],
+             camera_w=cameras["camera_w"],
+             camera_h=cameras["camera_h"],
++            physics=PhysicsTargets.from_batch(batch, loss_mask),
+             court_reference_provenance=_batch_court_provenance(
+                 batch,
+                 batch_size=batch_size,
+diff --git a/src/tasks/blcs/model_io/contracts.py b/src/tasks/blcs/model_io/contracts.py
+index f22f3dca8..af8af6a6c 100644
+--- a/src/tasks/blcs/model_io/contracts.py
++++ b/src/tasks/blcs/model_io/contracts.py
+@@ -27,6 +27,7 @@ from src.tasks.base.model_io import (
+     extract_track_query_reference_contract_metadata,
+     write_track_query_reference_contract,
+ )
++from src.tasks.blcs.physics.targets import PhysicsTargets
+ 
+ 
+ @dataclass(frozen=True, slots=True)
+@@ -317,6 +318,8 @@ class BLCSTrajectoryPrediction:
+ 
+     position: Tensor
+     velocity: Tensor | None
++    physics_parameters: Tensor | None = None
++    event_logits: Tensor | None = None
+     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] = field(
+         default_factory=tuple
+     )
+@@ -341,6 +344,7 @@ class BLCSTrajectoryTrainingBatch:
+     camera_cy: Tensor
+     camera_w: Tensor
+     camera_h: Tensor
++    physics: PhysicsTargets
+     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] = field(
+         default_factory=tuple
+     )
+@@ -398,6 +402,8 @@ def blcs_trajectory_prediction_to_physical(
+     return BLCSTrajectoryPrediction(
+         position=position,
+         velocity=velocity,
++        physics_parameters=prediction.physics_parameters,
++        event_logits=prediction.event_logits,
+         court_reference_provenance=identity,
+         coordinates_in_metres=True,
+         reference_metadata=prediction.reference_metadata,
+diff --git a/src/tasks/blcs/model_io/factory.py b/src/tasks/blcs/model_io/factory.py
+index 703fdef14..ac0c71412 100644
+--- a/src/tasks/blcs/model_io/factory.py
++++ b/src/tasks/blcs/model_io/factory.py
+@@ -31,6 +31,7 @@ def compose_blcs_model_io(config: object) -> TrajectoryBoundModelIO:
+         num_court_tokens=model_config.num_court_tokens,
+         max_seq_len=model_config.max_seq_len,
+         predict_velocity=model_config.predict_velocity,
++        physics_head=model_config.physics_head,
+         input_profile=model_config.input_profile,
+         max_num_cameras=model_config.max_num_cameras,
+         court_keypoint_contract=contract,
+diff --git a/src/tasks/blcs/models/blcs_multiview_axial_model.py b/src/tasks/blcs/models/blcs_multiview_axial_model.py
+index 12cf055ba..01704786e 100644
+--- a/src/tasks/blcs/models/blcs_multiview_axial_model.py
++++ b/src/tasks/blcs/models/blcs_multiview_axial_model.py
+@@ -8,7 +8,10 @@ from typing import Literal, cast
+ from torch import Tensor, nn
+ 
+ from src.tasks.blcs.configuration import AxialModelConfig
+-from src.tasks.blcs.models.components.heads import build_trajectory_output
++from src.tasks.blcs.models.components.heads import (
++    FlightParameterOutput,
++    build_trajectory_output,
++)
+ from src.tasks.blcs.models.components.padding import (
+     build_axial_padding_masks,
+     mask_trajectory_outputs,
+@@ -183,6 +186,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+         camera_layers_per_stage: Sequence[int],
+         time_layers_per_stage: Sequence[int],
+         time_global_stage_mask: Sequence[bool],
++        physics_head: bool = False,
+     ) -> None:
+         super().__init__()
+         self.hidden_dim = int(hidden_dim)
+@@ -302,6 +306,11 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+             predict_velocity=predict_velocity,
+         )
+ 
++        self.physics_head = (
++            FlightParameterOutput(input_dim=self.hidden_dim, dropout=dropout)
++            if physics_head
++            else None
++        )
+         self._register_token_frequencies()
+ 
+     def _register_token_frequencies(self) -> None:
+@@ -398,6 +407,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+             rope_theta_camera=config.rope_theta_camera,
+             num_layers=config.num_layers,
+             predict_velocity=config.predict_velocity,
++            physics_head=config.physics_head,
+             max_seq_len=config.max_seq_len,
+             max_num_cameras=config.max_num_cameras,
+             invisible_init_std=config.invisible_init_std,
+@@ -429,13 +439,20 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
+             n_cams=n_cams,
+         )
+         x, frame_valid = self._encode_views(
+-            ball_uv, ball_vis, court_kp, court_vis, padding_mask,
+-            camera_freqs, time_freqs,
++            ball_uv,
++            ball_vis,
++            court_kp,
++            court_vis,
++            padding_mask,
++            camera_freqs,
++            time_freqs,
+         )
+         x = x[:, :, 0, :]
+         x = self.final_norm(x)
+ 
+         outputs = cast("dict[str, Tensor]", self.output_head(x))
++        if self.physics_head is not None:
++            outputs.update(self.physics_head(x))
+         return cast(
+             "dict[str, Tensor]",
+             mask_trajectory_outputs(outputs, frame_valid),
+diff --git a/src/tasks/blcs/models/components/heads.py b/src/tasks/blcs/models/components/heads.py
+index b7b67e35b..807a96ade 100644
+--- a/src/tasks/blcs/models/components/heads.py
++++ b/src/tasks/blcs/models/components/heads.py
+@@ -4,11 +4,42 @@ from __future__ import annotations
+ 
+ from typing import TypeAlias
+ 
++import torch
+ from torch import Tensor, nn
+ 
+ from src.utils.models.heads import MLPHead
+ 
+ 
++class FlightParameterOutput(nn.Module):
++    """Minimal optional flight head: drag, wind, effective Magnus and reset logit.
++
++    There is deliberately no independent spin, Magnus coefficient or surface
++    prediction: flight only identifies their effective product.
++    """
++
++    def __init__(self, *, input_dim: int, dropout: float) -> None:
++        super().__init__()
++        self.head = MLPHead(
++            input_dim=input_dim,
++            hidden_dim=input_dim // 2,
++            output_dim=8,
++            num_layers=2,
++            dropout=dropout,
++        )
++
++    def forward(self, features: Tensor) -> dict[str, Tensor]:
++        raw = self.head(features)
++        parameters = torch.cat(
++            (
++                0.1 * torch.sigmoid(raw[..., :1] - 1.4),
++                10.0 * torch.tanh(raw[..., 1:4]),
++                2.0 * torch.tanh(raw[..., 4:7]),
++            ),
++            dim=-1,
++        )
++        return {"physics_parameters": parameters, "event_logits": raw[..., 7:8]}
++
++
+ class PositionTrajectoryOutput(nn.Module):
+     """Decode trajectory features into a fixed position-only mapping."""
+ 
+diff --git a/src/tasks/blcs/physics/__init__.py b/src/tasks/blcs/physics/__init__.py
+new file mode 100644
+index 000000000..6e35e6246
+--- /dev/null
++++ b/src/tasks/blcs/physics/__init__.py
+@@ -0,0 +1 @@
++"""BLCS teacher contracts and event-aware uses of the shared ball physics."""
+diff --git a/src/tasks/blcs/physics/rollout.py b/src/tasks/blcs/physics/rollout.py
+new file mode 100644
+index 000000000..c82540ec3
+--- /dev/null
++++ b/src/tasks/blcs/physics/rollout.py
+@@ -0,0 +1,164 @@
++"""Differentiable short flights and optional learned-parameter reconstruction."""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++
++import torch
++from torch import Tensor
++
++from src.tasks.blcs.physics.targets import PhysicsTargets
++from src.utils.physics.ball.dynamics import BallField
++from src.utils.physics.ball.integrate import integrate_flight
++
++
++@dataclass(frozen=True)
++class RolloutResidual:
++    position: Tensor
++    velocity: Tensor
++    sample: Tensor
++    start: Tensor
++    horizon: Tensor
++    duration_s: Tensor
++    simulation_steps: Tensor
++    possible: int
++
++
++def rollout_residuals(
++    position: Tensor,
++    velocity: Tensor,
++    valid: Tensor,
++    physics: PhysicsTargets,
++    horizons: tuple[int, ...],
++    *,
++    parameters: Tensor | None = None,
++) -> RolloutResidual:
++    """Compare integrated starts with predicted endpoints; neither is detached.
++
++    State is in m and m/s. Optional parameters are per-frame
++    [k_drag, wind_xyz, effective_magnus_xyz], with effective_magnus=k_magnus*spin.
++    Both modes use the shared simulator, never an output-FPS Euler substitute.
++    """
++    p_errors, v_errors, samples, starts, hops, times, steps = [], [], [], [], [], [], []
++    possible = 0
++    for horizon in horizons:
++        support = physics.support(valid, horizon)
++        possible += int(
++            (
++                valid[:, : support.shape[1]]
++                & valid[:, horizon : horizon + support.shape[1]]
++            ).sum()
++        )
++        for b in range(len(position)):
++            index = torch.where(support[b])[0]
++            if not len(index):
++                continue
++            raw = physics.field[b]
++            dt, _, _, stride = physics.clock[b].tolist()
++            if parameters is None:
++                field = BallField(
++                    float(raw[0]),
++                    raw[1].to(position),
++                    raw[2].to(position),
++                    raw[3:].to(position),
++                )
++                spin = physics.spin[b, index].to(position)
++            else:
++                values = parameters[b, index]
++                field = BallField(
++                    float(raw[0]),
++                    values[:, 0],
++                    torch.ones_like(values[:, 0]),
++                    values[:, 1:4],
++                )
++                spin = values[:, 4:7]
++            p, v = integrate_flight(
++                position[b, index],
++                velocity[b, index],
++                spin,
++                field,
++                dt=dt,
++                substeps=int(stride),
++                frames=horizon + 1,
++            )
++            p_errors.append(p[:, -1] - position[b, index + horizon])
++            v_errors.append(v[:, -1] - velocity[b, index + horizon])
++            samples.append(torch.full_like(index, b))
++            starts.append(index)
++            hops.append(torch.full_like(index, horizon))
++            times.append(position.new_full((len(index),), dt * stride * horizon))
++            steps.append(torch.full_like(index, int(stride) * horizon))
++    empty = position.reshape(-1, 3)[:0]
++    empty_index = torch.empty(0, device=position.device, dtype=torch.long)
++    return RolloutResidual(
++        torch.cat(p_errors) if p_errors else empty,
++        torch.cat(v_errors) if v_errors else velocity.reshape(-1, 3)[:0],
++        torch.cat(samples) if samples else empty_index,
++        torch.cat(starts) if starts else empty_index,
++        torch.cat(hops) if hops else empty_index,
++        torch.cat(times) if times else position.new_empty(0),
++        torch.cat(steps) if steps else empty_index,
++        possible,
++    )
++
++
++def target_parameters(physics: PhysicsTargets) -> Tensor:
++    """Small identifiable flight representation; no separate spin/Magnus heads."""
++    b, t = physics.segment.shape
++    field = physics.field.to(physics.spin)
++    return torch.cat(
++        (
++            field[:, None, 1:2].expand(b, t, 1),
++            field[:, None, 3:6].expand(b, t, 3),
++            field[:, None, 2:3] * physics.spin,
++        ),
++        dim=-1,
++    )
++
++
++def reconstruct_segments(
++    position: Tensor,
++    velocity: Tensor,
++    parameters: Tensor,
++    event: Tensor,
++    valid: Tensor,
++    clock: Tensor,
++    *,
++    gravity: float,
++) -> tuple[Tensor, Tensor]:
++    """Reconstruct using reset events and observable clock, without GT physics.
++
++    Callers explicitly supply either predicted events (deployment) or GT segment
++    starts (oracle evaluation). Each segment starts at its direct predicted state.
++    """
++    p_rows, v_rows = [], []
++    for b in range(len(position)):
++        p, v = position[b].clone(), velocity[b].clone()
++        real = torch.where(valid[b])[0]
++        if not len(real):
++            p_rows.append(p)
++            v_rows.append(v)
++            continue
++        boundaries = torch.where(event[b].bool() & valid[b])[0].tolist()
++        boundaries = sorted(set([int(real[0]), *boundaries, int(real[-1]) + 1]))
++        dt, _, _, stride = clock[b].tolist()
++        for start, end in zip(boundaries[:-1], boundaries[1:], strict=True):
++            if not bool(valid[b, start:end].all()):
++                raise ValueError("Segment reconstruction cannot cross padding gaps")
++            values = parameters[b, start]
++            field = BallField(
++                gravity, values[0], torch.ones_like(values[0]), values[1:4]
++            )
++            out_p, out_v = integrate_flight(
++                position[b, start],
++                velocity[b, start],
++                values[4:7],
++                field,
++                dt=dt,
++                substeps=int(stride),
++                frames=end - start,
++            )
++            p[start:end], v[start:end] = out_p, out_v
++        p_rows.append(p)
++        v_rows.append(v)
++    return torch.stack(p_rows), torch.stack(v_rows)
+diff --git a/src/tasks/blcs/physics/targets.py b/src/tasks/blcs/physics/targets.py
+new file mode 100644
+index 000000000..7b999a82e
+--- /dev/null
++++ b/src/tasks/blcs/physics/targets.py
+@@ -0,0 +1,175 @@
++"""Recorded physics teachers; none of these fields belong to the model call."""
++
++from __future__ import annotations
++
++from collections.abc import Mapping, Sequence
++from dataclasses import dataclass
++from typing import Any
++
++import numpy as np
++import torch
++from torch import Tensor
++
++from src.utils.physics.ball.record import BallPhysicsRecord
++from src.utils.physics.ball.surfaces import SURFACE_NAMES
++from src.utils.schema.court_normalization import denormalize_court_velocity
++
++TIME_FIELDS = ("physics_spin", "physics_segment", "physics_event", "frame_index")
++STATIC_FIELDS = (
++    "physics_field",
++    "physics_clock",
++    "physics_surface",
++    "clip_frames",
++    "bounce_count",
++)
++
++
++def record_teachers(
++    arrays: Mapping[str, Any], *, start: int, end: int, full_length: int
++) -> dict[str, Tensor]:
++    """Validate the complete record before cropping derived frame teachers."""
++    record = BallPhysicsRecord.from_arrays(dict(arrays))
++    if record.frames != full_length or not 0 <= start < end <= record.frames:
++        raise ValueError("BLCS physics record and trajectory/crop lengths disagree")
++    if not np.allclose(
++        denormalize_court_velocity(np.asarray(arrays["ball_vel_norm"])),
++        record.velocity,
++        rtol=1e-6,
++        atol=1e-5,
++    ):
++        raise ValueError(
++            "BLCS velocity target disagrees with the saved simulator velocity"
++        )
++    event = record.event_mask()
++    return {
++        "physics_spin": torch.from_numpy(record.frame_spin()[start:end].copy()),
++        "physics_segment": torch.from_numpy(record.frame_segment()[start:end].copy()),
++        "physics_event": torch.from_numpy(event[start:end].astype(np.int64)),
++        "frame_index": torch.arange(start, end),
++        # Double preserves the recorded dt and Python gravity exactly. Force
++        # coefficients are cast to state dtype only when invoking the simulator.
++        "physics_field": torch.tensor(
++            [record.gravity, record.k_drag, record.k_magnus, *record.wind],
++            dtype=torch.float64,
++        ),
++        "physics_clock": torch.tensor(
++            [record.dt, record.sim_fps, record.output_fps, record.stride],
++            dtype=torch.float64,
++        ),
++        "physics_surface": torch.tensor(SURFACE_NAMES.index(record.surface)),
++        "clip_frames": torch.tensor(full_length),
++        "bounce_count": torch.tensor(int(((event & 2) != 0).sum())),
++    }
++
++
++def collate_teachers(
++    samples: Sequence[Mapping[str, Any]], length: int
++) -> dict[str, Tensor]:
++    """Pad frame teachers independently of camera visibility."""
++    result = {}
++    for key in TIME_FIELDS:
++        rows = []
++        for sample in samples:
++            value = sample[key]
++            fill = -1 if key in {"physics_segment", "frame_index"} else 0
++            padded = value.new_full((length, *value.shape[1:]), fill)
++            padded[: len(value)] = value
++            rows.append(padded)
++        result[key] = torch.stack(rows)
++    for key in STATIC_FIELDS:
++        result[key] = torch.stack([sample[key] for sample in samples])
++    return result
++
++
++@dataclass(frozen=True)
++class PhysicsTargets:
++    spin: Tensor
++    segment: Tensor
++    event: Tensor
++    field: Tensor
++    clock: Tensor
++    surface: Tensor
++    frame_index: Tensor
++    clip_frames: Tensor
++    bounce_count: Tensor
++
++    @classmethod
++    def from_batch(cls, batch: Mapping[str, Any], valid: Tensor) -> PhysicsTargets:
++        b, t = valid.shape
++        shapes = {
++            "physics_spin": (b, t, 3),
++            "physics_segment": (b, t),
++            "physics_event": (b, t),
++            "physics_field": (b, 6),
++            "physics_clock": (b, 4),
++            "physics_surface": (b,),
++            "frame_index": (b, t),
++            "clip_frames": (b,),
++            "bounce_count": (b,),
++        }
++        for key, shape in shapes.items():
++            value = batch[key]
++            if not isinstance(value, Tensor) or value.shape != shape:
++                raise ValueError(f"{key} must be a tensor of shape {shape}")
++            if value.device != valid.device or not bool(torch.isfinite(value).all()):
++                raise ValueError(f"{key} must be finite and on the batch device")
++        for key in (
++            "physics_segment",
++            "physics_event",
++            "physics_surface",
++            "frame_index",
++            "clip_frames",
++            "bounce_count",
++        ):
++            if batch[key].dtype != torch.int64:
++                raise ValueError(f"{key} must be int64")
++        clock, field = batch["physics_clock"], batch["physics_field"]
++        if bool((clock <= 0).any()) or not bool(
++            (clock[:, 1:] == clock[:, 1:].round()).all()
++        ):
++            raise ValueError(
++                "Physics clock requires positive dt and integer FPS/substeps"
++            )
++        if not bool(
++            (clock[:, 1] == clock[:, 2] * clock[:, 3]).all()
++        ) or not torch.allclose(
++            clock[:, 0] * clock[:, 1],
++            torch.ones_like(clock[:, 0]),
++            rtol=1e-5,
++            atol=0,
++        ):
++            raise ValueError("Inconsistent recorded simulation clock")
++        if bool((field[:, 0] <= 0).any()) or bool((field[:, 1:3] < 0).any()):
++            raise ValueError("Invalid physics field")
++        if bool((batch["physics_segment"][valid] < 0).any()):
++            raise ValueError("Valid frames require a flight segment")
++        if bool((batch["physics_segment"][~valid] != -1).any()):
++            raise ValueError("Padded physics segments must be -1")
++        return cls(
++            spin=batch["physics_spin"],
++            segment=batch["physics_segment"],
++            event=batch["physics_event"],
++            field=field,
++            clock=clock,
++            surface=batch["physics_surface"],
++            frame_index=batch["frame_index"],
++            clip_frames=batch["clip_frames"],
++            bounce_count=batch["bounce_count"],
++        )
++
++    def support(self, valid: Tensor, horizon: int) -> Tensor:
++        """Every point in the closed interval must be real and in one flight."""
++        if horizon < 1:
++            raise ValueError("Rollout horizons must be positive")
++        width = max(valid.shape[1] - horizon, 0)
++        support = valid[:, :width].clone()
++        for offset in range(1, horizon + 1):
++            support &= valid[:, offset : offset + width]
++            support &= (
++                self.segment[:, :width] == self.segment[:, offset : offset + width]
++            )
++        return support
++
++    def frame_dt(self) -> Tensor:
++        """Actual output interval, including the generator's rounded sim dt."""
++        return self.clock[:, 0] * self.clock[:, 3]
+diff --git a/src/tasks/blcs/training/lightning_module.py b/src/tasks/blcs/training/lightning_module.py
+index 7753d6ad4..752eb170e 100644
+--- a/src/tasks/blcs/training/lightning_module.py
++++ b/src/tasks/blcs/training/lightning_module.py
+@@ -2,6 +2,8 @@
+ 
+ from __future__ import annotations
+ 
++import json
++import math
+ from collections.abc import Mapping
+ from dataclasses import replace
+ from pathlib import Path
+@@ -35,7 +37,7 @@ from src.tasks.blcs.model_io import (
+     blcs_reference_metadata_from_batch,
+ )
+ from src.tasks.blcs.models import build_blcs_discriminator
+-from src.tasks.blcs.training.losses import BLCSLoss
++from src.tasks.blcs.training.losses import PHYSICAL_TERMS, BLCSLoss
+ from src.tasks.blcs.training.metrics import BLCSMetrics
+ from src.utils.schema.court_normalization import (
+     add_court_coordinate_normalization,
+@@ -47,13 +49,22 @@ if TYPE_CHECKING:
+ 
+ 
+ BLCS_TRAJECTORY_METRIC_CONTRACT = uniform_metric_logging_contract(
+-    "BLCS trajectory",
++    "BLCS physics trajectory v1",
+     headline_keys=(
+-        "position_error_m",
+-        "position_accuracy_0.3m",
+-        "endpoint_error_m",
++        "trajectory_rmse_m",
++        "trajectory_mean_m",
++        "trajectory_p95_m",
++        "velocity_head_rmse_mps",
++        "position_difference_velocity_rmse_mps",
++        "position_difference_acceleration_rmse_mps2",
++        "rollout_position_rmse_m",
++        "rollout_velocity_rmse_mps",
++        "reprojection_rmse_px",
++        "below_ground_rate",
++        "reprojection_evaluable_rate",
++        "clip_trajectory_rmse_mean_m",
+     ),
+-    progress_bar_keys=("position_error_m",),
++    progress_bar_keys=("trajectory_rmse_m",),
+ )
+ 
+ 
+@@ -63,6 +74,10 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+     This module supports both single-view and multiview BLCS training.
+     """
+ 
++    train_metrics: BLCSMetrics
++    val_metrics: BLCSMetrics
++    test_metrics: BLCSMetrics
++
+     metric_logging_contract = BLCS_TRAJECTORY_METRIC_CONTRACT
+ 
+     def __init__(
+@@ -88,25 +103,8 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+         train_cfg = self.config.training
+         loss_cfg = self.config.loss
+         self.max_epochs = int(train_cfg.trainer.max_epochs)
+-        # The gravity prior needs an absolute physical scale: derive the
+-        # output-frame dt and g from the run config (rally / physics) rather than
+-        # hard-coding, so a change to output_fps or gravity flows through.
+-        rally_cfg = self.config.rally
+-        physics_cfg = self.config.physics
+-        output_fps = float(rally_cfg.output_fps)
+-        self.loss_fn = BLCSLoss(
+-            position_weight=loss_cfg.position_weight,
+-            reprojection_weight=loss_cfg.reprojection_weight,
+-            position_axis_weights=loss_cfg.position_axis_weights,
+-            smoothness_weight=loss_cfg.smoothness_weight,
+-            gravity_weight=loss_cfg.gravity_weight,
+-            smoothness_order=int(loss_cfg.smoothness_order),
+-            smoothness_beta=float(loss_cfg.smoothness_beta),
+-            smoothness_axis_weights=loss_cfg.smoothness_axis_weights,
+-            gravity_beta=float(loss_cfg.gravity_beta),
+-            gravity=float(physics_cfg.gravity),
+-            frame_dt=1.0 / output_fps,
+-        )
++        self.loss_fn = BLCSLoss(loss_cfg)
++        self._last_gradient_diagnostic_step = -1
+         gan_enabled = bool(train_cfg.gan.enabled)
+         self._initialize_manual_gan(
+             discriminator=build_blcs_discriminator(self.config)
+@@ -115,21 +113,17 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+         )
+ 
+         metrics_cfg = self.config.metrics
+-        self.train_metrics = BLCSMetrics(
+-            position_threshold_m=metrics_cfg.position_threshold_m,
+-            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+-            court_keypoint_contract=self.court_keypoint_contract,
+-        )
+-        self.val_metrics = BLCSMetrics(
+-            position_threshold_m=metrics_cfg.position_threshold_m,
+-            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+-            court_keypoint_contract=self.court_keypoint_contract,
+-        )
+-        self.test_metrics = BLCSMetrics(
+-            position_threshold_m=metrics_cfg.position_threshold_m,
+-            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
+-            court_keypoint_contract=self.court_keypoint_contract,
+-        )
++        for stage in ("train", "val", "test"):
++            setattr(
++                self,
++                f"{stage}_metrics",
++                BLCSMetrics(
++                    rollout_horizons=tuple(metrics_cfg.rollout_horizons)
++                    if stage != "train"
++                    else (),
++                    event_radius_frames=int(metrics_cfg.event_radius_frames),
++                ),
++            )
+ 
+     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+         """Persist the exact normalization and CourtKP contracts."""
+@@ -174,31 +168,19 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+         outputs = self.model_io.decode_output(self.model_io.execute_call(prepared.call))
+         outputs = replace(outputs, reference_metadata=reference_metadata)
+ 
+-        losses = self.loss_fn(
+-            pred_position=outputs.position,
+-            target_position=prepared.position,
+-            mask=prepared.loss_mask,
+-            target_uv=prepared.target_uv,
+-            target_vis=prepared.target_vis,
+-            camera_R=prepared.camera_R,
+-            camera_C=prepared.camera_C,
+-            camera_f=prepared.camera_f,
+-            camera_cx=prepared.camera_cx,
+-            camera_cy=prepared.camera_cy,
+-            camera_w=prepared.camera_w,
+-            camera_h=prepared.camera_h,
+-        )
+-
++        losses = self.loss_fn(outputs, prepared, step=int(self.global_step))
++        if (
++            stage == "train"
++            and self.global_step % 200 == 0
++            and self._last_gradient_diagnostic_step != self.global_step
++        ):
++            self._log_output_gradients(losses, outputs)
++            self._last_gradient_diagnostic_step = int(self.global_step)
+         metrics = self._metric_tracker_for_stage(stage).update(
+-            outputs.position,
+-            prepared.position,
+-            prepared.loss_mask,
+-            prepared.court_reference_provenance,
+-            reference_view_index=(
+-                reference_metadata.reference_view_index
+-                if reference_metadata is not None
+-                else None
+-            ),
++            outputs,
++            prepared,
++            observed=cast(Tensor, batch["ball_vis"]),
++            scene_ids=cast("tuple[str, ...]", batch["scene_id"]),
+         )
+ 
+         return {
+@@ -210,11 +192,56 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+             },
+             "outputs": outputs,
+             "mask": prepared.loss_mask,
++            "prepared": prepared,
+             "gan_fake": outputs.position,
+             "gan_real": prepared.position,
+             "gan_padding_mask": ~prepared.loss_mask,
+         }
+ 
++    def _log_output_gradients(
++        self, losses: dict[str, Tensor], outputs: BLCSTrajectoryPrediction
++    ) -> None:
++        """Sample raw and weighted dL/d(normalized output), without changing grads."""
++        tensors = {
++            key: value
++            for key, value in {
++                "position": outputs.position,
++                "velocity": outputs.velocity,
++                "parameters": outputs.physics_parameters,
++                "events": outputs.event_logits,
++            }.items()
++            if value is not None and value.requires_grad
++        }
++        for term, weight in self.loss_fn.weights.items():
++            if not weight or not tensors:
++                continue
++            grads = torch.autograd.grad(
++                losses[term],
++                tuple(tensors.values()),
++                retain_graph=True,
++                allow_unused=True,
++            )
++            factor = (
++                self.loss_fn.physics_factor(int(self.global_step))
++                if term in PHYSICAL_TERMS
++                else 1.0
++            )
++            for name, gradient in zip(tensors, grads, strict=True):
++                norm = (
++                    outputs.position.new_zeros(())
++                    if gradient is None
++                    else gradient.detach().float().norm()
++                )
++                self.log(
++                    f"gradient/{term}/{name}_raw_l2", norm, on_step=True, on_epoch=False
++                )
++                self.log(
++                    f"gradient/{term}/{name}_weighted_l2",
++                    norm * weight * factor,
++                    on_step=True,
++                    on_epoch=False,
++                )
++
+     def test_prediction_payload(
+         self, batch: Mapping[str, object], result: dict[str, Any]
+     ) -> dict[str, Any]:
+@@ -224,10 +251,76 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+         payload: dict[str, Any] = {
+             "pred_position": outputs.position,
+             "target_position": target.position,
++            "target_velocity": target.velocity,
++            "position_3d": target.position,
++            "velocity_3d": target.velocity,
++            "mask": target.loss_mask,
++            "physics_spin": target.physics.spin,
++            "physics_segment": target.physics.segment,
++            "physics_event": target.physics.event,
++            "physics_field": target.physics.field,
++            "physics_clock": target.physics.clock,
++            "physics_surface": target.physics.surface,
++            "frame_index": target.physics.frame_index,
++            "clip_frames": target.physics.clip_frames,
++            "bounce_count": target.physics.bounce_count,
++        }
++        if outputs.velocity is not None:
++            payload["pred_velocity"] = outputs.velocity
++        if outputs.physics_parameters is not None:
++            payload["physics_parameters"] = outputs.physics_parameters
++            payload["event_logits"] = outputs.event_logits
++        # Fixed artifact dimensions make padding independent of batch grouping.
++        time_keys = {
++            "pred_position",
++            "target_position",
++            "target_velocity",
++            "position_3d",
++            "velocity_3d",
++            "mask",
++            "physics_spin",
++            "physics_segment",
++            "physics_event",
++            "frame_index",
++            "pred_velocity",
++            "physics_parameters",
++            "event_logits",
+         }
+-        mask = result.get("mask")
+-        if mask is not None:
+-            payload["mask"] = mask
++        width = int(self.config.data.seq_len_range[1])
++        for key in time_keys & payload.keys():
++            value = payload[key]
++            fill = -1 if key in {"physics_segment", "frame_index"} else 0
++            padded = value.new_full((value.shape[0], width, *value.shape[2:]), fill)
++            padded[:, : value.shape[1]] = value
++            payload[key] = padded
++        for key in (
++            "ball_uv",
++            "ball_vis",
++            "ball_uv_target",
++            "ball_vis_target",
++            "court_kp",
++            "court_vis",
++            "padding_mask",
++            "camera_R",
++            "camera_C",
++            "camera_f",
++            "camera_cx",
++            "camera_cy",
++            "camera_w",
++            "camera_h",
++        ):
++            value = cast(Tensor, batch[key])
++            shape = [
++                value.shape[0],
++                int(self.config.model.max_num_cameras),
++                *value.shape[2:],
++            ]
++            if key.startswith(("ball_", "court_")) or key == "padding_mask":
++                shape[2] = width
++            fill = 1 if key in {"padding_mask", "camera_w", "camera_h"} else 0
++            padded = value.new_full(shape, fill)
++            padded[tuple(slice(0, n) for n in value.shape)] = value
++            payload[key] = padded
+         if outputs.reference_metadata is not None:
+             payload.update(
+                 outputs.reference_metadata.prediction_payload(
+@@ -236,6 +329,32 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+             )
+         return payload
+ 
++    def save_test_predictions(
++        self,
++        metrics: dict[str, Any] | None = None,
++        diagnostic_metrics: dict[str, Any] | None = None,
++    ) -> Path | None:
++        def finite(values: dict[str, Any] | None) -> dict[str, Any] | None:
++            return (
++                None
++                if values is None
++                else {
++                    key: value if math.isfinite(float(value)) else None
++                    for key, value in values.items()
++                }
++            )
++
++        saved = super().save_test_predictions(
++            finite(metrics), finite(diagnostic_metrics)
++        )
++        if saved is not None:
++            report = (
++                json.dumps(self.test_metrics.report(), indent=2, allow_nan=False) + "\n"
++            )
++            for directory in {saved.parent, self._run_predictions_dir()}:
++                (directory / "evaluation.json").write_text(report)
++        return cast("Path | None", saved)
++
+     def _log_stage_metrics(
+         self, stage: str, loss: Tensor, metrics: dict[str, Any]
+     ) -> None:
+@@ -247,6 +366,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
+             on_epoch=True,
+             prog_bar=stage != "test",
+         )
++        for name, value in metrics.items():
++            if name.startswith("loss_"):
++                self.log(f"{stage}/{name}", value, on_step=False, on_epoch=True)
+ 
+     def _metric_tracker_for_stage(self, stage: str) -> BLCSMetrics:
+         if stage == "train":
+diff --git a/src/tasks/blcs/training/losses.py b/src/tasks/blcs/training/losses.py
+index 37731cb28..c24b124fa 100644
+--- a/src/tasks/blcs/training/losses.py
++++ b/src/tasks/blcs/training/losses.py
+@@ -1,304 +1,215 @@
+-"""Loss functions for BLCS training."""
++"""BLCS supervision in explicit physical scales and recorded-clock flight losses."""
+ 
+ from __future__ import annotations
+ 
+-from collections.abc import Sequence
++from collections.abc import Mapping
++from typing import Any
+ 
+ import torch
+-import torch.nn as nn
+-from torch import Tensor
++from torch import Tensor, nn
+ 
+-from src.utils.geometry.court_pose import court_position_to_world_translation
+-from src.utils.losses.temporal import (
+-    BallisticGravityPenalty,
+-    TemporalSmoothnessPenalty,
+-    ballistic_second_difference,
++from src.tasks.blcs.model_io.contracts import (
++    BLCSTrajectoryPrediction,
++    BLCSTrajectoryTrainingBatch,
+ )
++from src.tasks.blcs.physics.rollout import rollout_residuals, target_parameters
++from src.utils.geometry.court_pose import court_position_to_world_translation
+ from src.utils.projection.differentiable_projection import (
+     DifferentiablePinholeProjection,
+ )
+-from src.utils.schema.court import COURT_COORD_SCALE_Z
+-
+-
+-def _expanded_mask_mean(values: Tensor, expanded_mask: Tensor) -> Tensor:
+-    """Reduce values with a same-shape mask using the BLCS epsilon contract."""
+-    weights = expanded_mask.to(dtype=values.dtype)
+-    return (values * weights).sum() / (weights.sum() + 1e-8)
+-
+-
+-def trajectory_position_loss(
+-    pred: Tensor,
+-    target: Tensor,
+-    mask: Tensor,
+-    axis_weights: Tensor,
+-) -> Tensor:
+-    """Compute position loss for trajectory prediction.
+-
+-    Uses Smooth L1 loss which is less sensitive to outliers.
+-
+-    Args:
+-        pred: Predicted positions, shape (B, T, 3).
+-        target: Target positions, shape (B, T, 3).
+-        mask: Visibility mask, shape (B, T). 1 = valid, 0 = ignore.
+-        axis_weights: Prevalidated per-axis weights, shape (3,).
+-
+-    Returns:
+-        Tensor: Position loss.
+-
+-    """
+-    loss = nn.functional.smooth_l1_loss(pred, target, reduction="none")
+-    loss = loss * axis_weights.to(device=loss.device, dtype=loss.dtype).view(1, 1, 3)
+-    expanded_mask = mask.unsqueeze(-1).expand_as(loss)
+-    return _expanded_mask_mean(loss, expanded_mask)
+-
+-
+-# ---------------------------------------------------------------------------
+-# Reprojection losses (2D supervision)
+-# ---------------------------------------------------------------------------
+-
++from src.utils.schema.court_normalization import (
++    denormalize_court_position,
++    denormalize_court_velocity,
++)
+ 
+-def reprojection_loss(
+-    pred_position: Tensor,
+-    target_uv: Tensor,
+-    target_vis: Tensor,
+-    camera_R: Tensor,
+-    camera_C: Tensor,
+-    camera_f: Tensor,
+-    camera_cx: Tensor,
+-    camera_cy: Tensor,
+-    camera_w: Tensor,
+-    camera_h: Tensor,
+-    projector: DifferentiablePinholeProjection,
+-    mask: Tensor,
+-) -> Tensor:
+-    """Compute multi-view reprojection loss.
++LOSS_TERMS = (
++    "position",
++    "reprojection",
++    "velocity",
++    "rollout_position",
++    "rollout_velocity",
++    "parameters",
++    "event",
++    "reconstruction",
++    "parameter_consistency",
++)
++PHYSICAL_TERMS = frozenset(LOSS_TERMS[3:])
+ 
+-    Projects predicted 3D positions through each camera and compares
+-    with observed 2D ball UV coordinates.
+ 
+-    Args:
+-        pred_position: Predicted 3D in normalised court coords, ``(B, T, 3)``.
+-        target_uv: Ground truth ball UV per camera, ``(B, N, T, 2)``.
+-        target_vis: Ball visibility per camera, ``(B, N, T)``.
+-        camera_R .. camera_h: Camera parameters, ``(B, N, ...)``.
+-        projector: Differentiable projection module.
+-        mask: Sequence-level padding mask, ``(B, T)``.
++def robust_mean(error: Tensor, *, scale: float, beta: float) -> Tensor:
++    """Dimensionless Smooth L1: error/scale and transition beta/scale.
+ 
+-    Returns:
+-        Scalar reprojection loss.
++    An empty training population contributes differentiable zero. Metrics must
++    instead report count=0 and undefined, never interpret this as zero error.
+     """
+-    pred_uv, in_front = projector(
+-        world_points=court_position_to_world_translation(pred_position),
+-        camera_R=camera_R,
+-        camera_C=camera_C,
+-        camera_f=camera_f,
+-        camera_cx=camera_cx,
+-        camera_cy=camera_cy,
+-        camera_w=camera_w,
+-        camera_h=camera_h,
+-    )  # pred_uv: (B, N, T, 2),  in_front: (B, N, T)
+-
+-    # Effective mask: visible AND in front of camera AND within sequence
+-    effective_mask = (target_vis > 0).float() * in_front.float()  # (B, N, T)
+-    effective_mask = effective_mask * mask.unsqueeze(1)  # broadcast (B,1,T)
+-
+-    loss = nn.functional.smooth_l1_loss(
+-        pred_uv, target_uv, reduction="none"
+-    )  # (B, N, T, 2)
+-    expanded_mask = effective_mask.unsqueeze(-1).expand_as(loss)
+-    return _expanded_mask_mean(loss, expanded_mask)
++    if not error.numel():
++        return error.sum()
++    return nn.functional.smooth_l1_loss(
++        error / scale, torch.zeros_like(error), beta=beta / scale
++    )
++
++
++def projection_errors(
++    position_norm: Tensor,
++    target: BLCSTrajectoryTrainingBatch,
++) -> tuple[Tensor, Tensor, Tensor, Tensor]:
++    """Normalized-image and pixel residuals, supported views and all clean views."""
++    uv, front = DifferentiablePinholeProjection()(
++        world_points=court_position_to_world_translation(position_norm.float()),
++        camera_R=target.camera_R,
++        camera_C=target.camera_C,
++        camera_f=target.camera_f,
++        camera_cx=target.camera_cx,
++        camera_cy=target.camera_cy,
++        camera_w=target.camera_w,
++        camera_h=target.camera_h,
++    )
++    eligible = target.target_vis.bool() & target.loss_mask[:, None]
++    supported = eligible & front.bool()
++    error = uv - target.target_uv
++    size = torch.stack((target.camera_w, target.camera_h), dim=-1).unsqueeze(2)
++    return error, error * size, supported, eligible
+ 
+ 
+ class BLCSLoss(nn.Module):
+-    """Combined loss for BLCS training.
+-
+-    Combines position and reprojection losses with configurable weights.
+-    Optional physics priors (:mod:`src.utils.losses.temporal`) add the temporal
+-    constraint that the supervised position loss leaves unconstrained (predicted
+-    trajectories are otherwise 20-70x noisier in acceleration than ground truth):
+-
+-    - ``smoothness_weight`` penalizes jerk (piecewise-constant acceleration),
+-      killing the high-frequency jitter without biasing gravity/drag.
+-    - ``gravity_weight`` pins the vertical curvature to ``-g``, which coupled with
+-      the reprojection constraint fixes the ambiguous monocular depth.
+-
+-    Set ``position_weight=0`` to train purely from 2D supervision.
+-    """
+-
+-    position_axis_weights: Tensor
+-
+-    def __init__(
+-        self,
+-        position_weight: float,
+-        reprojection_weight: float,
+-        position_axis_weights: Sequence[float] | None,
+-        *,
+-        smoothness_weight: float,
+-        gravity_weight: float,
+-        smoothness_order: int,
+-        smoothness_beta: float,
+-        smoothness_axis_weights: Sequence[float] | None,
+-        gravity_beta: float,
+-        gravity: float,
+-        frame_dt: float,
+-        height_scale: float = COURT_COORD_SCALE_Z,
+-    ) -> None:
+-        """Initialize the loss module.
+-
+-        Args:
+-            position_weight: Weight for 3D position loss.
+-            reprojection_weight: Weight for multi-view reprojection loss.
+-            position_axis_weights: Optional per-axis weights for 3D position loss.
+-            smoothness_weight: Weight for the jerk smoothness prior (0 = off).
+-            gravity_weight: Weight for the ballistic vertical-curvature prior
+-                (0 = off). Only meaningful for the ball (height obeys ``-g``).
+-            smoothness_order: Finite-difference order for the smoothness prior
+-                (3 = jerk).
+-            smoothness_beta: Smooth-L1 transition for the smoothness prior.
+-            smoothness_axis_weights: Optional per-axis ``(x, y, z)`` weights for
+-                the jerk smoothness prior. ``None`` = uniform. Down-weighting the
+-                height axis (e.g. ``[1, 1, 0]``) lets the gravity term own the
+-                vertical curvature instead of the jerk term flattening the
+-                ballistic arc; down-weighting an axis with legitimate sharp
+-                motion avoids smoothing away real direction changes.
+-            gravity_beta: Smooth-L1 transition for the gravity prior.
+-            gravity: Gravitational acceleration (m/s**2).
+-            frame_dt: Seconds between output frames.
+-            height_scale: Normalization scale of the height axis (metres).
++    """Standard A objective plus an explicit optional parameter-head experiment."""
+ 
+-        """
++    def __init__(self, config: Mapping[str, Any]) -> None:
+         super().__init__()
+-        self.position_weight = position_weight
+-        self.reprojection_weight = reprojection_weight
+-        self.smoothness_weight = smoothness_weight
+-        self.gravity_weight = gravity_weight
+-        self.position_enabled = float(position_weight > 0.0)
+-        self.reprojection_enabled = float(reprojection_weight > 0.0)
+-        self.smoothness_enabled = float(smoothness_weight > 0.0)
+-        self.gravity_enabled = float(gravity_weight > 0.0)
+-        if smoothness_axis_weights is None:
+-            resolved_smoothness_axis_weights = (1.0, 1.0, 1.0)
+-        else:
+-            weights = tuple(float(weight) for weight in smoothness_axis_weights)
+-            if len(weights) != 3:
+-                raise ValueError(
+-                    "smoothness_axis_weights must contain exactly 3 values "
+-                    f"for (x, y, z), got {smoothness_axis_weights}."
+-                )
+-            if any(weight < 0 for weight in weights):
+-                raise ValueError(
+-                    "smoothness_axis_weights must be non-negative, "
+-                    f"got {smoothness_axis_weights}."
+-                )
+-            resolved_smoothness_axis_weights = weights
+-        self.temporal_smoothness = TemporalSmoothnessPenalty(
+-            order=smoothness_order,
+-            beta=smoothness_beta,
+-            axis_weights=resolved_smoothness_axis_weights,
++        self.config = dict(config)
++        self.weights = {key: float(config[f"{key}_weight"]) for key in LOSS_TERMS}
++        self.horizons = tuple(int(value) for value in config["rollout_horizons"])
++
++    def physics_factor(self, step: int) -> float:
++        start = int(self.config["physics_start_step"])
++        warmup = int(self.config["physics_warmup_steps"])
++        return (
++            min(1.0, max(0.0, (step - start) / max(warmup, 1)))
++            if warmup
++            else float(step >= start)
+         )
+-        self.gravity_penalty = BallisticGravityPenalty(
+-            target_second_difference=ballistic_second_difference(
+-                gravity=gravity,
+-                dt=frame_dt,
+-                height_scale=height_scale,
+-            ),
+-            beta=gravity_beta,
+-        )
+-        axis_weights: tuple[float, ...]
+-        if position_axis_weights is None:
+-            axis_weights = (1.0, 1.0, 1.0)
+-        else:
+-            if len(position_axis_weights) != 3:
+-                raise ValueError(
+-                    "position_axis_weights must contain exactly 3 values "
+-                    f"for (x, y, z), got {position_axis_weights}."
+-                )
+-            axis_weights = tuple(float(weight) for weight in position_axis_weights)
+-            if any(weight < 0 for weight in axis_weights):
+-                raise ValueError(
+-                    "position_axis_weights must be non-negative, "
+-                    f"got {position_axis_weights}."
+-                )
+-        self.register_buffer(
+-            "position_axis_weights",
+-            torch.tensor(axis_weights, dtype=torch.float32),
+-            persistent=False,
+-        )
+-
+-        self.projector = DifferentiablePinholeProjection()
+ 
+     def forward(
+         self,
+-        pred_position: Tensor,
+-        target_position: Tensor,
+-        mask: Tensor,
++        prediction: BLCSTrajectoryPrediction,
++        target: BLCSTrajectoryTrainingBatch,
+         *,
+-        target_uv: Tensor,
+-        target_vis: Tensor,
+-        camera_R: Tensor,
+-        camera_C: Tensor,
+-        camera_f: Tensor,
+-        camera_cx: Tensor,
+-        camera_cy: Tensor,
+-        camera_w: Tensor,
+-        camera_h: Tensor,
++        step: int = 0,
+     ) -> dict[str, Tensor]:
+-        """Compute combined loss.
+-
+-        Args:
+-            pred_position: Predicted positions, shape (B, T, 3).
+-            target_position: Target 3D positions, shape (B, T, 3).
+-                Required when ``position_weight > 0``.
+-            mask: Visibility mask, shape (B, T).
+-            target_uv: GT ball UV per camera, ``(B, N, T, 2)``.
+-            target_vis: Ball visibility per camera, ``(B, N, T)``.
+-            camera_R .. camera_h: Camera parameters for reprojection.
+-
+-        Returns:
+-            dict with keys ``'total'``, ``'position'``, ``'reprojection'``.
+-
+-        """
+-        pos_loss = self.position_enabled * trajectory_position_loss(
+-            pred_position,
+-            target_position,
+-            mask,
+-            axis_weights=self.position_axis_weights,
+-        )
+-        reproj_loss = self.reprojection_enabled * reprojection_loss(
+-            pred_position=pred_position,
+-            target_uv=target_uv,
+-            target_vis=target_vis,
+-            camera_R=camera_R,
+-            camera_C=camera_C,
+-            camera_f=camera_f,
+-            camera_cx=camera_cx,
+-            camera_cy=camera_cy,
+-            camera_w=camera_w,
+-            camera_h=camera_h,
+-            projector=self.projector,
+-            mask=mask,
+-        )
+-        smooth_loss = self.smoothness_enabled * self.temporal_smoothness(
+-            pred_position,
+-            mask,
++        position = denormalize_court_position(prediction.position.float())
++        truth = denormalize_court_position(target.position.float())
++        valid = target.loss_mask
++        zero = position.sum() * 0
++        losses = {key: zero for key in LOSS_TERMS}
++        c = self.config
++        pos_args = {
++            "scale": float(c["position_scale_m"]),
++            "beta": float(c["position_beta_m"]),
++        }
++        vel_args = {
++            "scale": float(c["velocity_scale_mps"]),
++            "beta": float(c["velocity_beta_mps"]),
++        }
++        # The default scales reproduce the historical normalized position loss
++        # exactly, allowing the historical strategy to remain a controlled arm.
++        losses["position"] = robust_mean((position - truth)[valid], **pos_args)
++        if self.weights["reprojection"]:
++            uv, _, support, _ = projection_errors(prediction.position, target)
++            losses["reprojection"] = robust_mean(
++                uv[support], scale=1.0, beta=float(c["reprojection_beta_fraction"])
++            )
++        velocity = (
++            None
++            if prediction.velocity is None
++            else denormalize_court_velocity(prediction.velocity.float())
+         )
+-        gravity_loss = self.gravity_enabled * self.gravity_penalty(
+-            pred_position[..., 2],
+-            mask,
++        needs_velocity = any(
++            self.weights[key]
++            for key in (
++                "velocity",
++                "rollout_position",
++                "rollout_velocity",
++                "reconstruction",
++                "parameter_consistency",
++            )
+         )
+-
+-        # ---- Total ----------------------------------------------------
+-        total = (
+-            self.position_weight * pos_loss
+-            + self.reprojection_weight * reproj_loss
+-            + self.smoothness_weight * smooth_loss
+-            + self.gravity_weight * gravity_loss
++        if needs_velocity and velocity is None:
++            raise ValueError("Velocity/physics losses require a velocity head")
++        if velocity is not None and self.weights["velocity"]:
++            losses["velocity"] = robust_mean(
++                (velocity - denormalize_court_velocity(target.velocity.float()))[valid],
++                **vel_args,
++            )
++        if velocity is not None and (
++            self.weights["rollout_position"] or self.weights["rollout_velocity"]
++        ):
++            residual = rollout_residuals(
++                position, velocity, valid, target.physics, self.horizons
++            )
++            losses["rollout_position"] = robust_mean(residual.position, **pos_args)
++            losses["rollout_velocity"] = robust_mean(residual.velocity, **vel_args)
++        parameters = prediction.physics_parameters
++        if any(
++            self.weights[key]
++            for key in (
++                "parameters",
++                "event",
++                "reconstruction",
++                "parameter_consistency",
++            )
++        ):
++            if (
++                parameters is None
++                or prediction.event_logits is None
++                or velocity is None
++            ):
++                raise ValueError(
++                    "Parameter-head losses require the complete physics head"
++                )
++            params = parameters.float()
++            scale = params.new_tensor([0.02, 5.0, 5.0, 5.0, 0.2, 0.2, 0.2])
++            losses["parameters"] = robust_mean(
++                ((params - target_parameters(target.physics)) / scale)[valid],
++                scale=1.0,
++                beta=1.0,
++            )
++            events = torch.zeros_like(valid)
++            events[:, 1:] = (
++                target.physics.segment[:, 1:] != target.physics.segment[:, :-1]
++            )
++            event_valid = valid.clone()
++            event_valid[:, 0] = (
++                False  # crop entry is an imposed reset, not an observed event
++            )
++            if event_valid.any():
++                losses["event"] = nn.functional.binary_cross_entropy_with_logits(
++                    prediction.event_logits[..., 0].float()[event_valid],
++                    events.float()[event_valid],
++                    pos_weight=position.new_tensor(float(c["event_positive_weight"])),
++                )
++            residual = rollout_residuals(
++                position,
++                velocity,
++                valid,
++                target.physics,
++                self.horizons,
++                parameters=params,
++            )
++            endpoint = residual.start + residual.horizon
++            integrated = residual.position + position[residual.sample, endpoint]
++            losses["reconstruction"] = robust_mean(
++                integrated - truth[residual.sample, endpoint], **pos_args
++            )
++            losses["parameter_consistency"] = robust_mean(
++                residual.position, **pos_args
++            ) + robust_mean(residual.velocity, **vel_args)
++        factor = self.physics_factor(step)
++        losses["total"] = sum(
++            (
++                losses[key] * weight * (factor if key in PHYSICAL_TERMS else 1.0)
++                for key, weight in self.weights.items()
++            ),
++            zero,
+         )
+-
+-        return {
+-            "total": total,
+-            "position": pos_loss,
+-            "reprojection": reproj_loss,
+-            "smoothness": smooth_loss,
+-            "gravity": gravity_loss,
+-        }
++        losses["physics_factor"] = position.new_tensor(factor)
++        return losses
+diff --git a/src/tasks/blcs/training/metrics.py b/src/tasks/blcs/training/metrics.py
+index 4e0f02131..751c83180 100644
+--- a/src/tasks/blcs/training/metrics.py
++++ b/src/tasks/blcs/training/metrics.py
+@@ -1,328 +1,332 @@
+-"""Metrics for BLCS evaluation."""
++"""Population-based BLCS metrics, independent of loss weights and batch padding."""
+ 
+ from __future__ import annotations
+ 
++from collections import defaultdict
++from collections.abc import Sequence
++from typing import Any
++
++import numpy as np
+ import torch
++from numpy.typing import NDArray
+ from torch import Tensor
+ 
+-from src.tasks.base.evaluation import (
+-    compute_axis_wise_position_error,
+-    compute_y_sign_accuracy,
+-    stratify_metric_by_reference_view_index,
++from src.tasks.blcs.model_io.contracts import (
++    BLCSTrajectoryPrediction,
++    BLCSTrajectoryTrainingBatch,
+ )
+-from src.tasks.base.generate_dataset import (
+-    PHYSICAL_V1_SELECTOR,
+-    CourtKeypointContract,
+-    CourtKeypointContractMismatchError,
+-    CourtReferenceFrameProvenance,
+-    MissingCourtKeypointMetadataError,
+-    court_vectors_target_to_physical,
+-    resolve_court_keypoint_contract,
++from src.tasks.blcs.physics.rollout import rollout_residuals, target_parameters
++from src.tasks.blcs.training.losses import projection_errors
++from src.utils.physics.ball.surfaces import SURFACE_NAMES
++from src.utils.schema.court_normalization import (
++    denormalize_court_position,
++    denormalize_court_velocity,
+ )
+-from src.tasks.base.training.metric_logging import format_metric_threshold
+-from src.utils.schema.court_normalization import denormalize_court_position
+ 
+-_PHYSICAL_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
+-    PHYSICAL_V1_SELECTOR
+-)
++METRIC_SCHEMA = "blcs.physics_metrics.v1"
+ 
+ 
+ class BLCSMetrics:
+-    """Metrics tracker for BLCS evaluation.
++    """Store per-clip populations; reduce once, including across distributed ranks.
+ 
+-    Tracks position errors and accuracy metrics over batches.
++    Scalar errors are Euclidean vector norms. RMSE is sqrt(mean(norm**2)), not
++    component RMSE or a mean of batch RMSEs. Undefined populations return NaN
++    for Lightning; the saved report converts them to null and records support.
+     """
+ 
+     def __init__(
+-        self,
+-        *,
+-        position_threshold_m: float,
+-        endpoint_threshold_m: float,
+-        court_keypoint_contract: CourtKeypointContract = (
+-            _PHYSICAL_COURT_KEYPOINT_CONTRACT
+-        ),
++        self, *, rollout_horizons: Sequence[int] = (1, 3), event_radius_frames: int = 2
+     ) -> None:
+-        """Initialize metrics tracker.
+-
+-        Args:
+-            position_threshold_m: Threshold for base position accuracy (meters), default 0.3m.
+-            endpoint_threshold_m: Threshold for base endpoint accuracy (meters), default 0.5m.
+-
+-        """
+-        self.position_threshold_m = position_threshold_m
+-        self.endpoint_threshold_m = endpoint_threshold_m
+-        canonical_contract = resolve_court_keypoint_contract(
+-            court_keypoint_contract.selector
+-        )
+-        if court_keypoint_contract != canonical_contract:
+-            raise CourtKeypointContractMismatchError(
+-                "BLCS metric CourtKP20 contract must be canonical."
+-            )
+-        self.court_keypoint_contract = canonical_contract
+-        self.position_thresholds_m = tuple(
+-            dict.fromkeys(
+-                (
+-                    0.3,
+-                    self.position_threshold_m,
+-                    2.0 * self.position_threshold_m,
+-                    4.0 * self.position_threshold_m,
+-                )
+-            )
+-        )
+-        self.endpoint_thresholds_m = (
+-            self.endpoint_threshold_m,
+-            2.0 * self.endpoint_threshold_m,
+-        )
++        self.horizons = tuple(rollout_horizons)
++        self.event_radius = event_radius_frames
+         self.reset()
+ 
+     def reset(self) -> None:
+-        """Reset accumulated metrics."""
+-        self.total_position_error = 0.0
+-        self.total_x_error = 0.0
+-        self.total_y_error = 0.0
+-        self.total_z_error = 0.0
+-        self.total_endpoint_error = 0.0
+-        self.num_frames: float = 0.0
+-        self.num_endpoint_sequences = 0
+-        self.num_correct_frames = [0.0 for _ in self.position_thresholds_m]
+-        self.num_correct_endpoints = [0.0 for _ in self.endpoint_thresholds_m]
+-        self.num_y_sign_correct = 0.0
+-        self.num_y_sign_targets = 0.0
+-        self.reference_index_errors: dict[int, list[float]] = {}
++        self.records: list[dict[str, Any]] = []
+ 
++    @torch.no_grad()  # type: ignore[untyped-decorator]
+     def update(
+         self,
+-        pred_position: Tensor,
+-        target_position: Tensor,
+-        mask: Tensor | None = None,
+-        court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
+-        | None = None,
+-        reference_view_index: Tensor | None = None,
++        prediction: BLCSTrajectoryPrediction,
++        target: BLCSTrajectoryTrainingBatch,
++        *,
++        observed: Tensor,
++        scene_ids: Sequence[str] | None = None,
+     ) -> dict[str, float]:
+-        """Update metrics with a batch of predictions.
+-
+-        Args:
+-            pred_position: Predicted positions (normalized), shape (B, T, 3).
+-            target_position: Target positions (normalized), shape (B, T, 3).
+-            mask: Visibility mask, shape (B, T).
+-
+-        Returns:
+-            dict: Current batch metrics.
+-
+-        """
+-        batch_size, seq_len, _ = pred_position.shape
+-
+-        pred_m = denormalize_court_position(pred_position)
+-        target_m = denormalize_court_position(target_position)
+-        target_frame_pred_m = pred_m
+-        target_frame_target_m = target_m
+-
+-        if court_reference_provenance is None:
+-            if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
+-                raise MissingCourtKeypointMetadataError(
+-                    "BLCS camera_view_v2 metrics require explicit Court reference "
+-                    "provenance."
++        p = denormalize_court_position(prediction.position.float())
++        gt = denormalize_court_position(target.position.float())
++        velocity = (
++            None
++            if prediction.velocity is None
++            else denormalize_court_velocity(prediction.velocity.float())
++        )
++        valid, physics = target.loss_mask, target.physics
++        error = (p - gt).norm(dim=-1)
++        _, pixel, projected, eligible = projection_errors(prediction.position, target)
++        residual = (
++            None
++            if velocity is None
++            else rollout_residuals(p, velocity, valid, physics, self.horizons)
++        )
++        dt = physics.frame_dt().to(p)[:, None, None]
++        near = (
++            torch.nn.functional.max_pool1d(
++                physics.event.ne(0).float().unsqueeze(1),
++                self.event_radius * 2 + 1,
++                stride=1,
++                padding=self.event_radius,
++            )[:, 0].bool()
++            & valid
++        )
++        s1, s2 = physics.support(valid, 1), physics.support(valid, 2)
++        difference_velocity = ((p[:, 1:] - p[:, :-1]) - (gt[:, 1:] - gt[:, :-1])) / dt
++        difference_accel = (
++            (p[:, 2:] - 2 * p[:, 1:-1] + p[:, :-2])
++            - (gt[:, 2:] - 2 * gt[:, 1:-1] + gt[:, :-2])
++        ) / dt.square()
++        for b in range(len(p)):
++            populations: dict[str, np.ndarray] = {}
++            counters: dict[str, int] = {}
++
++            def add(
++                key: str,
++                values: Tensor,
++                destination: dict[str, np.ndarray] = populations,
++            ) -> None:
++                destination[key] = values.detach().double().cpu().numpy().reshape(-1)
++
++            vb = valid[b]
++            add("trajectory", error[b, vb])
++            add(
++                "velocity_head",
++                p.new_empty(0)
++                if velocity is None
++                else (
++                    velocity[b] - denormalize_court_velocity(target.velocity[b].float())
++                ).norm(dim=-1)[vb],
++            )
++            add(
++                "position_difference_velocity",
++                difference_velocity[b].norm(dim=-1)[s1[b]],
++            )
++            add(
++                "position_difference_acceleration",
++                difference_accel[b].norm(dim=-1)[s2[b]],
++            )
++            add("reprojection", pixel[b].norm(dim=-1)[projected[b]])
++            add("reprojection_evaluable", projected[b][eligible[b]].float())
++            add("below_ground", (p[b, :, 2] < -0.001)[vb].float())
++            add(
++                "rollout_position",
++                p.new_empty(0)
++                if residual is None
++                else residual.position[residual.sample == b].norm(dim=-1),
++            )
++            add(
++                "rollout_velocity",
++                p.new_empty(0)
++                if residual is None
++                else residual.velocity[residual.sample == b].norm(dim=-1),
++            )
++            for h in self.horizons:
++                width = max(0, valid.shape[1] - h)
++                complete = valid[b, :width].clone()
++                for offset in range(1, h + 1):
++                    complete &= valid[b, offset : offset + width]
++                safe = physics.support(valid, h)[b]
++                counters[f"rollout_h{h}_valid_window_count"] = int(complete.sum())
++                counters[f"rollout_h{h}_excluded_event_count"] = int(
++                    (complete & ~safe).sum()
+                 )
+-        else:
+-            if len(court_reference_provenance) != batch_size:
+-                raise ValueError(
+-                    "BLCS metric provenance must contain one record per batch item."
++                counters[f"rollout_h{h}_too_short_clip_count"] = int(
++                    valid[b].sum() <= h
+                 )
+-            pred_rows: list[Tensor] = []
+-            target_rows: list[Tensor] = []
+-            for index, provenance in enumerate(court_reference_provenance):
+-                if not isinstance(provenance, CourtReferenceFrameProvenance):
+-                    raise TypeError(
+-                        "BLCS metric provenance entries must be validated records."
+-                    )
+-                if provenance.contract != self.court_keypoint_contract:
+-                    raise CourtKeypointContractMismatchError(
+-                        f"BLCS metric provenance[{index}] contract "
+-                        f"{provenance.contract_id!r} does not match runtime "
+-                        f"{self.court_keypoint_contract.contract_id!r}."
+-                    )
+-                pred_row = court_vectors_target_to_physical(pred_m[index], provenance)
+-                target_row = court_vectors_target_to_physical(
+-                    target_m[index], provenance
++                counters[f"rollout_h{h}_no_velocity_clip_count"] = int(velocity is None)
++                selected = (
++                    None
++                    if residual is None
++                    else (residual.sample == b) & (residual.horizon == h)
+                 )
+-                if not isinstance(pred_row, Tensor) or not isinstance(
+-                    target_row, Tensor
+-                ):
+-                    raise TypeError(
+-                        "BLCS metric frame conversion returned non-tensors."
+-                    )
+-                pred_rows.append(pred_row)
+-                target_rows.append(target_row)
+-            pred_m = torch.stack(pred_rows)
+-            target_m = torch.stack(target_rows)
+-
+-        # Position distance is rotation invariant. Axis/sign diagnostics use the
+-        # authoritative reference target frame when v2 metadata is available.
+-        error = pred_m - target_m
+-        error_norm = torch.sqrt((error**2).sum(dim=-1) + 1e-8)  # (B, T)
+-
+-        if mask is None:
+-            mask = torch.ones(batch_size, seq_len, device=pred_position.device)
+-        valid_mask = mask.bool()
+-
+-        reference_metrics: dict[str, float] = {}
+-        metric_error = error
+-        if reference_view_index is not None:
+-            if reference_view_index.shape != (batch_size,):
+-                raise ValueError(
+-                    "reference_view_index must match the BLCS metric batch axis."
++                add(
++                    f"rollout_position_h{h}",
++                    p.new_empty(0)
++                    if residual is None
++                    else residual.position[selected].norm(dim=-1),
+                 )
+-            if reference_view_index.dtype != torch.int64:
+-                raise ValueError("reference_view_index must have dtype torch.int64.")
+-            if reference_view_index.device != pred_position.device:
+-                raise ValueError(
+-                    "reference_view_index must share the BLCS metric tensor device."
++                add(
++                    f"rollout_velocity_h{h}",
++                    p.new_empty(0)
++                    if residual is None
++                    else residual.velocity[selected].norm(dim=-1),
+                 )
+-            metric_error = target_frame_pred_m - target_frame_target_m
+-            if valid_mask.any().item():
+-                axis_error = compute_axis_wise_position_error(
+-                    target_frame_pred_m,
+-                    target_frame_target_m,
+-                    valid_mask=valid_mask,
++                add(
++                    f"rollout_duration_h{h}",
++                    p.new_empty(0)
++                    if residual is None
++                    else residual.duration_s[selected],
+                 )
+-                reference_metrics.update(
+-                    {
+-                        "x_error_m": axis_error.x,
+-                        "y_error_m": axis_error.y,
+-                        "z_error_m": axis_error.z,
+-                    }
++                add(
++                    f"rollout_substeps_h{h}",
++                    p.new_empty(0)
++                    if residual is None
++                    else residual.simulation_steps[selected],
+                 )
+-                selected_targets = target_frame_target_m[valid_mask]
+-                non_mid_plane = selected_targets[:, 1].ne(0)
+-                if non_mid_plane.any().item():
+-                    y_sign_accuracy = compute_y_sign_accuracy(
+-                        target_frame_pred_m,
+-                        target_frame_target_m,
+-                        valid_mask=valid_mask,
+-                    )
+-                    sign_count = float(non_mid_plane.sum().item())
+-                    self.num_y_sign_correct += y_sign_accuracy * sign_count
+-                    self.num_y_sign_targets += sign_count
+-                    reference_metrics["y_sign_accuracy"] = y_sign_accuracy
+-                sample_indices: list[int] = []
+-                sample_errors: list[Tensor] = []
+-                for sample_index in range(batch_size):
+-                    if valid_mask[sample_index].any().item():
+-                        sample_indices.append(sample_index)
+-                        sample_errors.append(
+-                            torch.linalg.vector_norm(
+-                                metric_error[sample_index, valid_mask[sample_index]],
+-                                dim=-1,
+-                            ).mean()
+-                        )
+-                sample_index_tensor = torch.tensor(
+-                    sample_indices,
+-                    dtype=torch.int64,
+-                    device=reference_view_index.device,
++            view_count = observed[b].bool().sum(dim=0)
++            strata = {
++                "observed": view_count > 0,
++                "missing": view_count == 0,
++                "event_near": near[b],
++                "free_flight": ~near[b],
++            }
++            for views in range(7):
++                strata[f"views_{views}"] = view_count == views
++            for index, name in enumerate(SURFACE_NAMES):
++                strata[f"surface_{name}"] = torch.full_like(
++                    vb, int(physics.surface[b]) == index
+                 )
+-                strata = stratify_metric_by_reference_view_index(
+-                    torch.stack(sample_errors),
+-                    reference_view_index[sample_index_tensor],
++            length = int(physics.clip_frames[b])
++            for name, match in (
++                ("length_lt128", length < 128),
++                ("length_128_511", 128 <= length < 512),
++                ("length_ge512", length >= 512),
++            ):
++                strata[name] = torch.full_like(vb, match)
++            bounces = int(physics.bounce_count[b])
++            for count in range(3):
++                strata[f"bounces_{count}{'plus' if count == 2 else ''}"] = (
++                    torch.full_like(vb, min(bounces, 2) == count)
+                 )
+-                for index, value in strata.items():
+-                    reference_metrics[f"reference_index_{index}_position_error_m"] = (
+-                        value
+-                    )
+-                for sample_index, sample_error in zip(
+-                    sample_indices,
+-                    sample_errors,
+-                    strict=True,
+-                ):
+-                    reference_index = int(reference_view_index[sample_index].item())
+-                    self.reference_index_errors.setdefault(
+-                        reference_index,
+-                        [],
+-                    ).append(float(sample_error.item()))
+-
+-        # Aggregate only actual observations. Padding-only sequences do not
+-        # contribute either frames or endpoints.
+-        num_valid = valid_mask.sum().item()
+-        if num_valid == 0:
+-            return {}
+-        self.num_frames += num_valid
+-        self.num_endpoint_sequences += int(valid_mask.any(dim=1).sum().item())
+-
+-        # Position errors
+-        masked_error = (error_norm * valid_mask).sum().item()
+-        self.total_position_error += masked_error
+-
+-        # Per-axis errors
+-        self.total_x_error += (metric_error[:, :, 0].abs() * valid_mask).sum().item()
+-        self.total_y_error += (metric_error[:, :, 1].abs() * valid_mask).sum().item()
+-        self.total_z_error += (metric_error[:, :, 2].abs() * valid_mask).sum().item()
+-
+-        # Accuracy (within thresholds)
+-        for i, threshold in enumerate(self.position_thresholds_m):
+-            within = (error_norm < threshold).float()
+-            self.num_correct_frames[i] += (within * valid_mask).sum().item()
+-
+-        # Endpoint error (last valid frame per sequence)
+-        for b in range(batch_size):
+-            valid_indices = valid_mask[b].nonzero(as_tuple=True)[0]
+-            if len(valid_indices) > 0:
+-                last_idx = valid_indices[-1]
+-                endpoint_error = error_norm[b, last_idx].item()
+-                self.total_endpoint_error += endpoint_error
+-                for i, threshold in enumerate(self.endpoint_thresholds_m):
+-                    if endpoint_error < threshold:
+-                        self.num_correct_endpoints[i] += 1
+-
+-        # Return current batch metrics
+-        batch_metrics = {
+-            "position_error_m": masked_error / num_valid,
+-            "x_error_m": (metric_error[:, :, 0].abs() * valid_mask).sum().item()
+-            / num_valid,
+-            "y_error_m": (metric_error[:, :, 1].abs() * valid_mask).sum().item()
+-            / num_valid,
+-            "z_error_m": (metric_error[:, :, 2].abs() * valid_mask).sum().item()
+-            / num_valid,
+-        }
+-        batch_metrics.update(reference_metrics)
+-        return batch_metrics
+-
+-    def compute(self) -> dict[str, float]:
+-        """Compute aggregated metrics.
+-
+-        Returns:
+-            dict: Aggregated metrics.
+-
+-        """
+-        if self.num_frames == 0:
+-            raise RuntimeError(
+-                "BLCSMetrics.compute() requires at least one valid frame; "
+-                "the epoch contained no metric observations."
++            missing = ((view_count == 0) & vb).cpu().numpy()
++            gap_length: NDArray[np.int64] = np.zeros(len(missing), dtype=np.int64)
++            start = 0
++            while start < len(missing):
++                if not missing[start]:
++                    start += 1
++                    continue
++                end = start + 1
++                while end < len(missing) and missing[end]:
++                    end += 1
++                gap_length[start:end] = end - start
++                start = end
++            gaps = torch.as_tensor(gap_length, device=vb.device)
++            strata.update(
++                gap_1_4=(gaps > 0) & (gaps <= 4),
++                gap_5_15=(gaps >= 5) & (gaps <= 15),
++                gap_ge16=gaps >= 16,
++            )
++            for name, mask in strata.items():
++                add(f"trajectory__{name}", error[b, vb & mask])
++            if prediction.physics_parameters is not None:
++                param_error = (
++                    prediction.physics_parameters[b].float()
++                    - target_parameters(physics)[b]
++                )
++                add("parameter_drag", param_error[:, 0].abs()[vb])
++                add("parameter_wind", param_error[:, 1:4].norm(dim=-1)[vb])
++                add("parameter_effective_magnus", param_error[:, 4:].norm(dim=-1)[vb])
++            scene = (
++                scene_ids[b] if scene_ids is not None else f"local-{len(self.records)}"
++            )
++            indices = physics.frame_index[b, vb].cpu().tolist()
++            key = f"{scene}:{indices}" if scene_ids is not None else None
++            self.records.append(
++                {
++                    "key": key,
++                    "scene": scene,
++                    "populations": populations,
++                    "counters": counters,
++                }
+             )
++        return {}
++
++    def _merged(self) -> list[dict[str, Any]]:
++        records = self.records
++        if torch.distributed.is_available() and torch.distributed.is_initialized():
++            gathered: list[Any] = [None] * torch.distributed.get_world_size()
++            torch.distributed.all_gather_object(gathered, records)
++            records = [record for rank in gathered for record in rank]
++        # DistributedSampler may repeat the last sample to equalize ranks.
++        unique, seen = [], set()
++        for record in records:
++            key = record["key"]
++            if key is not None and key in seen:
++                continue
++            unique.append(record)
++            if key is not None:
++                seen.add(key)
++        return unique
+ 
+-        metrics: dict[str, float] = {
+-            "position_error_m": self.total_position_error / self.num_frames,
+-            "x_error_m": self.total_x_error / self.num_frames,
+-            "y_error_m": self.total_y_error / self.num_frames,
+-            "z_error_m": self.total_z_error / self.num_frames,
+-            "endpoint_error_m": self.total_endpoint_error / self.num_endpoint_sequences,
++    def compute(self) -> dict[str, float]:
++        values: dict[str, list[np.ndarray]] = defaultdict(list)
++        clips: dict[str, list[np.ndarray]] = defaultdict(list)
++        counters: dict[str, int] = defaultdict(int)
++        for record in self._merged():
++            for key, count in record["counters"].items():
++                counters[key] += count
++            for key, array in record["populations"].items():
++                values[key].append(array)
++            clips[record["scene"]].append(record["populations"]["trajectory"])
++        result: dict[str, float] = {}
++        units = {
++            "trajectory": "m",
++            "velocity_head": "mps",
++            "position_difference_velocity": "mps",
++            "position_difference_acceleration": "mps2",
++            "reprojection": "px",
++            "rollout_position": "m",
++            "rollout_velocity": "mps",
++            "parameter_drag": "per_m",
++            "parameter_wind": "mps",
++            "parameter_effective_magnus": "per_s",
+         }
+-
+-        for i, threshold in enumerate(self.position_thresholds_m):
+-            key = f"position_accuracy_{format_metric_threshold(threshold)}m"
+-            metrics[key] = self.num_correct_frames[i] / self.num_frames
+-
+-        for i, threshold in enumerate(self.endpoint_thresholds_m):
+-            key = f"endpoint_accuracy_{format_metric_threshold(threshold)}m"
+-            metrics[key] = self.num_correct_endpoints[i] / self.num_endpoint_sequences
+-
+-        if self.num_y_sign_targets:
+-            metrics["y_sign_accuracy"] = (
+-                self.num_y_sign_correct / self.num_y_sign_targets
++        # Keep core undefined metrics present even for an all-padding batch.
++        for key in units:
++            values.setdefault(key, [])
++        for key, arrays in values.items():
++            array = np.concatenate(arrays) if arrays else np.empty(0)
++            count = len(array)
++            result[f"{key}_count"] = float(count)
++            if key in {"below_ground", "reprojection_evaluable"}:
++                result[f"{key}_rate"] = float(np.mean(array)) if count else float("nan")
++                continue
++            if key.startswith(("rollout_duration_", "rollout_substeps_")):
++                result[f"{key}_mean"] = float(np.mean(array)) if count else float("nan")
++                continue
++            base = key.split("__")[0]
++            if base.startswith("rollout_position_h"):
++                unit = "m"
++            elif base.startswith("rollout_velocity_h"):
++                unit = "mps"
++            else:
++                unit = units[base]
++            suffix = "__" + key.split("__", 1)[1] if "__" in key else ""
++            base = base if not suffix else "trajectory"
++            result[f"{base}_rmse_{unit}{suffix}"] = (
++                float(np.sqrt(np.mean(array**2))) if count else float("nan")
+             )
+-        metrics.update(
+-            {
+-                f"reference_index_{index}_position_error_m": sum(values) / len(values)
+-                for index, values in self.reference_index_errors.items()
+-            }
++            result[f"{base}_mean_{unit}{suffix}"] = (
++                float(np.mean(array)) if count else float("nan")
++            )
++            result[f"{base}_p95_{unit}{suffix}"] = (
++                float(np.quantile(array, 0.95)) if count else float("nan")
++            )
++        rmses = [
++            float(np.sqrt(np.mean(np.concatenate(arrays) ** 2)))
++            for arrays in clips.values()
++            if sum(map(len, arrays))
++        ]
++        result["clip_trajectory_rmse_mean_m"] = (
++            float(np.mean(rmses)) if rmses else float("nan")
+         )
+-
+-        return metrics
++        result["clip_count"] = float(len(rmses))
++        result.update({key: float(count) for key, count in counters.items()})
++        return result
++
++    def report(self) -> dict[str, Any]:
++        return {
++            "schema": METRIC_SCHEMA,
++            "metrics": {
++                key: value if np.isfinite(value) else None
++                for key, value in self.compute().items()
++            },
++        }
+diff --git a/src/tasks/blcs/visualization/inference/service.py b/src/tasks/blcs/visualization/inference/service.py
+index 98c7bcb94..b62390ad5 100644
+--- a/src/tasks/blcs/visualization/inference/service.py
++++ b/src/tasks/blcs/visualization/inference/service.py
+@@ -825,9 +825,9 @@ class InferenceService:
+                 "presence": None,
+             },
+             metrics={
+-                "position_error_m": float(error.mean()),
+-                "endpoint_error_m": float(error[-1]),
+-                "accuracy_0p3m": float(np.mean(error <= 0.3)),
++                "trajectory_rmse_m": float(np.sqrt(np.mean(error**2))),
++                "trajectory_mean_m": float(error.mean()),
++                "trajectory_p95_m": float(np.quantile(error, 0.95)),
+             },
+             gt=gt,
+             frames=frames,
+diff --git a/src/tasks/blcs/visualization/inference/static/app.js b/src/tasks/blcs/visualization/inference/static/app.js
+index 00b2fe967..bf443ceab 100644
+--- a/src/tasks/blcs/visualization/inference/static/app.js
++++ b/src/tasks/blcs/visualization/inference/static/app.js
+@@ -858,9 +858,9 @@ function renderResults(errorMessage) {
+     const rows = [
+       ["device", state.deviceUsed || state.device],
+       ["elapsed", state.elapsedMs !== null ? `${Math.round(state.elapsedMs)} ms` : "–"],
+-      ["position_error_m", formatMetric(state.metrics.position_error_m)],
+-      ["endpoint_error_m", formatMetric(state.metrics.endpoint_error_m)],
+-      ["accuracy_0p3m", formatMetric(state.metrics.accuracy_0p3m, 3)],
++      ["trajectory_rmse_m", formatMetric(state.metrics.trajectory_rmse_m)],
++      ["trajectory_mean_m", formatMetric(state.metrics.trajectory_mean_m)],
++      ["trajectory_p95_m", formatMetric(state.metrics.trajectory_p95_m)],
+       ["tracks", state.prediction?.tracks ?? "–"],
+     ];
+     for (const [label, value] of rows) {
+@@ -969,7 +969,7 @@ function renderHud() {
+   dom.hudDevice.textContent = state.deviceUsed || state.device;
+   dom.hudWindow.textContent = state.window !== null ? String(state.window) : "–";
+   dom.hudError.textContent = state.metrics
+-    ? `${formatMetric(state.metrics.position_error_m)} m`
++    ? `${formatMetric(state.metrics.trajectory_rmse_m)} m`
+     : "–";
+ }
+ 
+diff --git a/tests/integration/tasks/blcs/test_generation_config.py b/tests/integration/tasks/blcs/test_generation_config.py
+index d048e2896..7fea1a083 100644
+--- a/tests/integration/tasks/blcs/test_generation_config.py
++++ b/tests/integration/tasks/blcs/test_generation_config.py
+@@ -109,9 +109,9 @@ def test_training_profiles_use_canonical_dataset_paths(
+ @pytest.mark.parametrize(
+     ("config_name", "reprojection_weight"),
+     (
+-        ("train", 0.0),
++        ("train", 0.1),
+         ("train_chunked", 0.1),
+-        ("train_chunked_gan", 0.0),
++        ("train_chunked_gan", 0.1),
+     ),
+ )
+ def test_standard_training_profiles_select_loss_without_training_loss_fields(
+diff --git a/tests/support/tasks/blcs_physics.py b/tests/support/tasks/blcs_physics.py
+new file mode 100644
+index 000000000..571ff1ab6
+--- /dev/null
++++ b/tests/support/tasks/blcs_physics.py
+@@ -0,0 +1,89 @@
++"""Small exact simulated scenes for the BLCS teacher and metric contracts."""
++
++from __future__ import annotations
++
++from typing import Any, cast
++
++import torch
++from omegaconf import OmegaConf
++
++from src.tasks.base.generate_dataset import build_physical_court_provenance
++from src.tasks.blcs.data.dataset import collate_multiview_trajectories
++from src.tasks.blcs.data.types import BLCSMultiViewSample
++from src.tasks.blcs.model_io.adapters import AxialTrajectoryModelIOAdapter
++from src.tasks.blcs.physics.targets import record_teachers
++from src.utils.schema.court_normalization import (
++    normalize_court_position,
++    normalize_court_velocity,
++)
++from tests.support.physics.ball_record import simulated_record
++
++
++def physics_sample(
++    frames: int = 12,
++    *,
++    start: int = 0,
++    output_fps: int = 30,
++    sim_fps: int = 120,
++    surface: str = "hard",
++    hits: tuple[int, ...] = (),
++    kinds: tuple[str, ...] | None = None,
++    name: str = "sample",
++) -> dict[str, Any]:
++    p, record = simulated_record(
++        frames + start,
++        output_fps=output_fps,
++        sim_fps=sim_fps,
++        surface=surface,
++        hits=hits,
++        hit_kinds=kinds,
++    )
++    arrays = {
++        **record.to_arrays(),
++        "ball_vel_norm": normalize_court_velocity(record.velocity),
++    }
++    return {
++        "scene_id": name,
++        "ball_uv": torch.full((2, frames, 2), 0.5),
++        "ball_vis": torch.ones(2, frames),
++        "ball_uv_target": torch.full((2, frames, 2), 0.5),
++        "ball_vis_target": torch.ones(2, frames),
++        "padding_mask": torch.zeros(2, frames, dtype=torch.bool),
++        "court_kp": torch.full((2, frames, 14, 2), 0.5),
++        "court_vis": torch.ones(2, frames, 14),
++        "position_3d": torch.from_numpy(normalize_court_position(p[start:])),
++        "velocity_3d": torch.from_numpy(
++            normalize_court_velocity(record.velocity[start:])
++        ),
++        "seq_len": torch.tensor(frames),
++        "camera_R": torch.eye(3).repeat(2, 1, 1),
++        "camera_C": torch.tensor([[0.0, 0.0, -30.0]]).repeat(2, 1),
++        "camera_f": torch.full((2,), 1000.0),
++        "camera_cx": torch.full((2,), 960.0),
++        "camera_cy": torch.full((2,), 540.0),
++        "camera_w": torch.full((2,), 1920.0),
++        "camera_h": torch.full((2,), 1080.0),
++        "court_reference_provenance": build_physical_court_provenance(),
++        "selected_camera_ids": ("camera_0", "camera_1"),
++        **record_teachers(
++            arrays, start=start, end=start + frames, full_length=start + frames
++        ),
++    }
++
++
++def prepared_samples(samples: list[dict[str, Any]]):
++    batch = collate_multiview_trajectories(cast("list[BLCSMultiViewSample]", samples))
++    adapter = AxialTrajectoryModelIOAdapter(
++        num_court_tokens=14,
++        max_seq_len=10240,
++        predict_velocity=True,
++        input_profile="multiview",
++        max_num_cameras=6,
++    )
++    return batch, adapter.build_training_batch(batch)
++
++
++def loss_config(**changes: Any) -> dict[str, Any]:
++    cfg = dict(OmegaConf.load("src/tasks/blcs/configs/loss/default.yaml"))
++    cfg.update(changes)
++    return cfg
+diff --git a/tests/unit/tasks/blcs/data/test_physics_targets.py b/tests/unit/tasks/blcs/data/test_physics_targets.py
+new file mode 100644
+index 000000000..900c5d2d6
+--- /dev/null
++++ b/tests/unit/tasks/blcs/data/test_physics_targets.py
+@@ -0,0 +1,71 @@
++"""BLCS boundary rejects missing/corrupt physics and retains clean observations."""
++
++import pytest
++import torch
++
++from src.tasks.blcs.physics.rollout import reconstruct_segments, target_parameters
++from src.tasks.blcs.physics.targets import PhysicsTargets
++from src.utils.schema.court_normalization import (
++    denormalize_court_position,
++    denormalize_court_velocity,
++)
++from tests.support.tasks.blcs_physics import physics_sample, prepared_samples
++
++
++def test_physics_is_teacher_only_and_clean_target_is_independent():
++    sample = physics_sample()
++    clean = sample["ball_uv_target"].clone()
++    sample["ball_uv"].fill_(0.8)
++    batch, target = prepared_samples([sample])
++    assert torch.equal(target.target_uv[0], clean)
++    assert set(target.call.kwargs) == {
++        "ball_uv",
++        "ball_vis",
++        "court_kp",
++        "court_vis",
++        "padding_mask",
++    }
++    del batch["physics_clock"]
++    with pytest.raises(KeyError, match="physics_clock"):
++        PhysicsTargets.from_batch(batch, target.loss_mask)
++
++
++def test_invalid_clock_and_segment_padding_are_rejected():
++    batch, target = prepared_samples(
++        [physics_sample(), physics_sample(3, name="short")]
++    )
++    batch["physics_clock"][0, 3] += 1
++    with pytest.raises(ValueError, match="clock"):
++        PhysicsTargets.from_batch(batch, target.loss_mask)
++    batch["physics_clock"][0, 3] -= 1
++    batch["physics_segment"][1, 3] = 0
++    with pytest.raises(ValueError, match="Padded"):
++        PhysicsTargets.from_batch(batch, target.loss_mask)
++
++
++def test_head_reconstruction_uses_only_its_parameters_reset_events_and_clock():
++    _, target = prepared_samples([physics_sample(12, hits=(20,))])
++    resets = torch.zeros_like(target.loss_mask)
++    resets[:, 1:] = target.physics.segment[:, 1:] != target.physics.segment[:, :-1]
++    p, v = reconstruct_segments(
++        denormalize_court_position(target.position),
++        denormalize_court_velocity(target.velocity),
++        target_parameters(target.physics),
++        resets,
++        target.loss_mask,
++        target.physics.clock,
++        gravity=9.8,
++    )
++    assert torch.allclose(p, denormalize_court_position(target.position), atol=2e-6)
++    assert torch.allclose(v, denormalize_court_velocity(target.velocity), atol=3e-6)
++    # An incorrect inferred segmentation is a real measurable failure, not an oracle fallback.
++    wrong, _ = reconstruct_segments(
++        denormalize_court_position(target.position),
++        denormalize_court_velocity(target.velocity),
++        target_parameters(target.physics),
++        torch.zeros_like(resets),
++        target.loss_mask,
++        target.physics.clock,
++        gravity=9.8,
++    )
++    assert (wrong - p).abs().max() > 0.01
+diff --git a/tests/unit/tasks/blcs/models/test_blcs_multiview_axial_model.py b/tests/unit/tasks/blcs/models/test_blcs_multiview_axial_model.py
+index 7faa4cf48..f72d677d7 100644
+--- a/tests/unit/tasks/blcs/models/test_blcs_multiview_axial_model.py
++++ b/tests/unit/tasks/blcs/models/test_blcs_multiview_axial_model.py
+@@ -39,11 +39,12 @@ def _config(
+             "rope_dim": 4,
+             "rope_theta_time": 10000.0,
+             "rope_theta_camera": 10000.0,
++            "physics_head": False,
+             "predict_velocity": False,
+             "invisible_init_std": 0.02,
+             "num_court_tokens": 20,
+             "time_window_radius": 2,
+-        }
++        },
+     }
+ 
+ 
+diff --git a/tests/unit/tasks/blcs/training/test_lightning_module.py b/tests/unit/tasks/blcs/training/test_lightning_module.py
+index e2cbac7f5..c1f20390c 100644
+--- a/tests/unit/tasks/blcs/training/test_lightning_module.py
++++ b/tests/unit/tasks/blcs/training/test_lightning_module.py
+@@ -12,7 +12,7 @@ from src.tasks.blcs.training.lightning_module import (
+ )
+ 
+ 
+-def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
++def test_stage_logging_records_loss_components_without_batch_metric_aliases() -> None:
+     class _Recorder:
+         metric_logging_contract = BLCS_TRAJECTORY_METRIC_CONTRACT
+ 
+@@ -34,12 +34,12 @@ def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
+         cast("BLCSLightningModule", recorder),
+         "val",
+         torch.tensor(1.0),
+-        {"position_error_m": 0.1, "loss_position": 0.5},
++        {"trajectory_rmse_m": 0.1, "loss_position": 0.5},
+     )
+ 
+-    assert recorder.names == ["val/loss"]
++    assert recorder.names == ["val/loss", "val/loss_position"]
+     assert "val/pos_error_m" not in recorder.names
+-    assert "val/loss_position" not in recorder.names
++    assert "val/loss_position" in recorder.names
+ 
+     recorder.names.clear()
+     BLCSLightningModule._log_stage_metrics(
+@@ -47,7 +47,7 @@ def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
+         "train",
+         torch.tensor(1.0),
+         {
+-            "position_error_m": 0.1,
++            "trajectory_rmse_m": 0.1,
+             "loss_position": 0.5,
+             "loss_gan_generator": 0.2,
+             "loss_gan_discriminator": 0.3,
+@@ -55,13 +55,18 @@ def test_stage_logging_omits_batch_aliases_and_eval_loss_components() -> None:
+             "gan_phase_active": 1.0,
+         },
+     )
+-    assert recorder.names == ["train/loss"]
++    assert recorder.names == [
++        "train/loss",
++        "train/loss_position",
++        "train/loss_gan_generator",
++        "train/loss_gan_discriminator",
++    ]
+ 
+     recorder.names.clear()
+     BLCSLightningModule._log_stage_metrics(
+         cast("BLCSLightningModule", recorder),
+         "test",
+         torch.tensor(1.0),
+-        {"position_error_m": 0.1, "loss_position": 0.5},
++        {"trajectory_rmse_m": 0.1, "loss_position": 0.5},
+     )
+-    assert recorder.names == ["test/loss"]
++    assert recorder.names == ["test/loss", "test/loss_position"]
+diff --git a/tests/unit/tasks/blcs/training/test_losses.py b/tests/unit/tasks/blcs/training/test_losses.py
+index 58e796dbc..2c0fade89 100644
+--- a/tests/unit/tasks/blcs/training/test_losses.py
++++ b/tests/unit/tasks/blcs/training/test_losses.py
+@@ -1,350 +1,133 @@
+-"""Unit tests for BLCS training losses."""
++"""Recorded-clock correctness, event masking, scales and gradient reachability."""
+ 
+-from __future__ import annotations
++from dataclasses import replace
+ 
+ import pytest
+ import torch
+-from torch import Tensor
+ 
+-from src.tasks.blcs.training.losses import (
+-    BLCSLoss,
+-    reprojection_loss,
+-    trajectory_position_loss,
++from src.tasks.blcs.model_io.contracts import BLCSTrajectoryPrediction
++from src.tasks.blcs.physics.rollout import rollout_residuals
++from src.tasks.blcs.training.losses import BLCSLoss, robust_mean
++from src.utils.schema.court_normalization import (
++    denormalize_court_position,
++    denormalize_court_velocity,
+ )
+-from src.utils.projection.differentiable_projection import (
+-    DifferentiablePinholeProjection,
++from tests.support.tasks.blcs_physics import (
++    loss_config,
++    physics_sample,
++    prepared_samples,
+ )
+-from src.utils.schema.court import COURT_COORD_SCALE_Z
+-from src.utils.schema.court_normalization import normalize_court_position
+ 
+ 
+-class _StaticProjection(DifferentiablePinholeProjection):
+-    """Return fixed projection tensors so reduction semantics stay isolated."""
+-
+-    def __init__(self, uv: Tensor, in_front: Tensor) -> None:
+-        super().__init__()
+-        self.uv = uv
+-        self.in_front = in_front
+-
+-    def forward(
+-        self,
+-        world_points: Tensor,
+-        camera_R: Tensor,
+-        camera_C: Tensor,
+-        camera_f: Tensor,
+-        camera_cx: Tensor,
+-        camera_cy: Tensor,
+-        camera_w: Tensor,
+-        camera_h: Tensor,
+-    ) -> tuple[Tensor, Tensor]:
+-        del (
+-            world_points,
+-            camera_R,
+-            camera_C,
+-            camera_f,
+-            camera_cx,
+-            camera_cy,
+-            camera_w,
+-            camera_h,
+-        )
+-        return self.uv, self.in_front
+-
+-
+-def _loss(
+-    *,
+-    position_weight: float = 1.0,
+-    reprojection_weight: float = 0.0,
+-    position_axis_weights: tuple[float, ...] | None = None,
+-    smoothness_weight: float = 0.0,
+-    gravity_weight: float = 0.0,
+-    smoothness_order: int = 3,
+-    smoothness_beta: float = 1e-3,
+-    smoothness_axis_weights: tuple[float, ...] | None = None,
+-    gravity_beta: float = 5e-3,
+-    gravity: float = 9.81,
+-    frame_dt: float = 1.0 / 30.0,
+-) -> BLCSLoss:
+-    """Build the complete loss contract with explicit test-owned values."""
+-    return BLCSLoss(
+-        position_weight=position_weight,
+-        reprojection_weight=reprojection_weight,
+-        position_axis_weights=position_axis_weights,
+-        smoothness_weight=smoothness_weight,
+-        gravity_weight=gravity_weight,
+-        smoothness_order=smoothness_order,
+-        smoothness_beta=smoothness_beta,
+-        smoothness_axis_weights=smoothness_axis_weights,
+-        gravity_beta=gravity_beta,
+-        gravity=gravity,
+-        frame_dt=frame_dt,
+-        height_scale=COURT_COORD_SCALE_Z,
+-    )
+-
+-
+-def _loss_call(pred: torch.Tensor, target: torch.Tensor) -> dict[str, torch.Tensor]:
+-    """Build the complete, already-normalized BLCS loss boundary."""
+-    batch_size, frames = pred.shape[:2]
+-    scalar = torch.ones(batch_size, 1, dtype=pred.dtype)
+-    return {
+-        "pred_position": pred,
+-        "target_position": target,
+-        "mask": torch.ones(batch_size, frames, dtype=torch.bool),
+-        "target_uv": torch.zeros(batch_size, 1, frames, 2, dtype=pred.dtype),
+-        "target_vis": torch.zeros(batch_size, 1, frames, dtype=torch.bool),
+-        "camera_R": torch.eye(3, dtype=pred.dtype)
+-        .view(1, 1, 3, 3)
+-        .expand(batch_size, -1, -1, -1),
+-        "camera_C": torch.tensor([0.0, 0.0, -20.0], dtype=pred.dtype)
+-        .view(1, 1, 3)
+-        .expand(batch_size, -1, -1),
+-        "camera_f": scalar,
+-        "camera_cx": scalar,
+-        "camera_cy": scalar,
+-        "camera_w": scalar,
+-        "camera_h": scalar,
+-    }
+-
+-
+-def test_trajectory_position_loss_accepts_axis_weights() -> None:
+-    pred = torch.zeros(1, 2, 3)
+-    target = torch.tensor(
++@pytest.mark.parametrize(
++    "fps,sim_fps,surface", [(30, 120, "hard"), (60, 240, "clay"), (25, 100, "grass")]
++)
++def test_saved_gt_replays_with_crop_and_collision_boundaries(fps, sim_fps, surface):
++    _, target = prepared_samples(
+         [
+-            [
+-                [0.2, 0.4, 0.6],
+-                [0.8, 0.5, 0.3],
+-            ]
++            physics_sample(
++                start=3,
++                output_fps=fps,
++                sim_fps=sim_fps,
++                surface=surface,
++                hits=(20, 29, 40),
++                kinds=("bounce", "net", "shot"),
++            )
+         ]
+     )
+-    mask = torch.tensor([[1.0, 0.0]])
+-    axis_weights = torch.tensor([1.0, 4.0, 2.0])
+-
+-    actual = trajectory_position_loss(
+-        pred,
+-        target,
+-        mask,
+-        axis_weights=axis_weights,
++    residual = rollout_residuals(
++        denormalize_court_position(target.position),
++        denormalize_court_velocity(target.velocity),
++        target.loss_mask,
++        target.physics,
++        (1, 3),
+     )
+-
+-    per_axis = torch.nn.functional.smooth_l1_loss(
+-        pred[:, :1],
+-        target[:, :1],
+-        reduction="none",
+-    )
+-    expected = (per_axis * axis_weights.view(1, 1, 3)).mean()
+-    assert actual == pytest.approx(expected)
+-
+-
+-def test_trajectory_position_loss_returns_zero_for_empty_mask() -> None:
+-    actual = trajectory_position_loss(
+-        torch.zeros(1, 2, 3),
+-        torch.ones(1, 2, 3),
+-        torch.zeros(1, 2, dtype=torch.bool),
+-        axis_weights=torch.ones(3),
+-    )
+-
+-    assert torch.isfinite(actual)
+-    assert actual.item() == 0.0
+-
+-
+-def test_reprojection_loss_reduces_only_explicitly_expanded_mask_entries() -> None:
+-    pred_uv = torch.zeros(1, 2, 2, 2)
+-    target_uv = torch.tensor([[[[0.2, 0.4], [0.8, 0.6]], [[0.3, 0.7], [0.9, 0.5]]]])
+-    projector = _StaticProjection(
+-        pred_uv,
+-        torch.ones(1, 2, 2, dtype=torch.bool),
+-    )
+-    unused_scalar = torch.ones(1, 2)
+-
+-    actual = reprojection_loss(
+-        pred_position=torch.zeros(1, 2, 3),
+-        target_uv=target_uv,
+-        target_vis=torch.tensor([[[True, True], [False, True]]]),
+-        camera_R=torch.eye(3).view(1, 1, 3, 3).expand(1, 2, -1, -1),
+-        camera_C=torch.zeros(1, 2, 3),
+-        camera_f=unused_scalar,
+-        camera_cx=unused_scalar,
+-        camera_cy=unused_scalar,
+-        camera_w=unused_scalar,
+-        camera_h=unused_scalar,
+-        projector=projector,
+-        mask=torch.tensor([[True, False]]),
+-    )
+-    expected = torch.nn.functional.smooth_l1_loss(
+-        pred_uv[:, :1, :1],
+-        target_uv[:, :1, :1],
+-        reduction="mean",
+-    )
+-
+-    assert actual == pytest.approx(expected)
+-
+-    empty = reprojection_loss(
+-        pred_position=torch.zeros(1, 2, 3),
+-        target_uv=target_uv,
+-        target_vis=torch.zeros(1, 2, 2, dtype=torch.bool),
+-        camera_R=torch.eye(3).view(1, 1, 3, 3).expand(1, 2, -1, -1),
+-        camera_C=torch.zeros(1, 2, 3),
+-        camera_f=unused_scalar,
+-        camera_cx=unused_scalar,
+-        camera_cy=unused_scalar,
+-        camera_w=unused_scalar,
+-        camera_h=unused_scalar,
+-        projector=projector,
+-        mask=torch.ones(1, 2, dtype=torch.bool),
++    assert len(residual.position)
++    assert residual.position.abs().max() < 2e-6
++    assert residual.velocity.abs().max() < 3e-6
++    assert len(residual.position) < residual.possible
++    assert torch.all(residual.simulation_steps == residual.horizon * (sim_fps // fps))
++
++
++def test_nonzero_finite_physics_gradients_reach_both_heads_and_both_endpoints():
++    _, target = prepared_samples([physics_sample()])
++    p = target.position.clone()
++    p[:, 4, 0] += 0.2
++    p.requires_grad_()
++    v = target.velocity.clone()
++    v[:, 2, 0] += 0.3
++    v.requires_grad_()
++    cfg = loss_config(
++        position_weight=0.0,
++        reprojection_weight=0.0,
++        velocity_weight=0.0,
++        physics_start_step=0,
++        physics_warmup_steps=0,
+     )
+-    assert torch.isfinite(empty)
+-    assert empty.item() == 0.0
+-
+-
+-def test_blcs_reprojection_denormalizes_court_position_before_projection() -> None:
+-    scalar = torch.ones(1, 1)
+-    actual = reprojection_loss(
+-        pred_position=torch.tensor([[[1.0, 0.0, 0.0]]]),
+-        target_uv=torch.tensor([[[[1.0, 0.0]]]]),
+-        target_vis=torch.ones(1, 1, 1, dtype=torch.bool),
+-        camera_R=torch.eye(3).view(1, 1, 3, 3),
+-        camera_C=torch.tensor([[[0.0, 0.0, -COURT_COORD_SCALE_Z]]]),
+-        camera_f=scalar,
+-        camera_cx=torch.zeros_like(scalar),
+-        camera_cy=torch.zeros_like(scalar),
+-        camera_w=scalar,
+-        camera_h=scalar,
+-        projector=DifferentiablePinholeProjection(),
+-        mask=torch.ones(1, 1, dtype=torch.bool),
++    loss = BLCSLoss(cfg)(BLCSTrajectoryPrediction(p, v), target)["total"]
++    assert loss > 0
++    loss.backward()
++    for value in (p, v):
++        assert torch.isfinite(value.grad).all()
++        assert value.grad.norm() > 0
++        assert value.grad[:, 0].norm() > 0 or value.grad[:, -1].norm() > 0
++    disabled = BLCSLoss(
++        {**cfg, "rollout_position_weight": 0.0, "rollout_velocity_weight": 0.0}
++    )(BLCSTrajectoryPrediction(p, v), target)["total"]
++    assert disabled == 0
++
++
++def test_missing_observations_remain_supervised_and_padding_is_excluded():
++    sample = physics_sample()
++    sample["ball_vis"].zero_()
++    _, target = prepared_samples([sample, physics_sample(3, name="short")])
++    assert target.loss_mask.sum() == 15
++    assert target.physics.segment[1, 3:].eq(-1).all()
++    p = target.position.clone()
++    p[0, 3, 0] += 1
++    p[1, 3:] = 999
++    result = BLCSLoss(loss_config(reprojection_weight=0.0))(
++        BLCSTrajectoryPrediction(p, target.velocity), target, step=1000
+     )
+-
+-    torch.testing.assert_close(actual, torch.zeros_like(actual))
+-
+-
+-def test_blcs_loss_rejects_invalid_axis_weights() -> None:
+-    with pytest.raises(ValueError, match="exactly 3"):
+-        _loss(position_axis_weights=(1.0, 2.0))
+-
+-    with pytest.raises(ValueError, match="non-negative"):
+-        _loss(position_axis_weights=(1.0, -1.0, 1.0))
+-
+-
+-def test_removed_gravity_target_compatibility_accessor_is_unavailable() -> None:
+-    loss_fn = _loss(gravity_weight=1.0)
+-
+-    assert "_gravity_target" not in BLCSLoss.__dict__
+-    with pytest.raises(AttributeError, match="_gravity_target"):
+-        _ = loss_fn._gravity_target  # type: ignore[attr-defined]
+-
+-
+-def test_blcs_loss_uses_axis_weights_for_position_term() -> None:
+-    pred = torch.zeros(1, 1, 3)
+-    target = torch.tensor([[[0.0, 0.5, 0.0]]])
+-    loss_fn = _loss(position_axis_weights=(1.0, 4.0, 1.0))
+-
+-    losses = loss_fn(**_loss_call(pred, target))
+-
+-    unweighted_y = torch.nn.functional.smooth_l1_loss(
+-        pred[:, :, 1],
+-        target[:, :, 1],
+-        reduction="mean",
++    assert result["position"] > 0
++    p[1, 3:] = -999
++    repeat = BLCSLoss(loss_config(reprojection_weight=0.0))(
++        BLCSTrajectoryPrediction(p, target.velocity), target, step=1000
+     )
+-    expected = unweighted_y * 4.0 / 3.0
+-    assert losses["position"] == pytest.approx(expected)
+-    assert losses["total"] == pytest.approx(expected)
+-
+-
+-def test_default_position_loss_is_equal_for_same_physical_xyz_error() -> None:
+-    loss_fn = _loss(position_axis_weights=None)
+-    target = torch.zeros(1, 1, 3)
+-    losses = []
+-    for axis in range(3):
+-        physical_error = torch.zeros(1, 1, 3)
+-        physical_error[..., axis] = 0.25
+-        pred = normalize_court_position(physical_error)
+-        losses.append(loss_fn(**_loss_call(pred, target))["position"])
+-
+-    torch.testing.assert_close(torch.stack(losses), losses[0].expand(3))
++    assert result["total"] == repeat["total"]
+ 
+ 
+-def test_zero_weight_physics_priors_are_off() -> None:
+-    loss_fn = _loss(
+-        position_weight=1.0,
+-        smoothness_weight=0.0,
+-        gravity_weight=0.0,
++def test_short_and_all_padding_have_differentiable_empty_losses():
++    _, target = prepared_samples([physics_sample(1)])
++    target = replace(
++        target,
++        loss_mask=torch.zeros_like(target.loss_mask),
++        physics=replace(
++            target.physics, segment=torch.full_like(target.physics.segment, -1)
++        ),
+     )
+-    pred = torch.randn(1, 20, 3)
+-    target = torch.randn(1, 20, 3)
+-    losses = loss_fn(**_loss_call(pred, target))
+-    assert losses["smoothness"].item() == 0.0
+-    assert losses["gravity"].item() == 0.0
+-
+-
+-def test_smoothness_prior_penalizes_jitter() -> None:
+-    loss_fn = _loss(position_weight=0.0, smoothness_weight=1.0)
+-    t = torch.linspace(0, 1, 40).view(1, 40, 1).repeat(1, 1, 3)
+-    smooth = loss_fn(**_loss_call(t, t))["smoothness"]
+-    jittery = t + 0.05 * torch.randn(1, 40, 3)
+-    noisy = loss_fn(**_loss_call(jittery, jittery))["smoothness"]
+-    assert noisy > 10 * smooth
+-
+-
+-def test_gravity_prior_prefers_ballistic_curvature() -> None:
+-    loss_fn = _loss(position_weight=0.0, gravity_weight=1.0)
+-    target_2nd = loss_fn.gravity_penalty.target_second_difference
+-    steps = torch.arange(40.0)
+-    xy = torch.zeros(1, 40, 2)
+-    z_ballistic = (1.0 + 0.02 * steps + 0.5 * target_2nd * steps**2).view(1, 40, 1)
+-    ballistic = torch.cat([xy, z_ballistic], dim=-1)
+-    z_flat = (1.0 + 0.02 * steps).view(1, 40, 1)  # zero curvature
+-    flat = torch.cat([xy, z_flat], dim=-1)
+-    good = loss_fn(**_loss_call(ballistic, ballistic))["gravity"]
+-    bad = loss_fn(**_loss_call(flat, flat))["gravity"]
+-    assert good < 1e-6
+-    assert bad > good
+-
+-
+-def test_physics_priors_contribute_to_total() -> None:
+-    loss_fn = _loss(position_weight=1.0, smoothness_weight=1.0, gravity_weight=0.5)
+-    pred = torch.randn(1, 30, 3)
+-    target = torch.randn(1, 30, 3)
+-    losses = loss_fn(**_loss_call(pred, target))
+-    expected = losses["position"] + losses["smoothness"] + 0.5 * losses["gravity"]
+-    assert losses["total"] == pytest.approx(expected.item(), rel=1e-5)
++    p = target.position.clone().requires_grad_()
++    v = target.velocity.clone().requires_grad_()
++    losses = BLCSLoss(loss_config())(BLCSTrajectoryPrediction(p, v), target, step=1000)
++    assert losses["total"] == 0
++    losses["total"].backward()
++    assert torch.isfinite(p.grad).all()
+ 
+ 
+-def test_blcs_loss_rejects_invalid_smoothness_axis_weights() -> None:
+-    with pytest.raises(ValueError, match="exactly 3 values"):
+-        _loss(smoothness_weight=1.0, smoothness_axis_weights=(1.0, 1.0))
+-    with pytest.raises(ValueError, match="non-negative"):
+-        _loss(
+-            smoothness_weight=1.0,
+-            smoothness_axis_weights=(1.0, 1.0, -1.0),
+-        )
+-
+-
+-def test_smoothness_axis_weights_exclude_height_axis() -> None:
+-    # Trajectory that is smooth in x/y but jittery only on the height (z) axis.
+-    torch.manual_seed(0)
+-    traj = torch.zeros(1, 30, 3)
+-    traj[..., 2] = torch.randn(1, 30)  # z-only jitter
+-    uniform = _loss(position_weight=0.0, smoothness_weight=1.0)
+-    # [1, 1, 0] drops the height axis -> the z jitter must not be penalized.
+-    zeroed_z = _loss(
+-        position_weight=0.0,
+-        smoothness_weight=1.0,
+-        smoothness_axis_weights=(1.0, 1.0, 0.0),
+-    )
+-    assert uniform(**_loss_call(traj, traj))["smoothness"] > 1e-3
+-    assert zeroed_z(**_loss_call(traj, traj))["smoothness"].item() == pytest.approx(
+-        0.0, abs=1e-8
++def test_physical_position_scale_reproduces_the_historical_control():
++    error = torch.tensor([[2.0, 0.0, -1.0], [12.0, 3.0, 2.0]])
++    expected = torch.nn.functional.smooth_l1_loss(
++        error / 11.885, torch.zeros_like(error)
+     )
+-
+-
+-def test_ballistic_target_second_difference_scales_with_output_fps() -> None:
+-    # dt = 1/fps enters the ballistic target quadratically: halving fps (doubling
+-    # dt) must quadruple the magnitude of the (negative) target 2nd difference.
+-    fast = _loss(
+-        gravity_weight=1.0,
+-        frame_dt=1.0 / 60.0,
+-    ).gravity_penalty.target_second_difference
+-    slow = _loss(
+-        gravity_weight=1.0,
+-        frame_dt=1.0 / 30.0,
+-    ).gravity_penalty.target_second_difference
+-    assert fast < 0 and slow < 0
+-    assert slow == pytest.approx(4.0 * fast, rel=1e-6)
++    assert robust_mean(error, scale=11.885, beta=11.885) == expected
++
++
++def test_physics_warmup_is_explicit():
++    loss = BLCSLoss(loss_config())
++    assert [loss.physics_factor(s) for s in (0, 200, 400, 600, 4000)] == [
++        0,
++        0,
++        0.5,
++        1,
++        1,
++    ]
+diff --git a/tests/unit/tasks/blcs/training/test_metrics.py b/tests/unit/tasks/blcs/training/test_metrics.py
+index 203241bb5..844ff6433 100644
+--- a/tests/unit/tasks/blcs/training/test_metrics.py
++++ b/tests/unit/tasks/blcs/training/test_metrics.py
+@@ -1,307 +1,100 @@
+-"""Court-frame contract tests for standard BLCS evaluation metrics."""
++"""Frame/clip denominators, undefined states and batch/distributed invariance."""
+ 
+-from __future__ import annotations
++from dataclasses import replace
+ 
++import numpy as np
+ import pytest
+ import torch
+ 
+-from src.tasks.base.generate_dataset import (
+-    CourtKeypointContractMismatchError,
+-    CourtReferenceFrameProvenance,
+-    MissingCourtKeypointMetadataError,
+-    build_court_view_record,
+-    build_physical_court_provenance,
+-    build_reference_frame_provenance,
+-    resolve_court_keypoint_contract,
+-)
+-from src.tasks.blcs.model_io import (
+-    BLCSTrajectoryPrediction,
+-    blcs_trajectory_prediction_to_physical,
+-)
++from src.tasks.blcs.model_io.contracts import BLCSTrajectoryPrediction
+ from src.tasks.blcs.training.metrics import BLCSMetrics
+-from src.utils.schema.court_normalization import (
+-    denormalize_court_position,
+-    normalize_court_position,
+-)
++from tests.support.tasks.blcs_physics import physics_sample, prepared_samples
+ 
+ 
+-def _positive_side_provenance() -> CourtReferenceFrameProvenance:
+-    contract = resolve_court_keypoint_contract("camera_view_v2")
+-    view = build_court_view_record(
+-        camera_id="camera_positive",
+-        camera_center_court_m=(2.0, 12.0, 5.0),
+-        contract=contract,
+-    )
+-    return build_reference_frame_provenance(
+-        (view,),
+-        reference_camera_id=view.camera_id,
+-    )
+-
+-
+-def test_physical_v1_metrics_use_current_fixed_isotropic_scale() -> None:
+-    metrics = BLCSMetrics(
+-        position_threshold_m=0.3,
+-        endpoint_threshold_m=0.5,
+-    )
+-
+-    result = metrics.update(
+-        pred_position=torch.tensor([[[1.0, 2.0, 3.0]]]),
+-        target_position=torch.zeros(1, 1, 3),
+-    )
+-
+-    assert result["x_error_m"] == pytest.approx(11.885)
+-    assert result["y_error_m"] == pytest.approx(23.77)
+-    assert result["z_error_m"] == pytest.approx(35.655)
+-    assert result["position_error_m"] == pytest.approx(
+-        (11.885**2 + 23.77**2 + 35.655**2) ** 0.5
+-    )
+-
+-
+-def test_camera_view_v2_restores_position_and_velocity_before_physical_metrics() -> (
+-    None
+-):
+-    provenance = _positive_side_provenance()
+-    target_position_m = torch.tensor([[[2.0, -3.0, 1.0]]])
+-    target_velocity_mps = torch.tensor([[[-4.0, 5.0, 0.5]]])
+-    prediction = BLCSTrajectoryPrediction(
+-        position=target_position_m,
+-        velocity=target_velocity_mps,
+-        court_reference_provenance=(provenance,),
+-        coordinates_in_metres=True,
+-    )
+-
+-    physical = blcs_trajectory_prediction_to_physical(prediction)
+-
+-    torch.testing.assert_close(
+-        physical.position,
+-        torch.tensor([[[-2.0, 3.0, 1.0]]]),
+-    )
+-    assert physical.velocity is not None
+-    torch.testing.assert_close(
+-        physical.velocity,
+-        torch.tensor([[[4.0, -5.0, 0.5]]]),
+-    )
+-    assert physical.court_reference_provenance == (build_physical_court_provenance(),)
+-
+-    metric_result = BLCSMetrics(
+-        position_threshold_m=0.3,
+-        endpoint_threshold_m=0.5,
+-        court_keypoint_contract=provenance.contract,
+-    ).update(
+-        normalize_court_position(target_position_m),
+-        torch.zeros_like(target_position_m),
+-        court_reference_provenance=(provenance,),
+-    )
+-    assert metric_result["x_error_m"] == pytest.approx(2.0)
+-    assert metric_result["y_error_m"] == pytest.approx(3.0)
+-    assert metric_result["z_error_m"] == pytest.approx(1.0)
+-
+-
+-def test_camera_view_v2_metrics_reject_missing_or_mismatched_provenance() -> None:
+-    contract = resolve_court_keypoint_contract("camera_view_v2")
+-    metrics = BLCSMetrics(
+-        position_threshold_m=0.3,
+-        endpoint_threshold_m=0.5,
+-        court_keypoint_contract=contract,
+-    )
+-    values = torch.zeros(1, 1, 3)
+-
+-    with pytest.raises(MissingCourtKeypointMetadataError, match="require explicit"):
+-        metrics.update(values, values)
+-
+-    with pytest.raises(CourtKeypointContractMismatchError, match="does not match"):
+-        metrics.update(
+-            values,
+-            values,
+-            court_reference_provenance=(build_physical_court_provenance(),),
+-        )
+-
+-    with pytest.raises(ValueError, match="one record per batch item"):
+-        metrics.update(
+-            values,
+-            values,
+-            court_reference_provenance=(
+-                _positive_side_provenance(),
+-                _positive_side_provenance(),
+-            ),
++def update(tracker, samples, errors):
++    batch, target = prepared_samples(samples)
++    p = target.position.clone()
++    for b, error in enumerate(errors):
++        p[b, :, 0] += error / 11.885
++    tracker.update(
++        BLCSTrajectoryPrediction(p, target.velocity),
++        target,
++        observed=batch["ball_vis"],
++        scene_ids=batch["scene_id"],
++    )
++
++
++def test_hand_computed_rmse_and_batch_padding_invariance():
++    a, b = physics_sample(3, name="a"), physics_sample(9, name="b")
++    together, split = BLCSMetrics(), BLCSMetrics()
++    update(together, [a, b], [1.0, 3.0])
++    update(split, [a], [1.0])
++    update(split, [b], [3.0])
++    result = together.compute()
++    assert result["trajectory_rmse_m"] == pytest.approx(np.sqrt(7.0), rel=1e-6)
++    assert result["trajectory_mean_m"] == pytest.approx(2.5)
++    assert result["clip_trajectory_rmse_mean_m"] == pytest.approx(2.0)
++    assert result["trajectory_count"] == 12
++    for key, value in result.items():
++        other = split.compute()[key]
++        assert (np.isnan(value) and np.isnan(other)) or value == pytest.approx(
++            other, abs=1e-7
+         )
+ 
+ 
+-@pytest.mark.parametrize("court_selector", ["physical_v1", "camera_view_v2"])
+-def test_court_contract_is_independent_of_fixed_coordinate_normalization(
+-    court_selector: str,
+-) -> None:
+-    court_contract = resolve_court_keypoint_contract(court_selector)
+-    error_m = torch.tensor([[[0.25, 0.5, 0.75]]])
+-    provenance = (
+-        None if court_selector == "physical_v1" else (_positive_side_provenance(),)
+-    )
+-
+-    result = BLCSMetrics(
+-        position_threshold_m=1.0,
+-        endpoint_threshold_m=1.0,
+-        court_keypoint_contract=court_contract,
+-    ).update(
+-        normalize_court_position(error_m),
+-        torch.zeros_like(error_m),
+-        court_reference_provenance=provenance,
+-    )
+-
+-    assert result["x_error_m"] == pytest.approx(0.25)
+-    assert result["y_error_m"] == pytest.approx(0.5)
+-    assert result["z_error_m"] == pytest.approx(0.75)
+-
+-
+-def test_reference_metrics_report_target_frame_axes_y_sign_and_local_index_strata() -> (
+-    None
+-):
+-    target_m = torch.tensor(
+-        [
+-            [[1.0, 2.0, 0.5], [1.0, -2.0, 0.5]],
+-            [[2.0, 4.0, 1.0], [2.0, -4.0, 1.0]],
+-        ]
+-    )
+-    prediction_m = target_m + torch.tensor(
+-        [
+-            [[1.0, 1.0, 3.0], [1.0, 3.0, 3.0]],
+-            [[2.0, -1.0, 0.0], [2.0, -1.0, 0.0]],
+-        ]
++def test_gt_and_jitter_distinguish_position_velocity_head_and_derived_motion():
++    batch, t = prepared_samples([physics_sample(20)])
++    tracker = BLCSMetrics()
++    tracker.update(
++        BLCSTrajectoryPrediction(t.position, t.velocity), t, observed=batch["ball_vis"]
+     )
+-
+-    result = BLCSMetrics(
+-        position_threshold_m=0.3,
+-        endpoint_threshold_m=0.5,
+-        court_keypoint_contract=_positive_side_provenance().contract,
+-    ).update(
+-        normalize_court_position(prediction_m),
+-        normalize_court_position(target_m),
+-        court_reference_provenance=(
+-            _positive_side_provenance(),
+-            _positive_side_provenance(),
+-        ),
+-        reference_view_index=torch.tensor([1, 0], dtype=torch.int64),
++    assert tracker.compute()["rollout_position_rmse_m"] < 2e-6
++    p = t.position.clone()
++    p[:, ::2, 0] += 0.01
++    jitter = BLCSMetrics()
++    jitter.update(
++        BLCSTrajectoryPrediction(p, t.velocity), t, observed=batch["ball_vis"]
+     )
++    r = jitter.compute()
++    assert r["velocity_head_rmse_mps"] == 0
++    assert r["position_difference_acceleration_rmse_mps2"] > 100
++    assert r["trajectory_rmse_m"] > 0.05
+ 
+-    assert result["x_error_m"] == pytest.approx(1.5)
+-    assert result["y_error_m"] == pytest.approx(1.5)
+-    assert result["z_error_m"] == pytest.approx(1.5)
+-    assert result["y_sign_accuracy"] == pytest.approx(0.75)
+-    assert set(result) >= {
+-        "reference_index_0_position_error_m",
+-        "reference_index_1_position_error_m",
+-    }
+-
+-
+-def test_reference_metrics_accept_bfloat16_prediction_and_float32_target() -> None:
+-    target = torch.tensor([[[0.0, 0.5, 0.0]]], dtype=torch.float32)
+-    prediction = target.to(torch.bfloat16)
+-    provenance = _positive_side_provenance()
+-    prediction_m = denormalize_court_position(prediction)
+-    target_m = denormalize_court_position(target)
+-    expected_y_error = float((prediction_m.float() - target_m).abs()[0, 0, 1])
+-
+-    with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+-        result = BLCSMetrics(
+-            position_threshold_m=0.3,
+-            endpoint_threshold_m=0.5,
+-            court_keypoint_contract=provenance.contract,
+-        ).update(
+-            prediction,
+-            target,
+-            court_reference_provenance=(provenance,),
+-            reference_view_index=torch.tensor([0], dtype=torch.int64),
+-        )
+ 
+-    assert result["x_error_m"] == pytest.approx(0.0)
+-    assert result["y_error_m"] == pytest.approx(expected_y_error)
+-    assert result["z_error_m"] == pytest.approx(0.0)
+-    assert result["y_sign_accuracy"] == pytest.approx(1.0)
+-
+-
+-def test_aggregated_metrics_use_canonical_names_and_decimal_thresholds() -> None:
+-    tracker = BLCSMetrics(
+-        position_threshold_m=0.4,
+-        endpoint_threshold_m=0.5,
+-    )
++def test_empty_metrics_are_undefined_not_zero_and_missing_is_a_separate_stratum():
++    batch, t = prepared_samples([physics_sample(1)])
++    tracker = BLCSMetrics()
+     tracker.update(
+-        normalize_court_position(torch.tensor([[[0.1, 0.0, 0.0]]])),
+-        torch.zeros(1, 1, 3),
+-    )
+-
+-    metrics = tracker.compute()
+-
+-    assert set(metrics) >= {
+-        "position_error_m",
+-        "x_error_m",
+-        "y_error_m",
+-        "z_error_m",
+-        "endpoint_error_m",
+-        "position_accuracy_0.3m",
+-        "position_accuracy_0.4m",
+-        "endpoint_accuracy_0.5m",
+-    }
+-    assert not any(name.startswith("mean_") for name in metrics)
+-    assert not any("accuracy_0_" in name for name in metrics)
+-
+-
+-def test_configurable_accuracy_threshold_cannot_overwrite_fixed_metric() -> None:
+-    tracker = BLCSMetrics(
+-        position_threshold_m=0.3004,
+-        endpoint_threshold_m=0.5,
+-    )
+-    prediction_m = torch.tensor([[[0.3002, 0.0, 0.0]]])
++        BLCSTrajectoryPrediction(t.position, None),
++        t,
++        observed=torch.zeros_like(batch["ball_vis"]),
++    )
++    r = tracker.report()["metrics"]
++    assert r["trajectory__missing_count"] == 1
++    assert r["trajectory__observed_count"] == 0
++    assert r["rollout_position_rmse_m"] is None
++    assert r["velocity_head_rmse_mps"] is None
++    empty = replace(t, loss_mask=torch.zeros_like(t.loss_mask))
++    tracker.reset()
+     tracker.update(
+-        normalize_court_position(prediction_m),
+-        torch.zeros_like(prediction_m),
+-    )
+-
+-    metrics = tracker.compute()
+-
+-    assert metrics["position_accuracy_0.3m"] == pytest.approx(0.0)
+-    assert metrics["position_accuracy_0.3004m"] == pytest.approx(1.0)
+-
+-
+-def test_compute_rejects_an_epoch_without_valid_frames() -> None:
+-    tracker = BLCSMetrics(
+-        position_threshold_m=0.3,
+-        endpoint_threshold_m=0.5,
++        BLCSTrajectoryPrediction(t.position, t.velocity),
++        empty,
++        observed=batch["ball_vis"],
+     )
++    assert tracker.report()["metrics"]["trajectory_rmse_m"] is None
+ 
+-    with pytest.raises(RuntimeError, match="requires at least one valid frame"):
+-        tracker.compute()
+ 
+-    batch_result = tracker.update(
+-        torch.ones(1, 2, 3),
+-        torch.zeros(1, 2, 3),
+-        mask=torch.zeros(1, 2),
+-    )
+-    assert batch_result == {}
++def test_distributed_sampler_duplicate_does_not_change_the_population(monkeypatch):
++    tracker = BLCSMetrics()
++    update(tracker, [physics_sample(6, name="a")], [2.0])
++    expected = tracker.compute()
++    monkeypatch.setattr(torch.distributed, "is_initialized", lambda: True)
++    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: 2)
+ 
+-    with pytest.raises(RuntimeError, match="epoch contained no metric observations"):
+-        tracker.compute()
++    def gather(destination, records):
++        destination[:] = [records, records]
+ 
+-
+-def test_mixed_padding_uses_valid_frame_and_endpoint_denominators() -> None:
+-    tracker = BLCSMetrics(
+-        position_threshold_m=0.3,
+-        endpoint_threshold_m=0.5,
+-    )
+-    prediction_m = torch.tensor(
+-        [
+-            [[1.0, 0.0, 0.0], [100.0, 0.0, 0.0]],
+-            [[100.0, 0.0, 0.0], [100.0, 0.0, 0.0]],
+-        ]
+-    )
+-
+-    tracker.update(
+-        normalize_court_position(prediction_m),
+-        torch.zeros_like(prediction_m),
+-        mask=torch.tensor([[True, False], [False, False]]),
+-    )
++    monkeypatch.setattr(torch.distributed, "all_gather_object", gather)
+     result = tracker.compute()
+-
+-    assert result["position_error_m"] == pytest.approx(1.0)
+-    assert result["x_error_m"] == pytest.approx(1.0)
+-    assert result["position_accuracy_0.3m"] == pytest.approx(0.0)
+-    assert result["endpoint_error_m"] == pytest.approx(1.0)
+-    assert result["endpoint_accuracy_0.5m"] == pytest.approx(0.0)
++    assert result["trajectory_count"] == expected["trajectory_count"]
++    assert result["trajectory_rmse_m"] == expected["trajectory_rmse_m"]
+diff --git a/tests/unit/tasks/blcs/visualization/inference/test_inference_service.py b/tests/unit/tasks/blcs/visualization/inference/test_inference_service.py
+index 8e329404b..95eeac3d1 100644
+--- a/tests/unit/tasks/blcs/visualization/inference/test_inference_service.py
++++ b/tests/unit/tasks/blcs/visualization/inference/test_inference_service.py
+@@ -556,9 +556,9 @@ def test_infer_trajectory_windowed_single_object(
+     assert response["prediction"]["presence"] is None
+     assert len(response["prediction"]["positions"]) == 18
+     assert set(response["metrics"]) == {
+-        "position_error_m",
+-        "endpoint_error_m",
+-        "accuracy_0p3m",
++        "trajectory_rmse_m",
++        "trajectory_mean_m",
++        "trajectory_p95_m",
+     }
+     assert response["device"] == "cpu"
+     assert response["cameras"] == [0]
