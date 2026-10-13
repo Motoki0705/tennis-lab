@@ -87,7 +87,7 @@ tags:
 
 rollout位置整合までの条件に、同じ共有積分器の短時間rollout速度整合を加えた候補A。rollout_position条件との差がこの項の追加効果を調べる。 固定snapshot・axial base・xyz/velocity head共通の比較プロトコルに従い、seed42で4,000 optimizer updatesを完了した。学習完了のqueue状態・ログ・選定台帳とcheckpointのSHA-256を照合した。
 
-validationの全100 scene（中心128frame、短いsceneは全長）で選んだcheckpointの軌道RMSEは **0.692353070 m**。checkpointのglobal_stepは4000、epoch値は89（0始まり）で、保存されたvalidation曲線の最小値と一致する。最終部分epochの明示validationも選定に含む。その他の指標・支持数と損失/勾配ログはscalars.json.gzに保存した。この値は選択に用いたvalidationの値であり、独立testの性能ではない。
+validationの全100 scene（中心128frame、短いsceneは全長）で選んだcheckpointの軌道RMSEは **0.692353070 m**。checkpointのglobal_stepは4000、epoch値は89（0始まり）で、保存されたvalidation曲線の最小値と一致する。最終部分epochの明示validationも選定に含む。その他の記録された指標と損失/勾配ログはscalars.json.gzに保存した。指標別の支持数はこのTensorBoard記録に含まれず、最終保存評価で記録する。この値は選択に用いたvalidationの値であり、独立testの性能ではない。
 
 train段階の診断器はrollout_horizons=()の設定なので、trainのrollout位置・速度指標は未測定（保存scalarではnull）である。rollout損失の計算とは別で、validationの両指標は計測している。学習曲線は主評価軸の位置・速度・再投影・rolloutと地面下率を示し、未測定点は線で埋めない。
 

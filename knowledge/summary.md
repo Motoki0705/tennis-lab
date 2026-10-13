@@ -1,4 +1,4 @@
-<!-- knowledge-review: 8612bb3765d3ce95f761e343d15d07ea2571f39c6468718236490124dd75beee on 2026-10-13 -->
+<!-- knowledge-review: 53edfb5dc822932dab2c5b59b77a0138cd8c95d2f4e2041044f5ad6b355e4c0d on 2026-10-13 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-07（BLCSの物理GT付きv3データ再学習とckpt置換を登録。tennis_sceneへの組み込みは保留）
@@ -452,7 +452,7 @@ camera-view v2のreference selectorも決着していません。PLCSではrefer
 
 2026-10-13の[#1044実装検証](nodes/blcs/000053-group-i1044-qualification.md)では、通常・chunked・GANの短いGPUスモークと、全validationの物理GT自己評価が成立した。rollout残差は位置約3.84e-7 m・速度約4.17e-7 m/sで、保存clockと尺度を接続できている。短い学習の結果から新損失の優位は判断しない。初回比較のCUDA中断と初期スモークの不完全なsource captureも記録した。各4,000更新の10 runで既存戦略と段階的損失追加を比較するまで、方式や本番checkpointの採用判断は保留する。採用閾値は設けず、結果の観測後に人間が判断する。
 
-同日の正式比較では、[速度教師追加](nodes/blcs/000055-run-i1044-velocity-s42-u4000.md)・[rollout位置整合追加](nodes/blcs/000056-run-i1044-rollout-position-s42-u4000.md)・[rollout速度整合追加（A）](nodes/blcs/000057-run-i1044-rollout-velocity-s42-u4000.md)・[最小物理head追加（B）](nodes/blcs/000058-run-i1044-parameters-s42-u4000.md)・[位置教師のみ](nodes/blcs/000059-run-i1044-position-s42-u4000.md)のseed42が4,000更新を完了した。完了5条件の選定validation位置RMSEはBで最小だが、位置のみより一部の新方式の値が大きい。既存戦略の主対照・追加seed・全長testは未完了であり、損失追加の効果や再現性、採用を結論しない。Bはheadと複数補助損失を一群で加えた比較であり、内部の各項の独立効果は切り分けていない。完了5 runの選定台帳・checkpoint hash・学習曲線・queue原本を照合して保存した。次は残りの学習と、validationによる追加seed対象の選択を進める。
+[seed42の正式6条件比較と追加seed選択](nodes/blcs/000061-group-i1044-seed42-selection.md)が完了し、各4,000更新の新方式4候補からvalidation位置RMSE最小のBを選んだ。位置のみからclean再投影を加えた主対照では位置RMSEが大きくなり、その後の速度教師・rollout位置・rollout速度・B追加では順に小さくなった。ただしrollout位置追加の差は小さく、Bの位置精度改善も全長testとseed43/44で未確認である。未教師の速度headでもrollout速度残差が小さい例があり、整合残差単独では運動の正確さを判断できない。Bはheadと複数補助損失を一群で追加した比較で、内部の各項の独立効果は切り分けていない。次は主対照とBのseed43/44の計4 runを完了し、全長test・支持数・層別・実観測診断を比較する。seed42は方式選択にも使っているため確認seedと区別し、採用は結論しない。
 
 2026-10-07、[#1038の物理GT付きv3データでの再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)を完了し、validation選定ckptをローカルckpt/blcs/へ置換した。旧#1036はデータ変更と組み込み方針の未確定により不採用とし、tennis_sceneの実装・既定設定は変更していない。データsnapshotを固定した200 epoch学習と88シーンの中心窓testが完走したが、旧実験とはシーン集合・更新数が異なるため精度改善の因果比較には使わない。短いtestシーン・全長・実検出・実動画3D精度・追加seedは未評価。次は組み込み経路の確定後に入力契約と受入条件を別途定める。以下の旧deploy・associationの知見は当時の構成に限定した履歴であり、今回の採用範囲を拡張しない。
 
