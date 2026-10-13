@@ -35,7 +35,9 @@ class BLCSDataModuleHooks:
             scene_dir=scene_dir,
             split_file=split_file,
             config=self.config,
-            seed=(
+            seed=int(self.config.metrics.evaluation_seed)
+            if not augment
+            else (
                 cast("SceneDirectoryDataModule", self)._dataset_seed(
                     scene_dir, split_file
                 )

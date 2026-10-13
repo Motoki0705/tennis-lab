@@ -556,9 +556,9 @@ def test_infer_trajectory_windowed_single_object(
     assert response["prediction"]["presence"] is None
     assert len(response["prediction"]["positions"]) == 18
     assert set(response["metrics"]) == {
-        "position_error_m",
-        "endpoint_error_m",
-        "accuracy_0p3m",
+        "trajectory_rmse_m",
+        "trajectory_mean_m",
+        "trajectory_p95_m",
     }
     assert response["device"] == "cpu"
     assert response["cameras"] == [0]
@@ -589,7 +589,7 @@ def test_every_single_form_loads_as_a_scene(tmp_path: Path, form: str) -> None:
 
 
 @pytest.mark.local_data
-def test_real_curated_checkpoints_are_classified_runnable() -> None:
+def test_real_curated_checkpoints_report_current_contract_or_rejection() -> None:
     if not (REAL_CHECKPOINTS_ROOT.is_dir() and (REAL_DATA_ROOT / "blcs").is_dir()):
         pytest.skip("Local BLCS checkpoints or datasets are unavailable.")
     service = InferenceService(
@@ -598,20 +598,16 @@ def test_real_curated_checkpoints_are_classified_runnable() -> None:
         REAL_DATA_ROOT,
     )
     catalog = service.catalog()
-    runnable = [entry for entry in catalog["checkpoints"] if entry["runnable"]]
-    assert runnable, "expected at least one runnable curated checkpoint"
-    references = [
-        entry
-        for entry in runnable
-        if entry["model_name"] == "blcs_multiview_axial_reference"
-    ]
-    assert references
-    for entry in references:
-        assert entry["allowed_forms"] == ["single_object_camera_view_v2"]
-        assert entry["seq_len"] == 128
-        assert entry["num_court_tokens"] in {14, 20}
-    kp14 = next(entry for entry in references if "kp14" in entry["name"])
-    assert kp14["num_court_tokens"] == 14
+    assert catalog["checkpoints"]
+    # Deployment weights are not replaced by this experiment. Pre-contract
+    # checkpoints may remain on disk and must have an explicit rejection reason.
+    for entry in catalog["checkpoints"]:
+        if entry["runnable"]:
+            assert entry["model_name"] == "blcs_multiview_axial"
+            assert entry["allowed_forms"] == ["single_object"]
+            assert entry["court_keypoint_selector"] == "physical_v1"
+        else:
+            assert entry["unavailable_reason"]
 
 
 @pytest.mark.local_data

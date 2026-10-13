@@ -4,7 +4,7 @@ defaults:
   - model: multiview_axial_base
   - data: multiview_chunked_sequence
   - training: default
-  - loss: reprojection
+  - loss: default
   - metrics: default
   - run: train
   - physics: default
@@ -14,6 +14,10 @@ defaults:
   - generator: default
   - generation: single_object
   - _self_
+
+training:
+  trainer:
+    reload_dataloaders_every_n_epochs: 1
 
 hydra:
   run:

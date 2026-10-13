@@ -53,6 +53,8 @@ class BLCSBatch(TypedDict):
 class BLCSMultiViewSample(TypedDict):
     """Schema for multi-view BLCS dataset sample.
 
+
+
     Used by BallTrajectoryDataset.__getitem__() in multiview mode. Contains observations
     from multiple cameras for the same ball trajectory.
 
@@ -60,6 +62,17 @@ class BLCSMultiViewSample(TypedDict):
     alternating attention architecture. This allows per-frame court context
     without temporal aggregation.
     """
+
+    scene_id: str
+    physics_spin: torch.Tensor
+    physics_segment: torch.Tensor
+    physics_event: torch.Tensor
+    physics_field: torch.Tensor
+    physics_clock: torch.Tensor
+    physics_surface: torch.Tensor
+    frame_index: torch.Tensor
+    clip_frames: torch.Tensor
+    bounce_count: torch.Tensor
 
     ball_uv: torch.Tensor  # (N_cam, T, 2) ball 2D trajectories from each camera
     ball_vis: torch.Tensor  # (N_cam, T) ball visibility masks (1=visible)
@@ -94,6 +107,17 @@ class BLCSMultiViewSample(TypedDict):
 
 class BLCSMultiViewBatch(TypedDict):
     """Schema for batched multi-view BLCS dataset samples."""
+
+    scene_id: tuple[str, ...]
+    physics_spin: torch.Tensor
+    physics_segment: torch.Tensor
+    physics_event: torch.Tensor
+    physics_field: torch.Tensor
+    physics_clock: torch.Tensor
+    physics_surface: torch.Tensor
+    frame_index: torch.Tensor
+    clip_frames: torch.Tensor
+    bounce_count: torch.Tensor
 
     ball_uv: torch.Tensor  # (B, N_max, T_max, 2)
     ball_vis: torch.Tensor  # (B, N_max, T_max)

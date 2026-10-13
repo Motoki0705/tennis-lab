@@ -27,6 +27,7 @@ from src.tasks.base.model_io import (
     extract_track_query_reference_contract_metadata,
     write_track_query_reference_contract,
 )
+from src.tasks.blcs.physics.targets import PhysicsTargets
 
 
 @dataclass(frozen=True, slots=True)
@@ -317,6 +318,8 @@ class BLCSTrajectoryPrediction:
 
     position: Tensor
     velocity: Tensor | None
+    physics_parameters: Tensor | None = None
+    event_logits: Tensor | None = None
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] = field(
         default_factory=tuple
     )
@@ -341,6 +344,7 @@ class BLCSTrajectoryTrainingBatch:
     camera_cy: Tensor
     camera_w: Tensor
     camera_h: Tensor
+    physics: PhysicsTargets
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] = field(
         default_factory=tuple
     )
@@ -398,6 +402,8 @@ def blcs_trajectory_prediction_to_physical(
     return BLCSTrajectoryPrediction(
         position=position,
         velocity=velocity,
+        physics_parameters=prediction.physics_parameters,
+        event_logits=prediction.event_logits,
         court_reference_provenance=identity,
         coordinates_in_metres=True,
         reference_metadata=prediction.reference_metadata,

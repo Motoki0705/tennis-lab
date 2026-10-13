@@ -1,12 +1,20 @@
-# Standard BLCS trajectory loss configuration.
+# xyz is measured in metres before this explicit normalization. These scales
+# exactly reproduce the old default Smooth L1 position supervision.
 position_weight: 1.0
-position_axis_weights: null
-reprojection_weight: 0.0
-
-# Physics priors (temporal); disabled by default.
-smoothness_weight: 0.0
-gravity_weight: 0.0
-smoothness_order: 3
-smoothness_beta: 1.0e-3
-gravity_beta: 5.0e-3
-smoothness_axis_weights: null
+position_scale_m: 11.885
+position_beta_m: 11.885
+reprojection_weight: 0.1
+reprojection_beta_fraction: 1.0
+velocity_weight: 0.1
+velocity_scale_mps: 30.0
+velocity_beta_mps: 10.0
+rollout_position_weight: 1.0
+rollout_velocity_weight: 0.1
+rollout_horizons: [1, 3]
+physics_start_step: 200
+physics_warmup_steps: 400
+parameters_weight: 0.0
+event_weight: 0.0
+reconstruction_weight: 0.0
+parameter_consistency_weight: 0.0
+event_positive_weight: 10.0
