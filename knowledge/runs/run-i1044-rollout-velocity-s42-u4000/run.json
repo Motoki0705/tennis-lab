@@ -1,0 +1,16 @@
+{
+  "run_id": "1791857516841918861_3137657_i1044-rollout_velocity-s42-u4000-cli",
+  "name": "i1044-rollout_velocity-s42-u4000-cli",
+  "command": "CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -m src.tasks.blcs.experiments.scripts.issue1044 --arm rollout_velocity --seed 42 --steps 4000 --data-root /home/kamimura/projects/tennis-lab/data --output blcs/i1044/rollout_velocity-s42-u4000",
+  "provider": "codex",
+  "session": "01a1327c-d543-7673-8143-2764d9f62447",
+  "issue": "1044",
+  "resource": "half",
+  "logical_gpu_slot": "0",
+  "commit": "806b0d3675e8bcd2e0af78006cf75a178f8b8ddf",
+  "branch": "codex/issue-1044-blcs-physics",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "captured_at": "2026-10-13T13:31:22+09:00"
+}
