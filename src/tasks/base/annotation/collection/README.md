@@ -45,3 +45,5 @@ clipと各taskを1 transactionで段階追加する。
 
 検証: [test_collection.py](../../../../../tests/unit/tasks/base/annotation/test_collection.py)
 で並行登録、過去素材、同内容、先行制限、実MP4のframe/PTS、公開前/後の障害、再試行を確認する。
+
+クリップの通常選別は [screening](../screening/README.md) が担当する。
