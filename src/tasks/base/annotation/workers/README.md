@@ -37,6 +37,9 @@ state = pool.reconcile(request)
   読込を無効にする。ツールのnetwork/GPUを無効にし、CPU内部thread数を工程から
   設定する。作業CWDは `attempt/work`、追加write領域もattempt内の宣言済みdirectory
   に限定する。入力、prompt、supervisorのreceiptはworkerのwrite領域に含めない。
+  `/tmp` と継承したTMPDIRへの暗黙のwrite許可を除き、一時領域は `work/tmp` に置く。
+  親指定のCodex state directoryをlaunchに固定する。productionでは起動前と
+  supervisor側でcode commit/diffと未追跡ファイルを確認する。
   [公式の非対話実行仕様](https://learn.chatgpt.com/docs/non-interactive-mode) と
   インストール済みCLIのhelpを確認している。
 - 成功はexit code 0・thread ID・`turn.completed`・失敗イベントなしをすべて要求する。
@@ -51,7 +54,7 @@ state = pool.reconcile(request)
   validationはそのcampaignのadapterで再開する。productionでは
   [resources](../resources/README.md) のscopeとPSS/保存予約を必須とし、
   `CapacityUnavailable` と `BudgetStopped` を区別する。supervisorが資源leaseを継承し、
-  稼働中の計測と終了時の回収を担当する。
+  稼働中は保存走査を待たない `watch()` を使い、終了時の回収を担当する。
 
 標準状態は `ready → running → complete`、未回収終了は `exited`。
 `failed / quota / timed_out / cancelled / validation_failed / deferred` は理由を保存する。

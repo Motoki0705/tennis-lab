@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat as stat_modes
 import subprocess
 from collections.abc import Iterator
 from pathlib import Path
@@ -80,7 +81,7 @@ def allocations(roots: tuple[str, ...]) -> Iterator[tuple[str, os.stat_result]]:
             except FileNotFoundError:
                 continue
             yield str(path), stat
-            if path.is_dir() and not path.is_symlink():
+            if stat_modes.S_ISDIR(stat.st_mode):
                 try:
                     with os.scandir(path) as entries:
                         pending.extend(Path(item.path) for item in entries)
@@ -117,31 +118,31 @@ def free_bytes(roots: tuple[str, ...]) -> int:
 
 def storage_usage(roots: tuple[str, ...], baseline: Path, prepaid: int) -> StorageUsage:
     # Keep the original anchor: deleting old files cannot credit new files elsewhere.
-    prior: dict[tuple[int, int], int] = {}
+    prior: dict[tuple[int, int], tuple[int, str]] = {}
     with baseline.open() as handle:
         for line in handle:
             device, inode, allocated, name = json.loads(line)
-            try:
-                stat = Path(name).lstat()
-            except FileNotFoundError:
-                continue
-            if (stat.st_dev, stat.st_ino) == (device, inode):
-                prior[(device, inode)] = allocated
+            prior[(device, inode)] = (allocated, name)
     seen: set[tuple[int, int]] = set()
-    total = logical = additional = count = 0
-    for _name, stat in allocations(roots):
+    total = logical = deduction = count = 0
+    for name, stat in allocations(roots):
         count += 1
         logical += stat.st_size
         key = stat.st_dev, stat.st_ino
+        original = prior.get(key)
+        # Only the original path can authorize a deduction. A surviving hardlink
+        # after anchor deletion cannot credit new files. This needs one tree scan,
+        # instead of an extra lstat for every historical anchor before that scan.
+        if original is not None and original[1] == name:
+            deduction += min(stat.st_blocks * 512, original[0])
         if key in seen:
             continue
         seen.add(key)
         amount = stat.st_blocks * 512
         total += amount
-        additional += max(0, amount - prior.get(key, 0))
     return StorageUsage(
         allocated_bytes=total,
-        additional_bytes=additional + prepaid,
+        additional_bytes=total - deduction + prepaid,
         logical_bytes=logical,
         entries=count,
         unique_inodes=len(seen),

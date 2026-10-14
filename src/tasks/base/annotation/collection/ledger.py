@@ -14,6 +14,7 @@ from ..plan import CampaignPlan, save_plan
 from ..registry import Registry
 from .contracts import (
     AcquisitionReceipt,
+    HistoricalSource,
     PreparationReceipt,
     RegistrationResult,
     SelectionReceipt,
@@ -188,17 +189,26 @@ class CollectionLedger:
             )
             return result
 
-    def import_history(self, source: SourceIdentity, evidence: ArtifactRef) -> None:
+    def import_history(
+        self, source: HistoricalSource | SourceIdentity, evidence: ArtifactRef
+    ) -> None:
         """Seed read-only inventory before planning; never claim historical media as new."""
         verify_reference(self.layout, evidence)
-        verify_reference(self.layout, source.media)
+        if source.media is not None:
+            verify_reference(self.layout, source.media)
         with self.registry.transaction() as database:
             existing = database.execute(
-                "SELECT state FROM sources WHERE id=?", (source.canonical_id,)
+                "SELECT state,candidate,reason FROM sources WHERE id=?",
+                (source.canonical_id,),
             ).fetchone()
             if existing is not None:
                 if existing["state"] != "historical":
                     raise ValueError("cannot rewrite a campaign source as historical")
+                if (existing["candidate"], existing["reason"]) != (
+                    source.canonical_bytes().decode(),
+                    evidence.canonical_bytes().decode(),
+                ):
+                    raise ValueError("historical source or evidence changed")
                 return
             database.execute(
                 "INSERT OR IGNORE INTO channels VALUES (?,?,NULL)",
@@ -216,10 +226,11 @@ class CollectionLedger:
                     evidence.canonical_bytes().decode(),
                 ),
             )
-            database.execute(
-                "INSERT OR IGNORE INTO source_content VALUES (?,?)",
-                (source.media.digest, source.canonical_id),
-            )
+            if source.media is not None:
+                database.execute(
+                    "INSERT OR IGNORE INTO source_content VALUES (?,?)",
+                    (source.media.digest, source.canonical_id),
+                )
 
     def source(self, plan: CampaignPlan, source_id: str) -> dict[str, Any]:
         with self.registry.transaction() as database:

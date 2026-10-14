@@ -53,6 +53,21 @@ class SourceCandidate(Document):
         return identity
 
 
+class HistoricalSource(Document):
+    """An observed source can be historical even if its download never completed."""
+
+    provider: Identifier
+    channel_id: Identifier
+    video_id: Identifier
+    origin_url: str = Field(min_length=1)
+    media: ArtifactRef | None = None
+
+    @property
+    def canonical_id(self) -> str:
+        result: str = content_digest([self.provider, self.video_id])
+        return result
+
+
 class PreparationConfig(Document):
     schema_version: Literal["annotation.preparation.v1"] = "annotation.preparation.v1"
     format_selector: str = Field(min_length=1)

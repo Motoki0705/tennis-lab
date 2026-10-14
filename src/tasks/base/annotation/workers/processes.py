@@ -132,12 +132,18 @@ def owned_members(owner: ProcessIdentity) -> tuple[ProcessIdentity, ...]:
 
 
 def signal_owned(
-    owner: ProcessIdentity, number: signal.Signals, *, exclude_leader: bool = False
+    owner: ProcessIdentity,
+    number: signal.Signals,
+    *,
+    exclude_leader: bool = False,
+    exclude_pids: frozenset[int] = frozenset(),
 ) -> int:
     """Signal stable pidfds only; never send killpg to a saved, unverified PID."""
     count = 0
     for member in owned_members(owner):
         if exclude_leader and member.pid == owner.pid:
+            continue
+        if member.pid in exclude_pids:
             continue
         try:
             descriptor = _pidfd_open(member.pid)

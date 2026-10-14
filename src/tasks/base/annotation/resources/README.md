@@ -39,8 +39,15 @@ lockだけが消えた場合も、生きた子孫がいる間は枠を保持す�
 
 `sample()` は全項目を更新する。受付時はPSS・空き容量を再計測し、保存量は最長30秒の
 cacheを使う。終了した工程の保存予約を解放するときは、cacheを無効にして再計測する。
-稼働中の `poll()` は全workerで共有した2秒間隔のPSS計測、30秒間隔の保存計測を用い、
+controllerの `poll()` は共有した2秒間隔のPSS計測、30秒間隔の保存計測を用い、
 保存計測日時も記録する。
+supervisorは `watch()` でPSS・空き容量・経過GPU時間を確認する。こちらは別のlockで
+2秒に1回共有し、全保存走査や `nvidia-smi` を呼ばない。保存走査中もtimeout判定を
+進められる。`watchdog.jsonl` にPSS等を残し、保存量には最後の実測日時を付ける。
+watchdogは保存予約を解放せず、admission用sampleを書き換えない。新規受付は全走査の
+lockで待つため、終了工程の未計測出力を無視して次を起動しない。
+baselineの検証済みhashはdevice/inode/size/mtime/ctime/mode/pathに結び付けて共有する。
+どれかが変われば再hashし、mtimeを戻した同サイズの改変も拒否する。
 上限到達は永続stopにし、**新規起動**を止める。空き容量不足や上限到達を無制限retryで
 回避しない。原因解消後は理由を付けて `resume()` する。予約不足による待機と、
 実測によるstopは区別して `status()` / `samples.jsonl` に残す。
@@ -50,7 +57,7 @@ cacheを使う。終了した工程の保存予約を解放するときは、cac
 process groupであり、`setsid` / daemon化で境界外へ出る子は対応しない。
 
 production `WorkerPool` はscopeとPSS/保存予約を必須とし、supervisorへleaseを継承する。
-取得・画像生成・公開のCPU/I/O工程、推論・追跡・pose・学習のqueue内受付は同じAPIを
-composition rootから利用する（全工程の接続と実測は #1141 / #1143 で確認する）。
-GPU処理は予約内で終了するtimeoutと子孫終了確認をqueue clientで設定する必要がある。
+[execution](../execution/README.md) がCPU/I/O工程とqueue内GPU工程へ同じ受付を適用する。
+GPU処理にはtimeoutに加えて10秒以上の終了処理余裕を予約する。OSの停止遅延などを含め、
+実測で予約を超過した場合も切り詰めず計上する。全工程の接続と実測は #1141 / #1143 で確認する。
 資源テストのGPU予約はsleepだけの合成工程であり、CUDA実測を意味しない。

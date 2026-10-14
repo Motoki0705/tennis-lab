@@ -30,6 +30,8 @@ def codex_command(launch: Launch, plan: CampaignPlan) -> list[str]:
         "skills.include_instructions=false",
         "project_doc_max_bytes=0",
         "sandbox_workspace_write.network_access=false",
+        "sandbox_workspace_write.exclude_slash_tmp=true",
+        "sandbox_workspace_write.exclude_tmpdir_env_var=true",
     ):
         command.extend(("-c", setting))
     command.extend(
@@ -58,6 +60,10 @@ def worker_environment(launch: Launch, plan: CampaignPlan) -> dict[str, str]:
     environment["PYTHONPATH"] = launch.code_root
     environment["CODEX_HOME"] = launch.codex_home
     environment["CUDA_VISIBLE_DEVICES"] = ""
+    temporary = Path(launch.directory) / "work" / "tmp"
+    temporary.mkdir(exist_ok=True)
+    environment["TMPDIR"] = str(temporary)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
     stage = next(
         stage for stage in plan.resources.stages if stage.stage == launch.request.stage
     )
