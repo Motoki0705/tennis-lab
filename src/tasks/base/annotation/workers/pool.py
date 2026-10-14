@@ -12,6 +12,8 @@ from contextlib import ExitStack, suppress
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import PROJECT_ROOT
+
 from ..artifacts import (
     annotation_reference,
     artifact_lock,
@@ -268,7 +270,7 @@ class WorkerPool:
                         )
                     )
                     path.mkdir(parents=True, exist_ok=True)
-                code_root = Path(__file__).resolve().parents[5]
+                code_root = PROJECT_ROOT
                 plan_ref = annotation_reference(
                     self.layout, save_plan(self.layout, self.plan)
                 )
@@ -332,7 +334,7 @@ class WorkerPool:
                 command = [
                     str(code_root / ".venv/bin/python"),
                     "-m",
-                    "src.tasks.base.annotation.workers.supervisor",
+                    "src.tasks.base.annotation.workers",
                     "--launch",
                     str(directory / "launch.json"),
                     "--sha256",
