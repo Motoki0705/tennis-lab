@@ -325,7 +325,6 @@ def collate_multiview_trajectories(
         "ball_uv_target" in sample and "ball_vis_target" in sample for sample in batch
     ):
         raise ValueError("Every BLCS training sample requires clean 2D targets")
-    has_clean_targets = True
 
     ball_uv_batch = []
     ball_vis_batch = []
@@ -372,17 +371,14 @@ def collate_multiview_trajectories(
         if pad_seq > 0:
             ball_uv = torch.cat([ball_uv, torch.zeros(n_views, pad_seq, 2)], dim=1)
             ball_vis = torch.cat([ball_vis, torch.zeros(n_views, pad_seq)], dim=1)
-            if has_clean_targets:
-                assert ball_uv_target is not None
-                assert ball_vis_target is not None
-                ball_uv_target = torch.cat(
-                    [ball_uv_target, torch.zeros(n_views, pad_seq, 2)],
-                    dim=1,
-                )
-                ball_vis_target = torch.cat(
-                    [ball_vis_target, torch.zeros(n_views, pad_seq)],
-                    dim=1,
-                )
+            ball_uv_target = torch.cat(
+                [ball_uv_target, torch.zeros(n_views, pad_seq, 2)],
+                dim=1,
+            )
+            ball_vis_target = torch.cat(
+                [ball_vis_target, torch.zeros(n_views, pad_seq)],
+                dim=1,
+            )
             padding_mask = torch.cat(
                 [padding_mask, torch.ones(n_views, pad_seq, dtype=torch.bool)], dim=1
             )
@@ -400,17 +396,14 @@ def collate_multiview_trajectories(
                 [ball_uv, torch.zeros(pad_views, max_seq_len, 2)], dim=0
             )
             ball_vis = torch.cat([ball_vis, torch.zeros(pad_views, max_seq_len)], dim=0)
-            if has_clean_targets:
-                assert ball_uv_target is not None
-                assert ball_vis_target is not None
-                ball_uv_target = torch.cat(
-                    [ball_uv_target, torch.zeros(pad_views, max_seq_len, 2)],
-                    dim=0,
-                )
-                ball_vis_target = torch.cat(
-                    [ball_vis_target, torch.zeros(pad_views, max_seq_len)],
-                    dim=0,
-                )
+            ball_uv_target = torch.cat(
+                [ball_uv_target, torch.zeros(pad_views, max_seq_len, 2)],
+                dim=0,
+            )
+            ball_vis_target = torch.cat(
+                [ball_vis_target, torch.zeros(pad_views, max_seq_len)],
+                dim=0,
+            )
             padding_mask = torch.cat(
                 [
                     padding_mask,
@@ -437,11 +430,8 @@ def collate_multiview_trajectories(
 
         ball_uv_batch.append(ball_uv)
         ball_vis_batch.append(ball_vis)
-        if has_clean_targets:
-            assert ball_uv_target is not None
-            assert ball_vis_target is not None
-            ball_uv_target_batch.append(ball_uv_target)
-            ball_vis_target_batch.append(ball_vis_target)
+        ball_uv_target_batch.append(ball_uv_target)
+        ball_vis_target_batch.append(ball_vis_target)
         padding_mask_batch.append(padding_mask)
         court_kp_batch.append(court_kp)
         court_vis_batch.append(court_vis)
@@ -485,8 +475,7 @@ def collate_multiview_trajectories(
             transform_dtype_key="position_3d",
         )
     )
-    if has_clean_targets:
-        collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
-        collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
+    collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
+    collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
     collated.update(collate_teachers(batch, max_seq_len))
     return cast("BLCSMultiViewBatch", collated)

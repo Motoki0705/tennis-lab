@@ -9,8 +9,8 @@ from pathlib import Path
 
 import torch
 
-from src.tasks.blcs.experiments.cli_paths import experiment_paths
-from src.tasks.blcs.experiments.evaluation import evaluate
+from src.tasks.blcs.ablation.cli_paths import experiment_paths
+from src.tasks.blcs.ablation.evaluation import evaluate
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -20,7 +20,7 @@ from src.utils.configuration import (
 )
 
 PATH_BOUNDARY = NonHydraPathBoundary(
-    name="blcs.issue1044_evaluation",
+    name="blcs.ablation.evaluation",
     fields=(
         BoundaryPathField(
             "data_root",

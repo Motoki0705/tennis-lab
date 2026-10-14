@@ -3,13 +3,13 @@
 position_weight: 1.0
 position_scale_m: 11.885
 position_beta_m: 11.885
-reprojection_weight: 0.1
+reprojection_weight: 0.0
 reprojection_beta_fraction: 1.0
-velocity_weight: 0.1
+velocity_weight: 0.0
 velocity_scale_mps: 30.0
 velocity_beta_mps: 10.0
-rollout_position_weight: 1.0
-rollout_velocity_weight: 0.1
+rollout_position_weight: 0.0
+rollout_velocity_weight: 0.0
 rollout_horizons: [1, 3]
 physics_start_step: 200
 physics_warmup_steps: 400

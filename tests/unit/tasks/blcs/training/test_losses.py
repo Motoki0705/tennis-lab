@@ -61,6 +61,8 @@ def test_nonzero_finite_physics_gradients_reach_both_heads_and_both_endpoints():
         position_weight=0.0,
         reprojection_weight=0.0,
         velocity_weight=0.0,
+        rollout_position_weight=1.0,
+        rollout_velocity_weight=0.1,
         physics_start_step=0,
         physics_warmup_steps=0,
     )
@@ -136,7 +138,10 @@ def test_physics_warmup_is_explicit():
 @pytest.mark.parametrize("head", ["velocity", "physics"])
 def test_active_terms_reject_missing_heads_in_standalone_loss(head):
     _, target = prepared_samples([physics_sample()])
-    cfg = loss_config(parameters_weight=0.01 if head == "physics" else 0.0)
+    cfg = loss_config(
+        parameters_weight=0.01 if head == "physics" else 0.0,
+        velocity_weight=0.1 if head == "velocity" else 0.0,
+    )
     prediction = BLCSTrajectoryPrediction(
         target.position, target.velocity if head == "physics" else None
     )

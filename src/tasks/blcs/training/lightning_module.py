@@ -24,7 +24,10 @@ from src.tasks.base.training.gan_training import (
     loss_component_metrics,
 )
 from src.tasks.base.training.lightning_module import BaseLightningModule
-from src.tasks.base.training.metric_logging import uniform_metric_logging_contract
+from src.tasks.base.training.metric_logging import (
+    MetricLoggingContract,
+    StageMetricContract,
+)
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.blcs.configuration import (
     parse_court_keypoint_contract,
@@ -48,23 +51,29 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-BLCS_TRAJECTORY_METRIC_CONTRACT = uniform_metric_logging_contract(
-    "BLCS physics trajectory v1",
-    headline_keys=(
-        "trajectory_rmse_m",
-        "trajectory_mean_m",
-        "trajectory_p95_m",
-        "velocity_head_rmse_mps",
-        "position_difference_velocity_rmse_mps",
-        "position_difference_acceleration_rmse_mps2",
-        "rollout_position_rmse_m",
-        "rollout_velocity_rmse_mps",
-        "reprojection_rmse_px",
-        "below_ground_rate",
-        "reprojection_evaluable_rate",
-        "clip_trajectory_rmse_mean_m",
+_TRAJECTORY_HEADLINES = (
+    "trajectory_rmse_m",
+    "trajectory_mean_m",
+    "trajectory_p95_m",
+    "velocity_head_rmse_mps",
+    "position_difference_velocity_rmse_mps",
+    "position_difference_acceleration_rmse_mps2",
+    "reprojection_rmse_px",
+    "below_ground_rate",
+    "reprojection_evaluable_rate",
+    "clip_trajectory_rmse_mean_m",
+)
+_EVALUATION_HEADLINES = _TRAJECTORY_HEADLINES + (
+    "rollout_position_rmse_m",
+    "rollout_velocity_rmse_mps",
+)
+BLCS_TRAJECTORY_METRIC_CONTRACT = MetricLoggingContract(
+    name="BLCS physics trajectory v1",
+    stages=(
+        StageMetricContract("train", _TRAJECTORY_HEADLINES, ("trajectory_rmse_m",)),
+        StageMetricContract("val", _EVALUATION_HEADLINES, ("trajectory_rmse_m",)),
+        StageMetricContract("test", _EVALUATION_HEADLINES, ("trajectory_rmse_m",)),
     ),
-    progress_bar_keys=("trajectory_rmse_m",),
 )
 
 

@@ -4,7 +4,7 @@ defaults:
   - model: multiview_axial_base
   - data: multiview_chunked_sequence
   - training: default
-  - loss: default
+  - loss: reprojection
   - metrics: default
   - run: train
   - physics: default

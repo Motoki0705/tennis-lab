@@ -7,13 +7,16 @@ import numpy as np
 import pytest
 import torch
 
-from src.tasks.blcs.experiments.evaluation import (
+from src.tasks.blcs.ablation.evaluation import (
     recompute,
     save_json,
     save_prediction_rows,
 )
-from src.tasks.blcs.experiments.final_evaluation import validate_real_metrics
-from src.tasks.blcs.experiments.real_observations import observation_metrics
+from src.tasks.blcs.ablation.real_observations import (
+    observation_metrics,
+    recompute_real,
+)
+from src.tasks.blcs.ablation.verification import validate_real_metrics
 from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.projection.camera_projector import make_look_at_camera
 from src.utils.schema.court_normalization import denormalize_court_position
@@ -90,7 +93,8 @@ def test_real_metrics_recompute_without_store_and_detect_camera_corruption(
     }
     report = {
         "evaluation_fps": 30,
-        "direct": observation_metrics(position, batch, rig, 30),
+        "gravity_mps2": 9.8,
+        "direct": observation_metrics(position, batch, rig, 30, gravity=9.8),
     }
     save_json(tmp_path / "evaluation.json", report)
     arrays = {key: value.numpy() for key, value in batch.items()}
@@ -105,6 +109,15 @@ def test_real_metrics_recompute_without_store_and_detect_camera_corruption(
     restored = json.loads((tmp_path / "recomputed.json").read_text())
     assert restored["direct"]["reprojection_count"] == 8
     assert restored["direct"]["reprojection_rmse_px"] < 1e-10
+    with pytest.raises(ValueError, match="disagrees"):
+        recompute_real(tmp_path, gravity=3.7)
+    del report["gravity_mps2"]
+    save_json(tmp_path / "evaluation.json", report)
+    with pytest.raises(ValueError, match="require explicit gravity"):
+        recompute_real(tmp_path)
+    validate_real_metrics(tmp_path, gravity=9.8)
+    report["gravity_mps2"] = 9.8
+    save_json(tmp_path / "evaluation.json", report)
     arrays["projection_K"][0, 0, 0] *= 1.1
     np.savez_compressed(tmp_path / "real_predictions.npz", **arrays)
     with pytest.raises(ValueError, match="Saved metric mismatch"):

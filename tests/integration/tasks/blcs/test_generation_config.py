@@ -109,9 +109,9 @@ def test_training_profiles_use_canonical_dataset_paths(
 @pytest.mark.parametrize(
     ("config_name", "reprojection_weight"),
     (
-        ("train", 0.1),
+        ("train", 0.0),
         ("train_chunked", 0.1),
-        ("train_chunked_gan", 0.1),
+        ("train_chunked_gan", 0.0),
     ),
 )
 def test_standard_training_profiles_select_loss_without_training_loss_fields(
@@ -124,6 +124,9 @@ def test_standard_training_profiles_select_loss_without_training_loss_fields(
     validate_training_boundary(config)
 
     assert config.loss.reprojection_weight == reprojection_weight
+    assert config.loss.velocity_weight == 0
+    assert config.loss.rollout_position_weight == 0
+    assert config.loss.rollout_velocity_weight == 0
     assert "position_weight" in config.loss
     assert config.training.trainer.log_every_n_steps == 100
     if config_name.startswith("train_chunked"):

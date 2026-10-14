@@ -276,20 +276,12 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.tasks.blcs.experiments.scripts.issue1044": (
-        "blcs.issue1044_train",
+    "src.tasks.ball_detection.scripts.train_blcs_ablation": (
+        "blcs.ablation.train",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tasks.blcs.experiments.scripts.evaluation": (
-        "blcs.issue1044_evaluation",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.blcs.experiments.scripts.repeat_selected": (
-        "blcs.issue1044_repeat",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    "src.tasks.blcs.experiments.scripts.final_evaluation": (
-        "blcs.issue1044_final_evaluation",
+    "src.tasks.ball_detection.scripts.evaluate_blcs_ablation": (
+        "blcs.ablation.evaluation",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.ball_detection.visualization.review.cli": ("ball_detection.review_dataset", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
@@ -604,25 +596,13 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         executable_module=True,
     ),
     _non_hydra_boundary(
-        "src.tasks.blcs.experiments.scripts.issue1044",
+        "src.tasks.ball_detection.scripts.train_blcs_ablation",
         "main",
         domain="blcs",
         executable_module=True,
     ),
     _non_hydra_boundary(
-        "src.tasks.blcs.experiments.scripts.evaluation",
-        "main",
-        domain="blcs",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.tasks.blcs.experiments.scripts.repeat_selected",
-        "main",
-        domain="blcs",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.tasks.blcs.experiments.scripts.final_evaluation",
+        "src.tasks.ball_detection.scripts.evaluate_blcs_ablation",
         "main",
         domain="blcs",
         executable_module=True,
