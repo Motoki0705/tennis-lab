@@ -1,0 +1,95 @@
+---
+id: run-i1044-rollout-position-s42-u4000
+type: run
+task: blcs
+sequence: 56
+recorded_at: '2026-10-13'
+title: '短時間rollout位置整合追加: seed42・4,000更新完了（全長test未評価）'
+issue: 1044
+provider: codex
+session: 01a1327c-d543-7673-8143-2764d9f62447
+date: '2026-10-13'
+status: done
+config:
+  protocol: issue1044-v1
+  arm: rollout_position
+  seed: 42
+  optimizer_updates: 4000
+  model: blcs_multiview_axial
+  predict_velocity: true
+  physics_head: false
+  dataset: blcs/single_object-physics-v3-cc863cacd-20261007
+  batch_size: 2
+  accumulate_grad_batches: 8
+  loss:
+    position_weight: 1.0
+    position_scale_m: 11.885
+    position_beta_m: 11.885
+    reprojection_weight: 0.1
+    reprojection_beta_fraction: 1.0
+    velocity_weight: 0.1
+    velocity_scale_mps: 30.0
+    velocity_beta_mps: 10.0
+    rollout_position_weight: 1.0
+    rollout_velocity_weight: 0.0
+    rollout_horizons:
+    - 1
+    - 3
+    physics_start_step: 200
+    physics_warmup_steps: 400
+    parameters_weight: 0.0
+    event_weight: 0.0
+    reconstruction_weight: 0.0
+    parameter_consistency_weight: 0.0
+    event_positive_weight: 10.0
+  selection_used_test: false
+  test_evaluated: false
+  completed_comparison_run: true
+metrics:
+  val_trajectory_rmse_m: 0.7140101194381714
+repro:
+  commit: a272019de509b30b46d636633d3a8ca91c247ba4
+  branch: codex/issue-1044-blcs-physics
+  remote: git@github.com:Motoki0705/tennis-lab.git
+  command: OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -m src.tasks.blcs.experiments.issue1044
+    --arm rollout_position --seed 42 --steps 4000 --data-root /home/kamimura/projects/tennis-lab/data
+    --output blcs/i1044/rollout_position-s42-u4000
+artifacts:
+  run_dir: knowledge/runs/run-i1044-rollout-position-s42-u4000
+  output_dir: outputs/blcs/i1044/rollout_position-s42-u4000
+  log: knowledge/runs/run-i1044-rollout-position-s42-u4000/queue.log
+  experiment_config: knowledge/runs/run-i1044-rollout-position-s42-u4000/experiment-config.yaml
+  config: knowledge/runs/run-i1044-rollout-position-s42-u4000/config.yaml
+  selection: knowledge/runs/run-i1044-rollout-position-s42-u4000/selection.json
+  training_verification: knowledge/runs/run-i1044-rollout-position-s42-u4000/training-verification.json
+  capture_checksums: knowledge/runs/run-i1044-rollout-position-s42-u4000/capture_checksums.json
+  scalars: knowledge/runs/run-i1044-rollout-position-s42-u4000/scalars.json.gz
+  tb_logdir: outputs/blcs/i1044/rollout_position-s42-u4000/logs/version_0
+  checkpoint: /home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_position-s42-u4000/final-selected.ckpt
+  checkpoint_storage: knowledge/runs/group-i1044-progressive-losses-u4000/checkpoint-storage.json
+  relocated_selection: /home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_position-s42-u4000/selection.json
+  checkpoint_sha256: 0cdb43a5c0fa75c0663f6ffb60509fbe377fe838138a0c64ec446bb042f71574
+  curves: knowledge/runs/run-i1044-rollout-position-s42-u4000/curves.png
+parents:
+- group-i1044-qualification
+relations:
+- to: run-i1044-velocity-s42-u4000
+  rel: compares
+papers: []
+tags:
+- issue1044
+- progressive-loss-ablation
+- u4000
+- validation-only
+---
+
+位置＋clean再投影＋sim速度教師に、GTの場・spinと共有積分器による短時間rollout位置整合を加えた条件。velocity条件との差がこの項の追加効果を調べる。 固定snapshot・axial base・xyz/velocity head共通の比較プロトコルに従い、seed42で4,000 optimizer updatesを完了した。学習完了のqueue状態・ログ・選定台帳とcheckpointのSHA-256を照合した。
+
+validationの全100 scene（中心128frame、短いsceneは全長）で選んだcheckpointの軌道RMSEは **0.714010119 m**。checkpointのglobal_stepは4000、epoch値は89（0始まり）で、保存されたvalidation曲線の最小値と一致する。最終部分epochの明示validationも選定に含む。その他の記録された指標と損失/勾配ログはscalars.json.gzに保存した。指標別の支持数はこのTensorBoard記録に含まれず、最終保存評価で記録する。この値は選択に用いたvalidationの値であり、独立testの性能ではない。
+
+train段階の診断器はrollout_horizons=()の設定なので、trainのrollout位置・速度指標は未測定（保存scalarではnull）である。rollout損失の計算とは別で、validationの両指標は計測している。学習曲線は主評価軸の位置・速度・再投影・rolloutと地面下率を示し、未測定点は線で埋めない。
+
+学習処理の計測時間は9415.115秒。half予約で他runと資源を共有したため、所要時間から方式の計算効率の優劣は判断しない。学習開始時のcommit・patch・command・設定と原本照合用checksumを保存し、巨大checkpointはローカル出力に保持する。後続のCLI移設は演算・解決済み設定の同値性を別の資格確認に記録しており、捕捉原本の古い入口は書き換えていない。
+
+同一seedの比較対照と残りの段階条件は学習中または待機中である。全6条件のvalidationが揃ってから追加seed対象を選び、計10 runの後に全長test・物理残差・欠損/イベント/view数の層別・実観測診断を行う。本登録時点ではtest推論も採用判断も行っていない。validationの近接した値だけではrollout項の効果やseed間の再現性を断定できない。

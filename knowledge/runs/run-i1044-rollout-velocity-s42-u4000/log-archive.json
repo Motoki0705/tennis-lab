@@ -1,0 +1,11 @@
+{
+  "raw_filename": "queue.log",
+  "raw_bytes": 487619259,
+  "raw_sha256": "845430846cd7cbbfd7260188af692fe1d6f24d184bc5cb6969cc122e72de5024",
+  "compressed_filename": "queue.log.gz",
+  "compressed_bytes": 2401926,
+  "decompressed_sha256_matches_raw": true,
+  "view_filename": "queue-summary.log",
+  "view_excludes": "driver diagnostic lines containing ][CUDA][",
+  "original_queue_log_sha256_matches": true
+}

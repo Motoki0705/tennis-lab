@@ -1,0 +1,91 @@
+{
+  "direct": {
+    "reprojection_count": 1389,
+    "eligible_observation_count": 1389,
+    "reprojection_rmse_px": 105.83066043838986,
+    "reprojection_p95_px": 247.4545044315622,
+    "reprojection_evaluable_rate": 1.0,
+    "frame_count": 505,
+    "all_view_missing_frames": 0,
+    "view_count_frames": {
+      "0": 0,
+      "1": 2,
+      "2": 122,
+      "3": 381
+    },
+    "below_ground_rate": 0.0039603960396039604,
+    "difference_acceleration_rms_mps2": 522.7025756835938,
+    "fit": {
+      "spans": [
+        [
+          0,
+          32
+        ],
+        [
+          32,
+          64
+        ],
+        [
+          64,
+          96
+        ],
+        [
+          96,
+          128
+        ],
+        [
+          128,
+          160
+        ],
+        [
+          160,
+          192
+        ],
+        [
+          192,
+          224
+        ],
+        [
+          224,
+          256
+        ],
+        [
+          256,
+          288
+        ],
+        [
+          288,
+          320
+        ],
+        [
+          320,
+          352
+        ],
+        [
+          352,
+          384
+        ],
+        [
+          384,
+          416
+        ],
+        [
+          416,
+          448
+        ],
+        [
+          448,
+          480
+        ],
+        [
+          480,
+          505
+        ]
+      ],
+      "supported_frames": 505,
+      "requested_frames": 505,
+      "failed": false,
+      "rmse_m": 1.4486020748528334
+    }
+  }
+}

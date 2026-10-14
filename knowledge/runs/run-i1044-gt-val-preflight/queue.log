@@ -1,0 +1,12 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791852429060241508_2_i1044-gt-val-preflight (commit=e25ce1c8702a provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+evaluation val 1/100
+evaluation val 11/100
+evaluation val 21/100
+evaluation val 31/100
+evaluation val 41/100
+evaluation val 51/100
+evaluation val 61/100
+evaluation val 71/100
+evaluation val 81/100
+evaluation val 91/100
+{"split": "val", "trajectory_rmse_m": 0.0}

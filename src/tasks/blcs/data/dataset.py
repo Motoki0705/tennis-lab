@@ -35,6 +35,7 @@ from src.tasks.blcs.data.court_view import (
     validate_blcs_dataset_court_keypoints,
 )
 from src.tasks.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
+from src.tasks.blcs.physics.targets import collate_teachers, record_teachers
 from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.schema.court_normalization import (
     validate_court_coordinate_normalization,
@@ -124,7 +125,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             num_views_range=self.num_views_range,
             camera_mode=self.camera_mode,
             crop_mode=("random" if self.augment else "center"),
-            min_num_frames=self.seq_len_range[0],
+            min_num_frames=self.seq_len_range[0] if self.augment else 1,
             min_num_cameras=self.num_views_range[0],
         )
 
@@ -163,7 +164,14 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         pos_len = int(scene.data["ball_pos_norm"].shape[0])
         vel_len = int(scene.data["ball_vel_norm"].shape[0])
         full_len = scene.effective_num_frames(primary_len, pos_len, vel_len)
-        window = self.select_window(scene, full_len=full_len)
+        if len({primary_len, pos_len, vel_len, full_len}) != 1:
+            raise ValueError("BLCS observation and trajectory lengths disagree")
+        length = min(full_len, self.seq_len_range[1])
+        window = self.select_window(
+            scene,
+            full_len=full_len,
+            seq_len_range=self.seq_len_range if self.augment else (length, length),
+        )
         ball_uv_list: list[Tensor] = []
         ball_vis_list: list[Tensor] = []
         court_kp_list: list[Tensor] = []
@@ -239,30 +247,47 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                 frame.provenance,
             )
 
-        sample: BLCSMultiViewSample = {
-            "ball_uv": torch.stack(ball_uv_list, dim=0),
-            "ball_vis": torch.stack(ball_vis_list, dim=0),
-            "padding_mask": torch.zeros(
-                len(cams.indices), window.seq_len, dtype=torch.bool
-            ),
-            "court_kp": torch.stack(court_kp_list, dim=0),
-            "court_vis": torch.stack(court_vis_list, dim=0),
-            "position_3d": position_3d,
-            "velocity_3d": velocity_3d,
-            "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
-            "camera_R": torch.stack(cam_R_list, dim=0),
-            "camera_C": torch.stack(cam_C_list, dim=0),
-            "camera_f": torch.stack(cam_f_list, dim=0),
-            "camera_cx": torch.stack(cam_cx_list, dim=0),
-            "camera_cy": torch.stack(cam_cy_list, dim=0),
-            "camera_w": torch.stack(cam_w_list, dim=0),
-            "camera_h": torch.stack(cam_h_list, dim=0),
-            "court_reference_provenance": frame.provenance,
-            "selected_camera_ids": tuple(
-                view.camera_id for view in frame.selected_views
+        sample = cast(
+            "BLCSMultiViewSample",
+            {
+                "scene_id": scene.path.name,
+                "ball_uv": torch.stack(ball_uv_list, dim=0),
+                "ball_vis": torch.stack(ball_vis_list, dim=0),
+                "padding_mask": torch.zeros(
+                    len(cams.indices), window.seq_len, dtype=torch.bool
+                ),
+                "court_kp": torch.stack(court_kp_list, dim=0),
+                "court_vis": torch.stack(court_vis_list, dim=0),
+                "position_3d": position_3d,
+                "velocity_3d": velocity_3d,
+                "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
+                "camera_R": torch.stack(cam_R_list, dim=0),
+                "camera_C": torch.stack(cam_C_list, dim=0),
+                "camera_f": torch.stack(cam_f_list, dim=0),
+                "camera_cx": torch.stack(cam_cx_list, dim=0),
+                "camera_cy": torch.stack(cam_cy_list, dim=0),
+                "camera_w": torch.stack(cam_w_list, dim=0),
+                "camera_h": torch.stack(cam_h_list, dim=0),
+                "court_reference_provenance": frame.provenance,
+                "selected_camera_ids": tuple(
+                    view.camera_id for view in frame.selected_views
+                )
+                or tuple(f"camera_{index}" for index in cams.indices),
+            },
+        )
+        sample["ball_uv_target"] = sample["ball_uv"].clone()
+        sample["ball_vis_target"] = sample["ball_vis"].clone()
+        sample.update(
+            cast(
+                "BLCSMultiViewSample",
+                record_teachers(
+                    scene.data,
+                    start=window.start,
+                    end=window.end,
+                    full_length=full_len,
+                ),
             )
-            or tuple(f"camera_{index}" for index in cams.indices),
-        }
+        )
         if frame.reference_selection is not None:
             sample.update(
                 cast(
@@ -296,9 +321,10 @@ def collate_multiview_trajectories(
     """Collate canonical BLCS samples into padded canonical batch tensors."""
     max_views = max(int(sample["ball_uv"].shape[0]) for sample in batch)
     max_seq_len = max(int(sample["seq_len"].item()) for sample in batch)
-    has_clean_targets = any(
+    if not all(
         "ball_uv_target" in sample and "ball_vis_target" in sample for sample in batch
-    )
+    ):
+        raise ValueError("Every BLCS training sample requires clean 2D targets")
 
     ball_uv_batch = []
     ball_vis_batch = []
@@ -325,12 +351,8 @@ def collate_multiview_trajectories(
 
         ball_uv = sample["ball_uv"]
         ball_vis = sample["ball_vis"]
-        ball_uv_target = (
-            sample.get("ball_uv_target", ball_uv) if has_clean_targets else None
-        )
-        ball_vis_target = (
-            sample.get("ball_vis_target", ball_vis) if has_clean_targets else None
-        )
+        ball_uv_target = sample["ball_uv_target"]
+        ball_vis_target = sample["ball_vis_target"]
         padding_mask = sample["padding_mask"]
         court_kp = sample["court_kp"]
         court_vis = sample["court_vis"]
@@ -349,17 +371,14 @@ def collate_multiview_trajectories(
         if pad_seq > 0:
             ball_uv = torch.cat([ball_uv, torch.zeros(n_views, pad_seq, 2)], dim=1)
             ball_vis = torch.cat([ball_vis, torch.zeros(n_views, pad_seq)], dim=1)
-            if has_clean_targets:
-                assert ball_uv_target is not None
-                assert ball_vis_target is not None
-                ball_uv_target = torch.cat(
-                    [ball_uv_target, torch.zeros(n_views, pad_seq, 2)],
-                    dim=1,
-                )
-                ball_vis_target = torch.cat(
-                    [ball_vis_target, torch.zeros(n_views, pad_seq)],
-                    dim=1,
-                )
+            ball_uv_target = torch.cat(
+                [ball_uv_target, torch.zeros(n_views, pad_seq, 2)],
+                dim=1,
+            )
+            ball_vis_target = torch.cat(
+                [ball_vis_target, torch.zeros(n_views, pad_seq)],
+                dim=1,
+            )
             padding_mask = torch.cat(
                 [padding_mask, torch.ones(n_views, pad_seq, dtype=torch.bool)], dim=1
             )
@@ -377,17 +396,14 @@ def collate_multiview_trajectories(
                 [ball_uv, torch.zeros(pad_views, max_seq_len, 2)], dim=0
             )
             ball_vis = torch.cat([ball_vis, torch.zeros(pad_views, max_seq_len)], dim=0)
-            if has_clean_targets:
-                assert ball_uv_target is not None
-                assert ball_vis_target is not None
-                ball_uv_target = torch.cat(
-                    [ball_uv_target, torch.zeros(pad_views, max_seq_len, 2)],
-                    dim=0,
-                )
-                ball_vis_target = torch.cat(
-                    [ball_vis_target, torch.zeros(pad_views, max_seq_len)],
-                    dim=0,
-                )
+            ball_uv_target = torch.cat(
+                [ball_uv_target, torch.zeros(pad_views, max_seq_len, 2)],
+                dim=0,
+            )
+            ball_vis_target = torch.cat(
+                [ball_vis_target, torch.zeros(pad_views, max_seq_len)],
+                dim=0,
+            )
             padding_mask = torch.cat(
                 [
                     padding_mask,
@@ -414,11 +430,8 @@ def collate_multiview_trajectories(
 
         ball_uv_batch.append(ball_uv)
         ball_vis_batch.append(ball_vis)
-        if has_clean_targets:
-            assert ball_uv_target is not None
-            assert ball_vis_target is not None
-            ball_uv_target_batch.append(ball_uv_target)
-            ball_vis_target_batch.append(ball_vis_target)
+        ball_uv_target_batch.append(ball_uv_target)
+        ball_vis_target_batch.append(ball_vis_target)
         padding_mask_batch.append(padding_mask)
         court_kp_batch.append(court_kp)
         court_vis_batch.append(court_vis)
@@ -433,6 +446,7 @@ def collate_multiview_trajectories(
         cam_w_batch.append(cam_w)
         cam_h_batch.append(cam_h)
     collated: dict[str, object] = {
+        "scene_id": tuple(sample["scene_id"] for sample in batch),
         "ball_uv": torch.stack(ball_uv_batch, dim=0),
         "ball_vis": torch.stack(ball_vis_batch, dim=0),
         "padding_mask": torch.stack(padding_mask_batch, dim=0),
@@ -461,7 +475,7 @@ def collate_multiview_trajectories(
             transform_dtype_key="position_3d",
         )
     )
-    if has_clean_targets:
-        collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
-        collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
+    collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
+    collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
+    collated.update(collate_teachers(batch, max_seq_len))
     return cast("BLCSMultiViewBatch", collated)

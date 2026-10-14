@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from omegaconf import DictConfig, open_dict
+from torch import Tensor
 
 from src.tasks.base.generate_dataset import (
     CourtKeypointContract,
@@ -26,7 +27,14 @@ from src.tasks.blcs.configuration import (
     parse_court_keypoint_contract,
     parse_model_config,
 )
-from src.utils.schema.court_normalization import load_and_validate_checkpoint
+from src.tasks.blcs.model_io.factory import (
+    TrajectoryBoundModelIO,
+    compose_blcs_trajectory_model_io,
+)
+from src.utils.schema.court_normalization import (
+    load_and_validate_checkpoint,
+    validate_court_coordinate_normalization,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,7 +93,21 @@ def load_checkpoint_runtime(
     runtime_court_keypoints: CourtKeypointContract | str | None = None,
 ) -> BLCSCheckpointRuntime:
     """Restore an axial checkpoint with exact physical CourtKP semantics."""
-    checkpoint = _load_checkpoint(path)
+    return parse_checkpoint_runtime(
+        _load_checkpoint(path),
+        location=str(path),
+        runtime_court_keypoints=runtime_court_keypoints,
+    )
+
+
+def parse_checkpoint_runtime(
+    checkpoint: Mapping[str, Any],
+    *,
+    location: str,
+    runtime_court_keypoints: CourtKeypointContract | str | None = None,
+) -> BLCSCheckpointRuntime:
+    """Validate the same persisted model contract for catalog and inference."""
+    validate_court_coordinate_normalization(checkpoint, artifact=location)
     requested = (
         runtime_court_keypoints
         if isinstance(runtime_court_keypoints, CourtKeypointContract)
@@ -94,10 +116,10 @@ def load_checkpoint_runtime(
         else None
     )
     compatibility = (
-        resolve_model_artifact_court_keypoint_contract(checkpoint, location=str(path))
+        resolve_model_artifact_court_keypoint_contract(checkpoint, location=location)
         if requested is None
         else validate_model_artifact_court_keypoint_contract(
-            checkpoint, requested, location=str(path)
+            checkpoint, requested, location=location
         )
     )
     validate_neural_court_observation_order(checkpoint, compatibility.contract)
@@ -105,18 +127,52 @@ def load_checkpoint_runtime(
     if compatibility.legacy_metadata_free:
         config = _qualify_metadata_free_config(config)
     elif not _has_court_keypoint_section(config):
-        raise RuntimeError(f"{path}: checkpoint config must include court_keypoints.")
+        raise RuntimeError(
+            f"{location}: checkpoint config must include court_keypoints."
+        )
     parse_model_config(config)
     contract = parse_court_keypoint_contract(config)
     if contract != compatibility.contract:
         raise CourtKeypointContractMismatchError(
-            f"{path}: checkpoint config and artifact CourtKP contracts disagree."
+            f"{location}: checkpoint config and artifact CourtKP contracts disagree."
         )
     return BLCSCheckpointRuntime(
         config=config,
         court_keypoint_contract=contract,
         legacy_metadata_free=compatibility.legacy_metadata_free,
     )
+
+
+def load_checkpoint_model(
+    path: Path,
+    *,
+    runtime_court_keypoints: CourtKeypointContract | str | None = None,
+) -> tuple[TrajectoryBoundModelIO, BLCSCheckpointRuntime]:
+    """Strictly restore inference weights without instantiating training losses.
+
+    Discriminator weights belong to the training adversary, not the predictor.
+    All generator parameters must match the explicitly recorded model contract.
+    """
+    checkpoint = _load_checkpoint(path)
+    runtime = parse_checkpoint_runtime(
+        checkpoint,
+        location=str(path),
+        runtime_court_keypoints=runtime_court_keypoints,
+    )
+    state = checkpoint.get("state_dict")
+    if not isinstance(state, Mapping) or not state:
+        raise ValueError(f"{path}: a nonempty Lightning state_dict is required")
+    weights: dict[str, Tensor] = {}
+    for key, value in state.items():
+        if not isinstance(key, str) or not isinstance(value, Tensor):
+            raise ValueError(f"{path}: state_dict must map names to tensors")
+        if key.startswith("model."):
+            weights[key.removeprefix("model.")] = value
+        elif not key.startswith("discriminator."):
+            raise ValueError(f"{path}: unknown checkpoint state prefix: {key}")
+    binding = compose_blcs_trajectory_model_io(runtime.config)
+    binding.model.load_state_dict(weights, strict=True)
+    return binding, runtime
 
 
 def validate_checkpoint_path(
@@ -130,5 +186,7 @@ __all__ = [
     "BLCSCheckpointRuntime",
     "load_checkpoint_config",
     "load_checkpoint_runtime",
+    "load_checkpoint_model",
+    "parse_checkpoint_runtime",
     "validate_checkpoint_path",
 ]

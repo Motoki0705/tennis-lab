@@ -1,0 +1,16 @@
+{
+  "run_id": "1791853065654432895_1326446_i1044-velocity-s42-u4000",
+  "name": "i1044-velocity-s42-u4000",
+  "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -m src.tasks.blcs.experiments.issue1044 --arm velocity --seed 42 --steps 4000 --data-root /home/kamimura/projects/tennis-lab/data --output blcs/i1044/velocity-s42-u4000",
+  "provider": "codex",
+  "session": "01a1327c-d543-7673-8143-2764d9f62447",
+  "issue": "1044",
+  "resource": "half",
+  "logical_gpu_slot": "1",
+  "commit": "e8d7f72d507fcd398fd6e8bade5c2d275e7f8e4f",
+  "branch": "codex/issue-1044-blcs-physics",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics",
+  "captured_at": "2026-10-13T10:16:25+09:00"
+}

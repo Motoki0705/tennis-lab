@@ -56,10 +56,12 @@ Player Detectionは選択したvalidation batchの先頭sampleに対応する元
 
 | task / model | train headline | val / test headline |
 |---|---|---|
-| BLCS standard | `loss`, `position_error_m`, `position_accuracy_0.3m`, `endpoint_error_m` | trainと同じ |
+| BLCS standard | `loss`と下記の軌道指標（rolloutを除く） | `loss`と下記の軌道指標すべて |
 | PLCS standard | `loss`, `position_error_m`, `angular_error_deg`, `position_accuracy_0.5m`, `angle_accuracy_15deg` | trainと同じ |
 | BLCS tracking | `loss` | `loss`, `position_error_m`, `presence_f1`, `id_switches` |
 | PLCS tracking | `loss` | `loss`, `position_error_m`, `angular_error_deg`, `presence_f1`, `id_switches` |
+
+BLCS standardの軌道指標は `trajectory_rmse_m`, `trajectory_mean_m`, `trajectory_p95_m`, `velocity_head_rmse_mps`, `position_difference_velocity_rmse_mps`, `position_difference_acceleration_rmse_mps2`, `reprojection_rmse_px`, `below_ground_rate`, `reprojection_evaluable_rate`, `clip_trajectory_rmse_mean_m`。val/testには `rollout_position_rmse_m` と `rollout_velocity_rmse_mps` を追加する。trainはrollout指標を計算・ログしない。BLCSのframe母集団指標は上記のtracking契約とは異なり、支持数0を未定義としてloggerではNaN、保存JSONではnullと支持数を記録し、0には置換しない。checkpoint選択の主指標は `val/trajectory_rmse_m`。
 
 PLCS standardでcanonical pose headが有効かつ有効なcanonical pose教師がある場合に限り、全stageの上記headlineへ`canonical_mpjpe_m`（関節距離の平均、低いほど良い）と`canonical_pck_0.1m`（誤差0.1 m以内の関節割合、高いほど良い）を追加する。pose教師がないbatch/epochへ0を補完しない。testの診断値には`canonical_joint_error_median_m`と、17関節それぞれの`canonical_joint_error_<name>_m`を保存する。tracking modelはpose headを持たないため対象外である。PA-MPJPEはProcrustes整列がcanonical poseの回転・scale誤差を消して世界座標再構成の品質を過大評価し得るため、headline/診断値のどちらにも出さない。旧`canonical_mpjpe`はknowledge artifactの読み込み互換だけに使い、新規出力は`canonical_mpjpe_m`へ統一する。
 

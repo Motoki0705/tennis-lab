@@ -1,7 +1,7 @@
-<!-- knowledge-review: f153e0273d9671c3af53bf9f49c8d77b09329ba8f78e172b5b24c0136d0e3bc3 on 2026-10-13 -->
+<!-- knowledge-review: df1bcfc8812d20cf8b0f3788179e9ef9a91a5c1e07c1a2bfab452e6e80e0ff04 on 2026-10-14 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-13（Court #983の4条件比較・同一画像パネルと再現記録を完了）
+更新日: 2026-10-14（BLCS #1044の10run学習と全長評価を記録。Court #983の比較記録を保持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -452,6 +452,14 @@ camera-view v2のreference selectorも決着していません。PLCSではrefer
 
 ### BLCS
 
+2026-10-14の[既存BLCS checkpoint metadata移行](nodes/blcs/000069-run-blcs-inference-checkpoint-migration.md)では、旧本番重みの131 tensorを変更せず、モデル設定を明示した別artifactを作成した。旧・新の公開推論APIによる固定CPU入力の位置出力差は0 m。通常推論を学習用loss／metrics schemaから分離し、未移行artifactはUIで理由付き拒否する。新損失の採用は保留し、標準objectiveは従来どおり、新物理損失はopt-inとした。今回の10runの科学的結論と採用保留は変わらない。選定済み10重みはworktree外へコピーし元SHAと照合した（[台帳](runs/group-i1044-progressive-losses-u4000/checkpoint-storage.json)）。
+
+2026-10-14、[#1044の段階的損失比較](nodes/blcs/000068-group-i1044-progressive-losses-u4000.md)で10run各4,000更新と最終評価を完了した。位置のみ→clean再投影（既存戦略の主対照）→速度教師→rollout位置→rollout速度（A）→最小物理head等（B）の6条件をseed42で比較し、validationだけでBを選んで主対照とseed43/44を追加した。[事前スモーク・GT自己評価](nodes/blcs/000053-group-i1044-qualification.md)、CUDA中断3試行と同seedの初期化からの再試行を記録し、失敗を成功10runに混ぜていない。testは全100scene・35,704frame、合成16条件と固定Meiji観測12条件を保存し、指標・支持数・nullの再計算照合が成立した。図表16ファイルも保存bundleだけから同一内容で再生成できる。
+
+主対照→Bのtest軌道RMSEは3seed平均±標本SDで1.146±0.166→0.930±0.237 m。方式選択にも使ったseed42を除く確認seed43/44では1.199±0.195→1.021±0.250 mとなり、両seedで改善した。ただし同じtest集合を使った少数seedの結果である。rollout位置だけを加えたseed42は位置が退行し、Bもrollout速度残差・一部の欠損/短clip層・実再投影seed43で退行した。Bの積分出力はGT区間で4.23–4.34 m、予測区間で2.37–2.75 mと直接座標より大きく外れ、event過検出も残る。B内部の各補助損失は分離していない。採用閾値はユーザー指定で設けず、結果の観測後に人間が判断する。本番checkpointは置換していない。
+
+全長推論は固定128frameの非重複窓であり、窓境界の事後診断では主対照の差分速度/加速度SSEの80.55%/93.87%が少数の境界跨ぎstencilに集中した。速度head・座標の連続性・位置精度を分けて解釈し、全frameの主指標は変更していない。次の検証候補は窓の結合、A/Bの長い同予算比較、B内部損失の分離、独立した実3D/校正データでの一般化である。固定実観測はmodel-assistedな2D注釈と校正由来court点を使い、独立3D GTがないため実3D改善は未確認。小さい物理fitや再投影だけを採用根拠としない。
+
 2026-10-07、[#1038の物理GT付きv3データでの再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)を完了し、validation選定ckptをローカルckpt/blcs/へ置換した。旧#1036はデータ変更と組み込み方針の未確定により不採用とし、tennis_sceneの実装・既定設定は変更していない。データsnapshotを固定した200 epoch学習と88シーンの中心窓testが完走したが、旧実験とはシーン集合・更新数が異なるため精度改善の因果比較には使わない。短いtestシーン・全長・実検出・実動画3D精度・追加seedは未評価。次は組み込み経路の確定後に入力契約と受入条件を別途定める。以下の旧deploy・associationの知見は当時の構成に限定した履歴であり、今回の採用範囲を拡張しない。
 
 single-ballではmultiview deployが単眼親よりposition `1.845 → 1.065 m`、endpoint `3.408 → 2.025 m`へ改善しました。ただしcamera presetも変わるため、改善全量をview数へ帰属できません。
@@ -546,3 +554,5 @@ CPUの契約回帰は検証し、安全bench全11,200件は元dataset欠測で�
 merge方針の変更は品質合格の新観測ではない。
 
 人物の未見予約3clipは[run-i964-unseen-r16-20261001](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)でblind部分参照をpush後、一回採点を完了した。side欠測の1clip/all-1を母数に残し、pair F1=.719701（2/3決定）。自己検出box由来の部分参照とdevの参照差に注意し、結果から再調整・既定変更を行わない。人物評価run16は完了した。clip_000全pipelineは当時未検証で、今回のmerge許可後も新たな品質測定は行っていない。
+
+<!-- 2026-10-13: BLCS qualificationの保存診断roundtrip追加・CUDA中断追加を確認。短い処理確認と未完了runなので比較・採用に関する結論は変更しない。 -->

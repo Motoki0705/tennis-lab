@@ -1,0 +1,6 @@
+{
+  "run_id": "1791852775241273451_1220153_i1044-position-s42-u4000",
+  "reason": "torch.AcceleratorError: CUDA error: unknown error",
+  "action": "Fresh same-seed training to 4000 updates; aborted attempt excluded from comparisons",
+  "training_code_changed": false
+}

@@ -1214,8 +1214,10 @@ def test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews(
     assert second.returncode == 0, second.stderr
     assert [c["agent"] for c in env.agent_calls()] == ["claude", "codex"]
     assert env.state["merged"] == [["9", sha]]
+    # Re-reviewing the same head must preserve both attempts in the same second.
     runs = list((env.state_dir / "runs").iterdir())
     assert len(runs) == 2
+    assert all((path / "review.json").is_file() for path in runs)
     assert all(path.name.startswith("20261012T080000Z-pr9-") for path in runs)
     for path, content in first_artifacts.items():
         assert path.read_bytes() == content

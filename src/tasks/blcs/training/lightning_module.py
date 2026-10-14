@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import math
 from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
@@ -22,7 +24,10 @@ from src.tasks.base.training.gan_training import (
     loss_component_metrics,
 )
 from src.tasks.base.training.lightning_module import BaseLightningModule
-from src.tasks.base.training.metric_logging import uniform_metric_logging_contract
+from src.tasks.base.training.metric_logging import (
+    MetricLoggingContract,
+    StageMetricContract,
+)
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.blcs.configuration import (
     parse_court_keypoint_contract,
@@ -35,7 +40,7 @@ from src.tasks.blcs.model_io import (
     blcs_reference_metadata_from_batch,
 )
 from src.tasks.blcs.models import build_blcs_discriminator
-from src.tasks.blcs.training.losses import BLCSLoss
+from src.tasks.blcs.training.losses import PHYSICAL_TERMS, BLCSLoss
 from src.tasks.blcs.training.metrics import BLCSMetrics
 from src.utils.schema.court_normalization import (
     add_court_coordinate_normalization,
@@ -46,14 +51,29 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-BLCS_TRAJECTORY_METRIC_CONTRACT = uniform_metric_logging_contract(
-    "BLCS trajectory",
-    headline_keys=(
-        "position_error_m",
-        "position_accuracy_0.3m",
-        "endpoint_error_m",
+_TRAJECTORY_HEADLINES = (
+    "trajectory_rmse_m",
+    "trajectory_mean_m",
+    "trajectory_p95_m",
+    "velocity_head_rmse_mps",
+    "position_difference_velocity_rmse_mps",
+    "position_difference_acceleration_rmse_mps2",
+    "reprojection_rmse_px",
+    "below_ground_rate",
+    "reprojection_evaluable_rate",
+    "clip_trajectory_rmse_mean_m",
+)
+_EVALUATION_HEADLINES = _TRAJECTORY_HEADLINES + (
+    "rollout_position_rmse_m",
+    "rollout_velocity_rmse_mps",
+)
+BLCS_TRAJECTORY_METRIC_CONTRACT = MetricLoggingContract(
+    name="BLCS physics trajectory v1",
+    stages=(
+        StageMetricContract("train", _TRAJECTORY_HEADLINES, ("trajectory_rmse_m",)),
+        StageMetricContract("val", _EVALUATION_HEADLINES, ("trajectory_rmse_m",)),
+        StageMetricContract("test", _EVALUATION_HEADLINES, ("trajectory_rmse_m",)),
     ),
-    progress_bar_keys=("position_error_m",),
 )
 
 
@@ -62,6 +82,10 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     This module supports both single-view and multiview BLCS training.
     """
+
+    train_metrics: BLCSMetrics
+    val_metrics: BLCSMetrics
+    test_metrics: BLCSMetrics
 
     metric_logging_contract = BLCS_TRAJECTORY_METRIC_CONTRACT
 
@@ -88,25 +112,8 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         train_cfg = self.config.training
         loss_cfg = self.config.loss
         self.max_epochs = int(train_cfg.trainer.max_epochs)
-        # The gravity prior needs an absolute physical scale: derive the
-        # output-frame dt and g from the run config (rally / physics) rather than
-        # hard-coding, so a change to output_fps or gravity flows through.
-        rally_cfg = self.config.rally
-        physics_cfg = self.config.physics
-        output_fps = float(rally_cfg.output_fps)
-        self.loss_fn = BLCSLoss(
-            position_weight=loss_cfg.position_weight,
-            reprojection_weight=loss_cfg.reprojection_weight,
-            position_axis_weights=loss_cfg.position_axis_weights,
-            smoothness_weight=loss_cfg.smoothness_weight,
-            gravity_weight=loss_cfg.gravity_weight,
-            smoothness_order=int(loss_cfg.smoothness_order),
-            smoothness_beta=float(loss_cfg.smoothness_beta),
-            smoothness_axis_weights=loss_cfg.smoothness_axis_weights,
-            gravity_beta=float(loss_cfg.gravity_beta),
-            gravity=float(physics_cfg.gravity),
-            frame_dt=1.0 / output_fps,
-        )
+        self.loss_fn = BLCSLoss(loss_cfg)
+        self._last_gradient_diagnostic_step = -1
         gan_enabled = bool(train_cfg.gan.enabled)
         self._initialize_manual_gan(
             discriminator=build_blcs_discriminator(self.config)
@@ -115,21 +122,17 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
         metrics_cfg = self.config.metrics
-        self.train_metrics = BLCSMetrics(
-            position_threshold_m=metrics_cfg.position_threshold_m,
-            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
-            court_keypoint_contract=self.court_keypoint_contract,
-        )
-        self.val_metrics = BLCSMetrics(
-            position_threshold_m=metrics_cfg.position_threshold_m,
-            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
-            court_keypoint_contract=self.court_keypoint_contract,
-        )
-        self.test_metrics = BLCSMetrics(
-            position_threshold_m=metrics_cfg.position_threshold_m,
-            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
-            court_keypoint_contract=self.court_keypoint_contract,
-        )
+        for stage in ("train", "val", "test"):
+            setattr(
+                self,
+                f"{stage}_metrics",
+                BLCSMetrics(
+                    rollout_horizons=tuple(metrics_cfg.rollout_horizons)
+                    if stage != "train"
+                    else (),
+                    event_radius_frames=int(metrics_cfg.event_radius_frames),
+                ),
+            )
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Persist the exact normalization and CourtKP contracts."""
@@ -174,31 +177,19 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         outputs = self.model_io.decode_output(self.model_io.execute_call(prepared.call))
         outputs = replace(outputs, reference_metadata=reference_metadata)
 
-        losses = self.loss_fn(
-            pred_position=outputs.position,
-            target_position=prepared.position,
-            mask=prepared.loss_mask,
-            target_uv=prepared.target_uv,
-            target_vis=prepared.target_vis,
-            camera_R=prepared.camera_R,
-            camera_C=prepared.camera_C,
-            camera_f=prepared.camera_f,
-            camera_cx=prepared.camera_cx,
-            camera_cy=prepared.camera_cy,
-            camera_w=prepared.camera_w,
-            camera_h=prepared.camera_h,
-        )
-
+        losses = self.loss_fn(outputs, prepared, step=int(self.global_step))
+        if (
+            stage == "train"
+            and self.global_step % 200 == 0
+            and self._last_gradient_diagnostic_step != self.global_step
+        ):
+            self._log_output_gradients(losses, outputs)
+            self._last_gradient_diagnostic_step = int(self.global_step)
         metrics = self._metric_tracker_for_stage(stage).update(
-            outputs.position,
-            prepared.position,
-            prepared.loss_mask,
-            prepared.court_reference_provenance,
-            reference_view_index=(
-                reference_metadata.reference_view_index
-                if reference_metadata is not None
-                else None
-            ),
+            outputs,
+            prepared,
+            observed=cast(Tensor, batch["ball_vis"]),
+            scene_ids=cast("tuple[str, ...]", batch["scene_id"]),
         )
 
         return {
@@ -210,10 +201,55 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             },
             "outputs": outputs,
             "mask": prepared.loss_mask,
+            "prepared": prepared,
             "gan_fake": outputs.position,
             "gan_real": prepared.position,
             "gan_padding_mask": ~prepared.loss_mask,
         }
+
+    def _log_output_gradients(
+        self, losses: dict[str, Tensor], outputs: BLCSTrajectoryPrediction
+    ) -> None:
+        """Sample raw and weighted dL/d(normalized output), without changing grads."""
+        tensors = {
+            key: value
+            for key, value in {
+                "position": outputs.position,
+                "velocity": outputs.velocity,
+                "parameters": outputs.physics_parameters,
+                "events": outputs.event_logits,
+            }.items()
+            if value is not None and value.requires_grad
+        }
+        metrics: dict[str, float] = {}
+        for term, weight in self.loss_fn.weights.items():
+            if not weight or not tensors:
+                continue
+            grads = torch.autograd.grad(
+                losses[term],
+                tuple(tensors.values()),
+                retain_graph=True,
+                allow_unused=True,
+            )
+            factor = (
+                self.loss_fn.physics_factor(int(self.global_step))
+                if term in PHYSICAL_TERMS
+                else 1.0
+            )
+            for name, gradient in zip(tensors, grads, strict=True):
+                norm = (
+                    outputs.position.new_zeros(())
+                    if gradient is None
+                    else gradient.detach().float().norm()
+                )
+                metrics[f"gradient/{term}/{name}_raw_l2"] = float(norm)
+                metrics[f"gradient/{term}/{name}_weighted_l2"] = (
+                    float(norm) * weight * factor
+                )
+        # Explicit optimizer-step timestamps, independent of the trainer's
+        # scalar logging interval and accumulation boundary.
+        if self.logger is not None and self.trainer.is_global_zero:
+            self.logger.log_metrics(metrics, step=int(self.global_step))
 
     def test_prediction_payload(
         self, batch: Mapping[str, object], result: dict[str, Any]
@@ -224,10 +260,76 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         payload: dict[str, Any] = {
             "pred_position": outputs.position,
             "target_position": target.position,
+            "target_velocity": target.velocity,
+            "position_3d": target.position,
+            "velocity_3d": target.velocity,
+            "mask": target.loss_mask,
+            "physics_spin": target.physics.spin,
+            "physics_segment": target.physics.segment,
+            "physics_event": target.physics.event,
+            "physics_field": target.physics.field,
+            "physics_clock": target.physics.clock,
+            "physics_surface": target.physics.surface,
+            "frame_index": target.physics.frame_index,
+            "clip_frames": target.physics.clip_frames,
+            "bounce_count": target.physics.bounce_count,
         }
-        mask = result.get("mask")
-        if mask is not None:
-            payload["mask"] = mask
+        if outputs.velocity is not None:
+            payload["pred_velocity"] = outputs.velocity
+        if outputs.physics_parameters is not None:
+            payload["physics_parameters"] = outputs.physics_parameters
+            payload["event_logits"] = outputs.event_logits
+        # Fixed artifact dimensions make padding independent of batch grouping.
+        time_keys = {
+            "pred_position",
+            "target_position",
+            "target_velocity",
+            "position_3d",
+            "velocity_3d",
+            "mask",
+            "physics_spin",
+            "physics_segment",
+            "physics_event",
+            "frame_index",
+            "pred_velocity",
+            "physics_parameters",
+            "event_logits",
+        }
+        width = int(self.config.data.seq_len_range[1])
+        for key in time_keys & payload.keys():
+            value = payload[key]
+            fill = -1 if key in {"physics_segment", "frame_index"} else 0
+            padded = value.new_full((value.shape[0], width, *value.shape[2:]), fill)
+            padded[:, : value.shape[1]] = value
+            payload[key] = padded
+        for key in (
+            "ball_uv",
+            "ball_vis",
+            "ball_uv_target",
+            "ball_vis_target",
+            "court_kp",
+            "court_vis",
+            "padding_mask",
+            "camera_R",
+            "camera_C",
+            "camera_f",
+            "camera_cx",
+            "camera_cy",
+            "camera_w",
+            "camera_h",
+        ):
+            value = cast(Tensor, batch[key])
+            shape = [
+                value.shape[0],
+                int(self.config.model.max_num_cameras),
+                *value.shape[2:],
+            ]
+            if key.startswith(("ball_", "court_")) or key == "padding_mask":
+                shape[2] = width
+            fill = 1 if key in {"padding_mask", "camera_w", "camera_h"} else 0
+            padded = value.new_full(shape, fill)
+            padded[tuple(slice(0, n) for n in value.shape)] = value
+            payload[key] = padded
         if outputs.reference_metadata is not None:
             payload.update(
                 outputs.reference_metadata.prediction_payload(
@@ -235,6 +337,32 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 )
             )
         return payload
+
+    def save_test_predictions(
+        self,
+        metrics: dict[str, Any] | None = None,
+        diagnostic_metrics: dict[str, Any] | None = None,
+    ) -> Path | None:
+        def finite(values: dict[str, Any] | None) -> dict[str, Any] | None:
+            return (
+                None
+                if values is None
+                else {
+                    key: value if math.isfinite(float(value)) else None
+                    for key, value in values.items()
+                }
+            )
+
+        saved = super().save_test_predictions(
+            finite(metrics), finite(diagnostic_metrics)
+        )
+        if saved is not None:
+            report = (
+                json.dumps(self.test_metrics.report(), indent=2, allow_nan=False) + "\n"
+            )
+            for directory in {saved.parent, self._run_predictions_dir()}:
+                (directory / "evaluation.json").write_text(report)
+        return cast("Path | None", saved)
 
     def _log_stage_metrics(
         self, stage: str, loss: Tensor, metrics: dict[str, Any]
@@ -247,6 +375,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             on_epoch=True,
             prog_bar=stage != "test",
         )
+        for name, value in metrics.items():
+            if name.startswith("loss_"):
+                self.log(f"{stage}/{name}", value, on_step=False, on_epoch=True)
 
     def _metric_tracker_for_stage(self, stage: str) -> BLCSMetrics:
         if stage == "train":

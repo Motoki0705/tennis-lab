@@ -31,6 +31,7 @@ def compose_blcs_model_io(config: object) -> TrajectoryBoundModelIO:
         num_court_tokens=model_config.num_court_tokens,
         max_seq_len=model_config.max_seq_len,
         predict_velocity=model_config.predict_velocity,
+        physics_head=model_config.physics_head,
         input_profile=model_config.input_profile,
         max_num_cameras=model_config.max_num_cameras,
         court_keypoint_contract=contract,

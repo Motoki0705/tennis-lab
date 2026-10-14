@@ -10,6 +10,8 @@ from typing import Any
 import numpy as np
 import pytest
 import torch
+from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
 
 from src.tasks.base.generate_dataset import (
     CourtKeypointArtifactMetadata,
@@ -20,8 +22,10 @@ from src.tasks.base.generate_dataset import (
     inject_scene_court_keypoint_metadata,
     resolve_court_keypoint_contract,
 )
+from src.tasks.base.model_io import write_model_artifact_court_keypoint_contract
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCS_DATASET_SCHEMA_ID
 from src.tasks.blcs.model_io import BLCSTrajectoryPrediction
+from src.tasks.blcs.model_io.checkpoints import load_checkpoint_model
 from src.tasks.blcs.visualization.inference.service import (
     InferenceService,
     derive_checkpoint_metadata,
@@ -60,12 +64,17 @@ def _trajectory_config(
     seq_len_range: Sequence[int] = (128, 128),
     num_views_range: Sequence[int] = (3, 4),
 ) -> dict[str, Any]:
-    model: dict[str, Any] = {
-        "name": name,
-        "io": {"input_profile": input_profile},
-        "num_court_tokens": num_court_tokens,
-        "max_seq_len": max_seq_len,
-    }
+    with initialize_config_dir(
+        config_dir=str(PROJECT_ROOT / "src/tasks/blcs/configs"), version_base="1.3"
+    ):
+        config = compose(config_name="train")
+    model = dict(OmegaConf.to_container(config.model, resolve=True))
+    model.update(
+        name=name,
+        io={"input_profile": input_profile},
+        num_court_tokens=num_court_tokens,
+        max_seq_len=max_seq_len,
+    )
     if input_profile == "multiview":
         model["max_num_cameras"] = max_num_cameras
     return {
@@ -81,7 +90,15 @@ def _trajectory_config(
 
 def _write_checkpoint(path: Path, config: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"hyper_parameters": {"config": config}}, path)
+    checkpoint = {
+        "hyper_parameters": {"config": config},
+        "court_coordinate_normalization": court_coordinate_normalization_metadata(),
+    }
+    write_model_artifact_court_keypoint_contract(
+        checkpoint,
+        resolve_court_keypoint_contract(config["court_keypoints"]["selector"]),
+    )
+    torch.save(checkpoint, path)
 
 
 # ------------------------------------------------------------------ scene data
@@ -340,6 +357,27 @@ def test_forms_for_model_maps_every_model_to_its_forms(
 # -------------------------------------------------------------------- catalog
 
 
+def test_named_single_object_snapshot_remains_a_single_object_model() -> None:
+    config = _trajectory_config(
+        name="blcs_multiview_axial",
+        selector="physical_v1",
+        scene_dir="blcs/single_object-physics-v3-frozen",
+    )
+    metadata = derive_checkpoint_metadata(config)
+    assert metadata["runnable"] is True
+    assert metadata["object_mode"] == "single"
+
+
+def test_catalog_rejects_unmigrated_model_contract_with_reason(tmp_path: Path) -> None:
+    (tmp_path / "data").mkdir()
+    config = _trajectory_config(name="blcs_multiview_axial", selector="physical_v1")
+    del config["model"]["physics_head"]
+    _write_checkpoint(tmp_path / "ckpt/blcs/unmigrated.ckpt", config)
+    entry = _service(tmp_path).catalog()["checkpoints"][0]
+    assert entry["runnable"] is False
+    assert "physics_head" in entry["unavailable_reason"]
+
+
 def test_catalog_reports_unreadable_checkpoint_without_failing(tmp_path: Path) -> None:
     _build_dataset(tmp_path)
     broken = tmp_path / "ckpt" / "blcs" / "broken.ckpt"
@@ -556,9 +594,9 @@ def test_infer_trajectory_windowed_single_object(
     assert response["prediction"]["presence"] is None
     assert len(response["prediction"]["positions"]) == 18
     assert set(response["metrics"]) == {
-        "position_error_m",
-        "endpoint_error_m",
-        "accuracy_0p3m",
+        "trajectory_rmse_m",
+        "trajectory_mean_m",
+        "trajectory_p95_m",
     }
     assert response["device"] == "cpu"
     assert response["cameras"] == [0]
@@ -589,7 +627,7 @@ def test_every_single_form_loads_as_a_scene(tmp_path: Path, form: str) -> None:
 
 
 @pytest.mark.local_data
-def test_real_curated_checkpoints_are_classified_runnable() -> None:
+def test_real_curated_checkpoints_include_a_strictly_loadable_predictor() -> None:
     if not (REAL_CHECKPOINTS_ROOT.is_dir() and (REAL_DATA_ROOT / "blcs").is_dir()):
         pytest.skip("Local BLCS checkpoints or datasets are unavailable.")
     service = InferenceService(
@@ -598,20 +636,22 @@ def test_real_curated_checkpoints_are_classified_runnable() -> None:
         REAL_DATA_ROOT,
     )
     catalog = service.catalog()
-    runnable = [entry for entry in catalog["checkpoints"] if entry["runnable"]]
-    assert runnable, "expected at least one runnable curated checkpoint"
-    references = [
-        entry
-        for entry in runnable
-        if entry["model_name"] == "blcs_multiview_axial_reference"
+    assert catalog["checkpoints"]
+    runnable = [
+        entry for entry in catalog["checkpoints"]
+        if entry["root"] == "checkpoints" and entry["runnable"]
     ]
-    assert references
-    for entry in references:
-        assert entry["allowed_forms"] == ["single_object_camera_view_v2"]
-        assert entry["seq_len"] == 128
-        assert entry["num_court_tokens"] in {14, 20}
-    kp14 = next(entry for entry in references if "kp14" in entry["name"])
-    assert kp14["num_court_tokens"] == 14
+    assert runnable, "Curated BLCS weights must include a working deployment model"
+    for entry in runnable:
+        binding, _ = load_checkpoint_model(Path(entry["path"]))
+        del binding
+    for entry in catalog["checkpoints"]:
+        if entry["runnable"]:
+            assert entry["model_name"] == "blcs_multiview_axial"
+            assert entry["allowed_forms"] == ["single_object"]
+            assert entry["court_keypoint_selector"] == "physical_v1"
+        else:
+            assert entry["unavailable_reason"]
 
 
 @pytest.mark.local_data

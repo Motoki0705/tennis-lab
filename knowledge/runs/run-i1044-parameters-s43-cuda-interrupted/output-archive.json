@@ -1,0 +1,10 @@
+{
+  "archived_at_utc": "2026-10-13T15:07:11+00:00",
+  "failed_job": "1791857517260321410_3137872_i1044-selected-new-s43-u4000-v3-cli",
+  "original_output_dir": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s43-u4000",
+  "archived_output_dir": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/aborted-parameters-s43-cuda-unknown",
+  "reason": "CUDA unknown error during backward and teardown",
+  "resume_used": false,
+  "retry_policy": "same seed/config, fresh 4000 optimizer updates; failed attempt excluded from ten successful runs",
+  "historical_repro_bundle_edited": false
+}
