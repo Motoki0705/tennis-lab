@@ -52,6 +52,13 @@ baselineの検証済みhashはdevice/inode/size/mtime/ctime/mode/pathに結び�
 回避しない。原因解消後は理由を付けて `resume()` する。予約不足による待機と、
 実測によるstopは区別して `status()` / `samples.jsonl` に残す。
 
+再開では全項目を再計測し、上限を満たした場合にscope参照・理由・解除前のstopを含む
+計測結果を `BudgetResumption` として不変保存する。その参照の `resource_resumptions` への
+登録とstop解除を同じtransactionで確定する。保存やtransactionが失敗した場合はstopを維持し、
+DBへ登録されていないファイルだけでは再開済みと判断しない。確定後のsample cache更新が
+失敗しても、理由と計測根拠は同じregistryに残る。`resume()` と `resume-budget` CLIは
+この参照を返す。scope・baseline・GPU累計は変更しない。
+
 これはOSのメモリ・disk hard quotaではない。計測中の増加や見積もり超過は起こり得るため、
 実測ピークと超過の有無を報告する。通常workloadの所有境界はtraining queueと同じ
 process groupであり、`setsid` / daemon化で境界外へ出る子は対応しない。
