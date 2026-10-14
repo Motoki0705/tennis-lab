@@ -12,6 +12,8 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import PROJECT_ROOT
+
 from ..artifacts import (
     annotation_reference,
     artifact_lock,
@@ -64,6 +66,10 @@ class WorkerPool:
             test_command,
         )
         self.children: dict[str, subprocess.Popen[bytes]] = {}
+
+    def _task(self, work_id: str) -> dict[str, Any]:
+        result: dict[str, Any] = self.ledger.task(work_id)
+        return result
 
     def _adapter(self, request: WorkRequest) -> TaskAdapter:
         adapter = self.adapters.get(request.adapter)
@@ -165,7 +171,7 @@ class WorkerPool:
                 ) as descriptor,
             ):
                 self._settle_dead_slots()
-                row = self.ledger.task(request.work_id)
+                row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:
                     return None
                 if row["state"] != "ready" and not retry:
@@ -249,7 +255,7 @@ class WorkerPool:
                         )
                     )
                     path.mkdir(parents=True, exist_ok=True)
-                code_root = Path(__file__).resolve().parents[5]
+                code_root = PROJECT_ROOT
                 launch = Launch(
                     work_id=request.work_id,
                     attempt=attempt,
@@ -290,7 +296,7 @@ class WorkerPool:
                 command = [
                     str(code_root / ".venv/bin/python"),
                     "-m",
-                    "src.tasks.base.annotation.workers.supervisor",
+                    "src.tasks.base.annotation.workers",
                     "--launch",
                     str(directory / "launch.json"),
                     "--sha256",
@@ -326,7 +332,7 @@ class WorkerPool:
 
     def reconcile(self, request: WorkRequest) -> dict[str, Any]:
         self._adapter(request)
-        row = self.ledger.task(request.work_id)
+        row = self._task(request.work_id)
         if (row["campaign"], row["plan_digest"], row["request"]) != (
             self.plan.campaign_id,
             self.plan.sha256,
@@ -377,7 +383,7 @@ class WorkerPool:
                         "failed",
                         "supervisor disappeared without an exit receipt",
                     )
-                    return self.ledger.task(request.work_id)
+                    return self._task(request.work_id)
                 exit_ref = annotation_reference(self.layout, exit_path)
                 execution = read_document(self.layout, exit_ref, ExitReceipt)
                 if execution.launch_digest != ref.digest:
@@ -391,7 +397,7 @@ class WorkerPool:
                             self.plan.campaign_id,
                             execution.reason or "Codex quota exhausted",
                         )
-                    return self.ledger.task(request.work_id)
+                    return self._task(request.work_id)
                 final_path = directory / "result.receipt.json"
                 if final_path.exists():
                     final_ref = annotation_reference(self.layout, final_path)
@@ -439,21 +445,21 @@ class WorkerPool:
                             "validation_failed",
                             f"{type(error).__name__}: {error}",
                         )
-                        return self.ledger.task(request.work_id)
+                        return self._task(request.work_id)
                 self._mark(
                     request.work_id,
                     final.outcome.status,
                     final.outcome.reason,
                     result=final_ref,
                 )
-                return self.ledger.task(request.work_id)
+                return self._task(request.work_id)
         except BlockingIOError:
             return row
 
     def stop(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
             raise ValueError("stop requires a reason")
-        row = self.ledger.task(request.work_id)
+        row = self._task(request.work_id)
         if row["state"] not in {"running", "exited"}:
             return row
         _ref, launch = self._launch(row)
@@ -477,4 +483,4 @@ class WorkerPool:
         if current["state"] in {"complete", "not_applicable"}:
             return current
         self._mark(request.work_id, "cancelled", reason)
-        return self.ledger.task(request.work_id)
+        return self._task(request.work_id)
