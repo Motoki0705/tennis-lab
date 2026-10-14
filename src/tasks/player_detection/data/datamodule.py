@@ -42,6 +42,8 @@ class PlayerDetectionDataModule(pl.LightningDataModule):
             selection = select_detection_frames(
                 self.store, split, self.config.selection, frame_stride=stride
             )
+            if split != "train" and selection.stats["instances"] == 0:
+                raise ValueError(f"{split} requires positive target instances for COCO mAP, in addition to any negative frames")
             self.selection_stats[split] = selection.stats
             print(f"[player_detection] {split} selection: {json.dumps(selection.stats)}")
             dataset = PlayerDetectionDataset(

@@ -13,20 +13,19 @@ from omegaconf import OmegaConf
 
 from src.tasks.base.configuration import as_config_mapping
 from src.tasks.player_detection.configuration import FrameSelectionConfig
+from src.tasks.player_detection.data.selection import frame_eligibility
 from src.tasks.player_detection.data.store import (
     BBOX_SOURCE_CODES,
     BBOX_SOURCE_NAMES,
     INDEX_FILE,
     METADATA_FILE,
-    SCHEMA_VERSION,
     SHARDS_DIR,
     ClipRecord,
     PlayerFrameStore,
-    Split,
     shard_name,
 )
 
-FILTERS = frozenset({"all", "unresolved", "inferred", "occluded", "truncated", "excluded", "unreviewed"})
+FILTERS = frozenset({"all", "unresolved", "inferred", "occluded", "truncated", "excluded", "unreviewed", "confirmed_empty"})
 
 
 class StoreReview:
@@ -48,23 +47,12 @@ class StoreReview:
         self.summaries = [self._clip_summary(clip) for clip in self.store.clips]
 
     def _selection_reason(self, row: int) -> str:
-        store, selection = self.store, self.selection
-        if selection.require_reviewed and not bool(store.frames["reviewed"][row]):
-            return "unreviewed"
-        instances = store.instances_of(row)
-        unresolved = instances.bbox_source == BBOX_SOURCE_CODES["unresolved"]
-        if selection.require_located_players and unresolved.any():
-            return "unresolved_player"
-        clip = store.clip_of(row)
-        boxes = instances.boxes_xyxy[~unresolved].copy()
-        boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0.0, float(clip.width))
-        boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0.0, float(clip.height))
-        sides = np.minimum(boxes[:, 2] - boxes[:, 0], boxes[:, 3] - boxes[:, 1])
-        return "eligible" if (sides >= selection.min_visible_box_px).any() else "no_visible_box"
+        reason: str = frame_eligibility(self.store, row, self.selection).reason
+        return reason
 
     def _counts(self, rows: NDArray[np.int64]) -> dict[str, int]:
         counts: Counter[str] = Counter({name: 0 for name in BBOX_SOURCE_CODES})
-        counts.update({"occluded": 0, "truncated": 0, "unreviewed": 0, "excluded": 0})
+        counts.update({"occluded": 0, "truncated": 0, "unreviewed": 0, "excluded": 0, "confirmed_empty": 0})
         for row in rows.tolist():
             instances = self.store.instances_of(row)
             counts.update(BBOX_SOURCE_NAMES[int(code)] for code in instances.bbox_source)
@@ -72,6 +60,7 @@ class StoreReview:
                 counts[key] += int(getattr(instances, key).sum())
             counts["unreviewed"] += int(not self.store.frames["reviewed"][row])
             counts["excluded"] += int(self.reasons[row] != "eligible")
+            counts["confirmed_empty"] += int(self.store.frames["confirmed_empty"][row])
         return dict(counts)
 
     def _clip_summary(self, clip: ClipRecord) -> dict[str, Any]:
@@ -103,7 +92,7 @@ class StoreReview:
             sources[clip.source_id].append(clip.split)
         leaking = [source for source, splits in sources.items() if len(set(splits)) != 1]
         return {
-            "schema": SCHEMA_VERSION,
+            "schema": self.store.schema_version,
             "version": self.store.metadata["version"],
             "created_at": self.store.metadata["created_at"],
             "frames": len(self.store),
@@ -116,7 +105,7 @@ class StoreReview:
             "split_source_overlap": leaking,
             "splits": {
                 name: {
-                    "frames": len(self.store.split_frames(cast(Split, name))),
+                    "frames": len(self.store.split_frames(name)),
                     "clips": sum(clip.split == name for clip in self.store.clips),
                     "sources": len({clip.source_id for clip in self.store.clips if clip.split == name}),
                 }
@@ -149,6 +138,8 @@ class StoreReview:
         flags.extend(name for name in ("occluded", "truncated") if getattr(instances, name).any())
         if not self.store.frames["reviewed"][row]:
             flags.append("unreviewed")
+        if self.store.frames["confirmed_empty"][row]:
+            flags.append("confirmed_empty")
         if self.reasons[row] != "eligible":
             flags.append("excluded")
         return flags
@@ -203,6 +194,7 @@ class StoreReview:
             "height": clip.height,
             "reviewed": bool(self.store.frames["reviewed"][row]),
             "is_target": bool(self.store.frames["is_target"][row]),
+            "confirmed_empty": bool(self.store.frames["confirmed_empty"][row]),
             "annotation_status": clip.annotation_status,
             "selection_reason": self.reasons[row],
             "annotations": annotations,
@@ -225,7 +217,7 @@ class StoreReview:
 
 
 def missing_ranges(indices: NDArray[np.generic], frame_count: int) -> list[list[int]]:
-    """Inclusive clip-frame ranges absent from this player-only store."""
+    """Inclusive missing ranges; a sparse legacy store does not imply absence."""
     edges = np.concatenate([[-1], indices, [frame_count]])
     return [[int(left + 1), int(right - 1)] for left, right in zip(edges[:-1], edges[1:], strict=True) if right > left + 1]
 

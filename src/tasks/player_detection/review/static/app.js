@@ -113,8 +113,8 @@ function renderFacts() {
   for (const a of f.annotations) counts[a.bbox_source]++;
   const facts = [['Source frame', f.source_frame_index], ['Clip frame', f.frame_index], ['reviewed', f.reviewed ? 'yes' : 'no'], ['target区間', f.is_target ? 'yes' : 'context'], ['observed / inferred', counts.observed + ' / ' + counts.inferred], ['unresolved', counts.unresolved]];
   $('frame-facts').innerHTML = '<div class="facts">' + facts.map(([key,value]) => '<div class="fact"><span>' + key + '</span><strong>' + value + '</strong></div>').join('') + '</div>';
-  const reasons = {eligible: '既定の学習選別: 対象', unresolved_player: '既定の学習選別: 除外', unreviewed: '既定の学習選別: 除外', no_visible_box: '既定の学習選別: 除外'};
-  const explanation = {eligible:'stride / epoch sampling前の条件を満たします。bbox精度の合格判定ではありません。', unresolved_player:'位置未解決の選手を含むため、frame全体が除外されます。未解決を負例にしません。', unreviewed:'require_reviewed=trueのため、未reviewのframeを除外します。', no_visible_box:'画像内へclip後、最短辺' + state.dataset.selection.min_visible_box_px + ' px以上のboxがありません。'};
+  const reasons = {eligible: f.confirmed_empty ? '既定の学習選別: 確認済み不在の負例' : '既定の学習選別: 対象', unresolved_player: '既定の学習選別: 除外', unreviewed: '既定の学習選別: 除外', no_visible_box: '既定の学習選別: 除外', context: '既定の学習選別: 除外', unconfirmed_empty: '既定の学習選別: 除外'};
+  const explanation = {eligible: f.confirmed_empty ? '注釈対象区間でplayer不在を確認したframeです。bboxが0個の教師として扱います。' : 'stride / epoch sampling前の条件を満たします。bbox精度の合格判定ではありません。', unresolved_player:'位置未解決の選手を含むため、frame全体が除外されます。未解決を負例にしません。', unreviewed:'require_reviewed=trueのため、未reviewのframeを除外します。', no_visible_box:'画像内へclip後、最短辺' + state.dataset.selection.min_visible_box_px + ' px以上のboxがありません。', context:'注釈対象区間の外です。', unconfirmed_empty:'player不在が確認されていない空欄です。負例にはしません。'};
   $('eligibility').classList.toggle('excluded', f.selection_reason !== 'eligible');
   $('eligibility').innerHTML = '<strong>' + reasons[f.selection_reason] + '</strong><p>' + explanation[f.selection_reason] + '</p>';
 }
