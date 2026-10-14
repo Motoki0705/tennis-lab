@@ -116,3 +116,14 @@ class ResourceSample(Document):
     active_by_stage: dict[str, int]
     pending_by_stage: dict[str, int]
     stopped_reason: str | None
+
+
+class BudgetResumption(Document):
+    """Prepared evidence; the registry commits it atomically with clearing the stop."""
+
+    schema_version: Literal["annotation.budget-resumption.v1"] = (
+        "annotation.budget-resumption.v1"
+    )
+    scope: ArtifactRef
+    reason: str = Field(min_length=1)
+    checked_sample: ResourceSample
