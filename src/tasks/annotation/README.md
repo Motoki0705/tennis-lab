@@ -27,15 +27,31 @@ base内部には具体taskの分岐を置かない。SQLiteのworkflow進捗は�
 
 `Runtime` はplan・資源scope・queue script版・Codex保存先・工程別のPSS/保存量/
 timeout/GPU時間を参照する。設定とreceiptはmain repositoryの `outputs/chat_annotation/`
-以下へ置く。planの契約・保存は[plan](../base/annotation/plan.py)、資源scopeの作成は
-[resources](../base/annotation/resources/README.md)のAPIを使用する。
-実験固有のURL、件数、モデルpathをソースへ埋め込まない。
+以下へ置く。`schema --type configuration` が設定JSONの契約を返し、`configure` が
+plan・scope・runtimeとその参照を持つreceiptを不変保存する。実験固有のURL、件数、
+モデルpathをソースへ埋め込まない。
 
 ```bash
+.venv/bin/python -m src.tasks.annotation schema --type configuration
+.venv/bin/python -m src.tasks.annotation configure --configuration /absolute/configuration.json --sha256 INPUT_HASH
 .venv/bin/python -m src.tasks.annotation register --runtime /absolute/runtime.json --sha256 HASH --candidates /absolute/candidates.json
 .venv/bin/python -m src.tasks.annotation run --runtime /absolute/runtime.json --sha256 HASH --max-seconds 600
 .venv/bin/python -m src.tasks.annotation status --runtime /absolute/runtime.json --sha256 HASH --details
 ```
+
+`Configuration` は `plan`（CampaignPlan全文）、`budget`、`runtime`（plan/scope参照以外の
+RuntimeSettings）を持つ。`budget.action = reuse` と既存 `scope` 参照で一連のcampaignの
+使用量を継承する。新しい予算を明示作成する場合のみ `action = create` とscope ID、全計測root、
+開始前の保存/GPU使用量、待機上限を指定する。作成の再送や中断後の再開でも同じbaselineを使う。
+既存の停止状態をconfigureで解除しない。
+
+configureは参照hash、selection/preparation形式、対応task、工程costと枠、Codex保存先、
+queue script、productionのcode版を検証してから保存する。planが別の資源scopeへ変更される
+ことを拒否する。scopeを作る場合は保存量baselineの走査を行うが、動画取得・モデルロード・
+Codex/学習の起動は行わない。作成後は `configuration/result.json` の `runtime` 参照のpath/hashを
+以降のCLIへ渡す。`schema --type` はruntime/candidates/operation/recoveryにも対応する。
+planの詳細は[plan](../base/annotation/plan.py)、予算の計測定義は
+[resources](../base/annotation/resources/README.md)を参照する。
 
 pathは固定annotation root内の実ファイルを指定する。相対path・外部path・hash不一致は拒否する。
 `CandidateManifest` はcanonical source IDと根拠参照の一覧。過去のsource/channelは収集前に

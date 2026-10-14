@@ -28,10 +28,7 @@ class StageCost(Document):
     gpu_seconds: float = Field(ge=0)
 
 
-class Runtime(Document):
-    schema_version: Literal["annotation.runtime.v1"] = "annotation.runtime.v1"
-    plan: ArtifactRef
-    scope: ArtifactRef
+class RuntimeSettings(Document):
     queue: QueueConfiguration
     codex_binary: str = Field(min_length=1)
     codex_home: str = Field(min_length=1)
@@ -46,6 +43,12 @@ class Runtime(Document):
                 f"exactly one frozen resource cost is required for {stage}"
             )
         return matching[0]
+
+
+class Runtime(RuntimeSettings):
+    schema_version: Literal["annotation.runtime.v1"] = "annotation.runtime.v1"
+    plan: ArtifactRef
+    scope: ArtifactRef
 
 
 class HistoryEntry(Document):
