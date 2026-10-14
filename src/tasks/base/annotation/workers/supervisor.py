@@ -22,8 +22,8 @@ from ..plan import load_plan, references
 from ..reproducibility import require_frozen_code
 from ..resources import ResourceManager
 from .command import codex_command, worker_environment
-from .contracts import ExitReceipt, Launch
-from .processes import capture_supervisor, owned_members, signal_owned
+from .contracts import ChildIdentity, ChildReceipt, ExitReceipt, Launch
+from .processes import capture_supervisor, owned_members, process_snapshot, signal_owned
 
 
 def event_summary(path: Path) -> tuple[str | None, bool, str | None, bool]:
@@ -155,6 +155,21 @@ def supervise(
                     stderr=errors,
                     cwd=directory / "work",
                     env=worker_environment(launch, plan),
+                )
+                snapshot = process_snapshot(child.pid)
+                write_document(
+                    layout,
+                    directory / "child.json",
+                    ChildReceipt(
+                        launch_digest=ref.digest,
+                        captured_at=datetime.now(UTC).isoformat(),
+                        process=None
+                        if snapshot is None
+                        else ChildIdentity(**snapshot[0].document()),
+                        unavailable_reason="child exited before its identity was captured"
+                        if snapshot is None
+                        else None,
+                    ),
                 )
                 deadline = time.monotonic() + launch.timeout_seconds
                 while True:

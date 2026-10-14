@@ -29,6 +29,7 @@ from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.command import codex_command, worker_environment
 from src.tasks.base.annotation.workers.contracts import (
     AttemptResult,
+    ChildReceipt,
     ExitReceipt,
     Launch,
     PreparedWorker,
@@ -247,7 +248,7 @@ def settled(
 ) -> dict[str, object]:
     until = time.monotonic() + timeout
     while time.monotonic() < until:
-        state = pool.reconcile(request)
+        state: dict[str, object] = pool.reconcile(request)
         if state["state"] not in {"running", "exited"}:
             return state
         time.sleep(0.02)
@@ -275,10 +276,20 @@ def test_success_is_receipt_based_and_never_relaunches(setup: Setup) -> None:
     assert setup.adapter.validations == 1
     assert setup.pool().start(setup.request) is None
     assert setup.launches() == 1
+    child = ChildReceipt.model_validate_json(
+        (directory(pool, setup.request) / "child.json").read_bytes()
+    )
+    owner = ProcessIdentity.from_document(
+        json.loads((directory(pool, setup.request) / "owner.json").read_text())
+    )
+    assert child.process is not None
+    assert child.process.pid != owner.pid
+    assert child.process.group == owner.group and child.process.session == owner.session
     final = read_document(
         setup.layout, ArtifactRef.model_validate_json(state["result"]), AttemptResult
     )
     assert final.outcome.adoption is None
+    assert child.launch_digest == final.launch.digest
     assert all(word not in str(state) for word in ("qa_wait", "qa_approved"))
     setup.layout.artifact_path(final.result).write_bytes(b"changed")
     with pytest.raises(ValueError, match="changed"):
@@ -291,7 +302,8 @@ def test_concurrent_start_and_cross_campaign_identity(setup: Setup) -> None:
 
     def start(pool: WorkerPool) -> str | None:
         try:
-            return pool.start(setup.request)
+            result: str | None = pool.start(setup.request)
+            return result
         except WorkerBusy:
             return "busy"
 

@@ -20,6 +20,7 @@ ballとposeが同じdataset versionを参照するときは、公開する `comp
 素材の共有台帳・取得・明示区間の準備APIは [collection](collection/README.md) を参照する。
 工程の受付・予約と予算計測のAPIは [resources](resources/README.md) を参照する。
 保存台帳・inode別容量計測・GC dry-runは [storage](storage/README.md) を参照する。
+固定した並列条件と実workerの生存・資源・usageの比較証跡は [benchmarks](benchmarks/README.md) を参照する。
 CPU/I/O・queue内GPUの起動は [execution](execution/README.md)、具体的なtaskを接続する
 CLIの実装範囲と使い方は [src/tasks/annotation](../../annotation/README.md) を参照する。
 
