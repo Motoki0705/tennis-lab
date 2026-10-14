@@ -1,7 +1,7 @@
 """Build ``data/player_detection/<version>`` from chat-annotation player labels.
 
-Only frames whose annotation lists at least one player are encoded. Each clip
-is written to its own JPEG shard by a worker process; the index and metadata
+Every annotated frame is encoded, including explicit absence and unreviewed
+empty frames. Each clip is written to its own JPEG shard; the index and metadata
 are assembled afterwards and the whole version directory is published with a
 single atomic rename, so a partially built store is never visible.
 """
@@ -62,7 +62,7 @@ def clip_track_ids(source: ClipSource) -> tuple[str, ...]:
 
 
 def encode_clip(source: ClipSource, shard_path: Path, jpeg_quality: int) -> ClipTables:
-    """Decode the clip in presentation order and store its player frames."""
+    """Preserve native order and distinguish confirmed absence from unknown."""
     manifest = source.manifest
     timeline = check_clip(source.video_path, manifest)
     track_ids = clip_track_ids(source)
@@ -78,8 +78,6 @@ def encode_clip(source: ClipSource, shard_path: Path, jpeg_quality: int) -> Clip
             annotated = source.annotation.frames[index]
             if annotated.frame_index != index:
                 raise ValueError(f"{source.clip_id}: annotation frame order mismatch at {index}")
-            if not annotated.players:
-                continue
             pixels = frame.to_ndarray(format="bgr24")
             if pixels.shape != (manifest.height, manifest.width, 3):
                 raise ValueError(f"{source.clip_id}: decoded frame {index} has shape {pixels.shape}")
@@ -95,6 +93,7 @@ def encode_clip(source: ClipSource, shard_path: Path, jpeg_quality: int) -> Clip
                 ("clip_pts", mapped.clip_pts),
                 ("is_target", mapped.is_target),
                 ("reviewed", annotated.reviewed),
+                ("confirmed_empty", annotated.reviewed and mapped.is_target and not annotated.players),
                 ("offset", offset),
                 ("length", len(payload)),
                 ("inst_count", len(annotated.players)),
@@ -114,7 +113,7 @@ def encode_clip(source: ClipSource, shard_path: Path, jpeg_quality: int) -> Clip
     if decoded != len(manifest.frames):
         raise ValueError(f"{source.clip_id}: decoded {decoded} of {len(manifest.frames)} frames")
     if not frames["frame_index"]:
-        raise ValueError(f"{source.clip_id}: annotation contains no frame with players")
+        raise ValueError(f"{source.clip_id}: annotation contains no frames")
     frame_count = len(frames["frame_index"])
     frame_arrays: dict[str, NDArray[np.generic]] = {
         name: np.asarray(frames[name], dtype=FRAME_FIELDS[name])
@@ -139,9 +138,7 @@ def assign_splits(sources: list[ClipSource], config: GenerateDatasetConfig) -> d
     """Split by source video so no broadcast leaks across train/val/test."""
     weights: Counter[str] = Counter()
     for source in sources:
-        weights[source.manifest.source.source_id] += sum(
-            1 for frame in source.annotation.frames if frame.players
-        )
+        weights[source.manifest.source.source_id] += len(source.annotation.frames)
     splits: dict[str, str] = make_group_split_map(
         dict(sorted(weights.items())),
         GroupSplitConfig(config.val_ratio, config.test_ratio, config.split_seed),
@@ -180,19 +177,15 @@ def _summary_readme(metadata: dict[str, object]) -> str:
 
 def build_dataset(config: GenerateDatasetConfig) -> Path:
     """Build and atomically publish one dataset version; returns its directory."""
-    destination = config.dataset_dir
+    destination: Path = config.dataset_dir
     if destination.exists():
         raise FileExistsError(
             f"Dataset version already exists: {destination}. Choose a new dataset.version."
         )
-    collected = collect_clip_sources(config.annotation_root, allowed_statuses=config.allowed_statuses)
-    # Only frames listing players are stored, so a clip without any player
-    # contributes nothing; it is recorded in the metadata, not encoded.
-    sources = [s for s in collected if any(frame.players for frame in s.annotation.frames)]
-    kept = {s.clip_id for s in sources}
-    without_players = sorted(s.clip_id for s in collected if s.clip_id not in kept)
+    sources = collect_clip_sources(config.annotation_root, allowed_statuses=config.allowed_statuses)
+    without_players = sorted(s.clip_id for s in sources if not any(f.players for f in s.annotation.frames))
     if not sources:
-        raise ValueError("No processed player annotation contains a player")
+        raise ValueError("No processed player annotations are available")
     splits = assign_splits(sources, config)
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = destination.parent / f".building-{destination.name}-{uuid.uuid4().hex[:8]}"
@@ -252,6 +245,8 @@ def build_dataset(config: GenerateDatasetConfig) -> Path:
                 "clips": len(clips),
                 "clips_without_players": len(without_players),
                 "stored_frames": int(len(columns["frame_index"])),
+                "confirmed_empty_frames": int(columns["confirmed_empty"].sum()),
+                "ignored_empty_frames": int(((columns["inst_count"] == 0) & ~columns["confirmed_empty"]).sum()),
                 "annotated_frames": int(sum(len(s.annotation.frames) for s in sources)),
                 "instances": int(len(sources_codes)),
                 "instances_by_bbox_source": {

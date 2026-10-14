@@ -48,7 +48,7 @@ class PlayerDetectionMetrics:
 
     def reset(self) -> None:
         self._map = MeanAveragePrecision(box_format="xyxy", iou_type="bbox", backend="pycocotools")
-        self._counts = np.zeros(4, dtype=np.int64)  # TP, FP, FN, images
+        self._counts = np.zeros(6, dtype=np.int64)  # TP, FP, FN, images, target instances, negative images
 
     def update(self, detections: list[FrameDetections], targets: list[torch.Tensor]) -> None:
         if len(detections) != len(targets):
@@ -72,13 +72,17 @@ class PlayerDetectionMetrics:
                 iou_threshold=self.config.iou_threshold,
             )
             self._counts[3] += 1
+            self._counts[4] += target.shape[0]
+            self._counts[5] += int(target.shape[0] == 0)
 
     def compute(self) -> tuple[dict[str, float], dict[str, float]]:
         """Return ``(headline, diagnostics)`` with disjoint keys."""
         if self._counts[3] == 0:
             raise RuntimeError("No evaluation images were accumulated")
+        if self._counts[4] == 0:
+            raise ValueError("COCO mAP requires positive target instances; negative-only evaluation cannot select a model")
         coco = {key: float(value) for key, value in self._map.compute().items() if value.numel() == 1}
-        true_positive, false_positive, false_negative, images = (int(v) for v in self._counts)
+        true_positive, false_positive, false_negative, images, target_instances, negative_images = (int(v) for v in self._counts)
         precision = true_positive / max(true_positive + false_positive, 1)
         recall = true_positive / max(true_positive + false_negative, 1)
         f1 = 2 * precision * recall / max(precision + recall, 1e-12)
@@ -96,6 +100,8 @@ class PlayerDetectionMetrics:
             "false_positives": float(false_positive),
             "false_negatives": float(false_negative),
             "images": float(images),
+            "target_instances": float(target_instances),
+            "negative_images": float(negative_images),
             "false_positives_per_image": false_positive / images,
             "score_threshold": self.config.score_threshold,
             "iou_threshold": self.config.iou_threshold,

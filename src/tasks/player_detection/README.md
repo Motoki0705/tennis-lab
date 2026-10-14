@@ -16,16 +16,17 @@ pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使�
 ## 流れ
 
 1. `scripts.generate_dataset`: `outputs/chat_annotation` の processed player ラベルから
-   `data/player_detection/<version>/` の frame store を作ります。player を含む frame だけを保存し、
-   clip-local の track ID と時刻を残します（将来の ID tracking 用）。
+   `data/player_detection/<version>/` のv2 frame storeを作ります。空frameを含めnative frameを保存し、
+   確認済み不在を`confirmed_empty`で区別します。clip-localのtrack IDと時刻も保持します。
    split の単位は YouTube の source 動画です。同じ version への上書きは拒否します。
    保存形式と読み出し API の正本は [data/store.py](data/store.py) です。
 2. `scripts.review_dataset`: 保存済みRGB、注釈の出自・未解決状態、学習選別をWebで確認します。
    [レビュー画面の使い方とデータ体系](review/README.md)を参照してください。
    `scripts.preview_dataset` は従来のsplitごとの静的frame previewを出力します。
 3. `scripts.train`: Lightning で fine-tune します。frame の選別（未 review、`unresolved` player を含む frame、
-   画面外にほぼ出た box の除外）は [data/detection_dataset.py](data/detection_dataset.py) が所有し、
+   画面外にほぼ出たboxの除外）は[data/selection.py](data/selection.py)が確認画面と共有し、
    除外件数を split ごとに表示します。
+   確認済み不在はbbox/labelが0件の負例です。未確認・context・未解決やclip後のbox消失を負例にはしません。
 4. `scripts.export_checkpoint`: Lightning checkpoint を DINO 形式の `.pth` に変換します。
    変換前に上流 DINO へ strict load して構造を確かめ、出自を `tennis_lab` キーに記録します。
 5. `scripts.evaluate`: COCO 版と export 版など複数の checkpoint を、pipeline と同じ前処理で比較します。
@@ -33,6 +34,12 @@ pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使�
 設定の正本は [configs/](configs/) です。評価の `input_size` と `score_threshold` は、
 pipeline の `people_models.runtime.dino_detector` と一致させる必要があります。
 DINO の denoising は CUDA 前提のため、学習と評価は GPU（training queue 経由）で実行します。
+validation/testのmAPには正例が必要です。負例だけの場合は未定義値を選択指標にせず停止します。
+mixed評価では負例上の検出もFP/APへ反映し、負例画像数とGT instance数を記録します。
+
+既存v1 storeは疎なまま読み、欠落frameへ負例を補いません。v2の空frameにはnative JPEGと
+`(0,4)`のbbox・`(0,)`のlabelを使います。schema、確認済み不在フラグの整合性、instance範囲を
+readerで検証します。実DINOのmixed/all-empty loss・勾配確認はGPU受入で実行する項目です。
 
 ```bash
 .venv/bin/python -m src.tasks.player_detection.scripts.generate_dataset
