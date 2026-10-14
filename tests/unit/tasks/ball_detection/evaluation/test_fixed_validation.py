@@ -42,6 +42,16 @@ def test_equal_models_with_different_training_data_share_exact_fixed_validation(
     changed["scopes"]["common"]["membership_sha256"] = "f" * 64
     with pytest.raises(ValueError, match="frame membership"):
         verify_support(changed, result["support"])
+    for key, value, reason in (("membership_sha256", "f" * 64, "frame membership"),
+                               ("macro_mean_error_px", -1., "macro metric")):
+        changed = copy.deepcopy(result["candidate"]["evaluation"])
+        changed["scopes"]["common"]["by_source"]["tracknet"][key] = value
+        with pytest.raises(ValueError, match=reason):
+            verify_support(changed, result["support"])
+    changed = copy.deepcopy(result["candidate"]["evaluation"])
+    changed["scopes"]["full"]["by_source"]["tracknet"]["by_frame_step"]["1"]["mean_error_px"] = float("nan")
+    with pytest.raises(ValueError, match="finite nonnegative"):
+        verify_support(changed, result["support"])
 
 
 @pytest.mark.parametrize("fault", ["hash", "common", "missing_fps"])

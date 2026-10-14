@@ -24,8 +24,10 @@ def resume_posttraining(path: Path, output: Path, model: DeepMDDQueryDetector,
     first_epoch = saved["epoch"] + 1
     if path.name != f"epoch-{saved['epoch']:03d}.pt":
         raise ValueError("Resume checkpoint filename differs from its epoch")
-    if first_epoch >= recipe["epochs"] or any(int(p.stem.split("-")[1]) >= first_epoch for p in output.glob("epoch-*.pt")):
-        raise ValueError("Resume requires latest completed epoch and remaining budget")
+    if (first_epoch > recipe["epochs"]
+            or (first_epoch == recipe["epochs"] and (output / "COMPLETED.json").exists())
+            or any(int(p.stem.split("-")[1]) >= first_epoch for p in output.glob("epoch-*.pt"))):
+        raise ValueError("Resume requires latest completed epoch and remaining updates or unfinished finalization")
     best_epoch = int(saved["best_epoch"])
     if not 0 <= best_epoch < first_epoch:
         raise ValueError("Resume best epoch lies outside the completed history")
