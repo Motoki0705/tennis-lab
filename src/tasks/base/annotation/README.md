@@ -9,6 +9,15 @@
 実装と実データ検証の状態は各サブIssueで管理する。
 初期モデルの候補や計測予算などrun固有の判断は親Issueとplanに置く。
 
+共通契約のAPIは [contracts.py](contracts.py)、planの検証・不変保存は
+[plan.py](plan.py)、出力境界は [paths.py](paths.py) が所有する。
+`AnnotationLayout.production()` はgit共通rootを使用し、テストだけが
+`AnnotationLayout.testing(absolute_path)` を使う。
+`save_plan()` は参照ファイルのhash/sizeを検証してから原子的に保存し、
+同一campaignへの異なるplanを拒否する。実行前にも `validate_inputs()` を呼ぶ。
+`load_plan(expected_digest=...)` で登録済みplanの改変を検出する。
+ballとposeが同じdataset versionを参照するときは、公開する `component` を分ける。
+
 ## 1. 何が変わるか
 
 | 現状 | 変更後 |
