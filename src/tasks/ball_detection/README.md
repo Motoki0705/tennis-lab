@@ -21,6 +21,7 @@ MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契�
 | [training/](training/README.md) | 3つの学習系統、共通epoch/runtime、LR、FPS sampler |
 | `evaluation/` | 学習中/単独評価で共通の採点、重複排除、clean/stress、CNN比較 |
 | `inference/` | scene向け公開predictorとtrajectory gate |
+| [annotation/](annotation/README.md) | 新規clipの事前推論・注釈レビュー・累積教師公開 |
 | [visualization/](visualization/README.md) | WebUI・描画・GIF・教師/拡張preview |
 | [dataset_statistics/](dataset_statistics/README.md) | 注釈構成・欠損・位置・速度・窓・pose品質のCPU統計 |
 | `generate_dataset/` | 原本から統一frame storeを生成 |
