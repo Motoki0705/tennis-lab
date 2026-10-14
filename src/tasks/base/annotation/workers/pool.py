@@ -225,6 +225,7 @@ class WorkerPool:
                 artifact_lock(
                     self.layout, "worker-" + request.work_id, blocking=False
                 ) as descriptor,
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
                 self._settle_dead_slots()
                 row = self._task(request.work_id)
@@ -439,8 +440,9 @@ class WorkerPool:
             self._verify_final(final)
             return row
         try:
-            with artifact_lock(
-                self.layout, "worker-" + request.work_id, blocking=False
+            with (
+                artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
                 ref, launch = self._launch(row)
                 directory = Path(launch.directory)

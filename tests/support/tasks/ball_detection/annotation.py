@@ -6,7 +6,7 @@ import base64
 import json
 from fractions import Fraction
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import av
 import numpy as np
@@ -455,20 +455,25 @@ class Environment:
         *,
         shown: tuple[RenderedImage, ...] | None = None,
         actor: ArtifactRef | None = None,
+        exit_status: Literal[
+            "succeeded", "failed", "quota", "timed_out", "cancelled"
+        ] = "succeeded",
     ) -> ArtifactRef:
         actor = actor or self.actor
         launch = read_document(self.layout, actor, Launch)
         execution = ExitReceipt(
             launch_digest=actor.digest,
-            exit_code=0,
-            status="succeeded",
+            exit_code=0 if exit_status == "succeeded" else 1,
+            status=exit_status,
             started_at="2026-01-01T00:00:00Z",
             ended_at="2026-01-01T00:00:01Z",
             elapsed_seconds=1.0,
             events=self.blob,
             errors=self.blob,
             thread_id="11111111-1111-1111-1111-111111111111",
-            reason=None,
+            reason=None
+            if exit_status == "succeeded"
+            else "synthetic interrupted attempt",
         )
         execution_ref = write_document(
             self.layout, Path(launch.directory) / "exit.json", execution

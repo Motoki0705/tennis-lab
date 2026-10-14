@@ -32,6 +32,7 @@ from .contracts import (
     PredictOperation,
     PrepareOperation,
     PreviewOperation,
+    ReviewOperation,
     ScreenOperation,
 )
 
@@ -144,6 +145,21 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
                     time_base=task.time_base,
                     **service.parameters,
                 ),
+            )
+        elif isinstance(op, ReviewOperation):
+            from src.tasks.ball_detection.annotation.review.worker import (
+                BallReviewServices,
+                BallReviewWorker,
+            )
+            from src.tasks.base.annotation.workers.review.service import (
+                execute_service,
+                service_input,
+            )
+
+            _service, review = service_input(layout, op.service_request)
+            BallReviewWorker.require_work(review.input.work)
+            result = (
+                execute_service(layout, plan, op.service_request, BallReviewServices()),
             )
         elif isinstance(op, PredictOperation):
             adapter: PredictionAdapter

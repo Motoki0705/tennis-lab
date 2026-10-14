@@ -65,6 +65,24 @@ workerの終了後、`prepare_adoption(..., telemetry, reason=...)` に実行記
 AdoptionReceiptを不変保存する。`RevisionStore.seal()` で同じ現行revisionを採用し、以後の編集を止める。
 独立QAや追加の画像承認工程はない。
 
-このAPIの検証は合成VFR MP4と合成rolloutを使う。実動画の品質・本番の方針値は未検証。
-workerの操作受付と正式CLIはcomposition root、ball storeの増分公開は
-`ball_detection/generate_dataset/frame_store` に接続する。
+## Worker接続と再試行
+
+`BallReviewWorker` は共通poolのTaskAdapter、`BallReviewServices` は親側の操作adapter。
+固定したReviewContextをpayloadとする `ball_review / v1 / review` のWorkRequestを扱う。
+操作の共通プロトコル・上限は[review services](../../../base/annotation/workers/review/README.md)に置く。
+手順の正本は[worker instructions](worker-instructions.md)で、promptへ固定policy・native寸法・
+初期handoffとともに取り込む。workerが指定した描画点を採用せず、元予測またはrevisionから描く。
+
+handoffと少数frameの詳細は `image_proof` を返す。過去の実画像入力まで照合済みなら
+`verified`、現workerの終了後に検証するものは `pending_current_attempt`、過去attemptの
+証拠欠測は `missing`。欠測frameは保存済み画像の再提示と明示的な置換で再確認する。
+ラベルが既にreviewedでも、単に別workerのactorへ付け替えて採用しない。
+
+終了後は全登録attemptの証拠を集め、保留・cancel前の有効な確認を維持したまま採用を検証する。
+欠測・画像未提示・古いheadへの完了申告は採用を拒否する。seal後、結果receipt保存前に中断しても
+同じ採用を再利用する。workerのmutableな変更案は親側へ不変コピーしてからrevisionへ参照する。
+
+このAPIの検証は合成VFR MP4・合成rollout・ローカルの合成CLI processを使う。
+実Codexの画像入力互換性、実動画の品質、本番の方針値は未検証。
+composition rootのservice dispatchに接続済みだが、controllerの自動進行は現在previewのみ。
+productionの収集→レビュー→公開→学習の一括進行は別途接続する。

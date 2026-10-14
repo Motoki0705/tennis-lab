@@ -93,6 +93,11 @@ class PredictOperation(Document):
     clips: tuple[ArtifactRef, ...] = Field(min_length=1)
 
 
+class ReviewOperation(Document):
+    action: Literal["review_service"] = "review_service"
+    service_request: ArtifactRef
+
+
 class OperationInput(Document):
     plan: ArtifactRef
     operation: Annotated[
@@ -101,6 +106,7 @@ class OperationInput(Document):
         | ScreenOperation
         | PrepareOperation
         | PreviewOperation
+        | ReviewOperation
         | PredictOperation,
         Field(discriminator="action"),
     ]
@@ -110,7 +116,7 @@ class OperationInput(Document):
         action = self.operation.action
         if isinstance(self.operation, PredictOperation):
             return "infer_" + self.operation.task
-        if action in {"screen_prepare", "screen_preview"}:
+        if action in {"screen_prepare", "screen_preview", "review_service"}:
             return "render"
         return action
 
