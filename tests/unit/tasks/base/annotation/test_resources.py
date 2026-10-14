@@ -7,8 +7,10 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 from threading import Barrier, Event
+from typing import Any
 
 import pytest
 
@@ -29,7 +31,10 @@ from src.tasks.base.annotation.resources.measurements import (
     storage_usage,
     write_baseline,
 )
-from src.tasks.base.annotation.workers.processes import process_snapshot
+from src.tasks.base.annotation.workers.processes import (
+    ProcessIdentity,
+    process_snapshot,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -290,6 +295,46 @@ def test_real_pss_counts_controller_once_and_rejects_recycled_observer() -> None
         **{**snap[0].document(), "start_ticks": snap[0].start_ticks + 1}
     )
     assert process_usage((), (changed,)) == ()
+
+
+@pytest.mark.parametrize("denied_file", ["smaps_rollup", "io"])
+@pytest.mark.parametrize("after", ["missing", "Z", "X", "recycled", "live"])
+def test_procfs_denial_rechecks_liveness_without_assuming_zero(
+    monkeypatch: pytest.MonkeyPatch, denied_file: str, after: str,
+) -> None:
+    snapshot = process_snapshot(os.getpid())
+    assert snapshot is not None
+    identity, initial_state = snapshot
+    original_read = Path.read_text
+    calls = 0
+
+    def current(pid: int) -> tuple[ProcessIdentity, str] | None:
+        nonlocal calls
+        if pid != identity.pid:
+            other: tuple[ProcessIdentity, str] | None = process_snapshot(pid)
+            return other
+        calls += 1
+        if calls == 1 or after == "live":
+            return identity, initial_state
+        if after == "missing":
+            return None
+        if after == "recycled":
+            return replace(identity, start_ticks=identity.start_ticks + 1), "R"
+        return identity, after
+
+    def read(path: Path, *args: Any, **kwargs: Any) -> str:
+        if path == Path("/proc") / str(identity.pid) / denied_file:
+            raise PermissionError("injected procfs access refusal")
+        return original_read(path, *args, **kwargs)
+
+    monkeypatch.setattr("src.tasks.base.annotation.resources.measurements.process_snapshot", current)
+    monkeypatch.setattr(Path, "read_text", read)
+    if after == "live":
+        with pytest.raises(PermissionError, match="injected procfs"):
+            process_usage((), (identity,))
+    else:
+        assert process_usage((), (identity,)) == ()
+    assert calls == 2
 
 
 _CHILD = r"""
