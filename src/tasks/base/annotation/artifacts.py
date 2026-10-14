@@ -50,14 +50,14 @@ def read_document(layout: AnnotationLayout, reference: ArtifactRef, kind: type[D
 @contextmanager
 def artifact_lock(
     layout: AnnotationLayout, name: str, *, blocking: bool = True
-) -> Iterator[None]:
+) -> Iterator[int]:
     path = layout.path("cache", "locks", name + ".lock")
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, "a") as guard:
         flags = fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB)
         fcntl.flock(guard, flags)
-        yield
+        yield descriptor
 
 
 def sync_directory(path: Path) -> None:
