@@ -8,7 +8,7 @@ import shutil
 import signal
 import subprocess
 import time
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +23,7 @@ from ..artifacts import (
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan, references, save_plan
+from ..resources import ResourceManager, ResourceRequest
 from .contracts import (
     AttemptResult,
     ExitReceipt,
@@ -50,9 +51,22 @@ class WorkerPool:
         codex_binary: str = "codex",
         timeout_seconds: float = 3600,
         test_command: tuple[str, ...] | None = None,
+        resources: ResourceManager | None = None,
+        worker_pss_bytes: int | None = None,
+        worker_storage_bytes: int | None = None,
     ) -> None:
         if test_command is not None and layout.mode != "test":
             raise ValueError("test commands are forbidden in production")
+        if layout.mode == "production" and resources is None:
+            raise ValueError("production workers require a persistent resource budget")
+        if resources is not None:
+            resources.bind(plan)
+            resources.observe(os.getpid())
+            if worker_pss_bytes is None or worker_storage_bytes is None:
+                raise ValueError("worker PSS/storage reservations must be explicit")
+        self.resources = resources
+        self.worker_pss_bytes = worker_pss_bytes
+        self.worker_storage_bytes = worker_storage_bytes
         self.layout, self.plan = layout, plan
         self.adapters = {adapter.name: adapter for adapter in adapters}
         if len(self.adapters) != len(adapters):
@@ -64,6 +78,10 @@ class WorkerPool:
             test_command,
         )
         self.children: dict[str, subprocess.Popen[bytes]] = {}
+
+    def _task(self, work_id: str) -> dict[str, Any]:
+        result: dict[str, Any] = self.ledger.task(work_id)
+        return result
 
     def _adapter(self, request: WorkRequest) -> TaskAdapter:
         adapter = self.adapters.get(request.adapter)
@@ -159,13 +177,14 @@ class WorkerPool:
             raise FileNotFoundError(f"Codex executable not found: {self.binary}")
         try:
             with (
+                ExitStack() as resource_stack,
                 artifact_lock(self.layout, "worker-admission"),
                 artifact_lock(
                     self.layout, "worker-" + request.work_id, blocking=False
                 ) as descriptor,
             ):
                 self._settle_dead_slots()
-                row = self.ledger.task(request.work_id)
+                row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:
                     return None
                 if row["state"] != "ready" and not retry:
@@ -250,12 +269,35 @@ class WorkerPool:
                     )
                     path.mkdir(parents=True, exist_ok=True)
                 code_root = Path(__file__).resolve().parents[5]
+                plan_ref = annotation_reference(
+                    self.layout, save_plan(self.layout, self.plan)
+                )
+                resource_request = None
+                resource_descriptor = None
+                if self.resources is not None:
+                    assert (
+                        self.worker_pss_bytes is not None
+                        and self.worker_storage_bytes is not None
+                    )
+                    resource_request = ResourceRequest(
+                        request_id="worker-" + attempt,
+                        plan=plan_ref,
+                        stage=request.stage,
+                        pss_bytes=self.worker_pss_bytes,
+                        storage_bytes=self.worker_storage_bytes,
+                        gpu_seconds=0.0,
+                    )
+                    resource_descriptor = resource_stack.enter_context(
+                        self.resources.lease(resource_request)
+                    )
                 launch = Launch(
                     work_id=request.work_id,
                     attempt=attempt,
-                    plan=annotation_reference(
-                        self.layout, save_plan(self.layout, self.plan)
-                    ),
+                    plan=plan_ref,
+                    resource_scope=None
+                    if self.resources is None
+                    else self.resources.reference,
+                    resource_request=resource_request,
                     request=request,
                     prepared=prepared,
                     directory=str(directory),
@@ -298,6 +340,8 @@ class WorkerPool:
                     "--lock-fd",
                     str(descriptor),
                 ]
+                if resource_descriptor is not None:
+                    command.extend(("--resource-fd", str(resource_descriptor)))
                 if self.layout.mode == "test":
                     command.extend(("--test-root", str(self.layout.root)))
                 environment = os.environ.copy()
@@ -312,7 +356,9 @@ class WorkerPool:
                             stdout=log,
                             stderr=log,
                             start_new_session=True,
-                            pass_fds=(descriptor,),
+                            pass_fds=(descriptor,)
+                            if resource_descriptor is None
+                            else (descriptor, resource_descriptor),
                         )
                     self.children[attempt] = process
                 except OSError as error:
@@ -326,7 +372,7 @@ class WorkerPool:
 
     def reconcile(self, request: WorkRequest) -> dict[str, Any]:
         self._adapter(request)
-        row = self.ledger.task(request.work_id)
+        row = self._task(request.work_id)
         if (row["campaign"], row["plan_digest"], row["request"]) != (
             self.plan.campaign_id,
             self.plan.sha256,
@@ -377,7 +423,7 @@ class WorkerPool:
                         "failed",
                         "supervisor disappeared without an exit receipt",
                     )
-                    return self.ledger.task(request.work_id)
+                    return self._task(request.work_id)
                 exit_ref = annotation_reference(self.layout, exit_path)
                 execution = read_document(self.layout, exit_ref, ExitReceipt)
                 if execution.launch_digest != ref.digest:
@@ -391,7 +437,7 @@ class WorkerPool:
                             self.plan.campaign_id,
                             execution.reason or "Codex quota exhausted",
                         )
-                    return self.ledger.task(request.work_id)
+                    return self._task(request.work_id)
                 final_path = directory / "result.receipt.json"
                 if final_path.exists():
                     final_ref = annotation_reference(self.layout, final_path)
@@ -439,21 +485,21 @@ class WorkerPool:
                             "validation_failed",
                             f"{type(error).__name__}: {error}",
                         )
-                        return self.ledger.task(request.work_id)
+                        return self._task(request.work_id)
                 self._mark(
                     request.work_id,
                     final.outcome.status,
                     final.outcome.reason,
                     result=final_ref,
                 )
-                return self.ledger.task(request.work_id)
+                return self._task(request.work_id)
         except BlockingIOError:
             return row
 
     def stop(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
             raise ValueError("stop requires a reason")
-        row = self.ledger.task(request.work_id)
+        row = self._task(request.work_id)
         if row["state"] not in {"running", "exited"}:
             return row
         _ref, launch = self._launch(row)
@@ -477,4 +523,4 @@ class WorkerPool:
         if current["state"] in {"complete", "not_applicable"}:
             return current
         self._mark(request.work_id, "cancelled", reason)
-        return self.ledger.task(request.work_id)
+        return self._task(request.work_id)

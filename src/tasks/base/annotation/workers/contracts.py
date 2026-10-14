@@ -19,6 +19,7 @@ from ..contracts import (
 )
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan
+from ..resources.contracts import ResourceRequest
 
 _M = TypeVar("_M")
 
@@ -100,6 +101,14 @@ class Launch(Document):
     timeout_seconds: float = Field(gt=0)
     test_command: tuple[str, ...] | None = None
     test_root: str | None = None
+    resource_scope: ArtifactRef | None = None
+    resource_request: ResourceRequest | None = None
+
+    @_after
+    def paired_resources(self) -> Self:
+        if (self.resource_scope is None) != (self.resource_request is None):
+            raise ValueError("resource scope and request must be supplied together")
+        return self
 
 
 class ExitReceipt(Document):

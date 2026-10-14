@@ -18,6 +18,7 @@
 `load_plan(expected_digest=...)` で登録済みplanの改変を検出する。
 ballとposeが同じdataset versionを参照するときは、公開する `component` を分ける。
 素材の共有台帳・取得・明示区間の準備APIは [collection](collection/README.md) を参照する。
+工程の受付・予約と予算計測のAPIは [resources](resources/README.md) を参照する。
 
 ## 1. 何が変わるか
 
