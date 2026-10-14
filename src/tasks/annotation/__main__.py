@@ -103,7 +103,15 @@ def main() -> None:
     schema = commands.add_parser("schema")
     schema.add_argument(
         "--type",
-        choices=("configuration", "runtime", "candidates", "operation", "recovery"),
+        choices=(
+            "configuration",
+            "runtime",
+            "candidates",
+            "operation",
+            "recovery",
+            "benchmark_condition",
+            "benchmark_comparison",
+        ),
         required=True,
     )
     configuration = commands.add_parser("configure")
@@ -139,8 +147,18 @@ def main() -> None:
     stage.add_argument("--operation", type=Path, required=True)
     stage.add_argument("--sha256", required=True)
     stage.add_argument("--test-root", type=Path)
+    for name in ("benchmark-observe", "benchmark-report"):
+        measurement = commands.add_parser(name)
+        measurement.add_argument("--operation", type=Path, required=True)
+        measurement.add_argument("--sha256", required=True)
+        measurement.add_argument("--test-root", type=Path)
     args = parser.parse_args()
     if args.command == "schema":
+        from src.tasks.base.annotation.benchmarks.contracts import (
+            ComparisonSpec,
+            ConditionSpec,
+        )
+
         from .configuration import Configuration
 
         models: dict[str, type[Document]] = {
@@ -149,6 +167,8 @@ def main() -> None:
             "candidates": CandidateManifest,
             "operation": OperationInput,
             "recovery": RecoveryInput,
+            "benchmark_condition": ConditionSpec,
+            "benchmark_comparison": ComparisonSpec,
         }
         print(
             json.dumps(
@@ -173,7 +193,7 @@ def main() -> None:
         "configuration"
         if args.command == "configure"
         else "operation"
-        if args.command == "stage"
+        if args.command in {"stage", "benchmark-observe", "benchmark-report"}
         else "runtime"
     )
     ref = annotation_reference(layout, paths.declared(primary).path)
@@ -189,6 +209,17 @@ def main() -> None:
         from .operations import execute
 
         print(execute(layout, ref).model_dump_json())
+        return
+    if args.command in {"benchmark-observe", "benchmark-report"}:
+        from src.tasks.base.annotation.benchmarks.capture import observe
+        from src.tasks.base.annotation.benchmarks.report import build_report
+
+        measured = (
+            observe(layout, ref)
+            if args.command == "benchmark-observe"
+            else build_report(layout, ref)
+        )
+        print(measured.model_dump_json())
         return
     from .controller import Controller
 

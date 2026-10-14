@@ -125,6 +125,31 @@ class ExitReceipt(Document):
     reason: str | None
 
 
+class ChildIdentity(Document):
+    pid: int = Field(gt=0)
+    start_ticks: int = Field(gt=0)
+    group: int = Field(gt=0)
+    session: int = Field(gt=0)
+    boot_id: str = Field(min_length=1)
+
+
+class ChildReceipt(Document):
+    """The actual CLI child, separate from its supervisor and reserved capacity."""
+
+    launch_digest: Digest
+    captured_at: str
+    process: ChildIdentity | None
+    unavailable_reason: str | None
+
+    @_after
+    def explicit_missing_identity(self) -> Self:
+        if (self.process is None) != bool(self.unavailable_reason):
+            raise ValueError(
+                "an unavailable child identity requires an explicit reason"
+            )
+        return self
+
+
 class AttemptResult(Document):
     launch: ArtifactRef
     exit: ArtifactRef
