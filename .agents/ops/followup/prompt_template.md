@@ -69,3 +69,6 @@ $comments
 - `findings` には指摘 1〜$n_findings のすべてを、ちょうど 1 回ずつ含めてください。
 - `fixed` が 1 つ以上なら branch に commit が必要で、`pr_title` と `pr_body` を書きます。`fixed` が無いなら commit を作らず、両方 null にします。
 - PR 本文の `Closes #...` と、指摘ごとの処置の表は、スクリプトが付け足すので書かないでください。
+- PR のタイトル・本文、理由・確認内容、commit メッセージには、`Fixes #...`、`Resolves owner/repo#...` などの
+  issue を閉じる指定を一切書かないでください。人間の判断待ち issue や別 issue を誤って閉じるため、公開前に拒否されます。
+  関連 issue は `Refs #...` で参照してください。

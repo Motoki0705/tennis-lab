@@ -160,7 +160,8 @@ for path, text in plan.get("write", {}).items():
         fh.write(text)
 if plan.get("write") and plan.get("commit", True):
     subprocess.run(["git", "add", "-A"], cwd=cwd, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "fix: followup"], cwd=cwd, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", plan.get("commit_message", "fix: followup")],
+                   cwd=cwd, check=True)
 if plan.get("switch"):
     subprocess.run(["git", "switch", "-q", "-c", "elsewhere"], cwd=cwd, check=True)
 if plan.get("issue_updates") or plan.get("new_comments") or plan.get("pr_updates"):
@@ -438,6 +439,33 @@ def test_fixed_plus_needs_human_opens_a_pr_that_only_refers(env: Env) -> None:
     assert "Refs #7" in state["prs"]["901"]["body"]
     assert "Closes" not in state["prs"]["901"]["body"]
     assert "needs-human" in state["issues"]["7"]["labels"]
+
+
+@pytest.mark.parametrize("location", ["pr_body", "verification", "reason", "commit_message", "label"])
+@pytest.mark.parametrize("needs_human", [False, True])
+def test_closing_directives_prevent_all_publication(
+    env: Env, location: str, needs_human: bool
+) -> None:
+    plan: dict[str, Any] = {
+        "write": {"src/a.py": "x = 2\n"},
+        "output": output("fixed", "needs_human" if needs_human else "declined"),
+    }
+    if location == "commit_message":
+        plan[location] = "fix: followup\n\nFixes #7"
+    elif location == "label":
+        env.add_issue(7, 10, findings=(Finding("minor", "src/a.py", 1, "Fixes #7", "x"), FINDINGS[1]))
+    elif location == "reason":
+        plan["output"]["findings"][0]["reason"] = "Fixes #7"
+    else:
+        plan["output"][location] = "Fixes #7"
+
+    result = env.run(plan=plan)
+
+    assert result.returncode == 1
+    assert "issue-closing references" in result.stdout
+    assert env.gh_writes() == []
+    assert env.remote_branches() == ["main"]
+    env.assert_clean()
 
 
 def test_open_source_pr_defers_without_running_the_agent(env: Env) -> None:
@@ -818,6 +846,24 @@ def test_failed_pr_creation_leaves_a_detectable_branch(env: Env) -> None:
     assert first.returncode == 1 and second.returncode == 1
     assert "exists without a recorded round" in second.stdout
     assert len(env.agent_calls()) == 1
+
+
+def test_restoring_round_record_after_failed_creation_resumes_waiting(env: Env) -> None:
+    env.env["FAKE_GH_FAIL"] = "pr create"
+    first = env.run(plan=FIX_PLAN)
+    assert first.returncode == 1
+    del env.env["FAKE_GH_FAIL"]
+    env.state = env.load()
+    env.add_source_pr(55, "OPEN", head_ref="codex/followup-i7-r1")
+    env.add_comment(7, round_marker(Round(7, 1, env.base, 55)))
+    writes_before = env.gh_writes()
+
+    second = env.run(plan=FIX_PLAN)
+
+    assert second.returncode == 0, second.stderr
+    assert "PR #55 is in review" in second.stdout
+    assert len(env.agent_calls()) == 1
+    assert env.gh_writes() == writes_before
 
 
 def test_dry_run_runs_the_agent_but_writes_nothing(env: Env) -> None:

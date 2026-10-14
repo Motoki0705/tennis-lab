@@ -102,6 +102,40 @@ def test_fenced_output_is_accepted() -> None:
 
 
 @pytest.mark.parametrize(
+    "directive",
+    [
+        "close #7", "closes #7", "closed #7", "fix #7", "fixes #7", "fixed #7",
+        "resolve #7", "resolves #7", "resolved #7", "CLOSES: #7",
+        "Resolves other/repo#12", "Fixes https://github.com/owner/repo/issues/7",
+        "Closes https://github.com/owner/repo/pull/8#issuecomment-1",
+        "Fixes\n#7", "**Fixes**: #7", "Fixes [ticket](https://github.com/owner/repo/issues/7)",
+        "Fixes &#35;7", "<strong>Fixes</strong> #7", "`Fixes #7`",
+    ],
+)
+def test_generated_closing_directives_are_rejected(directive: str) -> None:
+    with pytest.raises(ResolutionParseError, match="issue-closing references"):
+        parse_resolution(_output("fixed", "needs_human", pr_body=directive), 2)
+
+
+@pytest.mark.parametrize("field", ["pr_title", "pr_body", "summary", "verification"])
+def test_closing_directives_in_any_generated_field_are_rejected(field: str) -> None:
+    overrides: dict[str, Any] = {field: "Fixes #8"}
+    with pytest.raises(ResolutionParseError, match="issue-closing references"):
+        parse_resolution(_output("fixed", **overrides), 1)
+
+
+def test_closing_directives_in_finding_reasons_are_rejected() -> None:
+    findings = [{"index": 1, "disposition": "fixed", "reason": "Fixes #7"}]
+    with pytest.raises(ResolutionParseError, match="issue-closing references"):
+        parse_resolution(_output("fixed", findings=findings), 1)
+
+
+def test_plain_issue_references_and_commit_prefix_are_allowed() -> None:
+    result = parse_resolution(_output("fixed", pr_title="fix: behavior (#7)", pr_body="Refs #7"), 1)
+    assert result.opens_pr
+
+
+@pytest.mark.parametrize(
     ("text", "n", "message"),
     [
         ("not json", 1, "not JSON"),

@@ -52,7 +52,7 @@ issue ごとに、次の順で判定する。
      `<!-- agent-followup-rejected:v1 issue=<N> round=<k> pr=<PR> -->`）を記録して skip する。
      人間がコメントで方針を書いてラベルを外すと、次回は新しいラウンドを始める。
 4. 新しいラウンドの branch `codex/followup-i<N>-r<k>` が remote に既にあれば、エラーにする。前回の実行が push 後に
-   中断した跡なので、PR を作るか branch を消すまで止める。
+   中断した跡なので、下記「公開途中の失敗からの復旧」に従って PR とラウンド記録を揃えるまで止める。
 
 ## ラウンド
 
@@ -79,11 +79,13 @@ branch 名にラウンド番号を含めるので、前回の PR が merge 済�
    - キーに過不足がある。
    - 指摘 1〜n の処置がそれぞれちょうど 1 回になっていない。
    - `fixed` があるのに `pr_title` / `pr_body` が無い、または `fixed` が無いのにある。
+   - PR を作る場合、タイトル・本文・要約・理由・確認内容に issue の閉鎖指定がある（`Fixes #...` など）。
 4. branch を検証する。次のどれかに当たればエラーになる。
    - 指定の branch に居ない。
    - 未 commit の変更や追跡外のファイルがある。
    - base の子孫になっていない。
    - `fixed` があるのに commit が無い、または `fixed` が無いのに commit がある。
+   - 追加された commit メッセージに issue の閉鎖指定がある。閉鎖指定はスクリプトだけが付ける。
 5. 検証が終わったら、成否に関わらず worktree と local branch を削除する。
 
 ## GitHub への反映
@@ -103,7 +105,30 @@ Claude がクロスレビューし、通常の merge gate を通る。`needs_hum
 ラウンド記録より先に `needs-human` を付ける。ラベル付与に失敗しても、人間がラベルを外して再開した状態とは
 区別できる。ラベル付与後のコメントに失敗した場合はラベルが残り、人間の判断待ちを維持する。
 PR 作成後にコメントが失敗した場合は、
-remote に branch だけが残る。次回の実行では上記 4 によりエラーとして表に出る。
+remote に branch と PR が残り、ラウンド記録が欠ける。次回の実行では上記 4 によりエラーとして表に出る。
+
+### 公開途中の失敗からの復旧
+
+remote branch の存在だけでは、対応する PR や人間の判断を確定できないため、自動では記録を補完しない。
+PR を作るだけでは復旧は完了せず、同じラウンドを記録する必要がある。
+
+1. 対象 run dir の `prompt.md`（issue番号 N・ラウンド k・当時の base の40桁SHA）、`resolution.json`、
+   `changes.diff` と remote branch `codex/followup-i<N>-r<k>` の差分を照合する。
+2. `gh pr list --state all --head codex/followup-i<N>-r<k>` で PR の有無を確認する。無ければ検証済みの branch から
+   PR を作る。既存 PR を使う場合も head branch・base branch と本文の処置が保存済み結果と一致することを確認する。
+   人間待ちがある場合は本文を `Refs #<N>`、残件が無ければ `Closes #<N>` とする。
+3. `needs_human` の処置があれば、記録より先に `gh issue edit <N> --add-label needs-human` を実行する。
+4. 実行 job と同じ gh アカウントで、issue に k 番の記録がまだ無く、既存記録が 1〜k-1 であることを確認する。
+   次の内容をファイルに保存し、`gh issue comment <N> --body-file <ファイル>` で投稿する。1行目の各値は実値に置き換え、
+   base は現在の main ではなく手順1のSHA、PR番号は手順2で確認した番号を使う。
+
+   ```text
+   <!-- agent-followup-round:v1 issue=<N> round=<k> base=<40桁SHA> pr=<PR番号> -->
+   公開途中の失敗から復旧。保存済みの処置・差分とPRの一致を確認しました。
+   （指摘ごとの処置、確認内容、PRリンクを記載）
+   ```
+
+次回は記録済みの PR 状態に従う（openならレビュー待ち）。人間待ちのラベルは、方針が決まるまで残す。
 
 ## 実行
 
@@ -122,6 +147,7 @@ remote に branch だけが残る。次回の実行では上記 4 によりエ�
   - `agent_output.md`
   - `resolution.json`
   - `changes.diff`（commit があるとき）
+  - `commit_messages.txt`（commit があるとき。閉鎖指定の検証対象）
   - agent_exec のログ
 - 多重起動防止: state dir の `run.lock` を flock で取る。取れなければ終了コード 75 で終わる（unit はこれを成功扱いにする）。
 - 終了コード: 0 = 全 issue 正常、1 = 1 つ以上の issue でエラー、2 = 設定エラー、75 = 実行中。
