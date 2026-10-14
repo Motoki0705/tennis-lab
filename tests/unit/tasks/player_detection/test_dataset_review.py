@@ -16,11 +16,13 @@ from src.tasks.player_detection.generate_dataset.builder import build_dataset
 from src.tasks.player_detection.review.service import PlayerReviewService, StoreReview
 from src.tasks.player_detection.review.web import create_app
 from tests.support.tasks.player_detection.chat_root import SyntheticRoot
+from tests.support.tasks.player_detection.store import legacy_store
 
 
 @pytest.fixture
 def review(synthetic_root: SyntheticRoot) -> StoreReview:
     directory = build_dataset(synthetic_root.config)
+    directory = legacy_store(directory, directory.parent / "legacy-v1")
     service = PlayerReviewService(directory.parent.parent)
     return service.review(directory.name)
 
