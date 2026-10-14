@@ -59,8 +59,10 @@ def save():
 def out(obj):
     for change in list(state.get("changes", [])):
         if args[:len(change["call"])] == change["call"]:
-            for number, fields in change["issue_updates"].items():
+            for number, fields in change.get("issue_updates", {}).items():
                 state["issues"][number].update(fields)
+            for number, fields in change.get("pr_updates", {}).items():
+                state["prs"][number].update(fields)
             state["changes"].remove(change)
             save()
     print(json.dumps(obj))
@@ -161,11 +163,13 @@ if plan.get("write") and plan.get("commit", True):
     subprocess.run(["git", "commit", "-q", "-m", "fix: followup"], cwd=cwd, check=True)
 if plan.get("switch"):
     subprocess.run(["git", "switch", "-q", "-c", "elsewhere"], cwd=cwd, check=True)
-if plan.get("issue_updates") or plan.get("new_comments"):
+if plan.get("issue_updates") or plan.get("new_comments") or plan.get("pr_updates"):
     with open(os.environ["FAKE_GH_STATE"], encoding="utf-8") as fh:
         state = json.load(fh)
     for number, fields in plan.get("issue_updates", {}).items():
         state["issues"][number].update(fields)
+    for number, fields in plan.get("pr_updates", {}).items():
+        state["prs"][number].update(fields)
     for number, comments in plan.get("new_comments", {}).items():
         state["comments"].setdefault(number, []).extend(comments)
     with open(os.environ["FAKE_GH_STATE"], "w", encoding="utf-8") as fh:
@@ -269,7 +273,7 @@ class Env:
             "title": f"feat: source {number}",
             "url": f"https://example.invalid/pull/{number}",
             "headRefName": head_ref,
-            "mergeCommit": {"oid": "c" * 40} if state == "MERGED" else None,
+            "mergeCommit": {"oid": self.base} if state == "MERGED" else None,
             "body": f"元PR {number} の本文 <!-- x -->",
         }
         self.save()
@@ -462,6 +466,48 @@ def test_source_pr_closed_unmerged_invalidates_the_issue(env: Env) -> None:
     )
 
 
+def test_source_merged_outside_main_waits_until_its_commit_is_in_base(env: Env) -> None:
+    env.git("switch", "-q", "-c", "staging")
+    (env.repo / "src/new_feature.py").write_text("enabled = True\n", encoding="utf-8")
+    env.git("add", "src/new_feature.py")
+    env.git("commit", "-q", "-m", "merge source PR into staging")
+    merged = env.git("rev-parse", "HEAD").strip()
+    env.git("push", "-q", "origin", "staging")
+    env.git("switch", "-q", "main")
+    env.state["prs"]["10"]["mergeCommit"] = {"oid": merged}
+    env.save()
+
+    first = env.run(plan={"output": output("already_resolved", "declined")})
+
+    assert first.returncode == 0, first.stderr
+    assert "not in main" in first.stdout
+    assert env.agent_calls() == []
+    assert env.gh_writes() == []
+    assert env.load()["issues"]["7"]["state"] == "open"
+
+    env.git("merge", "--ff-only", "staging")
+    env.git("push", "-q", "origin", "main")
+    second = env.run(plan={"output": output("already_resolved", "declined")})
+
+    assert second.returncode == 0, second.stderr
+    assert len(env.agent_calls()) == 1
+    assert merged in env.agent_calls()[0]["prompt"]
+    assert env.load()["issues"]["7"]["state"] == "closed"
+    env.assert_clean()
+
+
+def test_merged_source_without_merge_commit_is_an_error(env: Env) -> None:
+    env.state["prs"]["10"]["mergeCommit"] = None
+    env.save()
+
+    result = env.run(plan=FIX_PLAN)
+
+    assert result.returncode == 1
+    assert "merge commit" in result.stdout
+    assert env.agent_calls() == []
+    assert env.gh_writes() == []
+
+
 def test_needs_human_label_and_foreign_issues_are_skipped(env: Env) -> None:
     env.add_issue(7, 10, labels=("ai-proposed", "needs-human"))
     env.add_issue(8, 10, author="mallory")
@@ -651,6 +697,40 @@ def test_issue_is_rechecked_before_agentless_writes(env: Env, action: str) -> No
     result = env.run(plan=FIX_PLAN)
 
     assert result.returncode == 0, result.stderr
+    assert env.agent_calls() == []
+    assert env.gh_writes() == []
+
+
+@pytest.mark.parametrize("fix", [False, True])
+def test_reopened_previous_pr_during_agent_run_stops_publication(env: Env, fix: bool) -> None:
+    env.add_source_pr(55, "CLOSED", head_ref="codex/followup-i7-r1")
+    env.add_comment(7, round_marker(Round(7, 1, env.base, 55)))
+    env.add_comment(7, rejected_marker(7, 1, 55))
+    plan = dict(FIX_PLAN if fix else {"output": output("declined", "declined")})
+    plan["pr_updates"] = {"55": {"state": "OPEN"}}
+
+    result = env.run(plan=plan)
+
+    assert result.returncode == 0, result.stderr
+    assert "previous PR #55 changed" in result.stdout
+    assert len(env.agent_calls()) == 1
+    assert env.gh_writes() == []
+    assert env.remote_branches() == ["main"]
+    env.assert_clean()
+
+
+def test_reopened_previous_pr_is_not_recorded_as_rejected(env: Env) -> None:
+    env.add_source_pr(55, "CLOSED", head_ref="codex/followup-i7-r1")
+    env.add_comment(7, round_marker(Round(7, 1, env.base, 55)))
+    env.state["changes"] = [{
+        "call": ["pr", "view", "55"], "pr_updates": {"55": {"state": "OPEN"}},
+    }]
+    env.save()
+
+    result = env.run(plan=FIX_PLAN)
+
+    assert result.returncode == 0, result.stderr
+    assert "previous PR #55 changed" in result.stdout
     assert env.agent_calls() == []
     assert env.gh_writes() == []
 
