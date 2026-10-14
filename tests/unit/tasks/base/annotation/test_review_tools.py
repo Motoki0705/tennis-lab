@@ -972,6 +972,43 @@ def telemetry_for(
     return capture(env.layout, launch_ref, execution_ref, (rendered,), rollout=rollout)
 
 
+def test_viewed_but_unresolved_frames_remain_distinct_in_handoff(
+    env: Environment,
+) -> None:
+    _, revision = env.initialize()
+
+    class ViewedUnresolved(Adapter):
+        def summarize(
+            self,
+            layout: AnnotationLayout,
+            context: ReviewContext,
+            manifest: ClipManifest,
+            payload: ArtifactRef,
+            scope: FrameRange,
+            after_row: str | None,
+        ) -> HandoffContent:
+            value = super().summarize(
+                layout, context, manifest, payload, scope, after_row
+            )
+            result: HandoffContent = value.model_copy(
+                update={"reviewed_ranges": (scope,), "unresolved_ranges": (scope,)}
+            )
+            return result
+
+    handoff = read_handoff(
+        env.layout,
+        build_handoff(
+            env.store, revision.context, ViewedUnresolved(), FrameRange(start=2, stop=3)
+        ),
+    )
+    assert (
+        handoff.content.reviewed_ranges
+        == handoff.content.unresolved_ranges
+        == (FrameRange(start=2, stop=3),)
+    )
+    assert handoff.content.rows[0].state == "unresolved" and handoff.adoption is None
+
+
 def test_generated_and_presented_images_do_not_mark_reviewed_rows(
     tmp_path: Path,
 ) -> None:

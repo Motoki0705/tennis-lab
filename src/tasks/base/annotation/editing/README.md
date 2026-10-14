@@ -36,7 +36,8 @@ taskは `summarize()` で正本payloadから要約を導出し、続きのrow cu
 rowの続きには `after_row` と `expected_revision` を渡す。版が進んだ場合は再取得を求め、
 旧ページと新ページを混在させない。`previous_revision` を指定すると編集command参照を新しい順で返す。
 履歴が一ページに収まらない場合は `history_cursor` を `changes_since()` へ渡して続ける。
-確認済み/未解決のframe範囲を混同せず、個々の観測の部分状態はtask行へ保持する。
+画像を確認した範囲と、位置・状態が未解決の範囲は独立に保存する。
+「画像は見たが位置が分からない」frameは両方に含まれ得る。観測ごとの部分状態はtask行へ保持する。
 
 これらは親側のAPIである。workerからの操作受付、task用CLI、実際のball/player状態と画像確認方針は
 各task adapterおよびcomposition rootへ接続する。合成adapterのテストは共通処理の検証であり、

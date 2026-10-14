@@ -118,12 +118,6 @@ def build_handoff(
             raise ValueError(
                 "handoff coverage must be ordered, disjoint and inside the scope"
             )
-    if any(
-        a.start < b.stop and b.start < a.stop
-        for a in content.reviewed_ranges
-        for b in content.unresolved_ranges
-    ):
-        raise ValueError("reviewed and unresolved frame ranges must not overlap")
     if any(not scope.start <= b.frame_index <= scope.stop for b in content.boundaries):
         raise ValueError("handoff boundary lies outside the requested scope")
     if any(not action.strip() or len(action) > 500 for action in content.next_actions):
