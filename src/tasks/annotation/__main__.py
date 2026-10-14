@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from src.tasks.base.annotation.artifacts import annotation_reference, read_document
+from src.tasks.base.annotation.contracts import Document
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.resources import BudgetStopped
 from src.utils.configuration import (
@@ -43,6 +44,14 @@ PATH_BOUNDARY = NonHydraPathBoundary(
         ),
         BoundaryPathField(
             "operation",
+            PathRole.OUTPUT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "configuration",
             PathRole.OUTPUT,
             PathDirection.INPUT,
             PathKind.FILE,
@@ -91,6 +100,16 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    schema = commands.add_parser("schema")
+    schema.add_argument(
+        "--type",
+        choices=("configuration", "runtime", "candidates", "operation", "recovery"),
+        required=True,
+    )
+    configuration = commands.add_parser("configure")
+    configuration.add_argument("--configuration", type=Path, required=True)
+    configuration.add_argument("--sha256", required=True)
+    configuration.add_argument("--test-root", type=Path)
     for name in (
         "register",
         "submit",
@@ -121,6 +140,22 @@ def main() -> None:
     stage.add_argument("--sha256", required=True)
     stage.add_argument("--test-root", type=Path)
     args = parser.parse_args()
+    if args.command == "schema":
+        from .configuration import Configuration
+
+        models: dict[str, type[Document]] = {
+            "configuration": Configuration,
+            "runtime": Runtime,
+            "candidates": CandidateManifest,
+            "operation": OperationInput,
+            "recovery": RecoveryInput,
+        }
+        print(
+            json.dumps(
+                models[args.type].model_json_schema(), ensure_ascii=False, indent=2
+            )
+        )
+        return
     layout = (
         AnnotationLayout.production()
         if args.test_root is None
@@ -129,15 +164,27 @@ def main() -> None:
     paths = PATH_BOUNDARY.validate(
         {
             name: getattr(args, name)
-            for name in ("runtime", "candidates", "operation")
+            for name in ("runtime", "candidates", "operation", "configuration")
             if getattr(args, name, None) is not None
         },
         resolver=layout.resolver,
     )
-    primary = "operation" if args.command == "stage" else "runtime"
+    primary = (
+        "configuration"
+        if args.command == "configure"
+        else "operation"
+        if args.command == "stage"
+        else "runtime"
+    )
     ref = annotation_reference(layout, paths.declared(primary).path)
     if ref.digest != args.sha256:
         raise ValueError("CLI input digest does not match its pinned bytes")
+    if args.command == "configure":
+        from .configuration import Configuration, configure
+
+        receipt = configure(layout, read_document(layout, ref, Configuration))
+        print(receipt.model_dump_json())
+        return
     if args.command == "stage":
         from .operations import execute
 

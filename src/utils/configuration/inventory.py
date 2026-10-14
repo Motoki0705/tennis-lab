@@ -504,7 +504,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary(
         "src.tasks.annotation.__main__", "main",
         domain="base", executable_module=True,
-        optional_policy="runtime/candidates/operation are required by their subcommands; test_root is an explicit test-only boundary",
+        optional_policy="runtime/candidates/operation/configuration are required by their subcommands; schema has no path input; test_root is an explicit test-only boundary",
     ),
     _non_hydra_boundary(
         "src.tasks.base.annotation.execution.__main__", "main",
