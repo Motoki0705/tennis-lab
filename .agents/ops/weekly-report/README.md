@@ -1,7 +1,7 @@
 # weekly-report: 週次運用レポートと逆提案（#1057）
 
 プロジェクト本体とAI制御（AGENTS.md・`.agents/`・skill・memory・GitHub運用・この自動化自体）を
-共同で改善し続けるため、週1回「運用レポート」issueを作り、人間がチェックした提案を `ai-proposed` 子issueにする。
+共同で改善し続けるため、週1回「運用レポート」issueを作り、人間がチェックした提案を `by: ai` 子issueにする。
 設計原則と合意事項は親issue #1053 を参照する。
 
 ## 構成
@@ -33,8 +33,8 @@ model / effort は [`../lib/agents.conf`](../lib/agents.conf) で固定され、
   チェックボックス記法とHTMLコメントを無害化してから埋め込むので、選択可能な項目やマーカーを偽造できない。
 - 通常の提案は行頭のチェックボックスで選ぶ。選択肢つきの提案（放置PRの「継続 / rebaseして仕上げ / close」など）は
   **選択肢を1つだけ**チェックする。2つ以上、または見出しだけのチェックはエラーとしてtriageが非ゼロ終了する（他の提案は処理する）。
-- `triage` は open な `ops-report` issueをすべて走査し、選ばれた提案ごとに
-  タイトル `[<ID>] <提案タイトル>`・ラベル `ai-proposed` の子issueを作り、レポートの該当行末に `→ #番号` を追記する。
+- `triage` は open な `type: ops-report` issueをすべて走査し、選ばれた提案ごとに
+  タイトル `[<ID>] <提案タイトル>`・ラベル `by: ai` の子issueを作り、レポートの該当行末に `→ #番号` を追記する。
 - 重複防止: 作成前に全issue（open/closed）のタイトル先頭 `[<ID>]` を走査する。作成後の本文編集が失敗しても、
   再実行時は既存の子issueを再利用して追記だけ行う。再利用するのは子issue本文1行目の
   `<!-- ops-report-proposal: <ID> report=#<レポート番号> option=<選択肢(%エンコード)> -->` が
@@ -54,7 +54,7 @@ model / effort は [`../lib/agents.conf`](../lib/agents.conf) で固定され、
 cd ~/projects/tennis-lab
 # 本文を標準出力へ（issueは作らない）。agentは実行される。
 .venv/bin/python .agents/ops/weekly-report/weekly_report.py report --dry-run --output /tmp/report.md
-# 本番（ops-report ラベルのissueを作成）
+# 本番（type: ops-report ラベルのissueを作成）
 .venv/bin/python .agents/ops/weekly-report/weekly_report.py report --agent codex
 # チェック済み提案の子issue化（--dry-run で作成予定だけ表示）
 .venv/bin/python .agents/ops/weekly-report/weekly_report.py triage --dry-run

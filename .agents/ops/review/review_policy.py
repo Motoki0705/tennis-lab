@@ -17,11 +17,13 @@ from typing import Any
 
 AGENTS = ("claude", "codex")
 BRANCH_PREFIXES: Mapping[str, str] = {"claude/": "claude", "codex/": "codex"}
-AGENT_LABELS: Mapping[str, str] = {"agent:claude": "claude", "agent:codex": "codex"}
+# Label names are defined in .github/labels.yml.
+AGENT_LABELS: Mapping[str, str] = {"by: claude": "claude", "by: codex": "codex"}
 
-NEEDS_HUMAN_LABEL = "needs-human"
-CHANGES_REQUESTED_LABEL = "agent-review:changes-requested"
-FOLLOWUP_LABEL = "ai-proposed"
+NEEDS_HUMAN_LABEL = "status: needs-human"
+CHANGES_REQUESTED_LABEL = "status: changes-requested"
+# Follow-up issues are found by the first label; the second only classifies them.
+FOLLOWUP_LABELS = ("by: ai", "type: followup")
 # Consecutive request_changes by the cross reviewer that hand the PR to a human.
 ESCALATION_STREAK = 3
 
@@ -36,7 +38,7 @@ class AuthorConflictError(ValueError):
 def detect_author_agent(head_ref: str, labels: Iterable[str]) -> str | None:
     """Return the agent that authored a PR, or ``None`` when it cannot be determined.
 
-    The branch prefix is the primary signal and ``agent:<name>`` labels are auxiliary.
+    The branch prefix is the primary signal and ``by: <name>`` labels are auxiliary.
     Contradicting signals raise instead of silently picking one side.
     """
     by_branch = next(

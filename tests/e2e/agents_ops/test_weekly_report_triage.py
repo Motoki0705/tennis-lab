@@ -1,4 +1,4 @@
-"""Daily triage: checked proposals become ``ai-proposed`` child issues exactly once."""
+"""Daily triage: checked proposals become ``by: ai`` child issues exactly once."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ def _report_issue(ops_env: Any) -> dict[str, Any]:
     result = ops_env.run("report")
     assert result.returncode == 0, result.stderr
     issue: dict[str, Any] = next(
-        i for i in ops_env.state["issues"] if "ops-report" in i["labels"]
+        i for i in ops_env.state["issues"] if "type: ops-report" in i["labels"]
     )
     return issue
 
@@ -47,7 +47,7 @@ def test_checked_proposals_become_children_once(ops_env: Any) -> None:
         "[R-2026W42-01] #7 放置されたPR（選択: close）",
         "[R-2026W42-02] big.py を分割する",
     ]
-    assert all(c["labels"] == ["ai-proposed"] for c in children)
+    assert all(c["labels"] == ["by: ai"] for c in children)
     stale_child = next(c for c in children if c["title"].startswith("[R-2026W42-01]"))
     assert f"レポート: #{report['number']}" in stale_child["body"]
     assert "選択された対応: **close**" in stale_child["body"]
@@ -156,7 +156,7 @@ def test_existing_child_of_another_report_is_not_linked(ops_env: Any) -> None:
             "number": 60,
             "title": "[R-2026W42-02] 別レポートの提案",
             "body": "<!-- ops-report-proposal: R-2026W42-02 report=#40 option= -->\nold",
-            "labels": ["ai-proposed"],
+            "labels": ["by: ai"],
             "state": "CLOSED",
             "createdAt": "2026-10-01T00:00:00Z",
             "updatedAt": "2026-10-01T00:00:00Z",
@@ -361,3 +361,17 @@ def test_selection_changed_after_link_is_an_error(ops_env: Any) -> None:
         "but the report now selects '継続'" in result.stderr
     )
     assert len(_children(ops_env)) == 1
+
+
+def test_triage_without_repo_label_creates_nothing(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(ops_env, report["number"], _check)
+    state = ops_env.state
+    state["labels"] = ["type: ops-report"]
+    ops_env.write_state(state)
+
+    result = ops_env.run("triage")
+
+    assert result.returncode == 1
+    assert "labels missing in the repo: ['by: ai']" in result.stderr
+    assert _children(ops_env) == []

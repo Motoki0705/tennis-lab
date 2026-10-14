@@ -2,7 +2,7 @@
 name: 研究サイクル
 about: 研究ループの1サイクル（調査→選定→実験→考察）。研究テーマissueの子issue
 title: "[研究サイクル] "
-labels: ["research"]
+labels: ["type: research"]
 ---
 
 <!--

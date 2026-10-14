@@ -2,7 +2,7 @@
 name: 機能要望
 about: 機能、改善、実装タスクを提案する
 title: "[機能] "
-labels: ["enhancement"]
+labels: ["type: feature"]
 ---
 
 ## 概要

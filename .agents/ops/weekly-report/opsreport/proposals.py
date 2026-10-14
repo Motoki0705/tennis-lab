@@ -29,7 +29,7 @@ CATEGORIES: dict[str, str] = {
     "inefficiency": "非効率",
     "memory": "memoryの陳腐化・削除候補",
     "control-rules": "制御ルール（AGENTS.md・skill・ops・このレポート自身）の改訂",
-    "ai-proposed": "ai-proposed issueの整理",
+    "ai-proposed": "`by: ai` issueの整理",
     "cleanup": "掃除候補",
     "research": "研究の次の一手",
     "other": "その他の助言",

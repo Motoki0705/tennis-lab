@@ -1,0 +1,99 @@
+# GitHubラベルの正本。`scripts/sync_github_labels.py` で repo に反映する。
+#
+# 名前は `<軸>: <値>`。色は軸ごとにそろえる（type だけは種別を見分けるためラベルごとに color で上書きする）。
+#   type:   issueの種別。issue-labeler がタイトルprefixから付ける（[バグ] [機能] [調査] [追補] など）
+#   area:   触る領域。PRは labeler がファイルパスから付ける。issueは起票者が手で付ける
+#   status: 人間・agentの対応待ちを示す運用状態
+#   by:     起票・作成した主体
+# aliases は改名前の名前。同期時に alias が残っていれば新しい名前へ rename する
+# （付いているissue/PRは引き継がれる）。
+
+type:
+  color: "BFD4F2"
+  labels:
+    - name: "type: bug"
+      color: "D73A4A"
+      description: "不具合の修正"
+      aliases: ["bug"]
+    - name: "type: feature"
+      color: "1D76DB"
+      description: "機能の追加・改善"
+      aliases: ["enhancement"]
+    - name: "type: research"
+      color: "0E8A16"
+      description: "調査・実験・研究テーマ"
+      aliases: ["research"]
+    - name: "type: followup"
+      color: "C2C7CC"
+      description: "レビュー指摘などの追補"
+    - name: "type: ops-report"
+      description: "週次運用レポート（.agents/ops/weekly-report）"
+      aliases: ["ops-report"]
+
+area:
+  color: "FEF2C0"
+  labels:
+    - name: "area: base"
+      description: "共通基盤 src/tasks/base"
+      aliases: ["module: base"]
+    - name: "area: ball-detection"
+      description: "2Dボール検出 src/tasks/ball_detection"
+      aliases: ["module: ball-detection"]
+    - name: "area: court-detection"
+      description: "2Dコート検出 src/tasks/court_detection"
+      aliases: ["module: court-detection"]
+    - name: "area: blcs"
+      description: "3Dボール軌道 src/tasks/blcs"
+      aliases: ["module: blcs"]
+    - name: "area: plcs"
+      description: "3Dプレーヤー位置・回転 src/tasks/plcs"
+      aliases: ["module: plcs"]
+    - name: "area: submodules"
+      description: "pose検出・GVHMRなどのモデル submodule src/submodules"
+      aliases: ["module: submodules"]
+    - name: "area: synthetic-data"
+      description: "合成データ生成 src/synthetic_data_generation"
+      aliases: ["module: synthetic-data"]
+    - name: "area: tennis-scene"
+      description: "テニスシーン統合再構成 src/tennis_scene"
+      aliases: ["module: tennis-scene"]
+    - name: "area: knowledge"
+      description: "実験記録 knowledge/・experiments/"
+    - name: "area: tests"
+      description: "テストコードとテスト基盤 tests/"
+      aliases: ["tests"]
+    - name: "area: ci"
+      description: "CI・GitHub Actions・pre-commit"
+      aliases: ["ci"]
+    - name: "area: docs"
+      description: "ドキュメント"
+      aliases: ["documentation"]
+    - name: "area: dependencies"
+      description: "依存ライブラリ・lockファイル・submoduleの更新"
+      aliases: ["dependencies"]
+    - name: "area: third-party"
+      description: "vendorコードと git submodule third_party/"
+      aliases: ["third-party"]
+
+status:
+  color: "D93F0B"
+  labels:
+    - name: "status: needs-human"
+      description: "人間の判断・承認が必要"
+      aliases: ["needs-human"]
+    - name: "status: changes-requested"
+      description: "クロスレビューが修正を要求"
+      aliases: ["agent-review:changes-requested"]
+
+by:
+  color: "D4C5F9"
+  labels:
+    - name: "by: ai"
+      description: "AIが自発的に起票（週次レポートで人間が整理）"
+      aliases: ["ai-proposed"]
+    - name: "by: claude"
+      description: "Claude Code が作成"
+      aliases: ["agent:claude"]
+    - name: "by: codex"
+      description: "Codex が作成"
+      aliases: ["agent:codex"]

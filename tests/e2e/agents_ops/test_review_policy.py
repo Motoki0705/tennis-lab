@@ -39,9 +39,9 @@ TARGET = P.ReviewTarget(head=SHA, merge_base="b" * 40, diff_sha256="c" * 64)
     [
         ("codex/feature", [], "codex"),
         ("claude/i1058-cross-review", [], "claude"),
-        ("claude/x", ["agent:claude", "tests"], "claude"),
-        ("fix/issue-1", ["agent:codex"], "codex"),
-        ("refactor/followup", ["documentation"], None),
+        ("claude/x", ["by: claude", "area: tests"], "claude"),
+        ("fix/issue-1", ["by: codex"], "codex"),
+        ("refactor/followup", ["area: docs"], None),
         ("codexfoo/x", [], None),
         ("Claude/x", [], None),
     ],
@@ -55,8 +55,8 @@ def test_detect_author_agent(
 @pytest.mark.parametrize(
     ("head_ref", "labels"),
     [
-        ("codex/x", ["agent:claude"]),
-        ("fix/x", ["agent:claude", "agent:codex"]),
+        ("codex/x", ["by: claude"]),
+        ("fix/x", ["by: claude", "by: codex"]),
     ],
 )
 def test_contradicting_author_signals_raise(head_ref: str, labels: list[str]) -> None:

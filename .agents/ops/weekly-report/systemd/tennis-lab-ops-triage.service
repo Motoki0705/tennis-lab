@@ -1,5 +1,5 @@
 [Unit]
-Description=tennis-lab ops report triage: checked proposals -> ai-proposed issues (issue #1057)
+Description=tennis-lab ops report triage: checked proposals -> "by: ai" issues (issue #1057)
 Documentation=file://%h/projects/tennis-lab/.agents/ops/weekly-report/README.md
 
 [Service]

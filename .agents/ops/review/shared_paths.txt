@@ -1,4 +1,4 @@
-# 共有基盤パス一覧（merge gate がこれに触れる PR を needs-human にする）。
+# 共有基盤パス一覧（merge gate がこれに触れる PR を `status: needs-human` にする）。
 # 書式・意味は README.md の「共有基盤パス」を参照。運用で自由に増減してよい。
 
 # 下流に強く影響する共通実装

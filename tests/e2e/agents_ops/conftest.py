@@ -86,7 +86,7 @@ elif head == ["issue", "create"]:
     # Simulate a human editing report checkboxes while triage is filing children.
     for old, new in json.loads(os.environ.get("FAKE_GH_CREATE_EDIT", "[]")):
         for issue in state["issues"]:
-            if "ops-report" in issue["labels"]:
+            if "type: ops-report" in issue["labels"]:
                 issue["body"] = issue["body"].replace(old, new)
     save()
     print(f"https://github.com/o/r/issues/{number}")
@@ -112,9 +112,6 @@ elif head == ["run", "list"]:
     emit(state["runs"])
 elif head == ["label", "list"]:
     emit([{"name": n} for n in state["labels"]])
-elif head == ["label", "create"]:
-    state["labels"].append(args[2])
-    save()
 else:
     print(f"fake gh: unsupported {args}", file=sys.stderr)
     sys.exit(2)
@@ -177,13 +174,13 @@ AGENT_OUTPUT: dict[str, Any] = {
 def base_state() -> dict[str, Any]:
     return {
         "next_number": 100,
-        "labels": ["ai-proposed"],
+        "labels": ["by: ai", "type: ops-report"],
         "issues": [
             {
                 "number": 50,
                 "title": "古い提案",
                 "body": "x",
-                "labels": ["ai-proposed"],
+                "labels": ["by: ai"],
                 "state": "OPEN",
                 "createdAt": "2026-08-01T00:00:00Z",
                 "updatedAt": "2026-08-02T00:00:00Z",
@@ -210,7 +207,7 @@ def base_state() -> dict[str, Any]:
                 "createdAt": "2026-10-11T00:00:00Z",
                 "updatedAt": "2026-10-11T00:00:00Z",
                 "isDraft": True,
-                "labels": [{"name": "needs-human"}],
+                "labels": [{"name": "status: needs-human"}],
                 "url": "https://github.com/o/r/pull/8",
             },
         ],
