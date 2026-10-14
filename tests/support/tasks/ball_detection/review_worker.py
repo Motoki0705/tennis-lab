@@ -258,7 +258,9 @@ def run_synthetic_cli(*, show_image: bool) -> None:
     request_ref = annotation_reference(layout, directory / "request.json")
     body = read_document(layout, request_ref, ReviewWorkerInput)
     head = read_handoff(layout, body.initial_handoff).revision
-    thread = "11111111-1111-1111-1111-111111111111"
+    import uuid
+
+    thread = str(uuid.uuid5(uuid.NAMESPACE_URL, str(directory)))
     print(json.dumps({"type": "thread.started", "thread_id": thread}), flush=True)
 
     def call(operation: str, parameters: Document) -> ArtifactRef:

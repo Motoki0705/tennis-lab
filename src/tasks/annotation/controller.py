@@ -10,12 +10,10 @@ from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     read_document,
     verify_reference,
-    write_document,
 )
 from src.tasks.base.annotation.collection.service import Collection
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.execution.contracts import StageLaunch
-from src.tasks.base.annotation.execution.runner import StageRunner
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import load_plan
 from src.tasks.base.annotation.predictions import Predictions
@@ -23,13 +21,10 @@ from src.tasks.base.annotation.resources import (
     BudgetStopped,
     CapacityUnavailable,
     ResourceManager,
-    ResourceRequest,
 )
-from src.tasks.base.annotation.workers.contracts import Launch, WorkRequest
+from src.tasks.base.annotation.workers.contracts import WorkRequest
 from src.tasks.base.annotation.workers.ledger import WorkerBusy, WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
-from src.tasks.base.annotation.workers.services import ServiceReply, ServiceRequest
-from src.utils.paths import PROJECT_ROOT
 
 from .configuration import validate_runtime
 from .contracts import (
@@ -39,13 +34,12 @@ from .contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
-    PreviewOperation,
-    ReviewOperation,
     Runtime,
     ScreenOperation,
 )
-from .operations import preview_input
+from .jobs import Operations
 from .screening import ScreeningAdapter
+from .services import ServiceBroker
 
 if TYPE_CHECKING:
     from .production import ProductionWorkflow
@@ -81,7 +75,15 @@ class Controller:
             worker_pss_bytes=screen.pss_bytes,
             worker_storage_bytes=screen.storage_bytes,
         )
-        self.stages = StageRunner(layout)
+        self.jobs = Operations(layout, runtime, self.plan, self.resources)
+        self.stages = self.jobs.stages
+        self.broker = ServiceBroker(
+            layout,
+            runtime.plan,
+            runtime.maximum_services_per_attempt,
+            self.operation,
+            self.receipt,
+        )
         self.production: ProductionWorkflow | None = None
         if self.plan.phase == "production":
             from .production import ProductionWorkflow
@@ -111,198 +113,15 @@ class Controller:
     def operation(
         self, data: OperationInput, *, attempt: int | None = None
     ) -> dict[str, Any]:
-        if data.plan != self.runtime.plan or (attempt is not None and attempt < 1):
-            raise ValueError(
-                "operation belongs to another runtime, or has an invalid attempt"
-            )
-        jobs = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
-        attempts = [
-            int(path.name.rsplit("-", 1)[1]) for path in jobs.glob(data.sha256 + "-*")
-        ]
-        latest = max(attempts, default=0)
-        if attempt is None:
-            attempt = max(latest, 1)
-        elif attempt not in attempts:
-            if attempt != latest + 1:
-                raise ValueError(
-                    "a new attempt must follow the latest recorded attempt"
-                )
-            if latest:
-                previous = annotation_reference(
-                    layout=self.layout,
-                    path=jobs / f"{data.sha256}-{latest}" / "launch.json",
-                )
-                previous_state = self.stages.status(previous)
-                if previous_state["state"] not in {
-                    "failed",
-                    "cancelled",
-                    "timed_out",
-                    "interrupted",
-                }:
-                    raise ValueError(
-                        "only a failed or interrupted operation can be retried"
-                    )
-        cost = self.runtime.cost(data.stage)
-        request_id = f"{data.sha256}-{attempt}"
-        directory = self.layout.path(
-            "campaigns", self.plan.campaign_id, "jobs", request_id
-        )
-        reference = write_document(self.layout, directory / "operation.json", data)
-        command = [
-            str(PROJECT_ROOT / ".venv/bin/python"),
-            "-m",
-            "src.tasks.annotation",
-            "stage",
-            "--operation",
-            str(self.layout.artifact_path(reference)),
-            "--sha256",
-            reference.digest,
-        ]
-        if self.layout.mode == "test":
-            command += ["--test-root", str(self.layout.root)]
-        launch = StageLaunch(
-            scope=self.runtime.scope,
-            resource=ResourceRequest(
-                request_id=request_id,
-                plan=self.runtime.plan,
-                stage=data.stage,
-                pss_bytes=cost.pss_bytes,
-                storage_bytes=cost.storage_bytes,
-                gpu_seconds=cost.gpu_seconds,
-            ),
-            command=tuple(command),
-            input=reference,
-            code_root=str(PROJECT_ROOT),
-            timeout_seconds=cost.timeout_seconds,
-            queue=self.runtime.queue if cost.gpu_seconds else None,
-            test_root=str(self.layout.root) if self.layout.mode == "test" else None,
-        )
-        path = directory / "launch.json"
-        if path.exists():
-            launch_ref = annotation_reference(self.layout, path)
-            existing = read_document(self.layout, launch_ref, StageLaunch)
-            if existing != launch:
-                raise ValueError("operation resource/command configuration changed")
-            state: dict[str, Any] = self.stages.status(launch_ref)
-            # A capacity-limited launch has no owner yet and remains explicitly pending.
-            with self.resources.registry.transaction() as db:
-                row = db.execute(
-                    "SELECT state FROM resource_requests WHERE id=?",
-                    (self.resources.key(launch.resource),),
-                ).fetchone()
-            pending = row is not None and row[0] == "pending"
-            if not pending or state["state"] not in {"pending", "interrupted"}:
-                return state
-        try:
-            submitted: dict[str, Any] = self.stages.submit(launch)
-            return submitted
-        except (CapacityUnavailable, BlockingIOError) as error:
-            return {
-                "state": "waiting",
-                "operation": reference.model_dump(),
-                "reason": str(error),
-            }
+        return self.jobs.operation(data, attempt=attempt)
 
     def receipt(self, state: dict[str, Any]) -> OperationReceipt:
-        launch = read_document(
-            self.layout, ArtifactRef.model_validate(state["launch"]), StageLaunch
-        )
-        if state["state"] != "succeeded" or launch.input is None:
-            raise ValueError("only a successful stage can provide operation results")
-        path = self.layout.artifact_path(launch.input).parent / "result.json"
-        receipt: OperationReceipt = read_document(
-            self.layout, annotation_reference(self.layout, path), OperationReceipt
-        )
-        if receipt.operation != launch.input:
-            raise ValueError("stage result belongs to a different operation")
-        for ref in receipt.results:
-            verify_reference(self.layout, ref)
-        return receipt
+        return self.jobs.receipt(state)
 
     def _services(
         self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool | None = None
     ) -> None:
-        if row["state"] != "running":
-            return
-        pool = self.pool if pool is None else pool
-        with pool.ledger.registry.transaction() as db:
-            raw = db.execute(
-                "SELECT launch FROM worker_attempts WHERE id=?",
-                (row["current_attempt"],),
-            ).fetchone()
-        launch = read_document(
-            self.layout, ArtifactRef.model_validate_json(raw[0]), Launch
-        )
-        directory = Path(launch.directory)
-        official = annotation_reference(self.layout, directory / "request.json")
-        paths = sorted((directory / "work/service-requests").glob("*.json"))
-        for number, path in enumerate(paths):
-            if path.stat().st_size > 32768:
-                raise ValueError("worker service request exceeds 32 KiB")
-            service_ref = annotation_reference(self.layout, path)
-            service = read_document(self.layout, service_ref, ServiceRequest)
-            if service.task_request != official or path.stem != service.sha256:
-                raise ValueError(
-                    "worker service request changed its task/attempt identity"
-                )
-            reply_path = directory / "services" / service.sha256 / "reply.json"
-            if reply_path.exists():
-                continue
-            result, error = None, None
-            try:
-                if number >= self.runtime.maximum_services_per_attempt:
-                    raise ValueError("worker exceeded its frozen service request count")
-                if request.adapter == ScreeningAdapter.name:
-                    _service, task, _attempt = preview_input(self.layout, service_ref)
-                    if task.prepared_input != request.payload:
-                        raise ValueError("service refers to another worker input")
-                    op = OperationInput(
-                        plan=self.runtime.plan,
-                        operation=PreviewOperation(service_request=service_ref),
-                    )
-                elif request.adapter == "ball_review":
-                    from src.tasks.base.annotation.workers.review.service import (
-                        service_input,
-                    )
-
-                    _service, review = service_input(self.layout, service_ref)
-                    if review.input.work != request:
-                        raise ValueError("review service refers to another worker")
-                    op = OperationInput(
-                        plan=self.runtime.plan,
-                        operation=ReviewOperation(service_request=service_ref),
-                    )
-                else:
-                    raise ValueError("worker has no registered parent service")
-                state = self.operation(op)
-                if state["state"] in {
-                    "running",
-                    "waiting",
-                    "queued",
-                    "draining",
-                    "pending",
-                }:
-                    continue
-                if state["state"] != "succeeded":
-                    raise RuntimeError(
-                        f"service stage {state['state']}: {state.get('reason')}"
-                    )
-                receipt = self.receipt(state)
-                if receipt.status != "complete" or len(receipt.results) != 1:
-                    raise ValueError("service stage returned no exact result receipt")
-                result = receipt.results[0]
-            except (ValueError, RuntimeError) as failure:
-                error = f"{type(failure).__name__}: {failure}"
-            write_document(
-                self.layout,
-                reply_path,
-                ServiceReply(
-                    request_digest=service.sha256,
-                    status="succeeded" if result is not None else "failed",
-                    result=result,
-                    reason=error,
-                ),
-            )
+        self.broker.process(request, row, self.pool if pool is None else pool)
 
     def _screen(self, source_id: str) -> dict[str, Any]:
         data = OperationInput(

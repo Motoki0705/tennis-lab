@@ -494,3 +494,86 @@ def test_usage_aggregates_unique_responses_images_and_missing_fields(
         missing.exact_api_responses is None and missing.totals["input_tokens"] is None
     )
     assert missing.known_subtotals["input_tokens"] == 100
+
+
+def test_monotonic_resource_timing_survives_wall_clock_regression(
+    fixture: Fixture,
+) -> None:
+    first = sample(1).model_copy(
+        update={
+            "clock_boot_id": "boot",
+            "measured_monotonic_ns": 5_000_000_000,
+            "storage_measured_monotonic_ns": 3_000_000_000,
+        }
+    )
+    second = sample(2).model_copy(
+        update={
+            "measured_at": "2026-10-14T23:59:58+00:00",
+            "clock_boot_id": "boot",
+            "measured_monotonic_ns": 8_000_000_000,
+            "storage_measured_monotonic_ns": 3_000_000_000,
+        }
+    )
+    fixture.observation(resources=first)
+    fixture.observation(number=2, resources=second)
+    result = report(fixture).conditions[0].resources
+    assert result.maximum_sample_gap_seconds == 3
+    assert result.maximum_storage_age_seconds == 5
+    assert result.wall_clock_regressions == 1
+    assert result.timing_bases == ("monotonic",)
+    assert result.unmeasured_time_gaps == result.unknown_storage_age_samples == 0
+
+
+def test_monotonic_resource_clock_must_match_boot_and_cannot_regress(
+    fixture: Fixture,
+) -> None:
+    observation = read_document(fixture.layout, fixture.observation(), Observation)
+    base = sample(1).model_copy(
+        update={
+            "clock_boot_id": "boot",
+            "measured_monotonic_ns": 5_000_000_000,
+            "storage_measured_monotonic_ns": 3_000_000_000,
+        }
+    )
+    aggregate = _Resources()
+    aggregate.add(observation.model_copy(update={"resources": base}))
+    with pytest.raises(ValueError, match="another boot"):
+        aggregate.add(
+            observation.model_copy(
+                update={"resources": base.model_copy(update={"clock_boot_id": "other"})}
+            )
+        )
+    with pytest.raises(ValueError, match="moved backwards"):
+        aggregate.add(
+            observation.model_copy(
+                update={
+                    "resources": base.model_copy(
+                        update={"measured_monotonic_ns": 4_000_000_000}
+                    )
+                }
+            )
+        )
+
+
+def test_mixed_legacy_clock_and_missing_storage_age_are_explicit(
+    fixture: Fixture,
+) -> None:
+    one = read_document(fixture.layout, fixture.observation(), Observation)
+    aggregate = _Resources()
+    aggregate.add(one)
+    aggregate.add(
+        one.model_copy(
+            update={
+                "resources": sample(2).model_copy(
+                    update={
+                        "clock_boot_id": "boot",
+                        "measured_monotonic_ns": 8_000_000_000,
+                    }
+                )
+            }
+        )
+    )
+    result = aggregate.result()
+    assert result.timing_bases == ("monotonic", "wall_clock")
+    assert result.unknown_storage_age_samples == result.unmeasured_time_gaps == 1
+    assert result.maximum_sample_gap_seconds is None

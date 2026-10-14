@@ -39,6 +39,26 @@ class RegisteredInputs(Document):
     borrowed: tuple[BorrowedPrediction, ...]
 
 
+def require_registered_scope(layout: AnnotationLayout, reference: ArtifactRef) -> None:
+    """Do not let opening a manager restore a missing benchmark budget ledger."""
+    path = layout.shared().registry
+    if not path.exists():
+        raise ValueError("benchmark requires an existing registered resource scope")
+    with sqlite3.connect(path.as_uri() + "?mode=ro", uri=True) as db:
+        table = db.execute(
+            "SELECT name FROM sqlite_master WHERE name='resource_scopes'"
+        ).fetchone()
+        if (
+            table is None
+            or db.execute(
+                "SELECT 1 FROM resource_scopes WHERE reference=?",
+                (reference.canonical_bytes().decode(),),
+            ).fetchone()
+            is None
+        ):
+            raise ValueError("benchmark requires an existing registered resource scope")
+
+
 def register_inputs(
     layout: AnnotationLayout,
     reference: ArtifactRef,

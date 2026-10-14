@@ -71,8 +71,25 @@ def requests(
 ) -> tuple[ArtifactRef, ...]:
     """A prediction maps to exactly one immutable request; no inference is run here."""
     require_supported(plan)
+    return prediction_requests(
+        layout,
+        plan,
+        plan_ref,
+        Predictions(layout, plan).completed(BallPredictionAdapter()),
+    )
+
+
+def prediction_requests(
+    layout: AnnotationLayout,
+    plan: CampaignPlan,
+    plan_ref: ArtifactRef,
+    predictions: tuple[ArtifactRef, ...],
+) -> tuple[ArtifactRef, ...]:
+    """Bind validated, fixed predictions to the matching review state domain."""
+    if read_document(layout, plan_ref, CampaignPlan) != plan:
+        raise ValueError("review request plan differs from its immutable reference")
     results = []
-    for prediction_ref in Predictions(layout, plan).completed(BallPredictionAdapter()):
+    for prediction_ref in predictions:
         prediction = read_document(layout, prediction_ref, PredictionReceipt)
         root = layout.path(
             "campaigns", plan.campaign_id, "review", "ball", prediction.context.clip_id
