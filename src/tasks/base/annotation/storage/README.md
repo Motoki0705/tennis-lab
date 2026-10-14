@@ -11,7 +11,8 @@ log / shard / tracking / pose / snapshot / checkpoint / configuration を区別�
 学習処理からの参照を自動収集するものではない。全参照・実行中ownerの網羅を証明して
 いないため、すべてのplanは `execution_ready=false` となる。削除・移動APIはない。
 元データを保持する移行は[migration](migration/README.md)を参照する。
-一般GCの実行直前の再検査・実行journalと保存形式比較は後続の実装範囲である。
+保存形式・copy/共有・RGB cacheの同入力比較は[comparison](comparison/README.md)を参照する。
+一般GCの実行直前の再検査・実行journalは後続の実装範囲である。
 
 ## 参照の保護
 
