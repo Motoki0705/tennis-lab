@@ -20,7 +20,7 @@ from src.utils.configuration import (
     PathRole,
 )
 
-from .contracts import CandidateManifest, OperationInput, Runtime
+from .contracts import CandidateManifest, OperationInput, RecoveryInput, Runtime
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="annotation.workflow.cli",
@@ -66,6 +66,13 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
             "state": status["state"],
             "collection": status.get("collection"),
             "task_states": status.get("task_states"),
+            "workflow": None
+            if status.get("workflow") is None
+            else {
+                "state": status["workflow"]["state"],
+                "reason": status["workflow"].get("reason"),
+                "learning_state": status["workflow"].get("learning", {}).get("state"),
+            },
             "worker_states": dict(
                 Counter(row["state"] for row in status.get("workers", []))
             ),
@@ -84,16 +91,25 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("register", "submit", "status", "tick", "run", "resume-budget"):
+    for name in (
+        "register",
+        "submit",
+        "recover",
+        "status",
+        "tick",
+        "run",
+        "resume-budget",
+    ):
         command = commands.add_parser(name)
         command.add_argument("--runtime", type=Path, required=True)
         command.add_argument("--sha256", required=True)
         command.add_argument("--test-root", type=Path)
         if name == "register":
             command.add_argument("--candidates", type=Path, required=True)
-        elif name == "submit":
+        elif name in {"submit", "recover"}:
             command.add_argument("--operation", type=Path, required=True)
-            command.add_argument("--attempt", type=int)
+            if name == "submit":
+                command.add_argument("--attempt", type=int)
         elif name == "run":
             command.add_argument("--max-seconds", type=float, required=True)
         elif name == "status":
@@ -146,6 +162,15 @@ def main() -> None:
             OperationInput,
         )
         result = controller.operation(operation, attempt=args.attempt)
+    elif args.command == "recover":
+        from .recovery import recover
+
+        recovery = read_document(
+            layout,
+            annotation_reference(layout, paths.declared("operation").path),
+            RecoveryInput,
+        )
+        result = recover(controller, recovery).model_dump(mode="json")
     elif args.command == "status":
         result = controller.status()
         if not args.details:
@@ -173,7 +198,8 @@ def main() -> None:
                 print(summary, flush=True)
                 last, printed = summary, time.monotonic()
             if (
-                result["state"] in {"preview_ready", "blocked", "budget_stopped"}
+                result["state"]
+                in {"preview_ready", "complete", "blocked", "budget_stopped"}
                 or time.monotonic() >= deadline
             ):
                 return

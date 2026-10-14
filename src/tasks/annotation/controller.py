@@ -1,10 +1,10 @@
-"""Resume the new-source preview flow from immutable receipts and shared ledgers."""
+"""Resume annotation campaigns from immutable receipts and shared ledgers."""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
@@ -47,21 +47,24 @@ from .contracts import (
 from .operations import preview_input
 from .screening import ScreeningAdapter
 
+if TYPE_CHECKING:
+    from .production import ProductionWorkflow
+
 
 class Controller:
     def __init__(self, layout: AnnotationLayout, runtime: Runtime) -> None:
         self.layout, self.runtime = layout, runtime
         self.plan = load_plan(verify_reference(layout, runtime.plan))
+        if self.plan.phase == "production":
+            from .reviews import require_supported
+
+            require_supported(self.plan)
         self.resources = ResourceManager(layout, runtime.scope)
         self.resources.bind(self.plan)
         self.resources.observe(os.getpid())
         self.collection = Collection(layout, self.plan)
         # Register the prediction receipt table without loading either model.
         Predictions(layout, self.plan)
-        if self.plan.phase != "preview":
-            raise ValueError(
-                "this controller currently implements preview inputs only; production adoption is not enabled"
-            )
         if len({cost.stage for cost in runtime.costs}) != len(runtime.costs):
             raise ValueError("stage costs must be unique")
         declared = {stage.stage: stage for stage in self.plan.resources.stages}
@@ -95,8 +98,27 @@ class Controller:
             worker_storage_bytes=screen.storage_bytes,
         )
         self.stages = StageRunner(layout)
+        self.production: ProductionWorkflow | None = None
+        if self.plan.phase == "production":
+            from .production import ProductionWorkflow
+
+            self.production = ProductionWorkflow(
+                layout,
+                runtime,
+                self.plan,
+                self.resources,
+                self.operation,
+                self.receipt,
+                self._services,
+            )
 
     def register(self, candidates: CandidateManifest) -> list[dict[str, Any]]:
+        if self.layout.path(
+            "campaigns", self.plan.campaign_id, "workflow", "review.json"
+        ).exists():
+            raise ValueError(
+                "campaign review is closed; register sources in a new campaign"
+            )
         return [
             item.model_dump(mode="json")
             for item in self.collection.register(candidates.candidates)
@@ -110,12 +132,32 @@ class Controller:
                 "operation belongs to another runtime, or has an invalid attempt"
             )
         jobs = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
+        attempts = [
+            int(path.name.rsplit("-", 1)[1]) for path in jobs.glob(data.sha256 + "-*")
+        ]
+        latest = max(attempts, default=0)
         if attempt is None:
-            attempts = [
-                int(path.name.rsplit("-", 1)[1])
-                for path in jobs.glob(data.sha256 + "-*")
-            ]
-            attempt = max(attempts, default=1)
+            attempt = max(latest, 1)
+        elif attempt not in attempts:
+            if attempt != latest + 1:
+                raise ValueError(
+                    "a new attempt must follow the latest recorded attempt"
+                )
+            if latest:
+                previous = annotation_reference(
+                    layout=self.layout,
+                    path=jobs / f"{data.sha256}-{latest}" / "launch.json",
+                )
+                previous_state = self.stages.status(previous)
+                if previous_state["state"] not in {
+                    "failed",
+                    "cancelled",
+                    "timed_out",
+                    "interrupted",
+                }:
+                    raise ValueError(
+                        "only a failed or interrupted operation can be retried"
+                    )
         cost = self.runtime.cost(data.stage)
         request_id = f"{data.sha256}-{attempt}"
         directory = self.layout.path(
@@ -193,10 +235,13 @@ class Controller:
             verify_reference(self.layout, ref)
         return receipt
 
-    def _services(self, request: WorkRequest, row: dict[str, Any]) -> None:
+    def _services(
+        self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool | None = None
+    ) -> None:
         if row["state"] != "running":
             return
-        with self.pool.ledger.registry.transaction() as db:
+        pool = self.pool if pool is None else pool
+        with pool.ledger.registry.transaction() as db:
             raw = db.execute(
                 "SELECT launch FROM worker_attempts WHERE id=?",
                 (row["current_attempt"],),
@@ -222,9 +267,7 @@ class Controller:
             result, error = None, None
             try:
                 if number >= self.runtime.maximum_services_per_attempt:
-                    raise ValueError(
-                        "worker exceeded its frozen service request count"
-                    )
+                    raise ValueError("worker exceeded its frozen service request count")
                 if request.adapter == ScreeningAdapter.name:
                     _service, task, _attempt = preview_input(self.layout, service_ref)
                     if task.prepared_input != request.payload:
@@ -395,20 +438,56 @@ class Controller:
                     ),
                 )
                 progress[data.sha256] = self.operation(data)
+        production = self.production.cycle() if self.production is not None else None
         return {
             "collection": self.collection.ledger.summary(self.plan),
             "progress": progress,
             "resources": sample.model_dump(mode="json"),
+            "workflow": production,
         }
 
-    def status(self) -> dict[str, Any]:
+    def _stage_statuses(self) -> list[dict[str, Any]]:
+        from src.tasks.base.annotation.learning.contracts import StageInput
+
         jobs = []
+        keys: list[tuple[str, str]] = []
+        numbers: list[int] = []
+        latest: dict[tuple[str, str], int] = {}
         for path in sorted(
             self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
                 "*/launch.json"
             )
         ):
-            jobs.append(self.stages.status(annotation_reference(self.layout, path)))
+            ref = annotation_reference(self.layout, path)
+            launch = read_document(self.layout, ref, StageLaunch)
+            if launch.input is None or launch.resource.plan != self.runtime.plan:
+                raise ValueError("campaign job has no matching input/plan")
+            if launch.resource.request_id.startswith("learning-"):
+                request = read_document(self.layout, launch.input, StageInput)
+                if launch.resource.request_id != "learning-" + request.sha256:
+                    raise ValueError("learning attempt identity differs from its input")
+                key, number = (request.intent.digest, request.stage), request.attempt
+            else:
+                data = read_document(self.layout, launch.input, OperationInput)
+                number = int(launch.resource.request_id.rsplit("-", 1)[1])
+                if (
+                    data.plan != self.runtime.plan
+                    or launch.resource.request_id != f"{data.sha256}-{number}"
+                ):
+                    raise ValueError(
+                        "operation attempt identity differs from its input"
+                    )
+                key = (data.sha256, "operation")
+            keys.append(key)
+            numbers.append(number)
+            latest[key] = max(latest.get(key, 0), number)
+            jobs.append(self.stages.status(ref))
+        for key, number, job in zip(keys, numbers, jobs, strict=True):
+            job["superseded"] = number < latest[key]
+        return jobs
+
+    def status(self) -> dict[str, Any]:
+        jobs = self._stage_statuses()
         with self.collection.ledger.registry.transaction() as db:
             tasks = dict(
                 db.execute(
@@ -419,7 +498,7 @@ class Controller:
             workers = [
                 dict(row)
                 for row in db.execute(
-                    "SELECT id,state,reason FROM worker_tasks WHERE campaign=?",
+                    "SELECT id,state,current_attempt,reason FROM worker_tasks WHERE campaign=?",
                     (self.plan.campaign_id,),
                 )
             ]
@@ -437,7 +516,8 @@ class Controller:
         failures += [
             job
             for job in jobs
-            if job["state"] in {"failed", "cancelled", "timed_out", "interrupted"}
+            if not job["superseded"]
+            and job["state"] in {"failed", "cancelled", "timed_out", "interrupted"}
         ]
         all_sources = bool(source_states) and all(
             key in {"prepared", "excluded"} for key in source_states
@@ -452,6 +532,17 @@ class Controller:
             if failures
             else "pending"
         )
+        production = self.production.status() if self.production is not None else None
+        if production is not None:
+            state = (
+                "running"
+                if live or production["state"] in {"publishing", "learning"}
+                else "complete"
+                if production["state"] == "complete"
+                else "blocked"
+                if failures or production["state"] == "blocked"
+                else "pending"
+            )
         return {
             "state": state,
             "collection": summary,
@@ -460,4 +551,5 @@ class Controller:
             "stages": jobs,
             "failures": failures,
             "preview_adopts_teachers": False,
+            "workflow": production,
         }

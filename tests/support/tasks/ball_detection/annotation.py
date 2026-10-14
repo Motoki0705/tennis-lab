@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, Literal
@@ -119,6 +120,7 @@ class Environment:
         frame_count: int = 32,
         model: ModelRef | None = None,
         learning: LearningPlan | None = None,
+        plan_transform: Callable[[CampaignPlan], CampaignPlan] | None = None,
         **policy_changes: Any,
     ) -> None:
         self.layout = AnnotationLayout.testing(root)
@@ -280,6 +282,8 @@ class Environment:
                 }
             )
         )
+        if plan_transform is not None:
+            self.plan = plan_transform(self.plan)
         self.plan_ref = annotation_reference(
             self.layout, save_plan(self.layout, self.plan)
         )
