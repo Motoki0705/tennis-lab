@@ -312,7 +312,9 @@ def test_dinov3_dpt_can_enable_transformer_refinement() -> None:
         CourtTransformerEncoderConfig,
     )
     assert runtime.model.transformer_encoder.enabled
-    assert runtime.model.transformer_encoder.dim == 768
+    assert runtime.model.transformer_encoder.dim == 1024
+    assert runtime.model.transformer_encoder.num_heads == 16
+    assert runtime.model.transformer_encoder.ffn_dim == 2752
     assert runtime.model.transformer_encoder.depth == 8
 
 
@@ -556,7 +558,25 @@ def test_pose_unsafe_augmentation_is_rejected_at_typed_boundary(
 ) -> None:
     config = _compose("synthetic_court", *_pose_overrides(), override)
 
-    with pytest.raises(SemanticConfigurationError, match="Pose|pose"):
+    with pytest.raises(SemanticConfigurationError, match="preserve_fx_fy"):
+        CourtTrainingConfig.from_config(config)
+
+
+@pytest.mark.parametrize("override", [
+    "data.augmentation.hflip_prob=0.1",
+    "data.augmentation.crop_scale=[0.5,1.0]",
+    "data.augmentation.affine_degrees=1.0",
+    "data.augmentation.train_scales=[256]",
+    "data.augmentation.canvas_size=512",
+])
+def test_dense_only_preserved_intrinsics_reject_incompatible_geometry(override: str) -> None:
+    config = _compose(
+        "synthetic_court", "data/augmentation=pose_safe",
+        "data.augmentation.train_scales=[512]", "data.augmentation.val_short_side=512",
+        override,
+    )
+    assert not config.loss.pose.enabled
+    with pytest.raises(SemanticConfigurationError, match="preserve_fx_fy"):
         CourtTrainingConfig.from_config(config)
 
 
@@ -593,6 +613,43 @@ def test_only_one_model_configuration_is_published() -> None:
     assert [path.name for path in (_CONFIG_DIR / "model").rglob("*.yaml")] == [
         "dinov3_dpt.yaml"
     ]
+
+
+@pytest.mark.parametrize(
+    ("variant", "backbone", "indices"),
+    [
+        ("s", "dinov3_vits16", (2, 5, 8, 11)),
+        ("splus", "dinov3_vits16plus", (2, 5, 8, 11)),
+        ("b", "dinov3_vitb16", (2, 5, 8, 11)),
+        ("l", "dinov3_vitl16", (5, 11, 17, 23)),
+    ],
+)
+def test_dinov3_size_ablation_variants_keep_the_same_downstream_and_training_conditions(
+    variant: str, backbone: str, indices: tuple[int, ...]
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name=f"train_dinov3_size_ablation_{variant}")
+    runtime = CourtTrainingConfig.from_config(config)
+    model = runtime.model
+    assert model.encoder.backbone_name == backbone
+    assert model.encoder.out_indices == indices
+    assert model.encoder.train_mode == "frozen"
+    assert model.encoder.lora is not None and not model.encoder.lora.enabled
+    assert model.transformer_encoder.dim == 1024
+    assert model.transformer_encoder.ffn_dim == 2752
+    assert model.transformer_encoder.num_heads == 16
+    assert model.transformer_encoder.depth == 8
+    assert model.decoder.channels == 512
+    assert runtime.data.augmentation.train_scales == (512,)
+    assert runtime.data.augmentation.val_short_side == 512
+    assert runtime.data.augmentation.preserve_fx_fy
+    assert runtime.data.batch_size == 8
+    assert list(config.data.source.scene_ids) == ["B00", "B01", "B02", "B03"]
+    assert dict(config.mixed.train_batch_counts) == {"synthetic_court": 4, "tennis_court_detector": 4}
+    assert runtime.shared.run.seed == 42
+    assert config.run.output_dir == f"court_detection/train/dinov3-size-ablation-{variant}-shared1024/s42"
+    assert runtime.shared.training.trainer.max_epochs == 20
+    assert runtime.shared.training.checkpoint.save_top_k == -1
 
 
 def test_missing_dense_head_never_restores_legacy_linear_architecture() -> None:

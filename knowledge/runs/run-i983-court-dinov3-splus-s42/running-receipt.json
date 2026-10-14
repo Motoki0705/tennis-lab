@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-10-11T15:57:46.111296+00:00",
+  "drive_operation_status": {
+    "schema_version": 1,
+    "job_id": "train-splus-s42",
+    "status": "running",
+    "updated_at": "2026-10-11T15:56:21.911023+00:00",
+    "returncode": null,
+    "worker_pid": 10362,
+    "worker_token": "169587",
+    "pid": 10536,
+    "process_token": "172706",
+    "started_at": "2026-10-11T15:53:43.328900+00:00"
+  },
+  "config_matches_vm": true,
+  "config_sha256": "8ee192603695e7e1a8ad8ade1a10e2eedacb3a5ab8c766bd3c4365773f2dd3cc"
+}

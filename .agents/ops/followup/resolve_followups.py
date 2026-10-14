@@ -158,6 +158,24 @@ class GitHub:
             body=str(data["body"] or ""),
         )
 
+    def followup(self, number: int, author: str) -> Candidate | None:
+        """Read current eligibility and input instead of trusting the initial list."""
+        data = self._json("api", f"repos/{{owner}}/{{repo}}/issues/{number}")
+        labels = frozenset(label["name"] for label in data["labels"])
+        if data["state"] != "open" or "pull_request" in data or FOLLOWUP_LABEL not in labels:
+            return None
+        issue = Issue(
+            number=int(data["number"]),
+            author=str(data["user"]["login"]),
+            body=str(data["body"] or ""),
+            url=str(data["html_url"]),
+        )
+        filed = followup_issues([issue], trusted_login=author)
+        if not filed:
+            return None
+        ((pr, head),) = filed
+        return Candidate(issue, pr, head, labels)
+
     def pr_state(self, number: int) -> str:
         return str(self._json("pr", "view", str(number), "--json", "state")["state"])
 
@@ -570,11 +588,44 @@ def note_rejection(
             f"#{number}: would hand to a human (PR #{latest.pr} rejected, dry-run)"
         )
         return
-    gh.comment(number, body)
     gh.add_label(number, NEEDS_HUMAN_LABEL)
+    gh.comment(number, body)
     report.note(
         f"#{number}: PR #{latest.pr} was closed unmerged; labelled {NEEDS_HUMAN_LABEL}"
     )
+
+
+def current_candidate(
+    gh: GitHub, number: int, login: str, report: RunReport,
+) -> Candidate | None:  # fmt: skip
+    candidate = gh.followup(number, login)
+    if candidate is None:
+        report.note(f"#{number}: skip (no longer an open follow-up issue)")
+        return None
+    if NEEDS_HUMAN_LABEL in candidate.labels:
+        report.note(f"#{number}: skip ({NEEDS_HUMAN_LABEL})")
+        return None
+    return candidate
+
+
+def inputs_unchanged(
+    gh: GitHub, login: str, candidate: Candidate, source: SourcePR,
+    comments: Sequence[IssueComment], report: RunReport,
+) -> bool:  # fmt: skip
+    """Stop before any publication if the decision's input or eligibility changed."""
+    number = candidate.issue.number
+    current = current_candidate(gh, number, login, report)
+    if current is None:
+        return False
+    if current != candidate or gh.source_pr(candidate.source_pr) != source:
+        report.note(f"#{number}: defer (issue or source PR changed during processing)")
+        return False
+    trusted_before = [c for c in comments if c.association in TRUSTED_ASSOCIATIONS]
+    trusted_now = [c for c in gh.comments(number) if c.association in TRUSTED_ASSOCIATIONS]
+    if trusted_now != trusted_before:
+        report.note(f"#{number}: defer (trusted comments changed during processing)")
+        return False
+    return True
 
 
 def resolve_issue(
@@ -582,9 +633,10 @@ def resolve_issue(
     report: RunReport,
 ) -> None:  # fmt: skip
     number = candidate.issue.number
-    if NEEDS_HUMAN_LABEL in candidate.labels:
-        report.note(f"#{number}: skip ({NEEDS_HUMAN_LABEL})")
+    refreshed = current_candidate(gh, number, login, report)
+    if refreshed is None:
         return
+    candidate = refreshed
     source = gh.source_pr(candidate.source_pr)
     action = source_action(source.state)
     if action is SourceAction.DEFER:
@@ -595,7 +647,8 @@ def resolve_issue(
     rounds = recorded_rounds(number, comments, trusted_login=login)
     base = git.fetch_base(settings.base_branch)
     if action is SourceAction.INVALIDATE:
-        invalidate(settings, gh, candidate, source, rounds, base, report)
+        if inputs_unchanged(gh, login, candidate, source, comments, report):
+            invalidate(settings, gh, candidate, source, rounds, base, report)
         return
 
     latest = rounds[-1] if rounds else None
@@ -610,7 +663,8 @@ def resolve_issue(
         return
     if step is NextStep.NOTE_REJECTION:
         assert latest is not None
-        note_rejection(settings, gh, candidate, latest, report)
+        if inputs_unchanged(gh, login, candidate, source, comments, report):
+            note_rejection(settings, gh, candidate, latest, report)
         return
 
     findings = parse_followup_data(candidate.issue).findings
@@ -651,8 +705,9 @@ def resolve_issue(
             (run_dir / "changes.diff").write_text(
                 git("diff", f"{base}..HEAD", cwd=worktree), encoding="utf-8"
             )
-        publish(settings, gh, git, candidate, source, resolution, labels,
-                Round(number, round_no, base, None), branch, report)  # fmt: skip
+        if inputs_unchanged(gh, login, candidate, source, comments, report):
+            publish(settings, gh, git, candidate, source, resolution, labels,
+                    Round(number, round_no, base, None), branch, report)  # fmt: skip
 
 
 def publish(
@@ -668,6 +723,10 @@ def publish(
     if settings.dry_run:
         report.note(f"#{number}: would publish {counts} (dry-run)")
         return
+    # Establish the human hold before recording a round or publishing a branch.
+    # A failed label call must never look like a human deliberately removed it.
+    if resolution.needs_human:
+        gh.add_label(number, NEEDS_HUMAN_LABEL)
     pr_url = None
     if resolution.opens_pr:
         assert resolution.pr_title is not None
@@ -680,8 +739,6 @@ def publish(
         )
         r = Round(r.issue, r.number, r.base, _pr_number(pr_url))
     gh.comment(number, resolution_comment(r, resolution, labels, pr_url=pr_url))
-    if resolution.needs_human:
-        gh.add_label(number, NEEDS_HUMAN_LABEL)
     reason = resolution.close_reason
     if reason is not None:
         gh.close(number, reason.value)

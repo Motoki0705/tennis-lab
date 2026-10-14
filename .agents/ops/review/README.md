@@ -168,7 +168,7 @@ worktree を作り、レビューコメントを入力に修正 commit を push 
 - 必要なラベル: `needs-human`、`agent-review:changes-requested`、`ai-proposed`（判別用に `agent:claude`、`agent:codex` も）。
   書き込みを伴う実行は前 3 つが repo に無いと開始前にエラーになる。
   `gh label create agent-review:changes-requested --color FBCA04 --description "クロスレビューが修正を要求"` 等で作る。
-- ログ・成果物: `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/review/runs/<UTC時刻>-pr<N>-<head12>-<merge-base12>/`
+- ログ・成果物: `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/review/runs/<UTC時刻>-pr<N>-<head12>-<merge-base12>-<一意suffix>/`
   に `prompt.md`、`agent_output.md`（生出力）、`review.json`、`review_comment.md`、agent_exec のログを残す。
 - 多重起動防止: state dir の `poll.lock` を flock で取り、取れなければ終了コード 75（unit は成功扱い）。
 - 終了コード: 0 = 全 PR 正常、1 = 1 つ以上の PR でエラー（他の PR は処理を続ける）、2 = 設定エラー、75 = 実行中。

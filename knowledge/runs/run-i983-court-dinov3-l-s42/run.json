@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "session": "i983-l4-ablation-02",
+  "job": "train-l-s42-resume-02",
+  "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_l 'run.resume={role:artifact,path:court_detection/train/i983-dino-l-shared1024/s42/resumes/attempt-01-last.ckpt}' run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42 run.artifact_store.sync_interval_seconds=60",
+  "input_snapshot": "knowledge/runs/run-i983-court-l512-profile-s42/inputs.json",
+  "drive_output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42",
+  "checkpoint_selection": {
+    "monitor": "val/loss",
+    "mode": "min",
+    "after_epochs": 20,
+    "uses_test": false,
+    "receipt": "checkpoint-selection.json"
+  },
+  "environment": "environment.json",
+  "first_checkpoint_receipt": "first-checkpoint.json",
+  "initial_command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_l run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42 run.artifact_store.sync_interval_seconds=60",
+  "attempts": [
+    {
+      "attempt": 1,
+      "session": "i983-l4-ablation-01",
+      "job": "train-l-s42",
+      "execution_backend": "ssh",
+      "outcome": "assignment_lost",
+      "returncode": null,
+      "interruption": "attempts/01-interruption.json"
+    },
+    {
+      "attempt": 2,
+      "session": "i983-l4-ablation-02",
+      "job": "train-l-s42-resume-02",
+      "execution_backend": "notebook_kernel",
+      "status": "completed",
+      "started_at": "2026-10-10T16:43:24.090710+00:00",
+      "orchestrator_commit": "48efa8064347c6bb6a3604bbf60256534d6762e7",
+      "resume_completed_epochs": 2,
+      "resume_global_step": 3316,
+      "request": "attempts/02-request.json",
+      "config": "attempts/02-config.yaml",
+      "input_verification": "attempts/02-input-verification.json",
+      "returncode": 0,
+      "finished_at": "2026-10-11T03:35:36.036486+00:00",
+      "drive_saved_at": "2026-10-11T03:35:36.036464+00:00",
+      "completion": "attempts/02-completion.json"
+    }
+  ],
+  "training_status": "completed",
+  "evaluation_status": "completed",
+  "evaluation": {
+    "session": "i983-l4-ablation-02",
+    "job": "eval-l-s42",
+    "request": "evaluation-request.json",
+    "completion": "evaluation-completion.json",
+    "result": "evaluation/evaluation.json",
+    "drive_output": "gdrive:tennis_lab/outputs/court_detection/evaluate/i983-dino-l-shared1024/s42",
+    "returncode": 0,
+    "drive_saved_at": "2026-10-11T03:50:34.316206+00:00"
+  },
+  "training_curves": {
+    "source_manifest": "tensorboard-sources.json",
+    "derivation": "tensorboard-derivation.json",
+    "script": "curate_tensorboard.py",
+    "plot": "curves.png"
+  },
+  "terminal_test": {
+    "metrics": "terminal-test-metrics.json",
+    "scope": "Final epoch model, not the selected checkpoint evaluation; raw predictions remain in Drive."
+  },
+  "session_stopped_at": "2026-10-11T04:01:25.698394+00:00"
+}

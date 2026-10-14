@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "eval-splus-s42",
+  "status": "completed",
+  "updated_at": "2026-10-12T08:31:11.976026+00:00",
+  "returncode": 0,
+  "worker_pid": 20020,
+  "worker_token": "331437",
+  "pid": 20205,
+  "process_token": "334834",
+  "started_at": "2026-10-12T08:24:38.931258+00:00",
+  "drive_saved_at": "2026-10-12T08:31:22.419007+00:00",
+  "finished_at": "2026-10-12T08:31:22.419027+00:00"
+}

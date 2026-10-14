@@ -32,6 +32,11 @@ poll を実行する gh アカウントが起票した open issue のうち、`a
 `<!-- agent-review-followup:v1 pr=<N> sha=<head> -->` のもの（`../review/` の追補 issue）を issue 番号順に処理する。
 1 回の件数に上限は無い。ほかの `ai-proposed` issue（週次レポート由来など）は対象外。
 
+一覧取得後、各 issue の着手時に状態・ラベル・本文・作成者を再取得する。公開直前にも再取得し、
+対象外、`needs-human` 付き、本文やラベル・元 PR・信頼できるコメントの変更があれば、
+push・PR 作成・issue 操作を行わず次回に回す。agent の出力と差分は run dir に残す。
+agent を使わない元 PR の却下処理・人間への引き継ぎも、書き込み直前に同じ確認を行う。
+
 issue ごとに、次の順で判定する。
 
 1. `needs-human` ラベルがあれば skip（人間の判断待ち）。
@@ -42,8 +47,8 @@ issue ごとに、次の順で判定する。
 3. 直近のラウンドに PR があれば、その状態で分ける。
    - **open**: レビュー中なので skip。
    - **merge 済み**: 新しいラウンドを始める（issue が open のままなのは、未処理の指摘が残っている場合だけ）。
-   - **merge されずに close**: 初回は「人間の判断待ち」コメント（マーカー
-     `<!-- agent-followup-rejected:v1 issue=<N> round=<k> pr=<PR> -->`）と `needs-human` ラベルを付けて skip する。
+   - **merge されずに close**: 初回は `needs-human` ラベルを付けてから「人間の判断待ち」コメント（マーカー
+     `<!-- agent-followup-rejected:v1 issue=<N> round=<k> pr=<PR> -->`）を記録して skip する。
      人間がコメントで方針を書いてラベルを外すと、次回は新しいラウンドを始める。
 4. 新しいラウンドの branch `codex/followup-i<N>-r<k>` が remote に既にあれば、エラーにする。前回の実行が push 後に
    中断した跡なので、PR を作るか branch を消すまで止める。
@@ -93,7 +98,10 @@ branch 名にラウンド番号を含めるので、前回の PR が merge 済�
 
 どの場合も、ラウンドのマーカーと指摘ごとの処置の表を issue にコメントする。PR 本文にも同じ表と確認内容を付け、
 1 行目に `<!-- agent-followup-pr:v1 issue=<N> -->` を書く。PR は branch prefix `codex/` なので、
-Claude がクロスレビューし、通常の merge gate を通る。PR 作成後にコメントが失敗した場合は、
+Claude がクロスレビューし、通常の merge gate を通る。`needs_human` の処置がある場合は、push・PR 作成・
+ラウンド記録より先に `needs-human` を付ける。ラベル付与に失敗しても、人間がラベルを外して再開した状態とは
+区別できる。ラベル付与後のコメントに失敗した場合はラベルが残り、人間の判断待ちを維持する。
+PR 作成後にコメントが失敗した場合は、
 remote に branch だけが残る。次回の実行では上記 4 によりエラーとして表に出る。
 
 ## 実行

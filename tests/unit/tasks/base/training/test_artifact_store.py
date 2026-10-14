@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,68 @@ def test_local_mode_builds_explicit_noop_backend(make_training_config: Any) -> N
 
     assert isinstance(store, LocalArtifactStore)
     assert store.enabled is False
+
+
+@pytest.mark.parametrize("mode", ["local", "rclone"])
+def test_colab_declared_output_rejects_local_or_wrong_remote(
+    make_training_config: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+) -> None:
+    monkeypatch.setenv(
+        "TENNIS_COLAB_ARTIFACT_ROOTS", json.dumps(["drive:project/outputs/declared"])
+    )
+    overrides: dict[str, Any] = {}
+    if mode == "rclone":
+        overrides = {
+            "run": {
+                "artifact_store": {
+                    "mode": "rclone",
+                    "remote": "drive",
+                    "remote_root": "project/outputs/different",
+                    "sync_interval_seconds": 60,
+                }
+            }
+        }
+    runtime = BaseTrainingRunner().validate_runtime_config(
+        OmegaConf.create(make_training_config(**overrides))
+    )
+    with pytest.raises(RuntimeError, match="declared Drive root"):
+        build_artifact_store(
+            runtime.run.artifact_store, local_root=runtime.run.output_dir
+        )
+
+
+def test_colab_declared_output_accepts_matching_rclone_store(
+    make_training_config: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv(
+        "TENNIS_COLAB_ARTIFACT_ROOTS", json.dumps(["drive:project/outputs/declared"])
+    )
+    secret = tmp_path / "rclone.conf"
+    secret.write_text("[drive]\n")
+    secret.chmod(0o600)
+    monkeypatch.setenv("RCLONE_CONFIG", str(secret))
+    config = OmegaConf.create(
+        make_training_config(
+            run={
+                "artifact_store": {
+                    "mode": "rclone",
+                    "remote": "drive",
+                    "remote_root": "project/outputs/declared",
+                    "sync_interval_seconds": 60,
+                }
+            }
+        )
+    )
+    runtime = BaseTrainingRunner().validate_runtime_config(config)
+    store = build_artifact_store(
+        runtime.run.artifact_store, local_root=runtime.run.output_dir
+    )
+    assert isinstance(store, RcloneArtifactStore)
+    assert store.remote_uri == "drive:project/outputs/declared"
 
 
 def test_rclone_mode_requires_explicit_secret_environment(

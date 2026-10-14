@@ -1,0 +1,16 @@
+{
+  "streaming": {
+    "samples": 99,
+    "gpu_utilization_percent_mean": 93.38383838383838,
+    "memory_utilization_percent_mean": 60.14141414141414,
+    "device_memory_used_mib_max": 16956.0,
+    "power_watts_mean": 68.63737373737374
+  },
+  "cached": {
+    "samples": 36,
+    "gpu_utilization_percent_mean": 97.72222222222223,
+    "memory_utilization_percent_mean": 62.25,
+    "device_memory_used_mib_max": 16956.0,
+    "power_watts_mean": 68.60277777777777
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-10-11T04:15:55.989716+00:00",
+  "drive_operation_status": {
+    "schema_version": 1,
+    "job_id": "train-s-s42",
+    "status": "running",
+    "updated_at": "2026-10-11T04:15:28.286061+00:00",
+    "returncode": null,
+    "worker_pid": 8818,
+    "worker_token": "135730",
+    "pid": 8969,
+    "process_token": "138290",
+    "started_at": "2026-10-11T04:14:25.915262+00:00"
+  },
+  "config_matches_vm": true,
+  "config_sha256": "7e8332e382da957635f29ed39922aa6513fba27b60eee5763eb973373c0ed124"
+}

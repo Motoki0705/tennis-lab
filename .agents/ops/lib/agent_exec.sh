@@ -36,7 +36,7 @@ abspath() {
 
 main() {
   local agent="" cwd="" prompt_file="" out="" mode="read-only" log_dir="" model="" effort=""
-  local profile=""
+  local profile="" profile_given=0
   while (($#)); do
     case "$1" in
       --agent) agent="$2"; shift 2 ;;
@@ -47,7 +47,7 @@ main() {
       --log-dir) log_dir="$2"; shift 2 ;;
       --model) model="$2"; shift 2 ;;
       --effort) effort="$2"; shift 2 ;;
-      --profile) profile="$2"; shift 2 ;;
+      --profile) profile="$2"; profile_given=1; shift 2 ;;
       -h|--help) usage ;;
       *) echo "agent_exec: unknown argument: $1" >&2; usage ;;
     esac
@@ -57,7 +57,7 @@ main() {
   [[ -d "$cwd" ]] || { echo "agent_exec: --cwd not a directory: $cwd" >&2; exit 2; }
   [[ -f "$prompt_file" ]] || { echo "agent_exec: prompt file missing: $prompt_file" >&2; exit 2; }
   case "$mode" in read-only|write) ;; *) echo "agent_exec: invalid --mode: $mode" >&2; exit 2 ;; esac
-  if [[ -n "$profile" ]]; then
+  if ((profile_given)); then
     [[ "$profile" =~ ^[a-z][a-z0-9_]*$ ]] || { echo "agent_exec: invalid --profile: $profile" >&2; exit 2; }
     [[ -z "$model" && -z "$effort" ]] || {
       echo "agent_exec: --profile cannot be combined with --model/--effort" >&2; exit 2; }

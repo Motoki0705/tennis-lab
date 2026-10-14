@@ -1,0 +1,13 @@
+{
+  "compared_to": "knowledge/runs/run-i983-court-dinov3-splus-s42/environment.json",
+  "equal_fields": [
+    "platform",
+    "packages",
+    "git_commit",
+    "dinov3",
+    "gpu",
+    "python_version"
+  ],
+  "all_equal": true,
+  "matrix_instrumentation_enabled": false
+}

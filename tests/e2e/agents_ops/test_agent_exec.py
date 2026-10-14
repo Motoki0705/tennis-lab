@@ -175,6 +175,7 @@ def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
         (["--profile", "nosuch"], "agents.conf must set NOSUCH_CODEX_MODEL"),
         (["--profile", "followup", "--model", "x"], "cannot be combined"),
         (["--profile", "Bad-Name"], "invalid --profile"),
+        (["--profile", ""], "invalid --profile"),
     ],
 )
 def test_profile_errors_never_fall_back(

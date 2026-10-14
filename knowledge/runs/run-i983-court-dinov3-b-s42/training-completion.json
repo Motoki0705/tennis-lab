@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "train-b-s42",
+  "status": "completed",
+  "updated_at": "2026-10-12T20:57:13.985753+00:00",
+  "returncode": 0,
+  "worker_pid": 5365,
+  "worker_token": "104894",
+  "pid": 5528,
+  "process_token": "107724",
+  "started_at": "2026-10-12T10:20:13.749061+00:00",
+  "drive_saved_at": "2026-10-12T20:57:36.810380+00:00",
+  "finished_at": "2026-10-12T20:57:36.810410+00:00"
+}

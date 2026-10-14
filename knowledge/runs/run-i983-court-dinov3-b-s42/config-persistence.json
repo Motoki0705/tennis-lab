@@ -1,0 +1,9 @@
+{
+  "observed_at": "2026-10-12T10:31:59.962350+00:00",
+  "vm_path": "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/config.yaml",
+  "drive_path": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/config.yaml",
+  "bytes": 5963,
+  "sha256": "bf68c7c9257a602831ee61fba38d70f975bb9ae3172b4cb682730d8f09dc33c3",
+  "vm_drive_bytes_equal": true,
+  "drive_download_verified": true
+}
