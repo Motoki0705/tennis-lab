@@ -32,11 +32,10 @@ from src.tasks.blcs.model_io import (
     TrajectoryBoundModelIO,
     TrajectoryModelIOAdapter,
     blcs_reference_metadata_from_batch,
-    compose_blcs_trajectory_model_io,
 )
-from src.tasks.blcs.model_io.checkpoints import load_checkpoint_runtime
-from src.tasks.blcs.training.lightning_module import BLCSLightningModule
+from src.tasks.blcs.model_io.checkpoints import load_checkpoint_model
 from src.utils.configuration import PathResolver
+from src.utils.device import resolve_device
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
@@ -107,7 +106,7 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         Args:
             checkpoint_path: Path to checkpoint file (.ckpt).
             device: Inference device.
-            **kwargs: Forwarded to `BLCSLightningModule.load_from_checkpoint`.
+            **kwargs: Extra options are rejected; model restoration is always strict.
 
         Returns:
             Initialized BLCSPredictor instance.
@@ -121,30 +120,17 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
             raise ValueError(
                 f"{cls.__name__} expects exactly one checkpoint, got {len(checkpoints)}."
             )
-        checkpoint_runtime = load_checkpoint_runtime(
-            checkpoints[0],
-            runtime_court_keypoints=court_keypoints,
-        )
-        binding = compose_blcs_trajectory_model_io(checkpoint_runtime.config)
-        if "config" in kwargs:
+        if kwargs:
             raise TypeError(
-                "BLCSPredictor.load_from_checkpoint owns checkpoint config "
-                "restoration; do not pass config in kwargs."
+                "BLCSPredictor owns strict checkpoint restoration; "
+                f"unsupported options: {sorted(kwargs)}"
             )
-        lightning_module, resolved_device = cls._load_single_lightning_module(
-            checkpoints[0],
-            BLCSLightningModule,
-            resolver=resolver,
-            device=device,
-            model_io=binding,
-            strict=True,
-            weights_only=False,
-            config=checkpoint_runtime.config,
-            **kwargs,
+        binding, checkpoint_runtime = load_checkpoint_model(
+            checkpoints[0], runtime_court_keypoints=court_keypoints
         )
         return cls(
-            model_io=lightning_module.model_io,
-            device=resolved_device,
+            model_io=binding,
+            device=resolve_device(device),
             court_keypoint_contract=checkpoint_runtime.court_keypoint_contract,
         )
 

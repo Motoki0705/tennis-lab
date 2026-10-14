@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.tasks.blcs.experiments.evaluation import recompute, save_prediction_rows
+from src.tasks.blcs.ablation.evaluation import recompute, save_prediction_rows
 from src.tasks.blcs.model_io.contracts import BLCSTrajectoryPrediction
 from src.tasks.blcs.training.metrics import BLCSMetrics
 from tests.support.tasks.blcs_physics import physics_sample, prepared_samples

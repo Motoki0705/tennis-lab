@@ -20,7 +20,7 @@ MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契�
 | [visualization/](visualization/README.md) | WebUI・描画・GIF・教師/拡張preview |
 | [dataset_statistics/](dataset_statistics/README.md) | 注釈構成・欠損・位置・速度・窓・pose品質のCPU統計 |
 | `generate_dataset/` | 原本から統一frame storeを生成 |
-| `scripts/` | 下表の7つの操作入口。学習loop・queue制御を実装しない |
+| `scripts/` | 下表の操作入口。学習loop・queue制御を実装しない |
 
 ## 公開コマンド
 
@@ -35,6 +35,8 @@ MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契�
 | `review` | `--mode dataset\|inference`でWebUIを起動 |
 | `visualize` | checkpointのclip推論をGIFへ描画 |
 | `preview` | `--kind spatial\|heatmaps\|video`で教師・画像変換を確認 |
+
+BLCS損失比較の入口もこの`scripts/`配下に集約する。`train_blcs_ablation`は明示した条件・seed・更新数で学習し、`evaluate_blcs_ablation`はcheckpoint／対照を保存評価する。実装と仕様は[BLCS ablation](../blcs/ablation/README.md)に置く。
 
 選択後に`--help`を付けると、その操作の引数を表示する。未対応のstage/schema/inputを推測して読み替えない。
 学習レシピ・再開条件は[training README](training/README.md)、窓とFPSの仕様は[data/windows](data/windows/README.md)が正本。

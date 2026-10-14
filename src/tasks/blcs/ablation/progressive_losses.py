@@ -1,4 +1,4 @@
-"""Fixed 4,000-update progressive-loss experiment, always launched by the queue."""
+"""Progressive physics-loss ablations with a declared optimizer update budget."""
 
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ def experiment_config(
     output: str,
     arm: str,
     seed: int,
+    scene_dir: str | None = None,
     smoke: bool = False,
     chunked: bool = False,
     gan: bool = False,
@@ -49,7 +50,8 @@ def experiment_config(
             overrides=["training=gan_small"] if gan else [],
         )
     config.paths.data_root = str(data_root)
-    config.data.scene_dir = "blcs/single_object-physics-v3-cc863cacd-20261007"
+    if scene_dir is not None:
+        config.data.scene_dir = scene_dir
     config.data.seq_len_range = [128, 128]
     config.data.num_views_range = [3, 6]
     config.data.batch_size = 2
@@ -88,7 +90,9 @@ def experiment_config(
         config.data.chunk.epochs_per_chunk = 1
         config.data.chunk.prefetch_chunks = 1
         config.data.chunk.generation_workers = 2
-        config.data.chunk.chunks_dir = "blcs/i1044/" + output.split("/")[-1] + "-chunks"
+        config.data.chunk.chunks_dir = str(
+            Path(output).with_name(Path(output).name + "-chunks")
+        )
     if smoke:
         config.training.warmup_steps = 0
         config.loss.physics_start_step = 0
@@ -139,6 +143,7 @@ def run_experiment(args: Namespace) -> None:
         output=args.output,
         arm=args.arm,
         seed=args.seed,
+        scene_dir=args.scene_dir,
         smoke=args.smoke,
         chunked=args.chunked,
         gan=args.gan,
@@ -180,7 +185,7 @@ def run_experiment(args: Namespace) -> None:
     with selected.open("rb") as source:
         selected_sha256 = hashlib.file_digest(source, "sha256").hexdigest()
     receipt = {
-        "protocol": "issue1044-v1",
+        "protocol": "blcs.progressive_losses.v1",
         "arm": args.arm,
         "seed": args.seed,
         "optimizer_updates": trainer.global_step,

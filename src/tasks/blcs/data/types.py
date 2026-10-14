@@ -53,8 +53,6 @@ class BLCSBatch(TypedDict):
 class BLCSMultiViewSample(TypedDict):
     """Schema for multi-view BLCS dataset sample.
 
-
-
     Used by BallTrajectoryDataset.__getitem__() in multiview mode. Contains observations
     from multiple cameras for the same ball trajectory.
 

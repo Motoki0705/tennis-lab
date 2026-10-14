@@ -5,7 +5,7 @@ import pytest
 import torch
 from numpy.typing import NDArray
 
-from src.tasks.blcs.experiments.evaluation import event_diagnostic, geometric_baseline
+from src.tasks.blcs.ablation.evaluation import event_diagnostic, geometric_baseline
 from src.utils.projection.camera_projector import make_look_at_camera, project_points
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 from src.utils.schema.court_normalization import denormalize_court_position

@@ -28,6 +28,7 @@ from src.tasks.base.generate_dataset import (
 )
 from src.tasks.blcs.inference.predictor import BLCSPredictor
 from src.tasks.blcs.model_io import blcs_trajectory_prediction_to_physical
+from src.tasks.blcs.model_io.checkpoints import parse_checkpoint_runtime
 from src.tasks.blcs.visualization.io.scene import SceneBundle, load_scene_bundle
 from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.device import DeviceSelectionError, resolve_device
@@ -151,10 +152,11 @@ def _validate_scene_dir_form(scene_dir: str | None, forms: tuple[str, ...]) -> N
     if scene_dir is None:
         return
     basename = Path(scene_dir).name
-    if basename not in forms:
+    if not any(basename == form or basename.startswith(form + "-") for form in forms):
         raise ValueError(
             f"Checkpoint data.scene_dir {scene_dir!r} contradicts model.name and "
-            f"court_keypoints.selector; expected one of {list(forms)!r}."
+            f"court_keypoints.selector; expected one of {list(forms)!r} "
+            "or a hyphen-suffixed snapshot of that form."
         )
 
 
@@ -413,7 +415,8 @@ class InferenceService:
                 or "config" not in hyper_parameters
             ):
                 raise ValueError("Checkpoint hyper_parameters.config is required.")
-            config = cast("Mapping[str, object]", hyper_parameters)["config"]
+            runtime = parse_checkpoint_runtime(checkpoint, location=str(path))
+            config = runtime.config
             metadata = derive_checkpoint_metadata(config)
         finally:
             del checkpoint

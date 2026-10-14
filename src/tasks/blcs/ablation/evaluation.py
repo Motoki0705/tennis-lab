@@ -41,11 +41,13 @@ from src.utils.physics.ball.fitting import FitSettings, fit_flight_physics
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 from src.utils.schema.court_normalization import (
     denormalize_court_position,
+    denormalize_court_velocity,
     normalize_court_position,
+    normalize_court_velocity,
     validate_court_coordinate_normalization,
 )
 
-from .issue1044 import experiment_config
+from .progressive_losses import experiment_config
 
 
 def clean_json(value: Any) -> Any:
@@ -424,7 +426,8 @@ def evaluate(
                 target.position.clone(), target.velocity.clone()
             )
             if baseline == "jitter":
-                prediction.position[:, ::2, 0] += 0.1 / 11.885
+                jitter_m = prediction.position.new_tensor([0.1, 0.0, 0.0])
+                prediction.position[:, ::2] += normalize_court_position(jitter_m)
             elif baseline == "time_shift":
                 prediction = replace(
                     prediction,
@@ -472,7 +475,7 @@ def evaluate(
             ):
                 p, v = reconstruct_segments(
                     denormalize_court_position(prediction.position),
-                    prediction.velocity * 11.885,
+                    denormalize_court_velocity(prediction.velocity),
                     prediction.physics_parameters,
                     events,
                     target.loss_mask,
@@ -491,7 +494,7 @@ def evaluate(
                 integrated = replace(
                     prediction,
                     position=normalize_court_position(p),
-                    velocity=v / 11.885,
+                    velocity=normalize_court_velocity(v),
                 )
                 metric.update(
                     integrated,
@@ -640,7 +643,7 @@ def recompute(bundle: Path, *, include_diagnostics: bool = False) -> dict[str, A
                     integrated = replace(
                         prediction,
                         position=normalize_court_position(p),
-                        velocity=v / 11.885,
+                        velocity=normalize_court_velocity(v),
                     )
                     metric.update(
                         integrated,

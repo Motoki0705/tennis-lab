@@ -2,6 +2,4 @@ defaults:
   - default
   - _self_
 
-velocity_weight: 0.0
-rollout_position_weight: 0.0
-rollout_velocity_weight: 0.0
+reprojection_weight: 0.1

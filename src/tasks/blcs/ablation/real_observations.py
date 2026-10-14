@@ -15,7 +15,10 @@ from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, unpack_value
 from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
-from src.utils.schema.court_normalization import denormalize_court_position
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    denormalize_court_velocity,
+)
 
 from .evaluation import (
     file_sha256,
@@ -25,6 +28,7 @@ from .evaluation import (
     predict_windows,
     save_json,
 )
+from .progressive_losses import experiment_config
 
 
 def load_observations(
@@ -125,6 +129,8 @@ def observation_metrics(
     batch: dict[str, Any],
     cameras: tuple[PinholeCamera, ...],
     fps: float,
+    *,
+    gravity: float,
 ) -> dict[str, Any]:
     visible = batch["ball_vis"][0].numpy().astype(bool)
     size = np.stack([batch["camera_w"][0].numpy(), batch["camera_h"][0].numpy()], -1)
@@ -161,7 +167,7 @@ def observation_metrics(
             position,
             np.arange(len(position)) // 32,
             np.array([1 / fps / 4, fps * 4, fps, 4]),
-            9.8,
+            gravity,
         ),
     }
 
@@ -181,18 +187,23 @@ def evaluate_real(
     batch, cameras, metadata = load_observations(source)
     fps = metadata["evaluation_fps"]
     if checkpoint is None:
+        config = experiment_config(
+            data_root=data_root, output="unused", arm="position", seed=42
+        )
         prediction, geometry = geometric_baseline(batch)
         metadata["geometric_interpolation"] = geometry
     else:
-        binding, _ = load_binding(checkpoint, data_root, historical=historical)
+        binding, config = load_binding(checkpoint, data_root, historical=historical)
         binding.model.to(device).eval()
         prediction = predict_windows(binding, batch, device=device)
+    gravity = float(config.physics.gravity)
     position = denormalize_court_position(prediction.position)[0].numpy()
     report = {
         **metadata,
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": file_sha256(checkpoint) if checkpoint else None,
-        "direct": observation_metrics(position, batch, cameras, fps),
+        "gravity_mps2": gravity,
+        "direct": observation_metrics(position, batch, cameras, fps, gravity=gravity),
     }
     arrays = {key: value.numpy() for key, value in batch.items()}
     arrays["projection_K"] = np.stack([camera.intrinsic for camera in cameras])
@@ -200,18 +211,20 @@ def evaluate_real(
     arrays["projection_t"] = np.stack([camera.translation for camera in cameras])
     arrays["position_m"] = position
     if prediction.velocity is not None:
-        arrays["velocity_mps"] = prediction.velocity[0].numpy() * 11.885
+        arrays["velocity_mps"] = denormalize_court_velocity(
+            prediction.velocity[0]
+        ).numpy()
     if prediction.physics_parameters is not None:
         assert prediction.velocity is not None and prediction.event_logits is not None
         events = prediction.event_logits[..., 0] >= 0
         p, _ = reconstruct_segments(
             torch.from_numpy(position)[None],
-            prediction.velocity * 11.885,
+            denormalize_court_velocity(prediction.velocity),
             prediction.physics_parameters,
             events,
             torch.ones_like(events),
             torch.tensor([[1 / fps / 4, fps * 4, fps, 4]], dtype=torch.float64),
-            gravity=9.8,
+            gravity=gravity,
         )
         finite = bool(torch.isfinite(p).all())
         report["integration_failed"] = not finite
@@ -221,16 +234,23 @@ def evaluate_real(
         arrays["physics_parameters"] = prediction.physics_parameters[0].numpy()
         if finite:
             report["integrated_predicted"] = observation_metrics(
-                p[0].numpy(), batch, cameras, fps
+                p[0].numpy(), batch, cameras, fps, gravity=gravity
             )
     np.savez_compressed(output / "real_predictions.npz", **arrays)
     save_json(output / "evaluation.json", report)
     return report
 
 
-def recompute_real(directory: Path) -> dict[str, Any]:
+def recompute_real(directory: Path, *, gravity: float | None = None) -> dict[str, Any]:
     """Recompute real diagnostics without the source store or model weights."""
     metadata = json.loads((directory / "evaluation.json").read_text())
+    if "gravity_mps2" in metadata:
+        recorded_gravity = float(metadata["gravity_mps2"])
+        if gravity is not None and gravity != recorded_gravity:
+            raise ValueError("Explicit gravity disagrees with the saved evaluation")
+        gravity = recorded_gravity
+    if gravity is None:
+        raise ValueError("Old real-observation bundles require explicit gravity")
     with np.load(directory / "real_predictions.npz", allow_pickle=False) as arrays:
         batch = {
             key: torch.from_numpy(arrays[key].copy())
@@ -249,7 +269,9 @@ def recompute_real(directory: Path) -> dict[str, Any]:
         )
         fps = metadata["evaluation_fps"]
         result: dict[str, Any] = {
-            "direct": observation_metrics(arrays["position_m"], batch, cameras, fps)
+            "direct": observation_metrics(
+                arrays["position_m"], batch, cameras, fps, gravity=gravity
+            )
         }
         if "integrated_position_m" in arrays:
             p = arrays["integrated_position_m"]
@@ -258,6 +280,6 @@ def recompute_real(directory: Path) -> dict[str, Any]:
             result["predicted_event_count"] = int(arrays["predicted_event"][1:].sum())
             if finite:
                 result["integrated_predicted"] = observation_metrics(
-                    p, batch, cameras, fps
+                    p, batch, cameras, fps, gravity=gravity
                 )
         return result

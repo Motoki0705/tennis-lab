@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from src.tasks.blcs.experiments.cli_paths import experiment_paths
-from src.tasks.blcs.experiments.issue1044 import ARMS, run_experiment
+from src.tasks.blcs.ablation.cli_paths import experiment_paths
+from src.tasks.blcs.ablation.progressive_losses import ARMS, run_experiment
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -17,7 +17,7 @@ from src.utils.configuration import (
 from src.utils.paths import PROJECT_ROOT
 
 PATH_BOUNDARY = NonHydraPathBoundary(
-    name="blcs.issue1044_train",
+    name="blcs.ablation.train",
     fields=(
         BoundaryPathField(
             "data_root",
@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--steps", type=int, default=4000)
     parser.add_argument("--data-root", type=Path, required=True)
+    parser.add_argument("--scene-dir", help="Dataset directory relative to --data-root")
     parser.add_argument(
         "--output", required=True, help="Child of the checkout outputs root"
     )
