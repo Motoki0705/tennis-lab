@@ -47,11 +47,13 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 | パス | 内容 |
 |---|---|
-| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | `claude -p` / `codex exec` を read-only（Claudeは Read/Grep/Glob のみ、Codexは read-only sandbox）または write モードで headless 起動する共通wrapper。失敗や空の出力は非ゼロで終了する |
-| [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する |
+| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | `claude -p` / `codex exec` を read-only（Claudeは Read/Grep/Glob のみ、Codexは read-only sandbox）または write モードで headless 起動する共通wrapper。失敗や空の出力は非ゼロで終了する。`--profile` で job 別の model 固定値を選ぶ |
+| [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: `FOLLOWUP_CODEX_*`）もここに置く |
+| [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
 | [ops/weekly-report/](ops/weekly-report/README.md) | 週次の運用レポートissue（逆提案）と、チェックされた提案の日次triage |
 | [ops/review/](ops/review/README.md) | クロスレビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（追補issue・人間への差し戻し） |
+| [ops/followup/](ops/followup/README.md) | クロスレビューの追補issue（軽微指摘）を2日に1回処理する。指摘ごとに対応・不要・解決済み・要判断を決め、対応するものはPRにする |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。
