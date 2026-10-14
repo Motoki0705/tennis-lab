@@ -16,9 +16,7 @@ import json
 import logging
 import os
 import shutil
-import signal
 import string
-import subprocess
 import sys
 import tempfile
 import time
@@ -29,7 +27,9 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
+from opsproc import CommandError, run, run_process_group  # noqa: E402
 from review_policy import (  # noqa: E402
     CHANGES_REQUESTED_LABEL,
     ESCALATION_STREAK,
@@ -86,99 +86,9 @@ PR_FIELDS = (
 log = logging.getLogger("cross_review")
 
 
-class CommandError(RuntimeError):
-    pass
-
-
-def run(cmd: Sequence[str], *, cwd: Path) -> str:
-    proc = subprocess.run(
-        list(cmd), cwd=cwd, text=True, capture_output=True, check=False
-    )
-    if proc.returncode != 0:
-        raise CommandError(
-            f"exit {proc.returncode}: {' '.join(cmd)}\nstderr:\n{proc.stderr.strip()}"
-        )
-    return proc.stdout
-
-
-def _live_group_members(pgid: int) -> list[int]:
-    """PIDs of non-zombie processes in process group ``pgid`` (Linux ``/proc``)."""
-    members: list[int] = []
-    for stat_file in Path("/proc").glob("[0-9]*/stat"):
-        try:
-            stat = stat_file.read_text(encoding="utf-8", errors="replace")
-        except (FileNotFoundError, ProcessLookupError):
-            continue  # exited while scanning
-        # Fields after "(comm)": state ppid pgrp ...; comm itself may contain ")".
-        fields = stat[stat.rindex(")") + 2 :].split()
-        if int(fields[2]) == pgid and fields[0] != "Z":
-            members.append(int(stat_file.parent.name))
-    return members
-
-
-def _wait_group_gone(proc: subprocess.Popen[str], pgid: int, seconds: float) -> bool:
-    deadline = time.monotonic() + seconds
-    while True:
-        proc.poll()  # reap the leader so it does not linger as a zombie
-        if not _live_group_members(pgid):
-            return True
-        if time.monotonic() >= deadline:
-            return False
-        time.sleep(0.1)
-
-
-def _terminate_group(proc: subprocess.Popen[str], pgid: int) -> list[int]:
-    """Stop every process in ``pgid`` (TERM, then KILL); return the PIDs found alive.
-
-    Raises when processes survive SIGKILL, so a hung reviewer is never left behind
-    silently.
-    """
-    alive = _live_group_members(pgid)
-    if alive:
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(pgid, signal.SIGTERM)
-        if not _wait_group_gone(proc, pgid, TERM_GRACE_SECONDS):
-            with contextlib.suppress(ProcessLookupError):
-                os.killpg(pgid, signal.SIGKILL)
-            if not _wait_group_gone(proc, pgid, TERM_GRACE_SECONDS):
-                raise CommandError(
-                    f"process group {pgid} survived SIGKILL: {_live_group_members(pgid)}"
-                )
-    proc.wait()
-    return alive
-
-
 def run_in_process_group(cmd: Sequence[str], *, cwd: Path, timeout: float) -> None:
-    """Run ``cmd`` in its own process group and stop the whole group when it ends.
-
-    Agent CLIs spawn children (``agent_exec.sh`` -> claude/codex -> tools); killing only
-    the direct child on timeout would leave them running after the worktree is removed.
-    """
-    proc = subprocess.Popen(
-        list(cmd),
-        cwd=cwd,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
-    pgid = proc.pid  # session leader: its pid is the process group id
-    try:
-        _, stderr = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as exc:
-        _terminate_group(proc, pgid)
-        proc.communicate()
-        raise CommandError(f"timed out after {timeout}s: {' '.join(cmd)}") from exc
-    except BaseException:
-        _terminate_group(proc, pgid)
-        raise
-    leftover = _terminate_group(proc, pgid)
-    if leftover:
-        log.warning("killed processes left behind by %s: %s", cmd[0], leftover)
-    if proc.returncode != 0:
-        raise CommandError(
-            f"exit {proc.returncode}: {' '.join(cmd)}\nstderr:\n{stderr.strip()}"
-        )
+    """Run the reviewer in its own process group (see ``opsproc.run_process_group``)."""
+    run_process_group(cmd, cwd=cwd, timeout=timeout, term_grace=TERM_GRACE_SECONDS)
 
 
 # --------------------------------------------------------------------------- GitHub
