@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import signal
@@ -197,19 +196,3 @@ def supervise(
         ),
     )
     return code if status == "succeeded" else (code or 1)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--launch", type=Path, required=True)
-    parser.add_argument("--sha256", required=True)
-    parser.add_argument("--lock-fd", type=int, required=True)
-    parser.add_argument("--test-root", type=Path)
-    args = parser.parse_args()
-    raise SystemExit(
-        supervise(args.launch, args.sha256, args.lock_fd, test_root=args.test_root)
-    )
-
-
-if __name__ == "__main__":
-    main()
