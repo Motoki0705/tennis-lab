@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 from typing import Any
 
-from ..artifacts import verify_reference
+from ..artifacts import annotation_reference, read_document, verify_reference
+from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, references, save_plan
 from ..registry import Registry
-from .contracts import WorkRequest
+from ..telemetry.capture import verify_report
+from .contracts import AttemptEvidence, AttemptResult, ExitReceipt, Launch, WorkRequest
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS worker_tasks (
@@ -94,6 +97,88 @@ class WorkerLedger:
             database.execute(
                 "DELETE FROM worker_campaign_stops WHERE campaign=?", (campaign,)
             )
+
+    def history(
+        self, plan: CampaignPlan, request: WorkRequest
+    ) -> tuple[AttemptEvidence, ...]:
+        """Read immutable attempt files, never the replaceable task.result column."""
+        with self.registry.transaction() as database:
+            task = database.execute(
+                "SELECT * FROM worker_tasks WHERE id=?", (request.work_id,)
+            ).fetchone()
+            if task is None:
+                raise KeyError(request.work_id)
+            self.require(task, plan, request)
+            rows = database.execute(
+                "SELECT * FROM worker_attempts WHERE work_id=? ORDER BY number",
+                (request.work_id,),
+            ).fetchall()
+        result = []
+        for row in rows:
+            launch_ref = ArtifactRef.model_validate_json(row["launch"])
+            launch = read_document(self.layout, launch_ref, Launch)
+            directory = self.layout.path(
+                "campaigns",
+                plan.campaign_id,
+                "workers",
+                request.work_id,
+                f"attempt-{row['number']:04d}",
+            )
+            if (
+                launch.request != request
+                or launch.work_id != request.work_id
+                or launch.attempt != row["id"]
+                or read_document(self.layout, launch.plan, CampaignPlan) != plan
+                or Path(launch.directory) != directory
+                or self.layout.artifact_path(launch_ref) != directory / "launch.json"
+            ):
+                raise ValueError("attempt history differs from its registered launch")
+
+            def optional(name: str, directory: Path = directory) -> ArtifactRef | None:
+                path = directory / name
+                return (
+                    annotation_reference(self.layout, path) if path.exists() else None
+                )
+
+            execution_ref = optional("exit.json")
+            if execution_ref is not None:
+                execution = read_document(self.layout, execution_ref, ExitReceipt)
+                if execution.launch_digest != launch_ref.digest:
+                    raise ValueError("attempt exit belongs to another launch")
+                for ref in references(execution):
+                    verify_reference(self.layout, ref)
+            telemetry_pointer = optional("telemetry.ref.json")
+            telemetry = (
+                read_document(self.layout, telemetry_pointer, ArtifactRef)
+                if telemetry_pointer
+                else None
+            )
+            final_ref = optional("result.receipt.json")
+            if final_ref is not None:
+                final = read_document(self.layout, final_ref, AttemptResult)
+                if (final.launch, final.exit) != (launch_ref, execution_ref):
+                    raise ValueError("attempt result belongs to another launch/exit")
+                for ref in references(final):
+                    verify_reference(self.layout, ref)
+                if telemetry is not None and final.telemetry != telemetry:
+                    raise ValueError("attempt has conflicting telemetry references")
+                telemetry = final.telemetry
+            if telemetry is not None:
+                report = verify_report(self.layout, telemetry)
+                if (report.launch, report.execution) != (launch_ref, execution_ref):
+                    raise ValueError("attempt telemetry belongs to another launch/exit")
+            result.append(
+                AttemptEvidence(
+                    number=row["number"],
+                    state=row["state"],
+                    reason=row["reason"],
+                    launch=launch_ref,
+                    execution=execution_ref,
+                    result=final_ref,
+                    telemetry=telemetry,
+                )
+            )
+        return tuple(result)
 
     def stop_campaign(self, campaign: str, reason: str) -> None:
         if not reason.strip():

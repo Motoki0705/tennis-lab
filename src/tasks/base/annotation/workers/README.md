@@ -68,6 +68,12 @@ modelと応答IDを検証してからadapterへ渡す。adapterは `telemetry_im
 不変画像の対応を返し、`classify_tool` で操作を分類する。`validate` では実提示の証跡と
 レビュー判断を照合する。実Codexの結果receiptにはtelemetry参照が必須である。
 
+`WorkerLedger.history(plan, request)` は登録済みattemptを順に読み、launch・exit・
+結果receipt・telemetryの対応を検証して返す。retryで置き換わる `worker_tasks.result` に
+依存しない。保留済み結果やcancel後の `telemetry.ref.json` も保持し、証拠がないattemptは
+明示的な欠測として返す。別attemptの証拠や壊れたhashを欠測として黙って扱わない。
+taskの操作受付は[review services](review/README.md) を使える。
+
 合成workerによる試験では、競合、親終了、supervisor死亡と孤児process、PID再利用、
 並列枠、quota、timeout、結果改変、preview採用拒否、receipt後の中断を確認する。
 `test_command` は明示的なtest layoutでのみ使え、productionでの別コマンドへの
