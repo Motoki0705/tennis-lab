@@ -55,7 +55,7 @@ GT自己評価は固定validationの全100 scene・37,287 frameで行った。3D
 
 本体実装時のBLCS全体pytestは171 passed / 4 skipped、追加の選択・対照・保存再計算テストは9 passed。ruffとmypyも通過した。batch分割/padding/分散samplerの重複、欠損、event support、勾配到達、入力GT漏洩の回帰テストを含む。指定回数がないため独立validatorは起動していない。
 
-旧APIを置換した比較プロトコルは[src/tasks/blcs/experiments/README.md](../../../src/tasks/blcs/experiments/README.md)に固定した。主軸は全frameの3D軌道RMSEで、運動・rollout・fit・再投影・支持数を併記する。追加seedはvalidationのみで選び、testは選定完了後に評価する。ユーザー指定により採用閾値はなく、方式採用や本番checkpointの置換は行わない。
+旧APIを置換した[比較プロトコル](../../runs/group-i1044-progressive-losses-u4000/protocol.md)を学習前に固定した。主軸は全frameの3D軌道RMSEで、運動・rollout・fit・再投影・支持数を併記する。追加seedはvalidationのみで選び、testは選定完了後に評価する。ユーザー指定により採用閾値はなく、方式採用や本番checkpointの置換は行わない。
 
 本群は事前検証と中断の記録である。4,000更新×10 runの比較結果と因果考察は、完了した各runと比較groupに記録する。
 

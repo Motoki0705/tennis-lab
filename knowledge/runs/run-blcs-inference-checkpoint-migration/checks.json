@@ -1,0 +1,53 @@
+{
+  "code_commit": "44a6c978d7726e63f4a58cfbc0a99bd4cdf6a2bd",
+  "device": "cpu",
+  "tests": [
+    {
+      "name": "initial-blcs",
+      "log": "initial-blcs.log.gz",
+      "source_log": "/tmp/i1044-cleanup-blcs-tests.log",
+      "uncompressed_sha256": "b85fcd1335d2739dbf04a5f14a4b6483b8378c6dff37ae8e20b5eb5574ded5eb",
+      "compressed_sha256": "d8e87deb80a1ba611305bf53fea7d3461aa7d8845e98c7745c517acba99e291b",
+      "purpose": "Before corrections; failed tests retained as evidence.",
+      "pytest_summary": "================== 2 failed, 171 passed, 4 warnings in 21.05s =================="
+    },
+    {
+      "name": "expanded-blcs",
+      "log": "expanded-blcs.log.gz",
+      "source_log": "/tmp/i1044-cleanup-blcs-final.log",
+      "uncompressed_sha256": "aee4176c8b9c296839d171024397bea435d55817ead098f5117c18b27978dbe4",
+      "compressed_sha256": "729a92cb18d99b2f4703aee52224973a3943310da2736e5cf84c84d64ffd6869",
+      "purpose": "Before corrections; failed tests retained as evidence.",
+      "pytest_summary": "============ 4 failed, 181 passed, 4 skipped, 4 warnings in 22.21s ============="
+    },
+    {
+      "name": "corrected-targets",
+      "log": "corrected-targets.log.gz",
+      "source_log": "/tmp/i1044-cleanup-corrected-tests.log",
+      "uncompressed_sha256": "7436b3091f4dcca2acc833032a62c5239697f6c1dfdfa2bc8fbcefe2e41b3c19",
+      "compressed_sha256": "aec972b06fbe99045a2e00f62cccd9bd3cdf6420d637857b61b72d2f5423e887",
+      "purpose": "Corrected ablation CLI, UI service and loss suite.",
+      "pytest_summary": "================== 35 passed, 4 skipped in 208.27s (0:03:28) ==================="
+    },
+    {
+      "name": "curated-checkpoint",
+      "log": "curated-checkpoint.log.gz",
+      "source_log": "/tmp/i1044-curated-checkpoint-load.log",
+      "uncompressed_sha256": "207cd4f72963335eecaf5966ddc1507a8fc615344434379ebe4e01d2c2e44f8d",
+      "compressed_sha256": "e3c5abe0dad9adf007199addd57d933eeeb82160d271c778aa5235a5e415b24d",
+      "purpose": "Final curated-checkpoint local_data strict restore test.",
+      "pytest_summary": "============================== 1 passed in 15.79s =============================="
+    },
+    {
+      "name": "configuration-boundaries",
+      "log": "configuration-boundaries.log.gz",
+      "source_log": "/tmp/i1044-cleanup-boundaries.log",
+      "uncompressed_sha256": "fb9cc440b9e37bb00e1c2beaf0caa0383bad3c28b68aa89260dc2ea762627c72",
+      "compressed_sha256": "23fd9f95d1163417ea9e81ca6009dda344f7eaa3f9a7a2556f9cb16f4bd9e61c",
+      "purpose": "Configuration and architecture boundary suites.",
+      "pytest_summary": "======================= 402 passed in 249.17s (0:04:09) ========================"
+    }
+  ],
+  "lint_and_typing": "ruff and mypy passed, including the code commit pre-commit hooks",
+  "interpretation": "Suites overlap; counts must not be summed. Earlier failures were corrected and the affected suites rerun. CI is recorded on the PR head separately."
+}

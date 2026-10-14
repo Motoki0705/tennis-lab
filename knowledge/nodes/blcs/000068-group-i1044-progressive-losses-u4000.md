@@ -63,7 +63,7 @@ relations:
 
 同じデータ・入力・backbone・更新予算で比較すると、候補Bの直接座標は主対照より3seedすべてでtest軌道RMSEが小さかった。一方、損失を一つずつ増やすほど全軸が改善する結果ではなかった。rollout位置だけの追加はseed42の位置RMSEを悪化させ、Bの積分出力は直接座標より大きく外れた。採用基準はユーザー指定で設けておらず、この結果から方式や本番checkpointを自動採用しない。
 
-評価条件は[学習前に固定したプロトコル](../../../src/tasks/blcs/experiments/README.md)。各4,000 optimizer updatesの短予算で、seed42の6条件と、validationだけで選んだB・主対照のseed43/44を計10run実施した。初回CUDA中断3件は失敗ノードに保存し、同seed・同設定で最初から再試行した。失敗を成功10件に含めず、途中checkpointを引き継いでいない。
+評価条件は[学習前に固定したプロトコル](../../runs/group-i1044-progressive-losses-u4000/protocol.md)。各4,000 optimizer updatesの短予算で、seed42の6条件と、validationだけで選んだB・主対照のseed43/44を計10run実施した。初回CUDA中断3件は失敗ノードに保存し、同seed・同設定で最初から再試行した。失敗を成功10件に含めず、途中checkpointを引き継いでいない。
 
 trainは800scene中128frame以上の715sceneからランダム窓、validationは100sceneの固定中心128frame（短いものは全長）、testは全100scene・35,704frameを非重複128frame窓で推論し連結して評価した。カメラ抽選と欠損条件は全比較で固定。主指標は有効全frameの3D軌道RMSE[m]で、以下はすべてtestの値である。mean±SDはseedごとの値の算術平均±標本SDであり、独立したtest集合や信頼区間ではない。保存・再計算・ハッシュ照合は[最終評価run](000067-run-i1044-final-evaluation.md)に集約した。
 
@@ -154,3 +154,8 @@ GT自己評価のrolloutは位置3.78e-7 m・速度4.36e-7 m/s。ジッターは
 出力勾配は200更新ごとにraw/weightedの両方を記録した。600更新以降の記録点で、各新損失が依存する出力へのweighted勾配は有限・非ゼロだった。依存しない出力の勾配は0であり、異常と扱わない。rollout位置のxyz勾配は後半に位置教師と同程度以上になる一方、Bの再構成→parameter勾配は数桁小さい。これは出力に対するL2で、trunkの勾配競合や損失間の角度を測ったものではない。[重み付き出力勾配](../../runs/run-i1044-final-evaluation/report/weighted_output_gradients.png)、[学習曲線](../../runs/run-i1044-final-evaluation/report/validation_learning.png)と個別runのscalarが根拠。
 
 次の検証候補は、窓の重複/結合による連続性を同じ推論条件で比較すること、長い同予算でA/B/主対照を追加seed確認すること、Bのheadと個々の補助損失を分離すること、独立した実3D/校正データで一般化を調べること。今回はこれらを追加実行していない。短予算の今回結果はB直接出力の改善を観測する材料となったが、全軸の優位・積分出力の採用・実運用での最適性は未実証のままである。
+
+
+選定済み10 checkpointは2026-10-14にworktree外の `/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/` へコピーし、全6,235,579,406 bytesを元receiptのSHA-256と照合した。[保存先台帳](../../runs/group-i1044-progressive-losses-u4000/checkpoint-storage.json)に元path・新path・size・hashを記録し、各runノードのcheckpoint参照も更新した。新しい保存先の`selection.json`はpathだけを移した別receiptであり、knowledge内の元receipt・rawログ・repro・評価値は変更していない。
+
+固定10runの追加seed・一括評価・report controllerは実行時commitに保存し、常設コードから除去した。[学習前固定プロトコル](../../runs/group-i1044-progressive-losses-u4000/protocol.md)と各runのreproが当時の入口を保持する。現行の学習・単独評価・保存再計算は[ablation](../../../src/tasks/blcs/ablation/README.md)に置く。この構造整理で再学習・方式再選択・testの再選定は行っていない。

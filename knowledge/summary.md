@@ -1,4 +1,4 @@
-<!-- knowledge-review: 6ea56d1f9b4a26eb6abc63053340c74a89fd5bb887cc61039ea048a63ac02f9d on 2026-10-14 -->
+<!-- knowledge-review: df1bcfc8812d20cf8b0f3788179e9ef9a91a5c1e07c1a2bfab452e6e80e0ff04 on 2026-10-14 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-14（BLCS #1044の10run学習と全長評価を記録。Court #983の比較記録を保持）
@@ -451,6 +451,8 @@ reprojection lossは一方向な改善ではありません。[`group-plcs-multi
 camera-view v2のreference selectorも決着していません。PLCSではreferenceがpositionとID switchesで良い一方、selector-zeroがY-sign、heading、presenceで良く、指標ごとに優位が逆転しました。このselector比較単独ではv1からの移行根拠になりません。2026-09-21のpipelineは上記の入力契約移行によりv2へ変更しています。
 
 ### BLCS
+
+2026-10-14の[既存BLCS checkpoint metadata移行](nodes/blcs/000069-run-blcs-inference-checkpoint-migration.md)では、旧本番重みの131 tensorを変更せず、モデル設定を明示した別artifactを作成した。旧・新の公開推論APIによる固定CPU入力の位置出力差は0 m。通常推論を学習用loss／metrics schemaから分離し、未移行artifactはUIで理由付き拒否する。新損失の採用は保留し、標準objectiveは従来どおり、新物理損失はopt-inとした。今回の10runの科学的結論と採用保留は変わらない。選定済み10重みはworktree外へコピーし元SHAと照合した（[台帳](runs/group-i1044-progressive-losses-u4000/checkpoint-storage.json)）。
 
 2026-10-14、[#1044の段階的損失比較](nodes/blcs/000068-group-i1044-progressive-losses-u4000.md)で10run各4,000更新と最終評価を完了した。位置のみ→clean再投影（既存戦略の主対照）→速度教師→rollout位置→rollout速度（A）→最小物理head等（B）の6条件をseed42で比較し、validationだけでBを選んで主対照とseed43/44を追加した。[事前スモーク・GT自己評価](nodes/blcs/000053-group-i1044-qualification.md)、CUDA中断3試行と同seedの初期化からの再試行を記録し、失敗を成功10runに混ぜていない。testは全100scene・35,704frame、合成16条件と固定Meiji観測12条件を保存し、指標・支持数・nullの再計算照合が成立した。図表16ファイルも保存bundleだけから同一内容で再生成できる。
 
