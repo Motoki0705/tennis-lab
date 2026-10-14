@@ -55,6 +55,8 @@ class Controller:
     def __init__(self, layout: AnnotationLayout, runtime: Runtime) -> None:
         self.layout, self.runtime = layout, runtime
         self.plan = load_plan(verify_reference(layout, runtime.plan))
+        if self.plan.phase == "benchmark" or layout.review_namespace is not None:
+            raise ValueError("benchmark conditions require the dedicated review runner")
         if self.plan.phase == "production":
             from .reviews import require_supported
 

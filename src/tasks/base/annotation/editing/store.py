@@ -18,7 +18,7 @@ from ..contracts import (
     content_digest,
 )
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, load_plan, references
+from ..plan import CampaignPlan, load_plan, references, require_execution_layout
 from ..predictions import PredictionReceipt
 from ..registry import Registry
 from ..storage.catalog import StorageCatalog
@@ -51,6 +51,7 @@ class RevisionStore:
         self, value: ReviewContext, adapter: ReviewAdapter
     ) -> tuple[CampaignPlan, ClipManifest, str]:
         plan = load_plan(verify_reference(self.layout, value.plan))
+        require_execution_layout(self.layout, plan)
         task = next((t for t in plan.tasks if t.task == value.task), None)
         if (
             plan.annotation_root != str(self.layout.root)

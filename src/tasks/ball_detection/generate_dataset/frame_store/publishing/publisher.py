@@ -140,6 +140,8 @@ def _clip_record(added: AdoptedClip, index: int, split: Split) -> dict[str, Any]
 
 class BallPublisher:
     def __init__(self, layout: AnnotationLayout) -> None:
+        if layout.review_namespace is not None:
+            raise ValueError("benchmark review cannot publish datasets")
         self.layout = layout
         self.registry = Registry(layout)
         self.registry.initialize("ball-publications-v1", _SCHEMA)
@@ -147,7 +149,7 @@ class BallPublisher:
 
     def _inputs(self, request: PublishRequest) -> Inputs:
         plan = load_plan(verify_reference(self.layout, request.plan))
-        if plan.annotation_root != str(self.layout.root) or not plan.allows_adoption:
+        if plan.annotation_root != str(self.layout.root) or plan.phase != "production":
             raise ValueError(
                 "ball publication requires a production plan at the fixed root"
             )

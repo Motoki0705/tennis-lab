@@ -16,7 +16,7 @@ class Registry:
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
-        self.layout.root.mkdir(parents=True, exist_ok=True)
+        self.layout.registry.parent.mkdir(parents=True, exist_ok=True)
         database = sqlite3.connect(
             self.layout.registry, timeout=30, isolation_level=None
         )
@@ -34,6 +34,7 @@ class Registry:
 
     def initialize(self, component: str, schema: str) -> None:
         with artifact_lock(self.layout, "registry-schema"):
+            self.layout.registry.parent.mkdir(parents=True, exist_ok=True)
             database = sqlite3.connect(self.layout.registry, timeout=30)
             try:
                 database.execute("PRAGMA journal_mode=WAL")
