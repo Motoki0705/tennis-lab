@@ -70,13 +70,32 @@ def freeze_partition(
     split: Split,
     policy: SelectionPolicy,
 ) -> DatasetPartition:
-    pinned, partition = _support(layout, snapshot, split, policy)
+    partition, membership = describe_partition(layout, snapshot, split, policy)
     reference = write_document(
-        layout,
-        layout.path("campaigns", "player-partitions", partition.sha256 + ".json"),
-        partition,
+        layout, layout.artifact_path(membership.manifest), partition
     )
-    return _membership(pinned, partition, reference)
+    if reference != membership.manifest:
+        raise ValueError("player partition serialization changed")
+    return membership
+
+
+def describe_partition(
+    layout: AnnotationLayout,
+    snapshot: ArtifactRef,
+    split: Split,
+    policy: SelectionPolicy,
+) -> tuple[PlayerPartition, DatasetPartition]:
+    """Compute an expected pin without repairing a missing registered artifact."""
+    pinned, partition = _support(layout, snapshot, split, policy)
+    path = layout.path("campaigns", "player-partitions", partition.sha256 + ".json")
+    payload = partition.canonical_bytes() + b"\n"
+    reference = ArtifactRef(
+        role="annotation",
+        path=path.relative_to(layout.root).as_posix(),
+        digest=hashlib.sha256(payload).hexdigest(),
+        size_bytes=len(payload),
+    )
+    return partition, _membership(pinned, partition, reference)
 
 
 def validate_partition(

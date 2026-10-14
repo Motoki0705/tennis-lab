@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import torch
@@ -22,16 +21,15 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.contracts import ArtifactRef, ModelRef, canonical_bytes
 from src.tasks.base.annotation.learning.contracts import (
-    CampaignCompletion,
     EvaluationReceipt,
     LearningIntent,
     StageInput,
     TrainingReceipt,
 )
-from src.tasks.base.annotation.learning.validation import (
-    check_completion,
-    check_training,
+from src.tasks.base.annotation.learning.execution import (
+    stage_request as shared_stage_request,
 )
+from src.tasks.base.annotation.learning.validation import check_training
 from src.tasks.base.annotation.paths import AnnotationLayout
 
 from .contracts import BallEvaluationMetrics, BallTrainingProvenance
@@ -47,26 +45,7 @@ from .inputs import initialize_parent, output_reference, resolve_inputs, run_roo
 def stage_request(
     layout: AnnotationLayout, reference: ArtifactRef, result: Path
 ) -> tuple[StageInput, LearningIntent]:
-    if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
-        raise ValueError("ball learning requires the supervisor-owned stage input")
-    request = read_document(layout, reference, StageInput)
-    intent = read_document(layout, request.intent, LearningIntent)
-    completion = read_document(layout, intent.completion, CampaignCompletion)
-    plan = check_completion(layout, completion)
-    directory = layout.path(
-        "campaigns",
-        plan.campaign_id,
-        "learning",
-        "ball",
-        request.stage,
-        str(request.attempt),
-    )
-    if (
-        verify_reference(layout, reference) != directory / "request.json"
-        or result != directory / "result.json"
-    ):
-        raise ValueError("ball learning request/result is outside its stage attempt")
-    return request, intent
+    return shared_stage_request(layout, reference, result, task="ball")
 
 
 def execute(
