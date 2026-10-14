@@ -14,6 +14,8 @@ pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使�
 新規clipへの予測案とレビューの接続は [annotation](annotation/README.md) を参照してください。
 追加学習前の既存データ固定とvalidation/testの支持対象は
 [snapshot・固定partition](data/snapshots/README.md)で管理します。
+公開後の追加学習・中断再開・固定validation比較・モデル採否は
+[annotation learning adapter](training/annotation/README.md)を参照してください。
 
 ## 流れ
 
