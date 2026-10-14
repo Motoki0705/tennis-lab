@@ -2,7 +2,7 @@
 name: 研究テーマ
 about: 研究ループのテーマ（親issue）。目標指標・評価条件・停止条件を人間とAIで合意して固定する
 title: "[研究テーマ] "
-labels: ["research"]
+labels: ["type: research"]
 ---
 
 <!--

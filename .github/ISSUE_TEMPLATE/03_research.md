@@ -2,7 +2,7 @@
 name: 調査
 about: 調査、検証、探索的な作業を管理する
 title: "[調査] "
-labels: ["research"]
+labels: ["type: research"]
 ---
 
 ## 概要

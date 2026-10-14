@@ -1,7 +1,7 @@
 # サイクルの回し方
 
 1サイクル＝1子issue。template: [05_research_cycle.md](../../../../.github/ISSUE_TEMPLATE/05_research_cycle.md)
-（タイトル `[研究サイクル] <テーマ名> #<n>: <今回の焦点>`、ラベル `research`）。
+（タイトル `[研究サイクル] <テーマ名> #<n>: <今回の焦点>`、ラベル `type: research`）。
 状態の正本はissueとknowledgeであり、セッションをまたいで再開できるように書く。
 
 ## 0. 開始
@@ -10,7 +10,7 @@
 サイクルissueを作り、テーマのsub-issueとして登録する。
 
 ```bash
-CHILD=$(gh issue create --title "[研究サイクル] ..." --label research --body-file body.md | grep -o '[0-9]*$')
+CHILD=$(gh issue create --title "[研究サイクル] ..." --label "type: research" --body-file body.md | grep -o '[0-9]*$')
 gh api -X POST "repos/{owner}/{repo}/issues/$THEME/sub_issues" \
   -F sub_issue_id="$(gh api "repos/{owner}/{repo}/issues/$CHILD" --jq .id)"
 ```
@@ -64,5 +64,5 @@ ablationを含めるのは、主張する効果がどの要素によるかを分
   無ければ「なし」。週次レポートがこれを集めてskillの改訂を提案する。
 
 停止条件を満たしたら、テーマissueに最終報告（到達点、根拠ノード、残った不確実性、
-未着手の候補）をコメントし、`needs-human` ラベルを付けて止まる。満たしていなければ
+未着手の候補）をコメントし、`status: needs-human` ラベルを付けて止まる。満たしていなければ
 次サイクルへ進む。

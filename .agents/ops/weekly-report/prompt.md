@@ -25,7 +25,7 @@
    - 非効率（開発フロー・学習queue・CI・データ処理の無駄）
    - memoryの陳腐化・削除候補（共有memoryが導入済みなら、反証済み・期限切れ・固定概念化したエントリ）
    - 制御ルールの改訂（AGENTS.md・skill・`.agents/ops/**`・**このプロンプト自体** `.agents/ops/weekly-report/prompt.md`）
-   - `ai-proposed` ラベルissueの整理（重複統合・close候補・優先度づけ）
+   - `by: ai` ラベルissueの整理（重複統合・close候補・優先度づけ）
    - 掃除候補（掃除モジュールの出力があればそれを解釈。未導入ならその旨を踏まえる）
    - 研究の次の一手（`knowledge/` の到達点・保留事項から）
    - その他の能動的な助言

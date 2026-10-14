@@ -20,8 +20,9 @@ from typing import Any
 from . import proposals, shell
 from .shell import CommandError
 
-REPORT_LABEL = "ops-report"
-AI_PROPOSED_LABEL = "ai-proposed"
+# Label names are defined in .github/labels.yml.
+REPORT_LABEL = "type: ops-report"
+AI_PROPOSED_LABEL = "by: ai"
 DEFAULT_PERIOD_DAYS = 7
 CLEANUP_DIR = Path(".agents/ops/cleanup")
 MEMORY_DIR = Path(".agents/memory")

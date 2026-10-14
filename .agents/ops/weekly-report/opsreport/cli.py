@@ -160,6 +160,8 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
     _check_no_same_week_report(
         collected["previous_reports"]["reports"], tag, title, dry_run=args.dry_run
     )
+    if not args.dry_run:
+        triage.require_labels([collect.REPORT_LABEL], repo_root=cfg.repo_root)
 
     stale = report.stale_prs(collected)
     prompt = agent.build_prompt(
@@ -201,9 +203,6 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
         # Another run may have published this week's report while the agent ran.
         _check_no_same_week_report(
             collect.collect_report_history(cfg)["reports"], tag, title, dry_run=False
-        )
-        triage.ensure_labels(
-            [collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False
         )
         url = shell.gh(
             ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),

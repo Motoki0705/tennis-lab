@@ -345,18 +345,31 @@ def test_cleanup_dir_without_entry_point_fails_report(ops_env: Any) -> None:
     assert "no cleanup.py" in result.stderr
 
 
-def test_report_creates_issue_and_label(ops_env: Any) -> None:
+def test_report_creates_labeled_issue(ops_env: Any) -> None:
     result = ops_env.run("report", "--agent", "codex")
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "https://github.com/o/r/issues/100"
     state = ops_env.state
-    assert "ops-report" in state["labels"]
     issue = next(i for i in state["issues"] if i["number"] == 100)
     assert issue["title"] == "週次運用レポート 2026-W42"
-    assert issue["labels"] == ["ops-report"]
+    assert issue["labels"] == ["type: ops-report"]
     assert "agent: `codex`" in issue["body"]
     assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
+
+
+def test_report_without_repo_label_fails_before_agent(ops_env: Any) -> None:
+    state = ops_env.state
+    state["labels"] = ["by: ai"]
+    ops_env.write_state(state)
+
+    result = ops_env.run("report")
+
+    assert result.returncode == 1
+    assert "labels missing in the repo: ['type: ops-report']" in result.stderr
+    assert "scripts/sync_github_labels.py --apply" in result.stderr
+    assert not (ops_env.tmp / "agent_used.txt").exists()
+    assert not any("type: ops-report" in i["labels"] for i in ops_env.state["issues"])
 
 
 def test_second_report_in_same_week_fails_before_agent(ops_env: Any) -> None:
@@ -368,7 +381,7 @@ def test_second_report_in_same_week_fails_before_agent(ops_env: Any) -> None:
     assert result.returncode == 1
     assert "already exists as #100" in result.stderr
     assert not (ops_env.tmp / "agent_used.txt").exists()
-    assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
+    assert sum(1 for i in ops_env.state["issues"] if "type: ops-report" in i["labels"]) == 1
 
 
 def test_renamed_report_still_blocks_same_week(ops_env: Any) -> None:
@@ -395,7 +408,7 @@ def _previous_report(number: int, created_at: str, until: datetime) -> dict[str,
         "number": number,
         "title": "週次運用レポート 2026-W41",
         "body": body,
-        "labels": ["ops-report"],
+        "labels": ["type: ops-report"],
         "state": "CLOSED",
         "createdAt": created_at,
         "updatedAt": created_at,
@@ -484,7 +497,7 @@ def test_agent_gets_facts_it_cannot_fetch(ops_env: Any) -> None:
     fresh = next(p for p in collected["github"]["open_prs"] if p["number"] == 8)
     assert fresh["detail"] is None
     (item,) = collected["github"]["open_issues"]["items"]
-    assert item.startswith("#50 [ai-proposed] 古い提案（")
+    assert item.startswith("#50 [by: ai] 古い提案（")
     assert collected["meta"]["checkout_diff_files"] == ["big.py"]
     assert "1ファイルの内容が異なる" in result.stdout
     prompt = (ops_env.tmp / "prompt_seen.md").read_text(encoding="utf-8")
@@ -523,7 +536,7 @@ def test_concurrent_reports_create_one_issue(ops_env: Any) -> None:
     assert any("report for 2026W42 already exists" in err for _, err in results), (
         results
     )
-    assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
+    assert sum(1 for i in ops_env.state["issues"] if "type: ops-report" in i["labels"]) == 1
 
 
 def _alive(pid: int) -> bool:

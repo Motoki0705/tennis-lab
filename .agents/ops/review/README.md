@@ -22,10 +22,10 @@ PR を作る agent は branch 名に自分の prefix を付ける。
 
 | 作成 agent | branch prefix（主） | ラベル（補助） | レビュー agent |
 |---|---|---|---|
-| Claude | `claude/` | `agent:claude` | Codex |
-| Codex | `codex/` | `agent:codex` | Claude |
+| Claude | `claude/` | `by: claude` | Codex |
+| Codex | `codex/` | `by: codex` | Claude |
 
-- branch prefix が主。prefix を付けられなかった PR は `agent:<name>` ラベルで作成 agent を示せる。
+- branch prefix が主。prefix を付けられなかった PR は `by: <name>` ラベルで作成 agent を示せる。
 - prefix とラベルが食い違う、または両方のラベルが付いている PR はエラー（poll は非ゼロ終了し、その PR には何もしない）。
   黙ってどちらかに寄せない。
 - どちらの手がかりも無い PR（人間が作った PR、`fix/` `refactor/` 等の旧来 branch）は**レビュー対象外**。
@@ -71,7 +71,7 @@ PR を作る agent は branch 名に自分の prefix を付ける。
 （未 merge の親 branch から main へ等）では head が同じでも merge-base と diff が変わるので、どちらも再レビューされる。
 base branch が先へ進んだだけなら merge-base と diff は変わらないので既存レビューを使う。
 
-**ラベルの同期**: `agent-review:changes-requested` は毎 poll、現在の対象に対する判定（既存レビューを含む）に
+**ラベルの同期**: `status: changes-requested` は毎 poll、現在の対象に対する判定（既存レビューを含む）に
 合わせて付け外しする。レビュー投稿後にラベル操作が失敗しても次の poll で直る。
 下記の追補 issue とエスカレーションも、毎 poll コメント上の記録から判定するので同様に再試行される。
 
@@ -97,7 +97,7 @@ base branch が先へ進んだだけなら merge-base と diff は変わらな�
 | 判定 | 条件 | 動作 |
 |---|---|---|
 | `merge` | 下の阻害要因が無く（レビューは通過）、共有基盤にも触れない | `AGENT_AUTO_MERGE=1` なら `gh pr merge --merge --match-head-commit <head>`（repo 慣例の merge commit）。無効時は「merge してよい状態」とコメントするだけ |
-| `needs_human` | 阻害要因は無いが共有基盤に触れる | `needs-human` ラベル＋該当ファイルを列挙したコメント。merge しない |
+| `needs_human` | 阻害要因は無いが共有基盤に触れる | `status: needs-human` ラベル＋該当ファイルを列挙したコメント。merge しない |
 | `blocked` | 阻害要因が 1 つ以上ある | merge しない |
 
 阻害要因（理由コード）:
@@ -118,7 +118,7 @@ base branch が先へ進んだだけなら merge-base と diff は変わらな�
 
 ### 軽微指摘の追補 issue
 
-通過したレビューに minor/nit の指摘があれば、PR head ごとに 1 件、`ai-proposed` ラベルの issue
+通過したレビューに minor/nit の指摘があれば、PR head ごとに 1 件、`by: ai`・`type: followup` ラベルの issue
 `[追補] PR #<N> のレビュー軽微指摘` を起票する（本文に `path:line` 付きの指摘とレビューコメントへのリンク）。
 本文先頭のマーカー `<!-- agent-review-followup:v1 pr=<N> sha=<head> -->` で、poll を実行するアカウントが
 起票した同じ PR・head の issue が（close 済みも含め）あれば再起票しない。同じ head が base の付け替えなどで
@@ -130,7 +130,7 @@ dry-run では起票しない。
 ### request_changes の連続（エスカレーション）
 
 逆 agent のレビュー（poll アカウントのマーカー）を投稿順に見て、head をまたいで連続した `request_changes` が
-3 回に達したら、`needs-human` ラベルを付けて「人間の判断が必要」とコメントする（マーカー
+3 回に達したら、`status: needs-human` ラベルを付けて「人間の判断が必要」とコメントする（マーカー
 `<!-- agent-review-escalation:v1 sha=... base=... diff=... -->` は連続の最初のレビューを指し、1 つの連続につき 1 回）。
 gate は `request_changes` のあいだ blocked のまま。通過したレビューで連続は 0 に戻る。blocker/major を含む
 `comment` は連続を伸ばしも戻しもしない。
@@ -146,13 +146,13 @@ gate コメントにもマーカー `<!-- agent-merge-gate:v2 sha=... base=... d
 
 ## request_changes の後（v1）
 
-v1 では `agent-review:changes-requested` ラベルとレビューコメントを付けるところまで。作成 agent や人間が
+v1 では `status: changes-requested` ラベルとレビューコメントを付けるところまで。作成 agent や人間が
 修正を push すると新しい head を再レビューし、`request_changes` 以外ならラベルを外す（上記「ラベルの同期」）。
 3 回連続した場合は上記のエスカレーションで人間に渡す。
 
 将来の拡張点: ラベルの付いた PR を作成 agent に差し戻す（`agent_exec.sh --mode write` で PR branch の
 worktree を作り、レビューコメントを入力に修正 commit を push させる）。差し戻し回数の上限と、
-上限到達時の `needs-human` 化を同時に決めること。
+上限到達時の `status: needs-human` 化を同時に決めること。
 
 ## 実行
 
@@ -164,9 +164,9 @@ worktree を作り、レビューコメントを入力に修正 commit を push 
 .venv/bin/python .agents/ops/review/cross_review.py
 ```
 
-- 必要なラベル: `needs-human`、`agent-review:changes-requested`、`ai-proposed`（判別用に `agent:claude`、`agent:codex` も）。
-  書き込みを伴う実行は前 3 つが repo に無いと開始前にエラーになる。
-  `gh label create agent-review:changes-requested --color FBCA04 --description "クロスレビューが修正を要求"` 等で作る。
+- 必要なラベル: `status: needs-human`、`status: changes-requested`、`by: ai`、`type: followup`（判別用に `by: claude`、`by: codex` も）。
+  書き込みを伴う実行は前 4 つが repo に無いと開始前にエラーになる。
+  ラベルは [.github/labels.yml](../../../.github/labels.yml) が正本で、`scripts/sync_github_labels.py --apply` で作る。
 - ログ・成果物: `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/review/runs/<UTC時刻>-pr<N>-<head12>-<merge-base12>-<一意suffix>/`
   に `prompt.md`、`agent_output.md`（生出力）、`review.json`、`review_comment.md`、agent_exec のログを残す。
 - 多重起動防止: state dir の `poll.lock` を flock で取り、取れなければ終了コード 75（unit は成功扱い）。

@@ -58,7 +58,8 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 ## GitHub運用ルール（初版）
 
-- **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。AIが起票したissueには `ai-proposed` ラベルを付ける。週次レポートで人間が整理する。
+- **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。AIが起票したissueには `by: ai` ラベルを付ける。週次レポートで人間が整理する。
+- **ラベル**: 名前は `<軸>: <値>` で、軸は `type`（種別）・`area`（領域）・`status`（対応待ち）・`by`（作成者）。一覧と意味の正本は [.github/labels.yml](../.github/labels.yml)、反映は `scripts/sync_github_labels.py --apply`（既定はdry-run）。issueの `type:` はタイトルprefix（`[バグ]` `[機能]` `[調査]` `[追補]` など）から自動で付き、`area:` は起票者が手で付ける。PRの `area:` は変更ファイルから自動で付く。
 - **担当の排他**: 仕組みは作らない（衝突は今の痛みではない）。問題が観測されたら週次レポートで見直す。
 - **放置PR**: N日動きのないPRは、週次レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。

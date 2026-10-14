@@ -1,4 +1,5 @@
-dependencies:
+# PRの領域（area:）を変更ファイルのパスから付ける。ラベルの正本は .github/labels.yml。
+"area: dependencies":
   - changed-files:
       - any-glob-to-any-file:
           - ".github/dependabot.yml"
@@ -7,63 +8,63 @@ dependencies:
           - "uv.lock"
           - "third_party/**"
 
-third-party:
+"area: third-party":
   - changed-files:
       - any-glob-to-any-file:
           - ".gitmodules"
           - "third_party/**"
           - "src/submodules/vendor/**"
 
-ci:
+"area: ci":
   - changed-files:
       - any-glob-to-any-file:
           - ".github/workflows/**"
           - ".pre-commit-config.yaml"
 
-documentation:
+"area: docs":
   - changed-files:
       - any-glob-to-any-file:
           - "**/*.md"
           - "docs/**"
 
-tests:
+"area: tests":
   - changed-files:
       - any-glob-to-any-file: "tests/**"
 
-research:
+"area: knowledge":
   - changed-files:
       - any-glob-to-any-file:
           - "experiments/**"
           - "knowledge/**"
 
-"module: base":
+"area: base":
   - changed-files:
       - any-glob-to-any-file: "src/tasks/base/**"
 
-"module: ball-detection":
+"area: ball-detection":
   - changed-files:
       - any-glob-to-any-file: "src/tasks/ball_detection/**"
 
-"module: court-detection":
+"area: court-detection":
   - changed-files:
       - any-glob-to-any-file: "src/tasks/court_detection/**"
 
-"module: blcs":
+"area: blcs":
   - changed-files:
       - any-glob-to-any-file: "src/tasks/blcs/**"
 
-"module: plcs":
+"area: plcs":
   - changed-files:
       - any-glob-to-any-file: "src/tasks/plcs/**"
 
-"module: submodules":
+"area: submodules":
   - changed-files:
       - any-glob-to-any-file: "src/submodules/**"
 
-"module: synthetic-data":
+"area: synthetic-data":
   - changed-files:
       - any-glob-to-any-file: "src/synthetic_data_generation/**"
 
-"module: tennis-scene":
+"area: tennis-scene":
   - changed-files:
       - any-glob-to-any-file: "src/tennis_scene/**"

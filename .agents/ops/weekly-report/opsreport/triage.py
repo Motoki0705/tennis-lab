@@ -1,4 +1,4 @@
-"""Turn checked proposals of open report issues into ``ai-proposed`` child issues.
+"""Turn checked proposals of open report issues into ``by: ai`` child issues.
 
 Idempotency: a child issue's title starts with ``[<proposal ID>]``. Before creating
 anything we scan every issue title (open and closed), so a re-run -- including one
@@ -48,31 +48,20 @@ def child_marker(pid: str, report_number: int, option: str | None) -> str:
     )
 
 
-LABEL_SPECS: dict[str, tuple[str, str]] = {
-    REPORT_LABEL: ("0E8A16", "週次運用レポート（.agents/ops/weekly-report）"),
-    AI_PROPOSED_LABEL: ("C5DEF5", "AIが起票した提案・派生課題"),
-}
-
-
-def ensure_labels(names: list[str], *, repo_root: Path, dry_run: bool) -> None:
+def require_labels(names: list[str], *, repo_root: Path) -> None:
+    """Fail unless the repo has every label; .github/labels.yml is their source."""
     existing = {
         row["name"]
         for row in shell.gh_list(
             ["label", "list", "--json", "name"], limit=1000, cwd=repo_root
         )
     }
-    for name in names:
-        if name in existing:
-            continue
-        if dry_run:
-            LOG.info("dry-run: would create label %s", name)
-            continue
-        color, description = LABEL_SPECS[name]
-        shell.gh(
-            ["label", "create", name, "--color", color, "--description", description],
-            cwd=repo_root,
+    missing = sorted(set(names) - existing)
+    if missing:
+        raise CommandError(
+            f"labels missing in the repo: {missing};"
+            " run scripts/sync_github_labels.py --apply"
         )
-        LOG.info("created label %s", name)
 
 
 def existing_children(repo_root: Path) -> dict[str, int]:
@@ -198,7 +187,7 @@ def triage(*, repo_root: Path, work_dir: Path, dry_run: bool) -> TriageResult:
     if not reports:
         LOG.info("no open %s issues", REPORT_LABEL)
         return result
-    ensure_labels([AI_PROPOSED_LABEL], repo_root=repo_root, dry_run=dry_run)
+    require_labels([AI_PROPOSED_LABEL], repo_root=repo_root)
     children = existing_children(repo_root)
     for report in sorted(reports, key=lambda r: int(r["number"])):
         try:

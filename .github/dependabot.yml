@@ -23,8 +23,7 @@ updates:
     commit-message:
       prefix: "deps(python)"
     labels:
-      - "dependencies"
-      - "python"
+      - "area: dependencies"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -40,8 +39,8 @@ updates:
     commit-message:
       prefix: "deps(actions)"
     labels:
-      - "dependencies"
-      - "ci"
+      - "area: dependencies"
+      - "area: ci"
 
   # Each submodule is intentionally kept in a separate PR. Updating research
   # code from multiple upstreams together would make regressions hard to bisect.
@@ -55,5 +54,5 @@ updates:
     commit-message:
       prefix: "deps(third-party)"
     labels:
-      - "dependencies"
-      - "third-party"
+      - "area: dependencies"
+      - "area: third-party"

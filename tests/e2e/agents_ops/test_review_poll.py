@@ -20,6 +20,7 @@ BOT = "bot"
 
 FAKE_GH = r"""#!/usr/bin/env python3
 import json, os, sys
+from urllib.parse import unquote
 
 state_path = os.environ["FAKE_GH_STATE"]
 with open(state_path, encoding="utf-8") as fh:
@@ -59,7 +60,10 @@ if args[:2] == ["pr", "view"]:
         save()
     out(view)
 if args[:3] == ["api", "--paginate", "--slurp"] and "/issues?" in args[3]:
-    query = dict(kv.split("=", 1) for kv in args[3].split("?", 1)[1].split("&"))
+    raw = dict(kv.split("=", 1) for kv in args[3].split("?", 1)[1].split("&"))
+    # GitHub needs the label percent-encoded ("by: ai" has a colon and a space).
+    assert not set(raw["labels"]) & set(" :"), raw["labels"]
+    query = {k: unquote(v) for k, v in raw.items()}
     out([[i for i in state["issues"]
           if query["labels"] in i["labels"] and i["user"]["login"] == query["creator"]]])
 if args[:3] == ["api", "--paginate", "--slurp"]:
@@ -82,7 +86,7 @@ if args[:2] == ["issue", "create"]:
         body = fh.read()
     number = len(state["issues"]) + 1
     url = f"https://example.invalid/issues/{number}"
-    state["issues"].append({"number": number, "title": opt("--title"), "labels": [opt("--label")],
+    state["issues"].append({"number": number, "title": opt("--title"), "labels": [a for p, a in zip(args, args[1:]) if p == "--label"],
                             "body": body, "user": {"login": state["login"]}, "html_url": url})
     save()
     print(url)
@@ -202,11 +206,12 @@ class Env:
         self.state: dict[str, Any] = {
             "login": BOT,
             "labels": [
-                "needs-human",
-                "agent-review:changes-requested",
-                "agent:claude",
-                "agent:codex",
-                "ai-proposed",
+                "status: needs-human",
+                "status: changes-requested",
+                "by: claude",
+                "by: codex",
+                "by: ai",
+                "type: followup",
             ],
             "prs": {},
             "comments": {},
@@ -430,20 +435,20 @@ def test_claude_pr_touching_shared_paths_needs_human(env: Env) -> None:
     assert gate.startswith(f"<!-- agent-merge-gate:v2 sha={sha} ")
     assert "decision=needs_human reasons=touches_shared -->" in gate
     assert "`src/utils/u.py`（`src/utils`）" in gate
-    assert "needs-human" in env.labels(8)
+    assert "status: needs-human" in env.labels(8)
     assert "merged" not in env.state
 
 
 def test_label_identifies_author_when_branch_prefix_does_not(env: Env) -> None:
     env.add_pr(
-        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("agent:codex",)
+        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("by: codex",)
     )
 
     result = env.run()
 
     assert result.returncode == 0, result.stderr
     assert [c["agent"] for c in env.agent_calls()] == ["claude"]
-    assert "label `agent:codex`" in env.comments(9)[0]
+    assert "label `by: codex`" in env.comments(9)[0]
 
 
 def test_same_head_sha_is_not_reviewed_twice(env: Env) -> None:
@@ -516,7 +521,7 @@ def test_draft_fork_and_unknown_author_prs_are_skipped(env: Env) -> None:
     env.add_pr(1, "codex/draft", {"src/tasks/blcs/a.py": "1\n"}, draft=True)
     env.add_pr(2, "codex/fork", {"src/tasks/blcs/a.py": "2\n"}, fork=True)
     env.add_pr(
-        3, "refactor/human", {"src/tasks/blcs/a.py": "3\n"}, labels=("documentation",)
+        3, "refactor/human", {"src/tasks/blcs/a.py": "3\n"}, labels=("area: docs",)
     )
 
     result = env.run()
@@ -530,7 +535,7 @@ def test_draft_fork_and_unknown_author_prs_are_skipped(env: Env) -> None:
 
 
 def test_conflicting_author_signals_fail_but_other_prs_proceed(env: Env) -> None:
-    env.add_pr(4, "codex/x", {"src/tasks/blcs/a.py": "4\n"}, labels=("agent:claude",))
+    env.add_pr(4, "codex/x", {"src/tasks/blcs/a.py": "4\n"}, labels=("by: claude",))
     env.add_pr(5, "codex/y", {"src/tasks/blcs/a.py": "5\n"})
 
     result = env.run()
@@ -552,13 +557,13 @@ def test_request_changes_labels_pr_and_blocks_merge(env: Env) -> None:
     assert review.startswith(f"<!-- agent-cross-review:v3 sha={sha} ")
     assert "reviewer=codex verdict=request_changes blocking=1 -->" in review
     assert "**major** `src/tasks/blcs/a.py:1`" in review
-    assert "agent-review:changes-requested" in env.labels(7)
+    assert "status: changes-requested" in env.labels(7)
     assert "merged" not in env.state
 
     env.push_new_head(7, "src/tasks/blcs/a.py", "x = 3\n")
     env.set_review(APPROVE)
     assert env.run().returncode == 0
-    assert "agent-review:changes-requested" not in env.labels(7)
+    assert "status: changes-requested" not in env.labels(7)
 
 
 @pytest.mark.parametrize(
@@ -615,12 +620,12 @@ def test_dry_run_writes_nothing_but_prints_review_and_gate(env: Env) -> None:
 
 def test_missing_repo_labels_fail_before_any_review(env: Env) -> None:
     env.add_pr(7, "codex/feature", {"src/tasks/blcs/a.py": "x = 2\n"})
-    env.state["labels"] = ["needs-human"]
+    env.state["labels"] = ["status: needs-human"]
 
     result = env.run()
 
     assert result.returncode == 2
-    assert "agent-review:changes-requested" in result.stderr
+    assert "status: changes-requested" in result.stderr
     assert env.agent_calls() == []
 
 
@@ -891,13 +896,13 @@ def test_failed_label_update_is_retried_on_the_next_poll(env: Env) -> None:
     assert first.returncode == 1
     assert "label update failed" in first.stderr
     assert len(env.comments(7)) == 1  # the review itself was posted
-    assert "agent-review:changes-requested" not in env.labels(7)
+    assert "status: changes-requested" not in env.labels(7)
 
     second = env.run()
 
     assert second.returncode == 0, second.stderr
     assert len(env.agent_calls()) == 1  # not reviewed again
-    assert "agent-review:changes-requested" in env.labels(7)
+    assert "status: changes-requested" in env.labels(7)
 
 
 def test_stale_changes_requested_label_is_removed_without_a_new_review(
@@ -907,14 +912,14 @@ def test_stale_changes_requested_label_is_removed_without_a_new_review(
         7,
         "codex/feature",
         {"src/tasks/blcs/a.py": "x = 2\n"},
-        labels=("agent-review:changes-requested",),
+        labels=("status: changes-requested",),
     )
     assert env.run(env={"FAKE_GH_FAIL_EDIT": "1"}).returncode == 1
-    assert "agent-review:changes-requested" in env.labels(7)
+    assert "status: changes-requested" in env.labels(7)
 
     assert env.run().returncode == 0
     assert len(env.agent_calls()) == 1
-    assert "agent-review:changes-requested" not in env.labels(7)
+    assert "status: changes-requested" not in env.labels(7)
 
 
 def test_full_diff_is_not_written_through_a_pr_provided_symlink(env: Env) -> None:
@@ -1046,7 +1051,7 @@ def test_comment_with_only_minor_findings_merges_and_files_one_followup(
     review, gate = env.comments(7)
     [issue] = _issues(env)
     assert issue["title"] == "[追補] PR #7 のレビュー軽微指摘"
-    assert issue["labels"] == ["ai-proposed"]
+    assert issue["labels"] == ["by: ai", "type: followup"]
     assert issue["body"].startswith(
         f"<!-- agent-review-followup:v1 pr=7 sha={sha} -->\n"
     )
@@ -1092,7 +1097,7 @@ def test_followup_is_still_filed_for_shared_path_prs_needing_a_human(env: Env) -
 
     assert result.returncode == 0, result.stderr
     assert "gate=needs_human" in result.stderr
-    assert "needs-human" in env.labels(8)
+    assert "status: needs-human" in env.labels(8)
     assert len(_issues(env)) == 1
     assert "merged" not in env.state
 
@@ -1142,8 +1147,8 @@ def test_three_request_changes_in_a_row_escalate_once_per_streak(env: Env) -> No
     [escalation] = _escalations(env, 7)
     assert "人間の判断が必要" in escalation
     assert "3 回連続で request_changes" in escalation
-    assert "needs-human" in env.labels(7)
-    assert "agent-review:changes-requested" in env.labels(7)
+    assert "status: needs-human" in env.labels(7)
+    assert "status: changes-requested" in env.labels(7)
 
     # Same streak: a re-poll and a fourth request_changes do not escalate again.
     assert env.run().returncode == 0
@@ -1190,9 +1195,9 @@ def test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews(
     # A prefix-less PR labelled as Codex's is reviewed by Claude; mid-review it is
     # relabelled as Claude's, which needs a Codex review instead.
     sha = env.add_pr(
-        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("agent:codex",)
+        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("by: codex",)
     )
-    relabel = {"9": {"labels": [{"name": "agent:claude"}]}}
+    relabel = {"9": {"labels": [{"name": "by: claude"}]}}
 
     first = env.run(
         env={"AGENT_AUTO_MERGE": "1", "FAKE_PR_AFTER_REVIEW": json.dumps(relabel)}
@@ -1225,7 +1230,7 @@ def test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews(
     ("labels", "returncode", "message"),
     [
         (
-            [{"name": "agent:codex"}, {"name": "agent:claude"}],
+            [{"name": "by: codex"}, {"name": "by: claude"}],
             1,
             "multiple agent labels",
         ),
@@ -1236,7 +1241,7 @@ def test_author_conflict_or_loss_during_review_blocks_the_gate(
     env: Env, labels: list[dict[str, str]], returncode: int, message: str
 ) -> None:
     env.add_pr(
-        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("agent:codex",)
+        9, "fix/issue-1", {"src/tasks/blcs/a.py": "x = 3\n"}, labels=("by: codex",)
     )
 
     result = env.run(

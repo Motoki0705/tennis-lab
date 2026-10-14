@@ -27,13 +27,14 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from review_policy import (  # noqa: E402
     CHANGES_REQUESTED_LABEL,
     ESCALATION_STREAK,
-    FOLLOWUP_LABEL,
+    FOLLOWUP_LABELS,
     NEEDS_HUMAN_LABEL,
     AuthorConflictError,
     Check,
@@ -286,11 +287,12 @@ class GitHub:
 
     def followup_candidates(self, author: str) -> list[Issue]:
         """Issues (not PRs) with the follow-up label opened by ``author``, any state."""
+        label = quote(FOLLOWUP_LABELS[0], safe="")
         pages = self._json(
             "api",
             "--paginate",
             "--slurp",
-            f"repos/{{owner}}/{{repo}}/issues?labels={FOLLOWUP_LABEL}"
+            f"repos/{{owner}}/{{repo}}/issues?labels={label}"
             f"&state=all&creator={author}&per_page=100",
         )
         return [
@@ -314,10 +316,13 @@ class GitHub:
             cwd=self.repo,
         )  # fmt: skip
 
-    def create_issue(self, number: int, title: str, body: str, label: str) -> str:
+    def create_issue(
+        self, number: int, title: str, body: str, labels: Sequence[str]
+    ) -> str:
         out = run(
             [
-                "gh", "issue", "create", "--title", title, "--label", label,
+                "gh", "issue", "create", "--title", title,
+                *(arg for label in labels for arg in ("--label", label)),
                 "--body-file", str(self._body_file("issue", number, body)),
             ],
             cwd=self.repo,
@@ -802,7 +807,7 @@ def process_pr(
     author_source = (
         f"branch `{pr.head_ref}`"
         if pr.head_ref.startswith(f"{author}/")
-        else f"label `agent:{author}`"
+        else f"label `by: {author}`"
     )
     reviewer = reviewer_for(author)
     comments = gh.comments(number)
@@ -997,7 +1002,7 @@ def ensure_followup_issue(
         pr.number,
         f"[追補] PR #{pr.number} のレビュー軽微指摘",
         format_followup_issue(pr, review),
-        FOLLOWUP_LABEL,
+        FOLLOWUP_LABELS,
     )
     report.note(f"#{pr.number}: filed follow-up issue {url}")
     return url
@@ -1146,7 +1151,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         git = Git(repo, args.remote)
         login = gh.login()
         if not settings.dry_run:
-            required = {NEEDS_HUMAN_LABEL, CHANGES_REQUESTED_LABEL, FOLLOWUP_LABEL}
+            required = {NEEDS_HUMAN_LABEL, CHANGES_REQUESTED_LABEL, *FOLLOWUP_LABELS}
             missing = required - gh.label_names()
             if missing:
                 log.error(

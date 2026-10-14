@@ -2,7 +2,7 @@
 name: バグ報告
 about: 不具合、リグレッション、想定外の挙動を報告する
 title: "[バグ] "
-labels: ["bug"]
+labels: ["type: bug"]
 ---
 
 ## 概要

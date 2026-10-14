@@ -70,7 +70,7 @@ def _observations(c: dict[str, Any]) -> str:
         f"（+{git['lines_added']} / -{git['lines_removed']}行）、merge済みPR {len(gh['merged_prs_in_period'])}件",
         f"- open PR: {len(gh['open_prs'])}件（うち{gh['stale_pr_days']}日以上更新なし"
         f" {sum(1 for p in gh['open_prs'] if p['stale'])}件）",
-        f"- open issue: {gh['open_issues']['total']}件（`ai-proposed` {len(gh['open_issues']['ai_proposed'])}件）",
+        f"- open issue: {gh['open_issues']['total']}件（`by: ai` {len(gh['open_issues']['ai_proposed'])}件）",
         f"- CI（期間内 {ci['total']} run）: "
         + (", ".join(f"{k} {v}" for k, v in ci["by_conclusion"].items()) or "なし"),
         f"- ローカル作業領域: worktree {ws['worktrees']}個、branch {ws['local_branches']}本"
@@ -160,7 +160,7 @@ def render_report(
         )
     header += [
         "- 使い方: 子issue化したい提案にチェックを入れる。選択肢つきの提案は選択肢を**1つだけ**チェックする。"
-        "日次triageが `ai-proposed` の子issueを作成し、該当行の末尾に `→ #番号` を追記する。"
+        "日次triageが `by: ai` の子issueを作成し、該当行の末尾に `→ #番号` を追記する。"
         "不要な提案は放置でよい（このレポートをcloseするとtriage対象外になる）。",
     ]
     body = "\n".join(
