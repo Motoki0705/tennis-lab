@@ -68,6 +68,10 @@ GPU工程はmain repositoryの共有queueに投入する。queue workerの起動
 `submit` して明示的に登録する。モデルを自動選択・初期登録しない。planに固定した
 レビュー方針、公開split、学習recipe、validation、採用条件の仕様は各taskのREADMEを参照する。
 
+保存方式の検証も同じ資源scopeで実行する。`inspect_storage` で既存store全体の参照を固定し、
+`compare_storage` で形式・shard共有・RGB cacheを比較する。操作入力・測定定義は
+[保存比較](../base/annotation/storage/comparison/README.md)を参照する。
+
 ## 画像確認・公開・学習
 
 screen/review workerの画像・編集要求は親controllerへ渡す。親がrequest/attempt/版/区間を

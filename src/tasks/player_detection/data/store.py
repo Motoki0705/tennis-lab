@@ -273,13 +273,17 @@ class PlayerFrameStore:
             self._shards[clip_index] = shard
         return shard
 
-    def read_bgr(self, frame: int) -> NDArray[np.uint8]:
-        """Decode one stored frame as a BGR ``uint8 (H,W,3)`` image."""
+    def read_jpeg(self, frame: int) -> NDArray[np.uint8]:
+        """Expose stored JPEG bytes without decoding or re-encoding them."""
         clip = self.clip_of(frame)
         offset = int(self.frames["offset"][frame])
         length = int(self.frames["length"][frame])
-        encoded = np.asarray(self._shard(clip.index)[offset : offset + length])
-        image = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+        return np.asarray(self._shard(clip.index)[offset : offset + length])
+
+    def read_bgr(self, frame: int) -> NDArray[np.uint8]:
+        """Decode one stored frame as a BGR ``uint8 (H,W,3)`` image."""
+        clip = self.clip_of(frame)
+        image = cv2.imdecode(self.read_jpeg(frame), cv2.IMREAD_COLOR)
         if image is None or image.shape != (clip.height, clip.width, 3):
             raise ValueError(
                 f"Frame {frame} of {clip.clip_id} failed to decode to "
