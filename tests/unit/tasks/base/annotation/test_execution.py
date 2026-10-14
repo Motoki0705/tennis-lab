@@ -138,7 +138,7 @@ def setup(tmp_path: Path) -> tuple[AnnotationLayout, ResourceManager, StageLaunc
 def wait_exit(runner: StageRunner, ref: ArtifactRef) -> dict[str, object]:
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
-        state = runner.status(ref)
+        state: dict[str, object] = runner.status(ref)
         if state["state"] not in {"running", "unfinished", "queued", "draining"}:
             return state
         time.sleep(0.02)
@@ -185,8 +185,10 @@ def test_timeout_reaps_all_operation_descendants(setup: tuple) -> None:
 
 def test_stage_capacity_and_missing_receipt_are_explicit(setup: tuple) -> None:
     layout, manager, launch = setup
+    marker = layout.repository / "operation.pid"
+    code = "import os,sys,time;from pathlib import Path;p=Path(sys.argv[1]);t=p.with_suffix('.pending');t.write_text(str(os.getpid()));t.replace(p);time.sleep(60)"
     launch = launch.model_copy(
-        update={"command": (sys.executable, "-c", "import time;time.sleep(60)")}
+        update={"command": (sys.executable, "-c", code, str(marker))}
     )
     runner = StageRunner(layout)
     first = ArtifactRef.model_validate(runner.submit(launch)["launch"])
@@ -196,20 +198,29 @@ def test_stage_capacity_and_missing_receipt_are_explicit(setup: tuple) -> None:
     with pytest.raises(CapacityUnavailable):
         runner.submit(second)
     process = runner.children[first.digest]
-    # The subprocess has not started its operation until owner.json is published.
-    owner_path = stage_directory(layout, launch) / "owner.json"
-    deadline = time.monotonic() + 5
-    while not owner_path.exists() and time.monotonic() < deadline:
-        time.sleep(0.02)
     snap = process_snapshot(process.pid)
     assert snap is not None
     from src.tasks.base.annotation.workers.processes import signal_owned
 
-    signal_owned(snap[0], signal.SIGKILL)
-    process.wait(timeout=5)
+    try:
+        # owner.json precedes Popen: wait for the operation itself to acknowledge
+        # startup so the kill snapshot cannot miss a concurrently spawned child.
+        deadline = time.monotonic() + 5
+        while not marker.exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert marker.exists()
+        operation = process_snapshot(int(marker.read_text()))
+        assert operation is not None and operation[0] in owned_members(snap[0])
+    finally:
+        signal_owned(snap[0], signal.SIGKILL)
+        process.wait(timeout=5)
+    # wait() reaps only the supervisor, not its separately killed child.
+    deadline = time.monotonic() + 5
+    while owned_members(snap[0]) and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert not owned_members(snap[0])
     assert wait_exit(runner, first)["state"] == "failed"
     assert StageRunner(layout).status(first)["state"] == "interrupted"
-    assert not owned_members(snap[0])
     assert manager.sample().gpu_charged_seconds == 0
 
 
