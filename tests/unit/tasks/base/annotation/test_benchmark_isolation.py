@@ -369,6 +369,9 @@ class _Worker:
 def test_same_subject_conditions_use_distinct_shared_resource_requests(
     setup: Setup, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The full-suite pytest process is not part of this synthetic workload.
+    # Supervisor/child ownership and their real PSS measurements remain active.
+    monkeypatch.setattr(ResourceManager, "observe", lambda self, pid: None)
     monkeypatch.setattr(
         "src.tasks.base.annotation.resources.scheduler.gpu_usage",
         lambda _pids: GPUUsage(
