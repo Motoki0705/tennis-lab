@@ -28,14 +28,15 @@ def verify_reference(layout: AnnotationLayout, reference: ArtifactRef) -> Path:
 
 def annotation_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
     relative = path.relative_to(layout.root).as_posix()
+    layout.artifact_path(
+        ArtifactRef(role="annotation", path=relative, digest="0" * 64, size_bytes=0)
+    )
     reference = ArtifactRef(
         role="annotation",
         path=relative,
         digest=file_digest(path),
         size_bytes=path.stat().st_size,
     )
-    # Validate the boundary and symlink policy even for a newly-created file.
-    layout.artifact_path(reference)
     return reference
 
 

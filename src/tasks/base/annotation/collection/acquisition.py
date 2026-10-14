@@ -58,6 +58,8 @@ def acquire_source(
                     "download metadata differs from canonical video/channel identity"
                 )
         digest = file_digest(media)
+        if candidate.local_media is not None and digest != candidate.local_media.digest:
+            raise ValueError("local source changed while copying the pinned input")
         blob = layout.path("sources", "blobs", digest)
         with artifact_lock(layout, "source-content-" + digest):
             blob.parent.mkdir(parents=True, exist_ok=True)
