@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
@@ -20,6 +23,12 @@ from src.tasks.ball_detection.training.runtime.images import (
     coordinate_batches,
     prediction_batch,
 )
+
+
+def frame_membership_sha256(keys: Iterable[tuple[int, str, int]]) -> str:
+    """Identity of the exact FPS/clip/frame set, independent of predictions/order."""
+    payload = json.dumps(sorted(set(keys)), separators=(",", ":")).encode()
+    return hashlib.sha256(b"mdd-evaluation-frame-membership.v1\n" + payload).hexdigest()
 
 
 class CoordinateMetrics:
@@ -64,6 +73,7 @@ class CoordinateMetrics:
             if len(values):
                 means.append(group["mean_error_px"])
         return dict(by_frame_step=groups, frame_fps_pairs=len(rows),
+                    membership_sha256=frame_membership_sha256(key for key, _ in rows),
                     unique_observed_frames=len({key[1:] for key, _ in rows}),
                     macro_mean_error_px=float(np.mean(means)) if len(means) == len(self.frame_steps) else None)
 

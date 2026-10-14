@@ -76,6 +76,12 @@ validationは同じclip/frame/FPSを窓中心に近い予測で一度採点し�
 Commonはpose側とGT/split等のidentityが一致するsubset、Fullは全validation。
 FPSごとの平均source-pixel誤差を等重み平均し、事後学習のbestはclean Commonで選ぶ。testは使わない。
 
+`evaluation/fixed_validation.py`は採用MDDと候補の学習manifestが異なる場合も、同じ固定validation loader、
+decoder・precision・compile設定で比較する。採点するFPS/clip/frame集合を教師maskから事前計算し、
+両モデルの実採点集合hashと支持数を照合する。全scope/FPSに教師が必要で、欠測を別scopeで代用しない。
+比較artifactには両checkpoint/state hash・各学習manifest hash・固定validation hash・runtime・
+Common/Full/source別指標と候補−baseline差を保存する。この比較API自体は採用閾値を持たない。
+
 人工遮蔽でも既知GTは維持する。camera拡張はRGBとGTへ同じ2D affineを適用し、画面外GTを除く。
 設定の正本は`configs/augmentation/mdd_posttraining.yaml`。epoch/窓/FPS/seedで変換を固定する。
 最終bestにはcamera/occlusion/combinedのstressを別集計し、人工遮蔽点だけの指標を分ける。
