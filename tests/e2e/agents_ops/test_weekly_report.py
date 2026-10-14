@@ -359,6 +359,24 @@ def test_report_creates_issue_and_label(ops_env: Any) -> None:
     assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
 
 
+def test_report_with_relative_log_dir_from_another_directory(ops_env: Any) -> None:
+    caller = ops_env.tmp / "caller"
+    caller.mkdir()
+
+    result = ops_env.run("report", "--log-dir", "relative logs", cwd=caller)
+
+    assert result.returncode == 0, result.stderr
+    (run_dir,) = (caller / "relative logs").iterdir()
+    issue = next(i for i in ops_env.state["issues"] if "ops-report" in i["labels"])
+    assert (run_dir / "report.md").read_text(encoding="utf-8") == issue["body"]
+    assert (run_dir / "prompt.md").read_text(encoding="utf-8") == (
+        ops_env.tmp / "prompt_seen.md"
+    ).read_text(encoding="utf-8")
+    for name in ("run.log", "collected.json", "agent_output.md", "result.json"):
+        assert (run_dir / name).is_file(), name
+    assert not (ops_env.repo / "relative logs").exists()
+
+
 def test_second_report_in_same_week_fails_before_agent(ops_env: Any) -> None:
     assert ops_env.run("report").returncode == 0
     (ops_env.tmp / "agent_used.txt").unlink()
@@ -490,6 +508,48 @@ def test_agent_gets_facts_it_cannot_fetch(ops_env: Any) -> None:
     prompt = (ops_env.tmp / "prompt_seen.md").read_text(encoding="utf-8")
     assert "CONFLICTING" in prompt
     assert "`git` / `gh` / ネットワークは使えない" in prompt
+
+
+@pytest.mark.parametrize("include_untracked", [True, False])
+def test_checkout_diff_includes_only_nonignored_untracked_files(
+    ops_env: Any, include_untracked: bool
+) -> None:
+    (ops_env.repo / ".gitignore").write_text("ignored/\n", encoding="utf-8")
+    _git(ops_env.repo, "add", ".gitignore")
+    _git(
+        ops_env.repo,
+        "-c", "user.name=t", "-c", "user.email=t@example.com",
+        "commit", "-q", "-m", "検証用ファイルの無視設定",
+    )  # fmt: skip
+    ignored = ops_env.repo / "ignored"
+    ignored.mkdir()
+    (ignored / "local.py").write_text("# ignored\n", encoding="utf-8")
+    paths = (
+        [".agents/memory/新規メモ.md", "src/new helper.py"] if include_untracked else []
+    )
+    for rel in paths:
+        path = ops_env.repo / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# checkout only\n", encoding="utf-8")
+
+    result = ops_env.run("report", "--dry-run")
+
+    assert result.returncode == 0, result.stderr
+    (run_dir,) = ops_env.run_dirs()
+    collected = json.loads((run_dir / "collected.json").read_text(encoding="utf-8"))
+    meta = collected["meta"]
+    assert meta["checkout_matches_base"]
+    assert meta["checkout_diff_files"] == paths
+    assert meta["checkout_diff_files_total"] == len(paths)
+    assert meta["checkout_modified_files"] == len(paths)
+    assert ("**注意**" in result.stdout) == include_untracked
+    prompt = (ops_env.tmp / "prompt_seen.md").read_text(encoding="utf-8")
+    assert "ignored/local.py" not in prompt
+    if include_untracked:
+        assert "未commitの変更 2件" in result.stdout
+        assert "2ファイルの内容が異なる" in result.stdout
+        assert collected["memory"]["entries_total"] == 1
+        assert all(path in prompt for path in paths)
 
 
 def test_agent_text_cannot_forge_selectable_items(
