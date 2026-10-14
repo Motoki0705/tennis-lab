@@ -21,7 +21,9 @@ from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan, references
 from ..predictions import PredictionReceipt
 from ..registry import Registry
+from ..storage.catalog import StorageCatalog
 from .contracts import EditCommand, EditReceipt, ReviewAdapter, ReviewContext, Revision
+from .storage import retained_adoption
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS annotation_revision_heads (
@@ -43,6 +45,7 @@ class RevisionStore:
         self.layout = layout
         self.registry = Registry(layout)
         self.registry.initialize("annotation-revisions-v1", _SCHEMA)
+        self.catalog = StorageCatalog(layout)
 
     def context(
         self, value: ReviewContext, adapter: ReviewAdapter
@@ -302,6 +305,7 @@ class RevisionStore:
         for ref in (*references(receipt), *references(evidence)):
             verify_reference(self.layout, ref)
         adapter.validate_adoption(self.layout, context, manifest, revision_ref, receipt)
+        retained = retained_adoption(self.layout, revision_ref, adoption_ref, adapter)
         with artifact_lock(self.layout, "review-" + key, blocking=False):
             head, old = self._head(key, revision.context)
             if head != revision_ref or (old is not None and old != adoption_ref):
@@ -309,6 +313,7 @@ class RevisionStore:
                     "adoption conflicts with the current revision or receipt"
                 )
             with self.registry.transaction() as db:
+                self.catalog.protect(retained, database=db)
                 db.execute(
                     "UPDATE annotation_revision_heads SET adoption=? WHERE id=?",
                     (adoption_ref.model_dump_json(), key),

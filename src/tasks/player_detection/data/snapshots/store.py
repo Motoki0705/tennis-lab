@@ -21,6 +21,8 @@ from src.tasks.base.annotation.contracts import (
     content_digest,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.storage.catalog import StorageCatalog
+from src.tasks.base.annotation.storage.references import protection
 
 from ..store import (
     INDEX_FILE,
@@ -202,5 +204,15 @@ def freeze_existing_store(
             "campaigns", "imported-player-snapshots", snapshot.sha256 + ".json"
         ),
         snapshot,
+    )
+    StorageCatalog(layout).protect(
+        protection(
+            layout,
+            identity="snapshot-v1-" + result.digest,
+            kind="publication",
+            reason="explicitly frozen player baseline and every native store file",
+            roots=(result,),
+            documents=(snapshot,),
+        )
     )
     return result
