@@ -32,8 +32,9 @@ NHT_TINYCUDANN_REQUIREMENT = (
     "@749dd70c5afc5a9dadb85e5652ed65d55e0ba187#subdirectory=bindings/torch"
 )
 DEFAULT_BASE = "origin/main"
-DEFAULT_LINT_PATHS = ("src", "tests", ".spin")
-DEFAULT_TYPECHECK_PATHS = ("src", "tests", ".spin/cmds.py")
+DRIVE_SCRIPTS_PATH = ".agents/skills/tennis-drive/scripts"
+DEFAULT_LINT_PATHS = ("src", "tests", ".spin", DRIVE_SCRIPTS_PATH)
+DEFAULT_TYPECHECK_PATHS = ("src", "tests", ".spin/cmds.py", DRIVE_SCRIPTS_PATH)
 CI_MARKER_EXPRESSION = "not local_data and not cuda"
 PYTHON_SUFFIXES = frozenset({".py", ".pyi"})
 
@@ -423,7 +424,7 @@ def setup_nht(with_sfm_learned: bool) -> None:
     type=click.Path(exists=True, path_type=Path),
 )
 def lint(fix: bool, changed: bool, base: str, paths: tuple[Path, ...]) -> None:
-    """Run Ruff on the source, tests, and developer commands."""
+    """Run Ruff on the source, tests, developer commands, and Drive skill."""
     if changed and paths:
         raise click.UsageError("PATHS and --changed cannot be used together.")
     selected = (

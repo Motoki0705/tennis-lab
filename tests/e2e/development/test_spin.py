@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+
+import pytest
+import yaml
+from click.testing import CliRunner
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -125,6 +131,40 @@ def test_typecheck_can_check_an_explicit_path() -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Success: no issues found" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("name", "arguments"), [("lint", []), ("typecheck", ["--all"])]
+)
+def test_default_checks_include_drive_skill_scripts(
+    monkeypatch: pytest.MonkeyPatch, name: str, arguments: list[str]
+) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "project_spin", REPO_ROOT / ".spin/cmds.py"
+    )
+    assert spec is not None and spec.loader is not None
+    commands = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(commands)
+    invocations: list[list[str]] = []
+    monkeypatch.setattr(
+        commands, "_run", lambda command: invocations.append(list(command))
+    )
+    result = CliRunner().invoke(getattr(commands, name), arguments)
+    assert result.exit_code == 0, result.output
+    assert len(invocations) == 1
+    assert ".agents/skills/tennis-drive/scripts" in invocations[0]
+
+
+def test_precommit_checks_drive_skill_python_files() -> None:
+    config = yaml.safe_load((REPO_ROOT / ".pre-commit-config.yaml").read_text())
+    hooks = {hook["id"]: hook for repo in config["repos"] for hook in repo["hooks"]}
+    scripts = list((REPO_ROOT / ".agents/skills/tennis-drive/scripts").glob("*.py"))
+    assert scripts
+    for hook_id in ("ruff", "mypy"):
+        for script in scripts:
+            assert re.match(
+                hooks[hook_id]["files"], script.relative_to(REPO_ROOT).as_posix()
+            )
 
 
 def test_changed_mode_rejects_an_unknown_git_base() -> None:

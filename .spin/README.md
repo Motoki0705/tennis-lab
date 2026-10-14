@@ -35,7 +35,7 @@ editable installする。production SfMの任意retry backendも用意する場�
 |---|---|
 | `spin doctor [--strict]` | Python、`.venv`、lockfile、主要 CLI、submodule を診断する。通常は任意機能の不足を警告し、`--strict` では警告も失敗にする |
 | `spin setup-nht [--with-sfm-learned]` | NHT submoduleを固定commitへ更新し、`nht-reconstruct`と`nht-render`を独立した`uv tool`環境へインストールする |
-| `spin lint [--fix] [PATHS...]` | `src/`, `tests/`, `.spin/` を Ruff で検査する。`--changed --base <ref>` で差分だけを検査できる |
+| `spin lint [--fix] [PATHS...]` | `src/`, `tests/`, `.spin/`, Driveスキルの `scripts/` を Ruff で検査する。`--changed --base <ref>` で差分だけを検査できる |
 | `spin typecheck [PATHS...]` | 既定では `origin/main` との差分だけを mypy で検査する。`--all` で全体を検査する |
 | `spin test [PYTEST_ARGS...]` | `local_data` / `cuda` marker を除外して pytest を実行する。`--all`, `--coverage`, `--serial` を利用できる |
 | `spin setup [--no-hooks]` | `uv sync --locked` と pre-commit hook の導入を行う |
@@ -76,6 +76,7 @@ GPU環境へ戻す場合は`uv sync --locked`を実行する。
 `typecheck` が差分を既定とするのは、リポジトリ全体には段階的に解消中の
 既存 mypy error があるためである。対象 ref が存在しない場合は暗黙に別の ref へ
 切り替えず失敗するので、`git fetch origin main` または `--base <ref>` で明示する。
+Driveスキルの `scripts/` も差分検査と `--all` の対象に含め、pre-commitでも検査する。
 
 ## PyTorch の `.spin` から採用しなかったもの
 
