@@ -217,33 +217,6 @@ class BallPredictionAdapter:
         manifest: ClipManifest,
         result: ArtifactRef,
     ) -> None:
-        document = read_document(layout, result, BallPredictions)
-        config = read_document(layout, context.configuration, MDDInferenceConfig)
-        owners = window_owners(len(manifest.frames), config.stride)
-        if document.context_digest != context.sha256 or len(document.rows) != len(
-            manifest.frames
-        ):
-            raise ValueError(
-                "ball prediction source/config/frame count differs from its request"
-            )
-        for row, frame, owner in zip(
-            document.rows, manifest.frames, owners, strict=True
-        ):
-            if (
-                row.frame_index,
-                row.source_frame_index,
-                row.source_pts,
-                row.clip_pts,
-                row.window_start,
-            ) != (
-                frame.frame_index,
-                frame.source_frame_index,
-                frame.source_pts,
-                frame.clip_pts,
-                owner,
-            ):
-                raise ValueError(
-                    "ball prediction frame/PTS/window identity differs from the manifest"
-                )
-            if row.x > manifest.width - 1 or row.y > manifest.height - 1:
-                raise ValueError("ball proposal is outside native pixel coordinates")
+        from .validation import validate_predictions
+
+        validate_predictions(layout, context, manifest, result)
