@@ -25,6 +25,7 @@ from src.tasks.base.annotation.workers.services import ServiceRequest
 
 from .contracts import (
     AcquireOperation,
+    BootstrapModelOperation,
     HistoryManifest,
     HistoryOperation,
     OperationInput,
@@ -32,6 +33,7 @@ from .contracts import (
     PredictOperation,
     PrepareOperation,
     PreviewOperation,
+    PublishOperation,
     ReviewOperation,
     ScreenOperation,
 )
@@ -161,6 +163,34 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
             result = (
                 execute_service(layout, plan, op.service_request, BallReviewServices()),
             )
+        elif isinstance(op, PublishOperation):
+            from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+                PublishRequest,
+            )
+            from src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher import (
+                BallPublisher,
+            )
+
+            from .reviews import validate_closed
+
+            adoptions = validate_closed(layout, plan, data.plan, op.review)
+            result = (
+                BallPublisher(layout).publish(
+                    PublishRequest(
+                        plan=data.plan, product="frames", adoptions=adoptions
+                    )
+                ),
+            )
+        elif isinstance(op, BootstrapModelOperation):
+            from src.tasks.base.annotation.learning.models import ModelRegistry
+
+            if not plan.allows_adoption:
+                raise ValueError("model bootstrap requires an explicit production plan")
+            task = next((task for task in plan.tasks if task.task == op.task), None)
+            if task is None:
+                raise ValueError("model bootstrap task is absent from the frozen plan")
+            state = ModelRegistry(layout).bootstrap(task.model, op.evidence)
+            result = (write_document(layout, directory / "model.json", state),)
         elif isinstance(op, PredictOperation):
             adapter: PredictionAdapter
             if op.task == "ball":

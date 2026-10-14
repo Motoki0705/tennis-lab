@@ -6,7 +6,7 @@ import base64
 import json
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from src.tasks.ball_detection.annotation.review.contracts import (
     BallEdits,
@@ -45,10 +45,10 @@ from src.tasks.base.annotation.workers.services import ServiceRequest, request_s
 
 
 class ReviewSession:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, **environment_options: Any) -> None:
         from tests.support.tasks.ball_detection.annotation import Environment
 
-        self.env = Environment(root)
+        self.env = Environment(root, **environment_options)
         self.worker, self.services = BallReviewWorker(), BallReviewServices()
         self.request = read_document(self.env.layout, self.env.actor, Launch).request
         self.ledger = WorkerLedger(self.env.layout)

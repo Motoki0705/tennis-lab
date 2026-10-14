@@ -23,19 +23,32 @@ from src.tasks.annotation.migration import LegacyReader, LegacySelection, Legacy
 from src.tasks.base.annotation.storage.migration import MigrationStore, dry_run
 
 # layout / legacy_root / 相対path / 各上限は呼出側で明示する。
-reader = LegacyReader(LegacySelection(
-    prepared_runs=(run_relative_path,),
-    sources=(LegacySource(record=source_record_relative_path, video=source_video_relative_path),),
-    annotations=processed_relative_paths,
-    raw_zips=raw_zip_relative_paths,
-    max_clips=clip_limit,
-    max_json_bytes=json_size_limit,
-))
-plan = dry_run(layout, reader, root_id=import_identity, source_root=legacy_root,
-               mode="in_place", max_files=file_limit)
+reader = LegacyReader(
+    LegacySelection(
+        prepared_runs=(run_relative_path,),
+        sources=(
+            LegacySource(
+                record=source_record_relative_path, video=source_video_relative_path
+            ),
+        ),
+        annotations=processed_relative_paths,
+        raw_zips=raw_zip_relative_paths,
+        max_clips=clip_limit,
+        max_json_bytes=json_size_limit,
+    )
+)
+plan = dry_run(
+    layout,
+    reader,
+    root_id=import_identity,
+    source_root=legacy_root,
+    mode="in_place",
+    max_files=file_limit,
+)
 # 実行は資源受付後に明示する。別rootのコピーでは mode="copy" を指定する。
-receipt = MigrationStore(layout).apply(plan, reader, max_copy_bytes=copy_payload_limit,
-                                      max_files=file_limit)
+receipt = MigrationStore(layout).apply(
+    plan, reader, max_copy_bytes=copy_payload_limit, max_files=file_limit
+)
 ```
 
 prepared runにない元素材、Project kit、任意のQA成果物、local-agent campaignの絶対path設定、
