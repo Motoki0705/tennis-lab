@@ -302,9 +302,10 @@ def _covers_source(ranges: list[FrameRange], count: int) -> bool:
     return cursor == count
 
 
-def _verify_run(
+def verify_prepared_run(
     root: Path, source: SourceInfo, kit_id: str, settings: dict[str, Any]
 ) -> None:
+    """Validate a complete preparation run, including each published clip receipt."""
     summary = read_json(root / "prepared.json")
     if (
         summary["source_sha256"] != source.sha256
@@ -399,7 +400,7 @@ def _prepare_acquired(
     run_id = _digest([source_info.sha256, kit_id, settings])[:16]
     root = Path(config.output) / "_preparation" / str(source_info.source_id) / run_id
     if (root / "prepared.json").exists():
-        _verify_run(root, source_info, kit_id, settings)
+        verify_prepared_run(root, source_info, kit_id, settings)
         write_request(Path(config.output), kit_contents)
         return root
     clips_root = root / "clips"
@@ -447,5 +448,5 @@ def _prepare_acquired(
             "clips": [path.name for path in outputs],
         },
     )
-    _verify_run(root, source_info, kit_id, settings)
+    verify_prepared_run(root, source_info, kit_id, settings)
     return root

@@ -41,3 +41,5 @@ scopeや累計を初期化して上限を回避しない。
 `stage` subcommandはsupervisor専用で、固定した入力digestとの対応を要求する。
 通常操作の入口にはしない。旧ChatGPT Project/QA入口の削除は、本番レビュー・公開を
 この入口へ接続する段階で行う。既存キャンペーンや保存成果物はここでは変更しない。
+
+旧形式を検証して保存台帳へ登録する独立APIは[migration](migration/README.md)を参照する。
