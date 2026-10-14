@@ -477,3 +477,20 @@ def test_wrong_presentation_request_and_coarse_evidence_fail(example: Example) -
         example.finish(
             decision=decision.model_copy(update={"clips": (clip,)}), name="coarse-only"
         )
+
+
+def test_cli_boundary_rejects_relative_and_external_request_paths(tmp_path: Path) -> None:
+    from src.tasks.base.annotation.screening.__main__ import PATH_BOUNDARY
+    from src.utils.configuration import PathContractError
+
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    request = layout.path("campaigns", "fixture", "request.json")
+    request.parent.mkdir(parents=True)
+    request.write_text("{}")
+    resolved = PATH_BOUNDARY.validate({"request": request}, resolver=layout.resolver)
+    assert resolved.declared("request").path == request
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}")
+    for candidate in (Path("relative.json"), outside):
+        with pytest.raises(PathContractError):
+            PATH_BOUNDARY.validate({"request": candidate}, resolver=layout.resolver)
