@@ -185,6 +185,13 @@ def process_usage(
             )
         except (FileNotFoundError, ProcessLookupError):
             continue
+        except PermissionError:
+            # A process can exit or change identity between stat and procfs reads.
+            # Skip only a confirmed stale observation, never an unreadable live one.
+            current = process_snapshot(item.pid)
+            if current is None or current[0] != item or current[1] in {"Z", "X"}:
+                continue
+            raise
         second = process_snapshot(item.pid)
         if second is None or second[0] != item or second[1] in {"Z", "X"}:
             continue
