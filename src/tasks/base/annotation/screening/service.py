@@ -6,6 +6,8 @@ import json
 import shlex
 from pathlib import Path
 
+from src.utils.paths import PROJECT_ROOT
+
 from ..artifacts import (
     read_document,
     verify_reference,
@@ -170,7 +172,7 @@ class Screening:
             ).encode(),
         )
         instructions = Path(__file__).with_name("WORKER.md").read_text()
-        code_root = Path(__file__).resolve().parents[5]
+        code_root = PROJECT_ROOT
         command = shlex.join(
             [
                 "env",
