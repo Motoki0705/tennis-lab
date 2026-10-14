@@ -304,6 +304,7 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     "src.tasks.ball_detection.visualization.inference.cli": ("ball_detection.inference_ui", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.dpt_pretrain.runner": ("ball_detection.pretrain_mdd_dpt", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.coordinates.finetune": ("ball_detection.posttrain_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.training.coordinates.full_model": ("ball_detection.full_model_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.visualization.preview.video": ("ball_detection.preview_posttraining_augmentation", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.evaluation.coordinate_cli": (
         "ball_detection.evaluate_mdd_coordinates", "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -818,6 +819,7 @@ _RUNTIME_BOUNDARIES += (_non_hydra_boundary("src.tasks.ball_detection.scripts.pr
 _RUNTIME_BOUNDARIES += (
     _non_hydra_boundary("src.tasks.ball_detection.training.dpt_pretrain.runner", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.finetune", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.full_model", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.visualization.preview.video", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
 )
 
@@ -845,6 +847,7 @@ _RUNTIME_BOUNDARIES += (
     _cli_dispatch("src.tasks.ball_detection.training.coordinates.__init__", "initialize", {
         "scratch": "src.tasks.ball_detection.training.coordinates.scratch",
         "encoder": "src.tasks.ball_detection.training.coordinates.finetune",
+        "full_model": "src.tasks.ball_detection.training.coordinates.full_model",
     }, executable=False),
     _cli_dispatch("src.tasks.ball_detection.scripts.evaluate", "mode", {
         "heatmap": "src.tasks.ball_detection.evaluation.heatmap_cli",
