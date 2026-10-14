@@ -70,7 +70,9 @@ artifacts:
   capture_checksums: knowledge/runs/run-i1044-reprojection-s43-u4000/capture_checksums.json
   scalars: knowledge/runs/run-i1044-reprojection-s43-u4000/scalars.json.gz
   tb_logdir: outputs/blcs/i1044/reprojection-s43-u4000/logs/version_0
-  checkpoint: /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s43-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt
+  checkpoint: /home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s43-u4000/blcs-epoch=084-step=03825.ckpt
+  checkpoint_storage: knowledge/runs/group-i1044-progressive-losses-u4000/checkpoint-storage.json
+  relocated_selection: /home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s43-u4000/selection.json
   checkpoint_sha256: 861df49ca556848a39b5f97ff0ea60c54e92c23c456bca1789c934db0c56e974
   curves: knowledge/runs/run-i1044-reprojection-s43-u4000/curves.png
 parents:

@@ -67,7 +67,9 @@ artifacts:
   capture_checksums: knowledge/runs/run-i1044-rollout-velocity-s42-u4000/capture_checksums.json
   scalars: knowledge/runs/run-i1044-rollout-velocity-s42-u4000/scalars.json.gz
   tb_logdir: outputs/blcs/i1044/rollout_velocity-s42-u4000/logs/version_0
-  checkpoint: /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/rollout_velocity-s42-u4000/checkpoints/final-selected.ckpt
+  checkpoint: /home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_velocity-s42-u4000/final-selected.ckpt
+  checkpoint_storage: knowledge/runs/group-i1044-progressive-losses-u4000/checkpoint-storage.json
+  relocated_selection: /home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_velocity-s42-u4000/selection.json
   checkpoint_sha256: 0a623d7328a45049332f33e28f603423ab1acd6d15d4a5caef8de01ab372d833
   raw_log: knowledge/runs/run-i1044-rollout-velocity-s42-u4000/queue.log.gz
   log_archive: knowledge/runs/run-i1044-rollout-velocity-s42-u4000/log-archive.json
