@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i1044-rollout_position-s42-u4000
+# added: 2026-10-13T09:57:45+09:00
+# provider: codex
+# session: 01a1327c-d543-7673-8143-2764d9f62447
+# issue: 1044
+# resource: half
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics
+export TENNIS_RUN_ID=1791853065891624636_1326740_i1044-rollout_position-s42-u4000
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1791853065891624636_1326740_i1044-rollout_position-s42-u4000
+export TENNIS_GPU_RESOURCE=half
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1791853065891624636_1326740_i1044-rollout_position-s42-u4000 --name i1044-rollout_position-s42-u4000 --provider codex --session 01a1327c-d543-7673-8143-2764d9f62447 --issue 1044 --cmd OMP_NUM_THREADS=2\ MKL_NUM_THREADS=2\ MPLCONFIGDIR=/tmp/i1044-mpl\ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\ CUBLAS_WORKSPACE_CONFIG=:4096:8\ .venv/bin/python\ -m\ src.tasks.blcs.experiments.issue1044\ --arm\ rollout_position\ --seed\ 42\ --steps\ 4000\ --data-root\ /home/kamimura/projects/tennis-lab/data\ --output\ blcs/i1044/rollout_position-s42-u4000
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -m src.tasks.blcs.experiments.issue1044 --arm rollout_position --seed 42 --steps 4000 --data-root /home/kamimura/projects/tennis-lab/data --output blcs/i1044/rollout_position-s42-u4000

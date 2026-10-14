@@ -1,0 +1,335 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [161 items]
+
+scheduling tests via LoadScheduling
+
+tests/e2e/agents_ops/test_review_poll.py::test_codex_pr_is_reviewed_by_claude_and_gate_reports_merge 
+tests/e2e/agents_ops/test_review_poll.py::test_marker_quoted_by_the_reviewer_cannot_turn_request_changes_into_approve 
+[gw0] [  0%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_codex_pr_is_reviewed_by_claude_and_gate_reports_merge 
+tests/e2e/agents_ops/test_review_poll.py::test_auto_merge_flag_merges_with_merge_commit 
+[gw1] [  1%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_marker_quoted_by_the_reviewer_cannot_turn_request_changes_into_approve 
+tests/e2e/agents_ops/test_review_poll.py::test_queued_rerun_with_zero_start_time_blocks_merge 
+[gw0] [  1%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_auto_merge_flag_merges_with_merge_commit 
+tests/e2e/agents_ops/test_review_poll.py::test_claude_pr_touching_shared_paths_needs_human 
+[gw1] [  2%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_queued_rerun_with_zero_start_time_blocks_merge 
+tests/e2e/agents_ops/test_review_poll.py::test_gate_uses_pr_state_refetched_after_the_review[update0-ci_pending] 
+[gw0] [  3%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_claude_pr_touching_shared_paths_needs_human 
+tests/e2e/agents_ops/test_review_poll.py::test_label_identifies_author_when_branch_prefix_does_not 
+[gw1] [  3%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_gate_uses_pr_state_refetched_after_the_review[update0-ci_pending] 
+tests/e2e/agents_ops/test_review_poll.py::test_gate_uses_pr_state_refetched_after_the_review[update1-conflict] 
+[gw0] [  4%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_label_identifies_author_when_branch_prefix_does_not 
+tests/e2e/agents_ops/test_review_poll.py::test_same_head_sha_is_not_reviewed_twice 
+[gw1] [  4%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_gate_uses_pr_state_refetched_after_the_review[update1-conflict] 
+tests/e2e/agents_ops/test_review_poll.py::test_gate_uses_pr_state_refetched_after_the_review[update2-draft] 
+[gw1] [  5%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_gate_uses_pr_state_refetched_after_the_review[update2-draft] 
+tests/e2e/agents_ops/test_review_poll.py::test_gate_is_deferred_when_a_new_head_is_pushed_during_the_review 
+[gw1] [  6%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_gate_is_deferred_when_a_new_head_is_pushed_during_the_review 
+tests/e2e/agents_ops/test_review_poll.py::test_gate_is_deferred_when_the_pr_is_retargeted_during_the_review 
+[gw0] [  6%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_same_head_sha_is_not_reviewed_twice 
+tests/e2e/agents_ops/test_review_poll.py::test_marker_from_another_account_does_not_count 
+[gw0] [  7%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_marker_from_another_account_does_not_count 
+tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[LGTM, ship it] 
+[gw1] [  8%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_gate_is_deferred_when_the_pr_is_retargeted_during_the_review 
+tests/e2e/agents_ops/test_review_poll.py::test_non_ascii_and_quoted_shared_paths_need_a_human 
+[gw0] [  8%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[LGTM, ship it] 
+tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[{"verdict": "approve", "summary": "\\u4f8b\\u5916\\u3092\\u63e1\\u308a\\u3064\\u3076\\u3057\\u3066\\u3044\\u308b\\u3002", "findings": [{"severity": "major", "path": "src/tasks/blcs/a.py", "line": 1, "rule": "AGENTS.md:\\u9759\\u304b\\u306a\\u30d5\\u30a9\\u30fc\\u30eb\\u30d0\\u30c3\\u30af\\u306e\\u7981\\u6b62", "detail": "except: pass \\u3092\\u524a\\u9664\\u3059\\u308b\\u3002"}]}] 
+[gw1] [  9%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_non_ascii_and_quoted_shared_paths_need_a_human 
+tests/e2e/agents_ops/test_review_poll.py::test_agent_memory_is_not_a_shared_foundation 
+[gw0] [  9%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[{"verdict": "approve", "summary": "\\u4f8b\\u5916\\u3092\\u63e1\\u308a\\u3064\\u3076\\u3057\\u3066\\u3044\\u308b\\u3002", "findings": [{"severity": "major", "path": "src/tasks/blcs/a.py", "line": 1, "rule": "AGENTS.md:\\u9759\\u304b\\u306a\\u30d5\\u30a9\\u30fc\\u30eb\\u30d0\\u30c3\\u30af\\u306e\\u7981\\u6b62", "detail": "except: pass \\u3092\\u524a\\u9664\\u3059\\u308b\\u3002"}]}] 
+tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[{"verdict": "approve"}] 
+[gw1] [ 10%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_agent_memory_is_not_a_shared_foundation 
+tests/e2e/agents_ops/test_review_poll.py::test_truncated_diff_is_given_to_the_reviewer_as_a_file 
+[gw0] [ 11%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[{"verdict": "approve"}] 
+tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[{"verdict": "request_changes", "summary": "\\u4f8b\\u5916\\u3092\\u63e1\\u308a\\u3064\\u3076\\u3057\\u3066\\u3044\\u308b\\u3002", "findings": []}] 
+[gw1] [ 11%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_truncated_diff_is_given_to_the_reviewer_as_a_file 
+tests/e2e/agents_ops/test_review_poll.py::test_untruncated_diff_writes_no_extra_file 
+[gw0] [ 12%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_unparseable_review_is_an_error_and_posts_nothing[{"verdict": "request_changes", "summary": "\\u4f8b\\u5916\\u3092\\u63e1\\u308a\\u3064\\u3076\\u3057\\u3066\\u3044\\u308b\\u3002", "findings": []}] 
+tests/e2e/agents_ops/test_review_poll.py::test_draft_fork_and_unknown_author_prs_are_skipped 
+[gw0] [ 13%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_draft_fork_and_unknown_author_prs_are_skipped 
+tests/e2e/agents_ops/test_review_poll.py::test_conflicting_author_signals_fail_but_other_prs_proceed 
+[gw1] [ 13%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_untruncated_diff_writes_no_extra_file 
+tests/e2e/agents_ops/test_review_poll.py::test_agent_timeout_kills_the_whole_process_group 
+[gw0] [ 14%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_conflicting_author_signals_fail_but_other_prs_proceed 
+tests/e2e/agents_ops/test_review_poll.py::test_request_changes_labels_pr_and_blocks_merge 
+[gw0] [ 14%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_request_changes_labels_pr_and_blocks_merge 
+tests/e2e/agents_ops/test_review_poll.py::test_blocking_gate_is_commented_once[FAILURE-MERGEABLE-ci_failed] 
+[gw0] [ 15%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_blocking_gate_is_commented_once[FAILURE-MERGEABLE-ci_failed] 
+tests/e2e/agents_ops/test_review_poll.py::test_blocking_gate_is_commented_once[SUCCESS-CONFLICTING-conflict] 
+[gw0] [ 16%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_blocking_gate_is_commented_once[SUCCESS-CONFLICTING-conflict] 
+tests/e2e/agents_ops/test_review_poll.py::test_pending_ci_blocks_silently 
+[gw1] [ 16%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_agent_timeout_kills_the_whole_process_group 
+tests/e2e/agents_ops/test_review_poll.py::test_retargeted_base_with_the_same_head_is_reviewed_again 
+[gw0] [ 17%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_pending_ci_blocks_silently 
+tests/e2e/agents_ops/test_review_poll.py::test_dry_run_writes_nothing_but_prints_review_and_gate 
+[gw0] [ 18%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_dry_run_writes_nothing_but_prints_review_and_gate 
+tests/e2e/agents_ops/test_review_poll.py::test_missing_repo_labels_fail_before_any_review 
+[gw1] [ 18%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_retargeted_base_with_the_same_head_is_reviewed_again 
+tests/e2e/agents_ops/test_review_poll.py::test_base_branch_advancing_reuses_the_review 
+[gw0] [ 19%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_missing_repo_labels_fail_before_any_review 
+tests/e2e/agents_ops/test_review_poll.py::test_invalid_auto_merge_flag_is_rejected 
+[gw0] [ 19%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_invalid_auto_merge_flag_is_rejected 
+tests/e2e/agents_ops/test_review_poll.py::test_concurrent_run_exits_with_lock_status 
+[gw0] [ 20%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_concurrent_run_exits_with_lock_status 
+tests/e2e/agents_ops/test_review_poll.py::test_comment_with_only_minor_findings_merges_and_files_one_followup 
+[gw1] [ 21%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_base_branch_advancing_reuses_the_review 
+tests/e2e/agents_ops/test_review_poll.py::test_failed_label_update_is_retried_on_the_next_poll 
+[gw0] [ 21%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_comment_with_only_minor_findings_merges_and_files_one_followup 
+tests/e2e/agents_ops/test_review_poll.py::test_approve_without_findings_files_no_followup 
+[gw1] [ 22%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_failed_label_update_is_retried_on_the_next_poll 
+tests/e2e/agents_ops/test_review_poll.py::test_stale_changes_requested_label_is_removed_without_a_new_review 
+[gw0] [ 22%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_approve_without_findings_files_no_followup 
+tests/e2e/agents_ops/test_review_poll.py::test_comment_with_major_finding_blocks 
+[gw0] [ 23%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_comment_with_major_finding_blocks 
+tests/e2e/agents_ops/test_review_poll.py::test_followup_is_still_filed_for_shared_path_prs_needing_a_human 
+[gw1] [ 24%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_stale_changes_requested_label_is_removed_without_a_new_review 
+tests/e2e/agents_ops/test_review_poll.py::test_full_diff_is_not_written_through_a_pr_provided_symlink 
+[gw0] [ 24%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_followup_is_still_filed_for_shared_path_prs_needing_a_human 
+tests/e2e/agents_ops/test_review_poll.py::test_failed_followup_filing_is_retried_before_the_gate 
+[gw1] [ 25%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_full_diff_is_not_written_through_a_pr_provided_symlink 
+tests/e2e/agents_ops/test_review_poll.py::test_reused_review_is_not_gated_after_a_retarget_mid_poll 
+[gw0] [ 26%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_failed_followup_filing_is_retried_before_the_gate 
+tests/e2e/agents_ops/test_review_poll.py::test_dry_run_files_no_followup 
+[gw0] [ 26%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_dry_run_files_no_followup 
+tests/e2e/agents_ops/test_review_poll.py::test_three_request_changes_in_a_row_escalate_once_per_streak 
+[gw1] [ 27%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_reused_review_is_not_gated_after_a_retarget_mid_poll 
+tests/e2e/agents_ops/test_review_poll.py::test_reused_review_gates_on_refetched_ci 
+[gw1] [ 27%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_reused_review_gates_on_refetched_ci 
+tests/e2e/agents_ops/test_review_poll.py::test_reused_review_still_gates_when_only_the_base_branch_advanced 
+[gw1] [ 28%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_reused_review_still_gates_when_only_the_base_branch_advanced 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[x/\n/pyproject.toml-**/pyproject.toml] 
+[gw1] [ 29%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[x/\n/pyproject.toml-**/pyproject.toml] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/tasks/a\nb/model_io/x.py-src/tasks/*/model_io] 
+[gw1] [ 29%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/tasks/a\nb/model_io/x.py-src/tasks/*/model_io] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_does_not_overmatch[src/utils_extra/io.py-src/utils] 
+[gw1] [ 30%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_does_not_overmatch[src/utils_extra/io.py-src/utils] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_does_not_overmatch[src/tasks/blcs/a/model_io/x.py-src/tasks/*/model_io] 
+[gw1] [ 31%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_does_not_overmatch[src/tasks/blcs/a/model_io/x.py-src/tasks/*/model_io] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_does_not_overmatch[xAGENTS.md-AGENTS.md] 
+[gw1] [ 31%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_does_not_overmatch[xAGENTS.md-AGENTS.md] 
+tests/e2e/agents_ops/test_review_policy.py::test_exclusion_patterns_remove_paths_from_the_shared_set 
+[gw1] [ 32%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_exclusion_patterns_remove_paths_from_the_shared_set 
+tests/e2e/agents_ops/test_review_policy.py::test_repo_shared_paths_file_covers_foundations 
+[gw1] [ 32%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_repo_shared_paths_file_covers_foundations 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[# only comments\n\n] 
+[gw1] [ 33%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[# only comments\n\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[/abs/path\n] 
+[gw1] [ 34%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[/abs/path\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[./rel\n] 
+[gw1] [ 34%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[./rel\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[!src/utils\n] 
+[gw1] [ 35%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[!src/utils\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!\n] 
+[gw1] [ 36%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!!src/utils/x\n] 
+[gw1] [ 36%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!!src/utils/x\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!/src/utils/x\n] 
+[gw1] [ 37%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!/src/utils/x\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!src/tasks/blcs\n] 
+[gw1] [ 37%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_invalid_shared_paths_file_is_rejected[src/utils\n!src/tasks/blcs\n] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_plain_and_fenced_json 
+[gw1] [ 38%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_plain_and_fenced_json 
+tests/e2e/agents_ops/test_review_policy.py::test_approve_with_merge_blocking_finding_is_rejected[blocker] 
+[gw1] [ 39%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_approve_with_merge_blocking_finding_is_rejected[blocker] 
+tests/e2e/agents_ops/test_review_policy.py::test_approve_with_merge_blocking_finding_is_rejected[major] 
+[gw1] [ 39%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_approve_with_merge_blocking_finding_is_rejected[major] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[LGTM!] 
+[gw1] [ 40%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[LGTM!] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[Here is my review:\n{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+[gw1] [ 40%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[Here is my review:\n{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}]] 
+[gw1] [ 41%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}]] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "lgtm", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+[gw1] [ 42%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "lgtm", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "  ", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+[gw1] [ 42%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "  ", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}], "extra": 1}] 
+[gw1] [ 43%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}], "extra": 1}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": {}}] 
+[gw1] [ 44%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": {}}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit"}]}] 
+[gw1] [ 44%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "huge", "path": null, "line": null, "rule": "r", "detail": "d"}]}] 
+[gw1] [ 45%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "huge", "path": null, "line": null, "rule": "r", "detail": "d"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": null, "line": 0, "rule": "r", "detail": "d"}]}] 
+[gw1] [ 45%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": null, "line": 0, "rule": "r", "detail": "d"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "blocker", "path": null, "line": null, "rule": "r", "detail": "d"}]}] 
+[gw1] [ 46%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "approve", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "blocker", "path": null, "line": null, "rule": "r", "detail": "d"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "request_changes", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+[gw1] [ 47%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_parse_failures_raise[{"verdict": "request_changes", "summary": "\\u554f\\u984c\\u306a\\u3057", "findings": [{"severity": "nit", "path": "a.py", "line": 3, "rule": "\\u6b63\\u3057\\u3055", "detail": "typo"}]}] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_records_only_trust_the_bot_login 
+[gw1] [ 47%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_records_only_trust_the_bot_login 
+tests/e2e/agents_ops/test_review_policy.py::test_review_of_the_same_head_against_another_base_does_not_count 
+[gw1] [ 48%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_of_the_same_head_against_another_base_does_not_count 
+tests/e2e/agents_ops/test_review_policy.py::test_light_findings_round_trip_through_the_comment_header 
+[gw1] [ 49%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_light_findings_round_trip_through_the_comment_header 
+tests/e2e/agents_ops/test_review_policy.py::test_review_header_without_findings_line_is_an_error 
+[gw1] [ 49%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_header_without_findings_line_is_an_error 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[approve-severities0-True] 
+[gw1] [ 50%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[approve-severities0-True] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[approve-severities1-True] 
+[gw1] [ 50%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[approve-severities1-True] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities2-True] 
+[gw1] [ 51%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities2-True] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities3-True] 
+[gw1] [ 52%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities3-True] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities4-False] 
+[gw1] [ 52%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities4-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities5-False] 
+[gw1] [ 53%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[comment-severities5-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[request_changes-severities6-False] 
+[gw1] [ 54%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_passes[request_changes-severities6-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_rejects_contradictions 
+[gw1] [ 54%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_review_outcome_rejects_contradictions 
+tests/e2e/agents_ops/test_review_policy.py::test_marker_quoted_in_the_body_does_not_override_the_header 
+[gw1] [ 55%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_marker_quoted_in_the_body_does_not_override_the_header 
+tests/e2e/agents_ops/test_review_policy.py::test_neutralized_text_cannot_form_a_marker 
+[gw1] [ 55%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_neutralized_text_cannot_form_a_marker 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_marker_round_trip 
+[gw1] [ 56%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_marker_round_trip 
+tests/e2e/agents_ops/test_review_policy.py::test_request_changes_streak_spans_heads_and_resets_on_pass 
+[gw1] [ 57%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_request_changes_streak_spans_heads_and_resets_on_pass 
+tests/e2e/agents_ops/test_review_policy.py::test_escalation_and_followup_markers_round_trip 
+[gw1] [ 57%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_escalation_and_followup_markers_round_trip 
+tests/e2e/agents_ops/test_review_policy.py::test_followup_data_round_trip_and_merge 
+[gw1] [ 58%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_followup_data_round_trip_and_merge 
+tests/e2e/agents_ops/test_review_policy.py::test_followup_issue_without_data_line_is_an_error 
+[gw1] [ 59%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_followup_issue_without_data_line_is_an_error 
+tests/e2e/agents_ops/test_review_policy.py::test_rollup_keeps_latest_run_per_check 
+[gw1] [ 59%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_rollup_keeps_latest_run_per_check 
+tests/e2e/agents_ops/test_review_policy.py::test_rollup_queued_rerun_without_start_time_blocks[None] 
+[gw1] [ 60%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_rollup_queued_rerun_without_start_time_blocks[None] 
+tests/e2e/agents_ops/test_review_policy.py::test_rollup_queued_rerun_without_start_time_blocks[] 
+[gw1] [ 60%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_rollup_queued_rerun_without_start_time_blocks[] 
+tests/e2e/agents_ops/test_review_policy.py::test_rollup_queued_rerun_without_start_time_blocks[0001-01-01T00:00:00Z] 
+[gw1] [ 61%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_rollup_queued_rerun_without_start_time_blocks[0001-01-01T00:00:00Z] 
+tests/e2e/agents_ops/test_review_policy.py::test_rollup_unordered_runs_take_the_most_pessimistic_state 
+[gw1] [ 62%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_rollup_unordered_runs_take_the_most_pessimistic_state 
+tests/e2e/agents_ops/test_review_policy.py::test_rollup_rejects_unknown_shapes 
+[gw1] [ 62%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_rollup_rejects_unknown_shapes 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_merge_when_everything_is_green 
+[gw1] [ 63%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_merge_when_everything_is_green 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_needs_human_for_shared_paths 
+[gw1] [ 63%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_needs_human_for_shared_paths 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides0-draft-False] 
+[gw1] [ 64%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides0-draft-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides1-fork-False] 
+[gw1] [ 65%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides1-fork-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides2-conflict-True] 
+[gw1] [ 65%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides2-conflict-True] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides3-mergeable_unknown-False] 
+[gw1] [ 66%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides3-mergeable_unknown-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides4-ci_failed-True] 
+[gw1] [ 67%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides4-ci_failed-True] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides5-ci_pending-False] 
+[gw1] [ 67%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides5-ci_pending-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides6-ci_missing_required-False] 
+[gw1] [ 68%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides6-ci_missing_required-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides7-ci_missing_required-False] 
+[gw1] [ 68%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides7-ci_missing_required-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides8-review_missing-False] 
+[gw1] [ 69%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides8-review_missing-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides9-review_request_changes-False] 
+[gw1] [ 70%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides9-review_request_changes-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides10-review_comment_blocking-False] 
+[gw1] [ 70%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_blocked_reasons[overrides10-review_comment_blocking-False] 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_merges_on_comment_without_blocking_findings 
+[gw1] [ 71%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_merges_on_comment_without_blocking_findings 
+tests/e2e/agents_ops/test_review_policy.py::test_gate_rejects_unknown_states 
+[gw1] [ 72%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_gate_rejects_unknown_states 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_excludes_controls_and_never_reads_test 
+[gw1] [ 72%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_excludes_controls_and_never_reads_test 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[False-chunked] 
+[gw1] [ 73%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[False-chunked] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[False-gan] 
+[gw1] [ 73%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[False-gan] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[True-chunked] 
+[gw1] [ 74%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[True-chunked] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[True-gan] 
+[gw1] [ 75%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_repeat_selection_rejects_nonformal_mode[True-gan] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_accepts_ten_formal_receipts 
+[gw1] [ 75%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_accepts_ten_formal_receipts 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-reprojection-43] 
+[gw1] [ 76%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-reprojection-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-reprojection-44] 
+[gw1] [ 77%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-reprojection-44] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-rollout_velocity-43] 
+[gw1] [ 77%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-rollout_velocity-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-rollout_velocity-44] 
+[gw1] [ 78%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-chunked-rollout_velocity-44] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-reprojection-43] 
+[gw1] [ 78%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-reprojection-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-reprojection-44] 
+[gw1] [ 79%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-reprojection-44] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-rollout_velocity-43] 
+[gw1] [ 80%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-rollout_velocity-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-rollout_velocity-44] 
+[gw1] [ 80%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[False-gan-rollout_velocity-44] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-reprojection-43] 
+[gw1] [ 81%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-reprojection-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-reprojection-44] 
+[gw1] [ 81%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-reprojection-44] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-rollout_velocity-43] 
+[gw1] [ 82%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-rollout_velocity-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-rollout_velocity-44] 
+[gw1] [ 83%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-chunked-rollout_velocity-44] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-reprojection-43] 
+[gw1] [ 83%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-reprojection-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-reprojection-44] 
+[gw1] [ 84%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-reprojection-44] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-rollout_velocity-43] 
+[gw1] [ 85%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-rollout_velocity-43] 
+tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-rollout_velocity-44] 
+[gw1] [ 85%] PASSED tests/unit/tasks/blcs/training/test_experiment_selection.py::test_final_evaluation_rejects_nonformal_confirmation_run[True-gan-rollout_velocity-44] 
+[gw0] [ 86%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_three_request_changes_in_a_row_escalate_once_per_streak 
+tests/e2e/agents_ops/test_review_poll.py::test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews 
+[gw0] [ 86%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews 
+tests/e2e/agents_ops/test_review_poll.py::test_author_conflict_or_loss_during_review_blocks_the_gate[labels0-1-multiple agent labels] 
+[gw0] [ 87%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_author_conflict_or_loss_during_review_blocks_the_gate[labels0-1-multiple agent labels] 
+tests/e2e/agents_ops/test_review_poll.py::test_author_conflict_or_loss_during_review_blocks_the_gate[labels1-0-author changed since the first view] 
+[gw0] [ 88%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_author_conflict_or_loss_during_review_blocks_the_gate[labels1-0-author changed since the first view] 
+tests/e2e/agents_ops/test_review_poll.py::test_rereview_after_retarget_extends_the_same_followup_issue 
+[gw0] [ 88%] PASSED tests/e2e/agents_ops/test_review_poll.py::test_rereview_after_retarget_extends_the_same_followup_issue 
+tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[codex/feature-labels0-codex] 
+[gw0] [ 89%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[codex/feature-labels0-codex] 
+tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[claude/i1058-cross-review-labels1-claude] 
+[gw0] [ 90%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[claude/i1058-cross-review-labels1-claude] 
+tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[claude/x-labels2-claude] 
+[gw0] [ 90%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[claude/x-labels2-claude] 
+tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[fix/issue-1-labels3-codex] 
+[gw0] [ 91%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[fix/issue-1-labels3-codex] 
+tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[refactor/followup-labels4-None] 
+[gw0] [ 91%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[refactor/followup-labels4-None] 
+tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[codexfoo/x-labels5-None] 
+[gw0] [ 92%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[codexfoo/x-labels5-None] 
+tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[Claude/x-labels6-None] 
+[gw0] [ 93%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_detect_author_agent[Claude/x-labels6-None] 
+tests/e2e/agents_ops/test_review_policy.py::test_contradicting_author_signals_raise[codex/x-labels0] 
+[gw0] [ 93%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_contradicting_author_signals_raise[codex/x-labels0] 
+tests/e2e/agents_ops/test_review_policy.py::test_contradicting_author_signals_raise[fix/x-labels1] 
+[gw0] [ 94%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_contradicting_author_signals_raise[fix/x-labels1] 
+tests/e2e/agents_ops/test_review_policy.py::test_reviewer_is_the_other_agent 
+[gw0] [ 95%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_reviewer_is_the_other_agent 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils/io.py-src/utils] 
+[gw0] [ 95%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils/io.py-src/utils] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils-src/utils] 
+[gw0] [ 96%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils-src/utils] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/tasks/blcs/model_io/x.py-src/tasks/*/model_io] 
+[gw0] [ 96%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/tasks/blcs/model_io/x.py-src/tasks/*/model_io] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[a/b/c/pyproject.toml-**/pyproject.toml] 
+[gw0] [ 97%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[a/b/c/pyproject.toml-**/pyproject.toml] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[pyproject.toml-**/pyproject.toml] 
+[gw0] [ 98%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[pyproject.toml-**/pyproject.toml] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[.github/workflows/ci.yml-.github/] 
+[gw0] [ 98%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[.github/workflows/ci.yml-.github/] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils/new\nline.py-src/utils] 
+[gw0] [ 99%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils/new\nline.py-src/utils] 
+tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils/a\n/b.py-src/utils] 
+[gw0] [100%] PASSED tests/e2e/agents_ops/test_review_policy.py::test_glob_matches[src/utils/a\n/b.py-src/utils] 
+
+============================= 161 passed in 31.84s =============================

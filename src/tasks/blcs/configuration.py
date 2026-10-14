@@ -257,6 +257,7 @@ class AxialModelConfig:
     max_seq_len: int
     max_num_cameras: int
     predict_velocity: bool
+    physics_head: bool
     invisible_init_std: float
     num_court_tokens: int
     time_window_radius: int
@@ -305,6 +306,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             "max_seq_len",
             "max_num_cameras",
             "predict_velocity",
+            "physics_head",
             "invisible_init_std",
             "num_court_tokens",
             "time_window_radius",
@@ -332,6 +334,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 "max_seq_len": int,
                 "max_num_cameras": int,
                 "predict_velocity": bool,
+                "physics_head": bool,
                 "invisible_init_std": (float, int),
                 "num_court_tokens": int,
                 "time_window_radius": int,
@@ -369,6 +372,7 @@ def parse_model_config(config: object) -> BLCSModelConfig:
             max_seq_len=int(model["max_seq_len"]),
             max_num_cameras=int(model["max_num_cameras"]),
             predict_velocity=bool(model["predict_velocity"]),
+            physics_head=bool(model["physics_head"]),
             invisible_init_std=float(model["invisible_init_std"]),
             num_court_tokens=int(model["num_court_tokens"]),
             time_window_radius=int(model["time_window_radius"]),
@@ -382,6 +386,8 @@ def parse_model_config(config: object) -> BLCSModelConfig:
                 model["time_global_stage_mask"], path="model.time_global_stage_mask"
             ),
         )
+        if result.physics_head and not result.predict_velocity:
+            raise SemanticConfigurationError("Physics heads require velocity output")
         if not (
             len(result.camera_layers_per_stage)
             == len(result.time_layers_per_stage)
@@ -1405,49 +1411,44 @@ def validate_generator_sections(
 
 
 def _validate_standard_loss_config(loss: Mapping[str, object]) -> None:
-    """Validate the loss section used by standard BLCS trajectory training."""
-    loss_keys = {
-        "position_weight",
-        "position_axis_weights",
-        "reprojection_weight",
-        "smoothness_weight",
-        "gravity_weight",
-        "smoothness_order",
-        "smoothness_beta",
-        "gravity_beta",
-        "smoothness_axis_weights",
+    from src.tasks.blcs.training.losses import LOSS_TERMS
+
+    floats = {f"{term}_weight" for term in LOSS_TERMS} | {
+        "position_scale_m",
+        "position_beta_m",
+        "velocity_scale_mps",
+        "velocity_beta_mps",
+        "reprojection_beta_fraction",
+        "event_positive_weight",
     }
-    _exact(loss, loss_keys, path="loss")
+    ints = {"physics_start_step", "physics_warmup_steps"}
+    _exact(loss, floats | ints | {"rollout_horizons"}, path="loss")
     _validate_types(
         loss,
         {
-            "position_weight": float,
-            "position_axis_weights": (list, type(None)),
-            "reprojection_weight": float,
-            "smoothness_weight": float,
-            "gravity_weight": float,
-            "smoothness_order": int,
-            "smoothness_beta": float,
-            "gravity_beta": float,
-            "smoothness_axis_weights": (list, type(None)),
+            **{key: (float, int) for key in floats},
+            **{key: int for key in ints},
+            "rollout_horizons": list,
         },
         path="loss",
     )
-    for key in ("position_axis_weights", "smoothness_axis_weights"):
-        weights = _optional_numeric_sequence(loss[key], path=f"loss.{key}", length=3)
-        if weights is not None and any(weight < 0.0 for weight in weights):
-            raise SemanticConfigurationError(f"loss.{key} values must be non-negative.")
-    for key in (
-        "position_weight",
-        "reprojection_weight",
-        "smoothness_weight",
-        "gravity_weight",
-        "smoothness_beta",
-        "gravity_beta",
+    for key in floats:
+        if key.endswith("_weight"):
+            _non_negative(float(cast("float", loss[key])), path=f"loss.{key}")
+        else:
+            _positive(float(cast("float", loss[key])), path=f"loss.{key}")
+    for key in ints:
+        if cast("int", loss[key]) < 0:
+            raise SemanticConfigurationError(f"loss.{key} must be nonnegative")
+    horizons = _int_sequence(loss["rollout_horizons"], path="loss.rollout_horizons")
+    if (
+        not horizons
+        or any(h < 1 for h in horizons)
+        or len(set(horizons)) != len(horizons)
     ):
-        _non_negative(cast("float", loss[key]), path=f"loss.{key}")
-    if cast("int", loss["smoothness_order"]) < 1:
-        raise SemanticConfigurationError("loss.smoothness_order must be >= 1.")
+        raise SemanticConfigurationError(
+            "loss.rollout_horizons must be distinct positive integers"
+        )
 
 
 def validate_training_boundary(config: object) -> BLCSModelConfig:
@@ -1712,16 +1713,48 @@ def validate_training_boundary(config: object) -> BLCSModelConfig:
     metrics = require_config_mapping(root, "metrics", path="configuration")
     _exact(
         metrics,
-        {"position_threshold_m", "endpoint_threshold_m"},
+        {"schema", "rollout_horizons", "event_radius_frames", "evaluation_seed"},
         path="metrics",
     )
-    _validate_types(
-        metrics,
-        {"position_threshold_m": float, "endpoint_threshold_m": float},
-        path="metrics",
+    if metrics["schema"] != "blcs.physics_metrics.v1":
+        raise SemanticConfigurationError("Unknown BLCS metric schema")
+    horizons = _int_sequence(
+        metrics["rollout_horizons"], path="metrics.rollout_horizons"
     )
-    for key in ("position_threshold_m", "endpoint_threshold_m"):
-        _positive(cast("float", metrics[key]), path=f"metrics.{key}")
+    if (
+        not horizons
+        or any(h < 1 for h in horizons)
+        or len(set(horizons)) != len(horizons)
+    ):
+        raise SemanticConfigurationError("Invalid metric horizons")
+    _value(metrics, "evaluation_seed", int, path="metrics")
+    radius = _value(metrics, "event_radius_frames", int, path="metrics")
+    if cast("int", radius) < 0:
+        raise SemanticConfigurationError("Event radius must be nonnegative")
+    loss = require_config_mapping(root, "loss", path="configuration")
+    if not model.predict_velocity and any(
+        float(cast("float", loss[k]))
+        for k in (
+            "velocity_weight",
+            "rollout_position_weight",
+            "rollout_velocity_weight",
+        )
+    ):
+        raise SemanticConfigurationError(
+            "Velocity and physics objectives require model.predict_velocity"
+        )
+    if not model.physics_head and any(
+        float(cast("float", loss[k]))
+        for k in (
+            "parameters_weight",
+            "event_weight",
+            "reconstruction_weight",
+            "parameter_consistency_weight",
+        )
+    ):
+        raise SemanticConfigurationError(
+            "Parameter objectives require model.physics_head"
+        )
     validate_generator_sections(config, include_generation=False)
     return model
 

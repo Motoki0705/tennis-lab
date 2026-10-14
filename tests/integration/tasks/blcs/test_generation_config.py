@@ -124,8 +124,13 @@ def test_standard_training_profiles_select_loss_without_training_loss_fields(
     validate_training_boundary(config)
 
     assert config.loss.reprojection_weight == reprojection_weight
+    assert config.loss.velocity_weight == 0
+    assert config.loss.rollout_position_weight == 0
+    assert config.loss.rollout_velocity_weight == 0
     assert "position_weight" in config.loss
     assert config.training.trainer.log_every_n_steps == 100
+    if config_name.startswith("train_chunked"):
+        assert config.training.trainer.reload_dataloaders_every_n_epochs == 1
     assert set(config.training).isdisjoint(
         {
             "position_loss_weight",

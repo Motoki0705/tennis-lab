@@ -1,0 +1,41 @@
+{
+  "checked_at_utc": "2026-10-13T18:07:40+00:00",
+  "run_id": "1791904031787910613_1392671_i1044-selected-new-s43-u4000-retry-cli",
+  "source": "Read-only experiment_survey; parent captured config hashes for provenance",
+  "new_config": "outputs/blcs/i1044/parameters-s43-u4000/experiment-config.yaml",
+  "old_config": "outputs/blcs/i1044/aborted-parameters-s43-cuda-unknown/experiment-config.yaml",
+  "new_config_sha256": "3cf79258cf96a0cc69a92ead17a99f40efd88f9c9cf703b2eabeb9f93e7c7e0f",
+  "old_config_sha256": "3cf79258cf96a0cc69a92ead17a99f40efd88f9c9cf703b2eabeb9f93e7c7e0f",
+  "full_yaml_comparison_differences": [],
+  "seed": 43,
+  "resume": null,
+  "init_weights": null,
+  "test_after_fit": false,
+  "queue_checkpoint_argument": null,
+  "fit_checkpoint_resolution": "resume=null resolves to trainer.fit(..., ckpt_path=None)",
+  "output_directory_rule": "run_experiment rejects an existing output directory",
+  "observed_tb_step_upper_bound": 404,
+  "gradient_steps": [
+    0,
+    200,
+    400
+  ],
+  "first_training_scalar_step": 44,
+  "last_training_scalar_step_in_audit": 404,
+  "validation_entries": [
+    {
+      "step": 224,
+      "trajectory_rmse_m": 2.5493195056915283
+    }
+  ],
+  "previous_aborted_last_checkpoint_global_step": 2610,
+  "conclusion": "Same configuration, initialized fresh; no checkpoint resume",
+  "limits": "TensorBoard is indirect evidence; physical filesystem read tracing was not performed",
+  "code_references": [
+    "src/tasks/blcs/experiments/scripts/repeat_selected.py:75",
+    "src/tasks/blcs/experiments/issue1044.py:153",
+    "src/tasks/base/training/runner.py:104",
+    "src/tasks/base/training/runner.py:184"
+  ],
+  "event_file": "outputs/blcs/i1044/parameters-s43-u4000/logs/version_0/events.out.tfevents.1791913558.kamimura.3045028.0"
+}

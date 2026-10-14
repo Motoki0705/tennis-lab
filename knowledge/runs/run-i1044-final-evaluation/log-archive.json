@@ -1,0 +1,12 @@
+{
+  "raw_filename": "1791904031966211422_1392693_i1044-final-comparison-v4-cli.log",
+  "raw_bytes": 6682,
+  "raw_sha256": "08c1070b402bbe2aea5fe84fbd068f45dae756703f1f7a348f39a975280b1e24",
+  "compressed_filename": "queue.log.gz",
+  "compressed_bytes": 625,
+  "decompressed_sha256_matches_raw": true,
+  "view_filename": "queue-summary.log",
+  "view_excludes": "driver diagnostic lines containing ][CUDA][",
+  "view_excluded_lines": 14,
+  "original_queue_log_sha256_matches": true
+}

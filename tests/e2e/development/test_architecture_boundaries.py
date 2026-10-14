@@ -415,6 +415,10 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
     ),
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
+    # The standalone loss accepts a prediction with optional heads. Reject an
+    # active term with a missing head rather than silently contributing zero.
+    # These two structural checks do not inspect tensor values or alter state.
+    ("src.tasks.blcs.training.losses.BLCSLoss.forward", "Python raise"): 2,
     # Native RGB preprocessing guards only static dtype/shape metadata. These
     # deliberately reject ambiguous inputs; fullgraph capture is covered by
     # test_native_mdd.py and the real CUDA/Inductor numerical diagnostic.
@@ -651,6 +655,37 @@ COURT_TRANSFORMER_PATCH_POSITIONS_PATH = (
     "src.tasks.court_detection.models.dinov3_dpt.build_patch_positions",
 )
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
+    # Shared physical integration/normalization retain their public contracts.
+    # Keep these exact paths/counts; do not hide other checks in BLCS forward.
+    ("src.tasks.blcs.training.losses.BLCSLoss.forward",): {"Python raise": 2},
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.tasks.blcs.physics.rollout.rollout_residuals",
+    ): {"Python shape/value validation branch": 1},  # skip empty support
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.tasks.blcs.physics.rollout.rollout_residuals",
+        "src.utils.physics.ball.integrate.integrate_flight",
+    ): {"Python raise": 1},
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.utils.schema.court_normalization.denormalize_court_position",
+        "src.utils.schema.court_normalization._denormalize",
+    ): {
+        "Python shape/value validation branch": 1,
+        "forward validation helper _validate_coordinates": 1,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.utils.schema.court_normalization.denormalize_court_position",
+        "src.utils.schema.court_normalization._denormalize",
+        "src.utils.schema.court_normalization._validate_coordinates",
+    ): {
+        "Python raise": 3,
+        "Python shape/value validation branch": 2,
+        "runtime implementation/type selection via isinstance": 1,
+    },
     (
         "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
         "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel._encode_views",

@@ -1,0 +1,35 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791852317736062549_2_i1044-smoke-gan-v1 (commit=e25ce1c8702a provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name          ┃ Type                            ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model         │ BLCSMultiViewAxialModel         │ 51.9 M │ train │     0 │
+│ 1 │ loss_fn       │ BLCSLoss                        │      0 │ train │     0 │
+│ 2 │ discriminator │ TransformerSequenceDiscriminat… │  657 K │ train │     0 │
+│ 3 │ gan_loss_fn   │ LSGANLoss                       │      0 │ train │     0 │
+└───┴───────────────┴─────────────────────────────────┴────────┴───────┴───────┘
+Trainable params: 52.6 M                                                        
+Non-trainable params: 0                                                         
+Total params: 52.6 M                                                            
+Total estimated model params size (MB): 210.373                                 
+Modules in train mode: 276                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 2. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:588: `ModelCheckpoint(monitor='val/trajectory_rmse_m')` could not find the monitored key in the returned metrics: ['gradient/position/position_raw_l2', 'gradient/position/position_weighted_l2', 'gradient/position/velocity_raw_l2', 'gradient/position/velocity_weighted_l2', 'gradient/reprojection/position_raw_l2', 'gradient/reprojection/position_weighted_l2', 'gradient/reprojection/velocity_raw_l2', 'gradient/reprojection/velocity_weighted_l2', 'gradient/velocity/position_raw_l2', 'gradient/velocity/position_weighted_l2', 'gradient/velocity/velocity_raw_l2', 'gradient/velocity/velocity_weighted_l2', 'gradient/rollout_position/position_raw_l2', 'gradient/rollout_position/position_weighted_l2', 'gradient/rollout_position/velocity_raw_l2', 'gradient/rollout_position/velocity_weighted_l2', 'gradient/rollout_velocity/position_raw_l2', 'gradient/rollout_velocity/position_weighted_l2', 'gradient/rollout_velocity/velocity_raw_l2', 'gradient/rollout_velocity/velocity_weighted_l2', 'train/loss', 'train/loss_position', 'train/loss_reprojection', 'train/loss_velocity', 'train/loss_rollout_position', 'train/loss_rollout_velocity', 'train/loss_parameters', 'train/loss_event', 'train/loss_reconstruction', 'train/loss_parameter_consistency', 'train/loss_physics_factor', 'train/loss_gan_generator', 'train/loss_gan_discriminator', 'train/trajectory_rmse_m', 'train/trajectory_mean_m', 'train/trajectory_p95_m', 'train/velocity_head_rmse_mps', 'train/position_difference_velocity_rmse_mps', 'train/position_difference_acceleration_rmse_mps2', 'train/rollout_position_rmse_m', 'train/rollout_velocity_rmse_mps', 'train/reprojection_rmse_px', 'train/below_ground_rate', 'train/reprojection_evaluable_rate', 'train/clip_trajectory_rmse_mean_m', 'epoch', 'step']. HINT: Did you call `log('val/trajectory_rmse_m', value)` in the `LightningModule`?
+`Trainer.fit` stopped: `max_steps=4` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+`weights_only` was not set, defaulting to `False`.
+Training complete. Outputs saved to /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-gan-v1
+{"protocol": "issue1044-v1", "arm": "rollout_velocity", "seed": 42, "optimizer_updates": 4, "elapsed_seconds": 33.147472627984826, "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-gan-v1/checkpoints/final-selected.ckpt", "checkpoint_sha256": "92ea596f41f56009f0e3061dd718fad0a9f40a18274b01792abaa9453119fb8f", "validation_trajectory_rmse_m": 17.779537200927734, "selection_used_test": false, "run_id": "1791852317736062549_2_i1044-smoke-gan-v1", "smoke": true, "chunked": false, "gan": true}

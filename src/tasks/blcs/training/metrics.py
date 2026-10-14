@@ -1,328 +1,332 @@
-"""Metrics for BLCS evaluation."""
+"""Population-based BLCS metrics, independent of loss weights and batch padding."""
 
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Sequence
+from typing import Any
+
+import numpy as np
 import torch
+from numpy.typing import NDArray
 from torch import Tensor
 
-from src.tasks.base.evaluation import (
-    compute_axis_wise_position_error,
-    compute_y_sign_accuracy,
-    stratify_metric_by_reference_view_index,
+from src.tasks.blcs.model_io.contracts import (
+    BLCSTrajectoryPrediction,
+    BLCSTrajectoryTrainingBatch,
 )
-from src.tasks.base.generate_dataset import (
-    PHYSICAL_V1_SELECTOR,
-    CourtKeypointContract,
-    CourtKeypointContractMismatchError,
-    CourtReferenceFrameProvenance,
-    MissingCourtKeypointMetadataError,
-    court_vectors_target_to_physical,
-    resolve_court_keypoint_contract,
+from src.tasks.blcs.physics.rollout import rollout_residuals, target_parameters
+from src.tasks.blcs.training.losses import projection_errors
+from src.utils.physics.ball.surfaces import SURFACE_NAMES
+from src.utils.schema.court_normalization import (
+    denormalize_court_position,
+    denormalize_court_velocity,
 )
-from src.tasks.base.training.metric_logging import format_metric_threshold
-from src.utils.schema.court_normalization import denormalize_court_position
 
-_PHYSICAL_COURT_KEYPOINT_CONTRACT = resolve_court_keypoint_contract(
-    PHYSICAL_V1_SELECTOR
-)
+METRIC_SCHEMA = "blcs.physics_metrics.v1"
 
 
 class BLCSMetrics:
-    """Metrics tracker for BLCS evaluation.
+    """Store per-clip populations; reduce once, including across distributed ranks.
 
-    Tracks position errors and accuracy metrics over batches.
+    Scalar errors are Euclidean vector norms. RMSE is sqrt(mean(norm**2)), not
+    component RMSE or a mean of batch RMSEs. Undefined populations return NaN
+    for Lightning; the saved report converts them to null and records support.
     """
 
     def __init__(
-        self,
-        *,
-        position_threshold_m: float,
-        endpoint_threshold_m: float,
-        court_keypoint_contract: CourtKeypointContract = (
-            _PHYSICAL_COURT_KEYPOINT_CONTRACT
-        ),
+        self, *, rollout_horizons: Sequence[int] = (1, 3), event_radius_frames: int = 2
     ) -> None:
-        """Initialize metrics tracker.
-
-        Args:
-            position_threshold_m: Threshold for base position accuracy (meters), default 0.3m.
-            endpoint_threshold_m: Threshold for base endpoint accuracy (meters), default 0.5m.
-
-        """
-        self.position_threshold_m = position_threshold_m
-        self.endpoint_threshold_m = endpoint_threshold_m
-        canonical_contract = resolve_court_keypoint_contract(
-            court_keypoint_contract.selector
-        )
-        if court_keypoint_contract != canonical_contract:
-            raise CourtKeypointContractMismatchError(
-                "BLCS metric CourtKP20 contract must be canonical."
-            )
-        self.court_keypoint_contract = canonical_contract
-        self.position_thresholds_m = tuple(
-            dict.fromkeys(
-                (
-                    0.3,
-                    self.position_threshold_m,
-                    2.0 * self.position_threshold_m,
-                    4.0 * self.position_threshold_m,
-                )
-            )
-        )
-        self.endpoint_thresholds_m = (
-            self.endpoint_threshold_m,
-            2.0 * self.endpoint_threshold_m,
-        )
+        self.horizons = tuple(rollout_horizons)
+        self.event_radius = event_radius_frames
         self.reset()
 
     def reset(self) -> None:
-        """Reset accumulated metrics."""
-        self.total_position_error = 0.0
-        self.total_x_error = 0.0
-        self.total_y_error = 0.0
-        self.total_z_error = 0.0
-        self.total_endpoint_error = 0.0
-        self.num_frames: float = 0.0
-        self.num_endpoint_sequences = 0
-        self.num_correct_frames = [0.0 for _ in self.position_thresholds_m]
-        self.num_correct_endpoints = [0.0 for _ in self.endpoint_thresholds_m]
-        self.num_y_sign_correct = 0.0
-        self.num_y_sign_targets = 0.0
-        self.reference_index_errors: dict[int, list[float]] = {}
+        self.records: list[dict[str, Any]] = []
 
+    @torch.no_grad()  # type: ignore[untyped-decorator]
     def update(
         self,
-        pred_position: Tensor,
-        target_position: Tensor,
-        mask: Tensor | None = None,
-        court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...]
-        | None = None,
-        reference_view_index: Tensor | None = None,
+        prediction: BLCSTrajectoryPrediction,
+        target: BLCSTrajectoryTrainingBatch,
+        *,
+        observed: Tensor,
+        scene_ids: Sequence[str] | None = None,
     ) -> dict[str, float]:
-        """Update metrics with a batch of predictions.
+        p = denormalize_court_position(prediction.position.float())
+        gt = denormalize_court_position(target.position.float())
+        velocity = (
+            None
+            if prediction.velocity is None
+            else denormalize_court_velocity(prediction.velocity.float())
+        )
+        valid, physics = target.loss_mask, target.physics
+        error = (p - gt).norm(dim=-1)
+        _, pixel, projected, eligible = projection_errors(prediction.position, target)
+        residual = (
+            None
+            if velocity is None
+            else rollout_residuals(p, velocity, valid, physics, self.horizons)
+        )
+        dt = physics.frame_dt().to(p)[:, None, None]
+        near = (
+            torch.nn.functional.max_pool1d(
+                physics.event.ne(0).float().unsqueeze(1),
+                self.event_radius * 2 + 1,
+                stride=1,
+                padding=self.event_radius,
+            )[:, 0].bool()
+            & valid
+        )
+        s1, s2 = physics.support(valid, 1), physics.support(valid, 2)
+        difference_velocity = ((p[:, 1:] - p[:, :-1]) - (gt[:, 1:] - gt[:, :-1])) / dt
+        difference_accel = (
+            (p[:, 2:] - 2 * p[:, 1:-1] + p[:, :-2])
+            - (gt[:, 2:] - 2 * gt[:, 1:-1] + gt[:, :-2])
+        ) / dt.square()
+        for b in range(len(p)):
+            populations: dict[str, np.ndarray] = {}
+            counters: dict[str, int] = {}
 
-        Args:
-            pred_position: Predicted positions (normalized), shape (B, T, 3).
-            target_position: Target positions (normalized), shape (B, T, 3).
-            mask: Visibility mask, shape (B, T).
+            def add(
+                key: str,
+                values: Tensor,
+                destination: dict[str, np.ndarray] = populations,
+            ) -> None:
+                destination[key] = values.detach().double().cpu().numpy().reshape(-1)
 
-        Returns:
-            dict: Current batch metrics.
-
-        """
-        batch_size, seq_len, _ = pred_position.shape
-
-        pred_m = denormalize_court_position(pred_position)
-        target_m = denormalize_court_position(target_position)
-        target_frame_pred_m = pred_m
-        target_frame_target_m = target_m
-
-        if court_reference_provenance is None:
-            if self.court_keypoint_contract.selector != PHYSICAL_V1_SELECTOR:
-                raise MissingCourtKeypointMetadataError(
-                    "BLCS camera_view_v2 metrics require explicit Court reference "
-                    "provenance."
+            vb = valid[b]
+            add("trajectory", error[b, vb])
+            add(
+                "velocity_head",
+                p.new_empty(0)
+                if velocity is None
+                else (
+                    velocity[b] - denormalize_court_velocity(target.velocity[b].float())
+                ).norm(dim=-1)[vb],
+            )
+            add(
+                "position_difference_velocity",
+                difference_velocity[b].norm(dim=-1)[s1[b]],
+            )
+            add(
+                "position_difference_acceleration",
+                difference_accel[b].norm(dim=-1)[s2[b]],
+            )
+            add("reprojection", pixel[b].norm(dim=-1)[projected[b]])
+            add("reprojection_evaluable", projected[b][eligible[b]].float())
+            add("below_ground", (p[b, :, 2] < -0.001)[vb].float())
+            add(
+                "rollout_position",
+                p.new_empty(0)
+                if residual is None
+                else residual.position[residual.sample == b].norm(dim=-1),
+            )
+            add(
+                "rollout_velocity",
+                p.new_empty(0)
+                if residual is None
+                else residual.velocity[residual.sample == b].norm(dim=-1),
+            )
+            for h in self.horizons:
+                width = max(0, valid.shape[1] - h)
+                complete = valid[b, :width].clone()
+                for offset in range(1, h + 1):
+                    complete &= valid[b, offset : offset + width]
+                safe = physics.support(valid, h)[b]
+                counters[f"rollout_h{h}_valid_window_count"] = int(complete.sum())
+                counters[f"rollout_h{h}_excluded_event_count"] = int(
+                    (complete & ~safe).sum()
                 )
-        else:
-            if len(court_reference_provenance) != batch_size:
-                raise ValueError(
-                    "BLCS metric provenance must contain one record per batch item."
+                counters[f"rollout_h{h}_too_short_clip_count"] = int(
+                    valid[b].sum() <= h
                 )
-            pred_rows: list[Tensor] = []
-            target_rows: list[Tensor] = []
-            for index, provenance in enumerate(court_reference_provenance):
-                if not isinstance(provenance, CourtReferenceFrameProvenance):
-                    raise TypeError(
-                        "BLCS metric provenance entries must be validated records."
-                    )
-                if provenance.contract != self.court_keypoint_contract:
-                    raise CourtKeypointContractMismatchError(
-                        f"BLCS metric provenance[{index}] contract "
-                        f"{provenance.contract_id!r} does not match runtime "
-                        f"{self.court_keypoint_contract.contract_id!r}."
-                    )
-                pred_row = court_vectors_target_to_physical(pred_m[index], provenance)
-                target_row = court_vectors_target_to_physical(
-                    target_m[index], provenance
+                counters[f"rollout_h{h}_no_velocity_clip_count"] = int(velocity is None)
+                selected = (
+                    None
+                    if residual is None
+                    else (residual.sample == b) & (residual.horizon == h)
                 )
-                if not isinstance(pred_row, Tensor) or not isinstance(
-                    target_row, Tensor
-                ):
-                    raise TypeError(
-                        "BLCS metric frame conversion returned non-tensors."
-                    )
-                pred_rows.append(pred_row)
-                target_rows.append(target_row)
-            pred_m = torch.stack(pred_rows)
-            target_m = torch.stack(target_rows)
-
-        # Position distance is rotation invariant. Axis/sign diagnostics use the
-        # authoritative reference target frame when v2 metadata is available.
-        error = pred_m - target_m
-        error_norm = torch.sqrt((error**2).sum(dim=-1) + 1e-8)  # (B, T)
-
-        if mask is None:
-            mask = torch.ones(batch_size, seq_len, device=pred_position.device)
-        valid_mask = mask.bool()
-
-        reference_metrics: dict[str, float] = {}
-        metric_error = error
-        if reference_view_index is not None:
-            if reference_view_index.shape != (batch_size,):
-                raise ValueError(
-                    "reference_view_index must match the BLCS metric batch axis."
+                add(
+                    f"rollout_position_h{h}",
+                    p.new_empty(0)
+                    if residual is None
+                    else residual.position[selected].norm(dim=-1),
                 )
-            if reference_view_index.dtype != torch.int64:
-                raise ValueError("reference_view_index must have dtype torch.int64.")
-            if reference_view_index.device != pred_position.device:
-                raise ValueError(
-                    "reference_view_index must share the BLCS metric tensor device."
+                add(
+                    f"rollout_velocity_h{h}",
+                    p.new_empty(0)
+                    if residual is None
+                    else residual.velocity[selected].norm(dim=-1),
                 )
-            metric_error = target_frame_pred_m - target_frame_target_m
-            if valid_mask.any().item():
-                axis_error = compute_axis_wise_position_error(
-                    target_frame_pred_m,
-                    target_frame_target_m,
-                    valid_mask=valid_mask,
+                add(
+                    f"rollout_duration_h{h}",
+                    p.new_empty(0)
+                    if residual is None
+                    else residual.duration_s[selected],
                 )
-                reference_metrics.update(
-                    {
-                        "x_error_m": axis_error.x,
-                        "y_error_m": axis_error.y,
-                        "z_error_m": axis_error.z,
-                    }
+                add(
+                    f"rollout_substeps_h{h}",
+                    p.new_empty(0)
+                    if residual is None
+                    else residual.simulation_steps[selected],
                 )
-                selected_targets = target_frame_target_m[valid_mask]
-                non_mid_plane = selected_targets[:, 1].ne(0)
-                if non_mid_plane.any().item():
-                    y_sign_accuracy = compute_y_sign_accuracy(
-                        target_frame_pred_m,
-                        target_frame_target_m,
-                        valid_mask=valid_mask,
-                    )
-                    sign_count = float(non_mid_plane.sum().item())
-                    self.num_y_sign_correct += y_sign_accuracy * sign_count
-                    self.num_y_sign_targets += sign_count
-                    reference_metrics["y_sign_accuracy"] = y_sign_accuracy
-                sample_indices: list[int] = []
-                sample_errors: list[Tensor] = []
-                for sample_index in range(batch_size):
-                    if valid_mask[sample_index].any().item():
-                        sample_indices.append(sample_index)
-                        sample_errors.append(
-                            torch.linalg.vector_norm(
-                                metric_error[sample_index, valid_mask[sample_index]],
-                                dim=-1,
-                            ).mean()
-                        )
-                sample_index_tensor = torch.tensor(
-                    sample_indices,
-                    dtype=torch.int64,
-                    device=reference_view_index.device,
+            view_count = observed[b].bool().sum(dim=0)
+            strata = {
+                "observed": view_count > 0,
+                "missing": view_count == 0,
+                "event_near": near[b],
+                "free_flight": ~near[b],
+            }
+            for views in range(7):
+                strata[f"views_{views}"] = view_count == views
+            for index, name in enumerate(SURFACE_NAMES):
+                strata[f"surface_{name}"] = torch.full_like(
+                    vb, int(physics.surface[b]) == index
                 )
-                strata = stratify_metric_by_reference_view_index(
-                    torch.stack(sample_errors),
-                    reference_view_index[sample_index_tensor],
+            length = int(physics.clip_frames[b])
+            for name, match in (
+                ("length_lt128", length < 128),
+                ("length_128_511", 128 <= length < 512),
+                ("length_ge512", length >= 512),
+            ):
+                strata[name] = torch.full_like(vb, match)
+            bounces = int(physics.bounce_count[b])
+            for count in range(3):
+                strata[f"bounces_{count}{'plus' if count == 2 else ''}"] = (
+                    torch.full_like(vb, min(bounces, 2) == count)
                 )
-                for index, value in strata.items():
-                    reference_metrics[f"reference_index_{index}_position_error_m"] = (
-                        value
-                    )
-                for sample_index, sample_error in zip(
-                    sample_indices,
-                    sample_errors,
-                    strict=True,
-                ):
-                    reference_index = int(reference_view_index[sample_index].item())
-                    self.reference_index_errors.setdefault(
-                        reference_index,
-                        [],
-                    ).append(float(sample_error.item()))
+            missing = ((view_count == 0) & vb).cpu().numpy()
+            gap_length: NDArray[np.int64] = np.zeros(len(missing), dtype=np.int64)
+            start = 0
+            while start < len(missing):
+                if not missing[start]:
+                    start += 1
+                    continue
+                end = start + 1
+                while end < len(missing) and missing[end]:
+                    end += 1
+                gap_length[start:end] = end - start
+                start = end
+            gaps = torch.as_tensor(gap_length, device=vb.device)
+            strata.update(
+                gap_1_4=(gaps > 0) & (gaps <= 4),
+                gap_5_15=(gaps >= 5) & (gaps <= 15),
+                gap_ge16=gaps >= 16,
+            )
+            for name, mask in strata.items():
+                add(f"trajectory__{name}", error[b, vb & mask])
+            if prediction.physics_parameters is not None:
+                param_error = (
+                    prediction.physics_parameters[b].float()
+                    - target_parameters(physics)[b]
+                )
+                add("parameter_drag", param_error[:, 0].abs()[vb])
+                add("parameter_wind", param_error[:, 1:4].norm(dim=-1)[vb])
+                add("parameter_effective_magnus", param_error[:, 4:].norm(dim=-1)[vb])
+            scene = (
+                scene_ids[b] if scene_ids is not None else f"local-{len(self.records)}"
+            )
+            indices = physics.frame_index[b, vb].cpu().tolist()
+            key = f"{scene}:{indices}" if scene_ids is not None else None
+            self.records.append(
+                {
+                    "key": key,
+                    "scene": scene,
+                    "populations": populations,
+                    "counters": counters,
+                }
+            )
+        return {}
 
-        # Aggregate only actual observations. Padding-only sequences do not
-        # contribute either frames or endpoints.
-        num_valid = valid_mask.sum().item()
-        if num_valid == 0:
-            return {}
-        self.num_frames += num_valid
-        self.num_endpoint_sequences += int(valid_mask.any(dim=1).sum().item())
-
-        # Position errors
-        masked_error = (error_norm * valid_mask).sum().item()
-        self.total_position_error += masked_error
-
-        # Per-axis errors
-        self.total_x_error += (metric_error[:, :, 0].abs() * valid_mask).sum().item()
-        self.total_y_error += (metric_error[:, :, 1].abs() * valid_mask).sum().item()
-        self.total_z_error += (metric_error[:, :, 2].abs() * valid_mask).sum().item()
-
-        # Accuracy (within thresholds)
-        for i, threshold in enumerate(self.position_thresholds_m):
-            within = (error_norm < threshold).float()
-            self.num_correct_frames[i] += (within * valid_mask).sum().item()
-
-        # Endpoint error (last valid frame per sequence)
-        for b in range(batch_size):
-            valid_indices = valid_mask[b].nonzero(as_tuple=True)[0]
-            if len(valid_indices) > 0:
-                last_idx = valid_indices[-1]
-                endpoint_error = error_norm[b, last_idx].item()
-                self.total_endpoint_error += endpoint_error
-                for i, threshold in enumerate(self.endpoint_thresholds_m):
-                    if endpoint_error < threshold:
-                        self.num_correct_endpoints[i] += 1
-
-        # Return current batch metrics
-        batch_metrics = {
-            "position_error_m": masked_error / num_valid,
-            "x_error_m": (metric_error[:, :, 0].abs() * valid_mask).sum().item()
-            / num_valid,
-            "y_error_m": (metric_error[:, :, 1].abs() * valid_mask).sum().item()
-            / num_valid,
-            "z_error_m": (metric_error[:, :, 2].abs() * valid_mask).sum().item()
-            / num_valid,
-        }
-        batch_metrics.update(reference_metrics)
-        return batch_metrics
+    def _merged(self) -> list[dict[str, Any]]:
+        records = self.records
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            gathered: list[Any] = [None] * torch.distributed.get_world_size()
+            torch.distributed.all_gather_object(gathered, records)
+            records = [record for rank in gathered for record in rank]
+        # DistributedSampler may repeat the last sample to equalize ranks.
+        unique, seen = [], set()
+        for record in records:
+            key = record["key"]
+            if key is not None and key in seen:
+                continue
+            unique.append(record)
+            if key is not None:
+                seen.add(key)
+        return unique
 
     def compute(self) -> dict[str, float]:
-        """Compute aggregated metrics.
-
-        Returns:
-            dict: Aggregated metrics.
-
-        """
-        if self.num_frames == 0:
-            raise RuntimeError(
-                "BLCSMetrics.compute() requires at least one valid frame; "
-                "the epoch contained no metric observations."
-            )
-
-        metrics: dict[str, float] = {
-            "position_error_m": self.total_position_error / self.num_frames,
-            "x_error_m": self.total_x_error / self.num_frames,
-            "y_error_m": self.total_y_error / self.num_frames,
-            "z_error_m": self.total_z_error / self.num_frames,
-            "endpoint_error_m": self.total_endpoint_error / self.num_endpoint_sequences,
+        values: dict[str, list[np.ndarray]] = defaultdict(list)
+        clips: dict[str, list[np.ndarray]] = defaultdict(list)
+        counters: dict[str, int] = defaultdict(int)
+        for record in self._merged():
+            for key, count in record["counters"].items():
+                counters[key] += count
+            for key, array in record["populations"].items():
+                values[key].append(array)
+            clips[record["scene"]].append(record["populations"]["trajectory"])
+        result: dict[str, float] = {}
+        units = {
+            "trajectory": "m",
+            "velocity_head": "mps",
+            "position_difference_velocity": "mps",
+            "position_difference_acceleration": "mps2",
+            "reprojection": "px",
+            "rollout_position": "m",
+            "rollout_velocity": "mps",
+            "parameter_drag": "per_m",
+            "parameter_wind": "mps",
+            "parameter_effective_magnus": "per_s",
         }
-
-        for i, threshold in enumerate(self.position_thresholds_m):
-            key = f"position_accuracy_{format_metric_threshold(threshold)}m"
-            metrics[key] = self.num_correct_frames[i] / self.num_frames
-
-        for i, threshold in enumerate(self.endpoint_thresholds_m):
-            key = f"endpoint_accuracy_{format_metric_threshold(threshold)}m"
-            metrics[key] = self.num_correct_endpoints[i] / self.num_endpoint_sequences
-
-        if self.num_y_sign_targets:
-            metrics["y_sign_accuracy"] = (
-                self.num_y_sign_correct / self.num_y_sign_targets
+        # Keep core undefined metrics present even for an all-padding batch.
+        for key in units:
+            values.setdefault(key, [])
+        for key, arrays in values.items():
+            array = np.concatenate(arrays) if arrays else np.empty(0)
+            count = len(array)
+            result[f"{key}_count"] = float(count)
+            if key in {"below_ground", "reprojection_evaluable"}:
+                result[f"{key}_rate"] = float(np.mean(array)) if count else float("nan")
+                continue
+            if key.startswith(("rollout_duration_", "rollout_substeps_")):
+                result[f"{key}_mean"] = float(np.mean(array)) if count else float("nan")
+                continue
+            base = key.split("__")[0]
+            if base.startswith("rollout_position_h"):
+                unit = "m"
+            elif base.startswith("rollout_velocity_h"):
+                unit = "mps"
+            else:
+                unit = units[base]
+            suffix = "__" + key.split("__", 1)[1] if "__" in key else ""
+            base = base if not suffix else "trajectory"
+            result[f"{base}_rmse_{unit}{suffix}"] = (
+                float(np.sqrt(np.mean(array**2))) if count else float("nan")
             )
-        metrics.update(
-            {
-                f"reference_index_{index}_position_error_m": sum(values) / len(values)
-                for index, values in self.reference_index_errors.items()
-            }
+            result[f"{base}_mean_{unit}{suffix}"] = (
+                float(np.mean(array)) if count else float("nan")
+            )
+            result[f"{base}_p95_{unit}{suffix}"] = (
+                float(np.quantile(array, 0.95)) if count else float("nan")
+            )
+        rmses = [
+            float(np.sqrt(np.mean(np.concatenate(arrays) ** 2)))
+            for arrays in clips.values()
+            if sum(map(len, arrays))
+        ]
+        result["clip_trajectory_rmse_mean_m"] = (
+            float(np.mean(rmses)) if rmses else float("nan")
         )
+        result["clip_count"] = float(len(rmses))
+        result.update({key: float(count) for key, count in counters.items()})
+        return result
 
-        return metrics
+    def report(self) -> dict[str, Any]:
+        return {
+            "schema": METRIC_SCHEMA,
+            "metrics": {
+                key: value if np.isfinite(value) else None
+                for key, value in self.compute().items()
+            },
+        }

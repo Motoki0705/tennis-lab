@@ -1,0 +1,182 @@
+[
+  {
+    "name": "position-s42-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "position",
+      "seed": 42,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 5195.41854463605,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/position-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint_sha256": "505a2dcf9584e6c0ea9cfa01f869bcf10d6192e5a18ee17cfae1239b379395dd",
+      "validation_trajectory_rmse_m": 0.6985505819320679,
+      "selection_used_test": false,
+      "run_id": "1791857516971974999_3137706_i1044-position-s42-u4000-retry-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "reprojection-s42-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "reprojection",
+      "seed": 42,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 7686.970205668011,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint_sha256": "97e88f588aa7ea57ec7f07b450d1c9c6c609a049b5a6f4a8e75b818d09667d01",
+      "validation_trajectory_rmse_m": 0.8476958870887756,
+      "selection_used_test": false,
+      "run_id": "1791857517073615041_3137741_i1044-reprojection-s42-u4000-retry-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "velocity-s42-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "velocity",
+      "seed": 42,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 8494.694940055022,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/velocity-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint_sha256": "2a2242ffea76302e1c0c1d5d2732fa814fa7137ac5a96c84de3a2e667a8ca735",
+      "validation_trajectory_rmse_m": 0.7142558097839355,
+      "selection_used_test": false,
+      "run_id": "1791853065654432895_1326446_i1044-velocity-s42-u4000",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "rollout_position-s42-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "rollout_position",
+      "seed": 42,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 9415.11455994402,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/rollout_position-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint_sha256": "0cdb43a5c0fa75c0663f6ffb60509fbe377fe838138a0c64ec446bb042f71574",
+      "validation_trajectory_rmse_m": 0.7140101194381714,
+      "selection_used_test": false,
+      "run_id": "1791853065891624636_1326740_i1044-rollout_position-s42-u4000",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "rollout_velocity-s42-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "rollout_velocity",
+      "seed": 42,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 13802.95083561202,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/rollout_velocity-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint_sha256": "0a623d7328a45049332f33e28f603423ab1acd6d15d4a5caef8de01ab372d833",
+      "validation_trajectory_rmse_m": 0.6923530697822571,
+      "selection_used_test": false,
+      "run_id": "1791857516841918861_3137657_i1044-rollout_velocity-s42-u4000-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "parameters-s42-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "parameters",
+      "seed": 42,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 16504.28716372297,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s42-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt",
+      "checkpoint_sha256": "a46e79af234b977cd2d9946007eb895a2a4eed94feb8a14187ed8bb7729945c9",
+      "validation_trajectory_rmse_m": 0.6518378257751465,
+      "selection_used_test": false,
+      "run_id": "1791857516898632174_3137682_i1044-parameters-s42-u4000-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "reprojection-s43-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "reprojection",
+      "seed": 43,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 9208.54079219402,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s43-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt",
+      "checkpoint_sha256": "861df49ca556848a39b5f97ff0ea60c54e92c23c456bca1789c934db0c56e974",
+      "validation_trajectory_rmse_m": 0.7631002068519592,
+      "selection_used_test": false,
+      "run_id": "1791857517204098327_3137844_i1044-reprojection-s43-u4000-v3-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "parameters-s43-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "parameters",
+      "seed": 43,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 8056.727980440017,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s43-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt",
+      "checkpoint_sha256": "0b2c2e4add308e3eb555a0043f51881f3a4b8aaf2068ca134a964a4d14981835",
+      "validation_trajectory_rmse_m": 0.6489589214324951,
+      "selection_used_test": false,
+      "run_id": "1791904031787910613_1392671_i1044-selected-new-s43-u4000-retry-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "reprojection-s44-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "reprojection",
+      "seed": 44,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 5255.944294176006,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s44-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint_sha256": "c739a0fa8cc11a543f9fc9bb29288966665221d9b6825b2bbeac0d7b723893c9",
+      "validation_trajectory_rmse_m": 0.8502911329269409,
+      "selection_used_test": false,
+      "run_id": "1791857517322816057_3137894_i1044-reprojection-s44-u4000-v3-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  {
+    "name": "parameters-s44-u4000",
+    "receipt": {
+      "protocol": "issue1044-v1",
+      "arm": "parameters",
+      "seed": 44,
+      "optimizer_updates": 4000,
+      "elapsed_seconds": 7630.075559735007,
+      "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s44-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint_sha256": "1cf4067a297e2e46d2999efb5fc2df4c3dd5485d42cda35a1b3a028425ce281a",
+      "validation_trajectory_rmse_m": 0.712540864944458,
+      "selection_used_test": false,
+      "run_id": "1791857517390940136_3137919_i1044-selected-new-s44-u4000-v3-cli",
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  }
+]

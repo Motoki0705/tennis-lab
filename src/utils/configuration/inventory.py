@@ -276,6 +276,14 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.ball_detection.scripts.train_blcs_ablation": (
+        "blcs.ablation.train",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.ball_detection.scripts.evaluate_blcs_ablation": (
+        "blcs.ablation.evaluation",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_detection.visualization.review.cli": ("ball_detection.review_dataset", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.visualization.inference.cli": ("ball_detection.inference_ui", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.dpt_pretrain.runner": ("ball_detection.pretrain_mdd_dpt", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
@@ -585,6 +593,18 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "src.tasks.plcs.scripts.review_dataset",
         "main",
         domain="plcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.ball_detection.scripts.train_blcs_ablation",
+        "main",
+        domain="blcs",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.ball_detection.scripts.evaluate_blcs_ablation",
+        "main",
+        domain="blcs",
         executable_module=True,
     ),
     _non_hydra_boundary(

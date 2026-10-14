@@ -1,0 +1,42 @@
+{
+  "scope": "Final record/receipt guard and main integration checks; original scientific tests and GPU smokes are in group-i1044-qualification",
+  "checks": [
+    {
+      "path": "formal-receipts-tests.log",
+      "sha256": "64ef0efbe31be8f7108244350102cecb3403bced232e653aa2cb9fbd132d4d36",
+      "observed_count": 22
+    },
+    {
+      "path": "main-integration-tests.log",
+      "sha256": "b3ab356dd19babfdd90cdd6006fbc415296df859703ccc29687b94de9078b786",
+      "observed_count": 161
+    },
+    {
+      "path": "inventory-integration-tests.log",
+      "sha256": "29020dae5b44fc351925fca1f89152cc94756be800717d67c0b9235a8396ec47",
+      "observed_count": 15
+    },
+    {
+      "path": "knowledge-validation.log",
+      "sha256": "a0ad546490a6a9f96182cbd01efa542fcc5a78ae7577a38e2ddfa6af6fa837dd",
+      "observed_count": 578
+    },
+    {
+      "path": "repro-path-validation.log",
+      "sha256": "caeded6346b20d9aa40425d03b2bf41876df3749396c61daf0c97c4fd20e1e31",
+      "observed_count": 392
+    }
+  ],
+  "knowledge_errors": 0,
+  "knowledge_historical_warnings": 217,
+  "repro_missing": 0,
+  "repro_unverifiable": 0,
+  "validator_agents_requested": 0,
+  "validator_agents_attempted": 0,
+  "main_integrated_commit": "e848e529928d2c8ee760faf0cd70112e2f976f13",
+  "merge_commit": "9462fd897",
+  "receipt_guard_commit": "7552a8f1d",
+  "posthoc_cpu_execution_succeeded": true,
+  "posthoc_typecheck_succeeded": true,
+  "frozen_training_or_test_inference_repeated_after_source_integration": false
+}
