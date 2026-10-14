@@ -79,6 +79,7 @@ class BudgetStopped(RuntimeError):
 
 class ResourceManager:
     def __init__(self, layout: AnnotationLayout, reference: ArtifactRef) -> None:
+        layout = layout.shared()
         self.layout, self.reference = layout, reference
         self.scope = read_document(layout, reference, BudgetScope)
         self.registry = Registry(layout)
@@ -147,6 +148,10 @@ class ResourceManager:
         previously_used_gpu_seconds: float,
         max_pending_per_stage: int,
     ) -> ResourceManager:
+        if layout.review_namespace is not None:
+            raise ValueError(
+                "benchmark review must reuse an existing shared resource scope"
+            )
         values = dict(
             scope_id=scope_id,
             limits=limits,

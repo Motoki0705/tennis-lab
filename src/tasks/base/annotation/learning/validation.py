@@ -28,7 +28,11 @@ def check_completion(
     layout: AnnotationLayout, completion: CampaignCompletion
 ) -> CampaignPlan:
     plan = load_plan(verify_reference(layout, completion.plan))
-    if plan.annotation_root != str(layout.root) or not plan.allows_adoption:
+    if (
+        plan.annotation_root != str(layout.root)
+        or plan.phase != "production"
+        or layout.review_namespace is not None
+    ):
         raise ValueError("learning requires a production plan at the fixed root")
     actual = [
         (task.task, p.product) for task in completion.tasks for p in task.products

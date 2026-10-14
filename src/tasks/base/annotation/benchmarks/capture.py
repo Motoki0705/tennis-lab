@@ -50,9 +50,9 @@ def _rows(
 ) -> tuple[dict[str, int], tuple[AttemptSnapshot, ...], tuple[str, ...]]:
     states: Counter[str] = Counter()
     attempts: list[AttemptSnapshot] = []
-    foreign: set[str] = set()
+    foreign = _other_active_plans(layout.shared(), spec)
     if not layout.registry.exists():
-        return {"unregistered": len(expected)}, (), ()
+        return {"unregistered": len(expected)}, (), foreign
     # Opening evidence never creates or repairs a domain table.
     with sqlite3.connect(layout.registry.as_uri() + "?mode=ro", uri=True) as db:
         db.row_factory = sqlite3.Row
@@ -118,19 +118,34 @@ def _rows(
                         )
                     )
         states["unregistered"] += len(set(expected) - found)
-        if "resource_requests" in tables:
-            # These scope-wide resource values may include other campaigns.
-            for row in db.execute(
-                "SELECT request FROM resource_requests WHERE state IN ('running','draining')"
-            ):
-                value = json.loads(row["request"])
-                if value["plan"] != spec.plan.model_dump(mode="json"):
-                    foreign.add(value["plan"]["digest"])
     return (
         {key: value for key, value in sorted(states.items()) if value},
         tuple(attempts),
-        tuple(sorted(foreign)),
+        foreign,
     )
+
+
+def _other_active_plans(
+    layout: AnnotationLayout, spec: ConditionSpec
+) -> tuple[str, ...]:
+    if not layout.registry.exists():
+        return ()
+    foreign: set[str] = set()
+    with sqlite3.connect(layout.registry.as_uri() + "?mode=ro", uri=True) as db:
+        if (
+            db.execute(
+                "SELECT name FROM sqlite_master WHERE name='resource_requests'"
+            ).fetchone()
+            is None
+        ):
+            return ()
+        for row in db.execute(
+            "SELECT request FROM resource_requests WHERE state IN ('running','draining')"
+        ):
+            value = json.loads(row[0])
+            if value["plan"] != spec.plan.model_dump(mode="json"):
+                foreign.add(value["plan"]["digest"])
+    return tuple(sorted(foreign))
 
 
 def _live(child: ChildReceipt) -> bool:
@@ -190,6 +205,8 @@ def live_workers(
 
 def observe(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
     spec, plan, expected = condition(layout, reference)
+    if plan.phase == "benchmark":
+        layout = layout.for_benchmark(plan.campaign_id)
     root = directory(layout, spec)
     with artifact_lock(
         layout, "benchmark-" + spec.benchmark_id + "-" + spec.condition_id

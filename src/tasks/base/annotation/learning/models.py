@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS annotation_model_selections (
 
 class ModelRegistry:
     def __init__(self, layout: AnnotationLayout) -> None:
+        if layout.review_namespace is not None:
+            raise ValueError(
+                "benchmark review cannot access the model adoption registry"
+            )
         self.layout = layout
         self.registry = Registry(layout)
         self.registry.initialize("annotation-learning-models-v1", _SCHEMA)

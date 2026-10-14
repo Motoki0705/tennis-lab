@@ -153,6 +153,10 @@ class Predictions:
         return tuple(results)
 
     def run(self, manifest_ref: ArtifactRef, adapter: PredictionAdapter) -> ArtifactRef:
+        if self.plan.phase == "benchmark" or self.layout.review_namespace is not None:
+            raise ValueError(
+                "benchmark review must reuse predictions without inference"
+            )
         task = next(
             (task for task in self.plan.tasks if task.task == adapter.task), None
         )

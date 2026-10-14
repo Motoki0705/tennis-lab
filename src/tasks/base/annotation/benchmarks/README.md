@@ -62,7 +62,30 @@ test rootやtest commandは必ずsyntheticとして分離する。
   画像は重複込みbytesとhashで重複を除いたbytesを分け、prompt/toolの文字数、操作分類、
   compaction、対応不能なtool出力も併記する。操作分類の意味はtask adapterが所有する。
 
-現在は計測・集計APIとCLIの実装である。同じclipを3条件へ投入するrunnerには、
-本番の再注釈防止を維持した条件別のreview台帳・成果物と、共有scopeの接続が必要。
+## 同じ入力を条件別にレビューする境界
+
+`phase = benchmark` のplanは、productionと同じ根拠付きreview policyを要求する。
+`register_inputs(layout, condition_ref, adapters)` は共有台帳に登録された未採用の予測を
+検証し、条件ごとの `campaigns/<campaign>/benchmark/registry.sqlite3` へ参照を登録する。
+clip ID、frame/PTS、media、予測receiptを変更せず、素材取得や推論器の実行はしない。
+元のtaskが採用済み、参照・モデル・設定が登録内容と違う、scopeが未登録なら拒否する。
+同じ要求の再送では条件内のレビュー進捗を保持し、別の入力集合への差し替えは拒否する。
+
+`AnnotationLayout.for_benchmark(campaign_id)` はreview台帳とannotation成果物だけを
+条件別にし、ルート内の不変入力を共有する。通常planをこのlayoutで実行すること、
+benchmark planを通常layoutで実行することを拒否する。条件内では画像確認・編集・
+採用証跡まで記録できるが、データセット公開・学習・モデル採用の入口はproductionに限定する。
+benchmarkの採用証跡を通常layoutへ渡しても、planのphaseで公開・学習を拒否する。
+
+予算は常に共有registryの既存scopeを使う。条件を変えても使用済みGPU時間・保存量・
+停止状態を引き継ぎ、新しいbaselineで予算を作り直さない。workerの資源要求IDには条件の
+campaign IDを含める。clip単位の実行lockは共有のままなので、同じclipを含む条件は順番に実行する。
+
+固定入力の保護は共有storage catalogへ先に記録する。その後の条件登録が失敗しても保護を
+自動解除しない。条件内の採用成果物は条件内catalogが保護する。共有GCによる条件内catalogの
+横断列挙と実削除は未実装であり、この登録を削除可の判断には使わない。
+
+現在は計測・集計CLIと隔離・入力登録APIの実装である。通常controller/configureはbenchmarkを
+拒否する。専用runnerによるworker起動と親サービスへの接続は後続で実装する。
 公開・追跡/pose・学習の工程別時間とtask別の品質評価は、そのrunnerと各adapterから追加する。
 CPU fixtureの結果は10/25/50の実Codex/GPU負荷試験の代用ではない。

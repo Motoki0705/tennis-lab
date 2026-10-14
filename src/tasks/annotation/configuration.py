@@ -131,6 +131,10 @@ def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
 def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
     data = Configuration.model_validate_json(data.canonical_bytes())
     plan = data.plan
+    if plan.phase == "benchmark" or layout.review_namespace is not None:
+        raise ValueError(
+            "benchmark conditions require the dedicated review configuration"
+        )
     if plan.annotation_root != str(layout.root):
         raise ValueError("configuration plan belongs to a different annotation root")
     if layout.mode == "production":

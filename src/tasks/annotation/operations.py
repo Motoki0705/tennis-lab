@@ -88,6 +88,8 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         raise ValueError("operation must be launched by its resource-accounted stage")
     data = read_document(layout, reference, OperationInput)
     plan = load_plan(verify_reference(layout, data.plan))
+    if plan.phase == "benchmark" or layout.review_namespace is not None:
+        raise ValueError("benchmark review requires its dedicated operation boundary")
     directory = layout.artifact_path(reference).parent
     expected = layout.path("campaigns", plan.campaign_id, "jobs")
     if (
@@ -186,7 +188,7 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         elif isinstance(op, BootstrapModelOperation):
             from src.tasks.base.annotation.learning.models import ModelRegistry
 
-            if not plan.allows_adoption:
+            if plan.phase != "production":
                 raise ValueError("model bootstrap requires an explicit production plan")
             task = next((task for task in plan.tasks if task.task == op.task), None)
             if task is None:

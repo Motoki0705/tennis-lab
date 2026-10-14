@@ -24,7 +24,13 @@ from ..artifacts import (
 )
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, load_plan, references, save_plan
+from ..plan import (
+    CampaignPlan,
+    load_plan,
+    references,
+    require_execution_layout,
+    save_plan,
+)
 from ..reproducibility import require_frozen_code
 from ..resources import ResourceManager, ResourceRequest
 from ..telemetry.capture import capture, presented_images, verify_report
@@ -60,6 +66,7 @@ class WorkerPool:
         worker_pss_bytes: int | None = None,
         worker_storage_bytes: int | None = None,
     ) -> None:
+        require_execution_layout(layout, plan)
         if test_command is not None and layout.mode != "test":
             raise ValueError("test commands are forbidden in production")
         if layout.mode == "production" and resources is None:
@@ -324,7 +331,10 @@ class WorkerPool:
                         and self.worker_storage_bytes is not None
                     )
                     resource_request = ResourceRequest(
-                        request_id="worker-" + attempt,
+                        request_id=("benchmark-" + self.plan.campaign_id + "-")
+                        + attempt
+                        if self.plan.phase == "benchmark"
+                        else "worker-" + attempt,
                         plan=plan_ref,
                         stage=request.stage,
                         pss_bytes=self.worker_pss_bytes,
