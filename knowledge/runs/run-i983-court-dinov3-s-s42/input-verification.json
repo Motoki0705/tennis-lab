@@ -1,0 +1,13 @@
+{
+  "status": "all_selected_inputs_verified",
+  "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "input_manifest_sha256": "4d75a2256088a12f8112cf1718d68bd3c649d71f64ad61429b66dba0add8dc7e",
+  "assets": [
+    "data/synthetic_data_generation/scenes/B00/datasets/court",
+    "data/synthetic_data_generation/scenes/B01/datasets/court",
+    "data/synthetic_data_generation/scenes/B02/datasets/court",
+    "data/synthetic_data_generation/scenes/B03/datasets/court",
+    "data/court_detection/tennis_court_detector-v1",
+    "ckpt/dinov3/dinov3_vits16_pretrain_lvd1689m-08c60483.pth"
+  ]
+}

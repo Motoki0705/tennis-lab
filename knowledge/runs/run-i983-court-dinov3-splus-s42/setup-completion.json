@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "phase": "ready",
+  "session": "i983-l4-ablation-04",
+  "jobs": [
+    {
+      "schema_version": 1,
+      "job_id": "setup",
+      "status": "completed",
+      "updated_at": "2026-10-11T15:38:45.415587+00:00",
+      "returncode": 0,
+      "worker_pid": 4165,
+      "worker_token": "74627",
+      "pid": 4366,
+      "process_token": "78412",
+      "started_at": "2026-10-11T15:38:00.384850+00:00",
+      "drive_saved_at": "2026-10-11T15:38:53.393194+00:00",
+      "finished_at": "2026-10-11T15:38:53.393208+00:00",
+      "transport_alive": false
+    }
+  ],
+  "repo_root": "/content/tennis-lab"
+}

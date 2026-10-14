@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-12T22:46:44.698405+00:00",
+  "kind": "court_ablation_comparison_bundle",
+  "comparison_reproduction": {
+    "files": 38,
+    "all_bytes_equal": true
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 4512,
+      "sha256": "b3468cea9f6fb557c1be5b0adbc9c2e824a82ebeda9481a6bb3af866f79333bf"
+    },
+    {
+      "path": "comparison/comparison.md",
+      "bytes": 4482,
+      "sha256": "471eb0b391fa8c1b7653303afa47d9ac0977ccb9072e91ad9fae96ac8b80da4d"
+    },
+    {
+      "path": "comparison/provenance.json",
+      "bytes": 115115,
+      "sha256": "7e7ca89e0bc44a3c214236ad8d88c5272b76dd23565e21b9e2020229e36739f9"
+    },
+    {
+      "path": "comparison/synthetic_court-test-00-kp.png",
+      "bytes": 343894,
+      "sha256": "a3006a146d84e3a4ea8a4b93877262bf244139aa953715bf720a7a7a61f915c8"
+    },
+    {
+      "path": "comparison/synthetic_court-test-00-line.png",
+      "bytes": 318959,
+      "sha256": "8bd30d26d281988a629aa7fa7fd9c70b82d24a8d5281a395089190cad359d102"
+    },
+    {
+      "path": "comparison/synthetic_court-test-00-pose.png",
+      "bytes": 226086,
+      "sha256": "c2ebe58af324257d372ecfe260908c4bc79aa0c78c439c200d9e4ec0d3aa44a9"
+    },
+    {
+      "path": "comparison/synthetic_court-test-00-seg.png",
+      "bytes": 246004,
+      "sha256": "7091aa2ff2d010d53f1ab9e40105679355e4eaafc28fd74a51662dd98246385e"
+    },
+    {
+      "path": "comparison/synthetic_court-test-00-semantic_line.png",
+      "bytes": 246393,
+      "sha256": "94cc9bf8bf25ac307f9bdb3d47eab7cc6af9b584a45bc7791cc6bc377e6c2512"
+    },
+    {
+      "path": "comparison/synthetic_court-test-01-kp.png",
+      "bytes": 331786,
+      "sha256": "d562914f3abcee4f660ef4e84fa1f588a9bead4383f047474f48f3289aa0ec74"
+    },
+    {
+      "path": "comparison/synthetic_court-test-01-line.png",
+      "bytes": 228947,
+      "sha256": "c5687a2f7263d3e59e6148acf18ecc7697155d25c6dc8f737f4db827278f4351"
+    },
+    {
+      "path": "comparison/synthetic_court-test-01-pose.png",
+      "bytes": 187237,
+      "sha256": "0b01c34773576ea840611b3587e6de5fab6267b3e1d1802d537915b7d70f08d8"
+    },
+    {
+      "path": "comparison/synthetic_court-test-01-seg.png",
+      "bytes": 199874,
+      "sha256": "8355696016b9da5ea850b2e51a464adb8a3acc463a2ff8b14d87043a7635dac9"
+    },
+    {
+      "path": "comparison/synthetic_court-test-01-semantic_line.png",
+      "bytes": 191038,
+      "sha256": "e39295ca0d80630c9ac1a34579cfaf088141017c7ad59cec7060d51665187585"
+    },
+    {
+      "path": "comparison/synthetic_court-test-02-kp.png",
+      "bytes": 257150,
+      "sha256": "8197f65efe77c5a2d874574134170d37cb0456343c00525b54c5ec52c6d2f646"
+    },
+    {
+      "path": "comparison/synthetic_court-test-02-line.png",
+      "bytes": 213037,
+      "sha256": "585b532e4a7046846f4e2b49aede61ddaf3e329443aacf01896ec4746965d1c6"
+    },
+    {
+      "path": "comparison/synthetic_court-test-02-pose.png",
+      "bytes": 153970,
+      "sha256": "a3d6335ffdd88b08086f96ec472358774c1d447fd3cdd6c271357da80a240711"
+    },
+    {
+      "path": "comparison/synthetic_court-test-02-seg.png",
+      "bytes": 162024,
+      "sha256": "677747fff9ad19b1868b55c46508b7d58e6c5abe8973e03a7d462bf2c68b04ed"
+    },
+    {
+      "path": "comparison/synthetic_court-test-02-semantic_line.png",
+      "bytes": 161429,
+      "sha256": "58bb79e53e19856240ff71fb0f05597b89946e461bdc729a3e6d8d107c8aa854"
+    },
+    {
+      "path": "comparison/synthetic_court-test-03-kp.png",
+      "bytes": 243644,
+      "sha256": "9af7278c1c31433ea8086ff37e26cca273f9a32b3ed24bc1eafc6598987d6005"
+    },
+    {
+      "path": "comparison/synthetic_court-test-03-line.png",
+      "bytes": 218324,
+      "sha256": "5d2220fa0c587a808c498d22bb579abdc77967bc8ee7b96fcf5466329db54f3c"
+    },
+    {
+      "path": "comparison/synthetic_court-test-03-pose.png",
+      "bytes": 143983,
+      "sha256": "e009ed0dbf3503aa58caab4055fff8891b3ac37d16000f44f4eb795df18f66e5"
+    },
+    {
+      "path": "comparison/synthetic_court-test-03-seg.png",
+      "bytes": 158659,
+      "sha256": "e5c0092aea5bad3d49badb31158a2955f349b5e6b62385b037d45e2d071083ee"
+    },
+    {
+      "path": "comparison/synthetic_court-test-03-semantic_line.png",
+      "bytes": 157476,
+      "sha256": "b9ea01d2a62b154b280d92501329133f6ddda42992b83ace959a3bc594175192"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-00-kp.png",
+      "bytes": 300495,
+      "sha256": "237bf7dfa3165775bedaa1d520db5ca492e17aa1d92bfff8bd768fdceea17c87"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-00-line.png",
+      "bytes": 238417,
+      "sha256": "b23b95f8b18d37ea8db9f81b86a548a19f5d14647f65a1b1cb88525b743f42ab"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-00-seg.png",
+      "bytes": 194496,
+      "sha256": "75fa75a75342ef1f5a53b2b793ac49aab40f12ff02d712f4917e746a7cefaa68"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-00-semantic_line.png",
+      "bytes": 196892,
+      "sha256": "6400bc9191d736c9c0b1e307b0722753e31756f0c98dbb68b908f95e97a8f307"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-01-kp.png",
+      "bytes": 292713,
+      "sha256": "fec92385da67176af4ff948c26bc211fe11101f3dc7a1fa0cb47cd5d5c91002b"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-01-line.png",
+      "bytes": 234505,
+      "sha256": "567e2eb208f95ee9cc1fdc540c81f4fee09ca6f6ed2c714c9b2f6d758bd81387"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-01-seg.png",
+      "bytes": 186763,
+      "sha256": "c9d13dd6cd7e5db485a01aa233f0b6df51e106e3d3944e6ff3a70e89ece91b9e"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-01-semantic_line.png",
+      "bytes": 188872,
+      "sha256": "ba1336b0d45fbf8a9eab619d77575e0ac61075b03a4c3739ae538163fed5e46c"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-02-kp.png",
+      "bytes": 308907,
+      "sha256": "3bec324021e51c1e8c9531acb8ce1a11daa264fce972d2eda5b54efb5d1d93bb"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-02-line.png",
+      "bytes": 250366,
+      "sha256": "7ba5715fa8f8b8e893e63f7b8e4e4f8cc3979070d283ef54a1e8109f52756c22"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-02-seg.png",
+      "bytes": 205526,
+      "sha256": "11106f87bf13a3656b371a3d934c2f3a9133c200eb0e25c8f0206dcd2ced7df0"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-02-semantic_line.png",
+      "bytes": 207929,
+      "sha256": "df17a3fe31fb5bc7409fff30d07fa2101f172a50bf4737822edebc4649337d11"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-03-kp.png",
+      "bytes": 353549,
+      "sha256": "248e9c67fdf5c82359a2def993dd7e82671683afd83988731f598fee5688cf32"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-03-line.png",
+      "bytes": 297790,
+      "sha256": "ce9efde7528ff87ebdc1580255e7e4db93cbfe992d499b35643cbebfaced0a42"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-03-seg.png",
+      "bytes": 248842,
+      "sha256": "ba57e0f2db1b6591eb911210c16f6693aef8bc1f899f3bbafd9c86ed11efa2df"
+    },
+    {
+      "path": "comparison/tennis_court_detector-val-03-semantic_line.png",
+      "bytes": 251108,
+      "sha256": "02e04fad7f33bd999542b0c5dd5ff759fb001ca8f28cc2140194c4decad01443"
+    },
+    {
+      "path": "repro.sh",
+      "bytes": 809,
+      "sha256": "92631b73454e11f7d815b459693c6769da614203e79c28c8d3534eefffa6df76"
+    },
+    {
+      "path": "run.json",
+      "bytes": 4391,
+      "sha256": "90fa136c9178b937323ad087aa1721754e68a0ceeda576cc547eeb9520909cb4"
+    }
+  ]
+}

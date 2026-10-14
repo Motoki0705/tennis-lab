@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "job_id": "setup",
+  "status": "completed",
+  "updated_at": "2026-10-12T08:47:51.704237+00:00",
+  "returncode": 0,
+  "worker_pid": 4402,
+  "worker_token": "80844",
+  "pid": 4604,
+  "process_token": "84648",
+  "started_at": "2026-10-12T08:47:21.975603+00:00",
+  "drive_saved_at": "2026-10-12T08:47:58.423581+00:00",
+  "finished_at": "2026-10-12T08:47:58.423595+00:00"
+}

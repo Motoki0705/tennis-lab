@@ -1169,7 +1169,24 @@ def test_three_request_changes_in_a_row_escalate_once_per_streak(env: Env) -> No
 
 def test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews(
     env: Env,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Both polls run at exactly the same wall-clock time, so this also covers
+    # allocating separate logs for the same PR/head/base within one second.
+    frozen_script = env.tmp / "frozen_review.py"
+    frozen_script.write_text(
+        "import importlib.util, sys\n"
+        "from datetime import UTC, datetime\n"
+        "from types import SimpleNamespace\n"
+        f"spec = importlib.util.spec_from_file_location('frozen_cross_review', {str(SCRIPT)!r})\n"
+        "module = importlib.util.module_from_spec(spec)\n"
+        "sys.modules[spec.name] = module\n"
+        "spec.loader.exec_module(module)\n"
+        "module.datetime = SimpleNamespace(now=lambda tz: datetime(2026, 10, 12, 8, tzinfo=UTC))\n"
+        "raise SystemExit(module.main())\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(globals(), "SCRIPT", frozen_script)
     # A prefix-less PR labelled as Codex's is reviewed by Claude; mid-review it is
     # relabelled as Claude's, which needs a Codex review instead.
     sha = env.add_pr(
@@ -1185,11 +1202,23 @@ def test_relabel_during_review_blocks_the_gate_until_the_right_agent_reviews(
     assert "author changed since the first view" in first.stderr
     assert "gate=" not in first.stderr
     assert "merged" not in env.state
+    [first_run] = (env.state_dir / "runs").iterdir()
+    first_artifacts = {
+        path: path.read_bytes() for path in first_run.rglob("*") if path.is_file()
+    }
+    assert {"prompt.md", "agent_output.md", "review.json", "review_comment.md"} <= {
+        path.name for path in first_artifacts
+    }
 
     second = env.run(env={"AGENT_AUTO_MERGE": "1"})
     assert second.returncode == 0, second.stderr
     assert [c["agent"] for c in env.agent_calls()] == ["claude", "codex"]
     assert env.state["merged"] == [["9", sha]]
+    runs = list((env.state_dir / "runs").iterdir())
+    assert len(runs) == 2
+    assert all(path.name.startswith("20261012T080000Z-pr9-") for path in runs)
+    for path, content in first_artifacts.items():
+        assert path.read_bytes() == content
 
 
 @pytest.mark.parametrize(

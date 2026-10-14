@@ -134,6 +134,7 @@ def test_repo_shared_paths_file_covers_foundations() -> None:
         "AGENTS.md",
         "CLAUDE.md",
         ".agents/ops/review/shared_paths.txt",
+        ".agents/skills/tennis-drive/references/storage-policy.md",
         ".github/workflows/ci.yml",
         "pyproject.toml",
         "uv.lock",

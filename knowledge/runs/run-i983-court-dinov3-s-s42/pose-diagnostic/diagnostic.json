@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "scope": "Supplementary per-point diagnosis; the original all-visible-point metric is unchanged.",
+  "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "checkpoint_sha256": "7c03fb429dae1a7090ba27257a38e4ca26663da4e91020c130bb26fb0f7d554b",
+  "ordered_sample_ids_sha256": "8a11fe880be524af810e08be7cc85d957e0ca842be2e19616f62c8bba77b9859",
+  "min_depth_m": 0.1,
+  "original_reported_mean_px": 184.27508544921875,
+  "rerun_reported_mean_px": 184.27508544921875,
+  "all_visible": {
+    "count": 7928,
+    "mean_px": 184.27507998354946,
+    "median_px": 7.91215181350708,
+    "p95_px": 46.41489849090572,
+    "max_px": 1336525.625,
+    "error_sum_px": 1460932.8341095801
+  },
+  "depth_valid_only": {
+    "count": 7926,
+    "mean_px": 15.392574074866596,
+    "median_px": 7.909027099609375,
+    "p95_px": 46.30227851867676,
+    "max_px": 4032.983642578125,
+    "error_sum_px": 122001.54211739264
+  },
+  "depth_invalid_only": {
+    "count": 2,
+    "mean_px": 669465.6459960938,
+    "median_px": 669465.6459960938,
+    "p95_px": 1269819.6270996092,
+    "max_px": 1336525.625,
+    "error_sum_px": 1338931.2919921875
+  },
+  "invalid_error_fraction": 0.9164906563334576,
+  "invalid_points": [
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 1,
+      "error_px": 2405.6669921875,
+      "depth_m": -1.3537272214889526,
+      "invalid_depth": true
+    },
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 6,
+      "error_px": 1336525.625,
+      "depth_m": 0.0026963800191879272,
+      "invalid_depth": true
+    }
+  ],
+  "largest_errors": [
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 6,
+      "error_px": 1336525.625,
+      "depth_m": 0.0026963800191879272,
+      "invalid_depth": true
+    },
+    {
+      "sample_id": "B01:court-sample-002037",
+      "semantic_point_index": 1,
+      "error_px": 4032.983642578125,
+      "depth_m": 1.1184340715408325,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 9,
+      "error_px": 2699.796142578125,
+      "depth_m": 0.745137095451355,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 1,
+      "error_px": 2405.6669921875,
+      "depth_m": -1.3537272214889526,
+      "invalid_depth": true
+    },
+    {
+      "sample_id": "B01:court-sample-002037",
+      "semantic_point_index": 6,
+      "error_px": 1963.8321533203125,
+      "depth_m": 2.4821665287017822,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 11,
+      "error_px": 1033.8970947265625,
+      "depth_m": 2.477724313735962,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002037",
+      "semantic_point_index": 9,
+      "error_px": 919.5005493164062,
+      "depth_m": 2.891772985458374,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002037",
+      "semantic_point_index": 11,
+      "error_px": 813.127685546875,
+      "depth_m": 3.8476457595825195,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 12,
+      "error_px": 595.2584838867188,
+      "depth_m": 4.819356918334961,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002077",
+      "semantic_point_index": 13,
+      "error_px": 505.6319885253906,
+      "depth_m": 6.551944255828857,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002037",
+      "semantic_point_index": 13,
+      "error_px": 505.6253356933594,
+      "depth_m": 7.943819046020508,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002037",
+      "semantic_point_index": 12,
+      "error_px": 503.7906494140625,
+      "depth_m": 6.987946033477783,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-002037",
+      "semantic_point_index": 8,
+      "error_px": 472.3580627441406,
+      "depth_m": 11.08411979675293,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B03:court-sample-001155",
+      "semantic_point_index": 3,
+      "error_px": 239.6439971923828,
+      "depth_m": 2.3804726600646973,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B03:court-sample-001154",
+      "semantic_point_index": 2,
+      "error_px": 236.67425537109375,
+      "depth_m": 1.8117445707321167,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B03:court-sample-001155",
+      "semantic_point_index": 2,
+      "error_px": 223.19149780273438,
+      "depth_m": 2.0957705974578857,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-000839",
+      "semantic_point_index": 7,
+      "error_px": 212.02818298339844,
+      "depth_m": 10.550342559814453,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B01:court-sample-000781",
+      "semantic_point_index": 4,
+      "error_px": 212.02130126953125,
+      "depth_m": 11.66545295715332,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B03:court-sample-001158",
+      "semantic_point_index": 3,
+      "error_px": 203.0022735595703,
+      "depth_m": 1.878611445426941,
+      "invalid_depth": false
+    },
+    {
+      "sample_id": "B03:court-sample-000726",
+      "semantic_point_index": 6,
+      "error_px": 199.08615112304688,
+      "depth_m": 14.82417106628418,
+      "invalid_depth": false
+    }
+  ]
+}

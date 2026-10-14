@@ -1,0 +1,69 @@
+{
+  "comparison_contract_matches": {
+    "l": true,
+    "s": true,
+    "splus": true
+  },
+  "selected_checkpoint_sha256": "b8f36ed60b59d11083aaf1001292a7f4f88791efe59bc6ef087693645ec4fae9",
+  "epoch": 17,
+  "global_step": 29844,
+  "evaluation_json_sha256": "0787ebb9d38459388a60cd73f08695ca81817c3f4509d88de40a8b1c9ee07a3f",
+  "png_count": 36,
+  "parameters": {
+    "backbone": {
+      "total": 85669632,
+      "trainable": 0
+    },
+    "projection": {
+      "total": 3149824,
+      "trainable": 3149824
+    },
+    "transformer": {
+      "total": 101204992,
+      "trainable": 101204992
+    },
+    "dpt": {
+      "total": 25284608,
+      "trainable": 25284608
+    },
+    "pose_head": {
+      "total": 1059850,
+      "trainable": 1059850
+    },
+    "dense_heads": {
+      "total": 1085986,
+      "trainable": 1085986
+    }
+  },
+  "splits": {
+    "synthetic_court-test": {
+      "count": 886,
+      "ordered_sample_ids_sha256": "8a11fe880be524af810e08be7cc85d957e0ca842be2e19616f62c8bba77b9859",
+      "metrics": {
+        "kp_mean_distance_px": 3.986131429672241,
+        "kp_median_distance_px": 2.247342586517334,
+        "pose_reprojection_mean_distance_px": 11.09050464630127,
+        "pose_translation_l2_m": 0.572388768196106,
+        "pose_rotation_geodesic_deg": 1.7561739683151245,
+        "pose_focal_relative_error": 0.062227290123701096,
+        "line_dice": 0.644749104976654,
+        "seg_miou": 0.952130138874054,
+        "semantic_line_miou": 0.45913931727409363,
+        "kp_pose_consistency_distance_px": 0.0,
+        "invalid_depth_rate": 0.0,
+        "visible_point_count": 7928.0
+      }
+    },
+    "tennis_court_detector-val": {
+      "count": 2211,
+      "ordered_sample_ids_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8",
+      "metrics": {
+        "kp_mean_distance_px": 1.3426450490951538,
+        "kp_median_distance_px": 1.1999969482421875,
+        "seg_miou": 0.9697523713111877,
+        "line_dice": 0.7060995101928711,
+        "semantic_line_miou": 0.48428186774253845
+      }
+    }
+  }
+}

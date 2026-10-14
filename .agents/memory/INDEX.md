@@ -13,3 +13,5 @@ memoryは規則ではなく、検証待ちの観察である。形式と、追�
 - [WSL2 で 16GB の VRAM を使い切ると、エラーにならずホスト全体が周期的に固まる](wsl2-vram-overflow-freezes-host.md) — environment
 - [WSL2 のホストRAM不足では、学習プロセスがtracebackなしで黙って殺される](wsl2-host-ram-silent-kill.md) — environment
 - [test推論をbackfillできない古いckptは、結果がknowledgeノードにあれば削除してよい（ユーザー判断）](ckpt-force-delete-policy.md) — decision
+- [機能や方式が伝わる命名を優先し、Issue番号は追跡情報に使う](semantic-implementation-names.md) — decision
+- [独立した目的の変更は別PRに分ける](focused-pull-requests.md) — decision

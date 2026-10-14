@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "kind": "derived_training_curves",
+  "source_manifest": "tensorboard-sources.json",
+  "policy": "Keep all train/val scalars of the uninterrupted completed B run; retain original tag, step, value and wall_time. Preserve terminal-model test separately.",
+  "sources": [
+    {
+      "source": "events.out.tfevents.1791801031.b86dcb91a190.9470.0",
+      "included": 24448,
+      "discarded": 0
+    },
+    {
+      "source": "events.out.tfevents.1791837235.b86dcb91a190.9470.1",
+      "included": 0,
+      "discarded": 0
+    }
+  ],
+  "selected_scalars": 24448,
+  "duplicate_tag_steps": 0,
+  "terminal_test_scalars": 50
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "session": "i983-l4-ablation-08",
+  "phase": "ready",
+  "created_at": "2026-10-12T22:06:39.988380+00:00",
+  "gpu": "L4",
+  "repo_url": "https://github.com/Motoki0705/tennis-lab.git",
+  "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "drive": "gdrive:tennis_lab",
+  "repo_root": "/content/tennis-lab",
+  "drive_remote": "gdrive",
+  "drive_root": "tennis_lab",
+  "drive_root_id": "1gWS1fLDgKGyknpBj_n4h9dE_4wonv_r_",
+  "observed": {
+    "ok": true,
+    "gpu": "NVIDIA L4, 23034 MiB",
+    "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+    "python": "3.13.15 (main, Aug  6 2026, 11:06:22) [GCC 13.3.0]",
+    "quota": {
+      "total": 5497558138880,
+      "used": 833667618634,
+      "trashed": 276728740088,
+      "other": 34638412154,
+      "free": 4629252108092
+    }
+  },
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/i983-l4-ablation-08/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/i983-l4-ablation-08/remote.py",
+      "bytes": 22629,
+      "sha256": "98de1af0e67517e31ff9ac3cebfe1bb207a6ba3659b0fe1ce2a7d4f00b420a60"
+    }
+  }
+}

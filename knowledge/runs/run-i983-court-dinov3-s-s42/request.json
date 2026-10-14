@@ -1,0 +1,21 @@
+{
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.tasks.court_detection.scripts.train",
+    "--config-name",
+    "train_i983_s",
+    "run.artifact_store.mode=rclone",
+    "run.artifact_store.remote=gdrive",
+    "run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42",
+    "run.artifact_store.sync_interval_seconds=60"
+  ],
+  "cwd": null,
+  "persist": [],
+  "runner_outputs": [
+    "outputs/court_detection/train/i983-dino-s-shared1024/s42"
+  ],
+  "job_id": "train-s-s42",
+  "execution_backend": "notebook_kernel",
+  "kernel_timeout_seconds": 86400
+}

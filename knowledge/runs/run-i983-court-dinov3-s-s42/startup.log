@@ -1,0 +1,45 @@
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 441, in _evaluation_step
+    output = call._call_strategy_hook(trainer, hook_name, *step_args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 329, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py", line 412, in validation_step
+    return self.lightning_module.validation_step(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/training/lightning_module.py", line 801, in validation_step
+    self._shared_step(batch, "val")
+  File "/content/tennis-lab/src/tasks/court_detection/training/lightning_module.py", line 170, in _shared_step
+    self.model(*pose_call.model_call.model_args),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1781, in _wrapped_call_impl
+    return self._compiled_call_impl(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 1261, in compile_wrapper
+    result = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 1070, in forward
+    output, transformed = self._decode_with_transformer(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 1133, in _decode_with_transformer
+    transformed = self.transformer_encoder(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 822, in forward
+    batch, _, height, width = self._validate_input(features)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/src/tasks/court_detection/models/dinov3_dpt.py", line 773, in _validate_input
+    raise TypeError(
+TypeError: Transformer features and parameters must share a dtype: torch.bfloat16 != torch.float32.
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+
+                                                                   
