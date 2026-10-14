@@ -11,13 +11,15 @@
 | `outputs/chat_annotation/annotated/processed/player` | store生成に使う上流player JSON | 処理済み注釈。全画素精度の独立検証済みGTとは限らない | 上流の現行入力。既存storeへ自動同期されない。直接のレビューは[Chat Annotation](../../../tennis_scene/chat_annotation/README.md)を参照 |
 | Meiji clip配下の`annotations/player_association/labels.json` | 検出器・source比較の評価用部分ラベル | 旧COCO trackerのboxをreviewしたperson単位の参照。未ラベル予測は未知でありFPとは限らない | 学習storeのsplitとは別。固定dev / unseenは保存protocolに従う。この画面へ混ぜず、既存[benchmark](../../../../tests/benchmarks/README.md)と評価readerを使う |
 
-storeのschemaとJPEG shard読出しは[data/store.py](../data/store.py)、学習選別は
-[data/detection_dataset.py](../data/detection_dataset.py)、既定の条件は
+storeのschemaとJPEG shard読出しは[data/store.py](../data/store.py)、学習と画面で共通の選別は
+[data/selection.py](../data/selection.py)、既定の条件は
 [configs/data/default.yaml](../configs/data/default.yaml)が正本です。
 画面の件数は実際に選択したstoreを集計し、build日を表示します。
 
-このstoreはplayerを列挙したframeだけを保存します。元clipの未保存frameはタイムラインと件数で明示し、
-完全な負例として扱いません。`unresolved`は選手の存在記録はあるものの位置を解決できず、bboxがない状態です。
+v1 storeはplayerを列挙したframeだけを保存しており、未保存frameを負例として扱いません。
+v2では空frameも保存し、`confirmed_empty`がある対象frameを確認済み不在として表示します。
+この状態はbboxが0個の負例です。空欄だけでは不在と判定せず、未確認/contextは学習対象から除きます。
+`unresolved`は選手の存在記録はあるものの位置を解決できず、bboxがない状態です。
 `inferred`は遮蔽や画面端の切れ等の推定・補完で、数が多いことだけで誤りや利用不可と判断しません。
 `partial`と注釈注意事項を確認し、`reviewed=true`を全pixel精度の品質保証と取り違えないでください。
 
@@ -44,7 +46,7 @@ dataset生成、注釈保存、学習、推論、自動処理再開の操作は�
 ## 確認方法
 
 1. dataset、split、source動画、clipを選びます。検索はsource名 / ID / clip IDを対象にします。
-2. 状態filterで、位置未解決、推定・補完、遮蔽、切れ、学習選別で除外されたframeを絞ります。
+2. 状態filterで、位置未解決、推定・補完、遮蔽、切れ、確認済み不在、学習選別で除外されたframeを絞ります。
    sliderと前後移動はそのfilterに一致する保存frameを進み、元のclip frame番号とsource frame番号を表示します。
 3. 原画角ではobservedを緑の実線、inferredを橙の破線で表示します。bboxを消して画像を確認できます。
    mouse wheelで拡大、dragで移動、全画角でリセットできます。選手の拡大は原画像からの切り出しです。
