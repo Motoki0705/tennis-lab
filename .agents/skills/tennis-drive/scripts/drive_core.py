@@ -17,6 +17,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 DEFAULT_REMOTE_ROOT = "gdrive:tennis_lab"
+CONTENT_HASH_TYPES = ("sha256", "sha1", "md5")
 OutputFormat = Literal["table", "json"]
 ManifestEntry = tuple[Literal["file", "directory"], int | None, dict[str, str]]
 
@@ -47,6 +48,46 @@ class Verification:
     missing_on_drive: list[str]
     extra_on_drive: list[str]
     unverifiable: list[str]
+
+
+class TransferVerificationError(DriveToolError):
+    """A completed transfer whose content comparison failed."""
+
+    def __init__(self, verification: Verification) -> None:
+        super().__init__("Transferred content did not pass rclone hash verification.")
+        self.verification = verification
+
+
+def _hash_arguments() -> list[str]:
+    return [
+        "--hash",
+        *[arg for name in CONTENT_HASH_TYPES for arg in ("--hash-type", name)],
+    ]
+
+
+def _validate_rclone_entry(value: Any) -> dict[str, Any]:
+    """Validate external fields before interpreting a listing or stat response."""
+    if not isinstance(value, dict):
+        raise DriveToolError("rclone returned an unexpected lsjson entry.")
+    for field, expected_type in (("Path", str), ("IsDir", bool), ("Size", int)):
+        if type(value.get(field)) is not expected_type:
+            raise DriveToolError(f"rclone returned an invalid lsjson {field} field.")
+    if not value["IsDir"] and value["Size"] < 0:
+        raise DriveToolError("rclone returned a negative file Size.")
+    for field in ("Name", "ModTime", "ID"):
+        if (
+            field in value
+            and value[field] is not None
+            and not isinstance(value[field], str)
+        ):
+            raise DriveToolError(f"rclone returned an invalid lsjson {field} field.")
+    hashes = value.get("Hashes", {})
+    if not isinstance(hashes, dict) or any(
+        not isinstance(name, str) or not isinstance(digest, str)
+        for name, digest in hashes.items()
+    ):
+        raise DriveToolError("rclone returned an invalid lsjson Hashes field.")
+    return value
 
 
 class RcloneBackend:
@@ -96,6 +137,17 @@ class RcloneBackend:
             raise DriveToolError(f"Unsafe Drive-relative path: {relative_path}")
         normalized = path.as_posix().rstrip("/")
         return "." if normalized in ("", ".") else normalized
+
+    @staticmethod
+    def validate_listing_path(relative_path: str) -> str:
+        """Preserve backend names while rejecting escapes and noncanonical paths."""
+        if (
+            relative_path.startswith("/")
+            or any(part in ("", ".", "..") for part in relative_path.split("/"))
+            or "\0" in relative_path
+        ):
+            raise DriveToolError(f"Unsafe rclone listing path: {relative_path}")
+        return relative_path
 
     def remote_path(self, relative_path: str) -> str:
         """Return an rclone path below the configured remote root."""
@@ -196,15 +248,28 @@ class RcloneBackend:
         result = self.run(arguments)
         assert result is not None
         try:
-            return json.loads(result.stdout)
+            value = json.loads(result.stdout)
         except json.JSONDecodeError as exc:
             raise DriveToolError("rclone returned invalid JSON.") from exc
+        if arguments[0] == "lsjson":
+            if not isinstance(value, list):
+                raise DriveToolError("rclone returned an unexpected directory listing.")
+            return [_validate_rclone_entry(item) for item in value]
+        if arguments[0] == "size" and (
+            not isinstance(value, dict)
+            or any(
+                type(value.get(field)) is not int or value[field] < 0
+                for field in ("count", "bytes")
+            )
+        ):
+            raise DriveToolError("rclone returned an invalid size response.")
+        return value
 
     def stat(self, location: str, *, hashes: bool = False) -> dict[str, Any] | None:
         """Return one local or remote entry, or None when it does not exist."""
         arguments = ["lsjson", location, "--stat"]
         if hashes:
-            arguments.append("--hash")
+            arguments.extend(_hash_arguments())
         result = self.run(arguments, allow_not_found=True)
         if result is None:
             return None
@@ -212,18 +277,14 @@ class RcloneBackend:
             value = json.loads(result.stdout)
         except json.JSONDecodeError as exc:
             raise DriveToolError("rclone returned invalid stat JSON.") from exc
-        if not isinstance(value, dict):
-            raise DriveToolError("rclone returned an unexpected stat response.")
-        return value
+        return _validate_rclone_entry(value)
 
 
 def _relative_output_path(start_path: str, item_path: str) -> str:
     normalized_start = RcloneBackend.normalize_relative(start_path)
-    normalized_item = PurePosixPath(item_path).as_posix()
+    normalized_item = RcloneBackend.validate_listing_path(item_path)
     if normalized_start == ".":
         return normalized_item
-    if normalized_item in ("", "."):
-        return normalized_start
     return f"{normalized_start}/{normalized_item}"
 
 
@@ -339,13 +400,13 @@ def _manifest(
             ".": ("file", int(stat.get("Size", 0)), _normalized_hashes(stat))
         }
 
-    values = backend.json(["lsjson", location, "--recursive", "--hash"])
+    values = backend.json(["lsjson", location, "--recursive", *_hash_arguments()])
     if not isinstance(values, list):
         raise DriveToolError("rclone returned an unexpected directory listing.")
     entries: dict[str, ManifestEntry] = {}
     for value in values:
         path = str(value.get("Path", ""))
-        RcloneBackend.normalize_relative(path)
+        RcloneBackend.validate_listing_path(path)
         if path in entries:
             raise DriveToolError(f"Duplicate path in inventory: {location}/{path}")
         if bool(value.get("IsDir", False)):
@@ -413,7 +474,7 @@ def _compare_file(
 
     local_hashes = local_entry[2]
     drive_hashes = drive_entry[2]
-    for hash_name in ("sha256", "sha1", "md5"):
+    for hash_name in CONTENT_HASH_TYPES:
         if hash_name in local_hashes and hash_name in drive_hashes:
             return (
                 "match"

@@ -10,6 +10,7 @@
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py inspect data/example-v1
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py inspect . --metadata-only
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py quota
+.venv/bin/python .agents/skills/tennis-drive/scripts/drive.py mkdir staging/candidate --dry-run
 
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py upload ./data/example-v1 data/example-v1 --dry-run
 .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py upload ./data/example-v1 data/example-v1 --verify
@@ -25,14 +26,21 @@
 ディレクトリ転送はその中身を指定先へコピーする。既定stdoutはJSON、転送ログはstderr。
 list/searchの `truncated: true` は全件を返していない。範囲を狭めるかlimitを変える。
 完全な観測をファイルへ残す場合はinventoryを使う。同名項目もID付きで記録する。
+inventoryの `path` はDrive root相対、各entryの `path` はinventory対象相対である。
+`root_id` はinventory対象のDrive ID。IDを返さないbackendでは `null` となる。
 quotaはアカウント全体、inspectは対象subtreeのサイズである。
+
+`mkdir` は親ディレクトリも作る。既存ディレクトリなら成功し、既存ファイルやproject rootを指定すると失敗する。
+`--dry-run` は配置予定を返し、作成しない。
 
 既存転送先へのupload/downloadは `--overwrite` が必要。これは既存ファイルの更新であり、
 コピー元にない宛先ファイルを消す同期ではない。入力版の更新には新しい版へのコピーを優先する。
 copy/moveにはoverwriteを提供しない。
 
 `--verify` は型・サイズ・rcloneが公開する内容hashで比較する。共通hashがない場合は成功としない。
+hashの取得は比較に使うSHA-256・SHA-1・MD5に限定する。
 明示的な `verify --download` ならremote bytesをストリームしてSHA-256を計算するが、全量転送が発生する。
+転送後の検証失敗ではJSONの `verification` に変更・欠落・余分なpath・hash未取得の一覧を返す。
 
 pathの各構成要素に同名項目がないことを検査する。`--expected-id` は既知のIDが変わっていないことの
 補助確認で、同名のうちどれかを選ぶ引数ではない。この検査は他クライアントとの排他制御ではない。
