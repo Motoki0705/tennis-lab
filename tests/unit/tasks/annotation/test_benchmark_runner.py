@@ -1,0 +1,426 @@
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import pytest
+
+from src.tasks.annotation.benchmark.contracts import BenchmarkRuntime
+from src.tasks.annotation.benchmark.operations import execute
+from src.tasks.annotation.benchmark.recovery import recover
+from src.tasks.annotation.benchmark.runner import BenchmarkRunner
+from src.tasks.annotation.contracts import (
+    OperationInput,
+    PublishOperation,
+    RecoveryInput,
+    ResumeWorkers,
+    RetryLearning,
+    RuntimeSettings,
+    StageCost,
+)
+from src.tasks.ball_detection.annotation.inference import BallPredictionAdapter
+from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
+    read_document,
+)
+from src.tasks.base.annotation.benchmarks.contracts import (
+    ComparisonReport,
+    ComparisonSpec,
+    ConditionSpec,
+    WorkerBinding,
+)
+from src.tasks.base.annotation.benchmarks.report import build_report
+from src.tasks.base.annotation.execution.contracts import QueueConfiguration
+from src.tasks.base.annotation.plan import (
+    CampaignPlan,
+    StageCapacity,
+    file_digest,
+    save_plan,
+)
+from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+from src.tasks.base.annotation.resources.contracts import GPUUsage
+from src.utils.paths import PROJECT_ROOT
+from tests.support.tasks.ball_detection.annotation import Environment
+
+
+class Setup:
+    def __init__(self, root: Path, observation_limit: int = 1000) -> None:
+        def transform(plan: CampaignPlan) -> CampaignPlan:
+            return plan.model_copy(
+                update={
+                    "resources": plan.resources.model_copy(
+                        update={
+                            "total_pss_bytes": 8 * 1024**3,
+                            "stages": (
+                                StageCapacity(
+                                    stage="review",
+                                    kind="codex",
+                                    parallel=1,
+                                    threads_per_process=1,
+                                ),
+                                StageCapacity(
+                                    stage="render",
+                                    kind="cpu",
+                                    parallel=2,
+                                    threads_per_process=1,
+                                ),
+                            ),
+                        }
+                    )
+                }
+            )
+
+        self.env = Environment(root, plan_transform=transform)
+        env = self.env
+        self.manager = ResourceManager.create(
+            env.layout,
+            scope_id="shared-budget",
+            limits=BudgetLimits.from_budget(env.plan.resources),
+            roots=(env.layout.repository,),
+            previously_allocated_bytes=0,
+            previously_used_gpu_seconds=3,
+            max_pending_per_stage=50,
+        )
+        self.conditions = []
+        for number in (10, 25, 50):
+            plan = env.plan.model_copy(
+                update={
+                    "phase": "benchmark",
+                    "campaign_id": f"condition-{number}",
+                    "resources": env.plan.resources.model_copy(
+                        update={
+                            "codex_workers": number,
+                            "stages": tuple(
+                                stage.model_copy(update={"parallel": number})
+                                if stage.kind == "codex"
+                                else stage
+                                for stage in env.plan.resources.stages
+                            ),
+                        }
+                    ),
+                }
+            )
+            ref = env.save(
+                ConditionSpec(
+                    benchmark_id="comparison",
+                    condition_id=f"workers-{number}",
+                    plan=annotation_reference(env.layout, save_plan(env.layout, plan)),
+                    scope=self.manager.reference,
+                    predictions=(env.context.prediction,),
+                    bindings=(
+                        WorkerBinding(
+                            stage="review",
+                            adapter="ball_review",
+                            adapter_version="v1",
+                            task="ball",
+                        ),
+                    ),
+                    target_workers=number,
+                    maximum_observations=observation_limit,
+                )
+            )
+            self.conditions.append(ref)
+        comparison = env.save(
+            ComparisonSpec(
+                benchmark_id="comparison",
+                conditions=tuple(self.conditions),
+                quality_policy=None,
+            )
+        )
+        binary = env.layout.repository / "synthetic-codex"
+        binary.write_text(
+            f"#!{sys.executable}\nimport sys, runpy\nsys.path.insert(0, {str(PROJECT_ROOT)!r})\nmodule=runpy.run_path({str(PROJECT_ROOT / 'tests/support/tasks/ball_detection/review_worker.py')!r})\nmodule['run_synthetic_cli'](show_image=True)\n"
+        )
+        binary.chmod(0o700)
+        script = env.layout.repository / "queue.sh"
+        script.write_text("# fixture --idempotency-key\n")
+        self.runtime = BenchmarkRuntime(
+            comparison=comparison,
+            settings=RuntimeSettings(
+                queue=QueueConfiguration(
+                    script=str(script),
+                    script_digest=file_digest(script),
+                    directory=str(env.layout.repository / ".training_queue"),
+                    session="fixture",
+                    issue=1088,
+                ),
+                codex_binary=str(binary),
+                codex_home=str(env.layout.repository / "codex-home"),
+                costs=tuple(
+                    StageCost(
+                        stage=stage,
+                        pss_bytes=512 * 1024**2,
+                        storage_bytes=1024**2,
+                        timeout_seconds=60.0,
+                        gpu_seconds=0,
+                    )
+                    for stage in ("review", "render")
+                ),
+                maximum_services_per_attempt=8,
+            ),
+            observation_interval_seconds=0.2,
+        )
+        self.reference = env.save(self.runtime)
+
+    def runner(self, number: int = 10) -> BenchmarkRunner:
+        return BenchmarkRunner(self.env.layout, self.reference, f"workers-{number}")
+
+
+@pytest.fixture
+def setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> Setup:
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="CPU fixture",
+        ),
+    )
+    return Setup(tmp_path / "annotation", getattr(request, "param", 1000))
+
+
+def test_status_does_not_register_inputs_or_launch_workers(setup: Setup) -> None:
+    runner = setup.runner()
+    assert runner.status()["state"] == "not_started"
+    assert not runner.layout.registry.exists()
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.tasks.annotation",
+            "benchmark-status",
+            "--runtime",
+            str(setup.env.layout.artifact_path(setup.reference)),
+            "--sha256",
+            setup.reference.digest,
+            "--condition",
+            "workers-10",
+            "--test-root",
+            str(setup.env.layout.root),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(result.stdout)["task_states"] == {"unregistered": 1}
+    assert not runner.layout.registry.exists()
+
+
+def test_conditions_are_ordered_and_runtime_cannot_change(setup: Setup) -> None:
+    with pytest.raises(ValueError, match="in order"):
+        setup.runner(25).tick()
+    first = setup.runner()
+    first._initialize()
+    changed = setup.runtime.model_copy(update={"observation_interval_seconds": 0.5})
+    other = BenchmarkRunner(setup.env.layout, setup.env.save(changed), "workers-10")
+    with pytest.raises(
+        (ValueError, FileExistsError), match="immutable|different|overwrite"
+    ):
+        other._initialize()
+    assert first.pool is not None
+    assert all(
+        row["state"] == "ready"
+        for row in [first.pool.ledger.task(work_id) for work_id in first.expected]
+    )
+
+
+def test_stopped_budget_and_recovery_do_not_start_workers(setup: Setup) -> None:
+    with setup.manager.registry.transaction() as db:
+        db.execute("UPDATE resource_scopes SET stop_reason='disk reserve'")
+    runner = setup.runner()
+    assert runner.tick()["state"] == "budget_stopped"
+    assert runner.pool is not None
+    assert all(
+        runner.pool.ledger.task(work_id)["state"] == "ready"
+        for work_id in runner.expected
+    )
+    request = RecoveryInput(
+        plan=runner.spec.plan,
+        reason="resume worker admission only",
+        operation=ResumeWorkers(),
+    )
+    receipt = recover(runner, request)
+    assert recover(runner, request) == receipt
+    assert runner.tick()["state"] == "budget_stopped"
+    assert setup.manager.scope.previously_used_gpu_seconds == 3
+
+
+def test_stage_rejects_unowned_or_non_review_operation(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = setup.runner()
+    ref = setup.env.save(
+        OperationInput(
+            plan=runner.spec.plan, operation=PublishOperation(review=setup.env.blob)
+        )
+    )
+    with pytest.raises(ValueError, match="resource-accounted"):
+        execute(setup.env.layout, ref)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", ref.digest)
+    with pytest.raises(ValueError, match="review services only"):
+        execute(setup.env.layout, ref)
+    with pytest.raises(ValueError, match="worker operation"):
+        recover(
+            runner,
+            RecoveryInput(
+                plan=runner.spec.plan,
+                reason="invalid learning",
+                operation=RetryLearning(
+                    intent=setup.env.blob, stage="train", resume_checkpoint=None
+                ),
+            ),
+        )
+
+
+def test_cpu_children_review_three_conditions_without_production_side_effects(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        BallPredictionAdapter,
+        "produce",
+        lambda *args: pytest.fail("benchmark must not infer"),
+    )
+    env = setup.env
+    original = env.store.current(env.context_ref, env.adapter)[0]
+    completions = []
+    runners = []
+    try:
+        for number in (10, 25, 50):
+            runner = setup.runner(number)
+            runners.append(runner)
+            until = time.monotonic() + 100
+            while True:
+                state = runner.tick()
+                if (
+                    state["state"] in {"workers_complete", "blocked", "budget_stopped"}
+                    or time.monotonic() >= until
+                ):
+                    break
+                time.sleep(0.05)
+            assert state["state"] == "workers_complete", state
+            complete = runner.completion(runner.index)
+            assert complete is not None
+            completions.append(complete)
+            assert setup.runner(number).tick()["completion"] == complete.model_dump(
+                mode="json"
+            )
+        assert len(set(completions)) == 3
+        assert env.store.current(env.context_ref, env.adapter)[0] == original
+        assert not (env.layout.repository / "data/datasets/ball_detection").exists()
+        assert not env.layout.path("models").exists()
+        with setup.manager.registry.transaction() as db:
+            requests = [
+                json.loads(row[0])
+                for row in db.execute("SELECT request FROM resource_requests")
+            ]
+        assert {item["stage"] for item in requests} == {"review", "render"}
+        assert all(item["gpu_seconds"] == 0 for item in requests)
+        assert (
+            len(requests) == 9
+        )  # One worker and two accounted services per condition.
+        report = read_document(
+            env.layout,
+            build_report(env.layout, setup.runtime.comparison),
+            ComparisonReport,
+        )
+        assert report.acceptance == "unverified"
+        assert all(entry.execution == "workers_complete" for entry in report.conditions)
+        assert all(entry.observed_real_workers_max == 0 for entry in report.conditions)
+    finally:
+        for runner in runners:
+            runner.stop("fixture teardown")
+
+
+def test_missing_scope_ledger_is_not_recreated(setup: Setup) -> None:
+    with setup.manager.registry.transaction() as db:
+        db.execute("DELETE FROM resource_scopes")
+    with pytest.raises(ValueError, match="existing registered"):
+        setup.runner()
+    with setup.manager.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM resource_scopes").fetchone()[0] == 0
+
+
+def test_failed_worker_requires_explicit_retry_and_recovery_is_idempotent(
+    setup: Setup,
+) -> None:
+    from src.tasks.annotation.contracts import RetryWorker
+    from src.tasks.base.annotation.workers.contracts import WorkRequest
+
+    runner = setup.runner()
+    runner._initialize()
+    assert runner.pool is not None
+    runner.pool.test_command = (sys.executable, "-c", "raise SystemExit(1)")
+    work_ref = runner.requests[0]
+    work = read_document(runner.layout, work_ref, WorkRequest)
+    runner.pool.start(work)
+
+    pool = runner.pool
+
+    def settle() -> dict:
+        until = time.monotonic() + 15
+        while time.monotonic() < until:
+            row: dict = pool.reconcile(work)
+            if row["state"] not in {"running", "exited"}:
+                return row
+            time.sleep(0.05)
+        raise AssertionError("synthetic child did not exit")
+
+    first = settle()
+    assert first["state"] == "failed"
+    assert runner.tick()["state"] == "blocked"
+    assert (
+        runner.pool.ledger.task(work.work_id)["current_attempt"]
+        == first["current_attempt"]
+    )
+    request = RecoveryInput(
+        plan=runner.spec.plan,
+        reason="explicit fixture retry",
+        operation=RetryWorker(request=work_ref, after_attempt=first["current_attempt"]),
+    )
+    receipt = recover(runner, request)
+    second = settle()
+    assert second["state"] == "failed"
+    assert second["current_attempt"] != first["current_attempt"]
+    assert recover(runner, request) == receipt
+    assert (
+        runner.pool.ledger.task(work.work_id)["current_attempt"]
+        == second["current_attempt"]
+    )
+    changed = request.model_copy(update={"reason": "new stale retry"})
+    with pytest.raises(ValueError, match="attempt changed"):
+        recover(runner, changed)
+
+
+@pytest.mark.parametrize("setup", [1], indirect=True)
+def test_observation_limit_stops_active_worker_and_never_completes(
+    setup: Setup,
+) -> None:
+    runner = setup.runner()
+    runner._initialize()
+    assert runner.pool is not None
+    runner.pool.test_command = (sys.executable, "-c", "import time; time.sleep(30)")
+    try:
+        assert runner.tick()["state"] == "reviewing"
+        result = runner.tick()
+        until = time.monotonic() + 15
+        while result["state"] == "stopping" and time.monotonic() < until:
+            time.sleep(0.05)
+            result = runner.tick()
+        assert result["state"] == "blocked"
+        assert result["reason"] == "benchmark observation limit reached"
+        assert result["completion"] is None
+        assert all(
+            runner.pool.ledger.task(work_id)["state"] == "cancelled"
+            for work_id in runner.expected
+        )
+    finally:
+        until = time.monotonic() + 15
+        while runner.stop("fixture teardown") and time.monotonic() < until:
+            time.sleep(0.05)

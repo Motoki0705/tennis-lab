@@ -57,6 +57,9 @@ test rootやtest commandは必ずsyntheticとして分離する。
 - I/Oは連続するsampleに共通のboot/PID/start ticksだけで差分を加算する。
   消えたprocessの終了直前のI/O、最初のsample以前のI/Oは推定で補わない。
 - 同じcache済みResourceSampleを再取得しても計測回数を増やさない。
+- sample間隔と保存計測の古さは、同じbootのmonotonic時計で計算する。実時計が戻った回数を
+  別に残す。旧sampleの実時計だけによる集計は `timing_bases` に明示し、clock/bootをまたぐ
+  計測間隔やmonotonic時刻がない保存計測の古さは、欠測数を報告する。
 - usageはattempt/thread/response IDの一意な記録から集計する。通知件数をAPI回数にしない。
   reportやIDやmetricが欠ければ合計をnullにし、確認できた小計を保持する。
   画像は重複込みbytesとhashで重複を除いたbytesを分け、prompt/toolの文字数、操作分類、
@@ -85,7 +88,7 @@ campaign IDを含める。clip単位の実行lockは共有のままなので、�
 自動解除しない。条件内の採用成果物は条件内catalogが保護する。共有GCによる条件内catalogの
 横断列挙と実削除は未実装であり、この登録を削除可の判断には使わない。
 
-現在は計測・集計CLIと隔離・入力登録APIの実装である。通常controller/configureはbenchmarkを
-拒否する。専用runnerによるworker起動と親サービスへの接続は後続で実装する。
-公開・追跡/pose・学習の工程別時間とtask別の品質評価は、そのrunnerと各adapterから追加する。
+通常controller/configureはbenchmarkを拒否する。ballレビューの起動・親サービス・再開は
+[専用runner](../../../annotation/benchmark/README.md)が担当する。
+公開・追跡/pose・学習の工程別時間とtask別の品質評価は、各adapterから追加する。
 CPU fixtureの結果は10/25/50の実Codex/GPU負荷試験の代用ではない。

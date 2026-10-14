@@ -87,6 +87,10 @@ class Observation(Document):
 
 class ResourceSummary(Document):
     samples: int = Field(ge=0)
+    timing_bases: tuple[Literal["monotonic", "wall_clock"], ...] = ()
+    wall_clock_regressions: int = Field(default=0, ge=0)
+    unknown_storage_age_samples: int = Field(default=0, ge=0)
+    unmeasured_time_gaps: int = Field(default=0, ge=0)
     maximum_sample_gap_seconds: float | None
     maximum_storage_age_seconds: float | None
     pss_observed_max_bytes: int | None

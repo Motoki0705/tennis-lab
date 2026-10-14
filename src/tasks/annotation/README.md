@@ -75,6 +75,8 @@ GPU工程はmain repositoryの共有queueに投入する。queue workerの起動
 10/25/50の並列条件は `benchmark-observe` / `benchmark-report` で既存workerの生存数と
 資源・usageを記録する。固定入力、測定値の意味、未到達・欠測の扱いは
 [並列条件の観測](../base/annotation/benchmarks/README.md)を参照する。
+同じ固定予測を条件別にレビューするball専用の起動・再開経路は
+[benchmark runner](benchmark/README.md)を参照する。
 
 ## 画像確認・公開・学習
 

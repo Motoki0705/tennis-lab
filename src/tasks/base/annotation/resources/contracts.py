@@ -101,6 +101,9 @@ class GPUUsage(Document):
 class ResourceSample(Document):
     measured_at: str
     storage_measured_at: str
+    clock_boot_id: str | None = None
+    measured_monotonic_ns: int | None = Field(default=None, ge=0)
+    storage_measured_monotonic_ns: int | None = Field(default=None, ge=0)
     scope_id: Identifier
     storage: StorageUsage
     processes: tuple[ProcessUsage, ...]
