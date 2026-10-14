@@ -6,6 +6,7 @@ description. Keep both in sync when changing behaviour.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import sys
@@ -32,6 +33,11 @@ REJECTED_MARKER_RE = re.compile(
     r"<!-- agent-followup-rejected:v1 issue=(\d+) round=(\d+) pr=(\d+) -->"
 )
 _FENCE_RE = re.compile(r"\A```(?:json)?\n(.*)\n```\Z", re.DOTALL)
+_CLOSING_REFERENCE_RE = re.compile(
+    r"\b(?:close[sd]?|fix(?:es|ed)?|resolve[sd]?)\b\s*:?\s*"
+    r"(?:(?:[\w.-]+/[\w.-]+)?#\d+|https?://[^\s/]+/[^\s]+/(?:issues|pull)/\d+)",
+    re.IGNORECASE,
+)
 
 
 # --------------------------------------------------------------------------- source PR
@@ -172,6 +178,21 @@ class ResolutionParseError(ValueError):
     """The agent's final message does not follow the required schema."""
 
 
+def reject_closing_references(text: str, *, where: str) -> None:
+    """Only the controller may add GitHub issue-closing directives.
+
+    Be conservative about quoted/formatted directives too. GitHub supports all
+    nine closing keywords, case variants, colons, and qualified issue references:
+    https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue
+    """
+    plain = html.unescape(text)
+    plain = re.sub(r"\[[^\]\n]*\]\(([^\s)]+)\)", r"\1", plain)
+    plain = re.sub(r"</?[A-Za-z][\w-]*(?:\s[^>]*)?/?>", "", plain)
+    plain = re.sub(r"[\\*_`<>]", "", plain)
+    if _CLOSING_REFERENCE_RE.search(plain):
+        raise ResolutionParseError(f"{where}: issue-closing references are reserved for the controller")
+
+
 @dataclass(frozen=True)
 class Disposition:
     index: int
@@ -299,6 +320,11 @@ def parse_resolution(text: str, n_findings: int) -> Resolution:
         raise ResolutionParseError(
             "pr_title/pr_body must be set exactly when some finding is fixed"
         )
+    if resolution.opens_pr:
+        for name in ("pr_title", "pr_body", "summary", "verification"):
+            reject_closing_references(getattr(resolution, name), where=name)
+        for disposition in resolution.dispositions:
+            reject_closing_references(disposition.reason, where=f"finding {disposition.index} reason")
     return resolution
 
 

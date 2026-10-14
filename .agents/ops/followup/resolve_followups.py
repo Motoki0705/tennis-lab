@@ -44,6 +44,7 @@ from followup_policy import (  # noqa: E402
     next_step,
     parse_resolution,
     recorded_rounds,
+    reject_closing_references,
     rejected_marker,
     rejection_noted,
     round_marker,
@@ -521,6 +522,8 @@ def pr_body(
     labels: Sequence[str],
 ) -> str:
     assert resolution.pr_body is not None
+    table = disposition_table(resolution, labels)
+    reject_closing_references(table, where="PR disposition table")
     link = "Closes" if resolution.closes_issue else "Refs"
     return "\n".join(
         [
@@ -531,7 +534,7 @@ def pr_body(
             "",
             f"元 PR: #{source.number}",
             "",
-            disposition_table(resolution, labels),
+            table,
             "",
             "## 確認",
             "",
@@ -696,7 +699,8 @@ def resolve_issue(
     if git.remote_branch_exists(branch):
         raise CommandError(
             f"#{number}: remote branch {branch} exists without a recorded round "
-            "(an earlier run pushed but did not finish); open its PR or delete it"
+            "(an earlier run pushed but did not finish); verify/create its PR and restore "
+            "the matching round record as documented in followup/README.md"
         )
 
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
@@ -726,6 +730,9 @@ def resolve_issue(
             (run_dir / "changes.diff").write_text(
                 git("diff", f"{base}..HEAD", cwd=worktree), encoding="utf-8"
             )
+            messages = git("log", "--format=%B%x00", f"{base}..HEAD", cwd=worktree)
+            (run_dir / "commit_messages.txt").write_text(messages, encoding="utf-8")
+            reject_closing_references(messages, where="commit messages")
         if inputs_unchanged(
             gh, login, candidate, source, comments, report,
             latest=latest, latest_state=latest_state,
@@ -744,6 +751,7 @@ def publish(
         d: resolution.count(d)
         for d in ("fixed", "declined", "already_resolved", "needs_human")
     }
+    body = pr_body(candidate, source, resolution, labels) if resolution.opens_pr else None
     if settings.dry_run:
         report.note(f"#{number}: would publish {counts} (dry-run)")
         return
@@ -754,12 +762,13 @@ def publish(
     pr_url = None
     if resolution.opens_pr:
         assert resolution.pr_title is not None
+        assert body is not None
         git.push(branch)
         pr_url = gh.create_pr(
             base=settings.base_branch,
             head=branch,
             title=resolution.pr_title,
-            body=pr_body(candidate, source, resolution, labels),
+            body=body,
         )
         r = Round(r.issue, r.number, r.base, _pr_number(pr_url))
     gh.comment(number, resolution_comment(r, resolution, labels, pr_url=pr_url))
