@@ -14,6 +14,7 @@ from drive_core import (
     DriveToolError,
     ManifestEntry,
     RcloneBackend,
+    _hash_arguments,
     _manifest,
     _print_object,
     _resolve_local,
@@ -179,15 +180,17 @@ def _run_quota(args: argparse.Namespace, backend: RcloneBackend) -> int:
 
 def _run_inventory(args: argparse.Namespace, backend: RcloneBackend) -> int:
     path = backend.normalize_relative(args.path)
-    backend.resolve(path)
+    root_entry = backend.resolve(path)
+    assert root_entry is not None
+    root_id = root_entry.get("ID")
     values = backend.json(
-        ["lsjson", backend.remote_path(path), "--recursive", "--hash"]
+        ["lsjson", backend.remote_path(path), "--recursive", *_hash_arguments()]
     )
     if not isinstance(values, list):
         raise DriveToolError("rclone returned an invalid inventory")
     entries: list[dict[str, Any]] = []
     for item in values:
-        relative = backend.normalize_relative(str(item["Path"]))
+        relative = backend.validate_listing_path(item["Path"])
         entries.append(
             {
                 "path": relative,
@@ -210,6 +213,7 @@ def _run_inventory(args: argparse.Namespace, backend: RcloneBackend) -> int:
         backend,
         schema_version=1,
         path=path,
+        root_id=root_id,
         entries=entries,
         ambiguous_paths=duplicates,
     )
@@ -225,6 +229,7 @@ def _run_inventory(args: argparse.Namespace, backend: RcloneBackend) -> int:
             "inventory",
             backend,
             path=path,
+            root_id=root_id,
             output=str(output),
             entries=len(entries),
             ambiguous_paths=duplicates,
@@ -244,10 +249,10 @@ def _run_trash(args: argparse.Namespace, backend: RcloneBackend) -> int:
             "Cannot verify remote type; rclone configuration output withheld"
         ) from None
     remote_name = backend.remote_root.split(":", 1)[0]
-    if (
-        not isinstance(configuration, dict)
-        or configuration.get(remote_name, {}).get("type") != "drive"
-    ):
+    remote_config = (
+        configuration.get(remote_name) if isinstance(configuration, dict) else None
+    )
+    if not isinstance(remote_config, dict) or remote_config.get("type") != "drive":
         raise DriveToolError(
             "Trash requires a direct Google Drive remote; other backends are refused"
         )

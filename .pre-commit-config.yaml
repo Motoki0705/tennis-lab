@@ -6,11 +6,11 @@ repos:
         entry: ./scripts/run_in_repo_venv.sh ruff check --fix --exit-non-zero-on-fix
         language: system
         types: [python]
-        files: ^(src|tests|\.spin)/
+        files: ^(src|tests|\.spin|\.agents/skills/tennis-drive/scripts)/
       - id: mypy
         name: mypy
         entry: ./scripts/run_in_repo_venv.sh mypy --follow-imports=skip
         language: system
         types: [python]
-        files: ^(src|tests|\.spin)/
+        files: ^(src|tests|\.spin|\.agents/skills/tennis-drive/scripts)/
         require_serial: true

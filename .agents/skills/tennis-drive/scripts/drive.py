@@ -15,6 +15,7 @@ from drive_core import (
     DriveToolError,
     OutputFormat,
     RcloneBackend,
+    TransferVerificationError,
     _assert_regular_local_tree,
     _entries_from_rclone,
     _normalized_hashes,
@@ -125,9 +126,7 @@ def _transfer(
                 and (result.extra_on_drive or result.missing_on_drive)
             )
         ):
-            raise DriveToolError(
-                "Transferred content did not pass rclone hash verification."
-            )
+            raise TransferVerificationError(result)
         verified = True
 
     payload = {
@@ -337,7 +336,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect_parser = subparsers.add_parser("inspect", help="Inspect one Drive entry.")
     inspect_parser.add_argument("path", help="Existing Drive-relative path.")
-    inspect_parser.add_argument("--metadata-only", action="store_true", help="Return identity without recursively calculating directory size.")
+    inspect_parser.add_argument(
+        "--metadata-only",
+        action="store_true",
+        help="Return identity without recursively calculating directory size.",
+    )
     inspect_parser.add_argument(
         "--checksum", action="store_true", help="Return hashes exposed by rclone."
     )
@@ -379,9 +382,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
         return handlers[args.command](args, backend)
     except (DriveToolError, OSError) as exc:
-        _print_object(
-            {"ok": False, "command": args.command, "error": str(exc)}, args.format
-        )
+        payload: dict[str, Any] = {
+            "ok": False,
+            "command": args.command,
+            "error": str(exc),
+        }
+        if isinstance(exc, TransferVerificationError):
+            payload["verification"] = asdict(exc.verification)
+        _print_object(payload, args.format)
         return 1
 
 
