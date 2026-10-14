@@ -6,10 +6,39 @@ import argparse
 import json
 from pathlib import Path
 
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 from ..artifacts import annotation_reference, read_document
 from ..paths import AnnotationLayout
 from .contracts import PreviewReceipt, ScreeningPolicy, ScreeningRequest, SourceDecision
 from .service import attempt_directory, check_decision, request_preview
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="base.annotation.screening.cli",
+    fields=(
+        BoundaryPathField(
+            "request",
+            PathRole.OUTPUT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "decision",
+            PathRole.OUTPUT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            required=False,
+        ),
+    ),
+)
 
 
 def main() -> None:
@@ -25,7 +54,11 @@ def main() -> None:
     check.add_argument("--decision", required=True, type=Path)
     args = parser.parse_args()
     layout = AnnotationLayout.production()
-    ref = annotation_reference(layout, args.request)
+    values = {"request": args.request}
+    if args.command == "check":
+        values["decision"] = args.decision
+    paths = PATH_BOUNDARY.validate(values, resolver=layout.resolver)
+    ref = annotation_reference(layout, paths.declared("request").path)
     if ref.digest != args.request_sha256:
         raise ValueError("screening request hash mismatch")
     request = read_document(layout, ref, ScreeningRequest)
@@ -46,7 +79,7 @@ def main() -> None:
             )
         )
     else:
-        path = args.decision.absolute()
+        path = paths.declared("decision").path
         if not path.is_relative_to(attempt_directory(layout, request) / "work"):
             raise ValueError("worker decisions must stay in attempt/work")
         decision = read_document(
