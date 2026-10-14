@@ -1,7 +1,8 @@
 # Ball 注釈と学習循環
 
 共通の[注釈基盤](../../base/annotation/README.md)に、ball固有の予測・レビュー・
-教師公開を接続する。ここでは新規clipへのMDD座標推論を定義する。
+教師公開を接続する。新規clipへのMDD座標推論は以下、差分編集・画像確認・教師採用の仕様は
+[review](review/README.md)を正本とする。
 
 `BallPredictionAdapter` を共通 `Predictions(layout, plan).run(manifest, adapter)` に
 渡す。収集台帳に準備済みとして登録されたclipと、そのcampaignに固定したモデル・
