@@ -256,6 +256,12 @@ class Git:
             "rev-parse", "--verify", f"refs/remotes/{self.remote}/{branch}^{{commit}}"
         ).strip()
 
+    def contains_commit(self, base: str, commit: str) -> bool:
+        # A source PR may have merged into a branch other than our processing base.
+        # Fetch its commit explicitly: fetching main need not have brought it in.
+        self("fetch", "--quiet", self.remote, commit)
+        return not self("rev-list", "--max-count=1", f"{base}..{commit}").strip()
+
     def remote_branch_exists(self, branch: str) -> bool:
         return bool(
             self("ls-remote", "--heads", self.remote, f"refs/heads/{branch}").strip()
@@ -611,6 +617,7 @@ def current_candidate(
 def inputs_unchanged(
     gh: GitHub, login: str, candidate: Candidate, source: SourcePR,
     comments: Sequence[IssueComment], report: RunReport,
+    *, latest: Round | None = None, latest_state: str | None = None,
 ) -> bool:  # fmt: skip
     """Stop before any publication if the decision's input or eligibility changed."""
     number = candidate.issue.number
@@ -624,6 +631,9 @@ def inputs_unchanged(
     trusted_now = [c for c in gh.comments(number) if c.association in TRUSTED_ASSOCIATIONS]
     if trusted_now != trusted_before:
         report.note(f"#{number}: defer (trusted comments changed during processing)")
+        return False
+    if latest and latest.pr and gh.pr_state(latest.pr) != latest_state:
+        report.note(f"#{number}: defer (previous PR #{latest.pr} changed during processing)")
         return False
     return True
 
@@ -651,6 +661,14 @@ def resolve_issue(
             invalidate(settings, gh, candidate, source, rounds, base, report)
         return
 
+    if source.merge_commit is None:
+        raise ValueError(f"#{number}: merged source PR #{source.number} has no merge commit")
+    if not git.contains_commit(base, source.merge_commit):
+        report.note(
+            f"#{number}: defer (source PR #{source.number} merge commit is not in {settings.base_branch})"
+        )
+        return
+
     latest = rounds[-1] if rounds else None
     latest_state = gh.pr_state(latest.pr) if latest and latest.pr else None
     noted = latest is not None and rejection_noted(
@@ -663,7 +681,10 @@ def resolve_issue(
         return
     if step is NextStep.NOTE_REJECTION:
         assert latest is not None
-        if inputs_unchanged(gh, login, candidate, source, comments, report):
+        if inputs_unchanged(
+            gh, login, candidate, source, comments, report,
+            latest=latest, latest_state=latest_state,
+        ):
             note_rejection(settings, gh, candidate, latest, report)
         return
 
@@ -705,7 +726,10 @@ def resolve_issue(
             (run_dir / "changes.diff").write_text(
                 git("diff", f"{base}..HEAD", cwd=worktree), encoding="utf-8"
             )
-        if inputs_unchanged(gh, login, candidate, source, comments, report):
+        if inputs_unchanged(
+            gh, login, candidate, source, comments, report,
+            latest=latest, latest_state=latest_state,
+        ):
             publish(settings, gh, git, candidate, source, resolution, labels,
                     Round(number, round_no, base, None), branch, report)  # fmt: skip
 
