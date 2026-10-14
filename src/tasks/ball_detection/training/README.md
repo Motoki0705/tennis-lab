@@ -11,6 +11,7 @@
 | `coordinates` | `--initialize full_model` | `coordinates/full_model.py`。採用query checkpointの全重みを転送し、optimizer/scheduleを初期化。累積trainと固定validationを個別指定 |
 
 encoder/full_modelのrunは`coordinates/joint.py`、座標系のepoch更新は `coordinates/loop.py` と `runtime/execution.py` を共有する。
+注釈公開後の共通Learningへの接続は[annotation/](annotation/README.md)。固定intent、工程receipt、比較と採用条件を検証する。
 JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`、epoch内FPS混合は `sampling.py`。
 段階別runnerが他のrunnerから共通関数をimportしない。評価は `evaluation/`、保存形式は `checkpoints/` が担当する。
 窓datasetは同じsampleに`position_valid`と`heatmap_valid`を供給し、各objectiveが使う教師を明示する。
@@ -59,6 +60,7 @@ query posttraining v1、`--initial-checkpoint-sha256`にそのSHA-256を明示�
 両manifestをrunへ複製する。これらの入力はrunの途中では変更できない。
 
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
+最終epoch保存後に完了記録を残す前に停止した場合は、更新を追加せず残りのstress評価と完了記録を再開する。
 full_modelでは元の初期checkpoint/hashを指定したまま、当該run内のcheckpointを`--resume`に渡す。
 新しい親モデル・累積データを使う次サイクルと、同一サイクルの中断再開を区別する。
 coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習のcosineでは元の総予算を維持する。
