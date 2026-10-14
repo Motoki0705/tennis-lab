@@ -8,8 +8,9 @@
 | `dpt_pretrain` | ランダム初期化、または同run再開 | `dpt_pretrain/`。CNN＋DPT、observed正例と確認済み不在のheatmap教師 |
 | `coordinates` | `--initialize scratch` | `coordinates/scratch.py`。pose32条件/query-only4条件、observed座標、constant LR |
 | `coordinates` | `--initialize encoder` | `coordinates/finetune.py`。完了DPTのCNN転送、query-only、拡張、freeze→joint |
+| `coordinates` | `--initialize full_model` | `coordinates/full_model.py`。採用query checkpointの全重みを転送し、optimizer/scheduleを初期化。累積trainと固定validationを個別指定 |
 
-座標系のepoch更新は `coordinates/loop.py` と `runtime/execution.py` を共有する。
+encoder/full_modelのrunは`coordinates/joint.py`、座標系のepoch更新は `coordinates/loop.py` と `runtime/execution.py` を共有する。
 JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`、epoch内FPS混合は `sampling.py`。
 段階別runnerが他のrunnerから共通関数をimportしない。評価は `evaluation/`、保存形式は `checkpoints/` が担当する。
 窓datasetは同じsampleに`position_valid`と`heatmap_valid`を供給し、各objectiveが使う教師を明示する。
@@ -45,7 +46,21 @@ OpenCVとnvJPEGには画素差があるため、評価時は保存decoder/API/ve
 
 ## 学習済み重みと再開
 
+追加学習は`--stage coordinates --initialize full_model`を使用し、`--manifest`に累積train、
+`--validation-manifest`に固定validationのwindow manifest、`--initial-checkpoint`に採用済みの
+query posttraining v1、`--initial-checkpoint-sha256`にそのSHA-256を明示する。
+`--augmentation-config`・新しい`--output`と学習予算/runtime引数はencoder初期化と共通。
+親と新しいtrainのmanifestが異なっていてもよい。validationのclip/source groupがtrainに混入した場合、
+またはCommon評価subsetが無い場合はモデル初期化前に停止する。
+
+全パラメータ・bufferの名前/dtype/shape/値を照合し、入力前処理とJPEG decoder契約を継承する。
+親checkpointのoptimizer・epoch・step・bestは使わず、AdamWとscheduleをstep 0から開始する。
+親ファイルhash・全重みhash・train/validation各manifest hashをrecipe/checkpointに保存し、
+両manifestをrunへ複製する。これらの入力はrunの途中では変更できない。
+
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
+full_modelでは元の初期checkpoint/hashを指定したまま、当該run内のcheckpointを`--resume`に渡す。
+新しい親モデル・累積データを使う次サイクルと、同一サイクルの中断再開を区別する。
 coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習のcosineでは元の総予算を維持する。
 `--stop-after-epoch`によるDPTの診断停止も元の総予算を変えない。自動で次stageを起動しない。
 
