@@ -11,6 +11,8 @@ chat-annotation の処理済み player ラベルから、テニスプレーヤ�
 `DinoPersonDetector` がそのまま読める DINO 形式の checkpoint を export します。
 pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使えます。
 
+新規clipへの予測案とレビューの接続は [annotation](annotation/README.md) を参照してください。
+
 ## 流れ
 
 1. `scripts.generate_dataset`: `outputs/chat_annotation` の processed player ラベルから
