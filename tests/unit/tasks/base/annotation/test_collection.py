@@ -453,6 +453,25 @@ def test_acquisition_failure_requires_explicit_retry(layout: AnnotationLayout) -
     }
 
 
+def test_local_source_changed_during_copy_is_not_published(
+    layout: AnnotationLayout,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collection = Collection(layout, plan_for(layout))
+    source = candidate(layout, collection.plan, "first")
+    collection.register([source])
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.collection.acquisition.shutil.copyfile",
+        lambda _source, destination: destination.write_bytes(b"changed in flight"),
+    )
+    with pytest.raises(ValueError, match="changed while copying"):
+        collection.acquire(source.source_id)
+    assert not layout.path("sources", "blobs").exists()
+    assert collection.ledger.summary(collection.plan)["sources_by_state"] == {
+        "failed": 1
+    }
+
+
 def test_source_claim_and_round_robin_are_explicit(layout: AnnotationLayout) -> None:
     collection = Collection(layout, plan_for(layout))
     source = candidate(layout, collection.plan, "first")
