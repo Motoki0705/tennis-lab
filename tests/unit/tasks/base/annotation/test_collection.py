@@ -17,6 +17,7 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.collection.contracts import (
     AcquisitionReceipt,
+    HistoricalSource,
     PreparationConfig,
     PreparationReceipt,
     SelectionReceipt,
@@ -308,6 +309,44 @@ def test_historical_source_and_channel_cannot_be_collected_as_new(
         ).disposition
         == "duplicate_channel"
     )
+
+
+def test_incomplete_historical_download_still_reserves_source_and_channel(
+    layout: AnnotationLayout,
+) -> None:
+    plan = plan_for(layout)
+    ledger = CollectionLedger(layout)
+    historical = HistoricalSource(
+        provider="youtube",
+        channel_id="old-channel",
+        video_id="old-video",
+        origin_url="https://www.youtube.com/watch?v=old-video",
+    )
+    ledger.import_history(historical, plan.selection)
+    ledger.import_history(historical, plan.selection)
+    ledger.register_campaign(plan)
+    candidate = SourceCandidate(
+        provider="youtube",
+        channel_id="old-channel",
+        video_id="old-video",
+        title="fixture",
+        origin_url=historical.origin_url,
+        selection_reason="fixture",
+        evidence=plan.selection,
+    )
+    assert ledger.register_source(plan, candidate).disposition == "duplicate_source"
+    assert (
+        ledger.register_source(
+            plan, candidate.model_copy(update={"video_id": "different"})
+        ).disposition
+        == "duplicate_channel"
+    )
+    with ledger.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM source_content").fetchone()[0] == 0
+    with pytest.raises(ValueError, match="historical source"):
+        ledger.import_history(
+            historical.model_copy(update={"channel_id": "changed"}), plan.selection
+        )
 
 
 def test_unprepared_lead_is_global_and_exclusion_releases_it(

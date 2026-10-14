@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import time
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -9,6 +11,13 @@ import av
 import numpy as np
 import pytest
 
+from src.tasks.annotation.contracts import (
+    OperationInput,
+    Runtime,
+    ScreenOperation,
+    StageCost,
+)
+from src.tasks.annotation.controller import Controller
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     read_document,
@@ -22,9 +31,11 @@ from src.tasks.base.annotation.collection.contracts import (
 )
 from src.tasks.base.annotation.collection.service import Collection, SourceExcluded
 from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.execution.contracts import QueueConfiguration
 from src.tasks.base.annotation.media import encode_video
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan
+from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
+from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
 from src.tasks.base.annotation.screening.contracts import (
     ClipDecision,
     Interval,
@@ -39,6 +50,12 @@ from src.tasks.base.annotation.screening.service import (
     Screening,
     attempt_directory,
     request_preview,
+)
+from src.tasks.base.annotation.workers.contracts import WorkRequest
+from src.tasks.base.annotation.workers.services import (
+    ServiceReply,
+    ServiceRequest,
+    request_service,
 )
 
 
@@ -118,6 +135,47 @@ class Example:
         )
 
 
+def controller_for(example: Example) -> Controller:
+    layout, plan = example.layout, example.screening.plan
+    resources = ResourceManager.create(
+        layout,
+        scope_id="preview",
+        limits=BudgetLimits.from_budget(plan.resources),
+        roots=(layout.repository,),
+        previously_allocated_bytes=0,
+        previously_used_gpu_seconds=0,
+        max_pending_per_stage=10,
+    )
+    script = layout.repository / "queue.sh"
+    script.write_text("# synthetic queue --idempotency-key\n")
+    return Controller(
+        layout,
+        Runtime(
+            plan=annotation_reference(layout, save_plan(layout, plan)),
+            scope=resources.reference,
+            queue=QueueConfiguration(
+                script=str(script),
+                script_digest=file_digest(script),
+                directory=str(layout.repository / ".training_queue"),
+                session="fixture",
+                issue=1088,
+            ),
+            codex_binary="codex",
+            codex_home=str(layout.path("cache", "codex")),
+            costs=tuple(
+                StageCost(
+                    stage=stage.stage,
+                    pss_bytes=256 * 1024**2,
+                    storage_bytes=10 * 1024**2,
+                    timeout_seconds=20.0,
+                    gpu_seconds=0.0,
+                )
+                for stage in plan.resources.stages
+            ),
+        ),
+    )
+
+
 def setup(
     tmp_path: Path, seconds: int = 32
 ) -> tuple[AnnotationLayout, Screening, SourceCandidate]:
@@ -156,16 +214,40 @@ def setup(
                 "resources": {
                     "codex_workers": 1,
                     "additional_storage_bytes": 30 * 1024**3,
-                    "minimum_free_bytes": 30 * 1024**3,
+                    "minimum_free_bytes": 1,
                     "total_pss_bytes": 22 * 1024**3,
                     "gpu_seconds": 43200,
                     "stages": [
                         {
-                            "stage": "screening",
+                            "stage": "screen",
                             "kind": "codex",
                             "parallel": 1,
                             "threads_per_process": 1,
-                        }
+                        },
+                        {
+                            "stage": "render",
+                            "kind": "cpu",
+                            "parallel": 1,
+                            "threads_per_process": 1,
+                        },
+                        {
+                            "stage": "history",
+                            "kind": "io",
+                            "parallel": 1,
+                            "threads_per_process": 1,
+                        },
+                        {
+                            "stage": "prepare",
+                            "kind": "cpu",
+                            "parallel": 1,
+                            "threads_per_process": 1,
+                        },
+                        {
+                            "stage": "acquire",
+                            "kind": "io",
+                            "parallel": 1,
+                            "threads_per_process": 1,
+                        },
                     ],
                 },
                 "tasks": [
@@ -235,7 +317,16 @@ def setup(
 @pytest.fixture
 def example(tmp_path: Path) -> Example:
     layout, screening, source = setup(tmp_path)
-    ref = screening.request(source.source_id, "attempt-1")
+    ref = screening.request(
+        screening.prepare(source.source_id),
+        layout.path(
+            "campaigns",
+            screening.plan.campaign_id,
+            "workers",
+            source.source_id,
+            "attempt-1",
+        ),
+    )
     request = read_document(layout, ref, ScreeningRequest)
     detail = request_preview(layout, request, start=0.0, stop=15.0, step=0.5)
     return Example(
@@ -256,7 +347,10 @@ def test_real_timeline_selection_and_resume(
     samples = [sample for page in example.detail.pages for sample in page.samples]
     assert [sample.seconds for sample in samples] == [index / 2 for index in range(30)]
     assert (
-        example.screening.request(example.source.source_id, "attempt-1")
+        example.screening.request(
+            example.request.prepared_input,
+            attempt_directory(example.layout, example.request),
+        )
         == example.request_ref
     )
     with monkeypatch.context() as patch:
@@ -370,7 +464,7 @@ def test_source_hash_and_image_tampering_are_detected(example: Example) -> None:
 def test_short_source_is_reasoned_exclusion(tmp_path: Path) -> None:
     layout, screening, source = setup(tmp_path, 3)
     with pytest.raises(SourceExcluded, match="duration"):
-        screening.request(source.source_id, "attempt-1")
+        screening.prepare(source.source_id)
     row = screening.collection.ledger.source(screening.plan, source.source_id)
     assert row["state"] == "excluded"
     selection = read_document(
@@ -392,9 +486,8 @@ def test_preview_atomic_publish_cache_and_invalid_interval(
                 example.layout, example.request, start=16.0, stop=31.0, step=0.5
             )
     directory = attempt_directory(example.layout, example.request) / "previews"
-    assert (
-        len(list(directory.iterdir())) == 2
-    )  # overview and first detail, no half receipt
+    # The source overview is shared outside the worker; only the first detail is here.
+    assert len(list(directory.iterdir())) == 1
     ref = request_preview(
         example.layout, example.request, start=16.0, stop=31.0, step=0.5
     )
@@ -479,7 +572,9 @@ def test_wrong_presentation_request_and_coarse_evidence_fail(example: Example) -
         )
 
 
-def test_cli_boundary_rejects_relative_and_external_request_paths(tmp_path: Path) -> None:
+def test_cli_boundary_rejects_relative_and_external_request_paths(
+    tmp_path: Path,
+) -> None:
     from src.tasks.base.annotation.screening.__main__ import PATH_BOUNDARY
     from src.utils.configuration import PathContractError
 
@@ -494,3 +589,121 @@ def test_cli_boundary_rejects_relative_and_external_request_paths(tmp_path: Path
     for candidate in (Path("relative.json"), outside):
         with pytest.raises(PathContractError):
             PATH_BOUNDARY.validate({"request": candidate}, resolver=layout.resolver)
+
+
+def test_parent_stage_renders_worker_images_without_treating_them_as_review(
+    example: Example,
+) -> None:
+    controller = controller_for(example)
+    layout = example.layout
+    operation = OperationInput(
+        plan=controller.runtime.plan,
+        operation=ScreenOperation(source_id=example.source.source_id),
+    )
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        state = controller.operation(operation)
+        if state["state"] == "succeeded":
+            break
+        assert state["state"] in {"running", "draining"}, state
+        time.sleep(0.02)
+    assert state["state"] == "succeeded", state
+    prepared = controller.receipt(state).results[0]
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=prepared,
+        inputs=(),
+    )
+    # This is a synthetic worker protocol. It does not call Codex or claim image inspection.
+    script = r"""
+import json, pathlib, sys
+from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.artifacts import annotation_reference
+from src.tasks.base.annotation.workers.services import ServiceRequest, request_service
+layout = AnnotationLayout.testing(pathlib.Path(sys.argv[1]))
+directory = pathlib.Path.cwd().parent
+ref = annotation_reference(layout, directory / "request.json")
+request_service(layout, directory, ServiceRequest(task_request=ref, operation="screen_preview", parameters={"start":5.0,"stop":20.0,"step":0.5}), timeout_seconds=15)
+pathlib.Path("result.json").write_text('{"synthetic":true}')
+print(json.dumps({"type":"thread.started","thread_id":"synthetic-only"}))
+print(json.dumps({"type":"turn.completed"}))
+"""
+    controller.pool.test_command = (sys.executable, "-c", script, str(layout.root))
+    controller.pool.start(request)
+    deadline = time.monotonic() + 20
+    row = controller.pool.reconcile(request)
+    try:
+        while row["state"] in {"running", "exited"} and time.monotonic() < deadline:
+            controller._services(request, row)
+            time.sleep(0.02)
+            row = controller.pool.reconcile(request)
+        assert row["state"] == "validation_failed", row
+        assert "actual identified rollout" in row["reason"]
+        directory = layout.path(
+            "campaigns",
+            controller.plan.campaign_id,
+            "workers",
+            request.work_id,
+            "attempt-0001",
+        )
+        (reply_path,) = (directory / "services").glob("*/reply.json")
+        reply = read_document(
+            layout, annotation_reference(layout, reply_path), ServiceReply
+        )
+        assert reply.status == "succeeded" and reply.result is not None
+        preview = read_document(layout, reply.result, PreviewReceipt)
+        assert (preview.start, preview.stop, preview.step) == (5.0, 20.0, 0.5)
+        assert all(layout.artifact_path(page.image).is_file() for page in preview.pages)
+        (service_path,) = (directory / "work/service-requests").glob("*.json")
+        service = read_document(
+            layout, annotation_reference(layout, service_path), ServiceRequest
+        )
+        assert (
+            request_service(layout, directory, service, timeout_seconds=1)
+            == reply.result
+        )
+        assert (
+            controller.collection.ledger.source(
+                controller.plan, example.source.source_id
+            )["state"]
+            == "acquired"
+        )
+    finally:
+        if row["state"] in {"running", "exited"}:
+            controller.pool.stop(request, reason="fixture cleanup")
+
+
+def test_worker_image_service_rejects_other_attempt_and_excessive_sampling(
+    example: Example,
+) -> None:
+    from src.tasks.annotation.operations import preview_input
+
+    layout = example.layout
+    directory = attempt_directory(layout, example.request)
+    request = ServiceRequest(
+        task_request=example.request_ref,
+        operation="screen_preview",
+        parameters={"start": 0.0, "stop": 15.0, "step": 0.001},
+    )
+    path = directory / "work/service-requests" / (request.sha256 + ".json")
+    ref = write_document(layout, path, request)
+    with pytest.raises(ValueError, match="sampling bounds"):
+        preview_input(layout, ref)
+    moved = write_document(
+        layout, directory / "work" / (request.sha256 + ".json"), request
+    )
+    with pytest.raises(ValueError, match="binding"):
+        preview_input(layout, moved)
+
+
+def test_operation_cli_cannot_bypass_accounted_stage(
+    example: Example, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation.operations import execute
+
+    monkeypatch.delenv("TENNIS_ANNOTATION_STAGE_OPERATION", raising=False)
+    with pytest.raises(ValueError, match="resource-accounted stage"):
+        execute(example.layout, example.request_ref)

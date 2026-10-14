@@ -276,6 +276,14 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.annotation.__main__": (
+        "annotation.workflow.cli",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.base.annotation.execution.__main__": (
+        "base.annotation.execution.cli",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.base.annotation.workers.__main__": (
         "base.annotation.workers.cli",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -486,6 +494,16 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.tasks.annotation.__main__", "main",
+        domain="base", executable_module=True,
+        optional_policy="runtime/candidates/operation are required by their subcommands; test_root is an explicit test-only boundary",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.base.annotation.execution.__main__", "main",
+        domain="base", executable_module=True,
+        optional_policy="queued selects the shared queue owner; lock/resource FDs apply only to CPU stages; test_root selects test-only storage",
+    ),
     _non_hydra_boundary(
         "src.tasks.base.annotation.workers.__main__", "main",
         domain="base", executable_module=True,

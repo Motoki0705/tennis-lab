@@ -1,0 +1,179 @@
+"""Concrete operations, executed only by the resource-owning stage supervisor."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
+    read_document,
+    verify_reference,
+    write_document,
+)
+from src.tasks.base.annotation.collection.ledger import CollectionLedger
+from src.tasks.base.annotation.collection.service import Collection, SourceExcluded
+from src.tasks.base.annotation.contracts import ArtifactRef, Document
+from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.plan import load_plan, references
+from src.tasks.base.annotation.predictions import PredictionAdapter, Predictions
+from src.tasks.base.annotation.screening.contracts import (
+    ScreeningPolicy,
+    ScreeningRequest,
+)
+from src.tasks.base.annotation.workers.services import ServiceRequest
+
+from .contracts import (
+    AcquireOperation,
+    HistoryManifest,
+    HistoryOperation,
+    OperationInput,
+    OperationReceipt,
+    PredictOperation,
+    PrepareOperation,
+    PreviewOperation,
+    ScreenOperation,
+)
+
+
+class HistoryReceipt(Document):
+    manifest: ArtifactRef
+    sources: int
+    verified_media: int
+
+
+def preview_input(
+    layout: AnnotationLayout, service_ref: ArtifactRef
+) -> tuple[ServiceRequest, ScreeningRequest, Path]:
+    request = read_document(layout, service_ref, ServiceRequest)
+    if request.operation != "screen_preview" or set(request.parameters) != {
+        "start",
+        "stop",
+        "step",
+    }:
+        raise ValueError("unsupported screening image operation")
+    task = read_document(layout, request.task_request, ScreeningRequest)
+    directory = layout.artifact_path(request.task_request).parent
+    if (
+        layout.artifact_path(request.task_request).name != "request.json"
+        or directory.relative_to(layout.root).as_posix() != task.attempt_path
+        or layout.artifact_path(service_ref)
+        != directory / "work/service-requests" / (request.sha256 + ".json")
+    ):
+        raise ValueError(
+            "image request is outside its immutable worker/attempt binding"
+        )
+    start, stop, step = (request.parameters[key] for key in ("start", "stop", "step"))
+    if not all(type(value) in {float, int} for value in (start, stop, step)):
+        raise ValueError("preview intervals must be numeric")
+    policy = read_document(layout, task.policy, ScreeningPolicy)
+    if (
+        not 0 <= start < stop <= task.source_duration
+        or not policy.boundary_step_seconds <= step <= policy.overview_step_seconds
+    ):
+        raise ValueError("preview request exceeds source or frozen sampling bounds")
+    if (stop - start) / step > 600:
+        raise ValueError("a preview request may contain at most 600 sampled frames")
+    return request, task, directory
+
+
+def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
+    """The supervisor pins this exact input; direct CLI calls cannot bypass ownership."""
+    if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
+        raise ValueError("operation must be launched by its resource-accounted stage")
+    data = read_document(layout, reference, OperationInput)
+    plan = load_plan(verify_reference(layout, data.plan))
+    directory = layout.artifact_path(reference).parent
+    expected = layout.path("campaigns", plan.campaign_id, "jobs")
+    if (
+        not directory.is_relative_to(expected)
+        or len(directory.relative_to(expected).parts) != 1
+    ):
+        raise ValueError("operation input must belong to a campaign stage")
+    output = directory / "result.json"
+    if output.exists():
+        ref = annotation_reference(layout, output)
+        receipt = read_document(layout, ref, OperationReceipt)
+        if receipt.operation != reference:
+            raise ValueError("stage operation already contains a different receipt")
+        for dependency in references(receipt):
+            verify_reference(layout, dependency)
+        return ref
+    op = data.operation
+    result: tuple[ArtifactRef, ...]
+    status, reason = "complete", None
+    try:
+        if isinstance(op, HistoryOperation):
+            history = read_document(layout, op.manifest, HistoryManifest)
+            ledger = CollectionLedger(layout)
+            for entry in history.entries:
+                ledger.import_history(entry.source, entry.evidence)
+            result = (
+                write_document(
+                    layout,
+                    directory / "history.json",
+                    HistoryReceipt(
+                        manifest=op.manifest,
+                        sources=len(history.entries),
+                        verified_media=sum(
+                            e.source.media is not None for e in history.entries
+                        ),
+                    ),
+                ),
+            )
+        elif isinstance(op, AcquireOperation):
+            result = (Collection(layout, plan).acquire(op.source_id, retry=op.retry),)
+        elif isinstance(op, ScreenOperation):
+            from src.tasks.base.annotation.screening.service import Screening
+
+            result = (Screening(Collection(layout, plan)).prepare(op.source_id),)
+        elif isinstance(op, PrepareOperation):
+            result = (Collection(layout, plan).prepare(op.source_id),)
+        elif isinstance(op, PreviewOperation):
+            from src.tasks.base.annotation.screening.images import make_sheets
+
+            service, task, attempt = preview_input(layout, op.service_request)
+            if task.plan_digest != plan.sha256:
+                raise ValueError("preview request belongs to another campaign")
+            result = (
+                make_sheets(
+                    layout,
+                    task.source.media,
+                    attempt / "previews",
+                    origin_pts=task.source_origin_pts,
+                    time_base=task.time_base,
+                    **service.parameters,
+                ),
+            )
+        elif isinstance(op, PredictOperation):
+            adapter: PredictionAdapter
+            if op.task == "ball":
+                from src.tasks.ball_detection.annotation.inference import (
+                    BallPredictionAdapter,
+                )
+
+                adapter = BallPredictionAdapter()
+            else:
+                from src.tasks.player_detection.annotation.inference import (
+                    PlayerPredictionAdapter,
+                )
+
+                adapter = PlayerPredictionAdapter()
+            predictions = Predictions(layout, plan)
+            result = tuple(predictions.run(clip, adapter) for clip in op.clips)
+        else:
+            raise ValueError("unknown stage operation")
+    except SourceExcluded as error:
+        result, status, reason = (), "not_applicable", str(error)
+    return write_document(
+        layout,
+        output,
+        OperationReceipt.model_validate(
+            {
+                "operation": reference,
+                "status": status,
+                "results": result,
+                "reason": reason,
+            }
+        ),
+    )

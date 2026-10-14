@@ -9,6 +9,7 @@ from pathlib import Path
 from src.utils.paths import PROJECT_ROOT
 
 from ..artifacts import (
+    annotation_reference,
     read_document,
     verify_reference,
     write_asset,
@@ -19,13 +20,16 @@ from ..collection.service import Collection, SourceExcluded
 from ..contracts import ArtifactRef, Document
 from ..media import probe_video
 from ..paths import AnnotationLayout
+from ..plan import references
 from .contracts import (
     PresentedImages,
     PreviewReceipt,
     ScreeningEvidence,
+    ScreeningInput,
     ScreeningPolicy,
     ScreeningRequest,
     SourceDecision,
+    check_decision,
 )
 from .images import make_sheets
 
@@ -68,21 +72,6 @@ def request_preview(
     )
 
 
-def check_decision(
-    request: ScreeningRequest, policy: ScreeningPolicy, decision: SourceDecision
-) -> None:
-    if decision.source_sha256 != request.source.media.digest:
-        raise ValueError("decision refers to a different source")
-    if decision.requested_maximum != request.requested_maximum:
-        raise ValueError("decision changes the requested clip count")
-    for clip in decision.clips:
-        clip.validate_policy(policy)
-        if clip.stop > request.source_duration:
-            raise ValueError("selected window extends beyond the source")
-    if any(interval.stop > request.source_duration for interval in decision.rejected):
-        raise ValueError("rejected interval extends beyond the source")
-
-
 class Screening:
     """No model launch or second image review; orchestration supplies tool evidence."""
 
@@ -91,15 +80,31 @@ class Screening:
         self.layout, self.plan = collection.layout, collection.plan
         self.policy = read_document(self.layout, self.plan.selection, ScreeningPolicy)
 
-    def request(self, source_id: str, attempt_id: str) -> ArtifactRef:
+    def prepare(self, source_id: str) -> ArtifactRef:
+        """CPU stage: probe once and render the shared, read-only source overview."""
         directory = self.layout.path(
-            "campaigns", self.plan.campaign_id, "screening", source_id, attempt_id
+            "campaigns", self.plan.campaign_id, "screening", source_id
         )
         row = self.collection.ledger.source(self.plan, source_id)
         if row["state"] not in {"acquired", "screened", "prepared"}:
             raise ValueError("screening requires an acquired, nonexcluded source")
         acquisition = ArtifactRef.model_validate_json(row["acquisition"])
         acquired = read_document(self.layout, acquisition, AcquisitionReceipt)
+        prepared_path = directory / "input.json"
+        if prepared_path.exists():
+            prior_ref = annotation_reference(self.layout, prepared_path)
+            prior = read_document(self.layout, prior_ref, ScreeningInput)
+            if (prior.plan_digest, prior.source, prior.policy) != (
+                self.plan.sha256,
+                acquired.source,
+                self.plan.selection,
+            ):
+                raise ValueError(
+                    "screening input differs from the registered source/plan"
+                )
+            for ref in references(prior):
+                verify_reference(self.layout, ref)
+            return prior_ref
         source_path = verify_reference(self.layout, acquired.source.media)
         try:
             timeline = probe_video(source_path)
@@ -149,16 +154,39 @@ class Screening:
             stop=duration,
             step=self.policy.overview_step_seconds,
         )
+        return write_document(
+            self.layout,
+            prepared_path,
+            ScreeningInput(
+                plan_digest=self.plan.sha256,
+                source=acquired.source,
+                policy=self.plan.selection,
+                source_duration=duration,
+                source_origin_pts=timeline.pts[0],
+                time_base=str(timeline.time_base),
+                overview=overview,
+            ),
+        )
+
+    def request(self, prepared: ArtifactRef, directory: Path) -> ArtifactRef:
+        """Only bind small inputs while the worker admission lock is held."""
+        source_input = read_document(self.layout, prepared, ScreeningInput)
+        expected = self.layout.path("campaigns", self.plan.campaign_id, "workers")
+        if (
+            not directory.is_relative_to(expected)
+            or len(directory.relative_to(expected).parts) != 2
+        ):
+            raise ValueError("screening request must belong to a worker attempt")
+        if (source_input.plan_digest, source_input.policy) != (
+            self.plan.sha256,
+            self.plan.selection,
+        ):
+            raise ValueError("screening input belongs to another plan")
         request = ScreeningRequest(
-            plan_digest=self.plan.sha256,
-            source=acquired.source,
-            policy=self.plan.selection,
+            **source_input.model_dump(),
+            prepared_input=prepared,
             requested_maximum=self.plan.counts.max_clips_per_video,
             attempt_path=directory.relative_to(self.layout.root).as_posix(),
-            source_duration=duration,
-            source_origin_pts=timeline.pts[0],
-            time_base=str(timeline.time_base),
-            overview=overview,
         )
         reference = write_document(self.layout, directory / "request.json", request)
         write_asset(
@@ -189,7 +217,7 @@ class Screening:
         prompt = (
             f"{instructions}\n\nImmutable request: {self.layout.artifact_path(reference)}\n"
             f"Request SHA-256: {reference.digest}\n"
-            f"Overview receipt: {self.layout.artifact_path(overview)}\n"
+            f"Overview receipt: {self.layout.artifact_path(request.overview)}\n"
             f"Decision schema: {directory / 'decision.schema.json'}\n"
             f"Write the decision to {directory / 'work/result.json'}.\n"
             f"Registered tool command: {command}\n"
@@ -220,14 +248,19 @@ class Screening:
         if request.source != acquired.source:
             raise ValueError("screening request source differs from the ledger")
         directory = attempt_directory(self.layout, request)
-        expected = self.layout.path(
-            "campaigns", self.plan.campaign_id, "screening", request.source.canonical_id
-        )
+        expected = self.layout.path("campaigns", self.plan.campaign_id, "workers")
         if (
-            directory.parent != expected
+            not directory.is_relative_to(expected)
+            or len(directory.relative_to(expected).parts) != 2
             or self.layout.artifact_path(request_ref) != directory / "request.json"
         ):
             raise ValueError("screening request is outside its declared attempt")
+        original = read_document(self.layout, request.prepared_input, ScreeningInput)
+        if any(
+            getattr(request, key) != getattr(original, key)
+            for key in ScreeningInput.model_fields
+        ):
+            raise ValueError("screening request changed its prepared source/overview")
         verify_reference(self.layout, request.source.media)
         decision = read_document(self.layout, decision_ref, SourceDecision)
         check_decision(request, self.policy, decision)
@@ -243,7 +276,9 @@ class Screening:
         images: dict[str, ArtifactRef] = {}
         for reference in refs:
             path = self.layout.artifact_path(reference)
-            if not path.is_relative_to(directory / "previews"):
+            if reference != request.overview and not path.is_relative_to(
+                directory / "previews"
+            ):
                 raise ValueError("preview evidence is outside the screening attempt")
             preview = read_document(self.layout, reference, PreviewReceipt)
             if (preview.source, preview.origin_pts, preview.time_base) != (
