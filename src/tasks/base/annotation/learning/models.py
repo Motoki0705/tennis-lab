@@ -7,6 +7,8 @@ from ..contracts import ArtifactRef, ModelRef, content_digest
 from ..paths import AnnotationLayout
 from ..plan import references
 from ..registry import Registry
+from ..storage.catalog import StorageCatalog
+from ..storage.references import protection
 from .contracts import ModelState, SelectionRecord, SelectionVerdict
 from .validation import check_evaluation
 
@@ -32,6 +34,7 @@ class ModelRegistry:
         self.layout = layout
         self.registry = Registry(layout)
         self.registry.initialize("annotation-learning-models-v1", _SCHEMA)
+        self.catalog = StorageCatalog(layout)
 
     def bootstrap(self, model: ModelRef, evidence: ArtifactRef) -> ModelState:
         """Explicit initial registration, never a newest-file or last lookup."""
@@ -44,9 +47,20 @@ class ModelRegistry:
                 "SELECT request FROM annotation_model_bootstrap WHERE task=?",
                 (model.task,),
             ).fetchone()
+            if old is not None and old["request"] != request:
+                raise ValueError("initial model registration already differs")
+            self.catalog.protect(
+                protection(
+                    self.layout,
+                    identity="model-bootstrap-v1-" + request,
+                    kind="model",
+                    reason="explicit initial model weights, configuration, and evidence",
+                    roots=(evidence,),
+                    documents=(model,),
+                ),
+                database=db,
+            )
             if old is not None:
-                if old["request"] != request:
-                    raise ValueError("initial model registration already differs")
                 return state
             db.execute(
                 "INSERT INTO annotation_model_bootstrap VALUES (?,?,?)",
@@ -157,10 +171,35 @@ class ModelRegistry:
                     "INSERT INTO annotation_model_selections VALUES (?,?)",
                     (verdict_ref.digest, record.model_dump_json()),
                 )
-        return write_document(
+            self.catalog.protect(
+                protection(
+                    self.layout,
+                    identity="model-selection-v1-" + verdict_ref.digest,
+                    kind="model",
+                    reason="model decision, compared weights, and fixed learning inputs",
+                    roots=(verdict_ref,),
+                    documents=(verdict, record, evaluation, intent),
+                ),
+                database=db,
+            )
+        reference = write_document(
             self.layout,
             self.layout.path(
                 "models", candidate.task, "selections", verdict_ref.digest + ".json"
             ),
             record,
         )
+        # The model pointer/weights already committed atomically above. Retrying
+        # the commit/file gap materializes and protects this exact stored record.
+        self.catalog.protect(
+            protection(
+                self.layout,
+                identity="model-selection-record-v1-" + verdict_ref.digest,
+                kind="model",
+                reason="materialized model decision receipt",
+                roots=(reference,),
+                documents=(record,),
+            )
+        )
+        result: ArtifactRef = reference
+        return result

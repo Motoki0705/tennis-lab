@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -49,6 +50,40 @@ def visible(x: float = 16.0, *, track: str = "ball") -> BallObservation:
     return BallObservation(
         track_id=track, state="visible", center=(x, 12.0), origin="manual"
     )
+
+
+def test_seal_and_reference_protection_roll_back_together(
+    env: Environment, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.base.annotation.storage.catalog import StorageCatalog
+
+    image = env.page((1,))
+    env.apply(BallEdits(
+        operations=(env.replace(1, image, observations=(visible(),)),), images=(image,),
+    ))
+    adopted = env.adapter.prepare_adoption(
+        env.layout, env.context, env.manifest, env.head(), (env.telemetry((image,)),),
+        reason="atomic protection fixture",
+    )
+    before = StorageCatalog(env.layout).snapshot().digest
+    original = env.store.catalog.protect
+
+    def crash(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("after protection insert")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(env.store.catalog, "protect", crash)
+        with pytest.raises(RuntimeError, match="after protection"):
+            env.store.seal(env.head(), adopted, env.adapter)
+    assert StorageCatalog(env.layout).snapshot().digest == before
+    with env.store.registry.transaction() as db:
+        assert db.execute("SELECT adoption FROM annotation_revision_heads").fetchone()[0] is None
+        assert db.execute("SELECT state FROM annotation_tasks").fetchone()[0] == "reviewing"
+    env.store.seal(env.head(), adopted, env.adapter)
+    first = StorageCatalog(env.layout).snapshot().digest
+    env.store.seal(env.head(), adopted, env.adapter)
+    assert StorageCatalog(env.layout).snapshot().digest == first
 
 
 def test_initial_labels_preserve_all_native_pts_without_copying_proposals(
@@ -517,6 +552,31 @@ def test_adoption_proves_worker_images_derives_masks_and_seals_exact_revision(
     )
     assert mask.rows[2].coordinate_track is None and mask.rows[3].heatmap == "ignore"
     env.store.seal(env.head(), adopted, env.adapter)
+    from src.tasks.base.annotation.editing.contracts import EditCommand
+    from src.tasks.base.annotation.images.contracts import RenderReceipt
+    from src.tasks.base.annotation.telemetry.contracts import (
+        ResponsePage,
+        TelemetryReport,
+    )
+    from src.tasks.base.annotation.workers.contracts import ExitReceipt
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    revision = read_document(env.layout, env.head(), Revision)
+    command = read_document(env.layout, revision.command, EditCommand)
+    report = read_document(env.layout, telemetry, TelemetryReport)
+    page = read_document(env.layout, report.pages[0], ResponsePage)
+    execution = read_document(env.layout, report.execution, ExitReceipt)
+    rendered = read_document(env.layout, image.metadata, RenderReceipt)
+    assert_expired_but_protected(
+        env.layout,
+        (adopted, env.initial, env.head(), revision.payload, revision.command,
+         command.changes, command.actor, env.context.manifest, env.context.prediction,
+         env.manifest.media, env.manifest.source.media, receipt.teacher_mask,
+         image.image, image.metadata, rendered.request, telemetry, report.pages[0],
+         page.entries[0].record, page.entries[0].page, report.index_page,
+         report.execution, execution.events, execution.errors),
+        "adoption",
+    )
     with pytest.raises(RevisionConflict, match="sealed"):
         env.apply(BallEdits(operations=(env.replace(1, image, presence="absent"),)))
 

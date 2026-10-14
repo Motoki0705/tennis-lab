@@ -166,6 +166,39 @@ def destination(env: Environment) -> Path:
     return path
 
 
+def test_publication_pointer_and_protection_are_atomic_after_files_appear(
+    setup: tuple[Environment, PublishRequest, Path], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.base.annotation.storage.catalog import StorageCatalog
+
+    env, request, _ = setup
+    publisher = BallPublisher(env.layout)
+    original = publisher.catalog.protect
+    before = StorageCatalog(env.layout).snapshot().digest
+
+    def crash(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("after publication protection")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publisher.catalog, "protect", crash)
+        with pytest.raises(RuntimeError, match="after publication protection"):
+            publisher.publish(request)
+    assert (destination(env) / "snapshot.json").is_file()
+    assert StorageCatalog(env.layout).snapshot().digest == before
+    with publisher.registry.transaction() as db:
+        assert db.execute("SELECT receipt FROM ball_publications").fetchone()[0] is None
+
+    def forbid(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("recoverable publication must not re-encode")
+
+    monkeypatch.setattr(publisher, "_build", forbid)
+    result = publisher.publish(request)
+    first = StorageCatalog(env.layout).snapshot().digest
+    assert publisher.publish(request) == result
+    assert StorageCatalog(env.layout).snapshot().digest == first
+
+
 def result(
     env: Environment, reference: ArtifactRef
 ) -> tuple[PublicationReceipt, BallSnapshot, BallFrameStore]:
@@ -207,6 +240,14 @@ def test_publication_preserves_base_bytes_rows_and_sealed_review_masks(
     assert completion.complete and check_completion(env.layout, completion) == env.plan
     receipt, snapshot, store = result(env, reference)
     assert receipt.added_clips == (env.manifest.clip_id,)
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    assert_expired_but_protected(
+        env.layout,
+        (reference, receipt.snapshot, snapshot.index, snapshot.metadata,
+         *(clip.shard for clip in snapshot.clips)),
+        "publication",
+    )
     assert len(receipt.reused_clips) == 1 and len(snapshot.clips) == 2
     assert store.clips[0] == old.clips[0]
     assert store.metadata["clips"][0] == old.metadata["clips"][0]

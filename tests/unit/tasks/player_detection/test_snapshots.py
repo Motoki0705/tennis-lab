@@ -118,6 +118,13 @@ def test_freeze_preserves_files_native_rows_splits_and_negative_teachers(
         b.source_id for b in example.bindings
     }
     assert not list(example.directory.glob("**/*.mp4"))
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    assert_expired_but_protected(
+        example.layout,
+        (reference, snapshot.index, snapshot.metadata, *(clip.shard for clip in snapshot.clips)),
+        "publication",
+    )
 
 
 @pytest.mark.parametrize("kind", ["missing", "extra", "duplicate"])

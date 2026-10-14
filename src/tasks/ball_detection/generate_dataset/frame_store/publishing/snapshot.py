@@ -20,6 +20,8 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.contracts import ArtifactRef, content_digest
 from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.storage.catalog import StorageCatalog
+from src.tasks.base.annotation.storage.references import protection
 
 from .contracts import BallSnapshot, LegacySourceGroup, SnapshotClip
 
@@ -126,5 +128,15 @@ def freeze_legacy_store(
         layout,
         layout.path("campaigns", "imported-ball-snapshots", snapshot.sha256 + ".json"),
         snapshot,
+    )
+    StorageCatalog(layout).protect(
+        protection(
+            layout,
+            identity="snapshot-v1-" + result.digest,
+            kind="publication",
+            reason="explicitly frozen ball baseline and every native store file",
+            roots=(result,),
+            documents=(snapshot,),
+        )
     )
     return result

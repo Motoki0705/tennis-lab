@@ -464,6 +464,52 @@ def env(tmp_path: Path) -> Environment:
     return Environment(tmp_path / "annotation")
 
 
+@pytest.mark.parametrize("accept", [True, False])
+def test_model_decisions_protect_both_compared_weights_and_fixed_inputs(
+    env: Environment, accept: bool,
+) -> None:
+    from src.tasks.base.annotation.plan import references
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    env.adapter.accept = accept
+    intent_ref = env.register()
+    outcome = env.train_and_evaluate(intent_ref)
+    assert outcome.state == ("adopted" if accept else "rejected")
+    selection = read_document(env.layout, outcome.selection, SelectionRecord)
+    intent = read_document(env.layout, intent_ref, LearningIntent)
+    verdict = read_document(env.layout, selection.verdict, SelectionVerdict)
+    assert_expired_but_protected(
+        env.layout,
+        (outcome.selection, selection.verdict, verdict.evaluation, intent.recipe, intent.fixed_evaluation,
+         *(references(selection.expected.model)), *(references(selection.candidate))),
+        "model",
+    )
+
+
+def test_model_bootstrap_protection_failure_cannot_publish_a_pointer(
+    env: Environment, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.base.annotation.storage.catalog import StorageCatalog
+
+    registry = env.learning.models
+    candidate = env.model.model_copy(update={"task": "another"})
+    original = registry.catalog.protect
+    before = StorageCatalog(env.layout).snapshot().digest
+
+    def crash(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("after model protection")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(registry.catalog, "protect", crash)
+        with pytest.raises(RuntimeError, match="after model protection"):
+            registry.bootstrap(candidate, env.common)
+    assert StorageCatalog(env.layout).snapshot().digest == before
+    with pytest.raises(ValueError, match="no explicitly adopted"):
+        registry.current("another")
+    assert registry.bootstrap(candidate, env.common).model == candidate
+
+
 @pytest.mark.parametrize(
     ("options", "state"),
     [
