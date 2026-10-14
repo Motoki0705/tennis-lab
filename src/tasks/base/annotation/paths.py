@@ -143,5 +143,10 @@ class AnnotationLayout:
         }[reference.role]
         candidate = self.resolver.roots.root(role) / reference.path
         _no_symlinks(candidate, self.repository)
+        if reference.role == "annotation" and Path(reference.path).parts[0] == "cache":
+            # Cache artifacts keep annotation-root-relative identities, but the
+            # shared resolver reserves this prefix for its cache role.
+            cached: Path = self.resolver.validate(PathRole.CACHE, candidate)
+            return cached
         resolved: Path = self.resolver.resolve(role, reference.path)
         return resolved

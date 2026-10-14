@@ -14,8 +14,12 @@ ball/playerの意味・ラベルschema・レビュー方針は解釈しない。
 ```python
 resources = ResourceManager(layout, scope_ref)
 pool = WorkerPool(
-    layout, plan, (adapter,), resources=resources,
-    worker_pss_bytes=worker_peak, worker_storage_bytes=worker_output_budget,
+    layout,
+    plan,
+    (adapter,),
+    resources=resources,
+    worker_pss_bytes=worker_peak,
+    worker_storage_bytes=worker_output_budget,
 )
 pool.register(request)
 attempt = pool.start(request)  # 完了済みなら None、稼働/枠不足は WorkerBusy
@@ -56,7 +60,10 @@ state = pool.reconcile(request)
 保存先は `campaigns/<campaign>/workers/<work-id>/attempt-<n>/`。
 `launch.json`、owner/exit/result receipt、events/stderr、結果コピーを保持する。
 `events.jsonl` は処理完了・quota判定用であり、画像の実提示や応答ID usageの
-完全な証拠ではない。rollout由来の詳細計測はtelemetry層が担当する。
+完全な証拠ではない。[telemetry](../telemetry/README.md) が終了したthreadのrolloutを取得し、
+modelと応答IDを検証してからadapterへ渡す。adapterは `telemetry_images` で描画記録と
+不変画像の対応を返し、`classify_tool` で操作を分類する。`validate` では実提示の証跡と
+レビュー判断を照合する。実Codexの結果receiptにはtelemetry参照が必須である。
 
 合成workerによる試験では、競合、親終了、supervisor死亡と孤児process、PID再利用、
 並列枠、quota、timeout、結果改変、preview採用拒否、receipt後の中断を確認する。
