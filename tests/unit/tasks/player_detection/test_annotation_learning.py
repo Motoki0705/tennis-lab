@@ -75,6 +75,15 @@ def test_cpu_lightning_saves_bound_best_last_and_exact_export(
     assert env.learning.models.current("player").model == env.parent
     next_stage = env.tick()
     assert next_stage.state == "evaluation_pending"
+    assert next_stage.training is not None
+    assert {
+        provenance.latest_checkpoint,
+        provenance.selected_checkpoint,
+        provenance.completed,
+        provenance.run_binding,
+        provenance.initial_configuration,
+        receipt.candidate.inference_weights,
+    } <= set(env.learning.storage.completed_inputs(next_stage.training))
     # Re-reading the completed attempt does not create another optimizer run.
     assert env.executor.finish(pending.launch) == result
     assert (

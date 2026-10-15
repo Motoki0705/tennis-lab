@@ -32,6 +32,20 @@ class LearningAdapter(Protocol):
         """Check recipe, initialization weights and task-owned input contracts."""
         ...
 
+    def input_references(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> tuple[ArtifactRef, ...]:
+        """Enumerate task-owned dataset files and prepared inputs after validation."""
+        ...
+
+    def result_references(
+        self,
+        layout: AnnotationLayout,
+        result: TrainingReceipt | EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        """Enumerate task-owned checkpoint and evaluation evidence after validation."""
+        ...
+
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path
     ) -> tuple[str, ...]:

@@ -19,7 +19,7 @@ from src.tasks.base.annotation.learning.contracts import (
 from src.tasks.base.annotation.learning.validation import check_evaluation
 from src.tasks.base.annotation.paths import AnnotationLayout
 
-from . import evidence
+from . import evidence, storage
 from .contracts import BallSelectionPolicy
 from .inputs import resolve_inputs
 from .selection import rejection_reasons
@@ -46,6 +46,16 @@ class BallLearningAdapter:
 
     def validate_intent(self, layout: AnnotationLayout, intent: LearningIntent) -> None:
         resolve_inputs(layout, intent).expected_recipe(layout, intent)
+
+    def input_references(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.input_references(layout, intent)
+
+    def result_references(
+        self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.result_references(layout, result)
 
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path

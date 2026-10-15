@@ -52,6 +52,7 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 | `ModelRegistry.bootstrap/select` | 初期モデルの重み/config/根拠、採否判断、比較したモデルの重み、固定学習入力と評価参照 |
 | `WorkerLedger.register` / `WorkerPool.start` | 登録済みworkの固定入力、adapterが列挙する依存、processが所有するattempt入力。詳細は[workers](../workers/README.md) |
 | `ResourceManager.submit` / `lease` | 待機・再開用の固定入力と、kernel lease・所有processに結び付く試行入力。詳細は[resources](../resources/README.md)、CPU/GPU起動境界は[execution](../execution/README.md) |
+| `Learning.register` / 工程要求・完了 | 累積教師と固定評価の実ファイル、再開checkpoint、検査済み結果とtask固有の来歴・評価根拠。詳細は[learning](../learning/README.md) |
 
 ~~~mermaid
 flowchart LR
