@@ -32,6 +32,7 @@ from .contracts import (
     InspectStorageOperation,
     OperationInput,
     OperationReceipt,
+    PredictionPreviewOperation,
     PredictOperation,
     PrepareOperation,
     PreviewOperation,
@@ -229,6 +230,10 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
                     ),
                 ),
             )
+        elif isinstance(op, PredictionPreviewOperation):
+            from .prediction_preview import preview_prediction
+
+            result = (preview_prediction(layout, plan, op),)
         elif isinstance(op, PredictOperation):
             adapter: PredictionAdapter
             if op.task == "ball":
