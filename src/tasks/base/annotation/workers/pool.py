@@ -138,8 +138,12 @@ class WorkerPool:
         return adapter
 
     def register(self, request: WorkRequest) -> None:
-        self._adapter(request)
-        self.ledger.register(self.plan, request)
+        adapter = self._adapter(request)
+        self.ledger.register(
+            self.plan,
+            request,
+            dependencies=adapter.input_references(self.layout, self.plan, request),
+        )
 
     def _launch(self, row: dict[str, Any]) -> tuple[ArtifactRef, Launch]:
         with self.ledger.registry.transaction() as database:
@@ -161,6 +165,11 @@ class WorkerPool:
         result: ArtifactRef | None = None,
     ) -> None:
         with self.ledger.registry.transaction() as database:
+            task = database.execute(
+                "SELECT current_attempt FROM worker_tasks WHERE id=?", (work_id,)
+            ).fetchone()
+            if task is None or task[0] is None:
+                raise ValueError("worker state transition requires an attempt")
             database.execute(
                 "UPDATE worker_tasks SET state=?,reason=?,result=? WHERE id=?",
                 (
@@ -174,6 +183,8 @@ class WorkerPool:
                 "UPDATE worker_attempts SET state=?,reason=? WHERE id=(SELECT current_attempt FROM worker_tasks WHERE id=?)",
                 (state, reason, work_id),
             )
+            if state not in {"running", "exited"}:
+                self.ledger.storage.settle(task[0], database=database)
 
     def _settle_dead_slots(self) -> None:
         # Reclaim resource accounting after dispatcher death without adopting labels.
@@ -366,6 +377,7 @@ class WorkerPool:
                 )
                 ref = write_document(self.layout, directory / "launch.json", launch)
                 with self.ledger.registry.transaction() as database:
+                    self.ledger.storage.launch(ref, launch, database=database)
                     database.execute(
                         "INSERT INTO worker_attempts VALUES (?,?,?,'running',?,NULL)",
                         (
@@ -599,5 +611,18 @@ class WorkerPool:
         current = self.reconcile(request)
         if current["state"] in {"complete", "not_applicable"}:
             return current
-        self._mark(request.work_id, "cancelled", reason)
+        try:
+            with (
+                artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
+            ):
+                current = self._task(request.work_id)
+                if current["state"] in {"complete", "not_applicable"}:
+                    return current
+                if current["current_attempt"] != launch.attempt:
+                    raise WorkerBusy("another attempt started during cancellation")
+                self._require_no_members(Path(launch.directory))
+                self._mark(request.work_id, "cancelled", reason)
+        except BlockingIOError as error:
+            raise WorkerBusy("attempt is still owned during cancellation") from error
         return self._task(request.work_id)

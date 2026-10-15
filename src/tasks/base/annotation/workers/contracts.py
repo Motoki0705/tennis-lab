@@ -49,6 +49,7 @@ class WorkRequest(Document):
 
 class PreparedWorker(Document):
     prompt: ArtifactRef
+    inputs: tuple[ArtifactRef, ...] = ()
     result_path: str = "work/result.json"
     writable_directories: tuple[str, ...] = ("work",)
 
@@ -173,6 +174,15 @@ class AttemptEvidence(Document):
 class TaskAdapter(Protocol):
     name: str
     version: str
+
+    def input_references(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+    ) -> tuple[ArtifactRef, ...]:
+        """Enumerate dependencies of the opaque payload, without changing it."""
+        ...
 
     def prepare(
         self,

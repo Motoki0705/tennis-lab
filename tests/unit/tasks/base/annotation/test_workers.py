@@ -25,6 +25,14 @@ from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
 )
+from src.tasks.base.annotation.storage import (
+    InventoryScope,
+    ManagedArtifact,
+    Retention,
+    StorageCatalog,
+    inventory,
+    plan_gc,
+)
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.command import codex_command, worker_environment
 from src.tasks.base.annotation.workers.contracts import (
@@ -53,6 +61,15 @@ class Adapter:
     outcome: str = "complete"
     adopt: bool = False
     expects_telemetry: bool = False
+    dependencies: tuple[ArtifactRef, ...] = ()
+
+    def input_references(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+    ) -> tuple[ArtifactRef, ...]:
+        return self.dependencies
 
     def prepare(
         self,
@@ -63,7 +80,8 @@ class Adapter:
     ) -> PreparedWorker:
         del plan, request
         return PreparedWorker(
-            prompt=write_asset(layout, directory / "prompt.md", b"fixture only")
+            prompt=write_asset(layout, directory / "prompt.md", b"fixture only"),
+            inputs=(write_asset(layout, directory / "context.txt", b"attempt input"),),
         )
 
     def validate(
@@ -268,6 +286,149 @@ def owner_ready(pool: WorkerPool, request: WorkRequest) -> ProcessIdentity:
     return ProcessIdentity.from_document(json.loads(path.read_text()))
 
 
+def protected(pool: WorkerPool) -> set[ArtifactRef]:
+    return {
+        reference
+        for record in pool.ledger.storage.catalog.snapshot().protections
+        for reference in record.references
+    }
+
+
+def test_registered_input_dependency_is_not_a_gc_candidate(setup: Setup) -> None:
+    dependency = write_asset(
+        setup.layout, setup.layout.path("campaigns", "inputs", "media.mp4"), b"media"
+    )
+    setup.adapter.dependencies = (dependency,)
+    pool = setup.pool()
+    catalog = pool.ledger.storage.catalog
+    catalog.register(
+        ManagedArtifact(
+            reference=dependency,
+            owner="fixture",
+            stage="screen",
+            kind="source",
+            regenerable=False,
+            retention=Retention(mode="expire", expires_at_ns=0, reason="fixture TTL"),
+        )
+    )
+
+    def candidate() -> bool:
+        observed = inventory(
+            setup.layout,
+            (InventoryScope(role="annotation", path="campaigns/inputs"),),
+            max_entries=100,
+        )
+        result: bool = next(
+            row.eligible
+            for row in plan_gc(catalog, observed).decisions
+            if row.path == catalog.key(dependency)
+        )
+        return result
+
+    assert candidate()
+    pool.register(setup.request)
+    assert pool.ledger.task(setup.request.work_id)["state"] == "ready"
+    assert not candidate()
+    pool.start(setup.request)
+    assert settled(pool, setup.request)["state"] == "complete"
+    # Completion does not prove downstream handoff or authorize source disposal.
+    assert not candidate()
+
+
+def test_input_protection_failure_rolls_back_worker_registration(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pool = setup.pool()
+    original = StorageCatalog.protect
+
+    def fail(self: StorageCatalog, record: object, **kwargs: object) -> None:
+        original(self, record, **kwargs)  # type: ignore[arg-type]
+        raise RuntimeError("storage commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(StorageCatalog, "protect", fail)
+        with pytest.raises(RuntimeError, match="storage commit failure"):
+            pool.register(setup.request)
+    with pytest.raises(KeyError):
+        pool.ledger.task(setup.request.work_id)
+    assert protected(pool) == set()
+    pool.register(setup.request)
+    assert setup.request.payload in protected(pool)
+
+
+def test_attempt_pin_and_running_state_rollback_before_launch(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pool = setup.pool()
+    pool.register(setup.request)
+    baseline = protected(pool)
+    original = pool.ledger.storage.launch
+
+    def fail(*args: object, **kwargs: object) -> None:
+        original(*args, **kwargs)  # type: ignore[arg-type]
+        raise RuntimeError("attempt commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(pool.ledger.storage, "launch", fail)
+        with pytest.raises(RuntimeError, match="attempt commit failure"):
+            pool.start(setup.request)
+    assert setup.launches() == 0
+    assert pool.ledger.task(setup.request.work_id)["state"] == "ready"
+    assert pool.ledger.history(setup.plan, setup.request) == ()
+    assert protected(pool) == baseline
+    pool.start(setup.request)
+    assert settled(pool, setup.request)["state"] == "complete"
+
+
+def test_attempt_pin_survives_exit_until_finalization_commits(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    setup.program(delay=0.15)
+    pool = setup.pool()
+    pool.start(setup.request)
+    _, launch = pool._launch(pool.ledger.task(setup.request.work_id))
+    assert set(launch.prepared.inputs) <= protected(pool)
+    original = pool.ledger.storage.catalog.release
+
+    def fail(*args: object, **kwargs: object) -> None:
+        original(*args, **kwargs)  # type: ignore[arg-type]
+        raise RuntimeError("release commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(pool.ledger.storage.catalog, "release", fail)
+        with pytest.raises(RuntimeError, match="release commit failure"):
+            settled(pool, setup.request)
+    assert pool.ledger.task(setup.request.work_id)["state"] == "running"
+    assert set(launch.prepared.inputs) <= protected(pool)
+    assert setup.adapter.validations == 1
+    assert settled(pool, setup.request)["state"] == "complete"
+    assert not set(launch.prepared.inputs) & protected(pool)
+    assert setup.request.payload in protected(pool)
+    assert setup.adapter.validations == 1 and setup.launches() == 1
+
+
+def test_repeated_registration_keeps_exact_pin_without_duplicate_protection(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pool = setup.pool()
+    pool.register(setup.request)
+    original = pool.ledger.storage.catalog.snapshot().digest
+
+    def unexpected(*args: object, **kwargs: object) -> None:
+        raise AssertionError("existing immutable protection must not be rewritten")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(pool.ledger.storage.catalog, "protect", unexpected)
+        pool.register(setup.request)
+    assert pool.ledger.storage.catalog.snapshot().digest == original
+    setup.adapter.dependencies = (
+        write_asset(setup.layout, setup.layout.path("campaigns", "different"), b"new"),
+    )
+    with pytest.raises(ValueError, match="protection changed"):
+        pool.register(setup.request)
+    assert pool.ledger.storage.catalog.snapshot().digest == original
+
+
 def test_success_is_receipt_based_and_never_relaunches(setup: Setup) -> None:
     pool = setup.pool()
     assert pool.start(setup.request) is not None
@@ -381,6 +542,7 @@ def test_supervisor_death_preserves_orphan_ownership(setup: Setup) -> None:
     pool = setup.pool()
     pool.start(setup.request)
     owner = owner_ready(pool, setup.request)
+    _, launch = pool._launch(pool.ledger.task(setup.request.work_id))
     until = time.monotonic() + 3
     while setup.launches() == 0 and time.monotonic() < until:
         time.sleep(0.02)
@@ -391,12 +553,15 @@ def test_supervisor_death_preserves_orphan_ownership(setup: Setup) -> None:
             pool.reconcile(setup.request)
         with pytest.raises(WorkerBusy):
             pool.start(setup.request, retry=True)
+        assert set(launch.prepared.inputs) <= protected(pool)
     finally:
         signal_owned(owner, signal.SIGKILL)
     until = time.monotonic() + 3
     while owned_members(owner) and time.monotonic() < until:
         time.sleep(0.02)
     assert settled(pool, setup.request)["state"] == "failed"
+    assert not set(launch.prepared.inputs) & protected(pool)
+    assert setup.request.payload in protected(pool)
     assert setup.launches() == 1
 
 

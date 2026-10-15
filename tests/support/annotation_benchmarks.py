@@ -234,7 +234,7 @@ class Fixture:
             inputs=(self.prediction,),
         )
         ledger = WorkerLedger(self.layout)
-        ledger.register(plan, request)
+        ledger.register(plan, request, dependencies=())
         path = self.layout.path(
             "campaigns",
             plan.campaign_id,

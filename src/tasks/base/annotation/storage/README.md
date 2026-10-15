@@ -48,6 +48,7 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 | ball/playerの既存store固定 | snapshot manifest、index、metadata、全clip shard |
 | `BallPublisher.publish` | 公開receipt、要求、採用receipt、公開snapshotと全ファイル、base snapshotのファイル |
 | `ModelRegistry.bootstrap/select` | 初期モデルの重み/config/根拠、採否判断、比較したモデルの重み、固定学習入力と評価参照 |
+| `WorkerLedger.register` / `WorkerPool.start` | 登録済みworkの固定入力、adapterが列挙する依存、processが所有するattempt入力。詳細は[workers](../workers/README.md) |
 
 ~~~mermaid
 flowchart LR
@@ -73,7 +74,7 @@ receiptファイルを保存する。比較重みの保護はpointerと同時に
 推測しない。保護IDにはcollector版を含め、再送で対象が変わった場合や明示解放済みIDの再利用を
 拒否する。新writerの導入だけで既存DBを一括backfillしたとは扱わない。
 
-この接続はreader lease、pending/active worker、学習途中のcheckpointや全cacheの
+この接続はreader lease、実行中に追加される全worker artifact、学習途中のcheckpointや全cacheの
 自動参照収集を完成させるものではない。外部Codex raw rolloutのpathはtelemetryに出典として
 残るが、固定rootのGCが操作する対象ではない。未知の成果物は従来どおり候補化しない。
 削除実行前には、これらの残る参照と全writerの競合を照合する仕組みが必要である。

@@ -52,7 +52,13 @@ class ReviewSession:
         self.worker, self.services = BallReviewWorker(), BallReviewServices()
         self.request = read_document(self.env.layout, self.env.actor, Launch).request
         self.ledger = WorkerLedger(self.env.layout)
-        self.ledger.register(self.env.plan, self.request)
+        self.ledger.register(
+            self.env.plan,
+            self.request,
+            dependencies=self.worker.input_references(
+                self.env.layout, self.env.plan, self.request
+            ),
+        )
         self.open(1)
 
     def open(self, number: int) -> None:
