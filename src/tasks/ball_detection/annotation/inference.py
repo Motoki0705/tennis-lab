@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
+from contextlib import closing
 from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -20,7 +22,7 @@ from src.tasks.base.annotation.contracts import (
     ClipManifest,
     canonical_bytes,
 )
-from src.tasks.base.annotation.media import check_clip, decode_range
+from src.tasks.base.annotation.media import Timeline, check_clip, decode_range
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.predictions import PredictionContext
 
@@ -34,6 +36,29 @@ from .windows import window_owners, window_starts
 
 if TYPE_CHECKING:
     from src.tasks.ball_detection.model_io.predict import CoordinateModel
+
+
+def _rgb_windows(
+    video: Path, timeline: Timeline, starts: tuple[int, ...]
+) -> Generator[tuple[int, NDArray[np.uint8]], None, None]:
+    """Borrow one rolling RGB buffer until the next window; decode each frame once."""
+    rgb = np.empty((32, 3, timeline.height, timeline.width), dtype=np.uint8)
+    previous_start: int | None = None
+    with closing(decode_range(video, timeline, 0, len(timeline.pts))) as decoded:
+        for start in starts:
+            retained = 0 if previous_start is None else 32 - (start - previous_start)
+            # Move each retained frame separately: overlapping array assignment
+            # may allocate another full window at native resolution.
+            for local in range(retained):
+                rgb[local] = rgb[32 - retained + local]
+            for local in range(retained, 32):
+                frame = next(decoded)
+                rgb[local] = frame.to_ndarray(format="rgb24").transpose(2, 0, 1)
+            yield start, rgb
+            previous_start = start
+        # Resume after the final yield to run the decoder's PTS/count validation.
+        if next(decoded, None) is not None:
+            raise ValueError("decoder returned frames beyond the clip manifest")
 
 
 class MDDPredictor:
@@ -171,34 +196,30 @@ class BallPredictionAdapter:
             self._identity = identity
         rows: list[BallProposal | None] = [None] * len(manifest.frames)
         clock = Fraction(manifest.time_base)
-        for start in starts:
-            rgb = np.empty((32, 3, manifest.height, manifest.width), dtype=np.uint8)
-            for local, frame in enumerate(
-                decode_range(video, timeline, start, start + 32)
-            ):
-                rgb[local] = frame.to_ndarray(format="rgb24").transpose(2, 0, 1)
-            seconds = np.asarray(
-                [
-                    (frame.source_pts - manifest.frames[start].source_pts) * clock
-                    for frame in manifest.frames[start : start + 32]
-                ],
-                dtype=np.float32,
-            )
-            values = self._predictor(rgb, seconds)
-            for local, (u, v) in enumerate(values):
-                index = start + local
-                if owners[index] != start:
-                    continue
-                frame = manifest.frames[index]
-                rows[index] = BallProposal(
-                    frame_index=index,
-                    source_frame_index=frame.source_frame_index,
-                    source_pts=frame.source_pts,
-                    clip_pts=frame.clip_pts,
-                    x=float(u) * (manifest.width - 1),
-                    y=float(v) * (manifest.height - 1),
-                    window_start=start,
+        with closing(_rgb_windows(video, timeline, starts)) as windows:
+            for start, rgb in windows:
+                seconds = np.asarray(
+                    [
+                        (frame.source_pts - manifest.frames[start].source_pts) * clock
+                        for frame in manifest.frames[start : start + 32]
+                    ],
+                    dtype=np.float32,
                 )
+                values = self._predictor(rgb, seconds)
+                for local, (u, v) in enumerate(values):
+                    index = start + local
+                    if owners[index] != start:
+                        continue
+                    mapped = manifest.frames[index]
+                    rows[index] = BallProposal(
+                        frame_index=index,
+                        source_frame_index=mapped.source_frame_index,
+                        source_pts=mapped.source_pts,
+                        clip_pts=mapped.clip_pts,
+                        x=float(u) * (manifest.width - 1),
+                        y=float(v) * (manifest.height - 1),
+                        window_start=start,
+                    )
         if any(row is None for row in rows):
             raise ValueError("MDD inference did not cover every real clip frame")
         return write_document(
