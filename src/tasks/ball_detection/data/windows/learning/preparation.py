@@ -54,8 +54,8 @@ def prepare_training_windows(
         raise ValueError("publication receipt differs from its pinned request")
     if set(publication.added_clips + publication.reused_clips) != {c.clip_id for c in snapshot.clips}:
         raise ValueError("publication membership differs from cumulative snapshot")
-    if not set(publication.added_clips).issubset(c.clip_id for c in snapshot.clips if c.split == "train"):
-        raise ValueError("new teachers must belong to train, never fixed holdouts")
+    if not set(publication.added_clips).intersection(c.clip_id for c in snapshot.clips if c.split == "train"):
+        raise ValueError("publication must include new training teachers")
     if publication.base_snapshot is not None:
         base, _ = load_snapshot(layout, publication.base_snapshot)
         if publication.reused_clips != tuple(c.clip_id for c in base.clips):

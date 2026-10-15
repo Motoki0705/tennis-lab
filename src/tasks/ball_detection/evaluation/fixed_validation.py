@@ -14,6 +14,7 @@ from src.tasks.ball_detection.data.annotation_states import annotation_states
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
 from src.tasks.ball_detection.evaluation.coordinates import (
     evaluate_coordinates,
+    evaluation_cohorts,
     frame_membership_sha256,
     selection_score,
 )
@@ -23,6 +24,9 @@ from src.utils.checksum import dual_sha256
 
 def expected_support(data: FrozenBallWindowDataset) -> dict[str, dict[str, Any]]:
     groups: dict[str, set[tuple[int, str, int]]] = {"full": set(), "common": set()}
+    cohorts = evaluation_cohorts(data)
+    if cohorts is not None:
+        groups.update(existing=set(), new=set())
     states = {r["clip"]["clip_id"]: annotation_states(data.store, data.store.clip_by_id(r["clip"]["clip_id"]))
               for r in data.records}
     for index, window in data.windows:
@@ -31,6 +35,8 @@ def expected_support(data: FrozenBallWindowDataset) -> dict[str, dict[str, Any]]
         indices = window.indices()
         keys = {(window.frame_step, clip_id, int(frame)) for frame in indices[states[clip_id].supervision[indices]]}
         groups["full"].update(keys)
+        if cohorts is not None:
+            groups[cohorts[clip_id]].update(keys)
         if record["common_evaluation"]:
             groups["common"].update(keys)
     sources = {r["clip"]["clip_id"]: r["clip"]["source"] for r in data.records}
@@ -83,19 +89,24 @@ def verify_support(report: dict[str, Any], expected: dict[str, dict[str, Any]]) 
             raise ValueError("evaluation sources differ from fixed validation teachers")
         for name, group in support["by_source"].items():
             verify_group(actual["by_source"][name], group)
-        selection_score(report, scope)
+        if scope != "common" or "existing" not in expected:
+            selection_score(report, scope)
 
 
 def compare_full_models(
     baseline: Path, candidate: Path, validation_manifest: Path, *,
     baseline_sha256: str, candidate_sha256: str, validation_sha256: str,
     runtime: CoordinateRuntime, device: torch.device, batch_size: int,
+    split: str = "val",
 ) -> dict[str, Any]:
     if dual_sha256(validation_manifest) != validation_sha256:
         raise ValueError("fixed validation manifest hash changed")
-    data = FrozenBallWindowDataset(validation_manifest, split="val", requires_pose=False, jpeg_decoder=runtime.jpeg_decoder)
+    if split not in {"val", "test"}:
+        raise ValueError("Model comparison requires a validation or final test split")
+    data = FrozenBallWindowDataset(validation_manifest, split=split, requires_pose=False, jpeg_decoder=runtime.jpeg_decoder)
     support = expected_support(data)
-    if any(count < 1 for scope in support.values() for count in scope["observed_frames_by_step"].values()):
+    required = ("full", "existing", "new") if "existing" in support else ("full", "common")
+    if any(count < 1 for name in required for count in support[name]["observed_frames_by_step"].values()):
         raise ValueError("fixed validation lacks teachers in a configured scope/FPS")
     loader = runtime.loader(data, batch_size=batch_size)
     runtime.configure(device)
@@ -122,9 +133,11 @@ def compare_full_models(
     for name, digest in data.manifest["ball_store"]["hashes"].items():
         if dual_sha256(data.store.directory / name) != digest:
             raise ValueError("fixed validation store changed during comparison")
+    scopes = (*required, "balanced_existing_new") if "existing" in support else required
     delta = {scope: selection_score(results["candidate"]["evaluation"], scope)
-             - selection_score(results["baseline"]["evaluation"], scope) for scope in support}
-    return dict(schema="ball.fixed-validation-comparison.v1", split="val", profile="clean", test_usage="none",
+             - selection_score(results["baseline"]["evaluation"], scope) for scope in scopes}
+    return dict(schema="ball.fixed-validation-comparison.v1", split=split, profile="clean",
+        test_usage="final_comparison" if split == "test" else "none",
         validation_manifest_sha256=validation_sha256, runtime=asdict(runtime), device=str(device), batch_size=batch_size,
         support=support, architecture=architecture, input_contract=input_contract,
         candidate_minus_baseline_px=delta, **results)

@@ -21,8 +21,14 @@ manifestはtrainだけを含み、画像は元のimmutable storeを参照する�
 
 `freeze_holdout`は既存の固定window manifestを`HoldoutWindows`に結び、`DatasetPartition`を返す。
 snapshotの全file hash・clip identityと、宣言したsamplingから再構築したwindow membershipの一致を要求する。
-validationには既存Common subsetが必要。testは別partitionとして保持する。
+従来のvalidationには既存Common subsetが必要。testは別partitionとして保持する。
 新しい累積snapshotを公開しても、元のholdout snapshot/window参照は変わらない。
+
+`BallEvaluationRecipe`をplanに固定すると、公開後の`resolve_evaluation`が新旧の
+validation/testを確定する。既存のGT・画素・split・窓membershipを照合したうえで、
+累積storeを参照するmanifestへ`existing`/`new`の集合を付ける。元のholdout参照も保持する。
+新規側のCommon subsetは要求しない。両集合には各FPSの教師が必要で、不足時に
+別集合の平均へ置き換えない。登録後のmanifest欠損・改変は再生成せずエラーとする。
 
 これらはtask用APIであり、モデル推論・学習・モデル採用を実行しない。
 production CLIでは資源管理下の工程から呼び、共通学習管理には検証した参照を渡す。
