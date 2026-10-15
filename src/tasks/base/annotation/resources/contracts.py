@@ -25,7 +25,7 @@ class BudgetLimits(Document):
     additional_storage_bytes: PositiveInt
     minimum_free_bytes: PositiveInt
     total_pss_bytes: PositiveInt
-    gpu_seconds: PositiveInt
+    gpu_seconds: PositiveInt | None
 
     @classmethod
     def from_budget(cls, budget: ResourceBudget) -> BudgetLimits:
