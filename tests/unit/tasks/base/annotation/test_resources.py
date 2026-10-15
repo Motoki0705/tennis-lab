@@ -68,7 +68,7 @@ def no_hardware_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def make_plan(
-    layout: AnnotationLayout, name: str = "fixture", /, **limits: int
+    layout: AnnotationLayout, name: str = "fixture", /, **limits: int | None
 ) -> CampaignPlan:
     ref = write_asset(
         layout, layout.path("campaigns", "inputs", "fixture.txt"), b"resource fixture"
@@ -503,6 +503,36 @@ def test_reservation_over_budget_never_starts(
     with pytest.raises(CapacityUnavailable, match=match), guard.lease(item):
         pytest.fail("over-budget attempt entered")
     assert guard.sample().active_by_stage == {}
+
+
+def test_uncapped_gpu_keeps_accounting_and_other_reservations(tmp_path: Path) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout, gpu_seconds=None)
+    guard = manager(layout, plan)
+    assert guard.scope.limits.gpu_seconds is None
+    item = request(layout, plan, "uncapped", stage="gpu", gpu=200_000.0)
+    with guard.lease(item):
+        sample = guard.sample()
+        assert sample.gpu_reserved_seconds == 200_000.0
+        assert sample.stopped_reason is None
+    # An unattached orphan is still charged conservatively; uncapped does not
+    # discard the usage record or relax PSS/storage admission.
+    sample = guard.sample()
+    assert sample.gpu_charged_seconds == 200_000.0
+    assert sample.stopped_reason is None
+    too_large = request(layout, plan, "large", stage="gpu", gpu=200_000.0,
+                        pss=plan.resources.total_pss_bytes + 1)
+    with pytest.raises(CapacityUnavailable, match="PSS"), guard.lease(too_large):
+        pytest.fail("uncapped GPU bypassed PSS reservations")
+
+
+def test_gpu_limit_is_required_even_when_explicitly_uncapped(tmp_path: Path) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout, gpu_seconds=None)
+    values = plan.resources.model_dump(mode="json")
+    del values["gpu_seconds"]
+    with pytest.raises(ValueError, match="gpu_seconds"):
+        type(plan.resources).model_validate_json(json.dumps(values))
 
 
 def test_measured_limit_latches_until_explicit_resume(tmp_path: Path) -> None:

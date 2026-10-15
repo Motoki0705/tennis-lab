@@ -500,7 +500,10 @@ class ResourceManager:
             return "free storage is below the required reserve"
         if sample.pss_bytes >= limit.total_pss_bytes:
             return "owned-process PSS budget reached"
-        if sample.gpu_charged_seconds + sample.gpu_active_seconds >= limit.gpu_seconds:
+        if (
+            limit.gpu_seconds is not None
+            and sample.gpu_charged_seconds + sample.gpu_active_seconds >= limit.gpu_seconds
+        ):
             return "cumulative GPU time budget reached"
         return None
 
@@ -734,7 +737,7 @@ class ResourceManager:
                 < self.scope.limits.minimum_free_bytes
             ):
                 raise CapacityUnavailable("storage reservations do not fit")
-            if (
+            if self.scope.limits.gpu_seconds is not None and (
                 sample.gpu_charged_seconds
                 + sample.gpu_reserved_seconds
                 + request.gpu_seconds

@@ -199,7 +199,10 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
         if (
             cost.pss_bytes > scope.limits.total_pss_bytes
             or cost.storage_bytes > scope.limits.additional_storage_bytes
-            or cost.gpu_seconds > scope.limits.gpu_seconds
+            or (
+                scope.limits.gpu_seconds is not None
+                and cost.gpu_seconds > scope.limits.gpu_seconds
+            )
         ):
             raise ValueError("a stage reservation exceeds the total campaign budget")
     directory = layout.path("campaigns", plan.campaign_id, "configuration")
