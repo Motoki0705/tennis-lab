@@ -159,21 +159,22 @@ def _codex_args(tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]
 
 
 def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
-    result = _codex_args(tmp_path, "--mode", "write", "--profile", "followup")
+    result = _codex_args(tmp_path, "--mode", "read-only", "--profile", "review")
 
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text(encoding="utf-8").splitlines()
-    assert args[args.index("--model") + 1] == "gpt-6.1-sol"
-    assert 'model_reasoning_effort="max"' in args
+    assert args[args.index("--model") + 1] == "gpt-6-astra"
+    # xhigh, not the default CODEX_EFFORT (max): the profile's own pin is used.
+    assert 'model_reasoning_effort="xhigh"' in args
     assert 'service_tier="default"' in args
-    assert "profile=followup" in result.stderr
+    assert "profile=review" in result.stderr
 
 
 @pytest.mark.parametrize(
     ("extra", "message"),
     [
         (["--profile", "nosuch"], "agents.conf must set NOSUCH_CODEX_MODEL"),
-        (["--profile", "followup", "--model", "x"], "cannot be combined"),
+        (["--profile", "review", "--model", "x"], "cannot be combined"),
         (["--profile", "Bad-Name"], "invalid --profile"),
         (["--profile", ""], "invalid --profile"),
     ],
