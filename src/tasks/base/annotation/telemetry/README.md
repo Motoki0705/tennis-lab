@@ -26,8 +26,11 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
 
 保存先は `campaigns/<campaign>/reports/telemetry/<attempt>/`。
 JSON索引は100応答ごと、記録とHTMLは応答ごとに分ける。HTML索引は画像を埋め込まず、
-応答ページで必要な画像だけ読む。画像bytesは `cache/presented-images/<sha>.*` に重複なく
-保存する。reportから参照される画像・renderer metadataはGCの保護対象である。
+応答ページで必要な画像だけ読む。一意に対応した不変renderer画像は、ログ内のbytesと
+保存ファイルを再照合して直接参照し、画像を二重保存しない。対応が不明な画像はログの
+bytesを `cache/presented-images/<sha>.*` に保存する。reportから参照される画像・
+renderer metadataはGCの保護対象である。参照共有は独立したバックアップではなく、
+元画像の改変・消失は検証エラーになる。既存reportやcacheは書き換えない。
 raw rolloutは移動せず、path/hash/sizeを記録する。共有レポートには推論文やtool入力/出力の
 全文を複製せず、入力/outputのhash、文字数、時刻、画像を残す。
 
