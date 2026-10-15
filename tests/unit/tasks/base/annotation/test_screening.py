@@ -505,6 +505,12 @@ def test_excluded_source_waits_for_worker_and_retains_review_evidence(tmp_path: 
     assert selection in kept and sample.request.source.media not in kept
     assert all(page.image in kept and sample.layout.artifact_path(page.image).is_file() for page in sample.detail.pages)
     assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
+    from src.tasks.base.annotation.collection.restoration import RestorationReceipt
+
+    restored = collection.restore_source(sample.source.source_id, attempt="restore-empty")
+    assert read_document(sample.layout, restored, RestorationReceipt).status == "restored"
+    assert video.is_file()
+    assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
 
 
 def test_excluded_source_tampering_blocks_deletion(tmp_path: Path) -> None:

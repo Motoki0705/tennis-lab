@@ -37,9 +37,16 @@ def restore_source(
     layout: AnnotationLayout, plan: CampaignPlan, source_id: str, attempt: str
 ) -> ArtifactRef:
     """Caller owns the source lock; failed attempts remain terminal until explicitly retried."""
-    acquisition, preparation, acquired = verify_prepared(layout, plan, source_id)
+    row = CollectionLedger(layout).source(plan, source_id)
+    excluded = row["state"] == "excluded"
+    if excluded:
+        from .exclusion import verify_excluded
+
+        acquisition, preparation, acquired, _ = verify_excluded(layout, plan, source_id)
+    else:
+        acquisition, preparation, acquired = verify_prepared(layout, plan, source_id)
     verify_retirement_intent(
-        layout, plan, source_id, acquisition, preparation, acquired
+        layout, plan, source_id, acquisition, preparation, acquired, excluded=excluded
     )
     path = layout.path(
         "sources", source_id, plan.preparation.digest, "restorations", attempt + ".json"
@@ -52,7 +59,6 @@ def restore_source(
         if record.status == "restored":
             verify_reference(layout, acquired.source.media)
         return ref
-    row = CollectionLedger(layout).source(plan, source_id)
     candidate = SourceCandidate.model_validate_json(row["candidate"])
     config = read_document(layout, plan.preparation, PreparationConfig)
     blob = layout.artifact_path(acquired.source.media)
