@@ -96,9 +96,10 @@ def track(args: argparse.Namespace) -> None:
             retained = []
             records: list[dict[str, Any]] = []
             for frame in frames:
-                keep, merges = merge_person_boxes(frame.frame, frame.rows, frame.boxes, frame.scores, enabled=variant == ON)
+                keep, merges = merge_person_boxes(frame.frame, frame.rows, frame.boxes, frame.require_scores(), enabled=variant == ON)
                 retained.append(replace(frame, rows=frame.rows[keep], boxes=frame.boxes[keep], scores=frame.scores[keep],
-                                        poses=frame.poses[keep], embeddings=frame.embeddings[keep], appearance_valid=frame.appearance_valid[keep]))
+                                        poses=frame.require_poses()[keep], embeddings=frame.embeddings[keep], appearance_valid=frame.appearance_valid[keep],
+                                        score_origin=None if frame.score_origin is None else frame.score_origin[keep]))
                 records.extend(asdict(r) for r in merges)
             merge_path = target.with_suffix('.merges.json')
             write_json_atomic(merge_path, {'clip': record['clip'], 'camera': record['camera'],

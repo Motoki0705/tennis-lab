@@ -136,6 +136,7 @@ class DeepOCSortPose:
         return [(int(rows[d]), tracks[t]) for d, t in zip(di, ti, strict=True) if iou[d, t] >= cfg.iou_threshold]
 
     def update(self, features: DetectionFeatures) -> TrackAssignments:
+        features.require_scores()
         features.require_poses()
         if features.frame != self.frame + 1:
             raise ValueError('Tracking requires every frame once, starting at zero')

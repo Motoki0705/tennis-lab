@@ -35,6 +35,18 @@ track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わ
 1 cameraごとにtrackerを構築し、空frameも含め0から順に渡す。
 上限6は共通コート選別後のgroupにだけ適用する。
 
+`score_origin` は各観測のscoreを `MODEL` / `LEGACY`（出自未指定の既存score）/
+`MISSING` に分ける。モデル提案をそのまま保持する場合だけ元scoreを使い、注釈で追加・
+修正したboxには元モデルのscoreを流用しない。`MISSING` 行の数値配列はmasked zeroを
+要求し、`score_at()` は `None` を返す。scoreで選別する消費側は `require_scores()` で
+不在を拒否する。モデル版や修正履歴との対応は呼出側のprovenanceに保存する。
+
+StrongSORTはscoreなし観測もbox・外観・設定済みposeで対応付ける。Kalman更新の測定ノイズは、
+scoreありなら従来どおり基準ノイズの `1 - score` 倍、scoreなしなら明示設定
+`unscored_measurement_noise_scale` 倍（既定1）とする。この係数は信頼度ではなく、
+`TrackingConfig.identity()` に記録される。BoT-SORT / Deep OC-SORTはscoreなし入力を
+状態更新前に拒否する。score順の重複box選別にもscoreなし観測を渡さない。
+
 `TrackingConfig`は採用済み`strongsort_pp_pose`＋CLIPだけを受け付ける。
 データセット生成用の`DatasetTrackingConfig`は`strongsort_pp_appearance`＋CLIPを固定し、
 pose重み0でpose距離・更新を計算しない。`FeatureExtractor(None, UnpromptedEncoder(...))`は
@@ -54,7 +66,8 @@ pose必須の消費側は`require_poses()`で明示検証する。通常profile�
 
 外観はCLIP-ReID既定。低いcrop等の外観不足はzero embeddingとmaskで明示する。poseの第3channelは
 ViTPoseの回帰heatmapの最大値（確率ではなく有限の実数）を加工せず保持する。1を超える値や負の値を
-clip/sigmoidで変換しない。特徴archiveはこの契約を明示したv2のみを読み、v1を暗黙変換しない。
+clip/sigmoidで変換しない。特徴archiveはscore由来も保存するv3を書き出す。既存v2は
+全行にscoreがある `LEGACY` として読み、値を変更しない。v1は受け付けない。
 非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
 双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。
 BoT-SORT+poseでは外観不一致をhigh/low両段でIoUによって打ち消さない。
