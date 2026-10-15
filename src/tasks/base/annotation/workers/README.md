@@ -74,6 +74,23 @@ modelと応答IDを検証してからadapterへ渡す。adapterは `telemetry_im
 明示的な欠測として返す。別attemptの証拠や壊れたhashを欠測として黙って扱わない。
 taskの操作受付は[review services](review/README.md) を使える。
 
+登録時にplanとwork入力を保存台帳で保護する。opaqueなpayloadの依存はadapterの
+`input_references` が明示列挙する。screeningは元動画・overviewの画像、ball reviewは
+clip/source・固定予測を含む。業務登録と保護は同じSQLite transactionで確定する。
+同じworkの再登録で保護対象を変更したり、明示解放済みの保護を復活させたりしない。
+固定済みのplan保護はcampaignで共有し、保護の再送による追加の全ファイルhash検証を省く。
+plan保存・実入力の読込に元からある検証は維持する。
+
+各attemptではprompt・`PreparedWorker.inputs`・launchをrunning状態と同時に保護する。
+ballの初期handoffはその時点のrevision履歴・編集・画像根拠を列挙する。親やsupervisorの
+終了だけでは解放せず、所有する子孫がなくなり、結果検証または失敗状態の確定後に
+attemptの保護を同じtransactionで解放する。`exited` は結果検証待ちなので保持する。
+中断やDB rollback後は、同じ保存済み結果から確定を再開できる。
+
+登録済みworkの入力は、成功・失敗後も再開と後続工程のために保持する。worker終了を
+下流への引渡し完了とは扱わない。この保護の明示的な廃止、実行中に追加された全画像・編集の
+保護、旧attemptの一括backfillは後続範囲であり、GC削除の実行を許可するものではない。
+
 合成workerによる試験では、競合、親終了、supervisor死亡と孤児process、PID再利用、
 並列枠、quota、timeout、結果改変、preview採用拒否、receipt後の中断を確認する。
 `test_command` は明示的なtest layoutでのみ使え、productionでの別コマンドへの

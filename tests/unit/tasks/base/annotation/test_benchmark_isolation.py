@@ -334,6 +334,14 @@ def test_sealed_benchmark_adoption_cannot_publish_or_start_learning(
 class _Worker:
     name, version = "ball_review", "v1"
 
+    def input_references(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+    ) -> tuple[ArtifactRef, ...]:
+        return ()
+
     def prepare(
         self,
         layout: AnnotationLayout,
@@ -428,6 +436,8 @@ def test_same_subject_conditions_use_distinct_shared_resource_requests(
             local, Path(launch.directory) / "launch.json"
         )
     assert launches[0].work_id == launches[1].work_id
+    assert launches[0].resource_request is not None
+    assert launches[1].resource_request is not None
     assert (
         launches[0].resource_request.request_id
         != launches[1].resource_request.request_id
