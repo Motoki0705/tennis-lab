@@ -65,6 +65,14 @@ class Collection:
             row = self.ledger.source(self.plan, source_id)
             if row["state"] == "excluded":
                 raise SourceExcluded(row["reason"])
+            if row["state"] == "prepared" and self.config.retained_media == "jpeg_q90":
+                from .retirement import resume_prepared
+
+                resume_prepared(self.layout, self.plan, source_id)
+                acquisition: ArtifactRef = ArtifactRef.model_validate_json(
+                    row["acquisition"]
+                )
+                return acquisition
             candidate = SourceCandidate.model_validate_json(row["candidate"])
             receipt_path = self.layout.path(
                 "sources", source_id, self.plan.preparation.digest, "acquisition.json"
@@ -96,11 +104,24 @@ class Collection:
     def select(self, reference: ArtifactRef) -> None:
         self.ledger.record_selection(self.plan, reference)
 
+    def restore_source(self, source_id: str, *, attempt: str) -> ArtifactRef:
+        from .restoration import restore_source
+
+        with artifact_lock(self.layout, "source-" + source_id, blocking=False):
+            return restore_source(self.layout, self.plan, source_id, attempt)
+
     def prepare(self, source_id: str) -> ArtifactRef:
         with artifact_lock(self.layout, "source-" + source_id, blocking=False):
             row = self.ledger.source(self.plan, source_id)
             if row["state"] not in {"screened", "prepared"}:
                 raise ValueError("preparation requires an explicit completed selection")
+            if row["state"] == "prepared" and self.config.retained_media == "jpeg_q90":
+                from .retirement import resume_prepared, retire_source
+
+                reference = resume_prepared(self.layout, self.plan, source_id)
+                if self.config.source_retention == "delete_after_verified_frames":
+                    retire_source(self.layout, self.plan, source_id)
+                return reference
             acquired = read_document(
                 self.layout,
                 ArtifactRef.model_validate_json(row["acquisition"]),
@@ -115,4 +136,8 @@ class Collection:
                 selection,
             )
             self.ledger.record_preparation(self.plan, reference)
+            if self.config.source_retention == "delete_after_verified_frames":
+                from .retirement import retire_source
+
+                retire_source(self.layout, self.plan, source_id)
             return reference

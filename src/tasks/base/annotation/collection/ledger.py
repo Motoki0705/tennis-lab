@@ -363,6 +363,7 @@ class CollectionLedger:
             )
 
     def record_preparation(self, plan: CampaignPlan, reference: ArtifactRef) -> None:
+        from ..contracts import SourceProvenance
         from ..media import check_clip, probe_video
         from .contracts import PreparationConfig
         from .preparation import preparation_identity, window_ranges
@@ -393,7 +394,14 @@ class CollectionLedger:
         config = read_document(self.layout, plan.preparation, PreparationConfig)
         timeline = probe_video(verify_reference(self.layout, acquired.source.media))
         for manifest, window in zip(manifests, selection.windows, strict=True):
-            if manifest.source != acquired.source:
+            expected_source = (
+                SourceProvenance.from_source(acquired.source)
+                if config.retained_media == "jpeg_q90"
+                else acquired.source
+            )
+            if manifest.source != expected_source or (manifest.jpeg is not None) != (
+                config.retained_media == "jpeg_q90"
+            ):
                 raise ValueError("prepared manifest source mismatch")
             media_range, target_range = window_ranges(timeline, window)
             if (

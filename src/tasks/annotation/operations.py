@@ -37,6 +37,7 @@ from .contracts import (
     PrepareOperation,
     PreviewOperation,
     PublishOperation,
+    RestoreSourceOperation,
     ReviewOperation,
     ScreenOperation,
 )
@@ -131,6 +132,18 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
             )
         elif isinstance(op, AcquireOperation):
             result = (Collection(layout, plan).acquire(op.source_id, retry=op.retry),)
+        elif isinstance(op, RestoreSourceOperation):
+            from src.tasks.base.annotation.collection.restoration import (
+                RestorationReceipt,
+            )
+
+            ref = Collection(layout, plan).restore_source(
+                op.source_id, attempt=op.attempt
+            )
+            restoration = read_document(layout, ref, RestorationReceipt)
+            result = (ref,)
+            if restoration.status != "restored":
+                status, reason = "not_applicable", restoration.reason
         elif isinstance(op, ScreenOperation):
             from src.tasks.base.annotation.screening.service import Screening
 

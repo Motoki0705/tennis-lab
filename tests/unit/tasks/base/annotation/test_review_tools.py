@@ -176,8 +176,11 @@ class Adapter:
             raise ValueError("task teacher-mask validation failed")
 
     def retained_references(
-        self, layout: AnnotationLayout, context: ReviewContext,
-        revision: ArtifactRef, receipt: AdoptionReceipt,
+        self,
+        layout: AnnotationLayout,
+        context: ReviewContext,
+        revision: ArtifactRef,
+        receipt: AdoptionReceipt,
     ) -> tuple[ArtifactRef, ...]:
         # Fixture labels contain scalars only; core lineage supplies their files.
         return ()
@@ -550,7 +553,7 @@ def test_long_clip_only_converts_requested_frames_and_rejects_oversized_page(
         intervals.append((start, stop))
         yield from (Frame(i) for i in range(start, stop))
 
-    monkeypatch.setattr(render, "decode_range", decode)
+    monkeypatch.setattr(render, "decode_clip", decode)
     crop = Crop(left=0, top=0, right=64, bottom=32)
     request = env.image_request(
         tiles=tuple(Tile(frame_index=i, crop=crop) for i in (4, 100, 2300))
@@ -652,7 +655,8 @@ def test_parallel_edits_only_commit_one_expected_revision(env: Environment) -> N
 
     def edit(command: EditCommand) -> ArtifactRef | None:
         try:
-            return RevisionStore(env.layout).apply(command, env.adapter)
+            result: ArtifactRef = RevisionStore(env.layout).apply(command, env.adapter)
+            return result
         except (RevisionConflict, BlockingIOError):
             return None
 
@@ -678,7 +682,8 @@ def test_edit_commit_receipt_gap_is_recoverable(
     def crash(layout: AnnotationLayout, path: Path, document: Document) -> ArtifactRef:
         if path.name == "receipt.json":
             raise Crash("committed head; receipt not written")
-        return original(layout, path, document)
+        result: ArtifactRef = original(layout, path, document)
+        return result
 
     monkeypatch.setattr(store, "write_document", crash)
     with pytest.raises(Crash):
@@ -976,7 +981,10 @@ def telemetry_for(
     ]
     rollout = directory / "rollout.jsonl"
     rollout.write_text("".join(json.dumps(e) + "\n" for e in events))
-    return capture(env.layout, launch_ref, execution_ref, (rendered,), rollout=rollout)
+    report: ArtifactRef = capture(
+        env.layout, launch_ref, execution_ref, (rendered,), rollout=rollout
+    )
+    return report
 
 
 def test_viewed_but_unresolved_frames_remain_distinct_in_handoff(
