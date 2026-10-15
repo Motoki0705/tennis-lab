@@ -72,3 +72,16 @@ queueの元repro bundleを改変せず保存し、工程のlaunch・operation・
 bytes/hashを `evidence/files.json` に記録した。大容量の元動画・clip・重みはGitへ複製していない。
 再実行には固定root上の入力実体が必要であり、bundleだけでは再現できない。
 失敗した工程も同じ累積予算scopeの使用量に含め、baselineを初期化しない。
+
+## 再試行前の環境確認
+
+2026-10-15、supervisorがPYTHONPATHを凍結worktree rootへ固定するため、queueの外から
+追加pathを設定しても子工程へ渡らないことを確認した。既存の同じDINO revision用binary
+（12,097,624 bytes、SHA-256 `c7fdb45b66ad6d0c5617d02eb9a0f3ade920e38018ee1d47a74f7cbebf0d60d6`）を
+明示選択し、共有.venvを変更せず、このpilotのworktree rootだけに配置した。
+現在のPyTorch 2.13.0+cu130でCPU forward/backward dispatchを検証し、指定したbinaryが
+ロードされたことを確認した。GPU kernelの成功とは区別し、元の失敗attemptは維持する。
+
+配置元・先・hash・理由・戻し方は `evidence/environment-repair.json` に保存した。
+通常のrun別拡張pathを起動契約で固定する機能は未実装であり、今回の局所的な環境整備を
+その完成と扱わない。再試行の結果は別runに記録する。
