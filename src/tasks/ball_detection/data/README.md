@@ -12,7 +12,16 @@ snapshotの公開・導入・復旧は[増分公開API](../generate_dataset/fram
 | 派生player pose store | `ball_detection_player_poses.v1`。`data/ball_detection/*/manifest.json` と保存済みcampaign artifact | ball storeのRGBからモデル推定した2D pose・人物枠・クリップ内選手/raw ID | ボールレビューの補助表示。ボール教師や独立したpose GTではない。manifestの元ball store hashとclipの対応を検証して表示 |
 
 `tracknet`・`meiji`・`chat_annotation` は3つの出自であり、3つの学習データ形式ではありません。
-生成後のstore利用に元動画・元画像は不要です。
+JPEG形式では生成後のstore利用に元動画・元画像は不要です。
+`v3`は旧JPEG clipと、新規のprepared MP4を保持するclipを混在できます。
+動画はsnapshot内の`media/`へ不変hardlinkし、外部の元動画pathには依存しません。
+publication時に全native frameを従来と同じQ90 JPEGへ変換して、frameごとのhash・長さだけを保存します。
+学習では要求された32枚をPTS照合して再生成し、hash一致後に従来のOpenCV/nvJPEGへ渡します。
+追加resize・frame削減・JPEG品質変更はありません。codec環境が違う場合も黙って代用せず停止します。
+永続JPEG cacheは作らず、workerあたり一窓とdecoder bufferまでを保持します。
+既存の`offset/length`はvideo clipでは仮想JPEG列上の位置であり、MP4のbyte rangeではありません。
+物理payloadの場所は`BallFrameStore.image_path()`、video窓は`read_video_window()`を使用します。
+`v3`の教師maskは`v2`と同じで、旧clipの画素・教師・splitは保持します。
 
 | source | store生成の入力 | clipとsplitの単位 | レビュー時の注意 |
 |---|---|---|---|
