@@ -8,6 +8,7 @@ atomic rename, so a partially built store is never visible.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -15,6 +16,7 @@ import uuid
 from collections import Counter
 from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from multiprocessing import get_context
@@ -82,19 +84,23 @@ class EncodedClip:
 
     frames: dict[str, NDArray[np.generic]]
     instances: dict[str, NDArray[np.generic]]
+    jpeg_hashes: tuple[str, ...] = ()
 
 
-def encode_clip(spec: ClipSpec, shard_path: Path, jpeg_quality: int, size: StoredSize) -> EncodedClip:
+def encode_clip(spec: ClipSpec, shard_path: Path | None, jpeg_quality: int, size: StoredSize) -> EncodedClip:
     """Write every frame of the clip, in order, and scale its labels to stored pixels.
 
     A JPEG source that needs no resize is stored byte-for-byte (after checking it
     decodes to the declared size); everything else is (resized and) re-encoded.
+    An explicit None path builds a virtual JPEG index and per-frame checksums,
+    retaining no JPEG files. The video-backed publisher owns the video asset.
     """
     resize = (size.width, size.height) != (spec.width, spec.height)
     offsets: list[int] = []
     lengths: list[int] = []
+    hashes: list[str] = []
     offset = 0
-    with shard_path.open("xb") as shard:
+    with shard_path.open("xb") if shard_path is not None else nullcontext() as shard:
         for index, frame in enumerate(spec.media.iter_frames()):
             if isinstance(frame, bytes) and not resize:
                 decoded = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
@@ -115,7 +121,9 @@ def encode_clip(spec: ClipSpec, shard_path: Path, jpeg_quality: int, size: Store
                 if not ok:
                     raise RuntimeError(f"{spec.clip_id}: JPEG encoding failed at frame {index}")
                 payload = encoded.tobytes()
-            shard.write(payload)
+            if shard is not None:
+                shard.write(payload)
+            hashes.append(hashlib.sha256(payload).hexdigest())
             offsets.append(offset)
             lengths.append(len(payload))
             offset += len(payload)
@@ -130,7 +138,7 @@ def encode_clip(spec: ClipSpec, shard_path: Path, jpeg_quality: int, size: Store
     # One factor for both axes (StoredSize keeps the aspect ratio exactly); this
     # is the corner-anchored ``x * W'/W`` convention used by the datasets.
     instances[INSTANCE_XY] = (labels.xy * (size.width / spec.width)).astype(np.float32)
-    return EncodedClip(frames, instances)
+    return EncodedClip(frames, instances, tuple(hashes))
 
 
 def _encode_job(job: tuple[ClipSpec, Path, int, StoredSize]) -> EncodedClip:
@@ -265,7 +273,7 @@ def _summary_readme(metadata: dict[str, Any]) -> str:
 
 def build_dataset(config: FrameStoreBuildConfig) -> Path:
     """Build and atomically publish one dataset version; returns its directory."""
-    destination = config.dataset_dir
+    destination: Path = config.dataset_dir
     if destination.exists():
         raise FileExistsError(f"Dataset version already exists: {destination}. Choose a new dataset.version.")
     collected = collect_sources(config)
