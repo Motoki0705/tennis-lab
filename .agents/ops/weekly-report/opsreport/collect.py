@@ -550,10 +550,16 @@ def collect_meta(
     cwd = cfg.repo_root
     head_sha = shell.git(["rev-parse", "HEAD"], cwd=cwd).strip()
     branch = shell.git(["branch", "--show-current"], cwd=cwd).strip() or "(detached)"
-    dirty = shell.git(["status", "--porcelain", "--untracked-files=no"], cwd=cwd)
-    # Tracked files whose checkout content differs from the base (committed or not).
+    dirty = shell.git(["status", "--porcelain", "--untracked-files=all"], cwd=cwd)
+    # Files whose checkout content differs from the base, including untracked files.
     # The agent cannot run git, so it needs this list to avoid citing them as base.
-    diff_files = shell.git(["diff", "--name-only", cfg.rev], cwd=cwd).splitlines()
+    tracked_diff = shell.git(["diff", "--name-only", "-z", cfg.rev], cwd=cwd).split(
+        "\0"
+    )
+    untracked = shell.git(
+        ["ls-files", "--others", "--exclude-standard", "-z"], cwd=cwd
+    ).split("\0")
+    diff_files = sorted((set(tracked_diff) | set(untracked)) - {""})
     return {
         "generated_at": cfg.now.isoformat(timespec="minutes"),
         "period_start": since.isoformat(timespec="seconds"),

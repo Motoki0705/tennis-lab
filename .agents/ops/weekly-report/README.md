@@ -62,6 +62,7 @@ cd ~/projects/tennis-lab
 
 実行ごとに `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/weekly-report/<時刻>-<command>[-dry]-<pid>/` へ
 `run.log`、`collected.json`、`prompt.md`、`agent_output.md`、agent CLIのログ、`report.md`、`result.json` を残す。
+`--log-dir` / `WEEKLY_REPORT_LOG_DIR` の相対パスは、起動時のカレントディレクトリを基準に解決する。
 gh・git・agent・掃除モジュールの失敗、agent出力の形式違反、設定値の不正はすべて非ゼロ終了になる（黙ってskipしない）。
 agentと掃除モジュールは専用のプロセスグループで起動し、タイムアウト・失敗・終了時にグループ全体を
 SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子プロセスを残さない）。
@@ -90,7 +91,8 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 - 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
   ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。
   共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。
-- agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutで内容が異なるファイルがあれば、
+- agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutで内容が異なるファイル
+  （無視対象を除く未追跡ファイルを含む）があれば、
   一覧をagentへ渡し、本文の冒頭に注意を出す。
 
 ## systemd --user への導入（merge後に人間が行う）
