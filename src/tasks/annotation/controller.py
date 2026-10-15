@@ -34,6 +34,7 @@ from .contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    RetireExcludedOperation,
     Runtime,
     ScreenOperation,
 )
@@ -189,6 +190,20 @@ class Controller:
                 lead += state["state"] in {"running", "succeeded", "draining"}
             elif row["state"] == "acquired":
                 state = self._screen(row["id"])
+            elif (
+                row["state"] == "excluded"
+                and row["selection"] is not None
+                and self.collection.config.excluded_source_retention == "delete_after_verified_exclusion"
+            ):
+                intent = self.layout.path("sources", row["id"], self.plan.preparation.digest, "retirement-intent.json")
+                if not intent.exists():
+                    screening = self._screen(row["id"])
+                    if screening["state"] != "not_applicable":
+                        progress[row["id"]] = screening
+                        continue
+                state = self.operation(OperationInput(
+                    plan=self.runtime.plan, operation=RetireExcludedOperation(source_id=row["id"])
+                ))
             elif row["state"] == "screened":
                 # Selection can commit just before worker finalization. Settle
                 # that finalization before handing its source inputs to prepare.

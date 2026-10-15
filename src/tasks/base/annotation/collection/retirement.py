@@ -55,6 +55,7 @@ class RetirementIntent(Document):
     )
     acquisition: ArtifactRef
     preparation: ArtifactRef
+    basis: Literal["prepared", "excluded"] = "prepared"
     source: SourceProvenance
     cache_path: str
     file: FileIdentity
@@ -131,11 +132,15 @@ def verify_retirement_intent(
     acquisition: ArtifactRef,
     preparation: ArtifactRef,
     acquired: AcquisitionReceipt,
+    *,
+    excluded: bool = False,
 ) -> RetirementIntent:
     path, _ = _paths(layout, plan, source_id)
     if not path.is_file():
         raise ValueError("source missing without a verified retirement intent")
-    intent = read_document(layout, annotation_reference(layout, path), RetirementIntent)
+    intent: RetirementIntent = read_document(layout, annotation_reference(layout, path), RetirementIntent)
+    if intent.basis != ("excluded" if excluded else "prepared"):
+        raise ValueError("source retirement basis differs from the registered state")
     expected = layout.path("sources", "blobs", acquired.source.media.digest)
     if (intent.acquisition, intent.preparation, intent.source, intent.cache_path) != (
         acquisition,
@@ -150,10 +155,16 @@ def verify_retirement_intent(
 
 
 def retire_source(
-    layout: AnnotationLayout, plan: CampaignPlan, source_id: str
+    layout: AnnotationLayout, plan: CampaignPlan, source_id: str, *, excluded: bool = False
 ) -> ArtifactRef:
     """Caller owns the source lock. Never deletes an input outside our content cache."""
-    acquisition, prepared, acquired = verify_prepared(layout, plan, source_id)
+    evidence: tuple[ArtifactRef, ...] = ()
+    if excluded:
+        from .exclusion import verify_excluded
+
+        acquisition, prepared, acquired, evidence = verify_excluded(layout, plan, source_id)
+    else:
+        acquisition, prepared, acquired = verify_prepared(layout, plan, source_id)
     media = acquired.source.media
     path = layout.artifact_path(media)
     expected = layout.path("sources", "blobs", media.digest)
@@ -166,13 +177,14 @@ def retire_source(
     with artifact_lock(layout, "source-content-" + media.digest):
         if intent_path.exists():
             intent = verify_retirement_intent(
-                layout, plan, source_id, acquisition, prepared, acquired
+                layout, plan, source_id, acquisition, prepared, acquired, excluded=excluded
             )
         else:
             verify_reference(layout, media)
             intent = RetirementIntent(
                 acquisition=acquisition,
                 preparation=prepared,
+                basis="excluded" if excluded else "prepared",
                 source=SourceProvenance.from_source(acquired.source),
                 cache_path=media.path,
                 file=FileIdentity.read(path),
@@ -191,7 +203,14 @@ def retire_source(
             return annotation_reference(layout, complete_path)
         # Commit dependency transfer before unlink. If completion writing fails,
         # a database rollback must never resurrect pins on a deleted source.
-        handoff_screening_inputs(layout, plan, source_id, media, prepared)
+        handoff_screening_inputs(layout, plan, source_id, media, prepared, excluded=excluded, evidence=evidence)
+        if excluded:
+            catalog.protect_once(Protection(
+                protection_id="excluded-source-evidence-v1-" + intent_ref.digest,
+                kind="active",
+                reason="Preserve the completed exclusion, URL and all available screening images after source retirement",
+                references=evidence,
+            ))
         # Hold the registry writer lock through unlink, so a new explicit reader
         # protection cannot race the last dependency check.
         with catalog.registry.transaction() as database:

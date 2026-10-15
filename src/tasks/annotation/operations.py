@@ -38,6 +38,7 @@ from .contracts import (
     PreviewOperation,
     PublishOperation,
     RestoreSourceOperation,
+    RetireExcludedOperation,
     ReviewOperation,
     ScreenOperation,
 )
@@ -150,6 +151,8 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
             result = (Screening(Collection(layout, plan)).prepare(op.source_id),)
         elif isinstance(op, PrepareOperation):
             result = (Collection(layout, plan).prepare(op.source_id),)
+        elif isinstance(op, RetireExcludedOperation):
+            result = (Collection(layout, plan).retire_excluded(op.source_id),)
         elif isinstance(op, PreviewOperation):
             from src.tasks.base.annotation.screening.images import make_sheets
 

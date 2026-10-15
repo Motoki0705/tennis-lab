@@ -93,6 +93,11 @@ class PrepareOperation(Document):
     source_id: Digest
 
 
+class RetireExcludedOperation(Document):
+    action: Literal["retire_excluded"] = "retire_excluded"
+    source_id: Digest
+
+
 class PreviewOperation(Document):
     action: Literal["screen_preview"] = "screen_preview"
     service_request: ArtifactRef
@@ -147,6 +152,7 @@ class OperationInput(Document):
         | RestoreSourceOperation
         | ScreenOperation
         | PrepareOperation
+        | RetireExcludedOperation
         | PreviewOperation
         | PredictionPreviewOperation
         | ReviewOperation
@@ -163,6 +169,8 @@ class OperationInput(Document):
         action = self.operation.action
         if action == "restore_source":
             return "acquire"
+        if action == "retire_excluded":
+            return "prepare"
         if isinstance(self.operation, PredictOperation):
             return "infer_" + self.operation.task
         if action in {
