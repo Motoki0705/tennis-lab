@@ -45,6 +45,10 @@ RuntimeSettings）を持つ。`budget.action = reuse` と既存 `scope` 参照�
 使用量を継承する。新しい予算を明示作成する場合のみ `action = create` とscope ID、全計測root、
 開始前の保存/GPU使用量、待機上限を指定する。作成の再送や中断後の再開でも同じbaselineを使う。
 既存の停止状態をconfigureで解除しない。
+計測rootはディレクトリまたは通常ファイルを指定できる。既存scopeの一時ファイルが
+消えていても、元のbaselineとrootを維持して再利用する。Codex状態の保存先は、全体を
+計測するディレクトリrootの配下に置く。状態ファイルの一部だけを列挙したroot集合で
+Codex状態ディレクトリ全体が計測されているとは扱わない。
 
 configureは参照hash、selection/preparation形式、対応task、工程costと枠、Codex保存先、
 queue script、productionのcode版を検証してから保存する。planが別の資源scopeへ変更される
