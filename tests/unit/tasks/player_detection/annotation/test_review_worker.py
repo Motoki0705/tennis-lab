@@ -56,6 +56,11 @@ def test_registered_worker_uses_parent_boxes_and_bounded_rows(
         PlayerRowPage,
     )
     assert page.rows == env.labels().frames[1:2]
+    assert page.proposals[0].frame_index == page.rows[0].frame.frame_index
+    assert {p.observation_id for p in page.proposals[0].observations} == {
+        o.proposal_id for o in page.rows[0].decision.observations
+    }
+    assert page.proposals[0].observations[0].confidence == 0.9
     assert page.image_proof == ("pending_current_attempt",)
     with pytest.raises(ValueError, match="eight"):
         session.call(

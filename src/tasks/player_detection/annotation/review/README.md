@@ -55,5 +55,7 @@ telemetry を照合する。別 attempt の証拠、未提示画像、他 clip�
 
 操作上限と再試行は共通 [review services](../../../base/annotation/workers/review/README.md)、
 worker の手順は [worker instructions](worker-instructions.md) を参照。
+少数 frame の `review_rows` は現行判断と同じ frame の元候補 ID・bbox・score を返すため、
+修正時に全 clip の予測 JSON を worker へ投入する必要はない。
 CPU 試験は合成 VFR 動画、実 renderer と合成 rollout を使う。実テニス映像の品質や
 実 Codex の確認、production 方針値をこの試験で承認したことにはならない。独立 QA は追加しない。
