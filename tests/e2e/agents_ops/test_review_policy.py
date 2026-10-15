@@ -107,7 +107,7 @@ def test_glob_does_not_overmatch(path: str, pattern: str) -> None:
 def test_exclusion_patterns_remove_paths_from_the_shared_set() -> None:
     patterns = (".agents", "!.agents/memory", "src/utils")
     paths = [
-        ".agents/memory/INDEX.md",
+        ".agents/memory/SUMMARY.md",
         ".agents/memory",
         ".agents/ops/review/x.py",
         ".agents/memory_policy.md",
@@ -144,8 +144,8 @@ def test_repo_shared_paths_file_covers_foundations() -> None:
         "src/tasks/ball_detection/README.md",
         "tests/unit/tasks/blcs/test_model.py",
         "knowledge/nodes/x.md",
-        ".agents/memory/INDEX.md",
-        ".agents/memory/wsl2-host-ram-silent-kill.md",
+        ".agents/memory/SUMMARY.md",
+        ".agents/memory/review/focused-pull-requests.md",
     ]
     hit_paths = {path for path, _ in P.shared_path_hits(shared + task_local, patterns)}
     assert hit_paths == set(shared)

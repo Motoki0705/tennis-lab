@@ -8,15 +8,15 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 1. **固めすぎない**: ルールは仮説として置く。運用データ（事故・手戻り・放置）をもとに週次で改訂する。AIの制御（このファイル、skill、memory、自動運用）自体も、プロジェクトと一緒に最適化する対象である。
 2. **正本は1つ**: Claude と Codex は対等。`AGENTS.md` と `.agents/` を共通の正本とする。ツール固有のファイル（`CLAUDE.md`, `.github/copilot-instructions.md`, `.github/agents/`）には差分だけを書く。
-3. **memoryは消去可能**: memoryは規則ではなく、検証待ちの観察である。古いもの・誤っているもの・固定観念になったものは安く消す（git履歴が保険）。詳細は [memory/README.md](memory/README.md)。
+3. **memoryは消去可能**: memoryは規則ではなく、検証待ちの観察である。古いもの・誤っているもの・固定観念になったものは安く消す（git履歴が保険）。詳細は [memory skill](skills/memory/SKILL.md)。
 4. **既定コンテキストは小さく**: 常に読み込むのは、汎用で頻繁に使うskillだけにする。大きなskill群（例: ARIS）は既定のskill置き場に置かず、必要なときに明示的に読み込む。
 5. **破壊的変更は積極的に**: 後方互換は保たず、旧経路は同じPRで削除する。ただし共有基盤を壊す変更は人間が承認する。どのパスが共有基盤かは [review/README.md](ops/review/README.md) を参照。
 
 ## 読む順序
 
-1. [AGENTS.md](../AGENTS.md): プロジェクト概要と開発ルール（全セッション）
-2. このファイル: 運用の原則と、情報の置き場所
-3. [memory/INDEX.md](memory/INDEX.md): 共有memoryの索引。作業に関係するエントリだけを開く
+1. [memory/SUMMARY.md](memory/SUMMARY.md): 共有memoryの要約。作業を始める前に必ず読み、詳細は層の索引から辿る
+2. [AGENTS.md](../AGENTS.md): プロジェクト概要と開発ルール（全セッション）
+3. このファイル: 運用の原則と、情報の置き場所
 4. 作業対象ディレクトリの `README.md`（大きなディレクトリには必ずある）
 
 ## ファイル地図（情報の住み分け）
@@ -28,12 +28,12 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [AGENTS.md](../AGENTS.md) | プロジェクト概要、全作業に効く開発ルール | 手順の詳細、観察、実験結果 |
 | `.agents/README.md`（このファイル） | AI運用の原則、置き場所の地図、GitHub運用、研究ループの概要 | 各自動運用の実装詳細 |
 | [.agents/skills/](skills/) | 繰り返し使う作業手順（`SKILL.md` + scripts） | 一度きりの経緯 |
-| [.agents/memory/](memory/README.md) | まだ規則でも仕様でもない、再利用できる観察（落とし穴、環境の癖、ユーザー判断） | コードやREADMEで確認できる事実、作業の進捗 |
+| [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない、再利用できる観察（作業のコツ、ユーザー判断、環境の癖、落とし穴、レビュー観点） | コードやREADMEで確認できる事実、作業の進捗 |
 | [.agents/ops/](#自動運用) | 定期実行する自動運用（systemd --user timer、headless agent） | 対話作業の手順 |
 | [knowledge/](../knowledge/README.md) | 実験結果・考察・関連論文（1 run = 1ノード） | 運用ルール |
 | 各ディレクトリの `README.md` | モジュールの仕様・使い方・設計判断 | 横断的な運用ルール |
 | GitHub issue / PR | 作業の目的・進捗・決定の経緯 | 恒久的な規則（決まったらここか AGENTS.md へ移す） |
-| 各ツールのローカルmemory（Claude auto-memory など） | ユーザー個人の嗜好、個人の環境 | プロジェクトの知見（共有memoryへ） |
+| 各ツールのローカルmemory（Claude auto-memory など） | ユーザー個人の環境、そのツールの使い方に閉じた好み | プロジェクトの知見、ユーザーの判断（共有memoryへ） |
 
 ツール固有のファイル:
 
