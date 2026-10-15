@@ -14,6 +14,9 @@ readerにはversion親ではなく、snapshotが指定するframe storeを渡す
 - `BallPublicationPolicy`は画像保存方式とsplitの決め方を固定する。`source_splits`によるcanonical source IDの列挙か、`source_partition`によるIDとseedのhash順での配分を明示する。両方の併用、既存sourceのsplit変更を拒否する。
 - partition方式は収集前にseedとtrain/validation/testの整数比を固定し、要求動画数が揃った公開時に新規sourceだけを配分する。例えば100動画と8:1:1なら80/10/10動画で、同一動画のclipは同じsplitになる。途中の候補差替えでplanを変更する必要はない。ラベル・モデル誤差は配分に使わず、比率を正確に表せない件数や部分公開は拒否する。既存snapshotのsplitは維持する。
 - 新規画像は全native frameを元PTS・元解像度でJPEG化する。padding、追加resize、非プレーframeの補充を行わない。
+  JPEGで準備されたclipは、保存済みQ90 bytes・offset・hashを検証し、そのarchiveを公開先へhardlinkする。
+  推論・GPT確認で使った画像を再圧縮・二重保存せず、同じ画像を教師に用いる。
+  元動画が削除済みでも、準備manifestのJPEG参照だけで公開できる。
   `image_storage=jpeg`はJPEG本体を保存し、`video_q90`はprepared MP4とQ90 JPEGのframe別hashを保存する。
   後者はJPEG本体をディスクへ展開せず、同じ入力bytesを学習時に再現する。
   保存と読出しの契約は[data README](../../../data/README.md)を参照。
@@ -36,7 +39,8 @@ readerにはversion親ではなく、snapshotが指定するframe storeを渡す
 
 1. base snapshot、seal、splitを検証し、共有registryへ公開intentと出力先の予約を保存する。
 2. 同じ出力先を`artifact_lock`で排他し、同じfilesystemのstagingへ既存JPEG/video payloadをhardlinkする。別filesystemへの暗黙copyはしない。
-3. 新規clipだけをencodeし、既存列のprefix・clip metadata・意味的hash・教師maskを保持して新indexを作る。
+3. 新規clipのJPEGを準備済みarchiveから共有するか、動画保存の明示policyに沿ってencodeし、
+   既存列のprefix・clip metadata・意味的hash・教師maskを保持して新indexを作る。
 4. metadataと`BallSnapshot`を保存し、全ファイルhash・membership・採用ラベルとの一致を検証する。
 5. directoryを原子的にrenameし、`PublicationReceipt`を書き、registryへ完了を登録する。
 

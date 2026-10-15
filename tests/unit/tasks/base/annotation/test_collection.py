@@ -45,7 +45,11 @@ def layout(tmp_path: Path) -> AnnotationLayout:
 
 
 def plan_for(
-    layout: AnnotationLayout, name: str = "campaign-a", *, lead: int = 2
+    layout: AnnotationLayout,
+    name: str = "campaign-a",
+    *,
+    lead: int = 2,
+    jpeg: bool = False,
 ) -> CampaignPlan:
     policy = layout.path("campaigns", "inputs", "policy.txt")
     policy.parent.mkdir(parents=True, exist_ok=True)
@@ -56,8 +60,10 @@ def plan_for(
         layout.path("campaigns", "inputs", f"prepare-{lead}.json"),
         PreparationConfig(
             format_selector="bestvideo",
-            crf=25,
-            preset="ultrafast",
+            crf=None if jpeg else 25,
+            preset=None if jpeg else "ultrafast",
+            retained_media="jpeg_q90" if jpeg else "video",
+            source_retention="delete_after_verified_frames" if jpeg else "keep",
             minimum_clip_frames=32,
             maximum_unprepared_sources=lead,
         ),
@@ -118,7 +124,7 @@ def plan_for(
                             }
                         ],
                     }
-                    for task in ("ball", "player")
+                    for task in (("ball",) if jpeg else ("ball", "player"))
                 ],
             }
         )
@@ -529,3 +535,250 @@ def test_source_claim_and_round_robin_are_explicit(layout: AnnotationLayout) -> 
         "third",
         "second",
     ]
+
+
+def jpeg_collection(layout: AnnotationLayout):
+    collection = Collection(layout, plan_for(layout, jpeg=True))
+    source = candidate(layout, collection.plan, "jpeg-source")
+    collection.register([source])
+    acquired_ref = collection.acquire(source.source_id)
+    acquired = read_document(layout, acquired_ref, AcquisitionReceipt)
+    select(collection, source)
+    return collection, source, acquired_ref, acquired
+
+
+def test_jpeg_preparation_retires_only_owned_video_and_resumes(
+    layout: AnnotationLayout,
+) -> None:
+    from src.tasks.base.annotation.contracts import SourceProvenance
+    from src.tasks.base.annotation.media import check_clip, decode_clip
+    from src.tasks.base.annotation.plan import references
+
+    collection, source, acquired_ref, acquired = jpeg_collection(layout)
+    prepared_ref = collection.prepare(source.source_id)
+    prepared = read_document(layout, prepared_ref, PreparationReceipt)
+    assert not layout.artifact_path(acquired.source.media).exists()
+    assert (
+        source.local_media is not None
+        and layout.artifact_path(source.local_media).is_file()
+    )
+    assert not list(layout.path("clips").rglob("*.mp4"))
+    for ref in prepared.clips:
+        manifest = read_document(layout, ref, ClipManifest)
+        assert isinstance(manifest.source, SourceProvenance)
+        assert acquired.source.media not in set(references(manifest))
+        path = layout.artifact_path(manifest.media)
+        check_clip(path, manifest)
+        decoded = list(decode_clip(path, manifest, 0, len(manifest.frames)))
+        assert [frame.pts for frame in decoded] == [
+            frame.clip_pts for frame in manifest.frames
+        ]
+    assert collection.acquire(source.source_id) == acquired_ref
+    assert collection.prepare(source.source_id) == prepared_ref
+
+
+def test_source_survives_uncommitted_jpeg_preparation(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    collection, source, _, acquired = jpeg_collection(layout)
+
+    def fail(*args):
+        raise RuntimeError("before source timing validation commit")
+
+    monkeypatch.setattr(collection.ledger, "record_preparation", fail)
+    with pytest.raises(RuntimeError, match="before source"):
+        collection.prepare(source.source_id)
+    assert layout.artifact_path(acquired.source.media).is_file()
+    assert not list(layout.path("sources").rglob("retirement-intent.json"))
+
+
+def test_source_retirement_recovers_after_unlink(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.base.annotation.collection import retirement
+
+    collection, source, _, acquired = jpeg_collection(layout)
+    original = retirement.write_document
+
+    def crash(layout, path, document):
+        if path.name == "retired.json":
+            raise RuntimeError("after unlink")
+        return original(layout, path, document)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(retirement, "write_document", crash)
+        with pytest.raises(RuntimeError, match="after unlink"):
+            collection.prepare(source.source_id)
+    assert not layout.artifact_path(acquired.source.media).exists()
+    assert (
+        collection.ledger.source(collection.plan, source.source_id)["state"]
+        == "prepared"
+    )
+    assert not list(layout.path("sources").rglob("retired.json"))
+    collection.prepare(source.source_id)
+    assert len(list(layout.path("sources").rglob("retired.json"))) == 1
+
+
+def test_missing_source_without_retirement_proof_fails(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    collection, source, _, acquired = jpeg_collection(layout)
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            "src.tasks.base.annotation.collection.retirement.retire_source",
+            lambda *args: None,
+        )
+        collection.prepare(source.source_id)
+    layout.artifact_path(acquired.source.media).unlink()
+    with pytest.raises(ValueError, match="without a verified retirement"):
+        collection.prepare(source.source_id)
+
+
+def test_corrupt_retained_frame_blocks_retirement(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    collection, source, _, acquired = jpeg_collection(layout)
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            "src.tasks.base.annotation.collection.retirement.retire_source",
+            lambda *args: None,
+        )
+        ref = collection.prepare(source.source_id)
+    prepared = read_document(layout, ref, PreparationReceipt)
+    manifest = read_document(layout, prepared.clips[0], ClipManifest)
+    path = layout.artifact_path(manifest.media)
+    data = path.read_bytes()
+    path.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
+    with pytest.raises(ValueError, match="hash changed"):
+        collection.prepare(source.source_id)
+    assert layout.artifact_path(acquired.source.media).is_file()
+
+
+def test_live_reader_prevents_source_retirement(layout: AnnotationLayout) -> None:
+    from src.tasks.base.annotation.storage import StorageCatalog
+    from src.tasks.base.annotation.storage.contracts import Protection
+
+    collection, source, _, acquired = jpeg_collection(layout)
+    StorageCatalog(layout).protect(
+        Protection(
+            protection_id="external-reader",
+            kind="reader",
+            reason="fixture live consumer",
+            references=(acquired.source.media,),
+        )
+    )
+    with pytest.raises(ValueError, match="live storage protection"):
+        collection.prepare(source.source_id)
+    assert layout.artifact_path(acquired.source.media).is_file()
+
+
+@pytest.mark.parametrize("state", ["complete", "validation_failed"])
+def test_only_completed_screening_can_transfer_its_source_pin(
+    layout: AnnotationLayout, state: str
+) -> None:
+    from src.tasks.base.annotation.storage import StorageCatalog
+    from src.tasks.base.annotation.storage.contracts import Protection
+    from src.tasks.base.annotation.workers.contracts import (
+        AttemptResult,
+        WorkOutcome,
+        WorkRequest,
+    )
+    from src.tasks.base.annotation.workers.ledger import WorkerLedger
+
+    collection, source, acquired_ref, acquired = jpeg_collection(layout)
+    selected = ArtifactRef.model_validate_json(
+        collection.ledger.source(collection.plan, source.source_id)["selection"]
+    )
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=source.source_id,
+        payload=selected,
+        inputs=(),
+    )
+    result = write_document(
+        layout,
+        layout.path("campaigns", "inputs", "screen-result.json"),
+        AttemptResult(
+            launch=selected,
+            exit=selected,
+            result=selected,
+            outcome=WorkOutcome(status="complete", receipt=selected),
+            telemetry=None,
+        ),
+    )
+    ledger = WorkerLedger(layout)
+    with ledger.registry.transaction() as db:
+        db.execute(
+            "INSERT INTO worker_tasks VALUES (?,?,?,?,?,?,?,NULL)",
+            (
+                request.work_id,
+                collection.plan.campaign_id,
+                collection.plan.sha256,
+                request.canonical_bytes().decode(),
+                state,
+                "fixture-attempt",
+                result.canonical_bytes().decode(),
+            ),
+        )
+    original = Protection(
+        protection_id="worker-inputs-v1-" + request.sha256,
+        kind="active",
+        reason="original screening inputs",
+        references=(acquired.source.media, acquired_ref, selected),
+    )
+    catalog = StorageCatalog(layout)
+    catalog.protect(original)
+    if state != "complete":
+        with pytest.raises(ValueError, match="completed screening worker"):
+            collection.prepare(source.source_id)
+        assert layout.artifact_path(acquired.source.media).is_file()
+        assert original in catalog.snapshot().protections
+        return
+    prepared = collection.prepare(source.source_id)
+    assert not layout.artifact_path(acquired.source.media).exists()
+    retained = catalog.snapshot().protections
+    assert original not in retained
+    assert len(retained) == 1
+    assert acquired.source.media not in retained[0].references
+    assert set((prepared, selected, acquired_ref)).issubset(retained[0].references)
+    assert collection.prepare(source.source_id) == prepared
+
+
+@pytest.mark.parametrize("outcome", ["unavailable", "different_content", "restored"])
+def test_explicit_source_restore_is_terminal_and_does_not_replace_jpegs(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    import subprocess
+
+    from src.tasks.base.annotation.collection import restoration
+
+    collection, source, _, acquired = jpeg_collection(layout)
+    prepared = collection.prepare(source.source_id)
+    calls = 0
+
+    def stage(candidate, config, staging, layout):
+        nonlocal calls
+        calls += 1
+        if outcome == "unavailable":
+            raise subprocess.CalledProcessError(1, ["fixture-youtube-download"])
+        target = staging / "media"
+        assert candidate.local_media is not None
+        target.write_bytes(
+            b"changed bytes"
+            if outcome == "different_content"
+            else layout.artifact_path(candidate.local_media).read_bytes()
+        )
+        return target
+
+    monkeypatch.setattr(restoration, "stage_source", stage)
+    ref = collection.restore_source(source.source_id, attempt="first")
+    receipt = read_document(layout, ref, restoration.RestorationReceipt)
+    assert receipt.status == outcome
+    assert collection.restore_source(source.source_id, attempt="first") == ref
+    assert calls == 1
+    assert layout.artifact_path(acquired.source.media).exists() == (
+        outcome == "restored"
+    )
+    assert collection.prepare(source.source_id) == prepared

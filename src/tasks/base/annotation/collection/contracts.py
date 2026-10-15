@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Literal, Protocol, Self, TypeVar, cast
+from typing import Literal, Protocol, Self, TypeVar
 
 from pydantic import Field
 
@@ -28,7 +28,7 @@ class _Validator(Protocol):
 
 
 # Keep the decorator typed even when staged-only mypy skips its defining module.
-_after = cast(_Validator, after_validator)
+_after: _Validator = after_validator
 
 
 class SourceCandidate(Document):
@@ -73,12 +73,34 @@ class PreparationConfig(Document):
     format_selector: str = Field(min_length=1)
     js_runtimes: str | None = None
     remote_components: str | None = None
-    crf: int = Field(ge=0, le=51)
-    preset: Literal[
-        "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow"
-    ]
+    crf: int | None = Field(ge=0, le=51)
+    preset: (
+        Literal[
+            "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow"
+        ]
+        | None
+    )
+    retained_media: Literal["video", "jpeg_q90"] = "video"
+    source_retention: Literal["keep", "delete_after_verified_frames"] = "keep"
     minimum_clip_frames: PositiveInt
     maximum_unprepared_sources: PositiveInt
+
+    @_after
+    def storage_policy(self) -> Self:
+        if self.retained_media == "video":
+            if (
+                self.crf is None
+                or self.preset is None
+                or self.source_retention != "keep"
+            ):
+                raise ValueError(
+                    "video preparation requires encoding settings and retained source"
+                )
+        elif self.crf is not None or self.preset is not None:
+            raise ValueError(
+                "JPEG preparation decodes the source directly; video encoding settings must be null"
+            )
+        return self
 
 
 class AcquisitionReceipt(Document):

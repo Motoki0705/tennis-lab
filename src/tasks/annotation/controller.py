@@ -113,10 +113,12 @@ class Controller:
     def operation(
         self, data: OperationInput, *, attempt: int | None = None
     ) -> dict[str, Any]:
-        return self.jobs.operation(data, attempt=attempt)
+        result: dict[str, Any] = self.jobs.operation(data, attempt=attempt)
+        return result
 
     def receipt(self, state: dict[str, Any]) -> OperationReceipt:
-        return self.jobs.receipt(state)
+        receipt: OperationReceipt = self.jobs.receipt(state)
+        return receipt
 
     def _services(
         self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool | None = None
@@ -188,6 +190,29 @@ class Controller:
             elif row["state"] == "acquired":
                 state = self._screen(row["id"])
             elif row["state"] == "screened":
+                # Selection can commit just before worker finalization. Settle
+                # that finalization before handing its source inputs to prepare.
+                if (
+                    self.collection.config.source_retention
+                    == "delete_after_verified_frames"
+                ):
+                    screening = self._screen(row["id"])
+                    if screening["state"] != "complete":
+                        progress[row["id"]] = screening
+                        continue
+                state = self.operation(
+                    OperationInput(
+                        plan=self.runtime.plan,
+                        operation=PrepareOperation(source_id=row["id"]),
+                    )
+                )
+            elif (
+                row["state"] == "prepared"
+                and self.collection.config.source_retention
+                == "delete_after_verified_frames"
+            ):
+                # Reconcile the existing prepare job even if its process exited
+                # between the prepared DB commit and source retirement receipt.
                 state = self.operation(
                     OperationInput(
                         plan=self.runtime.plan,

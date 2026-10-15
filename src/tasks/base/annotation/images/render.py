@@ -17,7 +17,7 @@ from ..artifacts import (
 )
 from ..contracts import ArtifactRef, ClipManifest
 from ..editing.contracts import ReviewContext, Revision
-from ..media import Timeline, decode_range
+from ..media import clip_timeline, decode_clip
 from ..paths import AnnotationLayout
 from ..predictions import PredictionReceipt
 from ..telemetry.contracts import RenderedImage
@@ -144,14 +144,7 @@ def render_page(layout: AnnotationLayout, request: RenderRequest) -> RenderedIma
                 )
             verify_reference(layout, saved.image)
             return RenderedImage(image=saved.image, metadata=metadata)
-        timeline = Timeline(
-            manifest.width,
-            manifest.height,
-            Fraction(manifest.time_base),
-            Fraction(manifest.nominal_fps),
-            tuple(f.clip_pts for f in manifest.frames),
-            tuple(f.duration_pts for f in manifest.frames),
-        )
+        timeline = clip_timeline(manifest)
         selected: dict[int, list[TileReceipt]] = {}
         for item in receipts:
             selected.setdefault(item.frame_index, []).append(item)
@@ -159,7 +152,7 @@ def render_page(layout: AnnotationLayout, request: RenderRequest) -> RenderedIma
         first, stop = min(selected), max(selected) + 1
         with Image.new("RGB", (request.width, request.height), "black") as page:
             for frame_index, frame in enumerate(
-                decode_range(media, timeline, first, stop), start=first
+                decode_clip(media, manifest, first, stop), start=first
             ):
                 if frame_index not in selected:
                     continue
@@ -265,4 +258,5 @@ def presented_tiles(
         raise ValueError("presentation belongs to another clip or annotation revision")
     if rendered.image not in presented_images(layout, telemetry):
         raise ValueError("rendered bytes were not bound to an actual model response")
-    return receipt.tiles
+    tiles: tuple[TileReceipt, ...] = receipt.tiles
+    return tiles

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -92,7 +92,7 @@ def probe_video(path: Path) -> Timeline:
 
 def decode_range(
     path: Path, timeline: Timeline, start: int, stop: int
-) -> Iterator[av.VideoFrame]:
+) -> Generator[av.VideoFrame, None, None]:
     if not 0 <= start < stop <= len(timeline.pts):
         raise ValueError("invalid decode interval")
     with av.open(str(path)) as container:
@@ -183,6 +183,14 @@ def check_clip(video: Path, manifest: ClipManifest) -> Timeline:
         raise ValueError("clip filename/hash does not match manifest")
     if video.stat().st_size != manifest.media.size_bytes:
         raise ValueError("clip byte count does not match manifest")
+    if manifest.jpeg is not None:
+        from .jpeg_media import JpegArchive, decode_jpeg
+
+        for payload in JpegArchive(
+            video, manifest.jpeg, manifest.width, manifest.height
+        ).iter_frames():
+            decode_jpeg(payload, manifest.width, manifest.height)
+        return clip_timeline(manifest)
     timeline = probe_video(video)
     if (timeline.width, timeline.height) != (manifest.width, manifest.height):
         raise ValueError("clip dimensions do not match manifest")
@@ -200,3 +208,35 @@ def check_clip(video: Path, manifest: ClipManifest) -> Timeline:
     if actual != expected:
         raise ValueError("clip frame count/PTS/duration does not match manifest")
     return timeline
+
+
+def clip_timeline(manifest: ClipManifest) -> Timeline:
+    return Timeline(
+        manifest.width,
+        manifest.height,
+        Fraction(manifest.time_base),
+        Fraction(manifest.nominal_fps),
+        tuple(f.clip_pts for f in manifest.frames),
+        tuple(f.duration_pts for f in manifest.frames),
+    )
+
+
+def decode_clip(
+    path: Path, manifest: ClipManifest, start: int, stop: int
+) -> Generator[av.VideoFrame, None, None]:
+    """Read the explicitly declared media format, using preserved native timing."""
+    timeline = clip_timeline(manifest)
+    if manifest.jpeg is None:
+        yield from decode_range(path, timeline, start, stop)
+        return
+    from .jpeg_media import JpegArchive, decode_jpeg
+
+    archive = JpegArchive(path, manifest.jpeg, manifest.width, manifest.height)
+    for index, payload in enumerate(archive.read_range(start, stop), start):
+        frame = av.VideoFrame.from_ndarray(
+            decode_jpeg(payload, manifest.width, manifest.height), format="bgr24"
+        )
+        frame.pts = timeline.pts[index]
+        frame.time_base = timeline.time_base
+        frame.duration = timeline.durations[index]
+        yield frame

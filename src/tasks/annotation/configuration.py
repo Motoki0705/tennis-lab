@@ -167,7 +167,31 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
         require_frozen_code(PROJECT_ROOT, plan)
     validate_inputs(layout, plan)
     read_document(layout, plan.selection, ScreeningPolicy)
-    read_document(layout, plan.preparation, PreparationConfig)
+    preparation = read_document(layout, plan.preparation, PreparationConfig)
+    if preparation.retained_media == "jpeg_q90":
+        from src.tasks.ball_detection.annotation.contracts import MDDInferenceConfig
+        from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+            BallPublicationPolicy,
+        )
+
+        if any(task.task != "ball" for task in plan.tasks):
+            raise ValueError(
+                "JPEG-only annotation currently requires a ball-only campaign"
+            )
+        for task in plan.tasks:
+            inference = read_document(layout, task.inference, MDDInferenceConfig)
+            if inference.decode != "opencv_jpeg_rgb24_native":
+                raise ValueError(
+                    "JPEG preparation requires the explicit JPEG inference decoder"
+                )
+            for product in task.products:
+                policy = read_document(
+                    layout, product.generation_policy, BallPublicationPolicy
+                )
+                if policy.image_storage != "jpeg" or policy.jpeg_quality != 90:
+                    raise ValueError(
+                        "JPEG preparation requires unchanged Q90 JPEG publication"
+                    )
     if any(task.task not in {"ball", "player"} for task in plan.tasks):
         raise ValueError("workflow has no adapter for a configured task")
     required = {
