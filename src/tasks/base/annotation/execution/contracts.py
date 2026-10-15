@@ -26,6 +26,7 @@ class StageLaunch(Document):
     code_root: str
     timeout_seconds: float = Field(gt=0)
     input: ArtifactRef | None = None
+    dependencies: tuple[ArtifactRef, ...] = ()
     queue: QueueConfiguration | None = None
     test_root: str | None = None
 

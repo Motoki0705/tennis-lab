@@ -18,6 +18,7 @@ from ..contracts import ArtifactRef, PublicationReceipt
 from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
+from ..plan import references
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
 from .adapters import LearningAdapter
 from .contracts import (
@@ -191,7 +192,10 @@ class Learning:
     def _directory(self, intent: LearningIntent) -> Path:
         completion = read_document(self.layout, intent.completion, CampaignCompletion)
         plan = check_completion(self.layout, completion)
-        return self.layout.path("campaigns", plan.campaign_id, "learning", intent.task)
+        directory: Path = self.layout.path(
+            "campaigns", plan.campaign_id, "learning", intent.task
+        )
+        return directory
 
     def _require_registered(
         self, ref: ArtifactRef, adapter: LearningAdapter
@@ -334,6 +338,7 @@ class Learning:
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
             input=request_ref,
+            dependencies=(*references(intent), *references(request)),
             queue=runtime.queue,
             test_root=str(self.layout.root) if self.layout.mode == "test" else None,
         )
