@@ -48,6 +48,14 @@ from src.tasks.base.annotation.learning.contracts import (
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
 from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+from src.tasks.base.annotation.storage import (
+    InventoryScope,
+    ManagedArtifact,
+    Retention,
+    StorageCatalog,
+    inventory,
+    plan_gc,
+)
 
 
 class Crash(BaseException):
@@ -63,6 +71,8 @@ class Adapter:
         self.complete_metrics = True
         self.use_test = False
         self.selections = 0
+        self.dependencies: tuple[ArtifactRef, ...] = ()
+        self.result_dependencies: tuple[ArtifactRef, ...] = ()
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
@@ -86,6 +96,16 @@ class Adapter:
 
     def validate_intent(self, layout: AnnotationLayout, intent: LearningIntent) -> None:
         assert layout.artifact_path(intent.recipe).read_bytes() == b"fresh optimizer"
+
+    def input_references(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> tuple[ArtifactRef, ...]:
+        return self.dependencies
+
+    def result_references(
+        self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
+    ) -> tuple[ArtifactRef, ...]:
+        return self.result_dependencies
 
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path
@@ -464,9 +484,179 @@ def env(tmp_path: Path) -> Environment:
     return Environment(tmp_path / "annotation")
 
 
+def retained(env: Environment) -> set[ArtifactRef]:
+    return {
+        ref
+        for record in env.learning.storage.catalog.snapshot().protections
+        for ref in record.references
+    }
+
+
+def test_registered_learning_protects_nested_input_before_any_queue_job(
+    env: Environment,
+) -> None:
+    dependency = write_asset(
+        env.layout, env.layout.path("models", "nested-shard"), b"teachers"
+    )
+    env.adapter.dependencies = (dependency,)
+    catalog = env.learning.storage.catalog
+    catalog.register(
+        ManagedArtifact(
+            reference=dependency,
+            owner="fixture",
+            stage="train",
+            kind="shard",
+            regenerable=False,
+            retention=Retention(mode="expire", expires_at_ns=0, reason="fixture TTL"),
+        )
+    )
+
+    def eligible() -> bool:
+        observed = inventory(
+            env.layout,
+            (InventoryScope(role="annotation", path="models"),),
+            max_entries=100,
+        )
+        result: bool = next(
+            row.eligible
+            for row in plan_gc(catalog, observed).decisions
+            if row.path == catalog.key(dependency)
+        )
+        return result
+
+    assert eligible()
+    intent = env.register()
+    assert not eligible() and env.executor.accepted == []
+    assert {dependency, env.val.manifest, env.test.manifest, intent} <= set(
+        env.learning.storage.inputs(intent)
+    )
+    env.executor.crash_after_accept = True
+    with pytest.raises(Crash):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert not eligible()
+    assert (
+        Learning(env.layout, executor=Executor(env.layout))
+        .tick(intent, env.adapter, env.runtime)
+        .state
+        == "training_pending"
+    )
+    assert not eligible() and len(env.executor.accepted) == 1
+
+
+def test_learning_input_failure_rolls_back_registration(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    completion = env.campaign()
+    before = env.learning.storage.catalog.snapshot().digest
+    original = env.learning.storage.register
+
+    def fail(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("input protection commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(env.learning.storage, "register", fail)
+        with pytest.raises(RuntimeError, match="input protection commit failure"):
+            env.learning.register(completion, env.adapter)
+    with env.learning.registry.transaction() as db:
+        assert (
+            db.execute("SELECT count(*) FROM annotation_learning_intents").fetchone()[0]
+            == 0
+        )
+        assert (
+            db.execute("SELECT count(*) FROM learning_input_protections").fetchone()[0]
+            == 0
+        )
+    assert env.learning.storage.catalog.snapshot().digest == before
+    assert env.learning.register(completion, env.adapter).status == "ready"
+
+
+def test_learning_input_set_cannot_change_on_registration_replay(
+    env: Environment,
+) -> None:
+    completion = env.campaign()
+    registered = env.learning.register(completion, env.adapter)
+    before = env.learning.storage.catalog.snapshot().digest
+    env.adapter.dependencies = (
+        write_asset(
+            env.layout, env.layout.path("models", "different-shard"), b"different"
+        ),
+    )
+    with pytest.raises(ValueError, match="protection changed"):
+        env.learning.register(completion, env.adapter)
+    assert env.learning.storage.catalog.snapshot().digest == before
+    assert registered.intent is not None
+    assert (
+        env.learning.tick(registered.intent, env.adapter, env.runtime).state
+        == "training_pending"
+    )
+
+
+def test_released_learning_inputs_block_dispatch_instead_of_silent_repin(
+    env: Environment,
+) -> None:
+    intent = env.register()
+    catalog = env.learning.storage.catalog
+    record = next(
+        row
+        for row in catalog.snapshot().protections
+        if row.protection_id == "learning-inputs-v1-" + intent.digest
+    )
+    catalog.release(
+        record.protection_id, expected_digest=record.sha256, reason="fixture revocation"
+    )
+    with pytest.raises(ValueError, match="released"):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert env.executor.accepted == []
+
+
+def test_completed_result_pin_recovers_commit_failure_before_evaluation(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    result_ref = env.executor.finish(state.launch, env.adapter)
+    training = read_document(env.layout, result_ref, TrainingReceipt)
+    dependency = write_asset(
+        env.layout,
+        env.layout.path("models", "training-evidence"),
+        b"validated evidence",
+    )
+    env.adapter.result_dependencies = (dependency,)
+    original = StorageCatalog.protect
+
+    def fail(self: StorageCatalog, record: Any, **kwargs: Any) -> None:
+        original(self, record, **kwargs)
+        if record.protection_id.startswith("learning-result-v1-"):
+            raise RuntimeError("result protection commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(StorageCatalog, "protect", fail)
+        with pytest.raises(RuntimeError, match="result protection commit failure"):
+            env.learning.tick(intent, env.adapter, env.runtime)
+    with env.learning.registry.transaction() as db:
+        assert (
+            db.execute("SELECT count(*) FROM learning_result_protections").fetchone()[0]
+            == 0
+        )
+    assert len(env.executor.accepted) == 1 and dependency not in retained(env)
+    evaluated = env.learning.tick(intent, env.adapter, env.runtime)
+    assert evaluated.state == "evaluation_pending" and evaluated.launch is not None
+    assert len(env.executor.accepted) == 2
+    launch = read_document(env.layout, evaluated.launch, StageLaunch)
+    assert {
+        dependency,
+        training.provenance,
+        training.candidate.training_weights,
+    } <= set(launch.dependencies)
+    assert dependency in retained(env)
+
+
 @pytest.mark.parametrize("accept", [True, False])
 def test_model_decisions_protect_both_compared_weights_and_fixed_inputs(
-    env: Environment, accept: bool,
+    env: Environment,
+    accept: bool,
 ) -> None:
     from src.tasks.base.annotation.plan import references
     from tests.support.annotation_storage import assert_expired_but_protected
@@ -480,14 +670,22 @@ def test_model_decisions_protect_both_compared_weights_and_fixed_inputs(
     verdict = read_document(env.layout, selection.verdict, SelectionVerdict)
     assert_expired_but_protected(
         env.layout,
-        (outcome.selection, selection.verdict, verdict.evaluation, intent.recipe, intent.fixed_evaluation,
-         *(references(selection.expected.model)), *(references(selection.candidate))),
+        (
+            outcome.selection,
+            selection.verdict,
+            verdict.evaluation,
+            intent.recipe,
+            intent.fixed_evaluation,
+            *(references(selection.expected.model)),
+            *(references(selection.candidate)),
+        ),
         "model",
     )
 
 
 def test_model_bootstrap_protection_failure_cannot_publish_a_pointer(
-    env: Environment, monkeypatch: pytest.MonkeyPatch,
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from src.tasks.base.annotation.storage.catalog import StorageCatalog
 
@@ -647,6 +845,7 @@ def test_failed_training_with_checkpoint_requires_explicit_same_intent_retry(
         resume_checkpoint=training.provenance,
     )
     assert read_document(env.layout, retry, StageInput).attempt == 2
+    assert {retry, training.provenance} <= retained(env)
     state = env.learning.tick(intent, env.adapter, env.runtime)
     assert state.state == "training_pending" and len(env.executor.accepted) == 2
     assert env.learning.models.current("detector").generation == 1

@@ -15,6 +15,7 @@ from src.tasks.base.annotation.artifacts import (
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.learning.contracts import TrainingReceipt
 from src.tasks.base.annotation.learning.execution import stage_request
+from src.tasks.player_detection.data.snapshots.contracts import ExistingPlayerSnapshot
 from src.tasks.player_detection.training.annotation.checkpoints import verify_export
 from src.tasks.player_detection.training.annotation.contracts import (
     ModelEvaluation,
@@ -33,6 +34,27 @@ from tests.support.tasks.player_detection.learning import (
     tiny_evaluation,
     use_cpu_dino,
 )
+
+
+def test_learning_retains_native_shards_fixed_supports_and_training_settings(
+    synthetic_root: SyntheticRoot,
+) -> None:
+    env = Environment(synthetic_root)
+    inputs = resolve_inputs(env.layout, env.intent)
+    snapshot = read_document(
+        env.layout, env.intent.train.manifest, ExistingPlayerSnapshot
+    )
+    retained = set(env.learning.storage.inputs(env.intent_ref))
+    assert {
+        snapshot.index,
+        snapshot.metadata,
+        *(item.shard for item in snapshot.clips),
+        inputs.train.manifest,
+        inputs.fixed.validation.manifest,
+        inputs.recipe.training,
+    } <= retained
+    assert inputs.fixed.test is not None
+    assert inputs.fixed.test.manifest in retained
 
 
 def test_missing_registered_support_is_not_regenerated(

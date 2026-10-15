@@ -16,7 +16,7 @@ from src.tasks.base.annotation.learning.validation import check_evaluation
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.player_detection.data.snapshots.partitions import validate_partition
 
-from . import checkpoints, evaluation
+from . import checkpoints, evaluation, storage
 from .contracts import PlayerSelectionPolicy
 from .inputs import resolve_inputs, run_root, training_partition
 
@@ -44,6 +44,16 @@ class PlayerLearningAdapter:
         resolve_inputs(layout, intent).configuration(
             layout, intent, run_root(layout, intent) / "attempt-001", None
         )
+
+    def input_references(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.input_references(layout, intent)
+
+    def result_references(
+        self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.result_references(layout, result)
 
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path

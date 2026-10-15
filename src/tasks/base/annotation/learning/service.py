@@ -18,12 +18,12 @@ from ..contracts import ArtifactRef, PublicationReceipt
 from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
-from ..plan import references
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
 from .adapters import LearningAdapter
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
+    EvaluationReceipt,
     FixedEvaluation,
     LearningIntent,
     LearningOutcome,
@@ -34,8 +34,10 @@ from .contracts import (
     SelectionVerdict,
     StageFailure,
     StageInput,
+    TrainingReceipt,
 )
 from .models import ModelRegistry
+from .storage import LearningReferences
 from .validation import (
     check_completion,
     check_evaluation,
@@ -66,6 +68,7 @@ class Learning:
         self.models = ModelRegistry(layout)
         self.registry = self.models.registry
         self.registry.initialize("annotation-learning-intents-v1", _SCHEMA)
+        self.storage = LearningReferences(layout)
         self.executor: StageExecutor = (
             executor if executor is not None else StageRunner(layout)
         )
@@ -138,6 +141,7 @@ class Learning:
         )
         verify_inputs(self.layout, intent)
         adapter.validate_intent(self.layout, intent)
+        dependencies = adapter.input_references(self.layout, intent)
         directory = self._directory(intent)
         with artifact_lock(
             self.layout,
@@ -156,11 +160,12 @@ class Learning:
                     )
             else:
                 ref = write_document(self.layout, directory / "intent.json", intent)
-                with self.registry.transaction() as db:
-                    db.execute(
-                        "INSERT INTO annotation_learning_intents VALUES (?,?,?)",
-                        (task.task, product.publication.digest, ref.model_dump_json()),
-                    )
+            with self.registry.transaction() as db:
+                self.storage.register(ref, intent, dependencies, database=db)
+                db.execute(
+                    "INSERT OR IGNORE INTO annotation_learning_intents VALUES (?,?,?)",
+                    (task.task, product.publication.digest, ref.model_dump_json()),
+                )
         return LearningRegistration(
             task=task.task,
             status="ready",
@@ -213,6 +218,7 @@ class Learning:
         publication = read_document(self.layout, intent.publication, PublicationReceipt)
         if publication.product != adapter.product:
             raise ValueError("learning adapter product mismatch")
+        self.storage.inputs(ref)
         return intent
 
     def tick(
@@ -309,6 +315,7 @@ class Learning:
                 raise ValueError("retry directory has no durable stage request")
             request = StageInput(intent=ref, stage=stage, attempt=1, training=training)
             request_ref = write_document(self.layout, request_path, request)
+        self.storage.request(request_ref, request)
         return current, request_ref, request
 
     def _launch(
@@ -338,10 +345,25 @@ class Learning:
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
             input=request_ref,
-            dependencies=(*references(intent), *references(request)),
+            dependencies=self.storage.request(request_ref, request),
             queue=runtime.queue,
             test_root=str(self.layout.root) if self.layout.mode == "test" else None,
         )
+
+    def _validated_result(
+        self,
+        completed: CompletedStage,
+        intent: LearningIntent,
+        adapter: LearningAdapter,
+        stage: Literal["train", "evaluate"],
+    ) -> TrainingReceipt | EvaluationReceipt:
+        if stage == "train":
+            _, training = check_training_value(self.layout, completed)
+            adapter.validate_training(self.layout, intent, training)
+            return training
+        _, evaluation = check_evaluation_value(self.layout, completed)
+        adapter.validate_evaluation(self.layout, intent, evaluation)
+        return evaluation
 
     def _stage(
         self,
@@ -364,6 +386,10 @@ class Learning:
             completed = read_document(self.layout, completed_ref, CompletedStage)
             if completed.request != request_ref:
                 raise ValueError("completed stage belongs to another request")
+            result = self._validated_result(completed, intent, adapter, stage)
+            self.storage.complete(
+                completed_ref, completed, adapter.result_references(self.layout, result)
+            )
             return completed_ref
         if failed_path.exists():
             failure = read_document(
@@ -436,12 +462,7 @@ class Learning:
                 result=annotation_reference(self.layout, directory / "result.json"),
                 execution=ArtifactRef.model_validate(state["exit"]),
             )
-            if stage == "train":
-                _, train_result = check_training_value(self.layout, completed)
-                adapter.validate_training(self.layout, intent, train_result)
-            else:
-                _, eval_result = check_evaluation_value(self.layout, completed)
-                adapter.validate_evaluation(self.layout, intent, eval_result)
+            result = self._validated_result(completed, intent, adapter, stage)
         except (ValueError, OSError) as error:
             failure = StageFailure(
                 request=request_ref,
@@ -457,7 +478,11 @@ class Learning:
                 training=training,
                 reason=failure.reason,
             )
-        return write_document(self.layout, completed_path, completed)
+        completed_ref = write_document(self.layout, completed_path, completed)
+        self.storage.complete(
+            completed_ref, completed, adapter.result_references(self.layout, result)
+        )
+        return completed_ref
 
     def retry(
         self,
@@ -513,7 +538,11 @@ class Learning:
                     training=old.training,
                     resume_checkpoint=resume_checkpoint,
                 )
-                return write_document(self.layout, current / "request.json", restored)
+                restored_ref = write_document(
+                    self.layout, current / "request.json", restored
+                )
+                self.storage.request(restored_ref, restored)
+                return restored_ref
             if (
                 not (current / "failure.json").exists()
                 or (current / "completed.json").exists()
@@ -545,4 +574,6 @@ class Learning:
                     resume_checkpoint=resume_checkpoint,
                 ),
             )
-            return write_document(self.layout, target / "request.json", next_request)
+            next_ref = write_document(self.layout, target / "request.json", next_request)
+            self.storage.request(next_ref, next_request)
+            return next_ref
