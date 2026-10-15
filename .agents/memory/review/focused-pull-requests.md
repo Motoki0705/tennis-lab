@@ -1,6 +1,5 @@
 ---
 title: "独立した目的の変更は別PRに分ける"
-type: decision
 applies_to: all
 source: "2026-10-13のユーザー指示（Colab・Drive skillと定期監視・review運用のPR分割）"
 created: 2026-10-13

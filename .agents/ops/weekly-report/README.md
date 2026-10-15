@@ -90,7 +90,7 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 - 放置PRへの推奨: agentは対象の放置PRすべてについて `{"recommendation": "継続|rebaseして仕上げ|close", "reason": …}` を返す必要があり、欠け・余分・形式違反は出力形式エラーになる。
 - 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
   ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。
-  共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。
+  共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。あれば `SUMMARY.md` と、層の `index.md` を除く各エントリの先頭を渡す。
 - agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutで内容が異なるファイル
   （無視対象を除く未追跡ファイルを含む）があれば、
   一覧をagentへ渡し、本文の冒頭に注意を出す。
