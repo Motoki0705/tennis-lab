@@ -15,6 +15,14 @@ Codexのsession/logが外部にある場合もrootとして含める。baseline�
 待機列、同名工程、Codex合算の枠はcampaign横断で共有し、稼働中planのうち厳しい上限を
 適用する。GPU論理枠の排他は別途共有training queueが所有する。
 
+`submit(inputs=...)` は明示した入力参照とplan・scopeを、pending要求と同じtransactionで
+保存台帳へ保護登録する。plan内の直接参照とscopeのbaselineも保護する。入力集合の変更は
+同じrequest IDでは拒否する。以後の `submit()` / `lease()` は登録済み集合を再利用する。
+受付時には試行用の保護をrunning状態と同時に登録し、lock解放と所有process消滅の両方を
+確認した回収transactionで解除する。`finish()` の終了記録だけでは解除しない。
+取消・失敗・正常終了後も要求の入力保護は残し、再開や後続工程への引継ぎ前に消さない。
+この入力保護の退役、過去の未登録工程への遡及、実際のGC削除はまだ行わない。
+
 `lease()` のFDを新しいsupervisorへ継承し、`attach()` で隔離process groupの所有者を登録する。
 親が起動直後に停止しても、子が保持するkernel lockで二重受付を防ぐ。
 終了時は `finish()` を記録し、lock解放と所有processの消滅を確認してから枠を回収する。

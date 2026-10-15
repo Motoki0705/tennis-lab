@@ -40,6 +40,7 @@ from .measurements import (
     storage_usage,
     write_baseline,
 )
+from .storage import ResourceReferences
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS resource_scopes (
@@ -88,6 +89,7 @@ class ResourceManager:
         self.scope = read_document(layout, reference, BudgetScope)
         self.registry = Registry(layout)
         self.registry.initialize("annotation.resources.v1", _SCHEMA)
+        self.storage = ResourceReferences(layout)
         self._baseline_path()
         with self.registry.transaction() as db:
             row = db.execute(
@@ -267,7 +269,12 @@ class ResourceManager:
             raise ValueError("resource request is missing or was changed")
         return dict(row)
 
-    def submit(self, request: ResourceRequest) -> None:
+    def submit(
+        self,
+        request: ResourceRequest,
+        *,
+        inputs: tuple[ArtifactRef, ...] | None = None,
+    ) -> None:
         plan = load_plan(verify_reference(self.layout, request.plan))
         self.bind(plan)
         stages = [
@@ -289,6 +296,15 @@ class ResourceManager:
                     raise ValueError(
                         "resource request identity was reused with different costs/inputs"
                     )
+                self.storage.register(
+                    self.key(request),
+                    request.plan,
+                    plan,
+                    self.reference,
+                    self.scope,
+                    inputs,
+                    database=db,
+                )
                 return
             pending = db.execute(
                 "SELECT count(*) FROM resource_requests WHERE stage=? AND state='pending'",
@@ -306,6 +322,15 @@ class ResourceManager:
                     request.stage,
                     stage.kind,
                 ),
+            )
+            self.storage.register(
+                self.key(request),
+                request.plan,
+                plan,
+                self.reference,
+                self.scope,
+                inputs,
+                database=db,
             )
 
     def _active(self) -> list[dict[str, Any]]:
@@ -330,6 +355,7 @@ class ResourceManager:
                     request = ResourceRequest.model_validate_json(row["request"])
                     missing = row["state"] == "running"
                     with self.registry.transaction() as db:
+                        self.storage.settle(row["id"], database=db)
                         db.execute(
                             "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=?",
                             (
@@ -707,6 +733,7 @@ class ResourceManager:
                     "remaining cumulative GPU budget cannot cover this reservation"
                 )
             with self.registry.transaction() as db:
+                self.storage.admit(self.key(request), database=db)
                 db.execute(
                     "UPDATE resource_requests SET state='running' WHERE id=? AND state='pending'",
                     (self.key(request),),

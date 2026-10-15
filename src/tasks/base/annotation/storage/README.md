@@ -38,6 +38,8 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 公開receiptなどと保護を原子的に更新する場合、`StorageCatalog` をtransactionの前に
 構築し、`protect(..., database=connection)` を同じ `Registry.transaction()` 内で呼ぶ。
 別registryやtransaction外のconnectionは拒否する。内部で別の書込transactionを開かない。
+`protect_once()` は初回のファイル検証を行い、同一内容かつ未解除の保護の再送では
+ファイルを再hashしない。入力の読取時検証を代替しない。異なる内容や解除済みIDは拒否する。
 
 ## 標準writerからの接続
 
@@ -49,6 +51,7 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 | `BallPublisher.publish` | 公開receipt、要求、採用receipt、公開snapshotと全ファイル、base snapshotのファイル |
 | `ModelRegistry.bootstrap/select` | 初期モデルの重み/config/根拠、採否判断、比較したモデルの重み、固定学習入力と評価参照 |
 | `WorkerLedger.register` / `WorkerPool.start` | 登録済みworkの固定入力、adapterが列挙する依存、processが所有するattempt入力。詳細は[workers](../workers/README.md) |
+| `ResourceManager.submit` / `lease` | 待機・再開用の固定入力と、kernel lease・所有processに結び付く試行入力。詳細は[resources](../resources/README.md)、CPU/GPU起動境界は[execution](../execution/README.md) |
 
 ~~~mermaid
 flowchart LR

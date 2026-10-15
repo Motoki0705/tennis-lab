@@ -14,7 +14,11 @@ from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.execution.runner import StageRunner
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, require_execution_layout
+from src.tasks.base.annotation.plan import (
+    CampaignPlan,
+    references,
+    require_execution_layout,
+)
 from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
@@ -118,6 +122,7 @@ class Operations:
             ),
             command=tuple(command),
             input=reference,
+            dependencies=tuple(references(data)),
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
             queue=self.runtime.queue if cost.gpu_seconds else None,

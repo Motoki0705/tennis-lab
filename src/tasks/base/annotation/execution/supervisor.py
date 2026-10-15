@@ -20,7 +20,7 @@ from ..artifacts import (
     write_document,
 )
 from ..paths import AnnotationLayout
-from ..plan import load_plan
+from ..plan import load_plan, references
 from ..resources import ResourceManager
 from ..workers.processes import (
     ProcessIdentity,
@@ -77,6 +77,7 @@ def supervise(
     if path != directory / "launch.json" or queued != (launch.queue is not None):
         raise ValueError("stage launch path or queue mode is inconsistent")
     manager = ResourceManager(layout, launch.scope)
+    manager.submit(launch.resource, inputs=(ref, *references(launch)))
     with ExitStack() as stack:
         if queued:
             assert launch.queue is not None
