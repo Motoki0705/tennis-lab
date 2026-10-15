@@ -10,7 +10,9 @@ stated PYTHONPATH. Keep full JSON artifacts out of tool messages.
 1. `review_handoff` takes `scope: {start,stop}` (half-open, at most 64 frames),
    optional `expected_revision`, `after_row`, and `previous_revision`.
    `review_rows` takes `expected_revision` and `scope` (at most 8 frames, 64 KiB
-   response limit). Read exact rows/digests before replacing them. Use a fresh
+   response limit). It returns current `rows` and aligned immutable raw `proposals`
+   with original observation IDs, bboxes and confidence. Read these bounded pages
+   and exact row digests before replacing them. Use a fresh
    handoff after revision conflicts. Preserve original and added observation IDs.
    `image_proof=missing` requires re-viewing evidence and explicitly replacing
    the decision. `pending_current_attempt` is checked after exit; `verified`

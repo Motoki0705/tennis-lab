@@ -54,6 +54,7 @@ from src.tasks.base.annotation.workers.review.service import (
 )
 from src.utils.paths import PROJECT_ROOT
 
+from ..contracts import PlayerFrameProposals
 from .adapter import PlayerReviewAdapter
 from .contracts import PlayerFrame, PlayerLabels
 from .storage import retained_revision
@@ -115,6 +116,7 @@ class PlayerRowPage(Document):
     revision: ArtifactRef
     scope: FrameRange
     rows: tuple[PlayerFrame, ...] = Field(min_length=1, max_length=8)
+    proposals: tuple[PlayerFrameProposals, ...] = Field(min_length=1, max_length=8)
     image_proof: tuple[ProofState, ...] = Field(min_length=1, max_length=8)
     images: tuple[RenderedImage, ...] = Field(max_length=256)
 
@@ -176,11 +178,13 @@ class PlayerReviewServices(PlayerReviewAdapter):
             raise ValueError("row request must contain at most eight native frames")
         states = proof_states(layout, context, labels)
         rows = labels.frames[request.scope.start : request.scope.stop]
+        _, _, predictions = inputs(layout, context, manifest)
         used = {key for frame in rows for key in frame.decision.evidence}
         return PlayerRowPage(
             revision=request.expected_revision,
             scope=request.scope,
             rows=rows,
+            proposals=predictions.rows[request.scope.start : request.scope.stop],
             image_proof=tuple(states[row.frame.frame_index] for row in rows),
             images=tuple(image for image in labels.images if image.sha256 in used),
         )
