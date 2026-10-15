@@ -48,12 +48,11 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | パス | 内容 |
 |---|---|
 | [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | `claude -p` / `codex exec` を read-only（Claudeは Read/Grep/Glob のみ、Codexは read-only sandbox）または write モードで headless 起動する共通wrapper。失敗や空の出力は非ゼロで終了する。`--profile` で job 別の model 固定値を選ぶ |
-| [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: `FOLLOWUP_CODEX_*`）もここに置く |
+| [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: レビュー用の `REVIEW_CODEX_*`）もここに置く |
 | [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
 | [ops/weekly-report/](ops/weekly-report/README.md) | 週次の運用レポートissue（逆提案）と、チェックされた提案の日次triage |
-| [ops/review/](ops/review/README.md) | クロスレビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（追補issue・人間への差し戻し） |
-| [ops/followup/](ops/followup/README.md) | クロスレビューの追補issue（軽微指摘）を2日に1回処理する。指摘ごとに対応・不要・解決済み・要判断を決め、対応するものはPRにする |
+| [ops/review/](ops/review/README.md) | Codex による PR レビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（人間への差し戻し） |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。
@@ -64,7 +63,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **担当の排他**: 仕組みは作らない（衝突は今の痛みではない）。問題が観測されたら週次レポートで見直す。
 - **放置PR**: N日動きのないPRは、週次レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
-- **merge**: CI通過とクロスレビュー（Claude作成のPRはCodexが、Codex作成のPRはClaudeがレビューする）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細（収束基準を含む）は [review/README.md](ops/review/README.md)。
+- **merge**: CI通過とCodexによるレビュー（作成agentによらずCodexがレビューし、merge を止める指摘だけを報告する）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細（収束基準を含む）は [review/README.md](ops/review/README.md)。
 
 ## 研究ループ（概要）
 

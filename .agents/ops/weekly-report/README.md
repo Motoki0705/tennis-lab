@@ -77,7 +77,7 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 
 | 環境変数 | 既定 | 意味 |
 |---|---|---|
-| `WEEKLY_REPORT_AGENT` | `alternate` | `claude` / `codex` / `alternate`（ISO週が偶数→claude、奇数→codex） |
+| `WEEKLY_REPORT_AGENT` | `codex` | `claude` / `codex` / `alternate`（ISO週が偶数→claude、奇数→codex）。既定が `codex` なのは Claude の使用枠を自動運用で消費しないため（#1178） |
 | `WEEKLY_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref。remote追跡refなら実行開始時に `git fetch <remote> <branch>` し（失敗はエラー）、そのcommit SHAを実行中固定して本文メタデータ `base=` に記録する。ローカルref/SHAはfetchせず、本文に「ローカルref、fetchなし」と明記する |
 | `WEEKLY_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
 | `WEEKLY_REPORT_AGENT_TIMEOUT` | `5400` | agent実行のタイムアウト（秒） |

@@ -88,7 +88,7 @@ def _parser() -> argparse.ArgumentParser:
         "--agent",
         choices=agent.AGENT_CHOICES,
         default=None,
-        help="default: $WEEKLY_REPORT_AGENT or 'alternate'",
+        help="default: $WEEKLY_REPORT_AGENT or 'codex'",
     )
     rep.add_argument(
         "--base-ref",
@@ -124,7 +124,7 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
         if args.now
         else datetime.now(JST)
     ).replace(microsecond=0)
-    setting = args.agent or os.environ.get("WEEKLY_REPORT_AGENT") or "alternate"
+    setting = args.agent or os.environ.get("WEEKLY_REPORT_AGENT") or "codex"
     agent_name = agent.resolve_agent(setting, now.date())
     cleanup_env = os.environ.get("WEEKLY_REPORT_CLEANUP_CMD")
     repo_root = args.repo_root.resolve()

@@ -292,8 +292,9 @@ def test_dry_run_prints_body_and_creates_nothing(ops_env: Any) -> None:
     assert "共有memory未導入" in out
     assert "CI（期間内 1 run）: failure 1" in out
     assert _mutating_calls(ops_env.calls()) == []
-    # alternate + ISO week 42 (even) -> claude
-    assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "claude"
+    # The default agent is codex, whatever the ISO week (week 42 would be claude under
+    # alternate).
+    assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
 
     (run_dir,) = ops_env.run_dirs()
     for name in ("collected.json", "prompt.md", "report.md", "run.log"):
