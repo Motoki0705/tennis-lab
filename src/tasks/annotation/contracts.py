@@ -18,6 +18,7 @@ from src.tasks.base.annotation.contracts import (
     PositiveInt,
 )
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
+from src.tasks.base.annotation.images.contracts import PageView
 from src.tasks.base.annotation.storage.comparison.contracts import ReadLimits
 
 
@@ -97,6 +98,14 @@ class PredictOperation(Document):
     clips: tuple[ArtifactRef, ...] = Field(min_length=1)
 
 
+class PredictionPreviewOperation(Document):
+    action: Literal["prediction_preview"] = "prediction_preview"
+    task: Literal["ball", "player"]
+    prediction: ArtifactRef
+    drawing: Literal["plain", "prediction"]
+    view: PageView
+
+
 class ReviewOperation(Document):
     action: Literal["review_service"] = "review_service"
     service_request: ArtifactRef
@@ -132,6 +141,7 @@ class OperationInput(Document):
         | ScreenOperation
         | PrepareOperation
         | PreviewOperation
+        | PredictionPreviewOperation
         | ReviewOperation
         | PublishOperation
         | BootstrapModelOperation
@@ -146,7 +156,12 @@ class OperationInput(Document):
         action = self.operation.action
         if isinstance(self.operation, PredictOperation):
             return "infer_" + self.operation.task
-        if action in {"screen_prepare", "screen_preview", "review_service"}:
+        if action in {
+            "screen_prepare",
+            "screen_preview",
+            "review_service",
+            "prediction_preview",
+        }:
             return "render"
         return action
 

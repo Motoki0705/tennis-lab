@@ -4,6 +4,7 @@
 責務分担と最終構成は[アーキテクチャ資料](../base/annotation/README.md)を正本とする。
 
 preview campaignでは取得→プレー窓選別→clip準備→ball/player予測を実行する。
+保存済み予測の定性確認には、以下の `prediction_preview` を使う。
 production campaignでは、現在 **ball / framesのみ**、レビュー→全clipの採用確認→
 累積snapshot公開→追加学習・固定評価・モデル採用まで接続している。
 player bbox/poseを含むproduction planは明示的に拒否する。実装状態と実動画検証の進捗は
@@ -79,6 +80,37 @@ GPU工程はmain repositoryの共有queueに投入する。queue workerの起動
 [benchmark runner](benchmark/README.md)を参照する。
 
 ## 画像確認・公開・学習
+
+preview campaignの初期モデル確認は `PredictionPreviewOperation` を通常の
+`submit --operation PATH` で登録する。operation JSONの `plan` はruntimeと同じ参照、
+`operation` は次の形にする。`PREDICTION_RECEIPT_REF` は予測工程が返した参照を使う。
+これはCPUの `render` 枠を使用する。
+
+```json
+{
+  "action": "prediction_preview",
+  "task": "ball",
+  "prediction": "PREDICTION_RECEIPT_REFをArtifactRef objectで指定",
+  "drawing": "prediction",
+  "view": {
+    "tiles": [{"frame_index": 60, "crop": {"left": 0, "top": 0, "right": 1920, "bottom": 1080}}],
+    "columns": 1,
+    "tile_width": 960,
+    "tile_height": 540,
+    "reason": "初期候補モデルのnative座標と実画像を確認"
+  }
+}
+```
+
+taskは `ball` / `player`、drawingは `plain` / `prediction` を明示する。
+frame/cropは実clipの範囲内で選ぶ。登録済みで未レビューの予測だけを受け付け、planの
+モデル・設定、manifest、全予測行のframe/PTS・task固有の内容を検証する。表示座標は
+task adapterが予測から取得するため、callerは描画座標を指定できない。推論・モデル読込や
+注釈状態の変更は行わず、画像生成をレビュー・教師採用の証拠として扱わない。
+結果receiptの `results` は [RenderReceipt](../base/annotation/images/contracts.py) の参照で、
+その `image` が表示対象、`request` が固定した予測版と表示条件を示す。
+ページの上限は [images](../base/annotation/images/README.md) に従い、playerの候補が
+1 tileの描画上限を超えた場合も黙って切り捨てず停止する。
 
 screen/review workerの画像・編集要求は親controllerへ渡す。親がrequest/attempt/版/区間を
 検証し、CPU工程で処理してから不変の参照を返す。採用には実際のrollout画像提示を照合し、

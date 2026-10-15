@@ -5,7 +5,7 @@ requestはclip manifest、prediction/revisionの参照と種類、描画方式�
 native cropと任意の点/bboxを持つ。時間文脈・追従位置・全体表示の選択はtaskの責務とし、
 baseは指定されたframe/cropを描く。範囲外を黙ってpadding・clampしない。
 
-- 一ページ16 tiles、4列、tile各辺1024 px、ページ全体800万pixelを上限とする。
+- 一ページ16 tiles、各tile32描画要素、4列、tile各辺1024 px、ページ全体800万pixelを上限とする。
   native frameは3200万pixelまで。上限超過は小さく丸めず拒否する。
 - sourceをhash検証し、必要な最初〜最後のframeをPTS照合して逐次decodeする。
   選択frameだけRGBへ変換し、crop/resizeしたtileはページに貼り付けて解放する。
@@ -15,6 +15,9 @@ baseは指定されたframe/cropを描く。範囲外を黙ってpadding・clamp
 - `native_to_image` / `image_to_native` は `coordinates="pixel_center"` と `"edge"` を
   明示させる。点はPILのhalf-pixel resize、bboxはpixel端の座標を使う。ヘッダや余白の
   クリックは元座標へ変換せず拒否する。
+
+`PageView` / `ImageTile` は描画座標を含まない表示要求の共通契約。
+初期予測のpreviewとreview workerが共有し、taskが付加した描画要素を `RenderRequest` で受け取る。
 
 マーカーなしでも参照するannotation版を固定する。描画変更・crop変更・版変更は別requestで、
 `annotations/rendered/<request hash>/` に不変保存する。キャッシュ再利用時も参照とgeometryを照合する。
