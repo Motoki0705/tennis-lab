@@ -19,10 +19,15 @@ def handoff_screening_inputs(
     source_id: str,
     media: ArtifactRef,
     prepared_ref: ArtifactRef,
+    *,
+    excluded: bool = False,
+    evidence: tuple[ArtifactRef, ...] = (),
 ) -> None:
-    prepared = read_document(layout, prepared_ref, PreparationReceipt)
+    prepared = None if excluded else read_document(layout, prepared_ref, PreparationReceipt)
+    selection = prepared_ref if prepared is None else prepared.selection
+    clips = () if prepared is None else prepared.clips
     manifests = tuple(
-        read_document(layout, ref, ClipManifest) for ref in prepared.clips
+        read_document(layout, ref, ClipManifest) for ref in clips
     )
     catalog = StorageCatalog(layout)
     with catalog.registry.transaction() as database:
@@ -40,7 +45,7 @@ def handoff_screening_inputs(
             if request.adapter != "source_screening" or request.subject_id != source_id:
                 continue
             if (
-                row["state"] != "complete"
+                row["state"] != ("not_applicable" if excluded else "complete")
                 or row["plan_digest"] != plan.sha256
                 or row["result"] is None
             ):
@@ -50,8 +55,8 @@ def handoff_screening_inputs(
             result_ref = ArtifactRef.model_validate_json(row["result"])
             result = read_document(layout, result_ref, AttemptResult)
             if (
-                result.outcome.status != "complete"
-                or result.outcome.receipt != prepared.selection
+                result.outcome.status != ("not_applicable" if excluded else "complete")
+                or result.outcome.receipt != selection
             ):
                 raise ValueError(
                     "screening worker result differs from the prepared selection"
@@ -67,7 +72,7 @@ def handoff_screening_inputs(
             replacement = Protection(
                 protection_id="prepared-source-inputs-v1-" + request.sha256,
                 kind="active",
-                reason="Completed selection evidence and verified JPEG preparation replace the temporary source video",
+                reason="Completed selection evidence and retained outputs replace the temporary source video",
                 references=distinct(
                     layout,
                     (
@@ -78,7 +83,8 @@ def handoff_screening_inputs(
                         ),
                         prepared_ref,
                         result_ref,
-                        *prepared.clips,
+                        *clips,
+                        *evidence,
                         *(
                             ref
                             for manifest in manifests

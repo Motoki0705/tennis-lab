@@ -82,11 +82,14 @@ class PreparationConfig(Document):
     )
     retained_media: Literal["video", "jpeg_q90"] = "video"
     source_retention: Literal["keep", "delete_after_verified_frames"] = "keep"
+    excluded_source_retention: Literal["keep", "delete_after_verified_exclusion"] = "keep"
     minimum_clip_frames: PositiveInt
     maximum_unprepared_sources: PositiveInt
 
     @_after
     def storage_policy(self) -> Self:
+        if self.excluded_source_retention != "keep" and self.source_retention != "delete_after_verified_frames":
+            raise ValueError("excluded source deletion requires the JPEG source retirement policy")
         if self.retained_media == "video":
             if (
                 self.crf is None

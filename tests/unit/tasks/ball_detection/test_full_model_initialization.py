@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from src.tasks.ball_detection.checkpoints.initialization import initialize_full_model
-from src.tasks.ball_detection.training.coordinates import full_model
+from src.tasks.ball_detection.training.coordinates import full_model, joint
 from src.utils.checksum import dual_sha256
 from src.utils.models.state import state_dict_sha256
 from tests.support.tasks.ball_detection.learning import (
@@ -79,6 +79,7 @@ def test_bad_training_inputs_fail_before_model_initialization(
         pytest.fail("Initialization must not occur after invalid input")
 
     monkeypatch.setattr(full_model, "initialize_full_model", forbidden)
+    monkeypatch.setattr(joint, "FrozenBallWindowDataset", forbidden)
     monkeypatch.setattr(sys, "argv", ["full_model", *full_model_arguments(path, train, validation, output)])
     with pytest.raises((ValueError, FileExistsError), match=match):
         full_model.main()

@@ -179,7 +179,7 @@ def controller_for(example: Example) -> Controller:
 
 
 def setup(
-    tmp_path: Path, seconds: int = 32
+    tmp_path: Path, seconds: int = 32, *, jpeg: bool = False
 ) -> tuple[AnnotationLayout, Screening, SourceCandidate]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -189,8 +189,11 @@ def setup(
         inputs / "preparation.json",
         PreparationConfig(
             format_selector="bestvideo",
-            crf=25,
-            preset="ultrafast",
+            crf=None if jpeg else 25,
+            preset=None if jpeg else "ultrafast",
+            retained_media="jpeg_q90" if jpeg else "video",
+            source_retention="delete_after_verified_frames" if jpeg else "keep",
+            excluded_source_retention="delete_after_verified_exclusion" if jpeg else "keep",
             minimum_clip_frames=32,
             maximum_unprepared_sources=1,
         ),
@@ -318,7 +321,11 @@ def setup(
 
 @pytest.fixture
 def example(tmp_path: Path) -> Example:
-    layout, screening, source = setup(tmp_path)
+    return make_example(tmp_path)
+
+
+def make_example(tmp_path: Path, *, jpeg: bool = False) -> Example:
+    layout, screening, source = setup(tmp_path, jpeg=jpeg)
     ref = screening.request(
         screening.prepare(source.source_id),
         layout.path(
@@ -449,6 +456,112 @@ def test_empty_selection_preserves_reason_and_releases_lead(example: Example) ->
         )["state"]
         == "excluded"
     )
+
+
+def excluded_worker(example: Example, selection: ArtifactRef, state: str) -> None:
+    from src.tasks.base.annotation.storage.contracts import Protection
+    from src.tasks.base.annotation.workers.contracts import AttemptResult, WorkOutcome
+    from src.tasks.base.annotation.workers.ledger import WorkerLedger
+
+    layout, plan = example.layout, example.screening.plan
+    request = WorkRequest(adapter="source_screening", adapter_version="v1", stage="screen",
+                          subject_id=example.source.source_id, payload=example.request.prepared_input, inputs=())
+    result = write_document(layout, layout.path("campaigns", "fixture", "worker-result.json"), AttemptResult(
+        launch=selection, exit=selection, result=selection, telemetry=None,
+        outcome=WorkOutcome(status="not_applicable", receipt=selection, reason="no play"),
+    ))
+    ledger = WorkerLedger(layout)
+    with ledger.registry.transaction() as db:
+        db.execute("INSERT INTO worker_tasks VALUES (?,?,?,?,?,?,?,NULL)", (
+            request.work_id, plan.campaign_id, plan.sha256, request.canonical_bytes().decode(),
+            state, "fixture-attempt", result.canonical_bytes().decode(),
+        ))
+    StorageCatalog(layout).protect(Protection(
+        protection_id="worker-inputs-v1-" + request.sha256, kind="active", reason="fixture screening inputs",
+        references=(example.request.source.media, example.request.prepared_input, example.request.overview),
+    ))
+
+
+@pytest.mark.parametrize("state", ["running", "not_applicable"])
+def test_excluded_source_waits_for_worker_and_retains_review_evidence(tmp_path: Path, state: str) -> None:
+    sample = make_example(tmp_path, jpeg=True)
+    selection = sample.finish(decision=sample.decision(empty=True))
+    collection = sample.screening.collection
+    video = sample.layout.artifact_path(sample.request.source.media)
+    with pytest.raises(ValueError, match="completed screening worker"):
+        collection.retire_excluded(sample.source.source_id)
+    excluded_worker(sample, selection, state)
+    if state != "not_applicable":
+        with pytest.raises(ValueError, match="completed screening worker"):
+            collection.retire_excluded(sample.source.source_id)
+        assert video.is_file()
+        return
+    receipt = collection.retire_excluded(sample.source.source_id)
+    assert not video.exists()
+    assert sample.source.local_media is not None
+    assert sample.layout.artifact_path(sample.source.local_media).is_file()
+    assert collection.retire_excluded(sample.source.source_id) == receipt
+    kept = {ref for p in StorageCatalog(sample.layout).snapshot().protections for ref in p.references}
+    assert selection in kept and sample.request.source.media not in kept
+    assert all(page.image in kept and sample.layout.artifact_path(page.image).is_file() for page in sample.detail.pages)
+    assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
+
+
+def test_excluded_source_tampering_blocks_deletion(tmp_path: Path) -> None:
+    sample = make_example(tmp_path, jpeg=True)
+    selection = sample.finish(decision=sample.decision(empty=True))
+    excluded_worker(sample, selection, "not_applicable")
+    sample.layout.artifact_path(sample.detail.pages[0].image).write_bytes(b"corrupt")
+    with pytest.raises(ValueError, match="size changed"):
+        sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert sample.layout.artifact_path(sample.request.source.media).is_file()
+
+
+def test_excluded_source_recovers_after_unlink(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.tasks.base.annotation.collection import retirement
+
+    sample = make_example(tmp_path, jpeg=True)
+    selected = sample.finish(decision=sample.decision(empty=True))
+    excluded_worker(sample, selected, "not_applicable")
+    original = retirement.write_document
+
+    def crash(layout: AnnotationLayout, path: Path, value: object) -> ArtifactRef:
+        if path.name == "retired.json":
+            raise OSError("fixture crash after unlink")
+        return original(layout, path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(retirement, "write_document", crash)
+        with pytest.raises(OSError, match="fixture crash"):
+            sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert not sample.layout.artifact_path(sample.request.source.media).exists()
+    result = sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert sample.layout.artifact_path(result).is_file()
+    controller = controller_for(sample)
+
+    def no_screening(*args: object) -> None:
+        pytest.fail("retired source must not be screened or protected as live video again")
+
+    monkeypatch.setattr(controller, "_screen", no_screening)
+    monkeypatch.setattr(controller, "operation", lambda *a, **k: {"state": "succeeded"})
+    controller.cycle()
+
+
+def test_preflight_excluded_source_keeps_explicit_failure(tmp_path: Path) -> None:
+    layout, screening, source = setup(tmp_path, 3, jpeg=True)
+    with pytest.raises(SourceExcluded, match="duration"):
+        screening.prepare(source.source_id)
+    row = screening.collection.ledger.source(screening.plan, source.source_id)
+    selection = read_document(layout, ArtifactRef.model_validate_json(row["selection"]), SelectionReceipt)
+    result = screening.collection.retire_excluded(source.source_id)
+    assert layout.artifact_path(result).is_file()
+    assert layout.artifact_path(selection.evidence).is_file()
+
+
+def test_excluded_deletion_requires_explicit_policy(example: Example) -> None:
+    example.finish(decision=example.decision(empty=True))
+    with pytest.raises(ValueError, match="not enabled"):
+        example.screening.collection.retire_excluded(example.source.source_id)
 
 
 def test_source_hash_and_image_tampering_are_detected(example: Example) -> None:

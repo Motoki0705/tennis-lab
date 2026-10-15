@@ -55,6 +55,7 @@ ball単独campaignでは、準備設定を次のように固定できる。
 {
   "retained_media": "jpeg_q90",
   "source_retention": "delete_after_verified_frames",
+  "excluded_source_retention": "delete_after_verified_exclusion",
   "crf": null,
   "preset": null
 }
@@ -89,6 +90,13 @@ CLIは未対応taskや異なる保存方式の組合せを準備時に拒否す�
 別のreaderや成果物が元動画を保持していれば削除しない。
 対象はこのcollectionが所有する `media/sources/blobs/<sha256>` の通常ファイルに限定し、
 ローカル素材の入力元、hardlinkがある動画、既存の別形式の動画は自動削除しない。
+
+`excluded_source_retention=delete_after_verified_exclusion` は、0件の選別が確定した
+新規sourceにも同じ削除方式を適用する。除外理由・URL・選別画像・実提示の証拠と
+workerの `not_applicable` 完了を照合し、これらの保護を残して元動画だけを削除する。
+decode不能や尺の不適合で画像選別に進めない場合は、その機械的な除外記録を保持する。
+内容重複による除外や選別未完了はこの対象に含めない。controllerの `retire_excluded`
+operationはprepare枠で実行・再開し、除外を準備済み動画数へ加算しない。
 
 削除intentを先に永続化し、内容hash・file identityを再確認してunlinkし、完了receiptを残す。
 削除直後に停止しても `Collection.prepare()` は保存済みJPEGとintentを検証して再開する。

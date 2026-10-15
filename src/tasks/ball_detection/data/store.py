@@ -312,6 +312,8 @@ class BallFrameStore:
             if not clip.has_events and (self.frames["event"][rows] != EVENT_CODES["unlabeled"]).any():
                 raise ValueError(f"Clip {clip.clip_id} has events but is declared without them")
             shard = self.image_path(clip)
+            if not shard.resolve().is_relative_to(self.directory.resolve()):
+                raise ValueError(f"Shard {shard} resolves outside the store root")
             offsets = self.frames["offset"][rows]
             ends = offsets + self.frames["length"][rows]
             if offsets[0] != 0 or not np.array_equal(offsets[1:], ends[:-1]):
@@ -396,7 +398,8 @@ class BallFrameStore:
     def image_path(self, clip: ClipRecord) -> Path:
         """The one immutable physical image payload of a clip."""
         if clip.clip_id in self.video_frames:
-            return self.directory / "media" / video_name(clip.index)
+            path: Path = self.directory / "media" / video_name(clip.index)
+            return path
         return self.directory / SHARDS_DIR / shard_name(clip.index)
 
     def read_video_window(
@@ -412,7 +415,7 @@ class BallFrameStore:
                 self._video_versions[clip.clip_id] = before
             version = self._video_versions[clip.clip_id]
         rows = self.clip_rows(clip)
-        payloads = read_video_jpegs(
+        payloads: tuple[bytes, ...] = read_video_jpegs(
             path, indices, pts=self.frames["pts"][rows].tolist(),
             time_base=Fraction(clip.time_base), width=clip.width, height=clip.height,
             quality=video.jpeg_quality, runtime=video.runtime,

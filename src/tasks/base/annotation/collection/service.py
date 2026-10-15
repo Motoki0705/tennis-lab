@@ -110,6 +110,14 @@ class Collection:
         with artifact_lock(self.layout, "source-" + source_id, blocking=False):
             return restore_source(self.layout, self.plan, source_id, attempt)
 
+    def retire_excluded(self, source_id: str) -> ArtifactRef:
+        from .retirement import retire_source
+
+        if self.config.excluded_source_retention != "delete_after_verified_exclusion":
+            raise ValueError("excluded source deletion is not enabled in this plan")
+        with artifact_lock(self.layout, "source-" + source_id, blocking=False):
+            return retire_source(self.layout, self.plan, source_id, excluded=True)
+
     def prepare(self, source_id: str) -> ArtifactRef:
         with artifact_lock(self.layout, "source-" + source_id, blocking=False):
             row = self.ledger.source(self.plan, source_id)
