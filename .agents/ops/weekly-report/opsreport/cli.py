@@ -239,7 +239,7 @@ def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    log_dir = args.log_dir or _default_log_dir()
+    log_dir = (args.log_dir or _default_log_dir()).resolve()
     stamp = datetime.now(JST).strftime("%Y%m%dT%H%M%S")
     run_dir = (
         log_dir
