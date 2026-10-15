@@ -12,8 +12,13 @@ ball、player bbox、player poseのいずれかが未公開・失敗・保留な
 追加教師がある場合は、公開receipt、累積train snapshot、前採用モデルの世代と重み、
 recipe、固定validation/test membership、採用条件を `LearningIntent` に固定する。
 snapshotの内容とmembershipはadapterが検査し、baseが元動画・clipのsplit間重複を拒否する。
-評価ジョブの `EvaluationReceipt.validation` は固定validationに一致する必要があり、
-testを代わりに使うことはできない。test membershipは学習との分離検査に使う。
+`LearningPlan.evaluation_recipe` を指定したtaskは、`EvaluationResolver` が公開後に
+旧・新holdoutを確定する。元の評価参照とrecipeを解決済み `FixedEvaluation` に保存し、
+planを途中で書き換えない。追加clipはtrain/validation/testのいずれかに属し、
+trainに利用可能な追加教師が必要となる。
+`EvaluationReceipt.validation` は候補選択に使った固定validationと一致させる。
+recipeで最終test比較を指定した場合は `EvaluationReceipt.test` も固定testと照合する。
+testを学習やepochの選び直しへ使わない。recipeのない既存経路はvalidation比較を維持する。
 
 `LearningReferences` はintent登録と同じtransactionで入力を保護する。
 `LearningAdapter.input_references()` はsnapshot内のindex・metadata・shardや固定評価の

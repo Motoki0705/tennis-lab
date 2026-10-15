@@ -62,9 +62,13 @@ class FixedEvaluation(Document):
     task: Identifier
     validation: DatasetPartition
     test: DatasetPartition | None
+    recipe: ArtifactRef | None = None
+    original: ArtifactRef | None = None
 
     @_after
     def split_names(self) -> Self:
+        if (self.recipe is None) != (self.original is None):
+            raise ValueError("resolved evaluation requires both original evaluation and recipe")
         if self.validation.split != "validation" or (
             self.test is not None and self.test.split != "test"
         ):
@@ -86,6 +90,7 @@ class LearningIntent(Document):
     recipe: ArtifactRef
     fixed_evaluation: ArtifactRef
     selection_policy: ArtifactRef | None
+    evaluation_recipe: ArtifactRef | None = None
 
     @_after
     def coherent(self) -> Self:
@@ -123,6 +128,7 @@ class EvaluationReceipt(Document):
     baseline: ModelState
     validation: DatasetPartition
     metrics: ArtifactRef
+    test: DatasetPartition | None = None
 
 
 class CompletedStage(Document):

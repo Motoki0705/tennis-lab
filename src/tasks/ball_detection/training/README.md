@@ -76,7 +76,9 @@ coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習�
 位置が既知のobserved GTだけを座標loss/誤差に使う。不明位置には教師を作らない。
 validationは同じclip/frame/FPSを窓中心に近い予測で一度採点し、同距離なら早いstartを使う。
 Commonはpose側とGT/split等のidentityが一致するsubset、Fullは全validation。
-FPSごとの平均source-pixel誤差を等重み平均し、事後学習のbestはclean Commonで選ぶ。testは使わない。
+FPSごとの平均source-pixel誤差を等重み平均する。事後学習のbestは既定ではclean Common、
+新旧cohortを持つ固定manifestでは明示した`balanced_existing_new`で選ぶ。選択にtestは使わない。
+注釈cycleのreplay比率・新旧評価・最終採否は[annotation/](annotation/README.md)を参照する。
 
 `evaluation/fixed_validation.py`は採用MDDと候補の学習manifestが異なる場合も、同じ固定validation loader、
 decoder・precision・compile設定で比較する。採点するFPS/clip/frame集合を教師maskから事前計算し、

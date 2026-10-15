@@ -47,7 +47,7 @@ from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
-def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None) -> tuple[Environment, ArtifactRef, ArtifactRef]:
+def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None, new_splits: tuple[str, ...] = ("train",)) -> tuple[Environment, ArtifactRef, ArtifactRef]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     directory = tmp_path / "data/ball_detection/base"
     for split in ("train", "val", "test"):
@@ -55,23 +55,33 @@ def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, setu
     base = freeze_legacy_store(layout, directory, tuple(
         LegacySourceGroup(source="tracknet", group_id=split, source_id=content_digest(split))
         for split in ("train", "val", "test")))
-    policy = BallPublicationPolicy(jpeg_quality=95,
-        source_splits=(SourceSplit(source_id=content_digest(["local", "fixture"]), split="train"),))
-    env = Environment(layout.root, publication_policy=policy, base_snapshot=base, frame_count=frame_count, **(setup(layout, base) if setup else {}))
-    visible = BallObservation(track_id="ball", state="visible", center=(16., 12.), origin="manual")
-    images = []
-    indices = list(range(1, frame_count - 1))
-    for start in range(0, len(indices), 16):
-        page_indices = tuple(indices[start:start + 16])
-        image = env.page(page_indices)
-        images.append(image)
-        env.apply(BallEdits(images=(image,), operations=tuple(
-            env.replace(i, image, presence="absent" if absent else "present", observations=() if absent else (visible,))
-            for i in page_indices)))
-    adopted = env.adapter.prepare_adoption(env.layout, env.context, env.manifest, env.head(),
-        (env.telemetry(tuple(images)),), reason="synthetic learning-input test")
-    env.store.seal(env.head(), adopted, env.adapter)
-    publication = BallPublisher(layout).publish(PublishRequest(plan=env.plan_ref, product="frames", adoptions=(adopted,)))
+    videos = tuple("fixture" if index == 0 else f"fixture-{index}" for index in range(len(new_splits)))
+    publication_policy = BallPublicationPolicy(jpeg_quality=95,
+        source_splits=tuple(SourceSplit(source_id=content_digest(["local", video]), split=split)
+                            for video, split in zip(videos, new_splits, strict=True)))
+    settings = setup(layout, base) if setup else {}
+    adoptions = []
+    environments = []
+    for video in videos:
+        env = Environment(layout.root, publication_policy=publication_policy, base_snapshot=base,
+                          frame_count=frame_count, video_id=video, actor_attempt=f"first-{video}", **settings)
+        visible = BallObservation(track_id="ball", state="visible", center=(16., 12.), origin="manual")
+        images = []
+        indices = list(range(1, frame_count - 1))
+        for start in range(0, len(indices), 16):
+            page_indices = tuple(indices[start:start + 16])
+            image = env.page(page_indices)
+            images.append(image)
+            env.apply(BallEdits(images=(image,), operations=tuple(
+                env.replace(i, image, presence="absent" if absent else "present", observations=() if absent else (visible,))
+                for i in page_indices)))
+        adopted = env.adapter.prepare_adoption(env.layout, env.context, env.manifest, env.head(),
+            (env.telemetry(tuple(images)),), reason="synthetic learning-input test")
+        env.store.seal(env.head(), adopted, env.adapter)
+        adoptions.append(adopted)
+        environments.append(env)
+    env = environments[0]
+    publication = BallPublisher(layout).publish(PublishRequest(plan=env.plan_ref, product="frames", adoptions=tuple(sorted(adoptions, key=lambda ref: ref.digest))))
     return env, publication, base
 
 

@@ -19,7 +19,7 @@ from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
-from .adapters import LearningAdapter
+from .adapters import EvaluationResolver, LearningAdapter
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -111,7 +111,12 @@ class Learning:
             )
         assert product.publication is not None
         train = adapter.training_partition(self.layout, publication.snapshot)
-        fixed = read_document(self.layout, task.learning.validation, FixedEvaluation)
+        fixed_ref = task.learning.validation
+        if task.learning.evaluation_recipe is not None:
+            if not isinstance(adapter, EvaluationResolver):
+                raise ValueError("task adapter does not support post-publication evaluation recipes")
+            fixed_ref = adapter.resolve_evaluation(self.layout, task.learning, product.publication)
+        fixed = read_document(self.layout, fixed_ref, FixedEvaluation)
         if (
             train.manifest != publication.snapshot
             or train.split != "train"
@@ -120,11 +125,13 @@ class Learning:
             raise ValueError(
                 "training/fixed validation differ from the publication task"
             )
-        if not set(publication.added_clips).issubset(train.clips):
+        if not set(publication.added_clips).intersection(train.clips):
             raise ValueError(
-                "new teachers must be in the cumulative training partition"
+                "new teachers must include the cumulative training partition"
             )
         partitions = (train, fixed.validation, *((fixed.test,) if fixed.test else ()))
+        if not set(publication.added_clips).issubset({clip for part in partitions for clip in part.clips}):
+            raise ValueError("new teachers are missing from the declared train/validation/test partitions")
         check_partitions(*partitions)
         for partition in partitions:
             verify_reference(self.layout, partition.manifest)
@@ -136,8 +143,9 @@ class Learning:
             train=train,
             parent=self.models.adopted_state(task.model),
             recipe=task.learning.recipe,
-            fixed_evaluation=task.learning.validation,
+            fixed_evaluation=fixed_ref,
             selection_policy=task.learning.selection_policy,
+            evaluation_recipe=task.learning.evaluation_recipe,
         )
         verify_inputs(self.layout, intent)
         adapter.validate_intent(self.layout, intent)

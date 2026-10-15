@@ -10,12 +10,17 @@ from unittest.mock import patch
 import torch
 
 from src.tasks.ball_detection.annotation.contracts import MDDCheckpointSpec
+from src.tasks.ball_detection.data.windows.learning.contracts import (
+    BallEvaluationRecipe,
+)
 from src.tasks.ball_detection.data.windows.learning.holdout import freeze_holdout
 from src.tasks.ball_detection.training.annotation.adapter import BallLearningAdapter
 from src.tasks.ball_detection.training.annotation.contracts import (
+    BalancedSelectionPolicy,
     BallLearningRecipe,
     BallSelectionPolicy,
     LearningRuntime,
+    ReplaySampling,
 )
 from src.tasks.ball_detection.training.annotation.inputs import output_reference
 from src.tasks.ball_detection.training.annotation.stages import execute
@@ -131,14 +136,19 @@ class CPUExecutor:
 
 class LearningEnvironment:
     def __init__(
-        self, root: Path, *, selection_policy: BallSelectionPolicy | None = None
+        self, root: Path, *, selection_policy: BallSelectionPolicy | BalancedSelectionPolicy | None = None,
+        cohorts: bool = False,
     ) -> None:
         self.layout = AnnotationLayout.testing(root / "annotation")
 
         def setup(layout: AnnotationLayout, base: ArtifactRef) -> dict[str, Any]:
             parent = full_model_checkpoint(root / "outputs/ball_detection/train/parent")
-            weights = output_reference(layout, parent)
             saved = torch.load(parent, weights_only=True, map_location="cpu")
+            previous_manifest = holdout(layout, base).manifest
+            if cohorts:
+                saved["recipe"]["manifest_sha256"] = previous_manifest.digest
+                torch.save(saved, parent)
+            weights = output_reference(layout, parent)
             spec = MDDCheckpointSpec(
                 checkpoint_schema=saved["schema"],
                 architecture=saved["model_config"],
@@ -177,7 +187,7 @@ class LearningEnvironment:
                 ),
                 epochs=2,
                 freeze_epochs=1,
-                windows_per_epoch=1,
+                windows_per_epoch=5 if cohorts else 1,
                 batch_size=1,
                 seed=42,
                 learning_rate=0.001,
@@ -186,6 +196,7 @@ class LearningEnvironment:
                 log_every=1,
                 preview_clips=0,
                 stress_evaluation=False,
+                replay=ReplaySampling(previously_trained_manifest=previous_manifest, untrained_fraction=.6) if cohorts else None,
             )
             fixed = FixedEvaluation(
                 task="ball",
@@ -198,10 +209,11 @@ class LearningEnvironment:
                 selection_policy=save(layout, selection_policy)
                 if selection_policy is not None
                 else None,
+                evaluation_recipe=save(layout, BallEvaluationRecipe(windows=policy())) if cohorts else None,
             )
             return dict(model=self.parent, learning=learning)
 
-        self.review, publication, _ = publish(root, setup=setup)
+        self.review, publication, _ = publish(root, setup=setup, new_splits=("train", "val", "test") if cohorts else ("train",))
         self.completion = save(
             self.layout,
             CampaignCompletion(
