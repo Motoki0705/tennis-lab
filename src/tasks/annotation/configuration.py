@@ -33,6 +33,7 @@ from src.tasks.base.annotation.plan import (
 from src.tasks.base.annotation.reproducibility import require_frozen_code
 from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
 from src.tasks.base.annotation.resources.contracts import BudgetScope
+from src.tasks.base.annotation.resources.measurements import free_bytes
 from src.tasks.base.annotation.screening.contracts import ScreeningPolicy
 from src.utils.paths import PROJECT_ROOT
 
@@ -48,6 +49,7 @@ class NewBudget(Document):
     action: Literal["create"] = "create"
     scope_id: Identifier
     roots: tuple[str, ...] = Field(min_length=1)
+    free_space_mounts: tuple[str, ...] = ()
     previously_allocated_bytes: int = Field(ge=0)
     previously_used_gpu_seconds: float = Field(ge=0)
     max_pending_per_stage: PositiveInt
@@ -97,6 +99,7 @@ def validate_runtime(
 
 
 def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
+    scope: BudgetScope
     established = isinstance(data.budget, ExistingBudget)
     if isinstance(data.budget, ExistingBudget):
         scope = read_document(layout, data.budget.scope, BudgetScope)
@@ -110,6 +113,7 @@ def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
             scope_id=data.budget.scope_id,
             limits=BudgetLimits.from_budget(data.plan.resources),
             roots=data.budget.roots,
+            free_space_mounts=data.budget.free_space_mounts,
             baseline=ArtifactRef(
                 role="annotation", path="pending", digest="0" * 64, size_bytes=0
             ),
@@ -146,6 +150,7 @@ def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
         raise ValueError(
             "production inventory must include the complete main repository"
         )
+    free_bytes(scope.roots, mounts=scope.free_space_mounts)
     return scope
 
 
@@ -215,6 +220,7 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
                 previously_allocated_bytes=scope.previously_allocated_bytes,
                 previously_used_gpu_seconds=scope.previously_used_gpu_seconds,
                 max_pending_per_stage=scope.max_pending_per_stage,
+                free_space_mounts=tuple(Path(path) for path in scope.free_space_mounts),
             )
         resources.bind(plan)
         runtime = Runtime(

@@ -39,6 +39,7 @@ class BudgetScope(Document):
     scope_id: Identifier
     limits: BudgetLimits
     roots: tuple[str, ...] = Field(min_length=1)
+    free_space_mounts: tuple[str, ...] = ()
     baseline: ArtifactRef
     previously_allocated_bytes: int = Field(ge=0)
     previously_used_gpu_seconds: float = Field(ge=0)
@@ -58,6 +59,14 @@ class BudgetScope(Document):
             if i != j
         ):
             raise ValueError("storage roots must not overlap")
+        mounts = [Path(path) for path in self.free_space_mounts]
+        if len(set(mounts)) != len(mounts) or any(
+            not path.is_absolute() or str(path.resolve()) != str(path)
+            for path in mounts
+        ):
+            raise ValueError(
+                "free-space mounts must be unique normalized absolute paths without symlinks"
+            )
         return self
 
 

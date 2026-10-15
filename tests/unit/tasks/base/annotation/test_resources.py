@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from threading import Barrier, Event
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -32,6 +33,7 @@ from src.tasks.base.annotation.resources import (
 )
 from src.tasks.base.annotation.resources.contracts import BudgetResumption, GPUUsage
 from src.tasks.base.annotation.resources.measurements import (
+    free_bytes,
     gpu_usage,
     process_usage,
     storage_usage,
@@ -71,7 +73,7 @@ def make_plan(
     ref = write_asset(
         layout, layout.path("campaigns", "inputs", "fixture.txt"), b"resource fixture"
     ).model_dump()
-    return CampaignPlan.model_validate_json(
+    result: CampaignPlan = CampaignPlan.model_validate_json(
         json.dumps(
             {
                 "campaign_id": name,
@@ -140,8 +142,16 @@ def make_plan(
     )
 
 
+    return result
+
+
 def manager(
-    layout: AnnotationLayout, plan: CampaignPlan, *, pending: int = 2, prepaid: int = 0
+    layout: AnnotationLayout,
+    plan: CampaignPlan,
+    *,
+    pending: int = 2,
+    prepaid: int = 0,
+    free_space_mounts: tuple[Path, ...] = (),
 ) -> ResourceManager:
     return ResourceManager.create(
         layout,
@@ -151,7 +161,79 @@ def manager(
         previously_allocated_bytes=prepaid,
         previously_used_gpu_seconds=0.0,
         max_pending_per_stage=pending,
+        free_space_mounts=free_space_mounts,
     )
+
+
+def test_host_mount_free_space_does_not_inventory_host_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data, host = tmp_path / "data", tmp_path / "host"
+    data.mkdir()
+    host.mkdir()
+    (data / "data.bin").write_bytes(b"data")
+    baseline = tmp_path / "baseline.jsonl"
+    write_baseline(baseline, (str(data),))
+    statvfs = os.statvfs
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == host)
+    monkeypatch.setattr(
+        os,
+        "statvfs",
+        lambda path: SimpleNamespace(f_bavail=123, f_frsize=4096)
+        if Path(path) == host
+        else statvfs(path),
+    )
+    before = storage_usage(
+        (str(data),), baseline, 0, free_space_mounts=(str(host),)
+    )
+    (host / "virtual-disk.bin").write_bytes(b"x" * 1024**2)
+    after = storage_usage(
+        (str(data),), baseline, 0, free_space_mounts=(str(host),)
+    )
+    assert before == after
+    assert after.additional_bytes == 0
+    assert after.free_bytes == 123 * 4096
+    assert str(host) not in baseline.read_text()
+
+
+@pytest.mark.parametrize("sample_method", ["sample", "watch"])
+def test_host_mount_reserve_stops_full_and_cached_inventory_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sample_method: str
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    host = tmp_path / "host"
+    host.mkdir()
+    available = [1000]
+    statvfs = os.statvfs
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == host)
+    monkeypatch.setattr(
+        os,
+        "statvfs",
+        lambda path: SimpleNamespace(f_bavail=available[0], f_frsize=1)
+        if Path(path) == host
+        else statvfs(path),
+    )
+    plan = make_plan(layout, minimum_free_bytes=100)
+    guard = manager(layout, plan, free_space_mounts=(host,))
+    guard.bind(plan)
+    assert guard.sample().stopped_reason is None
+    available[0] = 99
+    sample = getattr(guard, sample_method)()
+    assert sample is not None
+    assert sample.storage.free_bytes == 99
+    assert sample.stopped_reason == "free storage is below the required reserve"
+    with pytest.raises(BudgetStopped), guard.lease(request(layout, plan, "after-host-disk-filled")):
+        pytest.fail("an exhausted host disk must prevent admission")
+
+
+def test_missing_host_mount_is_not_measured_as_its_parent(tmp_path: Path) -> None:
+    ordinary = tmp_path / "unmounted-host"
+    ordinary.mkdir()
+    with pytest.raises(ValueError, match="required free-space mount is unavailable"):
+        free_bytes((str(tmp_path),), mounts=(str(ordinary),))
+    ordinary.rmdir()
+    with pytest.raises(ValueError, match="required free-space mount is unavailable"):
+        free_bytes((str(tmp_path),), mounts=(str(ordinary),))
 
 
 def request(
@@ -346,6 +428,8 @@ def test_budget_is_immutable_and_campaign_cannot_reset_it(tmp_path: Path) -> Non
     assert manager(layout, plan).reference == first.reference
     with pytest.raises(ValueError, match="immutable|existing|different"):
         manager(layout, plan, prepaid=1)
+    with pytest.raises(ValueError, match="immutable|existing|different"):
+        manager(layout, plan, free_space_mounts=(Path("/"),))
     other = ResourceManager.create(
         layout,
         scope_id="other",
