@@ -1,4 +1,4 @@
-<!-- knowledge-review: 47cbf3c8c0ab67cc38ae3a9e464bdf87e0ec985f274393b8686bf9e0c86baf67 on 2026-10-15 -->
+<!-- knowledge-review: 3186d483917d1ed1ee9c0a1462ac6595c5b0d582b9c97aa8ad8461bf0ce89ffe on 2026-10-15 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-15（#1088の実clip予測経路を確認。BLCS #1044・Court #983の比較判断を保持）
@@ -15,7 +15,8 @@
 
 [新規1clipのMDD予測](nodes/annotation/000001-run-i1088-ball-prediction-pilot-20261015.md)は、
 正式な素材取得・選別・clip準備後、共通の資源管理とGPU queueを通して保存まで完走した。
-実画像での予測品質・教師への採用・追加学習は未確認であり、ball/playerのモデル採用判断は維持する。
+抽出11frameの画像では球近傍の点とずれの両方を確認したが、全対象frameの品質・教師採用・
+追加学習は未確認であり、ball/playerのモデル採用判断は維持する。
 [同じclipのplayer予測](nodes/annotation/000002-run-i1088-player-prediction-pilot-20261015.md)は、
 DINO CUDA拡張をロードできず初期化で停止した。環境整備後の明示retryと両者の画像確認を揃え、
 レビュー範囲・学習条件を合意する。これはモデル品質の比較結果ではない。
