@@ -475,10 +475,10 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
             "status": "not_installed",
             "note": f"{MEMORY_DIR} が存在しない（共有memory未導入）",
         }
-    index = mem_dir / "INDEX.md"
+    summary = mem_dir / "SUMMARY.md"
     entries = []
     for path in sorted(mem_dir.rglob("*.md")):
-        if path == index:
+        if path == summary or path.name == "index.md":
             continue
         rel = path.relative_to(cfg.repo_root)
         head = path.read_text(encoding="utf-8").splitlines()[:15]
@@ -487,8 +487,8 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
         )
     return {
         "status": "ok",
-        "index": _truncate(index.read_text(encoding="utf-8"))
-        if index.is_file()
+        "summary": _truncate(summary.read_text(encoding="utf-8"))
+        if summary.is_file()
         else None,
         "entries": entries[:300],
         "entries_total": len(entries),
