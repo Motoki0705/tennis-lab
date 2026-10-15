@@ -235,9 +235,11 @@ def test_stale_output_is_not_reported_as_success(tmp_path: Path) -> None:
 
 
 def _run_installer(
-    tmp_path: Path, unit_names: list[str], *args: str, systemctl_status: int = 0
+    tmp_path: Path, unit_names: list[str], *args: str, systemctl_status: int = 0,
+    script_in_worktree: bool = False, cwd_in_worktree: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
-    ops = tmp_path / "ops"
+    repo = tmp_path / "repo"
+    ops = repo / ".agents/ops"
     (ops / "demo/systemd").mkdir(parents=True)
     for name in unit_names:
         (ops / "demo/systemd" / name).write_text("[Unit]\n", encoding="utf-8")
@@ -246,6 +248,23 @@ def _run_installer(
         (ROOT / ".agents/ops/install_units.sh").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+
+    def git(*git_args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(repo), "-c", "user.name=test",
+             "-c", "user.email=test@example.com", *git_args],
+            env=env, check=True, capture_output=True,
+        )  # fmt: skip
+
+    git("init", "-q")
+    git("add", ".")
+    git("commit", "-q", "-m", "fixture")
+    worktree = tmp_path / "linked"
+    if script_in_worktree or cwd_in_worktree:
+        git("worktree", "add", "--detach", str(worktree), "HEAD")
+    if script_in_worktree:
+        installer = worktree / ".agents/ops/install_units.sh"
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     calls = tmp_path / "systemctl_calls.txt"
@@ -257,7 +276,8 @@ def _run_installer(
     )
     result = subprocess.run(
         ["bash", str(installer), *args],
-        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        cwd=worktree if cwd_in_worktree else repo,
+        env={**env, "PATH": f"{bin_dir}:{os.environ['PATH']}",
              "XDG_CONFIG_HOME": str(tmp_path / "config")},
         text=True, capture_output=True, check=False,
     )  # fmt: skip
@@ -290,25 +310,36 @@ def test_install_units_propagates_enable_failure(tmp_path: Path) -> None:
 
 
 def test_install_units_creates_missing_unit_dir(tmp_path: Path) -> None:
-    ops = tmp_path / "ops"
-    (ops / "demo/systemd").mkdir(parents=True)
-    (ops / "demo/systemd/demo.service").write_text("[Service]\n", encoding="utf-8")
-    installer = ops / "install_units.sh"
-    installer.write_text(
-        (ROOT / ".agents/ops/install_units.sh").read_text(encoding="utf-8"),
-        encoding="utf-8",
-    )
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    _install_fake(bin_dir, "systemctl", "#!/usr/bin/env bash\nexit 0\n")
-    config = tmp_path / "config"
-
-    result = subprocess.run(
-        ["bash", str(installer)],
-        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
-             "XDG_CONFIG_HOME": str(config)},
-        text=True, capture_output=True, check=False,
-    )  # fmt: skip
+    result, calls = _run_installer(tmp_path, ["demo.service"])
 
     assert result.returncode == 0, result.stderr
-    assert (config / "systemd/user/demo.service").is_symlink()
+    unit = tmp_path / "config/systemd/user/demo.service"
+    assert unit.is_symlink()
+    assert unit.resolve() == tmp_path / "repo/.agents/ops/demo/systemd/demo.service"
+    assert calls.read_text().splitlines() == ["--user daemon-reload"]
+
+
+@pytest.mark.parametrize("cwd_in_worktree", [False, True])
+@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+def test_install_units_rejects_linked_source_before_side_effects(
+    tmp_path: Path, cwd_in_worktree: bool, extra: list[str]
+) -> None:
+    result, calls = _run_installer(
+        tmp_path, ["demo.service", "demo.timer"], *extra,
+        script_in_worktree=True, cwd_in_worktree=cwd_in_worktree,
+    )  # fmt: skip
+
+    assert result.returncode != 0
+    assert "linked worktree" in result.stderr
+    assert not (tmp_path / "config").exists()
+    assert not calls.exists()
+    assert "link demo" not in result.stdout
+
+
+def test_install_units_uses_main_source_when_cwd_is_linked(tmp_path: Path) -> None:
+    result, calls = _run_installer(tmp_path, ["demo.service"], cwd_in_worktree=True)
+
+    assert result.returncode == 0, result.stderr
+    unit = tmp_path / "config/systemd/user/demo.service"
+    assert unit.resolve() == tmp_path / "repo/.agents/ops/demo/systemd/demo.service"
+    assert calls.read_text().splitlines() == ["--user daemon-reload"]
