@@ -10,6 +10,13 @@ Codexのsession/logが外部にある場合もrootとして含める。baseline�
 再起動時はその参照から開く。GPUの予約値は使用率ではなく、ジョブ実行時間の上限秒数。
 複数GPUジョブの同時実行はそれぞれの経過秒を合算する。
 
+`free_space_mounts` は、保存量の走査には加えず空き容量だけを確認するmount pointの一覧。
+たとえばWSLのLinux領域を保持するWindows driveを `/mnt/d` として指定し、Linux内の
+空きとhost側の実空きを両方確認する。`roots` と追加mountの空き容量の最小値を受付と
+watchdogに使う。mount消失やsymlinkへの変更は計測エラーとし、親filesystemへ代替しない。
+この設定もscopeとともに不変保存するため、既存scopeへの追加ではbaselineと累計を保持した
+明示的なscope移行が必要。VHDX自体を保存量のrootへ加えて二重計上しない。
+
 `submit()` は不変planと工程、PSSの予想ピーク、追加保存量、GPU予約時間を固定する。
 同じrequest IDの内容変更や完了後の再実行は拒否する。明示的な再試行には新しいIDが必要。
 待機列、同名工程、Codex合算の枠はcampaign横断で共有し、稼働中planのうち厳しい上限を

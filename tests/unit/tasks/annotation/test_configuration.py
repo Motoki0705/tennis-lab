@@ -186,6 +186,27 @@ def test_configuration_freezes_inputs_without_launching_or_resetting(
     assert not (example.layout.repository / ".training_queue").exists()
 
 
+def test_configuration_freezes_extra_free_space_mount_without_scanning_it(
+    example: Example,
+) -> None:
+    assert isinstance(example.configuration.budget, NewBudget)
+    configured = example.configuration.model_copy(
+        update={
+            "budget": example.configuration.budget.model_copy(
+                update={"free_space_mounts": ("/",)}
+            )
+        }
+    )
+    reference = configure(example.layout, configured)
+    receipt = example.receipt(reference)
+    guard = ResourceManager(example.layout, receipt.scope)
+    assert guard.scope.free_space_mounts == ("/",)
+    assert guard.scope.roots == (str(example.layout.repository),)
+    for line in example.layout.artifact_path(guard.scope.baseline).read_text().splitlines():
+        assert Path(json.loads(line)[3]).is_relative_to(example.layout.repository)
+    assert configure(example.layout, configured) == reference
+
+
 @pytest.mark.parametrize("remove_file", [False, True])
 def test_reuse_retains_file_roots_baseline_and_stop(
     example: Example, remove_file: bool, monkeypatch: pytest.MonkeyPatch
