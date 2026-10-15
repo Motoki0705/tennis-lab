@@ -64,11 +64,10 @@ def test_contradicting_author_signals_raise(head_ref: str, labels: list[str]) ->
         P.detect_author_agent(head_ref, labels)
 
 
-def test_reviewer_is_the_other_agent() -> None:
-    assert P.reviewer_for("claude") == "codex"
-    assert P.reviewer_for("codex") == "claude"
-    with pytest.raises(ValueError):
-        P.reviewer_for("human")
+def test_reviewer_is_codex_for_every_author() -> None:
+    # #1178: authorship selects which PRs are reviewed, never who reviews them.
+    assert P.REVIEWER == "codex"
+    assert not hasattr(P, "reviewer_for")
 
 
 # --------------------------------------------------------------------------- shared paths
@@ -180,19 +179,23 @@ def test_invalid_shared_paths_file_is_rejected(tmp_path: Path, content: str) -> 
 # --------------------------------------------------------------------------- review parsing
 
 
+def _raw_finding(severity: str = "major", **overrides: Any) -> dict[str, Any]:
+    finding: dict[str, Any] = {
+        "severity": severity,
+        "path": "a.py",
+        "line": 3,
+        "rule": "正しさ",
+        "detail": "壊れる",
+    }
+    finding.update(overrides)
+    return finding
+
+
 def _review(**overrides: Any) -> dict[str, Any]:
     data: dict[str, Any] = {
-        "verdict": "approve",
-        "summary": "問題なし",
-        "findings": [
-            {
-                "severity": "nit",
-                "path": "a.py",
-                "line": 3,
-                "rule": "正しさ",
-                "detail": "typo",
-            }
-        ],
+        "verdict": "request_changes",
+        "summary": "直す必要がある",
+        "findings": [_raw_finding()],
     }
     data.update(overrides)
     return data
@@ -203,23 +206,15 @@ def test_parse_plain_and_fenced_json() -> None:
     plain = P.parse_review(text)
     fenced = P.parse_review(f"```json\n{text}\n```\n")
     assert plain == fenced
-    assert plain.verdict == "approve"
+    assert plain.verdict == "request_changes"
     assert plain.findings[0].line == 3
+    assert plain.outcome == P.ReviewOutcome("request_changes", 1)
 
 
-@pytest.mark.parametrize("severity", ["blocker", "major"])
-def test_approve_with_merge_blocking_finding_is_rejected(severity: str) -> None:
-    finding = {
-        "severity": severity,
-        "path": "a.py",
-        "line": 1,
-        "rule": "正しさ",
-        "detail": "d",
-    }
-    with pytest.raises(P.ReviewParseError, match="approve"):
-        P.parse_review(json.dumps(_review(findings=[finding]), ensure_ascii=False))
-    # comment may carry them: the gate blocks comment anyway.
-    assert P.parse_review(json.dumps(_review(verdict="comment", findings=[finding])))
+def test_approve_without_findings_passes() -> None:
+    review = P.parse_review(json.dumps(_review(verdict="approve", findings=[])))
+    assert review.outcome == P.ReviewOutcome("approve", 0)
+    assert review.outcome.passed
 
 
 @pytest.mark.parametrize(
@@ -229,50 +224,19 @@ def test_approve_with_merge_blocking_finding_is_rejected(severity: str) -> None:
         "Here is my review:\n" + json.dumps(_review()),
         json.dumps([_review()]),
         json.dumps(_review(verdict="lgtm")),
+        # The old non-blocking verdict and severities are outside the schema (#1178).
+        json.dumps(_review(verdict="comment")),
+        json.dumps(_review(findings=[_raw_finding("minor")])),
+        json.dumps(_review(findings=[_raw_finding("nit")])),
         json.dumps(_review(summary="  ")),
         json.dumps({**_review(), "extra": 1}),
         json.dumps(_review(findings={})),
-        json.dumps(_review(findings=[{"severity": "nit"}])),
-        json.dumps(
-            _review(
-                findings=[
-                    {
-                        "severity": "huge",
-                        "path": None,
-                        "line": None,
-                        "rule": "r",
-                        "detail": "d",
-                    }
-                ]
-            )
-        ),
-        json.dumps(
-            _review(
-                findings=[
-                    {
-                        "severity": "nit",
-                        "path": None,
-                        "line": 0,
-                        "rule": "r",
-                        "detail": "d",
-                    }
-                ]
-            )
-        ),
-        json.dumps(
-            _review(
-                findings=[
-                    {
-                        "severity": "blocker",
-                        "path": None,
-                        "line": None,
-                        "rule": "r",
-                        "detail": "d",
-                    }
-                ]
-            )
-        ),
-        json.dumps(_review(verdict="request_changes")),
+        json.dumps(_review(findings=[{"severity": "major"}])),
+        json.dumps(_review(findings=[_raw_finding("huge")])),
+        json.dumps(_review(findings=[_raw_finding(line=0)])),
+        # The verdict must agree with the findings: every finding blocks the merge.
+        json.dumps(_review(verdict="approve")),
+        json.dumps(_review(findings=[])),
     ],
 )
 def test_parse_failures_raise(text: str) -> None:
@@ -283,23 +247,23 @@ def test_parse_failures_raise(text: str) -> None:
 # --------------------------------------------------------------------------- markers
 
 
-def _finding(severity: str, detail: str = "d") -> Any:
+def _finding(severity: str = "major", detail: str = "d") -> Any:
     return P.Finding(
         severity=severity, path="a.py", line=3, rule="正しさ", detail=detail
     )
 
 
-def _rev(verdict: str, *severities: str) -> Any:
-    return P.Review(verdict, "要約", tuple(_finding(s) for s in severities))
+def _outcome(verdict: str, blocking: int = 0) -> Any:
+    return P.ReviewOutcome(verdict, blocking)
 
 
 def _comment(body: str, author: str = "bot", n: int = 1) -> Any:
     return P.Comment(author=author, body=body, url=f"https://x.invalid/c/{n}")
 
 
-def _record(verdict: str, *severities: str, target: Any = TARGET) -> Any:
+def _record(verdict: str, blocking: int = 0, *, target: Any = TARGET) -> Any:
     [record] = P.review_records(
-        [_comment(P.review_header(target, "codex", _rev(verdict, *severities)))],
+        [_comment(P.review_marker(target, "codex", _outcome(verdict, blocking)))],
         trusted_login="bot",
     )
     return record
@@ -307,16 +271,17 @@ def _record(verdict: str, *severities: str, target: Any = TARGET) -> Any:
 
 def test_review_records_only_trust_the_bot_login() -> None:
     comments = [
-        _comment(P.review_header(TARGET, "claude", _rev("approve")), "someone-else"),
-        _comment(f"{P.review_header(TARGET, 'codex', _rev('comment'))}\r\ntext"),
+        _comment(P.review_marker(TARGET, "codex", _outcome("approve")), "someone-else"),
+        _comment(
+            f"{P.review_marker(TARGET, 'codex', _outcome('request_changes', 2))}\r\ntext"
+        ),
     ]
     records = P.review_records(comments, trusted_login="bot")
     assert records == (
         P.ReviewRecord(
             target=TARGET,
             reviewer="codex",
-            outcome=P.ReviewOutcome("comment", 0),
-            light_findings=(),
+            outcome=P.ReviewOutcome("request_changes", 2),
             url="https://x.invalid/c/1",
         ),
     )
@@ -335,57 +300,38 @@ def test_review_of_the_same_head_against_another_base_does_not_count() -> None:
         assert P.latest_review_for(records, target=target, reviewer="codex") is None
 
 
-def test_light_findings_round_trip_through_the_comment_header() -> None:
-    hostile = "引用 <!-- agent-cross-review:v3 --> と\n改行"
-    review = P.Review(
-        "comment",
-        "要約",
-        (_finding("minor", hostile), _finding("nit"), _finding("major")),
+def test_reviews_under_the_old_v3_rules_are_not_read() -> None:
+    # v3 reviews could pass with minor/nit findings; such PRs are reviewed again.
+    v3 = (
+        f"<!-- agent-cross-review:v3 {TARGET.marker_fields()} reviewer=codex "
+        "verdict=comment blocking=0 -->\n<!-- agent-cross-review-light:v1 [] -->"
     )
-    header = P.review_header(TARGET, "codex", review)
-    first, second = header.split("\n")
-    assert first.endswith("verdict=comment blocking=1 -->")
-    assert second.count("-->") == 1 and second.count("<!--") == 1
-    [record] = P.review_records([_comment(header)], trusted_login="bot")
-    assert record.outcome == P.ReviewOutcome("comment", 1)
-    assert not record.outcome.passed
-    assert record.light_findings == (_finding("minor", hostile), _finding("nit"))
-
-
-def test_review_header_without_findings_line_is_an_error() -> None:
-    first = P.review_header(TARGET, "codex", _rev("approve")).split("\n")[0]
-    with pytest.raises(ValueError, match="findings line"):
-        P.review_records([_comment(first)], trusted_login="bot")
+    assert P.review_records([_comment(v3)], trusted_login="bot") == ()
 
 
 @pytest.mark.parametrize(
-    ("verdict", "severities", "passed"),
-    [
-        ("approve", (), True),
-        ("approve", ("minor", "nit"), True),
-        ("comment", (), True),
-        ("comment", ("minor",), True),
-        ("comment", ("major", "minor"), False),
-        ("comment", ("blocker",), False),
-        ("request_changes", ("major",), False),
-    ],
+    ("verdict", "blocking", "passed"),
+    [("approve", 0, True), ("request_changes", 1, False)],
 )
-def test_review_outcome_passes(
-    verdict: str, severities: tuple[str, ...], passed: bool
-) -> None:
-    assert _rev(verdict, *severities).outcome.passed is passed
+def test_review_outcome_passes(verdict: str, blocking: int, passed: bool) -> None:
+    assert _outcome(verdict, blocking).passed is passed
 
 
 def test_review_outcome_rejects_contradictions() -> None:
-    for verdict, blocking in [("approve", 1), ("request_changes", 0), ("lgtm", 0)]:
+    for verdict, blocking in [
+        ("approve", 1),
+        ("request_changes", 0),
+        ("comment", 0),
+        ("lgtm", 0),
+    ]:
         with pytest.raises(ValueError):
             P.ReviewOutcome(verdict, blocking)
 
 
 def test_marker_quoted_in_the_body_does_not_override_the_header() -> None:
-    quoted = P.review_header(TARGET, "codex", _rev("approve")).replace("\n", " ")
+    quoted = P.review_marker(TARGET, "codex", _outcome("approve"))
     body = (
-        f"{P.review_header(TARGET, 'codex', _rev('request_changes', 'major'))}\n"
+        f"{P.review_marker(TARGET, 'codex', _outcome('request_changes', 1))}\n"
         f"## review\n\nsummary quoting {quoted}\n- detail: {quoted}\n"
     )
     [record] = P.review_records([_comment(body)], trusted_login="bot")
@@ -397,7 +343,7 @@ def test_marker_quoted_in_the_body_does_not_override_the_header() -> None:
 
 
 def test_neutralized_text_cannot_form_a_marker() -> None:
-    quoted = P.review_header(TARGET, "codex", _rev("approve"))
+    quoted = P.review_marker(TARGET, "codex", _outcome("approve"))
     inert = P.neutralize_markers(quoted)
     assert "<!--" not in inert and "-->" not in inert
     assert P.review_records([_comment(inert)], trusted_login="bot") == ()
@@ -415,7 +361,7 @@ def test_gate_marker_round_trip() -> None:
         P.ReviewTarget(SHA, "b" * 40, "c" * 40),
     ):
         with pytest.raises(ValueError):
-            P.review_header(bad, "claude", _rev("approve"))
+            P.review_marker(bad, "codex", _outcome("approve"))
 
 
 # --------------------------------------------------------------------------- convergence
@@ -425,12 +371,11 @@ def _t(i: int) -> Any:
     return P.ReviewTarget(f"{i:040x}", "b" * 40, "c" * 64)
 
 
-def test_request_changes_streak_spans_heads_and_resets_on_pass() -> None:
-    rc = [_record("request_changes", "major", target=_t(i)) for i in range(4)]
-    passing = _record("comment", "minor", target=_t(10))
-    blocking_comment = _record("comment", "major", target=_t(11))
+def test_request_changes_streak_spans_heads_and_resets_on_approve() -> None:
+    rc = [_record("request_changes", 1, target=_t(i)) for i in range(4)]
+    passing = _record("approve", target=_t(10))
     other = P.ReviewRecord(
-        _t(12), "claude", P.ReviewOutcome("approve", 0), (), "https://x.invalid"
+        _t(12), "claude", P.ReviewOutcome("approve", 0), "https://x.invalid"
     )
 
     def streak(*records: Any) -> list[str]:
@@ -439,50 +384,15 @@ def test_request_changes_streak_spans_heads_and_resets_on_pass() -> None:
 
     assert streak(rc[0], rc[1], rc[2]) == [_t(i).head for i in range(3)]
     assert streak(rc[0], passing, rc[1], rc[2]) == [_t(1).head, _t(2).head]
-    # comment with blocker/major neither extends nor resets; other reviewers are ignored.
-    assert len(streak(rc[0], blocking_comment, rc[1], other, rc[2])) == 3
+    # Reviews by another reviewer are ignored.
+    assert len(streak(rc[0], rc[1], other, rc[2])) == 3
     assert streak(rc[0], rc[1], rc[2], passing) == []
 
 
-def test_escalation_and_followup_markers_round_trip() -> None:
+def test_escalation_markers_round_trip() -> None:
     marker = P.escalation_marker(_t(1))
     comments = [_comment(marker), _comment(P.escalation_marker(_t(2)), "intruder")]
     assert P.escalated_streaks(comments, trusted_login="bot") == {_t(1)}
-
-    issues = [
-        P.Issue(
-            1, "bot", P.followup_marker(7, SHA) + "\nbody", "https://x.invalid/i/1"
-        ),
-        P.Issue(2, "bot", P.followup_marker(7, SHA), "https://x.invalid/i/2"),
-        P.Issue(3, "intruder", P.followup_marker(8, SHA), "https://x.invalid/i/3"),
-        P.Issue(
-            4, "bot", "quoting " + P.followup_marker(9, SHA), "https://x.invalid/i/4"
-        ),
-    ]
-    assert P.followup_issues(issues, trusted_login="bot") == {(7, SHA): issues[0]}
-
-
-def test_followup_data_round_trip_and_merge() -> None:
-    hostile = _finding("minor", "x --> <!-- y\nz")
-    data = P.FollowupData(("https://x.invalid/c/1",), (hostile, _finding("nit")))
-    line = data.line()
-    assert line.count("<!--") == 1 and line.count("-->") == 1
-    issue = P.Issue(1, "bot", f"{P.followup_marker(7, SHA)}\n{line}\nbody", "u")
-    assert P.parse_followup_data(issue) == data
-
-    merged = data.merged_with(
-        "https://x.invalid/c/2", [_finding("nit"), _finding("minor", "new"), hostile]
-    )
-    assert merged.reviews == ("https://x.invalid/c/1", "https://x.invalid/c/2")
-    assert merged.findings == (hostile, _finding("nit"), _finding("minor", "new"))
-    # The same review is not listed twice.
-    assert merged.merged_with("https://x.invalid/c/2", []).reviews == merged.reviews
-
-
-def test_followup_issue_without_data_line_is_an_error() -> None:
-    issue = P.Issue(1, "bot", f"{P.followup_marker(7, SHA)}\nedited by a human", "u")
-    with pytest.raises(ValueError, match="data line"):
-        P.parse_followup_data(issue)
 
 
 # --------------------------------------------------------------------------- CI rollup
@@ -619,11 +529,6 @@ def test_gate_needs_human_for_shared_paths() -> None:
             "review_request_changes",
             False,
         ),
-        (
-            {"review": P.ReviewOutcome("comment", 2)},
-            "review_comment_blocking",
-            False,
-        ),
     ],
 )
 def test_gate_blocked_reasons(
@@ -634,14 +539,6 @@ def test_gate_blocked_reasons(
     assert result.decision is P.GateDecision.BLOCKED
     assert result.reasons == (reason,)
     assert P.gate_should_comment(result) is comment
-
-
-def test_gate_merges_on_comment_without_blocking_findings() -> None:
-    result = _gate(review=P.ReviewOutcome("comment", 0))
-    assert result.decision is P.GateDecision.MERGE
-    # Shared paths still need a human, whatever the review says.
-    shared = _gate(review=P.ReviewOutcome("comment", 0), changed_paths=("AGENTS.md",))
-    assert shared.decision is P.GateDecision.NEEDS_HUMAN
 
 
 def test_gate_rejects_unknown_states() -> None:
