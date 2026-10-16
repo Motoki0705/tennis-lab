@@ -39,6 +39,43 @@ class ServiceBroker:
         self.layout, self.plan, self.maximum_services = layout, plan, maximum_services
         self.operation, self.receipt = operation, receipt
 
+    def _admit_service(
+        self, pool: WorkerPool, attempt: str, service: ServiceRequest
+    ) -> None:
+        registry = pool.ledger.registry
+        registry.initialize(
+            "worker-services.v1",
+            """
+            CREATE TABLE IF NOT EXISTS worker_service_requests (
+                attempt TEXT NOT NULL REFERENCES worker_attempts(id),
+                digest TEXT NOT NULL, request TEXT NOT NULL,
+                PRIMARY KEY (attempt, digest)
+            );
+            """,
+        )
+        encoded = service.canonical_bytes().decode()
+        with registry.transaction() as db:
+            prior = db.execute(
+                "SELECT request FROM worker_service_requests WHERE attempt=? AND digest=?",
+                (attempt, service.sha256),
+            ).fetchone()
+            if prior is not None:
+                if prior["request"] != encoded:
+                    raise ValueError("registered worker service request changed")
+                return
+            count = db.execute(
+                "SELECT count(*) FROM worker_service_requests WHERE attempt=?",
+                (attempt,),
+            ).fetchone()[0]
+            if count >= self.maximum_services:
+                raise ValueError(
+                    "worker exceeded its frozen image-service request count"
+                )
+            db.execute(
+                "INSERT INTO worker_service_requests VALUES (?,?,?)",
+                (attempt, service.sha256, encoded),
+            )
+
     def process(
         self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool
     ) -> None:
@@ -57,7 +94,7 @@ class ServiceBroker:
         directory = Path(launch.directory)
         official = annotation_reference(self.layout, directory / "request.json")
         paths = sorted((directory / "work/service-requests").glob("*.json"))
-        for number, path in enumerate(paths):
+        for path in paths:
             if path.stat().st_size > 32768:
                 raise ValueError("worker service request exceeds 32 KiB")
             service_ref = annotation_reference(self.layout, path)
@@ -71,8 +108,6 @@ class ServiceBroker:
                 continue
             result, error = None, None
             try:
-                if number >= self.maximum_services:
-                    raise ValueError("worker exceeded its frozen service request count")
                 if request.adapter == ScreeningAdapter.name:
                     _service, task, _attempt = preview_input(self.layout, service_ref)
                     if task.prepared_input != request.payload:
@@ -95,6 +130,7 @@ class ServiceBroker:
                     )
                 else:
                     raise ValueError("worker has no registered parent service")
+                self._admit_service(pool, launch.attempt, service)
                 state = self.operation(op)
                 if state["state"] in {
                     "running",
