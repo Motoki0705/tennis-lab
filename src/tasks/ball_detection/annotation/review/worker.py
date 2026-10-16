@@ -121,6 +121,40 @@ class BallRowPage(Document):
     images: tuple[RenderedImage, ...] = Field(max_length=256)
 
 
+class UnusableImageEvidence(Document):
+    actor: ArtifactRef
+    reason: str
+
+
+class UnusableImageEvidencePage(Document):
+    payload: ArtifactRef
+    entries: tuple[UnusableImageEvidence, ...] = Field(min_length=1, max_length=8)
+    next_page: ArtifactRef | None
+
+
+def _evidence_pages(
+    layout: AnnotationLayout,
+    clip_id: str,
+    payload: ArtifactRef,
+    unavailable: dict[ArtifactRef, str],
+) -> ArtifactRef | None:
+    entries = tuple(
+        UnusableImageEvidence(actor=actor, reason=reason)
+        for actor, reason in unavailable.items()
+    )
+    next_page: ArtifactRef | None = None
+    for start in reversed(range(0, len(entries), 8)):
+        page = UnusableImageEvidencePage(
+            payload=payload, entries=entries[start : start + 8], next_page=next_page
+        )
+        next_page = write_document(
+            layout,
+            layout.path("annotations", "ball", clip_id, "image-proof", page.sha256 + ".json"),
+            page,
+        )
+    return next_page
+
+
 class BallReviewServices(BallReviewAdapter):
     def summarize(
         self,
@@ -138,14 +172,14 @@ class BallReviewServices(BallReviewAdapter):
             layout, context, read_document(layout, payload, BallLabels)
         )
         missing = any(states[row.frame_index] == "missing" for row in summary.rows)
+        evidence_page = _evidence_pages(layout, manifest.clip_id, payload, unavailable)
         evidence_actions = (
             (
-                "Unusable image evidence (reconfirm any decisions from these attempts): "
-                + "; ".join(
-                    f"{actor.digest}: {reason}" for actor, reason in unavailable.items()
-                ),
+                f"Unusable image evidence: {len(unavailable)} attempts. "
+                "Reconfirm affected decisions. Read reasons and follow next_page: "
+                + evidence_page.model_dump_json(),
             )
-            if unavailable
+            if evidence_page is not None
             else ()
         )
         return summary.model_copy(
@@ -325,6 +359,8 @@ class BallReviewWorker:
             + policy.model_dump_json()
             + "\n\nInitial bounded handoff:\n"
             + read_handoff(layout, handoff).model_dump_json()
+            + "\n\nAnnotation artifact root (read-only):\n"
+            + str(layout.root)
         )
         return PreparedWorker(
             prompt=write_asset(layout, directory / "prompt.md", prompt.encode())
