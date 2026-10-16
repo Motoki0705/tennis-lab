@@ -11,6 +11,9 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
   記録する。reasoningをoutputへ重ねて足さない。欠測・IDなし・内容が違う重複は
   明示し、不完全な合計をnull、確認できた小計を別欄に残す。記録されたthread/turn累積と
   当該応答の `input + output` によるcontext近似は別値である。
+  応答別usageを一件も観測できないログは、`token_count` 通知の有無によらず全合計をnullにし、
+  索引にも収集欠落を表示する。欠測カウンタは観測した記録内の欠測件数であり、
+  0件でも収集の完全性を示さない。
 - call IDでtool入力と出力を結び、出力を次の一意な応答へ対応付ける。
   境界のない出力、ID欠測直前の出力、compactionで置換されたcontext内の未対応出力は
   orphanとして保持し、後続応答への画像提示を主張しない。分類はversion付きtask adapterが
@@ -21,6 +24,7 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
   同じbytesの候補が複数ある場合は一意なImageView pathも必要で、batch順で推測しない。
   resizeや再圧縮で対応が不明な画像はunboundとし、教師採用の確認範囲に使わない。
 - `presented_images()` は応答へ対応した、元画像との同一性を確認できる参照だけ返す。
+  先にreport全体の参照・hashを検証し、完全性が有効でもモデル欠測/不一致・応答ID競合なら`ImagePresentationUnavailable`で理由を返す。task側はこの例外だけを再確認対象として扱える。
   これは画像の入力証跡であり、ラベルの確認・採用を証明するものではない。
   task adapterが別途レビュー範囲・判断・機械検証を照合する。
 

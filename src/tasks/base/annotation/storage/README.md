@@ -49,7 +49,7 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 | ball review adapter | 各版のlabels、画像/描画要求、actor launch、採用proof、保存済みtelemetryのresponse/HTML/image/event/error |
 | ball/playerの既存store固定 | snapshot manifest、index、metadata、全clip shard |
 | `BallPublisher.publish` | 公開receipt、要求、採用receipt、公開snapshotと全ファイル、base snapshotのファイル |
-| `ModelRegistry.bootstrap/select` | 初期モデルの重み/config/根拠、採否判断、比較したモデルの重み、固定学習入力と評価参照 |
+| `ModelRegistry.bootstrap/select` | 初期モデルの重み/config/根拠、採否判断、比較したモデルの重み、学習・評価の完了記録/receipt/要求/intent、実行receipt/launch/log、campaign完了記録/plan/公開receipt、固定学習・評価入力 |
 | `WorkerLedger.register` / `WorkerPool.start` | 登録済みworkの固定入力、adapterが列挙する依存、processが所有するattempt入力。詳細は[workers](../workers/README.md) |
 | `ResourceManager.submit` / `lease` | 待機・再開用の固定入力と、kernel lease・所有processに結び付く試行入力。詳細は[resources](../resources/README.md)、CPU/GPU起動境界は[execution](../execution/README.md) |
 

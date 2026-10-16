@@ -4,16 +4,19 @@ import json
 import multiprocessing
 import os
 import signal
+import sqlite3
 import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from src.tasks.base.annotation.artifacts import (
+    artifact_lock,
     read_document,
     write_asset,
 )
@@ -505,11 +508,21 @@ def test_final_receipt_recovers_after_database_gap(
             state: str,
             reason: str | None,
             *,
+            attempt: str,
+            from_states: tuple[str, ...] = ("running", "exited"),
             result: ArtifactRef | None = None,
-        ) -> None:
+        ) -> bool:
             if state == "complete":
                 raise RuntimeError("database gap")
-            original(work_id, state, reason, result=result)
+            updated: bool = original(
+                work_id,
+                state,
+                reason,
+                attempt=attempt,
+                from_states=from_states,
+                result=result,
+            )
+            return updated
 
         patch.setattr(pool, "_mark", fail)
         with pytest.raises(RuntimeError, match="database gap"):
@@ -600,6 +613,223 @@ def test_quota_stops_new_work_until_explicit_resume(setup: Setup) -> None:
     pool.start(setup.request, retry=True)
     assert settled(pool, setup.request)["state"] == "complete"
     assert setup.launches() == 2
+
+
+def test_unreconciled_quota_blocks_admission(setup: Setup) -> None:
+    setup.program(quota=True)
+    pool = setup.pool()
+    attempt = pool.start(setup.request)
+    assert attempt is not None
+    pool.children[attempt].wait(timeout=10)
+    second = setup.request.model_copy(update={"subject_id": "d" * 64})
+    with pytest.raises(WorkerStopped, match="usage limit"):
+        setup.pool().start(second)
+    assert pool.ledger.task(setup.request.work_id)["state"] == "quota"
+    assert setup.launches() == 1
+
+
+@pytest.mark.parametrize("admission", [False, True])
+def test_quota_and_campaign_stop_roll_back_together(
+    setup: Setup, admission: bool
+) -> None:
+    setup.program(quota=True)
+    pool = setup.pool()
+    attempt = pool.start(setup.request)
+    assert attempt is not None
+    pool.children[attempt].wait(timeout=10)
+    with pool.ledger.registry.transaction() as database:
+        database.execute(
+            "CREATE TRIGGER interrupt_stop BEFORE INSERT ON worker_campaign_stops "
+            "BEGIN SELECT RAISE(ABORT, 'interrupted campaign stop'); END"
+        )
+    second = setup.request.model_copy(update={"subject_id": "d" * 64})
+    with pytest.raises(sqlite3.IntegrityError, match="interrupted campaign stop"):
+        if admission:
+            pool.start(second)
+        else:
+            pool.reconcile(setup.request)
+    assert pool.ledger.task(setup.request.work_id)["state"] == "running"
+    with pool.ledger.registry.transaction() as database:
+        assert (
+            database.execute(
+                "SELECT state FROM worker_attempts WHERE id=?", (attempt,)
+            ).fetchone()[0]
+            == "running"
+        )
+        assert database.execute("SELECT * FROM worker_campaign_stops").fetchall() == []
+        database.execute("DROP TRIGGER interrupt_stop")
+    with pytest.raises(WorkerStopped, match="usage limit"):
+        setup.pool().start(second)
+    assert pool.ledger.task(setup.request.work_id)["state"] == "quota"
+    assert setup.launches() == 1
+
+
+def test_reconcile_reads_attempt_after_acquiring_lock(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pool, other = setup.pool(), setup.pool()
+    first = pool.start(setup.request)
+    assert first is not None
+    pool.children[first].wait(timeout=10)
+    second = None
+    validated_attempts: list[str] = []
+    original_validate = setup.adapter.validate
+
+    def validate_protected_attempt(*args, **kwargs):
+        _ref, launch = pool._launch(pool.ledger.task(setup.request.work_id))
+        assert args[3] == Path(launch.directory)
+        assert set(launch.prepared.inputs) <= protected(pool)
+        validated_attempts.append(launch.attempt)
+        return original_validate(*args, **kwargs)
+
+    monkeypatch.setattr(setup.adapter, "validate", validate_protected_attempt)
+
+    @contextmanager
+    def interleave(layout, name, *, blocking=True):
+        nonlocal second
+        if name == "worker-" + setup.request.work_id and second is None:
+            with monkeypatch.context() as patch:
+                patch.setattr(
+                    "src.tasks.base.annotation.workers.pool.artifact_lock",
+                    artifact_lock,
+                )
+                setup.adapter.outcome = "deferred"
+                assert other.reconcile(setup.request)["state"] == "deferred"
+                setup.adapter.outcome = "complete"
+                second = other.start(setup.request, retry=True)
+                assert second is not None
+                other.children[second].wait(timeout=10)
+        with artifact_lock(layout, name, blocking=blocking) as descriptor:
+            yield descriptor
+
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.workers.pool.artifact_lock", interleave
+    )
+    state = pool.reconcile(setup.request)
+    assert state["current_attempt"] == second
+    assert state["state"] == "complete"
+    final = read_document(
+        setup.layout, ArtifactRef.model_validate_json(state["result"]), AttemptResult
+    )
+    launch = read_document(setup.layout, final.launch, Launch)
+    assert launch.attempt == second
+    assert setup.adapter.validations == 2
+    assert validated_attempts == [first, second]
+    assert not set(launch.prepared.inputs) & protected(pool)
+    assert setup.request.payload in protected(pool)
+
+
+def test_stale_attempt_update_cannot_release_retry_protection(setup: Setup) -> None:
+    pool = setup.pool()
+    setup.adapter.outcome = "deferred"
+    first = pool.start(setup.request)
+    assert first is not None
+    prior = settled(pool, setup.request)
+    assert prior["state"] == "deferred"
+    prior_result = ArtifactRef.model_validate_json(prior["result"])
+    setup.adapter.outcome = "complete"
+    second = pool.start(setup.request, retry=True)
+    assert second is not None
+    pool.children[second].wait(timeout=10)
+    _ref, launch = pool._launch(pool.ledger.task(setup.request.work_id))
+    assert set(launch.prepared.inputs) <= protected(pool)
+    assert not pool._mark(
+        setup.request.work_id,
+        "deferred",
+        "stale dispatcher result",
+        attempt=first,
+        result=prior_result,
+    )
+    state = pool.ledger.task(setup.request.work_id)
+    assert state["current_attempt"] == second and state["state"] == "running"
+    assert state["result"] is None
+    assert set(launch.prepared.inputs) <= protected(pool)
+    assert settled(pool, setup.request)["state"] == "complete"
+    assert not set(launch.prepared.inputs) & protected(pool)
+    assert setup.request.payload in protected(pool)
+
+
+@pytest.mark.parametrize("finish_retry", [False, True])
+def test_stop_does_not_cancel_concurrent_retry(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch, finish_retry: bool
+) -> None:
+    pool, other = setup.pool(), setup.pool()
+    first = pool.start(setup.request)
+    assert first is not None
+    pool.children[first].wait(timeout=10)
+    original_reconcile = pool.reconcile
+    second = None
+
+    def retry_after_reconcile(request):
+        nonlocal second
+        setup.adapter.outcome = "deferred"
+        current = original_reconcile(request)
+        assert current["state"] == "deferred"
+        setup.adapter.outcome = "complete"
+        second = other.start(request, retry=True)
+        assert second is not None
+        if finish_retry:
+            other.children[second].wait(timeout=10)
+            assert other.reconcile(request)["state"] == "complete"
+        return current
+
+    monkeypatch.setattr(pool, "reconcile", retry_after_reconcile)
+    try:
+        try:
+            state = pool.stop(setup.request, reason="stop only the original attempt")
+        except WorkerBusy:
+            state = pool.ledger.task(setup.request.work_id)
+        assert state["current_attempt"] == second
+        assert state["state"] == ("complete" if finish_retry else "running")
+    finally:
+        if second in other.children:
+            other.children[second].wait(timeout=10)
+    final = other.reconcile(setup.request)
+    assert final["state"] == "complete" and final["result"] is not None
+
+
+def test_stop_does_not_overwrite_completion_after_reconcile(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pool, other = setup.pool(), setup.pool()
+    attempt = pool.start(setup.request)
+    assert attempt is not None
+    pool.children[attempt].wait(timeout=10)
+
+    def complete_after_snapshot(request):
+        snapshot = pool.ledger.task(request.work_id)
+        assert other.reconcile(request)["state"] == "complete"
+        return snapshot
+
+    monkeypatch.setattr(pool, "reconcile", complete_after_snapshot)
+    state = pool.stop(setup.request, reason="completion won the transaction race")
+    assert state["state"] == "complete" and state["result"] is not None
+
+
+def test_settle_dead_slots_preserves_concurrent_completion(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pool, other = setup.pool(), setup.pool()
+    attempt = pool.start(setup.request)
+    assert attempt is not None
+    pool.children[attempt].wait(timeout=10)
+
+    @contextmanager
+    def complete_before_lock(layout, name, *, blocking=True):
+        with monkeypatch.context() as patch:
+            patch.setattr(
+                "src.tasks.base.annotation.workers.pool.artifact_lock", artifact_lock
+            )
+            assert other.reconcile(setup.request)["state"] == "complete"
+        with artifact_lock(layout, name, blocking=blocking) as descriptor:
+            yield descriptor
+
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.workers.pool.artifact_lock", complete_before_lock
+    )
+    pool._settle_dead_slots()
+    state = pool.ledger.task(setup.request.work_id)
+    assert state["state"] == "complete" and state["result"] is not None
 
 
 def test_timeout_and_owned_stop_terminate_descendants(setup: Setup) -> None:
@@ -804,3 +1034,112 @@ print(json.dumps({{"type":"turn.completed","usage":{{}}}}), flush=True)
             if bad_log == "missing"
             else "model" in state["reason"]
         )
+
+
+@pytest.fixture(params=[False, True], ids=["shared", "benchmark"])
+def resource_pool(setup: Setup, request: pytest.FixtureRequest) -> WorkerPool:
+    raw = setup.plan.model_dump(mode="json")
+    raw["resources"]["minimum_free_bytes"] = 1
+    if request.param:
+        raw["phase"] = "benchmark"
+        raw["tasks"][0]["review"] = {
+            key: setup.request.payload.model_dump()
+            for key in ("policy", "preview_evidence", "decision")
+        }
+    plan = CampaignPlan.model_validate_json(json.dumps(raw))
+    resources = ResourceManager.create(
+        setup.layout,
+        scope_id="interrupted-workers",
+        limits=BudgetLimits.from_budget(plan.resources),
+        roots=(setup.layout.repository,),
+        previously_allocated_bytes=0,
+        previously_used_gpu_seconds=0.0,
+        max_pending_per_stage=1,
+    )
+    layout = setup.layout
+    if request.param:
+        layout = layout.for_benchmark(plan.campaign_id)
+    return WorkerPool(
+        layout,
+        plan,
+        (setup.adapter,),
+        test_command=(sys.executable, str(setup.script)),
+        resources=resources,
+        worker_pss_bytes=128 * 1024**2,
+        worker_storage_bytes=1024**2,
+    )
+
+
+@pytest.mark.parametrize("recover_resources_first", [False, True])
+@pytest.mark.parametrize("retry_immediately", [False, True])
+def test_retry_recovers_resource_admission_before_worker_registration(
+    setup: Setup,
+    resource_pool: WorkerPool,
+    monkeypatch: pytest.MonkeyPatch,
+    recover_resources_first: bool,
+    retry_immediately: bool,
+) -> None:
+    resources = resource_pool.resources
+    assert resources is not None
+    original_admit = resources._admit
+
+    def interrupt(request):
+        original_admit(request)
+        raise RuntimeError("dispatcher interrupted after resource admission")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resources, "_admit", interrupt)
+        with pytest.raises(RuntimeError, match="dispatcher interrupted"):
+            resource_pool.start(setup.request)
+    assert setup.launches() == 0
+    resumed_resources = ResourceManager(setup.layout, resources.reference)
+    if recover_resources_first:
+        assert resumed_resources.status()["requests"][0]["state"] == "abandoned"
+    resumed = WorkerPool(
+        resource_pool.layout,
+        resource_pool.plan,
+        (setup.adapter,),
+        test_command=(sys.executable, str(setup.script)),
+        resources=resumed_resources,
+        worker_pss_bytes=resource_pool.worker_pss_bytes,
+        worker_storage_bytes=resource_pool.worker_storage_bytes,
+    )
+    if not retry_immediately:
+        with pytest.raises(WorkerStopped, match="explicit retry"):
+            resumed.start(setup.request)
+    attempt = resumed.start(setup.request, retry=True)
+    assert attempt == setup.request.work_id + "-0002"
+    assert settled(resumed, setup.request)["state"] == "complete"
+    with resumed.ledger.registry.transaction() as database:
+        attempts = database.execute(
+            "SELECT number,state FROM worker_attempts WHERE work_id=? ORDER BY number",
+            (setup.request.work_id,),
+        ).fetchall()
+    assert [tuple(row) for row in attempts] == [(1, "failed"), (2, "complete")]
+    assert sorted(row["state"] for row in resumed_resources.status()["requests"]) == [
+        "abandoned",
+        "complete",
+    ]
+    assert setup.launches() == 1
+
+
+def test_pending_resource_admission_reuses_unlaunched_attempt(
+    setup: Setup, resource_pool: WorkerPool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resources = resource_pool.resources
+    assert resources is not None
+
+    def temporarily_full(_request):
+        raise CapacityUnavailable("fixture capacity is temporarily full")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resources, "_admit", temporarily_full)
+        with pytest.raises(CapacityUnavailable, match="temporarily full"):
+            resource_pool.start(setup.request)
+    requests = resources.status()["requests"]
+    assert len(requests) == 1 and requests[0]["state"] == "pending"
+    assert resource_pool.start(setup.request) == setup.request.work_id + "-0001"
+    assert settled(resource_pool, setup.request)["state"] == "complete"
+    requests = resources.status()["requests"]
+    assert len(requests) == 1 and requests[0]["state"] == "complete"
+    assert setup.launches() == 1
