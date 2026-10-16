@@ -29,6 +29,8 @@ flowchart TD
 選択した相対配置を `migration/archive/<plan digest>/root/` に保持する。変更され得る
 旧ファイルとのhardlinkは作らない。コピー先の想定外entry、symlink、非regular file、
 hash/size不一致は停止理由になる。
+各ブロックの書込み前にもファイル単位の計画サイズを検査する。事前検証後やコピー中に
+元ファイルが増大しても、計画サイズを超えるブロックは書き込まず、一時コピーを削除する。
 
 journalはコピー前に保存する。途中までコピーしたstagingは、同じplanで検証して再利用する。
 再開時はplanのロック下で、そのplan専用の`partials/`に残る一時コピーを新しいコピー前に
