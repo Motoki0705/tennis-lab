@@ -29,6 +29,7 @@ from src.tasks.base.annotation.contracts import (
     PredictionRef,
     SourceIdentity,
 )
+from src.tasks.base.annotation.editing.contracts import ReviewContext
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, save_plan
 from src.tasks.base.annotation.predictions import PredictionContext, PredictionReceipt
@@ -223,15 +224,23 @@ class Fixture:
         condition: int = 0,
         state: str = "running",
         process: ChildIdentity | None = None,
+        request: WorkRequest | None = None,
     ) -> AttemptSnapshot:
         spec, plan = self.conditions[condition], self.plans[condition]
-        request = WorkRequest(
+        request = request or WorkRequest(
             adapter="fixture",
             adapter_version="v1",
             stage="review",
             subject_id=self.manifest.clip_id,
-            payload=self.prediction,
-            inputs=(self.prediction,),
+            payload=self.save(
+                ReviewContext(
+                    plan=spec.plan,
+                    task="fixture",
+                    manifest=self.save(self.manifest),
+                    prediction=self.prediction,
+                )
+            ),
+            inputs=(self.save(self.manifest), self.prediction),
         )
         ledger = WorkerLedger(self.layout)
         ledger.register(plan, request, dependencies=())
