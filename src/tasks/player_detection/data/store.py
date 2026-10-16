@@ -10,10 +10,9 @@ Layout of one dataset version (``data/player_detection/<version>/``)::
 Version 2 retains empty frames and explicitly marks confirmed absence with
 ``confirmed_empty``. Only reviewed target frames with zero instances may carry
 that flag. Empty unconfirmed frames and boxes removed by later filtering never
-become negative teachers. Version 1 remains an explicit positive-only import:
-its missing frames are unknown, and none acquire a negative label on reading.
-Frames keep
-their clip-local ``frame_index`` and the clip's temporal metadata so that
+become negative teachers. The reader accepts only version 2; older stores must
+be explicitly migrated with ``data.migration`` into a separate version 2 store.
+Frames keep their clip-local ``frame_index`` and the clip's temporal metadata so that
 consumers (detection now, ID tracking later) can recover gaps and ordering.
 Per-instance ``track_index`` values index the clip's ``track_ids`` list in
 ``metadata.json``; they are clip-local identities from the annotation and are
@@ -35,7 +34,6 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-LEGACY_SCHEMA_VERSION: Final = "player_detection_frames.v1"
 SCHEMA_VERSION: Final = "player_detection_frames.v2"
 INDEX_FILE: Final = "index.npz"
 METADATA_FILE: Final = "metadata.json"
@@ -53,7 +51,7 @@ SPLIT_CODES: Final[Mapping[str, int]] = {"train": 0, "val": 1, "test": 2}
 SPLIT_NAMES: Final[Mapping[int, str]] = {code: name for name, code in SPLIT_CODES.items()}
 Split = Literal["train", "val", "test"]
 
-LEGACY_FRAME_FIELDS: Final[Mapping[str, type[np.generic]]] = {
+FRAME_FIELDS: Final[Mapping[str, type[np.generic]]] = {
     "clip": np.int32,
     "frame_index": np.int32,
     "source_frame_index": np.int32,
@@ -64,9 +62,6 @@ LEGACY_FRAME_FIELDS: Final[Mapping[str, type[np.generic]]] = {
     "length": np.int64,
     "inst_start": np.int64,
     "inst_count": np.int32,
-}
-FRAME_FIELDS: Final[Mapping[str, type[np.generic]]] = {
-    **LEGACY_FRAME_FIELDS,
     "confirmed_empty": np.bool_,
 }
 INSTANCE_FIELDS: Final[Mapping[str, type[np.generic]]] = {
@@ -149,10 +144,11 @@ class PlayerFrameStore:
         self.directory = directory
         metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
         self.schema_version = metadata["schema_version"]
-        if self.schema_version not in {SCHEMA_VERSION, LEGACY_SCHEMA_VERSION}:
+        if self.schema_version != SCHEMA_VERSION:
             raise ValueError(
                 f"Unsupported player store schema {metadata['schema_version']!r}; "
-                f"expected {SCHEMA_VERSION!r} or explicit legacy {LEGACY_SCHEMA_VERSION!r}"
+                f"expected {SCHEMA_VERSION!r}. Migrate older stores explicitly with "
+                "src.tasks.player_detection.data.migration."
             )
         self.metadata: dict[str, object] = metadata
         self.clips: tuple[ClipRecord, ...] = tuple(
@@ -175,15 +171,12 @@ class PlayerFrameStore:
         )
         with np.load(directory / INDEX_FILE) as data:
             columns = {name: data[name] for name in data.files}
-        fields = LEGACY_FRAME_FIELDS if self.schema_version == LEGACY_SCHEMA_VERSION else FRAME_FIELDS
-        frame_count = _require_columns(columns, fields, extra={}, table="frame")
+        frame_count = _require_columns(columns, FRAME_FIELDS, extra={}, table="frame")
         instance_count = _require_columns(columns, INSTANCE_FIELDS,
             extra={"bbox_xyxy": (np.float32, (4,))}, table="instance")
-        if set(columns) != set(fields) | set(INSTANCE_FIELDS) | {"bbox_xyxy"}:
+        if set(columns) != set(FRAME_FIELDS) | set(INSTANCE_FIELDS) | {"bbox_xyxy"}:
             raise ValueError("Player store contains columns outside its declared schema")
-        self.frames = {name: columns[name] for name in fields}
-        if self.schema_version == LEGACY_SCHEMA_VERSION:
-            self.frames["confirmed_empty"] = np.zeros(frame_count, dtype=np.bool_)
+        self.frames = {name: columns[name] for name in FRAME_FIELDS}
         self.instances = {
             name: columns[name] for name in (*INSTANCE_FIELDS, "bbox_xyxy")
         }
@@ -204,8 +197,6 @@ class PlayerFrameStore:
         counts = self.frames["inst_count"]
         if (counts < 0).any():
             raise ValueError("Player instance counts must be nonnegative")
-        if self.schema_version == LEGACY_SCHEMA_VERSION and (counts == 0).any():
-            raise ValueError("Legacy player store cannot contain empty frames")
         empty = self.frames["confirmed_empty"]
         if (empty & ((counts != 0) | ~self.frames["reviewed"] | ~self.frames["is_target"])).any():
             raise ValueError("Confirmed empty teachers require reviewed target frames with no players")

@@ -7,10 +7,12 @@ from typing import Any
 
 import numpy as np
 
-from src.tasks.player_detection.data.store import (
-    INDEX_FILE,
+from src.tasks.player_detection.data.migration import (
     LEGACY_FRAME_FIELDS,
     LEGACY_SCHEMA_VERSION,
+)
+from src.tasks.player_detection.data.store import (
+    INDEX_FILE,
     METADATA_FILE,
     SHARDS_DIR,
     PlayerFrameStore,

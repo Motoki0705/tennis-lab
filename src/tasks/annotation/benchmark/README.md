@@ -27,9 +27,16 @@ conditionにはComparisonSpecが参照するConditionSpecの `condition_id` を�
 `benchmark-tick` は1回の受付・照合・service処理を行う。`benchmark-run` はそれを反復する。
 同じruntime/conditionで再開し、完了したworkerを再起動しない。runの時間上限は親の処理時間で、
 受付済みsupervisorは自身のtimeoutと資源監視に従う。親の実行を継続してworkerのservice要求を
-処理する。予算停止や観測件数上限では新規受付を止め、稼働workerの停止を要求する。
+処理する。一部workerが失敗・保留でも、停止理由がなく他workerが待機・稼働・結果回収中なら
+`benchmark-run` はservice処理を継続する。予算停止や観測件数上限では新規受付を止め、
+稼働workerの停止を要求する。
 supervisorが起動途中などでまだ停止確認できないworkerは `stopping` と対象IDを返し、
-次のtickで確認を続ける。停止要求だけで全プロセスが終了したとは報告しない。
+次のtickで確認を続ける。supervisor死亡後の所有子プロセスにも停止を試み、未確認の対象を
+残しながら他workerの停止を続ける。停止要求だけで全プロセスが終了したとは報告しない。
+
+観測間隔は直近の保存済みObservationのboot IDと単調時刻から判定し、別プロセスでの
+`benchmark-tick` や同じruntimeの再開でも維持する。bootが変わったときは新たに観測する。
+全worker完了時の最終観測は間隔によらず保存する。
 
 保留・失敗を自動再試行しない。通常CLIと同じRecoveryInputを固定rootへ保存し、
 `benchmark-recover --runtime PATH --sha256 HASH --condition ID --operation PATH` を使う。
@@ -38,5 +45,7 @@ supervisorが起動途中などでまだ停止確認できないworkerは `stopp
 
 条件の完了は `campaigns/<campaign>/benchmark/complete.json` に、入力条件・共通runtime・
 全workerの採用結果・最後の完了観測を結んで保存する。公開・学習の完了receiptには変換しない。
+最終観測の保存後に中断した場合は、その観測と全workerの採用結果を検証して完了保存を再開する。
+観測上限に達していても新規観測を追加せず復旧する。
 追跡/pose・公開・学習の工程別測定、playerレビュー、task品質の評価は後続の実装範囲。
 CPU合成fixtureの通過は実動画・実Codexの10/25/50並列試験を代替しない。

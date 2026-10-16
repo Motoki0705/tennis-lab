@@ -5,7 +5,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from fractions import Fraction
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import av
 import numpy as np
@@ -250,7 +250,14 @@ class PredictionAdapter:
 
 
 class Environment:
-    def __init__(self, root: Path, *, count: int = 8, real_video: bool = False) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        count: int = 8,
+        real_video: bool = False,
+        phase: Literal["preview", "production"] = "production",
+    ) -> None:
         self.layout = AnnotationLayout.testing(root)
         media_path = self.layout.path("clips", "fixture", "media.mp4")
         media_path.parent.mkdir(parents=True)
@@ -336,7 +343,7 @@ class Environment:
             json.dumps(
                 {
                     "campaign_id": "review",
-                    "phase": "production",
+                    "phase": phase,
                     "annotation_root": str(root),
                     "counts": {
                         "channels": 1,
@@ -810,6 +817,42 @@ def test_preview_or_unregistered_prediction_cannot_start_editing(
         db.execute("DELETE FROM annotation_predictions")
     with pytest.raises(ValueError, match="registered prediction"):
         env.store.initialize(env.context, env.adapter)
+
+
+@pytest.mark.parametrize("registered_phase", ["production", "preview"])
+def test_review_rejects_replacement_of_registered_campaign_plan(
+    tmp_path: Path, registered_phase: Literal["preview", "production"]
+) -> None:
+    env = Environment(tmp_path / "annotation", phase=registered_phase)
+    replacement = env.plan.model_copy(update={"phase": "production"})
+    if registered_phase == "production":
+        policy = write_asset(
+            env.layout,
+            env.layout.path("campaigns", "replacement-policy.txt"),
+            b"different teacher adoption rules",
+        )
+        task = env.plan.tasks[0]
+        assert task.review is not None
+        replacement = replacement.model_copy(
+            update={
+                "tasks": (
+                    task.model_copy(
+                        update={"review": task.review.model_copy(update={"policy": policy})}
+                    ),
+                )
+            }
+        )
+    replacement_ref = write_document(
+        env.layout, env.layout.path("campaigns", "replacement-plan.json"), replacement
+    )
+    with pytest.raises(ValueError, match="registered campaign plan"):
+        env.store.initialize(
+            env.context.model_copy(update={"plan": replacement_ref}), env.adapter
+        )
+    with env.store.registry.transaction() as db:
+        assert db.execute("SELECT * FROM annotation_revision_heads").fetchone() is None
+        row = db.execute("SELECT digest FROM campaigns WHERE id='review'").fetchone()
+        assert row["digest"] == env.plan.sha256
 
 
 def test_handoff_final_row_page_can_finish_without_repeating_full_scope(
