@@ -89,11 +89,42 @@ def test_cpu_lightning_saves_bound_best_last_and_exact_export(
     )
 
 
+def test_cpu_training_accepts_fixed_validation_with_two_negative_only_first_batches(
+    synthetic_root: SyntheticRoot, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env = Environment(synthetic_root, validation_positive_frame=4)
+    use_cpu_dino(monkeypatch)
+    inputs = resolve_inputs(env.layout, env.intent)
+    config = inputs.configuration(
+        env.layout, env.intent, run_root(env.layout, env.intent) / "attempt-001", None
+    )
+    data = inputs.datamodule(env.layout, config)
+    assert [sum(len(boxes) for boxes in batch.boxes_xyxy_px) for batch in data.val_dataloader()] == [0, 0, 1]
+    batches = []
+
+    class ValidationCoverage(pl.Callback):
+        def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+            batches.append((trainer.sanity_checking, trainer.current_epoch, batch_idx, len(batch)))
+
+    original = AnnotationPlayerRunner.callbacks_extra
+    monkeypatch.setattr(
+        AnnotationPlayerRunner, "callbacks_extra",
+        lambda *args: [*original(*args), ValidationCoverage()],
+    )
+    pending = env.tick()
+    assert pending.launch is not None
+    receipt = read_document(env.layout, env.executor.finish(pending.launch), TrainingReceipt)
+    env.adapter.validate_training(env.layout, env.intent, receipt)
+    assert batches == [(False, epoch, batch, 2) for epoch in range(2) for batch in range(3)]
+
+
 @pytest.mark.parametrize("configured", [False, True])
+@pytest.mark.parametrize("float_precision", [("highest", False), ("high", True), ("medium", True)])
 def test_cpu_lifecycle_evaluates_same_support_and_keeps_or_adopts_model(
     synthetic_root: SyntheticRoot,
     monkeypatch: pytest.MonkeyPatch,
     configured: bool,
+    float_precision: tuple[str, bool],
 ) -> None:
     policy = PlayerSelectionPolicy(
         minimum_validation_frames=1,
@@ -105,7 +136,7 @@ def test_cpu_lifecycle_evaluates_same_support_and_keeps_or_adopts_model(
         maximum_negative_fp_per_image=1.0,
         minimum_negative_frames=1,
     )
-    env = Environment(synthetic_root, policy=policy if configured else None)
+    env = Environment(synthetic_root, policy=policy if configured else None, float_precision=float_precision)
     use_cpu_dino(monkeypatch)
     training = env.tick()
     assert training.launch is not None
