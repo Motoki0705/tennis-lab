@@ -19,7 +19,7 @@ from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
-from .adapters import EvaluationResolver, LearningAdapter
+from .adapters import EvaluationResolver, LearningAdapter, NoAdditionalTeachers
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -148,7 +148,11 @@ class Learning:
             evaluation_recipe=task.learning.evaluation_recipe,
         )
         verify_inputs(self.layout, intent)
-        adapter.validate_intent(self.layout, intent)
+        eligibility = adapter.validate_intent(self.layout, intent)
+        if isinstance(eligibility, NoAdditionalTeachers):
+            return self._skip(
+                completion_ref, task.task, "no_additional_teachers", eligibility.reason
+            )
         dependencies = adapter.input_references(self.layout, intent)
         directory = self._directory(intent)
         with artifact_lock(
@@ -554,6 +558,14 @@ class Learning:
                 )
                 self.storage.request(restored_ref, restored)
                 return restored_ref
+            if int(current.name) > 1 and not any(
+                (current / name).exists()
+                for name in ("retry.json", "request.json", "failure.json", "completed.json")
+            ):
+                # write_document may create the next directory before publishing
+                # retry.json. Only an explicit retry can recover this gap, and
+                # the immediately preceding attempt must still be a failure.
+                current = root / str(int(current.name) - 1)
             if (
                 not (current / "failure.json").exists()
                 or (current / "completed.json").exists()

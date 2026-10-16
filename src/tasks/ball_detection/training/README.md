@@ -76,6 +76,7 @@ coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習�
 位置が既知のobserved GTだけを座標loss/誤差に使う。不明位置には教師を作らない。
 validationは同じclip/frame/FPSを窓中心に近い予測で一度採点し、同距離なら早いstartを使う。
 Commonはpose側とGT/split等のidentityが一致するsubset、Fullは全validation。
+full_modelの単独CLI評価は`--mode coordinates --split val --manifest <固定validation manifest>`を使い、保存済み`validation_manifest_sha256`と照合する。累積trainのmanifestでは代用できない。
 FPSごとの平均source-pixel誤差を等重み平均する。事後学習のbestは既定ではclean Common、
 新旧cohortを持つ固定manifestでは明示した`balanced_existing_new`で選ぶ。選択にtestは使わない。
 注釈cycleのreplay比率・新旧評価・最終採否は[annotation/](annotation/README.md)を参照する。

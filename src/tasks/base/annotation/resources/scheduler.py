@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import time
 from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -85,13 +87,17 @@ class BudgetStopped(RuntimeError):
 
 class ResourceManager:
     def __init__(self, layout: AnnotationLayout, reference: ArtifactRef) -> None:
+        benchmark = layout.review_namespace is not None
         layout = layout.shared()
         self.layout, self.reference = layout, reference
         self.scope = read_document(layout, reference, BudgetScope)
         self.registry = Registry(layout)
+        if benchmark:
+            self._require_registered_scope()
+            self._baseline_path()
+            return
         self.registry.initialize("annotation.resources.v1", _SCHEMA)
         self.registry.initialize("annotation.observed-host-space.v1", host_space.SCHEMA)
-        self.storage = ResourceReferences(layout)
         self._baseline_path()
         with self.registry.transaction() as db:
             row = db.execute(
@@ -105,6 +111,31 @@ class ResourceManager:
                 "INSERT OR IGNORE INTO resource_scopes(id,reference) VALUES (?,?)",
                 (self.scope.scope_id, encoded),
             )
+
+    @cached_property
+    def storage(self) -> ResourceReferences:
+        # Opening a benchmark scope only verifies existing state. Initialize the
+        # protection tables on its first mutation, outside the caller's transaction.
+        return ResourceReferences(self.layout)
+
+    def _require_registered_scope(self) -> None:
+        error = "benchmark must reuse an exact registered shared scope"
+        if not self.layout.registry.exists():
+            raise ValueError(error)
+        with sqlite3.connect(
+            self.layout.registry.as_uri() + "?mode=ro", uri=True
+        ) as db:
+            table = db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='resource_scopes'"
+            ).fetchone()
+            if table is None:
+                raise ValueError(error)
+            row = db.execute(
+                "SELECT reference FROM resource_scopes WHERE id=?",
+                (self.scope.scope_id,),
+            ).fetchone()
+            if row is None or row[0] != self.reference.canonical_bytes().decode():
+                raise ValueError(error)
 
     def _baseline_path(self) -> Path:
         """Cache verified immutable inventory bytes, invalidated by any file change."""
@@ -295,6 +326,7 @@ class ResourceManager:
             raise ValueError(
                 "GPU stages require a positive time reservation; other stages require zero"
             )
+        storage = self.storage
         with self.registry.transaction() as db:
             row = db.execute(
                 "SELECT request FROM resource_requests WHERE id=?", (self.key(request),)
@@ -304,7 +336,7 @@ class ResourceManager:
                     raise ValueError(
                         "resource request identity was reused with different costs/inputs"
                     )
-                self.storage.register(
+                storage.register(
                     self.key(request),
                     request.plan,
                     plan,
@@ -331,7 +363,7 @@ class ResourceManager:
                     stage.kind,
                 ),
             )
-            self.storage.register(
+            storage.register(
                 self.key(request),
                 request.plan,
                 plan,
@@ -362,8 +394,9 @@ class ResourceManager:
                         continue
                     request = ResourceRequest.model_validate_json(row["request"])
                     missing = row["state"] == "running"
+                    storage = self.storage
                     with self.registry.transaction() as db:
-                        self.storage.settle(row["id"], database=db)
+                        storage.settle(row["id"], database=db)
                         db.execute(
                             "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=?",
                             (
@@ -785,8 +818,9 @@ class ResourceManager:
                 raise CapacityUnavailable(
                     "remaining cumulative GPU budget cannot cover this reservation"
                 )
+            storage = self.storage
             with self.registry.transaction() as db:
-                self.storage.admit(self.key(request), database=db)
+                storage.admit(self.key(request), database=db)
                 db.execute(
                     "UPDATE resource_requests SET state='running' WHERE id=? AND state='pending'",
                     (self.key(request),),

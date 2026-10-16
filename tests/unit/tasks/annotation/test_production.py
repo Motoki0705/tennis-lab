@@ -16,6 +16,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts 
 )
 from src.tasks.base.annotation.artifacts import (
     read_document,
+    write_asset,
     write_document,
 )
 from src.tasks.base.annotation.collection.contracts import (
@@ -53,7 +54,7 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
         from src.tasks.base.annotation.plan import LearningPlan
 
         task = plan.tasks[0]
-        if configured_learning:
+        if configured_learning is True:
             # The orchestration test replaces the learning boundary, not model execution.
             task = task.model_copy(
                 update={
@@ -82,6 +83,7 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
                                 ("render", "cpu"),
                                 ("publish_ball", "cpu"),
                                 ("bootstrap_model", "io"),
+                                ("acquire", "io"),
                                 *(
                                     (name, "gpu")
                                     for name in ("train_ball", "evaluate_ball")
@@ -94,8 +96,108 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
             }
         )
 
+    learning_options: dict[str, Any] = {}
+    if configured_learning in {"absent", "short"}:
+        from src.tasks.ball_detection.data.windows.learning.holdout import (
+            freeze_holdout,
+        )
+        from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+            LegacySourceGroup,
+        )
+        from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot import (
+            freeze_legacy_store,
+        )
+        from src.tasks.ball_detection.training.annotation.contracts import (
+            BallLearningRecipe,
+            LearningRuntime,
+        )
+        from src.tasks.base.annotation.artifacts import write_asset
+        from src.tasks.base.annotation.learning.contracts import FixedEvaluation
+        from src.tasks.base.annotation.plan import LearningPlan
+        from src.utils.paths import PROJECT_ROOT
+        from tests.support.tasks.ball_detection.annotation_learning import (
+            holdout,
+            policy,
+        )
+        from tests.support.tasks.ball_detection.store import (
+            ball,
+            frame,
+            write_store_clip,
+        )
+
+        base = tmp_path / "data/ball_detection/base"
+        for split in ("train", "val", "test"):
+            write_store_clip(
+                base,
+                f"{split}/clip",
+                [frame(i, ball()) for i in range(32)],
+                split=split,
+            )
+        base_ref = freeze_legacy_store(
+            layout,
+            base,
+            tuple(
+                LegacySourceGroup(
+                    source="tracknet", group_id=split, source_id=content_digest(split)
+                )
+                for split in ("train", "val", "test")
+            ),
+        )
+        augmentation = write_asset(
+            layout,
+            layout.path("models", "augmentation.yaml"),
+            (
+                PROJECT_ROOT
+                / "src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml"
+            ).read_bytes(),
+        )
+        recipe = BallLearningRecipe(
+            windows=policy(),
+            augmentation=augmentation,
+            runtime=LearningRuntime(
+                device="cpu",
+                precision="fp32",
+                num_workers=0,
+                pin_memory=False,
+                prefetch_factor=1,
+                cpu_threads=1,
+                compile_mode="off",
+                jpeg_decoder="opencv",
+                image_prefetch=False,
+            ),
+            epochs=2,
+            freeze_epochs=1,
+            windows_per_epoch=1,
+            batch_size=1,
+            seed=42,
+            learning_rate=0.001,
+            encoder_lr_ratio=0.1,
+            warmup_updates=0,
+            log_every=1,
+            preview_clips=0,
+            stress_evaluation=False,
+        )
+        fixed = FixedEvaluation(
+            task="ball",
+            validation=freeze_holdout(layout, holdout(layout, base_ref)),
+            test=None,
+        )
+        learning_options = dict(
+            frame_count=34 if configured_learning == "absent" else 32,
+            base_snapshot=base_ref,
+            learning=LearningPlan(
+                recipe=write_document(
+                    layout, layout.path("models", "recipe.json"), recipe
+                ),
+                validation=write_document(
+                    layout, layout.path("models", "fixed.json"), fixed
+                ),
+                selection_policy=None,
+            ),
+        )
     result = ReviewSession(
         layout.root,
+        **learning_options,
         plan_transform=transform,
         publication_policy=BallPublicationPolicy(
             jpeg_quality=95,
@@ -348,6 +450,94 @@ def test_orchestration_passes_verified_completion_and_frozen_learning_runtime(
     )  # No training or GPU process is submitted.
 
 
+@pytest.mark.parametrize("session", ["absent", "short"], indirect=True)
+def test_production_keeps_publication_and_completes_without_coordinate_teachers(
+    session: ReviewSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.ball_detection.annotation.review.contracts import (
+        BallEdits,
+        ConfirmAbsence,
+    )
+    from src.tasks.ball_detection.data.windows.learning.contracts import TrainingWindows
+    from src.tasks.base.annotation.artifacts import annotation_reference
+    from src.tasks.base.annotation.contracts import FrameRange
+    from src.tasks.base.annotation.learning.contracts import LearningRegistration
+    from src.tasks.base.annotation.workers.review.contracts import EditRequest
+
+    env = session.env
+    absent = len(env.manifest.frames) == 34
+    images = []
+    for start in range(1, len(env.manifest.frames) - 1, 8):
+        stop = min(start + 8, len(env.manifest.frames) - 1)
+        image = session.image(*range(start, stop))
+        images.append(image)
+        if absent:
+            changes = write_document(
+                env.layout,
+                session.directory / "work" / f"absent-{start}.json",
+                BallEdits(
+                    images=(image,),
+                    operations=(
+                        ConfirmAbsence(
+                            scope=FrameRange(start=start, stop=stop),
+                            out_of_frame_tracks=(),
+                            evidence=(image.sha256,),
+                        ),
+                    ),
+                ),
+            )
+            session.call(
+                "review_edit",
+                EditRequest(
+                    expected_revision=env.head(),
+                    changes=changes,
+                    reason="confirmed absent",
+                ),
+            )
+        else:
+            session.confirm(image, start, stop)
+    session.finish(session.evidence(shown=tuple(images)))
+    controller = controller_for(session)
+    assert controller.production is not None
+    initial = controller.production.learning.models.bootstrap(
+        env.plan.tasks[0].model, env.blob
+    )
+    monkeypatch.setattr(
+        controller.production.learning,
+        "tick",
+        lambda *a, **kw: pytest.fail("no learning stage may start"),
+    )
+    deadline = time.monotonic() + 40
+    progress = controller.cycle()["workflow"]
+    while progress["state"] == "publishing" and time.monotonic() < deadline:
+        time.sleep(0.1)
+        progress = controller.cycle()["workflow"]
+    assert progress["state"] == "complete", progress
+    assert progress["learning"]["status"] == "no_additional_teachers"
+    assert progress["completion"] is not None
+    root = env.layout.path("campaigns", env.plan.campaign_id, "learning", "ball")
+    skipped = read_document(
+        env.layout,
+        annotation_reference(env.layout, root / "skipped.json"),
+        LearningRegistration,
+    )
+    assert skipped.status == "no_additional_teachers" and skipped.intent is None
+    (coverage_path,) = (root / "inputs").glob("*/coverage.json")
+    coverage = read_document(
+        env.layout, annotation_reference(env.layout, coverage_path), TrainingWindows
+    )
+    assert coverage.status == "no_additional_coordinate_teachers"
+    assert coverage.old_train_clips == 1 and coverage.added_eligible_windows == 0
+    assert not (root / "intent.json").exists()
+    restored = Controller(env.layout, controller.runtime)
+    assert restored.cycle()["workflow"] == progress
+    assert restored.status()["state"] == "complete"
+    assert len(restored.status()["stages"]) == 1
+    assert restored.production is not None
+    assert restored.production.learning.models.current("ball") == initial
+
+
 def test_worker_recovery_pins_failed_attempt_and_replays_receipt(
     session: ReviewSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -445,10 +635,16 @@ def test_source_and_product_guards_precede_publication(session: ReviewSession) -
 def test_explicit_operation_retry_keeps_history_without_stale_failure(
     session: ReviewSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from src.tasks.annotation.contracts import BootstrapModelOperation, OperationInput
+    from src.tasks.annotation.contracts import (
+        BootstrapModelOperation,
+        OperationInput,
+        OperationReceipt,
+    )
     from src.tasks.base.annotation.contracts import ArtifactRef
     from src.tasks.base.annotation.execution.contracts import StageLaunch
 
+    # This test exercises stage attempts; no review supervisor was launched.
+    session.state("ready")
     controller = controller_for(session)
     env = session.env
     operation = OperationInput(
@@ -485,7 +681,31 @@ def test_explicit_operation_retry_keeps_history_without_stale_failure(
         controller.operation(operation, attempt=3)
     assert controller.operation(operation, attempt=2)["state"] == "running"
     states[operation.sha256 + "-2"] = "succeeded"
-    assert controller.operation(operation)["state"] == "succeeded"
+    success = controller.operation(operation)
+    assert success["state"] == "succeeded"
+    assert any(
+        failure["state"] == "invalid_receipt"
+        for failure in controller.status()["failures"]
+    )
+    launch = read_document(
+        env.layout, ArtifactRef.model_validate(success["launch"]), StageLaunch
+    )
+    assert launch.input is not None
+    verified_result = write_asset(
+        env.layout,
+        env.layout.artifact_path(launch.input).parent / "fixture-result.txt",
+        b"verified stage result",
+    )
+    write_document(
+        env.layout,
+        env.layout.artifact_path(launch.input).parent / "result.json",
+        OperationReceipt(
+            operation=launch.input,
+            status="complete",
+            results=(verified_result,),
+            reason=None,
+        ),
+    )
     reported = controller.status()
     assert reported["failures"] == []
     assert [(row["state"], row["superseded"]) for row in reported["stages"]] == [
@@ -493,6 +713,82 @@ def test_explicit_operation_retry_keeps_history_without_stale_failure(
         ("succeeded", False),
     ]
     assert len(states) == 2
+    # Live status reuses verified receipts; explicit details must detect changes.
+    env.layout.artifact_path(verified_result).write_bytes(b"changed stage result")
+    assert controller.status(details=False)["failures"] == []
+    assert any(
+        row["state"] == "invalid_receipt"
+        for row in controller.status(details=True)["failures"]
+    )
+
+
+def test_acquisition_retry_reuses_logical_operation_and_supersedes_failure(
+    session: ReviewSession,
+) -> None:
+    from src.tasks.annotation.contracts import AcquireOperation, OperationInput
+    from src.tasks.base.annotation.collection.contracts import SourceCandidate
+
+    # Keep the unrelated synthetic review idle while acquisition is retried.
+    session.state("ready")
+    env = session.env
+    controller = controller_for(session)
+    source = env.manifest.source
+    candidate = SourceCandidate(
+        provider="local",
+        channel_id=source.channel_id,
+        video_id=source.video_id,
+        title="synthetic acquisition",
+        origin_url=source.origin_url,
+        selection_reason="retry regression",
+        evidence=env.blob,
+        local_media=source.media,
+    )
+    with controller.collection.ledger.registry.transaction() as db:
+        db.execute(
+            "UPDATE sources SET state='selected',candidate=? WHERE id=?",
+            (candidate.canonical_bytes().decode(), candidate.source_id),
+        )
+    operation = OperationInput(
+        plan=env.plan_ref, operation=AcquireOperation(source_id=candidate.source_id)
+    )
+    media = env.layout.artifact_path(source.media)
+    held = media.with_suffix(".held")
+    media.rename(held)
+
+    def settled() -> dict[str, Any]:
+        deadline = time.monotonic() + 40
+        while True:
+            state = controller.operation(operation)
+            if state["state"] not in {"running", "draining", "pending"}:
+                return state
+            assert time.monotonic() < deadline, state
+            time.sleep(0.1)
+
+    try:
+        assert settled()["state"] == "failed"
+    finally:
+        held.rename(media)
+    assert (
+        controller.collection.ledger.source(env.plan, candidate.source_id)["state"]
+        == "failed"
+    )
+    assert controller.operation(operation)["state"] == "failed"
+    controller.operation(operation, attempt=2)
+    success = settled()
+    assert success["state"] == "succeeded", success
+    assert controller.receipt(success).status == "complete"
+    assert (
+        controller.collection.ledger.source(env.plan, candidate.source_id)["state"]
+        == "acquired"
+    )
+    status = controller.status()
+    assert status["failures"] == []
+    assert [(row["state"], row["superseded"]) for row in status["stages"]] == [
+        ("failed", True),
+        ("succeeded", False),
+    ]
+    with pytest.raises(ValueError, match="failed or interrupted"):
+        controller.operation(operation, attempt=3)
 
 
 def test_bootstrap_is_explicit_and_pins_planned_model(
@@ -804,18 +1100,22 @@ def test_child_delivers_failure_and_retry_does_not_inherit_old_service_failure(
         ref = write_document(env.layout, directory / "launch.json", launch)
         return {"state": "failed", "launch": ref.model_dump()}
 
+    # This stage-only fixture models a live worker without launching a supervisor.
+    assert controller.production is not None
+    pool = controller.production.pool
+    monkeypatch.setattr(pool, "reconcile", lambda request: pool.ledger.task(request.work_id))
     monkeypatch.setattr(controller.stages, "submit", submit)
     state = controller.operation(op)
     launch_ref = ArtifactRef.model_validate(state["launch"])
     monkeypatch.setattr(controller.stages, "status", lambda _ref: state)
+    operation_ref = annotation_reference(env.layout, directory / "operation.json")
     assert controller.status(details=False)["failures"] == [
-        dict(state, superseded=False)
+        dict(state, operation=operation_ref.model_dump(), attempt=1, superseded=False)
     ]
     # A new worker attempt retires only the prior attempt's services.
     session.open(2)
     assert controller.status(details=False)["failures"] == []
     assert controller.status(details=False)["stages"][0]["superseded"]
-    operation_ref = annotation_reference(env.layout, directory / "operation.json")
     monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", operation_ref.digest)
     with pytest.raises(ValueError, match="current running worker attempt"):
         execute(env.layout, operation_ref)
@@ -842,8 +1142,9 @@ def test_child_delivers_failure_and_retry_does_not_inherit_old_service_failure(
     assert launch_ref == ArtifactRef.model_validate(state["launch"])
 
 
+@pytest.mark.parametrize("service_limit", [512, 1])
 def test_bounded_service_session_serves_multiple_requests_under_one_lease(
-    session: ReviewSession, monkeypatch: pytest.MonkeyPatch
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch, service_limit: int
 ) -> None:
     from src.tasks.annotation.contracts import (
         OperationInput,
@@ -874,7 +1175,7 @@ def test_bounded_service_session_serves_multiple_requests_under_one_lease(
         operation=ServiceSessionOperation(
             session=1,
             maximum_requests=2,
-            maximum_services_per_attempt=512,
+            maximum_services_per_attempt=service_limit,
             duration_seconds=3,
         ),
     )
@@ -893,21 +1194,33 @@ def test_bounded_service_session_serves_multiple_requests_under_one_lease(
     receipt_ref = execute(layout, reference)
     receipt = read_document(layout, receipt_ref, OperationReceipt)
     report = read_document(layout, receipt.results[0], SessionReceipt)
-    assert report.reason == "request limit"
-    assert len(report.members) == 2
+    accepted = min(service_limit, 2)
+    if accepted == 2:
+        assert report.reason == "request limit"
+    else:
+        assert report.reason in {"idle", "duration limit"}
+    assert len(report.members) == accepted
     for member_ref in report.members:
         member = read_document(layout, member_ref, MemberReceipt)
         assert member.session == reference and member.result is not None
         reply = read_document(layout, member.reply, ServiceReply)
         assert reply.status == "succeeded"
+    replies = []
     for service_ref in refs:
         path = layout.artifact_path(service_ref)
         reply_ref = annotation_reference(
             layout, session.directory / "services" / path.stem / "reply.json"
         )
-        assert read_document(layout, reply_ref, ServiceReply).result is not None
+        reply = read_document(layout, reply_ref, ServiceReply)
+        replies.append(reply)
+        if reply.status == "failed":
+            assert reply.result is None and "request count" in reply.reason
+        else:
+            assert reply.result is not None
+    assert sum(reply.status == "succeeded" for reply in replies) == accepted
     with controller.resources.registry.transaction() as db:
         assert db.execute("SELECT count(*) FROM resource_requests").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM worker_service_requests").fetchone()[0] == accepted
     # Only the enclosing supervisor may execute the nested operations.
     member = read_document(layout, report.members[0], MemberReceipt)
     monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", member.operation.digest)
