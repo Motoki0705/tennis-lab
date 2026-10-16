@@ -737,3 +737,103 @@ def test_worker_budget_admission_precedes_process_launch(setup: Setup) -> None:
         pool.start(setup.request)
     assert setup.launches() == 0
     assert resources.status()["requests"][0]["reason"] == "PSS reservations do not fit"
+
+
+@pytest.fixture
+def resource_pool(setup: Setup) -> WorkerPool:
+    raw = setup.plan.model_dump(mode="json")
+    raw["resources"]["minimum_free_bytes"] = 1
+    plan = CampaignPlan.model_validate_json(json.dumps(raw))
+    resources = ResourceManager.create(
+        setup.layout,
+        scope_id="interrupted-workers",
+        limits=BudgetLimits.from_budget(plan.resources),
+        roots=(setup.layout.repository,),
+        previously_allocated_bytes=0,
+        previously_used_gpu_seconds=0.0,
+        max_pending_per_stage=1,
+    )
+    return WorkerPool(
+        setup.layout,
+        plan,
+        (setup.adapter,),
+        test_command=(sys.executable, str(setup.script)),
+        resources=resources,
+        worker_pss_bytes=128 * 1024**2,
+        worker_storage_bytes=1024**2,
+    )
+
+
+@pytest.mark.parametrize("recover_resources_first", [False, True])
+@pytest.mark.parametrize("retry_immediately", [False, True])
+def test_retry_recovers_resource_admission_before_worker_registration(
+    setup: Setup,
+    resource_pool: WorkerPool,
+    monkeypatch: pytest.MonkeyPatch,
+    recover_resources_first: bool,
+    retry_immediately: bool,
+) -> None:
+    resources = resource_pool.resources
+    assert resources is not None
+    original_admit = resources._admit
+
+    def interrupt(request):
+        original_admit(request)
+        raise RuntimeError("dispatcher interrupted after resource admission")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resources, "_admit", interrupt)
+        with pytest.raises(RuntimeError, match="dispatcher interrupted"):
+            resource_pool.start(setup.request)
+    assert setup.launches() == 0
+    resumed_resources = ResourceManager(setup.layout, resources.reference)
+    if recover_resources_first:
+        assert resumed_resources.status()["requests"][0]["state"] == "abandoned"
+    resumed = WorkerPool(
+        setup.layout,
+        resource_pool.plan,
+        (setup.adapter,),
+        test_command=(sys.executable, str(setup.script)),
+        resources=resumed_resources,
+        worker_pss_bytes=resource_pool.worker_pss_bytes,
+        worker_storage_bytes=resource_pool.worker_storage_bytes,
+    )
+    if not retry_immediately:
+        with pytest.raises(WorkerStopped, match="explicit retry"):
+            resumed.start(setup.request)
+    attempt = resumed.start(setup.request, retry=True)
+    assert attempt == setup.request.work_id + "-0002"
+    assert settled(resumed, setup.request)["state"] == "complete"
+    with resumed.ledger.registry.transaction() as database:
+        attempts = database.execute(
+            "SELECT number,state FROM worker_attempts WHERE work_id=? ORDER BY number",
+            (setup.request.work_id,),
+        ).fetchall()
+    assert [tuple(row) for row in attempts] == [(1, "failed"), (2, "complete")]
+    assert sorted(row["state"] for row in resumed_resources.status()["requests"]) == [
+        "abandoned",
+        "complete",
+    ]
+    assert setup.launches() == 1
+
+
+def test_pending_resource_admission_reuses_unlaunched_attempt(
+    setup: Setup, resource_pool: WorkerPool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resources = resource_pool.resources
+    assert resources is not None
+
+    def temporarily_full(_request):
+        raise CapacityUnavailable("fixture capacity is temporarily full")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resources, "_admit", temporarily_full)
+        with pytest.raises(CapacityUnavailable, match="temporarily full"):
+            resource_pool.start(setup.request)
+    requests = resources.status()["requests"]
+    assert len(requests) == 1 and requests[0]["state"] == "pending"
+    assert resource_pool.start(setup.request) == setup.request.work_id + "-0001"
+    assert settled(resource_pool, setup.request)["state"] == "complete"
+    requests = resources.status()["requests"]
+    assert len(requests) == 1 and requests[0]["state"] == "complete"
+    assert setup.launches() == 1

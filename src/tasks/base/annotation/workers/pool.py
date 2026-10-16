@@ -209,6 +209,72 @@ class WorkerPool:
                     "attempt still has owned processes, including orphaned descendants"
                 )
 
+    def _recover_unregistered_attempt(self, request: WorkRequest) -> None:
+        """Account for a resource admission interrupted before worker registration.
+
+        The caller holds both admission and work locks. Pending requests have never
+        acquired resources and retain their ID for normal backpressure retries.
+        """
+        if self.resources is None:
+            return
+        with self.ledger.registry.transaction() as database:
+            number = (
+                database.execute(
+                    "SELECT count(*) FROM worker_attempts WHERE work_id=?",
+                    (request.work_id,),
+                ).fetchone()[0]
+                + 1
+            )
+        attempt = f"{request.work_id}-{number:04d}"
+        path = self.layout.path(
+            "campaigns",
+            self.plan.campaign_id,
+            "workers",
+            request.work_id,
+            f"attempt-{number:04d}",
+            "launch.json",
+        )
+        if not path.exists():
+            return
+        ref = annotation_reference(self.layout, path)
+        launch = read_document(self.layout, ref, Launch)
+        if (
+            (launch.work_id, launch.attempt, launch.request, launch.resource_scope)
+            != (request.work_id, attempt, request, self.resources.reference)
+            or load_plan(verify_reference(self.layout, launch.plan)) != self.plan
+            or launch.resource_request is None
+        ):
+            raise ValueError("unregistered launch differs from the worker request")
+        with self.ledger.registry.transaction() as database:
+            resource = database.execute(
+                "SELECT request,state FROM resource_requests WHERE id=?",
+                (self.resources.key(launch.resource_request),),
+            ).fetchone()
+            if resource is None:
+                return
+            if (
+                resource["request"]
+                != launch.resource_request.canonical_bytes().decode()
+            ):
+                raise ValueError("unregistered launch has a different resource request")
+            if resource["state"] == "pending":
+                return
+            reason = "resource admission interrupted before worker registration"
+            database.execute(
+                "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
+                (
+                    attempt,
+                    request.work_id,
+                    number,
+                    ref.canonical_bytes().decode(),
+                    reason,
+                ),
+            )
+            database.execute(
+                "UPDATE worker_tasks SET state='failed',current_attempt=?,reason=?,result=NULL WHERE id=?",
+                (attempt, reason, request.work_id),
+            )
+
     def start(self, request: WorkRequest, *, retry: bool = False) -> str | None:
         self.register(request)
         # Registration is idempotent; successful results and pending finalization never rerun a model.
@@ -227,6 +293,7 @@ class WorkerPool:
                     self.layout, "worker-" + request.work_id, blocking=False
                 ) as descriptor,
             ):
+                self._recover_unregistered_attempt(request)
                 self._settle_dead_slots()
                 row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:
@@ -331,9 +398,6 @@ class WorkerPool:
                         storage_bytes=self.worker_storage_bytes,
                         gpu_seconds=0.0,
                     )
-                    resource_descriptor = resource_stack.enter_context(
-                        self.resources.lease(resource_request)
-                    )
                 launch = Launch(
                     work_id=request.work_id,
                     attempt=attempt,
@@ -359,6 +423,10 @@ class WorkerPool:
                     else None,
                 )
                 ref = write_document(self.layout, directory / "launch.json", launch)
+                if self.resources is not None and resource_request is not None:
+                    resource_descriptor = resource_stack.enter_context(
+                        self.resources.lease(resource_request)
+                    )
                 with self.ledger.registry.transaction() as database:
                     database.execute(
                         "INSERT INTO worker_attempts VALUES (?,?,?,'running',?,NULL)",
