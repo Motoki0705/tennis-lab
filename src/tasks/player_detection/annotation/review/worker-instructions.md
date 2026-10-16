@@ -15,7 +15,9 @@ stated PYTHONPATH. Keep full JSON artifacts out of tool messages.
    and exact row digests before replacing them. Use a fresh
    handoff after revision conflicts. Preserve original and added observation IDs.
    `image_proof=missing` requires re-viewing evidence and explicitly replacing
-   the decision. `pending_current_attempt` is checked after exit; `verified`
+   the decision. The handoff's `image_proof_reason` and the row page's aligned
+   `image_proof_reasons` explain missing prior evidence, including incomplete
+   model metadata or conflicting response IDs. `pending_current_attempt` is checked after exit; `verified`
    denotes actual image bytes already verified for the prior reviewer.
 2. `review_image` takes `expected_revision`, `drawing` (`plain`, `prediction`,
    `revision`), `tiles` (up to 16 `{frame_index,crop}`), `columns` (1..4),
@@ -43,6 +45,8 @@ stated PYTHONPATH. Keep full JSON artifacts out of tool messages.
      (name the retained player with `duplicate_of`), or `unresolved`. Do not
      silently drop rejected candidates or previously added observations.
      Correct/add/remove bbox by replacing the corresponding observation decision.
+     Removal needs detailed evidence of the latest corrected bbox, including
+     observations that originated from a model proposal.
      Original observations keep `observation_id=proposal_id`, `manual_id=null`.
      Added observations use `proposal_id=null`, a stable local `manual_id`, and
      `manual_observation_id(clip_id, frame_index, manual_id)` from the contracts.

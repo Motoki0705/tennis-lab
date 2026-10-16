@@ -33,9 +33,9 @@ from .evidence import (
     catalog,
     check_actor,
     check_frame_images,
-    check_manual_removal_images,
+    check_removal_images,
     lineage,
-    manual_box_history,
+    observation_box_history,
     prove_review,
 )
 from .validation import (
@@ -150,7 +150,7 @@ class PlayerReviewAdapter:
             predictions,
             saved,
             command.actor,
-            manual_boxes=manual_box_history(layout, revisions),
+            observation_boxes=observation_box_history(layout, revisions, predictions),
         )
         self.validate(layout, context, manifest, result.payload)
         return result
@@ -177,9 +177,9 @@ class PlayerReviewAdapter:
             predictions,
             allowed_revisions=revisions,
         )
-        history = manual_box_history(layout, revisions)
+        history = observation_box_history(layout, revisions, predictions)
         for frame in labels.frames:
-            check_manual_removal_images(frame, manifest, policy, saved, history)
+            check_removal_images(frame, manifest, policy, saved, history)
         evidence = prove_review(
             layout, context, manifest, revision, labels, proof, saved
         )

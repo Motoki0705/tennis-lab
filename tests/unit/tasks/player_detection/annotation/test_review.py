@@ -434,7 +434,7 @@ def added_player(env: Environment, name: str, box: Box) -> PlayerObservation:
     )
 
 
-def half_frame(env: Environment):
+def half_frame(env: Environment, index: int = 2):
     return render_page(
         env.layout,
         RenderRequest(
@@ -443,12 +443,204 @@ def half_frame(env: Environment):
             annotation_kind="prediction",
             drawing="plain",
             reason="half size full frame",
-            tiles=(Tile(frame_index=2, crop=Crop(left=0, top=0, right=64, bottom=32)),),
+            tiles=(
+                Tile(frame_index=index, crop=Crop(left=0, top=0, right=64, bottom=32)),
+            ),
             columns=1,
             tile_width=32,
             tile_height=32,
         ),
     )
+
+
+@pytest.mark.parametrize("boundary", ["edit", "adoption"])
+@pytest.mark.parametrize("classification", ["non_player", "duplicate"])
+@pytest.mark.parametrize("partial", [False, True])
+def test_corrected_proposal_removal_requires_latest_bbox_detail(
+    tmp_path: Path,
+    boundary: str,
+    classification: str,
+    partial: bool,
+) -> None:
+    env = Environment(
+        tmp_path / "annotation",
+        minimum_image_scale=1.0,
+        minimum_full_frame_image_scale=0.5,
+    )
+    original, retained = sorted(
+        proposals(env), key=lambda item: item.confidence, reverse=True
+    )
+    corrected = manual(original, box={"x1": 27.0, "y1": 5.0, "x2": 36.0, "y2": 30.0})
+    full = env.page((1,))
+    env.apply(
+        PlayerEdits(
+            operations=(
+                env.replace(
+                    1,
+                    full,
+                    observations=tuple(
+                        sorted(
+                            (corrected, retained), key=lambda item: item.observation_id
+                        )
+                    ),
+                ),
+            ),
+            images=(full,),
+        )
+    )
+    previous = env.head()
+    first_proof = env.telemetry((full,))
+    env.actor = env.new_actor("removing-worker")
+    overview = half_frame(env, 1)
+    # Both original candidates are fully visible in detailed crops, but the
+    # corrected bbox is either missing or only partially included.
+    images = (
+        overview,
+        env.page(
+            (1,), crop=Crop(left=0, top=0, right=32 if partial else 26, bottom=32)
+        ),
+        env.page((1,), crop=Crop(left=37, top=0, right=64, bottom=32)),
+    )
+    removed = manual(
+        corrected,
+        classification=classification,
+        box_state="not_applicable",
+        box=None,
+        duplicate_of=retained.observation_id if classification == "duplicate" else None,
+    )
+    remaining = retained if classification == "duplicate" else reject(retained)
+    operation = env.replace(
+        1,
+        overview,
+        observations=tuple(
+            sorted((removed, remaining), key=lambda item: item.observation_id)
+        ),
+    )
+    operation = operation.model_copy(
+        update={
+            "decision": operation.decision.model_copy(
+                update={"evidence": tuple(image.sha256 for image in images)},
+            )
+        }
+    )
+    edits = PlayerEdits(operations=(operation,), images=images)
+    if boundary == "edit":
+        with pytest.raises(ValueError, match="fully contained"):
+            env.apply(edits)
+        assert env.head() == previous
+    else:
+        # Test an already persisted pre-fix removal without relying on the
+        # edit gate: adoption must independently inspect the corrected bbox.
+        labels = env.labels()
+        frames = list(labels.frames)
+        frames[1] = frames[1].model_copy(
+            update={"decision": operation.decision, "review_actor": env.actor}
+        )
+        payload = labels.model_copy(
+            update={"frames": tuple(frames), "images": (*labels.images, *images)}
+        )
+        node = read_document(env.layout, previous, Revision)
+        historical = env.save(
+            Revision(
+                context=env.context_ref,
+                sequence=node.sequence + 1,
+                previous=previous,
+                payload=env.save(payload),
+                command=env.save(env.command(edits)),
+            )
+        )
+        second_proof = env.telemetry(images)
+        with pytest.raises(ValueError, match="fully contained"):
+            env.adapter.prepare_adoption(
+                env.layout,
+                env.context,
+                env.manifest,
+                historical,
+                (first_proof, second_proof),
+                reason="corrected proposal removal",
+            )
+
+
+@pytest.mark.parametrize("show_detail", [False, True])
+def test_corrected_proposal_removal_adoption_requires_own_detail(
+    tmp_path: Path,
+    show_detail: bool,
+) -> None:
+    env = Environment(
+        tmp_path / "annotation",
+        minimum_image_scale=1.0,
+        minimum_full_frame_image_scale=0.5,
+    )
+    original, retained = sorted(
+        proposals(env), key=lambda item: item.confidence, reverse=True
+    )
+    corrected = manual(original, box={"x1": 27.0, "y1": 5.0, "x2": 36.0, "y2": 30.0})
+    full = env.page((1,))
+    env.apply(
+        PlayerEdits(
+            operations=(
+                env.replace(
+                    1,
+                    full,
+                    observations=tuple(
+                        sorted(
+                            (corrected, retained), key=lambda item: item.observation_id
+                        )
+                    ),
+                ),
+            ),
+            images=(full,),
+        )
+    )
+    first_proof = env.telemetry((full,))
+    env.actor = env.new_actor("removing-worker")
+    overview = half_frame(env, 1)
+    # Only the latest bboxes need detail; the obsolete original is outside.
+    detail = env.page((1,), crop=Crop(left=27, top=0, right=64, bottom=32))
+    operation = env.replace(
+        1,
+        overview,
+        observations=tuple(
+            sorted(
+                (reject(corrected), reject(retained)),
+                key=lambda item: item.observation_id,
+            )
+        ),
+    )
+    operation = operation.model_copy(
+        update={
+            "decision": operation.decision.model_copy(
+                update={"evidence": (overview.sha256, detail.sha256)},
+            )
+        }
+    )
+    env.apply(PlayerEdits(operations=(operation,), images=(overview, detail)))
+    proof = env.telemetry(
+        (overview, detail), shown=(overview, detail) if show_detail else (overview,)
+    )
+    if not show_detail:
+        with pytest.raises(ValueError, match="actually shown"):
+            env.adapter.prepare_adoption(
+                env.layout,
+                env.context,
+                env.manifest,
+                env.head(),
+                (first_proof, proof),
+                reason="unseen detail",
+            )
+    else:
+        adopted = env.adapter.prepare_adoption(
+            env.layout,
+            env.context,
+            env.manifest,
+            env.head(),
+            (first_proof, proof),
+            reason="seen corrected bbox",
+        )
+        receipt = read_document(env.layout, adopted, AdoptionReceipt)
+        mask = read_document(env.layout, receipt.teacher_mask, PlayerTeacherMask)
+        assert mask.rows[1].supervision == "negative"
+        env.store.seal(env.head(), adopted, env.adapter)
 
 
 @pytest.mark.parametrize("classification", ["non_player", "duplicate"])

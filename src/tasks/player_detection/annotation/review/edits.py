@@ -18,9 +18,9 @@ from .contracts import (
 )
 from .evidence import (
     Catalog,
-    ManualBoxes,
-    check_manual_removal_images,
-    remember_manual_boxes,
+    ObservationBoxes,
+    check_removal_images,
+    remember_observation_boxes,
 )
 from .validation import ranges, resolved
 
@@ -43,7 +43,7 @@ def apply_operations(
     saved: Catalog,
     actor: ArtifactRef,
     *,
-    manual_boxes: ManualBoxes,
+    observation_boxes: ObservationBoxes,
 ) -> ChangeResult:
     frames = list(labels.frames)
     for operation in edits.operations:
@@ -69,10 +69,10 @@ def apply_operations(
                     "review_actor": actor if operation.decision.reviewed else None,
                 }
             )
-            check_manual_removal_images(
-                frames[index], manifest, policy, saved, manual_boxes
+            check_removal_images(
+                frames[index], manifest, policy, saved, observation_boxes
             )
-            remember_manual_boxes(manual_boxes, index, operation.decision)
+            remember_observation_boxes(observation_boxes, index, operation.decision)
         elif isinstance(operation, (ConfirmPredictions, ConfirmEmpty)):
             if operation.scope.stop > len(frames):
                 raise ValueError("confirmation range lies outside the clip")
