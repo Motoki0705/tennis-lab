@@ -64,6 +64,8 @@ test rootやtest commandは必ずsyntheticとして分離する。
   計測間隔やmonotonic時刻がない保存計測の古さは、欠測数を報告する。
 - usageはattempt/thread/response IDの一意な記録から集計する。通知件数をAPI回数にしない。
   reportやIDやmetricが欠ければ合計をnullにし、確認できた小計を保持する。
+  reportはあるが応答別記録が0件のattemptは `unobserved_response_attempts` に数え、
+  他のattemptで応答を観測していても合計と正確なAPI応答数をnullにする。
   画像は重複込みbytesとhashで重複を除いたbytesを分け、prompt/toolの文字数、操作分類、
   compaction、対応不能なtool出力も併記する。操作分類の意味はtask adapterが所有する。
 
