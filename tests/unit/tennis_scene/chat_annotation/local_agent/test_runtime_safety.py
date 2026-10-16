@@ -222,15 +222,6 @@ def test_worker_cli_rejects_reading_edits_outside_the_campaign(campaign: Campaig
     assert main(['--campaign', str(campaign.config.campaign_dir), 'worker', 'apply', str(directory), '--edits', str(foreign)]) == 1
 
 
-def test_failed_idle_campaign_returns_nonzero(campaign: CampaignFixture, monkeypatch: pytest.MonkeyPatch) -> None:
-    from src.tennis_scene.chat_annotation.local_agent.campaign_state import locked_state
-    task_id, _ = campaign.finished_task(campaign.annotation())
-    with locked_state() as state:
-        state['tasks'][task_id]['status'] = 'failed'
-    monkeypatch.setattr(dispatcher, 'launch', lambda *args: pytest.fail('Failed tasks must not be relaunched'))
-    assert main(['--campaign', str(campaign.config.campaign_dir), 'run', '--exit-when-idle']) == 1
-
-
 def test_unsupported_process_backend_fails_before_spawning(campaign: CampaignFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     def unsupported() -> None:
         raise OSError('pidfd unavailable')

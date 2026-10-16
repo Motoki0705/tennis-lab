@@ -31,7 +31,7 @@ from src.tasks.base.annotation.handoff import (
 from src.tasks.base.annotation.images.contracts import Point, RenderRequest, Tile
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan
-from src.tasks.base.annotation.telemetry.capture import presented_images, verify_report
+from src.tasks.base.annotation.telemetry.capture import verify_report
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import (
     ExitReceipt,
@@ -54,6 +54,7 @@ from src.utils.paths import PROJECT_ROOT
 
 from .adapter import BallReviewAdapter
 from .contracts import BallFrame, BallLabels
+from .evidence import review_images
 from .validation import inputs
 
 ProofState = Literal["unreviewed", "verified", "pending_current_attempt", "missing"]
@@ -63,7 +64,7 @@ def proof_states(
     layout: AnnotationLayout,
     context: ReviewContext,
     labels: BallLabels,
-) -> dict[int, ProofState]:
+) -> tuple[dict[int, ProofState], dict[ArtifactRef, str]]:
     plan = read_document(layout, context.plan, CampaignPlan)
     context_ref = annotation_reference(
         layout, layout.path("annotations", "ball", labels.clip_id, "context.json")
@@ -80,9 +81,12 @@ def proof_states(
     history = ledger.history(plan, work)
     current = ledger.task(work.work_id)["current_attempt"]
     proven, pending = {}, set()
+    unavailable: dict[ArtifactRef, str] = {}
     for attempt in history:
         if attempt.telemetry is not None:
-            proven[attempt.launch] = set(presented_images(layout, attempt.telemetry))
+            proven[attempt.launch], reason = review_images(layout, attempt.telemetry)
+            if reason is not None:
+                unavailable[attempt.launch] = reason
         elif attempt.state == "running" and attempt.execution is None:
             from src.tasks.base.annotation.workers.contracts import Launch
 
@@ -105,7 +109,7 @@ def proof_states(
                 else "missing"
             )
         result[frame.frame.frame_index] = state
-    return result
+    return result, unavailable
 
 
 class BallRowPage(Document):
@@ -113,6 +117,7 @@ class BallRowPage(Document):
     scope: FrameRange
     rows: tuple[BallFrame, ...] = Field(min_length=1, max_length=8)
     image_proof: tuple[ProofState, ...] = Field(min_length=1, max_length=8)
+    image_proof_reasons: tuple[str | None, ...] = Field(min_length=1, max_length=8)
     images: tuple[RenderedImage, ...] = Field(max_length=256)
 
 
@@ -129,10 +134,20 @@ class BallReviewServices(BallReviewAdapter):
         summary = super().summarize(
             layout, context, manifest, payload, scope, after_row
         )
-        states = proof_states(
+        states, unavailable = proof_states(
             layout, context, read_document(layout, payload, BallLabels)
         )
         missing = any(states[row.frame_index] == "missing" for row in summary.rows)
+        evidence_actions = (
+            (
+                "Unusable image evidence (reconfirm any decisions from these attempts): "
+                + "; ".join(
+                    f"{actor.digest}: {reason}" for actor, reason in unavailable.items()
+                ),
+            )
+            if unavailable
+            else ()
+        )
         return summary.model_copy(
             update={
                 "rows": tuple(
@@ -147,10 +162,11 @@ class BallReviewServices(BallReviewAdapter):
                 ),
                 "next_actions": (
                     "Reinspect rows with image_proof=missing and explicitly replace their decisions; retain unresolved notes until resolved.",
+                    *evidence_actions,
                     *summary.next_actions,
                 )
                 if missing
-                else summary.next_actions,
+                else (*evidence_actions, *summary.next_actions),
             }
         )
 
@@ -165,7 +181,7 @@ class BallReviewServices(BallReviewAdapter):
         if read_document(layout, node.context, ReviewContext) != context:
             raise ValueError("row request belongs to another clip context")
         labels = read_document(layout, node.payload, BallLabels)
-        states = proof_states(layout, context, labels)
+        states, unavailable = proof_states(layout, context, labels)
         rows = labels.frames[request.scope.start : request.scope.stop]
         used = {key for frame in rows for key in frame.decision.evidence}
         return BallRowPage(
@@ -173,6 +189,10 @@ class BallReviewServices(BallReviewAdapter):
             scope=request.scope,
             rows=rows,
             image_proof=tuple(states[row.frame.frame_index] for row in rows),
+            image_proof_reasons=tuple(
+                unavailable.get(row.review_actor) if row.review_actor else None
+                for row in rows
+            ),
             images=tuple(image for image in labels.images if image.sha256 in used),
         )
 

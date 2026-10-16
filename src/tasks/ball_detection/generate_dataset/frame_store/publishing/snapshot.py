@@ -21,7 +21,7 @@ from src.tasks.base.annotation.artifacts import (
 from src.tasks.base.annotation.contracts import ArtifactRef, content_digest
 from src.tasks.base.annotation.paths import AnnotationLayout
 
-from .contracts import BallSnapshot, LegacySourceGroup, SnapshotClip
+from .contracts import BallSnapshot, LegacyClipRange, LegacySourceGroup, SnapshotClip
 
 
 def validate_snapshot(
@@ -86,6 +86,8 @@ def freeze_legacy_store(
     layout: AnnotationLayout,
     directory: Path,
     groups: tuple[LegacySourceGroup, ...],
+    *,
+    clip_ranges: tuple[LegacyClipRange, ...] = (),
 ) -> ArtifactRef:
     """Pin a v1 baseline without rewriting it or inventing canonical source IDs."""
     index = data_reference(layout, directory / "index.npz")
@@ -102,6 +104,20 @@ def freeze_legacy_store(
         raise ValueError(
             "legacy source bindings must cover each stored group exactly once"
         )
+    ranges = {c.store_clip_id: c.source_range for c in clip_ranges}
+    if len(ranges) != len(clip_ranges) or set(ranges) != {
+        c.clip_id for c in store.clips if c.source == "chat_annotation"
+    }:
+        raise ValueError(
+            "legacy clip ranges must cover each chat_annotation clip exactly once"
+        )
+    for clip in store.clips:
+        if clip.clip_id in ranges:
+            interval = ranges[clip.clip_id]
+            if interval.stop - interval.start != clip.frame_count:
+                raise ValueError(
+                    "legacy source range must match the stored frame count"
+                )
     snapshot = BallSnapshot(
         index=index,
         metadata=metadata,
@@ -110,6 +126,11 @@ def freeze_legacy_store(
         clips=tuple(
             SnapshotClip(
                 clip_id=content_digest(["legacy_ball_clip", c.source, c.clip_id]),
+                canonical_clip_id=content_digest(
+                    [mapping[c.source, c.group_id], ranges[c.clip_id].model_dump()]
+                )
+                if c.clip_id in ranges
+                else None,
                 store_clip_id=c.clip_id,
                 source_id=mapping[c.source, c.group_id],
                 split=c.split,

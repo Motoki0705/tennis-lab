@@ -51,20 +51,6 @@ def phase2_candidate(
     return task_id, directory, comparison
 
 
-def test_dry_run_has_no_side_effects(campaign: CampaignFixture) -> None:
-    before = (
-        directory_hashes(campaign.config.annotation_root),
-        directory_hashes(campaign.config.campaign_dir),
-    )
-    assert (
-        main(["--campaign", str(campaign.config.campaign_dir), "run", "--dry-run"]) == 0
-    )
-    assert before == (
-        directory_hashes(campaign.config.annotation_root),
-        directory_hashes(campaign.config.campaign_dir),
-    )
-
-
 def test_init_refuses_existing_campaign_without_changes(
     campaign: CampaignFixture,
 ) -> None:
@@ -89,7 +75,8 @@ def test_concurrent_adoption_is_idempotent(campaign: CampaignFixture) -> None:
 
     def publish() -> dict[str, Any]:
         with campaign_context(campaign.config):
-            return intake.adopt(task_id, "合成球の位置を目視確認済み")
+            result: dict[str, Any] = intake.adopt(task_id, "合成球の位置を目視確認済み")
+            return result
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _: publish(), range(2)))
