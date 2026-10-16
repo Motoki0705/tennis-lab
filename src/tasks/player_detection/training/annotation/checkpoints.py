@@ -248,7 +248,7 @@ def verify_export(
 
 def validate_resume(
     layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
-) -> None:
+) -> RunBinding:
     _, binding = checkpoint_value(
         layout, intent, checkpoint, resolve_inputs(layout, intent)
     )
@@ -259,6 +259,7 @@ def validate_resume(
     )
     if verify_reference(layout, checkpoint) != expected:
         raise ValueError("player resume requires a frozen latest-checkpoint copy")
+    return binding
 
 
 def freeze_resume_checkpoint(

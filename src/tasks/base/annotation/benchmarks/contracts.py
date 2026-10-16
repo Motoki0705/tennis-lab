@@ -116,6 +116,7 @@ class UsageSummary(Document):
     attempts: int
     reports: int
     missing_reports: int
+    unobserved_response_attempts: int
     known_responses: int
     exact_api_responses: int | None
     missing_response_ids: int

@@ -21,7 +21,7 @@ from ..paths import AnnotationLayout
 from ..plan import CampaignPlan
 from ..storage import StorageCatalog
 from ..storage.contracts import ManagedArtifact, Protection
-from .contracts import AcquisitionReceipt, PreparationReceipt
+from .contracts import AcquisitionReceipt, PreparationConfig, PreparationReceipt
 from .ledger import CollectionLedger
 from .source_handoff import handoff_screening_inputs
 
@@ -152,6 +152,43 @@ def verify_retirement_intent(
             "source retirement intent differs from the registered preparation"
         )
     return intent
+
+
+def verify_acquisition_media(
+    layout: AnnotationLayout,
+    plan: CampaignPlan,
+    source_id: str,
+    reference: ArtifactRef,
+    acquired: AcquisitionReceipt,
+) -> None:
+    """Verify live source bytes, or their explicitly authorized retirement evidence."""
+    if layout.artifact_path(acquired.source.media).exists():
+        verify_reference(layout, acquired.source.media)
+        return
+    config = read_document(layout, plan.preparation, PreparationConfig)
+    row = CollectionLedger(layout).source(plan, source_id)
+    if (
+        row["state"] == "prepared"
+        and config.retained_media == "jpeg_q90"
+        and config.source_retention == "delete_after_verified_frames"
+    ):
+        acquisition, basis, verified = verify_prepared(layout, plan, source_id)
+        excluded = False
+    elif (
+        row["state"] == "excluded"
+        and config.excluded_source_retention == "delete_after_verified_exclusion"
+    ):
+        from .exclusion import verify_excluded
+
+        acquisition, basis, verified, _kept = verify_excluded(layout, plan, source_id)
+        excluded = True
+    else:
+        raise ValueError("missing source media has no authorized retirement")
+    if acquisition != reference or verified != acquired:
+        raise ValueError("retired source differs from the acquisition receipt")
+    verify_retirement_intent(
+        layout, plan, source_id, acquisition, basis, verified, excluded=excluded
+    )
 
 
 def retire_source(
