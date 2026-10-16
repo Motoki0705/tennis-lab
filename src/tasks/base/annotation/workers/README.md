@@ -48,7 +48,9 @@ state = pool.reconcile(request)
   preview planからの教師採用は拒否する。
 - 失敗・保留・timeout・cancelは自動retryしない。`start(..., retry=True)` を明示する。
   quotaイベントはcampaign全体の新規投入を止め、明示的な `resume_campaign` を要求する。
-  完了と停止が競合しても先に確定した正常receiptを取り消さない。
+  admission時にも終了receiptを検証し、quota状態とcampaign停止を同じtransactionで保存する。
+  回収はwork lock取得後に現在のattemptを読み、状態更新は検証したattemptと遷移元状態に限定する。
+  完了と停止・retryが競合しても、確定済みreceiptや後続attemptを古い停止で取り消さない。
 - Codex合計と同名工程の並列枠をcampaign横断で共有する。異なる上限が併存する場合は
   稼働中planと新規planの小さい上限を適用する。終了済みattemptは枠を返し、結果の
   validationはそのcampaignのadapterで再開する。productionでは
@@ -56,7 +58,7 @@ state = pool.reconcile(request)
   `CapacityUnavailable` と `BudgetStopped` を区別する。supervisorが資源leaseを継承し、
   稼働中は保存走査を待たない `watch()` を使い、終了時の回収を担当する。
 
-標準状態は `ready → running → complete`、未回収終了は `exited`。
+標準状態は `ready → running → complete`、未回収終了は `exited`（quotaはadmissionでも確定）。
 `failed / quota / timed_out / cancelled / validation_failed / deferred` は理由を保存する。
 追加QA待ち・QA承認はない。ラベルの採用・公開の条件は各taskがreceiptとして返す。
 
