@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from fractions import Fraction
 from pathlib import Path
@@ -32,7 +33,11 @@ from src.tasks.base.annotation.collection.service import (
     SourceExcluded,
     round_robin,
 )
-from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
+from src.tasks.base.annotation.contracts import (
+    ArtifactRef,
+    ClipManifest,
+    SourceIdentity,
+)
 from src.tasks.base.annotation.media import Timeline, encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan
@@ -354,6 +359,157 @@ def test_incomplete_historical_download_still_reserves_source_and_channel(
         )
 
 
+@pytest.mark.parametrize("incomplete_first", [False, True])
+def test_history_registers_each_encoding_of_the_same_source(
+    layout: AnnotationLayout, incomplete_first: bool,
+) -> None:
+    collection = Collection(layout, plan_for(layout))
+    versions = [candidate(layout, collection.plan, name) for name in ("one", "two")]
+    for version in versions:
+        assert version.local_media is not None
+        source = SourceIdentity(
+            provider="local",
+            channel_id="historical-channel",
+            video_id="historical-video",
+            media=version.local_media,
+            origin_url="local:historical-video",
+        )
+        if incomplete_first:
+            historical = HistoricalSource.model_validate(
+                source.model_dump(exclude={"media"})
+            )
+            collection.ledger.import_history(historical, collection.plan.selection)
+        collection.ledger.import_history(source, collection.plan.selection)
+        collection.ledger.import_history(source, collection.plan.selection)
+        with pytest.raises(ValueError, match="channel identity mismatch"):
+            collection.ledger.import_history(
+                source.model_copy(update={"channel_id": "wrong-channel"}),
+                collection.plan.selection,
+            )
+    changed_evidence = layout.path("campaigns", "inputs", "changed-evidence.txt")
+    changed_evidence.write_text("different evidence")
+    with pytest.raises(ValueError, match="historical source or evidence changed"):
+        collection.ledger.import_history(
+            source, annotation_reference(layout, changed_evidence)
+        )
+    with pytest.raises(ValueError, match="historical source or evidence changed"):
+        collection.ledger.import_history(
+            source.model_copy(update={"origin_url": "local:different-origin"}),
+            collection.plan.selection,
+        )
+    with collection.ledger.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM source_content").fetchone()[0] == 2
+    for index, version in enumerate(versions):
+        reupload = candidate(
+            layout,
+            collection.plan,
+            f"reupload-{index}",
+            f"channel-{index}",
+            media=version.local_media,
+        )
+        assert collection.register([reupload])[0].disposition == "registered"
+        with pytest.raises(SourceExcluded, match="duplicate content"):
+            collection.acquire(reupload.source_id)
+    assert collection.ledger.summary(collection.plan)["sources_by_state"] == {
+        "excluded": 2
+    }
+
+
+@pytest.mark.parametrize("across_sources", [True, False])
+def test_shared_clip_excludes_source_atomically_and_recovers_receipt(
+    layout: AnnotationLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    across_sources: bool,
+) -> None:
+    collection = Collection(layout, plan_for(layout, lead=1, videos_per_channel=1))
+    sources = []
+    for index in range(2 if across_sources else 1):
+        path = layout.path("campaigns", "inputs", f"shared-{index}.mp4")
+
+        # A shared second clip, or two identical clips within one selection.
+        def frames(first_value: int) -> Iterator[tuple[av.VideoFrame, int, int]]:
+            for frame_index in range(320):
+                value = 100 if frame_index >= 160 or not across_sources else first_value
+                frame = av.VideoFrame.from_ndarray(
+                    np.full((32, 64, 3), value, np.uint8), format="rgb24"
+                )
+                # Match keyframe placement too, so both encoded clips are identical.
+                frame.pict_type = av.video.frame.PictureType.I
+                yield frame, frame_index * 100, 100
+
+        encode_video(
+            path,
+            width=64,
+            height=32,
+            time_base=Fraction(1, 1000),
+            rate=Fraction(10),
+            frames=frames(20 + index * 40),
+            crf=0,
+            preset="ultrafast",
+        )
+        source = candidate(
+            layout,
+            collection.plan,
+            f"source-{index}",
+            f"channel-{index}",
+            media=annotation_reference(layout, path),
+        )
+        collection.register([source])
+        select(collection, source)
+        sources.append(source)
+        if index == 0 and across_sources:
+            collection.prepare(source.source_id)
+    first, duplicate = sources[0], sources[-1]
+    if across_sources:
+        assert first.local_media is not None and duplicate.local_media is not None
+        assert first.local_media.digest != duplicate.local_media.digest
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            collection.ledger,
+            "record_preparation",
+            lambda *_: (_ for _ in ()).throw(RuntimeError("receipt gap")),
+        )
+        with pytest.raises(RuntimeError, match="receipt gap"):
+            collection.prepare(duplicate.source_id)
+    receipt_path = layout.path(
+        "sources",
+        duplicate.source_id,
+        collection.plan.preparation.digest,
+        "prepared.json",
+    )
+    published = annotation_reference(layout, receipt_path)
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.collection.service.prepare_source",
+        lambda *_: pytest.fail("must not regenerate published clips"),
+    )
+    for _ in range(2):
+        with pytest.raises(SourceExcluded, match="duplicate clip content"):
+            collection.prepare(duplicate.source_id)
+    row = collection.ledger.source(collection.plan, duplicate.source_id)
+    assert row["state"] == "excluded"
+    assert ArtifactRef.model_validate_json(row["preparation"]) == published
+    assert first.source_id in row["reason"]
+    assert collection.ledger.record_preparation(collection.plan, published) is False
+    assert collection.ledger.summary(collection.plan)["prepared_clips"] == (
+        2 if across_sources else 0
+    )
+    assert collection.ledger.summary(collection.plan)["annotation_tasks"] == (
+        4 if across_sources else 0
+    )
+    replacement = candidate(
+        layout, collection.plan, "replacement", duplicate.channel_id
+    )
+    assert collection.register([replacement])[0].disposition == "registered"
+    collection.acquire(replacement.source_id)
+    expected_states = {"excluded": 1, "acquired": 1}
+    if across_sources:
+        expected_states["prepared"] = 1
+    assert (
+        collection.ledger.summary(collection.plan)["sources_by_state"]
+        == expected_states
+    )
+
+
 def test_unprepared_lead_is_global_and_exclusion_releases_it(
     layout: AnnotationLayout,
 ) -> None:
@@ -390,6 +546,74 @@ def test_acquisition_publish_before_ledger_failure_recovers(
     collection.acquire(source.source_id)
     assert collection.ledger.summary(collection.plan)["sources_by_state"] == {
         "acquired": 1
+    }
+
+
+@pytest.mark.parametrize("blocked_by", ["channel", "lead"])
+def test_acquisition_sync_failure_rechecks_retry_and_replacement_limits(
+    layout: AnnotationLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    blocked_by: str,
+) -> None:
+    collection = Collection(
+        layout,
+        plan_for(
+            layout, lead=2 if blocked_by == "channel" else 1, videos_per_channel=1
+        ),
+    )
+    first = candidate(layout, collection.plan, "first")
+    collection.register([first])
+    receipt_path = layout.path(
+        "sources",
+        first.source_id,
+        collection.plan.preparation.digest,
+        "acquisition.json",
+    )
+
+    def fail_receipt_sync(path: Path) -> None:
+        assert path == receipt_path.parent
+        assert receipt_path.is_file()
+        raise OSError("receipt directory sync failed")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            "src.tasks.base.annotation.artifacts.sync_directory", fail_receipt_sync
+        )
+        with pytest.raises(OSError, match="receipt directory sync failed"):
+            collection.acquire(first.source_id)
+    assert (
+        collection.ledger.source(collection.plan, first.source_id)["state"] == "failed"
+    )
+    published = annotation_reference(layout, receipt_path)
+    replacement = candidate(
+        layout,
+        collection.plan,
+        "replacement",
+        first.channel_id if blocked_by == "channel" else "channel-b",
+    )
+    assert collection.register([replacement])[0].disposition == "registered"
+    collection.acquire(replacement.source_id)
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.collection.service.acquire_source",
+        lambda *_: pytest.fail("must reuse the published acquisition"),
+    )
+    with pytest.raises(ValueError, match="explicit"):
+        collection.acquire(first.source_id)
+    if blocked_by == "channel":
+        with pytest.raises(ValueError, match="videos-per-channel limit"):
+            collection.acquire(first.source_id, retry=True)
+    else:
+        with pytest.raises(Backpressure, match="lead is full"):
+            collection.acquire(first.source_id, retry=True)
+    assert collection.ledger.summary(collection.plan)["sources_by_state"] == {
+        "failed": 1,
+        "acquired": 1,
+    }
+    select(collection, replacement, windows=())
+    assert collection.acquire(first.source_id, retry=True) == published
+    assert collection.ledger.summary(collection.plan)["sources_by_state"] == {
+        "acquired": 1,
+        "excluded": 1,
     }
 
 
@@ -551,7 +775,7 @@ def test_permanent_preparation_exclusion_preserves_selection_and_releases_lead(
     collection.select(selection)
     with pytest.raises(SourceExcluded, match="too few real frames"):
         collection.acquire(first.source_id, retry=True)
-    with pytest.raises(ValueError, match="selection"):
+    with pytest.raises(SourceExcluded, match="too few real frames"):
         collection.prepare(first.source_id)
     replacement = candidate(layout, collection.plan, "replacement")
     assert collection.register([replacement])[0].disposition == "registered"
