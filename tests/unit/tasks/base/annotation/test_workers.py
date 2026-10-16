@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -322,6 +323,50 @@ def test_shared_worker_capacity_spans_campaigns(setup: Setup) -> None:
     assert setup.launches() == 2
 
 
+@pytest.mark.parametrize("mismatch", ["campaign", "plan", "request", "adapter_version"])
+def test_stop_rejects_mismatched_owner_before_signalling(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch, mismatch: str
+) -> None:
+    setup.program(delay=30)
+    pool = setup.pool()
+    attempt = pool.start(setup.request)
+    assert attempt is not None
+    owner = owner_ready(pool, setup.request)
+    plan, request = setup.plan, setup.request
+    if mismatch == "campaign":
+        plan = plan_for(setup.layout, request.payload, "another")
+    elif mismatch == "plan":
+        plan = plan.model_copy(update={"agent_effort": "medium"})
+    elif mismatch == "request":
+        payload = write_asset(
+            setup.layout,
+            setup.layout.path("campaigns", "inputs", "different.txt"),
+            b"different request",
+        )
+        request = request.model_copy(update={"payload": payload})
+    else:
+        request = request.model_copy(update={"adapter_version": "v2"})
+    other = setup.pool(plan=plan)
+    assert request.work_id == setup.request.work_id
+
+    def unexpected_signal(*_args, **_kwargs):
+        raise AssertionError("mismatched stop must not signal the worker")
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(
+                "src.tasks.base.annotation.workers.pool.signal_owned", unexpected_signal
+            )
+            with pytest.raises(ValueError):
+                other.stop(request, reason="mismatched owner")
+        assert owned_members(owner)
+        assert pool.children[attempt].poll() is None
+        row = pool.ledger.task(setup.request.work_id)
+        assert row["state"] == "running" and row["current_attempt"] == attempt
+    finally:
+        pool.stop(setup.request, reason="fixture cleanup")
+
+
 def test_final_receipt_recovers_after_database_gap(
     setup: Setup, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -355,6 +400,64 @@ def test_final_receipt_recovers_after_database_gap(
             settled(pool, setup.request)
     assert setup.adapter.validations == 1
     assert settled(pool, setup.request)["state"] == "complete"
+    assert setup.adapter.validations == 1 and setup.launches() == 1
+
+
+@pytest.mark.parametrize("interrupt_finalization", [False, True])
+def test_stop_waits_for_receipt_recovery_before_cancelling(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch, interrupt_finalization: bool
+) -> None:
+    pool, other = setup.pool(), setup.pool()
+    attempt = pool.start(setup.request)
+    assert attempt is not None
+    pool.children[attempt].wait(timeout=10)
+    receipt_saved, release_finalization, stop_boundary = Event(), Event(), Event()
+    original_mark = other._mark
+
+    def pause_after_receipt(work_id, state, reason, **kwargs):
+        if state == "complete":
+            receipt_saved.set()
+            assert release_finalization.wait(10)
+            if interrupt_finalization:
+                raise RuntimeError("interrupted after result receipt")
+        return original_mark(work_id, state, reason, **kwargs)
+
+    @contextmanager
+    def observe_stop_lock(layout, name, *, blocking=True):
+        if name == "worker-" + setup.request.work_id and blocking:
+            stop_boundary.set()
+        with artifact_lock(layout, name, blocking=blocking) as descriptor:
+            yield descriptor
+
+    monkeypatch.setattr(other, "_mark", pause_after_receipt)
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.workers.pool.artifact_lock", observe_stop_lock
+    )
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        completion = executor.submit(other.reconcile, setup.request)
+        try:
+            assert receipt_saved.wait(10)
+            assert (directory(pool, setup.request) / "result.receipt.json").exists()
+            assert pool.ledger.task(setup.request.work_id)["state"] == "running"
+            stopping = executor.submit(
+                pool.stop, setup.request, reason="stop during receipt persistence"
+            )
+            # Either stop waits for the work lock, or the buggy path finishes
+            # cancellation while the completed receipt is still uncommitted.
+            stopping.add_done_callback(lambda _future: stop_boundary.set())
+            assert stop_boundary.wait(10)
+        finally:
+            release_finalization.set()
+        if interrupt_finalization:
+            with pytest.raises(RuntimeError, match="interrupted after result receipt"):
+                completion.result(timeout=10)
+        else:
+            assert completion.result(timeout=10)["state"] == "complete"
+        state = stopping.result(timeout=10)
+    assert state["state"] == "complete" and state["result"] is not None
+    assert state["current_attempt"] == attempt
+    assert setup.pool().reconcile(setup.request) == state
+    assert setup.pool().start(setup.request, retry=True) is None
     assert setup.adapter.validations == 1 and setup.launches() == 1
 
 
