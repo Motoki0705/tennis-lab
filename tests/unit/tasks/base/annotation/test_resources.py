@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 from threading import Barrier, Event
@@ -18,6 +19,7 @@ import pytest
 
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
+    artifact_lock,
     read_document,
     write_asset,
 )
@@ -685,8 +687,13 @@ pathlib.Path(root, "attached").write_text(str(os.getpid()))
 if mode == "orphan":
     subprocess.Popen([sys.executable, "-c", "import time; time.sleep(1)"])
     os._exit(0)
-time.sleep(.1)
-manager.finish(request)
+if mode == "coordinated":
+    assert sys.stdin.read(1) == "f"
+    completed_at = manager._row(request)["started"] + 2.5
+    time.monotonic = lambda: completed_at
+else:
+    time.sleep(.1)
+manager.finish(request, reason="fixture completed")
 if mode == "draining":
     os.close(int(fd))
     pathlib.Path(root, "finished").write_text("lease released; process remains")
@@ -775,6 +782,80 @@ def test_lost_dispatch_before_attach_is_terminal_and_charged_once(
     assert guard.sample().gpu_charged_seconds == 4
     with pytest.raises(CapacityUnavailable, match="terminal"), guard.lease(item):
         pytest.fail("same attempt executed again")
+
+
+@pytest.mark.parametrize("stage", ["gpu", "decode"])
+def test_recovery_preserves_finish_record_written_before_lease_acquisition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout)
+    guard = manager(layout, plan)
+    item = request(
+        layout, plan, "finishing", stage=stage, gpu=100.0 if stage == "gpu" else 0.0
+    )
+    with guard.lease(item) as fd:
+        child = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                _CHILD,
+                str(layout.root),
+                guard.reference.model_dump_json(),
+                item.model_dump_json(),
+                str(fd),
+                "coordinated",
+            ],
+            stdin=subprocess.PIPE,
+            pass_fds=(fd,),
+            start_new_session=True,
+        )
+    expected_charge = 2.5 if stage == "gpu" else 0.0
+
+    @contextmanager
+    def finish_before_lock(layout, name, *, blocking=True):
+        if name == guard.lock_name(item):
+            assert guard._row(item)["state"] == "running"
+            assert child.stdin is not None
+            child.stdin.write(b"f")
+            child.stdin.flush()
+            assert child.wait(timeout=5) == 0
+            finished = guard._row(item)
+            assert finished["state"] == "draining"
+            assert finished["charged"] == expected_charge
+        with artifact_lock(layout, name, blocking=blocking) as descriptor:
+            yield descriptor
+
+    try:
+        deadline = time.monotonic() + 5
+        while not (layout.root / "attached").exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert (layout.root / "attached").exists()
+        assert guard._row(item)["state"] == "running"
+        with monkeypatch.context() as patch:
+            patch.setattr(
+                "src.tasks.base.annotation.resources.scheduler.artifact_lock",
+                finish_before_lock,
+            )
+            sample = guard.sample()
+        row = guard._row(item)
+        assert row["state"] == "complete"
+        assert row["charged"] == expected_charge
+        assert row["charge_kind"] == "measured_wall_seconds"
+        assert row["reason"] == "fixture completed"
+        assert sample.active_by_stage == {}
+        assert sample.gpu_charged_seconds == expected_charge
+        assert sample.stopped_reason is None
+        assert guard.sample().gpu_charged_seconds == expected_charge
+        next_item = request(layout, plan, "next-gpu", stage="gpu", gpu=50.0)
+        with guard.lease(next_item):
+            assert guard._row(next_item)["state"] == "running"
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.wait(timeout=5)
+        if child.stdin is not None:
+            child.stdin.close()
 
 
 @pytest.mark.parametrize(

@@ -15,6 +15,7 @@ from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.storage import InventoryScope, inventory, plan_gc
 from src.tasks.base.annotation.storage.migration import (
     Bundle,
+    BundleFile,
     MigrationPlan,
     MigrationReceipt,
     MigrationStore,
@@ -196,6 +197,98 @@ def test_source_changed_after_dry_run_is_not_registered(environment: Any) -> Non
     with pytest.raises(ValueError, match="differs from dry-run"):
         apply(store, plan, reader)
     assert not layout.path("migration_archive").exists()
+
+
+@pytest.mark.parametrize(
+    "mutation", ["append_before", "replace_before", "append_during"]
+)
+def test_source_growth_never_writes_beyond_planned_copy_size(
+    environment: Any, monkeypatch: pytest.MonkeyPatch, mutation: str
+) -> None:
+    layout, source, reader, _ = environment
+    changed_source = source / "payload/b.bin"
+    # More than one read block exercises the remaining budget after a valid write.
+    original_payload = b"x" * (1024 * 1024 + 23)
+    changed_source.write_bytes(original_payload)
+    plan = dry_run(
+        layout,
+        reader,
+        root_id="growing-source",
+        source_root=source,
+        mode="copy",
+        max_files=2,
+    )
+    store = MigrationStore(layout)
+    staging = layout.path("migration_staging", plan.sha256, "root")
+    partials = staging.parent / "partials"
+    completed = staging / plan.bundle.files[0].path
+    original_copy = implementation.copy_file
+    original_temporary = file_implementation.tempfile.NamedTemporaryFile
+    changed = False
+    peak_payload = 0
+
+    def grow_source() -> None:
+        nonlocal changed
+        assert not changed
+        extra = b"y" * (2 * 1024 * 1024)
+        if mutation == "replace_before":
+            replacement = changed_source.with_suffix(".replacement")
+            replacement.write_bytes(original_payload + extra)
+            replacement.replace(changed_source)
+        else:
+            with changed_source.open("ab") as handle:
+                handle.write(extra)
+        changed = True
+
+    def copy_after_validation(
+        source_root: Path, target_root: Path, item: BundleFile
+    ) -> None:
+        if item.path == plan.bundle.files[1].path and mutation != "append_during":
+            grow_source()
+        original_copy(source_root, target_root, item)
+
+    def measured_temporary(*args: Any, **kwargs: Any) -> Any:
+        output = original_temporary(*args, **kwargs)
+        if kwargs.get("dir") != partials:
+            return output
+        copying_second = completed.exists()
+        item = plan.bundle.files[1 if copying_second else 0]
+        write = output.write
+
+        def measured_write(block: bytes) -> int:
+            nonlocal peak_payload
+            count: int = write(block)
+            output.flush()
+            payload = sum(
+                path.stat().st_size
+                for path in staging.parent.rglob("*")
+                if path.is_file()
+            )
+            peak_payload = max(peak_payload, payload)
+            assert output.tell() <= item.size_bytes
+            assert payload <= plan.copy_payload_bytes
+            if copying_second and mutation == "append_during" and not changed:
+                grow_source()
+            return count
+
+        monkeypatch.setattr(output, "write", measured_write)
+        return output
+
+    monkeypatch.setattr(implementation, "copy_file", copy_after_validation)
+    monkeypatch.setattr(
+        file_implementation.tempfile, "NamedTemporaryFile", measured_temporary
+    )
+    with pytest.raises(ValueError, match="dry-run"):
+        apply(store, plan, reader)
+    assert changed
+    assert changed_source.stat().st_size > plan.bundle.files[1].size_bytes
+    assert 0 < peak_payload <= plan.copy_payload_bytes
+    assert completed.read_bytes() == (source / plan.bundle.files[0].path).read_bytes()
+    assert not (staging / plan.bundle.files[1].path).exists()
+    assert list(partials.iterdir()) == []
+    assert not layout.path("migration_archive", plan.sha256).exists()
+    with pytest.raises(ValueError, match="no completed import"):
+        imported_root(layout, plan.root_id, reader)
 
 
 @pytest.mark.parametrize("interruptions", [1, 2])
