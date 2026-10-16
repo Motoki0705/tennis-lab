@@ -57,10 +57,12 @@ class ProductionWorkflow:
         operation: Callable[[OperationInput], dict[str, Any]],
         receipt: Callable[[dict[str, Any]], OperationReceipt],
         services: Callable[[WorkRequest, dict[str, Any], WorkerPool], None],
+        publication_failures: Callable[[], list[dict[str, Any]]],
     ) -> None:
         require_supported(plan)
         self.layout, self.runtime, self.plan = layout, runtime, plan
         self.operation, self.receipt, self.services = operation, receipt, services
+        self.publication_failures = publication_failures
         cost = runtime.cost("review")
         runtime.cost("publish_ball")
         self.learning_runtime = (
@@ -176,6 +178,21 @@ class ProductionWorkflow:
                 "reviews": rows,
                 "reason": "review requires explicit resolution; no publication",
                 "failures": failures,
+            }
+        input_failures = self.publication_failures()
+        if input_failures:
+            states = {row["state"] for row in input_failures}
+            active = {"running", "draining", "queued", "waiting"}
+            waiting = states <= active | {"pending", "unreconciled"} and (
+                bool(states & active) or "unreconciled" not in states
+            )
+            return {
+                "state": "reviewing" if waiting else "blocked",
+                "reviews": rows,
+                "reason": "waiting for input stage completion before publication or learning"
+                if waiting
+                else "input stages lack verified completion; explicit recovery is required before publication or learning",
+                "failures": input_failures,
             }
         review_ref = close_reviews(self.layout, self.plan, self.runtime.plan)
         if review_ref is None:
