@@ -10,7 +10,11 @@ from typing import Any
 
 import torch
 
-from src.tasks.ball_detection.checkpoints.pretraining import SCHEMA, save_pretraining
+from src.tasks.ball_detection.checkpoints.pretraining import (
+    SCHEMA,
+    pretraining_config,
+    save_pretraining,
+)
 from src.tasks.ball_detection.checkpoints.provenance import (
     source_identity,
 )
@@ -159,6 +163,8 @@ def main() -> None:
         epoch_start = saved["epoch"] + 1
         if epoch_start >= args.epochs or any(int(p.stem.split("-")[1]) >= epoch_start for p in args.output.glob("epoch-*.pt")):
             raise ValueError("Resume must use the latest completed epoch with remaining budget")
+        if pretraining_config(saved) != config:
+            raise ValueError("Resume pretraining model configuration changed")
         model.load_state_dict(saved["state_dict"], strict=True)
         optimizer.load_state_dict(saved["optimizer"])
         torch.set_rng_state(saved["torch_rng"])

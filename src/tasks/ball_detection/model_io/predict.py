@@ -6,6 +6,7 @@ from typing import Any, TypeAlias
 import torch
 from torch import Tensor
 
+from src.tasks.ball_detection.model_io.mdd_coordinates import validate_rgb_timestamps
 from src.tasks.ball_detection.model_io.mdd_pose import (
     MDDPoseAdapter,
     MDDPoseInput,
@@ -25,10 +26,7 @@ def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: t
     """Modality and architecture are explicit; coordinate outputs never fabricate heatmaps."""
     if isinstance(model, DeepMDDQueryDetector):
         rgb, times = batch["rgb"], batch["timestamps"]
-        if rgb.dtype != torch.uint8 or rgb.ndim != 5 or rgb.shape[1:3] != (32, 3):
-            raise ValueError("Deep MDD coordinates require RGB uint8 B,32,3,H,W")
-        if times.shape != rgb.shape[:2] or times.dtype != torch.float32:
-            raise ValueError("Timestamps must match the RGB window")
+        validate_rgb_timestamps(model.config, rgb, times)
         return model(rgb.to(device, non_blocking=True), times.to(device, non_blocking=True))
     if isinstance(model, MDDQueryDetector):
         adapter = MDDQueryAdapter(model.config)

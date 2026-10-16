@@ -74,8 +74,16 @@ class MDDPretrainConfig:
     activation_checkpointing: bool
     encoder_variant: str
     temporal_mixing: str
+    # Missing in historical configs/checkpoints means the original 2ch model.
+    input_channels: int = 2
+
+    @property
+    def frames(self) -> int:
+        return 32
 
     def __post_init__(self) -> None:
+        if type(self.input_channels) is not int or self.input_channels not in (2, 5):
+            raise ValueError("input_channels must be 2 (MDD) or 5 (RGB+MDD)")
         if self.encoder_variant not in {"residual", "convnext_v2", "fasternet"}:
             raise ValueError("Unknown CNN encoder variant")
         if self.temporal_mixing not in {"dense3d", "factorized"}:
@@ -98,6 +106,7 @@ class MDDPretrainConfig:
         raw = yaml.safe_load(path.read_text())
         if not isinstance(raw, dict) or raw.pop("name", None) != "mdd_dpt_pretrain":
             raise ValueError("Expected mdd_dpt_pretrain model config")
+        raw.setdefault("input_channels", 2)
         if set(raw) != set(cls.__dataclass_fields__):
             raise ValueError("Pretraining configuration must declare every field exactly")
         for name in ("stem_channels", "mixed_channels", "residual_blocks"):
