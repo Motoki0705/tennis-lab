@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 from fractions import Fraction
 from pathlib import Path
@@ -44,7 +45,11 @@ def layout(tmp_path: Path) -> AnnotationLayout:
 
 
 def plan_for(
-    layout: AnnotationLayout, name: str = "campaign-a", *, lead: int = 2
+    layout: AnnotationLayout,
+    name: str = "campaign-a",
+    *,
+    lead: int = 2,
+    videos_per_channel: int = 2,
 ) -> CampaignPlan:
     policy = layout.path("campaigns", "inputs", "policy.txt")
     policy.parent.mkdir(parents=True, exist_ok=True)
@@ -69,7 +74,7 @@ def plan_for(
                 "annotation_root": str(layout.root),
                 "counts": {
                     "channels": 2,
-                    "videos_per_channel": 2,
+                    "videos_per_channel": videos_per_channel,
                     "max_clips_per_video": 2,
                 },
                 "selection": reference.model_dump(),
@@ -451,6 +456,163 @@ def test_acquisition_failure_requires_explicit_retry(layout: AnnotationLayout) -
     assert collection.ledger.summary(collection.plan)["sources_by_state"] == {
         "acquired": 1
     }
+
+
+def test_failed_retry_cannot_exceed_channel_limit_after_replacement(
+    layout: AnnotationLayout,
+) -> None:
+    collection = Collection(layout, plan_for(layout, videos_per_channel=1))
+    first = candidate(layout, collection.plan, "first")
+    assert first.local_media is not None
+    path = layout.artifact_path(first.local_media)
+    original = path.read_bytes()
+    collection.register([first])
+    path.write_bytes(b"changed")
+    with pytest.raises(ValueError, match="size changed"):
+        collection.acquire(first.source_id)
+    path.write_bytes(original)
+
+    replacement = candidate(layout, collection.plan, "replacement")
+    assert collection.register([replacement])[0].disposition == "registered"
+    select(collection, replacement)
+    collection.prepare(replacement.source_id)
+    with pytest.raises(ValueError, match="videos-per-channel limit"):
+        collection.acquire(first.source_id, retry=True)
+    summary = collection.ledger.summary(collection.plan)
+    assert summary["sources_by_state"] == {"failed": 1, "prepared": 1}
+    assert summary["prepared_clips"] == 2
+    assert summary["annotation_tasks"] == 4
+
+
+def test_permanent_preparation_exclusion_preserves_selection_and_releases_lead(
+    layout: AnnotationLayout,
+) -> None:
+    collection = Collection(layout, plan_for(layout, lead=1, videos_per_channel=1))
+    first = candidate(layout, collection.plan, "first")
+    collection.register([first])
+    selection = select(
+        collection,
+        first,
+        windows=(TimeWindow(start=0.0, stop=1.0, target_start=0.0, target_stop=1.0),),
+    )
+    with pytest.raises(ValueError, match="too few real frames") as failure:
+        collection.prepare(first.source_id)
+    second = candidate(layout, collection.plan, "second", "channel-b")
+    collection.register([second])
+    with pytest.raises(Backpressure):
+        collection.acquire(second.source_id)
+    with pytest.raises(ValueError, match="reason"):
+        collection.exclude_preparation(first.source_id, reason=" ")
+
+    collection.exclude_preparation(first.source_id, reason=str(failure.value))
+    row = collection.ledger.source(collection.plan, first.source_id)
+    assert row["state"] == "excluded"
+    assert row["reason"] == str(failure.value)
+    assert ArtifactRef.model_validate_json(row["selection"]) == selection
+    collection.select(selection)
+    with pytest.raises(SourceExcluded, match="too few real frames"):
+        collection.acquire(first.source_id, retry=True)
+    with pytest.raises(ValueError, match="selection"):
+        collection.prepare(first.source_id)
+    replacement = candidate(layout, collection.plan, "replacement")
+    assert collection.register([replacement])[0].disposition == "registered"
+    collection.acquire(second.source_id)
+    summary = collection.ledger.summary(collection.plan)
+    assert summary["sources_by_state"] == {
+        "excluded": 1,
+        "acquired": 1,
+        "selected": 1,
+    }
+    assert summary["annotation_tasks"] == 0
+
+
+@pytest.mark.parametrize("registered", [False, True])
+def test_published_preparation_cannot_be_excluded(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch, registered: bool
+) -> None:
+    collection = Collection(layout, plan_for(layout))
+    source = candidate(layout, collection.plan, "first")
+    collection.register([source])
+    select(collection, source)
+    if registered:
+        collection.prepare(source.source_id)
+    else:
+        with monkeypatch.context() as patch:
+            patch.setattr(
+                collection.ledger,
+                "record_preparation",
+                lambda *_: (_ for _ in ()).throw(RuntimeError("receipt gap")),
+            )
+            with pytest.raises(RuntimeError, match="receipt gap"):
+                collection.prepare(source.source_id)
+    with pytest.raises(ValueError, match="published preparation"):
+        collection.exclude_preparation(source.source_id, reason="cannot prepare")
+    collection.prepare(source.source_id)
+    assert collection.ledger.summary(collection.plan)["annotation_tasks"] == 4
+
+
+@pytest.mark.parametrize(
+    ("registered", "missing"),
+    [(True, "receipt")]
+    + [
+        (registered, missing)
+        for registered in (False, True)
+        for missing in ("clip_directory", "clip_manifest", "clip_media")
+    ],
+)
+def test_preparation_resume_rejects_missing_artifacts_before_generation(
+    layout: AnnotationLayout,
+    monkeypatch: pytest.MonkeyPatch,
+    registered: bool,
+    missing: str,
+) -> None:
+    collection = Collection(layout, plan_for(layout))
+    source = candidate(layout, collection.plan, "first")
+    collection.register([source])
+    select(collection, source)
+    if registered:
+        reference = collection.prepare(source.source_id)
+    else:
+        with monkeypatch.context() as patch:
+            patch.setattr(
+                collection.ledger,
+                "record_preparation",
+                lambda *_: (_ for _ in ()).throw(RuntimeError("receipt gap")),
+            )
+            with pytest.raises(RuntimeError, match="receipt gap"):
+                collection.prepare(source.source_id)
+        reference = annotation_reference(
+            layout,
+            layout.path(
+                "sources",
+                source.source_id,
+                collection.plan.preparation.digest,
+                "prepared.json",
+            ),
+        )
+    receipt = read_document(layout, reference, PreparationReceipt)
+    manifest = read_document(layout, receipt.clips[0], ClipManifest)
+    if missing == "receipt":
+        removed = layout.artifact_path(reference)
+    elif missing == "clip_manifest":
+        removed = layout.artifact_path(receipt.clips[0])
+    else:
+        removed = layout.artifact_path(manifest.media)
+    if missing == "clip_directory":
+        removed = removed.parent
+        shutil.rmtree(removed)
+    else:
+        removed.unlink()
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.collection.service.prepare_source",
+        lambda *_: pytest.fail("must verify published artifacts before generation"),
+    )
+    with pytest.raises(ValueError, match="artifact missing"):
+        collection.prepare(source.source_id)
+    assert not removed.exists()
+    assert collection.ledger.summary(collection.plan)["annotation_tasks"] == (
+        4 if registered else 0
+    )
 
 
 def test_local_source_changed_during_copy_is_not_published(

@@ -109,7 +109,9 @@ print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 0, 'cached
     assert len(plan["candidates"]) == 1
     task_id = plan["candidates"][0]
     command("run", "--once")
-    deadline = time.monotonic() + 20
+    # The fake worker runs four separate Python CLIs with real video I/O.
+    # A successful attempt can exceed 20 seconds on a contended CI host.
+    deadline = time.monotonic() + 120
     while time.monotonic() < deadline:
         command("run", "--once")
         state = json.loads((campaign / "state.json").read_text())
@@ -118,7 +120,11 @@ print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 0, 'cached
         time.sleep(0.1)
     assert state["tasks"][task_id]["status"] == "review", (
         state,
-        list(campaign.rglob("stderr.log")),
+        {
+            str(path.relative_to(campaign)): path.read_text()
+            for name in ("stderr.log", "launcher.log", "events.jsonl", "exit.json")
+            for path in campaign.rglob(name)
+        },
     )
     attempt = Path(state["tasks"][task_id]["attempts"][-1]["dir"])
     invocation = json.loads((attempt / "fake_invocation.json").read_text())
