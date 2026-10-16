@@ -112,22 +112,52 @@ class WorkerPool:
         state: str,
         reason: str | None,
         *,
+        attempt: str,
+        from_states: tuple[str, ...] = ("running", "exited"),
         result: ArtifactRef | None = None,
-    ) -> None:
+    ) -> bool:
         with self.ledger.registry.transaction() as database:
+            row = database.execute(
+                "SELECT * FROM worker_tasks WHERE id=?", (work_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(work_id)
+            if row["current_attempt"] != attempt or row["state"] not in from_states:
+                return False
             database.execute(
-                "UPDATE worker_tasks SET state=?,reason=?,result=? WHERE id=?",
+                "UPDATE worker_tasks SET state=?,reason=?,result=? WHERE id=? AND current_attempt=? AND state=?",
                 (
                     state,
                     reason,
                     None if result is None else result.canonical_bytes().decode(),
                     work_id,
+                    attempt,
+                    row["state"],
                 ),
             )
-            database.execute(
-                "UPDATE worker_attempts SET state=?,reason=? WHERE id=(SELECT current_attempt FROM worker_tasks WHERE id=?)",
-                (state, reason, work_id),
+            updated = database.execute(
+                "UPDATE worker_attempts SET state=?,reason=? WHERE id=? AND work_id=? AND state=?",
+                (state, reason, attempt, work_id, row["state"]),
             )
+            if updated.rowcount != 1:
+                raise ValueError("task and attempt states disagree")
+            if state == "quota":
+                database.execute(
+                    "INSERT OR REPLACE INTO worker_campaign_stops VALUES (?,?)",
+                    (row["campaign"], reason or "Codex quota exhausted"),
+                )
+        return True
+
+    def _exit_receipt(
+        self, launch_ref: ArtifactRef, directory: Path
+    ) -> tuple[ArtifactRef, ExitReceipt]:
+        ref = annotation_reference(self.layout, directory / "exit.json")
+        execution = read_document(self.layout, ref, ExitReceipt)
+        if execution.launch_digest != launch_ref.digest:
+            raise ValueError("exit receipt belongs to another launch")
+        for reference in references(execution):
+            verify_reference(self.layout, reference)
+        return ref, execution
 
     def _settle_dead_slots(self) -> None:
         # Reclaim resource accounting after dispatcher death without adopting labels.
@@ -141,16 +171,28 @@ class WorkerPool:
         for row in rows:
             try:
                 with artifact_lock(self.layout, "worker-" + row["id"], blocking=False):
-                    _ref, launch = self._launch(row)
+                    row = self._task(row["id"])
+                    if row["state"] != "running":
+                        continue
+                    ref, launch = self._launch(row)
                     directory = Path(launch.directory)
                     self._require_no_members(directory)
                     if (directory / "exit.json").exists():
-                        self._mark(row["id"], "exited", None)
+                        _exit_ref, execution = self._exit_receipt(ref, directory)
+                        self._mark(
+                            row["id"],
+                            "quota" if execution.status == "quota" else "exited",
+                            execution.reason if execution.status == "quota" else None,
+                            attempt=launch.attempt,
+                            from_states=("running",),
+                        )
                     else:
                         self._mark(
                             row["id"],
                             "failed",
                             "supervisor disappeared without an exit receipt",
+                            attempt=launch.attempt,
+                            from_states=("running",),
                         )
             except BlockingIOError:
                 continue
@@ -365,7 +407,11 @@ class WorkerPool:
                     self.children[attempt] = process
                 except OSError as error:
                     self._mark(
-                        request.work_id, "failed", f"supervisor launch failed: {error}"
+                        request.work_id,
+                        "failed",
+                        f"supervisor launch failed: {error}",
+                        attempt=attempt,
+                        from_states=("running",),
                     )
                     raise
                 return attempt
@@ -383,29 +429,30 @@ class WorkerPool:
             raise ValueError(
                 "reconciliation request differs from the registered campaign"
             )
-        if row["state"] in {
-            "ready",
-            "failed",
-            "deferred",
-            "cancelled",
-            "quota",
-            "timed_out",
-            "validation_failed",
-        }:
-            return row
-        if row["state"] in {"complete", "not_applicable"}:
-            final = read_document(
-                self.layout,
-                ArtifactRef.model_validate_json(row["result"]),
-                AttemptResult,
-            )
-            for reference in references(final):
-                verify_reference(self.layout, reference)
-            return row
         try:
             with artifact_lock(
                 self.layout, "worker-" + request.work_id, blocking=False
             ):
+                row = self._task(request.work_id)
+                if row["state"] in {
+                    "ready",
+                    "failed",
+                    "deferred",
+                    "cancelled",
+                    "quota",
+                    "timed_out",
+                    "validation_failed",
+                }:
+                    return row
+                if row["state"] in {"complete", "not_applicable"}:
+                    final = read_document(
+                        self.layout,
+                        ArtifactRef.model_validate_json(row["result"]),
+                        AttemptResult,
+                    )
+                    for reference in references(final):
+                        verify_reference(self.layout, reference)
+                    return row
                 ref, launch = self._launch(row)
                 directory = Path(launch.directory)
                 self._require_no_members(directory)
@@ -424,21 +471,17 @@ class WorkerPool:
                         request.work_id,
                         "failed",
                         "supervisor disappeared without an exit receipt",
+                        attempt=launch.attempt,
                     )
                     return self._task(request.work_id)
-                exit_ref = annotation_reference(self.layout, exit_path)
-                execution = read_document(self.layout, exit_ref, ExitReceipt)
-                if execution.launch_digest != ref.digest:
-                    raise ValueError("exit receipt belongs to another launch")
-                for reference in references(execution):
-                    verify_reference(self.layout, reference)
+                exit_ref, execution = self._exit_receipt(ref, directory)
                 if execution.status != "succeeded":
-                    self._mark(request.work_id, execution.status, execution.reason)
-                    if execution.status == "quota":
-                        self.ledger.stop_campaign(
-                            self.plan.campaign_id,
-                            execution.reason or "Codex quota exhausted",
-                        )
+                    self._mark(
+                        request.work_id,
+                        execution.status,
+                        execution.reason,
+                        attempt=launch.attempt,
+                    )
                     return self._task(request.work_id)
                 final_path = directory / "result.receipt.json"
                 if final_path.exists():
@@ -486,17 +529,19 @@ class WorkerPool:
                             request.work_id,
                             "validation_failed",
                             f"{type(error).__name__}: {error}",
+                            attempt=launch.attempt,
                         )
                         return self._task(request.work_id)
                 self._mark(
                     request.work_id,
                     final.outcome.status,
                     final.outcome.reason,
+                    attempt=launch.attempt,
                     result=final_ref,
                 )
                 return self._task(request.work_id)
         except BlockingIOError:
-            return row
+            return self._task(request.work_id)
 
     def stop(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
@@ -524,5 +569,11 @@ class WorkerPool:
         current = self.reconcile(request)
         if current["state"] in {"complete", "not_applicable"}:
             return current
-        self._mark(request.work_id, "cancelled", reason)
+        self._mark(
+            request.work_id,
+            "cancelled",
+            reason,
+            attempt=launch.attempt,
+            from_states=(current["state"],),
+        )
         return self._task(request.work_id)
