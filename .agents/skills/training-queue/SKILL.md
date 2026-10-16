@@ -73,6 +73,31 @@ A sub-agent can be told to read this SKILL.md and append jobs:
 
 Because enqueue is atomic (unique nanosecond+PID job ids) and lock-free,
 multiple agents can add concurrently; a single worker consumes them in order.
+Keyed registration below uses a per-key lock; unrelated keys remain independent.
+
+## Resumable registration
+
+Automated campaigns should pass `add --idempotency-key KEY`. Use a stable key
+for one logical attempt, for example `campaign/task/clip/attempt-1`. A key is
+1–256 ASCII identifier characters (`A-Z`, `a-z`, `0-9`, `.`, `_`, `:`, `/`, `+`,
+`-`) and starts with a letter or digit. It is hashed before use as a filename.
+
+The same key and request return the original `queued: <job>.job` response,
+including when that job is running, done, failed, or cancelled. Command, CWD,
+name, provider, session, issue, resource and execution flags must all match;
+changing any of them is an error. Inspect `list` for the current status: a
+repeated registration does not imply the job is pending. To deliberately retry
+a failed job, use a new attempt key. Omitting the option retains independent
+registration on every call.
+
+A private registration record is written before publishing the complete job.
+After an interrupted `add`, retry the same request: it either publishes the
+original staged job or returns its existing identity. Missing or corrupt
+history fails explicitly instead of re-enqueuing. Keep `control/registrations`
+and terminal job files for as long as campaign retries are possible. `clear`
+moves pending keyed jobs to `cancelled/`, preserving this history; keyless jobs
+are removed as before. These guarantees cover process interruption, not
+filesystem loss or power failure.
 
 ## Reproducibility bundle (auto-saved, issue #533)
 
