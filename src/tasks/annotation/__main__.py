@@ -28,6 +28,14 @@ PATH_BOUNDARY = NonHydraPathBoundary(
     name="annotation.workflow.cli",
     fields=(
         BoundaryPathField(
+            "verification",
+            PathRole.OUTPUT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            required=False,
+        ),
+        BoundaryPathField(
             "runtime",
             PathRole.OUTPUT,
             PathDirection.INPUT,
@@ -128,6 +136,7 @@ def main() -> None:
         "tick",
         "run",
         "resume-budget",
+        "code-update",
     ):
         command = commands.add_parser(name)
         command.add_argument("--runtime", type=Path, required=True)
@@ -144,6 +153,9 @@ def main() -> None:
         elif name == "status":
             command.add_argument("--details", action="store_true")
         elif name == "resume-budget":
+            command.add_argument("--reason", required=True)
+        elif name == "code-update":
+            command.add_argument("--verification", type=Path, required=True)
             command.add_argument("--reason", required=True)
     stage = commands.add_parser("stage")
     stage.add_argument("--operation", type=Path, required=True)
@@ -203,7 +215,13 @@ def main() -> None:
     paths = PATH_BOUNDARY.validate(
         {
             name: getattr(args, name)
-            for name in ("runtime", "candidates", "operation", "configuration")
+            for name in (
+                "runtime",
+                "candidates",
+                "operation",
+                "configuration",
+                "verification",
+            )
             if getattr(args, name, None) is not None
         },
         resolver=layout.resolver,
@@ -292,6 +310,17 @@ def main() -> None:
     from .controller import Controller
 
     controller = Controller(layout, read_document(layout, ref, Runtime))
+    if args.command == "code-update":
+        from .code_update import update_code
+
+        result_ref = update_code(
+            controller,
+            ref,
+            annotation_reference(layout, paths.declared("verification").path),
+            reason=args.reason,
+        )
+        print(result_ref.model_dump_json())
+        return
     if args.command == "register":
         candidates = read_document(
             layout,

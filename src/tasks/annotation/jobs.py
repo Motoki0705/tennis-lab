@@ -19,6 +19,7 @@ from src.tasks.base.annotation.plan import (
     references,
     require_execution_layout,
 )
+from src.tasks.base.annotation.reproducibility import require_frozen_code
 from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
@@ -111,6 +112,7 @@ class Operations:
         if self.layout.mode == "test":
             command += ["--test-root", str(self.layout.root)]
         launch = StageLaunch(
+            code_revision=self.runtime.code_revision,
             scope=self.runtime.scope,
             resource=ResourceRequest(
                 request_id=request_id,
@@ -133,7 +135,30 @@ class Operations:
             launch_ref = annotation_reference(self.layout, path)
             existing = read_document(self.layout, launch_ref, StageLaunch)
             if existing != launch:
-                raise ValueError("operation resource/command configuration changed")
+                if (
+                    self.runtime.code_revision is None
+                    or existing.model_copy(
+                        update={
+                            "code_root": launch.code_root,
+                            "code_revision": launch.code_revision,
+                            "command": (launch.command[0], *existing.command[1:]),
+                        }
+                    )
+                    != launch
+                    or existing.command[0] != existing.code_root + "/.venv/bin/python"
+                ):
+                    raise ValueError("operation resource/command configuration changed")
+                require_frozen_code(
+                    PROJECT_ROOT,
+                    self.plan,
+                    layout=self.layout,
+                    revision=self.runtime.code_revision,
+                    scope=self.runtime.scope,
+                )
+                # A recorded attempt keeps its original code and launch forever.
+                # Pending old-code attempts require explicit cancellation/retry.
+                old_state: dict[str, Any] = self.stages.status(launch_ref)
+                return old_state
             state: dict[str, Any] = self.stages.status(launch_ref)
             # A capacity-limited launch has no owner yet and remains explicitly pending.
             with self.resources.registry.transaction() as db:

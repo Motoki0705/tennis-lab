@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import Field
 
 from ..contracts import ArtifactRef, Digest, Document
+from ..reproducibility import CodeBoundDocument
 from ..resources.contracts import ResourceRequest
 
 
@@ -19,7 +20,7 @@ class QueueConfiguration(Document):
     issue: int = Field(gt=0)
 
 
-class StageLaunch(Document):
+class StageLaunch(CodeBoundDocument):
     scope: ArtifactRef
     resource: ResourceRequest
     command: tuple[str, ...] = Field(min_length=1)

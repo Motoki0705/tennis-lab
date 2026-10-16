@@ -65,6 +65,7 @@ class ProductionWorkflow:
         runtime.cost("publish_ball")
         self.learning_runtime = (
             LearningRuntime(
+                code_revision=runtime.code_revision,
                 scope=runtime.scope,
                 queue=runtime.queue,
                 train=self._cost("train_ball"),
@@ -83,6 +84,7 @@ class ProductionWorkflow:
             resources=resources,
             worker_pss_bytes=cost.pss_bytes,
             worker_storage_bytes=cost.storage_bytes,
+            code_revision=runtime.code_revision,
         )
         self.registry = Registry(layout)
         self.registry.initialize(

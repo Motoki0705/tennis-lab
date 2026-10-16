@@ -17,6 +17,16 @@ watchdogに使う。mount消失やsymlinkへの変更は計測エラーとし、
 この設定もscopeとともに不変保存するため、既存scopeへの追加ではbaselineと累計を保持した
 明示的なscope移行が必要。VHDX自体を保存量のrootへ加えて二重計上しない。
 
+ユーザーが事前確保より実空きの監視を選んだ場合は、`ObservedHostSpacePolicy` を
+認可記録・plan・scopeへ結び、停止・drain後に `observe_host_space` recoveryで適用できる。
+対象は保存rootを含まない間接的なhost mountだけ。WSL内の書き込みが既存VHD領域を再利用する
+場合に備え、このmountから保存予約を控除せず、認可された実空き下限で判定する。
+それ以外のfilesystemの予約控除、追加保存上限、PSS/GPU累計、baselineは維持する。
+既存policyの上書きは拒否し、停止解除には従来どおり明示的なresumeが必要。
+policy適用中はwatchdogが停止を検出するとCPU/GPU工程・注釈workerのsupervisorが所有子孫を
+終了させる。約2秒の監視間隔と終了処理の遅延があり、hard quotaの非超過保証ではない。
+`free_space_mount_bytes` に各監視mountの実空きも記録する。
+
 `submit()` は不変planと工程、PSSの予想ピーク、追加保存量、GPU予約時間を固定する。
 同じrequest IDの内容変更や完了後の再実行は拒否する。明示的な再試行には新しいIDが必要。
 待機列、同名工程、Codex合算の枠はcampaign横断で共有し、稼働中planのうち厳しい上限を

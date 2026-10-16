@@ -10,10 +10,12 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
     read_document,
     write_asset,
 )
@@ -722,6 +724,68 @@ def test_worker_inherits_resource_lease_and_records_real_pss(setup: Setup) -> No
     )
     assert resources.status()["requests"][0]["state"] == "complete"
     assert setup.launches() == 1
+
+
+def test_watchdog_emergency_terminates_the_worker_child(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = subprocess.Popen
+
+    def with_emergency(command: list[str], **kwargs: Any) -> Any:
+        if command[1:3] == ["-m", "src.tasks.base.annotation.workers"]:
+            injected = (
+                "import runpy; from src.tasks.base.annotation.resources import ResourceManager, BudgetStopped\n"
+                "def emergency(self): raise BudgetStopped('synthetic observed host space emergency')\n"
+                "ResourceManager.watch = emergency\n"
+                "runpy.run_module('src.tasks.base.annotation.workers', run_name='__main__')\n"
+            )
+            command = [command[0], "-c", injected, *command[3:]]
+        return original(command, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", with_emergency)
+    plan = setup.plan.model_copy(
+        update={
+            "resources": setup.plan.resources.model_copy(
+                update={"minimum_free_bytes": 1}
+            )
+        }
+    )
+    resources = ResourceManager.create(
+        setup.layout,
+        scope_id="emergency-worker",
+        limits=BudgetLimits.from_budget(plan.resources),
+        roots=(setup.layout.repository,),
+        previously_allocated_bytes=0,
+        previously_used_gpu_seconds=0.0,
+        max_pending_per_stage=2,
+    )
+    pool = WorkerPool(
+        setup.layout,
+        plan,
+        (setup.adapter,),
+        test_command=(sys.executable, str(setup.script)),
+        resources=resources,
+        worker_pss_bytes=128 * 1024**2,
+        worker_storage_bytes=1024**2,
+        timeout_seconds=90.0,
+    )
+    setup.program(delay=60)
+    pool.start(setup.request)
+    state = settled(pool, setup.request)
+    assert state["state"] == "failed"
+    _, launch = pool._launch(state)
+    directory = Path(launch.directory)
+    receipt = read_document(
+        setup.layout,
+        annotation_reference(setup.layout, directory / "exit.json"),
+        ExitReceipt,
+    )
+    assert "synthetic observed host space emergency" in receipt.reason
+    owner = ProcessIdentity.from_document(
+        json.loads((directory / "owner.json").read_text())
+    )
+    assert not owned_members(owner)
+    assert resources.sample().active_by_stage == {}
 
 
 def test_worker_budget_admission_precedes_process_launch(setup: Setup) -> None:

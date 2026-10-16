@@ -65,6 +65,7 @@ class WorkerPool:
         resources: ResourceManager | None = None,
         worker_pss_bytes: int | None = None,
         worker_storage_bytes: int | None = None,
+        code_revision: ArtifactRef | None = None,
     ) -> None:
         require_execution_layout(layout, plan)
         if test_command is not None and layout.mode != "test":
@@ -77,6 +78,7 @@ class WorkerPool:
             if worker_pss_bytes is None or worker_storage_bytes is None:
                 raise ValueError("worker PSS/storage reservations must be explicit")
         self.resources = resources
+        self.code_revision = code_revision
         self.worker_pss_bytes = worker_pss_bytes
         self.worker_storage_bytes = worker_storage_bytes
         self.layout, self.plan = layout, plan
@@ -231,7 +233,13 @@ class WorkerPool:
         if state["state"] in {"complete", "not_applicable"}:
             return None
         if self.layout.mode == "production":
-            require_frozen_code(PROJECT_ROOT, self.plan)
+            require_frozen_code(
+                PROJECT_ROOT,
+                self.plan,
+                layout=self.layout,
+                revision=self.code_revision,
+                scope=self.resources.reference if self.resources is not None else None,
+            )
         require_process_backend()
         binary = shutil.which(self.binary)
         if self.test_command is None and binary is None:
@@ -356,6 +364,7 @@ class WorkerPool:
                         self.resources.lease(resource_request)
                     )
                 launch = Launch(
+                    code_revision=self.code_revision,
                     work_id=request.work_id,
                     attempt=attempt,
                     plan=plan_ref,

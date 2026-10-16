@@ -19,6 +19,7 @@ from ..contracts import (
 )
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan
+from ..reproducibility import CodeBoundDocument
 from ..resources.contracts import ResourceRequest
 from ..telemetry.contracts import RenderedImage
 
@@ -87,7 +88,7 @@ class WorkOutcome(Document):
         return self
 
 
-class Launch(Document):
+class Launch(CodeBoundDocument):
     schema_version: Literal["annotation.worker-launch.v1"] = (
         "annotation.worker-launch.v1"
     )

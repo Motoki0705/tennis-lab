@@ -338,6 +338,7 @@ class Learning:
         completion = read_document(self.layout, intent.completion, CampaignCompletion)
         cost = runtime.train if request.stage == "train" else runtime.evaluate
         return StageLaunch(
+            code_revision=runtime.code_revision,
             scope=runtime.scope,
             resource=ResourceRequest(
                 request_id="learning-" + request.sha256,
@@ -366,9 +367,11 @@ class Learning:
         stage: Literal["train", "evaluate"],
     ) -> TrainingReceipt | EvaluationReceipt:
         if stage == "train":
+            training: TrainingReceipt
             _, training = check_training_value(self.layout, completed)
             adapter.validate_training(self.layout, intent, training)
             return training
+        evaluation: EvaluationReceipt
         _, evaluation = check_evaluation_value(self.layout, completed)
         adapter.validate_evaluation(self.layout, intent, evaluation)
         return evaluation
