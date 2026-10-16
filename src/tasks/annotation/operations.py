@@ -164,7 +164,19 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         else:
             raise ValueError("unknown stage operation")
     except SourceExcluded as error:
-        result, status, reason = (), "not_applicable", str(error)
+        if not isinstance(op, (AcquireOperation, ScreenOperation)):
+            raise ValueError("this operation cannot exclude a source") from error
+        source = CollectionLedger(layout).source(plan, op.source_id)
+        if (
+            source["state"] != "excluded"
+            or source["acquisition"] is None
+            or not source["reason"]
+            or source["reason"] != str(error)
+        ):
+            raise ValueError("source exclusion lacks registered evidence") from error
+        acquisition = ArtifactRef.model_validate_json(source["acquisition"])
+        verify_reference(layout, acquisition)
+        result, status, reason = (acquisition,), "not_applicable", source["reason"]
     return write_document(
         layout,
         output,
