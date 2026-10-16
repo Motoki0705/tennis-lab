@@ -83,7 +83,9 @@ def operations(
             codex_workers=1,
             additional_storage_bytes=64 * 1024**2,
             minimum_free_bytes=1,
-            total_pss_bytes=2 * 1024**3,
+            # Backlog recovery must have room for libraries retained by a
+            # full-suite pytest worker, in addition to the stage reservation.
+            total_pss_bytes=8 * 1024**3,
             gpu_seconds=60,
             stages=(
                 StageCapacity(
@@ -260,7 +262,7 @@ def test_unaccepted_launch_resubmits_same_attempt_after_backlog_clears(
     jobs = Operations(jobs.layout, jobs.runtime, jobs.plan, jobs.resources)
     try:
         resumed = jobs.operation(data)
-        assert resumed["state"] == ("queued" if gpu else "running")
+        assert resumed["state"] == ("queued" if gpu else "running"), resumed
         assert ArtifactRef.model_validate(resumed["launch"]) == launch_ref
         if gpu:
             assert jobs.resources._row(launch.resource)["state"] == "pending"
