@@ -308,8 +308,8 @@ class WorkerPool:
             raise ValueError("unregistered launch has a different resource request")
         if resource["state"] == "pending":
             return
+        reason = "resource admission interrupted before worker registration"
         with self.ledger.registry.transaction() as database:
-            reason = "resource admission interrupted before worker registration"
             database.execute(
                 "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
                 (
@@ -539,7 +539,7 @@ class WorkerPool:
         except BlockingIOError as error:
             raise WorkerBusy("work is owned by an existing supervisor") from error
 
-    def reconcile(self, request: WorkRequest) -> dict[str, Any]:
+    def _registered_task(self, request: WorkRequest) -> dict[str, Any]:
         self._adapter(request)
         row = self._task(request.work_id)
         if (row["campaign"], row["plan_digest"], row["request"]) != (
@@ -547,154 +547,160 @@ class WorkerPool:
             self.plan.sha256,
             request.canonical_bytes().decode(),
         ):
-            raise ValueError(
-                "reconciliation request differs from the registered campaign"
-            )
+            raise ValueError("worker request differs from the registered campaign")
+        return row
+
+    def reconcile(self, request: WorkRequest) -> dict[str, Any]:
+        self._registered_task(request)
         try:
             with (
                 artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
                 artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
-                row = self._task(request.work_id)
-                if row["state"] in {
-                    "ready",
-                    "failed",
-                    "deferred",
-                    "cancelled",
-                    "quota",
-                    "timed_out",
-                    "validation_failed",
-                }:
-                    return row
-                if row["state"] in {"complete", "not_applicable"}:
-                    final = read_document(
-                        self.layout,
-                        ArtifactRef.model_validate_json(row["result"]),
-                        AttemptResult,
-                    )
-                    self._verify_final(final)
-                    return row
-                ref, launch = self._launch(row)
-                directory = Path(launch.directory)
-                self._require_no_members(directory)
-                child = self.children.pop(launch.attempt, None)
-                if child is not None:
-                    child.wait(timeout=1)
-                elif (directory / "owner.json").exists():
-                    owner = ProcessIdentity.from_document(
-                        json.loads((directory / "owner.json").read_text())
-                    )
-                    with suppress(ChildProcessError):
-                        os.waitpid(owner.pid, os.WNOHANG)
-                exit_path = directory / "exit.json"
-                if not exit_path.exists():
-                    self._mark(
-                        request.work_id,
-                        "failed",
-                        "supervisor disappeared without an exit receipt",
-                        attempt=launch.attempt,
-                    )
-                    return self._task(request.work_id)
-                exit_ref, execution = self._exit_receipt(ref, directory)
-                if execution.status != "succeeded":
-                    if launch.test_command is None:
-                        try:
-                            self._telemetry(request, launch, ref, exit_ref)
-                        except (ValueError, OSError) as error:
-                            write_asset(
-                                self.layout,
-                                directory / "telemetry-error.json",
-                                (
-                                    json.dumps(
-                                        {
-                                            "launch": ref.model_dump(),
-                                            "execution": exit_ref.model_dump(),
-                                            "error": f"{type(error).__name__}: {error}",
-                                        }
-                                    )
-                                    + "\n"
-                                ).encode(),
-                            )
-                    self._mark(
-                        request.work_id,
-                        execution.status,
-                        execution.reason,
-                        attempt=launch.attempt,
-                    )
-                    return self._task(request.work_id)
-                final_path = directory / "result.receipt.json"
-                if final_path.exists():
-                    final_ref = annotation_reference(self.layout, final_path)
-                    final = read_document(self.layout, final_ref, AttemptResult)
-                    if (final.launch, final.exit) != (ref, exit_ref):
-                        raise ValueError("finalized result belongs to another attempt")
-                    self._verify_final(final)
-                else:
-                    try:
-                        telemetry = self._telemetry(request, launch, ref, exit_ref)
-                        if telemetry is not None:
-                            # Enforce the pinned model and unambiguous response IDs;
-                            # the task decides which bound images must be reviewed.
-                            presented_images(self.layout, telemetry)
-                        raw_result = directory / launch.prepared.result_path
-                        result = write_asset(
-                            self.layout,
-                            directory / "result.json",
-                            verify_reference(
-                                self.layout,
-                                annotation_reference(self.layout, raw_result),
-                            ).read_bytes(),
-                        )
-                        outcome = self._adapter(request).validate(
-                            self.layout,
-                            self.plan,
-                            request,
-                            directory,
-                            result,
-                            execution,
-                            telemetry,
-                        )
-                        outcome = WorkOutcome.model_validate_json(
-                            outcome.canonical_bytes()
-                        )
-                        if (
-                            outcome.adoption is not None
-                            and not self.plan.allows_adoption
-                        ):
-                            raise ValueError("preview campaigns cannot adopt teachers")
-                        for reference in references(outcome):
-                            verify_reference(self.layout, reference)
-                        final = AttemptResult(
-                            launch=ref,
-                            exit=exit_ref,
-                            result=result,
-                            outcome=outcome,
-                            telemetry=telemetry,
-                        )
-                        final_ref = write_document(self.layout, final_path, final)
-                    except (ValueError, OSError) as error:
-                        self._mark(
-                            request.work_id,
-                            "validation_failed",
-                            f"{type(error).__name__}: {error}",
-                            attempt=launch.attempt,
-                        )
-                        return self._task(request.work_id)
-                self._mark(
-                    request.work_id,
-                    final.outcome.status,
-                    final.outcome.reason,
-                    attempt=launch.attempt,
-                    result=final_ref,
-                )
-                return self._task(request.work_id)
+                return self._reconcile_locked(request)
         except BlockingIOError:
             return self._task(request.work_id)
+
+    def _reconcile_locked(self, request: WorkRequest) -> dict[str, Any]:
+        # The caller holds the work lock through receipt recovery and state updates.
+        row = self._task(request.work_id)
+        if row["state"] in {
+            "ready",
+            "failed",
+            "deferred",
+            "cancelled",
+            "quota",
+            "timed_out",
+            "validation_failed",
+        }:
+            return row
+        if row["state"] in {"complete", "not_applicable"}:
+            final = read_document(
+                self.layout,
+                ArtifactRef.model_validate_json(row["result"]),
+                AttemptResult,
+            )
+            self._verify_final(final)
+            return row
+        ref, launch = self._launch(row)
+        directory = Path(launch.directory)
+        self._require_no_members(directory)
+        child = self.children.pop(launch.attempt, None)
+        if child is not None:
+            child.wait(timeout=1)
+        elif (directory / "owner.json").exists():
+            owner = ProcessIdentity.from_document(
+                json.loads((directory / "owner.json").read_text())
+            )
+            with suppress(ChildProcessError):
+                os.waitpid(owner.pid, os.WNOHANG)
+        exit_path = directory / "exit.json"
+        if not exit_path.exists():
+            self._mark(
+                request.work_id,
+                "failed",
+                "supervisor disappeared without an exit receipt",
+                attempt=launch.attempt,
+            )
+            return self._task(request.work_id)
+        exit_ref, execution = self._exit_receipt(ref, directory)
+        if execution.status != "succeeded":
+            if launch.test_command is None:
+                try:
+                    self._telemetry(request, launch, ref, exit_ref)
+                except (ValueError, OSError) as error:
+                    write_asset(
+                        self.layout,
+                        directory / "telemetry-error.json",
+                        (
+                            json.dumps(
+                                {
+                                    "launch": ref.model_dump(),
+                                    "execution": exit_ref.model_dump(),
+                                    "error": f"{type(error).__name__}: {error}",
+                                }
+                            )
+                            + "\n"
+                        ).encode(),
+                    )
+            self._mark(
+                request.work_id,
+                execution.status,
+                execution.reason,
+                attempt=launch.attempt,
+            )
+            return self._task(request.work_id)
+        final_path = directory / "result.receipt.json"
+        if final_path.exists():
+            final_ref = annotation_reference(self.layout, final_path)
+            final = read_document(self.layout, final_ref, AttemptResult)
+            if (final.launch, final.exit) != (ref, exit_ref):
+                raise ValueError("finalized result belongs to another attempt")
+            self._verify_final(final)
+        else:
+            try:
+                telemetry = self._telemetry(request, launch, ref, exit_ref)
+                if telemetry is not None:
+                    # Enforce the pinned model and unambiguous response IDs;
+                    # the task decides which bound images must be reviewed.
+                    presented_images(self.layout, telemetry)
+                raw_result = directory / launch.prepared.result_path
+                result = write_asset(
+                    self.layout,
+                    directory / "result.json",
+                    verify_reference(
+                        self.layout,
+                        annotation_reference(self.layout, raw_result),
+                    ).read_bytes(),
+                )
+                outcome = self._adapter(request).validate(
+                    self.layout,
+                    self.plan,
+                    request,
+                    directory,
+                    result,
+                    execution,
+                    telemetry,
+                )
+                outcome = WorkOutcome.model_validate_json(
+                    outcome.canonical_bytes()
+                )
+                if (
+                    outcome.adoption is not None
+                    and not self.plan.allows_adoption
+                ):
+                    raise ValueError("preview campaigns cannot adopt teachers")
+                for reference in references(outcome):
+                    verify_reference(self.layout, reference)
+                final = AttemptResult(
+                    launch=ref,
+                    exit=exit_ref,
+                    result=result,
+                    outcome=outcome,
+                    telemetry=telemetry,
+                )
+                final_ref = write_document(self.layout, final_path, final)
+            except (ValueError, OSError) as error:
+                self._mark(
+                    request.work_id,
+                    "validation_failed",
+                    f"{type(error).__name__}: {error}",
+                    attempt=launch.attempt,
+                )
+                return self._task(request.work_id)
+        self._mark(
+            request.work_id,
+            final.outcome.status,
+            final.outcome.reason,
+            attempt=launch.attempt,
+            result=final_ref,
+        )
+        return self._task(request.work_id)
 
     def stop(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
             raise ValueError("stop requires a reason")
-        row = self._task(request.work_id)
+        row = self._registered_task(request)
         if row["state"] not in {"running", "exited"}:
             return row
         _ref, launch = self._launch(row)
@@ -714,20 +720,26 @@ class WorkerPool:
             time.sleep(0.02)
         if owned_members(owner):
             raise WorkerBusy("owned processes have not exited after cancellation")
-        current = self.reconcile(request)
-        if current["state"] in {"complete", "not_applicable"}:
+        self.reconcile(request)
+        current = self._task(request.work_id)
+        if current["current_attempt"] != launch.attempt or current["state"] in {
+            "complete",
+            "not_applicable",
+        }:
             return current
         try:
             with (
-                artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
+                artifact_lock(self.layout, "worker-" + request.work_id),
                 artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
                 current = self._task(request.work_id)
+                if current["current_attempt"] != launch.attempt:
+                    return current
+                self._require_no_members(Path(launch.directory))
+                # Recover any receipt committed while stop waited for these locks.
+                current = self._reconcile_locked(request)
                 if current["state"] in {"complete", "not_applicable"}:
                     return current
-                if current["current_attempt"] != launch.attempt:
-                    raise WorkerBusy("another attempt started during cancellation")
-                self._require_no_members(Path(launch.directory))
                 self._mark(
                     request.work_id,
                     "cancelled",

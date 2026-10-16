@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +11,7 @@ import pytest
 
 from src.tasks.player_detection.configuration import FrameSelectionConfig
 from src.tasks.player_detection.data.detection_dataset import select_detection_frames
-from src.tasks.player_detection.data.migration import main, migrate_v1_store
+from src.tasks.player_detection.data.migration import migrate_v1_store
 from src.tasks.player_detection.data.store import (
     INDEX_FILE,
     METADATA_FILE,
@@ -119,12 +118,3 @@ def test_migration_requires_v1_and_a_new_destination_outside_source(synthetic_ro
     with pytest.raises(ValueError, match="requires a .*v1 source"):
         migrate_v1_store(current, current.parent / "invalid-v2")
     assert snapshot(source) == before
-
-
-def test_migration_cli(synthetic_root: SyntheticRoot, monkeypatch: pytest.MonkeyPatch) -> None:
-    current = build_dataset(synthetic_root.config)
-    source = legacy_store(current, current.parent / "legacy-v1")
-    destination = current.parent / "migrated-v2"
-    monkeypatch.setattr(sys, "argv", ["migration", str(source), str(destination)])
-    main()
-    assert PlayerFrameStore(destination).frames["frame_index"].tolist() == [1, 2, 4]

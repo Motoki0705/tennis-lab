@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import hashlib
-import time
+import os
+import signal
+import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -42,10 +45,23 @@ from src.tasks.base.annotation.resources import (
     ResourceManager,
     ResourceRequest,
 )
+from src.tasks.base.annotation.resources.contracts import GPUUsage
 
 
 @pytest.fixture
-def operations(tmp_path: Path) -> tuple[Operations, ArtifactRef]:
+def operations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Operations, ArtifactRef]:
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="synthetic job tests do not query a GPU",
+        ),
+    )
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     manifest = write_document(
         layout, layout.path("campaigns", "history.json"), HistoryManifest(entries=())
@@ -141,11 +157,16 @@ def operations(tmp_path: Path) -> tuple[Operations, ArtifactRef]:
     return Operations(layout, runtime, plan, resources), manifest
 
 
-@pytest.mark.parametrize("gpu", [False, True], ids=["cpu", "gpu"])
+@pytest.mark.parametrize(
+    ("gpu", "finish_before_return"),
+    [(False, False), (False, True), (True, False)],
+    ids=["cpu", "cpu-completed-before-return", "gpu"],
+)
 def test_unaccepted_launch_resubmits_same_attempt_after_backlog_clears(
     operations: tuple[Operations, ArtifactRef],
     monkeypatch: pytest.MonkeyPatch,
     gpu: bool,
+    finish_before_return: bool,
 ) -> None:
     jobs, manifest = operations
     data = OperationInput(
@@ -165,6 +186,37 @@ def test_unaccepted_launch_resubmits_same_attempt_after_backlog_clears(
     )
     jobs.resources.submit(blocker)
     queued: list[ArtifactRef] = []
+    cpu_launches: list[ArtifactRef] = []
+    supervisors: list[subprocess.Popen[bytes]] = []
+    original_popen = subprocess.Popen
+
+    def assert_admitted(
+        layout: AnnotationLayout, reference: ArtifactRef, state: str
+    ) -> None:
+        launch = read_document(layout, reference, StageLaunch)
+        assert jobs.resources._row(launch.resource)["state"] == state
+        retained = {
+            ref
+            for protection in jobs.resources.storage.catalog.snapshot().protections
+            for ref in protection.references
+        }
+        assert {reference, *references(launch)} <= retained
+
+    def start_cpu(command: list[str], **kwargs: Any) -> subprocess.Popen[bytes]:
+        assert command[1:3] == ["-m", "src.tasks.base.annotation.execution"]
+        reference = annotation_reference(
+            jobs.layout, Path(command[command.index("--launch") + 1])
+        )
+        # Check admission before the child can advance running -> draining.
+        assert_admitted(jobs.layout, reference, "running")
+        cpu_launches.append(reference)
+        process = original_popen(command, **kwargs)
+        supervisors.append(process)
+        if finish_before_return:
+            # Force the valid schedule where the child finishes before submit returns.
+            assert process.wait(timeout=20) == 0
+            assert jobs.resources._row(launch.resource)["state"] == "draining"
+        return process
 
     def enqueue(
         layout: AnnotationLayout,
@@ -172,14 +224,7 @@ def test_unaccepted_launch_resubmits_same_attempt_after_backlog_clears(
         reference: ArtifactRef,
         code: Path,
     ) -> str:
-        launch = read_document(layout, reference, StageLaunch)
-        assert jobs.resources._row(launch.resource)["state"] == "pending"
-        retained = {
-            ref
-            for protection in jobs.resources.storage.catalog.snapshot().protections
-            for ref in protection.references
-        }
-        assert {reference, *references(launch)} <= retained
+        assert_admitted(layout, reference, "pending")
         queued.append(reference)
         key = hashlib.sha256(
             ("annotation-stage:" + reference.digest).encode()
@@ -195,6 +240,9 @@ def test_unaccepted_launch_resubmits_same_attempt_after_backlog_clears(
         return "synthetic.job"
 
     monkeypatch.setattr("src.tasks.base.annotation.execution.runner.enqueue", enqueue)
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.execution.runner.subprocess.Popen", start_cpu
+    )
     first = jobs.operation(data)
     assert first["state"] == "waiting" and "backlog" in first["reason"]
     directory = jobs.layout.path(
@@ -204,29 +252,34 @@ def test_unaccepted_launch_resubmits_same_attempt_after_backlog_clears(
     launch = read_document(jobs.layout, launch_ref, StageLaunch)
     with pytest.raises(ValueError, match="missing"):
         jobs.resources._row(launch.resource)
-    assert queued == [] and jobs.stages.children == {}
+    assert queued == cpu_launches == [] and jobs.stages.children == {}
     assert jobs.operation(data)["state"] == "waiting"
     jobs.resources.cancel_pending(blocker, reason="release synthetic backlog slot")
 
     # Reconstruct the controller to exercise recovery from persisted launch only.
     jobs = Operations(jobs.layout, jobs.runtime, jobs.plan, jobs.resources)
-    resumed = jobs.operation(data)
-    assert resumed["state"] == ("queued" if gpu else "running")
-    assert ArtifactRef.model_validate(resumed["launch"]) == launch_ref
-    assert jobs.resources._row(launch.resource)["state"] == (
-        "pending" if gpu else "running"
-    )
-    deadline = time.monotonic() + 20
-    while (
-        not gpu
-        and resumed["state"] in {"running", "draining"}
-        and time.monotonic() < deadline
-    ):
-        time.sleep(0.05)
+    try:
         resumed = jobs.operation(data)
-    assert resumed["state"] == ("queued" if gpu else "succeeded"), resumed
-    if not gpu:
-        assert jobs.receipt(resumed).status == "complete"
-    assert jobs.operation(data) == resumed
-    assert queued == ([launch_ref] if gpu else [])
-    assert list(directory.parent.glob(data.sha256 + "-*")) == [directory]
+        assert resumed["state"] == ("queued" if gpu else "running")
+        assert ArtifactRef.model_validate(resumed["launch"]) == launch_ref
+        if gpu:
+            assert jobs.resources._row(launch.resource)["state"] == "pending"
+        else:
+            assert len(supervisors) == 1
+            assert supervisors[0].wait(timeout=20) == 0
+            resumed = jobs.operation(data)
+            assert resumed["state"] == "succeeded", resumed
+            assert jobs.receipt(resumed).status == "complete"
+        assert jobs.operation(data) == resumed
+        assert queued == ([launch_ref] if gpu else [])
+        assert cpu_launches == ([] if gpu else [launch_ref])
+        assert list(directory.parent.glob(data.sha256 + "-*")) == [directory]
+    finally:
+        for process in supervisors:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=5)

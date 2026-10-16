@@ -126,9 +126,13 @@ screen/review workerの画像・編集要求は親controllerへ渡す。親がre
 inboxの並び順・削除・親の再開で枠を戻さず、同一要求の回収で二重計上しない。
 workerにソース動画の全量decodeや共有cacheへの書込みを任せない。
 
-予測は新規clipだけをtask別に束ねる。保存済み予測をreview requestへ変換する際は推論しない。
+予測は新規clipだけをtask別に束ね、1工程で同じモデルinstanceを共有する。
+保存済み予測をreview requestへ変換する際は推論しない。
 要求した動画数が準備済みで、全準備receiptのclipとレビュー対象が一致し、全workerが採用まで
 完了した場合だけ公開する。保留・失敗・対象外workerを成功や公開対象外へ読み替えない。
+公開と学習へ進む直前には、取得・準備・推論の各操作の最新attemptの成功終了とoperation receiptを検証し、
+その成果物が対象source/clipの台帳参照と一致することを要求する。予測の保存と台帳更新だけでは
+進めず、失敗・中断・未回収は明示的な新attemptによる復旧まで停止する。
 
 公開結果のtask/product/base snapshot・採用版・追加clip集合を照合してから
 `workflow/products.json` を作り、`workflow/completion.json` でレビューと公開操作に結ぶ。
@@ -145,10 +149,13 @@ workerにソース動画の全量decodeや共有cacheへの書込みを任せな
 同じattemptの資源要求を登録する。CPU起動・GPU queue登録前の未受付を実行失敗と扱わない。
 `status --details` はworkerの現在attempt、全工程の履歴、公開完了参照、学習結果を返す。
 最新attemptに置き換わった古い失敗は `superseded: true` と表示し、現在の失敗と分ける。
+workflowの完了cacheがあっても、最新工程の未解決の失敗をcampaign完了で隠さない。
 `cycle` / `status` はsourceの状態にかかわらず登録済みworkerを照合する。
 選別がsourceを更新した直後に中断しても、workerの完了receiptと台帳更新を回収する。
 `preview_ready` は台帳のprepared/predictedに加え、工程ごとの最新試行の成功終了、
 operation receiptと登録成果物の一致、予測receiptの入力・モデル・成果物hashを要求する。
+内容重複などで除外されたsourceは、取得・選別・準備の対象外receiptの取得参照・除外理由と台帳を照合する。
+重複clipを検出した準備receiptは証拠として保持するが、除外済みsourceの準備完了としては要求しない。
 predictedの保存後でも終了receiptがなければ完了にしない。未回収・失敗はblockedとし、
 `submit --attempt N` で新しい試行を明示して回収する。保存済み予測は検証して再利用し、
 回収のために推論し直さない。
@@ -156,7 +163,17 @@ predictedの保存後でも終了receiptがなければ完了にしない。未�
 失敗を自動で再試行しない。取得・推論・公開などは、失敗または中断を確認してから
 同じ `OperationInput` を `submit --attempt N`（直前の番号+1）で実行する。
 実行中・成功済み工程に新しいattemptを作ることは拒否する。
-取得のretryは検証済みattempt番号から取得工程へ渡す。`AcquireOperation`自体は変更せず、同じdigestの履歴として失敗をsupersededにする。
+取得operationは `retry` を除いた同じ論理IDで試行を管理する。
+取得失敗後は `AcquireOperation(retry=True)` のsubmitでも次のattemptを作れる。
+通常の再開は最新attemptに固定された入力を回収し、同じretry指定を繰り返しても再起動しない。
+そのattemptが再度失敗した場合は、さらに大きい `--attempt N` を明示する。
+取得工程は入力とattempt番号・保存ディレクトリを照合し、検証済み番号または明示retry指定で再取得を許可する。
+
+選別workerの失敗・timeout・検証失敗は、同じruntimeを使う
+`retry-screen --source-id SOURCE_ID` でも新しいworker attemptを明示できる。
+`screen_prepare` の `submit --attempt N` はworker attemptを増やさない。
+quotaによるcampaign全体のworker停止は、原因解消後に同コマンドへ
+`--resume-quota` を付けて明示解除する。通常の `run` / `tick` は失敗workerを再試行しない。
 
 worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固定root内に保存し、
 `recover --runtime PATH --sha256 HASH --operation PATH` で実行する。
