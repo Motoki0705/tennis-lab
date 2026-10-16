@@ -13,13 +13,17 @@ from src.tasks.base.annotation.artifacts import (
     write_document,
 )
 from src.tasks.base.annotation.collection.service import Collection
-from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.execution.queue import validate_queue
 from src.tasks.base.annotation.execution.runner import StageRunner
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import load_plan
-from src.tasks.base.annotation.predictions import Predictions
+from src.tasks.base.annotation.plan import load_plan, references
+from src.tasks.base.annotation.predictions import (
+    PredictionContext,
+    PredictionReceipt,
+    Predictions,
+)
 from src.tasks.base.annotation.resources import (
     BudgetStopped,
     CapacityUnavailable,
@@ -200,6 +204,39 @@ class Controller:
             raise ValueError("stage result belongs to a different operation")
         for ref in receipt.results:
             verify_reference(self.layout, ref)
+        data = read_document(self.layout, launch.input, OperationInput)
+        if data.plan != self.runtime.plan or data.stage != launch.resource.stage:
+            raise ValueError("stage result differs from the runtime plan/stage")
+        if isinstance(data.operation, PredictOperation):
+            operation = data.operation
+            if receipt.status != "complete" or len(receipt.results) != len(
+                operation.clips
+            ):
+                raise ValueError("prediction stage must return one receipt per clip")
+            task = next(
+                (task for task in self.plan.tasks if task.task == operation.task), None
+            )
+            if task is None:
+                raise ValueError("prediction task is absent from the frozen plan")
+            for clip, ref in zip(operation.clips, receipt.results, strict=True):
+                manifest = read_document(self.layout, clip, ClipManifest)
+                expected = PredictionContext(
+                    task=task.task,
+                    manifest=clip,
+                    clip_id=manifest.clip_id,
+                    model=task.model,
+                    configuration=task.inference,
+                )
+                prediction = read_document(self.layout, ref, PredictionReceipt)
+                if (
+                    prediction.context != expected
+                    or prediction.prediction.request_id != expected.request_id
+                ):
+                    raise ValueError(
+                        "prediction receipt differs from the frozen operation"
+                    )
+                for dependency in (*references(prediction), *references(manifest)):
+                    verify_reference(self.layout, dependency)
         return receipt
 
     def _admit_service(self, attempt: str, service: ServiceRequest) -> None:
@@ -429,15 +466,67 @@ class Controller:
             "resources": sample.model_dump(mode="json"),
         }
 
-    def status(self) -> dict[str, Any]:
-        reconciled = self._reconcile_workers()
-        jobs = []
+    def _stage_states(
+        self,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        jobs: list[dict[str, Any]] = []
+        latest: dict[str, tuple[int, dict[str, Any]]] = {}
         for path in sorted(
             self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
-                "*/launch.json"
+                "*/operation.json"
             )
         ):
-            jobs.append(self.stages.status(annotation_reference(self.layout, path)))
+            operation_ref = annotation_reference(self.layout, path)
+            data = read_document(self.layout, operation_ref, OperationInput)
+            identity, number = path.parent.name.rsplit("-", 1)
+            if (
+                data.plan != self.runtime.plan
+                or identity != data.sha256
+                or not number.isdigit()
+                or int(number) < 1
+            ):
+                raise ValueError("stage attempt differs from its immutable operation")
+            launch_path = path.parent / "launch.json"
+            if launch_path.exists():
+                launch_ref = annotation_reference(self.layout, launch_path)
+                launch = read_document(self.layout, launch_ref, StageLaunch)
+                if (
+                    launch.input != operation_ref
+                    or launch.resource.request_id != path.parent.name
+                ):
+                    raise ValueError("stage launch differs from its operation/attempt")
+                state: dict[str, Any] = self.stages.status(launch_ref)
+            else:
+                state = {
+                    "state": "pending",
+                    "reason": "operation has no launch receipt",
+                }
+            state = {
+                **state,
+                "operation": operation_ref.model_dump(),
+                "attempt": int(number),
+            }
+            jobs.append(state)
+            if identity not in latest or int(number) > latest[identity][0]:
+                latest[identity] = (int(number), state)
+        return jobs, [state for _, state in latest.values()]
+
+    def status(self) -> dict[str, Any]:
+        reconciled = self._reconcile_workers()
+        jobs, latest = self._stage_states()
+        completed: set[str] = set()
+        for stage_state in latest:
+            if stage_state["state"] != "succeeded":
+                continue
+            try:
+                receipt = self.receipt(stage_state)
+                completed.update(
+                    ref.canonical_bytes().decode() for ref in receipt.results
+                )
+            except (ValueError, OSError) as error:
+                stage_state.update(
+                    state="invalid_receipt", reason=f"{type(error).__name__}: {error}"
+                )
         with self.collection.ledger.registry.transaction() as db:
             tasks = dict(
                 db.execute(
@@ -445,6 +534,22 @@ class Controller:
                     (self.plan.campaign_id,),
                 )
             )
+            source_receipts = [
+                ref
+                for row in db.execute(
+                    "SELECT acquisition,preparation FROM sources WHERE campaign_id=?",
+                    (self.plan.campaign_id,),
+                )
+                for ref in row
+                if ref is not None
+            ]
+            prediction_receipts = [
+                row[0]
+                for row in db.execute(
+                    "SELECT p.receipt FROM annotation_tasks t LEFT JOIN annotation_predictions p ON p.task_id=t.id WHERE t.campaign_id=?",
+                    (self.plan.campaign_id,),
+                )
+            ]
         workers = [
             {key: row[key] for key in ("id", "state", "reason")} for row in reconciled
         ]
@@ -461,13 +566,32 @@ class Controller:
         ]
         failures += [
             job
-            for job in jobs
-            if job["state"] in {"failed", "cancelled", "timed_out", "interrupted"}
+            for job in latest
+            if job["state"]
+            in {"failed", "cancelled", "timed_out", "interrupted", "invalid_receipt"}
         ]
         all_sources = bool(source_states) and all(
             key in {"prepared", "excluded"} for key in source_states
         )
-        ready = all_sources and bool(tasks) and set(tasks) == {"predicted"} and not live
+        ledger_ready = all_sources and bool(tasks) and set(tasks) == {"predicted"}
+        if ledger_ready and any(
+            ref is None or ref not in completed
+            for ref in (*source_receipts, *prediction_receipts)
+        ):
+            failures.append(
+                {
+                    "state": "unreconciled",
+                    "reason": "ledger artifacts lack verified completion receipts from the latest stage attempts; recover with an explicit new attempt",
+                }
+            )
+        ready = (
+            ledger_ready
+            and not live
+            and not failures
+            and bool(latest)
+            and all(job["state"] == "succeeded" for job in latest)
+            and all(row["state"] in {"complete", "not_applicable"} for row in workers)
+        )
         state = (
             "preview_ready"
             if ready

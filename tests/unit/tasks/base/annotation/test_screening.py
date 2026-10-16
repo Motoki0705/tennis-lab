@@ -13,8 +13,11 @@ import numpy as np
 import pytest
 
 from src.tasks.annotation.contracts import (
+    AcquireOperation,
     OperationInput,
     OperationReceipt,
+    PredictOperation,
+    PrepareOperation,
     Runtime,
     ScreenOperation,
     StageCost,
@@ -28,16 +31,26 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.collection.contracts import (
     PreparationConfig,
+    PreparationReceipt,
     SelectionReceipt,
     SourceCandidate,
 )
 from src.tasks.base.annotation.collection.service import Collection, SourceExcluded
-from src.tasks.base.annotation.contracts import ArtifactRef
-from src.tasks.base.annotation.execution.contracts import QueueConfiguration
+from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
+from src.tasks.base.annotation.execution.contracts import (
+    QueueConfiguration,
+    StageExit,
+    StageLaunch,
+)
 from src.tasks.base.annotation.media import encode_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
-from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+from src.tasks.base.annotation.predictions import PredictionContext, PredictionReceipt
+from src.tasks.base.annotation.resources import (
+    BudgetLimits,
+    ResourceManager,
+    ResourceRequest,
+)
 from src.tasks.base.annotation.screening.contracts import (
     ClipDecision,
     Interval,
@@ -59,6 +72,7 @@ from src.tasks.base.annotation.workers.services import (
     ServiceRequest,
     request_service,
 )
+from src.utils.paths import PROJECT_ROOT
 
 
 @dataclass
@@ -170,7 +184,7 @@ def controller_for(example: Example) -> Controller:
                     pss_bytes=256 * 1024**2,
                     storage_bytes=10 * 1024**2,
                     timeout_seconds=20.0,
-                    gpu_seconds=0.0,
+                    gpu_seconds=30.0 if stage.kind == "gpu" else 0.0,
                 )
                 for stage in plan.resources.stages
             ),
@@ -247,6 +261,12 @@ def setup(
                         {
                             "stage": "acquire",
                             "kind": "io",
+                            "parallel": 1,
+                            "threads_per_process": 1,
+                        },
+                        {
+                            "stage": "infer_ball",
+                            "kind": "gpu",
                             "parallel": 1,
                             "threads_per_process": 1,
                         },
@@ -863,3 +883,192 @@ def test_controller_recovers_worker_after_source_finalized_before_worker_receipt
         "not_applicable" if empty else "complete"
     )
     assert restarted.status()["state"] != "running"
+
+
+def record_stage(
+    controller: Controller,
+    data: OperationInput,
+    *,
+    attempt: int = 1,
+    results: tuple[ArtifactRef, ...] | None = None,
+    exited: bool = False,
+    failed: bool = False,
+) -> ArtifactRef:
+    """Publish synthetic supervisor evidence without starting a queue or model."""
+    layout = controller.layout
+    request_id = f"{data.sha256}-{attempt}"
+    directory = layout.path(
+        "campaigns", controller.plan.campaign_id, "jobs", request_id
+    )
+    operation = write_document(layout, directory / "operation.json", data)
+    cost = controller.runtime.cost(data.stage)
+    launch = write_document(
+        layout,
+        directory / "launch.json",
+        StageLaunch(
+            scope=controller.runtime.scope,
+            resource=ResourceRequest(
+                request_id=request_id,
+                plan=controller.runtime.plan,
+                stage=data.stage,
+                pss_bytes=cost.pss_bytes,
+                storage_bytes=cost.storage_bytes,
+                gpu_seconds=cost.gpu_seconds,
+            ),
+            command=("synthetic-stage",),
+            input=operation,
+            code_root=str(PROJECT_ROOT),
+            timeout_seconds=cost.timeout_seconds,
+            queue=controller.runtime.queue if cost.gpu_seconds else None,
+            test_root=str(layout.root),
+        ),
+    )
+    if results is not None:
+        write_document(
+            layout,
+            directory / "result.json",
+            OperationReceipt(
+                operation=operation,
+                status="complete",
+                results=results,
+                reason=None,
+            ),
+        )
+    if exited:
+        log = write_asset(layout, directory / "log.txt", b"synthetic supervisor\n")
+        write_document(
+            layout,
+            directory / "exit.json",
+            StageExit(
+                launch=launch,
+                status="failed" if failed else "succeeded",
+                exit_code=1 if failed else 0,
+                started_at="2026-10-16T00:00:00Z",
+                ended_at="2026-10-16T00:00:01Z",
+                elapsed_seconds=1.0,
+                stdout=log,
+                stderr=log,
+                reason="synthetic failure" if failed else None,
+            ),
+        )
+    return operation
+
+
+@pytest.mark.parametrize(
+    "cut", ["operation_receipt", "stage_exit", "failed_exit", "missing_result"]
+)
+def test_preview_requires_latest_receipts_and_explicit_prediction_recovery(
+    example: Example, monkeypatch: pytest.MonkeyPatch, cut: str
+) -> None:
+    from src.tasks.annotation import operations
+
+    controller = controller_for(example)
+    example.finish()
+    prepared = controller.collection.prepare(example.source.source_id)
+    source = controller.collection.ledger.source(
+        controller.plan, example.source.source_id
+    )
+    for operation, result in (
+        (
+            AcquireOperation(source_id=example.source.source_id),
+            ArtifactRef.model_validate_json(source["acquisition"]),
+        ),
+        (
+            ScreenOperation(source_id=example.source.source_id),
+            example.request.prepared_input,
+        ),
+        (PrepareOperation(source_id=example.source.source_id), prepared),
+    ):
+        record_stage(
+            controller,
+            OperationInput(plan=controller.runtime.plan, operation=operation),
+            results=(result,),
+            exited=True,
+        )
+    clips = read_document(example.layout, prepared, PreparationReceipt).clips
+
+    class SyntheticPredictionAdapter:
+        task = "ball"
+        produced = 0
+
+        def produce(
+            self,
+            layout: AnnotationLayout,
+            context: PredictionContext,
+            manifest: ClipManifest,
+            directory: Path,
+        ) -> ArtifactRef:
+            self.produced += 1
+            return write_asset(
+                layout, directory / "prediction.json", b"synthetic prediction"
+            )
+
+        def validate(
+            self,
+            layout: AnnotationLayout,
+            context: PredictionContext,
+            manifest: ClipManifest,
+            result: ArtifactRef,
+        ) -> None:
+            assert layout.artifact_path(result).read_bytes() == b"synthetic prediction"
+
+    adapter = SyntheticPredictionAdapter()
+    monkeypatch.setattr(
+        "src.tasks.ball_detection.annotation.inference.BallPredictionAdapter",
+        lambda: adapter,
+    )
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=PredictOperation(task="ball", clips=clips),
+    )
+    reference = record_stage(controller, data)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+
+    def interrupt(layout: AnnotationLayout, path: Path, value: Any) -> ArtifactRef:
+        if path.name == "result.json":
+            raise RuntimeError("interrupted after prediction commit")
+        return write_document(layout, path, value)
+
+    if cut in {"operation_receipt", "missing_result"}:
+        with monkeypatch.context() as patch:
+            patch.setattr(operations, "write_document", interrupt)
+            with pytest.raises(RuntimeError, match="after prediction commit"):
+                operations.execute(example.layout, reference)
+    else:
+        operations.execute(example.layout, reference)
+    if cut == "failed_exit":
+        record_stage(controller, data, exited=True, failed=True)
+    elif cut == "missing_result":
+        record_stage(controller, data, exited=True)
+    # A terminal queue entry without StageExit represents an unrecovered supervisor.
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.execution.queue.queue_state",
+        lambda config, ref: {"state": "interrupted", "reason": "no completion receipt"},
+    )
+    restarted = Controller(example.layout, controller.runtime)
+    status = restarted.status()
+    assert status["task_states"] == {"predicted": 1}
+    assert status["state"] == "blocked"
+    assert status["failures"]
+    # Explicit new attempt reads and validates the immutable prediction without inference.
+    record_stage(restarted, data, attempt=9, exited=True, failed=True)
+    recovery = record_stage(restarted, data, attempt=10)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", recovery.digest)
+    operations.execute(example.layout, recovery)
+    assert adapter.produced == 1
+    record_stage(restarted, data, attempt=10, exited=True)
+    assert restarted.status()["state"] == "preview_ready"
+    assert not restarted.status()["failures"]
+    receipt = read_document(
+        example.layout,
+        annotation_reference(
+            example.layout,
+            example.layout.artifact_path(recovery).parent / "result.json",
+        ),
+        OperationReceipt,
+    )
+    prediction = read_document(example.layout, receipt.results[0], PredictionReceipt)
+    example.layout.artifact_path(prediction.prediction.artifact).write_bytes(
+        b"tampered"
+    )
+    assert restarted.status()["state"] == "blocked"
