@@ -169,7 +169,8 @@ specifies Court trajectory/frame indices, captured camera IDs and drawing settin
 The overview contains Court, alignment and captured-camera panels.
 
 `visualize_scene_reveal` renders a staged reveal animation of one scene, from
-the capture cameras to the final NHT render, from a fixed court-frame viewpoint.
+the capture cameras to the final NHT render, then overlays the accepted court
+alignment and moves the camera through the reconstructed scene.
 See [visualization/reveal](visualization/reveal/README.md).
 
 ## Court LINE推論の共有
