@@ -153,6 +153,10 @@ def copy_file(source_root: Path, target_root: Path, item: BundleFile) -> None:
         ):
             temporary = Path(output.name)
             for block in iter(lambda: source.read(1024 * 1024), b""):
+                if size + len(block) > item.size_bytes:
+                    raise ValueError(
+                        f"migration source exceeds dry-run size: {item.path}"
+                    )
                 output.write(block)
                 digest.update(block)
                 size += len(block)

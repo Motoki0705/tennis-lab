@@ -35,6 +35,7 @@ from src.tasks.base.annotation.artifacts import (
     write_asset,
     write_document,
 )
+from src.tasks.base.annotation.collection.contracts import SourceCandidate
 from src.tasks.base.annotation.contracts import (
     ArtifactRef,
     ClipManifest,
@@ -287,6 +288,16 @@ class Environment:
         self.plan_ref = annotation_reference(
             self.layout, save_plan(self.layout, self.plan)
         )
+        candidate = SourceCandidate(
+            provider="local",
+            channel_id=self.manifest.source.channel_id,
+            video_id=self.manifest.source.video_id,
+            title="synthetic review source",
+            origin_url=self.manifest.source.origin_url,
+            selection_reason="synthetic review fixture",
+            evidence=self.plan.selection,
+            local_media=self.manifest.source.media,
+        )
         predictions = Predictions(self.layout, self.plan)
         with predictions.registry.transaction() as db:
             db.execute(
@@ -297,7 +308,7 @@ class Environment:
                     "fixture",
                     video_id,
                     campaign_id,
-                    "{}",
+                    candidate.canonical_bytes().decode(),
                     "prepared",
                 ),
             )
