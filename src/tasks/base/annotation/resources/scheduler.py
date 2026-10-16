@@ -10,6 +10,7 @@ from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -95,7 +96,6 @@ class ResourceManager:
             self._baseline_path()
             return
         self.registry.initialize("annotation.resources.v1", _SCHEMA)
-        self.storage = ResourceReferences(layout)
         self._baseline_path()
         with self.registry.transaction() as db:
             row = db.execute(
@@ -109,6 +109,12 @@ class ResourceManager:
                 "INSERT OR IGNORE INTO resource_scopes(id,reference) VALUES (?,?)",
                 (self.scope.scope_id, encoded),
             )
+
+    @cached_property
+    def storage(self) -> ResourceReferences:
+        # Opening a benchmark scope only verifies existing state. Initialize the
+        # protection tables on its first mutation, outside the caller's transaction.
+        return ResourceReferences(self.layout)
 
     def _require_registered_scope(self) -> None:
         error = "benchmark must reuse an exact registered shared scope"
@@ -312,6 +318,7 @@ class ResourceManager:
             raise ValueError(
                 "GPU stages require a positive time reservation; other stages require zero"
             )
+        storage = self.storage
         with self.registry.transaction() as db:
             row = db.execute(
                 "SELECT request FROM resource_requests WHERE id=?", (self.key(request),)
@@ -321,7 +328,7 @@ class ResourceManager:
                     raise ValueError(
                         "resource request identity was reused with different costs/inputs"
                     )
-                self.storage.register(
+                storage.register(
                     self.key(request),
                     request.plan,
                     plan,
@@ -348,7 +355,7 @@ class ResourceManager:
                     stage.kind,
                 ),
             )
-            self.storage.register(
+            storage.register(
                 self.key(request),
                 request.plan,
                 plan,
@@ -379,8 +386,9 @@ class ResourceManager:
                         continue
                     request = ResourceRequest.model_validate_json(row["request"])
                     missing = row["state"] == "running"
+                    storage = self.storage
                     with self.registry.transaction() as db:
-                        self.storage.settle(row["id"], database=db)
+                        storage.settle(row["id"], database=db)
                         db.execute(
                             "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=?",
                             (
@@ -757,8 +765,9 @@ class ResourceManager:
                 raise CapacityUnavailable(
                     "remaining cumulative GPU budget cannot cover this reservation"
                 )
+            storage = self.storage
             with self.registry.transaction() as db:
-                self.storage.admit(self.key(request), database=db)
+                storage.admit(self.key(request), database=db)
                 db.execute(
                     "UPDATE resource_requests SET state='running' WHERE id=? AND state='pending'",
                     (self.key(request),),
