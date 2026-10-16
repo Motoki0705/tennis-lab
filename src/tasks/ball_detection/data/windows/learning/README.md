@@ -4,7 +4,8 @@
 ball storeのsplitとfile/semantic hashを照合し、val/testの再割当ては行わない。
 共通学習管理は、この所属と固定holdoutの所属を比較してsource単位の混入を拒否する。
 
-`prepare_training_windows(layout, publication, policy, directory)`は、公開receiptと累積snapshotを照合し、
+`prepare_training_windows(layout, publication, policy, directory)`は、公開receiptと累積snapshot、
+requestのplanが固定したbase snapshotを照合し、baseからの追加・再利用clipの差分を検証する。
 旧clipの注釈・画像identityを保持したままMDD-only manifestを作る。
 `WindowPolicy`にプレイ区間・教師数・FPSの条件を明示する。poseの生成・読込みは不要。
 manifestはtrainだけを含み、画像は元のimmutable storeを参照する。
