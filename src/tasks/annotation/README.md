@@ -24,17 +24,26 @@ timeout/GPU時間を参照する。実験固有のURL、件数、モデルpath�
 
 `run` は台帳と不変receiptから再開する。終了時間はcontrollerの実行時間であり、
 既に受付済みのsupervisorを強制終了する指定ではない。再開も同じruntimeを使う。
+`cycle` / `status` はsourceの状態にかかわらず登録済みworkerを照合する。
+選別がsourceを更新した直後に中断しても、workerの完了receiptと台帳更新を回収する。
 sourceの先行数とCPU/Codex/GPUの枠を守り、GPUは共通queueへ投入する。
 queue workerの起動は[training-queue skill](../../../.agents/skills/training-queue/SKILL.md)に従う。
 
 screening workerの追加画像要求は、workerの書込領域から親controllerへ渡す。
 親がrequest/attempt/区間を検証し、CPU工程で描画してから不変の画像参照を返す。
+受付済み要求は親所有のSQLite台帳にattempt単位で累積保存し、固定上限を判定する。
+inboxの並び順・削除・親の再開で枠を戻さず、同一要求の回収で二重計上しない。
 workerにソース動画の全量decodeや共有cacheへの書込みを任せない。採用時は実際の
 rollout画像提示と選別結果を照合する。単なる画像生成や自己申告では選別を完了しない。
 
 予測は新規clipだけをtask別に束ね、1工程で同じモデルinstanceを共有する。
 失敗した試行を自動で繰り返さず、状態・理由を残す。`submit --attempt N` は
 明示的な新試行であり、通常の再開では最新の明示試行のreceiptを回収する。
+`preview_ready` は台帳のprepared/predictedに加え、工程ごとの最新試行の成功終了、
+operation receiptと登録成果物の一致、予測receiptの入力・モデル・成果物hashを要求する。
+predictedの保存後でも終了receiptがなければ完了にしない。未回収・失敗はblockedとし、
+`submit --attempt N` で新しい試行を明示して回収する。保存済み予測は検証して再利用し、
+回収のために推論し直さない。過去の失敗試行は履歴に残し、最新試行の成功後は完了を妨げない。
 資源上限のstop解除は原因解消後の `resume-budget --reason TEXT` を使う。
 scopeや累計を初期化して上限を回避しない。
 
