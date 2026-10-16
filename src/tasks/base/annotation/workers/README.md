@@ -33,6 +33,8 @@ state = pool.reconcile(request)
 - 別sessionのsupervisorがCodexとそのツールを所有し、終了・timeout・停止時に
   子孫を片付ける。保存PIDだけを根拠に `killpg` しない。pidfdで再利用PIDへの
   誤送信を防ぎ、ownerが不明瞭な場合は明示的に停止する。
+  停止要求はシグナル送信前にadapter版・campaign・plan・requestの一致を検証し、
+  別の所有者や異なる要求からの停止を拒否する。
 - `gpt-6.1-sol` とplanのeffortを指定し、ユーザーconfig・rules・子agent・skills
   読込を無効にする。ツールのnetwork/GPUを無効にし、CPU内部thread数を工程から
   設定する。作業CWDは `attempt/work`、追加write領域もattempt内の宣言済みdirectory
@@ -50,6 +52,7 @@ state = pool.reconcile(request)
   quotaイベントはcampaign全体の新規投入を止め、明示的な `resume_campaign` を要求する。
   admission時にも終了receiptを検証し、quota状態とcampaign停止を同じtransactionで保存する。
   回収はwork lock取得後に現在のattemptを読み、状態更新は検証したattemptと遷移元状態に限定する。
+  停止の最終状態更新も同じwork lock内でattemptと保存済みreceiptを再確認する。
   完了と停止・retryが競合しても、確定済みreceiptや後続attemptを古い停止で取り消さない。
 - Codex合計と同名工程の並列枠をcampaign横断で共有する。異なる上限が併存する場合は
   稼働中planと新規planの小さい上限を適用する。終了済みattemptは枠を返し、結果の
@@ -60,6 +63,7 @@ state = pool.reconcile(request)
   lease取得前に不変launchを保存する。資源受付後・worker台帳登録前に中断したattemptは、
   再開時に台帳へ失敗として回収し、明示retryでは新しいattempt/request IDを発行する。
   まだ資源を取得していないpending要求は同じIDで受付を再試行し、待機枠を重複消費しない。
+  benchmarkでも資源要求は共有の資源台帳で照合し、workerの復旧状態は条件別台帳に記録する。
 
 標準状態は `ready → running → complete`、未回収終了は `exited`（quotaはadmissionでも確定）。
 `failed / quota / timed_out / cancelled / validation_failed / deferred` は理由を保存する。
