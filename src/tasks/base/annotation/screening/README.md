@@ -32,6 +32,10 @@
 - finalizeは結果のimmutableコピー、提示記録、preview群を根拠receiptに結び、
   `SelectionReceipt` を公開して台帳へ登録する。receipt公開直後に中断しても
   同じ参照で再開できる。未選択や不足を準備済み・公開済みと扱わない。
+- 画像要求の未応答・失敗や、時間切れで確認を終えられない場合は `deferred` とする。
+  `insufficient` は確認済みの素材で適格区間が足りない場合だけを表す。親adapterも
+  未完了の画像要求を照合し、部分選択を確定・準備せず元動画を保持する。
+  理由付きの明示再試行で選別をやり直す。遅れて画像が生成されても閲覧済みとはしない。
 
 全体overviewとsource入力は `campaigns/<campaign>/screening/<source>/`、
 workerの指示・結果は共通の `campaigns/<campaign>/workers/<work-id>/<attempt>/` に置く。

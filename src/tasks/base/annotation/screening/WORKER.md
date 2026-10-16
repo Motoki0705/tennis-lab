@@ -28,6 +28,15 @@ viewed. State selection/rejection reasons and all actual-play intervals. Use
 `insufficient` when fewer than the requested count qualify, including zero, and
 explain this in `notes`; do not pad with non-play material.
 
+Use `deferred` when a technical problem prevents completion: an image request is
+still pending or failed, an image could not be viewed, or the attempt runs out of
+time. Explain the unfinished work in `notes`; retain already confirmed windows
+in `clips` as provisional evidence. A service timeout does not show that the
+source lacks suitable play. Even if a late reply arrives, keep `deferred` until
+you have actually viewed the required images and completed the selection.
+Never report technical incompletion as `insufficient`. The parent will retain
+the source and arrange an explicit retry; it will not prepare provisional clips.
+
 Write a JSON decision matching the supplied schema, run `check --decision PATH`,
 and correct any structural failures. The check does not certify image viewing.
 The launcher verifies actual image presentation and binds it to the result.
