@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from src.tasks.base.annotation.artifacts import read_document
 from src.tasks.base.annotation.contracts import AdoptionReceipt, FrameRange
-from src.tasks.base.annotation.editing import RevisionConflict
+from src.tasks.base.annotation.editing import Revision, RevisionConflict
 from src.tasks.base.annotation.editing.contracts import EditReceipt
 from src.tasks.base.annotation.images import render_page
 from src.tasks.base.annotation.images.contracts import Box as DrawingBox
@@ -417,6 +417,309 @@ def test_full_frame_and_bbox_detail_have_independent_scale_limits(
                 images=(crop,),
             )
         )
+
+
+def added_player(env: Environment, name: str, box: Box) -> PlayerObservation:
+    return PlayerObservation(
+        observation_id=manual_observation_id(env.manifest.clip_id, 2, name),
+        proposal_id=None,
+        manual_id=name,
+        classification="player",
+        box_state="observed",
+        box=box,
+        origin="manual",
+        confidence=0.0,
+        score_origin="missing",
+        duplicate_of=None,
+    )
+
+
+def half_frame(env: Environment):
+    return render_page(
+        env.layout,
+        RenderRequest(
+            manifest=env.context.manifest,
+            annotation=env.context.prediction,
+            annotation_kind="prediction",
+            drawing="plain",
+            reason="half size full frame",
+            tiles=(Tile(frame_index=2, crop=Crop(left=0, top=0, right=64, bottom=32)),),
+            columns=1,
+            tile_width=32,
+            tile_height=32,
+        ),
+    )
+
+
+@pytest.mark.parametrize("classification", ["non_player", "duplicate"])
+@pytest.mark.parametrize("boundary", ["edit", "adoption"])
+def test_removed_manual_bbox_requires_detail_from_removing_worker(
+    tmp_path: Path,
+    classification: str,
+    boundary: str,
+) -> None:
+    env = Environment(
+        tmp_path / "annotation",
+        minimum_image_scale=1.0,
+        minimum_full_frame_image_scale=0.5,
+    )
+    full = env.page((2,))
+    added = added_player(env, "missed", Box(x1=38.0, y1=5.0, x2=60.0, y2=30.0))
+    retained = added_player(env, "kept", Box(x1=4.0, y1=3.0, x2=24.0, y2=30.0))
+    items = (added, retained) if classification == "duplicate" else (added,)
+    env.apply(
+        PlayerEdits(
+            operations=(
+                env.replace(
+                    2,
+                    full,
+                    observations=tuple(sorted(items, key=lambda o: o.observation_id)),
+                ),
+            ),
+            images=(full,),
+        )
+    )
+    previous = env.head()
+    first_proof = env.telemetry((full,))
+    env.actor = env.new_actor("removing-worker")
+    overview = half_frame(env)
+    # The retained player's detail cannot stand in for the removed player's bbox.
+    images = (
+        (overview, env.page((2,), crop=Crop(left=0, top=0, right=32, bottom=32)))
+        if classification == "duplicate"
+        else (overview,)
+    )
+    removed = manual(
+        added,
+        classification=classification,
+        box_state="not_applicable",
+        box=None,
+        duplicate_of=retained.observation_id if classification == "duplicate" else None,
+    )
+    items = (removed, retained) if classification == "duplicate" else (removed,)
+    operation = env.replace(
+        2, overview, observations=tuple(sorted(items, key=lambda o: o.observation_id))
+    )
+    operation = operation.model_copy(
+        update={
+            "decision": operation.decision.model_copy(
+                update={"evidence": tuple(image.sha256 for image in images)},
+            )
+        }
+    )
+    edits = PlayerEdits(operations=(operation,), images=images)
+    if boundary == "edit":
+        with pytest.raises(ValueError, match="fully contained"):
+            env.apply(edits)
+        assert env.head() == previous
+    else:
+        # A persisted pre-fix revision must also fail adoption, even with genuine
+        # telemetry for both workers. Do not depend only on the new edit gate.
+        labels = env.labels()
+        frames = list(labels.frames)
+        frames[2] = frames[2].model_copy(
+            update={"decision": operation.decision, "review_actor": env.actor}
+        )
+        payload = labels.model_copy(
+            update={"frames": tuple(frames), "images": (*labels.images, *images)}
+        )
+        node = read_document(env.layout, previous, Revision)
+        historical = env.save(
+            Revision(
+                context=env.context_ref,
+                sequence=node.sequence + 1,
+                previous=previous,
+                payload=env.save(payload),
+                command=env.save(env.command(edits)),
+            )
+        )
+        second_proof = env.telemetry(images)
+        with pytest.raises(ValueError, match="fully contained"):
+            env.adapter.prepare_adoption(
+                env.layout,
+                env.context,
+                env.manifest,
+                historical,
+                (first_proof, second_proof),
+                reason="old removal revision",
+            )
+
+
+@pytest.mark.parametrize("show_detail", [False, True])
+def test_manual_removal_adoption_requires_own_detail_telemetry(
+    tmp_path: Path,
+    show_detail: bool,
+) -> None:
+    env = Environment(
+        tmp_path / "annotation",
+        minimum_image_scale=1.0,
+        minimum_full_frame_image_scale=0.5,
+    )
+    full = env.page((2,))
+    added = added_player(env, "missed", Box(x1=38.0, y1=5.0, x2=60.0, y2=30.0))
+    env.apply(
+        PlayerEdits(
+            operations=(env.replace(2, full, observations=(added,)),), images=(full,)
+        )
+    )
+    # The first worker saw sufficient detail; the second must independently see it.
+    first_proof = env.telemetry((full,))
+    env.actor = env.new_actor("removing-worker")
+    overview = half_frame(env)
+    detail = env.page((2,), crop=Crop(left=32, top=0, right=64, bottom=32))
+    operation = env.replace(2, overview, observations=(reject(added),))
+    operation = operation.model_copy(
+        update={
+            "decision": operation.decision.model_copy(
+                update={"evidence": (overview.sha256, detail.sha256)},
+            )
+        }
+    )
+    env.apply(PlayerEdits(operations=(operation,), images=(overview, detail)))
+    proof = env.telemetry(
+        (overview, detail), shown=(overview, detail) if show_detail else (overview,)
+    )
+    if not show_detail:
+        with pytest.raises(ValueError, match="actually shown"):
+            env.adapter.prepare_adoption(
+                env.layout,
+                env.context,
+                env.manifest,
+                env.head(),
+                (first_proof, proof),
+                reason="missing second worker detail",
+            )
+    else:
+        adopted = env.adapter.prepare_adoption(
+            env.layout,
+            env.context,
+            env.manifest,
+            env.head(),
+            (first_proof, proof),
+            reason="seen removal bbox",
+        )
+        receipt = read_document(env.layout, adopted, AdoptionReceipt)
+        mask = read_document(env.layout, receipt.teacher_mask, PlayerTeacherMask)
+        assert mask.rows[2].supervision == "negative"
+        env.store.seal(env.head(), adopted, env.adapter)
+
+
+@pytest.mark.parametrize(
+    "crop",
+    [
+        Crop(left=0, top=0, right=32, bottom=32),  # Old bbox only.
+        Crop(left=32, top=0, right=50, bottom=32),  # Only part of the new bbox.
+    ],
+)
+def test_manual_removal_uses_full_latest_readded_bbox(
+    tmp_path: Path, crop: Crop
+) -> None:
+    env = Environment(
+        tmp_path / "annotation",
+        minimum_image_scale=1.0,
+        minimum_full_frame_image_scale=0.5,
+    )
+    full = env.page((2,))
+    added = added_player(env, "missed", Box(x1=4.0, y1=3.0, x2=24.0, y2=30.0))
+    moved = manual(added, box={"x1": 38.0, "y1": 5.0, "x2": 60.0, "y2": 30.0})
+    for item in (added, reject(added), moved):
+        env.apply(
+            PlayerEdits(
+                operations=(env.replace(2, full, observations=(item,)),),
+                images=() if env.labels().images else (full,),
+            )
+        )
+    previous = env.head()
+    env.actor = env.new_actor("removing-worker")
+    overview = half_frame(env)
+    detail = env.page((2,), crop=crop)
+    operation = env.replace(2, overview, observations=(reject(moved),))
+    operation = operation.model_copy(
+        update={
+            "decision": operation.decision.model_copy(
+                update={"evidence": (overview.sha256, detail.sha256)},
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="fully contained"):
+        env.apply(PlayerEdits(operations=(operation,), images=(overview, detail)))
+    assert env.head() == previous
+
+
+@pytest.mark.parametrize("detailed", [False, True])
+def test_manual_addition_and_removal_in_one_batch_requires_detail(
+    tmp_path: Path,
+    detailed: bool,
+) -> None:
+    env = Environment(
+        tmp_path / "annotation",
+        minimum_image_scale=1.0,
+        minimum_full_frame_image_scale=0.5,
+    )
+    full = env.page((2,))
+    added = added_player(env, "missed", Box(x1=38.0, y1=5.0, x2=60.0, y2=30.0))
+    addition = env.replace(2, full, observations=(added,))
+    intermediate = (
+        env.labels()
+        .frames[2]
+        .model_copy(
+            update={"decision": addition.decision, "review_actor": env.actor},
+        )
+    )
+    image = full if detailed else half_frame(env)
+    removal = env.replace(2, image, observations=(reject(added),)).model_copy(
+        update={"expected_frame_digest": intermediate.sha256},
+    )
+    edits = PlayerEdits(
+        operations=(addition, removal), images=(full,) if detailed else (full, image)
+    )
+    if not detailed:
+        with pytest.raises(ValueError, match="fully contained"):
+            env.apply(edits)
+        assert env.head() == env.initial
+    else:
+        env.apply(edits)
+        proof = env.telemetry((full,))
+        adopted = env.adapter.prepare_adoption(
+            env.layout,
+            env.context,
+            env.manifest,
+            env.head(),
+            (proof,),
+            reason="bbox retained in edit history",
+        )
+        env.store.seal(env.head(), adopted, env.adapter)
+
+
+@pytest.mark.parametrize("previously_located", [False, True])
+def test_removed_manual_observation_without_prior_bbox_is_rejected(
+    env: Environment,
+    previously_located: bool,
+) -> None:
+    full = env.page((2,))
+    added = added_player(env, "missed", Box(x1=38.0, y1=5.0, x2=60.0, y2=30.0))
+    if previously_located:
+        env.apply(
+            PlayerEdits(
+                operations=(env.replace(2, full, observations=(added,)),),
+                images=(full,),
+            )
+        )
+    unresolved = manual(added, box_state="unresolved", box=None)
+    env.apply(
+        PlayerEdits(
+            operations=(env.replace(2, full, observations=(unresolved,)),),
+            images=(full,),
+        )
+    )
+    previous = env.head()
+    with pytest.raises(ValueError, match="no prior bbox"):
+        env.apply(
+            PlayerEdits(
+                operations=(env.replace(2, full, observations=(reject(unresolved),)),)
+            )
+        )
+    assert env.head() == previous
 
 
 def test_cropped_bbox_or_forged_overlay_is_not_image_evidence(env: Environment) -> None:
