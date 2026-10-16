@@ -234,7 +234,7 @@ class Controller:
             raise ValueError("stage result differs from the runtime plan/stage")
         operation = data.operation
         if isinstance(operation, AcquireOperation) or (
-            isinstance(operation, ScreenOperation)
+            isinstance(operation, (ScreenOperation, PrepareOperation))
             and receipt.status == "not_applicable"
         ):
             source = self.collection.ledger.source(self.plan, operation.source_id)
@@ -604,10 +604,13 @@ class Controller:
             source_receipts = [
                 ref
                 for row in db.execute(
-                    "SELECT acquisition,preparation FROM sources WHERE campaign_id=?",
+                    "SELECT state,acquisition,preparation FROM sources WHERE campaign_id=?",
                     (self.plan.campaign_id,),
                 )
-                for ref in row
+                for ref in (
+                    row["acquisition"],
+                    row["preparation"] if row["state"] == "prepared" else None,
+                )
                 if ref is not None
             ]
             prediction_receipts = [
