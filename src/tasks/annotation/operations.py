@@ -180,7 +180,7 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         else:
             raise ValueError("unknown stage operation")
     except SourceExcluded as error:
-        if not isinstance(op, (AcquireOperation, ScreenOperation)):
+        if not isinstance(op, (AcquireOperation, ScreenOperation, PrepareOperation)):
             raise ValueError("this operation cannot exclude a source") from error
         source = CollectionLedger(layout).source(plan, op.source_id)
         if (
