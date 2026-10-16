@@ -5,10 +5,10 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig
+from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig, MDDPretrainConfig
 
 
-def validate_rgb_timestamps(config: MDDPoseConfig, rgb: Tensor, timestamps: Tensor) -> None:
+def validate_rgb_timestamps(config: MDDPoseConfig | MDDPretrainConfig, rgb: Tensor, timestamps: Tensor) -> None:
     if rgb.ndim != 5 or rgb.shape[0] < 1 or rgb.shape[2] != 3 or rgb.dtype != torch.uint8:
         raise ValueError("Native MDD models require RGB uint8 B,T,3,H,W")
     b, t, _, h, w = rgb.shape

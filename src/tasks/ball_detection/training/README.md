@@ -41,6 +41,9 @@ snapshotを共有するrunの開始前に、同READMEの[snapshot運用制約](.
 ```
 
 CNN候補は`configs/model/mdd_dpt_{pretrain,convnext_v2,fasternet}.yaml`で選ぶ。
+5chの事前学習には `configs/model/mdd_dpt_rgb_mdd.yaml` を指定する。
+事後学習は保存された入力契約とencoder構成を引き継ぐ。
+入力仕様と旧2chとの互換範囲は [models/mdd](../models/mdd/README.md) を参照。
 pose/圧縮比較は`prepare_data`が作るmodel設定を`--stage coordinates --initialize scratch --model-config ...`へ渡す。
 CPU smokeでは`--device cpu --precision fp32 --jpeg-decoder opencv --compile-mode off --input-verification lazy --num-workers 0`を明示する。CUDAの事前/事後学習はBF16固定。
 

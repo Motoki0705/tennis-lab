@@ -14,7 +14,20 @@
 圧縮比較用encoderと深いCNNは異なる構造として維持する。深いCNN候補を圧縮方式と無条件に直積しない。
 同じquery attentionを共有し、比較軸が増えても専用の学習CLIを増やさない。
 
-座標モデルはRGB uint8 `(B,32,3,H,W)`を受け、内部で固定FP32 MDDを計算する。RGB特徴の並列branchはない。
+深いCNNの新規5ch構成は `configs/model/mdd_dpt_rgb_mdd.yaml` で選ぶ。
+入力契約の正本は [`preprocessing/rgb_mdd.py`](../../preprocessing/rgb_mdd.py) の
+`RGBToRGBMDD.input_contract()`。外部入力は RGB uint8 `(B,32,3,H,W)`、CNN入力は
+FP32 `(B,5,32,H,W)`、順序は `R,G,B,MDD_positive,MDD_negative`。
+RGBは255で割った `[0,1]` のみで、ImageNet正規化を加えない。MDDも `[0,1]` で、
+既存 `RGBToMDD` のFP32計算・係数・演算順をそのまま使う。
+サンプル済みの同じ拡張後RGBから5chを作るため、GTと空間・時刻が一致する。
+窓先頭はMDDの2chだけゼロで、RGBの3chは実画像を保持する。
+
+`MDDPretrainConfig.input_channels=5` が5chを明示する。旧設定の省略値は2chを意味し、
+旧MDD-only DPT/queryのstate_dict名・計算順・入力契約を維持する。
+保存した `recipe.input_contract` と設定のチャンネル数を読込・encoder転送時に照合し、
+2ch/5ch間の転送や正規化・順序の読み替えを拒否する。
+RGB特徴の並列branchはない。圧縮比較・pose系は従来の2ch契約のまま。
 mask/実PTSはmetadataであり、pose不要モデルはpose artifactを開かない。court入力なし。
 query-onlyは同時刻MDDへの片方向Cross→query列の時間Self→FFN。poseありの双方向融合は別構造。
 深いquery decoderはSwiGLU（中間幅8/3 dimを64単位で切上げ）、dim256なら704。
