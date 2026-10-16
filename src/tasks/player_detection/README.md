@@ -52,7 +52,7 @@ sourceとdestinationは絶対パスで指定し、destinationはsourceの外に�
 既存destinationや不正なv1は拒否し、v2の検証完了後に新storeを公開します。
 
 ```bash
-.venv/bin/python -m src.tasks.player_detection.data.migration \
+.venv/bin/python -m src.tasks.player_detection.scripts.migrate_store \
   /absolute/path/to/v1-store /absolute/path/to/new-v2-store
 ```
 
