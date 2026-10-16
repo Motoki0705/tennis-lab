@@ -8,6 +8,7 @@
 #
 # Subcommands:
 #   add "<command>" [--name NAME] [--resource half|all] [--prune-ckpt]
+#                  [--idempotency-key KEY]
 #                                   Enqueue a command (runs in the current CWD).
 #                                   --prune-ckpt: after the run succeeds, delete
 #                                   its checkpoints iff the test-split
@@ -46,6 +47,7 @@ STATE_DIR="$QUEUE_DIR/state"
 CANCEL_REQUEST_DIR="$QUEUE_DIR/cancel-requests"
 CONTROL_DIR="$QUEUE_DIR/control"
 EXTERNAL_ACK_DIR="$CONTROL_DIR/external-acks"
+REGISTRATION_DIR="$CONTROL_DIR/registrations"
 WORKER_PID_FILE="$QUEUE_DIR/worker.pid"
 WORKER_LOCK_FILE="$QUEUE_DIR/worker.lock"
 WORKER_LOG="$QUEUE_DIR/worker.log"
@@ -64,16 +66,16 @@ SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 TERM_GRACE_SECONDS=15
 
 _ensure_dirs() {
-  if [ -L "$CONTROL_DIR" ] || [ -L "$EXTERNAL_ACK_DIR" ]; then
+  if [ -L "$CONTROL_DIR" ] || [ -L "$EXTERNAL_ACK_DIR" ] || [ -L "$REGISTRATION_DIR" ]; then
     echo "error: queue control directory must not be a symlink" >&2
     return 1
   fi
   mkdir -p \
     "$JOBS_DIR" "$LOGS_DIR" "$DONE_DIR" "$FAILED_DIR" "$RUNNING_DIR" \
     "$CANCELLED_DIR" "$REPRO_DIR" "$STATE_DIR" "$CANCEL_REQUEST_DIR" \
-    "$EXTERNAL_ACK_DIR"
-  if [ ! -d "$CONTROL_DIR" ] || [ ! -d "$EXTERNAL_ACK_DIR" ] \
-    || ! chmod 0700 "$CONTROL_DIR" "$EXTERNAL_ACK_DIR"; then
+    "$EXTERNAL_ACK_DIR" "$REGISTRATION_DIR" || return 1
+  if [ ! -d "$CONTROL_DIR" ] || [ ! -d "$EXTERNAL_ACK_DIR" ] || [ ! -d "$REGISTRATION_DIR" ] \
+    || ! chmod 0700 "$CONTROL_DIR" "$EXTERNAL_ACK_DIR" "$REGISTRATION_DIR"; then
     echo "error: queue control directory must be private and owner-writable" >&2
     return 1
   fi
@@ -466,12 +468,48 @@ _maybe_prune_ckpt() {
     || echo "[worker] prune-ckpt non-fatal error for $job (rc=$?)"
 }
 
+# Registration records precede publication. A retry either publishes the same
+# complete staging file, or finds that exact job in the lifecycle directories.
+# Missing history is an error, never permission to run a second job.
+_recover_registration() {
+  local record="$1" request="$2" registered_request job extra directory tmp
+  if [ -L "$record" ] || [ ! -f "$record" ] \
+    || ! read -r registered_request job extra < "$record" \
+    || [ -n "$extra" ] || ! [[ "$registered_request" =~ ^[a-f0-9]{64}$ ]] \
+    || ! [[ "$job" =~ ^[0-9]+_[0-9]+_[A-Za-z0-9._-]+\.job$ ]]; then
+    echo "error: invalid queue registration record: $record" >&2
+    return 1
+  fi
+  if [ "$registered_request" != "$request" ]; then
+    echo "error: idempotency key already registered with a different request" >&2
+    return 2
+  fi
+  tmp="$JOBS_DIR/.tmp.$job"
+  if [ -L "$tmp" ]; then
+    echo "error: registration staging file must not be a symlink" >&2
+    return 1
+  fi
+  if [ -f "$tmp" ]; then
+    # Only the atomic rename below consumes this staging file. Its presence
+    # proves this registration has not been published yet.
+    mv "$tmp" "$JOBS_DIR/$job" || return 1
+  fi
+  for directory in "$JOBS_DIR" "$RUNNING_DIR" "$DONE_DIR" "$FAILED_DIR" "$CANCELLED_DIR"; do
+    if [ -f "$directory/$job" ] && [ ! -L "$directory/$job" ]; then
+      printf 'queued: %s\n' "$job"
+      return 0
+    fi
+  done
+  echo "error: registered job history missing or transitioning; retry or inspect $job (no job added)" >&2
+  return 1
+}
+
 cmd_add() {
   local name="" command="" provider="" session="" issue="" resource="all"
-  local prune_ckpt=0 external_teardown_ack=0
+  local prune_ckpt=0 external_teardown_ack=0 idempotency_key=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      --name|--provider|--session|--issue|--resource)
+      --name|--provider|--session|--issue|--resource|--idempotency-key)
         if [ $# -lt 2 ] || [[ "$2" == --* ]]; then
           echo "error: $1 requires a value" >&2
           exit 2
@@ -482,6 +520,13 @@ cmd_add() {
           --session) session="$2" ;;
           --issue) issue="$2" ;;
           --resource) resource="$2" ;;
+          --idempotency-key)
+            if ! [[ "$2" =~ ^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,255}$ ]]; then
+              echo "error: --idempotency-key requires 1-256 identifier characters" >&2
+              return 2
+            fi
+            idempotency_key="$2"
+            ;;
         esac
         shift 2
         ;;
@@ -513,6 +558,24 @@ cmd_add() {
   name="${name:-job}"
   # Sanitize name for use in a filename.
   name="$(printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '_')"
+  local key_digest="" request_digest="" registration="" registration_lock_fd
+  if [ -n "$idempotency_key" ]; then
+    key_digest="$(printf '%s' "$idempotency_key" | sha256sum | cut -d ' ' -f 1)" || return 1
+    request_digest="$(printf '%s\0' queue.add.v1 "$command" "$PWD" "$name" \
+      "$provider" "$session" "$issue" "$resource" "$prune_ckpt" \
+      "$external_teardown_ack" | sha256sum | cut -d ' ' -f 1)" || return 1
+    registration="$REGISTRATION_DIR/$key_digest.receipt"
+    if [ -L "$REGISTRATION_DIR/$key_digest.lock" ]; then
+      echo "error: registration lock must not be a symlink" >&2
+      return 1
+    fi
+    exec {registration_lock_fd}> "$REGISTRATION_DIR/$key_digest.lock" || return 1
+    flock -x "$registration_lock_fd" || return 1
+    if [ -e "$registration" ] || [ -L "$registration" ]; then
+      _recover_registration "$registration" "$request_digest"
+      return $?
+    fi
+  fi
   # Nanosecond + PID gives a unique, lexically-sortable (FIFO) job id without
   # needing a lock for concurrent enqueues from multiple agents.
   local jobid="$(date +%s%N)_$$_${name}"
@@ -534,6 +597,10 @@ cmd_add() {
     echo "# resource: ${resource}"
     echo "# external_teardown_ack: ${external_teardown_ack}"
     echo "# prune_ckpt: ${prune_ckpt}"
+    if [ -n "$key_digest" ]; then
+      echo "# idempotency_key_sha256: $key_digest"
+      echo "# request_sha256: $request_digest"
+    fi
     echo "cd $(printf '%q' "$PWD")"
     echo "export TENNIS_RUN_ID=$(printf '%q' "$jobid")"
     echo "export TENNIS_REPRO_DIR=$(printf '%q' "$repro_job_abs")"
@@ -546,8 +613,16 @@ cmd_add() {
     printf 'bash %q __capture-repro --dir %q --name %q --provider %q --session %q --issue %q --cmd %q\n' \
       "$SCRIPT_PATH" "$repro_job_abs" "$name" "$provider" "$session" "$issue" "$command"
     echo "$command"
-  } > "$tmp"
-  mv "$tmp" "$final"   # atomic publish
+  } > "$tmp" || return 1
+  if [ -n "$registration" ]; then
+    printf '%s %s.job\n' "$request_digest" "$jobid" > "$registration.tmp.$$" || return 1
+    mv "$registration.tmp.$$" "$registration" || return 1
+    _test_transition_barrier "${TRAINING_QUEUE_TEST_PRE_PUBLISH_READY_FILE:-}" \
+      "${TRAINING_QUEUE_TEST_PRE_PUBLISH_BARRIER_FIFO:-}" "$jobid.job" || return 1
+  fi
+  mv "$tmp" "$final" || return 1   # atomic publish
+  _test_transition_barrier "${TRAINING_QUEUE_TEST_POST_PUBLISH_READY_FILE:-}" \
+    "${TRAINING_QUEUE_TEST_POST_PUBLISH_BARRIER_FIFO:-}" "$jobid.job" || return 1
   echo "queued: ${jobid}.job"
 }
 
@@ -1520,10 +1595,15 @@ cmd_clear() {
   local job
   while read -r job; do
     [ -n "$job" ] || continue
+    # Preserve keyed job history so a later retry returns the cancelled job.
+    # If the worker won the move, leave the already-running job alone.
+    if sed -n '/^# idempotency_key_sha256: /p' "$JOBS_DIR/$job" 2>/dev/null | read -r _; then
+      mv "$JOBS_DIR/$job" "$CANCELLED_DIR/$job" 2>/dev/null || continue
+    fi
     rm -f "$JOBS_DIR/$job" "$(_state_file "$job")" \
       "$(_cancel_request_file "$job")" "$(_owner_file "$job")" \
       "$(_external_ack_file "$job")"
-  done < <(find "$JOBS_DIR" -maxdepth 1 -name '*.job' -printf '%f\n' 2>/dev/null)
+  done < <(find "$JOBS_DIR" -maxdepth 1 -name '*.job' ! -name '.tmp.*' -printf '%f\n' 2>/dev/null)
   echo "pending queue cleared."
 }
 
