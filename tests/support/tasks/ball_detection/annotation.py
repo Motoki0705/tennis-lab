@@ -463,6 +463,7 @@ class Environment:
         exit_status: Literal[
             "succeeded", "failed", "quota", "timed_out", "cancelled"
         ] = "succeeded",
+        evidence_issue: Literal["missing_model", "conflicting_response"] | None = None,
     ) -> ArtifactRef:
         actor = actor or self.actor
         launch = read_document(self.layout, actor, Launch)
@@ -537,6 +538,20 @@ class Environment:
                 usage={"input_tokens": 100, "output_tokens": 10, "total_tokens": 110},
             )
         )
+        if evidence_issue == "missing_model":
+            events = [event for event in events if event["type"] != "turn_context"]
+        elif evidence_issue == "conflicting_response":
+            events.append(
+                event(
+                    "token_usage_record",
+                    response_id="response-1",
+                    usage={
+                        "input_tokens": 200,
+                        "output_tokens": 10,
+                        "total_tokens": 210,
+                    },
+                )
+            )
         rollout = Path(launch.directory) / "rollout.jsonl"
         rollout.write_text("".join(json.dumps(e) + "\n" for e in events))
         result: ArtifactRef = capture(

@@ -107,9 +107,7 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
     assert "balls" not in schema["$defs"]["PlayerFrameAnnotation"]["properties"]
     timeline = probe_video(video)
     frame_count = len(timeline.pts)
-    annotation = make_template(manifests[0], target="player").model_dump(
-        mode="json"
-    )
+    annotation = make_template(manifests[0], target="player").model_dump(mode="json")
     annotation["status"] = "completed"
     for row in annotation["frames"]:
         row["reviewed"] = True
@@ -145,6 +143,51 @@ def test_preparation_and_self_contained_clip(tmp_path: Path, vfr: bool) -> None:
         return result
 
     common = ["--manifest", str(manifest_path)]
+    rejected_template = tmp_path / "ball-template.json"
+    run(
+        "init",
+        *common,
+        "--video",
+        str(video),
+        "--output",
+        str(rejected_template),
+        "--target",
+        "ball",
+        success=False,
+    )
+    assert not rejected_template.exists()
+    run("interpolate", success=False)
+    for target in ("ball", "combined"):
+        legacy = make_template(manifests[0], target=target).model_dump(mode="json")
+        legacy["status"] = "completed"
+        for row in legacy["frames"]:
+            row["reviewed"] = True
+        legacy_path = tmp_path / f"legacy-{target}.json"
+        write_json(legacy_path, legacy)
+        original = legacy_path.read_bytes()
+        # Legacy reading/validation remains available, including combined schemas.
+        run(
+            "validate",
+            *common,
+            "--annotations",
+            str(legacy_path),
+            "--report",
+            str(tmp_path / f"validation-{target}.json"),
+        )
+        legacy_output = tmp_path / f"finalize-{target}"
+        rejected = run(
+            "finalize",
+            *common,
+            "--video",
+            str(video),
+            "--annotations",
+            str(legacy_path),
+            "--output",
+            str(legacy_output),
+            success=False,
+        )
+        assert "supports player annotations only" in rejected.stdout
+        assert legacy_path.read_bytes() == original and not legacy_output.exists()
     run("preflight", *common, "--video", str(video))
     template_path = tmp_path / "template.json"
     run(
