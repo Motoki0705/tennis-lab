@@ -26,6 +26,7 @@ readerにはversion親ではなく、snapshotが指定するframe storeを渡す
 `LegacySourceGroup`は既存`source/group_id`とcanonical source IDの対応を全groupについて要求する。
 固定validation/testにも同じcanonical IDを使い、旧名と新名の違いによるsource漏洩を防ぐ。
 旧clip IDは`content_digest(["legacy_ball_clip", source, store_clip_id])`として不変のmembership IDを得る。
+chat_annotationの全clipには`clip_ranges`で`LegacyClipRange`（旧store名と元動画のframe区間）を明示し、canonical sourceと区間から得るcanonical clip IDもsnapshotに固定する。累積公開でもこの対応を保持し、旧名で導入したclipの再採用を拒否する。
 元のstore clip名・row順・split・画素・ラベルは変更しない。
 
 この導入は既存データの書換えや新しい品質承認ではない。
@@ -42,6 +43,7 @@ readerにはversion親ではなく、snapshotが指定するframe storeを渡す
 
 同じrequestの再実行は同じreceiptを返す。完成したstagingやrename済みsnapshotは再encodeしない。
 shard/index作成途中なら、そのintentが所有する未完成stagingだけを再構築する。
+再構築の清掃中も所有者ファイルを保持し、清掃自体が中断されても同じintentで再開する。
 rename後・receipt前、receipt後・DB登録前も同じ出力を検証して復旧する。
 異なるintent、改変された完成snapshot、所有者不明のstagingはエラーとし、公開済みデータを削除しない。
 

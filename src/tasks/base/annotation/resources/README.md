@@ -9,6 +9,8 @@ scopeは同じ一連の実験・追加学習で共用する。campaign IDを変�
 Codexのsession/logが外部にある場合もrootとして含める。baselineとscopeは不変に保存し、
 再起動時はその参照から開く。GPUの予約値は使用率ではなく、ジョブ実行時間の上限秒数。
 複数GPUジョブの同時実行はそれぞれの経過秒を合算する。
+benchmark layoutから開く場合は共有台帳に同一scope参照が登録済みであることを必須とし、
+未登録のscope・台帳を新規作成しない。観測だけの経路にもこの検査を適用する。
 
 `free_space_mounts` は、保存量の走査には加えず空き容量だけを確認するmount pointの一覧。
 たとえばWSLのLinux領域を保持するWindows driveを `/mnt/d` として指定し、Linux内の
