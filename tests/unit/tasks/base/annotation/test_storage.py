@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import time
+from importlib import import_module
 from pathlib import Path
 
 import pytest
@@ -21,11 +22,11 @@ from src.tasks.base.annotation.storage import (
     Protection,
     Retention,
     StorageCatalog,
-    inventory,
     plan_gc,
     save_dry_run,
 )
 from src.tasks.base.annotation.storage.contracts import GCPlan, Inventory
+from src.tasks.base.annotation.storage.inventory import inventory, scope_path
 
 
 @pytest.fixture
@@ -248,6 +249,30 @@ def test_inventory_bounded_and_rejects_overlapping_scopes(
         inventory(catalog.layout, (scope,), max_entries=1)
     with pytest.raises(ValueError, match="overlap"):
         inventory(catalog.layout, (scope, scope), max_entries=100)
+
+
+@pytest.mark.parametrize("ancestor", ["", "migration", "migration/staging"])
+def test_inventory_rejects_symlink_replacement_after_scope_validation(
+    catalog: StorageCatalog, monkeypatch: pytest.MonkeyPatch, ancestor: str
+) -> None:
+    artifact(catalog, "managed")
+    layout = catalog.layout
+    replaced = layout.root / ancestor
+    outside = layout.repository / "outside"
+    outside_scope = outside / layout.path("migration_staging").relative_to(replaced)
+    outside_scope.mkdir(parents=True)
+    (outside_scope / "external").write_bytes(b"must not be inventoried")
+    module = import_module("src.tasks.base.annotation.storage.inventory")
+
+    def replace_ancestor(layout: AnnotationLayout, scope: InventoryScope) -> Path:
+        root = scope_path(layout, scope)
+        replaced.rename(layout.repository / "original")
+        replaced.symlink_to(outside, target_is_directory=True)
+        return root
+
+    monkeypatch.setattr(module, "scope_path", replace_ancestor)
+    with pytest.raises((OSError, ValueError)):
+        scan(catalog)
 
 
 @pytest.mark.parametrize("mutation", ["content", "unlink", "replace", "link"])

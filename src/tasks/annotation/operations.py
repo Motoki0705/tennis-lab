@@ -82,7 +82,9 @@ def preview_input(
     return request, task, directory
 
 
-def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
+def execute(
+    layout: AnnotationLayout, reference: ArtifactRef, *, attempt: int = 1
+) -> ArtifactRef:
     """The supervisor pins this exact input; direct CLI calls cannot bypass ownership."""
     if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
         raise ValueError("operation must be launched by its resource-accounted stage")
@@ -127,7 +129,13 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
                 ),
             )
         elif isinstance(op, AcquireOperation):
-            result = (Collection(layout, plan).acquire(op.source_id, retry=op.retry),)
+            if attempt < 1 or directory.name != f"{data.sha256}-{attempt}":
+                raise ValueError(
+                    "acquisition attempt differs from its pinned operation directory"
+                )
+            result = (
+                Collection(layout, plan).acquire(op.source_id, retry=attempt > 1),
+            )
         elif isinstance(op, ScreenOperation):
             from src.tasks.base.annotation.screening.service import Screening
 
@@ -137,14 +145,14 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         elif isinstance(op, PreviewOperation):
             from src.tasks.base.annotation.screening.images import make_sheets
 
-            service, task, attempt = preview_input(layout, op.service_request)
+            service, task, worker_directory = preview_input(layout, op.service_request)
             if task.plan_digest != plan.sha256:
                 raise ValueError("preview request belongs to another campaign")
             result = (
                 make_sheets(
                     layout,
                     task.source.media,
-                    attempt / "previews",
+                    worker_directory / "previews",
                     origin_pts=task.source_origin_pts,
                     time_base=task.time_base,
                     **service.parameters,

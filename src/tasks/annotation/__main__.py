@@ -146,6 +146,7 @@ def main() -> None:
     stage = commands.add_parser("stage")
     stage.add_argument("--operation", type=Path, required=True)
     stage.add_argument("--sha256", required=True)
+    stage.add_argument("--attempt", type=int, required=True)
     stage.add_argument("--test-root", type=Path)
     for name in ("benchmark-observe", "benchmark-report"):
         measurement = commands.add_parser(name)
@@ -208,7 +209,7 @@ def main() -> None:
     if args.command == "stage":
         from .operations import execute
 
-        print(execute(layout, ref).model_dump_json())
+        print(execute(layout, ref, attempt=args.attempt).model_dump_json())
         return
     if args.command in {"benchmark-observe", "benchmark-report"}:
         from src.tasks.base.annotation.benchmarks.capture import observe
