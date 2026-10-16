@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sys
 import time
 from dataclasses import dataclass
@@ -203,7 +204,7 @@ def setup(
     tmp_path: Path,
     seconds: int = 32,
     *,
-    fps: int = 10,
+    fps: int | Fraction = 10,
     timestamps_ms: tuple[int, ...] | None = None,
     acquire: bool = True,
     videos_per_channel: int = 1,
@@ -315,12 +316,18 @@ def setup(
     )
     media_path = inputs / "video.mp4"
     if timestamps_ms is None:
-        timestamps_ms = tuple(range(0, seconds * 1000, 1000 // fps))
+        time_base = 1 / Fraction(fps)
+        timestamps = tuple(range(math.ceil(seconds * fps)))
+        end_pts = len(timestamps)
+    else:
+        time_base = Fraction(1, 1000)
+        timestamps = timestamps_ms
+        end_pts = seconds * 1000
     encode_video(
         media_path,
         width=64,
         height=32,
-        time_base=Fraction(1, 1000),
+        time_base=time_base,
         rate=Fraction(fps),
         frames=(
             (
@@ -332,8 +339,8 @@ def setup(
             )
             for i, (timestamp, following) in enumerate(
                 zip(
-                    timestamps_ms,
-                    (*timestamps_ms[1:], seconds * 1000),
+                    timestamps,
+                    (*timestamps[1:], end_pts),
                     strict=True,
                 )
             )
@@ -431,6 +438,56 @@ def test_real_timeline_selection_and_resume(
     assert prepared.size_bytes > 0
 
 
+@pytest.mark.parametrize("fps", [25, Fraction(30000, 1001)], ids=["25fps", "29.97fps"])
+@pytest.mark.parametrize("start", [0.0, 0.01])
+def test_standard_detail_sampling_finalizes_at_fractional_frame_steps(
+    tmp_path: Path,
+    fps: int | Fraction,
+    start: float,
+) -> None:
+    layout, screening, source = setup(tmp_path, fps=fps)
+    ref = screening.request(
+        screening.prepare(source.source_id),
+        layout.path(
+            "campaigns",
+            screening.plan.campaign_id,
+            "workers",
+            source.source_id,
+            "attempt-1",
+        ),
+    )
+    request = read_document(layout, ref, ScreeningRequest)
+    detail_ref = request_preview(
+        layout, request, start=start, stop=start + 15.0, step=0.5
+    )
+    detail = read_document(layout, detail_ref, PreviewReceipt)
+    example = Example(layout, screening, source, ref, request, detail_ref, detail)
+    decision = example.decision()
+    clip = decision.clips[0].model_copy(update={"start": start, "stop": start + 15.0})
+    selection = read_document(
+        layout,
+        example.finish(decision=decision.model_copy(update={"clips": (clip,)})),
+        SelectionReceipt,
+    )
+    assert len(selection.windows) == 1
+    assert (selection.windows[0].start, selection.windows[0].stop) == (
+        start,
+        start + 15.0,
+    )
+    times = [Fraction(str(start))]
+    times.extend(
+        (sample.source_pts - request.source_origin_pts) * Fraction(request.time_base)
+        for page in detail.pages
+        for sample in page.samples
+    )
+    times.append(Fraction(str(start + 15.0)))
+    assert all(
+        0 <= b - a <= Fraction(1, 2) for a, b in zip(times, times[1:], strict=False)
+    )
+    assert len(times[1:-1]) == len(set(times[1:-1]))
+    assert all(len(page.samples) <= 24 for page in detail.pages)
+
+
 @pytest.mark.parametrize(
     ("fps", "timestamps_ms", "start"),
     [
@@ -521,6 +578,16 @@ def test_vfr_detail_with_sufficient_actual_pts_density_can_be_selected(
     "change,message",
     [
         ({"in_play": (Interval(start=0.0, stop=7.5),)}, "strictly more"),
+        pytest.param(
+            {"in_play": (Interval(start=0.8, stop=8.3),)},
+            "strictly more",
+            id="nonzero-start-half-play",
+        ),
+        pytest.param(
+            {"in_play": (Interval(start=0.8, stop=4.3), Interval(start=4.8, stop=8.8))},
+            "strictly more",
+            id="multiple-intervals-half-play",
+        ),
         ({"normal_speed": False}, "slow-motion"),
         ({"stop": 16.0}, "15 seconds"),
         (
@@ -548,6 +615,27 @@ def test_invalid_window_is_not_selected(
         )["state"]
         == "acquired"
     )
+
+
+@pytest.mark.parametrize(
+    "in_play",
+    [
+        (Interval(start=0.8, stop=8.300000001),),
+        (Interval(start=0.8, stop=4.3), Interval(start=4.8, stop=8.800000001)),
+    ],
+)
+def test_play_just_over_half_is_accepted_without_rounding(
+    in_play: tuple[Interval, ...],
+) -> None:
+    clip = ClipDecision(
+        start=0.0,
+        stop=15.0,
+        normal_speed=True,
+        in_play=in_play,
+        reason="synthetic strict boundary test",
+        evidence_images=("fixture.jpg",),
+    )
+    clip.validate_policy(ScreeningPolicy())
 
 
 def test_generated_or_partly_shown_images_cannot_be_adopted(example: Example) -> None:
