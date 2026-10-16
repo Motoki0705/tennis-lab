@@ -291,21 +291,19 @@ class WorkerPool:
             or launch.resource_request is None
         ):
             raise ValueError("unregistered launch differs from the worker request")
-        with self.ledger.registry.transaction() as database:
+        with self.resources.registry.transaction() as database:
             resource = database.execute(
                 "SELECT request,state FROM resource_requests WHERE id=?",
                 (self.resources.key(launch.resource_request),),
             ).fetchone()
-            if resource is None:
-                return
-            if (
-                resource["request"]
-                != launch.resource_request.canonical_bytes().decode()
-            ):
-                raise ValueError("unregistered launch has a different resource request")
-            if resource["state"] == "pending":
-                return
-            reason = "resource admission interrupted before worker registration"
+        if resource is None:
+            return
+        if resource["request"] != launch.resource_request.canonical_bytes().decode():
+            raise ValueError("unregistered launch has a different resource request")
+        if resource["state"] == "pending":
+            return
+        reason = "resource admission interrupted before worker registration"
+        with self.ledger.registry.transaction() as database:
             database.execute(
                 "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
                 (
