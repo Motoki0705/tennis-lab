@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.tasks.player_detection.data.detection_dataset import select_detection_frames
+from src.tasks.player_detection.data.migration import migrate_v1_store
 from src.tasks.player_detection.generate_dataset.builder import build_dataset
 from src.tasks.player_detection.review.service import PlayerReviewService, StoreReview
 from src.tasks.player_detection.review.web import create_app
@@ -22,7 +23,8 @@ from tests.support.tasks.player_detection.store import legacy_store
 @pytest.fixture
 def review(synthetic_root: SyntheticRoot) -> StoreReview:
     directory = build_dataset(synthetic_root.config)
-    directory = legacy_store(directory, directory.parent / "legacy-v1")
+    legacy = legacy_store(directory, directory.parent / "legacy-v1")
+    directory = migrate_v1_store(legacy, directory.parent / "migrated-v2")
     service = PlayerReviewService(directory.parent.parent)
     return service.review(directory.name)
 

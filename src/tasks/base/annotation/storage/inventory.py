@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import stat
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal
 
@@ -14,9 +16,25 @@ from .contracts import Inventory, InventoryEntry, InventoryScope
 
 
 def scope_path(layout: AnnotationLayout, scope: InventoryScope) -> Path:
-    return layout.artifact_path(
+    path: Path = layout.artifact_path(
         ArtifactRef(role=scope.role, path=scope.path, digest="0" * 64, size_bytes=0)
     )
+    return path
+
+
+@contextmanager
+def _scope_directory(path: Path) -> Iterator[int]:
+    """Pin every component from the filesystem root without following symlinks."""
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    descriptor = os.open(path.anchor, flags)
+    try:
+        for component in path.parts[1:]:
+            child = os.open(component, flags, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        yield descriptor
+    finally:
+        os.close(descriptor)
 
 
 def inventory(
@@ -98,12 +116,9 @@ def inventory(
             raise ValueError("directory changed during inventory")
 
     for root in roots:
-        descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-        try:
+        with _scope_directory(root) as descriptor:
             append(root, os.fstat(descriptor))
             visit(root, descriptor)
-        finally:
-            os.close(descriptor)
     unique = {(item.device, item.inode): item for item in entries}
     return Inventory(
         created_at_ns=time.time_ns(),

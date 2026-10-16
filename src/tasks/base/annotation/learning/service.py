@@ -19,7 +19,7 @@ from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
-from .adapters import LearningAdapter
+from .adapters import LearningAdapter, NoAdditionalTeachers
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -136,7 +136,11 @@ class Learning:
             selection_policy=task.learning.selection_policy,
         )
         verify_inputs(self.layout, intent)
-        adapter.validate_intent(self.layout, intent)
+        eligibility = adapter.validate_intent(self.layout, intent)
+        if isinstance(eligibility, NoAdditionalTeachers):
+            return self._skip(
+                completion_ref, task.task, "no_additional_teachers", eligibility.reason
+            )
         directory = self._directory(intent)
         with artifact_lock(
             self.layout,

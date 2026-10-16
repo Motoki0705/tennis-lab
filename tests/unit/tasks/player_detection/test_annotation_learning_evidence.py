@@ -177,3 +177,13 @@ def test_recipe_rejects_partial_batches_and_unspecified_or_incompatible_inputs(
     del raw["train_samples_per_epoch"]
     with pytest.raises(ValueError, match="Field required"):
         PlayerLearningRecipe.model_validate_json(json.dumps(raw))
+
+
+@pytest.mark.parametrize("float_precision", [("highest", True), ("high", False), ("medium", False)])
+def test_intent_registration_rejects_inconsistent_float_precision(
+    synthetic_root: SyntheticRoot, float_precision: tuple[str, bool],
+) -> None:
+    with pytest.raises(ValueError, match="matmul_precision.*allow_tf32"):
+        Environment(synthetic_root, float_precision=float_precision)
+    root = synthetic_root.config.dataset_dir.parents[2] / "annotation"
+    assert not list(root.rglob("intent.json"))
