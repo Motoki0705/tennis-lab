@@ -1,0 +1,13 @@
+{
+  "render_frame": 100,
+  "source_frames_psnr_db": {
+    "99": 37.74400673280107,
+    "100": 43.13495005467417,
+    "101": 37.49935544739716
+  },
+  "source_resize": "OpenCV INTER_AREA",
+  "resolution": [
+    960,
+    540
+  ]
+}

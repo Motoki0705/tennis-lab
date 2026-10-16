@@ -3,6 +3,10 @@
 保存済みSceneResult v2と元動画から、Blenderで「入力映像 → グリッド → コート → 選手・ボール」へ
 切り替わり、最後にカメラが移動するアニメーションを生成します。
 
+![Meiji cam1の再構成プレビュー](../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)
+
+実データでの再生成条件と検証結果は[検証記録](../../../knowledge/nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)を参照してください。
+
 - 書き出し: `python -m src.tennis_scene.scripts.export_blender`（設定 `configs/blender_export.yaml`）
 - 撮影: `scripts/blender/tennis_reveal.py`（Blender 5.2同梱Python。repoをimportしない）
 - Blender上の検証: `scripts/blender/validate_reveal.py`
@@ -67,7 +71,7 @@ bundleも一緒に保持してください。`--render`を外すとシーン作�
 `--frame-step 4`なら4frameごとのプレビューになります。動画のFPSを入力の1/4にし、連番をglobで読みます。
 
 ```bash
-ffmpeg -framerate 15000/1001 -pattern_type glob -i '<shot_dir>/frames/*.png' \\
+ffmpeg -framerate 15000/1001 -pattern_type glob -i '<shot_dir>/frames/*.png' \
   -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart <shot_dir>/preview.mp4
 ```
 

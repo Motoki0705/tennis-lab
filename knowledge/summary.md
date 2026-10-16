@@ -1,7 +1,7 @@
-<!-- knowledge-review: df1bcfc8812d20cf8b0f3788179e9ef9a91a5c1e07c1a2bfab452e6e80e0ff04 on 2026-10-14 -->
+<!-- knowledge-review: 24f50908317f1f69f98c34520258d569b172cfbee102c12e140a6db0e05bff39 on 2026-10-16 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-14（BLCS #1044の10run学習と全長評価を記録。Court #983の比較記録を保持）
+更新日: 2026-10-16（Blender再構成アニメーションの再生成・整合性検証を追記。既存モデルの採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,14 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-16のBlender再構成アニメーション
+
+[Meiji clip_000/cam1の保存済みv2 sceneから全編プレビューを再生成](nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)し、
+元映像から3Dへ切り替わる描画と自由視点移動を確認した。Blenderで評価したmesh・球位置・表示maskはbundleと一致し、カメラ投影も一致した。
+LinuxではGPU描画を確認できず、llvmpipeを明示した低解像度・低sample・フレーム間引きの検証である。
+旧pipelineの注釈ball・確認済み人物対応を含む1clipの再利用で、現行モデルや独立3D精度の評価は増えていないため、既存の採用判断は変更しない。
+次に配布用の画質を確認する場合は、GPU adapterを確認した環境で描画品質を上げ、同じデータ整合性検査を行う。
 
 ## 2026-10-05のボール検出用pose蓄積
 
