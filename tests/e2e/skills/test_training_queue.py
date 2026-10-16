@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TextIO
 
@@ -181,6 +182,254 @@ def _teardown_events(event_file: Path, job: str) -> list[str]:
         for line in event_file.read_text(encoding="utf-8").splitlines()
         if line.startswith(prefix)
     ]
+
+
+def test_idempotent_add_concurrent_callers_execute_once(tmp_path: Path) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    output = tmp_path / "executions"
+    arguments = (
+        "add",
+        f"printf 'once\\n' >> {shlex.quote(str(output))}",
+        "--idempotency-key",
+        "campaign/task/clip/attempt-1",
+        "--resource",
+        "all",
+    )
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        replies = list(
+            executor.map(
+                lambda _: _queue(queue_dir, lock_file, *arguments, cwd=tmp_path).stdout,
+                range(10),
+            )
+        )
+    assert len(set(replies)) == 1
+    assert len(list((queue_dir / "jobs").glob("*.job"))) == 1
+    worker = _serve(queue_dir, lock_file, cwd=tmp_path)
+    stdout, stderr = worker.communicate(timeout=15)
+    assert worker.returncode == 0, (stdout, stderr)
+    assert output.read_text() == "once\n"
+    assert _queue(queue_dir, lock_file, *arguments, cwd=tmp_path).stdout == replies[0]
+    assert not list((queue_dir / "jobs").glob("*.job"))
+
+
+@pytest.mark.parametrize("phase", ["PRE", "POST"])
+def test_idempotent_add_recovers_publish_before_reply_crash(
+    tmp_path: Path,
+    phase: str,
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    ready, fifo, output = (
+        tmp_path / "ready",
+        tmp_path / "barrier",
+        tmp_path / "executions",
+    )
+    os.mkfifo(fifo)
+    arguments = [
+        "add",
+        f"printf 'once\\n' >> {shlex.quote(str(output))}",
+        "--idempotency-key",
+        "publish-crash",
+    ]
+    environment = _queue_env(queue_dir, lock_file)
+    environment.update(
+        {
+            f"TRAINING_QUEUE_TEST_{phase}_PUBLISH_READY_FILE": str(ready),
+            f"TRAINING_QUEUE_TEST_{phase}_PUBLISH_BARRIER_FIFO": str(fifo),
+        }
+    )
+    caller = subprocess.Popen(
+        ["bash", str(QUEUE_SCRIPT), *arguments],
+        cwd=tmp_path,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        _wait_for(ready.exists)
+        job = ready.read_text().strip()
+        caller.kill()
+        stdout, stderr = caller.communicate(timeout=5)
+        assert not stdout, stderr
+        if phase == "POST":
+            # The workload may even finish before the client retries.
+            worker = _serve(queue_dir, lock_file, cwd=tmp_path)
+            worker.communicate(timeout=15)
+            assert worker.returncode == 0
+        result = _queue(queue_dir, lock_file, *arguments, cwd=tmp_path)
+        assert result.stdout.strip() == f"queued: {job}"
+        if phase == "PRE":
+            worker = _serve(queue_dir, lock_file, cwd=tmp_path)
+            worker.communicate(timeout=15)
+            assert worker.returncode == 0
+        assert output.read_text() == "once\n"
+        assert list((queue_dir / "done").glob("*.job")) == [queue_dir / "done" / job]
+        assert not list((queue_dir / "jobs").glob("*.job"))
+    finally:
+        if caller.poll() is None:
+            caller.kill()
+            caller.communicate(timeout=5)
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        ["--resource", "half"],
+        ["--provider", "codex"],
+        ["--session", "new-session"],
+        ["--issue", "1088"],
+        ["--name", "new-name"],
+        ["--prune-ckpt"],
+        ["--require-external-teardown-ack"],
+    ],
+)
+def test_idempotent_add_rejects_changed_options(
+    tmp_path: Path, changed: list[str]
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    arguments = ("add", "true", "--idempotency-key", "immutable")
+    _queue(queue_dir, lock_file, *arguments, cwd=tmp_path)
+    rejected = _queue(
+        queue_dir, lock_file, *arguments, *changed, cwd=tmp_path, check=False
+    )
+    assert rejected.returncode == 2
+    assert "different request" in rejected.stderr
+    assert len(list((queue_dir / "jobs").glob("*.job"))) == 1
+
+
+def test_idempotent_add_hashes_command_and_working_directory(tmp_path: Path) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    arguments = ("add", "printf '%s' '\n$(false);`false`'", "--idempotency-key", "same")
+    first = _queue(queue_dir, lock_file, *arguments, cwd=tmp_path)
+    assert _queue(queue_dir, lock_file, *arguments, cwd=tmp_path).stdout == first.stdout
+    other = tmp_path / "other"
+    other.mkdir()
+    assert (
+        _queue(queue_dir, lock_file, *arguments, cwd=other, check=False).returncode == 2
+    )
+    changed = _queue(
+        queue_dir,
+        lock_file,
+        "add",
+        "true",
+        "--idempotency-key",
+        "same",
+        cwd=tmp_path,
+        check=False,
+    )
+    assert changed.returncode == 2
+
+
+@pytest.mark.parametrize("action", ["cancel", "clear", "fail"])
+def test_idempotent_add_keeps_terminal_job_identity(
+    tmp_path: Path, action: str
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    arguments = ("add", "exit 7", "--idempotency-key", "attempt-1")
+    first = _queue(queue_dir, lock_file, *arguments, cwd=tmp_path).stdout
+    job = first.strip().removeprefix("queued: ")
+    if action == "fail":
+        worker = _serve(queue_dir, lock_file, cwd=tmp_path)
+        worker.communicate(timeout=15)
+        terminal = "failed"
+    else:
+        control = ("cancel", job) if action == "cancel" else ("clear",)
+        _queue(queue_dir, lock_file, *control, cwd=tmp_path)
+        terminal = "cancelled"
+    assert (queue_dir / terminal / job).is_file()
+    assert _queue(queue_dir, lock_file, *arguments, cwd=tmp_path).stdout == first
+    assert not list((queue_dir / "jobs").glob("*.job"))
+    # An intentional retry is a distinct attempt, never an implicit rerun.
+    new = _queue(
+        queue_dir,
+        lock_file,
+        "add",
+        "exit 7",
+        "--idempotency-key",
+        "attempt-2",
+        cwd=tmp_path,
+    )
+    assert new.stdout != first
+
+
+def test_idempotent_add_fails_closed_when_history_was_deleted(tmp_path: Path) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    arguments = ("add", "true", "--idempotency-key", "protected")
+    job = (
+        _queue(queue_dir, lock_file, *arguments, cwd=tmp_path)
+        .stdout.strip()
+        .removeprefix("queued: ")
+    )
+    (queue_dir / "jobs" / job).unlink()
+    retry = _queue(queue_dir, lock_file, *arguments, cwd=tmp_path, check=False)
+    assert retry.returncode == 1
+    assert "no job added" in retry.stderr
+    assert not list((queue_dir / "jobs").glob("*.job"))
+
+
+def test_idempotent_add_recovers_running_job(tmp_path: Path) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    release = tmp_path / "release"
+    arguments = (
+        "add",
+        f"while [ ! -e {shlex.quote(str(release))} ]; do sleep 0.05; done",
+        "--idempotency-key",
+        "running",
+    )
+    first = _queue(queue_dir, lock_file, *arguments, cwd=tmp_path).stdout
+    job = first.strip().removeprefix("queued: ")
+    worker = _serve(queue_dir, lock_file, cwd=tmp_path)
+    try:
+        _wait_for(lambda: (queue_dir / "running" / job).is_file())
+        assert _queue(queue_dir, lock_file, *arguments, cwd=tmp_path).stdout == first
+        assert not list((queue_dir / "jobs").glob("*.job"))
+    finally:
+        release.touch()
+        worker.communicate(timeout=15)
+    assert worker.returncode == 0
+
+
+@pytest.mark.parametrize("damage", ["corrupt", "symlink"])
+def test_idempotent_add_rejects_invalid_receipt(tmp_path: Path, damage: str) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    arguments = ("add", "true", "--idempotency-key", "protected")
+    _queue(queue_dir, lock_file, *arguments, cwd=tmp_path)
+    receipt = next((queue_dir / "control" / "registrations").glob("*.receipt"))
+    if damage == "corrupt":
+        receipt.write_text("incomplete")
+    else:
+        target = tmp_path / "receipt"
+        receipt.rename(target)
+        receipt.symlink_to(target)
+    retry = _queue(queue_dir, lock_file, *arguments, cwd=tmp_path, check=False)
+    assert retry.returncode == 1
+    assert "invalid queue registration" in retry.stderr
+    assert len(list((queue_dir / "jobs").glob("*.job"))) == 1
+
+
+@pytest.mark.parametrize("key", ["", "bad key", "../key", "x" * 257])
+def test_idempotent_add_validates_key(tmp_path: Path, key: str) -> None:
+    result = _queue(
+        tmp_path / "queue",
+        tmp_path / "gpu.lock",
+        "add",
+        "true",
+        "--idempotency-key",
+        key,
+        cwd=tmp_path,
+        check=False,
+    )
+    assert result.returncode == 2
+
+
+def test_keyless_add_keeps_independent_jobs_and_clear(tmp_path: Path) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    first = _queue(queue_dir, lock_file, "add", "true", cwd=tmp_path).stdout
+    second = _queue(queue_dir, lock_file, "add", "true", cwd=tmp_path).stdout
+    assert first != second
+    _queue(queue_dir, lock_file, "clear", cwd=tmp_path)
+    assert not list((queue_dir / "jobs").glob("*.job"))
+    assert not list((queue_dir / "cancelled").glob("*.job"))
 
 
 def test_serve_reports_running_and_honours_shared_gpu_lock(tmp_path: Path) -> None:
