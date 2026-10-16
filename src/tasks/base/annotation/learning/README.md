@@ -28,6 +28,8 @@ testを代わりに使うことはできない。test membershipは学習との�
 - 自動再試行はしない。`retry(..., reason=..., resume_checkpoint=...)` で理由と新しい試行番号を
   保存する。checkpoint再開はadapterが同じintent・recipe・初期値のものか検査する。
   別snapshotの追加学習と、同一runのoptimizer/schedule再開を混同しない。
+  次試行ディレクトリの作成後、再試行情報の保存前に停止した場合も、明示的な`retry()`で
+  直前の失敗を照合し、同じ試行番号へ復旧する。`tick()`だけでは再試行を開始しない。
 
 `ModelRegistry.bootstrap(model, evidence)` で初期モデルを根拠付きで明示登録する。
 最終採用は、task判定、成功した学習・評価、固定validation・policyの参照を再検証してから行う。
