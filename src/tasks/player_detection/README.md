@@ -41,9 +41,20 @@ DINO の denoising は CUDA 前提のため、学習と評価は GPU（training 
 validation/testのmAPには正例が必要です。負例だけの場合は未定義値を選択指標にせず停止します。
 mixed評価では負例上の検出もFP/APへ反映し、負例画像数とGT instance数を記録します。
 
-既存v1 storeは疎なまま読み、欠落frameへ負例を補いません。v2の空frameにはnative JPEGと
+通常readerはv2専用です。v2の空frameにはnative JPEGと
 `(0,4)`のbbox・`(0,)`のlabelを使います。schema、確認済み不在フラグの整合性、instance範囲を
 readerで検証します。実DINOのmixed/all-empty loss・勾配確認はGPU受入で実行する項目です。
+
+既存v1 storeを使う場合は、次の明示的な移行を先に実行し、出力されたv2を指定します。
+sourceとdestinationは絶対パスで指定し、destinationはsourceの外にある未作成ディレクトリにします。
+元snapshotは変更せず、split、保存済みframe行・時刻、JPEG bytes、教師を維持します。
+欠落frameは欠落のまま残し、全保存行の`confirmed_empty`はfalseです。負例は追加しません。
+既存destinationや不正なv1は拒否し、v2の検証完了後に新storeを公開します。
+
+```bash
+.venv/bin/python -m src.tasks.player_detection.data.migration \
+  /absolute/path/to/v1-store /absolute/path/to/new-v2-store
+```
 
 ```bash
 .venv/bin/python -m src.tasks.player_detection.scripts.generate_dataset

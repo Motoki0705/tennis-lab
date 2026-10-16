@@ -76,6 +76,7 @@ AdoptionReceiptを不変保存する。`RevisionStore.seal()` で同じ現行rev
 handoffと少数frameの詳細は `image_proof` を返す。過去の実画像入力まで照合済みなら
 `verified`、現workerの終了後に検証するものは `pending_current_attempt`、過去attemptの
 証拠欠測は `missing`。欠測frameは保存済み画像の再提示と明示的な置換で再確認する。
+モデル記録前のcancelや応答ID競合のreportは履歴に残し、handoffと行詳細の`image_proof_reasons`に利用不能理由を表示する。そのattemptの判断は再確認まで採用できない。参照・hashの破損は再試行でも拒否する。
 ラベルが既にreviewedでも、単に別workerのactorへ付け替えて採用しない。
 
 終了後は全登録attemptの証拠を集め、保留・cancel前の有効な確認を維持したまま採用を検証する。

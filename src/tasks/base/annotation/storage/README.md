@@ -100,7 +100,8 @@ inventory_ref, plan_ref = save_dry_run(catalog, observed, plan)
 ```
 
 inventoryは明示的なrole相対ディレクトリに限定し、重複範囲やsymlinkを経由するrootを
-拒否する。内部symlinkはリンク自体だけを数え、対象を走査しない。directory fdを使い、
+拒否する。filesystem rootのdirectory fdから各要素を`O_NOFOLLOW`で開き、検査後に
+祖先がsymlinkへ置換されても追跡しない。内部symlinkはリンク自体だけを数え、対象を走査しない。directory fdを使い、
 走査中のdirectory置換・増減はエラーにする。entry上限超過時には部分集計を返さない。
 計測とdry-runはschedulerの回復やownerの失効処理を呼ばない。
 
