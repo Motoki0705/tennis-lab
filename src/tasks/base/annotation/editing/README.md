@@ -2,7 +2,9 @@
 
 `RevisionStore` は元予測から不変revisionを作り、taskの意味検証を通った一括編集だけを
 CASで現行版へ切り替える。登録済み新規clipのprediction receiptと、根拠付きレビュー方針を持つ
-production planが必要である。previewや別campaignの予測は編集開始に使わない。
+production planが必要である。plan全体のhashをcampaign登録時のhashと照合し、
+レビュー方針やpreviewからproductionへの差し替えを拒否する。
+previewや別campaignの予測は編集開始に使わない。
 
 `ReviewContext` がplan・task・clip manifest・prediction receiptを固定する。
 `ReviewAdapter` は初期payload作成、全payloadの検証、編集batchの適用、教師採用の検証を実装する。
