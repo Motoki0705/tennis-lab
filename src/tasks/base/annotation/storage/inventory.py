@@ -87,27 +87,26 @@ def inventory(
     def visit(path: Path, descriptor: int) -> None:
         before = os.fstat(descriptor)
         with os.scandir(descriptor) as iterator:
-            names = sorted(entry.name for entry in iterator)
-        for name in names:
-            metadata = os.stat(name, dir_fd=descriptor, follow_symlinks=False)
-            child = path / name
-            append(child, metadata)
-            if stat.S_ISDIR(metadata.st_mode):
-                child_fd = os.open(
-                    name,
-                    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
-                    dir_fd=descriptor,
-                )
-                try:
-                    current = os.fstat(child_fd)
-                    if (metadata.st_dev, metadata.st_ino) != (
-                        current.st_dev,
-                        current.st_ino,
-                    ):
-                        raise ValueError("directory changed during inventory")
-                    visit(child, child_fd)
-                finally:
-                    os.close(child_fd)
+            for entry in iterator:
+                metadata = os.stat(entry.name, dir_fd=descriptor, follow_symlinks=False)
+                child = path / entry.name
+                append(child, metadata)
+                if stat.S_ISDIR(metadata.st_mode):
+                    child_fd = os.open(
+                        entry.name,
+                        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                        dir_fd=descriptor,
+                    )
+                    try:
+                        current = os.fstat(child_fd)
+                        if (metadata.st_dev, metadata.st_ino) != (
+                            current.st_dev,
+                            current.st_ino,
+                        ):
+                            raise ValueError("directory changed during inventory")
+                        visit(child, child_fd)
+                    finally:
+                        os.close(child_fd)
         after = os.fstat(descriptor)
         if (before.st_mtime_ns, before.st_ctime_ns) != (
             after.st_mtime_ns,
