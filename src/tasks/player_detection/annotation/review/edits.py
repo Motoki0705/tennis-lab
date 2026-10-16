@@ -16,7 +16,12 @@ from .contracts import (
     PlayerReviewPolicy,
     ReplaceFrame,
 )
-from .evidence import Catalog
+from .evidence import (
+    Catalog,
+    ManualBoxes,
+    check_manual_removal_images,
+    remember_manual_boxes,
+)
 from .validation import ranges, resolved
 
 
@@ -37,6 +42,8 @@ def apply_operations(
     predictions: PlayerPredictions,
     saved: Catalog,
     actor: ArtifactRef,
+    *,
+    manual_boxes: ManualBoxes,
 ) -> ChangeResult:
     frames = list(labels.frames)
     for operation in edits.operations:
@@ -62,6 +69,10 @@ def apply_operations(
                     "review_actor": actor if operation.decision.reviewed else None,
                 }
             )
+            check_manual_removal_images(
+                frames[index], manifest, policy, saved, manual_boxes
+            )
+            remember_manual_boxes(manual_boxes, index, operation.decision)
         elif isinstance(operation, (ConfirmPredictions, ConfirmEmpty)):
             if operation.scope.stop > len(frames):
                 raise ValueError("confirmation range lies outside the clip")

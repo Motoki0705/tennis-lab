@@ -29,7 +29,15 @@ from .contracts import (
     PlayerTeacherMask,
 )
 from .edits import apply_operations, brief
-from .evidence import catalog, check_actor, check_frame_images, lineage, prove_review
+from .evidence import (
+    catalog,
+    check_actor,
+    check_frame_images,
+    check_manual_removal_images,
+    lineage,
+    manual_box_history,
+    prove_review,
+)
 from .validation import (
     check_acceptance,
     inputs,
@@ -52,7 +60,10 @@ class PlayerReviewAdapter:
     ) -> tuple[ArtifactRef, ...]:
         from .storage import retained_references
 
-        return retained_references(layout, context, revision, receipt)
+        result: tuple[ArtifactRef, ...] = retained_references(
+            layout, context, revision, receipt
+        )
+        return result
 
     def initialize(
         self, layout: AnnotationLayout, context: ReviewContext, manifest: ClipManifest
@@ -123,15 +134,23 @@ class PlayerReviewAdapter:
             raise ValueError("edit contains duplicate review images")
         merged = {image.sha256: image for image in (*labels.images, *edits.images)}
         _, policy, predictions = inputs(layout, context, manifest)
+        revisions = lineage(layout, context, command.expected_revision)
         saved = catalog(
             layout,
             context,
             tuple(merged.values()),
             predictions,
-            allowed_revisions=lineage(layout, context, command.expected_revision),
+            allowed_revisions=revisions,
         )
         result: ChangeResult = apply_operations(
-            labels, edits, manifest, policy, predictions, saved, command.actor
+            labels,
+            edits,
+            manifest,
+            policy,
+            predictions,
+            saved,
+            command.actor,
+            manual_boxes=manual_box_history(layout, revisions),
         )
         self.validate(layout, context, manifest, result.payload)
         return result
@@ -150,13 +169,17 @@ class PlayerReviewAdapter:
         labels = read_document(layout, node.payload, PlayerLabels)
         self.validate(layout, context, manifest, labels)
         policy_ref, policy, predictions = inputs(layout, context, manifest)
+        revisions = lineage(layout, context, revision)
         saved = catalog(
             layout,
             context,
             labels.images,
             predictions,
-            allowed_revisions=lineage(layout, context, revision),
+            allowed_revisions=revisions,
         )
+        history = manual_box_history(layout, revisions)
+        for frame in labels.frames:
+            check_manual_removal_images(frame, manifest, policy, saved, history)
         evidence = prove_review(
             layout, context, manifest, revision, labels, proof, saved
         )

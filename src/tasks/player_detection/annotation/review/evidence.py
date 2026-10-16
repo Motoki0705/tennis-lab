@@ -11,7 +11,7 @@ from src.tasks.base.annotation.contracts import (
     ClipManifest,
     ReviewEvidence,
 )
-from src.tasks.base.annotation.editing import ReviewContext, Revision
+from src.tasks.base.annotation.editing import EditCommand, ReviewContext, Revision
 from src.tasks.base.annotation.images import read_rendered
 from src.tasks.base.annotation.images.contracts import (
     Box,
@@ -24,8 +24,17 @@ from src.tasks.base.annotation.telemetry.capture import presented_images, verify
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import Launch
 
+from ..contracts import Box as PlayerBox
 from ..contracts import PlayerPredictions
-from .contracts import PlayerFrame, PlayerLabels, PlayerReviewPolicy, PlayerReviewProof
+from .contracts import (
+    FrameDecision,
+    PlayerEdits,
+    PlayerFrame,
+    PlayerLabels,
+    PlayerReviewPolicy,
+    PlayerReviewProof,
+    ReplaceFrame,
+)
 from .validation import ranges, resolved
 
 
@@ -48,6 +57,57 @@ def lineage(
         result.add(current)
         previous_sequence, current = node.sequence, node.previous
     return result
+
+
+ManualBoxes = dict[tuple[int, str], PlayerBox]
+
+
+def remember_manual_boxes(
+    boxes: ManualBoxes, index: int, decision: FrameDecision
+) -> None:
+    for item in decision.observations:
+        if item.proposal_id is None:
+            key = (index, item.observation_id)
+            if item.box is not None:
+                boxes[key] = item.box
+            elif item.classification in {"player", "unresolved"}:
+                # Explicitly losing the location invalidates an older bbox.
+                boxes.pop(key, None)
+
+
+def manual_box_history(
+    layout: AnnotationLayout, revisions: set[ArtifactRef]
+) -> ManualBoxes:
+    """Retain the most recent located bbox for each stable manual observation.
+
+    Include ordered edits within each revision: adding and then removing a box
+    in one atomic command does not leave that bbox in the final payload.
+    """
+    boxes: ManualBoxes = {}
+    nodes = sorted(
+        (read_document(layout, reference, Revision) for reference in revisions),
+        key=lambda node: node.sequence,
+    )
+    for node in nodes:
+        if node.command is not None:
+            command = read_document(layout, node.command, EditCommand)
+            if (
+                command.expected_revision != node.previous
+                or command.context != node.context
+            ):
+                raise ValueError(
+                    "manual bbox history command differs from its revision"
+                )
+            edits = read_document(layout, command.changes, PlayerEdits)
+            for operation in edits.operations:
+                if isinstance(operation, ReplaceFrame):
+                    remember_manual_boxes(
+                        boxes, operation.frame_index, operation.decision
+                    )
+        labels = read_document(layout, node.payload, PlayerLabels)
+        for frame in labels.frames:
+            remember_manual_boxes(boxes, frame.frame.frame_index, frame.decision)
+    return boxes
 
 
 @dataclass(frozen=True)
@@ -137,6 +197,8 @@ def check_frame_images(
     manifest: ClipManifest,
     policy: PlayerReviewPolicy,
     saved: Catalog,
+    *,
+    removed_boxes: tuple[PlayerBox, ...] = (),
 ) -> None:
     decision = frame.decision
     if not decision.reviewed:
@@ -168,6 +230,7 @@ def check_frame_images(
         o.observation_id: o.box
         for o in saved.predictions.rows[frame.frame.frame_index].observations
     }
+    boxes = list(removed_boxes)
     for item in decision.observations:
         box = item.box
         if (
@@ -175,7 +238,10 @@ def check_frame_images(
             and item.proposal_id is not None
         ):
             box = raw[item.proposal_id]
-        if box is not None and not any(
+        if box is not None:
+            boxes.append(box)
+    for box in boxes:
+        if not any(
             t.crop.left <= box.x1
             and t.crop.top <= box.y1
             and box.x2 <= t.crop.right
@@ -185,6 +251,35 @@ def check_frame_images(
             raise ValueError(
                 "decided bbox is not fully contained in a sufficiently detailed cited crop"
             )
+
+
+def check_manual_removal_images(
+    frame: PlayerFrame,
+    manifest: ClipManifest,
+    policy: PlayerReviewPolicy,
+    saved: Catalog,
+    history: ManualBoxes,
+) -> None:
+    """History-dependent gate used both before edits commit and before adoption.
+
+    Stateless payload validation cannot recover a removed manual bbox. Its
+    geometry comes from history; its images must come from this frame's current
+    decision, whose review_actor is separately checked against telemetry.
+    """
+    boxes = []
+    for item in frame.decision.observations:
+        if item.proposal_id is None and item.classification in {
+            "non_player",
+            "duplicate",
+        }:
+            key = (frame.frame.frame_index, item.observation_id)
+            if key not in history:
+                raise ValueError(
+                    "removed manual observation has no prior bbox for image verification"
+                )
+            boxes.append(history[key])
+    if boxes:
+        check_frame_images(frame, manifest, policy, saved, removed_boxes=tuple(boxes))
 
 
 def check_actor(

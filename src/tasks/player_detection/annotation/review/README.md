@@ -35,6 +35,9 @@ revision は全 native frame/PTS と対象範囲を保持し、初期状態は�
 完全な対象一覧・確認済み空 target には全画面が必要。実観測/推定 bbox と除去する元 bbox は、
 全体が所定倍率の crop 内に必要。全画面の最低倍率と bbox の最低倍率は独立なので、
 全画面と拡大 crop を併用できる。renderer の clip・予測・revision 履歴・描画 bbox を照合する。
+手動追加した観測の除去も、同じ観測 ID の直近 bbox を revision と編集履歴から取得し、
+編集時と採用時に詳細倍率・全域包含を検証する。再追加・再除去では新しい bbox を使う。
+過去 bbox がない除去は証拠不足として拒否する。別 worker の過去の画像だけでは代用できない。
 画像生成のみでは確認にならず、採用時には各判断をした worker に画像 bytes が実際に入力された
 telemetry を照合する。別 attempt の証拠、未提示画像、他 clip、捏造 overlay、古い head を拒否する。
 
