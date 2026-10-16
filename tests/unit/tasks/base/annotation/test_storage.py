@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import sqlite3
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
 
@@ -249,6 +251,72 @@ def test_inventory_bounded_and_rejects_overlapping_scopes(
         inventory(catalog.layout, (scope,), max_entries=1)
     with pytest.raises(ValueError, match="overlap"):
         inventory(catalog.layout, (scope, scope), max_entries=100)
+
+
+@pytest.mark.parametrize("max_entries", [1, 3])
+@pytest.mark.parametrize("nested", [False, True])
+def test_inventory_stops_consuming_entries_when_budget_is_exceeded(
+    catalog: StorageCatalog,
+    monkeypatch: pytest.MonkeyPatch,
+    max_entries: int,
+    nested: bool,
+) -> None:
+    root = catalog.layout.path("migration_staging")
+    directory = root / "nested" if nested else root
+    directory.mkdir(parents=True, exist_ok=True)
+    for index in range(10):
+        (directory / f"item-{index}").touch()
+    original_scandir = os.scandir
+    consumed = 0
+    opened = 0
+    closed = 0
+
+    @contextmanager
+    def bounded_scandir(descriptor: int) -> Iterator[Iterator[os.DirEntry[str]]]:
+        nonlocal opened, closed
+
+        def entries(iterator: Iterator[os.DirEntry[str]]) -> Iterator[os.DirEntry[str]]:
+            nonlocal consumed
+            for entry in iterator:
+                consumed += 1
+                # The scope root uses one slot; one extra entry detects overflow.
+                assert consumed <= max_entries, "inventory consumed beyond its budget"
+                yield entry
+
+        with original_scandir(descriptor) as iterator:
+            opened += 1
+            try:
+                yield entries(iterator)
+            finally:
+                closed += 1
+
+    monkeypatch.setattr(os, "scandir", bounded_scandir)
+    with pytest.raises(ValueError, match="entry budget"):
+        inventory(
+            catalog.layout,
+            (InventoryScope(role="annotation", path="migration/staging"),),
+            max_entries=max_entries,
+        )
+    assert consumed == max_entries
+    assert opened == closed
+
+
+@pytest.mark.parametrize("names", [(), ("z", "a")])
+def test_inventory_accepts_exact_entry_budget_and_sorts_report(
+    catalog: StorageCatalog, names: tuple[str, ...]
+) -> None:
+    root = catalog.layout.path("migration_staging")
+    root.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        (root / name).touch()
+    observed = inventory(
+        catalog.layout,
+        (InventoryScope(role="annotation", path="migration/staging"),),
+        max_entries=1 + len(names),
+    )
+    assert [entry.path for entry in observed.entries] == sorted(
+        str(path) for path in (root, *(root / name for name in names))
+    )
 
 
 @pytest.mark.parametrize("ancestor", ["", "migration", "migration/staging"])

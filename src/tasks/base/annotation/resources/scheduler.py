@@ -339,34 +339,45 @@ class ResourceManager:
             ]
 
     def _recover(self) -> None:
-        for row in self._active():
+        for active in self._active():
             try:
-                with artifact_lock(
-                    self.layout, "resource-lease-" + row["id"], blocking=False
+                with (
+                    artifact_lock(
+                        self.layout, "resource-lease-" + active["id"], blocking=False
+                    ),
+                    self.registry.transaction() as db,
                 ):
+                    # finish() can commit after the active snapshot and before
+                    # lease acquisition. Read and settle its latest record atomically.
+                    row = db.execute(
+                        "SELECT * FROM resource_requests WHERE id=?",
+                        (active["id"],),
+                    ).fetchone()
+                    if row is None:
+                        raise ValueError("resource request disappeared during recovery")
+                    if row["state"] not in {"running", "draining"}:
+                        continue
                     if row["owner"] is not None and owned_members(
                         ProcessIdentity.from_document(json.loads(row["owner"]))
                     ):
                         continue
                     request = ResourceRequest.model_validate_json(row["request"])
                     missing = row["state"] == "running"
-                    with self.registry.transaction() as db:
-                        db.execute(
-                            "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=?",
-                            (
-                                "abandoned" if missing else "complete",
-                                request.gpu_seconds if missing else row["charged"],
-                                "reserved_upper_bound"
-                                if missing
-                                else row["charge_kind"],
-                                "owner exited without a finish receipt"
-                                if missing
-                                else row["reason"],
-                                row["id"],
-                            ),
-                        )
-                        # Finished output must be measured before releasing its reservation.
-                        db.execute("UPDATE resource_samples SET storage_at=-1")
+                    db.execute(
+                        "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=? AND state=?",
+                        (
+                            "abandoned" if missing else "complete",
+                            request.gpu_seconds if missing else row["charged"],
+                            "reserved_upper_bound" if missing else row["charge_kind"],
+                            "owner exited without a finish receipt"
+                            if missing
+                            else row["reason"],
+                            row["id"],
+                            row["state"],
+                        ),
+                    )
+                    # Finished output must be measured before releasing its reservation.
+                    db.execute("UPDATE resource_samples SET storage_at=-1")
             except BlockingIOError:
                 continue
 
