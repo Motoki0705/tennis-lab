@@ -464,9 +464,60 @@ def env(tmp_path: Path) -> Environment:
     return Environment(tmp_path / "annotation")
 
 
+def selection_dependencies(
+    env: Environment, intent_ref: ArtifactRef
+) -> tuple[ArtifactRef, ...]:
+    """Expected fixture files needed to revalidate a completed model decision."""
+    intent = read_document(env.layout, intent_ref, LearningIntent)
+    completion = read_document(env.layout, intent.completion, CampaignCompletion)
+    publication = read_document(env.layout, intent.publication, PublicationReceipt)
+    refs = [
+        intent_ref,
+        intent.completion,
+        completion.plan,
+        intent.publication,
+        intent.recipe,
+        intent.fixed_evaluation,
+        intent.train.manifest,
+        env.val.manifest,
+        env.test.manifest,
+        *publication.adoptions,
+    ]
+    directory = env.layout.artifact_path(intent_ref).parent
+    for stage in ("train", "evaluate"):
+        completed_ref = annotation_reference(
+            env.layout, directory / stage / "1" / "completed.json"
+        )
+        completed = read_document(env.layout, completed_ref, CompletedStage)
+        execution = read_document(env.layout, completed.execution, StageExit)
+        refs.extend(
+            (
+                completed_ref,
+                completed.request,
+                completed.result,
+                completed.execution,
+                execution.launch,
+                execution.stdout,
+                execution.stderr,
+            )
+        )
+    training = read_document(
+        env.layout,
+        annotation_reference(env.layout, directory / "train/1/result.json"),
+        TrainingReceipt,
+    )
+    evaluation = read_document(
+        env.layout,
+        annotation_reference(env.layout, directory / "evaluate/1/result.json"),
+        EvaluationReceipt,
+    )
+    refs.extend((training.provenance, evaluation.metrics))
+    return tuple(refs)
+
+
 @pytest.mark.parametrize("accept", [True, False])
-def test_model_decisions_protect_both_compared_weights_and_fixed_inputs(
-    env: Environment, accept: bool,
+def test_model_decisions_protect_complete_selection_evidence(
+    env: Environment, accept: bool
 ) -> None:
     from src.tasks.base.annotation.plan import references
     from tests.support.annotation_storage import assert_expired_but_protected
@@ -475,13 +526,17 @@ def test_model_decisions_protect_both_compared_weights_and_fixed_inputs(
     intent_ref = env.register()
     outcome = env.train_and_evaluate(intent_ref)
     assert outcome.state == ("adopted" if accept else "rejected")
+    assert outcome.selection is not None
     selection = read_document(env.layout, outcome.selection, SelectionRecord)
-    intent = read_document(env.layout, intent_ref, LearningIntent)
-    verdict = read_document(env.layout, selection.verdict, SelectionVerdict)
     assert_expired_but_protected(
         env.layout,
-        (outcome.selection, selection.verdict, verdict.evaluation, intent.recipe, intent.fixed_evaluation,
-         *(references(selection.expected.model)), *(references(selection.candidate))),
+        (
+            *selection_dependencies(env, intent_ref),
+            outcome.selection,
+            selection.verdict,
+            *references(selection.expected.model),
+            *references(selection.candidate),
+        ),
         "model",
     )
 
@@ -656,6 +711,7 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
     env: Environment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from src.tasks.base.annotation.learning import models
+    from tests.support.annotation_storage import assert_expired_but_protected
 
     intent = env.register()
     env.train_and_evaluate(intent, finish_selection=False)
@@ -668,6 +724,9 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
     with pytest.raises(Crash):
         env.learning.tick(intent, env.adapter, env.runtime)
     assert env.learning.models.current("detector").generation == 2
+    assert_expired_but_protected(
+        env.layout, selection_dependencies(env, intent), "model"
+    )
     monkeypatch.setattr(models, "write_document", real_write)
     result = Learning(env.layout, executor=env.executor).tick(
         intent, env.adapter, env.runtime
@@ -682,6 +741,8 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
 def test_parallel_candidates_cannot_overwrite_newer_adopted_model(
     env: Environment,
 ) -> None:
+    from tests.support.annotation_storage import assert_expired_but_protected
+
     first, second = env.register(name="parallel-one"), env.register(name="parallel-two")
     env.train_and_evaluate(first, finish_selection=False)
     env.train_and_evaluate(second, finish_selection=False)
@@ -697,11 +758,46 @@ def test_parallel_candidates_cannot_overwrite_newer_adopted_model(
     assert {r.state for r in results} == {"adopted", "reevaluation_required"}
     assert env.learning.models.current("detector").generation == 2
     for result in results:
+        assert_expired_but_protected(
+            env.layout, selection_dependencies(env, result.intent), "model"
+        )
         assert result.selection is not None
         selection = read_document(env.layout, result.selection, SelectionRecord)
         assert selection.expected.model == env.model
         if result.state == "reevaluation_required":
             assert selection.observed.generation == 2 and selection.adopted is None
+
+
+def test_selection_protection_failure_rolls_back_model_decision(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    intent = env.register()
+    env.train_and_evaluate(intent, finish_selection=False)
+    registry = env.learning.models
+    before = registry.catalog.snapshot().digest
+    original = registry.catalog.protect
+
+    def crash(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("after selection protection")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(registry.catalog, "protect", crash)
+        with pytest.raises(RuntimeError, match="after selection protection"):
+            env.learning.tick(intent, env.adapter, env.runtime)
+    assert registry.current("detector").generation == 1
+    assert registry.catalog.snapshot().digest == before
+    with registry.registry.transaction() as db:
+        assert (
+            db.execute("SELECT * FROM annotation_model_selections").fetchone() is None
+        )
+        assert db.execute("SELECT count(*) FROM annotation_models").fetchone()[0] == 1
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "adopted"
+    assert_expired_but_protected(
+        env.layout, selection_dependencies(env, intent), "model"
+    )
 
 
 def test_registered_intent_and_runtime_cannot_be_silently_replaced(
@@ -884,3 +980,58 @@ def test_durable_file_gaps_resume_without_new_job(
             == "training_pending"
         )
         assert len(env.executor.accepted) == 2
+
+
+@pytest.mark.parametrize("stage", ["train", "evaluate"])
+@pytest.mark.parametrize("error", [Crash, OSError])
+def test_retry_recovers_directory_created_before_retry_publication(
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
+    stage: Literal["train", "evaluate"],
+    error: type[BaseException],
+) -> None:
+    from src.tasks.base.annotation import artifacts
+
+    intent = env.register()
+    if stage == "train":
+        state = env.learning.tick(intent, env.adapter, env.runtime)
+        assert state.launch is not None
+        env.executor.finish(state.launch, env.adapter, failed=True)
+        assert env.learning.tick(intent, env.adapter, env.runtime).state == "failed"
+    else:
+        env.adapter.complete_metrics = False
+        assert env.train_and_evaluate(intent).state == "failed"
+        env.adapter.complete_metrics = True
+    accepted = len(env.executor.accepted)
+    real_replace = artifacts.os.replace
+    directory = env.layout.artifact_path(intent).parent / stage / "2"
+
+    def interrupted(source: Path, target: Path) -> None:
+        if target == directory / "retry.json":
+            assert directory.is_dir()
+            raise error("interrupted before retry publication")
+        real_replace(source, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(artifacts.os, "replace", interrupted)
+        with pytest.raises(error, match="before retry publication"):
+            env.learning.retry(intent, env.adapter, stage, reason="explicit retry")
+    assert directory.is_dir()
+    assert not (directory / "retry.json").exists()
+    assert not (directory / "request.json").exists()
+    executor = Executor(env.layout)
+    restarted = Learning(env.layout, executor=executor)
+    with pytest.raises(ValueError, match="no durable stage request"):
+        restarted.tick(intent, env.adapter, env.runtime)
+    assert len(env.executor.accepted) == accepted
+    restored = restarted.retry(intent, env.adapter, stage, reason="explicit retry")
+    request = read_document(env.layout, restored, StageInput)
+    assert request.attempt == 2 and request.stage == stage
+    assert env.layout.artifact_path(restored) == directory / "request.json"
+    outcome = restarted.tick(intent, env.adapter, env.runtime)
+    assert outcome.state == (
+        "training_pending" if stage == "train" else "evaluation_pending"
+    )
+    assert len(executor.accepted) == 1
+    assert restarted.tick(intent, env.adapter, env.runtime) == outcome
+    assert len(executor.accepted) == 1

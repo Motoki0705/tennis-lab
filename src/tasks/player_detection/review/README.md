@@ -16,8 +16,9 @@ storeのschemaとJPEG shard読出しは[data/store.py](../data/store.py)、学�
 [configs/data/default.yaml](../configs/data/default.yaml)が正本です。
 画面の件数は実際に選択したstoreを集計し、build日を表示します。
 
-v1 storeはplayerを列挙したframeだけを保存しており、未保存frameを負例として扱いません。
-v2では空frameも保存し、`confirmed_empty`がある対象frameを確認済み不在として表示します。
+画面はv2 storeを読みます。既存v1は[明示的な移行手順](../README.md#流れ)を実行してから指定します。
+移行後も未保存frameを負例として扱いません。
+v2の`confirmed_empty`がある対象frameを確認済み不在として表示します。
 この状態はbboxが0個の負例です。空欄だけでは不在と判定せず、未確認/contextは学習対象から除きます。
 `unresolved`は選手の存在記録はあるものの位置を解決できず、bboxがない状態です。
 `inferred`は遮蔽や画面端の切れ等の推定・補完で、数が多いことだけで誤りや利用不可と判断しません。

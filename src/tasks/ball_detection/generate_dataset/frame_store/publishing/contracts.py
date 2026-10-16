@@ -11,6 +11,7 @@ from src.tasks.base.annotation.contracts import (
     ArtifactRef,
     Digest,
     Document,
+    FrameRange,
     Identifier,
     after_validator,
 )
@@ -51,8 +52,16 @@ class LegacySourceGroup(Document):
     source_id: Digest
 
 
+class LegacyClipRange(Document):
+    """Explicit source-frame interval for an imported chat-annotation clip."""
+
+    store_clip_id: str = Field(min_length=1)
+    source_range: FrameRange
+
+
 class SnapshotClip(Document):
     clip_id: Digest
+    canonical_clip_id: Digest | None
     store_clip_id: str = Field(min_length=1)
     source_id: Digest
     split: Split
@@ -83,6 +92,9 @@ class BallSnapshot(Document):
             {c.store_clip_id for c in self.clips}
         ) != len(self.clips):
             raise ValueError("snapshot clip identities must be unique")
+        canonical_ids = [c.canonical_clip_id for c in self.clips if c.canonical_clip_id]
+        if len(set(canonical_ids)) != len(canonical_ids):
+            raise ValueError("snapshot canonical clip identities must be unique")
         if bool(self.legacy_groups) != (self.request is None):
             raise ValueError(
                 "snapshot must declare either a legacy import or a publication request"

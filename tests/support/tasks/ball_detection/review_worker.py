@@ -182,12 +182,15 @@ class ReviewSession:
         status: Literal[
             "succeeded", "failed", "quota", "timed_out", "cancelled"
         ] = "succeeded",
+        evidence_issue: Literal["missing_model", "conflicting_response"] | None = None,
     ) -> ArtifactRef:
         env = self.env
         catalog = self.worker.telemetry_images(
             env.layout, env.plan, self.request, self.directory
         )
-        report = env.telemetry(catalog, shown=shown, exit_status=status)
+        report = env.telemetry(
+            catalog, shown=shown, exit_status=status, evidence_issue=evidence_issue
+        )
         write_document(env.layout, self.directory / "telemetry.ref.json", report)
         return report
 

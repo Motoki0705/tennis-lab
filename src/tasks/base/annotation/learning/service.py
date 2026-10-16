@@ -19,7 +19,7 @@ from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
-from .adapters import LearningAdapter
+from .adapters import LearningAdapter, NoAdditionalTeachers
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -136,7 +136,11 @@ class Learning:
             selection_policy=task.learning.selection_policy,
         )
         verify_inputs(self.layout, intent)
-        adapter.validate_intent(self.layout, intent)
+        eligibility = adapter.validate_intent(self.layout, intent)
+        if isinstance(eligibility, NoAdditionalTeachers):
+            return self._skip(
+                completion_ref, task.task, "no_additional_teachers", eligibility.reason
+            )
         directory = self._directory(intent)
         with artifact_lock(
             self.layout,
@@ -191,7 +195,10 @@ class Learning:
     def _directory(self, intent: LearningIntent) -> Path:
         completion = read_document(self.layout, intent.completion, CampaignCompletion)
         plan = check_completion(self.layout, completion)
-        return self.layout.path("campaigns", plan.campaign_id, "learning", intent.task)
+        directory: Path = self.layout.path(
+            "campaigns", plan.campaign_id, "learning", intent.task
+        )
+        return directory
 
     def _require_registered(
         self, ref: ArtifactRef, adapter: LearningAdapter
@@ -509,6 +516,14 @@ class Learning:
                     resume_checkpoint=resume_checkpoint,
                 )
                 return write_document(self.layout, current / "request.json", restored)
+            if int(current.name) > 1 and not any(
+                (current / name).exists()
+                for name in ("retry.json", "request.json", "failure.json", "completed.json")
+            ):
+                # write_document may create the next directory before publishing
+                # retry.json. Only an explicit retry can recover this gap, and
+                # the immediately preceding attempt must still be a failure.
+                current = root / str(int(current.name) - 1)
             if (
                 not (current / "failure.json").exists()
                 or (current / "completed.json").exists()

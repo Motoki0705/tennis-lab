@@ -10,11 +10,16 @@ from src.tasks.base.annotation.artifacts import (
     verify_reference,
     write_document,
 )
-from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.execution.runner import StageRunner
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, require_execution_layout
+from src.tasks.base.annotation.plan import (
+    CampaignPlan,
+    references,
+    require_execution_layout,
+)
+from src.tasks.base.annotation.predictions import PredictionContext, PredictionReceipt
 from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
@@ -22,7 +27,7 @@ from src.tasks.base.annotation.resources import (
 )
 from src.utils.paths import PROJECT_ROOT
 
-from .contracts import OperationInput, OperationReceipt, Runtime
+from .contracts import OperationInput, OperationReceipt, PredictOperation, Runtime
 
 
 class Operations:
@@ -104,6 +109,8 @@ class Operations:
             "--sha256",
             reference.digest,
         ]
+        if self.command == "stage":
+            command += ["--attempt", str(attempt)]
         if self.layout.mode == "test":
             command += ["--test-root", str(self.layout.root)]
         launch = StageLaunch(
@@ -163,4 +170,37 @@ class Operations:
             raise ValueError("stage result belongs to a different operation")
         for ref in receipt.results:
             verify_reference(self.layout, ref)
+        data = read_document(self.layout, launch.input, OperationInput)
+        if data.plan != self.runtime.plan or data.stage != launch.resource.stage:
+            raise ValueError("stage result differs from the runtime plan/stage")
+        if isinstance(data.operation, PredictOperation):
+            operation = data.operation
+            if receipt.status != "complete" or len(receipt.results) != len(
+                operation.clips
+            ):
+                raise ValueError("prediction stage must return one receipt per clip")
+            task = next(
+                (task for task in self.plan.tasks if task.task == operation.task), None
+            )
+            if task is None:
+                raise ValueError("prediction task is absent from the frozen plan")
+            for clip, ref in zip(operation.clips, receipt.results, strict=True):
+                manifest = read_document(self.layout, clip, ClipManifest)
+                expected = PredictionContext(
+                    task=task.task,
+                    manifest=clip,
+                    clip_id=manifest.clip_id,
+                    model=task.model,
+                    configuration=task.inference,
+                )
+                prediction = read_document(self.layout, ref, PredictionReceipt)
+                if (
+                    prediction.context != expected
+                    or prediction.prediction.request_id != expected.request_id
+                ):
+                    raise ValueError(
+                        "prediction receipt differs from the frozen operation"
+                    )
+                for dependency in (*references(prediction), *references(manifest)):
+                    verify_reference(self.layout, dependency)
         return receipt
