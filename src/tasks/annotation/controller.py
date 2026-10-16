@@ -94,6 +94,16 @@ class Controller:
             worker_storage_bytes=screen.storage_bytes,
         )
         self.stages = StageRunner(layout)
+        self.pool.ledger.registry.initialize(
+            "worker-services.v1",
+            """
+            CREATE TABLE IF NOT EXISTS worker_service_requests (
+                attempt TEXT NOT NULL REFERENCES worker_attempts(id),
+                digest TEXT NOT NULL, request TEXT NOT NULL,
+                PRIMARY KEY (attempt, digest)
+            );
+            """,
+        )
 
     def register(self, candidates: CandidateManifest) -> list[dict[str, Any]]:
         return [
@@ -156,7 +166,7 @@ class Controller:
             existing = read_document(self.layout, launch_ref, StageLaunch)
             if existing != launch:
                 raise ValueError("operation resource/command configuration changed")
-            state = self.stages.status(launch_ref)
+            state: dict[str, Any] = self.stages.status(launch_ref)
             # A capacity-limited launch has no owner yet and remains explicitly pending.
             with self.resources.registry.transaction() as db:
                 row = db.execute(
@@ -167,7 +177,8 @@ class Controller:
             if not pending or state["state"] not in {"pending", "interrupted"}:
                 return state
         try:
-            return self.stages.submit(launch)
+            submitted: dict[str, Any] = self.stages.submit(launch)
+            return submitted
         except (CapacityUnavailable, BlockingIOError) as error:
             return {
                 "state": "waiting",
@@ -191,6 +202,30 @@ class Controller:
             verify_reference(self.layout, ref)
         return receipt
 
+    def _admit_service(self, attempt: str, service: ServiceRequest) -> None:
+        encoded = service.canonical_bytes().decode()
+        with self.pool.ledger.registry.transaction() as db:
+            prior = db.execute(
+                "SELECT request FROM worker_service_requests WHERE attempt=? AND digest=?",
+                (attempt, service.sha256),
+            ).fetchone()
+            if prior is not None:
+                if prior["request"] != encoded:
+                    raise ValueError("registered worker service request changed")
+                return
+            count = db.execute(
+                "SELECT count(*) FROM worker_service_requests WHERE attempt=?",
+                (attempt,),
+            ).fetchone()[0]
+            if count >= self.runtime.maximum_services_per_attempt:
+                raise ValueError(
+                    "worker exceeded its frozen image-service request count"
+                )
+            db.execute(
+                "INSERT INTO worker_service_requests VALUES (?,?,?)",
+                (attempt, service.sha256, encoded),
+            )
+
     def _services(self, request: WorkRequest, row: dict[str, Any]) -> None:
         if row["state"] != "running":
             return
@@ -205,7 +240,7 @@ class Controller:
         directory = Path(launch.directory)
         official = annotation_reference(self.layout, directory / "request.json")
         paths = sorted((directory / "work/service-requests").glob("*.json"))
-        for number, path in enumerate(paths):
+        for path in paths:
             if path.stat().st_size > 32768:
                 raise ValueError("worker service request exceeds 32 KiB")
             service_ref = annotation_reference(self.layout, path)
@@ -219,13 +254,10 @@ class Controller:
                 continue
             result, error = None, None
             try:
-                if number >= self.runtime.maximum_services_per_attempt:
-                    raise ValueError(
-                        "worker exceeded its frozen image-service request count"
-                    )
                 _service, task, _attempt = preview_input(self.layout, service_ref)
                 if task.prepared_input != request.payload:
                     raise ValueError("service refers to another worker input")
+                self._admit_service(launch.attempt, service)
                 op = OperationInput(
                     plan=self.runtime.plan,
                     operation=PreviewOperation(service_request=service_ref),
@@ -294,10 +326,23 @@ class Controller:
             row = self.pool.stop(request, reason=f"invalid service request: {error}")
         return {"state": row["state"], "reason": row["reason"]}
 
+    def _reconcile_workers(self) -> list[dict[str, Any]]:
+        with self.pool.ledger.registry.transaction() as db:
+            requests = [
+                WorkRequest.model_validate_json(row["request"])
+                for row in db.execute(
+                    "SELECT request FROM worker_tasks WHERE campaign=? ORDER BY id",
+                    (self.plan.campaign_id,),
+                )
+            ]
+        return [self.pool.reconcile(request) for request in requests]
+
     def cycle(self) -> dict[str, Any]:
         sample = self.resources.poll()
         if sample.stopped_reason is not None:
             raise BudgetStopped(sample.stopped_reason)
+        # Adapter finalization may advance a source before the worker receipt is saved.
+        self._reconcile_workers()
         with self.collection.ledger.registry.transaction() as db:
             rows = [
                 dict(row)
@@ -385,6 +430,7 @@ class Controller:
         }
 
     def status(self) -> dict[str, Any]:
+        reconciled = self._reconcile_workers()
         jobs = []
         for path in sorted(
             self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
@@ -399,13 +445,9 @@ class Controller:
                     (self.plan.campaign_id,),
                 )
             )
-            workers = [
-                dict(row)
-                for row in db.execute(
-                    "SELECT id,state,reason FROM worker_tasks WHERE campaign=?",
-                    (self.plan.campaign_id,),
-                )
-            ]
+        workers = [
+            {key: row[key] for key in ("id", "state", "reason")} for row in reconciled
+        ]
         summary = self.collection.ledger.summary(self.plan)
         source_states = summary["sources_by_state"]
         live = any(

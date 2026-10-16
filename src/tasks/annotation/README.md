@@ -24,11 +24,15 @@ timeout/GPU時間を参照する。実験固有のURL、件数、モデルpath�
 
 `run` は台帳と不変receiptから再開する。終了時間はcontrollerの実行時間であり、
 既に受付済みのsupervisorを強制終了する指定ではない。再開も同じruntimeを使う。
+`cycle` / `status` はsourceの状態にかかわらず登録済みworkerを照合する。
+選別がsourceを更新した直後に中断しても、workerの完了receiptと台帳更新を回収する。
 sourceの先行数とCPU/Codex/GPUの枠を守り、GPUは共通queueへ投入する。
 queue workerの起動は[training-queue skill](../../../.agents/skills/training-queue/SKILL.md)に従う。
 
 screening workerの追加画像要求は、workerの書込領域から親controllerへ渡す。
 親がrequest/attempt/区間を検証し、CPU工程で描画してから不変の画像参照を返す。
+受付済み要求は親所有のSQLite台帳にattempt単位で累積保存し、固定上限を判定する。
+inboxの並び順・削除・親の再開で枠を戻さず、同一要求の回収で二重計上しない。
 workerにソース動画の全量decodeや共有cacheへの書込みを任せない。採用時は実際の
 rollout画像提示と選別結果を照合する。単なる画像生成や自己申告では選別を完了しない。
 

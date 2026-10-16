@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
+from typing import Any
 
 import av
 import numpy as np
@@ -13,6 +14,7 @@ import pytest
 
 from src.tasks.annotation.contracts import (
     OperationInput,
+    OperationReceipt,
     Runtime,
     ScreenOperation,
     StageCost,
@@ -51,7 +53,7 @@ from src.tasks.base.annotation.screening.service import (
     attempt_directory,
     request_preview,
 )
-from src.tasks.base.annotation.workers.contracts import WorkRequest
+from src.tasks.base.annotation.workers.contracts import WorkOutcome, WorkRequest
 from src.tasks.base.annotation.workers.services import (
     ServiceReply,
     ServiceRequest,
@@ -707,3 +709,157 @@ def test_operation_cli_cannot_bypass_accounted_stage(
     monkeypatch.delenv("TENNIS_ANNOTATION_STAGE_OPERATION", raising=False)
     with pytest.raises(ValueError, match="resource-accounted stage"):
         execute(example.layout, example.request_ref)
+
+
+@pytest.mark.parametrize("remove_old", [False, True])
+def test_service_limit_survives_inbox_reordering_deletion_and_restart(
+    example: Example, monkeypatch: pytest.MonkeyPatch, remove_old: bool
+) -> None:
+    controller = controller_for(example)
+    runtime = controller.runtime.model_copy(update={"maximum_services_per_attempt": 1})
+    controller = Controller(example.layout, runtime)
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=example.request.prepared_input,
+        inputs=(),
+    )
+    controller.pool.test_command = (sys.executable, "-c", "import time; time.sleep(60)")
+    controller.pool.start(request)
+    owning_pool = controller.pool
+    row = controller.pool.ledger.task(request.work_id)
+    directory = example.layout.path(
+        "campaigns",
+        controller.plan.campaign_id,
+        "workers",
+        request.work_id,
+        "attempt-0001",
+    )
+    official = annotation_reference(example.layout, directory / "request.json")
+    services = sorted(
+        (
+            ServiceRequest(
+                task_request=official,
+                operation="screen_preview",
+                parameters={
+                    "start": float(start),
+                    "stop": float(start + 15),
+                    "step": 0.5,
+                },
+            )
+            for start in range(3)
+        ),
+        key=lambda service: service.sha256,
+        reverse=True,
+    )
+    submitted: list[OperationInput] = []
+
+    def submit(data: OperationInput) -> dict[str, Any]:
+        submitted.append(data)
+        return {"state": "succeeded"}
+
+    monkeypatch.setattr(Controller, "operation", lambda self, data: submit(data))
+    monkeypatch.setattr(
+        Controller,
+        "receipt",
+        lambda self, state: OperationReceipt(
+            operation=example.request_ref,
+            status="complete",
+            results=(example.detail_ref,),
+            reason=None,
+        ),
+    )
+    try:
+        for index, service in enumerate(services):
+            path = directory / "work/service-requests" / (service.sha256 + ".json")
+            write_document(example.layout, path, service)
+            controller._services(request, row)
+            reply = read_document(
+                example.layout,
+                annotation_reference(
+                    example.layout,
+                    directory / "services" / service.sha256 / "reply.json",
+                ),
+                ServiceReply,
+            )
+            assert reply.status == ("succeeded" if index == 0 else "failed")
+            if index:
+                assert "request count" in (reply.reason or "")
+            # Reprocessing the accepted request must not consume another slot.
+            controller._services(request, row)
+            if remove_old:
+                path.unlink()
+            controller = Controller(example.layout, runtime)
+        assert len(submitted) == 1
+    finally:
+        deadline = time.monotonic() + 10
+        while not (directory / "owner.json").exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        owning_pool.stop(request, reason="fixture cleanup")
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_controller_recovers_worker_after_source_finalized_before_worker_receipt(
+    example: Example, monkeypatch: pytest.MonkeyPatch, empty: bool
+) -> None:
+    controller = controller_for(example)
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=example.request.prepared_input,
+        inputs=(),
+    )
+    controller.pool.test_command = (
+        sys.executable,
+        "-c",
+        "import pathlib; pathlib.Path('result.json').write_text('{}'); "
+        'print(\'{"type":"thread.started","thread_id":"synthetic"}\'); '
+        'print(\'{"type":"turn.completed"}\')',
+    )
+
+    def finalize(*args: Any) -> WorkOutcome:
+        return WorkOutcome(
+            status="not_applicable" if empty else "complete",
+            receipt=example.finish(decision=example.decision(empty=empty)),
+            reason="no play" if empty else None,
+        )
+
+    monkeypatch.setattr(
+        "src.tasks.annotation.screening.ScreeningAdapter.validate", finalize
+    )
+    controller.pool.start(request)
+    original_write = write_document
+
+    def interrupt(layout: AnnotationLayout, path: Path, value: Any) -> ArtifactRef:
+        if path.name == "result.receipt.json":
+            raise RuntimeError("controller interrupted after source finalization")
+        return original_write(layout, path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            "src.tasks.base.annotation.workers.pool.write_document", interrupt
+        )
+        with pytest.raises(RuntimeError, match="after source finalization"):
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                controller.pool.reconcile(request)
+                time.sleep(0.02)
+    assert controller.collection.ledger.source(
+        controller.plan, example.source.source_id
+    )["state"] == ("excluded" if empty else "screened")
+    assert controller.pool.ledger.task(request.work_id)["state"] in {
+        "running",
+        "exited",
+    }
+    restarted = Controller(example.layout, controller.runtime)
+    # Downstream processing is outside this recovery test.
+    monkeypatch.setattr(restarted, "operation", lambda data: {"state": "waiting"})
+    restarted.cycle()
+    assert restarted.pool.ledger.task(request.work_id)["state"] == (
+        "not_applicable" if empty else "complete"
+    )
+    assert restarted.status()["state"] != "running"
