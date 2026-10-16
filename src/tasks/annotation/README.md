@@ -50,6 +50,8 @@ queue script、productionのcode版を検証してから保存する。planが�
 ことを拒否する。scopeを作る場合は保存量baselineの走査を行うが、動画取得・モデルロード・
 Codex/学習の起動は行わない。作成後は `configuration/result.json` の `runtime` 参照のpath/hashを
 以降のCLIへ渡す。`schema --type` はruntime/candidates/operation/recoveryにも対応する。
+既存scopeの作成入力をscope lock下で照合し、campaignの紐付けをDB transactionで確定してから
+requestとplanを保存する。scope入力や紐付けの競合で拒否された設定は保存されず、修正して再送できる。
 planの詳細は[plan](../base/annotation/plan.py)、予算の計測定義は
 [resources](../base/annotation/resources/README.md)を参照する。
 
