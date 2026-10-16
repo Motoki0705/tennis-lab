@@ -12,6 +12,10 @@ from src.tasks.base.annotation.artifacts import (
     verify_reference,
     write_document,
 )
+from src.tasks.base.annotation.collection.contracts import (
+    AcquisitionReceipt,
+    SourceCandidate,
+)
 from src.tasks.base.annotation.collection.service import Collection
 from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
@@ -106,6 +110,7 @@ class Controller:
                 self.operation,
                 self.receipt,
                 self._services,
+                self.publication_failures,
             )
 
     def register(self, candidates: CandidateManifest) -> list[dict[str, Any]]:
@@ -129,12 +134,34 @@ class Controller:
             )
         jobs = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
         attempts = [
-            int(path.name.rsplit("-", 1)[1]) for path in jobs.glob(data.sha256 + "-*")
+            int(path.name.rsplit("-", 1)[1])
+            for path in jobs.glob(data.logical_id + "-*")
         ]
         latest = max(attempts, default=0)
         if attempt is None:
             attempt = max(latest, 1)
-        elif attempt not in attempts:
+            if latest:
+                prior = read_document(
+                    self.layout,
+                    annotation_reference(
+                        self.layout,
+                        jobs / f"{data.logical_id}-{attempt}" / "operation.json",
+                    ),
+                    OperationInput,
+                )
+                if prior.logical_id != data.logical_id:
+                    raise ValueError("stage attempt differs from its logical operation")
+                if (
+                    isinstance(data.operation, AcquireOperation)
+                    and isinstance(prior.operation, AcquireOperation)
+                    and data.operation.retry
+                    and not prior.operation.retry
+                ):
+                    attempt += 1
+                else:
+                    # Ordinary resume recovers the pinned retry directive as well.
+                    data = prior
+        if attempt not in attempts:
             if attempt != latest + 1:
                 raise ValueError(
                     "a new attempt must follow the latest recorded attempt"
@@ -142,7 +169,7 @@ class Controller:
             if latest:
                 previous = annotation_reference(
                     layout=self.layout,
-                    path=jobs / f"{data.sha256}-{latest}" / "launch.json",
+                    path=jobs / f"{data.logical_id}-{latest}" / "launch.json",
                 )
                 previous_state = self.stages.status(previous)
                 if previous_state["state"] not in {
@@ -155,7 +182,7 @@ class Controller:
                         "only a failed or interrupted operation can be retried"
                     )
         cost = self.runtime.cost(data.stage)
-        request_id = f"{data.sha256}-{attempt}"
+        request_id = f"{data.logical_id}-{attempt}"
         directory = self.layout.path(
             "campaigns", self.plan.campaign_id, "jobs", request_id
         )
@@ -234,6 +261,38 @@ class Controller:
         data = read_document(self.layout, launch.input, OperationInput)
         if data.plan != self.runtime.plan or data.stage != launch.resource.stage:
             raise ValueError("stage result differs from the runtime plan/stage")
+        operation = data.operation
+        if isinstance(operation, AcquireOperation) or (
+            isinstance(operation, (ScreenOperation, PrepareOperation))
+            and receipt.status == "not_applicable"
+        ):
+            source = self.collection.ledger.source(self.plan, operation.source_id)
+            if source["acquisition"] is None or receipt.results != (
+                ArtifactRef.model_validate_json(source["acquisition"]),
+            ):
+                raise ValueError(
+                    "source receipt differs from its registered acquisition"
+                )
+            acquisition = read_document(
+                self.layout, receipt.results[0], AcquisitionReceipt
+            )
+            candidate = SourceCandidate.model_validate_json(source["candidate"])
+            if (
+                acquisition.source.canonical_id != operation.source_id
+                or acquisition.candidate_digest != candidate.sha256
+                or acquisition.configuration != self.plan.preparation
+            ):
+                raise ValueError("acquisition receipt differs from the frozen source")
+            for dependency in references(acquisition):
+                verify_reference(self.layout, dependency)
+            if receipt.status == "not_applicable" and (
+                source["state"] != "excluded"
+                or not receipt.reason
+                or receipt.reason != source["reason"]
+            ):
+                raise ValueError("source exclusion differs from its registered reason")
+        elif receipt.status == "not_applicable":
+            raise ValueError("this operation cannot return a source exclusion")
         if isinstance(data.operation, PredictOperation):
             operation = data.operation
             if receipt.status != "complete" or len(receipt.results) != len(
@@ -374,7 +433,15 @@ class Controller:
                 ),
             )
 
-    def _screen(self, source_id: str) -> dict[str, Any]:
+    def retry_screen(
+        self, source_id: str, *, resume_quota: bool = False
+    ) -> dict[str, Any]:
+        """Explicitly retry a screening worker without rerunning its preparation."""
+        return self._screen(source_id, retry=True, resume_quota=resume_quota)
+
+    def _screen(
+        self, source_id: str, *, retry: bool = False, resume_quota: bool = False
+    ) -> dict[str, Any]:
         data = OperationInput(
             plan=self.runtime.plan, operation=ScreenOperation(source_id=source_id)
         )
@@ -396,9 +463,11 @@ class Controller:
         )
         self.pool.register(request)
         row = self.pool.reconcile(request)
-        if row["state"] == "ready":
+        if resume_quota:
+            self.pool.ledger.resume_campaign(self.plan.campaign_id)
+        if row["state"] == "ready" or retry:
             try:
-                self.pool.start(request)
+                self.pool.start(request, retry=retry)
             except (WorkerBusy, CapacityUnavailable, WorkerStopped) as error:
                 return {"state": "waiting", "reason": str(error)}
             row = self.pool.reconcile(request)
@@ -477,14 +546,14 @@ class Controller:
             data = read_document(
                 self.layout, annotation_reference(self.layout, path), OperationInput
             )
-            if data.sha256 in seen_operations:
+            if data.logical_id in seen_operations:
                 continue
-            seen_operations.add(data.sha256)
+            seen_operations.add(data.logical_id)
             if isinstance(data.operation, PredictOperation):
                 claimed.update(
                     (data.operation.task, ref.digest) for ref in data.operation.clips
                 )
-                progress[data.sha256] = self.operation(data)
+                progress[data.logical_id] = self.operation(data)
         with self.collection.ledger.registry.transaction() as db:
             pending = [
                 dict(row)
@@ -510,7 +579,7 @@ class Controller:
                         ),
                     ),
                 )
-                progress[data.sha256] = self.operation(data)
+                progress[data.logical_id] = self.operation(data)
         production = self.production.cycle() if self.production is not None else None
         return {
             "collection": self.collection.ledger.summary(self.plan),
@@ -537,7 +606,7 @@ class Controller:
             identity, number = path.parent.name.rsplit("-", 1)
             if (
                 data.plan != self.runtime.plan
-                or identity != data.sha256
+                or identity != data.logical_id
                 or not number.isdigit()
                 or int(number) < 1
             ):
@@ -594,18 +663,94 @@ class Controller:
             state["superseded"] = state["attempt"] < latest[key][0]
         return jobs, [state for _, state in latest.values()]
 
+    def publication_failures(self) -> list[dict[str, Any]]:
+        """Match registered inputs to their latest successful producing attempts."""
+        _, latest = self._stage_states()
+        completed: dict[tuple[str, str], set[ArtifactRef]] = {}
+        failures: list[dict[str, Any]] = []
+        for state in latest:
+            if "operation" not in state:
+                continue
+            data = read_document(
+                self.layout,
+                ArtifactRef.model_validate(state["operation"]),
+                OperationInput,
+            )
+            operation = data.operation
+            if not isinstance(
+                operation, (AcquireOperation, PrepareOperation, PredictOperation)
+            ):
+                continue
+            if state["state"] != "succeeded":
+                failures.append(state)
+                continue
+            try:
+                receipt = self.receipt(state)
+                if receipt.status != "complete":
+                    continue
+                if isinstance(operation, (AcquireOperation, PrepareOperation)):
+                    if len(receipt.results) != 1:
+                        raise ValueError("source stage must return exactly one receipt")
+                    completed.setdefault(
+                        (operation.action, operation.source_id), set()
+                    ).add(receipt.results[0])
+                else:
+                    for reference in receipt.results:
+                        prediction = read_document(
+                            self.layout, reference, PredictionReceipt
+                        )
+                        completed.setdefault(
+                            ("predict:" + operation.task, prediction.context.clip_id),
+                            set(),
+                        ).add(reference)
+            except (ValueError, OSError) as error:
+                failures.append(
+                    {**state, "state": "invalid_receipt", "reason": str(error)}
+                )
+        with self.collection.ledger.registry.transaction() as database:
+            sources = database.execute(
+                "SELECT id,state,acquisition,preparation FROM sources WHERE campaign_id=?",
+                (self.plan.campaign_id,),
+            ).fetchall()
+            predictions = database.execute(
+                "SELECT t.task,t.clip_id,p.receipt FROM annotation_tasks t "
+                "LEFT JOIN annotation_predictions p ON p.task_id=t.id "
+                "WHERE t.campaign_id=? AND t.state IN ('predicted','reviewing','adopted')",
+                (self.plan.campaign_id,),
+            ).fetchall()
+        expected = [
+            (("predict:" + row["task"], row["clip_id"]), row["receipt"])
+            for row in predictions
+        ]
+        for source in sources:
+            if source["acquisition"] is not None or source["state"] == "prepared":
+                expected.append((("acquire", source["id"]), source["acquisition"]))
+            if source["state"] == "prepared":
+                expected.append((("prepare", source["id"]), source["preparation"]))
+        for key, reference in expected:
+            if reference is None or ArtifactRef.model_validate_json(
+                reference
+            ) not in completed.get(key, set()):
+                failures.append(
+                    {
+                        "state": "unreconciled",
+                        "stage": key[0],
+                        "subject_id": key[1],
+                        "reason": "registered artifact lacks a matching successful receipt from its latest stage attempt; recover explicitly",
+                    }
+                )
+        return failures
+
     def status(self) -> dict[str, Any]:
         reconciled = self._reconcile_workers()
         jobs, latest = self._stage_states()
-        completed: set[str] = set()
+        completed: set[ArtifactRef] = set()
         for stage_state in latest:
             if stage_state["state"] != "succeeded" or "operation" not in stage_state:
                 continue
             try:
                 receipt = self.receipt(stage_state)
-                completed.update(
-                    ref.canonical_bytes().decode() for ref in receipt.results
-                )
+                completed.update(receipt.results)
             except (ValueError, OSError) as error:
                 stage_state.update(
                     state="invalid_receipt", reason=f"{type(error).__name__}: {error}"
@@ -620,10 +765,13 @@ class Controller:
             source_receipts = [
                 ref
                 for row in db.execute(
-                    "SELECT acquisition,preparation FROM sources WHERE campaign_id=?",
+                    "SELECT state,acquisition,preparation FROM sources WHERE campaign_id=?",
                     (self.plan.campaign_id,),
                 )
-                for ref in row
+                for ref in (
+                    row["acquisition"],
+                    row["preparation"] if row["state"] == "prepared" else None,
+                )
                 if ref is not None
             ]
             prediction_receipts = [
@@ -659,7 +807,7 @@ class Controller:
         )
         ledger_ready = all_sources and bool(tasks) and set(tasks) == {"predicted"}
         if ledger_ready and any(
-            ref is None or ref not in completed
+            ref is None or ArtifactRef.model_validate_json(ref) not in completed
             for ref in (*source_receipts, *prediction_receipts)
         ):
             failures.append(
@@ -687,13 +835,15 @@ class Controller:
         )
         production = self.production.status() if self.production is not None else None
         if production is not None:
+            if production["state"] == "complete":
+                failures.extend(self.publication_failures())
             state = (
-                "running"
+                "blocked"
+                if failures or production["state"] == "blocked"
+                else "running"
                 if live or production["state"] in {"publishing", "learning"}
                 else "complete"
                 if production["state"] == "complete"
-                else "blocked"
-                if failures or production["state"] == "blocked"
                 else "pending"
             )
         return {
