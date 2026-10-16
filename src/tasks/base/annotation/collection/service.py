@@ -65,15 +65,15 @@ class Collection:
             receipt_path = self.layout.path(
                 "sources", source_id, self.plan.preparation.digest, "acquisition.json"
             )
+            started = self.ledger.begin_acquisition(
+                self.plan,
+                source_id,
+                self.config.maximum_unprepared_sources,
+                retry=retry,
+            )
             if receipt_path.exists():
                 reference = annotation_reference(self.layout, receipt_path)
             else:
-                started = self.ledger.begin_acquisition(
-                    self.plan,
-                    source_id,
-                    self.config.maximum_unprepared_sources,
-                    retry=retry,
-                )
                 if not started:
                     raise ValueError("registered acquisition receipt is missing")
                 try:
@@ -106,6 +106,8 @@ class Collection:
     def prepare(self, source_id: str) -> ArtifactRef:
         with artifact_lock(self.layout, "source-" + source_id, blocking=False):
             row = self.ledger.source(self.plan, source_id)
+            if row["state"] == "excluded":
+                raise SourceExcluded(row["reason"])
             if row["state"] not in {"screened", "prepared"}:
                 raise ValueError("preparation requires an explicit completed selection")
             receipt_path = self.layout.path(
@@ -135,5 +137,6 @@ class Collection:
                 )
             # Validate the fixed receipt and every artifact before reconciling the
             # ledger. Published work must never enter the generation path again.
-            self.ledger.record_preparation(self.plan, reference)
+            if not self.ledger.record_preparation(self.plan, reference):
+                raise SourceExcluded(self.ledger.source(self.plan, source_id)["reason"])
             return reference
