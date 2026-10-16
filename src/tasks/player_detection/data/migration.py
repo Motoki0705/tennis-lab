@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import shutil
@@ -76,7 +75,7 @@ def migrate_v1_store(source: Path, destination: Path) -> Path:
         )
         (staging / "README.md").write_text(
             f"# player_detection dataset `{destination.name}`\n\n"
-            "Migrated with `python -m src.tasks.player_detection.data.migration`.\n"
+            "Migrated with `python -m src.tasks.player_detection.scripts.migrate_store`.\n"
             "Schema and access API: `src/tasks/player_detection/data/store.py`.\n"
             "Sparse v1 frame membership, splits, JPEG bytes and teachers are preserved.\n"
             "Missing frames are unknown; no negative teachers were added.\n\n"
@@ -88,15 +87,3 @@ def migrate_v1_store(source: Path, destination: Path) -> Path:
             raise FileExistsError(f"Migration destination already exists: {destination}")
         staging.rename(destination)
     return destination
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", type=Path, help="Existing v1 store (absolute path)")
-    parser.add_argument("destination", type=Path, help="New v2 store (absolute path)")
-    args = parser.parse_args()
-    print(migrate_v1_store(args.source, args.destination))
-
-
-if __name__ == "__main__":
-    main()
