@@ -44,6 +44,7 @@ from src.tasks.player_detection.data.store import Split
 from src.tasks.player_detection.inference.checkpoint import inspect_player_checkpoint
 
 from .contracts import PlayerLearningRecipe, PlayerSelectionPolicy
+from .precision import precision_contract
 
 
 def training_partition(
@@ -285,6 +286,7 @@ def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:
         verify_reference(layout, recipe.training).read_bytes()
     )
     training = BaseTrainingConfig.from_mapping(settings)
+    precision_contract(training)
     checkpoint = training.checkpoint
     if not checkpoint.enabled or (
         checkpoint.monitor,
