@@ -45,7 +45,11 @@ from src.tasks.base.annotation.execution.contracts import (
 from src.tasks.base.annotation.media import encode_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
-from src.tasks.base.annotation.predictions import PredictionContext, PredictionReceipt
+from src.tasks.base.annotation.predictions import (
+    PredictionContext,
+    PredictionReceipt,
+    Predictions,
+)
 from src.tasks.base.annotation.resources import (
     BudgetLimits,
     ResourceManager,
@@ -152,7 +156,10 @@ class Example:
 
 
 def controller_for(example: Example) -> Controller:
-    layout, plan = example.layout, example.screening.plan
+    return create_controller(example.layout, example.screening.plan)
+
+
+def create_controller(layout: AnnotationLayout, plan: CampaignPlan) -> Controller:
     resources = ResourceManager.create(
         layout,
         scope_id="preview",
@@ -198,6 +205,8 @@ def setup(
     *,
     fps: int = 10,
     timestamps_ms: tuple[int, ...] | None = None,
+    acquire: bool = True,
+    videos_per_channel: int = 1,
 ) -> tuple[AnnotationLayout, Screening, SourceCandidate]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -222,7 +231,7 @@ def setup(
                 "annotation_root": str(layout.root),
                 "counts": {
                     "channels": 1,
-                    "videos_per_channel": 1,
+                    "videos_per_channel": videos_per_channel,
                     "max_clips_per_video": 2,
                 },
                 "selection": reference,
@@ -344,13 +353,20 @@ def setup(
     )
     collection = Collection(layout, plan)
     collection.register([source])
-    collection.acquire(source.source_id)
+    if acquire:
+        collection.acquire(source.source_id)
     return layout, Screening(collection), source
 
 
 @pytest.fixture
 def example(tmp_path: Path) -> Example:
     layout, screening, source = setup(tmp_path)
+    return make_example(layout, screening, source)
+
+
+def make_example(
+    layout: AnnotationLayout, screening: Screening, source: SourceCandidate
+) -> Example:
     ref = screening.request(
         screening.prepare(source.source_id),
         layout.path(
@@ -994,7 +1010,7 @@ def record_stage(
 ) -> ArtifactRef:
     """Publish synthetic supervisor evidence without starting a queue or model."""
     layout = controller.layout
-    request_id = f"{data.sha256}-{attempt}"
+    request_id = f"{data.logical_id}-{attempt}"
     directory = layout.path(
         "campaigns", controller.plan.campaign_id, "jobs", request_id
     )
@@ -1033,23 +1049,30 @@ def record_stage(
             ),
         )
     if exited:
-        log = write_asset(layout, directory / "log.txt", b"synthetic supervisor\n")
-        write_document(
-            layout,
-            directory / "exit.json",
-            StageExit(
-                launch=launch,
-                status="failed" if failed else "succeeded",
-                exit_code=1 if failed else 0,
-                started_at="2026-10-16T00:00:00Z",
-                ended_at="2026-10-16T00:00:01Z",
-                elapsed_seconds=1.0,
-                stdout=log,
-                stderr=log,
-                reason="synthetic failure" if failed else None,
-            ),
-        )
+        record_stage_exit(layout, launch, failed=failed)
     return operation
+
+
+def record_stage_exit(
+    layout: AnnotationLayout, launch: ArtifactRef, *, failed: bool = False
+) -> None:
+    directory = layout.artifact_path(launch).parent
+    log = write_asset(layout, directory / "log.txt", b"synthetic supervisor\n")
+    write_document(
+        layout,
+        directory / "exit.json",
+        StageExit(
+            launch=launch,
+            status="failed" if failed else "succeeded",
+            exit_code=1 if failed else 0,
+            started_at="2026-10-16T00:00:00Z",
+            ended_at="2026-10-16T00:00:01Z",
+            elapsed_seconds=1.0,
+            stdout=log,
+            stderr=log,
+            reason="synthetic failure" if failed else None,
+        ),
+    )
 
 
 @pytest.mark.parametrize(
@@ -1170,3 +1193,376 @@ def test_preview_requires_latest_receipts_and_explicit_prediction_recovery(
         b"tampered"
     )
     assert restarted.status()["state"] == "blocked"
+
+
+class SyntheticPredictionAdapter:
+    task = "ball"
+
+    def produce(
+        self,
+        layout: AnnotationLayout,
+        context: PredictionContext,
+        manifest: ClipManifest,
+        directory: Path,
+    ) -> ArtifactRef:
+        return write_asset(
+            layout, directory / "prediction.json", b"synthetic prediction"
+        )
+
+    def validate(
+        self,
+        layout: AnnotationLayout,
+        context: PredictionContext,
+        manifest: ClipManifest,
+        result: ArtifactRef,
+    ) -> None:
+        assert layout.artifact_path(result).read_bytes() == b"synthetic prediction"
+
+
+def finish_preview(controller: Controller, example: Example) -> None:
+    """Finish synthetic selection and prediction, retaining real receipt validation."""
+    example.finish()
+    prepared = controller.collection.prepare(example.source.source_id)
+    for operation, result in (
+        (
+            ScreenOperation(source_id=example.source.source_id),
+            example.request.prepared_input,
+        ),
+        (PrepareOperation(source_id=example.source.source_id), prepared),
+    ):
+        record_stage(
+            controller,
+            OperationInput(plan=controller.runtime.plan, operation=operation),
+            results=(result,),
+            exited=True,
+        )
+    clips = read_document(example.layout, prepared, PreparationReceipt).clips
+    predictions = Predictions(example.layout, controller.plan)
+    results = tuple(
+        predictions.run(clip, SyntheticPredictionAdapter()) for clip in clips
+    )
+    record_stage(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=PredictOperation(task="ball", clips=clips),
+        ),
+        results=results,
+        exited=True,
+    )
+
+
+@pytest.mark.parametrize(
+    "invalid", [None, "missing_acquisition", "wrong_source", "reason"]
+)
+def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str | None
+) -> None:
+    from src.tasks.annotation.operations import execute
+
+    layout, screening, source = setup(tmp_path, videos_per_channel=2)
+    controller = create_controller(layout, screening.plan)
+    acquisition = ArtifactRef.model_validate_json(
+        controller.collection.ledger.source(controller.plan, source.source_id)[
+            "acquisition"
+        ]
+    )
+    record_stage(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=source.source_id),
+        ),
+        results=(acquisition,),
+        exited=True,
+    )
+    finish_preview(controller, make_example(layout, screening, source))
+    duplicate = source.model_copy(update={"video_id": "duplicate"})
+    controller.collection.register([duplicate])
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=AcquireOperation(source_id=duplicate.source_id),
+    )
+    reference = record_stage(controller, data)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+    receipt_ref = execute(layout, reference)
+    record_stage(controller, data, exited=True)
+    restarted = Controller(layout, controller.runtime)
+    status = restarted.status()
+    assert status["collection"]["sources_by_state"] == {"excluded": 1, "prepared": 1}
+    assert status["state"] == "preview_ready"
+    receipt = read_document(layout, receipt_ref, OperationReceipt)
+    row = controller.collection.ledger.source(controller.plan, duplicate.source_id)
+    assert receipt.status == "not_applicable"
+    assert receipt.reason == row["reason"] == f"duplicate content of {source.source_id}"
+    assert receipt.results == (ArtifactRef.model_validate_json(row["acquisition"]),)
+    # Recover an already-excluded source with the same evidence in a new stage attempt.
+    recovery = record_stage(controller, data, attempt=2)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", recovery.digest)
+    recovered = read_document(layout, execute(layout, recovery), OperationReceipt)
+    record_stage(controller, data, attempt=2, exited=True)
+    assert (recovered.results, recovered.reason) == (receipt.results, receipt.reason)
+    assert restarted.status()["state"] == "preview_ready"
+    if invalid is not None:
+        # A successful supervisor cannot make mismatched exclusion evidence valid.
+        forged = record_stage(controller, data, attempt=3, exited=True)
+        bad_receipt = recovered.model_copy(
+            update={
+                "operation": forged,
+                "results": ()
+                if invalid == "missing_acquisition"
+                else (acquisition,)
+                if invalid == "wrong_source"
+                else recovered.results,
+                "reason": "unregistered exclusion"
+                if invalid == "reason"
+                else recovered.reason,
+            }
+        )
+        write_document(
+            layout, layout.artifact_path(forged).parent / "result.json", bad_receipt
+        )
+        blocked = restarted.status()
+        assert blocked["state"] == "blocked"
+        assert any(
+            failure["state"] == "invalid_receipt" for failure in blocked["failures"]
+        )
+
+
+@pytest.mark.parametrize("failed_retry", [False, True])
+def test_explicit_acquisition_retry_recovers_failed_preview(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failed_retry: bool
+) -> None:
+    from src.tasks.annotation.operations import execute
+
+    layout, screening, source = setup(tmp_path, acquire=False)
+    controller = create_controller(layout, screening.plan)
+    original = OperationInput(
+        plan=controller.runtime.plan,
+        operation=AcquireOperation(source_id=source.source_id),
+    )
+    submitted: list[StageLaunch] = []
+
+    def submit(launch: StageLaunch) -> dict[str, Any]:
+        # Execute only the local acquisition; synthesize the supervisor's exit evidence.
+        assert launch.input is not None and launch.queue is None
+        directory = layout.artifact_path(launch.input).parent
+        launch_ref = write_document(layout, directory / "launch.json", launch)
+        monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", launch.input.digest)
+        failed = False
+        try:
+            execute(layout, launch.input)
+        except RuntimeError as error:
+            assert str(error) == "synthetic acquisition failure"
+            failed = True
+        record_stage_exit(layout, launch_ref, failed=failed)
+        submitted.append(launch)
+        state: dict[str, Any] = controller.stages.status(launch_ref)
+        return state
+
+    monkeypatch.setattr(controller.stages, "submit", submit)
+    retry = OperationInput(
+        plan=controller.runtime.plan,
+        operation=AcquireOperation(source_id=source.source_id, retry=True),
+    )
+
+    def fail_acquisition(*args: Any) -> ArtifactRef:
+        raise RuntimeError("synthetic acquisition failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            "src.tasks.base.annotation.collection.service.acquire_source",
+            fail_acquisition,
+        )
+        assert controller.operation(original)["state"] == "failed"
+        if failed_retry:
+            assert controller.operation(retry)["state"] == "failed"
+    # Neither ordinary resume nor repeating the same retry directive creates an attempt.
+    assert controller.operation(original)["state"] == "failed"
+    if failed_retry:
+        assert controller.operation(retry)["state"] == "failed"
+    assert len(submitted) == (2 if failed_retry else 1)
+    assert controller.status()["state"] == "blocked"
+    assert (
+        controller.collection.ledger.source(controller.plan, source.source_id)["state"]
+        == "failed"
+    )
+    recovered = controller.operation(retry, attempt=3 if failed_retry else None)
+    assert recovered["state"] == "succeeded"
+    number = 3 if failed_retry else 2
+    assert submitted[-1].resource.request_id == f"{original.logical_id}-{number}"
+    assert submitted[-1].input is not None
+    assert read_document(layout, submitted[-1].input, OperationInput) == retry
+    restarted = Controller(layout, controller.runtime)
+    assert restarted.operation(original) == recovered
+    assert restarted.operation(retry) == recovered
+    assert len(submitted) == number
+    with pytest.raises(ValueError, match="immutable document"):
+        restarted.operation(original, attempt=number)
+    finish_preview(controller, make_example(layout, screening, source))
+    status = restarted.status()
+    assert status["state"] == "preview_ready"
+    assert not status["failures"]
+    assert any(stage["state"] == "failed" for stage in status["stages"])
+
+
+@pytest.mark.parametrize(
+    "failure", ["timed_out", "failed", "validation_failed", "quota"]
+)
+def test_cli_retries_screening_with_new_worker_attempt(
+    example: Example,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failure: str,
+) -> None:
+    from src.tasks.annotation import __main__ as cli
+    from src.tasks.annotation import controller as controller_module
+
+    controller = controller_for(example)
+    layout = example.layout
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=ScreenOperation(source_id=example.source.source_id),
+    )
+    stage = record_stage(
+        controller, data, results=(example.request.prepared_input,), exited=True
+    )
+    launch = annotation_reference(
+        layout, layout.artifact_path(stage).parent / "launch.json"
+    )
+
+    def screen_stage(self: Controller, operation: OperationInput) -> dict[str, Any]:
+        assert operation == data
+        state: dict[str, Any] = self.stages.status(launch)
+        return state
+
+    monkeypatch.setattr(Controller, "operation", screen_stage)
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=example.request.prepared_input,
+        inputs=(),
+    )
+    success = (
+        "import pathlib; pathlib.Path('result.json').write_text('{}'); "
+        'print(\'{"type":"thread.started","thread_id":"synthetic"}\'); '
+        'print(\'{"type":"turn.completed"}\')'
+    )
+    controller.pool.test_command = (
+        sys.executable,
+        "-c",
+        "import time; time.sleep(30)"
+        if failure == "timed_out"
+        else "raise SystemExit(1)"
+        if failure == "failed"
+        else 'print(\'{"type":"error","message":"usage limit exceeded"}\')'
+        if failure == "quota"
+        else success,
+    )
+    if failure == "timed_out":
+        controller.pool.timeout = 0.1
+
+    def reject(*args: Any) -> WorkOutcome:
+        raise ValueError("synthetic validation failure")
+
+    monkeypatch.setattr(
+        "src.tasks.annotation.screening.ScreeningAdapter.validate", reject
+    )
+    controller.pool.start(request)
+    deadline = time.monotonic() + 15
+    row = controller.pool.reconcile(request)
+    while row["state"] in {"running", "exited"} and time.monotonic() < deadline:
+        time.sleep(0.02)
+        row = controller.pool.reconcile(request)
+    assert row["state"] == failure
+    first_attempt = row["current_attempt"]
+    restarted = Controller(layout, controller.runtime)
+    restarted.pool.test_command = (sys.executable, "-c", success)
+    restarted.cycle()
+    assert (
+        restarted.pool.ledger.task(request.work_id)["current_attempt"] == first_attempt
+    )
+    assert restarted.status()["state"] == "blocked"
+
+    def finalize(
+        self: Any,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+        directory: Path,
+        *args: Any,
+    ) -> WorkOutcome:
+        request_ref = annotation_reference(layout, directory / "request.json")
+        body = read_document(layout, request_ref, ScreeningRequest)
+        detail = request_preview(layout, body, start=0.0, stop=15.0, step=0.5)
+        retry_example = Example(
+            layout,
+            Screening(Collection(layout, plan)),
+            example.source,
+            request_ref,
+            body,
+            detail,
+            read_document(layout, detail, PreviewReceipt),
+        )
+        return WorkOutcome(
+            status="complete", receipt=retry_example.finish(name="worker-retry")
+        )
+
+    monkeypatch.setattr(
+        "src.tasks.annotation.screening.ScreeningAdapter.validate", finalize
+    )
+    monkeypatch.setattr(
+        controller_module, "Controller", lambda layout, runtime: restarted
+    )
+    runtime = write_document(
+        layout, layout.path("campaigns", "fixture", "runtime.json"), controller.runtime
+    )
+    argv = [
+        "annotation",
+        "retry-screen",
+        "--runtime",
+        str(layout.artifact_path(runtime)),
+        "--sha256",
+        runtime.digest,
+        "--test-root",
+        str(layout.root),
+        "--source-id",
+        example.source.source_id,
+    ]
+    monkeypatch.setattr(sys, "argv", argv)
+    if failure == "quota":
+        cli.main()
+        assert json.loads(capsys.readouterr().out)["state"] == "waiting"
+        assert (
+            restarted.pool.ledger.task(request.work_id)["current_attempt"]
+            == first_attempt
+        )
+        with restarted.pool.ledger.registry.transaction() as db:
+            assert (
+                db.execute("SELECT count(*) FROM worker_campaign_stops").fetchone()[0]
+                == 1
+            )
+        monkeypatch.setattr(sys, "argv", [*argv, "--resume-quota"])
+    cli.main()
+    assert json.loads(capsys.readouterr().out)["state"] in {"running", "complete"}
+    deadline = time.monotonic() + 15
+    row = restarted.pool.reconcile(request)
+    while row["state"] in {"running", "exited"} and time.monotonic() < deadline:
+        time.sleep(0.02)
+        row = restarted.pool.reconcile(request)
+    assert row["state"] == "complete"
+    assert row["current_attempt"] == f"{request.work_id}-0002"
+    with restarted.pool.ledger.registry.transaction() as db:
+        attempts = db.execute(
+            "SELECT number,state FROM worker_attempts WHERE work_id=? ORDER BY number",
+            (request.work_id,),
+        ).fetchall()
+        assert [tuple(attempt) for attempt in attempts] == [
+            (1, failure),
+            (2, "complete"),
+        ]
+        assert (
+            db.execute("SELECT count(*) FROM worker_campaign_stops").fetchone()[0] == 0
+        )
