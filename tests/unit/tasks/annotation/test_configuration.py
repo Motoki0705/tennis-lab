@@ -555,7 +555,7 @@ def test_scope_input_conflict_allows_corrected_configuration(
             "budget": original.budget.model_copy(update={field: 0}),
         }
     )
-    with pytest.raises(ValueError, match="immutable"):
+    with pytest.raises(ValueError, match="existing resource scope differs"):
         configure(example.layout, conflicting)
     assert not example.layout.path("campaigns", "next").exists()
     corrected = original.model_copy(
