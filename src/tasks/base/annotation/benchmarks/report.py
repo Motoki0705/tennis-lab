@@ -197,6 +197,7 @@ def _usage(
     reports = responses = missing_ids = image_count = image_bytes = unbound = (
         prompts
     ) = inputs = outputs = orphans = compactions = 0
+    unobserved = 0
     elapsed = 0.0
     observed: set[tuple[str, str, str]] = set()
     for attempt in attempts:
@@ -216,6 +217,7 @@ def _usage(
         if report.conflicting_usage_records:
             raise ValueError("conflicting response usage cannot be aggregated")
         reports += 1
+        unobserved += report.responses == 0
         missing_ids += report.missing_response_ids
         prompts += report.prompt_chars
         unbound += report.unbound_image_inputs
@@ -252,14 +254,15 @@ def _usage(
         attempts=len(attempts),
         reports=reports,
         missing_reports=unavailable,
+        unobserved_response_attempts=unobserved,
         known_responses=responses,
         exact_api_responses=None
-        if unavailable or missing_ids or not attempts
+        if unavailable or unobserved or missing_ids or not attempts
         else responses,
         missing_response_ids=missing_ids,
         totals={
             name: None
-            if missing[name] or missing_ids or unavailable or not attempts
+            if missing[name] or missing_ids or unavailable or unobserved or not attempts
             else totals[name]
             for name in Usage.model_fields
         },
