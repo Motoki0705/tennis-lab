@@ -24,6 +24,19 @@ flowchart LR
 base内部には具体taskの分岐を置かない。SQLiteのworkflow進捗は表示用cacheであり、
 再開時は不変の要求・実行・公開receiptを照合する。
 
+workerの画像・注釈サービスは、各稼働attemptの未回答要求を送信順で1件ずつ集め、
+全workerのうち最も古い要求から資源付き工程へ渡す。工程自身が結果receiptの保存後に
+返信を確定するため、他workerの受付やcontrollerの次の巡回を待たない。
+通常campaignは最大128要求・600秒のCPU service sessionを使い、同じrender枠の中で
+到着した要求を続けて処理する。各要求のworker・入力・結果・返信を個別receiptに結び、
+session全体を既存supervisorのPSS/空き/GPU監視と保存予約の対象にする。
+controllerの定期保存走査と終了時の全走査は維持し、短い要求ごとの全走査だけを避ける。
+session失敗は明示的な工程再試行を必要とし、勝手に次のsessionへ進めない。
+終了・交代したattemptからの要求は実行せず、旧attemptのサービス失敗は履歴に残したまま
+新attemptの進行を妨げない。注釈編集のrevision照合・実画像確認・採用条件は維持する。
+通常のrun/statusでは、同じcontrollerが照合済みの終了stageをメモリ内で再利用する。
+`status --details` は全履歴とログhashを再照合し、再起動時にもcacheを持ち越さない。
+
 ## 固定入力と起動
 
 `Runtime` はplan・資源scope・queue script版・Codex保存先・工程別のPSS/保存量/

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
+    artifact_lock,
     read_document,
     verify_reference,
     write_document,
@@ -21,7 +22,11 @@ from src.tasks.base.annotation.screening.contracts import (
     ScreeningPolicy,
     ScreeningRequest,
 )
-from src.tasks.base.annotation.workers.services import ServiceRequest
+from src.tasks.base.annotation.workers.contracts import Launch
+from src.tasks.base.annotation.workers.services import (
+    ServiceRequest,
+    require_active_attempt,
+)
 
 from .contracts import (
     AcquireOperation,
@@ -41,6 +46,7 @@ from .contracts import (
     RetireExcludedOperation,
     ReviewOperation,
     ScreenOperation,
+    ServiceSessionOperation,
 )
 
 
@@ -91,15 +97,45 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         raise ValueError("operation must be launched by its resource-accounted stage")
     data = read_document(layout, reference, OperationInput)
     plan = load_plan(verify_reference(layout, data.plan))
+    if layout.artifact_path(reference).parent.parent != layout.path(
+        "campaigns", plan.campaign_id, "jobs"
+    ):
+        raise ValueError("operation input must belong to a campaign stage")
+    from .service_completion import execute_and_reply
+
+    return execute_and_reply(layout, reference, lambda: _execute(layout, reference))
+
+
+def _execute(
+    layout: AnnotationLayout,
+    reference: ArtifactRef,
+    *,
+    session: ArtifactRef | None = None,
+) -> ArtifactRef:
+    data = read_document(layout, reference, OperationInput)
+    plan = load_plan(verify_reference(layout, data.plan))
     if plan.phase == "benchmark" or layout.review_namespace is not None:
         raise ValueError("benchmark review requires its dedicated operation boundary")
     directory = layout.artifact_path(reference).parent
     expected = layout.path("campaigns", plan.campaign_id, "jobs")
-    if (
-        not directory.is_relative_to(expected)
-        or len(directory.relative_to(expected).parts) != 1
-    ):
-        raise ValueError("operation input must belong to a campaign stage")
+    if session is None:
+        if (
+            not directory.is_relative_to(expected)
+            or len(directory.relative_to(expected).parts) != 1
+        ):
+            raise ValueError("operation input must belong to a campaign stage")
+    else:
+        owner = read_document(layout, session, OperationInput)
+        owner_directory = layout.artifact_path(session).parent
+        if (
+            not isinstance(owner.operation, ServiceSessionOperation)
+            or owner.plan != data.plan
+            or not isinstance(data.operation, (PreviewOperation, ReviewOperation))
+            or os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != session.digest
+            or owner_directory.parent != expected
+            or directory.parent != owner_directory / "services"
+        ):
+            raise ValueError("nested service operation differs from its owning session")
     output = directory / "result.json"
     if output.exists():
         ref = annotation_reference(layout, output)
@@ -159,16 +195,31 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
             service, task, attempt = preview_input(layout, op.service_request)
             if task.plan_digest != plan.sha256:
                 raise ValueError("preview request belongs to another campaign")
-            result = (
-                make_sheets(
-                    layout,
-                    task.source.media,
-                    attempt / "previews",
-                    origin_pts=task.source_origin_pts,
-                    time_base=task.time_base,
-                    **service.parameters,
-                ),
-            )
+            actor = annotation_reference(layout, attempt / "launch.json")
+            worker = read_document(layout, actor, Launch)
+            if (
+                Path(worker.directory) != attempt
+                or worker.plan != data.plan
+                or worker.request.adapter != "source_screening"
+                or worker.request.payload != task.prepared_input
+            ):
+                raise ValueError("preview differs from its immutable worker attempt")
+            with artifact_lock(layout, "worker-services-" + worker.work_id):
+                require_active_attempt(layout, worker, actor)
+                result = (
+                    make_sheets(
+                        layout,
+                        task.source.media,
+                        attempt / "previews",
+                        origin_pts=task.source_origin_pts,
+                        time_base=task.time_base,
+                        **service.parameters,
+                    ),
+                )
+        elif isinstance(op, ServiceSessionOperation):
+            from .service_sessions import execute_session
+
+            result = (execute_session(layout, reference),)
         elif isinstance(op, ReviewOperation):
             from src.tasks.ball_detection.annotation.review.worker import (
                 BallReviewServices,
@@ -207,10 +258,12 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
 
             if plan.phase != "production":
                 raise ValueError("model bootstrap requires an explicit production plan")
-            task = next((task for task in plan.tasks if task.task == op.task), None)
-            if task is None:
+            model_task = next(
+                (task for task in plan.tasks if task.task == op.task), None
+            )
+            if model_task is None:
                 raise ValueError("model bootstrap task is absent from the frozen plan")
-            state = ModelRegistry(layout).bootstrap(task.model, op.evidence)
+            state = ModelRegistry(layout).bootstrap(model_task.model, op.evidence)
             result = (write_document(layout, directory / "model.json", state),)
         elif isinstance(op, InspectStorageOperation):
             from src.tasks.base.annotation.storage.comparison.sources import capture
