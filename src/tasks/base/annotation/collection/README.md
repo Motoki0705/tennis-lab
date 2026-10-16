@@ -16,7 +16,8 @@ screeningが所有し、このモジュールは明示された `SelectionReceip
   最大クリップ数に不足する場合は理由を必須にする。0件は除外であり準備完了ではない。
 - `summary()` は要求件数、確保channel、sourceの各状態、準備clip数、登録task数、未準備video数を区別する。
   取得失敗を成功に数えず、再取得には `acquire(..., retry=True)` を明示する。
-  再試行時もtransaction内でchannelの動画枠を確認し、補充済みなら上限超過を拒否する。
+  公開済み取得receiptからの復帰も同じ再試行条件に従い、transaction内でchannelの動画枠と
+  未準備素材の先行枠を確認する。補充済みなら上限超過を拒否する。
 
 ## 共有台帳と再開
 
@@ -26,7 +27,8 @@ screeningが所有し、このモジュールは明示された `SelectionReceip
 `CollectionLedger.import_history(source, evidence)` で読取棚卸しを登録する。
 取得未完了でもcanonical IDが確認できた素材は `HistoricalSource(media=None)` で履歴に
 含める。未完了ファイルを取得済みmediaとして扱わず、内容hashの重複表には登録しない。
-履歴sourceと根拠は再登録時も一致を要求する。
+同じcanonical sourceの取得済みmediaや別エンコードは、追加hashを照合用に登録する。
+media以外の履歴source identityと根拠は再登録時も一致を要求し、異なるchannel identityを拒否する。
 別campaignが確保済みのchannel/source、同内容の再アップロードは新規取得数に加えない。
 
 取得/準備はsourceごとのOS file lockで多重起動を防ぐ。停止するとlockは解放される。
@@ -35,7 +37,7 @@ screeningが所有し、このモジュールは明示された `SelectionReceip
 選別後に実フレーム不足などで恒久的に準備できない場合は、
 `exclude_preparation(source_id, reason=...)` で理由付き除外を明示する。
 取得・選別の参照は保持し、未準備枠とchannelの動画枠を解放する。
-準備receiptが公開済みの素材は除外できない。
+準備receiptが公開済みの素材は、この手動除外APIでは除外できない。
 
 原動画は `media/sources/blobs/<sha256>` に1実体、取得receiptは
 `media/sources/<source_id>/<preparation-config-hash>/acquisition.json` に保存する。
@@ -49,6 +51,8 @@ clipは `media/clips/<clip_id>/` を一括renameで公開する。
 台帳の準備参照または公開済みreceiptがあれば、生成処理に入る前にその参照と全clipを検証する。
 preparedの登録時には選別区間・sourceの実PTS・clipのPTS/表示時間・hashを照合し、
 clipと各taskを1 transactionで段階追加する。
+選別内または登録済みclipとの内容hash重複を検出した場合は、追加を行わずsource全体を
+理由付きで除外する。公開済み準備receiptと重複先の参照を残し、未準備枠と動画枠を解放する。
 
 汎用動画I/Oの正本は[media.py](../media.py)。旧Chat注釈の素材処理も同じ関数を参照し、
 旧manifestの検証と画像ラベルだけを旧runtimeに残す。旧運用入口の廃止は統合タスクで行う。
@@ -108,6 +112,8 @@ operationはprepare枠で実行・再開し、除外を準備済み動画数へ�
 削除直後に停止しても `Collection.prepare()` は保存済みJPEGとintentを検証して再開する。
 intentのない消失やJPEGの改変は失敗とする。controllerはprepared状態でもprepare jobの終了を追跡し、
 失敗・中断は通常の明示retryで復旧する。確定後のscreening再実行は拒否する。
+取得工程のreceiptを再照合するときも、元動画がない場合はplanの削除許可、台帳の状態、
+残したJPEGまたは除外証拠、削除intentを検証する。取得metadata等の他の依存参照は引き続き必須とする。
 
 再取得は通常の推論・GPT確認・学習には不要で、明示した `restore_source` operationだけが実行する。
 元URL・同じformatで取得した内容が元hash/sizeと一致した場合だけ元動画として戻す。

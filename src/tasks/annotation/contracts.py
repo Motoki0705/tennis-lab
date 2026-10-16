@@ -75,6 +75,7 @@ class HistoryOperation(Document):
 class AcquireOperation(Document):
     action: Literal["acquire"] = "acquire"
     source_id: Digest
+    retry: bool = False
 
 
 class ScreenOperation(Document):
@@ -172,6 +173,18 @@ class OperationInput(Document):
         | PredictOperation,
         Field(discriminator="action"),
     ]
+
+    @property
+    def logical_id(self) -> str:
+        """Retry authorizes an acquisition attempt; it does not identify new work."""
+        result: str
+        if isinstance(self.operation, AcquireOperation):
+            result = self.model_copy(
+                update={"operation": self.operation.model_copy(update={"retry": False})}
+            ).sha256
+        else:
+            result = self.sha256
+        return result
 
     @property
     def stage(self) -> str:

@@ -42,7 +42,10 @@ testを学習やepochの選び直しへ使わない。recipeのない既存経�
   次試行ディレクトリの作成後、再試行情報の保存前に停止した場合も、明示的な`retry()`で
   直前の失敗を照合し、同じ試行番号へ復旧する。`tick()`だけでは再試行を開始しない。
 
-工程要求はqueue投入前に固定入力を保持し、retryは返却前に再開checkpointも保護する。
+工程要求はqueue投入前に固定入力を保持する。`LearningAdapter.resume_references()` は
+同じintentの再開checkpointを検証し、その依存を列挙する。retryはその依存を
+`Retry.resume_dependencies` に不変保存し、checkpointとともに返却前に保護する。
+retry記録の保存後に中断しても、保存済みの依存を復元してから返す。
 成功した工程は `LearningAdapter.result_references()` が検査済みcheckpoint・来歴・
 評価根拠の実ファイルを列挙し、結果の保護記録と同時に確定する。完了ファイルの保存後に
 保護登録が失敗しても、再送では保存結果を再検証して登録し、学習を重複起動しない。

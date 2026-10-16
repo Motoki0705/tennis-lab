@@ -8,6 +8,7 @@ import os
 import shutil
 import tempfile
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -325,6 +326,9 @@ class BallPublisher:
         )
         history.append(
             dict(
+                base_clips=len(base.clips) if base else 0,
+                added_clips=len(inputs.additions),
+                at=datetime.now(UTC).isoformat(),
                 request=request_ref.model_dump(mode="json"),
                 base_snapshot=inputs.product.base_snapshot.model_dump(mode="json")
                 if inputs.product.base_snapshot
