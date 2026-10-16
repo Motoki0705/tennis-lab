@@ -21,6 +21,8 @@ from src.tasks.base.annotation.benchmarks.contracts import (
 )
 from src.tasks.base.annotation.benchmarks.report import _Resources, _usage, build_report
 from src.tasks.base.annotation.benchmarks.validation import comparison, condition
+from src.tasks.base.annotation.editing.contracts import ReviewContext
+from src.tasks.base.annotation.predictions import PredictionReceipt
 from src.tasks.base.annotation.resources import ResourceManager
 from src.tasks.base.annotation.telemetry.contracts import (
     ImageInput,
@@ -31,7 +33,7 @@ from src.tasks.base.annotation.telemetry.contracts import (
     ToolOutput,
     Usage,
 )
-from src.tasks.base.annotation.workers.contracts import ChildIdentity
+from src.tasks.base.annotation.workers.contracts import ChildIdentity, WorkRequest
 from src.tasks.base.annotation.workers.processes import ProcessIdentity
 from tests.support.annotation_benchmarks import Fixture, sample
 
@@ -248,6 +250,61 @@ def test_observer_records_running_attempt_and_retains_sequence(
     assert one.task_states == {"running": 1}
     assert len(one.attempts) == 1 and one.live == ()
     assert report(fixture).conditions[0].resources.samples == 1
+
+
+@pytest.mark.parametrize("boundary", ["observe", "report"])
+@pytest.mark.parametrize(
+    "change",
+    ["receipt", "manifest", "missing_manifest", "payload_receipt", "payload_manifest"],
+)
+def test_frozen_worker_inputs_reject_same_clip_with_different_references(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, boundary: str, change: str
+) -> None:
+    receipt = read_document(fixture.layout, fixture.prediction, PredictionReceipt)
+    other_manifest = fixture.save(fixture.manifest.model_copy(update={"width": 3}))
+    changed_manifest = read_document(
+        fixture.layout, other_manifest, type(fixture.manifest)
+    )
+    assert changed_manifest.clip_id == fixture.manifest.clip_id
+    other_prediction = fixture.save(
+        receipt.model_copy(
+            update={
+                "prediction": receipt.prediction.model_copy(
+                    update={"artifact": other_manifest}
+                )
+            }
+        )
+    )
+    prediction = other_prediction if change == "receipt" else fixture.prediction
+    manifest = other_manifest if change == "manifest" else receipt.context.manifest
+    request = WorkRequest(
+        adapter="fixture",
+        adapter_version="v1",
+        stage="review",
+        subject_id=fixture.manifest.clip_id,
+        payload=fixture.save(
+            ReviewContext(
+                plan=fixture.conditions[0].plan,
+                task="fixture",
+                manifest=other_manifest if change == "payload_manifest" else manifest,
+                prediction=other_prediction
+                if change == "payload_receipt"
+                else prediction,
+            )
+        ),
+        inputs=(prediction,)
+        if change == "missing_manifest"
+        else (manifest, prediction),
+    )
+    attempt = fixture.attempt(request=request)
+    monkeypatch.setattr(ResourceManager, "poll", lambda self: sample())
+    if boundary == "report":
+        fixture.observation(attempts=(attempt,))
+    with pytest.raises(ValueError, match="frozen"):
+        if boundary == "observe":
+            observe(fixture.layout, fixture.specs[0])
+        else:
+            report(fixture)
 
 
 def test_observation_limit_and_spec_change_are_not_silent_resets(
