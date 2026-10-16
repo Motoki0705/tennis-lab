@@ -31,6 +31,10 @@ flowchart TD
 hash/size不一致は停止理由になる。
 
 journalはコピー前に保存する。途中までコピーしたstagingは、同じplanで検証して再利用する。
+再開時はplanのロック下で、そのplan専用の`partials/`に残る一時コピーを新しいコピー前に
+回収する。完成済みstagingは再利用し、書込み中の強制終了を繰り返しても残存partialが
+コピーpayload容量に積み上がらない。回収はdirectory fdからsymlinkを追わずに行い、
+非regular entryを拒否する。別planのpartialや元ファイルは回収しない。
 rename後・DB公開前の中断も、完成済みarchiveを検証して再開する。receipt・参照保護・
 root pointerのDB更新は同じtransactionで行う。`root_id` の更新にはdry-run時の
 `expected_previous` を要求し、別の実行による切替を上書きしない。以前のimportと保護も残す。

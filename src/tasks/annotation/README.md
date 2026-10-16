@@ -50,6 +50,8 @@ queue script、productionのcode版を検証してから保存する。planが�
 ことを拒否する。scopeを作る場合は保存量baselineの走査を行うが、動画取得・モデルロード・
 Codex/学習の起動は行わない。作成後は `configuration/result.json` の `runtime` 参照のpath/hashを
 以降のCLIへ渡す。`schema --type` はruntime/candidates/operation/recoveryにも対応する。
+既存scopeの作成入力をscope lock下で照合し、campaignの紐付けをDB transactionで確定してから
+requestとplanを保存する。scope入力や紐付けの競合で拒否された設定は保存されず、修正して再送できる。
 planの詳細は[plan](../base/annotation/plan.py)、予算の計測定義は
 [resources](../base/annotation/resources/README.md)を参照する。
 
@@ -77,6 +79,9 @@ GPU工程はmain repositoryの共有queueに投入する。queue workerの起動
 screen/review workerの画像・編集要求は親controllerへ渡す。親がrequest/attempt/版/区間を
 検証し、CPU工程で処理してから不変の参照を返す。採用には実際のrollout画像提示を照合し、
 単なる画像生成や自己申告では完了にしない。
+受付済み要求は親所有のSQLite台帳にattempt単位で累積保存し、固定上限を判定する。
+inboxの並び順・削除・親の再開で枠を戻さず、同一要求の回収で二重計上しない。
+workerにソース動画の全量decodeや共有cacheへの書込みを任せない。
 
 予測は新規clipだけをtask別に束ねる。保存済み予測をreview requestへ変換する際は推論しない。
 要求した動画数が準備済みで、全準備receiptのclipとレビュー対象が一致し、全workerが採用まで
@@ -87,6 +92,7 @@ screen/review workerの画像・編集要求は親controllerへ渡す。親がre
 学習recipe未設定なら公開結果を保持した `blocked`。採用条件未設定、学習失敗、採用版競合も
 理由を表示して停止する。`complete` は追加教師なし、または学習後の採用/不採用の確定を表す。
 不採用は `workflow.learning.state = rejected` として採用と区別する。
+公開clipがheatmap負例のみ、またはMDDの有効窓を持たない場合はcoverageと公開receiptを保持し、`learning.status = no_additional_teachers`で完了する。
 
 ## 再開と報告
 
@@ -94,10 +100,18 @@ screen/review workerの画像・編集要求は親controllerへ渡す。親がre
 `run --max-seconds` の終了時も受付済みsupervisorは自身のtimeout・資源管理に従う。
 `status --details` はworkerの現在attempt、全工程の履歴、公開完了参照、学習結果を返す。
 最新attemptに置き換わった古い失敗は `superseded: true` と表示し、現在の失敗と分ける。
+`cycle` / `status` はsourceの状態にかかわらず登録済みworkerを照合する。
+選別がsourceを更新した直後に中断しても、workerの完了receiptと台帳更新を回収する。
+`preview_ready` は台帳のprepared/predictedに加え、工程ごとの最新試行の成功終了、
+operation receiptと登録成果物の一致、予測receiptの入力・モデル・成果物hashを要求する。
+predictedの保存後でも終了receiptがなければ完了にしない。未回収・失敗はblockedとし、
+`submit --attempt N` で新しい試行を明示して回収する。保存済み予測は検証して再利用し、
+回収のために推論し直さない。
 
 失敗を自動で再試行しない。取得・推論・公開などは、失敗または中断を確認してから
 同じ `OperationInput` を `submit --attempt N`（直前の番号+1）で実行する。
 実行中・成功済み工程に新しいattemptを作ることは拒否する。
+取得のretryは検証済みattempt番号から取得工程へ渡す。`AcquireOperation`自体は変更せず、同じdigestの履歴として失敗をsupersededにする。
 
 worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固定root内に保存し、
 `recover --runtime PATH --sha256 HASH --operation PATH` で実行する。
@@ -114,5 +128,5 @@ queueへ投入する。資源stopは原因解消後の `resume-budget --reason T
 scopeや累計を初期化して上限を回避しない。
 
 `stage` はsupervisor専用で、固定した入力digestとの対応を要求する。
-旧ChatGPT/QA入口の撤去とplayerの統合は後続の実装範囲。旧形式の読取と保存台帳への登録は
+置換済みballの旧run/qa/intakeと旧annotateのball注釈・finalize入口は撤去済み。置換先が未実装のplayer用入口は残す。旧形式の読取と保存台帳への登録は
 [migration](migration/README.md)を参照する。

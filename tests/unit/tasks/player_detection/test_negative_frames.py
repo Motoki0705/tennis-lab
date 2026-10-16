@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 
 import numpy as np
@@ -114,21 +113,8 @@ def test_invalid_confirmed_empty_flags_are_rejected(synthetic_root: SyntheticRoo
         PlayerFrameStore(directory)
 
 
-def test_legacy_read_preserves_sparse_membership_without_inventing_negatives(synthetic_root: SyntheticRoot) -> None:
+def test_regular_reader_rejects_legacy_store(synthetic_root: SyntheticRoot) -> None:
     current = build_dataset(synthetic_root.config)
     directory = legacy_store(current, current.parent / "legacy-v1")
-    before = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in directory.rglob("*") if p.is_file()}
-    store = PlayerFrameStore(directory)
-    assert store.frames["frame_index"].tolist() == [1, 2, 4]
-    assert not store.frames["confirmed_empty"].any()
-    selected = select_detection_frames(store, "train", SELECTION, frame_stride=1)
-    assert selected.frames.tolist() == [0, 2] and selected.stats["negative_frames"] == 0
-    assert StoreReview(directory, SELECTION).summary()["schema"] == "player_detection_frames.v1"
-    after = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in directory.rglob("*") if p.is_file()}
-    assert before == after
-    with np.load(directory / INDEX_FILE) as saved:
-        columns = {name: saved[name] for name in saved.files}
-    columns["inst_count"][0] = 0
-    np.savez(directory / INDEX_FILE, **columns)
-    with pytest.raises(ValueError, match="Legacy.*empty"):
+    with pytest.raises(ValueError, match="Unsupported player store schema"):
         PlayerFrameStore(directory)
