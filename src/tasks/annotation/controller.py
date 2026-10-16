@@ -60,6 +60,7 @@ class Controller:
             Path, tuple[ArtifactRef, StageLaunch, tuple[str, str], int, Launch | None]
         ] = {}
         self._terminal_stages: dict[str, dict[str, Any]] = {}
+        self._stage_results: dict[str, tuple[ArtifactRef, ...]] = {}
         self.plan = load_plan(verify_reference(layout, runtime.plan))
         if self.plan.phase == "benchmark" or layout.review_namespace is not None:
             raise ValueError("benchmark conditions require the dedicated review runner")
@@ -175,10 +176,29 @@ class Controller:
             row = self.pool.stop(request, reason=f"invalid service request: {error}")
         return {"state": row["state"], "reason": row["reason"]}
 
+    def _reconcile_workers(self) -> list[dict[str, Any]]:
+        with self.pool.ledger.registry.transaction() as db:
+            requests = [
+                WorkRequest.model_validate_json(row["request"])
+                for row in db.execute(
+                    "SELECT request FROM worker_tasks WHERE campaign=? ORDER BY id",
+                    (self.plan.campaign_id,),
+                )
+            ]
+        reconciled = []
+        for request in requests:
+            pool = self.pool
+            if request.adapter != ScreeningAdapter.name and self.production is not None:
+                pool = self.production.pool
+            reconciled.append(pool.reconcile(request))
+        return reconciled
+
     def cycle(self) -> dict[str, Any]:
         sample = self.resources.poll()
         if sample.stopped_reason is not None:
             raise BudgetStopped(sample.stopped_reason)
+        # Adapter finalization may advance a source before the worker receipt is saved.
+        self._reconcile_workers()
         with self.collection.ledger.registry.transaction() as db:
             rows = [
                 dict(row)
@@ -317,15 +337,14 @@ class Controller:
             "workflow": production,
         }
 
-    def _stage_statuses(self, *, details: bool = True) -> list[dict[str, Any]]:
+    def _stage_states(
+        self, *, details: bool = True
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         from src.tasks.base.annotation.learning.contracts import StageInput
 
-        jobs = []
+        jobs: list[dict[str, Any]] = []
         keys: list[tuple[str, str]] = []
-        numbers: list[int] = []
-        retired: list[bool] = []
-        latest: dict[tuple[str, str], int] = {}
-        key: tuple[str, str]
+        latest: dict[tuple[str, str], tuple[int, dict[str, Any]]] = {}
         with self.pool.ledger.registry.transaction() as db:
             attempts = dict(
                 db.execute(
@@ -333,83 +352,139 @@ class Controller:
                     (self.plan.campaign_id,),
                 )
             )
-        for path in sorted(
-            self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
-                "*/launch.json"
-            )
-        ):
-            cached = None if details else self._stage_inputs.get(path)
-            if cached is None:
-                ref = annotation_reference(self.layout, path)
-                launch = read_document(self.layout, ref, StageLaunch)
-                worker = None
-                if launch.input is None or launch.resource.plan != self.runtime.plan:
-                    raise ValueError("campaign job has no matching input/plan")
-                if launch.resource.request_id.startswith("learning-"):
-                    request = read_document(self.layout, launch.input, StageInput)
-                    if launch.resource.request_id != "learning-" + request.sha256:
-                        raise ValueError(
-                            "learning attempt identity differs from its input"
-                        )
-                    key, number = (
-                        (request.intent.digest, request.stage),
-                        request.attempt,
-                    )
-                else:
-                    data = read_document(self.layout, launch.input, OperationInput)
-                    number = int(launch.resource.request_id.rsplit("-", 1)[1])
-                    if (
-                        data.plan != self.runtime.plan
-                        or launch.resource.request_id != f"{data.sha256}-{number}"
-                    ):
-                        raise ValueError(
-                            "operation attempt identity differs from its input"
-                        )
-                    key = (data.sha256, "operation")
-                    if isinstance(data.operation, (PreviewOperation, ReviewOperation)):
-                        service = read_document(
-                            self.layout, data.operation.service_request, ServiceRequest
-                        )
-                        directory = self.layout.artifact_path(
-                            service.task_request
-                        ).parent
-                        worker = read_document(
-                            self.layout,
-                            annotation_reference(
-                                self.layout, directory / "launch.json"
-                            ),
-                            Launch,
-                        )
-                        if (
-                            worker.plan != self.runtime.plan
-                            or Path(worker.directory) != directory
-                        ):
-                            raise ValueError(
-                                "service stage differs from its worker plan/attempt"
-                            )
-                self._stage_inputs[path] = (ref, launch, key, number, worker)
-            else:
-                ref, launch, key, number, worker = cached
-            keys.append(key)
-            numbers.append(number)
-            latest[key] = max(latest.get(key, 0), number)
-            retired.append(
-                worker is not None and attempts.get(worker.work_id) != worker.attempt
-            )
+
+        def stage_status(ref: ArtifactRef) -> dict[str, Any]:
             state = None if details else self._terminal_stages.get(ref.digest)
             if state is None:
                 state = self.stages.status(ref)
                 if state["state"] in {"succeeded", "failed", "cancelled", "timed_out"}:
                     self._terminal_stages[ref.digest] = dict(state)
-            jobs.append(dict(state))
-        for key, number, old_worker, job in zip(
-            keys, numbers, retired, jobs, strict=True
-        ):
-            job["superseded"] = number < latest[key] or old_worker
-        return jobs
+            return dict(state)
+
+        def record(
+            key: tuple[str, str],
+            number: int,
+            state: dict[str, Any],
+            worker: Launch | None = None,
+        ) -> None:
+            state["attempt"] = number
+            state["superseded"] = (
+                worker is not None and attempts.get(worker.work_id) != worker.attempt
+            )
+            jobs.append(state)
+            keys.append(key)
+            if key not in latest or number > latest[key][0]:
+                latest[key] = (number, state)
+
+        root = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
+        for path in sorted(root.glob("*/operation.json")):
+            launch_path = path.parent / "launch.json"
+            cached = None if details else self._stage_inputs.get(launch_path)
+            if cached is None:
+                operation_ref = annotation_reference(self.layout, path)
+                data = read_document(self.layout, operation_ref, OperationInput)
+                identity, number_text = path.parent.name.rsplit("-", 1)
+                if (
+                    data.plan != self.runtime.plan
+                    or identity != data.sha256
+                    or not number_text.isdigit()
+                    or int(number_text) < 1
+                ):
+                    raise ValueError(
+                        "stage attempt differs from its immutable operation"
+                    )
+                number, key = int(number_text), (identity, "operation")
+                worker = None
+                if isinstance(data.operation, (PreviewOperation, ReviewOperation)):
+                    service = read_document(
+                        self.layout, data.operation.service_request, ServiceRequest
+                    )
+                    directory = self.layout.artifact_path(service.task_request).parent
+                    worker = read_document(
+                        self.layout,
+                        annotation_reference(self.layout, directory / "launch.json"),
+                        Launch,
+                    )
+                    if (
+                        worker.plan != self.runtime.plan
+                        or Path(worker.directory) != directory
+                    ):
+                        raise ValueError(
+                            "service stage differs from its worker plan/attempt"
+                        )
+                if not launch_path.exists():
+                    record(
+                        key,
+                        number,
+                        {
+                            "state": "pending",
+                            "reason": "operation has no launch receipt",
+                            "operation": operation_ref.model_dump(),
+                        },
+                        worker,
+                    )
+                    continue
+                ref = annotation_reference(self.layout, launch_path)
+                launch = read_document(self.layout, ref, StageLaunch)
+                if (
+                    launch.input != operation_ref
+                    or launch.resource.request_id != path.parent.name
+                    or launch.resource.plan != self.runtime.plan
+                ):
+                    raise ValueError("stage launch differs from its operation/attempt")
+                self._stage_inputs[launch_path] = (ref, launch, key, number, worker)
+            else:
+                ref, launch, key, number, worker = cached
+            if launch.input is None:
+                raise ValueError("operation launch has no immutable operation")
+            state = stage_status(ref)
+            state["operation"] = launch.input.model_dump()
+            record(key, number, state, worker)
+
+        for path in sorted(root.glob("*/launch.json")):
+            if (path.parent / "operation.json").exists():
+                continue
+            cached = None if details else self._stage_inputs.get(path)
+            if cached is None:
+                ref = annotation_reference(self.layout, path)
+                launch = read_document(self.layout, ref, StageLaunch)
+                if launch.input is None or launch.resource.plan != self.runtime.plan:
+                    raise ValueError("campaign job has no matching input/plan")
+                if not launch.resource.request_id.startswith("learning-"):
+                    raise ValueError("operation launch has no immutable operation")
+                request = read_document(self.layout, launch.input, StageInput)
+                if launch.resource.request_id != "learning-" + request.sha256:
+                    raise ValueError("learning attempt identity differs from its input")
+                key, number = (request.intent.digest, request.stage), request.attempt
+                self._stage_inputs[path] = (ref, launch, key, number, None)
+            else:
+                ref, launch, key, number, _worker = cached
+            record(key, number, stage_status(ref))
+        for key, state in zip(keys, jobs, strict=True):
+            state["superseded"] |= state["attempt"] < latest[key][0]
+        return jobs, [state for _, state in latest.values() if not state["superseded"]]
 
     def status(self, *, details: bool = True) -> dict[str, Any]:
-        jobs = self._stage_statuses(details=details)
+        reconciled = self._reconcile_workers()
+        jobs, latest = self._stage_states(details=details)
+        completed: set[str] = set()
+        for stage_state in latest:
+            if stage_state["state"] != "succeeded" or "operation" not in stage_state:
+                continue
+            launch_ref = ArtifactRef.model_validate(stage_state["launch"])
+            try:
+                results = (
+                    None if details else self._stage_results.get(launch_ref.digest)
+                )
+                if results is None:
+                    results = self.receipt(stage_state).results
+                    self._stage_results[launch_ref.digest] = results
+                completed.update(ref.canonical_bytes().decode() for ref in results)
+            except (ValueError, OSError) as error:
+                self._stage_results.pop(launch_ref.digest, None)
+                stage_state.update(
+                    state="invalid_receipt", reason=f"{type(error).__name__}: {error}"
+                )
         with self.collection.ledger.registry.transaction() as db:
             tasks = dict(
                 db.execute(
@@ -417,13 +492,26 @@ class Controller:
                     (self.plan.campaign_id,),
                 )
             )
-            workers = [
-                dict(row)
+            source_receipts = [
+                ref
                 for row in db.execute(
-                    "SELECT id,state,current_attempt,reason FROM worker_tasks WHERE campaign=?",
+                    "SELECT acquisition,preparation FROM sources WHERE campaign_id=?",
+                    (self.plan.campaign_id,),
+                )
+                for ref in row
+                if ref is not None
+            ]
+            prediction_receipts = [
+                row[0]
+                for row in db.execute(
+                    "SELECT p.receipt FROM annotation_tasks t LEFT JOIN annotation_predictions p ON p.task_id=t.id WHERE t.campaign_id=?",
                     (self.plan.campaign_id,),
                 )
             ]
+        workers = [
+            {key: row[key] for key in ("id", "state", "current_attempt", "reason")}
+            for row in reconciled
+        ]
         summary = self.collection.ledger.summary(self.plan)
         source_states = summary["sources_by_state"]
         live = any(
@@ -437,14 +525,32 @@ class Controller:
         ]
         failures += [
             job
-            for job in jobs
-            if not job["superseded"]
-            and job["state"] in {"failed", "cancelled", "timed_out", "interrupted"}
+            for job in latest
+            if job["state"]
+            in {"failed", "cancelled", "timed_out", "interrupted", "invalid_receipt"}
         ]
         all_sources = bool(source_states) and all(
             key in {"prepared", "excluded"} for key in source_states
         )
-        ready = all_sources and bool(tasks) and set(tasks) == {"predicted"} and not live
+        ledger_ready = all_sources and bool(tasks) and set(tasks) == {"predicted"}
+        if ledger_ready and any(
+            ref is None or ref not in completed
+            for ref in (*source_receipts, *prediction_receipts)
+        ):
+            failures.append(
+                {
+                    "state": "unreconciled",
+                    "reason": "ledger artifacts lack verified completion receipts from the latest stage attempts; recover with an explicit new attempt",
+                }
+            )
+        ready = (
+            ledger_ready
+            and not live
+            and not failures
+            and bool(latest)
+            and all(job["state"] == "succeeded" for job in latest)
+            and all(row["state"] in {"complete", "not_applicable"} for row in workers)
+        )
         state = (
             "preview_ready"
             if ready

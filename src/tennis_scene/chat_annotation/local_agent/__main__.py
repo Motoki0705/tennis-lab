@@ -1,4 +1,4 @@
-"""Repository-owned entry point for local ball annotation campaigns."""
+"""Tools for inspecting existing local annotation campaigns."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def initialize(args: argparse.Namespace, campaign_dir: Path | None) -> int:
     )
     if directory.exists():
         raise FileExistsError(
-            "campaign already exists; use another --campaign or resume it with run"
+            "campaign already exists; use another --campaign"
         )
     checkpoint = (
         args.ball_checkpoint.resolve() if args.ball_checkpoint is not None else None
@@ -143,11 +143,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     init.add_argument("--parallel", type=int, default=1)
     for name in (
-        "run",
         "status",
         "worker",
-        "qa",
-        "intake",
         "phase2",
         "prefetch",
         "efficiency",
@@ -157,9 +154,7 @@ def main(argv: list[str] | None = None) -> int:
             name,
             add_help=False,
             help={
-                "run": "Dispatch sandboxed Codex workers",
                 "worker": "Per-attempt annotation and image tools",
-                "intake": "Archive candidates and record review decisions",
                 "phase2": "Rank and compare re-annotation candidates",
             }.get(name, name),
         )
@@ -168,11 +163,8 @@ def main(argv: list[str] | None = None) -> int:
     launch.add_argument("attempt_dir", type=Path)
     raw = sys.argv[1:] if argv is None else argv
     commands = {
-        "run",
         "status",
         "worker",
-        "qa",
-        "intake",
         "phase2",
         "prefetch",
         "efficiency",
@@ -200,9 +192,7 @@ def main(argv: list[str] | None = None) -> int:
                 ["--help"],
                 ["-h"],
             ):
-                module_name = {"worker": "ct", "run": "dispatcher"}.get(
-                    args.command, args.command
-                )
+                module_name = {"worker": "ct"}.get(args.command, args.command)
                 module = importlib.import_module(f"{__package__}.{module_name}")
                 help_result: int = module.main(args.arguments)
                 return help_result
@@ -213,10 +203,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.command == "launch-worker":
                 from .launcher import supervise
 
-                return supervise(args.attempt_dir)
-            module_name = {"worker": "ct", "run": "dispatcher"}.get(
-                args.command, args.command
-            )
+                supervised: int = supervise(args.attempt_dir)
+                return supervised
+            module_name = {"worker": "ct"}.get(args.command, args.command)
             module = importlib.import_module(f"{__package__}.{module_name}")
             result: int = module.main(args.arguments)
             return result

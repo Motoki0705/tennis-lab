@@ -91,7 +91,9 @@ def preview_input(
     return request, task, directory
 
 
-def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
+def execute(
+    layout: AnnotationLayout, reference: ArtifactRef, *, attempt: int = 1
+) -> ArtifactRef:
     """The supervisor pins this exact input; direct CLI calls cannot bypass ownership."""
     if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
         raise ValueError("operation must be launched by its resource-accounted stage")
@@ -103,13 +105,16 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         raise ValueError("operation input must belong to a campaign stage")
     from .service_completion import execute_and_reply
 
-    return execute_and_reply(layout, reference, lambda: _execute(layout, reference))
+    return execute_and_reply(
+        layout, reference, lambda: _execute(layout, reference, attempt=attempt)
+    )
 
 
 def _execute(
     layout: AnnotationLayout,
     reference: ArtifactRef,
     *,
+    attempt: int = 1,
     session: ArtifactRef | None = None,
 ) -> ArtifactRef:
     data = read_document(layout, reference, OperationInput)
@@ -168,7 +173,13 @@ def _execute(
                 ),
             )
         elif isinstance(op, AcquireOperation):
-            result = (Collection(layout, plan).acquire(op.source_id, retry=op.retry),)
+            if attempt < 1 or directory.name != f"{data.sha256}-{attempt}":
+                raise ValueError(
+                    "acquisition attempt differs from its pinned operation directory"
+                )
+            result = (
+                Collection(layout, plan).acquire(op.source_id, retry=attempt > 1),
+            )
         elif isinstance(op, RestoreSourceOperation):
             from src.tasks.base.annotation.collection.restoration import (
                 RestorationReceipt,
@@ -192,13 +203,13 @@ def _execute(
         elif isinstance(op, PreviewOperation):
             from src.tasks.base.annotation.screening.images import make_sheets
 
-            service, task, attempt = preview_input(layout, op.service_request)
+            service, task, worker_directory = preview_input(layout, op.service_request)
             if task.plan_digest != plan.sha256:
                 raise ValueError("preview request belongs to another campaign")
-            actor = annotation_reference(layout, attempt / "launch.json")
+            actor = annotation_reference(layout, worker_directory / "launch.json")
             worker = read_document(layout, actor, Launch)
             if (
-                Path(worker.directory) != attempt
+                Path(worker.directory) != worker_directory
                 or worker.plan != data.plan
                 or worker.request.adapter != "source_screening"
                 or worker.request.payload != task.prepared_input
@@ -210,7 +221,7 @@ def _execute(
                     make_sheets(
                         layout,
                         task.source.media,
-                        attempt / "previews",
+                        worker_directory / "previews",
                         origin_pts=task.source_origin_pts,
                         time_base=task.time_base,
                         **service.parameters,

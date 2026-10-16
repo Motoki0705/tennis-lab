@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import multiprocessing
 import os
+import signal
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -20,6 +22,7 @@ from src.tasks.base.annotation.storage.migration import (
     dry_run,
     imported_root,
 )
+from src.tasks.base.annotation.storage.migration import files as file_implementation
 from src.tasks.base.annotation.storage.migration import store as implementation
 from src.tasks.base.annotation.storage.migration.files import read_file
 
@@ -193,6 +196,134 @@ def test_source_changed_after_dry_run_is_not_registered(environment: Any) -> Non
     with pytest.raises(ValueError, match="differs from dry-run"):
         apply(store, plan, reader)
     assert not layout.path("migration_archive").exists()
+
+
+@pytest.mark.parametrize("interruptions", [1, 2])
+def test_sigkill_partial_recovery_stays_within_copy_budget(
+    environment: Any, monkeypatch: pytest.MonkeyPatch, interruptions: int
+) -> None:
+    layout, source, reader, plan = environment
+    store = MigrationStore(layout)
+    staging = layout.path("migration_staging", plan.sha256, "root")
+    partials = staging.parent / "partials"
+    completed = staging / plan.bundle.files[0].path
+    other_partial = layout.path("migration_staging", "other-plan", "partials", "tmp")
+    other_partial.parent.mkdir(parents=True)
+    other_partial.write_bytes(b"another plan owns this")
+    original_temporary = file_implementation.tempfile.NamedTemporaryFile
+
+    def interrupted_copy() -> None:
+        def temporary(*args: Any, **kwargs: Any) -> Any:
+            output = original_temporary(*args, **kwargs)
+            if completed.exists():
+                write = output.write
+
+                def interrupted_write(block: bytes) -> int:
+                    write(block[: len(block) // 2])
+                    output.flush()
+                    os.fsync(output.fileno())
+                    os.kill(os.getpid(), signal.SIGKILL)
+                    raise AssertionError("SIGKILL must not return")
+
+                monkeypatch.setattr(output, "write", interrupted_write)
+            return output
+
+        monkeypatch.setattr(file_implementation.tempfile, "NamedTemporaryFile", temporary)
+        apply(store, plan, reader)
+
+    for _ in range(interruptions):
+        process = multiprocessing.get_context("fork").Process(target=interrupted_copy)
+        process.start()
+        try:
+            process.join(10)
+            assert process.exitcode == -signal.SIGKILL
+        finally:
+            if process.is_alive():
+                process.kill()
+                process.join(5)
+        assert completed.read_bytes() == (source / plan.bundle.files[0].path).read_bytes()
+        leftovers = list(partials.iterdir())
+        assert len(leftovers) == 1
+        assert 0 < leftovers[0].stat().st_size < plan.bundle.files[1].size_bytes
+
+    completed_inode = completed.stat().st_ino
+    peak_payload = 0
+
+    def budgeted_temporary(*args: Any, **kwargs: Any) -> Any:
+        output = original_temporary(*args, **kwargs)
+        write = output.write
+
+        def budgeted_write(block: bytes) -> int:
+            nonlocal peak_payload
+            count: int = write(block)
+            output.flush()
+            payload = sum(
+                path.stat().st_size
+                for path in staging.parent.rglob("*")
+                if path.is_file()
+            )
+            peak_payload = max(peak_payload, payload)
+            assert payload <= plan.copy_payload_bytes
+            return count
+
+        monkeypatch.setattr(output, "write", budgeted_write)
+        return output
+
+    monkeypatch.setattr(
+        file_implementation.tempfile, "NamedTemporaryFile", budgeted_temporary
+    )
+    apply(MigrationStore(layout), plan, reader)
+    root = imported_root(layout, plan.root_id, reader)
+    assert reader.inspect(root) == reader.inspect(source) == plan.bundle
+    assert (root / plan.bundle.files[0].path).stat().st_ino == completed_inode
+    assert peak_payload == plan.copy_payload_bytes
+    assert list(partials.iterdir()) == []
+    assert other_partial.read_bytes() == b"another plan owns this"
+
+
+def test_published_import_reclaims_partial_link_without_changing_archive(
+    environment: Any,
+) -> None:
+    layout, _, reader, plan = environment
+    store = MigrationStore(layout)
+    reference = apply(store, plan, reader)
+    root = imported_root(layout, plan.root_id, reader)
+    completed = root / plan.bundle.files[0].path
+    inode = completed.stat().st_ino
+    partials = layout.path("migration_staging", plan.sha256, "partials")
+    os.link(completed, partials / "tmp-interrupted-publication")
+    assert apply(store, plan, reader) == reference
+    assert list(partials.iterdir()) == []
+    assert completed.stat().st_ino == inode
+    assert reader.inspect(root) == plan.bundle
+
+
+@pytest.mark.parametrize("intrusion", ["directory", "symlink", "fifo", "linked-root"])
+def test_partial_recovery_rejects_nonregular_entries_and_symlink_roots(
+    environment: Any, intrusion: str
+) -> None:
+    layout, source, reader, plan = environment
+    store = MigrationStore(layout)
+    partials = layout.path("migration_staging", plan.sha256, "partials")
+    partials.parent.mkdir(parents=True)
+    if intrusion == "linked-root":
+        partials.symlink_to(source / "payload", target_is_directory=True)
+    else:
+        partials.mkdir()
+        entry = partials / "tmp-unexpected"
+        if intrusion == "directory":
+            entry.mkdir()
+            (entry / "keep").write_bytes(b"not a partial")
+        elif intrusion == "symlink":
+            entry.symlink_to(source / plan.bundle.files[0].path)
+        else:
+            os.mkfifo(entry)
+    with pytest.raises((ValueError, OSError)):
+        apply(store, plan, reader)
+    assert reader.inspect(source) == plan.bundle
+    assert not layout.path("migration_archive", plan.sha256).exists()
+    if intrusion != "linked-root":
+        assert (partials / "tmp-unexpected").lstat()
 
 
 def test_destination_changed_before_database_commit_cannot_change_pinned_hashes(

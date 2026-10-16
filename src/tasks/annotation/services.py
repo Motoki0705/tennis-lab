@@ -53,6 +53,43 @@ class ServiceBroker:
         self.operation, self.receipt = operation, receipt
         self.pending: dict[str, PendingService] = {}
 
+    def _admit_service(
+        self, ledger: WorkerLedger, attempt: str, service: ServiceRequest
+    ) -> None:
+        registry = ledger.registry
+        registry.initialize(
+            "worker-services.v1",
+            """
+            CREATE TABLE IF NOT EXISTS worker_service_requests (
+                attempt TEXT NOT NULL REFERENCES worker_attempts(id),
+                digest TEXT NOT NULL, request TEXT NOT NULL,
+                PRIMARY KEY (attempt, digest)
+            );
+            """,
+        )
+        encoded = service.canonical_bytes().decode()
+        with registry.transaction() as db:
+            prior = db.execute(
+                "SELECT request FROM worker_service_requests WHERE attempt=? AND digest=?",
+                (attempt, service.sha256),
+            ).fetchone()
+            if prior is not None:
+                if prior["request"] != encoded:
+                    raise ValueError("registered worker service request changed")
+                return
+            count = db.execute(
+                "SELECT count(*) FROM worker_service_requests WHERE attempt=?",
+                (attempt,),
+            ).fetchone()[0]
+            if count >= self.maximum_services:
+                raise ValueError(
+                    "worker exceeded its frozen image-service request count"
+                )
+            db.execute(
+                "INSERT INTO worker_service_requests VALUES (?,?,?)",
+                (attempt, service.sha256, encoded),
+            )
+
     def process(
         self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool
     ) -> None:
@@ -61,7 +98,8 @@ class ServiceBroker:
     def collect(
         self, request: WorkRequest, row: dict[str, Any], ledger: WorkerLedger
     ) -> None:
-        # This phase never admits work or scans storage. Collect all workers before
+        # This phase records accepted requests but never starts a stage or scans
+        # storage. Collect all workers before
         # choosing a request, so a busy worker cannot monopolize the render stage.
         if row["state"] != "running":
             return
@@ -83,7 +121,7 @@ class ServiceBroker:
             (directory / "work/service-requests").glob("*.json"),
             key=lambda path: (path.stat().st_mtime_ns, path.name),
         )
-        for number, path in enumerate(paths):
+        for path in paths:
             if (directory / "services" / path.stem / "reply.json").exists():
                 continue
             if path.stat().st_size > 32768:
@@ -95,8 +133,6 @@ class ServiceBroker:
                     "worker service request changed its task/attempt identity"
                 )
             try:
-                if number >= self.maximum_services:
-                    raise ValueError("worker exceeded its frozen service request count")
                 if request.adapter == ScreeningAdapter.name:
                     _service, task, _attempt = preview_input(self.layout, service_ref)
                     if task.prepared_input != request.payload:
@@ -119,6 +155,7 @@ class ServiceBroker:
                     )
                 else:
                     raise ValueError("worker has no registered parent service")
+                self._admit_service(ledger, launch.attempt, service)
             except (ValueError, RuntimeError) as error:
                 publish_reply(
                     self.layout,
