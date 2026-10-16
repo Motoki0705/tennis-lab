@@ -117,6 +117,9 @@ def validate(bundle: Path) -> dict[str, object]:
         "max_camera_projection_error_px": projection_error,
         "visibility_matches_masks": True,
         "fps": actual_fps,
+        "render_frame_step": scene.frame_step,
+        "render_resolution_percentage": scene.render.resolution_percentage,
+        "render_samples": scene.eevee.taa_render_samples,
         "camera_moved": moved,
     }
 

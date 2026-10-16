@@ -48,7 +48,7 @@ world座標はコート座標（m、XY地面、+Z上）です。rendererと同�
 ## 撮影・動画化
 
 GPUを使うレンダリングは共有training queue経由で実行します。
-Linux版Blender、またはWindows版BlenderにWSLのパスを渡す場合は`\\wsl.localhost\Ubuntu\...`形式を使います。
+Linux版Blenderには通常のLinuxパスを渡します。Windows版BlenderにWSLのパスを渡す場合は`\\wsl.localhost\Ubuntu\...`形式を使います。
 Windowsで作成した`.blend`の外部参照はWindows形式になるため、同じOS側のBlenderで開いてください。
 
 ```bash
@@ -64,6 +64,12 @@ ffmpeg -framerate 60000/1001 -start_number 0 -i <shot_dir>/frames/%05d.png \
 bundleも一緒に保持してください。`--render`を外すとシーン作成・保存だけを実行します。
 `--frames 100:100`で部分描画、`--samples 8 --resolution-percentage 50`で軽量なプレビューができます。
 部分描画の動画化では`-start_number`も開始frameに合わせます。
+`--frame-step 4`なら4frameごとのプレビューになります。動画のFPSを入力の1/4にし、連番をglobで読みます。
+
+```bash
+ffmpeg -framerate 15000/1001 -pattern_type glob -i '<shot_dir>/frames/*.png' \\
+  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart <shot_dir>/preview.mp4
+```
 
 色・切り替えのタイミング・カメラ終点は撮影スクリプトの`Shot`にまとまっています。
 タイミングは入力のframe単位で、既定では150から切り替わり、420の後にカメラが移動します。
