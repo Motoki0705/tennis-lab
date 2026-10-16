@@ -124,6 +124,7 @@ class Controller:
                 self.operation,
                 self.receipt,
                 self._services,
+                self.publication_failures,
             )
 
     def register(self, candidates: CandidateManifest) -> list[dict[str, Any]]:
@@ -612,18 +613,94 @@ class Controller:
             state["superseded"] = state["attempt"] < latest[key][0]
         return jobs, [state for _, state in latest.values()]
 
+    def publication_failures(self) -> list[dict[str, Any]]:
+        """Match registered inputs to their latest successful producing attempts."""
+        _, latest = self._stage_states()
+        completed: dict[tuple[str, str], set[ArtifactRef]] = {}
+        failures: list[dict[str, Any]] = []
+        for state in latest:
+            if "operation" not in state:
+                continue
+            data = read_document(
+                self.layout,
+                ArtifactRef.model_validate(state["operation"]),
+                OperationInput,
+            )
+            operation = data.operation
+            if not isinstance(
+                operation, (AcquireOperation, PrepareOperation, PredictOperation)
+            ):
+                continue
+            if state["state"] != "succeeded":
+                failures.append(state)
+                continue
+            try:
+                receipt = self.receipt(state)
+                if receipt.status != "complete":
+                    continue
+                if isinstance(operation, (AcquireOperation, PrepareOperation)):
+                    if len(receipt.results) != 1:
+                        raise ValueError("source stage must return exactly one receipt")
+                    completed.setdefault(
+                        (operation.action, operation.source_id), set()
+                    ).add(receipt.results[0])
+                else:
+                    for reference in receipt.results:
+                        prediction = read_document(
+                            self.layout, reference, PredictionReceipt
+                        )
+                        completed.setdefault(
+                            ("predict:" + operation.task, prediction.context.clip_id),
+                            set(),
+                        ).add(reference)
+            except (ValueError, OSError) as error:
+                failures.append(
+                    {**state, "state": "invalid_receipt", "reason": str(error)}
+                )
+        with self.collection.ledger.registry.transaction() as database:
+            sources = database.execute(
+                "SELECT id,state,acquisition,preparation FROM sources WHERE campaign_id=?",
+                (self.plan.campaign_id,),
+            ).fetchall()
+            predictions = database.execute(
+                "SELECT t.task,t.clip_id,p.receipt FROM annotation_tasks t "
+                "LEFT JOIN annotation_predictions p ON p.task_id=t.id "
+                "WHERE t.campaign_id=? AND t.state IN ('predicted','reviewing','adopted')",
+                (self.plan.campaign_id,),
+            ).fetchall()
+        expected = [
+            (("predict:" + row["task"], row["clip_id"]), row["receipt"])
+            for row in predictions
+        ]
+        for source in sources:
+            if source["acquisition"] is not None or source["state"] == "prepared":
+                expected.append((("acquire", source["id"]), source["acquisition"]))
+            if source["state"] == "prepared":
+                expected.append((("prepare", source["id"]), source["preparation"]))
+        for key, reference in expected:
+            if reference is None or ArtifactRef.model_validate_json(
+                reference
+            ) not in completed.get(key, set()):
+                failures.append(
+                    {
+                        "state": "unreconciled",
+                        "stage": key[0],
+                        "subject_id": key[1],
+                        "reason": "registered artifact lacks a matching successful receipt from its latest stage attempt; recover explicitly",
+                    }
+                )
+        return failures
+
     def status(self) -> dict[str, Any]:
         reconciled = self._reconcile_workers()
         jobs, latest = self._stage_states()
-        completed: set[str] = set()
+        completed: set[ArtifactRef] = set()
         for stage_state in latest:
             if stage_state["state"] != "succeeded" or "operation" not in stage_state:
                 continue
             try:
                 receipt = self.receipt(stage_state)
-                completed.update(
-                    ref.canonical_bytes().decode() for ref in receipt.results
-                )
+                completed.update(receipt.results)
             except (ValueError, OSError) as error:
                 stage_state.update(
                     state="invalid_receipt", reason=f"{type(error).__name__}: {error}"
@@ -677,7 +754,7 @@ class Controller:
         )
         ledger_ready = all_sources and bool(tasks) and set(tasks) == {"predicted"}
         if ledger_ready and any(
-            ref is None or ref not in completed
+            ref is None or ArtifactRef.model_validate_json(ref) not in completed
             for ref in (*source_receipts, *prediction_receipts)
         ):
             failures.append(
@@ -705,13 +782,15 @@ class Controller:
         )
         production = self.production.status() if self.production is not None else None
         if production is not None:
+            if production["state"] == "complete":
+                failures.extend(self.publication_failures())
             state = (
-                "running"
+                "blocked"
+                if failures or production["state"] == "blocked"
+                else "running"
                 if live or production["state"] in {"publishing", "learning"}
                 else "complete"
                 if production["state"] == "complete"
-                else "blocked"
-                if failures or production["state"] == "blocked"
                 else "pending"
             )
         return {
