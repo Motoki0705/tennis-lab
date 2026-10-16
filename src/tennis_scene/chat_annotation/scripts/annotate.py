@@ -1,4 +1,4 @@
-"""Local helpers for player/ball annotations; Chat receives no Python runtime."""
+"""Player annotation helpers and read-only validation of existing annotations."""
 
 from __future__ import annotations
 
@@ -18,15 +18,13 @@ from src.utils.configuration.paths import (
 
 from ..runtime.contracts import (
     KIT_VERSION,
-    Annotation,
-    BallAnnotation,
     ClipManifest,
+    PlayerAnnotation,
     make_template,
     parse_annotation,
     read_json,
     write_json,
 )
-from ..runtime.geometry import interpolate_ball
 from ..runtime.media import check_clip, extract_frames
 from ..runtime.review import finalize
 from ..runtime.validation import validate_annotation
@@ -74,42 +72,32 @@ PATH_BOUNDARY = NonHydraPathBoundary(
             PathKind.FILE,
             required=False,
         ),
-        BoundaryPathField(
-            "annotation_output",
-            PathRole.OUTPUT,
-            PathDirection.OUTPUT,
-            PathKind.FILE,
-            required=False,
-        ),
     ),
 )
 
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(
-        description="Local player/ball annotation helpers."
+        description="Player annotation helpers and legacy annotation validation."
     )
     commands = result.add_subparsers(dest="command", required=True)
-    for name in ("preflight", "init", "frames", "interpolate", "validate", "finalize"):
+    for name in ("preflight", "init", "frames", "validate", "finalize"):
         command = commands.add_parser(name)
         command.add_argument("--manifest", required=True, type=Path)
         if name in {"preflight", "init", "frames", "finalize"}:
             command.add_argument("--video", required=True, type=Path)
         if name == "init":
             command.add_argument(
-                "--target", choices=("ball", "player"), required=True
+                "--target", choices=("player",), required=True
             )
-        if name in {"interpolate", "validate", "finalize"}:
+        if name in {"validate", "finalize"}:
             command.add_argument("--annotations", required=True, type=Path)
         if name in {"init", "frames", "finalize"}:
             command.add_argument("--output", required=True, type=Path)
-        if name in {"frames", "interpolate"}:
+        if name == "frames":
             command.add_argument("--start", required=True, type=int)
             command.add_argument("--stop", required=True, type=int)
-        if name == "frames":
             command.add_argument("--crop", type=int, nargs=4)
-        if name == "interpolate":
-            command.add_argument("--track-id", required=True)
         if name == "validate":
             command.add_argument("--report", required=True, type=Path)
     return result
@@ -123,14 +111,12 @@ def main() -> int:
             for name, value in vars(args).items()
             if name in {"manifest", "video", "annotations", "output", "report"}
         }
-        if args.command == "interpolate":
-            paths["annotation_output"] = args.annotations
         if any(not path.is_absolute() for path in paths.values()):
             raise ValueError("all input/output paths must be absolute")
         root = args.manifest.parent.resolve()
         destinations = [
             paths[name]
-            for name in ("output", "report", "annotation_output")
+            for name in ("output", "report")
             if name in paths
         ]
         output_root = destinations[0].parent.resolve() if destinations else root
@@ -186,6 +172,12 @@ def main() -> int:
             )
             return 0
         if args.command == "finalize":
+            if not isinstance(
+                parse_annotation(read_json(args.annotations)), PlayerAnnotation
+            ):
+                raise ValueError(
+                    "legacy finalize supports player annotations only; use src.tasks.annotation for ball"
+                )
             archive, report = finalize(
                 args.video, args.manifest, args.annotations, args.output
             )
@@ -200,16 +192,7 @@ def main() -> int:
             write_json(args.report, report.model_dump(mode="json"))
             print(report.model_dump_json(indent=2))
             return 1 if report.errors else 0
-        if report.errors:
-            raise ValueError("; ".join(report.errors))
-        if not isinstance(annotation, (Annotation, BallAnnotation)):
-            raise ValueError("interpolation is only available for ball annotations")
-        annotation = interpolate_ball(
-            annotation, manifest, args.track_id, args.start, args.stop
-        )
-        # The helper updates coordinates only. Completion remains a caller decision.
-        write_json(args.annotations, annotation.model_dump(mode="json"))
-        return 0
+        raise ValueError("unsupported annotation command")
     except Exception as error:
         print(f"failed: {type(error).__name__}: {error}")
         return 1
