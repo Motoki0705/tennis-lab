@@ -16,6 +16,7 @@ screeningが所有し、このモジュールは明示された `SelectionReceip
   最大クリップ数に不足する場合は理由を必須にする。0件は除外であり準備完了ではない。
 - `summary()` は要求件数、確保channel、sourceの各状態、準備clip数、登録task数、未準備video数を区別する。
   取得失敗を成功に数えず、再取得には `acquire(..., retry=True)` を明示する。
+  再試行時もtransaction内でchannelの動画枠を確認し、補充済みなら上限超過を拒否する。
 
 ## 共有台帳と再開
 
@@ -28,6 +29,10 @@ screeningが所有し、このモジュールは明示された `SelectionReceip
 取得/準備はsourceごとのOS file lockで多重起動を防ぐ。停止するとlockは解放される。
 取得前に未準備素材の先行上限をtransaction内で確認し、満杯なら `Backpressure` を返す。
 準備完了または除外までその枠を保持する。生きている別プロセスのlockを奪わない。
+選別後に実フレーム不足などで恒久的に準備できない場合は、
+`exclude_preparation(source_id, reason=...)` で理由付き除外を明示する。
+取得・選別の参照は保持し、未準備枠とchannelの動画枠を解放する。
+準備receiptが公開済みの素材は除外できない。
 
 原動画は `media/sources/blobs/<sha256>` に1実体、取得receiptは
 `media/sources/<source_id>/<preparation-config-hash>/acquisition.json` に保存する。
@@ -37,6 +42,7 @@ clipは `media/clips/<clip_id>/{media.mp4,manifest.json}` を一括renameで公�
 取得・準備receiptを先に不変公開し、最後に台帳へ反映する。公開直後に停止しても、
 再開時はreceiptを検証して台帳を補完する。準備途中で停止したときは検証済みclipを再利用する。
 動画を再取得・再符号化して帳尻を合わせない。改変、消失、異なるplanは明示的な失敗になる。
+台帳の準備参照または公開済みreceiptがあれば、生成処理に入る前にその参照と全clipを検証する。
 preparedの登録時には選別区間・sourceの実PTS・clipのPTS/表示時間・hashを照合し、
 clipと各taskを1 transactionで段階追加する。
 
