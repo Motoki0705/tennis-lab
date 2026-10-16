@@ -38,9 +38,21 @@ rollout画像提示と選別結果を照合する。単なる画像生成や自�
 
 予測は新規clipだけをtask別に束ね、1工程で同じモデルinstanceを共有する。
 失敗した試行を自動で繰り返さず、状態・理由を残す。`submit --attempt N` は
-明示的な新試行であり、通常の再開では最新の明示試行のreceiptを回収する。
+工程の明示的な新試行であり、通常の再開では最新の明示試行のreceiptを回収する。
+取得operationは `retry` を除いた同一の論理IDで試行を管理する。失敗後は
+`AcquireOperation(retry=True)` をsubmitすると次のattemptを作る。同じ指定の再開は
+そのattemptを回収し、再度失敗した場合はさらに大きい `--attempt N` を明示する。
+通常の再開も最新attemptに固定されたretry指定を引き継ぐ。
+
+選別workerの失敗・timeout・検証失敗は、同じruntimeを使う
+`retry-screen --source-id SOURCE_ID` で新しいworker attemptを明示する。
+`screen_prepare` の `submit --attempt N` はworker attemptを増やさない。
+quotaによるcampaign全体のworker停止は、原因解消後に同コマンドへ
+`--resume-quota` を付けて明示解除する。通常の `run` / `tick` は失敗workerを再試行しない。
+
 `preview_ready` は台帳のprepared/predictedに加え、工程ごとの最新試行の成功終了、
 operation receiptと登録成果物の一致、予測receiptの入力・モデル・成果物hashを要求する。
+内容重複などで除外されたsourceは、対象外receiptの取得参照・除外理由と台帳を照合する。
 predictedの保存後でも終了receiptがなければ完了にしない。未回収・失敗はblockedとし、
 `submit --attempt N` で新しい試行を明示して回収する。保存済み予測は検証して再利用し、
 回収のために推論し直さない。過去の失敗試行は履歴に残し、最新試行の成功後は完了を妨げない。
