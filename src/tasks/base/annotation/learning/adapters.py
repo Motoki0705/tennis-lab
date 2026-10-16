@@ -77,10 +77,10 @@ class LearningAdapter(Protocol):
         """Require all configured validation metrics; never substitute test results."""
         ...
 
-    def validate_resume(
+    def resume_references(
         self, layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
-    ) -> None:
-        """Only this intent's training checkpoint can resume its optimizer/schedule."""
+    ) -> tuple[ArtifactRef, ...]:
+        """Validate this intent's resume checkpoint and enumerate its dependencies."""
         ...
 
     def select(

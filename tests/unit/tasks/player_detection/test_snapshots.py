@@ -35,6 +35,9 @@ from src.tasks.player_detection.data.snapshots.store import (
 from src.tasks.player_detection.data.store import (
     INDEX_FILE,
     METADATA_FILE,
+    SCHEMA_VERSION,
+    SHARDS_DIR,
+    shard_name,
 )
 from src.tasks.player_detection.generate_dataset.builder import build_dataset
 from tests.support.tasks.player_detection.chat_root import (
@@ -196,16 +199,53 @@ def test_migrated_sparse_store_never_fills_missing_frames_or_negative_flags(
     sparse = legacy_store(
         example.directory, example.directory.with_name("legacy-fixture")
     )
-    sparse = migrate_v1_store(sparse, example.directory.with_name("migrated-fixture"))
+    original_files = {path: path.read_bytes() for path in sparse.rglob("*") if path.is_file()}
+    migrated = migrate_v1_store(sparse, sparse.with_name("migrated-fixture"))
+    migrated_files = {path: path.read_bytes() for path in migrated.rglob("*") if path.is_file()}
     bindings = tuple(
         binding for binding in example.bindings if binding.store_source_id != "src_b"
     )
-    reference = freeze_existing_store(example.layout, sparse, bindings)
-    _, store = load_snapshot(example.layout, reference)
+    reference = freeze_existing_store(example.layout, migrated, bindings)
+    snapshot, store = load_snapshot(example.layout, reference)
+    assert store.schema_version == SCHEMA_VERSION
+    assert snapshot.index == data_reference(example.layout, migrated / INDEX_FILE)
+    assert snapshot.metadata == data_reference(example.layout, migrated / METADATA_FILE)
+    with np.load(sparse / INDEX_FILE) as old, np.load(migrated / INDEX_FILE) as new:
+        for name in old.files:
+            np.testing.assert_array_equal(new[name], old[name])
+    assert all(path.read_bytes() == value for path, value in original_files.items())
+    assert all(path.read_bytes() == value for path, value in migrated_files.items())
     assert len(store) == 5 and not store.frames["confirmed_empty"].any()
     partition = freeze_partition(example.layout, reference, "train", POLICY)
     verified = validate_partition(example.layout, partition)
     assert verified.selected_frames == 2 and verified.negative_frames == 0
+
+
+def test_unmigrated_v1_is_rejected_by_freeze_and_load(example: Example) -> None:
+    sparse = legacy_store(example.directory, example.directory.with_name("legacy-fixture"))
+    bindings = tuple(b for b in example.bindings if b.store_source_id != "src_b")
+    with pytest.raises(ValueError, match="Migrate older stores explicitly"):
+        freeze_existing_store(example.layout, sparse, bindings)
+    assert not example.layout.path("campaigns", "imported-player-snapshots").exists()
+
+    migrated = migrate_v1_store(sparse, sparse.with_name("migrated-fixture"))
+    snapshot, _ = load_snapshot(
+        example.layout, freeze_existing_store(example.layout, migrated, bindings),
+    )
+    # Even correctly hashed references must not reopen a raw v1 store through
+    # the snapshot loader. Only the explicitly migrated v2 is supported.
+    legacy_snapshot = snapshot.model_copy(update={
+        "index": data_reference(example.layout, sparse / INDEX_FILE),
+        "metadata": data_reference(example.layout, sparse / METADATA_FILE),
+        "clips": tuple(clip.model_copy(update={
+            "shard": data_reference(example.layout, sparse / SHARDS_DIR / shard_name(index)),
+        }) for index, clip in enumerate(snapshot.clips)),
+    })
+    legacy_reference = write_document(
+        example.layout, example.layout.path("campaigns", "legacy-snapshot.json"), legacy_snapshot,
+    )
+    with pytest.raises(ValueError, match="Migrate older stores explicitly"):
+        load_snapshot(example.layout, legacy_reference)
 
 
 def test_fixed_partitions_pin_policy_frame_order_gt_and_source_membership(
