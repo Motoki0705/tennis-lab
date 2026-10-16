@@ -425,6 +425,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "plcs.accad_motion_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.player_detection.scripts.migrate_store": (
+        "player_detection.migrate_store",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.player_detection.scripts.review_dataset": (
         "player_detection.review_dataset",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -750,6 +754,10 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "player_detection", "src.tasks.player_detection.scripts.generate_dataset"
     ),
     _runtime_boundary("player_detection", "src.tasks.player_detection.scripts.train"),
+    _non_hydra_boundary(
+        "src.tasks.player_detection.scripts.migrate_store", "main",
+        domain="player_detection", executable_module=True,
+    ),
     _runtime_boundary(
         "player_detection", "src.tasks.player_detection.scripts.export_checkpoint"
     ),
