@@ -6,6 +6,7 @@ from src.tasks.base.annotation.artifacts import write_asset, write_document
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.execution.contracts import StageExit, StageLaunch
 from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.plan import references
 from src.tasks.base.annotation.resources import ResourceRequest
 from src.utils.paths import PROJECT_ROOT
 
@@ -56,6 +57,7 @@ def record_stage(
             ),
             command=command,
             input=operation,
+            dependencies=tuple(references(data)),
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
             queue=controller.runtime.queue if cost.gpu_seconds else None,
