@@ -198,34 +198,39 @@ class CollectionLedger:
             verify_reference(self.layout, source.media)
         with self.registry.transaction() as database:
             existing = database.execute(
-                "SELECT state,candidate,reason FROM sources WHERE id=?",
+                "SELECT state,channel_id,candidate,reason FROM sources WHERE id=?",
                 (source.canonical_id,),
             ).fetchone()
             if existing is not None:
                 if existing["state"] != "historical":
                     raise ValueError("cannot rewrite a campaign source as historical")
-                if (existing["candidate"], existing["reason"]) != (
-                    source.canonical_bytes().decode(),
-                    evidence.canonical_bytes().decode(),
+                if existing["channel_id"] != source.channel_id:
+                    raise ValueError("historical source channel identity mismatch")
+                previous = HistoricalSource.model_validate_json(existing["candidate"])
+                if (
+                    previous.model_dump(exclude={"media"})
+                    != source.model_dump(exclude={"media"})
+                    or existing["reason"] != evidence.canonical_bytes().decode()
                 ):
                     raise ValueError("historical source or evidence changed")
-                return
-            database.execute(
-                "INSERT OR IGNORE INTO channels VALUES (?,?,NULL)",
-                (source.provider, source.channel_id),
-            )
-            database.execute(
-                """INSERT INTO sources
-                (id,provider,channel_id,video_id,candidate,state,reason) VALUES (?,?,?,?,?,'historical',?)""",
-                (
-                    source.canonical_id,
-                    source.provider,
-                    source.channel_id,
-                    source.video_id,
-                    source.canonical_bytes().decode(),
-                    evidence.canonical_bytes().decode(),
-                ),
-            )
+            else:
+                database.execute(
+                    "INSERT OR IGNORE INTO channels VALUES (?,?,NULL)",
+                    (source.provider, source.channel_id),
+                )
+                database.execute(
+                    """INSERT INTO sources
+                    (id,provider,channel_id,video_id,candidate,state,reason) VALUES (?,?,?,?,?,'historical',?)""",
+                    (
+                        source.canonical_id,
+                        source.provider,
+                        source.channel_id,
+                        source.video_id,
+                        source.canonical_bytes().decode(),
+                        evidence.canonical_bytes().decode(),
+                    ),
+                )
+            # Every inventoried encoding must participate in content matching.
             if source.media is not None:
                 database.execute(
                     "INSERT OR IGNORE INTO source_content VALUES (?,?)",
@@ -369,7 +374,7 @@ class CollectionLedger:
                 ),
             )
 
-    def record_preparation(self, plan: CampaignPlan, reference: ArtifactRef) -> None:
+    def record_preparation(self, plan: CampaignPlan, reference: ArtifactRef) -> bool:
         from ..media import check_clip, probe_video
         from .contracts import PreparationConfig
         from .preparation import preparation_identity, window_ranges
@@ -444,9 +449,37 @@ class CollectionLedger:
             if row["preparation"] is not None:
                 if row["preparation"] != reference.canonical_bytes().decode():
                     raise ValueError("preparation receipt is immutable")
-                return
+                return bool(row["state"] != "excluded")
             if row["state"] != "screened":
                 raise ValueError("source is not ready for preparation")
+            # Check the entire selection before adding any clips/tasks. A content
+            # collision is a durable exclusion, including after receipt recovery.
+            seen: dict[str, tuple[str, str]] = {}
+            for manifest in manifests:
+                owner = database.execute(
+                    "SELECT id,source_id FROM clips WHERE media_digest=?",
+                    (manifest.media.digest,),
+                ).fetchone()
+                duplicate_of = (
+                    (owner["id"], owner["source_id"])
+                    if owner is not None
+                    else seen.get(manifest.media.digest)
+                )
+                if duplicate_of is not None:
+                    reason = (
+                        f"duplicate clip content {manifest.clip_id} matches "
+                        f"{duplicate_of[0]} from source {duplicate_of[1]}"
+                    )
+                    database.execute(
+                        "UPDATE sources SET state='excluded',preparation=?,reason=? WHERE id=?",
+                        (
+                            reference.canonical_bytes().decode(),
+                            reason,
+                            receipt.source_id,
+                        ),
+                    )
+                    return False
+                seen[manifest.media.digest] = (manifest.clip_id, receipt.source_id)
             for manifest, ref in zip(manifests, receipt.clips, strict=True):
                 database.execute(
                     "INSERT INTO clips VALUES (?,?,?,?,?)",
@@ -475,6 +508,7 @@ class CollectionLedger:
                 "UPDATE sources SET state='prepared',preparation=? WHERE id=?",
                 (reference.canonical_bytes().decode(), receipt.source_id),
             )
+            return True
 
     def acquisition_failed(
         self, plan: CampaignPlan, source_id: str, reason: str
