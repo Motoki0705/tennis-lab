@@ -514,7 +514,7 @@ def test_final_receipt_recovers_after_database_gap(
         ) -> bool:
             if state == "complete":
                 raise RuntimeError("database gap")
-            return original(
+            updated: bool = original(
                 work_id,
                 state,
                 reason,
@@ -522,6 +522,7 @@ def test_final_receipt_recovers_after_database_gap(
                 from_states=from_states,
                 result=result,
             )
+            return updated
 
         patch.setattr(pool, "_mark", fail)
         with pytest.raises(RuntimeError, match="database gap"):
