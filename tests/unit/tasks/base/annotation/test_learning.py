@@ -884,3 +884,58 @@ def test_durable_file_gaps_resume_without_new_job(
             == "training_pending"
         )
         assert len(env.executor.accepted) == 2
+
+
+@pytest.mark.parametrize("stage", ["train", "evaluate"])
+@pytest.mark.parametrize("error", [Crash, OSError])
+def test_retry_recovers_directory_created_before_retry_publication(
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
+    stage: Literal["train", "evaluate"],
+    error: type[BaseException],
+) -> None:
+    from src.tasks.base.annotation import artifacts
+
+    intent = env.register()
+    if stage == "train":
+        state = env.learning.tick(intent, env.adapter, env.runtime)
+        assert state.launch is not None
+        env.executor.finish(state.launch, env.adapter, failed=True)
+        assert env.learning.tick(intent, env.adapter, env.runtime).state == "failed"
+    else:
+        env.adapter.complete_metrics = False
+        assert env.train_and_evaluate(intent).state == "failed"
+        env.adapter.complete_metrics = True
+    accepted = len(env.executor.accepted)
+    real_replace = artifacts.os.replace
+    directory = env.layout.artifact_path(intent).parent / stage / "2"
+
+    def interrupted(source: Path, target: Path) -> None:
+        if target == directory / "retry.json":
+            assert directory.is_dir()
+            raise error("interrupted before retry publication")
+        real_replace(source, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(artifacts.os, "replace", interrupted)
+        with pytest.raises(error, match="before retry publication"):
+            env.learning.retry(intent, env.adapter, stage, reason="explicit retry")
+    assert directory.is_dir()
+    assert not (directory / "retry.json").exists()
+    assert not (directory / "request.json").exists()
+    executor = Executor(env.layout)
+    restarted = Learning(env.layout, executor=executor)
+    with pytest.raises(ValueError, match="no durable stage request"):
+        restarted.tick(intent, env.adapter, env.runtime)
+    assert len(env.executor.accepted) == accepted
+    restored = restarted.retry(intent, env.adapter, stage, reason="explicit retry")
+    request = read_document(env.layout, restored, StageInput)
+    assert request.attempt == 2 and request.stage == stage
+    assert env.layout.artifact_path(restored) == directory / "request.json"
+    outcome = restarted.tick(intent, env.adapter, env.runtime)
+    assert outcome.state == (
+        "training_pending" if stage == "train" else "evaluation_pending"
+    )
+    assert len(executor.accepted) == 1
+    assert restarted.tick(intent, env.adapter, env.runtime) == outcome
+    assert len(executor.accepted) == 1
