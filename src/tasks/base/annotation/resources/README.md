@@ -48,6 +48,8 @@ policy適用中はwatchdogが停止を検出するとCPU/GPU工程・注釈worke
 lockだけが消えた場合も、生きた子孫がいる間は枠を保持する。
 終了記録のないGPU処理は予約全額を保守的に計上し、`reserved_upper_bound` と表示する。
 正常終了は `measured_wall_seconds` として実行時間を計上する。
+回収はlease取得後に最新の終了記録を読み、同じtransactionで状態を更新する。
+回収待ちの間に終了しても、記録済みの実測時間・計上種別・終了理由を保持する。
 
 計測の定義:
 

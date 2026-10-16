@@ -110,10 +110,11 @@ class BallLearningAdapter:
     ) -> None:
         evidence.validate_evaluation(layout, intent, receipt)
 
-    def validate_resume(
+    def resume_references(
         self, layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
-    ) -> None:
+    ) -> tuple[ArtifactRef, ...]:
         evidence.validate_resume(layout, intent, checkpoint)
+        return ()
 
     def select(
         self, layout: AnnotationLayout, intent: LearningIntent, evaluation: ArtifactRef

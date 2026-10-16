@@ -137,6 +137,7 @@ def main() -> None:
         "run",
         "resume-budget",
         "code-update",
+        "retry-screen",
     ):
         command = commands.add_parser(name)
         command.add_argument("--runtime", type=Path, required=True)
@@ -157,6 +158,9 @@ def main() -> None:
         elif name == "code-update":
             command.add_argument("--verification", type=Path, required=True)
             command.add_argument("--reason", required=True)
+        elif name == "retry-screen":
+            command.add_argument("--source-id", required=True)
+            command.add_argument("--resume-quota", action="store_true")
     stage = commands.add_parser("stage")
     stage.add_argument("--operation", type=Path, required=True)
     stage.add_argument("--sha256", required=True)
@@ -366,6 +370,8 @@ def main() -> None:
             "reason": args.reason,
             "resumption": resumption.model_dump(mode="json"),
         }
+    elif args.command == "retry-screen":
+        result = controller.retry_screen(args.source_id, resume_quota=args.resume_quota)
     else:
         if args.command == "run" and (
             not math.isfinite(args.max_seconds) or args.max_seconds <= 0

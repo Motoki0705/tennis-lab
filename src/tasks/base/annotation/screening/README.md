@@ -20,7 +20,9 @@
   --request-sha256 HASH images --start S --stop E --step STEP` はworker自身のworkに
   画像要求を書き、親controllerへ返す。親は資源管理下のCPU工程で逐次decodeし、
   最大24タイルのJPEGページを1ページずつ生成する。時刻はsourceの実PTSから
-  計算し、frameの複製やpaddingはしない。同じ入力・区間・表示仕様のページは
+  計算する。前の採用PTSからstep以内の最後の実frameを選び、窓末尾も覆う。
+  疎な映像の実際の間隔はそのまま記録し、frameの複製やpaddingはしない。
+  同じ入力・区間・サンプリング/表示仕様のページは
   hash検証後に再利用する。画像一式とreceiptはdirectory単位でatomicに公開する。
 - workerの選別手順の正本は [WORKER.md](WORKER.md)。`check --decision PATH` は
   schema・時刻・件数・選別条件だけを検証する。画像閲覧の証明にはならない。
