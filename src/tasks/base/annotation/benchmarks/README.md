@@ -17,6 +17,8 @@ dataset version、Codex枠の人数だけ。推論器や道具の変更は別実
 
 `benchmark-observe` は既存scopeの計測を使い、worker台帳と現在の子プロセスを読む。
 workerを起動せず、素材取得・推論・公開・学習・予算作成/解除を行わない。
+観測と比較レポート生成ではwork IDごとに固定したprediction receipt・manifestと
+実WorkRequestのpayload・inputsを照合する。同じclip IDでも別の入力は拒否する。
 観測ごとにprediction receiptとpayloadを検証し、比較レポート作成時にはモデル・設定・
 manifest・mediaを含む固定入力の参照も検証する。重み・media全体のhash計算を
 観測ごとに繰り返して負荷に混ぜない。
