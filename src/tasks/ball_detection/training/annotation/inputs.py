@@ -145,7 +145,9 @@ class Inputs:
         return result
 
 
-def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:
+def resolve_inputs(
+    layout: AnnotationLayout, intent: LearningIntent, *, require_teachers: bool = True
+) -> Inputs:
     if intent.task != "ball":
         raise ValueError("ball adapter cannot execute another task")
     verify_inputs(layout, intent)
@@ -208,7 +210,8 @@ def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:
             layout, intent.publication, recipe.windows, directory
         )
         prepared = read_document(layout, prepared_ref, TrainingWindows)
-    require_additional_teachers(prepared)
+    if require_teachers:
+        require_additional_teachers(prepared)
     return Inputs(recipe, prepared_ref, prepared, holdout, fixed)
 
 

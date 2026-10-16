@@ -252,7 +252,7 @@ class CollectionLedger:
         with self.registry.transaction() as database:
             self._require_plan(database, plan)
             row = database.execute(
-                "SELECT state FROM sources WHERE id=? AND campaign_id=?",
+                "SELECT state,provider,channel_id FROM sources WHERE id=? AND campaign_id=?",
                 (source_id, plan.campaign_id),
             ).fetchone()
             if row is None:
@@ -264,6 +264,14 @@ class CollectionLedger:
                 raise ValueError(
                     "excluded/failed source needs an explicit decision or retry"
                 )
+            if state == "failed":
+                n_videos = database.execute(
+                    """SELECT count(*) FROM sources WHERE campaign_id=?
+                    AND provider=? AND channel_id=? AND state NOT IN ('excluded','failed')""",
+                    (plan.campaign_id, row["provider"], row["channel_id"]),
+                ).fetchone()[0]
+                if n_videos >= plan.counts.videos_per_channel:
+                    raise ValueError("requested videos-per-channel limit reached")
             # An interrupted acquiring source already owns its lead slot. The
             # caller holds its process-scoped source lock before reaching here.
             if state != "acquiring":
@@ -482,6 +490,25 @@ class CollectionLedger:
             )
             if updated.rowcount != 1:
                 raise ValueError("only in-progress acquisition can fail")
+
+    def exclude_preparation(
+        self, plan: CampaignPlan, source_id: str, reason: str
+    ) -> None:
+        """Release an unpreparable source without rewriting its selection history."""
+        if not reason.strip():
+            raise ValueError("preparation exclusion must have a reason")
+        with self.registry.transaction() as database:
+            self._require_plan(database, plan)
+            updated = database.execute(
+                """UPDATE sources SET state='excluded',reason=?
+                WHERE id=? AND campaign_id=? AND state='screened'
+                AND preparation IS NULL""",
+                (reason, source_id, plan.campaign_id),
+            )
+            if updated.rowcount != 1:
+                raise ValueError(
+                    "only screened sources can be excluded from preparation"
+                )
 
     def summary(self, plan: CampaignPlan) -> dict[str, Any]:
         with self.registry.transaction() as database:
