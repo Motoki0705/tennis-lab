@@ -3,6 +3,9 @@
 from src.synthetic_data_generation.rendering.nht.client import NHTRenderClient
 from src.synthetic_data_generation.rendering.nht.contracts import (
     NHT_RENDER_COMMAND,
+    NHT_SPLAT_ORDER_LARGEST_FIRST,
+    NHTAppearanceControls,
+    NHTAppearancePolicy,
     NHTRenderArrayMetadata,
     NHTRenderArrays,
     NHTRenderCamera,
@@ -16,6 +19,9 @@ from src.synthetic_data_generation.rendering.nht.depth import nht_depth_to_metri
 
 __all__ = [
     "NHT_RENDER_COMMAND",
+    "NHT_SPLAT_ORDER_LARGEST_FIRST",
+    "NHTAppearanceControls",
+    "NHTAppearancePolicy",
     "NHTRenderArrayMetadata",
     "NHTRenderArrays",
     "NHTRenderCamera",

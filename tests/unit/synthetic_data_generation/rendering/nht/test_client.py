@@ -16,6 +16,8 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
 )
 from src.synthetic_data_generation.rendering.nht import client
 from src.synthetic_data_generation.rendering.nht.contracts import (
+    NHTAppearanceControls,
+    NHTAppearancePolicy,
     NHTRenderCamera,
     NHTRenderCommandRequest,
     NHTRenderRequest,
@@ -427,4 +429,96 @@ def test_client_rejects_non_float32_result(
     monkeypatch.setattr(client.subprocess, "run", fake_run)
 
     with pytest.raises(TypeError, match="dtype float32"):
+        client.NHTRenderClient().render(command)
+
+
+_POLICY = NHTAppearancePolicy(
+    point_radius=0.01, splat_order="largest_first", splat_stagger=0.25
+)
+_CONTROLS = NHTAppearanceControls(
+    splat_progress=0.5, view_dependence=0.0
+)
+
+
+def _staged_command(tmp_path: Path) -> NHTRenderCommandRequest:
+    scene_path = tmp_path / "B00/reconstruction/export/scene.json"
+    scene_path.parent.mkdir(parents=True, exist_ok=True)
+    scene_path.write_text("{}", encoding="utf-8")
+    staged = NHTRenderCamera(
+        camera_id="novel",
+        width=8,
+        height=6,
+        intrinsics=(5.0, 0.0, 4.0, 0.0, 5.0, 3.0, 0.0, 0.0, 1.0),
+        camera_to_scene=RigidTransform.from_matrix(np.eye(4)),
+        appearance=_CONTROLS,
+    )
+    return NHTRenderCommandRequest(
+        scene_path=scene_path,
+        output_directory=tmp_path / "reveal/render",
+        arbitrary_cameras=NHTRenderRequest((staged,), appearance_policy=_POLICY),
+        arbitrary_request_path=tmp_path / "reveal/render-request.json",
+    )
+
+
+def _add_appearance_echo(output: Path, appearance: object) -> None:
+    marker = output / "render.json"
+    payload = json.loads(marker.read_text(encoding="utf-8"))
+    payload["renders"][0]["appearance"] = appearance
+    marker.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_client_writes_staged_controls_and_accepts_exact_echo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    command = _staged_command(tmp_path)
+    monkeypatch.setattr(
+        client, "validate_standard_scene_export", lambda path: _scene(path)
+    )
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert command.arbitrary_request_path is not None
+        written = json.loads(command.arbitrary_request_path.read_text("utf-8"))
+        assert written["appearance_policy"] == _POLICY.to_dict()
+        assert written["cameras"][0]["appearance"] == _CONTROLS.to_dict()
+        _write_result(command.output_directory)
+        _add_appearance_echo(
+            command.output_directory,
+            {"policy": _POLICY.to_dict(), "controls": _CONTROLS.to_dict()},
+        )
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(client.subprocess, "run", fake_run)
+
+    result = client.NHTRenderClient().render(command)
+
+    assert result.record("novel").width == 8
+
+
+@pytest.mark.parametrize("echo", ["missing", "different"])
+def test_client_rejects_missing_or_different_appearance_echo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    echo: str,
+) -> None:
+    command = _staged_command(tmp_path)
+    monkeypatch.setattr(
+        client, "validate_standard_scene_export", lambda path: _scene(path)
+    )
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        _write_result(command.output_directory)
+        if echo == "different":
+            _add_appearance_echo(
+                command.output_directory,
+                {
+                    "policy": _POLICY.to_dict(),
+                    "controls": {**_CONTROLS.to_dict(), "splat_progress": 1.0},
+                },
+            )
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(client.subprocess, "run", fake_run)
+
+    with pytest.raises(ValueError, match="appearance"):
         client.NHTRenderClient().render(command)
