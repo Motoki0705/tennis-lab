@@ -23,6 +23,14 @@ Keep JSON file output out of tool messages. Each service returns a bounded recei
    re-view the retained image or request a new image and explicitly replace that
    frame's decision. `pending_current_attempt` is checked after this worker exits;
    `verified` means an earlier attempt's actual image bytes were already verified.
+   Unusable attempt evidence is summarized by count and a first-page ArtifactRef in
+   `next_actions`. Read that JSON file under the annotation artifact root shown below:
+   require role `annotation`, resolve `path` inside that root, and verify `size_bytes`
+   and SHA-256 `digest` before using it. Each page contains at most eight actor/reason
+   entries; follow its `next_page` reference until null, one page at a time with the
+   same checks. These pages include attempts without decisions; only affected frame
+   decisions need reconfirmation. `review_rows` also returns each row's specific
+   `image_proof_reasons`.
 2. `review_image`: parameters are `expected_revision`, `drawing` (`plain`,
    `prediction`, or `revision`), `tiles` (at most 16 `{frame_index,crop}` objects),
    `columns` (1..4), `tile_width`, `tile_height` (32..1024), and `reason`.

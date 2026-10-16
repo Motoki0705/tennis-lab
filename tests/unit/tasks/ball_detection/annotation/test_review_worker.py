@@ -20,7 +20,10 @@ from src.tasks.ball_detection.annotation.review.contracts import (
     ConfirmAbsence,
     ReplaceFrame,
 )
-from src.tasks.ball_detection.annotation.review.worker import BallRowPage
+from src.tasks.ball_detection.annotation.review.worker import (
+    BallRowPage,
+    UnusableImageEvidencePage,
+)
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     read_document,
@@ -32,7 +35,7 @@ from src.tasks.base.annotation.contracts import (
     FrameRange,
     ReviewEvidence,
 )
-from src.tasks.base.annotation.editing import EditCommand
+from src.tasks.base.annotation.editing import EditCommand, Revision
 from src.tasks.base.annotation.handoff import read_handoff
 from src.tasks.base.annotation.images import read_rendered
 from src.tasks.base.annotation.images.contracts import Point
@@ -370,6 +373,38 @@ def test_unusable_telemetry_still_rejects_corrupted_references(
     session.state("cancelled")
     with pytest.raises(ValueError, match="size changed|hash changed"):
         session.open(2)
+
+
+def test_retry_prepares_bounded_handoff_after_many_unusable_attempts(
+    session: ReviewSession,
+) -> None:
+    env = session.env
+    actors = []
+    for number in range(1, 10):
+        actors.append(env.actor)
+        session.evidence(status="cancelled", evidence_issue="missing_model")
+        session.state("cancelled")
+        session.open(number + 1)
+    initial = read_document(env.layout, session.input, ReviewWorkerInput)
+    handoff = read_handoff(env.layout, initial.initial_handoff)
+    assert all(len(action) <= 500 for action in handoff.content.next_actions)
+    action = next(a for a in handoff.content.next_actions if "Unusable image evidence" in a)
+    assert "9 attempts" in action
+    reference: ArtifactRef | None = ArtifactRef.model_validate_json(action[action.index("{"):])
+    entries = []
+    sizes = []
+    while reference is not None:
+        page = read_document(env.layout, reference, UnusableImageEvidencePage)
+        assert page.payload == read_document(env.layout, env.head(), Revision).payload
+        sizes.append(len(page.entries))
+        entries.extend(page.entries)
+        reference = page.next_page
+    assert sizes == [8, 1]
+    assert [entry.actor for entry in entries] == actors
+    assert all("model is missing" in entry.reason for entry in entries)
+    image = session.image(1)
+    session.confirm(image, 1, 2)
+    assert session.finish(session.evidence()).adoption is not None
 
 
 def test_history_rejects_cross_attempt_telemetry_and_final_receipts(
