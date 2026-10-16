@@ -49,14 +49,21 @@ from src.tasks.base.annotation.plan import (
     save_plan,
 )
 from src.tasks.base.annotation.predictions import Predictions
-from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+from src.tasks.base.annotation.resources import (
+    BudgetLimits,
+    CapacityUnavailable,
+    ResourceManager,
+    ResourceRequest,
+)
 from src.tasks.base.annotation.resources.contracts import GPUUsage
 from src.tasks.base.annotation.storage.catalog import StorageCatalog
 from src.tasks.base.annotation.workers.contracts import (
+    Launch,
     PreparedWorker,
     WorkOutcome,
     WorkRequest,
 )
+from src.tasks.base.annotation.workers.ledger import WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
 from tests.support.annotation_benchmarks import sample
 from tests.support.tasks.ball_detection.annotation import Environment, ProposalFixture
@@ -494,3 +501,128 @@ def test_same_subject_conditions_use_distinct_shared_resource_requests(
     with setup.manager.registry.transaction() as db:
         assert db.execute("SELECT count(*) FROM resource_requests").fetchone()[0] == 2
     assert setup.manager.scope.previously_used_gpu_seconds == 7.0
+
+
+@pytest.mark.parametrize("interrupted_after_admission", [False, True])
+def test_benchmark_worker_recovers_unregistered_resource_request(
+    setup: Setup,
+    monkeypatch: pytest.MonkeyPatch,
+    interrupted_after_admission: bool,
+) -> None:
+    monkeypatch.setattr(ResourceManager, "observe", lambda self, pid: None)
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="CPU fixture",
+        ),
+    )
+    plan, ref, local = setup.condition(10)
+    register_inputs(setup.shared, ref, (ProposalFixture(),))
+    request = WorkRequest(
+        adapter="ball_review",
+        adapter_version="v1",
+        stage="review",
+        subject_id=setup.env.manifest.clip_id,
+        payload=setup.env.save(
+            setup.env.context.model_copy(
+                update={"plan": read_document(local, ref, ConditionSpec).plan}
+            )
+        ),
+        inputs=(setup.env.manifest_ref, setup.env.context.prediction),
+    )
+
+    def reopen() -> WorkerPool:
+        return WorkerPool(
+            local,
+            plan,
+            (_Worker(),),
+            test_command=(
+                sys.executable,
+                "-c",
+                'import pathlib; pathlib.Path("result.json").write_text("{}"); '
+                'print(\'{"type":"thread.started","thread_id":"fixture"}\'); '
+                'print(\'{"type":"turn.completed"}\')',
+            ),
+            resources=ResourceManager(local, setup.manager.reference),
+            worker_pss_bytes=16 * 1024**2,
+            worker_storage_bytes=1024**2,
+            timeout_seconds=10,
+        )
+
+    pool = reopen()
+    resources = pool.resources
+    assert resources is not None
+    admit = resources._admit
+
+    def deny_or_interrupt(resource_request: ResourceRequest) -> None:
+        if interrupted_after_admission:
+            admit(resource_request)
+            raise RuntimeError("dispatcher interrupted after resource admission")
+        raise CapacityUnavailable("fixture capacity is temporarily full")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resources, "_admit", deny_or_interrupt)
+        with pytest.raises(
+            RuntimeError if interrupted_after_admission else CapacityUnavailable,
+            match="dispatcher interrupted|temporarily full",
+        ):
+            pool.start(request)
+    assert not pool.children
+    assert pool.ledger.task(request.work_id)["state"] == "ready"
+    with pool.ledger.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM worker_attempts").fetchone()[0] == 0
+        assert (
+            db.execute(
+                "SELECT name FROM sqlite_master WHERE name='resource_requests'"
+            ).fetchone()
+            is None
+        )
+    path = local.path(
+        "campaigns",
+        plan.campaign_id,
+        "workers",
+        request.work_id,
+        "attempt-0001",
+        "launch.json",
+    )
+    original_launch = annotation_reference(local, path)
+    launch = read_document(local, original_launch, Launch)
+    assert launch.resource_request is not None
+    with resources.registry.transaction() as db:
+        row = db.execute("SELECT id,state FROM resource_requests").fetchone()
+        assert row["id"] == resources.key(launch.resource_request)
+        assert row["state"] == ("running" if interrupted_after_admission else "pending")
+
+    resumed = reopen()
+    if interrupted_after_admission:
+        with pytest.raises(WorkerStopped, match="explicit retry"):
+            resumed.start(request)
+    attempt = resumed.start(request, retry=interrupted_after_admission)
+    assert attempt == request.work_id + (
+        "-0002" if interrupted_after_admission else "-0001"
+    )
+    until = time.monotonic() + 10
+    while time.monotonic() < until:
+        state = resumed.reconcile(request)
+        if state["state"] not in {"running", "exited"}:
+            break
+        time.sleep(0.02)
+    assert state["state"] == "complete", state
+    assert annotation_reference(local, path) == original_launch
+    with resumed.ledger.registry.transaction() as db:
+        attempts = db.execute(
+            "SELECT number,state FROM worker_attempts ORDER BY number"
+        ).fetchall()
+    assert [tuple(row) for row in attempts] == (
+        [(1, "failed"), (2, "complete")]
+        if interrupted_after_admission
+        else [(1, "complete")]
+    )
+    rows = setup.manager.status()["requests"]
+    assert sorted(row["state"] for row in rows) == (
+        ["abandoned", "complete"] if interrupted_after_admission else ["complete"]
+    )
