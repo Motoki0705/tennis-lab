@@ -52,7 +52,8 @@ quotaによるcampaign全体のworker停止は、原因解消後に同コマン�
 
 `preview_ready` は台帳のprepared/predictedに加え、工程ごとの最新試行の成功終了、
 operation receiptと登録成果物の一致、予測receiptの入力・モデル・成果物hashを要求する。
-内容重複などで除外されたsourceは、対象外receiptの取得参照・除外理由と台帳を照合する。
+内容重複などで除外されたsourceは、取得・選別・準備の対象外receiptの取得参照・除外理由と台帳を照合する。
+重複clipを検出した準備receiptは証拠として保持するが、除外済みsourceの準備完了としては要求しない。
 predictedの保存後でも終了receiptがなければ完了にしない。未回収・失敗はblockedとし、
 `submit --attempt N` で新しい試行を明示して回収する。保存済み予測は検証して再利用し、
 回収のために推論し直さない。過去の失敗試行は履歴に残し、最新試行の成功後は完了を妨げない。
