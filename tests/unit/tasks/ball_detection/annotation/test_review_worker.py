@@ -4,6 +4,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
@@ -35,6 +36,7 @@ from src.tasks.base.annotation.editing import EditCommand
 from src.tasks.base.annotation.handoff import read_handoff
 from src.tasks.base.annotation.images import read_rendered
 from src.tasks.base.annotation.images.contracts import Point
+from src.tasks.base.annotation.telemetry.contracts import TelemetryReport
 from src.tasks.base.annotation.workers.contracts import AttemptResult
 from src.tasks.base.annotation.workers.pool import WorkerPool
 from src.tasks.base.annotation.workers.review.contracts import (
@@ -273,15 +275,42 @@ def test_retry_keeps_previous_evidence_or_requires_explicit_reconfirmation(
         assert env.labels().frames[1].review_actor == old_actor
 
 
+@pytest.mark.parametrize(
+    "evidence_issue", [None, "missing_model", "conflicting_response"]
+)
 def test_retry_reconfirms_missing_proof_with_new_actor_and_retained_image(
     session: ReviewSession,
+    evidence_issue: Literal["missing_model", "conflicting_response"] | None,
 ) -> None:
     env = session.env
     old_image = session.image(1)
     session.confirm(old_image, 1, 2)
     old_actor = env.actor
+    old_report = (
+        session.evidence(status="cancelled", evidence_issue=evidence_issue)
+        if evidence_issue
+        else None
+    )
     session.state("failed")
     session.open(2)
+    if old_report:
+        handoff = read_handoff(
+            env.layout,
+            read_document(env.layout, session.input, ReviewWorkerInput).initial_handoff,
+        )
+        assert any(
+            "Unusable image evidence" in action
+            for action in handoff.content.next_actions
+        )
+        with pytest.raises(ValueError, match="actually shown"):
+            session.services.prepare_adoption(
+                env.layout,
+                env.context,
+                env.manifest,
+                env.head(),
+                (old_report,),
+                reason="still unproven",
+            )
     page = read_document(
         env.layout,
         session.call(
@@ -294,6 +323,13 @@ def test_retry_reconfirms_missing_proof_with_new_actor_and_retained_image(
         BallRowPage,
     )
     assert page.image_proof == ("missing",) and page.images == (old_image,)
+    if evidence_issue:
+        assert page.image_proof_reasons[0] is not None
+        assert (
+            "model is missing"
+            if evidence_issue == "missing_model"
+            else "conflicting response IDs"
+        ) in page.image_proof_reasons[0]
     edits = BallEdits(
         operations=(
             ReplaceFrame(
@@ -318,6 +354,22 @@ def test_retry_reconfirms_missing_proof_with_new_actor_and_retained_image(
     # Re-viewing the retained image is captured as new-attempt evidence.
     report = session.evidence(shown=(old_image,))
     assert session.finish(report).adoption is not None
+
+
+@pytest.mark.parametrize("tamper", ["report", "response_page"])
+def test_unusable_telemetry_still_rejects_corrupted_references(
+    session: ReviewSession,
+    tamper: str,
+) -> None:
+    session.confirm(session.image(1), 1, 2)
+    ref = session.evidence(status="cancelled", evidence_issue="conflicting_response")
+    report = read_document(session.env.layout, ref, TelemetryReport)
+    session.env.layout.artifact_path(
+        ref if tamper == "report" else report.pages[0]
+    ).write_bytes(b"corrupted")
+    session.state("cancelled")
+    with pytest.raises(ValueError, match="size changed|hash changed"):
+        session.open(2)
 
 
 def test_history_rejects_cross_attempt_telemetry_and_final_receipts(
@@ -405,12 +457,18 @@ def test_parameters_cannot_inject_overlay_or_unbounded_input(
 
 
 @pytest.mark.parametrize("show_image", [True, False])
+@pytest.mark.parametrize(
+    "evidence_issue", [None, "missing_model", "conflicting_response"]
+)
 def test_supervised_worker_services_rollout_and_adoption_protocol(
     session: ReviewSession,
     monkeypatch: pytest.MonkeyPatch,
     show_image: bool,
+    evidence_issue: Literal["missing_model", "conflicting_response"] | None,
 ) -> None:
     env = session.env
+    if evidence_issue:
+        session.evidence(status="cancelled", evidence_issue=evidence_issue)
     session.state("failed")  # First attempt has no claims; retry through the real pool.
     binary = env.layout.repository / "synthetic-codex"
     binary.write_text(
