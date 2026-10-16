@@ -212,6 +212,7 @@ class Retry(Document):
     previous: ArtifactRef
     reason: str = Field(min_length=1)
     resume_checkpoint: ArtifactRef | None
+    resume_dependencies: tuple[ArtifactRef, ...]
 
 
 class StageFailure(Document):

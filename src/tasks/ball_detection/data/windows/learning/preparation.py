@@ -26,6 +26,7 @@ from src.tasks.base.annotation.contracts import (
 )
 from src.tasks.base.annotation.learning.contracts import DatasetPartition
 from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.plan import load_plan
 
 from .contracts import ClipCoverage, TrainingWindows, WindowPolicy
 
@@ -52,13 +53,22 @@ def prepare_training_windows(
         publication.request_id, publication.product, publication.adoptions
     ):
         raise ValueError("publication receipt differs from its pinned request")
+    plan = load_plan(verify_reference(layout, request.plan))
+    product = next((p for t in plan.tasks if t.task == publication.task
+                    for p in t.products if p.product == request.product), None)
+    if product is None or (product.dataset_task, product.component) != ("ball_detection", "frames"):
+        raise ValueError("training publication requires the planned ball_detection/frames product")
+    if publication.base_snapshot != product.base_snapshot:
+        raise ValueError("publication base snapshot differs from its pinned plan")
     if set(publication.added_clips + publication.reused_clips) != {c.clip_id for c in snapshot.clips}:
         raise ValueError("publication membership differs from cumulative snapshot")
     if not set(publication.added_clips).intersection(c.clip_id for c in snapshot.clips if c.split == "train"):
         raise ValueError("publication must include new training teachers")
-    if publication.base_snapshot is not None:
-        base, _ = load_snapshot(layout, publication.base_snapshot)
-        if publication.reused_clips != tuple(c.clip_id for c in base.clips):
+    old_ids: tuple[str, ...] = ()
+    if product.base_snapshot is not None:
+        base, _ = load_snapshot(layout, product.base_snapshot)
+        old_ids = tuple(c.clip_id for c in base.clips)
+        if publication.reused_clips != old_ids:
             raise ValueError("reused publication membership differs from its base")
         for old, current in zip(base.clips, snapshot.clips, strict=False):
             if (old.model_dump(exclude={"shard"}) != current.model_dump(exclude={"shard"})
@@ -68,6 +78,9 @@ def prepare_training_windows(
             raise ValueError("cumulative snapshot removed existing clips")
     elif publication.reused_clips:
         raise ValueError("reused clips require an explicit base snapshot")
+    added_ids = tuple(c.clip_id for c in snapshot.clips[len(old_ids):])
+    if publication.added_clips != added_ids:
+        raise ValueError("added publication membership differs from its planned base")
     coverage = []
     for identity in snapshot.clips:
         if identity.split != "train":

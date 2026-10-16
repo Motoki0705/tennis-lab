@@ -39,6 +39,7 @@ from src.tasks.base.annotation.plan import (
 )
 from src.tasks.base.annotation.resources import ResourceManager
 from src.tasks.base.annotation.screening.contracts import ScreeningPolicy
+from src.tasks.player_detection.annotation.contracts import DinoInferenceConfig
 from src.utils.paths import PROJECT_ROOT
 
 
@@ -535,6 +536,46 @@ def test_frozen_configuration_cannot_change_or_rebaseline(example: Example) -> N
         configure(example.layout, changed)
     assert example.layout.artifact_path(resources.scope.baseline).stat().st_ino == inode
     assert configure(example.layout, example.configuration) == ref
+
+
+@pytest.mark.parametrize(
+    ("kind", "gpu_seconds"), [("cpu", 0), ("io", 0), ("gpu", 0), ("cpu", 20)]
+)
+def test_player_inference_requires_gpu_reservation_before_freezing_configuration(
+    example: Example, kind: str, gpu_seconds: float
+) -> None:
+    data = example.configuration.model_dump()
+    task = data["plan"]["tasks"][0]
+    task["task"] = task["model"]["task"] = "player"
+    task["products"][0].update(
+        product="bbox", dataset_task="player_detection", component="bbox"
+    )
+    inference = write_document(
+        example.layout,
+        example.layout.path("campaigns", "inputs", "player-inference.json"),
+        DinoInferenceConfig(
+            confidence_threshold=0.5, short_side=800, max_long_side=1333
+        ),
+    )
+    task["inference"] = inference.model_dump()
+    data["plan"]["resources"]["stages"][-1]["stage"] = "infer_player"
+    data["runtime"]["costs"][-1]["stage"] = "infer_player"
+    valid = Configuration.model_validate(data)
+    data["plan"]["resources"]["stages"][-1]["kind"] = kind
+    data["runtime"]["costs"][-1]["gpu_seconds"] = gpu_seconds
+    invalid = Configuration.model_validate(data)
+
+    with pytest.raises(ValueError, match="GPU|stage kinds"):
+        configure(example.layout, invalid)
+    assert not example.layout.path("resources").exists()
+    assert not example.layout.path("campaigns", valid.plan.campaign_id).exists()
+
+    reference = configure(example.layout, valid)
+    receipt = example.receipt(reference)
+    assert read_document(example.layout, receipt.request, Configuration) == valid
+    runtime = read_document(example.layout, receipt.runtime, Runtime)
+    assert runtime.cost("infer_player").gpu_seconds == 20
+    assert configure(example.layout, valid) == reference
 
 
 @pytest.mark.parametrize("field", ["previously_allocated_bytes", "previously_used_gpu_seconds"])
