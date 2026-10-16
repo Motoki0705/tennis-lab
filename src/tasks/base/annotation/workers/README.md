@@ -90,6 +90,7 @@ plan保存・実入力の読込に元からある検証は維持する。
 ballの初期handoffはその時点のrevision履歴・編集・画像根拠を列挙する。親やsupervisorの
 終了だけでは解放せず、所有する子孫がなくなり、結果検証または失敗状態の確定後に
 attemptの保護を同じtransactionで解放する。`exited` は結果検証待ちなので保持する。
+解放対象は検証したattempt IDに固定し、transaction内でcurrent attemptと遷移元状態を照合する。
 中断やDB rollback後は、同じ保存済み結果から確定を再開できる。
 
 登録済みworkの入力は、成功・失敗後も再開と後続工程のために保持する。worker終了を

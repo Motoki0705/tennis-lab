@@ -671,6 +671,17 @@ def test_reconcile_reads_attempt_after_acquiring_lock(
     assert first is not None
     pool.children[first].wait(timeout=10)
     second = None
+    validated_attempts: list[str] = []
+    original_validate = setup.adapter.validate
+
+    def validate_protected_attempt(*args, **kwargs):
+        _ref, launch = pool._launch(pool.ledger.task(setup.request.work_id))
+        assert args[3] == Path(launch.directory)
+        assert set(launch.prepared.inputs) <= protected(pool)
+        validated_attempts.append(launch.attempt)
+        return original_validate(*args, **kwargs)
+
+    monkeypatch.setattr(setup.adapter, "validate", validate_protected_attempt)
 
     @contextmanager
     def interleave(layout, name, *, blocking=True):
@@ -702,6 +713,39 @@ def test_reconcile_reads_attempt_after_acquiring_lock(
     launch = read_document(setup.layout, final.launch, Launch)
     assert launch.attempt == second
     assert setup.adapter.validations == 2
+    assert validated_attempts == [first, second]
+    assert not set(launch.prepared.inputs) & protected(pool)
+    assert setup.request.payload in protected(pool)
+
+
+def test_stale_attempt_update_cannot_release_retry_protection(setup: Setup) -> None:
+    pool = setup.pool()
+    setup.adapter.outcome = "deferred"
+    first = pool.start(setup.request)
+    assert first is not None
+    prior = settled(pool, setup.request)
+    assert prior["state"] == "deferred"
+    prior_result = ArtifactRef.model_validate_json(prior["result"])
+    setup.adapter.outcome = "complete"
+    second = pool.start(setup.request, retry=True)
+    assert second is not None
+    pool.children[second].wait(timeout=10)
+    _ref, launch = pool._launch(pool.ledger.task(setup.request.work_id))
+    assert set(launch.prepared.inputs) <= protected(pool)
+    assert not pool._mark(
+        setup.request.work_id,
+        "deferred",
+        "stale dispatcher result",
+        attempt=first,
+        result=prior_result,
+    )
+    state = pool.ledger.task(setup.request.work_id)
+    assert state["current_attempt"] == second and state["state"] == "running"
+    assert state["result"] is None
+    assert set(launch.prepared.inputs) <= protected(pool)
+    assert settled(pool, setup.request)["state"] == "complete"
+    assert not set(launch.prepared.inputs) & protected(pool)
+    assert setup.request.payload in protected(pool)
 
 
 @pytest.mark.parametrize("finish_retry", [False, True])
@@ -991,10 +1035,16 @@ print(json.dumps({{"type":"turn.completed","usage":{{}}}}), flush=True)
         )
 
 
-@pytest.fixture
-def resource_pool(setup: Setup) -> WorkerPool:
+@pytest.fixture(params=[False, True], ids=["shared", "benchmark"])
+def resource_pool(setup: Setup, request: pytest.FixtureRequest) -> WorkerPool:
     raw = setup.plan.model_dump(mode="json")
     raw["resources"]["minimum_free_bytes"] = 1
+    if request.param:
+        raw["phase"] = "benchmark"
+        raw["tasks"][0]["review"] = {
+            key: setup.request.payload.model_dump()
+            for key in ("policy", "preview_evidence", "decision")
+        }
     plan = CampaignPlan.model_validate_json(json.dumps(raw))
     resources = ResourceManager.create(
         setup.layout,
@@ -1005,8 +1055,11 @@ def resource_pool(setup: Setup) -> WorkerPool:
         previously_used_gpu_seconds=0.0,
         max_pending_per_stage=1,
     )
+    layout = setup.layout
+    if request.param:
+        layout = layout.for_benchmark(plan.campaign_id)
     return WorkerPool(
-        setup.layout,
+        layout,
         plan,
         (setup.adapter,),
         test_command=(sys.executable, str(setup.script)),
@@ -1042,7 +1095,7 @@ def test_retry_recovers_resource_admission_before_worker_registration(
     if recover_resources_first:
         assert resumed_resources.status()["requests"][0]["state"] == "abandoned"
     resumed = WorkerPool(
-        setup.layout,
+        resource_pool.layout,
         resource_pool.plan,
         (setup.adapter,),
         test_command=(sys.executable, str(setup.script)),
