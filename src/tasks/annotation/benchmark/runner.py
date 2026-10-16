@@ -27,7 +27,11 @@ from src.tasks.base.annotation.benchmarks.inputs import (
     register_inputs,
     require_registered_scope,
 )
-from src.tasks.base.annotation.benchmarks.validation import comparison, condition
+from src.tasks.base.annotation.benchmarks.validation import (
+    comparison,
+    condition,
+    validate_work,
+)
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.reproducibility import require_frozen_code
@@ -36,7 +40,7 @@ from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
 )
-from src.tasks.base.annotation.workers.contracts import WorkRequest
+from src.tasks.base.annotation.workers.contracts import AttemptResult, WorkRequest
 from src.tasks.base.annotation.workers.ledger import WorkerBusy, WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
 from src.utils.paths import PROJECT_ROOT
@@ -125,7 +129,6 @@ class BenchmarkRunner:
         self.pool: WorkerPool | None = None
         self.requests: tuple[ArtifactRef, ...] = ()
         self.runtime_ref: ArtifactRef | None = None
-        self.last_observation = 0.0
         self.jobs = Operations(
             self.layout,
             self.runtime,
@@ -160,6 +163,10 @@ class BenchmarkRunner:
             return None
         ref = annotation_reference(self.shared, path)
         result = read_document(self.shared, ref, ConditionCompletion)
+        self._validate_completion(index, result)
+        return ref
+
+    def _validate_completion(self, index: int, result: ConditionCompletion) -> None:
         spec_ref = self.comparison.conditions[index]
         spec, plan, expected = condition(self.shared, spec_ref)
         local = self.shared.for_benchmark(plan.campaign_id)
@@ -173,23 +180,40 @@ class BenchmarkRunner:
             raise ValueError(
                 "completed benchmark differs from its pinned runtime or condition"
             )
+        observed = read_document(local, result.final_observation, Observation)
+        if (
+            observed.specification != spec_ref
+            or observed.expected_work != len(expected)
+            or observed.task_states != {"complete": len(expected)}
+            or observed.sequence > spec.maximum_observations
+            or local.artifact_path(result.final_observation)
+            != directory(local, spec) / "observations" / f"{observed.sequence:06d}.json"
+        ):
+            raise ValueError("benchmark completion has no final complete observation")
+        attempts = {attempt.launch: attempt for attempt in observed.attempts}
         work = set()
         for review in result.reviews:
             request = read_document(local, review.request, WorkRequest)
+            validate_work(local, request, request.work_id, expected)
             if request.work_id in work:
                 raise ValueError("benchmark completion repeats a worker")
             work.add(request.work_id)
             adoption(local, review.request, review.result, spec.plan)
+            outcome = read_document(local, review.result, AttemptResult)
+            attempt = attempts.get(outcome.launch)
+            if (
+                attempt is None
+                or attempt.state != "complete"
+                or attempt.execution != outcome.exit
+                or attempt.telemetry != outcome.telemetry
+            ):
+                raise ValueError(
+                    "benchmark completion result differs from its final observation"
+                )
         if work != set(expected):
             raise ValueError(
                 "benchmark completion does not cover its exact frozen cohort"
             )
-        observed = read_document(local, result.final_observation, Observation)
-        if observed.specification != spec_ref or observed.task_states != {
-            "complete": len(expected)
-        }:
-            raise ValueError("benchmark completion has no final complete observation")
-        return ref
 
     def _initialize(self) -> None:
         for index in range(self.index):
@@ -229,16 +253,75 @@ class BenchmarkRunner:
         for ref in self.requests:
             self.pool.register(read_document(self.layout, ref, WorkRequest))
 
-    def _observe(self, *, force: bool = False) -> ArtifactRef | None:
-        now = time.monotonic()
-        if (
-            not force
-            and now - self.last_observation < self.settings.observation_interval_seconds
-        ):
+    def _latest_observation(self) -> tuple[ArtifactRef, Observation] | None:
+        paths = sorted(
+            (directory(self.shared, self.spec) / "observations").glob("*.json")
+        )
+        if len(paths) > self.spec.maximum_observations:
+            raise ValueError("stored benchmark observation limit exceeded")
+        for number, path in enumerate(paths, 1):
+            if path.name != f"{number:06d}.json":
+                raise ValueError("benchmark observations are not a contiguous sequence")
+        if not paths:
             return None
-        ref = observe(self.shared, self.reference)
-        self.last_observation = now
-        return ref
+        ref = annotation_reference(self.shared, paths[-1])
+        observation = read_document(self.shared, ref, Observation)
+        if observation.specification != self.reference or observation.sequence != len(
+            paths
+        ):
+            raise ValueError("benchmark observation sequence/specification changed")
+        return ref, observation
+
+    def _observe(self, *, force: bool = False) -> ArtifactRef | None:
+        previous = self._latest_observation()
+        if previous is not None and not force:
+            _, observation = previous
+            boot_id = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+            if observation.boot_id == boot_id:
+                elapsed = time.monotonic_ns() - observation.cut_monotonic_ns
+                if elapsed < 0:
+                    raise ValueError(
+                        "benchmark observation time moved backwards on the same boot"
+                    )
+                if elapsed < self.settings.observation_interval_seconds * 1e9:
+                    return None
+        return observe(self.shared, self.reference)
+
+    def _complete(self, rows: list[dict[str, Any]], observation: ArtifactRef) -> None:
+        assert self.runtime_ref is not None
+        result = ConditionCompletion(
+            condition=self.reference,
+            runtime=self.runtime_ref,
+            reviews=tuple(
+                ClipReview(
+                    request=ref,
+                    result=ArtifactRef.model_validate_json(row["result"]),
+                )
+                for ref, row in zip(self.requests, rows, strict=True)
+            ),
+            final_observation=observation,
+        )
+        self._validate_completion(self.index, result)
+        write_document(self.layout, self._completion_path(self.index), result)
+
+    def _resume_completion(
+        self, previous: tuple[ArtifactRef, Observation] | None
+    ) -> bool:
+        if previous is None or previous[1].task_states != {
+            "complete": len(self.expected)
+        }:
+            return False
+        assert self.pool is not None
+        rows = [
+            self.pool.reconcile(read_document(self.layout, ref, WorkRequest))
+            for ref in self.requests
+        ]
+        if any(row["state"] != "complete" for row in rows):
+            raise ValueError(
+                "final benchmark observation differs from current worker results"
+            )
+        self._complete(rows, previous[0])
+        return True
 
     def status(self) -> dict[str, Any]:
         states, _, foreign = worker_snapshot(
@@ -287,12 +370,12 @@ class BenchmarkRunner:
         self.pool.ledger.stop_campaign(self.plan.campaign_id, reason)
         for ref in self.requests:
             request = read_document(self.layout, ref, WorkRequest)
-            row = self.pool.reconcile(request)
-            if row["state"] in {"running", "exited"}:
-                try:
-                    self.pool.stop(request, reason=reason)
-                except WorkerBusy:
-                    pending.append(request.work_id)
+            # stop() can terminate owned children even when their supervisor died;
+            # reconciling first would reject those children before cancellation.
+            try:
+                self.pool.stop(request, reason=reason)
+            except WorkerBusy:
+                pending.append(request.work_id)
         return tuple(pending)
 
     def _stopped(self, reason: str, state: str) -> dict[str, Any]:
@@ -312,14 +395,13 @@ class BenchmarkRunner:
                 return self.status()
             self._initialize()
             assert self.pool is not None
+            previous = self._latest_observation()
+            if self._resume_completion(previous):
+                return self.status()
             sample = self.resources.poll()
             if sample.stopped_reason:
                 return self._stopped(sample.stopped_reason, "budget_stopped")
-            count = len(
-                list(
-                    (directory(self.shared, self.spec) / "observations").glob("*.json")
-                )
-            )
+            count = 0 if previous is None else previous[1].sequence
             if count >= self.spec.maximum_observations:
                 return self._stopped("benchmark observation limit reached", "blocked")
             stopped = self.status()["reason"]
@@ -351,24 +433,6 @@ class BenchmarkRunner:
             except ObservationLimit as error:
                 return self._stopped(str(error), "blocked")
             if all_complete:
-                assert observation is not None and self.runtime_ref is not None
-                reviews = tuple(
-                    ClipReview(
-                        request=ref,
-                        result=ArtifactRef.model_validate_json(row["result"]),
-                    )
-                    for ref, row in zip(self.requests, rows, strict=True)
-                )
-                for review in reviews:
-                    adoption(self.layout, review.request, review.result, self.spec.plan)
-                write_document(
-                    self.layout,
-                    self._completion_path(self.index),
-                    ConditionCompletion(
-                        condition=self.reference,
-                        runtime=self.runtime_ref,
-                        reviews=reviews,
-                        final_observation=observation,
-                    ),
-                )
+                assert observation is not None
+                self._complete(rows, observation)
             return self.status()
