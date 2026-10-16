@@ -6,7 +6,14 @@ from typing import Any
 
 import pytest
 
-from src.tasks.annotation.contracts import Runtime, StageCost
+from src.tasks.annotation.contracts import (
+    AcquireOperation,
+    OperationInput,
+    PredictOperation,
+    PrepareOperation,
+    Runtime,
+    StageCost,
+)
 from src.tasks.annotation.controller import Controller
 from src.tasks.annotation.reviews import close_reviews, requests, validate_closed
 from src.tasks.ball_detection.annotation.inference import BallPredictionAdapter
@@ -19,16 +26,18 @@ from src.tasks.base.annotation.artifacts import (
     write_document,
 )
 from src.tasks.base.annotation.collection.contracts import (
+    AcquisitionReceipt,
     PreparationConfig,
     PreparationReceipt,
 )
-from src.tasks.base.annotation.contracts import content_digest
+from src.tasks.base.annotation.contracts import ArtifactRef, content_digest
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, StageCapacity
 from src.tasks.base.annotation.predictions import Predictions
 from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
 from src.tasks.base.annotation.workers.contracts import WorkRequest
+from tests.support.tasks.annotation import record_stage
 from tests.support.tasks.ball_detection.review_worker import ReviewSession
 
 
@@ -83,6 +92,8 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
                                 ("publish_ball", "cpu"),
                                 ("bootstrap_model", "io"),
                                 ("acquire", "io"),
+                                ("prepare", "cpu"),
+                                ("infer_ball", "gpu"),
                                 *(
                                     (name, "gpu")
                                     for name in ("train_ball", "evaluate_ball")
@@ -276,6 +287,250 @@ def controller_for(session: ReviewSession) -> Controller:
     return Controller(env.layout, runtime)
 
 
+def record_input_stages(controller: Controller, *, prediction: bool = True) -> None:
+    """Give the synthetic ledger the corresponding immutable supervisor receipts."""
+    layout = controller.layout
+    with controller.collection.ledger.registry.transaction() as database:
+        source = database.execute("SELECT * FROM sources").fetchone()
+        predicted = database.execute(
+            "SELECT receipt FROM annotation_predictions"
+        ).fetchone()[0]
+    from src.tasks.base.annotation.contracts import ClipManifest
+    from src.tasks.base.annotation.predictions import PredictionReceipt
+
+    prediction_ref = ArtifactRef.model_validate_json(predicted)
+    context = read_document(layout, prediction_ref, PredictionReceipt).context
+    manifest = read_document(layout, context.manifest, ClipManifest)
+    acquisition = write_document(
+        layout,
+        layout.path("campaigns", "fixture-acquisition.json"),
+        AcquisitionReceipt(
+            candidate_digest="c" * 64,
+            configuration=controller.plan.preparation,
+            source=manifest.source,
+        ),
+    )
+    with controller.collection.ledger.registry.transaction() as database:
+        database.execute(
+            "UPDATE sources SET acquisition=? WHERE id=?",
+            (acquisition.model_dump_json(), source["id"]),
+        )
+    operations: list[
+        tuple[AcquireOperation | PrepareOperation | PredictOperation, ArtifactRef]
+    ] = [
+        (AcquireOperation(source_id=source["id"]), acquisition),
+        (
+            PrepareOperation(source_id=source["id"]),
+            ArtifactRef.model_validate_json(source["preparation"]),
+        ),
+    ]
+    if prediction:
+        operations.append(
+            (PredictOperation(task="ball", clips=(context.manifest,)), prediction_ref)
+        )
+    for operation, reference in operations:
+        record_stage(
+            controller,
+            OperationInput(plan=controller.runtime.plan, operation=operation),
+            results=(reference,),
+            exited=True,
+        )
+
+
+@pytest.mark.parametrize(
+    "cut", ["operation_receipt", "stage_exit", "failed_exit", "missing_result"]
+)
+def test_production_requires_prediction_stage_completion_after_ledger_commit(
+    session: ReviewSession,
+    monkeypatch: pytest.MonkeyPatch,
+    cut: str,
+) -> None:
+    from src.tasks.annotation import operations
+
+    finish(session)
+    env = session.env
+    controller = controller_for(session)
+    record_input_stages(controller, prediction=False)
+    data = OperationInput(
+        plan=env.plan_ref,
+        operation=PredictOperation(task="ball", clips=(env.manifest_ref,)),
+    )
+    reference = record_stage(controller, data)
+    # Re-enter Predictions.run at the ledger commit boundary with the same pinned result.
+    with controller.collection.ledger.registry.transaction() as database:
+        database.execute("DELETE FROM annotation_predictions")
+        database.execute("UPDATE annotation_tasks SET state='pending'")
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+
+    def interrupt(layout: AnnotationLayout, path: Path, value: Any) -> ArtifactRef:
+        if path.name == "result.json":
+            raise RuntimeError("interrupted after prediction ledger commit")
+        return write_document(layout, path, value)
+
+    monkeypatch.setattr(
+        BallPredictionAdapter,
+        "produce",
+        lambda *a: pytest.fail("stored prediction must be reused"),
+    )
+    if cut in {"operation_receipt", "missing_result"}:
+        with monkeypatch.context() as faults:
+            faults.setattr(operations, "write_document", interrupt)
+            with pytest.raises(RuntimeError, match="after prediction ledger commit"):
+                operations.execute(env.layout, reference)
+    else:
+        operations.execute(env.layout, reference)
+    if cut in {"failed_exit", "missing_result"}:
+        record_stage(controller, data, exited=True, failed=cut == "failed_exit")
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.execution.queue.queue_state",
+        lambda *a: {"state": "interrupted", "reason": "no completion receipt"},
+    )
+    assert Predictions(env.layout, env.plan).completed(BallPredictionAdapter()) == (
+        env.context.prediction,
+    )
+    assert close_reviews(env.layout, env.plan, env.plan_ref) is not None
+    restored = Controller(env.layout, controller.runtime)
+    assert restored.production is not None
+    publications: list[OperationInput] = []
+
+    def publication(op: OperationInput) -> dict[str, Any]:
+        publications.append(op)
+        return {"state": "waiting"}
+
+    monkeypatch.setattr(
+        restored.production,
+        "operation",
+        publication,
+    )
+    monkeypatch.setattr(
+        restored.production.learning,
+        "register",
+        lambda *a: pytest.fail("learning must wait for stage recovery"),
+    )
+    progress = restored.production.cycle()
+    assert progress["state"] == "blocked", progress
+    assert publications == []
+    assert restored.status()["state"] == "blocked"
+    assert not env.layout.path(
+        "campaigns", env.plan.campaign_id, "workflow", "completion.json"
+    ).exists()
+    assert not (
+        env.layout.repository
+        / "data/ball_detection"
+        / env.plan.tasks[0].products[0].dataset_version
+    ).exists()
+    # An explicit new attempt recovers saved predictions without a model invocation.
+    recovery = record_stage(restored, data, attempt=2)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", recovery.digest)
+    operations.execute(env.layout, recovery)
+    record_stage(restored, data, attempt=2, exited=True)
+    progress = restored.production.cycle()
+    assert progress["state"] == "publishing", progress
+    assert len(publications) == 1
+    assert not restored.status()["failures"]
+
+
+@pytest.mark.parametrize("action", ["acquire", "prepare"])
+@pytest.mark.parametrize("fault", ["missing_exit", "different_result", "latest_failed"])
+def test_publication_requires_matching_latest_source_stage_receipts(
+    session: ReviewSession,
+    monkeypatch: pytest.MonkeyPatch,
+    action: str,
+    fault: str,
+) -> None:
+    from src.tasks.annotation.contracts import OperationReceipt
+    from src.tasks.base.annotation.artifacts import annotation_reference
+
+    finish(session)
+    env = session.env
+    controller = controller_for(session)
+    record_input_stages(controller)
+    assert controller.production is not None
+    source_id = env.manifest.source.canonical_id
+    operation = (
+        AcquireOperation(source_id=source_id)
+        if action == "acquire"
+        else PrepareOperation(source_id=source_id)
+    )
+    data = OperationInput(plan=env.plan_ref, operation=operation)
+    directory = env.layout.path(
+        "campaigns", env.plan.campaign_id, "jobs", data.sha256 + "-1"
+    )
+    if fault == "missing_exit":
+        (directory / "exit.json").unlink()
+    elif fault == "different_result":
+        ref = annotation_reference(env.layout, directory / "result.json")
+        receipt = read_document(env.layout, ref, OperationReceipt)
+        (directory / "result.json").write_bytes(
+            receipt.model_copy(update={"results": (env.blob,)}).canonical_bytes()
+        )
+    else:
+        record_stage(controller, data, attempt=2, exited=True, failed=True)
+    monkeypatch.setattr(
+        controller.production,
+        "operation",
+        lambda *a: pytest.fail("must not publish unreconciled source data"),
+    )
+    progress = controller.production.cycle()
+    assert progress["state"] == "blocked" and progress["failures"]
+
+
+def test_live_input_stage_waits_without_publishing_or_stopping_the_campaign(
+    session: ReviewSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.base.annotation.execution.contracts import StageLaunch
+
+    finish(session)
+    env = session.env
+    controller = controller_for(session)
+    record_input_stages(controller)
+    assert controller.production is not None
+    original_status = controller.stages.status
+
+    def running(ref: ArtifactRef) -> dict[str, Any]:
+        launch = read_document(env.layout, ref, StageLaunch)
+        if launch.resource.stage == "infer_ball":
+            return {"state": "running", "launch": ref.model_dump(), "reason": None}
+        state: dict[str, Any] = original_status(ref)
+        return state
+
+    monkeypatch.setattr(controller.stages, "status", running)
+    monkeypatch.setattr(
+        controller.production,
+        "operation",
+        lambda *a: pytest.fail("input stage is still running"),
+    )
+    assert controller.production.cycle()["state"] == "reviewing"
+    assert controller.status()["state"] == "running"
+
+
+def test_cached_workflow_completion_does_not_hide_unresolved_stage_failure(
+    session: ReviewSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.annotation.contracts import BootstrapModelOperation
+
+    finish(session)
+    env = session.env
+    controller = controller_for(session)
+    record_input_stages(controller)
+    assert controller.production is not None
+    record_stage(
+        controller,
+        OperationInput(
+            plan=env.plan_ref,
+            operation=BootstrapModelOperation(task="ball", evidence=env.blob),
+        ),
+        exited=True,
+        failed=True,
+    )
+    monkeypatch.setattr(controller.production, "status", lambda: {"state": "complete"})
+    state = controller.status()
+    assert state["failures"]
+    assert state["state"] == "blocked"
+
+
 def test_prediction_query_and_review_request_preserve_canonical_context(
     session: ReviewSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -359,6 +614,7 @@ def test_publication_uses_all_adoptions_and_resumes_without_reencoding(
     finish(session)
     env = session.env
     controller = controller_for(session)
+    record_input_stages(controller)
     assert controller.production is not None
     deadline = time.monotonic() + 40
     progress = controller.cycle()["workflow"]
@@ -381,8 +637,8 @@ def test_publication_uses_all_adoptions_and_resumes_without_reencoding(
     assert snapshot.stat().st_ino == inode
     status = restored.status()
     assert status["state"] == "blocked"
-    assert len(status["stages"]) == 1
-    assert status["stages"][0]["state"] == "succeeded"
+    assert len(status["stages"]) == 4
+    assert all(stage["state"] == "succeeded" for stage in status["stages"])
     assert controller.stages.children == {}
 
 
@@ -401,6 +657,7 @@ def test_orchestration_passes_verified_completion_and_frozen_learning_runtime(
     env = session.env
     controller = controller_for(session)
     production = controller.production
+    record_input_stages(controller)
     assert production is not None
     calls = []
     outcome = "training_pending"
@@ -445,7 +702,7 @@ def test_orchestration_passes_verified_completion_and_frozen_learning_runtime(
     assert controller.cycle()["workflow"]["state"] == "complete"
     assert calls == [env.blob] * 3
     assert (
-        len(controller.status()["stages"]) == 1
+        len(controller.status()["stages"]) == 4
     )  # No training or GPU process is submitted.
 
 
@@ -498,6 +755,7 @@ def test_production_keeps_publication_and_completes_without_coordinate_teachers(
             session.confirm(image, start, stop)
     session.finish(session.evidence(shown=tuple(images)))
     controller = controller_for(session)
+    record_input_stages(controller)
     assert controller.production is not None
     initial = controller.production.learning.models.bootstrap(
         env.plan.tasks[0].model, env.blob
@@ -532,7 +790,7 @@ def test_production_keeps_publication_and_completes_without_coordinate_teachers(
     restored = Controller(env.layout, controller.runtime)
     assert restored.cycle()["workflow"] == progress
     assert restored.status()["state"] == "complete"
-    assert len(restored.status()["stages"]) == 1
+    assert len(restored.status()["stages"]) == 4
     assert restored.production is not None
     assert restored.production.learning.models.current("ball") == initial
 

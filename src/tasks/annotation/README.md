@@ -64,6 +64,9 @@ workerにソース動画の全量decodeや共有cacheへの書込みを任せな
 予測は新規clipだけをtask別に束ねる。保存済み予測をreview requestへ変換する際は推論しない。
 要求した動画数が準備済みで、全準備receiptのclipとレビュー対象が一致し、全workerが採用まで
 完了した場合だけ公開する。保留・失敗・対象外workerを成功や公開対象外へ読み替えない。
+公開と学習へ進む直前には、取得・準備・推論の各操作の最新attemptの成功終了とoperation receiptを検証し、
+その成果物が対象source/clipの台帳参照と一致することを要求する。予測の保存と台帳更新だけでは
+進めず、失敗・中断・未回収は明示的な新attemptによる復旧まで停止する。
 
 公開結果のtask/product/base snapshot・採用版・追加clip集合を照合してから
 `workflow/products.json` を作り、`workflow/completion.json` でレビューと公開操作に結ぶ。
@@ -78,6 +81,7 @@ workerにソース動画の全量decodeや共有cacheへの書込みを任せな
 `run --max-seconds` の終了時も受付済みsupervisorは自身のtimeout・資源管理に従う。
 `status --details` はworkerの現在attempt、全工程の履歴、公開完了参照、学習結果を返す。
 最新attemptに置き換わった古い失敗は `superseded: true` と表示し、現在の失敗と分ける。
+workflowの完了cacheがあっても、最新工程の未解決の失敗をcampaign完了で隠さない。
 `cycle` / `status` はsourceの状態にかかわらず登録済みworkerを照合する。
 選別がsourceを更新した直後に中断しても、workerの完了receiptと台帳更新を回収する。
 `preview_ready` は台帳のprepared/predictedに加え、工程ごとの最新試行の成功終了、
