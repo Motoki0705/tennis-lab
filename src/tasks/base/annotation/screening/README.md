@@ -26,6 +26,9 @@
   workerの自己申告・JPEG生成記録・簡易 `events.jsonl` のコマンド実行だけを
   presentationとして扱わない。全overviewページ、採用する各窓を0.5秒以下の
   間隔で覆うdetailの全ページが提示済みでなければfinalizeは拒否する。
+  間隔は要求したstepだけでなく、実PTSから窓先頭→最初の画像、画像間、
+  最後の画像→窓末尾を検証する。低fps・VFRなどで実際の間隔がpolicyの
+  detail上限を超える場合は、全ページ提示済みでも採用を拒否する。
   不明瞭な境界の0.1秒確認はworkerが判断し、追加previewも根拠として残す。
 - finalizeは結果のimmutableコピー、提示記録、preview群を根拠receiptに結び、
   `SelectionReceipt` を公開して台帳へ登録する。receipt公開直後に中断しても
