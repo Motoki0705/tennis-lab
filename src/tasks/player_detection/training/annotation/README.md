@@ -35,6 +35,8 @@ flowchart LR
 
 validationは累積train storeとは別の固定snapshotから読む。native frame/PTS・教師・
 選別条件・strideのsupport digestとsource/clip分離を毎回検証する。
+先頭batchだけでは負例しか含まれない場合があるため、Lightningのsanity validationは
+無効にし、各epochでは固定validation全体を評価する。正例必須のmAP条件は維持する。
 testはmembershipの漏洩検査に用い、モデル推論・評価には使わない。専用DataModuleも
 test読み出しを拒否する。
 
@@ -71,6 +73,11 @@ baseline/candidateのDINO exportを同一の固定validation・前処理・検�
 評価する。保存したnative bbox/confidence/frame keyからCPUで指標を再計算し、metrics、
 summary、checkpoint・dataset hashと照合する。frameの欠落・順序違い・不正座標・NaN・
 異なる入力やモデルの評価は受理しない。途中出力だけが残る評価は、新しい明示attemptで行う。
+
+`matmul_precision`と`allow_tf32`は一つの精度契約として登録時に検証する。
+許容する組み合わせは`highest / false`、`high / true`、`medium / true`。
+学習・評価ともmatmul precisionのsetterだけでCUDA matmulを設定し、cuDNNのTF32は別に
+設定する。適用後の実効値を契約と照合し、評価来歴にも同じ値を要求する。
 
 全体のmAP/precision/recall等に加え、確認済み不在frame数、その上の誤検出総数、誤検出が
 ある不在frame数を記録する。負例の支持が無い場合、負例FP条件は測定不能として扱う。
