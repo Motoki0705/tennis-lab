@@ -62,14 +62,15 @@ from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
-def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34) -> tuple[Environment, ArtifactRef, ArtifactRef]:
+def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34,
+            base_splits: tuple[str, ...] = ("train", "val", "test")) -> tuple[Environment, ArtifactRef, ArtifactRef]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     directory = tmp_path / "data/ball_detection/base"
-    for split in ("train", "val", "test"):
+    for split in base_splits:
         write_store_clip(directory, f"{split}/clip", [frame(i, ball()) for i in range(32)], split=split)
     base = freeze_legacy_store(layout, directory, tuple(
         LegacySourceGroup(source="tracknet", group_id=split, source_id=content_digest(split))
-        for split in ("train", "val", "test")))
+        for split in base_splits))
     policy = BallPublicationPolicy(jpeg_quality=95,
         source_splits=(SourceSplit(source_id=content_digest(["local", "fixture"]), split="train"),))
     env = Environment(layout.root, publication_policy=policy, base_snapshot=base, frame_count=frame_count)
@@ -153,6 +154,28 @@ def test_validation_rejects_missing_prepared_inputs_without_repairing_them(tmp_p
     assert not path.exists()
 
 
+def test_receipt_cannot_reclassify_old_windows_by_omitting_the_planned_base(tmp_path: Path) -> None:
+    env, publication, _ = publish(tmp_path, absent=True, base_splits=("train",))
+    original = read_document(env.layout, publication, PublicationReceipt)
+    prepared_ref = prepare_training_windows(
+        env.layout, publication, policy(), env.layout.path("campaigns", "original-prepared")
+    )
+    prepared = read_document(env.layout, prepared_ref, TrainingWindows)
+    assert prepared.status == "no_additional_coordinate_teachers"
+    assert next(c for c in prepared.coverage if not c.added).status == "eligible"
+    forged = PublicationReceipt.model_validate({
+        **original.model_dump(), "base_snapshot": None, "reused_clips": (),
+        "added_clips": original.reused_clips + original.added_clips,
+    })
+    changed = write_document(
+        env.layout, env.layout.path("campaigns", "forged-publication.json"), forged
+    )
+    directory = env.layout.path("campaigns", "forged-prepared")
+    with pytest.raises(ValueError, match="base snapshot differs from its pinned plan"):
+        prepare_training_windows(env.layout, changed, policy(), directory)
+    assert not directory.exists()
+
+
 def test_fixed_window_subset_and_partition_identity_cannot_be_changed(tmp_path: Path) -> None:
     env, _, base = publish(tmp_path)
     binding = holdout(env.layout, base)
@@ -167,7 +190,7 @@ def test_fixed_window_subset_and_partition_identity_cannot_be_changed(tmp_path: 
         freeze_holdout(env.layout, binding.model_copy(update={"manifest": replaced}))
 
 
-@pytest.mark.parametrize("fault,match", [("task", "newly published"), ("request", "pinned request"), ("base", "reused clips require")])
+@pytest.mark.parametrize("fault,match", [("task", "newly published"), ("request", "pinned request"), ("base", "base snapshot differs from its pinned plan")])
 def test_publication_identity_is_checked_before_deriving_training_inputs(tmp_path: Path, fault: str, match: str) -> None:
     env, publication, _ = publish(tmp_path)
     original = read_document(env.layout, publication, PublicationReceipt)
