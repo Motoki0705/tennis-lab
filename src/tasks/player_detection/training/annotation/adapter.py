@@ -48,12 +48,14 @@ class PlayerLearningAdapter:
     def input_references(
         self, layout: AnnotationLayout, intent: LearningIntent
     ) -> tuple[ArtifactRef, ...]:
-        return storage.input_references(layout, intent)
+        dependencies: tuple[ArtifactRef, ...] = storage.input_references(layout, intent)
+        return dependencies
 
     def result_references(
         self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
     ) -> tuple[ArtifactRef, ...]:
-        return storage.result_references(layout, result)
+        dependencies: tuple[ArtifactRef, ...] = storage.result_references(layout, result)
+        return dependencies
 
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path
@@ -83,10 +85,11 @@ class PlayerLearningAdapter:
     ) -> None:
         evaluation.validate_evaluation(layout, intent, receipt)
 
-    def validate_resume(
+    def resume_references(
         self, layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
-    ) -> None:
-        checkpoints.validate_resume(layout, intent, checkpoint)
+    ) -> tuple[ArtifactRef, ...]:
+        binding = checkpoints.validate_resume(layout, intent, checkpoint)
+        return (binding.initial_configuration,)
 
     def select(
         self, layout: AnnotationLayout, intent: LearningIntent, reference: ArtifactRef
