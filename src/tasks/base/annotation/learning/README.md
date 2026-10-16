@@ -8,6 +8,7 @@ checkpoint、recipe、評価指標と合否判定を担当する。baseからbal
 ball、player bbox、player poseのいずれかが未公開・失敗・保留なら学習を始めない。
 理由付き対象外は公開済みとは別の完了状態である。adapterの学習対象productに
 追加教師がなければ `no_additional_teachers`、学習設定がなければ `not_configured` を保存する。
+公開clipがあっても、adapterの`validate_intent`が`NoAdditionalTeachers`を返した場合は理由付きで同じ終端結果を保存し、学習intentやqueue jobを作らない。
 
 追加教師がある場合は、公開receipt、累積train snapshot、前採用モデルの世代と重み、
 recipe、固定validation/test membership、採用条件を `LearningIntent` に固定する。
