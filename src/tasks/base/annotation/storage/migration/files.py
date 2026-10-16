@@ -98,6 +98,34 @@ def verify_file(root: Path, item: BundleFile) -> None:
         raise ValueError(f"migration file differs from dry-run: {item.path}")
 
 
+def discard_partials(partials: Path) -> None:
+    """Reclaim one plan's disposable copies while its migration lock is held."""
+    if not partials.is_absolute():
+        raise ValueError("migration partial directory must be absolute")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    descriptor = os.open(partials.anchor, flags)
+    try:
+        try:
+            for part in partials.parts[1:]:
+                child = os.open(part, flags, dir_fd=descriptor)
+                os.close(descriptor)
+                descriptor = child
+        except FileNotFoundError:
+            # No private partial directory has been created for this plan yet.
+            return
+        with os.scandir(descriptor) as iterator:
+            entries = list(iterator)
+        if any(not entry.is_file(follow_symlinks=False) for entry in entries):
+            raise ValueError("migration partial directory accepts only regular files")
+        for entry in entries:
+            # Unlink only the private name, including when publication already
+            # linked the completed copy into root before the process was killed.
+            os.unlink(entry.name, dir_fd=descriptor)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def copy_file(source_root: Path, target_root: Path, item: BundleFile) -> None:
     """Never hardlink mutable legacy files or overwrite a conflicting target."""
     target = target_root / item.path

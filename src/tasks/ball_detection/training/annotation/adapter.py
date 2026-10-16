@@ -9,6 +9,7 @@ from src.tasks.ball_detection.data.windows.learning.preparation import (
 )
 from src.tasks.base.annotation.artifacts import read_document, verify_reference
 from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.learning.adapters import NoAdditionalTeachers
 from src.tasks.base.annotation.learning.contracts import (
     DatasetPartition,
     EvaluationReceipt,
@@ -44,18 +45,28 @@ class BallLearningAdapter:
         else:
             validate_holdout(layout, partition)
 
-    def validate_intent(self, layout: AnnotationLayout, intent: LearningIntent) -> None:
-        resolve_inputs(layout, intent).expected_recipe(layout, intent)
+    def validate_intent(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> NoAdditionalTeachers | None:
+        inputs = resolve_inputs(layout, intent, require_teachers=False)
+        if inputs.prepared.status == "no_additional_coordinate_teachers":
+            return NoAdditionalTeachers(
+                "new clips contain no eligible MDD coordinate window; publication retained, old-only training is forbidden"
+            )
+        inputs.expected_recipe(layout, intent)
+        return None
 
     def input_references(
         self, layout: AnnotationLayout, intent: LearningIntent
     ) -> tuple[ArtifactRef, ...]:
-        return storage.input_references(layout, intent)
+        dependencies: tuple[ArtifactRef, ...] = storage.input_references(layout, intent)
+        return dependencies
 
     def result_references(
         self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
     ) -> tuple[ArtifactRef, ...]:
-        return storage.result_references(layout, result)
+        dependencies: tuple[ArtifactRef, ...] = storage.result_references(layout, result)
+        return dependencies
 
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path

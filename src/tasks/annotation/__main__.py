@@ -148,6 +148,7 @@ def main() -> None:
     stage = commands.add_parser("stage")
     stage.add_argument("--operation", type=Path, required=True)
     stage.add_argument("--sha256", required=True)
+    stage.add_argument("--attempt", type=int, required=True)
     stage.add_argument("--test-root", type=Path)
     for name in (
         "benchmark-run",
@@ -228,7 +229,7 @@ def main() -> None:
     if args.command == "stage":
         from .operations import execute
 
-        print(execute(layout, ref).model_dump_json())
+        print(execute(layout, ref, attempt=args.attempt).model_dump_json())
         return
     if args.command == "benchmark-stage":
         from .benchmark.operations import execute as execute_benchmark
@@ -268,10 +269,18 @@ def main() -> None:
             )
             while True:
                 benchmark_result = runner.tick()
+                blocked = benchmark_result["state"] == "blocked" and (
+                    benchmark_result["reason"] is not None
+                    or not any(
+                        benchmark_result["task_states"].get(state, 0)
+                        for state in ("ready", "running", "exited")
+                    )
+                )
                 if (
                     args.command != "benchmark-run"
                     or benchmark_result["state"]
-                    in {"workers_complete", "blocked", "budget_stopped"}
+                    in {"workers_complete", "budget_stopped"}
+                    or blocked
                     or time.monotonic() >= until
                 ):
                     break
