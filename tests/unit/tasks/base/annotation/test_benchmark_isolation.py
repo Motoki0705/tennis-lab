@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -57,6 +58,7 @@ from src.tasks.base.annotation.workers.contracts import (
     WorkRequest,
 )
 from src.tasks.base.annotation.workers.pool import WorkerPool
+from tests.support.annotation_benchmarks import sample
 from tests.support.tasks.ball_detection.annotation import Environment, ProposalFixture
 
 
@@ -232,6 +234,49 @@ def test_new_budget_creation_is_rejected_and_existing_counters_are_shared(
         )
 
 
+@pytest.mark.parametrize("entry", ["constructor", "observe"])
+@pytest.mark.parametrize(
+    "registration", ["absent", "different", "no_table", "no_registry"]
+)
+def test_benchmark_requires_registered_scope_without_creating_state(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch, entry: str, registration: str
+) -> None:
+    _, condition_ref, local = setup.condition(10)
+    scope = setup.manager.scope.model_copy(
+        update={"scope_id": "unregistered"}
+        if registration != "different"
+        else {"previously_used_gpu_seconds": 0.0}
+    )
+    scope_ref = setup.env.save(scope)
+    condition_ref = setup.env.save(
+        read_document(setup.shared, condition_ref, ConditionSpec).model_copy(
+            update={"scope": scope_ref}
+        )
+    )
+    if registration == "no_table":
+        with setup.manager.registry.transaction() as db:
+            db.execute("DROP TABLE resource_scopes")
+    elif registration == "no_registry":
+        setup.shared.registry.unlink()
+    if setup.shared.registry.exists():
+        with sqlite3.connect(setup.shared.registry) as db:
+            before = tuple(db.iterdump())
+    else:
+        before = None
+    monkeypatch.setattr(ResourceManager, "poll", lambda self: sample())
+    with pytest.raises(ValueError, match="registered shared scope"):
+        if entry == "constructor":
+            ResourceManager(local, scope_ref)
+        else:
+            observe(setup.shared, condition_ref)
+    if before is None:
+        assert not setup.shared.registry.exists()
+    else:
+        with sqlite3.connect(setup.shared.registry) as db:
+            assert tuple(db.iterdump()) == before
+    assert not local.registry.exists()
+
+
 def test_already_adopted_source_prediction_is_not_replayed(setup: Setup) -> None:
     _, ref, local = setup.condition(10)
     with setup.env.store.registry.transaction() as db:
@@ -396,8 +441,12 @@ def test_same_subject_conditions_use_distinct_shared_resource_requests(
             adapter_version="v1",
             stage="review",
             subject_id=setup.env.manifest.clip_id,
-            payload=setup.env.blob,
-            inputs=(),
+            payload=setup.env.save(
+                setup.env.context.model_copy(
+                    update={"plan": read_document(local, ref, ConditionSpec).plan}
+                )
+            ),
+            inputs=(setup.env.manifest_ref, setup.env.context.prediction),
         )
         pool = WorkerPool(
             local,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import time
 from collections import Counter
 from collections.abc import Iterator
@@ -83,10 +84,15 @@ class BudgetStopped(RuntimeError):
 
 class ResourceManager:
     def __init__(self, layout: AnnotationLayout, reference: ArtifactRef) -> None:
+        benchmark = layout.review_namespace is not None
         layout = layout.shared()
         self.layout, self.reference = layout, reference
         self.scope = read_document(layout, reference, BudgetScope)
         self.registry = Registry(layout)
+        if benchmark:
+            self._require_registered_scope()
+            self._baseline_path()
+            return
         self.registry.initialize("annotation.resources.v1", _SCHEMA)
         self._baseline_path()
         with self.registry.transaction() as db:
@@ -101,6 +107,25 @@ class ResourceManager:
                 "INSERT OR IGNORE INTO resource_scopes(id,reference) VALUES (?,?)",
                 (self.scope.scope_id, encoded),
             )
+
+    def _require_registered_scope(self) -> None:
+        error = "benchmark must reuse an exact registered shared scope"
+        if not self.layout.registry.exists():
+            raise ValueError(error)
+        with sqlite3.connect(
+            self.layout.registry.as_uri() + "?mode=ro", uri=True
+        ) as db:
+            table = db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='resource_scopes'"
+            ).fetchone()
+            if table is None:
+                raise ValueError(error)
+            row = db.execute(
+                "SELECT reference FROM resource_scopes WHERE id=?",
+                (self.scope.scope_id,),
+            ).fetchone()
+            if row is None or row[0] != self.reference.canonical_bytes().decode():
+                raise ValueError(error)
 
     def _baseline_path(self) -> Path:
         """Cache verified immutable inventory bytes, invalidated by any file change."""
