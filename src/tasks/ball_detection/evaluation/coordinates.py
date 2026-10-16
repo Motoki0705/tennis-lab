@@ -67,10 +67,10 @@ class CoordinateMetrics:
                     unique_observed_frames=len({key[1:] for key, _ in rows}),
                     macro_mean_error_px=float(np.mean(means)) if len(means) == len(self.frame_steps) else None)
 
-    def report(self) -> dict[str, Any]:
-        if not self.frames:
+    def report(self, *, allow_empty: bool = False, sources: list[str] | None = None) -> dict[str, Any]:
+        if not self.frames and not allow_empty:
             raise ValueError("Evaluation has no observed coordinates")
-        sources = sorted({row[2] for row in self.frames.values()})
+        sources = sorted({row[2] for row in self.frames.values()} | set(sources or []))
         result = {}
         for scope, common in (("full", False), ("common", True)):
             result[scope] = self._summary(common)

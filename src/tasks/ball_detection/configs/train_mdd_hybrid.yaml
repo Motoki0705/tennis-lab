@@ -1,0 +1,58 @@
+defaults:
+  - model: mdd_hybrid
+  - _self_
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+
+manifest: ??? # Frozen coordinate manifest; stage 3 extends windows on this same snapshot.
+output: ??? # Absolute, new run directory (or the original directory for resume).
+initialization:
+  mode: ??? # query | continual (weights only; optimizer/epoch reset)
+  checkpoint: ??? # Stage 2 checkpoint, or adopted hybrid checkpoint for continual.
+resume: null # Same run, exact recipe/snapshot/source and original epoch budget only.
+stop_after_epoch: null # Diagnostic stop, zero based; does not change the LR budget.
+
+presence_threshold: ??? # 要決定: candidate 0.5; sigmoid(presence_logit), >= threshold.
+loss:
+  heatmap_weight: ??? # 要決定: candidate 1.0; spatial-mean focal BCE.
+  presence_weight: ??? # 要決定: candidate 1.0; frame-mean BCE, inspect both gradient scales.
+  sigma_ratio: 0.012
+  focal_gamma: 2.0
+freeze:
+  encoder_epochs: ??? # 要決定: candidate 1; 0=joint from start, epochs=always frozen.
+  query_epochs: ??? # 要決定: candidate 1; independent of encoder, same semantics.
+absence:
+  negative_kinds: ??? # 要決定: [reviewed_empty, out_of_frame]; unresolved is never absence.
+  window_weights: # 要決定: window fractions (not frame fractions); must sum to 1.
+    play: ??? # Candidate 0.8: existing play windows, including selected in-window negatives.
+    absent: ??? # Candidate 0.2: all 32 sampled frames have confirmed absence.
+    nonplay: ??? # Candidate 0.0: outside play proposals; supervise known labels only.
+
+epochs: ???
+windows_per_epoch: ???
+batch_size: 1
+learning_rate: ???
+encoder_lr_ratio: 0.1
+query_lr_ratio: 0.1
+warmup_updates: ???
+seed: ???
+selection_scope: common # Same clean, ungated coordinate score as stage 2; presence reported separately.
+device: ???
+runtime:
+  precision: ???
+  num_workers: 8
+  pin_memory: false
+  prefetch_factor: 4
+  cpu_threads: 2
+  compile_mode: ???
+  compile_recompile_limit: 8
+  jpeg_decoder: ???
+  input_verification: ???
+  image_prefetch: false
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

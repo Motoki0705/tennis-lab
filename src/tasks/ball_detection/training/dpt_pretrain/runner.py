@@ -16,6 +16,7 @@ from src.tasks.ball_detection.checkpoints.pretraining import (
     save_pretraining,
 )
 from src.tasks.ball_detection.checkpoints.provenance import (
+    data_identity,
     source_identity,
 )
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
@@ -125,8 +126,8 @@ def main() -> None:
     for name in declared:
         setattr(args, name, paths.declared(name).path)
     config = MDDPretrainConfig.load(args.model_config)
-    data = FrozenBallWindowDataset(args.manifest, split="train", jpeg_decoder=args.jpeg_decoder, requires_pose=False)
-    val = FrozenBallWindowDataset(args.manifest, split="val", jpeg_decoder=args.jpeg_decoder, requires_pose=False)
+    data = FrozenBallWindowDataset(args.manifest, split="train", jpeg_decoder=args.jpeg_decoder, requires_pose=False, verify_empty_annotations=True)
+    val = FrozenBallWindowDataset(args.manifest, split="val", jpeg_decoder=args.jpeg_decoder, requires_pose=False, verify_empty_annotations=True)
     runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
                                 args.cpu_threads, args.compile_mode, 8, args.jpeg_decoder,
                                 args.input_verification, args.image_prefetch)
@@ -146,8 +147,9 @@ def main() -> None:
                   manifest_sha256=dual_sha256(args.manifest), selection_scope=args.selection_scope,
                   selection_metric="macro_mean_error_px", sigma_ratio=args.sigma_ratio, focal_gamma=args.focal_gamma,
                   image_decode=jpeg_decoder_contract(args.jpeg_decoder), input_contract=model.mdd.input_contract(),
-                  supervision="observed positive; reviewed no-instance/out_of_frame negative; uncertain/multiple/reference ignored",
-                  test_usage="none", stage="heatmap_pretraining", automatic_next_stage=False)
+                  supervision="observed positive; reviewed no-instance/out_of_frame negative; Chat empty requires verified note-free annotation; uncertain/multiple/reference ignored",
+                  test_usage="none", stage="heatmap_pretraining", automatic_next_stage=False,
+                  data_identity=data_identity(args.manifest), initialization=dict(mode="scratch", seed=args.seed))
     epoch_start, step, best, best_epoch = 0, 0, float("inf"), -1
     if args.resume is None:
         args.output.mkdir(parents=True, exist_ok=False)
