@@ -49,9 +49,13 @@ from src.tasks.base.annotation.plan import (
     file_digest,
     save_plan,
 )
-from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+from src.tasks.base.annotation.resources import (
+    BudgetLimits,
+    ResourceManager,
+    ResourceRequest,
+)
 from src.tasks.base.annotation.resources.contracts import GPUUsage
-from src.tasks.base.annotation.workers.contracts import WorkRequest
+from src.tasks.base.annotation.workers.contracts import Launch, WorkRequest
 from src.tasks.base.annotation.workers.ledger import WorkerBusy
 from src.tasks.base.annotation.workers.pool import WorkerPool
 from src.tasks.base.annotation.workers.processes import (
@@ -382,6 +386,95 @@ def test_cpu_children_review_three_conditions_without_production_side_effects(
     finally:
         for runner in runners:
             runner.stop("fixture teardown")
+
+
+def test_capacity_wait_restarts_same_unlaunched_attempt(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Reserve capacity without counting the pytest process as benchmark workload.
+    monkeypatch.setattr(ResourceManager, "observe", lambda self, pid: None)
+    runner = setup.runner()
+    runner._initialize()
+    assert runner.pool is not None
+    request = read_document(runner.layout, runner.requests[0], WorkRequest)
+    blocker = ResourceRequest(
+        request_id="fixture-capacity-blocker",
+        plan=runner.spec.plan,
+        stage="render",
+        pss_bytes=runner.plan.resources.total_pss_bytes
+        - runner.runtime.cost("review").pss_bytes // 2,
+        storage_bytes=0,
+        gpu_seconds=0,
+    )
+    path = runner.layout.path(
+        "campaigns",
+        runner.plan.campaign_id,
+        "workers",
+        request.work_id,
+        "attempt-0001",
+        "launch.json",
+    )
+    try:
+        with runner.resources.lease(blocker):
+            assert runner.tick()["task_states"] == {"ready": 1}
+            launch_ref = annotation_reference(runner.layout, path)
+            launch = read_document(runner.layout, launch_ref, Launch)
+            assert launch.resource_request is not None
+            resource_id = runner.resources.key(launch.resource_request)
+            # Reopening the runner must preserve the pending request and launch.
+            runner = setup.runner()
+            assert runner.tick()["task_states"] == {"ready": 1}
+            assert runner.pool is not None and not runner.pool.children
+            with runner.pool.ledger.registry.transaction() as db:
+                assert (
+                    db.execute("SELECT count(*) FROM worker_attempts").fetchone()[0]
+                    == 0
+                )
+                assert (
+                    db.execute(
+                        "SELECT name FROM sqlite_master WHERE name='resource_requests'"
+                    ).fetchone()
+                    is None
+                )
+            with runner.resources.registry.transaction() as db:
+                rows = db.execute(
+                    "SELECT id,state,reason FROM resource_requests WHERE stage='review'"
+                ).fetchall()
+            assert [tuple(row) for row in rows] == [
+                (resource_id, "pending", "PSS reservations do not fit")
+            ]
+            assert annotation_reference(runner.layout, path) == launch_ref
+
+        runner = setup.runner()
+        state = runner.tick()
+        assert runner.pool is not None
+        row = runner.pool.ledger.task(request.work_id)
+        assert row["current_attempt"] == launch.attempt
+        assert row["state"] in {"running", "exited", "complete"}
+        until = time.monotonic() + 100
+        while state["state"] == "reviewing" and time.monotonic() < until:
+            time.sleep(0.05)
+            state = runner.tick()
+        assert state["state"] == "workers_complete", state
+        with runner.pool.ledger.registry.transaction() as db:
+            attempts = db.execute("SELECT id,state FROM worker_attempts").fetchall()
+        assert [tuple(row) for row in attempts] == [(launch.attempt, "complete")]
+        with runner.resources.registry.transaction() as db:
+            rows = db.execute(
+                "SELECT id,state,request FROM resource_requests WHERE stage='review'"
+            ).fetchall()
+        assert [tuple(row) for row in rows] == [
+            (
+                resource_id,
+                "complete",
+                launch.resource_request.canonical_bytes().decode(),
+            )
+        ]
+        assert annotation_reference(runner.layout, path) == launch_ref
+    finally:
+        until = time.monotonic() + 15
+        while runner.stop("fixture teardown") and time.monotonic() < until:
+            time.sleep(0.05)
 
 
 def test_missing_scope_ledger_is_not_recreated(setup: Setup) -> None:
