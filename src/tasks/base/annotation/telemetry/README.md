@@ -21,6 +21,7 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
   同じbytesの候補が複数ある場合は一意なImageView pathも必要で、batch順で推測しない。
   resizeや再圧縮で対応が不明な画像はunboundとし、教師採用の確認範囲に使わない。
 - `presented_images()` は応答へ対応した、元画像との同一性を確認できる参照だけ返す。
+  先にreport全体の参照・hashを検証し、完全性が有効でもモデル欠測/不一致・応答ID競合なら`ImagePresentationUnavailable`で理由を返す。task側はこの例外だけを再確認対象として扱える。
   これは画像の入力証跡であり、ラベルの確認・採用を証明するものではない。
   task adapterが別途レビュー範囲・判断・機械検証を照合する。
 

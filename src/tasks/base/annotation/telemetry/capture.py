@@ -528,17 +528,29 @@ def verify_report(layout: AnnotationLayout, reference: ArtifactRef) -> Telemetry
     return report
 
 
+class ImagePresentationUnavailable(ValueError):
+    """Authentic telemetry cannot establish which model received the images."""
+
+
 def presented_images(
     layout: AnnotationLayout, reference: ArtifactRef
 ) -> tuple[ArtifactRef, ...]:
     """Only exact, catalog-bound bytes followed by an identified response qualify."""
-    report = read_document(layout, reference, TelemetryReport)
+    report = verify_report(layout, reference)
     if report.conflicting_usage_records:
-        raise ValueError("conflicting response IDs cannot prove image presentation")
+        raise ImagePresentationUnavailable(
+            "conflicting response IDs cannot prove image presentation"
+        )
     launch = read_document(layout, report.launch, Launch)
     plan = load_plan(verify_reference(layout, launch.plan))
+    if not report.model_contexts:
+        raise ImagePresentationUnavailable(
+            "logged model is missing; image presentation cannot be verified"
+        )
     if report.model_contexts != (plan.agent_model,):
-        raise ValueError("logged model does not match the frozen campaign")
+        raise ImagePresentationUnavailable(
+            "logged model does not match the frozen campaign"
+        )
     result: set[ArtifactRef] = set()
     for response in iter_responses(layout, reference):
         for output in response.tool_outputs:
