@@ -47,14 +47,14 @@ from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
-def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None, new_splits: tuple[str, ...] = ("train",), image_storage: Literal["jpeg", "video_q90"] = "jpeg") -> tuple[Environment, ArtifactRef, ArtifactRef]:
+def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None, new_splits: tuple[str, ...] = ("train",), image_storage: Literal["jpeg", "video_q90"] = "jpeg", base_splits: tuple[str, ...] = ("train", "val", "test")) -> tuple[Environment, ArtifactRef, ArtifactRef]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     directory = tmp_path / "data/ball_detection/base"
-    for split in ("train", "val", "test"):
+    for split in base_splits:
         write_store_clip(directory, f"{split}/clip", [frame(i, ball()) for i in range(32)], split=split)
     base = freeze_legacy_store(layout, directory, tuple(
         LegacySourceGroup(source="tracknet", group_id=split, source_id=content_digest(split))
-        for split in ("train", "val", "test")))
+        for split in base_splits))
     videos = tuple("fixture" if index == 0 else f"fixture-{index}" for index in range(len(new_splits)))
     publication_policy = BallPublicationPolicy(jpeg_quality=90 if image_storage == "video_q90" else 95, image_storage=image_storage,
         source_splits=tuple(SourceSplit(source_id=content_digest(["local", video]), split=split)
