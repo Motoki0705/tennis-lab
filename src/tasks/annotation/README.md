@@ -65,6 +65,7 @@ pathは固定annotation root内の実ファイルを指定する。相対path・
 `HistoryManifest` を持つ `HistoryOperation` を `submit --operation PATH` で登録し、
 完了receiptを確認する。レビュー範囲を閉じたcampaignに候補は追加しない。
 
+player推論の `infer_player` はpreviewでもGPU工程と正のGPU時間予約を必須とする。
 productionには `review`（Codex）と `publish_ball`（CPU/I/O）のplan枠・runtime costが必要。
 学習を設定したplanには `train_ball` / `evaluate_ball` のGPU枠・timeoutを含む予約が必要。
 両worker poolは共通台帳と同じ資源scopeを使い、screen/reviewそれぞれの予約量で受付する。
