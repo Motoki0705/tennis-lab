@@ -28,7 +28,7 @@ from .contracts import (
     ResourceSummary,
     UsageSummary,
 )
-from .validation import comparison, condition
+from .validation import comparison, condition, validate_work
 
 
 def _seconds(value: str) -> float:
@@ -312,18 +312,12 @@ def _condition_report(
             by_stage[stage] = max(by_stage[stage], count)
         for attempt in value.attempts:
             attempt_launch = read_document(layout, attempt.launch, Launch)
-            binding = expected_work.get(attempt_launch.work_id)
+            validate_work(
+                layout, attempt_launch.request, attempt_launch.work_id, expected_work
+            )
             if (
-                binding is None
-                or attempt_launch.plan != spec.plan
+                attempt_launch.plan != spec.plan
                 or attempt_launch.resource_scope != spec.scope
-                or attempt_launch.work_id != attempt_launch.request.work_id
-                or (
-                    attempt_launch.request.stage,
-                    attempt_launch.request.adapter,
-                    attempt_launch.request.adapter_version,
-                )
-                != (binding.stage, binding.adapter, binding.adapter_version)
             ):
                 raise ValueError("observed attempt differs from the frozen cohort")
             previous = attempts.get(attempt.launch)
