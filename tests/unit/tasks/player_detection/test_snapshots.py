@@ -17,6 +17,7 @@ from src.tasks.base.annotation.learning.contracts import (
     FixedEvaluation,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.player_detection.data.migration import migrate_v1_store
 from src.tasks.player_detection.data.snapshots.contracts import (
     PlayerPartition,
     SelectionPolicy,
@@ -189,12 +190,13 @@ def test_snapshot_cannot_reassign_clip_or_teacher_identity(
         validate_snapshot(example.layout, snapshot.model_copy(update={"clips": clips}))
 
 
-def test_sparse_v1_import_never_fills_missing_frames_or_negative_flags(
+def test_migrated_sparse_store_never_fills_missing_frames_or_negative_flags(
     example: Example,
 ) -> None:
     sparse = legacy_store(
         example.directory, example.directory.with_name("legacy-fixture")
     )
+    sparse = migrate_v1_store(sparse, example.directory.with_name("migrated-fixture"))
     bindings = tuple(
         binding for binding in example.bindings if binding.store_source_id != "src_b"
     )

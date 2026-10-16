@@ -85,10 +85,13 @@ class RevisionStore:
                     "SELECT name FROM sqlite_master WHERE type='table'"
                 )
             }
-            if not {"annotation_predictions", "annotation_tasks"}.issubset(tables):
+            if not {"campaigns", "annotation_predictions", "annotation_tasks"}.issubset(tables):
                 raise ValueError("review needs a registered new-clip prediction")
             row = db.execute(
-                "SELECT t.campaign_id,p.receipt FROM annotation_tasks t JOIN annotation_predictions p ON t.id=p.task_id WHERE t.id=?",
+                "SELECT t.campaign_id,p.receipt,c.digest AS plan_digest "
+                "FROM annotation_tasks t "
+                "JOIN annotation_predictions p ON t.id=p.task_id "
+                "JOIN campaigns c ON c.id=t.campaign_id WHERE t.id=?",
                 (key,),
             ).fetchone()
         if (
@@ -99,6 +102,8 @@ class RevisionStore:
             raise ValueError(
                 "review is not bound to this campaign's registered prediction"
             )
+        if row["plan_digest"] != plan.sha256:
+            raise ValueError("review plan differs from the registered campaign plan")
         return plan, manifest, key
 
     def _directory(self, context: ReviewContext, manifest: ClipManifest) -> Path:
