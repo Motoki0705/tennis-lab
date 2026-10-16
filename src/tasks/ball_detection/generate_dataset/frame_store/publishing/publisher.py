@@ -180,9 +180,10 @@ class BallPublisher:
         )
         existing_ids = {c.clip_id for c in base.clips} if base else set()
         existing_names = {c.store_clip_id for c in base.clips} if base else set()
+        canonical_ids = {c.canonical_clip_id for c in base.clips} if base else set()
         added_ids = [a.spec.clip_id for a in additions]
         if len(set(added_ids)) != len(added_ids) or (
-            set(added_ids) & (existing_ids | existing_names)
+            set(added_ids) & (existing_ids | existing_names | canonical_ids)
         ):
             raise ValueError("publication cannot duplicate or change an existing clip")
         splits: dict[str, Split] = (
@@ -306,11 +307,14 @@ class BallPublisher:
             if inputs.base and clip.index < len(inputs.base.clips):
                 previous = inputs.base.clips[clip.index]
                 clip_id, source_id = previous.clip_id, previous.source_id
+                canonical_clip_id = previous.canonical_clip_id
             else:
                 clip_id, source_id = clip.clip_id, clip.group_id
+                canonical_clip_id = clip.clip_id
             identities.append(
                 SnapshotClip(
                     clip_id=clip_id,
+                    canonical_clip_id=canonical_clip_id,
                     store_clip_id=clip.clip_id,
                     source_id=source_id,
                     split=clip.split,
@@ -505,10 +509,18 @@ class BallPublisher:
                     if not (staging / "snapshot.json").exists():
                         # Only this intent's incomplete index/new JPEG staging is
                         # rebuilt; published/base artifacts are never removed.
-                        shutil.rmtree(staging)
+                        for path in staging.iterdir():
+                            if path == owner:
+                                continue
+                            if path.is_dir() and not path.is_symlink():
+                                shutil.rmtree(path)
+                            else:
+                                path.unlink()
+                        sync_directory(staging)
                 if not staging.exists():
                     staging.mkdir()
                     _durable_document(owner, intent)
+                if not (staging / "snapshot.json").exists():
                     snapshot = self._build(inputs, intent, staging, destination)
                 else:
                     snapshot = BallSnapshot.model_validate_json(
