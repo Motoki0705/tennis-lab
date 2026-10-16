@@ -21,6 +21,7 @@ from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.base.visualization import parse_view_3d
 from src.tasks.base.visualization.orchestrator import parse_hw
 from src.tasks.court_detection.inference.regions import CourtRegionSearchConfig
+from src.tennis_scene.blender_export.bundle import BlenderBundleConfig
 from src.tennis_scene.motion_alignment.similarity import SimilarityConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig
@@ -1364,3 +1365,72 @@ def validate_visualization_boundary(cfg: DictConfig) -> None:
 def validate_visualize_tasks_boundary(cfg: DictConfig) -> None:
     """Validate the complete per-task visualization boundary."""
     parse_visualize_tasks_config(cfg)
+
+
+_BLENDER_EXPORT_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.blender_export",
+    fields={
+        "paths": ConfigField.mapping(PATHS_SCHEMA),
+        "assets": ConfigField.mapping(_VISUALIZATION_ASSETS_SCHEMA),
+        "input": ConfigField.of(str),
+        "output": ConfigField.of(str),
+        "camera_id": ConfigField.of(str),
+        "player_max_gap_frames": ConfigField.of(int),
+        "ball_max_gap_frames": ConfigField.of(int),
+        "max_ball_reprojection_median_px": ConfigField.of(float, int),
+        "sensor_width_mm": ConfigField.of(float, int),
+        "plate_jpeg_quality": ConfigField.of(int),
+    },
+)
+
+
+@dataclass(frozen=True, slots=True)
+class BlenderExportRuntimeConfig:
+    roots: RuntimePathRoots
+    smpl_faces_path: Path
+    smpl_joint_regressor_path: Path
+    input_path: Path
+    output_path: Path
+    bundle: BlenderBundleConfig
+
+
+def parse_blender_export_config(cfg: DictConfig) -> BlenderExportRuntimeConfig:
+    """Validate Blender bundle export paths and explicit synthesis limits."""
+    value = _BLENDER_EXPORT_SCHEMA.validate(_plain(cfg))
+    roots, resolver = _roots(value["paths"])
+    assets = _mapping(value["assets"], name="assets")
+    camera_id = cast(str, value["camera_id"])
+    if not camera_id.strip():
+        raise SemanticConfigurationError("camera_id must be non-empty.")
+    sensor_width_mm = float(cast(float, value["sensor_width_mm"]))
+    _positive(sensor_width_mm, name="sensor_width_mm")
+    try:
+        bundle = BlenderBundleConfig(
+            camera_id=camera_id,
+            player_max_gap_frames=cast(int, value["player_max_gap_frames"]),
+            ball_max_gap_frames=cast(int, value["ball_max_gap_frames"]),
+            max_ball_reprojection_median_px=float(
+                cast(float, value["max_ball_reprojection_median_px"])
+            ),
+            sensor_width_mm=sensor_width_mm,
+            plate_jpeg_quality=cast(int, value["plate_jpeg_quality"]),
+        )
+    except ValueError as error:
+        raise SemanticConfigurationError(str(error)) from error
+    return BlenderExportRuntimeConfig(
+        roots=roots,
+        smpl_faces_path=resolver.resolve(
+            PathRole.DATA, cast(str, assets["smpl_faces"])
+        ),
+        smpl_joint_regressor_path=resolver.resolve(
+            PathRole.EXTERNAL_ASSET, cast(str, assets["smpl_joint_regressor"])
+        ),
+        input_path=resolver.resolve(PathRole.ARTIFACT, cast(str, value["input"])),
+        output_path=resolver.resolve(PathRole.OUTPUT, cast(str, value["output"])),
+        bundle=bundle,
+    )
+
+
+def validate_blender_export_boundary(cfg: DictConfig) -> None:
+    """Validate the complete Blender bundle export boundary."""
+    parse_blender_export_config(cfg)
