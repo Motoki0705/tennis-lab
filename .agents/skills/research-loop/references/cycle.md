@@ -2,18 +2,13 @@
 
 1サイクル＝1子issue。template: [05_research_cycle.md](../../../../.github/ISSUE_TEMPLATE/05_research_cycle.md)
 （タイトル `[研究サイクル] <テーマ名> #<n>: <今回の焦点>`、ラベル `research`）。
-状態の正本はissueとknowledgeであり、セッションをまたいで再開できるように書く。
+進捗の状態はProject、固定条件と経緯はIssue、実測はknowledgeを正本とし、再開できるように書く。
 
 ## 0. 開始
 
 テーマissue本文（固定条件）、過去のサイクルissueの結論、関連knowledgeノードを読む。
-サイクルissueを作り、テーマのsub-issueとして登録する。
-
-```bash
-CHILD=$(gh issue create --title "[研究サイクル] ..." --label research --body-file body.md | grep -o '[0-9]*$')
-gh api -X POST "repos/{owner}/{repo}/issues/$THEME/sub_issues" \
-  -F sub_issue_id="$(gh api "repos/{owner}/{repo}/issues/$CHILD" --jq .id)"
-```
+サイクルissueの作成・テーマへのSub-issues登録・Project登録と状態更新は
+[issue-management](../../issue-management/SKILL.md) に従う。
 
 前サイクルの「次サイクル提案」があれば、それを今回の起点にする。
 
@@ -56,7 +51,8 @@ ablationを含めるのは、主張する効果がどの要素によるかを分
 
 ## 5. 結論
 
-サイクルissueの結論欄に次を書いて、knowledge変更のPRと合わせて閉じる。
+サイクルissueの結論欄に次を書き、サイクルの完了条件を満たすknowledge変更のPRに
+`Closes #<サイクルissue番号>` を記す。merge後にProjectのDoneを確認する。
 
 - **停止条件の判定**: テーマの各停止条件について、満たした/満たしていないと根拠ノード。
 - **次サイクル提案**: 仮説・やること・期待する観測。停止するなら「なし」と理由。
@@ -66,3 +62,4 @@ ablationを含めるのは、主張する効果がどの要素によるかを分
 停止条件を満たしたら、テーマissueに最終報告（到達点、根拠ノード、残った不確実性、
 未着手の候補）をコメントし、`needs-human` ラベルを付けて止まる。満たしていなければ
 次サイクルへ進む。
+最終報告が揃ったテーマはProjectで `In review` とし、closeは人間が行う。

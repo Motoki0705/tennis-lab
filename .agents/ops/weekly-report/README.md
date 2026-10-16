@@ -2,7 +2,10 @@
 
 プロジェクト本体とAI制御（AGENTS.md・`.agents/`・skill・memory・GitHub運用・この自動化自体）を
 共同で改善し続けるため、週1回「運用レポート」issueを作り、人間がチェックした提案を `ai-proposed` 子issueにする。
-設計原則と合意事項は親issue #1053 を参照する。
+設計原則は [.agents/README.md](../../README.md)、Issueの所属・Project・進捗更新は
+[issue-management skill](../../skills/issue-management/SKILL.md) を参照する。
+現行の自動triageは本文リンクまでを生成し、標準Sub-issuesの登録とProjectの状態更新は行わない。
+提案を整理する際にskillの手順で補う。レポートは提案の出所であり、成果の親Issueとは区別する。
 
 ## 構成
 

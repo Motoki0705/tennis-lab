@@ -10,6 +10,9 @@ description: Run an issue-driven research loop - a theme issue with human-agreed
 途中経過は週次運用レポートで観察される。この手順自体も仮説であり、各サイクルの
 「skill改善メモ」をもとに改訂する。
 
+Issueの作成・親子登録・Projectでの進捗更新・共通の本文項目は
+[issue-management](../issue-management/SKILL.md) に従う。ここでは研究固有の合意と実験手順を扱う。
+
 ## 1. テーマを固定する（人間と合意）
 
 [theme.md](references/theme.md) に従い、[テーマtemplate](../../../.github/ISSUE_TEMPLATE/04_research_theme.md)で
