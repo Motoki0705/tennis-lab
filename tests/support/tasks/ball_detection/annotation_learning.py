@@ -47,14 +47,14 @@ from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
-def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None) -> tuple[Environment, ArtifactRef, ArtifactRef]:
+def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, base_splits: tuple[str, ...] = ("train", "val", "test"), setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None) -> tuple[Environment, ArtifactRef, ArtifactRef]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     directory = tmp_path / "data/ball_detection/base"
-    for split in ("train", "val", "test"):
+    for split in base_splits:
         write_store_clip(directory, f"{split}/clip", [frame(i, ball()) for i in range(32)], split=split)
     base = freeze_legacy_store(layout, directory, tuple(
         LegacySourceGroup(source="tracknet", group_id=split, source_id=content_digest(split))
-        for split in ("train", "val", "test")))
+        for split in base_splits))
     policy = BallPublicationPolicy(jpeg_quality=95,
         source_splits=(SourceSplit(source_id=content_digest(["local", "fixture"]), split="train"),))
     env = Environment(layout.root, publication_policy=policy, base_snapshot=base, frame_count=frame_count, **(setup(layout, base) if setup else {}))

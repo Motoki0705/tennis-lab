@@ -84,7 +84,15 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("register", "submit", "status", "tick", "run", "resume-budget"):
+    for name in (
+        "register",
+        "submit",
+        "status",
+        "tick",
+        "run",
+        "resume-budget",
+        "retry-screen",
+    ):
         command = commands.add_parser(name)
         command.add_argument("--runtime", type=Path, required=True)
         command.add_argument("--sha256", required=True)
@@ -100,6 +108,9 @@ def main() -> None:
             command.add_argument("--details", action="store_true")
         elif name == "resume-budget":
             command.add_argument("--reason", required=True)
+        elif name == "retry-screen":
+            command.add_argument("--source-id", required=True)
+            command.add_argument("--resume-quota", action="store_true")
     stage = commands.add_parser("stage")
     stage.add_argument("--operation", type=Path, required=True)
     stage.add_argument("--sha256", required=True)
@@ -153,6 +164,8 @@ def main() -> None:
     elif args.command == "resume-budget":
         controller.resources.resume(reason=args.reason)
         result = {"state": "budget_resumed", "reason": args.reason}
+    elif args.command == "retry-screen":
+        result = controller.retry_screen(args.source_id, resume_quota=args.resume_quota)
     else:
         if args.command == "run" and args.max_seconds <= 0:
             raise ValueError("controller run duration must be positive")
