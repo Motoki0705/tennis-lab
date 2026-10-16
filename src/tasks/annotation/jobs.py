@@ -10,6 +10,11 @@ from src.tasks.base.annotation.artifacts import (
     verify_reference,
     write_document,
 )
+from src.tasks.base.annotation.collection.contracts import (
+    AcquisitionReceipt,
+    SourceCandidate,
+)
+from src.tasks.base.annotation.collection.ledger import CollectionLedger
 from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.execution.runner import StageRunner
@@ -27,7 +32,15 @@ from src.tasks.base.annotation.resources import (
 )
 from src.utils.paths import PROJECT_ROOT
 
-from .contracts import OperationInput, OperationReceipt, PredictOperation, Runtime
+from .contracts import (
+    AcquireOperation,
+    OperationInput,
+    OperationReceipt,
+    PredictOperation,
+    PrepareOperation,
+    Runtime,
+    ScreenOperation,
+)
 
 
 class Operations:
@@ -68,12 +81,34 @@ class Operations:
             )
         jobs = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
         attempts = [
-            int(path.name.rsplit("-", 1)[1]) for path in jobs.glob(data.sha256 + "-*")
+            int(path.name.rsplit("-", 1)[1])
+            for path in jobs.glob(data.logical_id + "-*")
         ]
         latest = max(attempts, default=0)
         if attempt is None:
             attempt = max(latest, 1)
-        elif attempt not in attempts:
+            if latest:
+                prior = read_document(
+                    self.layout,
+                    annotation_reference(
+                        self.layout,
+                        jobs / f"{data.logical_id}-{attempt}" / "operation.json",
+                    ),
+                    OperationInput,
+                )
+                if prior.logical_id != data.logical_id:
+                    raise ValueError("stage attempt differs from its logical operation")
+                if (
+                    isinstance(data.operation, AcquireOperation)
+                    and isinstance(prior.operation, AcquireOperation)
+                    and data.operation.retry
+                    and not prior.operation.retry
+                ):
+                    attempt += 1
+                else:
+                    # Ordinary resume recovers the pinned retry directive as well.
+                    data = prior
+        if attempt not in attempts:
             if attempt != latest + 1:
                 raise ValueError(
                     "a new attempt must follow the latest recorded attempt"
@@ -81,7 +116,7 @@ class Operations:
             if latest:
                 previous = annotation_reference(
                     layout=self.layout,
-                    path=jobs / f"{data.sha256}-{latest}" / "launch.json",
+                    path=jobs / f"{data.logical_id}-{latest}" / "launch.json",
                 )
                 previous_state = self.stages.status(previous)
                 if previous_state["state"] not in {
@@ -94,7 +129,7 @@ class Operations:
                         "only a failed or interrupted operation can be retried"
                     )
         cost = self.runtime.cost(data.stage)
-        request_id = f"{data.sha256}-{attempt}"
+        request_id = f"{data.logical_id}-{attempt}"
         directory = self.layout.path(
             "campaigns", self.plan.campaign_id, "jobs", request_id
         )
@@ -175,6 +210,40 @@ class Operations:
         data = read_document(self.layout, launch.input, OperationInput)
         if data.plan != self.runtime.plan or data.stage != launch.resource.stage:
             raise ValueError("stage result differs from the runtime plan/stage")
+        operation = data.operation
+        if isinstance(operation, AcquireOperation) or (
+            isinstance(operation, (ScreenOperation, PrepareOperation))
+            and receipt.status == "not_applicable"
+        ):
+            source = CollectionLedger(self.layout).source(
+                self.plan, operation.source_id
+            )
+            if source["acquisition"] is None or receipt.results != (
+                ArtifactRef.model_validate_json(source["acquisition"]),
+            ):
+                raise ValueError(
+                    "source receipt differs from its registered acquisition"
+                )
+            acquisition = read_document(
+                self.layout, receipt.results[0], AcquisitionReceipt
+            )
+            candidate = SourceCandidate.model_validate_json(source["candidate"])
+            if (
+                acquisition.source.canonical_id != operation.source_id
+                or acquisition.candidate_digest != candidate.sha256
+                or acquisition.configuration != self.plan.preparation
+            ):
+                raise ValueError("acquisition receipt differs from the frozen source")
+            for dependency in references(acquisition):
+                verify_reference(self.layout, dependency)
+            if receipt.status == "not_applicable" and (
+                source["state"] != "excluded"
+                or not receipt.reason
+                or receipt.reason != source["reason"]
+            ):
+                raise ValueError("source exclusion differs from its registered reason")
+        elif receipt.status == "not_applicable":
+            raise ValueError("this operation cannot return a source exclusion")
         if isinstance(data.operation, PredictOperation):
             operation = data.operation
             if receipt.status != "complete" or len(receipt.results) != len(

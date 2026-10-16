@@ -73,6 +73,7 @@ class Adapter:
         self.selections = 0
         self.dependencies: tuple[ArtifactRef, ...] = ()
         self.result_dependencies: tuple[ArtifactRef, ...] = ()
+        self.resume_dependencies: tuple[ArtifactRef, ...] = ()
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
@@ -135,11 +136,12 @@ class Adapter:
         if not metrics["complete"]:
             raise ValueError("required task validation metric is missing")
 
-    def validate_resume(
+    def resume_references(
         self, layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
-    ) -> None:
+    ) -> tuple[ArtifactRef, ...]:
         if layout.artifact_path(checkpoint).read_bytes() != intent.canonical_bytes():
             raise ValueError("checkpoint belongs to another training intent")
+        return self.resume_dependencies
 
     def select(
         self, layout: AnnotationLayout, intent: LearningIntent, evaluation: ArtifactRef
@@ -849,6 +851,65 @@ def test_failed_training_with_checkpoint_requires_explicit_same_intent_retry(
     state = env.learning.tick(intent, env.adapter, env.runtime)
     assert state.state == "training_pending" and len(env.executor.accepted) == 2
     assert env.learning.models.current("detector").generation == 1
+
+
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_retry_retains_checkpoint_dependencies_before_dispatch(
+    env: Environment, monkeypatch: pytest.MonkeyPatch, interrupted: bool
+) -> None:
+    from src.tasks.base.annotation.learning import service
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    result_ref = env.executor.finish(state.launch, env.adapter, failed=True)
+    training = read_document(env.layout, result_ref, TrainingReceipt)
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "failed"
+    dependency = write_asset(
+        env.layout, env.layout.path("models", "initial-config.json"), b"run config"
+    )
+    assert dependency not in retained(env)
+    env.adapter.resume_dependencies = (dependency,)
+    real_write = service.write_document
+
+    def crash(layout: AnnotationLayout, path: Path, document: Any) -> ArtifactRef:
+        reference = real_write(layout, path, document)
+        if path.name == "retry.json":
+            raise Crash("retry dependencies persisted before request")
+        return reference
+
+    if interrupted:
+        with monkeypatch.context() as patch:
+            patch.setattr(service, "write_document", crash)
+            with pytest.raises(Crash, match="dependencies persisted"):
+                env.learning.retry(
+                    intent,
+                    env.adapter,
+                    "train",
+                    reason="resume failed run",
+                    resume_checkpoint=training.provenance,
+                )
+        # Recovery must use the dependencies already frozen in retry.json.
+        env.adapter.resume_dependencies = ()
+
+    restarted = Learning(env.layout, executor=env.executor)
+    retry = restarted.retry(
+        intent,
+        env.adapter,
+        "train",
+        reason="resume failed run",
+        resume_checkpoint=training.provenance,
+    )
+    assert len(env.executor.accepted) == 1
+    assert {retry, training.provenance, dependency} <= retained(env)
+    assert_expired_but_protected(
+        env.layout, (training.provenance, dependency), "training"
+    )
+    state = restarted.tick(intent, env.adapter, env.runtime)
+    assert state.state == "training_pending" and state.launch is not None
+    launch = read_document(env.layout, state.launch, StageLaunch)
+    assert {training.provenance, dependency} <= set(launch.dependencies)
 
 
 def test_model_commit_file_gap_recovers_without_second_promotion(
