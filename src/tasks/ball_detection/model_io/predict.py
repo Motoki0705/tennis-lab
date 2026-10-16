@@ -24,6 +24,8 @@ CoordinateModel: TypeAlias = MDDPoseDetector | MDDQueryDetector | DeepMDDQueryDe
 
 def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: torch.device) -> Tensor:
     """Modality and architecture are explicit; coordinate outputs never fabricate heatmaps."""
+    if not isinstance(model, (MDDPoseDetector, MDDQueryDetector, DeepMDDQueryDetector)):
+        raise ValueError("Coordinate prediction requires a coordinate model; hybrid presence must be decoded explicitly")
     if isinstance(model, DeepMDDQueryDetector):
         rgb, times = batch["rgb"], batch["timestamps"]
         validate_rgb_timestamps(model.config, rgb, times)
