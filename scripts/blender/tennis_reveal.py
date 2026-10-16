@@ -1074,14 +1074,18 @@ def main(argv: list[str]) -> None:
     parser.add_argument("--frames", default=None, help="start:end inclusive subset")
     parser.add_argument("--samples", type=int, default=None)
     parser.add_argument("--resolution-percentage", type=int, default=100)
+    parser.add_argument("--frame-step", type=int, default=1)
     args = parser.parse_args(argv)
     if not 1 <= args.resolution_percentage <= 100:
         parser.error("--resolution-percentage must be in [1, 100]")
     if args.samples is not None and args.samples < 1:
         parser.error("--samples must be positive")
+    if args.frame_step < 1:
+        parser.error("--frame-step must be positive")
     shot = Shot() if args.samples is None else Shot(samples=args.samples)
     scene = build(args.bundle, args.output, shot)
     scene.render.resolution_percentage = args.resolution_percentage
+    scene.frame_step = args.frame_step
     if args.frames is not None:
         start, end = (int(v) for v in args.frames.split(":"))
         if not scene.frame_start <= start <= end <= scene.frame_end:
