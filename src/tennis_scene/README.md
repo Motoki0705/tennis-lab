@@ -9,8 +9,8 @@ SLCS向けの特徴抽出・学習split準備は [SLCS生成ガイド](../tasks/
 
 ## パスと公開入口
 
-`scripts/` の実行入口は以下の5つです。コマンドはrepoルートの `.venv/bin/python -m src.tennis_scene.scripts.<入口>` で実行します。
-このREADMEを5入口の入出力構造の正本とします。
+`scripts/` の実行入口は以下の6つです。コマンドはrepoルートの `.venv/bin/python -m src.tennis_scene.scripts.<入口>` で実行します。
+このREADMEを6入口の入出力構造の正本とします。
 
 | 表記 | 設定 | 既定root | 用途 |
 |---|---|---|---|
@@ -190,6 +190,16 @@ scene metadataから元動画を自動選択しません。2D描画は `video_pa
 `tasks` で出力対象を選べます。指定stageの配列がない場合はエラーにします。
 3Dだけを描画する場合も `video_paths` 設定は必要ですが、元動画のdecodeは2Dタスク選択時だけです。
 同名の出力動画は上書きされます。
+
+## 6. export_blender — 1カメラ視点のsceneをBlender用bundleへ書き出す
+
+ARTIFACT相対の `input`（`player_smpl_valid`・`ball_3d_valid` を持つscene）と `camera_id` を指定します。
+bundle構成、検証、Blender側の撮影スクリプトは [blender_export](blender_export/README.md) を参照してください。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.export_blender \
+  input=tennis_scene/evaluate/<experiment>/<run>/scene.npz camera_id=cam1
+```
 
 ## ログ、スキーマ、モデル契約
 
