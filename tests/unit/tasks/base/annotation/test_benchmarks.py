@@ -24,6 +24,7 @@ from src.tasks.base.annotation.benchmarks.validation import comparison, conditio
 from src.tasks.base.annotation.editing.contracts import ReviewContext
 from src.tasks.base.annotation.predictions import PredictionReceipt
 from src.tasks.base.annotation.resources import ResourceManager
+from src.tasks.base.annotation.telemetry.capture import capture
 from src.tasks.base.annotation.telemetry.contracts import (
     ImageInput,
     ResponseEntry,
@@ -33,7 +34,11 @@ from src.tasks.base.annotation.telemetry.contracts import (
     ToolOutput,
     Usage,
 )
-from src.tasks.base.annotation.workers.contracts import ChildIdentity, WorkRequest
+from src.tasks.base.annotation.workers.contracts import (
+    ChildIdentity,
+    Launch,
+    WorkRequest,
+)
 from src.tasks.base.annotation.workers.processes import ProcessIdentity
 from tests.support.annotation_benchmarks import Fixture, sample
 
@@ -425,6 +430,70 @@ def test_cli_report_is_immutable_and_schema_is_available(fixture: Fixture) -> No
     assert json.loads(schema.stdout)["title"] == "ConditionSpec"
 
 
+@pytest.mark.parametrize("notifications", [0, 2])
+@pytest.mark.parametrize("observed_position", ["none", "first", "last"])
+def test_usage_preserves_attempts_without_response_records(
+    fixture: Fixture, notifications: int, observed_position: str
+) -> None:
+    known = dict.fromkeys(Usage.model_fields, 0)
+    known.update(input_tokens=100, output_tokens=10, total_tokens=110)
+    measurements = [False, False]
+    if observed_position == "first":
+        measurements.insert(0, True)
+    elif observed_position == "last":
+        measurements.append(True)
+    attempts = []
+    for number, measured in enumerate(measurements, 1):
+        attempt = fixture.exit(fixture.attempt(number=number))
+        assert attempt.execution is not None
+        launch = read_document(fixture.layout, attempt.launch, Launch)
+        rows: list[dict[str, object]] = [
+            {
+                "type": "session_meta",
+                "payload": {
+                    "id": "fixture-thread",
+                    "cwd": str(Path(launch.directory) / "work"),
+                },
+            },
+            {"type": "turn_context", "payload": {"model": "gpt-6.1-sol"}},
+        ]
+        rows.extend(
+            {
+                "type": "event_msg",
+                "payload": {
+                    "type": "token_count",
+                    "info": {"total_token_usage": known},
+                },
+            }
+            for _ in range(notifications)
+        )
+        if measured:
+            rows.append(
+                {
+                    "type": "token_usage_record",
+                    "payload": {"response_id": "response-1", "usage": known},
+                }
+            )
+        rollout = Path(launch.directory) / "rollout.jsonl"
+        rollout.write_text("".join(json.dumps(row) + "\n" for row in rows))
+        telemetry = capture(
+            fixture.layout, attempt.launch, attempt.execution, (), rollout=rollout
+        )
+        attempts.append(attempt.model_copy(update={"telemetry": telemetry}))
+    fixture.observation(attempts=tuple(attempts))
+    summary = report(fixture).conditions[0].usage
+    assert summary.attempts == summary.reports == len(measurements)
+    assert summary.missing_reports == summary.missing_response_ids == 0
+    assert summary.exact_api_responses is None
+    assert summary.totals == dict.fromkeys(Usage.model_fields)
+    assert summary.known_responses == (observed_position != "none")
+    assert summary.known_subtotals == (
+        known if observed_position != "none" else dict.fromkeys(Usage.model_fields, 0)
+    )
+    assert summary.unobserved_response_attempts == 2
+    assert summary.missing_metric_counts == dict.fromkeys(Usage.model_fields, 0)
+
+
 def test_usage_aggregates_unique_responses_images_and_missing_fields(
     fixture: Fixture,
 ) -> None:
@@ -533,6 +602,7 @@ def test_usage_aggregates_unique_responses_images_and_missing_fields(
     )
     measured = attempt.model_copy(update={"telemetry": telemetry})
     summary = _usage(fixture.layout, (measured,))
+    assert summary.unobserved_response_attempts == 0
     assert (
         summary.exact_api_responses == 1
     )  # neither notifications nor duplicate usage records
