@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import json
+import os
+import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from src.tasks.annotation.benchmark.contracts import BenchmarkRuntime
+from src.tasks.annotation.benchmark import runner as runner_module
+from src.tasks.annotation.benchmark.contracts import (
+    BenchmarkRuntime,
+    ConditionCompletion,
+)
 from src.tasks.annotation.benchmark.operations import execute
 from src.tasks.annotation.benchmark.recovery import recover
 from src.tasks.annotation.benchmark.runner import BenchmarkRunner
@@ -26,10 +33,12 @@ from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     read_document,
 )
+from src.tasks.base.annotation.benchmarks.capture import directory
 from src.tasks.base.annotation.benchmarks.contracts import (
     ComparisonReport,
     ComparisonSpec,
     ConditionSpec,
+    Observation,
     WorkerBinding,
 )
 from src.tasks.base.annotation.benchmarks.report import build_report
@@ -42,6 +51,14 @@ from src.tasks.base.annotation.plan import (
 )
 from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
 from src.tasks.base.annotation.resources.contracts import GPUUsage
+from src.tasks.base.annotation.workers.contracts import WorkRequest
+from src.tasks.base.annotation.workers.ledger import WorkerBusy
+from src.tasks.base.annotation.workers.pool import WorkerPool
+from src.tasks.base.annotation.workers.processes import (
+    ProcessIdentity,
+    owned_members,
+    signal_owned,
+)
 from src.utils.paths import PROJECT_ROOT
 from tests.support.tasks.ball_detection.annotation import Environment
 
@@ -167,6 +184,35 @@ class Setup:
 
     def runner(self, number: int = 10) -> BenchmarkRunner:
         return BenchmarkRunner(self.env.layout, self.reference, f"workers-{number}")
+
+    def add_prediction(self) -> None:
+        extra = Environment(
+            self.env.layout.root, video_id="second", campaign_id="second"
+        )
+        self.conditions = [
+            self.env.save(
+                read_document(self.env.layout, ref, ConditionSpec).model_copy(
+                    update={
+                        "predictions": (
+                            self.env.context.prediction,
+                            extra.context.prediction,
+                        )
+                    }
+                )
+            )
+            for ref in self.conditions
+        ]
+        comparison = read_document(
+            self.env.layout, self.runtime.comparison, ComparisonSpec
+        )
+        self.runtime = self.runtime.model_copy(
+            update={
+                "comparison": self.env.save(
+                    comparison.model_copy(update={"conditions": tuple(self.conditions)})
+                )
+            }
+        )
+        self.reference = self.env.save(self.runtime)
 
 
 @pytest.fixture
@@ -424,3 +470,224 @@ def test_observation_limit_stops_active_worker_and_never_completes(
         until = time.monotonic() + 15
         while runner.stop("fixture teardown") and time.monotonic() < until:
             time.sleep(0.05)
+
+
+def test_observation_interval_survives_repeated_runner_restarts(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    setup.runtime = setup.runtime.model_copy(
+        update={"observation_interval_seconds": 30}
+    )
+    setup.reference = setup.env.save(setup.runtime)
+    monkeypatch.setattr(WorkerPool, "start", lambda *args, **kwargs: None)
+    clock = [100.0]
+    timer = SimpleNamespace(
+        monotonic=lambda: clock[0], monotonic_ns=lambda: int(clock[0] * 1e9)
+    )
+    monkeypatch.setattr(runner_module, "time", timer)
+    monkeypatch.setattr("src.tasks.base.annotation.benchmarks.capture.time", timer)
+    runner = setup.runner()
+    assert runner.tick()["state"] == "reviewing"
+    observations = directory(runner.shared, runner.spec) / "observations"
+    assert len(list(observations.glob("*.json"))) == 1
+    for seconds in (1, 5, 29.9):
+        clock[0] = 100.0 + seconds
+        runner = setup.runner()
+        assert runner.tick()["state"] == "reviewing"
+        assert len(list(observations.glob("*.json"))) == 1
+    clock[0] = 130.0
+    assert runner.tick()["state"] == "reviewing"
+    assert len(list(observations.glob("*.json"))) == 2
+
+
+def test_observation_interval_does_not_compare_different_boot_clocks(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(WorkerPool, "start", lambda *args, **kwargs: None)
+    runner = setup.runner()
+    runner.tick()
+    path = directory(runner.shared, runner.spec) / "observations" / "000001.json"
+    previous = read_document(
+        runner.shared, annotation_reference(runner.shared, path), Observation
+    )
+    path.write_bytes(
+        previous.model_copy(
+            update={"boot_id": "earlier-boot", "cut_monotonic_ns": 10**30}
+        ).canonical_bytes()
+    )
+    restarted = setup.runner()
+    assert restarted.tick()["state"] == "reviewing"
+    assert (path.parent / "000002.json").exists()
+
+
+@pytest.mark.parametrize("setup", [1], indirect=True)
+def test_completion_recovers_after_last_observation_before_receipt(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = setup.runner()
+    original_observe = runner._observe
+    monkeypatch.setattr(
+        runner,
+        "_observe",
+        lambda *, force=False: original_observe(force=True) if force else None,
+    )
+    original_write = runner_module.write_document
+
+    def interrupted_write(layout, path, document):
+        if isinstance(document, ConditionCompletion):
+            raise RuntimeError("interrupted after final observation")
+        return original_write(layout, path, document)
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(runner_module, "write_document", interrupted_write)
+            until = time.monotonic() + 60
+            with pytest.raises(RuntimeError, match="interrupted after final"):
+                while time.monotonic() < until:
+                    state = runner.tick()
+                    assert state["state"] == "reviewing", state
+                    time.sleep(0.05)
+        assert runner.completion(0) is None
+        observations = directory(runner.shared, runner.spec) / "observations"
+        assert len(list(observations.glob("*.json"))) == 1
+        final = annotation_reference(runner.shared, observations / "000001.json")
+        assert read_document(runner.shared, final, Observation).task_states == {
+            "complete": 1
+        }
+        restarted = setup.runner()
+        monkeypatch.setattr(
+            WorkerPool,
+            "start",
+            lambda *args, **kwargs: pytest.fail("completed work must not restart"),
+        )
+        monkeypatch.setattr(
+            restarted,
+            "_observe",
+            lambda **kwargs: pytest.fail("must reuse final observation"),
+        )
+        state = restarted.tick()
+        assert state["state"] == "workers_complete", state
+        completion = restarted.completion(0)
+        assert completion is not None
+        receipt = read_document(restarted.shared, completion, ConditionCompletion)
+        assert receipt.final_observation == final
+        assert setup.runner().tick()["completion"] == completion.model_dump(mode="json")
+        setup.runner(25)._initialize()
+    finally:
+        runner.stop("fixture teardown")
+
+
+@pytest.mark.parametrize("pending_first", [False, True])
+def test_stop_reaches_orphan_and_other_workers_and_retains_pending(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch, pending_first: bool
+) -> None:
+    setup.add_prediction()
+    runner = setup.runner()
+    runner._initialize()
+    assert runner.pool is not None
+    pool = runner.pool
+    pool.test_command = (sys.executable, "-c", "import time; time.sleep(30)")
+    requests = [
+        read_document(runner.layout, ref, WorkRequest) for ref in runner.requests
+    ]
+    owners = []
+    try:
+        for work in requests:
+            pool.start(work)
+            _, launch = pool._launch(pool.ledger.task(work.work_id))
+            until = time.monotonic() + 10
+            while (
+                not (Path(launch.directory) / "child.json").exists()
+                and time.monotonic() < until
+            ):
+                time.sleep(0.02)
+            owner = ProcessIdentity.from_document(
+                json.loads((Path(launch.directory) / "owner.json").read_text())
+            )
+            owners.append(owner)
+            assert (Path(launch.directory) / "child.json").exists()
+        os.kill(owners[0].pid, signal.SIGKILL)
+        _, orphan = pool._launch(pool.ledger.task(requests[0].work_id))
+        pool.children[orphan.attempt].wait(timeout=5)
+        with pytest.raises(WorkerBusy, match="owned processes"):
+            pool.reconcile(requests[0])
+        original_stop = pool.stop
+
+        def stop(work, *, reason):
+            if pending_first and work == requests[0]:
+                raise WorkerBusy("owned processes have not exited")
+            return original_stop(work, reason=reason)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(pool, "stop", stop)
+            result = runner._stopped("test stop", "blocked")
+        assert result["state"] == ("stopping" if pending_first else "blocked")
+        assert result["pending_workers"] == (
+            (requests[0].work_id,) if pending_first else ()
+        )
+        assert pool.ledger.task(requests[1].work_id)["state"] == "cancelled"
+        assert not owned_members(owners[1])
+        if pending_first:
+            assert owned_members(owners[0])
+            assert runner._stopped("test stop", "blocked")["pending_workers"] == ()
+        assert all(not owned_members(owner) for owner in owners)
+    finally:
+        for owner in owners:
+            signal_owned(owner, signal.SIGKILL)
+        for child in pool.children.values():
+            child.wait(timeout=5)
+
+
+def test_benchmark_run_services_healthy_worker_after_another_fails(
+    setup: Setup, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from src.tasks.annotation.__main__ import main
+
+    setup.add_prediction()
+    runner = setup.runner()
+    runner._initialize()
+    assert runner.pool is not None
+    pool = runner.pool
+    pool.test_command = (sys.executable, "-c", "raise SystemExit(1)")
+    failed = read_document(runner.layout, runner.requests[0], WorkRequest)
+    try:
+        pool.start(failed)
+        until = time.monotonic() + 10
+        row = pool.reconcile(failed)
+        while row["state"] == "running" and time.monotonic() < until:
+            time.sleep(0.05)
+            row = pool.reconcile(failed)
+        assert row["state"] == "failed", row
+        pool.test_command = None
+        monkeypatch.setattr(runner_module, "BenchmarkRunner", lambda *args: runner)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "annotation",
+                "benchmark-run",
+                "--runtime",
+                str(setup.env.layout.artifact_path(setup.reference)),
+                "--sha256",
+                setup.reference.digest,
+                "--condition",
+                "workers-10",
+                "--max-seconds",
+                "60",
+                "--test-root",
+                str(setup.env.layout.root),
+            ],
+        )
+        main()
+        result = json.loads(capsys.readouterr().out)
+        assert result["state"] == "blocked"
+        assert result["task_states"] == {"complete": 1, "failed": 1}
+        with setup.manager.registry.transaction() as db:
+            assert (
+                db.execute(
+                    "SELECT count(*) FROM resource_requests WHERE stage='render' AND state='complete'"
+                ).fetchone()[0]
+                == 2
+            )
+    finally:
+        runner.stop("fixture teardown")

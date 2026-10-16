@@ -268,10 +268,18 @@ def main() -> None:
             )
             while True:
                 benchmark_result = runner.tick()
+                blocked = benchmark_result["state"] == "blocked" and (
+                    benchmark_result["reason"] is not None
+                    or not any(
+                        benchmark_result["task_states"].get(state, 0)
+                        for state in ("ready", "running", "exited")
+                    )
+                )
                 if (
                     args.command != "benchmark-run"
                     or benchmark_result["state"]
-                    in {"workers_complete", "blocked", "budget_stopped"}
+                    in {"workers_complete", "budget_stopped"}
+                    or blocked
                     or time.monotonic() >= until
                 ):
                     break
