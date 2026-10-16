@@ -7,12 +7,23 @@ labels: ["research"]
 
 <!--
 研究ループの手順: .agents/skills/research-loop/references/cycle.md
+Issue・Projectの管理: .agents/skills/issue-management/SKILL.md
 タイトル例: [研究サイクル] <テーマ名> #<n>: <今回の焦点>
 数値の正本はknowledgeノード。ここにはノードIDと要点だけを書く。
 -->
 
-テーマ: #
+親Issue（テーマ）: #
 前サイクル: #
+対応するテーマの指標・停止条件:
+今回の問い・担当範囲・完了時に残す証拠:
+先行Issue・必要な成果物・解除条件（なければ「なし」）:
+
+<!-- 進捗要約。Status・優先度はProjectで管理し、標準Sub-issuesへの登録を確認する。 -->
+- 確認日:
+- 到達点・根拠ノード:
+- 次の一手:
+- 阻害要因・解除条件（なければ「なし」）:
+- 関連PR・成果物:
 
 ## 調査
 
