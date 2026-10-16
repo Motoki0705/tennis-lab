@@ -92,23 +92,48 @@ class Collection:
     def select(self, reference: ArtifactRef) -> None:
         self.ledger.record_selection(self.plan, reference)
 
+    def exclude_preparation(self, source_id: str, *, reason: str) -> None:
+        """Record a permanent preparation failure and release its admission slots."""
+        with artifact_lock(self.layout, "source-" + source_id, blocking=False):
+            row = self.ledger.source(self.plan, source_id)
+            receipt_path = self.layout.path(
+                "sources", source_id, self.plan.preparation.digest, "prepared.json"
+            )
+            if row["preparation"] is not None or receipt_path.exists():
+                raise ValueError("cannot exclude a source with a published preparation")
+            self.ledger.exclude_preparation(self.plan, source_id, reason)
+
     def prepare(self, source_id: str) -> ArtifactRef:
         with artifact_lock(self.layout, "source-" + source_id, blocking=False):
             row = self.ledger.source(self.plan, source_id)
             if row["state"] not in {"screened", "prepared"}:
                 raise ValueError("preparation requires an explicit completed selection")
-            acquired = read_document(
-                self.layout,
-                ArtifactRef.model_validate_json(row["acquisition"]),
-                AcquisitionReceipt,
+            receipt_path = self.layout.path(
+                "sources", source_id, self.plan.preparation.digest, "prepared.json"
             )
-            selection = ArtifactRef.model_validate_json(row["selection"])
-            reference = prepare_source(
-                self.layout,
-                acquired.source,
-                self.plan.preparation,
-                self.config,
-                selection,
-            )
+            if row["preparation"] is not None:
+                reference = ArtifactRef.model_validate_json(row["preparation"])
+            elif row["state"] == "prepared":
+                raise ValueError(
+                    "prepared source has no registered preparation receipt"
+                )
+            elif receipt_path.exists():
+                reference = annotation_reference(self.layout, receipt_path)
+            else:
+                acquired = read_document(
+                    self.layout,
+                    ArtifactRef.model_validate_json(row["acquisition"]),
+                    AcquisitionReceipt,
+                )
+                selection = ArtifactRef.model_validate_json(row["selection"])
+                reference = prepare_source(
+                    self.layout,
+                    acquired.source,
+                    self.plan.preparation,
+                    self.config,
+                    selection,
+                )
+            # Validate the fixed receipt and every artifact before reconciling the
+            # ledger. Published work must never enter the generation path again.
             self.ledger.record_preparation(self.plan, reference)
             return reference
