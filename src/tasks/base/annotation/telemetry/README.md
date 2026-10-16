@@ -11,6 +11,9 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
   記録する。reasoningをoutputへ重ねて足さない。欠測・IDなし・内容が違う重複は
   明示し、不完全な合計をnull、確認できた小計を別欄に残す。記録されたthread/turn累積と
   当該応答の `input + output` によるcontext近似は別値である。
+  応答別usageを一件も観測できないログは、`token_count` 通知の有無によらず全合計をnullにし、
+  索引にも収集欠落を表示する。欠測カウンタは観測した記録内の欠測件数であり、
+  0件でも収集の完全性を示さない。
 - call IDでtool入力と出力を結び、出力を次の一意な応答へ対応付ける。
   境界のない出力、ID欠測直前の出力、compactionで置換されたcontext内の未対応出力は
   orphanとして保持し、後続応答への画像提示を主張しない。分類はversion付きtask adapterが

@@ -13,13 +13,17 @@ from src.tasks.base.annotation.artifacts import (
     write_document,
 )
 from src.tasks.base.annotation.collection.service import Collection
-from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.execution.queue import validate_queue
 from src.tasks.base.annotation.execution.runner import StageRunner
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import load_plan
-from src.tasks.base.annotation.predictions import Predictions
+from src.tasks.base.annotation.plan import load_plan, references
+from src.tasks.base.annotation.predictions import (
+    PredictionContext,
+    PredictionReceipt,
+    Predictions,
+)
 from src.tasks.base.annotation.resources import (
     BudgetStopped,
     CapacityUnavailable,
@@ -98,6 +102,16 @@ class Controller:
             worker_storage_bytes=screen.storage_bytes,
         )
         self.stages = StageRunner(layout)
+        self.pool.ledger.registry.initialize(
+            "worker-services.v1",
+            """
+            CREATE TABLE IF NOT EXISTS worker_service_requests (
+                attempt TEXT NOT NULL REFERENCES worker_attempts(id),
+                digest TEXT NOT NULL, request TEXT NOT NULL,
+                PRIMARY KEY (attempt, digest)
+            );
+            """,
+        )
         self.production: ProductionWorkflow | None = None
         if self.plan.phase == "production":
             from .production import ProductionWorkflow
@@ -235,7 +249,64 @@ class Controller:
             raise ValueError("stage result belongs to a different operation")
         for ref in receipt.results:
             verify_reference(self.layout, ref)
+        data = read_document(self.layout, launch.input, OperationInput)
+        if data.plan != self.runtime.plan or data.stage != launch.resource.stage:
+            raise ValueError("stage result differs from the runtime plan/stage")
+        if isinstance(data.operation, PredictOperation):
+            operation = data.operation
+            if receipt.status != "complete" or len(receipt.results) != len(
+                operation.clips
+            ):
+                raise ValueError("prediction stage must return one receipt per clip")
+            task = next(
+                (task for task in self.plan.tasks if task.task == operation.task), None
+            )
+            if task is None:
+                raise ValueError("prediction task is absent from the frozen plan")
+            for clip, ref in zip(operation.clips, receipt.results, strict=True):
+                manifest = read_document(self.layout, clip, ClipManifest)
+                expected = PredictionContext(
+                    task=task.task,
+                    manifest=clip,
+                    clip_id=manifest.clip_id,
+                    model=task.model,
+                    configuration=task.inference,
+                )
+                prediction = read_document(self.layout, ref, PredictionReceipt)
+                if (
+                    prediction.context != expected
+                    or prediction.prediction.request_id != expected.request_id
+                ):
+                    raise ValueError(
+                        "prediction receipt differs from the frozen operation"
+                    )
+                for dependency in (*references(prediction), *references(manifest)):
+                    verify_reference(self.layout, dependency)
         return receipt
+
+    def _admit_service(self, attempt: str, service: ServiceRequest) -> None:
+        encoded = service.canonical_bytes().decode()
+        with self.pool.ledger.registry.transaction() as db:
+            prior = db.execute(
+                "SELECT request FROM worker_service_requests WHERE attempt=? AND digest=?",
+                (attempt, service.sha256),
+            ).fetchone()
+            if prior is not None:
+                if prior["request"] != encoded:
+                    raise ValueError("registered worker service request changed")
+                return
+            count = db.execute(
+                "SELECT count(*) FROM worker_service_requests WHERE attempt=?",
+                (attempt,),
+            ).fetchone()[0]
+            if count >= self.runtime.maximum_services_per_attempt:
+                raise ValueError(
+                    "worker exceeded its frozen image-service request count"
+                )
+            db.execute(
+                "INSERT INTO worker_service_requests VALUES (?,?,?)",
+                (attempt, service.sha256, encoded),
+            )
 
     def _services(
         self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool | None = None
@@ -254,7 +325,7 @@ class Controller:
         directory = Path(launch.directory)
         official = annotation_reference(self.layout, directory / "request.json")
         paths = sorted((directory / "work/service-requests").glob("*.json"))
-        for number, path in enumerate(paths):
+        for path in paths:
             if path.stat().st_size > 32768:
                 raise ValueError("worker service request exceeds 32 KiB")
             service_ref = annotation_reference(self.layout, path)
@@ -268,8 +339,6 @@ class Controller:
                 continue
             result, error = None, None
             try:
-                if number >= self.runtime.maximum_services_per_attempt:
-                    raise ValueError("worker exceeded its frozen service request count")
                 if request.adapter == ScreeningAdapter.name:
                     _service, task, _attempt = preview_input(self.layout, service_ref)
                     if task.prepared_input != request.payload:
@@ -292,6 +361,7 @@ class Controller:
                     )
                 else:
                     raise ValueError("worker has no registered parent service")
+                self._admit_service(launch.attempt, service)
                 state = self.operation(op)
                 if state["state"] in {
                     "running",
@@ -356,10 +426,29 @@ class Controller:
             row = self.pool.stop(request, reason=f"invalid service request: {error}")
         return {"state": row["state"], "reason": row["reason"]}
 
+    def _reconcile_workers(self) -> list[dict[str, Any]]:
+        with self.pool.ledger.registry.transaction() as db:
+            requests = [
+                WorkRequest.model_validate_json(row["request"])
+                for row in db.execute(
+                    "SELECT request FROM worker_tasks WHERE campaign=? ORDER BY id",
+                    (self.plan.campaign_id,),
+                )
+            ]
+        reconciled = []
+        for request in requests:
+            pool = self.pool
+            if request.adapter != ScreeningAdapter.name and self.production is not None:
+                pool = self.production.pool
+            reconciled.append(pool.reconcile(request))
+        return reconciled
+
     def cycle(self) -> dict[str, Any]:
         sample = self.resources.poll()
         if sample.stopped_reason is not None:
             raise BudgetStopped(sample.stopped_reason)
+        # Adapter finalization may advance a source before the worker receipt is saved.
+        self._reconcile_workers()
         with self.collection.ledger.registry.transaction() as db:
             rows = [
                 dict(row)
@@ -448,48 +537,97 @@ class Controller:
             "workflow": production,
         }
 
-    def _stage_statuses(self) -> list[dict[str, Any]]:
+    def _stage_states(
+        self,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         from src.tasks.base.annotation.learning.contracts import StageInput
 
-        jobs = []
+        jobs: list[dict[str, Any]] = []
         keys: list[tuple[str, str]] = []
-        numbers: list[int] = []
-        latest: dict[tuple[str, str], int] = {}
+        latest: dict[tuple[str, str], tuple[int, dict[str, Any]]] = {}
+        for path in sorted(
+            self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
+                "*/operation.json"
+            )
+        ):
+            operation_ref = annotation_reference(self.layout, path)
+            data = read_document(self.layout, operation_ref, OperationInput)
+            identity, number = path.parent.name.rsplit("-", 1)
+            if (
+                data.plan != self.runtime.plan
+                or identity != data.sha256
+                or not number.isdigit()
+                or int(number) < 1
+            ):
+                raise ValueError("stage attempt differs from its immutable operation")
+            launch_path = path.parent / "launch.json"
+            if launch_path.exists():
+                launch_ref = annotation_reference(self.layout, launch_path)
+                launch = read_document(self.layout, launch_ref, StageLaunch)
+                if (
+                    launch.input != operation_ref
+                    or launch.resource.request_id != path.parent.name
+                    or launch.resource.plan != self.runtime.plan
+                ):
+                    raise ValueError("stage launch differs from its operation/attempt")
+                state: dict[str, Any] = self.stages.status(launch_ref)
+            else:
+                state = {
+                    "state": "pending",
+                    "reason": "operation has no launch receipt",
+                }
+            state = {
+                **state,
+                "operation": operation_ref.model_dump(),
+                "attempt": int(number),
+            }
+            key = (identity, "operation")
+            jobs.append(state)
+            keys.append(key)
+            if key not in latest or int(number) > latest[key][0]:
+                latest[key] = (int(number), state)
         for path in sorted(
             self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
                 "*/launch.json"
             )
         ):
-            ref = annotation_reference(self.layout, path)
-            launch = read_document(self.layout, ref, StageLaunch)
+            if (path.parent / "operation.json").exists():
+                continue
+            launch_ref = annotation_reference(self.layout, path)
+            launch = read_document(self.layout, launch_ref, StageLaunch)
             if launch.input is None or launch.resource.plan != self.runtime.plan:
                 raise ValueError("campaign job has no matching input/plan")
-            if launch.resource.request_id.startswith("learning-"):
-                request = read_document(self.layout, launch.input, StageInput)
-                if launch.resource.request_id != "learning-" + request.sha256:
-                    raise ValueError("learning attempt identity differs from its input")
-                key, number = (request.intent.digest, request.stage), request.attempt
-            else:
-                data = read_document(self.layout, launch.input, OperationInput)
-                number = int(launch.resource.request_id.rsplit("-", 1)[1])
-                if (
-                    data.plan != self.runtime.plan
-                    or launch.resource.request_id != f"{data.sha256}-{number}"
-                ):
-                    raise ValueError(
-                        "operation attempt identity differs from its input"
-                    )
-                key = (data.sha256, "operation")
+            if not launch.resource.request_id.startswith("learning-"):
+                raise ValueError("operation launch has no immutable operation")
+            request = read_document(self.layout, launch.input, StageInput)
+            if launch.resource.request_id != "learning-" + request.sha256:
+                raise ValueError("learning attempt identity differs from its input")
+            key = (request.intent.digest, request.stage)
+            state = {**self.stages.status(launch_ref), "attempt": request.attempt}
+            jobs.append(state)
             keys.append(key)
-            numbers.append(number)
-            latest[key] = max(latest.get(key, 0), number)
-            jobs.append(self.stages.status(ref))
-        for key, number, job in zip(keys, numbers, jobs, strict=True):
-            job["superseded"] = number < latest[key]
-        return jobs
+            if key not in latest or request.attempt > latest[key][0]:
+                latest[key] = (request.attempt, state)
+        for key, state in zip(keys, jobs, strict=True):
+            state["superseded"] = state["attempt"] < latest[key][0]
+        return jobs, [state for _, state in latest.values()]
 
     def status(self) -> dict[str, Any]:
-        jobs = self._stage_statuses()
+        reconciled = self._reconcile_workers()
+        jobs, latest = self._stage_states()
+        completed: set[str] = set()
+        for stage_state in latest:
+            if stage_state["state"] != "succeeded" or "operation" not in stage_state:
+                continue
+            try:
+                receipt = self.receipt(stage_state)
+                completed.update(
+                    ref.canonical_bytes().decode() for ref in receipt.results
+                )
+            except (ValueError, OSError) as error:
+                stage_state.update(
+                    state="invalid_receipt", reason=f"{type(error).__name__}: {error}"
+                )
         with self.collection.ledger.registry.transaction() as db:
             tasks = dict(
                 db.execute(
@@ -497,13 +635,26 @@ class Controller:
                     (self.plan.campaign_id,),
                 )
             )
-            workers = [
-                dict(row)
+            source_receipts = [
+                ref
                 for row in db.execute(
-                    "SELECT id,state,current_attempt,reason FROM worker_tasks WHERE campaign=?",
+                    "SELECT acquisition,preparation FROM sources WHERE campaign_id=?",
+                    (self.plan.campaign_id,),
+                )
+                for ref in row
+                if ref is not None
+            ]
+            prediction_receipts = [
+                row[0]
+                for row in db.execute(
+                    "SELECT p.receipt FROM annotation_tasks t LEFT JOIN annotation_predictions p ON p.task_id=t.id WHERE t.campaign_id=?",
                     (self.plan.campaign_id,),
                 )
             ]
+        workers = [
+            {key: row[key] for key in ("id", "state", "current_attempt", "reason")}
+            for row in reconciled
+        ]
         summary = self.collection.ledger.summary(self.plan)
         source_states = summary["sources_by_state"]
         live = any(
@@ -517,14 +668,32 @@ class Controller:
         ]
         failures += [
             job
-            for job in jobs
-            if not job["superseded"]
-            and job["state"] in {"failed", "cancelled", "timed_out", "interrupted"}
+            for job in latest
+            if job["state"]
+            in {"failed", "cancelled", "timed_out", "interrupted", "invalid_receipt"}
         ]
         all_sources = bool(source_states) and all(
             key in {"prepared", "excluded"} for key in source_states
         )
-        ready = all_sources and bool(tasks) and set(tasks) == {"predicted"} and not live
+        ledger_ready = all_sources and bool(tasks) and set(tasks) == {"predicted"}
+        if ledger_ready and any(
+            ref is None or ref not in completed
+            for ref in (*source_receipts, *prediction_receipts)
+        ):
+            failures.append(
+                {
+                    "state": "unreconciled",
+                    "reason": "ledger artifacts lack verified completion receipts from the latest stage attempts; recover with an explicit new attempt",
+                }
+            )
+        ready = (
+            ledger_ready
+            and not live
+            and not failures
+            and bool(latest)
+            and all(job["state"] == "succeeded" for job in latest)
+            and all(row["state"] in {"complete", "not_applicable"} for row in workers)
+        )
         state = (
             "preview_ready"
             if ready

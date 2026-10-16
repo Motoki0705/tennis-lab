@@ -281,12 +281,15 @@ class PlayerExecutor(CPUExecutor):
 
 class Environment:
     def __init__(
-        self, source: SyntheticRoot, *, policy: PlayerSelectionPolicy | None = None
+        self, source: SyntheticRoot, *, policy: PlayerSelectionPolicy | None = None,
+        validation_positive_frame: int = 1,
+        float_precision: tuple[str, bool] | None = None,
     ) -> None:
         for name in ("src_c", "src_d"):
             manifest = write_clip(source.root, name, "f020-026")
             publish_player_annotation(
-                source.root, manifest, {1: [player("p1", [10.0, 10.0, 30.0, 40.0])]}
+                source.root, manifest,
+                {validation_positive_frame if name == "src_c" else 1: [player("p1", [10.0, 10.0, 30.0, 40.0])]},
             )
         directory = build_dataset(source.config)
         metadata = json.loads((directory / METADATA_FILE).read_bytes())
@@ -400,6 +403,8 @@ class Environment:
         settings["qualitative_logging"]["enabled"] = False
         settings["warmup_steps"] = 0
         settings["learning_rate"] = 0.01
+        if float_precision is not None:
+            settings["matmul_precision"], settings["allow_tf32"] = float_precision
         settings_ref = write_asset(
             self.layout,
             self.layout.path("models", "settings.json"),
