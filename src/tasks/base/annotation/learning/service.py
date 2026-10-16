@@ -191,7 +191,10 @@ class Learning:
     def _directory(self, intent: LearningIntent) -> Path:
         completion = read_document(self.layout, intent.completion, CampaignCompletion)
         plan = check_completion(self.layout, completion)
-        return self.layout.path("campaigns", plan.campaign_id, "learning", intent.task)
+        directory: Path = self.layout.path(
+            "campaigns", plan.campaign_id, "learning", intent.task
+        )
+        return directory
 
     def _require_registered(
         self, ref: ArtifactRef, adapter: LearningAdapter
@@ -509,6 +512,14 @@ class Learning:
                     resume_checkpoint=resume_checkpoint,
                 )
                 return write_document(self.layout, current / "request.json", restored)
+            if int(current.name) > 1 and not any(
+                (current / name).exists()
+                for name in ("retry.json", "request.json", "failure.json", "completed.json")
+            ):
+                # write_document may create the next directory before publishing
+                # retry.json. Only an explicit retry can recover this gap, and
+                # the immediately preceding attempt must still be a failure.
+                current = root / str(int(current.name) - 1)
             if (
                 not (current / "failure.json").exists()
                 or (current / "completed.json").exists()
