@@ -1,0 +1,52 @@
+{
+  "checked_at_utc": "2026-10-13T15:20:24+00:00",
+  "job": "1791857517260321410_3137872_i1044-selected-new-s43-u4000-v3-cli",
+  "status": "failed",
+  "requested_optimizer_updates": 4000,
+  "last_logged_step": 2609,
+  "last_event": {
+    "step": 2609,
+    "value": 57.0,
+    "wall_time": 1791901574.9731126
+  },
+  "last_validation": {
+    "step": 2474,
+    "value": 0.8086180686950684,
+    "wall_time": 1791901215.0857904
+  },
+  "exact_failed_optimizer_update_known": false,
+  "last_checkpoint_global_step": 2610,
+  "checkpoints": [
+    {
+      "archived_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/aborted-parameters-s43-cuda-unknown/logs/version_0/checkpoints/blcs-epoch=054-step=02475.ckpt",
+      "sha256": "0b6ddf4bdfa441c79876938fceda4e5f6ef44fd0f7dd16d59c67965ea20c7d51",
+      "bytes": 625892363,
+      "global_step": 2475,
+      "epoch": 54,
+      "mtime_utc": "2026-10-13T14:20:15+00:00"
+    },
+    {
+      "archived_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/aborted-parameters-s43-cuda-unknown/logs/version_0/checkpoints/last.ckpt",
+      "sha256": "9fa59a1283ef19766bff6c95e7ce19071274b9fc8df949fec8edbe3a7ed7452e",
+      "bytes": 625892363,
+      "global_step": 2610,
+      "epoch": 57,
+      "mtime_utc": "2026-10-13T14:26:12+00:00"
+    }
+  ],
+  "scalar_tags": 121,
+  "initial_python_exception": "torch.AcceleratorError: CUDA error: unknown error during backward",
+  "secondary_python_exception": "CUDA unknown error while moving optimizer tensors to CPU during teardown",
+  "driver_tail": "cuStreamSynchronize returned 999; sticky error and cuStreamIsCapturing returned 999",
+  "root_cause": "undetermined",
+  "system_evidence_limits": "No matching OOM/NVRM/Xid/reset evidence found in readable logs; kernel coverage at failure time missing, and NVML inspection unavailable to the scout. This does not rule out OOM or a device reset.",
+  "completed_comparison_run": false,
+  "selection_receipt_exists": false,
+  "test_evaluated": false,
+  "resume_used_for_retry": false,
+  "retry_job": "1791904031787910613_1392671_i1044-selected-new-s43-u4000-retry-cli.job",
+  "final_evaluation_job": "1791904031966211422_1392693_i1044-final-comparison-v4-cli.job",
+  "cancelled_unstarted_final_evaluation_job": "1791857517443497606_3137943_i1044-final-comparison-v3-cli.job",
+  "retry_policy": "same seed/config from scratch, 4000 updates; failed attempt excluded from ten successful runs",
+  "original_capture_checksums_match": true
+}

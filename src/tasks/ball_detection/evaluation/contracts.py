@@ -10,7 +10,7 @@ from typing import Any, Literal, cast
 
 from omegaconf import OmegaConf
 
-from src.tasks.ball_detection.configuration import exact_mapping
+from src.tasks.ball_detection.configuration import BallRuntimePaths, exact_mapping
 from src.utils.configuration import PathResolver, PathRole
 
 EvaluationCategory = Literal["architecture-controlled", "full-strategy"]
@@ -280,10 +280,7 @@ def _parse_models(
             raise ValueError(
                 f"models[{index}] references unknown datasets {sorted(missing)}."
             )
-        checkpoint_value = _string(
-            spec["checkpoint"], name=f"models[{index}].checkpoint"
-        )
-        checkpoint = resolver.resolve(PathRole.CHECKPOINT, checkpoint_value)
+        checkpoint = BallRuntimePaths(resolver).checkpoint_input(spec, "checkpoint", path=f"models[{index}]").path
         expected_model_name = _string(
             spec["expected_model_name"],
             name=f"models[{index}].expected_model_name",

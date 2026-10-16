@@ -1,0 +1,5 @@
+{
+  "change": "relocate identical captured model YAML; preserve original script",
+  "captured_script_sha256": "c999b75905a0685ea5f2658e55d6af8d92a1e09ce97ed254ffa28bada9e59395",
+  "model_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2"
+}

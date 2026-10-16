@@ -13,7 +13,12 @@ from src.tasks.base.generate_dataset import extract_court_keypoint_contract_meta
 from src.tasks.base.model_io.court_keypoint_contract import (
     validate_neural_court_observation_order,
 )
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.schema import (
+    SCENE_MASK_FIELDS,
+    SCENE_REASON_FIELDS,
+    SceneResult,
+    validate_scene_result_arrays,
+)
 
 
 def _validate_observation_order(metadata: dict[str, Any]) -> None:
@@ -49,6 +54,7 @@ def _optional_array(
 
 def save_scene_result(result: SceneResult, path: str | Path) -> None:
     """Save a scene result to compressed NPZ plus its mandatory JSON sidecar."""
+    validate_scene_result_arrays(result)
     archive_path = Path(path)
     if archive_path.suffix != ".npz":
         raise ValueError(f"Scene archive path must use the .npz suffix: {archive_path}")
@@ -93,6 +99,7 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
     arrays.update(
         (name, value) for name, value in optional_arrays.items() if value is not None
     )
+    arrays.update({name: getattr(result, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS) if getattr(result, name) is not None})
 
     np.savez_compressed(archive_path, **arrays)
     with _metadata_sidecar_path(archive_path).open("w", encoding="utf-8") as handle:
@@ -102,6 +109,9 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
 def load_scene_result(path: str | Path) -> SceneResult:
     """Load a scene archive, rejecting archives without object metadata."""
     archive_path = Path(path)
+    if archive_path.is_dir() or archive_path.name == "scene.json":
+        from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+        archive_path = indexed_scene_path(archive_path / "scene.json" if archive_path.is_dir() else archive_path)
     sidecar_path = _metadata_sidecar_path(archive_path)
     if not sidecar_path.is_file():
         raise FileNotFoundError(f"Scene metadata sidecar not found: {sidecar_path}")
@@ -112,7 +122,13 @@ def load_scene_result(path: str | Path) -> SceneResult:
 
     _validate_observation_order(metadata)
     with np.load(archive_path, allow_pickle=False) as archive:
-        return SceneResult(
+        if metadata.get("scene_schema_version", 1) == 2:
+            for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS):
+                expected = np.bool_ if name in SCENE_MASK_FIELDS else np.uint8
+                if name not in archive.files or archive[name].dtype != expected:
+                    raise ValueError(f"v2 archive requires {name} with dtype {expected}")
+        validity: dict[str, Any] = {name: _optional_array(archive, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS)}
+        result = SceneResult(
             num_frames=int(archive["num_frames"]),
             fps=float(archive["fps"]),
             width=int(archive["width"]),
@@ -150,8 +166,11 @@ def load_scene_result(path: str | Path) -> SceneResult:
                 archive, "player_track_ids", dtype=np.int32
             ),
             player_kp_3d=_optional_array(archive, "player_kp_3d", dtype=np.float32),
+            **validity,
             player_canonical_pose=_optional_array(
                 archive, "player_canonical_pose", dtype=np.float32
             ),
             metadata=metadata,
         )
+    validate_scene_result_arrays(result)
+    return result

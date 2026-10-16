@@ -1,0 +1,111 @@
+{
+  "schema": "blcs.checkpoint_storage.v1",
+  "source_receipts": "knowledge/runs/run-i1044-final-evaluation/completed-training.json",
+  "source_receipts_sha256": "60bf3b2c75d12f5135c00ef95cd2995a22c8a178102d291131ca32dbe415a9bd",
+  "archive_root": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013",
+  "checkpoint_count": 10,
+  "total_bytes": 6235579406,
+  "checkpoints": [
+    {
+      "name": "position-s42-u4000",
+      "arm": "position",
+      "seed": 42,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/position-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/position-s42-u4000/final-selected.ckpt",
+      "size_bytes": 621872151,
+      "sha256": "505a2dcf9584e6c0ea9cfa01f869bcf10d6192e5a18ee17cfae1239b379395dd",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/position-s42-u4000/selection.json"
+    },
+    {
+      "name": "reprojection-s42-u4000",
+      "arm": "reprojection",
+      "seed": 42,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s42-u4000/final-selected.ckpt",
+      "size_bytes": 621872151,
+      "sha256": "97e88f588aa7ea57ec7f07b450d1c9c6c609a049b5a6f4a8e75b818d09667d01",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s42-u4000/selection.json"
+    },
+    {
+      "name": "velocity-s42-u4000",
+      "arm": "velocity",
+      "seed": 42,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/velocity-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/velocity-s42-u4000/final-selected.ckpt",
+      "size_bytes": 623471451,
+      "sha256": "2a2242ffea76302e1c0c1d5d2732fa814fa7137ac5a96c84de3a2e667a8ca735",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/velocity-s42-u4000/selection.json"
+    },
+    {
+      "name": "rollout_position-s42-u4000",
+      "arm": "rollout_position",
+      "seed": 42,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/rollout_position-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_position-s42-u4000/final-selected.ckpt",
+      "size_bytes": 623471515,
+      "sha256": "0cdb43a5c0fa75c0663f6ffb60509fbe377fe838138a0c64ec446bb042f71574",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_position-s42-u4000/selection.json"
+    },
+    {
+      "name": "rollout_velocity-s42-u4000",
+      "arm": "rollout_velocity",
+      "seed": 42,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/rollout_velocity-s42-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_velocity-s42-u4000/final-selected.ckpt",
+      "size_bytes": 623471515,
+      "sha256": "0a623d7328a45049332f33e28f603423ab1acd6d15d4a5caef8de01ab372d833",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/rollout_velocity-s42-u4000/selection.json"
+    },
+    {
+      "name": "parameters-s42-u4000",
+      "arm": "parameters",
+      "seed": 42,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s42-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/parameters-s42-u4000/blcs-epoch=084-step=03825.ckpt",
+      "size_bytes": 625892363,
+      "sha256": "a46e79af234b977cd2d9946007eb895a2a4eed94feb8a14187ed8bb7729945c9",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/parameters-s42-u4000/selection.json"
+    },
+    {
+      "name": "reprojection-s43-u4000",
+      "arm": "reprojection",
+      "seed": 43,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s43-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s43-u4000/blcs-epoch=084-step=03825.ckpt",
+      "size_bytes": 621878167,
+      "sha256": "861df49ca556848a39b5f97ff0ea60c54e92c23c456bca1789c934db0c56e974",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s43-u4000/selection.json"
+    },
+    {
+      "name": "parameters-s43-u4000",
+      "arm": "parameters",
+      "seed": 43,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s43-u4000/logs/version_0/checkpoints/blcs-epoch=084-step=03825.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/parameters-s43-u4000/blcs-epoch=084-step=03825.ckpt",
+      "size_bytes": 625892363,
+      "sha256": "0b2c2e4add308e3eb555a0043f51881f3a4b8aaf2068ca134a964a4d14981835",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/parameters-s43-u4000/selection.json"
+    },
+    {
+      "name": "reprojection-s44-u4000",
+      "arm": "reprojection",
+      "seed": 44,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/reprojection-s44-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s44-u4000/final-selected.ckpt",
+      "size_bytes": 621872151,
+      "sha256": "c739a0fa8cc11a543f9fc9bb29288966665221d9b6825b2bbeac0d7b723893c9",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/reprojection-s44-u4000/selection.json"
+    },
+    {
+      "name": "parameters-s44-u4000",
+      "arm": "parameters",
+      "seed": 44,
+      "original_checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/parameters-s44-u4000/checkpoints/final-selected.ckpt",
+      "checkpoint": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/parameters-s44-u4000/final-selected.ckpt",
+      "size_bytes": 625885579,
+      "sha256": "1cf4067a297e2e46d2999efb5fc2df4c3dd5485d42cda35a1b3a028425ce281a",
+      "relocated_receipt": "/home/kamimura/artifacts/tennis-lab/blcs/progressive-losses-20261013/parameters-s44-u4000/selection.json"
+    }
+  ],
+  "original_receipts_unchanged": true
+}

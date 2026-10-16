@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "session": "i983-l4-ablation-03",
+  "job": "train-s-s42-attempt02",
+  "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "orchestrator_commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "execution_backend": "notebook_kernel",
+  "started_at": "2026-10-11T04:27:56.059534+00:00",
+  "command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_s run.output_dir=court_detection/train/i983-dino-s-shared1024/s42/attempt-02 run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02 run.artifact_store.sync_interval_seconds=60",
+  "input_snapshot": "knowledge/runs/run-i983-court-l512-profile-s42/inputs.json",
+  "input_verification": "input-verification.json",
+  "input_request": "input-request.json",
+  "environment": "attempts/02-environment.json",
+  "condition_comparison": "condition-comparison.json",
+  "drive_output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02",
+  "checkpoint_selection": {
+    "monitor": "val/loss",
+    "mode": "min",
+    "after_epochs": 20,
+    "uses_test": false,
+    "receipt": "checkpoint-selection.json"
+  },
+  "startup_log": "attempts/02-startup.log",
+  "startup_status": "attempts/02-startup-status.json",
+  "running_receipt": "attempts/02-running-receipt.json",
+  "initial_commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "initial_command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_s run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42 run.artifact_store.sync_interval_seconds=60",
+  "attempts": [
+    {
+      "attempt": 1,
+      "session": "i983-l4-ablation-03",
+      "job": "train-s-s42",
+      "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+      "command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_s run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42 run.artifact_store.sync_interval_seconds=60",
+      "request": "request.json",
+      "config": "config.yaml",
+      "status": "failed",
+      "returncode": 1,
+      "finished_at": "2026-10-11T04:18:37.515439+00:00",
+      "drive_saved_at": "2026-10-11T04:18:37.515421+00:00",
+      "failure_stage": "sanity_validation_before_first_optimizer_step",
+      "log": "failed-startup.log",
+      "completion": "failed-startup-status.json",
+      "output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42"
+    },
+    {
+      "attempt": 2,
+      "session": "i983-l4-ablation-03",
+      "job": "train-s-s42-attempt02",
+      "status": "completed",
+      "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+      "command": ".venv/bin/python -m src.tasks.court_detection.scripts.train --config-name train_i983_s run.output_dir=court_detection/train/i983-dino-s-shared1024/s42/attempt-02 run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02 run.artifact_store.sync_interval_seconds=60",
+      "config": "attempts/02-config.yaml",
+      "request": "attempts/02-request.json",
+      "started_at": "2026-10-11T04:27:56.059534+00:00",
+      "output": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02",
+      "resume": null,
+      "condition_comparison": "attempts/02-condition-comparison.json",
+      "environment": "attempts/02-environment.json",
+      "training_confirmation": "attempts/02-training-confirmation.json",
+      "returncode": 0,
+      "finished_at": "2026-10-11T15:05:39.131647+00:00",
+      "drive_saved_at": "2026-10-11T15:05:39.131630+00:00",
+      "completion": "attempts/02-completion.json"
+    }
+  ],
+  "corrective_change": {
+    "commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+    "description": "Allow float32-parameter Transformer to consume the active autocast dtype; computation and hyperparameters unchanged.",
+    "cpu_validation": "31 model/Transformer tests passed; two projected BF16 cases reproduced the original error before the fix.",
+    "patch": "autocast-fix.patch",
+    "source_changes_since_L": [
+      "src/tasks/court_detection/README.md",
+      "src/tasks/court_detection/models/dinov3_dpt.py"
+    ],
+    "deployment": "autocast-deployment.json"
+  },
+  "config": "attempts/02-config.yaml",
+  "training_status": "completed",
+  "evaluation_status": "completed",
+  "training_curves": {
+    "source_manifest": "tensorboard-sources.json",
+    "derivation": "tensorboard-derivation.json",
+    "script": "curate_tensorboard.py",
+    "plot": "curves.png"
+  },
+  "terminal_test": {
+    "metrics": "terminal-test-metrics.json",
+    "scope": "Final epoch model; separate from selected-checkpoint comparison evaluation."
+  },
+  "evaluation": {
+    "session": "i983-l4-ablation-03",
+    "job": "eval-s-s42",
+    "request": "evaluation-request.json",
+    "completion": "evaluation-completion.json",
+    "result": "evaluation/evaluation.json",
+    "verification": "evaluation-verification.json",
+    "drive_output": "gdrive:tennis_lab/outputs/court_detection/evaluate/i983-dino-s-shared1024/s42",
+    "returncode": 0,
+    "drive_saved_at": "2026-10-11T15:13:02.077188+00:00"
+  },
+  "diagnostic_status": "completed",
+  "pose_diagnostic": {
+    "script": "diagnose_pose.py",
+    "request": "diagnostic-request.json",
+    "completion": "diagnostic-completion.json",
+    "result": "pose-diagnostic/diagnostic.json",
+    "points": "pose-diagnostic/points.json",
+    "drive_output": "gdrive:tennis_lab/outputs/court_detection/diagnose/i983-dino-s-shared1024/s42-pose",
+    "drive_saved_at": "2026-10-11T15:28:29.984541+00:00"
+  },
+  "session_stopped_at": "2026-10-11T15:30:20.380373+00:00"
+}

@@ -35,6 +35,7 @@ from src.utils.schema.court_normalization import (
     normalize_court_position,
     normalize_court_velocity,
 )
+from tests.support.physics.ball_record import simulated_record
 
 
 def _camera_view_scene() -> tuple[
@@ -43,7 +44,7 @@ def _camera_view_scene() -> tuple[
     np.ndarray,
     np.ndarray,
 ]:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
+    contract = resolve_court_keypoint_contract("physical_v1")
     center = (2.0, 12.0, 4.0)
     view = build_court_view_record(
         camera_id="cam_0",
@@ -96,6 +97,7 @@ def _camera_view_scene() -> tuple[
         ball_vel_norm=normalize_court_velocity(velocity),
         cameras=[camera],
         num_cameras_sampled=1,
+        physics_record=simulated_record(len(position))[1],
         fps_out=30,
         sim_fps=120,
         physics_config_dict={},
@@ -110,7 +112,7 @@ def test_chunk_generator_publishes_and_propagates_camera_view_contract_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scene, expected_view, expected_uv, expected_vis = _camera_view_scene()
-    contract = resolve_court_keypoint_contract("camera_view_v2")
+    contract = resolve_court_keypoint_contract("physical_v1")
     generator_config = cast(
         "GeneratorConfig",
         SimpleNamespace(court_keypoint_contract=contract),
@@ -143,9 +145,7 @@ def test_chunk_generator_publishes_and_propagates_camera_view_contract_once(
         generation_workers=1,
         generation_chunksize=1,
         generation_seed=799,
-        multi_object=True,
-        timeline_config=None,
-        maximum_physics_attempts_per_object=1,
+        maximum_physics_attempts_per_scene=1,
     )
 
     generator(

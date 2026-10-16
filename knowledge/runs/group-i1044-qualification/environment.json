@@ -1,0 +1,9 @@
+{
+  "recorded_at": "2026-10-13T01:28:05.140452+00:00",
+  "python": "3.11.15",
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "pytorch": "2.13.0+cu130",
+  "cuda_build": "13.0",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti, 595.79, 16311 MiB",
+  "reservation": "shared training queue; up to two half jobs; logical reservation without hard VRAM cap"
+}

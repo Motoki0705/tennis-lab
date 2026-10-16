@@ -15,7 +15,6 @@
 | 生成処理のログ | `paths.output_root` | `<task>/generate/<recipe>/<run-id>/hydra/` |
 | 特徴抽出のログ | `paths.output_root` | `<task>/precompute/<recipe>/<run-id>/hydra/` |
 | BLCS/PLCS合成データ | `paths.data_root` | `<task>/<dataset-version>/` |
-| 抽出モーション | `paths.data_root` | `plcs/motions/<source>/<collection-version>/` |
 | 実クリップの教師データ・RGB特徴 | `paths.data_root` | `<dataset-version>/<manifestで指定したclip>/annotations/<producer>/` |
 
 各タスクの既定 `output_root` と `artifact_root` はともに `outputs`。
@@ -85,9 +84,26 @@ CLIで指定する場合も `run.output_dir=slcs/train/meiji_rgb_v1/s43-001` の
 新規学習は既存の `config.yaml` があるrunへ書き込めない。
 継続学習は `run.resume` と既存の `run.output_dir` を明示する。
 別施策への重み継承は、新しいrun-idと `run.init_weights` を指定する。
-staged ball trainingは `train/staged/phase1`〜`phase4` を明示的なrun-idとして使い、
-前phaseのcheckpointを次phaseが参照する。別のstaged実験では4つの出力と入力参照を
-同じ新しい実験名に揃える。
+両fieldは `null`（無効）、CHECKPOINT root相対の文字列、または
+`{role: checkpoint|artifact, path: <選んだroot相対path>}` を受け付ける。
+文字列の解決先はCHECKPOINTのままで、既存学習runを読む場合だけARTIFACTを明示する。
+例えば採用/事前学習重みを`ckpt/`に置き、`outputs/`の学習を再開する設定は次のとおり。
+
+```yaml
+paths:
+  checkpoint_root: ckpt
+  artifact_root: outputs
+run:
+  resume:
+    role: artifact
+    path: ball_detection/train/experiment/run-id/logs/version_0/checkpoints/last.ckpt
+  init_weights: null
+```
+
+`resume`と`init_weights`の同時指定、未知role・余分なkey・絶対path・root外への参照は拒否する。
+共通の`resolve_checkpoint_input`は解決済みpathとroleを保持する。推論consumerも元モデルのARTIFACT参照を維持し、別途読む事前学習重みのCHECKPOINT rootを書き換えない。
+別の学習出力を読むときは `paths.artifact_root` を明示し、ファイルの自動探索・コピーは行わない。
+
 
 データ内容・split・座標契約・教師checkpoint・生成seedを変える場合は新しい
 dataset-versionを作る。SLCSのscene起点生成では、既存sceneを検証し、入力・設定が一致する特徴・splitを再利用する。旧BLCS/PLCS generatorや
@@ -108,24 +124,24 @@ Hydraログを有効にする入口はOUTPUT配下の対応する用途・実験
 
 | タスク・入口 | 成果物・生成データのrootと設定 |
 |---|---|
-| 全5タスク `train`、派生train、ball `train_staged`、court `train_mixed` | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
+| 全5タスク `train`、派生train | OUTPUT / `run.output_dir`。新規checkpointもこのrunの `logs/version_*/checkpoints` |
+| ball/court `preview_augmentation`、ball `preview_heatmaps` | ARTIFACT / `preview.output_dir` |
+| BLCS/PLCS `preview_augmentation` | OUTPUT / `preview.output_dir` |
 | ball `eval` | OUTPUT / `run.output_dir` |
 | ball/court `visualize` | GIFはARTIFACT / `visualization.save`、HydraログはOUTPUT / `run.output_dir`。相対run階層は共通 |
 | ball `evaluate_manifest` | OUTPUT / manifest内 `output_dir`。CLIログは `evaluate/manifest/<run-id>/hydra`、比較成果物はmanifestが独立に生成するrun-id。再開には同じmanifest出力を明示 |
-| ball/court/BLCS/PLCS `preview_augmentation`、ball/court `preview_heatmaps` | OUTPUT / `preview.output_dir` |
 | BLCS/PLCS `visualize`（`visualization.mode=predict`を含む） | OUTPUT / `visualization.save`。GIFとHydraログは同じmode・run-id |
 | PLCS `analysis/*` | OUTPUT / `run.output_dir`（angle_velocity、dataset_distribution、loss_dominance、rotation_error_samples） |
-| ball `analyze_web_bbox_ratio` | OUTPUT / `analyze.output_dir` |
 | SLCS `evaluate`、`predict_clip`、`analyze_predictions` | OUTPUT / `evaluate.output_dir`、`predict.output_dir`、`analysis.output_dir` |
 | `src.tasks.slcs.scripts.evaluate_run` | 明示的な絶対 `--output-root` / `--output slcs/evaluate/<experiment>/<run-id>`。選定receipt・条件別config/予測/metricsを保存。入力 `--training-run` も同じrootからの相対train階層 |
 | BLCS/PLCS `generate_dataset` | DATA / `run.output_dir`。dataset-versionは固定、生成ログだけ独立run |
+| ball_refiner_3d `generate_dataset` | DATA / `generation.dataset`。多視点で共有する3D真値・投影・split・manifest。既存datasetは拒否 |
+| ball_refiner_3d `train` | 入力はDATA / `data.dataset`、出力はOUTPUT / `run.output_dir`。共有datasetから3D回帰・Flowの学習runを作り、軌道とイベント確率を保存する |
+| ball_refiner_3d `predict` | 明示的な絶対 `--checkpoint`・`--input`・`--output`。各引数の親をCHECKPOINT・DATA・OUTPUT rootとして検証し、新規NPZを保存 |
+| ball_refiner_3d `evaluate` | 明示的な絶対 `--checkpoint`・`--run-config`・`--dataset`・`--output`。保存した学習設定の固定test条件を再現し、新規OUTPUTへ評価を書き出す |
 | BLCS `evaluate_real` | OUTPUT / `run.output_dir`（evaluate run）。入力重みはCHECKPOINT / `evaluation.checkpoint`。固定test splitの結果・入力hash・展開済み設定を保存 |
 | BLCS/PLCS `generate_dataset_samples` | DATA / `samples.datasets[*].path` の `samples/`。dataset付属のGIFとmanifestであり実験runとは別 |
 | BLCS API server | ディスクdatasetを作らない。サーバーログはOUTPUT / `blcs/generate/api_server/<run-id>/hydra` |
-| PLCS `extract_gvhmr_motions` | DATA / `run.output_dir`（`plcs/motions/gvhmr/<collection-version>`）。抽出元もDATA、外部モデルは別のroot |
-| ball `convert_web_dataset` | DATA / `convert.output_dir`。既存共有dataset `tennis/web/unified` を維持 |
-| ball/court YouTube準備・annotation、ball SSL画像抽出・clip予測 | DATA配下の設定されたdataset・clip・annotation。既存データ配置を維持し、処理ログはgenerate run |
-| court `generate_masks`、`generate_line_masks`、`materialize_targets` | DATA配下の派生教師・target store。line maskのpreviewはOUTPUT / `generate_line_masks.preview_dir`（同じgenerate run内の `preview/`）。`materialize_targets` のログ用途はprecompute |
 | SLCS `generate_dataset` | DATA / `data.dataset_root` のsceneを検証し、同datasetへDINO特徴とsplitを追記。HydraログはOUTPUTのgenerate run |
 | SLCS `make_splits` | DATA / `data.split_file` |
 | SLCS `precompute_dino_tokens` | DATA / `data.dataset_root` 内のmanifestが示すclipの特徴ファイル。ログはprecompute run |
@@ -139,11 +155,10 @@ sceneを入力とするSLCS学習準備は[生成ガイド](slcs/generate_datase
 実験履歴の旧トップレベルCLI名・command・patchは当時の実行証拠なので書き換えない。
 履歴の再実行にはそのrunが記録したcommitを使い、現在のcheckoutでは上表と生成ガイドの`src.*`入口を使う。
 
-入力checkpointはCHECKPOINT、既存hparamsやsceneなどの実験成果物入力は入口の
-ARTIFACT契約を使う。CHECKPOINTの既定はball/court/PLCSが `outputs`、BLCSが
-`ckpt`、SLCSが `checkpoints`。これは既存入力の配置を表すもので、新規学習checkpointの
-保存rootではない。実RGB学習設定がcheckpoint_rootを明示する場合はその設定が優先する。
-学習出力を移した後で再開・評価するときは、入力checkpoint_rootも対応する場所へ設定する。
+配布checkpointはCHECKPOINT、既存hparamsやsceneなどの実験成果物入力は入口の
+ARTIFACT契約を使う。各入口のroot既定値はその設定ファイルを参照する。
+新規学習checkpointの保存先はOUTPUTの学習runであり、入力rootとは独立している。
+学習出力を移した後の再開は上記のARTIFACT参照、評価は各入口が宣言する入力rootを設定する。
 
 ## 非Hydraの閲覧・推論UI
 
@@ -154,6 +169,7 @@ checkpoint探索の入力rootとして扱う。
 | 入口 | ディスクへの保存と設定 |
 |---|---|
 | ball/court/BLCS/PLCS `review_dataset`、PLCS `review_accad_motion` | dataset・モーションを読み取り、JSON・画像・バイナリをHTTP応答として返す。永続的な編集・可視化ファイルは作らない。入力rootは各CLIのdata/ACCAD/SMPL引数 |
+| ball_refiner_3d `review_dataset` | 共通DATA・OUTPUT内の学習run・CHECKPOINTを読み取るHTTP UI。設定JSON・比較PNGはブラウザdownloadへ保存。`--prepare-saved-predictions`は`OUTPUT/ball_refiner_3d/review/predictions/`へ表示用予測を生成。CUDA要求のみ共有queueへ記録 |
 | ball/court/BLCS `inference_ui`、PLCS `serve_inference_ui` | 推論要求と応答は共有repoの `.training_queue/ui_requests/<task>-<unique>/` に保持。入力は `request.json`、成功はatomicに公開する `result.bin`、失敗は `error.json`。queue実行ログは同じ共有queueの `logs/`。推論結果はHTTP応答としても返す |
 | base `inference_worker` | 上記requestディレクトリ内に結果を保存。CLIのrequest引数はその境界内の既存ファイルに限定 |
 
@@ -161,13 +177,11 @@ UIの推論要求ファイルは障害調査用の永続IPCであり、学習run
 保存場所は `inference_queue.shared_repository_root()` がgit共通ディレクトリから決め、
 worktreeやUIのcheckpoint探索rootを変えても共有queueを使う。
 この入口には任意の成果物保存先を選ぶ設定はなく、UI終了時にも要求・結果を削除しない。
-BLCS/PLCS tracking推論のsplit補助ファイルだけは `TemporaryDirectory` 内で作成して破棄する。
 UI表示を再利用可能なGIF等へ保存する場合は、上表の可視化CLIの保存設定を使う。
 
 ## CPUスモークの検証範囲
 
 `tests/unit/utils/test_output_layout.py` は全Hydra入口のcompose・validator・path解決を確認する。
-抽出モーションでは外部モデルの存在確認だけをmockする。
 `tests/integration/tasks/base/test_output_artifacts_smoke.py` は全5タスクのtrain設定を合成し、
 データ・モデルhookを小さなCPU fixtureに置き換えて共通runnerを1 step実行する。
 実際に保存したconfig、TensorBoard、checkpoint、qualitative GIF、予測NPZとmetric JSONを

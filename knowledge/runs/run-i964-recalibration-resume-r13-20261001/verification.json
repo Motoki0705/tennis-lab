@@ -1,0 +1,30 @@
+{
+  "resume_tests": {
+    "count": 15,
+    "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest -n 4 tests/integration/tasks/person_tracking/test_recalibration_resume.py tests/integration/tasks/person_tracking/test_recalibration_features.py tests/integration/tasks/person_tracking/test_feature_guard.py --tb=short",
+    "status": "pass"
+  },
+  "fit_tests": {
+    "count": 16,
+    "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest -n 4 tests/unit/tasks/player_association/calibration tests/integration/tasks/person_tracking/test_recalibration_fit_gate.py --tb=short",
+    "status": "pass",
+    "inputs": "synthetic only"
+  },
+  "ruff": "pass",
+  "mypy": "pass (--follow-imports=skip, changed Python files)",
+  "hooks": "pass",
+  "shell_syntax": "pass",
+  "fit_cli_help": "pass",
+  "real_fit_runs": 0,
+  "new_dev_score_runs": 0,
+  "reserved_unseen_opened": false,
+  "independent_validator_attempts": 0,
+  "cpu_output_bytes": 360474,
+  "knowledge_bundle_bytes_before_this_record": 1201803,
+  "default_config_changed_in_run13": false,
+  "retracked_cameras": 2,
+  "projected_rows": 9,
+  "reuse_complete_camera_count": 9,
+  "queued_producer_hashes_still_match": true,
+  "knowledge_validation": "428 nodes; 0 errors (including --base-ref campaign930/i964-1-player-detection)"
+}

@@ -1,0 +1,137 @@
+{
+  "status": "complete",
+  "stage": "tracking",
+  "generation_mode": "review_then_pose.v1",
+  "all_detections": 1526,
+  "pose_crops": 0,
+  "seconds": 212.9731904710352,
+  "last_attempt_seconds": 227.12679217601544,
+  "clip_id": "tracknet/game9/Clip6",
+  "frame_count": 109,
+  "raw_tracks": 22,
+  "court_policy": "disabled",
+  "tracking_profile": {
+    "method": "strongsort_pp_appearance",
+    "encoder": "clipreid_vitb16_market1501",
+    "features": {
+      "bbox_enlarge": 1.2,
+      "min_appearance_height_px": 16.0,
+      "appearance_batch_size": 64
+    },
+    "online_config": {
+      "max_age": 30,
+      "n_init": 3,
+      "max_cost": 0.45,
+      "max_iou_distance": 0.7,
+      "motion_gate": 9.4877,
+      "appearance_weight": 0.98,
+      "ema_alpha": 0.9,
+      "pose_weight": 0.0
+    },
+    "offline_profile": "i964_run9_aflink_gsi"
+  },
+  "source_track_ids": [
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3,
+      26
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7
+    ],
+    [
+      8
+    ],
+    [
+      9
+    ],
+    [
+      10
+    ],
+    [
+      11
+    ],
+    [
+      12
+    ],
+    [
+      13
+    ],
+    [
+      14
+    ],
+    [
+      15
+    ],
+    [
+      18
+    ],
+    [
+      19
+    ],
+    [
+      20
+    ],
+    [
+      25
+    ],
+    [
+      27
+    ],
+    [
+      28
+    ],
+    [
+      29
+    ]
+  ],
+  "link_candidates": [
+    {
+      "former_row": 2,
+      "later_row": 19,
+      "gap": 3.0,
+      "distance_px": 40.08557306139695,
+      "link_probability": 0.9607905745506287
+    },
+    {
+      "former_row": 12,
+      "later_row": 16,
+      "gap": 8.0,
+      "distance_px": 39.82454547805791,
+      "link_probability": 0.05166088417172432
+    },
+    {
+      "former_row": 12,
+      "later_row": 18,
+      "gap": 19.0,
+      "distance_px": 39.5182387507073,
+      "link_probability": 0.05638658255338669
+    },
+    {
+      "former_row": 17,
+      "later_row": 19,
+      "gap": 10.0,
+      "distance_px": 49.67665645618684,
+      "link_probability": 0.9159361720085144
+    }
+  ],
+  "synthetic_poses_used": false,
+  "files": {
+    "tracks.npz": "caea51f19be9d5409dfab8e21a68e79887e2da69d1bd8fef91018aa656adfa9c",
+    "input.json": "bb53cc00796be5883701acb3592fcaeff02c9ad4bfc2183dbd22f14705dd5e57"
+  }
+}

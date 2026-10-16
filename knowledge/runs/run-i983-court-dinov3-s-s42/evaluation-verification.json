@@ -1,0 +1,8 @@
+{
+  "comparison_contract_matches": "run-i983-court-dinov3-l-s42",
+  "png_count": 36,
+  "selected_checkpoint_matches": true,
+  "synthetic_count": 886,
+  "real_count": 2211,
+  "checkpoint_sha256": "7c03fb429dae1a7090ba27257a38e4ca26663da4e91020c130bb26fb0f7d554b"
+}

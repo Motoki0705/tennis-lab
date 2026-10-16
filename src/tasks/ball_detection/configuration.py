@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import math
+import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from types import MappingProxyType
+from string import Formatter
 from typing import Any, Literal, cast
-from urllib.parse import urlsplit
 
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.base.configuration import BaseRunConfig, BaseTrainingConfig
+from src.tasks.base.configuration import (
+    BaseRunConfig,
+    BaseTrainingConfig,
+    CheckpointInput,
+    resolve_checkpoint_input,
+)
 from src.utils.configuration import (
     ConfigurationTypeError,
     MissingConfigurationKeyError,
@@ -23,7 +28,6 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 from src.utils.hydra import register_boundary_validator
-from src.utils.models.components.ffn_layers import SUPPORTED_FFN_TYPES
 from src.utils.paths import PROJECT_ROOT
 
 ConfigMapping = Mapping[str, Any]
@@ -185,16 +189,6 @@ def _validate_relative_child(value: object, *, path: str) -> str:
     return relative
 
 
-def _validate_field_types(
-    mapping: ConfigMapping,
-    *,
-    path: str,
-    fields: Mapping[str, type[object] | tuple[type[object], ...]],
-) -> None:
-    for key, expected in fields.items():
-        typed(mapping, key, expected, path=path)
-
-
 def _validate_string_sequence(
     value: object, *, path: str, allow_empty: bool = False
 ) -> tuple[str, ...]:
@@ -210,27 +204,6 @@ def _validate_string_sequence(
             f"{path} must be {qualifier} of non-empty trimmed strings."
         )
     return result
-
-
-def _validate_trimmed_string(value: object, *, path: str) -> str:
-    text = cast(str, value)
-    if type(value) is not str or not text.strip() or text != text.strip():
-        raise SemanticConfigurationError(f"{path} must be a non-empty trimmed string.")
-    return text
-
-
-def _validate_optional_trimmed_string(value: object, *, path: str) -> str | None:
-    if value is None:
-        return None
-    return _validate_trimmed_string(value, path=path)
-
-
-def _validate_http_url(value: object, *, path: str) -> str:
-    text = _validate_trimmed_string(value, path=path)
-    parsed = urlsplit(text)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise SemanticConfigurationError(f"{path} must be an absolute HTTP(S) URL.")
-    return text
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,6 +233,12 @@ class BallRuntimePaths:
         resolved: Path = self.resolver.resolve(PathRole.CHECKPOINT, relative)
         return resolved
 
+    def checkpoint_input(self, mapping: ConfigMapping, key: str, *, path: str) -> CheckpointInput:
+        declared = resolve_checkpoint_input(mapping, key, path=path, resolver=self.resolver)
+        if declared is None:
+            raise SemanticConfigurationError(f"{path}.{key}: checkpoint input is required.")
+        return declared
+
     def output(self, relative: str) -> Path:
         resolved: Path = self.resolver.resolve(PathRole.OUTPUT, relative)
         return resolved
@@ -275,125 +254,6 @@ class BallRuntimePaths:
     def external_asset(self, relative: str) -> Path:
         resolved: Path = self.resolver.resolve(PathRole.EXTERNAL_ASSET, relative)
         return resolved
-
-
-@dataclass(frozen=True, slots=True)
-class BallYoutubePathContract:
-    """Resolved role-tagged inputs shared by both Ball YouTube workflows."""
-
-    paths: BallRuntimePaths
-    workflow_root: Path
-    download_archive: Path | None
-    local_videos: Mapping[str, Path]
-
-    @classmethod
-    def from_config(cls, config: object) -> BallYoutubePathContract:
-        """Resolve archive/manual-video fragments once and reject legacy paths."""
-        paths = BallRuntimePaths.from_config(config)
-        root = as_mapping(config, path="configuration")
-        workflow = as_mapping(
-            typed(root, "workflow", (dict, DictConfig), path="configuration"),
-            path="workflow",
-        )
-        workflow_fragment = _validate_relative_child(
-            typed(workflow, "root", str, path="workflow"),
-            path="workflow.root",
-        )
-        workflow_root = paths.resolver.resolve(PathRole.DATA, workflow_fragment)
-
-        archive: Path | None = None
-        if "download" in workflow:
-            download = as_mapping(workflow["download"], path="workflow.download")
-            raw_archive = typed(
-                download,
-                "download_archive",
-                (str, type(None)),
-                path="workflow.download",
-            )
-            if raw_archive is not None:
-                archive_fragment = _validate_relative_child(
-                    raw_archive,
-                    path="workflow.download.download_archive",
-                )
-                archive = paths.resolver.resolve(
-                    PathRole.DATA,
-                    workflow_fragment,
-                    archive_fragment,
-                )
-
-        local_videos: dict[str, Path] = {}
-        if "discovery" in workflow:
-            raw_sources = typed(workflow, "sources", (list, tuple), path="workflow")
-            for index, raw_source in enumerate(
-                sequence(raw_sources, path="workflow.sources")
-            ):
-                source_path = f"workflow.sources[{index}]"
-                source = as_mapping(raw_source, path=source_path)
-                video_id = cast(str, typed(source, "video_id", str, path=source_path))
-                raw_local_video = typed(
-                    source,
-                    "local_video",
-                    (dict, DictConfig, type(None)),
-                    path=source_path,
-                )
-                if raw_local_video is None:
-                    continue
-                if video_id in local_videos:
-                    raise SemanticConfigurationError(
-                        f"{source_path}.video_id duplicates {video_id!r}."
-                    )
-                declaration = exact_mapping(
-                    raw_local_video,
-                    path=f"{source_path}.local_video",
-                    required={"role", "path"},
-                )
-                role_value = cast(
-                    str,
-                    typed(
-                        declaration,
-                        "role",
-                        str,
-                        path=f"{source_path}.local_video",
-                    ),
-                )
-                try:
-                    role = PathRole(role_value)
-                except ValueError as error:
-                    raise SemanticConfigurationError(
-                        f"{source_path}.local_video.role is unsupported: "
-                        f"{role_value!r}."
-                    ) from error
-                if role not in {PathRole.DATA, PathRole.EXTERNAL_ASSET}:
-                    raise SemanticConfigurationError(
-                        f"{source_path}.local_video.role must be 'data' or "
-                        "'external_asset'."
-                    )
-                local_fragment = _validate_relative_child(
-                    typed(
-                        declaration,
-                        "path",
-                        str,
-                        path=f"{source_path}.local_video",
-                    ),
-                    path=f"{source_path}.local_video.path",
-                )
-                local_path = paths.resolver.resolve(role, local_fragment)
-                if not local_path.is_file():
-                    raise SemanticConfigurationError(
-                        f"{source_path}.local_video does not name an existing file: "
-                        f"{local_path}."
-                    )
-                local_videos[video_id] = local_path
-        return cls(
-            paths=paths,
-            workflow_root=workflow_root,
-            download_archive=archive,
-            local_videos=MappingProxyType(local_videos),
-        )
-
-    def local_video_for(self, video_id: str) -> Path | None:
-        """Return the explicitly configured manual DATA input for one source."""
-        return self.local_videos.get(video_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -477,172 +337,33 @@ _COMMON_MODEL = {
 def validate_model(
     config: object, *, paths: BallRuntimePaths | None = None
 ) -> ConfigMapping:
-    """Validate the selected model variant without model construction."""
+    """Validate the retained ConvNeXt heatmap model; direct coordinates have their own typed API."""
     root = as_mapping(config, path="configuration")
-    model = as_mapping(
-        typed(root, "model", (dict, DictConfig), path="configuration"), path="model"
-    )
+    model = as_mapping(typed(root, "model", (dict, DictConfig), path="configuration"), path="model")
     name = typed(model, "name", str, path="model")
-    if name == "stunet":
-        allowed = _COMMON_MODEL | {"mdd_a", "mdd_b"}
-    elif name == "conv_next_unet":
-        allowed = _COMMON_MODEL | {"dims", "depth", "drop_path_prob", "mdd_a", "mdd_b"}
-    elif name == "dinov3_rope":
-        allowed = _COMMON_MODEL | {"image_size", "backbone", "decoder", "heatmap_head"}
-    else:
-        raise SemanticConfigurationError(f"model.name: unsupported value {name!r}.")
-    model = exact_mapping(model, path="model", required=allowed)
-    for key in ("in_channels", "num_classes", "num_frames"):
-        value = cast(int, typed(model, key, int, path="model"))
-        _positive(value, path=f"model.{key}")
-    typed(model, "input_mode", str, path="model")
-    typed(model, "input_layout", str, path="model")
-    if name in {"stunet", "conv_next_unet"}:
-        _required_number(model, "mdd_a", path="model")
-        _required_number(model, "mdd_b", path="model")
-    if name == "conv_next_unet":
-        _required_sequence(model, "dims", path="model", item_type=int, length=4)
-        _positive(
-            cast(int, typed(model, "depth", int, path="model")), path="model.depth"
+    if name != "conv_next_unet":
+        raise SemanticConfigurationError(
+            f"model.name: unsupported heatmap model {name!r}; use conv_next_unet. "
+            "MDD+pose coordinate models use the typed mdd_pose entrypoint."
         )
-        drop_path_prob = _required_number(model, "drop_path_prob", path="model")
-        if not 0.0 <= drop_path_prob < 1.0:
-            raise SemanticConfigurationError("model.drop_path_prob must be in [0, 1).")
-    if name == "dinov3_rope":
-        _required_sequence(model, "image_size", path="model", item_type=int, length=2)
-        backbone = exact_mapping(
-            typed(model, "backbone", (dict, DictConfig), path="model"),
-            path="model.backbone",
-            required={
-                "name",
-                "repository_path",
-                "checkpoint_path",
-                "strict",
-                "train_mode",
-                "last_n_blocks",
-                "lora",
-            },
-        )
-        typed(backbone, "name", str, path="model.backbone")
-        repository_path = cast(
-            str,
-            typed(backbone, "repository_path", str, path="model.backbone"),
-        )
-        checkpoint_path = cast(
-            str,
-            typed(backbone, "checkpoint_path", str, path="model.backbone"),
-        )
-        typed(backbone, "strict", bool, path="model.backbone")
-        train_mode = cast(
-            str, typed(backbone, "train_mode", str, path="model.backbone")
-        )
-        if train_mode not in {"frozen", "last_n_blocks", "full"}:
-            raise SemanticConfigurationError(
-                "model.backbone.train_mode must be frozen, last_n_blocks, or full."
-            )
-        _positive(
-            cast(int, typed(backbone, "last_n_blocks", int, path="model.backbone")),
-            path="model.backbone.last_n_blocks",
-            allow_zero=True,
-        )
-        lora = exact_mapping(
-            typed(backbone, "lora", (dict, DictConfig), path="model.backbone"),
-            path="model.backbone.lora",
-            required={"enabled", "rank", "alpha", "dropout", "target_modules"},
-        )
-        typed(lora, "enabled", bool, path="model.backbone.lora")
-        _positive(
-            cast(int, typed(lora, "rank", int, path="model.backbone.lora")),
-            path="model.backbone.lora.rank",
-        )
-        _required_number(lora, "alpha", path="model.backbone.lora")
-        lora_dropout = _required_number(lora, "dropout", path="model.backbone.lora")
-        if not 0.0 <= lora_dropout < 1.0:
-            raise SemanticConfigurationError(
-                "model.backbone.lora.dropout must be in [0, 1)."
-            )
-        _required_sequence(
-            lora, "target_modules", path="model.backbone.lora", item_type=str
-        )
-        decoder = exact_mapping(
-            typed(model, "decoder", (dict, DictConfig), path="model"),
-            path="model.decoder",
-            required={
-                "dim",
-                "num_layers",
-                "num_heads",
-                "head_dim",
-                "ffn_dim",
-                "rope_dim",
-                "rope_base",
-                "dropout",
-                "attention_type",
-                "n_kv_heads",
-                "ffn_type",
-                "gradient_checkpointing",
-            },
-        )
-        for key in (
-            "dim",
-            "num_layers",
-            "num_heads",
-            "head_dim",
-            "ffn_dim",
-            "rope_dim",
-        ):
-            _positive(
-                cast(int, typed(decoder, key, int, path="model.decoder")),
-                path=f"model.decoder.{key}",
-            )
-        rope_base = typed(
-            decoder, "rope_base", (float, int, list, tuple), path="model.decoder"
-        )
-        if isinstance(rope_base, (list, tuple)):
-            _required_sequence(
-                decoder,
-                "rope_base",
-                path="model.decoder",
-                item_type=(float, int),
-                length=3,
-            )
-        decoder_dropout = _required_number(decoder, "dropout", path="model.decoder")
-        if not 0.0 <= decoder_dropout < 1.0:
-            raise SemanticConfigurationError("model.decoder.dropout must be in [0, 1).")
-        typed(
-            decoder,
-            "gradient_checkpointing",
-            bool,
-            path="model.decoder",
-        )
-        attention_type = cast(
-            str, typed(decoder, "attention_type", str, path="model.decoder")
-        )
-        if attention_type != "mha":
-            raise SemanticConfigurationError(
-                "model.decoder.attention_type must be 'mha'."
-            )
-        typed(decoder, "n_kv_heads", type(None), path="model.decoder")
-        ffn_type = cast(str, typed(decoder, "ffn_type", str, path="model.decoder"))
-        if ffn_type not in SUPPORTED_FFN_TYPES:
-            raise SemanticConfigurationError(
-                "model.decoder.ffn_type must be one of "
-                f"{sorted(SUPPORTED_FFN_TYPES)!r}."
-            )
-        heatmap_head = exact_mapping(
-            typed(model, "heatmap_head", (dict, DictConfig), path="model"),
-            path="model.heatmap_head",
-            required={"min_channels"},
-        )
-        _positive(
-            cast(
-                int,
-                typed(heatmap_head, "min_channels", int, path="model.heatmap_head"),
-            ),
-            path="model.heatmap_head.min_channels",
-        )
-        if paths is not None:
-            paths.external_asset(repository_path)
-            paths.external_asset(checkpoint_path)
+    model = exact_mapping(model, path="model", required=_COMMON_MODEL | {
+        "dims", "depth", "drop_path_prob", "mdd_a", "mdd_b",
+    })
+    for key in ("in_channels", "num_classes", "num_frames", "depth"):
+        _positive(cast(int, typed(model, key, int, path="model")), path=f"model.{key}")
+    if typed(model, "input_mode", str, path="model") != "mdd":
+        raise SemanticConfigurationError("model.input_mode must be 'mdd'; RGB model inputs were removed")
+    if typed(model, "input_layout", str, path="model") != "bcthw":
+        raise SemanticConfigurationError("model.input_layout must be 'bcthw'")
+    if model["in_channels"] != 2 or model["num_classes"] != 1:
+        raise SemanticConfigurationError("ConvNeXt requires two MDD channels and one heatmap class")
+    _required_number(model, "mdd_a", path="model")
+    _required_number(model, "mdd_b", path="model")
+    dims = _required_sequence(model, "dims", path="model", item_type=int, length=4)
+    for value in dims:
+        _positive(cast(int, value), path="model.dims")
+    if not 0 <= _required_number(model, "drop_path_prob", path="model") < 1:
+        raise SemanticConfigurationError("model.drop_path_prob must be in [0, 1)")
     return model
 
 
@@ -801,6 +522,67 @@ def validate_augmentation(value: object) -> ConfigMapping:
     return augmentation
 
 
+STORE_DATA_KEYS = frozenset(
+    {"data_dir", "sources", "train_sampling", "train_stride", "eval_stride", "supervision"}
+)
+_STORE_SOURCES = frozenset({"tracknet", "meiji", "chat_annotation"})
+
+
+def _validate_store_fields(
+    data: ConfigMapping,
+    *,
+    path: str,
+    paths: BallRuntimePaths | None,
+) -> None:
+    """Validate the ball frame store and source sampling settings."""
+    typed(data, "data_dir", str, path=path)
+    sources = _validate_string_sequence(data["sources"], path=f"{path}.sources")
+    if not sources:
+        raise SemanticConfigurationError(f"{path}.sources must not be empty.")
+    unknown = sorted(set(sources) - _STORE_SOURCES)
+    if unknown or len(set(sources)) != len(sources):
+        raise SemanticConfigurationError(
+            f"{path}.sources must be distinct names from {sorted(_STORE_SOURCES)}; got {list(sources)}."
+        )
+    _positive(cast(int, typed(data, "train_stride", int, path=path)), path=f"{path}.train_stride")
+    eval_stride = typed(data, "eval_stride", (int, type(None)), path=path)
+    if eval_stride is not None:
+        _positive(cast(int, eval_stride), path=f"{path}.eval_stride")
+    supervision = exact_mapping(
+        data["supervision"], path=f"{path}.supervision", required={"positive", "absent", "ignore"}
+    )
+    for role in ("positive", "absent", "ignore"):
+        _validate_string_sequence(supervision[role], path=f"{path}.supervision.{role}")
+    from src.tasks.ball_detection.data.supervision import FrameSupervisionPolicy
+
+    try:
+        FrameSupervisionPolicy.from_mapping(cast(Mapping[str, Sequence[str]], supervision))
+    except ValueError as error:
+        raise SemanticConfigurationError(f"{path}.supervision: {error}") from error
+    sampling = data["train_sampling"]
+    if sampling is not None:
+        sampling_path = f"{path}.train_sampling"
+        sampling = exact_mapping(
+            sampling, path=sampling_path, required={"windows_per_epoch", "seed", "source_weights"}
+        )
+        _positive(
+            cast(int, typed(sampling, "windows_per_epoch", int, path=sampling_path)),
+            path=f"{sampling_path}.windows_per_epoch",
+        )
+        typed(sampling, "seed", int, path=sampling_path)
+        weights = as_mapping(sampling["source_weights"], path=f"{sampling_path}.source_weights")
+        if set(weights) != set(sources):
+            raise SemanticConfigurationError(
+                f"{sampling_path}.source_weights must name exactly {path}.sources "
+                f"({sorted(sources)}); got {sorted(weights)}."
+            )
+        for name in weights:
+            weight = _required_number(weights, name, path=f"{sampling_path}.source_weights")
+            _positive(weight, path=f"{sampling_path}.source_weights.{name}")
+    if paths is not None:
+        paths.data(cast(str, data["data_dir"]))
+
+
 def validate_data(
     config: object, *, paths: BallRuntimePaths | None = None
 ) -> ConfigMapping:
@@ -812,7 +594,6 @@ def validate_data(
     source = typed(data, "source", str, path="data")
     common = {
         "source",
-        "data_dir",
         "batch_size",
         "num_workers",
         "pin_memory",
@@ -822,42 +603,11 @@ def validate_data(
         "max_instances",
         "augmentation",
     }
-    if source in {"tracknet", "youtube"}:
-        required = common | {"split", "sample_stride"}
-    elif source == "web":
-        required = common | {"sources", "sampling"}
-    elif source == "mixed_tracknet":
-        required = common | {
-            "split",
-            "sample_stride",
-            "synthetic",
-            "synthetic_per_batch",
-            "synthetic_batch_period",
-            "steps_per_epoch",
-            "sampling_seed",
-        }
-    elif source == "staged":
-        required = {
-            "source",
-            "t_max",
-            "t_distribution",
-            "t1_prob",
-            "val_num_frames",
-            "effective_batch_size",
-            "batch_size_by_t",
-            "val_batch_size",
-            "num_workers",
-            "pin_memory",
-            "seed",
-            "image_size",
-            "heatmap_size",
-            "sigma_ratio",
-            "max_instances",
-            "sources",
-            "augmentation",
-        }
-    else:
-        raise SemanticConfigurationError(f"data.source: unsupported value {source!r}.")
+    if source != "store":
+        raise SemanticConfigurationError(
+            f"data.source: unsupported value {source!r}; expected 'store'."
+        )
+    required = common | STORE_DATA_KEYS
     data = exact_mapping(data, path="data", required=required)
     if "augmentation" in data:
         validate_augmentation(data["augmentation"])
@@ -875,257 +625,47 @@ def validate_data(
     _positive(
         _required_number(data, "sigma_ratio", path="data"), path="data.sigma_ratio"
     )
-    if source != "staged":
-        typed(data, "data_dir", str, path="data")
-        _positive(
-            cast(int, typed(data, "batch_size", int, path="data")),
-            path="data.batch_size",
-        )
-    if "split" in data:
-        split = exact_mapping(
-            data["split"],
-            path="data.split",
-            required={"root_role", "train_file", "val_file", "test_file"},
-        )
-        _validate_split_mapping(split, path="data.split", paths=paths)
-    if source in {"tracknet", "youtube"}:
-        _positive(
-            cast(int, typed(data, "sample_stride", int, path="data")),
-            path="data.sample_stride",
-        )
-    if source == "web":
-        sources = typed(data, "sources", (str, list, tuple), path="data")
-        if isinstance(sources, (list, tuple)):
-            typed_sequence(sources, path="data.sources", item_type=str)
-        sampling = exact_mapping(
-            data["sampling"],
-            path="data.sampling",
-            required={"mode", "seed", "train_negative_fraction", "temporal"},
-        )
-        mode = typed(sampling, "mode", str, path="data.sampling")
-        if mode not in {"static", "temporal"}:
-            raise SemanticConfigurationError(
-                "data.sampling.mode must be 'static' or 'temporal'."
-            )
-        exact_mapping(
-            sampling["temporal"],
-            path="data.sampling.temporal",
-            required={"frame_step", "sample_stride", "max_frame_gap"},
-        )
-        typed(sampling, "seed", int, path="data.sampling")
-        negative_fraction = _optional_number(
-            sampling, "train_negative_fraction", path="data.sampling"
-        )
-        if negative_fraction is not None and not 0.0 <= negative_fraction < 1.0:
-            raise SemanticConfigurationError(
-                "data.sampling.train_negative_fraction must be null or in [0, 1)."
-            )
-        temporal = as_mapping(sampling["temporal"], path="data.sampling.temporal")
-        for key in ("frame_step", "sample_stride"):
-            _positive(
-                cast(int, typed(temporal, key, int, path="data.sampling.temporal")),
-                path=f"data.sampling.temporal.{key}",
-            )
-        max_gap = typed(
-            temporal,
-            "max_frame_gap",
-            (int, type(None)),
-            path="data.sampling.temporal",
-        )
-        if max_gap is not None:
-            _positive(cast(int, max_gap), path="data.sampling.temporal.max_frame_gap")
-    if source == "mixed_tracknet":
-        for key in (
-            "sample_stride",
-            "synthetic_per_batch",
-            "synthetic_batch_period",
-            "steps_per_epoch",
-            "sampling_seed",
-        ):
-            value = cast(int, typed(data, key, int, path="data"))
-            _positive(
-                value,
-                path=f"data.{key}",
-                allow_zero=key == "synthetic_per_batch",
-            )
-        synthetic = exact_mapping(
-            data["synthetic"],
-            path="data.synthetic",
-            required={"data_dir", "split", "sample_stride"},
-        )
-        typed(synthetic, "data_dir", str, path="data.synthetic")
-        _positive(
-            cast(
-                int,
-                typed(synthetic, "sample_stride", int, path="data.synthetic"),
-            ),
-            path="data.synthetic.sample_stride",
-        )
-        synthetic_split = exact_mapping(
-            synthetic["split"],
-            path="data.synthetic.split",
-            required={"root_role", "train_file"},
-        )
-        _validate_split_mapping(
-            synthetic_split,
-            path="data.synthetic.split",
-            paths=paths,
-            file_keys=("train_file",),
-        )
-        if paths is not None:
-            paths.data(cast(str, synthetic["data_dir"]))
-    if source == "staged":
-        for key in (
-            "t_max",
-            "val_num_frames",
-            "effective_batch_size",
-            "val_batch_size",
-            "seed",
-        ):
-            _positive(
-                cast(int, typed(data, key, int, path="data")),
-                path=f"data.{key}",
-            )
-        t_distribution = cast(str, typed(data, "t_distribution", str, path="data"))
-        if t_distribution not in {"variable", "fixed"}:
-            raise SemanticConfigurationError(
-                "data.t_distribution must be variable or fixed."
-            )
-        t1_prob = _required_number(data, "t1_prob", path="data")
-        if not 0.0 < t1_prob <= 1.0:
-            raise SemanticConfigurationError("data.t1_prob must be in (0, 1].")
-        batch_plan = data["batch_size_by_t"]
-        if not isinstance(batch_plan, Mapping) or not batch_plan:
-            raise ConfigurationTypeError(
-                "data.batch_size_by_t must be a non-empty mapping."
-            )
-        for raw_t, raw_batch in batch_plan.items():
-            if type(raw_t) is not int or type(raw_batch) is not int:
-                raise ConfigurationTypeError(
-                    "data.batch_size_by_t keys and values must be integers."
-                )
-            _positive(raw_t, path=f"data.batch_size_by_t.{raw_t}")
-            _positive(raw_batch, path=f"data.batch_size_by_t.{raw_t}")
-        sources = exact_mapping(
-            data["sources"], path="data.sources", required={"tracknet", "web"}
-        )
-        tracknet = exact_mapping(
-            sources["tracknet"],
-            path="data.sources.tracknet",
-            required={"enabled", "splits", "data_dir", "sample_stride", "split"},
-        )
-        exact_mapping(
-            tracknet["split"],
-            path="data.sources.tracknet.split",
-            required={"root_role", "train_file", "val_file", "test_file"},
-        )
-        typed(tracknet, "enabled", bool, path="data.sources.tracknet")
-        typed(tracknet, "data_dir", str, path="data.sources.tracknet")
-        _required_sequence(
-            tracknet,
-            "splits",
-            path="data.sources.tracknet",
-            item_type=str,
-        )
-        _positive(
-            cast(
-                int,
-                typed(tracknet, "sample_stride", int, path="data.sources.tracknet"),
-            ),
-            path="data.sources.tracknet.sample_stride",
-        )
-        _validate_split_mapping(
-            as_mapping(tracknet["split"], path="data.sources.tracknet.split"),
-            path="data.sources.tracknet.split",
-            paths=paths,
-        )
-        web = exact_mapping(
-            sources["web"],
-            path="data.sources.web",
-            required={"enabled", "splits", "data_dir", "sources", "sampling"},
-        )
-        web_sampling = exact_mapping(
-            web["sampling"],
-            path="data.sources.web.sampling",
-            required={"mode", "seed", "train_negative_fraction", "temporal"},
-        )
-        exact_mapping(
-            web_sampling["temporal"],
-            path="data.sources.web.sampling.temporal",
-            required={"frame_step", "sample_stride", "max_frame_gap"},
-        )
-        typed(web, "enabled", bool, path="data.sources.web")
-        typed(web, "data_dir", str, path="data.sources.web")
-        _required_sequence(web, "splits", path="data.sources.web", item_type=str)
-        web_sources = typed(web, "sources", (str, list, tuple), path="data.sources.web")
-        if isinstance(web_sources, (list, tuple)):
-            typed_sequence(web_sources, path="data.sources.web.sources", item_type=str)
-        web_mode = cast(
-            str, typed(web_sampling, "mode", str, path="data.sources.web.sampling")
-        )
-        if web_mode not in {"static", "temporal"}:
-            raise SemanticConfigurationError(
-                "data.sources.web.sampling.mode must be static or temporal."
-            )
-        typed(web_sampling, "seed", int, path="data.sources.web.sampling")
-        _optional_number(
-            web_sampling,
-            "train_negative_fraction",
-            path="data.sources.web.sampling",
-        )
-        web_temporal = as_mapping(
-            web_sampling["temporal"], path="data.sources.web.sampling.temporal"
-        )
-        for key in ("frame_step", "sample_stride"):
-            _positive(
-                cast(
-                    int,
-                    typed(
-                        web_temporal,
-                        key,
-                        int,
-                        path="data.sources.web.sampling.temporal",
-                    ),
-                ),
-                path=f"data.sources.web.sampling.temporal.{key}",
-            )
-        typed(
-            web_temporal,
-            "max_frame_gap",
-            (int, type(None)),
-            path="data.sources.web.sampling.temporal",
-        )
-        if paths is not None:
-            paths.data(cast(str, tracknet["data_dir"]))
-            paths.data(cast(str, web["data_dir"]))
-    if paths is not None and "data_dir" in data:
-        paths.data(cast(str, typed(data, "data_dir", str, path="data")))
+    typed(data, "data_dir", str, path="data")
+    _positive(
+        cast(int, typed(data, "batch_size", int, path="data")),
+        path="data.batch_size",
+    )
+    _validate_store_fields(data, path="data", paths=paths)
     return data
 
 
-def _validate_split_mapping(
-    split: ConfigMapping,
-    *,
-    path: str,
-    paths: BallRuntimePaths | None,
-    file_keys: tuple[str, ...] = ("train_file", "val_file", "test_file"),
-) -> None:
-    root_role = cast(str, typed(split, "root_role", str, path=path))
-    if root_role not in {"project", "data"}:
-        raise SemanticConfigurationError(
-            f"{path}.root_role must be 'project' or 'data'."
-        )
-    for key in file_keys:
-        relative = cast(str, typed(split, key, str, path=path))
-        if paths is not None:
-            if root_role == "project":
-                paths.project(relative)
-            else:
-                paths.data(relative)
+def validate_candidate_settings(value: object) -> ConfigMapping:
+    """The campaign candidate metric is fixed; no compatibility defaults."""
+    expected: dict[str, int | float | bool] = {
+        "max_candidates": 8, "nms_kernel": 5, "patch_size": 5,
+        "subpixel_refine": True, "radius_source_px": 20.0,
+    }
+    settings = exact_mapping(value, path="training.validation_candidates", required=set(expected))
+    for key, required in expected.items():
+        actual = typed(settings, key, (int, float) if type(required) is float else type(required),
+                       path="training.validation_candidates")
+        if actual != required:
+            raise SemanticConfigurationError(f"training.validation_candidates.{key} must be {required!r}")
+    return settings
+
+
+def validate_epoch_candidate_policy(config: DictConfig) -> None:
+    """Every detector training entry must validate and retain every epoch."""
+    training = as_mapping(config.training, path="training")
+    validate_candidate_settings(typed(training, "validation_candidates", (dict, DictConfig), path="training"))
+    checkpoint = as_mapping(training["checkpoint"], path="training.checkpoint")
+    trainer = as_mapping(training["trainer"], path="training.trainer")
+    if checkpoint["enabled"] is not True or checkpoint["save_top_k"] != -1:
+        raise SemanticConfigurationError("Ball training must keep every epoch: checkpoint.enabled=true, save_top_k=-1")
+    if trainer["check_val_every_n_epoch"] != 1:
+        raise SemanticConfigurationError("Ball candidate recall must be validated every epoch")
+    fields = {field for _, field, _, _ in Formatter().parse(checkpoint["filename"])}
+    if "epoch" not in fields:
+        raise SemanticConfigurationError("Ball checkpoint.filename must include {epoch} to retain every epoch")
 
 
 def validate_training(config: DictConfig) -> None:
-    """Validate a complete normal/staged training composition."""
+    """Validate a complete ball store training composition."""
     root = exact_mapping(
         config,
         path="configuration",
@@ -1187,9 +727,8 @@ def validate_training(config: DictConfig) -> None:
         "qualitative_logging",
         "qualitative_rendering",
         "gan",
+        "validation_candidates",
     }
-    if "staged" in training:
-        training_fields.add("staged")
     training = exact_mapping(training, path="training", required=training_fields)
     optimizer = exact_mapping(
         training["optimizer"], path="training.optimizer", required={"name", "betas"}
@@ -1347,37 +886,10 @@ def validate_training(config: DictConfig) -> None:
         soft_argmax_temperature,
         path="training.gan.soft_argmax_temperature",
     )
-    if "staged" in training:
-        staged = exact_mapping(
-            training["staged"],
-            path="training.staged",
-            required={
-                "effective_batch_size",
-                "gradient_clip_val",
-                "calibration_token_budget",
-                "calibration_safety",
-            },
-        )
-        for key in ("effective_batch_size", "calibration_token_budget"):
-            _positive(
-                cast(int, typed(staged, key, int, path="training.staged")),
-                path=f"training.staged.{key}",
-            )
-        typed(
-            staged,
-            "gradient_clip_val",
-            (float, int, type(None)),
-            path="training.staged",
-        )
-        safety = _required_number(staged, "calibration_safety", path="training.staged")
-        if not 0.0 < safety <= 1.0:
-            raise SemanticConfigurationError(
-                "training.staged.calibration_safety must be in (0, 1]."
-            )
-
     # Task-owned maps are exact-closed before the shared projections parse them.
     BaseRunConfig.from_mapping(run, resolver=paths.resolver)
     BaseTrainingConfig.from_validated_task_mapping(training)
+    validate_epoch_candidate_policy(config)
 
 
 def _validate_metrics(metrics: ConfigMapping) -> None:
@@ -1494,7 +1006,8 @@ def validate_visualization(config: DictConfig) -> None:
         root["visualization"],
         path="visualization",
         required={
-            "clip_dir",
+            "store_dir",
+            "clip_id",
             "checkpoint",
             "save",
             "fps",
@@ -1510,7 +1023,7 @@ def validate_visualization(config: DictConfig) -> None:
             "gif",
         },
     )
-    for key in ("clip_dir", "checkpoint", "save"):
+    for key in ("store_dir", "clip_id", "save"):
         typed(vis, key, str, path="visualization")
     fps = _required_number(vis, "fps", path="visualization")
     _positive(fps, path="visualization.fps")
@@ -1535,8 +1048,8 @@ def validate_visualization(config: DictConfig) -> None:
         allow_zero=True,
     )
     paths.output(cast(str, run["output_dir"]))
-    paths.data(cast(str, vis["clip_dir"]))
-    paths.checkpoint(cast(str, vis["checkpoint"]))
+    paths.data(cast(str, vis["store_dir"]))
+    paths.checkpoint_input(vis, "checkpoint", path="visualization")
     paths.artifact(cast(str, vis["save"]))
 
 
@@ -1678,8 +1191,7 @@ def validate_eval(config: DictConfig) -> None:
             "weights_only",
         },
     )
-    for key in ("output_dir", "checkpoint_path"):
-        typed(run, key, str, path="run")
+    typed(run, "output_dir", str, path="run")
     typed(run, "seed", int, path="run")
     _positive(
         cast(int, typed(run, "gpus", int, path="run")),
@@ -1689,7 +1201,7 @@ def validate_eval(config: DictConfig) -> None:
     for key in ("strict", "weights_only"):
         typed(run, key, bool, path="run")
     paths.output(cast(str, run["output_dir"]))
-    paths.checkpoint(cast(str, run["checkpoint_path"]))
+    paths.checkpoint_input(run, "checkpoint_path", path="run")
     DetailedEvaluationConfig.from_config(config)
 
 
@@ -1716,8 +1228,10 @@ def _validate_eval_training_mapping(value: object) -> ConfigMapping:
             "qualitative_logging",
             "qualitative_rendering",
             "gan",
+            "validation_candidates",
         },
     )
+    validate_candidate_settings(training["validation_candidates"])
     exact_mapping(
         training["trainer"],
         path="training.trainer",
@@ -1859,1208 +1373,12 @@ def validate_manifest_boundary(config: DictConfig) -> None:
         )
 
 
-def validate_web_tool(config: DictConfig) -> None:
-    """Validate web conversion/analysis roots before filesystem mutation."""
-    paths = BallRuntimePaths.from_config(config)
-    root = as_mapping(config, path="configuration")
-    if "convert" in root:
-        exact_mapping(root, path="configuration", required={"paths", "convert"})
-        section = exact_mapping(
-            root["convert"],
-            path="convert",
-            required={
-                "web_root",
-                "output_dir",
-                "overwrite",
-                "jpeg_quality",
-                "shard_size_bytes",
-                "val_ratio",
-                "test_ratio",
-                "split_seed",
-                "kaggle_corner_frac",
-                "max_bbox_side_ratio",
-                "limit_per_source",
-                "sources",
-            },
-        )
-        paths.data(cast(str, typed(section, "web_root", str, path="convert")))
-        paths.data(cast(str, typed(section, "output_dir", str, path="convert")))
-        typed(section, "overwrite", bool, path="convert")
-        for key in ("shard_size_bytes",):
-            _positive(
-                cast(int, typed(section, key, int, path="convert")),
-                path=f"convert.{key}",
-            )
-        jpeg_quality = cast(int, typed(section, "jpeg_quality", int, path="convert"))
-        if not 1 <= jpeg_quality <= 100:
-            raise SemanticConfigurationError(
-                "convert.jpeg_quality must be in [1, 100]."
-            )
-        val_ratio = _required_number(section, "val_ratio", path="convert")
-        test_ratio = _required_number(section, "test_ratio", path="convert")
-        if (
-            not math.isfinite(val_ratio)
-            or not math.isfinite(test_ratio)
-            or val_ratio < 0
-            or test_ratio < 0
-            or val_ratio + test_ratio >= 1
-        ):
-            raise SemanticConfigurationError(
-                "convert.val_ratio and convert.test_ratio must be finite, "
-                "non-negative, and sum to less than 1."
-            )
-        corner_fraction = _required_number(
-            section, "kaggle_corner_frac", path="convert"
-        )
-        if not math.isfinite(corner_fraction) or not 0 <= corner_fraction <= 1:
-            raise SemanticConfigurationError(
-                "convert.kaggle_corner_frac must be in [0, 1]."
-            )
-        max_bbox_side_ratio = typed(
-            section,
-            "max_bbox_side_ratio",
-            (float, int, type(None)),
-            path="convert",
-        )
-        if max_bbox_side_ratio is not None and (
-            not math.isfinite(cast(float | int, max_bbox_side_ratio))
-            or not 0 < cast(float | int, max_bbox_side_ratio) <= 1
-        ):
-            raise SemanticConfigurationError(
-                "convert.max_bbox_side_ratio must be null or in (0, 1]."
-            )
-        typed(section, "split_seed", int, path="convert")
-        _positive(
-            cast(int, typed(section, "limit_per_source", int, path="convert")),
-            path="convert.limit_per_source",
-            allow_zero=True,
-        )
-        sources = exact_mapping(
-            section["sources"],
-            path="convert.sources",
-            required={"roboflow", "racketvision", "kaggle", "ball_yolo"},
-        )
-        for key in sources:
-            typed(sources, key, bool, path="convert.sources")
-        if not any(cast(bool, enabled) for enabled in sources.values()):
-            raise SemanticConfigurationError(
-                "convert.sources must enable at least one source."
-            )
-    else:
-        exact_mapping(root, path="configuration", required={"paths", "analyze"})
-        section = exact_mapping(
-            root["analyze"],
-            path="analyze",
-            required={
-                "web_root",
-                "output_dir",
-                "sources",
-                "sweep_thresholds",
-                "export_bin_edges",
-                "samples_per_bin",
-                "seed",
-                "jpeg_quality",
-            },
-        )
-        paths.data(cast(str, typed(section, "web_root", str, path="analyze")))
-        paths.output(cast(str, typed(section, "output_dir", str, path="analyze")))
-        sources = exact_mapping(
-            section["sources"],
-            path="analyze.sources",
-            required={"roboflow", "ball_yolo"},
-        )
-        for key in sources:
-            typed(sources, key, bool, path="analyze.sources")
-        if not any(cast(bool, enabled) for enabled in sources.values()):
-            raise SemanticConfigurationError(
-                "analyze.sources must enable at least one source."
-            )
-        for key in ("sweep_thresholds", "export_bin_edges"):
-            values = _required_sequence(
-                section, key, path="analyze", item_type=(float, int)
-            )
-            numeric_values = tuple(cast(float | int, item) for item in values)
-            if (
-                len(numeric_values) < 2
-                or any(not math.isfinite(item) or item < 0 for item in numeric_values)
-                or any(
-                    left >= right
-                    for left, right in zip(
-                        numeric_values, numeric_values[1:], strict=False
-                    )
-                )
-            ):
-                raise SemanticConfigurationError(
-                    f"analyze.{key} must contain at least two strictly increasing "
-                    "finite non-negative numbers."
-                )
-        _positive(
-            cast(int, typed(section, "samples_per_bin", int, path="analyze")),
-            path="analyze.samples_per_bin",
-        )
-        jpeg_quality = cast(int, typed(section, "jpeg_quality", int, path="analyze"))
-        if not 1 <= jpeg_quality <= 100:
-            raise SemanticConfigurationError(
-                "analyze.jpeg_quality must be in [1, 100]."
-            )
-        typed(section, "seed", int, path="analyze")
-
-
-def _validate_youtube_paths(
-    value: object,
-    *,
-    path: str,
-    keys: set[str],
-    workflow_root: str,
-    paths: BallRuntimePaths,
-) -> ConfigMapping:
-    mapping = exact_mapping(value, path=path, required=keys)
-    for key in mapping:
-        child = _validate_relative_child(mapping[key], path=f"{path}.{key}")
-        paths.resolver.resolve(PathRole.DATA, workflow_root, child)
-    return mapping
-
-
-def _validate_download(value: object, *, path: str, require_av1: bool) -> ConfigMapping:
-    required = {
-        "enabled",
-        "format",
-        "merge_output_format",
-        "js_runtimes",
-        "remote_components",
-        "download_archive",
-        "overwrite",
-        "extra_args",
-    }
-    if require_av1:
-        required |= {"require_av1", "strict_format"}
-    mapping = exact_mapping(value, path=path, required=required)
-    fields: dict[str, type[object] | tuple[type[object], ...]] = {
-        "enabled": bool,
-        "format": str,
-        "merge_output_format": str,
-        "js_runtimes": (str, type(None)),
-        "remote_components": (str, type(None)),
-        "download_archive": (str, type(None)),
-        "overwrite": bool,
-        "extra_args": (list, tuple),
-    }
-    if require_av1:
-        fields["require_av1"] = bool
-        fields["strict_format"] = str
-    _validate_field_types(mapping, path=path, fields=fields)
-    enabled = cast(bool, mapping["enabled"])
-    extra_args = _validate_string_sequence(
-        mapping["extra_args"], path=f"{path}.extra_args", allow_empty=True
-    )
-    if not enabled:
-        return mapping
-
-    _validate_trimmed_string(
-        mapping["merge_output_format"], path=f"{path}.merge_output_format"
-    )
-    if require_av1 and cast(bool, mapping["require_av1"]):
-        _validate_trimmed_string(mapping["strict_format"], path=f"{path}.strict_format")
-    else:
-        _validate_trimmed_string(mapping["format"], path=f"{path}.format")
-    for key in ("js_runtimes", "remote_components"):
-        _validate_optional_trimmed_string(mapping[key], path=f"{path}.{key}")
-    reserved_arguments = {
-        "-f",
-        "--format",
-        "-o",
-        "--output",
-        "--merge-output-format",
-        "--download-archive",
-        "--force-overwrites",
-        "--no-overwrites",
-        "--js-runtimes",
-        "--remote-components",
-    }
-    conflicting_arguments = tuple(
-        argument
-        for argument in extra_args
-        if argument.split("=", 1)[0] in reserved_arguments
-    )
-    if conflicting_arguments:
-        raise SemanticConfigurationError(
-            f"{path}.extra_args must not redefine typed download settings: "
-            + ", ".join(conflicting_arguments)
-            + "."
-        )
-    return mapping
-
-
-def _validate_transcode(
-    value: object, *, path: str, fallback_on_decode_error: bool
-) -> ConfigMapping:
-    required = {
-        "enabled",
-        "ffmpeg_binary",
-        "encoder",
-        "hwaccel",
-        "hwaccel_output_format",
-        "preset",
-        "tune",
-        "rate_control",
-        "cq",
-        "bitrate",
-        "maxrate",
-        "bufsize",
-        "profile",
-        "pix_fmt",
-        "crf",
-        "overwrite",
-    }
-    if fallback_on_decode_error:
-        required.add("fallback_on_decode_error")
-    mapping = exact_mapping(value, path=path, required=required)
-    fields: dict[str, type[object] | tuple[type[object], ...]] = {
-        "enabled": bool,
-        "ffmpeg_binary": str,
-        "encoder": str,
-        "hwaccel": (str, type(None)),
-        "hwaccel_output_format": (str, type(None)),
-        "preset": str,
-        "tune": (str, type(None)),
-        "rate_control": (str, type(None)),
-        "cq": (float, int, type(None)),
-        "bitrate": (str, type(None)),
-        "maxrate": (str, type(None)),
-        "bufsize": (str, type(None)),
-        "profile": (str, type(None)),
-        "pix_fmt": str,
-        "crf": (float, int, type(None)),
-        "overwrite": bool,
-    }
-    if fallback_on_decode_error:
-        fields["fallback_on_decode_error"] = bool
-    _validate_field_types(mapping, path=path, fields=fields)
-
-    enabled = cast(bool, mapping["enabled"])
-    fallback_enabled = fallback_on_decode_error and cast(
-        bool, mapping["fallback_on_decode_error"]
-    )
-    if not enabled and not fallback_enabled:
-        return mapping
-
-    for key in ("ffmpeg_binary", "encoder", "preset", "pix_fmt"):
-        _validate_trimmed_string(mapping[key], path=f"{path}.{key}")
-    ffmpeg_binary = cast(str, mapping["ffmpeg_binary"])
-    if Path(ffmpeg_binary).name != ffmpeg_binary:
-        raise SemanticConfigurationError(
-            f"{path}.ffmpeg_binary must be an executable name, not a path."
-        )
-    encoder = cast(str, mapping["encoder"])
-    if encoder not in {"libx264", "h264_nvenc", "avc_nvenc"}:
-        raise SemanticConfigurationError(
-            f"{path}.encoder must be 'libx264', 'h264_nvenc', or 'avc_nvenc'."
-        )
-    for key in (
-        "hwaccel",
-        "hwaccel_output_format",
-        "tune",
-        "rate_control",
-        "bitrate",
-        "maxrate",
-        "bufsize",
-        "profile",
-    ):
-        _validate_optional_trimmed_string(mapping[key], path=f"{path}.{key}")
-    if mapping["hwaccel_output_format"] is not None and mapping["hwaccel"] is None:
-        raise SemanticConfigurationError(
-            f"{path}.hwaccel_output_format requires {path}.hwaccel."
-        )
-
-    cq = None if mapping["cq"] is None else cast(float | int, mapping["cq"])
-    crf = None if mapping["crf"] is None else cast(float | int, mapping["crf"])
-    for key, number in (("cq", cq), ("crf", crf)):
-        if number is not None and (not math.isfinite(number) or not 0 <= number <= 51):
-            raise SemanticConfigurationError(f"{path}.{key} must be in [0, 51].")
-
-    if encoder == "libx264":
-        if crf is None:
-            raise SemanticConfigurationError(
-                f"{path}.crf is required for encoder='libx264'."
-            )
-        ignored = (
-            "tune",
-            "rate_control",
-            "cq",
-            "bitrate",
-            "maxrate",
-            "bufsize",
-            "profile",
-        )
-        configured_ignored = [key for key in ignored if mapping[key] is not None]
-        if configured_ignored:
-            raise SemanticConfigurationError(
-                f"{path}: encoder='libx264' does not consume "
-                + ", ".join(f"{path}.{key}" for key in configured_ignored)
-                + "."
-            )
-    else:
-        if crf is not None:
-            raise SemanticConfigurationError(
-                f"{path}.crf must be null for NVENC encoders."
-            )
-        for key in ("tune", "rate_control", "cq", "bitrate"):
-            if mapping[key] is None:
-                raise SemanticConfigurationError(
-                    f"{path}.{key} is required for NVENC encoders."
-                )
-    return mapping
-
-
-def validate_youtube_boundary(config: DictConfig) -> None:
-    """Validate YouTube data-generation roots and exact top-level sections."""
-    paths = BallRuntimePaths.from_config(config)
-    root = as_mapping(config, path="configuration")
-    exact_mapping(root, path="configuration", required={"paths", "workflow"})
-    workflow = as_mapping(root["workflow"], path="workflow")
-    workflow_root = cast(str, typed(workflow, "root", str, path="workflow"))
-    paths.data(workflow_root)
-    BallYoutubePathContract.from_config(config)
-    if "mode" in workflow:
-        workflow = exact_mapping(
-            workflow,
-            path="workflow",
-            required={"root", "video_id", "mode", "paths", "select", "prediction"},
-        )
-        workflow_paths = exact_mapping(
-            workflow["paths"],
-            path="workflow.paths",
-            required={"frames_dir", "raw_dir", "staging_dir"},
-        )
-        for key in workflow_paths:
-            child = _validate_relative_child(
-                workflow_paths[key], path=f"workflow.paths.{key}"
-            )
-            paths.resolver.resolve(PathRole.DATA, workflow_root, child)
-        raw_video_id = typed(workflow, "video_id", (str, type(None)), path="workflow")
-        if raw_video_id is None:
-            raise SemanticConfigurationError(
-                "workflow.video_id is required for candidate selection or prediction."
-            )
-        _validate_trimmed_string(raw_video_id, path="workflow.video_id")
-        mode = cast(str, typed(workflow, "mode", str, path="workflow"))
-        if mode not in {"select", "predict"}:
-            raise SemanticConfigurationError(
-                "workflow.mode must be 'select' or 'predict'."
-            )
-        select = exact_mapping(
-            workflow["select"],
-            path="workflow.select",
-            required={
-                "resume",
-                "start_index",
-                "window_name",
-                "max_display_width",
-                "max_display_height",
-                "min_frames",
-                "copy_mode",
-                "overwrite",
-                "skip_small",
-                "skip_medium",
-                "skip_large",
-            },
-        )
-        _validate_field_types(
-            select,
-            path="workflow.select",
-            fields={
-                "resume": bool,
-                "start_index": (int, type(None)),
-                "window_name": str,
-                "max_display_width": int,
-                "max_display_height": int,
-                "min_frames": int,
-                "copy_mode": str,
-                "overwrite": bool,
-                "skip_small": int,
-                "skip_medium": int,
-                "skip_large": int,
-            },
-        )
-        for key in (
-            "max_display_width",
-            "max_display_height",
-            "min_frames",
-            "skip_small",
-            "skip_medium",
-            "skip_large",
-        ):
-            _positive(cast(int, select[key]), path=f"workflow.select.{key}")
-        if mode == "select":
-            start_index = select["start_index"]
-            if start_index is not None:
-                _positive(
-                    cast(int, start_index),
-                    path="workflow.select.start_index",
-                    allow_zero=True,
-                )
-            _validate_trimmed_string(
-                select["window_name"], path="workflow.select.window_name"
-            )
-            if select["copy_mode"] not in {"hardlink", "copy"}:
-                raise SemanticConfigurationError(
-                    "workflow.select.copy_mode must be 'hardlink' or 'copy'."
-                )
-            skips = tuple(
-                cast(int, select[key])
-                for key in ("skip_small", "skip_medium", "skip_large")
-            )
-            if not skips[0] <= skips[1] <= skips[2] or skips[2] > 50:
-                raise SemanticConfigurationError(
-                    "workflow.select skip sizes must satisfy "
-                    "0 < skip_small <= skip_medium <= skip_large <= 50."
-                )
-        prediction = exact_mapping(
-            workflow["prediction"],
-            path="workflow.prediction",
-            required={
-                "checkpoint",
-                "device",
-                "sequence_length",
-                "window_stride",
-                "batch_size",
-                "image_size",
-                "normalize_imagenet",
-                "imagenet_mean",
-                "imagenet_std",
-                "peak_threshold",
-                "nms_kernel",
-                "max_candidates_per_frame",
-                "aggregation",
-                "overwrite",
-                "strict",
-                "weights_only",
-                "subpixel_refine",
-            },
-        )
-        _validate_field_types(
-            prediction,
-            path="workflow.prediction",
-            fields={
-                "checkpoint": str,
-                "device": str,
-                "sequence_length": int,
-                "window_stride": int,
-                "batch_size": int,
-                "image_size": (list, tuple),
-                "normalize_imagenet": bool,
-                "imagenet_mean": (list, tuple),
-                "imagenet_std": (list, tuple),
-                "peak_threshold": (float, int),
-                "nms_kernel": int,
-                "max_candidates_per_frame": int,
-                "aggregation": str,
-                "overwrite": bool,
-                "strict": bool,
-                "weights_only": bool,
-                "subpixel_refine": bool,
-            },
-        )
-        image_size = _required_sequence(
-            prediction,
-            "image_size",
-            path="workflow.prediction",
-            item_type=int,
-            length=2,
-        )
-        if any(cast(int, value) <= 0 for value in image_size):
-            raise SemanticConfigurationError(
-                "workflow.prediction.image_size must contain positive integers."
-            )
-        normalization: dict[str, tuple[object, ...]] = {}
-        for key in ("imagenet_mean", "imagenet_std"):
-            normalization[key] = _required_sequence(
-                prediction,
-                key,
-                path="workflow.prediction",
-                item_type=(float, int),
-                length=3,
-            )
-        for key in (
-            "sequence_length",
-            "window_stride",
-            "batch_size",
-            "nms_kernel",
-            "max_candidates_per_frame",
-        ):
-            _positive(cast(int, prediction[key]), path=f"workflow.prediction.{key}")
-        if mode == "predict":
-            if cast(int, prediction["window_stride"]) > cast(
-                int, prediction["sequence_length"]
-            ):
-                raise SemanticConfigurationError(
-                    "workflow.prediction.window_stride must not exceed "
-                    "workflow.prediction.sequence_length."
-                )
-            if cast(int, prediction["nms_kernel"]) % 2 == 0:
-                raise SemanticConfigurationError(
-                    "workflow.prediction.nms_kernel must be odd."
-                )
-            if prediction["aggregation"] not in {"mean_heatmap", "max_heatmap"}:
-                raise SemanticConfigurationError(
-                    "workflow.prediction.aggregation must be 'mean_heatmap' or "
-                    "'max_heatmap'."
-                )
-            peak_threshold = cast(float | int, prediction["peak_threshold"])
-            if not math.isfinite(peak_threshold) or not 0 <= peak_threshold <= 1:
-                raise SemanticConfigurationError(
-                    "workflow.prediction.peak_threshold must be in [0, 1]."
-                )
-            if cast(bool, prediction["normalize_imagenet"]):
-                std = normalization["imagenet_std"]
-                if any(
-                    not math.isfinite(cast(float | int, value))
-                    or cast(float | int, value) <= 0
-                    for value in std
-                ):
-                    raise SemanticConfigurationError(
-                        "workflow.prediction.imagenet_std must contain positive "
-                        "finite numbers."
-                    )
-            _validate_trimmed_string(
-                prediction["device"], path="workflow.prediction.device"
-            )
-        paths.checkpoint(cast(str, prediction["checkpoint"]))
-        return
-    if "discovery" not in workflow:
-        workflow = exact_mapping(
-            workflow,
-            path="workflow",
-            required={"root", "sources", "paths", "download", "transcode", "frames"},
-        )
-        _validate_youtube_paths(
-            workflow["paths"],
-            path="workflow.paths",
-            keys={
-                "videos_dir",
-                "av1_dir",
-                "h264_dir",
-                "frames_dir",
-                "raw_dir",
-                "manifests_dir",
-            },
-            workflow_root=workflow_root,
-            paths=paths,
-        )
-        sources = typed(workflow, "sources", (list, tuple), path="workflow")
-        if not sequence(sources, path="workflow.sources"):
-            raise SemanticConfigurationError("workflow.sources must not be empty.")
-        source_ids: set[str] = set()
-        for index, source in enumerate(sequence(sources, path="workflow.sources")):
-            source_mapping = exact_mapping(
-                source,
-                path=f"workflow.sources[{index}]",
-                required={"source_id", "url", "split"},
-            )
-            _validate_field_types(
-                source_mapping,
-                path=f"workflow.sources[{index}]",
-                fields={"source_id": str, "url": str, "split": str},
-            )
-            source_id = _validate_trimmed_string(
-                source_mapping["source_id"],
-                path=f"workflow.sources[{index}].source_id",
-            )
-            _validate_http_url(
-                source_mapping["url"], path=f"workflow.sources[{index}].url"
-            )
-            _validate_trimmed_string(
-                source_mapping["split"], path=f"workflow.sources[{index}].split"
-            )
-            if source_id in source_ids:
-                raise SemanticConfigurationError(
-                    f"workflow.sources[{index}].source_id duplicates {source_id!r}."
-                )
-            source_ids.add(source_id)
-            if source_mapping["split"] not in {"train", "val"}:
-                raise SemanticConfigurationError(
-                    f"workflow.sources[{index}].split must be 'train' or 'val'."
-                )
-        _validate_download(
-            workflow["download"],
-            path="workflow.download",
-            require_av1=True,
-        )
-        _validate_transcode(
-            workflow["transcode"],
-            path="workflow.transcode",
-            fallback_on_decode_error=False,
-        )
-        frames = exact_mapping(
-            workflow["frames"],
-            path="workflow.frames",
-            required={
-                "enabled",
-                "output_ext",
-                "jpeg_quality",
-                "max_frames_per_video",
-                "overwrite",
-            },
-        )
-        _validate_field_types(
-            frames,
-            path="workflow.frames",
-            fields={
-                "enabled": bool,
-                "output_ext": str,
-                "jpeg_quality": int,
-                "max_frames_per_video": (int, type(None)),
-                "overwrite": bool,
-            },
-        )
-        frames_enabled = cast(bool, frames["enabled"])
-        max_frames = frames["max_frames_per_video"]
-        if max_frames is not None:
-            _positive(
-                cast(int, max_frames),
-                path="workflow.frames.max_frames_per_video",
-                allow_zero=not frames_enabled,
-            )
-        if frames_enabled:
-            if frames["output_ext"] not in {"jpg", "jpeg", "png"}:
-                raise SemanticConfigurationError(
-                    "workflow.frames.output_ext must be 'jpg', 'jpeg', or 'png'."
-                )
-            jpeg_quality = cast(int, frames["jpeg_quality"])
-            if not 1 <= jpeg_quality <= 100:
-                raise SemanticConfigurationError(
-                    "workflow.frames.jpeg_quality must be in [1, 100]."
-                )
-        return
-    workflow = exact_mapping(
-        workflow,
-        path="workflow",
-        required={
-            "root",
-            "sources",
-            "discovery",
-            "paths",
-            "processing",
-            "storage",
-            "download",
-            "transcode",
-            "frames",
-            "gate",
-        },
-    )
-    _validate_youtube_paths(
-        workflow["paths"],
-        path="workflow.paths",
-        keys={
-            "videos_dir",
-            "source_dir",
-            "h264_dir",
-            "sampled_dir",
-            "images_dir",
-            "manifests_dir",
-        },
-        workflow_root=workflow_root,
-        paths=paths,
-    )
-    sources = typed(workflow, "sources", (list, tuple), path="workflow")
-    source_values = sequence(sources, path="workflow.sources")
-    video_ids: set[str] = set()
-    for index, source in enumerate(source_values):
-        source_path = f"workflow.sources[{index}]"
-        source_mapping = exact_mapping(
-            source,
-            path=source_path,
-            required={"video_id", "url", "local_video"},
-        )
-        _validate_field_types(
-            source_mapping,
-            path=source_path,
-            fields={
-                "video_id": str,
-                "url": str,
-                "local_video": (dict, DictConfig, type(None)),
-            },
-        )
-        video_id = _validate_trimmed_string(
-            source_mapping["video_id"], path=f"{source_path}.video_id"
-        )
-        _validate_http_url(source_mapping["url"], path=f"{source_path}.url")
-        if video_id in video_ids:
-            raise SemanticConfigurationError(
-                f"{source_path}.video_id duplicates {video_id!r}."
-            )
-        video_ids.add(video_id)
-        local_video = source_mapping["local_video"]
-        if local_video is not None:
-            declaration = exact_mapping(
-                local_video,
-                path=f"{source_path}.local_video",
-                required={"role", "path"},
-            )
-            role_value = cast(
-                str,
-                typed(
-                    declaration,
-                    "role",
-                    str,
-                    path=f"{source_path}.local_video",
-                ),
-            )
-            if role_value not in {
-                PathRole.DATA.value,
-                PathRole.EXTERNAL_ASSET.value,
-            }:
-                raise SemanticConfigurationError(
-                    f"{source_path}.local_video.role must be 'data' or "
-                    "'external_asset'."
-                )
-            local_fragment = _validate_relative_child(
-                typed(
-                    declaration,
-                    "path",
-                    str,
-                    path=f"{source_path}.local_video",
-                ),
-                path=f"{source_path}.local_video.path",
-            )
-            paths.resolver.resolve(PathRole(role_value), local_fragment)
-    discovery = exact_mapping(
-        workflow["discovery"],
-        path="workflow.discovery",
-        required={
-            "enabled",
-            "queries",
-            "max_results_per_query",
-            "min_duration_sec",
-            "max_duration_sec",
-            "allow_unknown_duration",
-        },
-    )
-    _validate_field_types(
-        discovery,
-        path="workflow.discovery",
-        fields={
-            "enabled": bool,
-            "queries": (list, tuple),
-            "max_results_per_query": int,
-            "min_duration_sec": (float, int),
-            "max_duration_sec": (float, int),
-            "allow_unknown_duration": bool,
-        },
-    )
-    discovery_enabled = cast(bool, discovery["enabled"])
-    _validate_string_sequence(
-        discovery["queries"],
-        path="workflow.discovery.queries",
-        allow_empty=not discovery_enabled,
-    )
-    max_results = cast(int, discovery["max_results_per_query"])
-    min_duration = cast(float | int, discovery["min_duration_sec"])
-    max_duration = cast(float | int, discovery["max_duration_sec"])
-    _positive(
-        max_results,
-        path="workflow.discovery.max_results_per_query",
-        allow_zero=not discovery_enabled,
-    )
-    _positive(
-        min_duration,
-        path="workflow.discovery.min_duration_sec",
-        allow_zero=True,
-    )
-    _positive(
-        max_duration,
-        path="workflow.discovery.max_duration_sec",
-        allow_zero=not discovery_enabled,
-    )
-    if min_duration > max_duration:
-        raise SemanticConfigurationError(
-            "workflow.discovery.min_duration_sec must be <= "
-            "workflow.discovery.max_duration_sec."
-        )
-    if not discovery_enabled and not source_values:
-        raise SemanticConfigurationError(
-            "workflow.sources must not be empty when workflow.discovery.enabled=false."
-        )
-    processing = exact_mapping(
-        workflow["processing"],
-        path="workflow.processing",
-        required={
-            "max_new_videos",
-            "reprocess_existing",
-            "cleanup_videos_after_processing",
-            "cleanup_keep_info_json",
-        },
-    )
-    _validate_field_types(
-        processing,
-        path="workflow.processing",
-        fields={
-            "max_new_videos": int,
-            "reprocess_existing": bool,
-            "cleanup_videos_after_processing": bool,
-            "cleanup_keep_info_json": bool,
-        },
-    )
-    _positive(
-        cast(int, processing["max_new_videos"]),
-        path="workflow.processing.max_new_videos",
-    )
-    storage = exact_mapping(
-        workflow["storage"],
-        path="workflow.storage",
-        required={"enabled", "max_root_gb"},
-    )
-    _validate_field_types(
-        storage,
-        path="workflow.storage",
-        fields={"enabled": bool, "max_root_gb": (float, int, type(None))},
-    )
-    storage_enabled = cast(bool, storage["enabled"])
-    max_root_gb = storage["max_root_gb"]
-    if max_root_gb is None:
-        if storage_enabled:
-            raise SemanticConfigurationError(
-                "workflow.storage.max_root_gb is required when storage is enabled."
-            )
-    else:
-        _positive(
-            cast(float | int, max_root_gb),
-            path="workflow.storage.max_root_gb",
-            allow_zero=not storage_enabled,
-        )
-    frames = exact_mapping(
-        workflow["frames"],
-        path="workflow.frames",
-        required={"frames_per_video", "output_ext", "jpeg_quality", "overwrite"},
-    )
-    _validate_field_types(
-        frames,
-        path="workflow.frames",
-        fields={
-            "frames_per_video": int,
-            "output_ext": str,
-            "jpeg_quality": int,
-            "overwrite": bool,
-        },
-    )
-    _positive(
-        cast(int, frames["frames_per_video"]),
-        path="workflow.frames.frames_per_video",
-    )
-    output_ext = cast(str, frames["output_ext"])
-    if output_ext not in {"jpg", "jpeg", "png"}:
-        raise SemanticConfigurationError(
-            "workflow.frames.output_ext must be 'jpg', 'jpeg', or 'png'."
-        )
-    jpeg_quality = cast(int, frames["jpeg_quality"])
-    if not 1 <= jpeg_quality <= 100:
-        raise SemanticConfigurationError(
-            "workflow.frames.jpeg_quality must be in [1, 100]."
-        )
-    _validate_download(
-        workflow["download"],
-        path="workflow.download",
-        require_av1=False,
-    )
-    _validate_transcode(
-        workflow["transcode"],
-        path="workflow.transcode",
-        fallback_on_decode_error=True,
-    )
-    gate = exact_mapping(
-        workflow["gate"],
-        path="workflow.gate",
-        required={"backend", "mock", "contact_sheet", "vllm"},
-    )
-    backend = cast(str, typed(gate, "backend", str, path="workflow.gate"))
-    if backend not in {"mock", "vllm"}:
-        raise SemanticConfigurationError(
-            "workflow.gate.backend must be 'mock' or 'vllm'."
-        )
-    mock = exact_mapping(
-        gate["mock"], path="workflow.gate.mock", required={"accept_all"}
-    )
-    typed(mock, "accept_all", bool, path="workflow.gate.mock")
-    contact_sheet = exact_mapping(
-        gate["contact_sheet"],
-        path="workflow.gate.contact_sheet",
-        required={"max_images", "columns", "thumb_width", "thumb_height"},
-    )
-    for key in contact_sheet:
-        _positive(
-            cast(
-                int, typed(contact_sheet, key, int, path="workflow.gate.contact_sheet")
-            ),
-            path=f"workflow.gate.contact_sheet.{key}",
-        )
-    vllm = exact_mapping(
-        gate["vllm"],
-        path="workflow.gate.vllm",
-        required={
-            "base_url",
-            "model",
-            "timeout_sec",
-            "max_tokens",
-            "accept_labels",
-            "extra_body",
-            "server",
-            "prompt",
-        },
-    )
-    server = exact_mapping(
-        vllm["server"],
-        path="workflow.gate.vllm.server",
-        required={
-            "enabled",
-            "executable_role",
-            "executable",
-            "command",
-            "env",
-            "cwd",
-            "health_url",
-            "startup_timeout_sec",
-            "poll_interval_sec",
-            "request_timeout_sec",
-            "shutdown_timeout_sec",
-            "stop_on_exit",
-            "log_path",
-            "preflight",
-        },
-    )
-    _validate_field_types(
-        vllm,
-        path="workflow.gate.vllm",
-        fields={
-            "base_url": str,
-            "model": str,
-            "timeout_sec": (float, int),
-            "max_tokens": int,
-            "accept_labels": (list, tuple),
-            "extra_body": (dict, DictConfig),
-            "server": (dict, DictConfig),
-            "prompt": str,
-        },
-    )
-    vllm_active = backend == "vllm"
-    accept_labels = _validate_string_sequence(
-        vllm["accept_labels"],
-        path="workflow.gate.vllm.accept_labels",
-        allow_empty=not vllm_active,
-    )
-    if vllm_active:
-        _validate_http_url(vllm["base_url"], path="workflow.gate.vllm.base_url")
-        for key in ("model", "prompt"):
-            _validate_trimmed_string(vllm[key], path=f"workflow.gate.vllm.{key}")
-        normalized_labels = tuple(label.lower() for label in accept_labels)
-        if normalized_labels != accept_labels:
-            raise SemanticConfigurationError(
-                "workflow.gate.vllm.accept_labels must use lowercase labels."
-            )
-        if len(set(normalized_labels)) != len(normalized_labels):
-            raise SemanticConfigurationError(
-                "workflow.gate.vllm.accept_labels must not contain duplicates."
-            )
-        if any(
-            label not in {"tennis", "non_tennis", "unknown"}
-            for label in normalized_labels
-        ):
-            raise SemanticConfigurationError(
-                "workflow.gate.vllm.accept_labels may contain only 'tennis', "
-                "'non_tennis', and 'unknown'."
-            )
-    _positive(
-        cast(float | int, vllm["timeout_sec"]),
-        path="workflow.gate.vllm.timeout_sec",
-        allow_zero=not vllm_active,
-    )
-    _positive(
-        cast(int, vllm["max_tokens"]),
-        path="workflow.gate.vllm.max_tokens",
-        allow_zero=not vllm_active,
-    )
-    _validate_field_types(
-        server,
-        path="workflow.gate.vllm.server",
-        fields={
-            "enabled": bool,
-            "executable_role": str,
-            "executable": str,
-            "command": (list, tuple),
-            "env": (dict, DictConfig),
-            "cwd": (str, type(None)),
-            "health_url": str,
-            "startup_timeout_sec": (float, int),
-            "poll_interval_sec": (float, int),
-            "request_timeout_sec": (float, int),
-            "shutdown_timeout_sec": (float, int),
-            "stop_on_exit": bool,
-            "log_path": (str, type(None)),
-            "preflight": (dict, DictConfig),
-        },
-    )
-    server_active = vllm_active and cast(bool, server["enabled"])
-    _validate_string_sequence(
-        server["command"],
-        path="workflow.gate.vllm.server.command",
-        allow_empty=not server_active,
-    )
-    if server_active:
-        _validate_http_url(
-            server["health_url"], path="workflow.gate.vllm.server.health_url"
-        )
-    for key in (
-        "startup_timeout_sec",
-        "poll_interval_sec",
-        "request_timeout_sec",
-        "shutdown_timeout_sec",
-    ):
-        _positive(
-            cast(float | int, server[key]),
-            path=f"workflow.gate.vllm.server.{key}",
-            allow_zero=not server_active,
-        )
-    executable_role = cast(str, server["executable_role"])
-    executable_fragment = _validate_relative_child(
-        server["executable"], path="workflow.gate.vllm.server.executable"
-    )
-    if executable_role == PathRole.CACHE.value:
-        paths.cache(executable_fragment)
-    elif executable_role == PathRole.EXTERNAL_ASSET.value:
-        paths.external_asset(executable_fragment)
-    else:
-        raise SemanticConfigurationError(
-            "workflow.gate.vllm.server.executable_role must be 'cache' or "
-            "'external_asset'."
-        )
-    environment = as_mapping(server["env"], path="workflow.gate.vllm.server.env")
-    if any(
-        type(key) is not str or type(value) is not str
-        for key, value in environment.items()
-    ):
-        raise ConfigurationTypeError(
-            "workflow.gate.vllm.server.env must map strings to strings."
-        )
-    cwd = server["cwd"]
-    if cwd is not None:
-        paths.project(cast(str, cwd))
-    log_path = server["log_path"]
-    if log_path is not None:
-        paths.output(cast(str, log_path))
-    preflight = exact_mapping(
-        server["preflight"],
-        path="workflow.gate.vllm.server.preflight",
-        required={"enabled", "command"},
-    )
-    typed(preflight, "enabled", bool, path="workflow.gate.vllm.server.preflight")
-    preflight_active = server_active and cast(bool, preflight["enabled"])
-    _validate_string_sequence(
-        typed(
-            preflight,
-            "command",
-            (list, tuple),
-            path="workflow.gate.vllm.server.preflight",
-        ),
-        path="workflow.gate.vllm.server.preflight.command",
-        allow_empty=not preflight_active,
-    )
-
-
-def validate_annotation_boundary(config: DictConfig) -> None:
-    """Validate the annotation session root and exact top-level shape."""
-    paths = BallRuntimePaths.from_config(config)
-    root = exact_mapping(config, path="configuration", required={"paths", "annotate"})
-    annotation = exact_mapping(
-        root["annotate"],
-        path="annotate",
-        required={
-            "root",
-            "video_id",
-            "candidate_id",
-            "start_index",
-            "window_name",
-            "max_display_width",
-            "max_display_height",
-            "point_radius",
-            "point_thickness",
-            "max_balls_per_frame",
-            "zoom",
-            "finalize",
-        },
-    )
-    _validate_field_types(
-        annotation,
-        path="annotate",
-        fields={
-            "root": str,
-            "video_id": str,
-            "candidate_id": (str, type(None)),
-            "start_index": (int, type(None)),
-            "window_name": str,
-            "max_display_width": int,
-            "max_display_height": int,
-            "point_radius": int,
-            "point_thickness": int,
-            "max_balls_per_frame": int,
-            "zoom": (dict, DictConfig),
-            "finalize": (dict, DictConfig),
-        },
-    )
-    paths.data(cast(str, annotation["root"]))
-    _validate_trimmed_string(annotation["video_id"], path="annotate.video_id")
-    _validate_optional_trimmed_string(
-        annotation["candidate_id"], path="annotate.candidate_id"
-    )
-    _validate_trimmed_string(annotation["window_name"], path="annotate.window_name")
-    start_index = annotation["start_index"]
-    if start_index is not None:
-        _positive(cast(int, start_index), path="annotate.start_index", allow_zero=True)
-    for key in (
-        "max_display_width",
-        "max_display_height",
-        "point_radius",
-        "point_thickness",
-        "max_balls_per_frame",
-    ):
-        _positive(cast(int, annotation[key]), path=f"annotate.{key}")
-    zoom = exact_mapping(
-        annotation["zoom"], path="annotate.zoom", required={"key", "factor"}
-    )
-    _validate_field_types(
-        zoom, path="annotate.zoom", fields={"key": str, "factor": (float, int)}
-    )
-    finalize = exact_mapping(
-        annotation["finalize"], path="annotate.finalize", required={"key", "overwrite"}
-    )
-    _validate_field_types(
-        finalize,
-        path="annotate.finalize",
-        fields={"key": str, "overwrite": bool},
-    )
-    zoom_key = cast(str, zoom["key"])
-    finalize_key = cast(str, finalize["key"])
-    if len(zoom_key) != 1 or len(finalize_key) != 1:
-        raise SemanticConfigurationError(
-            "annotate.zoom.key and annotate.finalize.key must each be one character."
-        )
-    if zoom_key.lower() == finalize_key.lower():
-        raise SemanticConfigurationError(
-            "annotate.zoom.key and annotate.finalize.key must differ."
-        )
-    factor = cast(float | int, zoom["factor"])
-    if not math.isfinite(factor) or factor <= 1:
-        raise SemanticConfigurationError("annotate.zoom.factor must be greater than 1.")
-
-
 def _register() -> None:
     register_boundary_validator("ball.train", validate_training)
-    register_boundary_validator("ball.train_staged", validate_training)
     register_boundary_validator("ball.visualize", validate_visualization)
     register_boundary_validator("ball.eval", validate_eval)
     register_boundary_validator("ball.evaluate_manifest", validate_manifest_boundary)
     register_boundary_validator("ball.preview", validate_preview)
-    register_boundary_validator("ball.web_tool", validate_web_tool)
-    register_boundary_validator("ball.youtube", validate_youtube_boundary)
-    register_boundary_validator("ball.annotation", validate_annotation_boundary)
 
 
 _register()
@@ -3068,7 +1386,6 @@ _register()
 
 __all__ = [
     "BallRuntimePaths",
-    "BallYoutubePathContract",
     "as_mapping",
     "exact_mapping",
     "sequence",
@@ -3079,3 +1396,13 @@ __all__ = [
     "validate_training",
     "validate_visualization",
 ]
+
+
+def research_path_resolver(project: Path, artifacts: tuple[Path, ...], outputs: tuple[Path, ...], cache: Path) -> PathResolver:
+    """Resolve explicit artifact/output roots for standalone preview and analysis."""
+    if not all(path.is_absolute() for path in (project, *artifacts, *outputs, cache)):
+        raise ValueError("Research CLI paths must be explicit absolute paths")
+    artifact_root = Path(os.path.commonpath([path.parent for path in artifacts]))
+    output_root = Path(os.path.commonpath([path.parent for path in outputs]))
+    return PathResolver(RuntimePathRoots(project_root=project, data_root=artifact_root, artifact_root=artifact_root,
+        output_root=output_root, checkpoint_root=output_root, cache_root=cache, external_asset_root=project))

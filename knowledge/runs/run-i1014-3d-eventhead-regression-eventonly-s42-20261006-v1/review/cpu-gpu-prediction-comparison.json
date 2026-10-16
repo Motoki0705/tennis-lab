@@ -1,0 +1,101 @@
+{
+  "checkpoint_sha256": "1a5b1fa7cbe02453e269788fb638f5979a446e363ff18de9f7f627ed3c0ddf8a",
+  "cache": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner_3d/review/predictions/1a5b1fa7cbe02453e269788fb638f5979a446e363ff18de9f7f627ed3c0ddf8a/2ceb39113cd61e6f69e0a76e2112642f83163f1d2afecc5fdb8e7938723d80da",
+  "receipt": {
+    "checkpoint_sha256": "1a5b1fa7cbe02453e269788fb638f5979a446e363ff18de9f7f627ed3c0ddf8a",
+    "device": "cpu",
+    "evaluation_profile": {
+      "augmentation": {
+        "event_probability": 0.5,
+        "gap_max": 10,
+        "gap_min": 3,
+        "isolated_probability": 0.0,
+        "jitter_sigma_px": 0.0,
+        "noise_p95_px": 0.0,
+        "outlier_probability": 0.0,
+        "triangulation_steps": 3
+      },
+      "augmentation_seed": 20991,
+      "flow_seed": 20991,
+      "missing_enabled": true,
+      "noise_enabled": true
+    },
+    "manifest_sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+    "predictions_sha256": "422687af77350032a42418f7df55657f2b5618c298ee762682123eca3a5e7259",
+    "schema": "ball_refiner_3d.review_predictions.v1",
+    "source": "fresh_checkpoint_inference"
+  },
+  "arrays": {
+    "event_probability": {
+      "shape": [
+        54420
+      ],
+      "max_absolute_difference": 2.2649765014648438e-06
+    },
+    "event_target": {
+      "shape": [
+        54420
+      ],
+      "max_absolute_difference": 0.0
+    },
+    "prediction": {
+      "shape": [
+        54420,
+        3
+      ],
+      "max_absolute_difference": 1.71661376953125e-05
+    },
+    "target": {
+      "shape": [
+        54420,
+        3
+      ],
+      "max_absolute_difference": 0.0
+    },
+    "missing": {
+      "shape": [
+        54420
+      ],
+      "exact": true
+    },
+    "event": {
+      "shape": [
+        54420
+      ],
+      "exact": true
+    },
+    "input": {
+      "shape": [
+        54420,
+        3
+      ],
+      "max_absolute_difference": 0.0
+    },
+    "linear_baseline": {
+      "shape": [
+        54420,
+        3
+      ],
+      "max_absolute_difference": 0.0
+    },
+    "rally_id": {
+      "shape": [
+        54420
+      ],
+      "exact": true
+    },
+    "view_id": {
+      "shape": [
+        54420
+      ],
+      "exact": true
+    },
+    "frame_id": {
+      "shape": [
+        54420
+      ],
+      "exact": true
+    }
+  },
+  "status": "passed"
+}

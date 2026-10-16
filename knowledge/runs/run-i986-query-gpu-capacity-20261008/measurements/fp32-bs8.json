@@ -1,0 +1,112 @@
+{
+  "schema": "ball_mdd_query_gpu.v1",
+  "status": "oom",
+  "arguments": {
+    "manifest": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json",
+    "model_config": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/models/conv2d-query_only.yaml",
+    "output": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/conv2d-query-only-gpu/20261008-sweep-v1/fp32-bs8.json",
+    "batch_size": 8,
+    "precision": "fp32",
+    "mode": "compute",
+    "workers": 0,
+    "pin_memory": false,
+    "cpu_threads": 2,
+    "warmup": 4,
+    "steps": 16
+  },
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
+  "script_sha256": "23a9ab16de52b6093e7006758ccb8497dbb0cd7e9d08592a180772d512acb9d1",
+  "commit": "c8e6810616f3f31f3cff3dee0df7376d7c9a7a9b",
+  "queue_run_id": "1791456329552391447_371303_i986-conv2d-query-gpu-bs-sweep-v1",
+  "seed": 42,
+  "optimizer": {
+    "name": "AdamW",
+    "lr": 0.0001,
+    "weight_decay": 0.01
+  },
+  "tf32": {
+    "matmul": false,
+    "cudnn": true
+  },
+  "cudnn_benchmark": false,
+  "train_only": true,
+  "checkpoint_saved": false,
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "total_bytes": 17102864384,
+    "cuda": "13.0",
+    "torch": "2.13.0+cu130",
+    "python": "3.11.15",
+    "memory_fraction_limit": 0.9,
+    "free_before_bytes": 15894315008
+  },
+  "model": {
+    "compression": "conv2d",
+    "pose_pooling": null,
+    "readout": "query_only",
+    "frames": 32,
+    "stem_channels": [
+      8,
+      16,
+      32,
+      48
+    ],
+    "mixed_channels": [
+      64,
+      96
+    ],
+    "dim": 128,
+    "heads": 4,
+    "layers": 2,
+    "dropout": 0.1,
+    "rope_base": 10000.0
+  },
+  "parameters": 1126762,
+  "samples": [
+    {
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "start": 25,
+      "frame_step": 1
+    },
+    {
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "start": 25,
+      "frame_step": 2
+    },
+    {
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000003127-000003452",
+      "start": 85,
+      "frame_step": 4
+    },
+    {
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "start": 32,
+      "frame_step": 1
+    },
+    {
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "start": 0,
+      "frame_step": 2
+    },
+    {
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "start": 0,
+      "frame_step": 4
+    },
+    {
+      "clip_id": "tracknet/game1/Clip1",
+      "start": 0,
+      "frame_step": 1
+    },
+    {
+      "clip_id": "tracknet/game1/Clip1",
+      "start": 0,
+      "frame_step": 2
+    }
+  ],
+  "steps": [],
+  "error": "CUDA out of memory. Tried to allocate 900.00 MiB. GPU 0 has a total capacity of 15.93 GiB of which 946.83 MiB is free. Including non-PyTorch memory, this process has 17179869184.00 GiB memory in use. 14.34 GiB allowed; Of the allocated memory 12.86 GiB is allocated by PyTorch, and 793.19 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)",
+  "peak_allocated_bytes": 14632168960,
+  "peak_reserved_bytes": 14638120960
+}

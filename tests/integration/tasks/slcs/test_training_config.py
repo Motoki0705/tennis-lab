@@ -14,6 +14,15 @@ from src.utils.configuration.contracts import inspect_typed_adapter
 _CONFIG_DIR = Path(__file__).parents[4] / "src" / "tasks" / "slcs" / "configs"
 
 
+def test_training_config_rejects_unsupported_qualitative_logging() -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train", overrides=["training.qualitative_logging.enabled=true"]
+        )
+    with pytest.raises(ValueError, match="SLCS does not support.*qualitative_logging"):
+        SLCSTrainingRuntimeConfig.from_config(config)
+
+
 def test_model_config_has_composition_owned_defaults() -> None:
     contract = inspect_typed_adapter(SLCSModelConfig)
     assert any(

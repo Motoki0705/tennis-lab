@@ -34,7 +34,6 @@ from src.tasks.plcs.court_keypoint_contract import (
 )
 from src.tasks.plcs.generate_dataset.io.scene_loader import AttrDict, load_scene
 from src.tasks.plcs.inference.predictor import PLCSPredictor
-from src.tasks.plcs.inference.tracking_predictor import PLCSTrackingPredictor
 from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.device import DeviceSelectionError, resolve_device
 from src.utils.geometry.court_pose import (
@@ -53,30 +52,19 @@ from src.utils.schema.court_normalization import normalize_court_position
 from src.utils.schema.player import COCO17_SKELETON, COCO_KP_NAMES
 
 from .checkpoints import (
-    OBJECTNESS_MULTI,
     CheckpointInfo,
     describe_checkpoint,
     family_name,
     load_checkpoint_config,
     scan_checkpoints,
 )
-from .loader import load_standard_predictor, load_tracking_predictor
-from .tracking import (
-    TrackingSceneError,
-    TrackingWindow,
-    TrackMatch,
-    build_tracking_batch,
-    match_tracks,
-    reference_metadata_from_batch,
-    tracking_metric_config,
-)
+from .loader import load_standard_predictor
 
 SPLITS: Final = ("train", "val", "test")
 DEFAULT_SPLIT: Final = "val"
 MAX_SCENE_LIMIT: Final = 1000
 DEFAULT_CAMERA_DEPTH_M: Final = 4.0
 MODE_SINGLE: Final = "single"
-MODE_TRACKING: Final = "tracking"
 MODE_PREVIEW: Final = "preview"
 _SCALE_M: Final = np.asarray(
     (COURT_COORD_SCALE_X, COURT_COORD_SCALE_Y, COURT_COORD_SCALE_Z),
@@ -217,8 +205,6 @@ class PayloadBuilder:
 
 def checkpoint_mode(checkpoint: CheckpointInfo) -> str:
     """Return the inference mode a checkpoint's saved config selects."""
-    if checkpoint.objects == OBJECTNESS_MULTI:
-        return MODE_TRACKING
     return MODE_SINGLE
 
 
@@ -255,9 +241,7 @@ class InferenceService:
         self.camera_depth = float(camera_depth)
         self.device = device
         self._resolver = self._build_resolver(project_root)
-        self._predictor_cache: OrderedDict[
-            str, PLCSPredictor | PLCSTrackingPredictor
-        ] = OrderedDict()
+        self._predictor_cache: OrderedDict[str, PLCSPredictor] = OrderedDict()
 
     # ------------------------------------------------------------------ setup
 
@@ -542,10 +526,7 @@ class InferenceService:
                 detail["num_frames"],
                 checkpoint_info.max_seq_len,
                 max_views=checkpoint_info.max_views,
-                view_range=(3, 4)
-                if checkpoint_info.reference
-                and checkpoint_mode(checkpoint_info) != MODE_TRACKING
-                else None,
+                view_range=(3, 4) if checkpoint_info.reference else None,
             )
         return detail
 
@@ -913,20 +894,6 @@ class InferenceService:
                 raise SceneCatalogError(
                     f"camera index {index} is out of range 0..{num_cameras - 1}."
                 )
-        if mode == MODE_TRACKING:
-            if checkpoint.camera_candidates is not None:
-                outside = [
-                    index
-                    for index in cameras
-                    if index not in checkpoint.camera_candidates
-                ]
-                if outside:
-                    raise SceneCatalogError(
-                        "このチェックポイントの camera_candidates "
-                        f"{list(checkpoint.camera_candidates)!r} に含まれない"
-                        f"カメラが指定されました: {outside!r}."
-                    )
-            return tuple(int(index) for index in cameras)
         if checkpoint.max_views is not None and len(cameras) > checkpoint.max_views:
             raise SceneCatalogError(
                 f"checkpoint accepts at most {checkpoint.max_views} cameras, "
@@ -997,8 +964,6 @@ class InferenceService:
     def _run_prediction(
         self, request: PredictionRequest, window: Mapping[str, Any]
     ) -> PredictionResult:
-        if cast("str", window["mode"]) == MODE_TRACKING:
-            return self._run_tracking_prediction(request, window)
         return self._run_single_prediction(request, window)
 
     def _run_single_prediction(
@@ -1091,249 +1056,6 @@ class InferenceService:
 
     # ----------------------------------------------------------- track-query
 
-    def _run_tracking_prediction(
-        self, request: PredictionRequest, window: Mapping[str, Any]
-    ) -> PredictionResult:
-        """Assemble the shared track-query batch, predict, and pack tracks."""
-        checkpoint_info = cast("CheckpointInfo", window["checkpoint"])
-        family = cast("FamilyInfo", window["family"])
-        contract = resolve_court_keypoint_contract(family.selector)
-        config = self._checkpoint_config(request.checkpoint)
-        start = cast("int", window["window_start"])
-        length = cast("int", window["window_length"])
-        cameras = cast("tuple[int, ...]", window["cameras"])
-        reference_camera_id = cast("str | None", window["reference_camera_id"])
-
-        warnings = list(cast("list[str]", window.get("warnings", [])))
-        if start != 0 or length != int(window["num_frames"]):
-            warnings.append(
-                f"シーン全 {window['num_frames']} frame のうち "
-                f"[{start}, {start + length}) のみを推論しました。"
-            )
-
-        tracking_window = TrackingWindow(
-            family_dir=self.data_root / family.id,
-            scene_id=cast("str", window["scene_id"]),
-            cameras=cameras,
-            start=start,
-            length=length,
-            reference_camera_id=reference_camera_id,
-        )
-        try:
-            batch = build_tracking_batch(config=config, window=tracking_window)
-        except TrackingSceneError as error:
-            raise SceneCatalogError(
-                f"track-query バッチを構築できません: {error}"
-            ) from error
-        metrics_config = tracking_metric_config(config)
-        reference_metadata = reference_metadata_from_batch(batch)
-
-        predictor = self._tracking_predictor(checkpoint_info, contract, request.device)
-        result = predictor.predict(
-            human_kp=cast("torch.Tensor", batch["human_kp"]),
-            human_vis=cast("torch.Tensor", batch["human_vis"]),
-            court_kp=cast("torch.Tensor", batch["court_kp"]),
-            court_vis=cast("torch.Tensor", batch["court_vis"]),
-            padding_mask=cast("torch.Tensor", batch["padding_mask"]),
-            tracking_metrics=metrics_config,
-            denormalize=True,
-            court_keypoint_metadata=batch["court_keypoint_metadata"],
-            court_reference_provenance=batch.get("court_reference_provenance"),
-            reference_metadata=reference_metadata,
-        )
-        pred_position = (
-            cast("torch.Tensor", result["position_meters"])
-            .numpy()[0]
-            .astype(np.float64)
-        )
-        pred_yaw = (
-            cast("torch.Tensor", result["yaw_radians"]).numpy()[0].astype(np.float64)
-        )
-        pred_presence = cast("torch.Tensor", result["presence"]).numpy()[0].astype(bool)
-        pred_rotation = np.stack((np.cos(pred_yaw), np.sin(pred_yaw)), axis=-1)
-
-        gt_position, gt_rotation, gt_joints, gt_presence = self._tracking_ground_truth(
-            window, batch
-        )
-
-        warnings.append(
-            "multi-object の予測骨格は query slot が時間方向で人物を再利用するため"
-            "表示しません (位置と heading のみ)。"
-        )
-        if request.canonical_pose_source == "prediction":
-            warnings.append(
-                "canonical_pose_source=prediction は multi-object では未使用です "
-                "(予測骨格を表示しないため)。"
-            )
-
-        metrics = match_tracks(
-            pred_position_m=pred_position,
-            pred_present=pred_presence,
-            pred_rotation=pred_rotation,
-            gt_position_m=gt_position,
-            gt_present=gt_presence,
-            gt_rotation=gt_rotation,
-        )
-        return self._build_tracking_result(
-            request=request,
-            window=window,
-            warnings=warnings,
-            gt_position=gt_position.astype(np.float32, copy=False),
-            gt_rotation=gt_rotation.astype(np.float32, copy=False),
-            gt_joints=gt_joints.astype(np.float32, copy=False),
-            gt_presence=gt_presence.astype(np.float32, copy=False),
-            pred_position=pred_position.astype(np.float32, copy=False),
-            pred_rotation=pred_rotation.astype(np.float32, copy=False),
-            pred_presence=pred_presence.astype(np.float32, copy=False),
-            metrics=metrics,
-            presence_threshold=metrics_config.presence_threshold,
-        )
-
-    def _tracking_ground_truth(
-        self, window: Mapping[str, Any], batch: Mapping[str, Any]
-    ) -> tuple[
-        NDArray[np.float64],
-        NDArray[np.float64],
-        NDArray[np.float32],
-        NDArray[np.bool_],
-    ]:
-        """Return physical ``(T,P,...)`` ground truth for the windowed scene."""
-        contract = resolve_court_keypoint_contract(
-            cast("FamilyInfo", window["family"]).selector
-        )
-        scene = load_scene(
-            cast("Path", window["scene_dir"]), court_keypoint_contract=contract
-        )
-        start = cast("int", window["window_start"])
-        stop = start + cast("int", window["window_length"])
-        windowed = window_scene(scene, start, stop - start)
-        position = np.asarray(windowed["position"], dtype=np.float64) * _SCALE_M
-        rotation = np.asarray(windowed["rotation"], dtype=np.float64)
-        if position.ndim == 2:
-            position = position[:, None]
-            rotation = rotation[:, None]
-        joints = ground_truth_world_joints(windowed)
-        if joints.ndim == 3:
-            joints = joints[:, None]
-        if joints.shape[:2] != position.shape[:2]:
-            raise SceneCatalogError(
-                "scene human_kp_3d tracks do not match position tracks: "
-                f"{joints.shape[:2]} vs {position.shape[:2]}."
-            )
-        if "person_present" in windowed:
-            presence = np.asarray(windowed["person_present"], dtype=bool)
-        else:
-            presence = np.ones(position.shape[:2], dtype=bool)
-        if presence.shape != position.shape[:2]:
-            raise SceneCatalogError(
-                "person_present must match the physical (T,P) axes: "
-                f"{presence.shape} vs {position.shape[:2]}."
-            )
-        # Cross-check the packing the model was fed so GT slots and rows agree.
-        instance_id = cast("torch.Tensor", batch["target_instance_id"])
-        if int(instance_id.max().item()) >= position.shape[1]:
-            raise SceneCatalogError(
-                "lifecycle packing references a physical track outside the scene."
-            )
-        return position, rotation, joints, presence
-
-    def _build_tracking_result(
-        self,
-        *,
-        request: PredictionRequest,
-        window: Mapping[str, Any],
-        warnings: list[str],
-        gt_position: NDArray[np.float32],
-        gt_rotation: NDArray[np.float32],
-        gt_joints: NDArray[np.float32],
-        gt_presence: NDArray[np.float32],
-        pred_position: NDArray[np.float32],
-        pred_rotation: NDArray[np.float32],
-        pred_presence: NDArray[np.float32],
-        metrics: Any,
-        presence_threshold: float,
-    ) -> PredictionResult:
-        builder = PayloadBuilder()
-        gt_tracks: list[dict[str, Any]] = []
-        for index in range(gt_position.shape[1]):
-            gt_tracks.append(
-                {
-                    "kind": "gt",
-                    "label": f"GT {index}",
-                    "object_index": index,
-                    "has_joints": True,
-                    "position": builder.append(gt_position[:, index]),
-                    "rotation": builder.append(gt_rotation[:, index]),
-                    "presence": builder.append(gt_presence[:, index]),
-                    "joints": builder.append(gt_joints[:, index]),
-                }
-            )
-        pred_tracks: list[dict[str, Any]] = []
-        for index in range(pred_position.shape[1]):
-            pred_tracks.append(
-                {
-                    "kind": "pred",
-                    "label": f"query {index}",
-                    "object_index": index,
-                    "has_joints": False,
-                    "position": builder.append(pred_position[:, index]),
-                    "rotation": builder.append(pred_rotation[:, index]),
-                    "presence": builder.append(pred_presence[:, index]),
-                    "joints": None,
-                }
-            )
-        header: dict[str, Any] = {
-            "scene": self._scene_header(window),
-            "checkpoint": self._checkpoint_header(
-                cast("CheckpointInfo", window["checkpoint"])
-            ),
-            "request": {
-                "cameras": list(request.cameras),
-                "reference_camera_id": request.reference_camera_id,
-                "canonical_pose_source": request.canonical_pose_source,
-                "device": request.device,
-                "window_start": window["window_start"],
-                "window_length": window["window_length"],
-            },
-            "mode": MODE_TRACKING,
-            "court": self._court_document(),
-            "skeleton": {
-                "names": list(COCO_KP_NAMES),
-                "edges": [list(edge) for edge in COCO17_SKELETON],
-            },
-            "tracks": [*gt_tracks, *pred_tracks],
-            "payload_dtype": "float32",
-            "payload_elements": builder.total,
-            "metrics": self._tracking_metrics(metrics, window, presence_threshold),
-            "warnings": warnings,
-        }
-        return PredictionResult(header=header, payload=builder.build())
-
-    @staticmethod
-    def _tracking_metrics(
-        match: TrackMatch, window: Mapping[str, Any], presence_threshold: float
-    ) -> dict[str, Any]:
-        return {
-            "scope": "multi_object_tracks",
-            "matching": "hungarian_per_frame",
-            "note": (
-                "フレームごとに物理座標の Hungarian 最小コスト割当で予測slotと"
-                "GT trackを対応付けています。学習時の lifecycle metric とは"
-                "定義が異なるため直接比較しないでください。"
-            ),
-            "presence_threshold": float(presence_threshold),
-            "window_start": window["window_start"],
-            "window_length": window["window_length"],
-            "scene_frames": window["num_frames"],
-            "cameras": len(cast("tuple[int, ...]", window["cameras"])),
-            "matched_frames": match.matched_frames,
-            "matched_pairs": match.matched_pairs,
-            "unmatched_prediction": match.unmatched_prediction,
-            "unmatched_ground_truth": match.unmatched_ground_truth,
-            "position_error_m": _distribution(match.position_error_m),
-            "yaw_error_deg": _distribution(match.yaw_error_deg),
-        }
-
     @staticmethod
     def _scene_header(window: Mapping[str, Any]) -> dict[str, Any]:
         family = cast("FamilyInfo", window["family"])
@@ -1378,30 +1100,9 @@ class InferenceService:
         cached = self._predictor_cache.get(key)
         if cached is not None:
             self._predictor_cache.move_to_end(key)
-            return cast("PLCSPredictor", cached)
+            return cached
         resolved_device = resolve_device(device)
         predictor = load_standard_predictor(
-            checkpoint_path=checkpoint_info.path,
-            resolver=self._checkpoint_resolver(checkpoint_info.path),
-            device=resolved_device,
-            court_keypoint_contract=contract,
-        )
-        self._remember_predictor(key, predictor)
-        return predictor
-
-    def _tracking_predictor(
-        self,
-        checkpoint_info: CheckpointInfo,
-        contract: CourtKeypointContract,
-        device: str,
-    ) -> PLCSTrackingPredictor:
-        key = self._predictor_key("tracking", checkpoint_info.path, device)
-        cached = self._predictor_cache.get(key)
-        if cached is not None:
-            self._predictor_cache.move_to_end(key)
-            return cast("PLCSTrackingPredictor", cached)
-        resolved_device = resolve_device(device)
-        predictor = load_tracking_predictor(
             checkpoint_path=checkpoint_info.path,
             resolver=self._checkpoint_resolver(checkpoint_info.path),
             device=resolved_device,
@@ -1421,9 +1122,7 @@ class InferenceService:
                 return PathResolver(replace(self._resolver.roots, checkpoint_root=root))
         raise SceneCatalogError("Checkpoint is outside the configured roots.")
 
-    def _remember_predictor(
-        self, key: str, predictor: PLCSPredictor | PLCSTrackingPredictor
-    ) -> None:
+    def _remember_predictor(self, key: str, predictor: PLCSPredictor) -> None:
         self._predictor_cache[key] = predictor
         self._predictor_cache.move_to_end(key)
         while len(self._predictor_cache) > 2:
@@ -1629,7 +1328,6 @@ __all__ = [
     "MAX_SCENE_LIMIT",
     "MODE_PREVIEW",
     "MODE_SINGLE",
-    "MODE_TRACKING",
     "SPLITS",
     "FamilyInfo",
     "InferenceService",

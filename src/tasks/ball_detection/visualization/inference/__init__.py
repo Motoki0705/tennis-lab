@@ -18,9 +18,7 @@ from .service import (
     TITLE,
     DetectionRequestError,
     DetectionService,
-    WindowMode,
     WindowPlan,
-    dataset_ids,
 )
 
 __all__ = [
@@ -32,9 +30,7 @@ __all__ = [
     "FramePeaks",
     "LoadedBallModel",
     "Raster",
-    "WindowMode",
     "WindowPlan",
-    "dataset_ids",
     "decode_frame_peaks",
     "load_ball_model",
     "peaks_to_points",

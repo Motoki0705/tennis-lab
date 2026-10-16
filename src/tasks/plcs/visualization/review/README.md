@@ -3,6 +3,12 @@
 生成データセットの閲覧は `dataset_service.py` / `dataset_web.py` が提供する。
 起動・操作は[PLCS利用ガイド](../README.md)、API・座標契約は[共有review基盤](../../../base/visualization/review/README.md)を参照。
 
+`dataset_inspection.py`は保存2D入力・正規化root教師・world COCO17からの再投影を検査する。
+`dataset_static/`は共有3Dプレイヤーのscene/frameイベントに同期する検品パネルで、
+生成・学習・推論を実行しない。追加APIは`/api/scene/inspection`（JSON）と
+`/api/scene/observations`（float32バイナリ）。どちらも`form`・`scene`・`revision`が必須で、
+sceneファイルが変わった場合は409。バイナリの各fieldはJSONの`buffer_fields`でoffset・shape・dtypeを指定する。
+
 ## ACCAD Motion Review
 
 `data/ACCAD` の生モーション（AMASS / SMPL-H）を、PLCS の世界座標系で目視確認する
@@ -16,7 +22,8 @@
 
 ブラウザで `http://127.0.0.1:8769` を開く。GPU・フロントエンドのビルド・外部CDNは
 不要。`--accad-root` は既定で `<data-root>/ACCAD`、`--smplh-root` は
-`<data-root>/smplh`（`<gender>/model.npz` を置くディレクトリ）。
+`<checkpoint-root>/body_models/smplh`（`<gender>/model.npz` を置くディレクトリ）。
+`--checkpoint-root` の既定はrepositoryの `ckpt/`。
 
 ## 画面
 
@@ -38,7 +45,7 @@
 `poses`（156 = 52関節 × 3軸角）は AMASS の並び
 `[global_orient, body, left_hand, right_hand]` のまま使い、pose mean は加えない。
 形状ブレンド → ルート相対の剛体変換 → `trans` 加算という、repo の SMPL-H
-linear blend skinning（`src/synthetic_data_generation/dataset/plcs/smplh.py`）と
+linear blend skinning（`src/tasks/plcs/motion/smplh_model.py`）と
 同じ手順で `(T, 52, 3)` の世界関節を得る。座標系は `PLCSCoordinateContract`
 （`plcs_amass_smplh_z_up_v1`：右手系・+Z up・メートル）で、`trans` を加えるため
 ビューは世界座標をそのまま見る。
@@ -65,6 +72,9 @@ linear blend skinning（`src/synthetic_data_generation/dataset/plcs/smplh.py`）
 ```bash
 .venv/bin/python -m pytest tests/unit/tasks/plcs/visualization/review
 node --test tests/unit/tasks/plcs/visualization/review/scene.test.mjs
+node --test tests/unit/tasks/plcs/visualization/review/observation.test.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright ACCAD_REVIEW_URL=http://127.0.0.1:8769 \
   node tests/e2e/tasks/plcs/accad_review_browser.cjs
+PLAYWRIGHT_MODULE=/path/to/playwright PLCS_REVIEW_URL=http://127.0.0.1:8772 \
+  node tests/e2e/tasks/plcs/dataset_review_browser.cjs
 ```

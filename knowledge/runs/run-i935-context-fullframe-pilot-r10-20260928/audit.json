@@ -1,0 +1,549 @@
+{
+  "status": "cpu_audit_complete",
+  "context_manifest_sha256": "d20516d29f6b80272dc7c5dc8a5900f8064b46dbe8067d7833469a7475b0e742",
+  "pose_threshold": 0.15,
+  "clips": [
+    {
+      "clip_id": "tracknet/game5/Clip14",
+      "source": "tracknet",
+      "frames": 35,
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "source_size_wh": [
+        1280,
+        720
+      ],
+      "cumulative_tracks": 19,
+      "detections_per_frame": {
+        "count": 35,
+        "min": 15.0,
+        "median": 17.0,
+        "p95": 18.0,
+        "max": 18.0,
+        "mean": 16.771428571428572
+      },
+      "observed_tracks_per_frame": {
+        "count": 35,
+        "min": 15.0,
+        "median": 16.0,
+        "p95": 18.0,
+        "max": 18.0,
+        "mean": 16.457142857142856
+      },
+      "track_observed_frame_counts": {
+        "count": 19,
+        "min": 1.0,
+        "median": 35.0,
+        "p95": 35.0,
+        "max": 35.0,
+        "mean": 30.31578947368421
+      },
+      "one_frame_tracks": 1,
+      "frames_without_valid_arms": 0,
+      "valid_arm_slots": 2270,
+      "outside_image_valid_arm_slots": 0,
+      "court_valid_points": 14,
+      "court_points_stored_px": [
+        [
+          460.7519836425781,
+          112.57805633544922
+        ],
+        [
+          831.8713989257812,
+          112.7326889038086
+        ],
+        [
+          107.36392974853516,
+          487.1141052246094
+        ],
+        [
+          1175.2978515625,
+          485.37060546875
+        ],
+        [
+          507.1822509765625,
+          112.59739685058594
+        ],
+        [
+          241.4192352294922,
+          486.895263671875
+        ],
+        [
+          785.6062622070312,
+          112.71341705322266
+        ],
+        [
+          1042.6099853515625,
+          485.5872497558594
+        ],
+        [
+          482.1253967285156,
+          147.88720703125
+        ],
+        [
+          809.9002685546875,
+          147.9603729248047
+        ],
+        [
+          364.6375427246094,
+          313.35589599609375
+        ],
+        [
+          923.6360473632812,
+          312.9739685058594
+        ],
+        [
+          646.16015625,
+          147.92381286621094
+        ],
+        [
+          644.5653076171875,
+          313.1646423339844
+        ]
+      ],
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 35,
+        "court_keypoints": 14,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 2660,
+        "pose_confidence_saturated_slots": 0,
+        "pose_confidence_raw_max": 0.9836678504943848
+      },
+      "seconds": {
+        "court": 30.293007272004616,
+        "detection_tracking": 15.761707864992786,
+        "pose": 39.14279790798901
+      },
+      "sample_selection": "five uniformly spaced source frame indices; no label access",
+      "sample_frames": [
+        {
+          "frame_index": 0,
+          "pts": 0,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17
+          ]
+        },
+        {
+          "frame_index": 8,
+          "pts": 8,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            17,
+            20
+          ]
+        },
+        {
+          "frame_index": 17,
+          "pts": 17,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            20
+          ]
+        },
+        {
+          "frame_index": 25,
+          "pts": 25,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            16,
+            20
+          ]
+        },
+        {
+          "frame_index": 34,
+          "pts": 34,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            16,
+            17,
+            28
+          ]
+        }
+      ],
+      "sheet": "clip-00062-context.jpg",
+      "sheet_sha256": "0a6ae12261bbae5c256ed0917b05cf114fa1e264590516ad483a012459697cd2",
+      "context_npz_sha256": "d6c1dbfe15d6a691ab8666cbe4d33744931b88938e29451e22d35eb4e5e7c49c",
+      "jpeg_shard_sha256": "30f4de9b9491e82ef99ef9695452c646c3da9c117a26a8090a3efa2d5da5ff2a"
+    },
+    {
+      "clip_id": "meiji/video_002/clip_011/cam0",
+      "source": "meiji",
+      "frames": 151,
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "cumulative_tracks": 3,
+      "detections_per_frame": {
+        "count": 151,
+        "min": 2.0,
+        "median": 3.0,
+        "p95": 3.0,
+        "max": 3.0,
+        "mean": 2.980132450331126
+      },
+      "observed_tracks_per_frame": {
+        "count": 151,
+        "min": 2.0,
+        "median": 3.0,
+        "p95": 3.0,
+        "max": 3.0,
+        "mean": 2.980132450331126
+      },
+      "track_observed_frame_counts": {
+        "count": 3,
+        "min": 148.0,
+        "median": 151.0,
+        "p95": 151.0,
+        "max": 151.0,
+        "mean": 150.0
+      },
+      "one_frame_tracks": 0,
+      "frames_without_valid_arms": 0,
+      "valid_arm_slots": 1604,
+      "outside_image_valid_arm_slots": 0,
+      "court_valid_points": 14,
+      "court_points_stored_px": [
+        [
+          659.228759765625,
+          243.83543395996094
+        ],
+        [
+          807.8442993164062,
+          231.2570343017578
+        ],
+        [
+          378.65234375,
+          338.057861328125
+        ],
+        [
+          687.0001220703125,
+          356.21099853515625
+        ],
+        [
+          675.11181640625,
+          242.4911346435547
+        ],
+        [
+          403.50482177734375,
+          339.52099609375
+        ],
+        [
+          786.2296752929688,
+          233.08644104003906
+        ],
+        [
+          628.870849609375,
+          352.7887878417969
+        ],
+        [
+          645.5778198242188,
+          253.04197692871094
+        ],
+        [
+          772.329345703125,
+          243.66036987304688
+        ],
+        [
+          518.7950439453125,
+          298.33428955078125
+        ],
+        [
+          704.6406860351562,
+          295.1509094238281
+        ],
+        [
+          704.0636596679688,
+          248.71310424804688
+        ],
+        [
+          599.7940673828125,
+          296.94683837890625
+        ]
+      ],
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 151,
+        "court_keypoints": 14,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 1812,
+        "pose_confidence_saturated_slots": 0,
+        "pose_confidence_raw_max": 0.9559057354927063
+      },
+      "seconds": {
+        "court": 12.602317848009989,
+        "detection_tracking": 48.00078818801558,
+        "pose": 31.124090141034685
+      },
+      "sample_selection": "five uniformly spaced source frame indices; no label access",
+      "sample_frames": [
+        {
+          "frame_index": 0,
+          "pts": 0,
+          "observed_track_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "frame_index": 37,
+          "pts": 1850000,
+          "observed_track_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "frame_index": 75,
+          "pts": 3750000,
+          "observed_track_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "frame_index": 112,
+          "pts": 5600000,
+          "observed_track_ids": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "frame_index": 150,
+          "pts": 7500000,
+          "observed_track_ids": [
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "sheet": "clip-00227-context.jpg",
+      "sheet_sha256": "51efe2b4c90088d871fe375a2228ee273d48ce565ce4adc05b27409dc069c515",
+      "context_npz_sha256": "cd02004ee4fd77b7732110a2b6ed3b9eb6528c261e7ca50089bba26959a9ce74",
+      "jpeg_shard_sha256": "fdef468f1e6df38f07b24823fe008d5cb8b331a4cd50ffbe6f43b18c62f1e708"
+    },
+    {
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "source": "chat_annotation",
+      "frames": 375,
+      "stored_size_wh": [
+        1280,
+        720
+      ],
+      "source_size_wh": [
+        1920,
+        1080
+      ],
+      "cumulative_tracks": 60,
+      "detections_per_frame": {
+        "count": 375,
+        "min": 4.0,
+        "median": 8.0,
+        "p95": 11.0,
+        "max": 15.0,
+        "mean": 8.261333333333333
+      },
+      "observed_tracks_per_frame": {
+        "count": 375,
+        "min": 4.0,
+        "median": 7.0,
+        "p95": 10.0,
+        "max": 13.0,
+        "mean": 7.434666666666667
+      },
+      "track_observed_frame_counts": {
+        "count": 60,
+        "min": 1.0,
+        "median": 25.0,
+        "p95": 161.8999999999999,
+        "max": 229.0,
+        "mean": 46.46666666666667
+      },
+      "one_frame_tracks": 1,
+      "frames_without_valid_arms": 0,
+      "valid_arm_slots": 10634,
+      "outside_image_valid_arm_slots": 0,
+      "court_valid_points": 0,
+      "court_points_stored_px": [],
+      "model_context_provenance": {
+        "pose_status": "generated",
+        "court_status": "generated",
+        "pose_threshold": 0.15,
+        "pose_frames": 375,
+        "court_keypoints": 0,
+        "pose_confidence_transform": "nonnegative_heatmap_peak_saturate_at_one.v1",
+        "pose_confidence_total_slots": 90000,
+        "pose_confidence_saturated_slots": 25,
+        "pose_confidence_raw_max": 1.024472951889038
+      },
+      "seconds": {
+        "court": 20.1208780320012,
+        "detection_tracking": 116.70000295201316,
+        "pose": 156.7083635199815
+      },
+      "sample_selection": "five uniformly spaced source frame indices; no label access",
+      "sample_frames": [
+        {
+          "frame_index": 0,
+          "pts": 0,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "frame_index": 93,
+          "pts": 47616,
+          "observed_track_ids": [
+            1,
+            2,
+            3,
+            4,
+            72
+          ]
+        },
+        {
+          "frame_index": 187,
+          "pts": 95744,
+          "observed_track_ids": [
+            1,
+            2,
+            4,
+            96,
+            123,
+            128,
+            130,
+            143,
+            146,
+            154
+          ]
+        },
+        {
+          "frame_index": 280,
+          "pts": 143360,
+          "observed_track_ids": [
+            120,
+            146,
+            154,
+            210,
+            212,
+            215,
+            221,
+            238
+          ]
+        },
+        {
+          "frame_index": 374,
+          "pts": 191488,
+          "observed_track_ids": [
+            154,
+            210,
+            212,
+            250,
+            271,
+            279,
+            300,
+            313,
+            317
+          ]
+        }
+      ],
+      "sheet": "clip-00266-context.jpg",
+      "sheet_sha256": "a64276e0c039cedf4d41a2ed9268c533d3a26b2d7d57c3cf829110f080752aa6",
+      "context_npz_sha256": "746874a0bafb2b5d79e8feb36d0804e60e8971a0f7d00e6dc181d789746a327b",
+      "jpeg_shard_sha256": "c744eb6155f17977f7805525d66810f91d89a49351a4f925410d0b6fadfb73d7"
+    }
+  ]
+}

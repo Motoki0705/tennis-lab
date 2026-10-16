@@ -1,4 +1,4 @@
-"""BLCS review data must reproduce the stored 2D projections for all forms."""
+"""The actual current BLCS single_object data preserves the 2D/3D contract."""
 
 from __future__ import annotations
 
@@ -21,16 +21,9 @@ from src.utils.projection.camera_projector import project_points
 
 DATA_ROOT = Path("/home/kamimura/projects/tennis-lab/data")
 SCENE = "scene_000000"
-FORMS = (
-    "single_object",
-    "multi_object",
-    "single_object_broadcast",
-    "multi_object_broadcast",
-    "multi_object_camera_view_v2",
-    "single_object_camera_view_v2",
-)
+FORMS = ("single_object",)
 
-pytestmark = pytest.mark.skipif(
+_data_availability = pytest.mark.skipif(
     not (DATA_ROOT / "blcs").is_dir(), reason="BLCS dataset is unavailable"
 )
 
@@ -50,9 +43,7 @@ def project(record: Any, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         camera, torch.as_tensor(np.asarray(points), dtype=torch.float32)
     )
     uv = (uv / torch.tensor([camera.w, camera.h], dtype=torch.float32)).numpy()
-    in_bounds = (
-        (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
-    )
+    in_bounds = (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
     return uv, (in_front.numpy() & in_bounds)
 
 
@@ -66,9 +57,7 @@ def test_court_keypoints_reproject_exactly(form: str) -> None:
         uv, visible = project(record, keypoints)
         saved = np.load(directory / f"cam_{index}_court_kp_uv.npy")
         saved_vis = np.load(directory / f"cam_{index}_court_kp_vis.npy")
-        order = np.asarray(
-            meta["court_keypoint_views"][index]["semantic_to_physical"]
-        )
+        order = np.asarray(meta["court_keypoint_views"][index]["semantic_to_physical"])
         physical = np.empty_like(uv)
         physical[order] = saved
         physical_vis = np.empty_like(visible)
@@ -97,14 +86,16 @@ def test_ball_reprojects_exactly(form: str) -> None:
 
 
 def test_api_shapes_and_errors() -> None:
-    service = BLCSDatasetReviewService(DATA_ROOT, forms=["single_object", "multi_object"])
+    service = BLCSDatasetReviewService(DATA_ROOT)
     client = TestClient(create_dataset_app(service))
 
     catalog = client.get("/api/catalog").json()
     assert catalog["task"] == "blcs"
     assert catalog["entity"] == "ball"
     assert catalog["skeleton"] is None
-    assert {form["name"] for form in catalog["forms"]} == {"single_object", "multi_object"}
+    assert {form["name"] for form in catalog["forms"]} == {
+        "single_object",
+    }
 
     scenes = client.get("/api/scenes", params={"form": "single_object"}).json()
     assert scenes["form"] == "single_object"
@@ -133,17 +124,32 @@ def test_api_shapes_and_errors() -> None:
     frames = document["entity"]["frames"]
     assert len(response.content) == frames * 3 * 4
 
-    multi = client.get(
-        "/api/scene", params={"form": "multi_object", "scene": SCENE}
+    assert (
+        client.get(
+            "/api/scene", params={"form": "multi_object", "scene": SCENE}
+        ).status_code
+        == 422
+    )
+    evidence = client.get(
+        "/api/inspection",
+        params={"form": "single_object", "scene": SCENE, "revision": revision},
     ).json()
-    slots = multi["entity"]["slots"]
-    frames = multi["entity"]["frames"]
-    assert multi["entity"]["presence"] is True
-    multi_buffer = client.get(
-        "/api/scene/buffer",
-        params={"form": "multi_object", "scene": SCENE, "revision": multi["revision"]},
-    ).content
-    assert len(multi_buffer) == slots * frames * 3 * 4 + slots * frames
+    assert evidence["ball"]["normalization"]["position"]["status"] == "ok"
+    assert evidence["ball"]["normalization"]["velocity"]["status"] == "ok"
+    assert all(
+        c["ball"]["summary"]["visibility_mismatches"] == 0 for c in evidence["cameras"]
+    )
+    # Frames out of view keep their projection outside the normalized image.
+    hidden = [
+        uv
+        for camera in evidence["cameras"]
+        for uv, visible in zip(
+            camera["ball"]["saved_uv"], camera["ball"]["saved_visibility"], strict=True
+        )
+        if not visible
+    ]
+    assert hidden
+    assert all(min(uv) < 0 or max(uv) > 1 for uv in hidden)
 
     stale = client.get(
         "/api/scene",
@@ -157,3 +163,6 @@ def test_api_shapes_and_errors() -> None:
     assert escaped.status_code in {404, 422}
     assert client.get("/api/scenes", params={"form": "../escape"}).status_code == 422
     assert client.get("/static/unknown.js").status_code == 404
+
+
+pytestmark = [pytest.mark.local_data, _data_availability]

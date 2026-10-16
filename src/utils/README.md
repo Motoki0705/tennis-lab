@@ -12,18 +12,23 @@
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
 - **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
 - **`checksum.py`**: 独立した2実装とfileのstat・読取長を照合する `dual_sha256()`。不一致は `FileIntegrityError` で停止し、単独実装への切替や自動再試行を行わない。契約と限界は同関数のdocstringを参照。
+- **`data/verification.py`**: 固定ファイル集合の検証成功をfork/spawn worker間で共有する。hashはfileごとに一度、以後はctimeを含むstatを照合し、変更時に停止する。runを跨ぐ永続cacheは作らない。
+- **`resource_guard.py`**: sampled MemAvailableの継続低下/緊急停止判定と10秒bucketのRAM記録。起動条件は呼出し側が検査する。
 - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
 - **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。
 - **`artifact_store/`**: taskやLightningに依存しないlocal artifact treeの永続化契約と、headlessな`RcloneArtifactStore`。credentialはconfig値ではなく呼び出し側が安全なfileとして渡し、失敗時のbackend fallbackは行わない。
 
 ### `configuration/`
+- **`cli.py`**: 明示されたselectorで操作を選ぶ。literalな委譲先mapを`discovery.py`が再帰的に追跡し、全ての終端のschema/path validatorをcatalogと監査へ結び付ける。未知・動的・循環する経路は検証済みとして扱わない。
 - **`paths.py` / `schema.py` / `contracts.py`**: `PathRole`・`PathResolver`・`RuntimePathRoots`、strict schema、typed adapter inspection の正本。設定値や path role の暗黙補完は行わない。
 - **`discovery.py`**: runtime boundary を source-only に列挙する下位 discovery の唯一の実装。`catalog.py` と `audit.py` はこの module を一方向に参照する。
 - **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。
 - **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
 
 ### `data/`
+- **`file_ranges.py`**: 検証済みfileの範囲を`preadv`で1つのbufferへ直接読む。descriptor数を制限し、fork/spawn・短いread・path差替え・読込中の変更を扱う。
+- **`image_record_store.py`**: JPEG byte shardとDEFLATE圧縮した疎なJSONレコードindex。offset/length、checksum、worker-local mmap、必要画像だけのdecodeを共有する。dataset schemaと公開トランザクションは呼び出し側が所有する。
 - **`float32_store.py`**: 明示されたNPY/byte-plane NPZの読み込みとfloat32の可逆圧縮。header検査と完全復元を分離し、未知codec・破損・shape不一致を拒否する。
 - **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。
 - **`augmentation.py`**: keypoint 系 augmentation、visibility dropout、false positive 注入、ImageNet 正規化/逆正規化、`tensor_images_to_uint8_rgb()`、設定値レンジの parse を実装。
@@ -42,6 +47,15 @@
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
 - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
 - **`triangulation.py`**: CPUのconfidence重み付きDLTと画素再投影誤差最小化。対応済み2D観測と同じ座標系のカメラ行列から3D点・valid maskを返す。
+- **[`probabilistic_triangulation/`](geometry/probabilistic_triangulation/README.md)**: source画素のGMMとamodal存在確率から、camera集合の周辺化とLaplace近似で3D混合分布を返すCPU API。空間prior・列挙予算を必須とする。
+
+### `matching/`
+- **`multiview_clustering.py`**: `cluster_multiview()`。任意の対称 score 行列から、view 排他（同じ view の item は同一 identity にしない）と推移律を満たす最大 score の分割を MILP で厳密に解く。`with_margins=True` で各 pair の決定を反転したときの目的関数の低下（反転マージン）を返し、`ambiguous_pairs()` で次点と僅差の決定を列挙する。`decision_margins()` は解いた後で、指定した item に触れる pair だけのマージンを計算する（それ以外は `nan` で、`ambiguous_pairs()` は判定を拒む）。最適性が証明できなければ停止する。
+
+### `physics/`
+- **`ball/`**: テニスボール物理の唯一の実装。`dynamics.py` の `BallField`（重力・k_drag・k_magnus・風）と、重力＋風相対の二次抵抗＋マグナスの加速度、半陰的Euler step。`bounce.py` はスピンに依存する滑り／グリップの地面バウンド（Cross）で、バウンド後の速度とスピンを返す。`surfaces.py` はボール定数とhard／clay／grassの固定係数の正本で、値の出典もここに書く。`integrate.py` は出力frame単位の自由飛行積分。すべて先頭次元でbatch化され、torchで微分可能。データ生成シミュレータ・軌道モデル・物理評価は同じ関数を使い、記録した状態の積分が記録軌道を再現する。
+  `record.py` は1軌道の物理GT（`ball_physics.v1`）。フィールドパラメータ、出力frameごとのsim速度、全イベント（sim step・前後の速度とスピン）だけを保存し、frameごとのスピン・飛行区間・イベントframeは導出する。区間は「イベントのsim step以後で最初の出力frame」から始まり、その状態の積分で区間の全frameが再現される（生成時に検証）。
+  物理評価の部品: `kinematics.py` は飛行区間内に閉じた有限差分（衝突を跨ぐstencilは無効）による速度・加速度誤差・jerk比・非物理加速度率、`fitting.py` は重力固定の力モデルをラリー共通の場（k_drag・k_magnus・水平風）と区間ごとの初期状態でLM法により当てはめ、説明できない残差を返す（局所解を避けるため複数の場の初期値から、場を固定した区間のみの反復を経て解き、ラリーごとに最良を採る。GTは数値精度で0。飛行中に同定できるのは `k_magnus·ω` のみ）、`events.py` はイベント確率のピーク抽出と許容frame内の1対1照合、`parameters.py` はモデルが出力する場・区間パラメータの誤差。
 
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。

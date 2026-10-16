@@ -39,11 +39,12 @@ def _config(
             "rope_dim": 4,
             "rope_theta_time": 10000.0,
             "rope_theta_camera": 10000.0,
+            "physics_head": False,
             "predict_velocity": False,
             "invisible_init_std": 0.02,
             "num_court_tokens": 20,
             "time_window_radius": 2,
-        }
+        },
     }
 
 

@@ -8,7 +8,10 @@ from typing import Literal, cast
 from torch import Tensor, nn
 
 from src.tasks.blcs.configuration import AxialModelConfig
-from src.tasks.blcs.models.components.heads import build_trajectory_output
+from src.tasks.blcs.models.components.heads import (
+    FlightParameterOutput,
+    build_trajectory_output,
+)
 from src.tasks.blcs.models.components.padding import (
     build_axial_padding_masks,
     mask_trajectory_outputs,
@@ -183,6 +186,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         camera_layers_per_stage: Sequence[int],
         time_layers_per_stage: Sequence[int],
         time_global_stage_mask: Sequence[bool],
+        physics_head: bool = False,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -302,6 +306,11 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             predict_velocity=predict_velocity,
         )
 
+        self.physics_head = (
+            FlightParameterOutput(input_dim=self.hidden_dim, dropout=dropout)
+            if physics_head
+            else None
+        )
         self._register_token_frequencies()
 
     def _register_token_frequencies(self) -> None:
@@ -398,6 +407,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             rope_theta_camera=config.rope_theta_camera,
             num_layers=config.num_layers,
             predict_velocity=config.predict_velocity,
+            physics_head=config.physics_head,
             max_seq_len=config.max_seq_len,
             max_num_cameras=config.max_num_cameras,
             invisible_init_std=config.invisible_init_std,
@@ -429,13 +439,20 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             n_cams=n_cams,
         )
         x, frame_valid = self._encode_views(
-            ball_uv, ball_vis, court_kp, court_vis, padding_mask,
-            camera_freqs, time_freqs,
+            ball_uv,
+            ball_vis,
+            court_kp,
+            court_vis,
+            padding_mask,
+            camera_freqs,
+            time_freqs,
         )
         x = x[:, :, 0, :]
         x = self.final_norm(x)
 
         outputs = cast("dict[str, Tensor]", self.output_head(x))
+        if self.physics_head is not None:
+            outputs.update(self.physics_head(x))
         return cast(
             "dict[str, Tensor]",
             mask_trajectory_outputs(outputs, frame_valid),

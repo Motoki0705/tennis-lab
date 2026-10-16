@@ -1,0 +1,109 @@
+{
+  "status": "ok",
+  "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "input_contract": {
+    "schema": "rgb_uint8_native_mdd.v1",
+    "layout": "B,T,3,H,W",
+    "color_order": "RGB",
+    "dtype": "uint8",
+    "value_range": [
+      0,
+      255
+    ],
+    "computation_dtype": "float32",
+    "normalization": "divide_255",
+    "luminance": "0.114*B + 0.587*G + 0.299*R",
+    "first_mdd_frame": "zero",
+    "mdd_a": 0.2,
+    "mdd_b": 0.15
+  },
+  "preprocessing": [
+    {
+      "source": "chat_annotation",
+      "frame_step": 1,
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "eager_max_abs": 2.6226043701171875e-06,
+      "compiled_max_abs": 3.2782554626464844e-06
+    },
+    {
+      "source": "chat_annotation",
+      "frame_step": 2,
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+      "eager_max_abs": 2.562999725341797e-06,
+      "compiled_max_abs": 2.9802322387695312e-06
+    },
+    {
+      "source": "chat_annotation",
+      "frame_step": 4,
+      "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000003127-000003452",
+      "eager_max_abs": 2.562999725341797e-06,
+      "compiled_max_abs": 3.3676624298095703e-06
+    },
+    {
+      "source": "meiji",
+      "frame_step": 1,
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "eager_max_abs": 1.0579824447631836e-06,
+      "compiled_max_abs": 1.087784767150879e-06
+    },
+    {
+      "source": "meiji",
+      "frame_step": 2,
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "eager_max_abs": 2.1457672119140625e-06,
+      "compiled_max_abs": 2.5033950805664062e-06
+    },
+    {
+      "source": "meiji",
+      "frame_step": 4,
+      "clip_id": "meiji/video_002/clip_000/cam0",
+      "eager_max_abs": 2.5331974029541016e-06,
+      "compiled_max_abs": 2.5331974029541016e-06
+    },
+    {
+      "source": "tracknet",
+      "frame_step": 1,
+      "clip_id": "tracknet/game1/Clip1",
+      "eager_max_abs": 2.6226043701171875e-06,
+      "compiled_max_abs": 2.6226043701171875e-06
+    },
+    {
+      "source": "tracknet",
+      "frame_step": 2,
+      "clip_id": "tracknet/game1/Clip1",
+      "eager_max_abs": 2.562999725341797e-06,
+      "compiled_max_abs": 2.562999725341797e-06
+    },
+    {
+      "source": "tracknet",
+      "frame_step": 4,
+      "clip_id": "tracknet/game1/Clip1",
+      "eager_max_abs": 2.562999725341797e-06,
+      "compiled_max_abs": 2.562999725341797e-06
+    }
+  ],
+  "gradient_relative_l2": 0.014985211193561554,
+  "max_uv_delta": 0.0016404390335083008,
+  "loss_eager": 0.24004077911376953,
+  "loss_compiled": 0.24061375856399536,
+  "restore_max_uv_delta": 0.0016404390335083008,
+  "state_dict_names_unchanged": true,
+  "compilation": {
+    "mode": "default",
+    "backend": "inductor",
+    "fullgraph": true,
+    "dynamic": false,
+    "recompile_limit": 8,
+    "backward_pass_autocast": "off",
+    "unique_graphs": 3,
+    "graph_breaks": {}
+  },
+  "tolerances": {
+    "mdd_atol": 3e-06,
+    "mdd_rtol": 1e-05,
+    "gradient_relative_l2": 0.05,
+    "uv_abs": 0.003,
+    "loss_abs": 0.002
+  },
+  "scope": "train-only numerical diagnostic; no production training or test evaluation"
+}

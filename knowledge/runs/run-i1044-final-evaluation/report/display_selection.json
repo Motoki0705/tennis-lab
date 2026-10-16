@@ -1,0 +1,8 @@
+{
+  "criterion": "control test clip RMSE minimum/median/maximum; visualization only",
+  "scene_ids": [
+    "scene_000429",
+    "scene_000665",
+    "scene_000459"
+  ]
+}

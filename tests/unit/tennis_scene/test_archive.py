@@ -5,13 +5,19 @@ from __future__ import annotations
 import importlib
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 import src.tennis_scene as tennis_scene_package
 from src.tennis_scene.archive import load_scene_result, save_scene_result
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.schema import (
+    SCENE_MASK_FIELDS,
+    SCENE_REASON_FIELDS,
+    SceneResult,
+)
 
 
 def _scene() -> SceneResult:
@@ -216,3 +222,91 @@ def test_shared_scene_directory_io_remains_available() -> None:
     scene_io = importlib.import_module("src.utils.data.scene_io")
 
     assert callable(scene_io.load_scene_payload)
+
+
+def _v2_scene() -> SceneResult:
+    """One player and two views over three frames; frame 1 is fully rejected."""
+    frames = 3
+    player_valid = np.array([[True, False, True]])
+    joints_vis: NDArray[np.bool_] = np.zeros((1, frames, 17), bool)
+    joints_vis[0, [0, 2]] = True
+    ball_valid = np.array([True, False, False])
+    position: NDArray[np.float32] = np.zeros((1, frames, 3), np.float32)
+    position[0, [0, 2]] = [[1.0, 2.0, 0.9], [1.1, 2.0, 0.9]]
+    joints: NDArray[np.float32] = np.zeros((1, frames, 17, 3), np.float32)
+    joints[joints_vis] = 1.0
+    ball: NDArray[np.float32] = np.zeros((frames, 3), np.float32)
+    ball[0] = [0.0, 3.0, 1.0]
+    return SceneResult(
+        num_frames=frames,
+        fps=30.0,
+        width=640,
+        height=360,
+        court_kp=np.zeros((2, frames, 14, 2), np.float32),
+        court_vis=np.ones((2, frames, 14), np.float32),
+        player_position=position,
+        player_yaw=np.zeros((1, frames), np.float32),
+        ball_uv=np.zeros((2, frames, 2), np.float32),
+        ball_vis=np.array([[True, True, False], [True, False, False]]),
+        ball_3d=ball,
+        human_kp_2d=np.zeros((1, 2, frames, 17, 2), np.float32),
+        human_kp_vis=np.ones((1, 2, frames, 17), np.float32),
+        player_track_ids=np.array([0], np.int32),
+        player_kp_3d=joints,
+        player_observed=np.ones((1, frames), bool),
+        player_valid=player_valid,
+        player_heading_valid=player_valid.copy(),
+        player_kp_3d_vis=joints_vis,
+        player_smpl_valid=np.zeros((1, frames), bool),
+        ball_3d_valid=ball_valid,
+        player_rejection_code=np.where(player_valid, 0, 4).astype(np.uint8),
+        player_kp_3d_rejection_code=np.where(joints_vis, 0, 1).astype(np.uint8),
+        ball_rejection_code=np.where(ball_valid, 0, 1).astype(np.uint8),
+        metadata={"scene_schema_version": 2, "court_reference": {"camera_ids": ["near", "far"]}},
+    )
+
+
+def test_v2_round_trip_preserves_validity_masks_and_reasons(tmp_path: Path) -> None:
+    expected = _v2_scene()
+    save_scene_result(expected, tmp_path / "scene.npz")
+    actual = load_scene_result(tmp_path / "scene.npz")
+    assert actual.schema_version == 2
+    for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS):
+        np.testing.assert_array_equal(getattr(actual, name), getattr(expected, name))
+        assert getattr(actual, name).dtype == getattr(expected, name).dtype
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda s: setattr(s, "player_valid", None), "player_valid must be boolean"),
+        (lambda s: s.player_position.__setitem__((0, 1), 5.0), "player_position must be zero in invalid"),
+        (lambda s: s.player_rejection_code.__setitem__((0, 0), 3), "zero reason must mean valid"),
+        (lambda s: s.player_observed.__setitem__((0, 0), False), "lacks accepted observations"),
+        (lambda s: s.ball_vis.__setitem__((1, 0), False), "at least two views"),
+        (lambda s: s.metadata.pop("court_reference"), "resolved camera reference"),
+    ],
+)
+def test_v2_save_rejects_inconsistent_validity(tmp_path: Path, mutate: Any, message: str) -> None:
+    scene = _v2_scene()
+    mutate(scene)
+    with pytest.raises(ValueError, match=message):
+        save_scene_result(scene, tmp_path / "scene.npz")
+    assert not (tmp_path / "scene.npz").exists()
+
+
+def test_v2_load_rejects_archive_without_a_mask(tmp_path: Path) -> None:
+    path = tmp_path / "scene.npz"
+    save_scene_result(_v2_scene(), path)
+    with np.load(path) as archive:
+        arrays = {name: archive[name] for name in archive.files if name != "ball_3d_valid"}
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(ValueError, match="v2 archive requires ball_3d_valid"):
+        load_scene_result(path)
+
+
+def test_v1_scene_rejects_validity_fields(tmp_path: Path) -> None:
+    scene = _scene()
+    scene.ball_3d_valid = np.ones(3, bool)
+    with pytest.raises(ValueError, match="v1 scenes have no reconstruction validity"):
+        save_scene_result(scene, tmp_path / "scene.npz")

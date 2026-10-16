@@ -1,0 +1,93 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.run8/kpr/torchreid/models/solider/backbones/swin_transformer.py:1162: UserWarning: DeprecationWarning: pretrained is deprecated, please use "init_cfg" instead
+  warnings.warn('DeprecationWarning: pretrained is deprecated, '
+{
+  "status": "ok",
+  "upstream_commit": "e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa",
+  "source": {
+    "camera_id": "cam0",
+    "fps": 59.94006,
+    "height": 1080,
+    "num_frames": 1010,
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+    "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+    "width": 1920
+  },
+  "frame": 0,
+  "rows": [
+    0,
+    1
+  ],
+  "boxes": [
+    [
+      569.668701171875,
+      457.2144775390625,
+      606.5966186523438,
+      542.9345092773438
+    ],
+    [
+      625.1463623046875,
+      408.5736389160156,
+      639.728271484375,
+      443.5303039550781
+    ]
+  ],
+  "feature": {
+    "appearance_valid": 4568,
+    "bytes": 22719258,
+    "detections": 4568,
+    "frames": 1010,
+    "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/dev_features/i964-features-r7-20260930/clipreid_vitb16_market1501/video_000/clip_000/cam0.features.npz",
+    "sha256": "ff876f48aa4c105d6390efe8296a8a5dedb2f074d6c7add2c359918163e7c1a9"
+  },
+  "weights": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/player_association/kpr/kpr_market_SOLIDER_93.25_96.59_41453430.pth.tar",
+    "sha256": "e29bacd699a15d1d069c9d19c8804b7d35baea81e713b55e632ee546e1733a1b"
+  },
+  "state_keys_equal": true,
+  "state_keys": 462,
+  "output_keys": [
+    "embeddings",
+    "visibility",
+    "masks"
+  ],
+  "max_abs_diff": {
+    "embeddings": 0.0,
+    "visibility": 0.0,
+    "masks": 0.0
+  },
+  "prompts_bitwise_equal": true,
+  "input_sha256": "ad3c4b7ae46d55940288fc9779a6af182fe6d269ccb7729ec95b5ae565b2e606",
+  "device": "cpu",
+  "torch": "2.13.0+cu130",
+  "input_size": [
+    384,
+    128
+  ],
+  "trials": {
+    "positive_only": {
+      "embeddings": 0.0,
+      "visibility": 0.0,
+      "masks": 0.0
+    },
+    "all_other_detection_poses_negative": {
+      "embeddings": 0.0,
+      "visibility": 0.0,
+      "masks": 0.0
+    }
+  },
+  "port_files": {
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/tasks/player_association/appearance/kpr.py": "1ab7520f113f06a3374b5ef04cb0f098b41d5200a867c2fab0070da58d413c4e",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/tasks/player_association/appearance/kpr_vendor/heads.py": "a109f9dc8ce2de6ca54f404393a1e8fa420a1e51cf8dcd3bfbe4fcd50605ae59",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/tasks/player_association/appearance/solider_vendor/swin_transformer.py": "54249aa7303ae57c45f6522218800eb788e8b1efc347e239d08bd24c7da93130"
+  },
+  "upstream_files": {
+    "torchreid/data/masks_transforms/mask_transform.py": "eb49cee847d7064b307f4fa69b47216639e5911ed6ad9fd33d11cbd0d5ca1289",
+    "torchreid/data/masks_transforms/coco_keypoints_transforms.py": "ce95851ac52e68c566da290165ff30bd59663f1b6c5127864986085b7d109716",
+    "torchreid/data/datasets/keypoints_to_masks.py": "84c0c7810da0e0c4fd0920b3c92163db23cb550e16144562fdfe3e7c900a66b8",
+    "torchreid/models/promptable_solider.py": "f3066b1e1062b8d54d7cc9e5bee8f90f58d6eebaef60b215b5a72d7d40a078e6",
+    "torchreid/models/promptable_transformer_backbone.py": "e767eb2c949eb0df678ca1e29674ddd7344c9be24a096cd5bedbb5b820d0d7b2",
+    "torchreid/models/kpr.py": "153b704c01c07054556455ef33a9115092fc9682b51c31a8c0f0766412d769a0",
+    "torchreid/models/solider/backbones/swin_transformer.py": "0fd9891304786cb3fde0bc0e853e166cb5e11e39c9550cc5765b20955b3f418e",
+    "torchreid/utils/imagetools.py": "e370318737df2e3e7828dc002ad7c3fbe883384ff5ef044cd03e00d9ce31de57"
+  }
+}

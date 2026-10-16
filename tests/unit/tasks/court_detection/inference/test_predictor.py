@@ -12,7 +12,6 @@ from src.tasks.base.model_io import bind_model_io
 from src.tasks.court_detection.configuration import CourtLossConfig
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
-    CourtTargetKind,
     CourtTargetSpec,
 )
 from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
@@ -20,7 +19,10 @@ from src.tasks.court_detection.model_io.adapters import CourtModelIOAdapter
 from src.tasks.court_detection.model_io.contracts import (
     CourtModelSpec,
 )
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtHierarchicalModel,
+    CourtModelOutput,
+)
 
 
 def _bundle() -> CourtTargetBundleSpec:
@@ -51,13 +53,13 @@ class _StaticLogitModel(CourtHierarchicalModel):
 
     def forward(
         self,
-        image: torch.Tensor,
+        x: torch.Tensor,
         feature_1: torch.Tensor | None = None,
         feature_2: torch.Tensor | None = None,
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
         patch_valid_mask: torch.Tensor | None = None,
-    ) -> dict[CourtTargetKind, torch.Tensor]:
+    ) -> CourtModelOutput:
         assert all(
             value is None
             for value in (
@@ -69,7 +71,7 @@ class _StaticLogitModel(CourtHierarchicalModel):
             )
         )
         logits = cast(torch.Tensor, self._logits)
-        return {"kp": logits.expand(image.shape[0], -1, -1, -1)}
+        return CourtModelOutput({"kp": logits.expand(x.shape[0], -1, -1, -1)})
 
 
 def _predictor(

@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/remove-ball-confidence-filter-20261002/.venv/bin/python: Error while finding module specification for 'tests.benchmarks.court_side_unfiltered' (ModuleNotFoundError: No module named 'tests.benchmarks')

@@ -13,12 +13,40 @@ from fastapi.testclient import TestClient
 from src.tasks.slcs.data.annotation import load_slcs_annotation, slcs_annotation_dir
 from src.tasks.slcs.visualization.review.dataset_service import SLCSDatasetReviewService
 from src.tasks.slcs.visualization.review.dataset_web import create_dataset_app
-from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.generate_dataset.manifest import ClipManifest
+from src.tennis_scene.schema import SceneResult
 from tests.support.tasks.slcs.dataset import (
     SLCSFixtureDatasetConfig,
     build_slcs_dataset_fixture,
 )
+from tests.support.tennis_scene.annotations import publish_dataset_annotations
+
+
+def _review_scene(scene: SceneResult) -> SceneResult:
+    """Far player first, near second, with explicit v2 gaps (invalid mask + zero)."""
+    assert scene.player_valid is not None and scene.player_heading_valid is not None
+    assert scene.player_observed is not None and scene.player_rejection_code is not None
+    scene.player_position[0] = [2, 6, 0.8]
+    scene.player_position[1] = [-1, -7, 0.9]
+    scene.player_yaw[0] = np.pi / 2
+    scene.player_yaw[1] = np.pi
+    assert scene.human_kp_vis is not None
+    scene.human_kp_vis[:] = 1
+    scene.human_kp_vis[1, :, 1] = 0
+    scene.player_position[1, 1] = 0
+    scene.player_yaw[1, 1] = 0
+    scene.player_valid[1, 1] = scene.player_heading_valid[1, 1] = False
+    scene.player_rejection_code[1, 1] = 1
+    assert scene.ball_vis is not None and scene.ball_3d is not None
+    assert scene.ball_3d_valid is not None and scene.ball_rejection_code is not None
+    scene.ball_vis[:] = True
+    scene.ball_vis[:, 2] = False
+    scene.ball_3d[:] = [1, 3, 2]
+    scene.ball_3d[2] = 0
+    scene.ball_3d_valid[:] = True
+    scene.ball_3d_valid[2] = False
+    scene.ball_rejection_code[:] = (~scene.ball_3d_valid).astype(np.uint8)
+    return scene
 
 
 @pytest.fixture(scope="module")
@@ -32,28 +60,13 @@ def source_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
             num_cameras=3,
         ),
     )
+    scenes = {}
     for record in index.clips:
         manifest = ClipManifest.load(index.clip_dir(record))
-        scene = load_slcs_annotation(manifest)
-        # Save far first, near second, and leave explicit quality gaps.
-        scene.player_position[0] = [2, 6, 0.8]
-        scene.player_position[1] = [-1, -7, 0.9]
-        scene.player_yaw[0] = np.pi / 2
-        scene.player_yaw[1] = np.pi
-        assert scene.human_kp_vis is not None
-        scene.human_kp_vis[:] = 1
-        scene.human_kp_vis[1, :, 1] = 0
-        scene.player_position[1, 1] = np.nan
-        scene.player_yaw[1, 1] = np.nan
-        assert scene.ball_vis is not None
-        scene.ball_vis[:] = True
-        scene.ball_vis[:, 2] = False
-        assert scene.ball_3d is not None
-        scene.ball_3d[:] = [1, 3, 2]
-        scene.ball_3d[2] = np.nan
-        save_scene_result(scene, slcs_annotation_dir(manifest.clip_dir) / "scene.npz")
+        scenes[manifest.clip_id] = _review_scene(load_slcs_annotation(manifest))
         # DINO and split artifacts must not be prerequisites for a review.
         shutil.rmtree(manifest.clip_dir / "annotations" / "dino_v3")
+    publish_dataset_annotations(index.root, scenes, overwrite=True)
     return root
 
 
@@ -66,8 +79,15 @@ def clip_dir(root: Path) -> Path:
     return root / "videos" / "video_000" / "clips" / "clip_000"
 
 
+def published_scene(root: Path) -> Path:
+    """The immutable export the clip's marker publishes."""
+    annotation = slcs_annotation_dir(clip_dir(root))
+    marker = json.loads((annotation / "annotation.json").read_text())
+    return Path(annotation / marker["scene_result"])
+
+
 def test_catalog_is_lazy_and_groups_manifest_clips_by_video(dataset: Path) -> None:
-    slcs_annotation_dir(clip_dir(dataset)).joinpath("scene.npz").unlink()
+    published_scene(dataset).unlink()
     service = SLCSDatasetReviewService(dataset)
     catalog = service.catalog()
     assert catalog["task"] == "slcs"
@@ -141,29 +161,42 @@ def test_api_assets_and_read_only_errors(dataset: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "name", ["annotation.json", "scene.npz", "scene.metadata.json"]
+    ("name", "status"),
+    # No marker: nothing is published (404). A file the scene index records
+    # is missing: the publication is broken (422 from the checksum check).
+    [("annotation.json", 404), ("scene.npz", 422), ("scene.metadata.json", 422)],
 )
 def test_missing_annotation_artifacts_are_not_silently_accepted(
-    dataset: Path, name: str
+    dataset: Path, name: str, status: int
 ) -> None:
-    slcs_annotation_dir(clip_dir(dataset)).joinpath(name).unlink()
+    folder = slcs_annotation_dir(clip_dir(dataset)) if name == "annotation.json" else published_scene(dataset).parent
+    folder.joinpath(name).unlink()
     client = TestClient(create_dataset_app(SLCSDatasetReviewService(dataset)))
     assert (
         client.get(
             "/api/scene", params={"form": "video_000", "scene": "clip_000"}
         ).status_code
-        == 404
+        == status
     )
 
 
-def test_revision_covers_sidecar_and_rejects_stale_cached_buffer(dataset: Path) -> None:
+def test_revision_follows_republication_and_rejects_stale_cached_buffer(dataset: Path) -> None:
     service = SLCSDatasetReviewService(dataset)
     first = service.scene("video_000", "clip_000")
-    sidecar = slcs_annotation_dir(clip_dir(dataset)) / "scene.metadata.json"
-    sidecar.write_text(sidecar.read_text() + "\n", encoding="utf-8")
+    manifest = ClipManifest.load(clip_dir(dataset))
+    scene = load_slcs_annotation(manifest)
+    scene.player_yaw[0, 0] = 0.5
+    publish_dataset_annotations(dataset, {manifest.clip_id: scene}, overwrite=True)
     with pytest.raises(RuntimeError, match="changed"):
         service.buffer("video_000", "clip_000", first["revision"])
     assert service.scene("video_000", "clip_000")["revision"] != first["revision"]
+
+
+def test_tampered_export_is_rejected(dataset: Path) -> None:
+    sidecar = published_scene(dataset).with_suffix(".metadata.json")
+    sidecar.write_text(sidecar.read_text() + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="checksum"):
+        SLCSDatasetReviewService(dataset).scene("video_000", "clip_000")
 
 
 def test_manifest_digest_and_marker_shapes_are_validated(dataset: Path) -> None:
@@ -181,7 +214,7 @@ def test_manifest_digest_and_marker_shapes_are_validated(dataset: Path) -> None:
 
 
 def test_symlink_escape_is_rejected(dataset: Path, tmp_path: Path) -> None:
-    archive = slcs_annotation_dir(clip_dir(dataset)) / "scene.npz"
+    archive = published_scene(dataset)
     outside = tmp_path / "outside.npz"
     archive.rename(outside)
     archive.symlink_to(outside)

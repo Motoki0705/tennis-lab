@@ -1,0 +1,11 @@
+variant,encoder,decided_clips,total_clips,tp,fp,fn,pair_f1,frames_scored,frames_correct,group_accuracy
+old_old,clipreid_vitb16_market1501,4,4,19120,0,1065,0.9729042106602214,3497,2974,0.8504432370603374
+new_old,clipreid_vitb16_market1501,4,4,17075,0,707,0.9797171299882377,3497,3134,0.8961967400629111
+botsort_pose__clipreid_vitb16_market1501,clipreid_vitb16_market1501,3,4,11944,0,789,0.9680269076467967,2197,1801,0.8197542102867547
+botsort_pose__clipreid_vitb16_market1501,solider_swin_base_msmt17,3,4,11944,0,789,0.9680269076467967,2197,1801,0.8197542102867547
+botsort_pose__solider_swin_base_msmt17,clipreid_vitb16_market1501,3,4,11659,0,1074,0.9559691702197441,2197,1644,0.7482931269913519
+botsort_pose__solider_swin_base_msmt17,solider_swin_base_msmt17,3,4,11659,0,1074,0.9559691702197441,2197,1644,0.7482931269913519
+deep_ocsort_pose__clipreid_vitb16_market1501,clipreid_vitb16_market1501,4,4,18619,6,1241,0.9675977653631285,3497,2888,0.8258507291964541
+deep_ocsort_pose__clipreid_vitb16_market1501,solider_swin_base_msmt17,4,4,18619,6,1241,0.9675977653631285,3497,2888,0.8258507291964541
+deep_ocsort_pose__solider_swin_base_msmt17,clipreid_vitb16_market1501,4,4,18667,6,1208,0.9685067967209713,3497,2906,0.8309979982842436
+deep_ocsort_pose__solider_swin_base_msmt17,solider_swin_base_msmt17,4,4,18667,6,1208,0.9685067967209713,3497,2906,0.8309979982842436

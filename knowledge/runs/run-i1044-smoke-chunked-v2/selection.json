@@ -1,0 +1,15 @@
+{
+  "protocol": "issue1044-v1",
+  "arm": "rollout_velocity",
+  "seed": 42,
+  "optimizer_updates": 4,
+  "elapsed_seconds": 113.81545602201368,
+  "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-chunked-v2/logs/version_0/checkpoints/blcs-epoch=001-step=00004.ckpt",
+  "checkpoint_sha256": "f01660f36a6b814df553eff91643a747ec4670cc7735e4b6c63739b7f36ef2dd",
+  "validation_trajectory_rmse_m": 8.853866577148438,
+  "selection_used_test": false,
+  "run_id": "1791852510915717955_2_i1044-smoke-chunked-v2",
+  "smoke": true,
+  "chunked": true,
+  "gan": false
+}

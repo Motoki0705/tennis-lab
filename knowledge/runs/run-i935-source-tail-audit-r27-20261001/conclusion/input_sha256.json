@@ -1,0 +1,13 @@
+{
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-b-gate-r26-20261001/results/cam2-labels.npz": "473c6fe0818d1da6e03feb2c77d736a4078a882e20e677a585e790a649440274",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/frames/cam2.npz": "4bd6d112349aac740e66737b8373ea49e919b71225e2a4ae97ccc7db1ab28aec",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolation/cpu-v3/cam2-raw/predictions.npz": "5651ce33b9a1162f31c49fd813465f96771bfb682ffcb9e84330bc70d287631c",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolation/cpu-v3/cam2-raw/summary.json": "cae5e9fb6575f191c68f632fb2a17a57ea01e3491a0ab22534abce89207005e7",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolation/cpu-v3/cam2-resize_only/predictions.npz": "edb5f5a77b3fe2ee9fdc26ff579b2560e646b8a7deb602487d549332ad6e778a",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolation/cpu-v3/cam2-resize_only/summary.json": "12866031b4caf71dde164b7b813122b87c696bbf9d7f4210717ff9d058c3da18",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolation/cpu-v3/cam2-reencoded/predictions.npz": "b70256c7aeb2fdee5fe216c45efcaaf61393f5c1844070cf17db2aee76b7179a",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolation/cpu-v3/cam2-reencoded/summary.json": "455ed23b19607fef6d63198200288ef5761d73b47d5640130151143ee8daf91f",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/frames/cam0.npz": "ddf3214a6e9ecadf37d94d6bb5876a4e6a1263a455ab0ff0c29166446e8a48dc",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/frames/cam1.npz": "92462bfc6372055d8f1cb5c29ba6a88145c9bb09342c357f8d7bc20df2401489",
+  "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/noise-balanced-v2/summary.json": "fd80b8518cb7ce00fa6802d0fdd8b1f25ef0d90293a843a99aac705557560ff8"
+}

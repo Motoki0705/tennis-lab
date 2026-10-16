@@ -1,0 +1,383 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 4/4 workers
+4 workers [185 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_region_search_runs_on_frame_zero 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence 
+[gw1] [  0%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction 
+[gw1] [  1%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream 
+[gw2] [  1%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3] 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill] 
+[gw2] [  2%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill] 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[4-drop] 
+[gw2] [  2%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[4-drop] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer 
+[gw0] [  3%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence 
+[gw1] [  3%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding 
+[gw3] [  4%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_region_search_runs_on_frame_zero 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_frame_size_must_match_the_source 
+[gw2] [  4%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing] 
+[gw0] [  5%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence 
+tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_rejection_is_missing_and_survives_codec_and_consumer_join 
+[gw1] [  5%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False] 
+[gw1] [  6%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False] 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True] 
+[gw0] [  7%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_rejection_is_missing_and_survives_codec_and_consumer_join 
+[gw1] [  7%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True] 
+tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_assembler_rejects_another_camera_and_detector_point_fallback 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9] 
+[gw3] [  8%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_frame_size_must_match_the_source 
+tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_only_feature_and_mesh_models_run_on_declared_source_frames 
+[gw1] [  8%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9] 
+[gw0] [  9%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_assembler_rejects_another_camera_and_detector_point_fallback 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4] 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_pipeline_rejects_a_kp_cap_above_eight_before_model_loading 
+[gw0] [  9%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_pipeline_rejects_a_kp_cap_above_eight_before_model_loading 
+[gw1] [ 10%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4] 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_predict_frame_consumes_typed_task_prediction 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_stride_cannot_leave_silent_holes 
+[gw1] [ 10%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_stride_cannot_leave_silent_holes 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_checkpoint_normalization_mismatch_is_rejected_before_inference 
+[gw0] [ 11%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_predict_frame_consumes_typed_task_prediction 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_result_allows_only_invisible_out_of_image_geometry 
+[gw0] [ 11%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_result_allows_only_invisible_out_of_image_geometry 
+[gw1] [ 12%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_checkpoint_normalization_mismatch_is_rejected_before_inference 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_camera_view_checkpoint_preserves_local_order_for_reference_alignment 
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1] 
+[gw0] [ 12%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_camera_view_checkpoint_preserves_local_order_for_reference_alignment 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_non_camera_view_checkpoint_schema_is_rejected 
+[gw0] [ 13%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_non_camera_view_checkpoint_schema_is_rejected 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_component_infers_only_frame_zero_and_normalizes_by_last_pixel 
+[gw1] [ 14%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1] 
+tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_wide_observations_survive_component_and_uncalibrated_camera_is_explicit 
+[gw2] [ 14%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline] 
+[gw1] [ 15%] PASSED tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_wide_observations_survive_component_and_uncalibrated_camera_is_explicit 
+tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_headless_declared_pipeline_and_disk_resume 
+[gw3] [ 15%] PASSED tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_only_feature_and_mesh_models_run_on_declared_source_frames 
+tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_invalid_body_input_fails_before_image_feature_extraction 
+[gw3] [ 16%] PASSED tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_invalid_body_input_fails_before_image_feature_extraction 
+tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_empty_body_selection_needs_no_weights 
+[gw2] [ 16%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan] 
+[gw3] [ 17%] PASSED tests/unit/tennis_scene/pipeline/components/test_gvhmr.py::test_empty_body_selection_needs_no_weights 
+[gw0] [ 17%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_component_infers_only_frame_zero_and_normalizes_by_last_pixel 
+tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_full_frame_keeps_off_court_people_without_calibration 
+tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_failed_geometry_is_invisible_and_never_refit 
+[gw3] [ 18%] PASSED tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_full_frame_keeps_off_court_people_without_calibration 
+tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_optional_merge_records_original_clip_rows_and_roundtrips 
+[gw2] [ 18%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask] 
+[gw0] [ 19%] PASSED tests/unit/tennis_scene/pipeline/components/test_court_kp.py::test_failed_geometry_is_invisible_and_never_refit 
+tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_rejected_homography_excludes_the_camera_explicitly 
+[gw0] [ 20%] PASSED tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_rejected_homography_excludes_the_camera_explicitly 
+tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_static_calibration_requires_exactly_frame_zero 
+[gw0] [ 20%] PASSED tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_static_calibration_requires_exactly_frame_zero 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_restart_and_memory_have_identical_typed_inputs_and_skip_models 
+[gw0] [ 21%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_restart_and_memory_have_identical_typed_inputs_and_skip_models 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_changes_recompute_only_descendants 
+[gw0] [ 21%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_changes_recompute_only_descendants 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_loaded_dependency_cannot_silently_change 
+[gw0] [ 22%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_loaded_dependency_cannot_silently_change 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_missing_and_incompatible_inputs_are_rejected_before_execution 
+[gw0] [ 22%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_missing_and_incompatible_inputs_are_rejected_before_execution 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_failed_publish_does_not_replace_index_and_corruption_is_rejected 
+[gw0] [ 23%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_failed_publish_does_not_replace_index_and_corruption_is_rejected 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_source_mismatch_cannot_reuse_another_clip 
+[gw0] [ 23%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_source_mismatch_cannot_reuse_another_clip 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_replacing_implementation_uses_same_io_and_invalidates_its_outputs 
+[gw0] [ 24%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_replacing_implementation_uses_same_io_and_invalidates_its_outputs 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-every frame once] 
+[gw0] [ 24%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-every frame once] 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-outside] 
+[gw0] [ 25%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-outside] 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_accepts_pixels_rounded_after_normalization 
+[gw0] [ 25%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_accepts_pixels_rounded_after_normalization 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations 
+[gw2] [ 26%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch] 
+[gw0] [ 27%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition 
+[gw3] [ 27%] PASSED tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_optional_merge_records_original_clip_rows_and_roundtrips 
+tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_disabled_detection_does_not_load_models 
+[gw3] [ 28%] PASSED tests/unit/tennis_scene/pipeline/components/test_person_detection.py::test_disabled_detection_does_not_load_models 
+tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_fragments_link_before_dwell_and_cap_and_keep_duplicate_observations 
+[gw0] [ 28%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights 
+[gw3] [ 29%] PASSED tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_fragments_link_before_dwell_and_cap_and_keep_duplicate_observations 
+tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_cap_applies_to_eligible_groups_not_all_person_input 
+[gw2] [ 29%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot] 
+[gw3] [ 30%] PASSED tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_cap_applies_to_eligible_groups_not_all_person_input 
+tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_membership_boundary_is_singles_width_and_baseline_plus_five_metres 
+[gw3] [ 30%] PASSED tests/unit/tennis_scene/pipeline/components/test_player_selection.py::test_membership_boundary_is_singles_width_and_baseline_plus_five_metres 
+tests/unit/tennis_scene/pipeline/test_component_store.py::test_upstream_replacement_invalidates_scene_export_and_legacy_stale_index 
+[gw3] [ 31%] PASSED tests/unit/tennis_scene/pipeline/test_component_store.py::test_upstream_replacement_invalidates_scene_export_and_legacy_stale_index 
+tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit 
+[gw0] [ 31%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people 
+[gw0] [ 32%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built 
+[gw2] [ 32%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot] 
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype] 
+[gw0] [ 33%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies 
+[gw0] [ 34%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node 
+[gw3] [ 34%] PASSED tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_default_assets_and_schema_wiring_are_explicit 
+tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose 
+[gw0] [ 35%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0] 
+[gw0] [ 35%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0] 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1] 
+[gw0] [ 36%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1] 
+tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2] 
+[gw0] [ 36%] PASSED tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2] 
+tests/unit/tennis_scene/pipeline/test_person_tracking_capacity.py::test_more_than_six_people_keep_their_raw_rows 
+[gw0] [ 37%] PASSED tests/unit/tennis_scene/pipeline/test_person_tracking_capacity.py::test_more_than_six_people_keep_their_raw_rows 
+tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_players_get_per_frame_ids_on_the_carrier_order_of_every_camera 
+[gw1] [ 37%] PASSED tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_headless_declared_pipeline_and_disk_resume 
+tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_a_clip_without_ball_evidence_stops_at_the_side_decision 
+[gw2] [ 38%] PASSED tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype] 
+tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_the_decided_side_places_the_camera_local_courts 
+[gw0] [ 38%] PASSED tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_players_get_per_frame_ids_on_the_carrier_order_of_every_camera 
+tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_unobserved_frames_carry_no_player_and_an_identity_switch_splits_a_track 
+[gw3] [ 39%] PASSED tests/unit/tennis_scene/pipeline/test_feature_tracking_default.py::test_pipeline_consumes_detection_features_once_and_reuses_pose 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs 
+[gw2] [ 40%] PASSED tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_the_decided_side_places_the_camera_local_courts 
+tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_an_undecidable_clip_stops_with_the_reason_and_the_evidence 
+[gw2] [ 40%] PASSED tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_an_undecidable_clip_stops_with_the_reason_and_the_evidence 
+tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_disabled_people_publish_no_players 
+[gw2] [ 41%] PASSED tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_disabled_people_publish_no_players 
+tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_inputs_and_encoders_must_agree_with_the_declaration 
+[gw2] [ 41%] PASSED tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_inputs_and_encoders_must_agree_with_the_declaration 
+tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_the_output_contract_rejects_two_boxes_of_one_player_and_players_on_padding 
+[gw2] [ 42%] PASSED tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_the_output_contract_rejects_two_boxes_of_one_player_and_players_on_padding 
+tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_links_unique_matching_tracklets_and_keeps_source_evidence 
+[gw2] [ 42%] PASSED tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_links_unique_matching_tracklets_and_keeps_source_evidence 
+tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_refuses_far_appearance_and_ambiguous_links 
+[gw2] [ 43%] PASSED tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_refuses_far_appearance_and_ambiguous_links 
+tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_one_frame_nested_duplicate_can_continue_an_existing_identity 
+[gw2] [ 43%] PASSED tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_one_frame_nested_duplicate_can_continue_an_existing_identity 
+tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_torso_appearance_samples_inside_bounding_box 
+[gw0] [ 44%] PASSED tests/unit/tennis_scene/pipeline/test_player_association_component.py::test_unobserved_frames_carry_no_player_and_an_identity_switch_splits_a_track 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1] 
+[gw2] [ 44%] PASSED tests/unit/tennis_scene/pipeline/test_tracking_identity.py::test_torso_appearance_samples_inside_bounding_box 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides 
+[gw0] [ 45%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan] 
+[gw0] [ 45%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2] 
+[gw1] [ 46%] PASSED tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_a_clip_without_ball_evidence_stops_at_the_side_decision 
+tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_single_ball_missing_views_remain_invalid 
+[gw2] [ 47%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings 
+[gw0] [ 47%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0] 
+[gw2] [ 48%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs 
+[gw0] [ 48%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18] 
+[gw2] [ 49%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots 
+[gw0] [ 49%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected 
+[gw2] [ 50%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape] 
+[gw0] [ 50%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1] 
+[gw2] [ 51%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape] 
+[gw0] [ 51%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2] 
+[gw2] [ 52%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated] 
+[gw2] [ 52%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0] 
+[gw0] [ 53%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3] 
+[gw0] [ 54%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4] 
+[gw2] [ 54%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison 
+[gw0] [ 55%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides5] 
+[gw0] [ 55%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides5] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_detector_can_be_replaced_without_changing_the_runner 
+[gw2] [ 56%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_named_ball_paths_are_explicit_and_preserve_person_defaults 
+[gw0] [ 56%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_detector_can_be_replaced_without_changing_the_runner 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_execute_and_fresh_load_preserve_full_gmm_without_inference 
+[gw2] [ 57%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_named_ball_paths_are_explicit_and_preserve_person_defaults 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_refiner_recipe_is_rejected[ball_refiner.path=typo] 
+[gw2] [ 57%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_refiner_recipe_is_rejected[ball_refiner.path=typo] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_refiner_recipe_is_rejected[ball_refiner.batch_size=0] 
+[gw2] [ 58%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_refiner_recipe_is_rejected[ball_refiner.batch_size=0] 
+tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_refiner_recipe_is_rejected[ball_refiner.calibration_artifact=null] 
+[gw1] [ 58%] PASSED tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_single_ball_missing_views_remain_invalid 
+tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_v2_missing_mask_rejected_before_archive_write 
+[gw2] [ 59%] PASSED tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_refiner_recipe_is_rejected[ball_refiner.calibration_artifact=null] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change5] 
+[gw2] [ 60%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change5] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change6] 
+[gw2] [ 60%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change6] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_refiner_rejects_annotation_import_without_evidence 
+[gw1] [ 61%] PASSED tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_v2_missing_mask_rejected_before_archive_write 
+tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference[False] 
+[gw3] [ 61%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_require_a_load_only_node_and_adopted_inputs 
+[gw0] [ 62%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_execute_and_fresh_load_preserve_full_gmm_without_inference 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change0] 
+[gw0] [ 62%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change0] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change1] 
+[gw0] [ 63%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change1] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change2] 
+[gw0] [ 63%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change2] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change3] 
+[gw0] [ 64%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change3] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change4] 
+[gw0] [ 64%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_rejects_training_input_drift[change4] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[window] 
+[gw0] [ 65%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[window] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[sha256-0000000000000000000000000000000000000000000000000000000000000000] 
+[gw0] [ 65%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[sha256-0000000000000000000000000000000000000000000000000000000000000000] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[num_frames-14] 
+[gw0] [ 66%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[num_frames-14] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[width-66] 
+[gw0] [ 67%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[width-66] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[fps-60.0] 
+[gw0] [ 67%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_timeline_uses_source_pts_and_rejects_stale_metadata[fps-60.0] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_saved_time_must_match_pts 
+[gw0] [ 68%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_saved_time_must_match_pts 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_array_is_rejected_by_fresh_store 
+[gw0] [ 68%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_array_is_rejected_by_fresh_store 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_changed_bundle_does_not_restore_existing_artifact 
+[gw0] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_changed_bundle_does_not_restore_existing_artifact 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_bundle_is_rejected_before_model_load 
+[gw0] [ 69%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_corrupt_bundle_is_rejected_before_model_load 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_export_rejects_overwrite_and_incomplete_training 
+[gw0] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_export_rejects_overwrite_and_incomplete_training 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[normalization-enabled] 
+[gw0] [ 70%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[normalization-enabled] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[candidates-patch_size] 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_bundle_never_fills_missing_detector_defaults[candidates-patch_size] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_never_binds_another_camera 
+[gw0] [ 71%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_recipe_never_binds_another_camera 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_script_execute_and_load_without_training_store 
+[gw3] [ 72%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_imports_require_a_load_only_node_and_adopted_inputs 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-does not identify] 
+[gw3] [ 72%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-does not identify] 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-disagrees] 
+[gw3] [ 73%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-disagrees] 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-disagree0] 
+[gw3] [ 74%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-disagree0] 
+tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-disagree1] 
+[gw3] [ 74%] PASSED tests/unit/tennis_scene/pipeline/test_imports.py::test_ball_annotation_contract_violations_stop[<lambda>-disagree1] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[missing] 
+[gw2] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_refiner_rejects_annotation_import_without_evidence 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[camera] 
+[gw2] [ 75%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[camera] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[size] 
+[gw2] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_assembler_rejects_misaligned_evidence[size] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[bundle] 
+[gw2] [ 76%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[bundle] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[detector] 
+[gw2] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[detector] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[omitted] 
+[gw2] [ 77%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[omitted] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_no_implicit_calibration_or_unknown_ball_path 
+[gw2] [ 78%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_no_implicit_calibration_or_unknown_ball_path 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_standard_scene_uses_the_same_pinned_recipe 
+[gw2] [ 78%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_standard_scene_uses_the_same_pinned_recipe 
+tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_single_gaussian_area_and_anisotropic_source_units 
+[gw2] [ 79%] PASSED tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_single_gaussian_area_and_anisotropic_source_units 
+tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_separated_minor_mode_increases_uncertainty_without_averaging_point 
+[gw2] [ 80%] PASSED tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_separated_minor_mode_increases_uncertainty_without_averaging_point 
+tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_rule_boundaries_and_both_rejection_reasons 
+[gw2] [ 80%] PASSED tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_rule_boundaries_and_both_rejection_reasons 
+tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_rule_is_frame_local_and_covariance_scaling_changes_uncertainty 
+[gw2] [ 81%] PASSED tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_rule_is_frame_local_and_covariance_scaling_changes_uncertainty 
+tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_fresh_task_import_does_not_eagerly_import_scene_composition 
+[gw3] [ 81%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[missing] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[corrupt] 
+[gw3] [ 82%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[corrupt] 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[checkpoint] 
+[gw3] [ 82%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_named_option_stops_on_missing_or_wrong_assets[checkpoint] 
+tests/unit/tasks/court_side/test_benchmark.py::test_clean_trials_are_decided_correctly_for_any_reference[3] 
+[gw3] [ 83%] PASSED tests/unit/tasks/court_side/test_benchmark.py::test_clean_trials_are_decided_correctly_for_any_reference[3] 
+tests/unit/tasks/court_side/test_benchmark.py::test_clean_trials_are_decided_correctly_for_any_reference[4] 
+[gw0] [ 83%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_script_execute_and_load_without_training_store 
+tests/integration/tasks/ball_refiner/test_pipeline.py::test_calibrated_option_execute_and_load_preserve_scaled_full_gmm 
+[gw3] [ 84%] PASSED tests/unit/tasks/court_side/test_benchmark.py::test_clean_trials_are_decided_correctly_for_any_reference[4] 
+tests/unit/tasks/court_side/test_benchmark.py::test_declared_perturbations_degrade_the_evidence 
+[gw3] [ 84%] PASSED tests/unit/tasks/court_side/test_benchmark.py::test_declared_perturbations_degrade_the_evidence 
+tests/unit/tasks/court_side/test_benchmark.py::test_explicit_confidence_masks_only_remove_observations_and_preserve_rng 
+[gw3] [ 85%] PASSED tests/unit/tasks/court_side/test_benchmark.py::test_explicit_confidence_masks_only_remove_observations_and_preserve_rng 
+tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[0-2] 
+[gw3] [ 85%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[0-2] 
+tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[0-3] 
+[gw3] [ 86%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[0-3] 
+tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[0-4] 
+[gw3] [ 87%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[0-4] 
+tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[1-2] 
+[gw3] [ 87%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[1-2] 
+tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[1-3] 
+[gw3] [ 88%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[1-3] 
+tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[1-4] 
+[gw3] [ 88%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_known_half_turns_are_recovered[1-4] 
+tests/unit/tasks/court_side/test_hypothesis.py::test_a_ball_on_the_symmetry_axis_carries_no_side_information 
+[gw3] [ 89%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_a_ball_on_the_symmetry_axis_carries_no_side_information 
+tests/unit/tasks/court_side/test_hypothesis.py::test_too_few_or_disconnected_frames_stop_before_scoring 
+[gw3] [ 89%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_too_few_or_disconnected_frames_stop_before_scoring 
+tests/unit/tasks/court_side/test_hypothesis.py::test_inconsistent_observations_are_rejected_with_every_hypothesis_scored 
+[gw3] [ 90%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_inconsistent_observations_are_rejected_with_every_hypothesis_scored 
+tests/unit/tasks/court_side/test_hypothesis.py::test_invalid_inputs_are_contract_errors 
+[gw3] [ 90%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_invalid_inputs_are_contract_errors 
+tests/unit/tasks/court_side/test_hypothesis.py::test_repeated_static_observations_count_once 
+[gw3] [ 91%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_repeated_static_observations_count_once 
+tests/unit/tasks/court_side/test_hypothesis.py::test_a_static_false_pair_cannot_outvote_the_moving_ball 
+[gw3] [ 91%] PASSED tests/unit/tasks/court_side/test_hypothesis.py::test_a_static_false_pair_cannot_outvote_the_moving_ball 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_qualification_rejects_cached_or_partial_execution 
+[gw3] [ 92%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_qualification_rejects_cached_or_partial_execution 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_fresh_store_and_process_required_before_loading_inputs 
+[gw3] [ 92%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_fresh_store_and_process_required_before_loading_inputs 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_archive_all_fields_comparison_detects_changed_observations 
+[gw3] [ 93%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_archive_all_fields_comparison_detects_changed_observations 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_preserves_all_three_camera_timelines 
+[gw1] [ 94%] PASSED tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference[False] 
+tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference[True] 
+[gw3] [ 94%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_preserves_all_three_camera_timelines 
+tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_stops_on_truncated_camera 
+[gw0] [ 95%] PASSED tests/integration/tasks/ball_refiner/test_pipeline.py::test_calibrated_option_execute_and_load_preserve_scaled_full_gmm 
+tests/unit/tasks/court_side/test_benchmark.py::test_threshold_selection_prefers_no_wrong_decision_then_fewer_stops 
+[gw0] [ 95%] PASSED tests/unit/tasks/court_side/test_benchmark.py::test_threshold_selection_prefers_no_wrong_decision_then_fewer_stops 
+[gw3] [ 96%] PASSED tests/integration/tennis_scene/test_pipeline_qualification.py::test_video_stops_on_truncated_camera 
+[gw1] [ 96%] PASSED tests/unit/tennis_scene/pipeline/test_auto_pipeline.py::test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference[True] 
+tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_decided_side_is_validated_and_recorded 
+[gw1] [ 97%] PASSED tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_decided_side_is_validated_and_recorded 
+tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_wrong_side_cannot_bypass_evidence_or_geometry 
+[gw1] [ 97%] PASSED tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_wrong_side_cannot_bypass_evidence_or_geometry 
+tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_full_clip_grid_preserves_duration_without_windowing 
+[gw1] [ 98%] PASSED tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_full_clip_grid_preserves_duration_without_windowing 
+tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_static_calibration_fits_every_accepted_view_from_frame_zero 
+[gw1] [ 98%] PASSED tests/unit/tennis_scene/pipeline/test_automatic_geometry.py::test_static_calibration_fits_every_accepted_view_from_frame_zero 
+[gw2] [ 99%] PASSED tests/unit/tasks/ball_refiner/refiner_2d/test_confidence.py::test_fresh_task_import_does_not_eagerly_import_scene_composition 
+tests/unit/tasks/court_side/test_benchmark.py::test_local_calibration_half_turns_only_cameras_beyond_the_net 
+[gw2] [100%] PASSED tests/unit/tasks/court_side/test_benchmark.py::test_local_calibration_half_turns_only_cameras_beyond_the_net 
+
+============================= 185 passed in 30.00s =============================

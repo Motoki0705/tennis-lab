@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
@@ -14,22 +13,15 @@ from numpy.typing import NDArray
 from omegaconf import DictConfig
 from torch import Tensor
 
-from src.tasks.base.data import ReferenceViewSelection, StableCameraIdTable
 from src.tasks.base.generate_dataset import (
     COURT_KEYPOINT_METADATA_KEY,
     CourtKeypointContract,
     CourtKeypointContractMetadata,
     CourtReferenceFrameProvenance,
-    MissingCourtKeypointMetadataError,
     apply_court_view_record,
     build_court_view_record,
-    build_reference_frame_provenance,
     court_points_physical_to_target,
     resolve_court_keypoint_contract,
-)
-from src.tasks.blcs.configuration import (
-    TrackQueryReferenceModelConfig,
-    parse_model_config,
 )
 from src.tasks.blcs.data.dataset import (
     BallTrajectoryDataset,
@@ -47,11 +39,7 @@ from src.tasks.blcs.model_io import (
     blcs_trajectory_prediction_to_physical,
     compose_blcs_trajectory_model_io,
 )
-from src.tasks.blcs.models.blcs_track_query_reference_model import (
-    BLCSTrackQueryReferenceModel,
-)
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
-from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.court_keypoint_contract import (
     headings_target_to_physical,
     normalized_points_target_to_physical,
@@ -63,23 +51,14 @@ from src.tasks.plcs.generate_dataset.scene_generator import (
 )
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData as PLCSSceneData
 from src.tasks.plcs.model_io import PLCSDecodedPrediction, PLCSPhysicalPrediction
-from src.tasks.plcs.models.plcs_track_query_reference_model import (
-    PLCSTrackQueryReferenceModel,
-)
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
-from src.tennis_scene.pipeline.components.blcs import BLCSModule
-from src.tennis_scene.pipeline.components.plcs import PLCSModule
-from src.tennis_scene.pipeline.court_reference import reference_metadata
 from src.utils.schema.court import COURT_KP20_HALF_TURN_INDEX
 from src.utils.schema.court_normalization import (
     denormalize_court_position,
     normalize_court_position,
     normalize_court_velocity,
 )
-from tests.unit.tennis_scene.pipeline.config_factories import (
-    make_blcs_config,
-    make_plcs_config,
-)
+from tests.support.physics.ball_record import simulated_record
 
 pytestmark = pytest.mark.integration
 
@@ -103,6 +82,7 @@ _BLCS_CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 _PLCS_CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 _PHYSICAL_COURT_UV = np.linspace(0.05, 0.95, 40, dtype=np.float32).reshape(20, 2)
 _CENTERS = ((0.5, 12.0, -5.0), (-0.75, -12.0, -5.0))
+_BLCS_POSITIONS, _BLCS_PHYSICS = simulated_record(2)
 
 
 def _contract_document(contract: CourtKeypointContract) -> dict[str, object]:
@@ -153,13 +133,9 @@ def _write_blcs_dataset(
     root: Path,
     contract: CourtKeypointContract,
 ) -> None:
-    physical_position = torch.tensor(
-        [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]], dtype=torch.float32
-    )
+    physical_position = torch.from_numpy(_BLCS_POSITIONS)
     normalized = normalize_court_position(physical_position)
-    physical_velocity = torch.tensor(
-        [[0.5, 1.0, 0.25], [0.75, 1.25, 0.0]], dtype=torch.float32
-    )
+    physical_velocity = torch.from_numpy(_BLCS_PHYSICS.velocity)
     scene = BLCSSceneData(
         scene_id="scene_000000",
         initial_from_cell=0,
@@ -174,6 +150,7 @@ def _write_blcs_dataset(
         ball_vel_norm=normalize_court_velocity(physical_velocity),
         cameras=[_blcs_camera(0, contract), _blcs_camera(1, contract)],
         num_cameras_sampled=2,
+        physics_record=_BLCS_PHYSICS,
         fps_out=30,
         sim_fps=120,
         physics_config_dict={},
@@ -338,12 +315,12 @@ def _assert_projection_round_trip(
         assert target_camera_point[2] > 0
 
 
-@pytest.mark.parametrize("selector", ["physical_v1", "camera_view_v2"])
+@pytest.mark.parametrize("selector", ["physical_v1"])
 def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     tmp_path: Path,
     selector: str,
 ) -> None:
-    """Exercise both CourtKP contracts with the fixed isotropic normalization."""
+    """Exercise the supported physical CourtKP contract and isotropic normalization."""
     torch.manual_seed(799)
     contract = resolve_court_keypoint_contract(selector)
 
@@ -379,20 +356,8 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     reference_sign = torch.tensor(
         [-1.0, -1.0, 1.0] if selector == "camera_view_v2" else [1.0, 1.0, 1.0]
     )
-    expected_blcs_position = (
-        torch.tensor(
-            [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]],
-            dtype=torch.float32,
-        )
-        * reference_sign
-    )
-    expected_blcs_velocity = (
-        torch.tensor(
-            [[0.5, 1.0, 0.25], [0.75, 1.25, 0.0]],
-            dtype=torch.float32,
-        )
-        * reference_sign
-    )
+    expected_blcs_position = torch.from_numpy(_BLCS_POSITIONS) * reference_sign
+    expected_blcs_velocity = torch.from_numpy(_BLCS_PHYSICS.velocity) * reference_sign
     torch.testing.assert_close(
         blcs_sample["position_3d"],
         normalize_court_position(expected_blcs_position),
@@ -442,6 +407,9 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     assert torch.isfinite(physical_blcs.position).all()
 
     plcs_root = tmp_path / "plcs"
+    expected_plcs_position = (
+        torch.tensor([[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]]) * reference_sign
+    )
     _write_plcs_dataset(plcs_root, contract)
     plcs_config = _plcs_config(selector)
     plcs_dataset = SceneDataset(
@@ -467,7 +435,7 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     )
     torch.testing.assert_close(
         plcs_sample["position"],
-        normalize_court_position(expected_blcs_position),
+        normalize_court_position(expected_plcs_position),
     )
     torch.testing.assert_close(
         plcs_sample["rotation"],
@@ -478,7 +446,7 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     )
     torch.testing.assert_close(
         plcs_sample["human_kp_3d"][:, 0],
-        expected_blcs_position,
+        expected_plcs_position,
     )
     _assert_projection_round_trip(plcs_sample, plcs_provenance)
 
@@ -504,21 +472,21 @@ def test_standard_datasets_models_losses_metrics_and_physical_predictions(
     assert torch.isfinite(physical_plcs).all()
 
 
-def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
+def test_single_camera_keeps_the_physical_court_frame(
     tmp_path: Path,
 ) -> None:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
-    half_turn = torch.diag(torch.tensor([-1.0, -1.0, 1.0]))
+    contract = resolve_court_keypoint_contract("physical_v1")
+    half_turn = torch.eye(3)
     physical_position = torch.tensor(
         [[1.0, 2.0, 0.5], [1.5, 2.5, 0.75]],
         dtype=torch.float32,
     )
     expected_position = normalize_court_position(physical_position @ half_turn.T)
-    expected_center = torch.tensor([-0.5, -12.0, -5.0])
+    expected_center = torch.tensor(_CENTERS[0])
 
     blcs_root = tmp_path / "blcs_single"
     _write_blcs_dataset(blcs_root, contract)
-    blcs_config = _blcs_config("camera_view_v2")
+    blcs_config = _blcs_config("physical_v1")
     blcs_config.data.num_views_range = [1, 1]
     blcs_sample = cast(
         "dict[str, Any]",
@@ -533,20 +501,23 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
         "CourtReferenceFrameProvenance",
         blcs_sample["court_reference_provenance"],
     )
-    assert blcs_provenance.reference_camera_id == "cam_0"
-    assert blcs_provenance.reference_camera_local_index == 0
+    assert blcs_provenance.reference_camera_id is None
+    assert blcs_provenance.reference_camera_local_index is None
     assert blcs_sample["court_kp"].shape == (1, 2, 20, 2)
     torch.testing.assert_close(
         blcs_sample["court_kp"][0, 0],
-        torch.from_numpy(_PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]),
+        torch.from_numpy(_PHYSICAL_COURT_UV),
     )
-    torch.testing.assert_close(blcs_sample["position_3d"], expected_position)
+    torch.testing.assert_close(
+        blcs_sample["position_3d"],
+        normalize_court_position(torch.from_numpy(_BLCS_POSITIONS) @ half_turn.T),
+    )
     torch.testing.assert_close(blcs_sample["camera_C"][0], expected_center)
     torch.testing.assert_close(blcs_sample["camera_R"][0], half_turn)
 
     plcs_root = tmp_path / "plcs_single"
     _write_plcs_dataset(plcs_root, contract)
-    plcs_config = _plcs_config("camera_view_v2")
+    plcs_config = _plcs_config("physical_v1")
     plcs_config.data.num_views_range = [1, 1]
     plcs_sample = SceneDataset(
         scene_dir=plcs_root,
@@ -558,18 +529,17 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
         "CourtReferenceFrameProvenance",
         plcs_sample["court_reference_provenance"],
     )
-    assert plcs_provenance.reference_camera_id == "camera_0"
-    assert plcs_provenance.reference_camera_local_index == 0
-    assert plcs_sample["selected_camera_ids"] == ("camera_0",)
+    assert plcs_provenance.reference_camera_id is None
+    assert plcs_provenance.reference_camera_local_index is None
     assert plcs_sample["court_kp"].shape == (1, 2, 20, 2)
     torch.testing.assert_close(
         plcs_sample["court_kp"][0, 0],
-        torch.from_numpy(_PHYSICAL_COURT_UV[np.asarray(COURT_KP20_HALF_TURN_INDEX)]),
+        torch.from_numpy(_PHYSICAL_COURT_UV),
     )
     torch.testing.assert_close(plcs_sample["position"], expected_position)
     torch.testing.assert_close(
         plcs_sample["rotation"],
-        torch.tensor([[-1.0, 0.0], [-1.0, 0.0]]),
+        torch.tensor([[1.0, 0.0], [1.0, 0.0]]),
     )
     torch.testing.assert_close(
         plcs_sample["human_kp_3d"][:, 0],
@@ -581,130 +551,6 @@ def test_single_view_uses_selected_camera_as_the_complete_reference_frame(
     )
     torch.testing.assert_close(plcs_sample["camera_C"][0], expected_center)
     torch.testing.assert_close(plcs_sample["camera_R"][0], half_turn)
-
-
-def _blcs_tracking_model() -> BLCSTrackQueryReferenceModel:
-    config = parse_model_config(
-        {
-            "model": {
-                "name": "blcs_track_query_reference",
-                "hidden_dim": 24,
-                "num_heads": 4,
-                "num_stages": 4,
-                "ffn_dim": 32,
-                "ffn_type": "swiglu",
-                "num_queries": 2,
-                "rope_dim": 6,
-                "dropout": 0.0,
-                "invisible_init_std": 0.02,
-                "target_frame_contract": "reference_camera_court_rzpi_v1",
-                "track_query_rope_contract": "time_camera_reference_selector_v1",
-                "reference_selector_mode": "reference",
-                "mhc": {
-                    "coefficient_dim": 8,
-                    "sinkhorn_iters": 2,
-                    "eps": 1.0e-6,
-                    "residual_identity_bias": 4.0,
-                    "update_scale_init": 0.0,
-                },
-                "cswa": {
-                    "compression_ratio": 2,
-                    "window_radius": 1,
-                    "backend": "reference",
-                },
-            }
-        }
-    )
-    assert isinstance(config, TrackQueryReferenceModelConfig)
-    model = BLCSTrackQueryReferenceModel(config)
-    model.eval()
-    return model
-
-
-def _plcs_tracking_model() -> PLCSTrackQueryReferenceModel:
-    config = PLCSModelConfig.from_mapping(
-        {
-            "name": "plcs_track_query_reference",
-            "hidden_dim": 24,
-            "num_heads": 4,
-            "ffn_dim": 32,
-            "num_queries": 2,
-            "num_stages": 4,
-            "num_joints": 17,
-            "rope_dim": 6,
-            "rope_theta": 10_000.0,
-            "ffn_type": "swiglu",
-            "dropout": 0.0,
-            "invisible_init_std": 0.02,
-            "target_frame_contract": "reference_camera_court_rzpi_v1",
-            "track_query_rope_contract": "time_camera_reference_selector_v1",
-            "reference_selector_mode": "reference",
-            "mhc": {
-                "coefficient_dim": 8,
-                "sinkhorn_iters": 2,
-                "eps": 1.0e-6,
-                "residual_identity_bias": 4.0,
-                "update_scale_init": 0.0,
-            },
-            "cswa": {
-                "compression_ratio": 2,
-                "window_radius": 1,
-                "backend": "reference",
-            },
-        }
-    )
-    model = PLCSTrackQueryReferenceModel(config)
-    model.eval()
-    return model
-
-
-def test_tracking_models_consume_reference_aligned_first14(
-    tmp_path: Path,
-) -> None:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
-    _write_blcs_dataset(tmp_path / "blcs", contract)
-    blcs_dataset = BallTrajectoryDataset(
-        scene_dir=tmp_path / "blcs",
-        split_file="test.txt",
-        config=_blcs_config("camera_view_v2"),
-        augment=False,
-        reference_camera_id="cam_1",
-    )
-    blcs_sample = cast("dict[str, Tensor]", blcs_dataset[0])
-    court = blcs_sample["court_kp"][:, :, :14]
-    ball = blcs_sample["ball_uv"].unsqueeze(2).expand(-1, -1, 2, -1)
-    with torch.no_grad():
-        output = _blcs_tracking_model()(
-            ball.unsqueeze(0),
-            torch.ones(1, 2, 2, 2, dtype=torch.bool),
-            court.unsqueeze(0),
-            torch.ones(1, 2, 2, 14, dtype=torch.bool),
-            torch.zeros(1, 2, 2, dtype=torch.bool),
-            blcs_sample["reference_view_index"].reshape(1),
-        )
-    assert output["position"].shape == (1, 2, 2, 3)
-
-    _write_plcs_dataset(tmp_path / "plcs", contract)
-    plcs_dataset = SceneDataset(
-        scene_dir=tmp_path / "plcs",
-        split_file="test.txt",
-        config=_plcs_config("camera_view_v2"),
-        augment=False,
-        reference_camera_id="camera_1",
-    )
-    plcs_sample = plcs_dataset[0]
-    court = plcs_sample["court_kp"][:, :, :14]
-    human = plcs_sample["human_kp"].unsqueeze(2).expand(-1, -1, 2, -1, -1)
-    with torch.no_grad():
-        output = _plcs_tracking_model()(
-            human.unsqueeze(0),
-            torch.ones(1, 2, 2, 2, 17, dtype=torch.bool),
-            court.unsqueeze(0),
-            torch.ones(1, 2, 2, 14, dtype=torch.bool),
-            torch.zeros(1, 2, 2, dtype=torch.bool),
-            plcs_sample["reference_view_index"].reshape(1),
-        )
-    assert output["position"].shape == (1, 2, 2, 3)
 
 
 class _ReferenceBLCS:
@@ -749,95 +595,3 @@ class _PhysicalPLCS:
             yaw_radians=np.zeros((players, frames), dtype=np.float32),
             court_reference_provenance=(self.provenance,) * players,
         )
-
-
-def test_tennis_scene_requires_v2_markers_and_publishes_physical_results(
-    tmp_path: Path,
-) -> None:
-    contract = resolve_court_keypoint_contract("camera_view_v2")
-    reference_view = build_court_view_record(
-        camera_id="camera_positive",
-        camera_center_court_m=(0.0, 12.0, 5.0),
-        contract=contract,
-    )
-    provenance = build_reference_frame_provenance(
-        (reference_view,),
-        reference_camera_id=reference_view.camera_id,
-    )
-    table = StableCameraIdTable.from_complete_scene_camera_ids(
-        (reference_view.camera_id,)
-    )
-    selection = ReferenceViewSelection.create(
-        stable_camera_id_table=table,
-        selected_views=(reference_view,),
-        reference_camera_id=reference_view.camera_id,
-    )
-    document = _contract_document(contract)
-
-    blcs = BLCSModule(
-        replace(make_blcs_config(tmp_path), court_keypoint_contract=contract)
-    )
-    blcs_predictor = _ReferenceBLCS(provenance)
-    blcs._predictor = cast(Any, blcs_predictor)
-    inputs: _BLCSProcessInputs = {
-        "ball_uv": np.full((1, 2, 2), 0.5, dtype=np.float32),
-        "court_kp": np.full((1, 2, 20, 2), 0.5, dtype=np.float32),
-        "ball_vis": np.ones((1, 2), dtype=np.bool_),
-        "court_vis": np.ones((1, 2, 20), dtype=np.float32),
-    }
-    with pytest.raises(MissingCourtKeypointMetadataError):
-        blcs.process(**inputs)
-    assert blcs_predictor.calls == 0
-    blcs_result = blcs.process(
-        **inputs,
-        court_keypoint_document=document,
-        court_reference_provenance=provenance,
-        reference_metadata=cast(
-            Any,
-            reference_metadata(selection, 1, "blcs"),
-        ),
-    )
-    np.testing.assert_array_equal(
-        blcs_result.ball_3d,
-        np.full((2, 3), [2.0, 3.0, 1.0], dtype=np.float32),
-    )
-    assert blcs_result.court_reference_provenance == provenance
-    assert (
-        blcs_result.to_dict(contract)[COURT_KEYPOINT_METADATA_KEY]
-        == (document[COURT_KEYPOINT_METADATA_KEY])
-    )
-
-    plcs = PLCSModule(
-        replace(make_plcs_config(tmp_path), court_keypoint_contract=contract)
-    )
-    plcs_predictor = _PhysicalPLCS(provenance)
-    plcs._predictor = cast(Any, plcs_predictor)
-    plcs_inputs: _PLCSProcessInputs = {
-        "human_kp_2d": np.full((2, 1, 2, 17, 2), 0.5, dtype=np.float32),
-        "court_kp": np.full((1, 2, 20, 2), 0.5, dtype=np.float32),
-        "human_kp_vis": np.ones((2, 1, 2, 17), dtype=np.float32),
-        "court_vis": np.ones((1, 2, 20), dtype=np.float32),
-        "track_ids": np.array([7, 8], dtype=np.int32),
-    }
-    with pytest.raises(MissingCourtKeypointMetadataError):
-        plcs.process(**plcs_inputs)
-    assert plcs_predictor.calls == 0
-    plcs_result = plcs.process(
-        **plcs_inputs,
-        court_keypoint_document=document,
-        court_reference_provenance=provenance,
-        reference_metadata=cast(
-            Any,
-            reference_metadata(selection, 2, "plcs"),
-        ),
-    )
-    np.testing.assert_array_equal(
-        plcs_result.position,
-        np.full((2, 2, 3), [2.0, 3.0, 1.0], dtype=np.float32),
-    )
-    assert plcs_predictor.received_provenance == (provenance, provenance)
-    assert plcs_result.court_reference_provenance == provenance
-    assert (
-        plcs_result.to_dict(contract)[COURT_KEYPOINT_METADATA_KEY]
-        == document[COURT_KEYPOINT_METADATA_KEY]
-    )

@@ -1,0 +1,1 @@
+{"best_step": 4000, "checkpoint_step": 4000, "inference_ms_per_frame": 0.01957866036507189, "test_event_brier": 0.0032436379697173834, "test_event_rmse_m": 0.3212328553199768, "test_event_soft_ce": 0.08663264662027359, "test_frame_missing_rate": 0.11321205439176774, "test_missing_rmse_m": 0.42793604731559753, "test_rmse_m": 0.1575518399477005}

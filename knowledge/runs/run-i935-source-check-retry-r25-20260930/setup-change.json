@@ -1,0 +1,11 @@
+{
+  "old_plan_sha256": "bdcb6f20e47919fcd9764b5872005609e8048ff84b713ff552a33a1cd58c0f97",
+  "new_plan_sha256": "d71f8f2b023dbb567af4567f8a63f1bea1109f6d1218a00b1db9abdf79fbc5cc",
+  "changed_plan_keys": [
+    "report"
+  ],
+  "checker_sha256": "3ea2085c5aab080b25eb93326b8f779a9957b37f95affd4f46828da1a1eb615e",
+  "compiler_cache": "/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/detector_only_pipeline/i935-e9-anchored-s42-r25-20260930-compiler",
+  "check_unchanged": true,
+  "b_gate": "https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5910704846"
+}

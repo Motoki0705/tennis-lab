@@ -1,0 +1,76 @@
+{
+  "stage": "read-only selection and seed43 configuration survey",
+  "eligible_order_by_validation_rmse": [
+    "parameters",
+    "rollout_velocity",
+    "rollout_position",
+    "velocity"
+  ],
+  "selected_arm": "parameters",
+  "used_test": false,
+  "seed43_config_differences_from_same_arm_seed42": [
+    "run.seed",
+    "run.output_dir"
+  ],
+  "configuration_files": [
+    {
+      "path": "outputs/blcs/i1044/reprojection-s42-u4000/experiment-config.yaml",
+      "sha256": "6a97361d52b2804613aa919d9a86ff838bbc8bf8ad44a63f34a063b597a61099"
+    },
+    {
+      "path": "outputs/blcs/i1044/reprojection-s43-u4000/experiment-config.yaml",
+      "sha256": "f850cee4d98d36e4c735adc75e3bc2199388d4104a599fe07f4761582a9f3713"
+    },
+    {
+      "path": "outputs/blcs/i1044/parameters-s42-u4000/experiment-config.yaml",
+      "sha256": "10a9aac960aff6c54aa051ccce39cec11bcf11c29c520604ccefd08e67926bf9"
+    },
+    {
+      "path": "outputs/blcs/i1044/parameters-s43-u4000/experiment-config.yaml",
+      "sha256": "3cf79258cf96a0cc69a92ead17a99f40efd88f9c9cf703b2eabeb9f93e7c7e0f"
+    }
+  ],
+  "actual_seed42_mode_flags": {
+    "position": {
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    },
+    "reprojection": {
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    },
+    "velocity": {
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    },
+    "rollout_position": {
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    },
+    "rollout_velocity": {
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    },
+    "parameters": {
+      "smoke": false,
+      "chunked": false,
+      "gan": false
+    }
+  },
+  "selection_source": "src/tasks/blcs/experiments/repeat_selected.py",
+  "selection_and_training_source_commit": "8faa9bd42da3483cb06e7288fcff9be7e9a54858",
+  "boundary_evidence": [
+    "repeat_selected validates six seed42 receipts and ranks ARMS[2:]",
+    "issue1044 sets test_after_fit=false and selects with trainer.validate"
+  ],
+  "limits": [
+    "No checkpoint rehash in this survey: each completed run record independently stores its SHA verification.",
+    "No independent GPU progress check in this survey: progress is recorded in the heartbeat snapshot.",
+    "Selector does not explicitly reject chunked/gan flags; all six actual receipts have both false. Harden after frozen experiments if changed."
+  ]
+}

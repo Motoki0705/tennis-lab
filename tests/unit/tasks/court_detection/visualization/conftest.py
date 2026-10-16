@@ -7,16 +7,13 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.court_detection.data.target_generation.materializer import (
-    CourtTargetMaterializer,
-)
 from src.tasks.court_detection.visualization.review import datasets
 from src.tasks.court_detection.visualization.review.datasets import (
     CourtDatasetCatalog,
 )
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 from tests.unit.tasks.court_detection.data.inputs.test_synthetic_court import (
-    _write_v2_dataset,
+    _write_v3_dataset,
 )
 from tests.unit.tasks.court_detection.data.inputs.test_tennis_court_detector import (
     _record,
@@ -55,13 +52,16 @@ def review_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     its explicit ``excluded_sample_ids``) instead of a real-data-only path.
     """
     data_root = tmp_path / "data"
-    _write_source(data_root / "court", _record(kps=_planar_kp14()))
+    _write_source(
+        data_root / "court_detection/tennis_court_detector-v1",
+        _record(kps=_planar_kp14()),
+    )
     preset = tmp_path / "tennis_court_detector.yaml"
     preset.write_text(
         "\n".join(
             (
                 "kind: tennis_court_detector",
-                "root: court",
+                "root: court_detection/tennis_court_detector-v1",
                 "split_mapping:",
                 "  train: train",
                 "  val: val",
@@ -73,7 +73,7 @@ def review_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         encoding="utf-8",
     )
     monkeypatch.setattr(datasets, "_TENNIS_SOURCE_PRESET", preset)
-    _write_v2_dataset(
+    _write_v3_dataset(
         data_root / "synthetic_data_generation" / "scenes",
         schema="v3",
         court_order=("court-a", "court-b"),
@@ -95,23 +95,7 @@ def catalog(review_project: Path) -> CourtDatasetCatalog:
 
 @pytest.fixture
 def materialized_catalog(catalog: CourtDatasetCatalog) -> CourtDatasetCatalog:
-    """Materialize the exact dense targets the canonical builders consume.
-
-    Only the Tennis source is materialized: the synthetic fixture's hand-written
-    camera-view UV layout is not a physical projection, so the rasterizer
-    correctly refuses it.  Real synthetic dense ground truth (with the
-    provenance-verified derived store) is covered by the ``local_data`` smoke
-    test instead.
-    """
-    for entry in catalog.entries():
-        if not entry.available or entry.source_kind != "tennis_court_detector":
-            continue
-        layer = catalog.input_for(entry)
-        materializer = CourtTargetMaterializer(
-            input_layer=layer,
-            target_store=catalog.target_store,
-        )
-        materializer.materialize(splits=(entry.split,), target_kinds=DENSE_KINDS)
+    """Compatibility fixture name: masks are now generated without disk targets."""
     return catalog
 
 

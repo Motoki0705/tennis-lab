@@ -1,92 +1,76 @@
 # Ball Detection
 
-出力先と実験ごとの設定方針は [タスク出力規約](../OUTPUTS.md) を参照。
+MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契約と、MDDの座標回帰契約を明示的に分ける。
 
-`src/tasks/ball_detection` は、RGBフレーム列から各フレーム内のテニスボール位置を推定するタスク実装です。モデル定義・データ取り込み(TrackNet/YouTube/Web統合ストア)・学習・推論・評価・可視化・データセット生成までを一貫して提供します。
+## 構成と責任
 
-## Modules
+| 場所 | 責任 |
+|---|---|
+| `configs/` | モデル・データ・augmentation・既存Hydraレシピの設定 |
+| [data/](data/README.md) | frame storeと注釈の正本、教師mask、RGB/GTの同期変換 |
+| [data/windows/](data/windows/README.md) | プレイ区間、凍結manifest、32frame/FPS窓、poseの有無とidentity検証 |
+| [models/mdd/](models/mdd/README.md) | 圧縮・pose・CNNの比較候補とモデル構成。学習・データ探索・queue制御を持たない |
+| `models/conv_next_unet.py` | sceneで使用する既存heatmapモデル |
+| `preprocessing/mdd.py` | モデルが使う固定FP32 MDDの唯一の実装 |
+| `model_io/` | 入出力の検証、モデル生成、座標/heatmapの別々の契約 |
+| `checkpoints/` | schema別の保存・読込・encoder転送・再現性の照合 |
+| [training/](training/README.md) | 3つの学習系統、共通epoch/runtime、LR、FPS sampler |
+| `evaluation/` | 学習中/単独評価で共通の採点、重複排除、clean/stress |
+| `inference/` | scene向け公開predictorとtrajectory gate |
+| [visualization/](visualization/README.md) | WebUI・描画・GIF・教師/拡張preview |
+| [dataset_statistics/](dataset_statistics/README.md) | 注釈構成・欠損・位置・速度・窓・pose品質のCPU統計 |
+| `generate_dataset/` | 原本から統一frame storeを生成 |
+| `scripts/` | 下表の操作入口。学習loop・queue制御を実装しない |
 
-### (ルート)
-- **`__init__.py`**: 検証済みmodel+adapterを返す `build_ball_detection_pair` のパッケージ入口。
+## 公開コマンド
 
-### models/
-- **`__init__.py`**: model実装とdiscriminator factoryの公開面。
-- **`spatiotemporal_unet.py`**: `SpatioTemporalUNet`。`(B,C,T,H,W)→(B,1,T,H/2,W/2)`、`T>=8` 必須の時空間 U-Net。
-- **`conv_next_unet.py`**: `ConvNeXtUNet`。ConvNeXt ブロックベースの spatio-temporal U-Net(`T>=1` で動作)。
-- **`dinov3_rope.py`**: `DINOv3RoPEBallDetector`。model I/O境界で準備済みのDINOv3 patch token・RoPE周波数・attention maskを3軸RoPE decoderで処理するRGB専用ヒートマップ検出器。
-- **`discriminators/__init__.py`**: `build_ball_detection_discriminator(config)` の工場関数。
+`python`はrepoの`.venv/bin/python`を使う。GPU処理は共有training queue経由で実行する。
 
-### model_io/
-- **`contracts.py`**: RGB入力、model call、学習batch、typed predictionの契約。
-- **`adapters.py`**: 推論の生RGBはfloat32・有限値・`[0,1]`を検証し、checkpointの正規化後にRGB/MDD・layout変換を行う。学習・評価のdataset側で正規化済みの入力は宣言されたchannel範囲を検証してそのまま使い、二重に正規化しない。loss/output decodeも担当。DINOv3ではraw backbone応答の検証、patch token decode、RoPE周波数とattention maskの生成もこの境界で完了する。
-- **`factory.py`**: `model.name` (`stunet`/`conv_next_unet`/`dinov3_rope`) からmodel+adapterを一度だけ選択し、DINOv3 backboneのfrozen/trainable実行経路も構築時にbind。
-- **`evaluation.py`**: checkpointから検証済みpairを読み、評価loopへprobability heatmapを提供。
+| module末尾（`src.tasks.ball_detection.scripts.`） | 選択と用途 |
+|---|---|
+| `generate_dataset` | 設定からframe storeを生成 |
+| `prepare_data` | 凍結したプレイ窓・pose/MDD-onlyのmanifestと比較設定を準備 |
+| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates`。座標系は`--initialize scratch\|encoder`も明示 |
+| `evaluate` | `--mode heatmap\|manifest\|coordinates`。保存されたcheckpoint契約で採点 |
+| `review` | `--mode dataset\|inference`でWebUIを起動 |
+| `visualize` | checkpointのclip推論をGIFへ描画 |
+| `preview` | `--kind spatial\|heatmaps\|video`で教師・画像変換を確認 |
 
-### data/
-- **`__init__.py`**: `build_ball_detection_datamodule(config)`。`data.source` からDataModuleを選択。
-- **`types.py`**: `FrameLabel`/`ClipWindow`/`BallDetectionSample`/`BallDetectionBatch` のデータ契約。
-- **`dataset.py`**: `BallDetectionDataset`。`ClipWindow` をモデル入力サンプル(画像・heatmap・座標)へ変換する共通実装。
-- **`tracknet_datamodule.py`**: `TrackNetDataModule`。TrackNet形式(`Label.csv`+連番jpg)を読む。
-- **`youtube_datamodule.py`**: `YouTubeDataModule`。`TrackNetDataModule` を継承しYouTube split解決だけ変更。
-- **`web_datamodule.py`**: `WebBallDataModule`。`data/tennis/web/unified` 統一ストアを読む(`static`/`temporal`モード)。
-- **`staged_datamodule.py`**: `StagedBallDataModule`(issue #579)。TrackNet+Webを混合し可変長 `T` で学習。
-- **`components/augmentation.py`**: `BallDetectionAugmentation`。回転/flip/affine/crop/色/ノイズ/ゼロマスク等の augmentation 合成。
-- **`components/staged_sampler.py`**: 可変 `T` 用バッチサンプラー群(`VariableTBatchSampler` 等)。
-- **`components/web/data_access_layer/web_store.py`**: `WebFrameStore`。統一ストアの read-only アクセサ。
-- **`components/web/data_access_layer/writer.py`**: shard書き込み・index構築・アトミック publish を行う writer 群。
-- **`components/web/parser/*.py`**: Roboflow/RacketVision/Kaggle/Ball-YOLO 各データセットの parser。
+BLCS損失比較の入口もこの`scripts/`配下に集約する。`train_blcs_ablation`は明示した条件・seed・更新数で学習し、`evaluate_blcs_ablation`はcheckpoint／対照を保存評価する。実装と仕様は[BLCS ablation](../blcs/ablation/README.md)に置く。
 
-### training/
-- **`lightning_module.py`**: `BallDetectionLightningModule`。Focal損失によるヒートマップ学習、GAN併用可。
-- **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。
-- **`runner.py`**: `BallDetectionTrainingRunner`。datamodule/lightning_module構築の薄いアダプタ。
-- **`staged_calibration.py`**: `probe_batch_size_by_t()`。`T` ごとのOOM較正でバッチサイズを決定。
-- **`staged_lightning_module.py`**: `StagedBallDetectionLightningModule`。手動最適化による可変T勾配蓄積学習。
-- **`staged_runner.py`**: `StagedBallDetectionTrainingRunner`。フェーズ間のOOM較正とweightのみ引き継ぎを制御。
+選択後に`--help`を付けると、その操作の引数を表示する。未対応のstage/schema/inputを推測して読み替えない。
+学習レシピ・再開条件は[training README](training/README.md)、窓とFPSの仕様は[data/windows](data/windows/README.md)が正本。
 
-### inference/
-- **`checkpoint.py`**: predictor・レビューUI共通の推論専用loader。保存されたmodel設定・`model.`重みと入力正規化をstrict復元する。`data.augmentation.normalize_imagenet.enabled`は必須で、有効なら保存されたmean/stdも使う。学習専用オプションは要求・補完しない。
-- **`predictor.py`**: `BallDetectionPredictor`。checkpointのadapterを維持し、CPU上の `BallPrediction(coords, confidence, heatmaps)` を返す。
+モデル比較の反復起動・特定runの復旧・2時間監視は既存queue/follow-up skillと実行記録が担当する。
+applicationにcampaign専用controllerや固定run IDを置かない。
+汎用性のある速度・復号・数値検証は[benchmarks](../../../tests/benchmarks/ball_detection/README.md)から実行する。
+過去の試行は`knowledge/`に記録されたcommitで再現し、実行状態・生ログ・checkpoint・大量のGIFは`outputs/ball_detection/`へ保存する。
 
-### evaluation/
-- **`contracts.py`**: 評価マニフェスト(`ball_detection_evaluation_manifest_v1`)の型付き契約。
-- **`configuration.py`**: checkpoint設定読み出しとモデル名整合性検証。
-- **`dataset_provenance.py`**: データセットの provenance(ハッシュ・ソース)記録。
-- **`metrics.py`**: `StratifiedBallMetrics`。全体/データソース別のメトリクス追跡。
-- **`evaluator.py`**: 1 job(checkpoint×dataset×split) を評価する `DefaultJobEvaluator`。
-- **`reporting.py`**: `summary.json`/`comparison.csv`/`comparison.md` を生成。
-- **`runner.py`**: `EvaluationPipeline`。fingerprintベースの再利用付き複数job評価。
+## 検出証拠の出力契約
 
-### visualization/
-- **`orchestrator.py`**: checkpointからのスライディングウィンドウ推論→GIF保存を統括。
-- **`adapters/predict_inputs.py`**: スライディングウィンドウ開始位置とバッチ構築。
-- **`adapters/render_inputs.py`**: MDDフレーム/学習バッチの描画用変換。
-- **`api/predict.py`**: `predict_clip()`。重複ウィンドウ推論の集約と `PredictionSequence` 構築。
-- **`io/clip.py`**: クリップディレクトリから推論/描画用テンソルを構築。
-- **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
-- **`review/datasets.py`**: `BallDatasetCatalog`。TrackNet/YouTube/unified webを走査し、シーン(opaque ID)・dense frame位置・multi-instance `FrameLabel` を提供する。
-- **`review/checkpoints.py`**: `scan_checkpoints()`。checkpoint本体の保存configから `model.name`・`num_frames`・窓下限・metrics既定を読む。
-- **`inference/loader.py`**: `load_ball_model()`。共通checkpoint loaderを使い、レビュー用の入力サイズ・窓長を検証する。
-- **`inference/peaks.py`**: `decode_frame_peaks()`。canonicalなthreshold/NMS/top-k + subpixel refineで複数peakをoriginal image pixelへ写す。
-- **`inference/rasters.py`**: 予測probability heatmapのRGBA overlay。
-- **`inference/service.py`**: `DetectionService`。catalog/scenes/preview/image/validate/inferを提供する共有Webバックエンド。
+`BallPrediction` はCPU tensorで返す。従来の `coords` / `confidence` はnative heatmapの
+argmax（任意のsubpixel補正付き）、`heatmaps` はモデルの出力格子のsigmoid値
+`(B,T,H,W)` で、全格子をfloat32のまま保持する。scoreは未較正であり、球の存在確率ではない。
 
-### generate_dataset/
-- **`candidate_workflow.py`**: 候補区間の手動選択(`run_candidate_selection`)と疑似ラベル推論(`predict_candidates`)。
-- **`annotation_session.py`**: 疑似ラベルレビューOpenCV UIと確定処理(`finalize_candidate`)。
+`candidates: BallCandidates` は次を追加する。KとPは呼び出し側が渡す
+`BallCandidateConfig`、pipelineの既定値は
+[`ball_detection.candidates`](../../tennis_scene/configs/pipeline.yaml)を参照。
 
-### scripts/
-- **`train.py` / `train_staged.py`**: 通常 / staged 学習エントリポイント。
-- **`eval.py`**: 単一checkpointの詳細診断評価。
-- **`evaluate_manifest.py`**: manifestベースの複数checkpoint比較評価。
-- **`visualize.py`**: クリップ単位のGIF可視化生成。
-- **`convert_web_dataset.py`**: web生データセット群を統一ストアへアトミック変換。
-- **`analyze_web_bbox_ratio.py`**: bbox最大辺比率の分布解析。
-- **`preview_augmentation.py` / `preview_heatmaps.py`**: augmentation / heatmap生成の確認用プレビュー。
-- **`youtube/*.py`**: YouTube動画取得・候補選択・疑似ラベル推論・アノテーション確定・DINOv3 SSL画像収集の各スクリプト。
+| field | shape | 意味 |
+|---|---|---|
+| `coords` | B,T,K,2 | x/(W−1), y/(H−1)。argmaxと同じsubpixel補正 |
+| `scores` / `valid` | B,T,K | 格子のsigmoid値 / 局所peakが存在するmask |
+| `cells` | B,T,K,2 | 補正前の整数格子位置(x,y) |
+| `patches` / `patch_valid` | B,T,K,P,P | cells中心のnative heatmap値 / 実格子内mask |
 
-### configs/
-- モデル/データ/損失・メトリクス/学習/staged学習フェーズ/評価マニフェスト/可視化ごとにHydra設定を分割。
+局所特徴は学習済みbackbone embeddingではなく、候補周辺のprobability patchである。
+共有 `heatmaps_to_peaks` のcontrastive NMSを閾値0で使い、score順で最大K候補を残す。
+弱いpeakも残り、平坦な複数画素のmapは `nms_kernel>1` なら候補0件になる。
+同score候補間の順位は意味を持たない。候補不足は0埋め＋`valid=false`、
+patchの画像外部分は0埋め＋`patch_valid=false` で区別する。
+patchをsubpixel座標へ再sampleしないため、中心値は常にscoreと一致する。
+元のdense heatmapも残るので、候補外の情報を使う処理や再抽出が可能。
+pipelineでの座標変換・保存・単一点の受理は[pipelineの契約](../../tennis_scene/pipeline/README.md#ball検出証拠)を参照。
 
 ## データセットレビュー / 推論UI
 
@@ -98,36 +82,26 @@ ball_detection固有のsourceと互換契約だけを記す。
 
 | id | 実体 | mode | 備考 |
 |---|---|---|---|
-| `tracknet` | `data/tennis/tracknet/<game>/<Clip*>/Label.csv` + 連番jpg | temporal | 既定source |
-| `youtube` | `data/tennis/youtube/frames/<video>/<clip_*>/Label.csv` + 連番jpg | temporal | YouTubeアノテーション |
-| `web_static` | `data/tennis/web/unified` の `temporal=0` sample | static | 1 frame = 1 scene |
-| `web_temporal` | 同ストアの `temporal=1` sample(sequence単位) | temporal | frame順は保存 `frame_index` |
+| `store/<version>` | `data/ball_detection/<version>` | temporal | TrackNet・Meiji・chat_annotation。1 camera-clip = 1 scene |
+| `pose-approved/<name>` | `--play-poses`で指定したpose datasetのball snapshot | temporal | pose承認済みclipだけ。起動方法は[利用ガイド](visualization/README.md#プレイ区間の候補) |
 
-`web_static`/`web_temporal` は unified store(`index.npz`)が未生成なら
-catalogに `available=false` と理由を出すだけで、空の一覧を捏造しない。
 scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結果として
 解決する。任意pathを受け取るAPIは提供しない。
 
 ### 表示・推論の契約
 
 - GTは保存済み `FrameLabel`(multi-instance、`visibility`付き)を
-  original image pixelの `x,y` で返す。補間・3D化・推定ラベルは行わない。
+  stored image pixelの `x,y` で返す。補間・3D化・推定ラベルは行わない。
   rastersは予測probability heatmapのみで、GT ball Gaussianは捏造しない。
-- アノテーション行が無いframeは「missing」であり、明示的なnegativeとは区別する。
-  previewは `annotated=false` と warningを返し、推論metricsはそのframeを除外する
-  (`metrics.scored_frames` / `excluded_frames`)。窓全体が未アノテーションなら
+- previewの `annotated` はレビューの有無、`supervised` はobserved-only方針で採点できるかを表す。
+  未レビューおよび未確定・推定ラベルのframeはwarningを返し、推論metricsから除外する
+  (`metrics.scored_frames` / `excluded_frames`)。窓全体が教師対象外なら
   `metrics.available=false` と理由を返し、0埋めのmetricを捏造しない。
   非finiteな座標・visibilityは読み込み時に拒否し、JSONへNaNを出さない。
 - 推論窓の長さは checkpointの `model.num_frames` を上限とし、下限は
-  アーキテクチャ最小(`stunet`=8、その他=1)にMDD multi-frame時の2 frame要件を
+  ConvNeXtの最小1 frameにMDD multi-frame時の2 frame要件を
   加えた値。範囲外はpadせず422で拒否する。
-- static sourceは unified storeの正規static sampling(1 frameを
-  `model.num_frames` 回反復)だけを使い、`metrics.window.mode="static_repeat"`
-  とwarningで明示する。反復した窓の予測は平均heatmapへ明示的に集約して
-  **単一の元frame**としてdecode・採点し、itemsのindexを一意にする
-  (同一GTを反復回数だけ数えない)。集約前の反復回数は `metrics.window.repeat`
-  に残す。temporal sourceは選択frame以降の連続窓のみで、シーン長を超える要求は
-  拒否する。
+- 推論窓は選択frame以降の連続frameで構築し、シーン長を超える要求は拒否する。
 - モデル入力は original frameを checkpointの `data.image_size` へ
   `INTER_LINEAR` でresizeした float32 `[0,1]` RGBを渡す。保存された入力正規化は
   model I/O境界で一度だけ適用する。MDD変換は `model_io/adapters.py` の境界で行い、UI側では再実装しない。
@@ -146,16 +120,17 @@ scene IDは `"<dataset>::<scene>"` で、HTTP層はこれをcatalogの列挙結�
   checkpointを推論しない。catalogが一度拒否したcheckpointは再読込で復活させず、
   復旧は `catalog()` の再走査で行う。
 - 読み取りはconfigured root内に限定する。root外へ解決される `*.ckpt`
-  symlinkは `error` 付きで拒否し、root外を指すclipディレクトリやframe
-  symlinkは対象sceneを除外してwarningに残す。unified storeの `paths` が
-  configured data root外を指す場合もstoreを unavailable として理由を返す。
-  正規writerの `../source/image.jpg` のような原画像参照はdata root内なら許可する。
+  symlinkは `error` 付きで拒否し、root外を指すstoreやshard
+  symlinkはstoreを unavailable にして理由に残す。
+- pose reviewは明示指定したdata root内のpose manifestを読み、その参照先をproject root内の
+  snapshotに限定する。metadata/indexのhash、clip集合の一致とshardのstore内配置を検証し、
+  live storeへ置き換えない。破損時は理由付きでdatasetを無効にする。
 
 ### checkpoint互換
 
 checkpoint本体の保存configだけを根拠にする(ファイル名から推論しない)。
 
-- `model.name` が `stunet`/`conv_next_unet`/`dinov3_rope` 以外、または
+- heatmap推論の `model.name` が `conv_next_unet` 以外、または
   `num_frames < アーキテクチャ最小` のcheckpointは `error` 付きで一覧に出し、
   実行時に明示的に失敗させる。
 - `model.input_mode` か入力 `image_size` が欠落したcheckpointも同じく
@@ -164,6 +139,78 @@ checkpoint本体の保存configだけを根拠にする(ファイル名から推
   warningに残し、**値が不正**(範囲外・`nan`/`inf`・型違い)なら
   checkpointを unusable にする(黙って別のしきい値へ置き換えない)。
 - dataset互換性は学習時の `data.source` ではなくアーキテクチャ制約で決める。
-  static sourceは正規反復モードがあるため常に実行可能、temporal sourceは
-  最小窓以上の場合だけ互換とする。`scenes(checkpoint=)` はdataset単位の互換性に
+  storeのclipは最小窓以上の場合だけ互換とする。`scenes(checkpoint=)` はdataset単位の互換性に
   加えて**sceneごとのframe数**で絞り、短すぎるclipを実行候補に出さない。
+
+## 学習データ
+
+現行のdataset系列・sourceとsplit・入力と教師・派生poseの制限は
+[データセット体系](data/README.md)を参照してください。
+学習窓は `model.num_frames` に固定し、`eval_stride: null` はその長さごとの窓を意味する。
+`data.source=store` のみ受け付け、廃止したWeb・staged・旧sourceへのフォールバックは行わない。
+
+統一storeの新規生成は `scripts/generate_dataset.py` が担当する。TrackNetの配布形式、
+Meiji、chat annotationの入力位置とsplitは `configs/generate_dataset.yaml` に定義する。
+生成済みstoreの利用には原本不要だが、新規生成には選択したsourceの原本が必要。
+入力やsplitを変更して生成するときは `dataset.version` に新しいversionを指定する。
+生成先には全frameのJPEG shard、注釈index、metadata、READMEを保存する。
+旧YouTube収集・疑似ラベル・SSL画像収集とWeb変換の入口は提供しない。
+
+ConvNeXt checkpointの推論は保存済みmodel/正規化契約のまま利用できる。
+学習再開には現在のstore設定を明示する。
+
+### Meiji混合FT
+
+`configs/train_meiji_mixed.yaml` はft-e13からのweights-only FTを定義する。
+モデル・入力前処理は既存設定を引き継ぎ、storeの3 sourceを等比率で混ぜる。
+epoch budget・seed・学習率・checkpoint選択条件は同configを正本とする。
+Meijiのsplitはstoreのmetadataに従い、教師方針は `data.supervision` に従う。
+
+元repoのdata/checkpoint/output rootを明示し、共有training queueから実行する:
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.train --stage convnext_heatmap --config-name train_meiji_mixed \
+    paths.project_root=<worktree> paths.data_root=<元repo>/data \
+    paths.checkpoint_root=<元repo>/ckpt paths.output_root=<元repo>/outputs \
+    paths.artifact_root=<元repo>/outputs paths.cache_root=<元repo>/.cache \
+    paths.external_asset_root=<元repo>/third_party
+```
+
+validationの窓はcheckpoint選択用であり、全frameのholdout評価とは区別する。
+`test_after_fit=false` により最終epochの自動testを止め、選択済みcheckpointとft-e13を
+同じ全frame・同じ復号条件で別途比較する。比較完了まではdeployを更新しない。
+
+### 毎epochの候補recallとcheckpoint
+
+ConvNeXtの通常・GAN学習は共通の `ValidationCandidateRecall` を使う。
+設定の正本は `configs/training/_validation_candidates.yaml`。
+loss用に補間する前のnative sigmoid heatmapから、閾値なしK=8/NMS=5/patch=5/subpixelで復号し、
+距離≤20 source pxのrecallを記録する。保存画像の端点座標をstoreのwidth-ratio scaleで割って
+元動画画素へ戻す。F1のconfidence閾値・NMS・保存画像の4 px条件はこの指標に使わない。
+
+教師はtrainingのsupervision設定と独立した、レビュー済みの単一observed球だけ。
+複数instance（observed＋out_of_frameも含む）、推定位置、未レビュー、不在は分母に入れない。
+Webではdistractorを除く単一可視targetを使い、保存画像をsourceとする。
+datasetは未増強の教師・frame行ID・source scaleを必ずbatchへ渡し、欠落時には停止する。
+検証は正規化以外の画像増強を使わない。
+
+同じframeを複数の窓・static反復・distributed samplerで読んでも、中心への距離が最小、
+同点なら早い開始位置・早い時刻の出力を1回だけ数える。DDPもframe recordを集めてから
+重複を除き、epoch全体のhit/observed件数を割る。batch平均・rank平均ではない。
+通常storeのvalidationはラベルによらない窓と実frameの末尾backfillで全frameを覆い、
+短いclip・窓間の隙間は拒否する。混合FTのstrideは選定比較と同じ4。
+評価対象はloaderが供給した一意frame。
+これらの窓集合やvalidation精度設定が違うrunを、全frame/float32の選定比較と同一条件と扱わない。
+
+`val/candidate_recall_at_8_20px` に全source合算を、
+`val/<source>/candidate_recall_at_8_20px` にsource別を記録する。
+camera IDのあるsourceには `val/<source>/<camera>/...` も残す。
+recall@1、候補外率、順位誤り率とstrict-score版、分母・hit件数も同じprefixで記録する。
+分母0のgroupには件数だけを出し、recallを0で補わない。通常のvalidation epoch全体に
+observedがなければ停止する（sanity checkでは未定義の率を記録しない）。
+
+全学習profileは `save_top_k=-1` で各epochを保持し、独立した `last.ckpt` も更新する。
+候補recallをmonitorし、混合FTではMeijiだけをmonitorする。
+毎epochの検証を省く設定・checkpoint無効化・有限top-k・epochを含まないfilenameは起動時に拒否する。
+checkpoint削除を伴うqueueの `--prune-ckpt` は使わない。
+既存checkpointの推論契約はそのままで、今後の学習にはこの明示設定を使う。

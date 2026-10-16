@@ -1,0 +1,55 @@
+{
+  "status": "ok",
+  "purpose": "integration diagnostic, not model quality",
+  "queue_run_id": "1791510968295131339_1592338_i986-final-pread-cli-v4",
+  "train_clips": 3,
+  "val_clips": 3,
+  "test_clips": 0,
+  "train_windows": 9,
+  "val_windows": 9,
+  "optimizer_updates": 24,
+  "precision": "bf16",
+  "batch_size": 1,
+  "workers": 8,
+  "input_contract": {
+    "schema": "rgb_uint8_native_mdd.v1",
+    "layout": "B,T,3,H,W",
+    "color_order": "RGB",
+    "dtype": "uint8",
+    "value_range": [
+      0,
+      255
+    ],
+    "computation_dtype": "float32",
+    "normalization": "divide_255",
+    "luminance": "0.114*B + 0.587*G + 0.299*R",
+    "first_mdd_frame": "zero",
+    "mdd_a": 0.2,
+    "mdd_b": 0.15
+  },
+  "compilation": {
+    "mode": "default",
+    "backend": "inductor",
+    "fullgraph": true,
+    "dynamic": false,
+    "recompile_limit": 8,
+    "backward_pass_autocast": "off",
+    "unique_graphs": 1,
+    "graph_breaks": {}
+  },
+  "image_decode": {
+    "decoder": "torchvision.io.decode_jpeg/nvjpeg",
+    "version": "0.28.0+cu130",
+    "color_order": "RGB",
+    "device": "cuda",
+    "apply_exif_orientation": false,
+    "cuda_version": "13.0",
+    "pixels_identical_to_opencv": false
+  },
+  "cuda_rng_saved": true,
+  "resumed": true,
+  "external_eval_restored_precision": true,
+  "parent_manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
+  "excerpt_sha256": "bf9008c5d616ad8b8f6244efe37aa7373e47b1d229256a23d0adb807d3ff42ff",
+  "checkpoint_sha256": "30291ef02031b56f0eb7d22b0f93a3b74058b232ae2bbcc8c383e70db63f8eb8"
+}

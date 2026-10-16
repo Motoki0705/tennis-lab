@@ -1,0 +1,16 @@
+{
+  "run_id": "1791594302566371947_2622790_i1050-convnext-epoch7-sync-replay-v2-20261010",
+  "name": "i1050-convnext-epoch7-sync-replay-v2-20261010",
+  "command": "env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cuda-replay-20261010 CUDA_LAUNCH_BLOCKING=1 CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 PYTHONUNBUFFERED=1 /home/kamimura/projects/tennis-lab/.venv/bin/python tests/benchmarks/ball_dpt_checkpoint_replay.py --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json --checkpoint /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v2-serial/epoch-006.pt --failure /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v2-serial/failure.json --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/mdd-cnn-recovery/20261010-sync-replay-v2 --updates 16",
+  "provider": "codex",
+  "session": "01a0fb0c-97b5-7851-b805-25dae445a6a2",
+  "issue": "1050",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "0e2a12c46a46f910df4da6885179c45cfca8b5f6",
+  "branch": "codex/ball-cuda-replay-20261010",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cuda-replay-20261010",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cuda-replay-20261010",
+  "captured_at": "2026-10-10T10:05:02+09:00"
+}

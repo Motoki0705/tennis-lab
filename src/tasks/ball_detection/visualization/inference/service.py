@@ -4,15 +4,13 @@ The service is the single backend the shared detection app
 (``src.tasks.base.visualization.detection``) talks to.  It owns two things:
 
 * the dataset/scene/frame catalog built from the ball-detection sources
-  (TrackNet, annotated YouTube frames, and the optional unified web store), and
+  (versioned ball frame stores), and
 * one bounded inference window per request, executed on CPU in-process or on
   CUDA through the shared GPU queue owned by the HTTP layer.
 
 Ground truth is exactly what the datasets store: ``FrameLabel`` points in
 original-image pixels.  Nothing is interpolated, padded, or invented -- a
-window that does not fit the selected scene is rejected, and a static web frame
-is only ever expanded through the dataset's own canonical static sampling mode,
-which is labelled in the response.
+window that does not fit the selected scene is rejected.
 
 Scene ids are opaque (``<dataset>::<scene>``) and are resolved through the
 catalog, so the API never accepts a caller-supplied filesystem path.
@@ -23,14 +21,15 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Literal, cast
+from typing import Any, Final
 
 import cv2
 import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
+from src.tasks.ball_detection.data.store import SOURCES, SPLIT_CODES
+from src.tasks.ball_detection.evaluation.detection import BallDetectionMetrics
 from src.tasks.ball_detection.visualization.inference.loader import (
     LoadedBallModel,
     load_ball_model,
@@ -50,7 +49,6 @@ from src.tasks.ball_detection.visualization.review.checkpoints import (
     scan_checkpoints,
 )
 from src.tasks.ball_detection.visualization.review.datasets import (
-    DATASET_SPECS,
     BallDatasetCatalog,
     BallDatasetCatalogError,
     BallDatasetSpec,
@@ -59,6 +57,11 @@ from src.tasks.ball_detection.visualization.review.datasets import (
     SceneRef,
     split_scene_id,
 )
+from src.tasks.ball_detection.visualization.review.play_intervals import (
+    review_play_intervals,
+)
+from src.tasks.ball_detection.visualization.review.players import PlayerCatalog
+from src.tasks.ball_detection.visualization.review.quality import REVIEW_FILTERS
 from src.utils.device import DeviceSelectionError, resolve_device
 
 TASK: Final = TASK_NAME
@@ -66,9 +69,6 @@ TITLE: Final = "Ball Detection"
 
 #: The shared web layer caps previews at this many frames per request.
 PREVIEW_FRAME_LIMIT: Final = 64
-
-WindowMode = Literal["temporal", "static_repeat"]
-
 
 class DetectionRequestError(ValueError):
     """Raised when a review or inference request is invalid."""
@@ -79,8 +79,6 @@ class WindowPlan:
     """One resolved inference window over scene frame positions."""
 
     positions: tuple[int, ...]
-    mode: WindowMode
-    repeat: int
 
     @property
     def start(self) -> int:
@@ -95,11 +93,11 @@ class WindowPlan:
     def to_dict(self, *, checkpoint_frames: int) -> dict[str, Any]:
         """Return the window description embedded in the metrics payload."""
         return {
-            "mode": self.mode,
+            "mode": "temporal",
             "start": self.start,
             "end": self.end,
             "count": len(self.positions),
-            "repeat": self.repeat,
+            "repeat": 1,
             "checkpoint_frames": checkpoint_frames,
         }
 
@@ -113,6 +111,7 @@ class DetectionService:
         data_root: str | Path | None = None,
         outputs_root: str | Path | None = None,
         checkpoints_root: str | Path | None = None,
+        play_poses: str | Path | None = None,
     ) -> None:
         self.project_root = Path(project_root).expanduser().resolve(strict=False)
         self.data_root = (
@@ -130,7 +129,11 @@ class DetectionService:
             if checkpoints_root is not None
             else self.project_root / "ckpt" / TASK
         )
-        self.dataset_catalog = BallDatasetCatalog(self.data_root)
+        self.dataset_catalog = BallDatasetCatalog(
+            self.data_root, play_poses=Path(play_poses).resolve() if play_poses is not None else None,
+            project_root=self.project_root,
+        )
+        self.player_catalog = PlayerCatalog(self.data_root, self.project_root)
         self._checkpoint_cache: dict[str, BallCheckpointInfo] | None = None
 
     # ------------------------------------------------------------- catalog
@@ -154,6 +157,7 @@ class DetectionService:
         a dataset that became unavailable must keep reporting its reason.
         """
         self.dataset_catalog.refresh()
+        self.player_catalog = PlayerCatalog(self.data_root, self.project_root)
         self._checkpoint_cache = self._scan_checkpoints()
         entries = self.dataset_catalog.entries()
         warnings: list[str] = []
@@ -175,6 +179,7 @@ class DetectionService:
             "title": TITLE,
             "datasets": datasets,
             "checkpoints": checkpoints,
+            "player_datasets": self.player_catalog.discover(),
             "warnings": warnings,
         }
 
@@ -189,9 +194,6 @@ class DetectionService:
 
         * a checkpoint whose saved config cannot be read, or whose model is
           unsupported, runs nowhere;
-        * a static dataset is always runnable because the shared web store
-          defines a canonical "repeat one labelled frame to the model window"
-          sampling mode, which the window plan labels explicitly;
         * a temporal dataset needs at least one scene long enough to hold the
           checkpoint's smallest honest window, which is the architecture
           minimum (plus the MDD two-frame requirement for multi-frame MDD
@@ -202,9 +204,6 @@ class DetectionService:
         compatible: list[str] = []
         for entry in entries:
             if entry.count == 0:
-                continue
-            if entry.spec.mode == "static":
-                compatible.append(entry.spec.id)
                 continue
             if entry.max_scene_frames >= info.minimum_window:
                 compatible.append(entry.spec.id)
@@ -219,6 +218,12 @@ class DetectionService:
         offset: int = 0,
         limit: int = 100,
         checkpoint: str | None = None,
+        *,
+        player_dataset: str | None = None,
+        player_status: str = "",
+        source: str = "",
+        split: str = "",
+        review_state: str = "",
     ) -> dict[str, Any]:
         """Return one page of scenes for a dataset, optionally filtered."""
         spec = self._spec(dataset)
@@ -226,6 +231,13 @@ class DetectionService:
             raise DetectionRequestError("offset must be non-negative.")
         if limit <= 0:
             raise DetectionRequestError("limit must be positive.")
+        for name, value, allowed in (
+            ("source", source, SOURCES),
+            ("split", split, tuple(SPLIT_CODES)),
+            ("review_state", review_state, REVIEW_FILTERS),
+        ):
+            if value and value not in allowed:
+                raise DetectionRequestError(f"Unknown {name}: {value!r}")
         if checkpoint is not None:
             info = self._checkpoint(checkpoint)
             if dataset not in self._compatible_datasets(
@@ -246,23 +258,72 @@ class DetectionService:
             # checkpoint's window, so each scene is filtered on its own length.
             info = self._checkpoint(checkpoint)
             refs = [
-                ref for ref in refs if self._scene_supports_checkpoint(ref, info, spec)
+                ref for ref in refs if self._scene_supports_checkpoint(ref, info)
             ]
+        store = self.dataset_catalog.store(dataset)
+        review = self.dataset_catalog.review(dataset)
+        refs = [
+            ref for ref in refs
+            if (not source or store.clip_by_id(ref.clip_id).source == source)
+            and (not split or store.clip_by_id(ref.clip_id).split == split)
+            and (not review_state or review.summary(store.clip_by_id(ref.clip_id))["counts"][review_state] > 0)
+        ]
+        player_source = self.player_catalog.source(player_dataset) if player_dataset else None
+        if player_status:
+            if player_source is None:
+                raise DetectionRequestError(
+                    "Select a player dataset before filtering its status"
+                )
+            refs = [ref for ref in refs if player_source.status(ref.clip_id)["status"] == player_status]
         window = refs[offset : offset + limit]
-        return {"items": [ref.to_dict() for ref in window], "total": len(refs)}
+        return {
+            "items": [
+                {
+                    **ref.to_dict(),
+                    "review": review.summary(store.clip_by_id(ref.clip_id)),
+                    **({"player_status": player_source.status(ref.clip_id)} if player_source else {}),
+                }
+                for ref in window
+            ],
+            "total": len(refs),
+        }
+
+    def review(self, scene: str) -> dict[str, Any]:
+        """Return clip composition and jump targets from stored annotation rows."""
+        resolved = self._resolve_scene(scene)
+        store = self.dataset_catalog.store(resolved.ref.dataset_id)
+        clip = store.clip_by_id(resolved.ref.clip_id)
+        review = self.dataset_catalog.review(resolved.ref.dataset_id)
+        return {
+            "scene": resolved.ref.id,
+            **review.summary(clip),
+            "positions": review.positions(clip),
+        }
+
+    def player_preview(
+        self, scene: str, dataset: str, start: int = 0,
+        count: int = 1, mode: str = "reviewed",
+    ) -> dict[str, Any]:
+        """Return reviewed or raw observations, joined to the selected RGB clip."""
+        dataset_id, local_id = split_scene_id(scene)
+        ref = self.dataset_catalog.scene_ref(dataset_id, local_id)
+        payload: dict[str, Any] = self.player_catalog.preview(
+            dataset, self.dataset_catalog.store(dataset_id), ref.clip_id, start, count, mode,
+        )
+        return payload
 
     @staticmethod
     def _scene_supports_checkpoint(
-        ref: SceneRef, info: BallCheckpointInfo, spec: BallDatasetSpec
+        ref: SceneRef, info: BallCheckpointInfo
     ) -> bool:
         """Return whether one scene can hold this checkpoint's smallest window."""
-        if spec.mode == "static":
-            # A static scene is one labelled frame expanded by the store's own
-            # static sampling mode, so its length never limits the window.
-            return True
         return bool(ref.frames >= info.minimum_window)
 
     # -------------------------------------------------------------- frames
+
+    def play_intervals(self, scene: str) -> dict[str, Any]:
+        """Return CPU-only proposals on exactly the selected scene timeline."""
+        return dict(review_play_intervals(self.dataset_catalog, scene))
 
     def preview(self, scene: str, start: int = 0, count: int = 1) -> dict[str, Any]:
         """Return original-size ground truth for a bounded frame range."""
@@ -275,8 +336,12 @@ class DetectionService:
         self._check_range(start, count, frames=frames, label="preview")
         warnings: list[str] = []
         width, height = resolved.frames.original_size(start)
+        store = self.dataset_catalog.store(resolved.ref.dataset_id)
+        clip = store.clip_by_id(resolved.ref.clip_id)
+        review = self.dataset_catalog.review(resolved.ref.dataset_id)
         items: list[dict[str, Any]] = []
         for index in range(start, start + count):
+            warning_start = len(warnings)
             size = resolved.frames.original_size(index)
             if size != (width, height):
                 warnings.append(
@@ -288,6 +353,8 @@ class DetectionService:
                     f"frame {index} has no annotation row; it is unlabelled, not "
                     "an annotated negative."
                 )
+            if resolved.frames.annotated(index) and not resolved.frames.supervised(index):
+                warnings.append(f"frame {index} is reviewed but excluded by the observed-only supervision policy.")
             items.append(
                 {
                     "index": index,
@@ -297,6 +364,9 @@ class DetectionService:
                         "rasters": [],
                     },
                     "annotated": resolved.frames.annotated(index),
+                    "supervised": resolved.frames.supervised(index),
+                    "review": review.frame(clip, index),
+                    "warnings": warnings[warning_start:],
                 }
             )
         return {
@@ -322,6 +392,7 @@ class DetectionService:
                     "label": label.instance_id or label.role,
                     "score": float(label.visibility),
                     "visible": bool(label.visibility > 0),
+                    "state": label.state,
                 }
             )
         return points
@@ -334,15 +405,7 @@ class DetectionService:
             raise DetectionRequestError(
                 f"frame {frame} is out of range [0, {frames - 1}]."
             )
-        rgb = resolved.frames.read_rgb(frame)
-        ok, buffer = cv2.imencode(
-            ".jpg",
-            cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
-            [int(cv2.IMWRITE_JPEG_QUALITY), 90],
-        )
-        if not ok:
-            raise RuntimeError(f"Failed to encode frame {frame} of scene {scene!r}.")
-        return bytes(buffer.tobytes())
+        return resolved.frames.read_jpeg(frame)
 
     # ----------------------------------------------------------- inference
 
@@ -401,12 +464,6 @@ class DetectionService:
                 f"Checkpoint {info.id!r} does not declare an input image size."
             )
         warnings: list[str] = []
-        if plan.mode == "static_repeat":
-            warnings.append(
-                "Static scene: the labelled frame was repeated to the checkpoint "
-                f"window ({plan.repeat} frames) through the store's canonical "
-                "static sampling mode."
-            )
         images = self._window_tensor(resolved.frames, plan, size=size)
         with torch.no_grad():
             call = loaded.adapter.prepare_model_call(
@@ -421,22 +478,10 @@ class DetectionService:
             )
         window_heatmaps = heatmaps[0]
         original_size = resolved.frames.original_size(plan.start)
-        if plan.mode == "static_repeat":
-            # The repeated frames are one original frame, so they collapse back
-            # to one query.  Averaging the window's probabilities is the explicit
-            # aggregation; emitting one item per repeat would let the viewer's
-            # frame map keep an arbitrary duplicate and would score the same
-            # ground truth once per repeat.
-            emitted = [(plan.start, window_heatmaps.mean(dim=0, keepdim=True)[0])]
-            warnings.append(
-                f"Averaged {plan.repeat} repeated-window heatmaps into one "
-                "prediction for the single labelled frame."
-            )
-        else:
-            emitted = [
-                (position, window_heatmaps[offset])
-                for offset, position in enumerate(plan.positions)
-            ]
+        emitted = [
+            (position, window_heatmaps[offset])
+            for offset, position in enumerate(plan.positions)
+        ]
         peaks = decode_frame_peaks(
             torch.stack([heatmap for _, heatmap in emitted]),
             original_size=original_size,
@@ -463,10 +508,11 @@ class DetectionService:
             threshold=threshold,
         )
         for position in metrics["excluded_frames"]:
-            warnings.append(
-                f"frame {position} has no annotation row; it is unlabelled, not an "
-                "annotated negative, and was excluded from the metrics."
+            reason = (
+                "has reviewed labels excluded by the observed-only supervision policy"
+                if resolved.frames.annotated(position) else "has no annotation row"
             )
+            warnings.append(f"frame {position} {reason}; it was excluded from the metrics.")
         return {
             "scene": resolved.ref.id,
             "start": plan.start,
@@ -486,21 +532,19 @@ class DetectionService:
     ) -> dict[str, Any]:
         """Score the emitted frames with the repository's canonical metrics.
 
-        Only frames that carry an annotation row are scored.  A frame whose row is
-        missing is *not* an annotated negative, so counting it would both invent a
-        negative and (for a repeated static frame) multiply one frame's ground
-        truth by the repeat count.  When nothing in the window is annotated the
+        Only frames with trusted observed-only supervision are scored.  A frame whose row is
+        missing is not an annotated negative. When nothing in the window is supervised the
         metric is reported as unavailable with the reason, never as a zero.
         """
         excluded = [
             position
             for position, _ in emitted
-            if not resolved.frames.annotated(position)
+            if not resolved.frames.supervised(position)
         ]
         scored = [
             (position, heatmap)
             for position, heatmap in emitted
-            if resolved.frames.annotated(position)
+            if resolved.frames.supervised(position)
         ]
         base: dict[str, Any] = {
             "window": plan.to_dict(checkpoint_frames=info.num_frames),
@@ -513,7 +557,7 @@ class DetectionService:
                 {
                     "available": False,
                     "reason": (
-                        "no frame in this window has an annotation row, so the "
+                        "no frame in this window has trusted observed-only supervision, so the "
                         "metric cannot be computed."
                     ),
                 }
@@ -554,6 +598,8 @@ class DetectionService:
             torch.from_numpy(coords),
             torch.from_numpy(visibility),
             torch.tensor([[float(width), float(height)]], dtype=torch.float32),
+            # ``scored`` already holds only the frames whose labels are trusted.
+            torch.ones((1, frame_count), dtype=torch.bool),
         )
         values: dict[str, Any] = {
             name: float(value.detach().cpu().item())
@@ -722,20 +768,6 @@ class DetectionService:
     ) -> WindowPlan:
         """Resolve the exact frame positions a request will feed the model."""
         frames = resolved.frames.frames
-        mode = resolved.ref_mode
-        self._check_range(start, 1, frames=frames, label="inference")
-        if mode == "static":
-            if count != info.num_frames:
-                raise DetectionRequestError(
-                    f"{info.id!r} consumes {info.num_frames} frames; a static scene "
-                    "is expanded by repeating one labelled frame, so count must "
-                    f"equal {info.num_frames}, got {count}."
-                )
-            return WindowPlan(
-                positions=(start,) * info.num_frames,
-                mode="static_repeat",
-                repeat=info.num_frames,
-            )
         self._check_range(start, count, frames=frames, label="inference")
         if count < info.minimum_window or count > info.maximum_window:
             raise DetectionRequestError(
@@ -743,11 +775,7 @@ class DetectionService:
                 f"{info.minimum_window} and {info.maximum_window} frames, "
                 f"got count={count}."
             )
-        return WindowPlan(
-            positions=tuple(range(start, start + count)),
-            mode="temporal",
-            repeat=1,
-        )
+        return WindowPlan(positions=tuple(range(start, start + count)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -757,16 +785,6 @@ class _ResolvedScene:
     ref: SceneRef
     frames: SceneFrames
 
-    @property
-    def ref_mode(self) -> Literal["static", "temporal"]:
-        """Return the dataset's sampling mode, not the frame accessor's."""
-        return cast(Literal["static", "temporal"], self.frames.mode)
-
-
-def dataset_ids() -> tuple[str, ...]:
-    """Return the catalog dataset ids in display order."""
-    return tuple(spec.id for spec in DATASET_SPECS)
-
 
 __all__ = [
     "PREVIEW_FRAME_LIMIT",
@@ -775,6 +793,4 @@ __all__ = [
     "DetectionRequestError",
     "DetectionService",
     "WindowPlan",
-    "WindowMode",
-    "dataset_ids",
 ]

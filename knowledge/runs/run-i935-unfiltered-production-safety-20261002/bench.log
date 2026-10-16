@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/remove-ball-confidence-filter-20261002/tests/benchmarks/court_side_unfiltered.py", line 108, in <module>
+    run(args.dataset, args.bank, args.original, args.previous, args.output)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/remove-ball-confidence-filter-20261002/tests/benchmarks/court_side_unfiltered.py", line 54, in run
+    names = sorted((dataset / "test.txt").read_text().split())[600:1000]
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/pathlib.py", line 1058, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/pathlib.py", line 1044, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/kamimura/projects/tennis-lab/data/blcs/single_object_camera_view_v2/test.txt'

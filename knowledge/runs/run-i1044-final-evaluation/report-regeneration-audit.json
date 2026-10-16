@@ -1,0 +1,26 @@
+{
+  "input_bundle": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/knowledge/runs/run-i1044-final-evaluation",
+  "temporary_output": "/tmp/i1044-report-regeneration-blb59bew",
+  "file_count": 16,
+  "all_report_files_sha256_identical": true,
+  "report_sha256": {
+    "validation_learning.png": "021ab469f002b803251cd10a38c0108cc5c2cc4ababdedc505fe391128a97449",
+    "physics_head.json": "051ba49f2e15dfd345629f3a21fb94dbf5cfddfbe28bd257fe13908179920148",
+    "real_trajectories.png": "0e134cc5347f994e70034d057e189ff6f3113e09a4c29e1d9c1e32700c981d6f",
+    "progressive_losses.png": "c27bd2153e3377bce568df55f18a56b16ce6c16318389e3be5a96758c0e2d77e",
+    "observations.md": "ccbdd28c238e5673bdbfd6ff44d0279b26eafab91f6dd37fe76746bc82b04926",
+    "metrics.csv": "e46d76f0ecd95a293677e6014b1dff3be712e8812a1ea3d955e3c7dd812af28e",
+    "repeated_seeds.json": "f2c612a175da0b135dfa21fb27fe96e9d7ec4d51371dec5789adc1a109cb2b8f",
+    "training_curves.json": "e662489e5203d64e6e8834822dd5d8641e1b412b464b42d46f040049acbc79d7",
+    "weighted_output_gradients.png": "e7af4747a522e208c96bfaa198af84806153bea734a97c676a856e7e60325246",
+    "trajectory_0.png": "7c181bdff7a52acd366275035b8455e50a5a6f3da5a50ee36e341cf81f6165a5",
+    "trajectory_1.png": "fd801e53f856194be399621a3f3b4083a269d50677bbac162916fe4d32a363ac",
+    "metrics.json": "a4188a31446f387f59462925d3123e8223ac5146318aa2f860f3fd0a1f78462b",
+    "trajectory_2.png": "f4e8c20b067491aa31d582c2ec99a22b296e2d44e59e589f0f23bbad148076e6",
+    "display_selection.json": "5994d6fdbe64364ebcd02db04ee3ef7323af9a3896b358062b4b2d46c34315b4",
+    "real_metrics.json": "3438da2d60ffa99c622993b1f66422e3111c948cf9addb30833f33c8278b79ca",
+    "strata.json": "a4042f4b299a6f9f22db1c3d946c10c2d1fa756d1f6a89af55e24e1dc59a8637"
+  },
+  "original_checkpoint_dataset_store_and_training_outputs_read": false,
+  "method": "create_report on temporary root with links only to bundled evaluation arrays, receipts, and TensorBoard files"
+}

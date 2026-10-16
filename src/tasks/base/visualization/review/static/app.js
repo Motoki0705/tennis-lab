@@ -274,6 +274,9 @@ async function selectedScene(formName, sceneId) {
   dom.dataset.textContent = `${state.catalog.task}/${formName}`;
   dom.title.textContent = sceneId;
   setStatus("読み込み中…", "info");
+  window.dispatchEvent(new CustomEvent("dataset-review:scene", {
+    detail: { phase: "loading", form: formName, sceneId, scene: null },
+  }));
   try {
     const scene = await fetchJson(
       `/api/scene?form=${encode(formName)}&scene=${encode(sceneId)}`,
@@ -303,6 +306,7 @@ async function selectedScene(formName, sceneId) {
     dom.cameras.disabled = scene.cameras.length === 0;
     renderChips(scene);
     renderLegend(scene);
+    window.dispatchEvent(new CustomEvent("dataset-review:scene", { detail: { phase: "loaded", scene } }));
     applyFrame(0);
     setStatus("");
     state.playing = true;
@@ -313,6 +317,9 @@ async function selectedScene(formName, sceneId) {
     setStatus(`読み込みに失敗しました: ${error.message}`, "error");
     dom.transport.hidden = true;
     dom.hud.hidden = true;
+    window.dispatchEvent(new CustomEvent("dataset-review:scene", {
+      detail: { phase: "error", form: formName, sceneId, error: error.message, scene: null },
+    }));
   }
 }
 
@@ -388,6 +395,14 @@ function applyFrame(frame) {
   } else {
     dom.hudYaw.textContent = "–";
   }
+  window.dispatchEvent(new CustomEvent("dataset-review:frame", {
+    detail: {
+      sceneId: scene.scene_id,
+      form: scene.form,
+      frame: state.frame,
+      timeSeconds: state.frame / scene.fps,
+    },
+  }));
 }
 
 function setPlaying(playing) {

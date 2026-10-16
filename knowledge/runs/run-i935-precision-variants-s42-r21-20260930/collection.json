@@ -1,0 +1,61 @@
+{
+  "status": "verified",
+  "queue_job": "1790739175028391561_2386039_i935-precision-variants-s42-r21-20260930",
+  "queue_state": "done",
+  "exit_code": 0,
+  "exit_evidence": "worker done branch requires rc=0",
+  "variants": {
+    "absolute_12k": {
+      "checkpoints": 48,
+      "steps": 12000,
+      "best": {
+        "checkpoint": "epoch-046.pt",
+        "checkpoint_sha256": "3b61af79d9ddf8665685e0b64fab691654b011c819f98ff2acdf9af81320907a",
+        "epoch": 46,
+        "predictions": "validation-epoch-046",
+        "selection_nll_uv": -5.791544028672945
+      },
+      "files": 140,
+      "metric_groups_exactly_reproduced": 672
+    },
+    "anchored_3k": {
+      "checkpoints": 12,
+      "steps": 3000,
+      "best": {
+        "checkpoint": "epoch-010.pt",
+        "checkpoint_sha256": "ab80ddf810f7645bc83d64574882239e4fa3a29010dd52a5670be511d789fb7f",
+        "epoch": 10,
+        "predictions": "validation-epoch-010",
+        "selection_nll_uv": -6.241657996189835
+      },
+      "files": 140,
+      "metric_groups_exactly_reproduced": 672
+    },
+    "anchored_12k": {
+      "checkpoints": 48,
+      "steps": 12000,
+      "best": {
+        "checkpoint": "epoch-041.pt",
+        "checkpoint_sha256": "985308b02d4b1b33c3bcfb40dbf2a846b900e730ee6d5dfc07c3a0ed561cd36c",
+        "epoch": 41,
+        "predictions": "validation-epoch-041",
+        "selection_nll_uv": -6.964021810908394
+      },
+      "files": 140,
+      "metric_groups_exactly_reproduced": 672
+    }
+  },
+  "checkpoints": 108,
+  "variant_npz": 420,
+  "reference_npz": 280,
+  "clips": 70,
+  "frames_per_method_condition": 40144,
+  "input_files": 693,
+  "all_reductions_exact": true,
+  "disk_bytes_at_job_end": 1291119267,
+  "limitations": [
+    "HDR Monte Carlo not rerun; saved arrays/hash/masks and all reductions verified.",
+    "Media hashes inherited from store; evaluated shard/input files checked.",
+    "Single seed, val only; no test or context ablation."
+  ]
+}

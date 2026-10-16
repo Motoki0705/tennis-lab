@@ -12,7 +12,7 @@ from src.tasks.court_detection.configuration import (
     CourtDenseHeadBranchConfig,
     CourtDenseHeadConfig,
 )
-from src.tasks.court_detection.models.dense_head import (
+from src.tasks.court_detection.models.dinov3_dpt import (
     CourtDenseResidualBlock,
     CourtDenseResidualHead,
     build_court_dense_head,
@@ -61,17 +61,15 @@ def test_residual_heads_honor_per_target_capacity(
     assert all(parameter.grad is not None for parameter in head.parameters())
 
 
-def test_linear_head_remains_explicit_for_legacy_architectures() -> None:
-    head = build_court_dense_head(
-        kind="line",
-        input_channels=32,
-        output_channels=1,
-        config=CourtDenseHeadConfig(
-            name="linear",
-            normalization_groups=None,
-            branches=MappingProxyType({}),
-        ),
-    )
-
-    assert isinstance(head, nn.Conv2d)
-    assert head.kernel_size == (1, 1)
+def test_linear_head_is_rejected() -> None:
+    with pytest.raises(ValueError, match="residual dense heads"):
+        build_court_dense_head(
+            kind="line",
+            input_channels=32,
+            output_channels=1,
+            config=CourtDenseHeadConfig(
+                name="linear",  # type: ignore[arg-type]  # Deliberately invalid configuration.
+                normalization_groups=None,
+                branches=MappingProxyType({}),
+            ),
+        )

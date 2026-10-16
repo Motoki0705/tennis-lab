@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "drive_root": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02/logs/version_0",
+  "policy": "Keep all train/val scalars of the successful uninterrupted attempt; retain original tag, step, value and wall_time. Preserve the terminal-model test separately.",
+  "sources": [
+    {
+      "name": "events.out.tfevents.1791693010.aee2c4b4c56a.12960.0",
+      "role": "training",
+      "bytes": 11160507,
+      "sha256": "b7613ddf0f9ca183b5bdcbb33ab0a9845dbc34e085067653fa3080ce22b083ba",
+      "drive_id": "17cD6pA7ecC4LN3oHuk28mK3o-IsKLkx5"
+    },
+    {
+      "name": "events.out.tfevents.1791729610.aee2c4b4c56a.12960.1",
+      "role": "terminal_test",
+      "bytes": 25588,
+      "sha256": "fede75a2952515646b664708f1ae8aff84171a74a020af3b4374787e5b960b89",
+      "drive_id": "1Z2nyurZVNw87zGFL5guYsrq8uYfnpaj9"
+    }
+  ]
+}

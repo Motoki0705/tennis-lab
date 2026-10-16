@@ -1,0 +1,1290 @@
+{
+  "association.csv": {
+    "sha256": "f8547a87426a3df872a00deb1f340b7adae46bf92ef911df8a935a301fede457",
+    "bytes": 3467
+  },
+  "availability.csv": {
+    "sha256": "dcd41e61df75d1c675fdc5a2a07f58c02cbf0b33d6207d6ba5f433838c382c59",
+    "bytes": 8437
+  },
+  "base-comparison.json": {
+    "sha256": "363e312cd9018ff84905d2a16e114c5e61d974e8433a6efb50039b6280af0183",
+    "bytes": 1115785
+  },
+  "cam1-diagnosis.json": {
+    "sha256": "fc936117216bda1054c9052ef1e70d7d892eced33f59d660766726a930260a66",
+    "bytes": 783
+  },
+  "cam1-diagnosis.mp4": {
+    "sha256": "336030b9b6ccd9f54d08737bda7e6ce11a321c6c6b444ba79646ad63dfab31ac",
+    "bytes": 2551881
+  },
+  "comparison.csv": {
+    "sha256": "29a51ab2dfc2489a187d6085393b62554bebd6ae73bea1bf3815962448829b68",
+    "bytes": 21786
+  },
+  "comparison.json": {
+    "sha256": "7579207cc3fee0e796b7cd3ee2ebe325fdfc6ac6c19284c492c2917d26e79379",
+    "bytes": 1345738
+  },
+  "correspondence.csv": {
+    "sha256": "99e883d1d57c7d1fb35e4b5723844731eff5852f4b07b8e6b76da203b530d5cc",
+    "bytes": 247838
+  },
+  "diagnosis-window-1.jpg": {
+    "sha256": "a35198030f892fd98a5b3ef2d5e2cebb9c0863aa7bd6d82abeec2469ebe565d5",
+    "bytes": 308447
+  },
+  "diagnosis-window-2.jpg": {
+    "sha256": "622bfc29654d526ce4a41782eec2e419b1991973f0396b085c62d1f2f8d32a6d",
+    "bytes": 320015
+  },
+  "diagnosis-window-3.jpg": {
+    "sha256": "e7191ee18d48f386821b25b8da392cc2babcc8ed2efbe984ff1a33d3cfa52a42",
+    "bytes": 293188
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam0.npz": {
+    "sha256": "4752393e6db901f704bfd482254fd7c946a197fc3873e878e47144bc234fc917",
+    "bytes": 87163
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam1.npz": {
+    "sha256": "7e05a70cd86226c9c897a07cb428d7c27235a895c4d807c5f62bda1c0cb1724c",
+    "bytes": 59116
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam2.npz": {
+    "sha256": "d5b125a6f7d8d66df1391bd7b65f90993cb265640712f4ab2fd590c8dfd9b74a",
+    "bytes": 78202
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "28a4a2c47ee00a5f91f227c6555d6ba51d416afada850778908c2b5062f9d5aa",
+    "bytes": 1110
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "bf4ea7ba32853048e78a311c156bc8cb38388a53d14e219d5e05238a88bac8c7",
+    "bytes": 18701
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/result.json": {
+    "sha256": "11fe32fed11c38a5e8953dd8e77bcb880cc7843e35587df2d401858775e21644",
+    "bytes": 50078
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "28a4a2c47ee00a5f91f227c6555d6ba51d416afada850778908c2b5062f9d5aa",
+    "bytes": 1110
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "c7870ccdf4675deaaeb3313293fb9d447d67ca745e1e7b9a231bd6c08b5671e7",
+    "bytes": 18675
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam0.npz": {
+    "sha256": "75d1aa1db2fb660cfb30199bc59ee08af12affc49051c4720d1bd1b0c8adece7",
+    "bytes": 60019
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam1.npz": {
+    "sha256": "b5969891ab29f34ef820d471f70c1a08bac8968bf228391ab08b97e25c2b0440",
+    "bytes": 36920
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam2.npz": {
+    "sha256": "f9f4ea11cb218265b46aea8fe1e940507c3f5483cf1e321ba11bb19116d907c4",
+    "bytes": 57779
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "bf41852b41149645f7b3ad08c329a1b7bfab1f652edfdb5f49904c4009bcebd7",
+    "bytes": 1009
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "19b9bea2a95be01ad3720c3f2cd45a17628022ab9a86df8dce70325722404b77",
+    "bytes": 13447
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/result.json": {
+    "sha256": "54076e4f67f8eaaeba33c5be4c23cd1d475105da4a6e04bbe7fc6720dbea29cd",
+    "bytes": 116387
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "bf41852b41149645f7b3ad08c329a1b7bfab1f652edfdb5f49904c4009bcebd7",
+    "bytes": 1009
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "1664c4a17b1e5dbb3be762c08de1f7dcfc158afe52ba0283a4e6f394d1e238ba",
+    "bytes": 13571
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam0.npz": {
+    "sha256": "67e8199eb3859036ada32645313d03a6cbce6d9fa4856e89913886ba7d9d8f64",
+    "bytes": 128641
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam1.npz": {
+    "sha256": "c91b4c80a7fc772389bbdaf31f6111e69c05419e079998d27104d71d17f93f06",
+    "bytes": 95129
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam2.npz": {
+    "sha256": "b931af19637bdf57557ad1f12d1047fba7284f9c0590843011158db9b8ad992b",
+    "bytes": 117958
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "769d6bb90cc27a4361b4ad03669542827835bec47cad73215446339d64a914a4",
+    "bytes": 1588
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "edc8899614cc6351d186c421a441f504311d5a0be6c96927e1ca16dddb4b9eb2",
+    "bytes": 32171
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/result.json": {
+    "sha256": "051240d2acb002da61055b204bb09fa571d5f57db63214e87e61653bc4503a75",
+    "bytes": 118108
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "769d6bb90cc27a4361b4ad03669542827835bec47cad73215446339d64a914a4",
+    "bytes": 1588
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "653a30459ee66c5ec2e6c6ba8758df63dbfa16150e55689ca2fe8fef51a8e36f",
+    "bytes": 32304
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam0.npz": {
+    "sha256": "72aa87c486091c62e9a94745ec86453b3caa63b9885fd2e26f1f8645b41cdd5d",
+    "bytes": 47089
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam1.npz": {
+    "sha256": "4eb757c1868a41c158fc57b3dcc3ab64d81736482e79b5d7bd22216ed66ed9b5",
+    "bytes": 30414
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam2.npz": {
+    "sha256": "afec2a07e23032acd3c07a5ec365bf6662d16f3ceec6bfa19ff9dc8a6d8221dc",
+    "bytes": 33690
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "a497c12be459d76771feb8d8762f2c8d479ec5f4856a1b2ff108beb581917ca8",
+    "bytes": 884
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "f31a1be253633a87513ef1713b81446ecd9ea0fbfef5087888e57ff084e2a69c",
+    "bytes": 10229
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/result.json": {
+    "sha256": "8cce03ccabec49608e1f2cba0fd662d6583d2f47353a5ca15a2753e36bd6e539",
+    "bytes": 47143
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "a497c12be459d76771feb8d8762f2c8d479ec5f4856a1b2ff108beb581917ca8",
+    "bytes": 884
+  },
+  "evaluation/best_kpr__kpr_market_solider_parts/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "64588a88679f1fae02c00eca12ccd35617a708e23308720b302d91be078160f1",
+    "bytes": 10214
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "55c027729c93b3d3fb7912b3ebe41362c3f92cb12b3be5bdf2e400aab9565002",
+    "bytes": 18553
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_000/clip_000/result.json": {
+    "sha256": "7aac47585b8880c235696c4b955bd76420410450031c01ed6abd8ea99d491ed8",
+    "bytes": 47849
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "9c625c3fe8b0443066b1bc3f1ae3d9978a978342c327b993bbd7aeef32e0fc51",
+    "bytes": 18564
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "b4f2ce0d3a810eb88d21b62029ca3ecc9cbb7758454fc56328b5abec085e7d96",
+    "bytes": 13377
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_000/clip_007/result.json": {
+    "sha256": "003cd3a7135de852e1ada83e702d610486e97185a23b9ebfc2c6b5ed83a6bce0",
+    "bytes": 86239
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "c0b56ebed4cc609626b6ff22057512eadae91811e831663f1fe0b181e1d956e1",
+    "bytes": 13370
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "b3117d0ca35f650ee4531fc625f53af533d753ffb1564b2e1932cc868e468e90",
+    "bytes": 32150
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_001/clip_001/result.json": {
+    "sha256": "321414c31635f806c49e870df6043d09e907c498cd6f46ef7945b443ee9cf5a8",
+    "bytes": 50787
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "a9840693f75a6bbd287c47fe2f92983eb4f844fef945142e3df4e1a4e8381b42",
+    "bytes": 32263
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "9ffdaa918fa4763d0e046c258dff6ee78d3f170b0d4dafb7205001491f4b0c80",
+    "bytes": 10164
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_002/clip_013/result.json": {
+    "sha256": "eabb63b7d16bf4de687135fd910924b4fc73e9d74c8a62fce3efc27f5641460d",
+    "bytes": 49454
+  },
+  "evaluation/botsort_pose__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "d8b7328a989dde21d2680f8b256ad574cad650a839c7a618ca0171d679e0efd8",
+    "bytes": 10161
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "6d65a0b8f0acc84da9c92027ac3416cb0a5eed3fd4e89b5b734684febc92405d",
+    "bytes": 18553
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_000/clip_000/result.json": {
+    "sha256": "16d62953bc843c4dd7f106d797605fbf2edc33d784f2aec1f1c0f58df7688831",
+    "bytes": 47826
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "653f93fd3fe2d3169e0e8058a86526302640b400ddedefee297042d8b72509fe",
+    "bytes": 18564
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "1f9cae7c50e1931a3ec018dfe159c2b748a59d34427b7dc0adf62b1e7b7b184a",
+    "bytes": 13430
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_000/clip_007/result.json": {
+    "sha256": "53807e119df9907e8141b56c5617df1334e8ec6c112acee312c4c220a15463b3",
+    "bytes": 124557
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "65d5a5f2baa80be93bd5828caebd5164117fe6cb3b90722b5bc3386cc49d5bc7",
+    "bytes": 13436
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "36bde37a3c85e238cf6be6081a283240abdca8d79d1d530901f688f7297c28af",
+    "bytes": 32150
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_001/clip_001/result.json": {
+    "sha256": "94d62c8fb218606accdaeaf420a4a36f5849d2820fd04bf4de6079330b0f5ed1",
+    "bytes": 50801
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "5f1a76434e1067767eacf4e9de487d274e3cd7366b6f5ad0121632312bda2826",
+    "bytes": 32263
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "38fd06399a4cb5121eca563a322a1f91addc45565edd08fa79b17be023269b35",
+    "bytes": 10164
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_002/clip_013/result.json": {
+    "sha256": "da92862908f8d085b24e504a413ce4a6ba921c5575c1ffaea055338b127d7303",
+    "bytes": 49433
+  },
+  "evaluation/botsort_pose__solider_swin_base_msmt17/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "27cacceb183e685ffe73c6c89c1325a2a4544aadc924fcbf6330d4194c384d81",
+    "bytes": 10161
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "40e1b030642469319d9cbc5c8f1db21a77b6428f69b89dc79ebdaada6352244c",
+    "bytes": 18618
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_000/result.json": {
+    "sha256": "f9587ac6e6c452dbaaf4cdfe116511c8b73de4355da59997ed09b87fda121c2e",
+    "bytes": 43704
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "ced0458c8e45f59f1931ddb399d1683e9b09bec14a51a4f9a948ca56af7c7b60",
+    "bytes": 18644
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "eecc1aea5635b6e9ef2b9b409ab98c7cddb34763917d496c9d52929c6cbe2167",
+    "bytes": 13349
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_007/result.json": {
+    "sha256": "881787e7db2241bccf746be464cf7266aafae8ca29299148165d60a83821ec9d",
+    "bytes": 51937
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "c014c25bfff3426db20645bd26e94fdddc3ce2e7ebb948a684de8094de39a237",
+    "bytes": 13383
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "6f23bd979fea375fef52598d37130ffba65056e983c24b4d9319f8a04bb40877",
+    "bytes": 32190
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_001/clip_001/result.json": {
+    "sha256": "55faa921b462f7e5bbc5a989c5ea5040e4c97360e81c87d153406b6451bbf473",
+    "bytes": 99725
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "d0642d3d92af8ea4282f61fa948e6f098bbafe70f2b520292b490fbd72a09026",
+    "bytes": 32272
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "6e0f856d88a5b307119ab7d8e3809925d99371fed56df04597197e0bfcb28c39",
+    "bytes": 10229
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_002/clip_013/result.json": {
+    "sha256": "ef12ddd05d2947ac8c6428904dc815fa72c8e075a9c0b5e791f2ce2728e849da",
+    "bytes": 42816
+  },
+  "evaluation/deep_ocsort_pose__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "ffb6d33b0e992d55839c036cb3e635f65bc5a3be69be5fbd9af5a7578f123d37",
+    "bytes": 10208
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "4bfce5f30acc881a2fd0e567fe96c9e9c33ee4fe3da127aa82a67682c0e14bf0",
+    "bytes": 18618
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_000/result.json": {
+    "sha256": "f43c80e9102ef127aa12cf9ac2adab0037a1960d483b3e89b112eb769db2ab5e",
+    "bytes": 43477
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "ef7ac6d6d5cc928d67267dbffdf584ebe407353866bf8503199bf7db05438509",
+    "bytes": 18644
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "cd9578d31850d59de1a52d2c429c3a8a5c7834bc1b002973874f0fb55ea610a2",
+    "bytes": 13342
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_007/result.json": {
+    "sha256": "85aa7c0956c24c083ed488f5e84eab4c668e31648ae6c0051f54f19b22c5c41e",
+    "bytes": 54227
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "a8860a2324c5c41ab374d8a7190b8e3c856ee3dd9d84a98a537c01386a4106d9",
+    "bytes": 13380
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "e14954a42ace9b501ca8907df23c42e31766e3f3d4b20d8d033b6b93411796ab",
+    "bytes": 32185
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_001/clip_001/result.json": {
+    "sha256": "8b1499d5e73f27de36b8fbbbf5de82cfaffeb51ea9c4197cf847ae574757e425",
+    "bytes": 96569
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "c15598551930bdd3ba03affb2afcce0e446adbbc24f4f5927a1c4860109a829e",
+    "bytes": 32287
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "f8b4bdbf2d236bb7f39ec80a8261561fff1f40a176df0cb01b6c28840d9aa697",
+    "bytes": 10214
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_002/clip_013/result.json": {
+    "sha256": "a2637646d081a27af754f3eb5add7958bf86613fd5e05655f2fb2b7ce1450b1b",
+    "bytes": 41375
+  },
+  "evaluation/deep_ocsort_pose__solider_swin_base_msmt17/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "8749efab14aa820ec7b5064e095ae4102fee0646a8bc05c5c1b159acc2f3841a",
+    "bytes": 10190
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "sha256": "fe2ea5308df209d146b4aee752b6c848efb7af826bba4b5f36b8acfb0af47ffd",
+    "bytes": 88494
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "sha256": "06a15769fd7969dc00b0154c864b19445b77905bceeedf86eb5b36cb714b078d",
+    "bytes": 59006
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "sha256": "8fdc6f937e6734045085c0dc83883f65468cc5a376ea66d522e64bb1baeec4bc",
+    "bytes": 77592
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "8ede160f25ae4941b791ad7ba5f5033b648c28fd827f238f3c26d5155c03b9bd",
+    "bytes": 1013
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "3950a42e1fdd07741c29544cf9a052445df51ff805a0a724c461ec5a8774387c",
+    "bytes": 18618
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/result.json": {
+    "sha256": "3a2c58853a799c895e1333ab55b307575d049b3e3bb7ff8f7eefffd56b26cc4e",
+    "bytes": 45244
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "8ede160f25ae4941b791ad7ba5f5033b648c28fd827f238f3c26d5155c03b9bd",
+    "bytes": 1013
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "cd94e2b37ca869223b31be1fc0e0db67798c6833386203cb80a961414cb09019",
+    "bytes": 18624
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "sha256": "49afe2a5b02a4edcf1178267915c51406491e119c425ee7bf280a53401aeb1b0",
+    "bytes": 1392
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "sha256": "4a66e9cef3628bcb67aaaff9ee9e9d71a4477a8ba3463fa9cc16efc8048abd90",
+    "bytes": 38696
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "sha256": "5754a83137a0013314237cd32eb570417dbfd575a7404bc620e421ace3ec1341",
+    "bytes": 56901
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "ce0bfff11842fe7b2ce6f9fdc1714acd7f35b2d0162f0ba39d9b955cf1171e3e",
+    "bytes": 838
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "73ba6e121f5e22375ea566901217ff521449f9617a0ea88213ffdbdc202d8ae4",
+    "bytes": 13674
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/result.json": {
+    "sha256": "568d79daeafb379708aa76b2691746a2469c9f981c0126f760a46754c110d6f1",
+    "bytes": 39386
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "ce0bfff11842fe7b2ce6f9fdc1714acd7f35b2d0162f0ba39d9b955cf1171e3e",
+    "bytes": 838
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "e64d210fae266d23c122544d91031c94a41b7e098fc0764fba52afc81eb20c13",
+    "bytes": 13702
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "sha256": "4b427d4c8a4415157e0fe1a55fcc890c5f6381c89fda0c53bd46a1e5550e4255",
+    "bytes": 1396
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "sha256": "de66a78811b8b5dda07774d366079c1a0116c641559b64721767e5ff519751d4",
+    "bytes": 90098
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "sha256": "4b427d4c8a4415157e0fe1a55fcc890c5f6381c89fda0c53bd46a1e5550e4255",
+    "bytes": 1396
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "b9c49503a97aac09e30c33fba988a92f5dad95f82fd1181eafd71589e76168fb",
+    "bytes": 713
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "6c28292d91cd170272dffd8061eb98d6ba2878490698b9a1cf365224bb5768fa",
+    "bytes": 32681
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/kpr_market_solider_parts.identities.npz": {
+    "sha256": "b9c49503a97aac09e30c33fba988a92f5dad95f82fd1181eafd71589e76168fb",
+    "bytes": 713
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/result.json": {
+    "sha256": "1011cc1c397d93f4f7a5b2bb8fd2ab5711b302009e8cbb9e856826907e6fd98c",
+    "bytes": 25519
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "b9c49503a97aac09e30c33fba988a92f5dad95f82fd1181eafd71589e76168fb",
+    "bytes": 713
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "15b3aa4339b332c2c0e3c387ad082c53c1f5c6ccad4148e4a9b689b080428bd6",
+    "bytes": 32674
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "sha256": "05ff95d11ec55cc8885b41e6c7b02fd1a66393bc5c81aeef9fd20f4cecff5c26",
+    "bytes": 46601
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "sha256": "c6ec9873418a07e37eb3d65124de14c01a3fbee7d6f9339d496e4dd917425587",
+    "bytes": 30160
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "sha256": "28bd429344b3aff7ae0b54ca62e44204aa40a4ebdb912f501696cf37eb7ca00e",
+    "bytes": 33155
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "d476db35b392629bc52de7b24e0553f64d05c5bdd64b3ca69abac2765570e44f",
+    "bytes": 835
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "f2db031830421ae618558bf305ce81e8d331823ebb0c613c0e94bb32f4756e1a",
+    "bytes": 10211
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/result.json": {
+    "sha256": "d4ef5f199b0e4b6805896cc2872b7445219a0f4de47c1e80e1a77e0634dc7a9b",
+    "bytes": 40352
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "d476db35b392629bc52de7b24e0553f64d05c5bdd64b3ca69abac2765570e44f",
+    "bytes": 835
+  },
+  "evaluation/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "3991ba05656ef000f77f0722e35dee5e6572414f85035b6da1aab5a750441ebd",
+    "bytes": 10187
+  },
+  "evaluation/new_old/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "82a729f745668ce2916a8f0f17acefe7aca882298b40a4c08f73d125c6836ff9",
+    "bytes": 18446
+  },
+  "evaluation/new_old/video_000/clip_000/result.json": {
+    "sha256": "5faee648de16a4123896b6c9d4641dccc1142f9870f7da3737733052ff43a87c",
+    "bytes": 26331
+  },
+  "evaluation/new_old/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "0687f9265740942aeb6c930343682dfa31a0a173ca938737b3054d974dd94efa",
+    "bytes": 18449
+  },
+  "evaluation/new_old/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "50ce19097e99ad7366328c7d18753ce9f333f1578f45c9dafdbce597ebf4faba",
+    "bytes": 13645
+  },
+  "evaluation/new_old/video_000/clip_007/result.json": {
+    "sha256": "e99abf419e085c255cdf0156510c09d2b59d887d7c77a7bed10b71b8c2bb8505",
+    "bytes": 28906
+  },
+  "evaluation/new_old/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "7940713f90d1789a21ca502a463566f690dd072b97858d3282319d4fbb6206f5",
+    "bytes": 13625
+  },
+  "evaluation/new_old/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "6a17a9952b7365dc1037724510b2b6d9f1380d835392c07d92dc74fedc5bf5dd",
+    "bytes": 32115
+  },
+  "evaluation/new_old/video_001/clip_001/result.json": {
+    "sha256": "15326a73a2343aa77367d084c76dddbd6bf0152715f44e0a27a507ab66d73f18",
+    "bytes": 51957
+  },
+  "evaluation/new_old/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "8715ed3201f364697530c23b49904b269e718a1f29d93ad57f308ed37fc662f8",
+    "bytes": 32199
+  },
+  "evaluation/new_old/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "995951b61c6a71503ee32292453883fa97725960fa782cc045c9126a2dda80c9",
+    "bytes": 10133
+  },
+  "evaluation/new_old/video_002/clip_013/result.json": {
+    "sha256": "7a25171a731638e08f357e41e3a2f321af23307d2bb6c24088cae5dd45ace059",
+    "bytes": 22457
+  },
+  "evaluation/new_old/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "894972ce32c51a8cccec35dbfba76424db9daea47c2363d9d50d2e8d433683f8",
+    "bytes": 10101
+  },
+  "evaluation/old_old/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "1b8ea891f923db8ba2bc4fd225b618742520a56bd6fa3b6aa5a7c9fbc4601681",
+    "bytes": 18446
+  },
+  "evaluation/old_old/video_000/clip_000/result.json": {
+    "sha256": "b5c12d2df80935e266f094099ee710a6b7faddee4e013d330e2f74e5295cf568",
+    "bytes": 17930
+  },
+  "evaluation/old_old/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "40873c3e01b7a479baae887d904c646c629320e5245c86844be3a8231a2ef21d",
+    "bytes": 18440
+  },
+  "evaluation/old_old/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "91170531e51038935d7199fb4741567319a3457062243555f1f657f7d583b566",
+    "bytes": 13352
+  },
+  "evaluation/old_old/video_000/clip_007/result.json": {
+    "sha256": "36fca0a4189d73c5201bf8da9b68871bae5823f90a989cd65d188201a943491a",
+    "bytes": 46297
+  },
+  "evaluation/old_old/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "d36a8cd9d623222832e6912be9630662509d55beaa1f297ca2b6f1ff42cceb0b",
+    "bytes": 13332
+  },
+  "evaluation/old_old/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "c1147b960b989285157024437fdf0973c44e69398acf5303807a9ad56c7604b0",
+    "bytes": 32115
+  },
+  "evaluation/old_old/video_001/clip_001/result.json": {
+    "sha256": "42577eddd53bdd61c75976a42790c8c1afc855ac3d9ba2fad204f6e9b4f67019",
+    "bytes": 38811
+  },
+  "evaluation/old_old/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "a3e00409ade49d5011a6a4a3dbe9e75f2e5ed6cb96c7b205223784530c8dfcea",
+    "bytes": 32186
+  },
+  "evaluation/old_old/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "acdd0dcf519f2c59f7ddbb00ca9311144aabdcc23a45a0e59fa52e62dd70eeb4",
+    "bytes": 10133
+  },
+  "evaluation/old_old/video_002/clip_013/result.json": {
+    "sha256": "06f4904dcce2637dd593202d5a8cfad2eeede1b21c7a7aa5410ff5b062f764ad",
+    "bytes": 21536
+  },
+  "evaluation/old_old/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "94dd1133df126ed9dcdd5019e2e448c0943e949ad05bef4fdcbe82c6751b8949",
+    "bytes": 10097
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "sha256": "45108deade8c94d0f201288286fa2cbfca51eb4e3576a0e1091d48a0c0a43300",
+    "bytes": 90257
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "sha256": "4dffc2104d589e5c0601645cb40b186e886d4474ef0696f7104fa3f357f7eaec",
+    "bytes": 59110
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "sha256": "a62730ddc4b7fc63137ab52063d5b1278c67943624acddf747cc9bfe08d07a8a",
+    "bytes": 78201
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "daa3e3fafc6a996287b1078069580a7c176540f7ba3ca9e4acbb894c36fe7699",
+    "bytes": 1022
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/group_units.jsonl.gz": {
+    "sha256": "8f11c2773017fe637991ff4be576cc333a860f990242f5d37760ea86a0a7bdfb",
+    "bytes": 18505
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/result.json": {
+    "sha256": "b9cff0247d5ebecae5abaa8ce66e5b7d71a7a251a0ebc1d94b9215cd7bf24560",
+    "bytes": 35603
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "daa3e3fafc6a996287b1078069580a7c176540f7ba3ca9e4acbb894c36fe7699",
+    "bytes": 1022
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/units.jsonl.gz": {
+    "sha256": "168ba0ca30ef7efc97afa2906d64b9f2ae4d1c49ef4d2e68113a80d96d5176f3",
+    "bytes": 18528
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "sha256": "bcca080e8654016a2452e124467ce8ffa6781689bfebc8fb303576d22997579f",
+    "bytes": 60082
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "sha256": "bfed26a9577c1d311f124e6f04dcb1654ba898900927f91bef7d1dd61f165d58",
+    "bytes": 36844
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "sha256": "15e92edb574c17fed44b4e2d2d15b25b7504335c3b2ab08ba33ab172821fa646",
+    "bytes": 56359
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "154763fb5f88c2a96291d46fd7aa13e6f4a065ef3e63e9ca12806adcbb3c7d79",
+    "bytes": 926
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/group_units.jsonl.gz": {
+    "sha256": "aa79f8bf31c7ea3539672d57de6ee550e03a5779c4fd36f0b91459c74889264e",
+    "bytes": 13446
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/result.json": {
+    "sha256": "d2d8aedaf84b6c7262a9c97a40c9804fc7665b1b9c7034cdff64d6e98a3b87bd",
+    "bytes": 106213
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "154763fb5f88c2a96291d46fd7aa13e6f4a065ef3e63e9ca12806adcbb3c7d79",
+    "bytes": 926
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/units.jsonl.gz": {
+    "sha256": "62ee47dba6a1a0bd5ddde8013e72855ab3b0eebd5a5a49cc37bcd8976c5d0e1f",
+    "bytes": 13440
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "sha256": "5e08e2584e62edfe1dad7fdc3910b5efa4b80d6fa2ccf262b0e3e0b4a85098b3",
+    "bytes": 128282
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "sha256": "2cbdb89ad849fb70df2e8b63309c8402cb9b8945e52bbeb8f55ef6b4fe3ec6a2",
+    "bytes": 90894
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "sha256": "fcf353945a479516a984d3b07d922d305ec36daf5cb65a6db4d677bf859cab55",
+    "bytes": 122315
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "99bcbc3541ef5592c8d93177654514c535561decd7c50febf068c3ea997912ae",
+    "bytes": 1385
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/group_units.jsonl.gz": {
+    "sha256": "061988b70ee57407eaf22c3fe322df793697b7b7d1ec32200c510879854c31d9",
+    "bytes": 32182
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/result.json": {
+    "sha256": "bf180f97080d283bb5ee055c5a5c54b225438745b56baeec59d88b5672bc99f1",
+    "bytes": 101513
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "99bcbc3541ef5592c8d93177654514c535561decd7c50febf068c3ea997912ae",
+    "bytes": 1385
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/units.jsonl.gz": {
+    "sha256": "c9ddc3f94386192c1e25ff06d47e25869e70d92a1c0d780f9715869b20f86add",
+    "bytes": 32265
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "sha256": "3a73d9768c4e348d70eaa2b82196726aab14f3dbb97b180310ec4b97bd8c5d42",
+    "bytes": 47107
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "sha256": "ce9e1263a63b31adafec7dac54c0ab8ae9e6eb0cab31291bf275895f09445181",
+    "bytes": 30408
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "sha256": "91bd0eaff79b2f5243e9dbcb49ef631afc27e733ab139b1309ae0d21536a9c30",
+    "bytes": 33612
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/clipreid_vitb16_market1501.identities.npz": {
+    "sha256": "69a57304b439c6d5327dc04e78ff436953cd1cf89ca7f07a9b64e546a6769635",
+    "bytes": 855
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/group_units.jsonl.gz": {
+    "sha256": "2519d06b0786def407fd1fda8116adabe36e7e58180a3f4223d03bb3f14aaf74",
+    "bytes": 10204
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/result.json": {
+    "sha256": "cc70c8a105961032261dc32d88935e169083937ad359a03f2b259d477916bac7",
+    "bytes": 41771
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/solider_swin_base_msmt17.identities.npz": {
+    "sha256": "69a57304b439c6d5327dc04e78ff436953cd1cf89ca7f07a9b64e546a6769635",
+    "bytes": 855
+  },
+  "evaluation/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/units.jsonl.gz": {
+    "sha256": "2969eac2b1874ce9c74f8dd63df5c8677153a7bd0cf275ff031d81e5fdc1f609",
+    "bytes": 10172
+  },
+  "identity.json": {
+    "sha256": "6e7252c622f131c122200a9e563a84aef9988f98c511fa2ae17811db9715f542",
+    "bytes": 9396
+  },
+  "kpr_method.json": {
+    "sha256": "d11b2899ae8aa94dbd9ff84d0a47a8245502de78070f46e13c2b490e9e43bc01",
+    "bytes": 371
+  },
+  "recommendation.json": {
+    "sha256": "4e21074c5225aa13775d804fc3f39e22c0fa0af4ab398012d417deca6d31200c",
+    "bytes": 1840
+  },
+  "report.md": {
+    "sha256": "7a9e9fba5b815581784490216c2a0611258ae718e2d29f09fac85d922d40417f",
+    "bytes": 5583
+  },
+  "review-frame-1.jpg": {
+    "sha256": "583b16e1f964c700397077765588ade9fd10ddf18425473418d5db2bc411fc1a",
+    "bytes": 519884
+  },
+  "review-frame-151.jpg": {
+    "sha256": "1d2cd066d48f4a170a29b71d3c8fde784beb9312489201369f22bf2ff34c1a93",
+    "bytes": 519458
+  },
+  "review-frame-226.jpg": {
+    "sha256": "2cb9d4f16c24af497c4457f85eccafdc94015768ae3a7a3ac6102dc6d75b6316",
+    "bytes": 523429
+  },
+  "review-frame-76.jpg": {
+    "sha256": "e16da94bca1bb1568c2d2cc2a87b94a0de7ca349c5675eb8e60a6885dc77de84",
+    "bytes": 533232
+  },
+  "review.json": {
+    "sha256": "0ea632e2394192acf7e075699a2cd9a25410b1e04bc02fcdc2e8bc8beb70fab6",
+    "bytes": 1324
+  },
+  "review.mp4": {
+    "sha256": "dafc084c700c62715767a5b24d0e6f896f327dd2d116f829853442e6e46cd5e4",
+    "bytes": 3031546
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam0.gsi.npz": {
+    "sha256": "527116feadbf2a47eba6e9ff061899e3701fc65a78a140238cf387968e6180a8",
+    "bytes": 73264
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam0.json": {
+    "sha256": "a538b98926fce630cd29a0d3be2050635f8771df093be15acddb1861b203a404",
+    "bytes": 3419
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam0.npz": {
+    "sha256": "20999a54912b1b1f7e1d31c4a4c8793aa967d421abf96c176909aa87df8649ba",
+    "bytes": 71335
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam0.online.npz": {
+    "sha256": "44fceedb66fe6277fd1a3bab4f20be90a6d8d15f0a67a1e09028799cc1ca8d07",
+    "bytes": 71553
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam1.gsi.npz": {
+    "sha256": "c1a1954365b3bbe0c63dfa4acf8e0029daf240cef54770653101e1fd94ba55a9",
+    "bytes": 35833
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam1.json": {
+    "sha256": "12b219e7f87e5b176590b5df85daa8ef502eaa96793d13bd7eb7941a550d7d45",
+    "bytes": 1894
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam1.npz": {
+    "sha256": "643345022db4ab1ac38c228b57bd8941b1ff3d6266091299974c1b53609502be",
+    "bytes": 35155
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam1.online.npz": {
+    "sha256": "643345022db4ab1ac38c228b57bd8941b1ff3d6266091299974c1b53609502be",
+    "bytes": 35155
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam2.gsi.npz": {
+    "sha256": "23490bb8a99733a921712887aabd5f7581bea9fd3efac3c46efbb285b02fbe62",
+    "bytes": 56049
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam2.json": {
+    "sha256": "971c5fc51b6527f8e1564029f22f52f89b0b30f2195fc8b6dfb6a610d8202952",
+    "bytes": 1405
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam2.npz": {
+    "sha256": "3c16ef1f73763b10ab35825531fe4c755d679a329b172da4ea1ac2b80d5bd811",
+    "bytes": 55554
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_000/cam2.online.npz": {
+    "sha256": "3c16ef1f73763b10ab35825531fe4c755d679a329b172da4ea1ac2b80d5bd811",
+    "bytes": 55554
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam0.gsi.npz": {
+    "sha256": "531372038fff561d285b3e83794c9b678eb2961fa5fd9cc832bb43d0d66bbc5a",
+    "bytes": 50526
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam0.json": {
+    "sha256": "d611fede358aaa1c87d808a2ad6f0840bcdf7780f290d388ce52e7e09d624136",
+    "bytes": 3296
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam0.npz": {
+    "sha256": "b13d3c53c887c02a4c95b434bf440d281ba62be2f10811a2db3c78deed85c944",
+    "bytes": 49366
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam0.online.npz": {
+    "sha256": "d1c538fa3b31e2314df5ff4a9c654eb3b8825cc76b8d2b9e66c7de816858a139",
+    "bytes": 49745
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam1.gsi.npz": {
+    "sha256": "7580a2bbb9bf3154b2ebe5020876a84ec0cdb2f1e0795aed2351e2bda3859ea6",
+    "bytes": 23649
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam1.json": {
+    "sha256": "a08d6fcf81dbfd44c72d51d7a60adb902ec8cb48d8793d9c1cf20693cc88112a",
+    "bytes": 3002
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam1.npz": {
+    "sha256": "c029ec5dc2793c3ba0065568a24789c8b83fd30690ba74e496e0eebd1a28c10f",
+    "bytes": 23408
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam1.online.npz": {
+    "sha256": "f533cf991ac81b1e1d90ddb9ae4221f7061e5540dc2795c9938dca1b9409bcda",
+    "bytes": 23473
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam2.gsi.npz": {
+    "sha256": "0e1b71f69a6ab3d6e847f1980a6fa1ed96a8043190ece8f4c94ee2b84c47617b",
+    "bytes": 45192
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam2.json": {
+    "sha256": "e4730c75a3f93f2eb9d2a107602e16f338b4de249e75ffbd4388043f2d135f0e",
+    "bytes": 1540
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam2.npz": {
+    "sha256": "8addc06b2fd40b1856d98b4071cbf38bff3a7b777b39dd78bbc5e7342d1cff63",
+    "bytes": 43926
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_000/clip_007/cam2.online.npz": {
+    "sha256": "375a22acd706bcee2e2a10dedcec12221a84f4556eeb27830e155745cf1d14e6",
+    "bytes": 44004
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam0.gsi.npz": {
+    "sha256": "13c8ffa568adcef8b0ef69353f06ecd6254f8c2993259e1075e1008e9e4c0bae",
+    "bytes": 110086
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam0.json": {
+    "sha256": "346804d70122358fb34ffacd13b0a741b6923e3e1eb1f07aa58192f21351bd2a",
+    "bytes": 6085
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam0.npz": {
+    "sha256": "2239566b9a7b9468d283f4a8082a9edea88e0049f8746cb30b17ab4b95789548",
+    "bytes": 106569
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam0.online.npz": {
+    "sha256": "64c3caec8c594df25bda65f721e2803ba4cfd6b1d217219e03a561f7b6b189a4",
+    "bytes": 107652
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam1.gsi.npz": {
+    "sha256": "7b407562f553b60b3035a5ea2d6cd9f373b57253acb10bb0bc3148a7e343d083",
+    "bytes": 67962
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam1.json": {
+    "sha256": "ac2a7f9f889cbb0befa154f73ad334c74da6d457bf28e3960add098acc379706",
+    "bytes": 2151
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam1.npz": {
+    "sha256": "a5e517e789013662ab812a412d7bffe42c67df63556992fbc9a217ac00919426",
+    "bytes": 67340
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam1.online.npz": {
+    "sha256": "a1ea19318edd9cc0992d1d3fa883dd190794a1400bed54ee57a7aff89a68e8ea",
+    "bytes": 67691
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam2.gsi.npz": {
+    "sha256": "288941e0cb5397c67c62518baab0ab872660725f2687919c707ef63c5e4eebf7",
+    "bytes": 100901
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam2.json": {
+    "sha256": "38b968d95b3f927421bbd7e057ab7c2a0b49a64fcd762ef8ae8aed41e5875407",
+    "bytes": 2684
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam2.npz": {
+    "sha256": "92ee0cae469a70a67e3a780ba06837152c99c1dfa9f0ed55abc19d1568a0d312",
+    "bytes": 99574
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_001/clip_001/cam2.online.npz": {
+    "sha256": "4f60aa9cc89c75d2813b7bd53e5ed7e10b2c3177e2fd5a6c59294754a7192cd5",
+    "bytes": 100602
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam0.gsi.npz": {
+    "sha256": "09c1f7f381b048765ab274777c4428587df9590b07e2523d3662c6328ccda15c",
+    "bytes": 36558
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam0.json": {
+    "sha256": "67bfff0f0317191c3ee3c42e8f93bfd4b4f4243ef7a14b5c5c035e392166ade8",
+    "bytes": 1534
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam0.npz": {
+    "sha256": "a094475f819e751b2f5b32bf8a8e7850a920c76079b0d75be6633a105fc14319",
+    "bytes": 35757
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam0.online.npz": {
+    "sha256": "75713b3176d9ed49d17cc64f713b79c882940361ae11454c9c86a097eafe7c31",
+    "bytes": 35867
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam1.gsi.npz": {
+    "sha256": "7304bad7d0695780d05e97f262900187ee085c5e17425792f00ec713439934ba",
+    "bytes": 17788
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam1.json": {
+    "sha256": "18cd3763aa0cc93d9df70ab04527e9ef41a8ccd5935a52634db5113c5db06be4",
+    "bytes": 1284
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam1.npz": {
+    "sha256": "0447fc6ad6ac548f60bac7203765a72bb934368322895fddc4f6c53b24edd507",
+    "bytes": 17474
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam1.online.npz": {
+    "sha256": "0447fc6ad6ac548f60bac7203765a72bb934368322895fddc4f6c53b24edd507",
+    "bytes": 17474
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam2.gsi.npz": {
+    "sha256": "c1187c63d7f2effe5d801518ae6a82336c829315a73750b68fa76737bbdd3dab",
+    "bytes": 21235
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam2.json": {
+    "sha256": "2c198df562d87d59d76d6dc5c2d93fe81874a2d48b0bb6c60e449e4960b4e2c8",
+    "bytes": 1771
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam2.npz": {
+    "sha256": "95e77ad6e9792aa41b69ddf69c3e1a6e8c79c578c0339e91966a9ac7dd3f75df",
+    "bytes": 20432
+  },
+  "tracks/best_kpr__kpr_market_solider_parts/video_002/clip_013/cam2.online.npz": {
+    "sha256": "2cba67e73d5ad87f6beb0bdfa8705bffa5aa04fa2036565dab3dfbe8002b2b4a",
+    "bytes": 20603
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam0.json": {
+    "sha256": "a6c7eccf60609aff19adce09f2f3e31ce02a1ba1959808f34a7a1cf185231fe8",
+    "bytes": 2057
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "sha256": "9819fb567e2ae00a3fa3a2e57782c5cf5fc23ea264a18581dfb366963aef70c2",
+    "bytes": 69169
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam0.online.npz": {
+    "sha256": "2e6faa71054a5d15a9b13813e085e6f403522b118f273739615499920840b132",
+    "bytes": 69614
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam1.json": {
+    "sha256": "1ea2c429b507cd279ffa88d5c9bb3c0ca19ac1c57d61127cc7cf491a4464bd45",
+    "bytes": 1247
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "sha256": "9b74c36eb4c60aa71b0150442b29bfcc3b2ff9e3195458690995ec8393a690ff",
+    "bytes": 34719
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam1.online.npz": {
+    "sha256": "9b74c36eb4c60aa71b0150442b29bfcc3b2ff9e3195458690995ec8393a690ff",
+    "bytes": 34719
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam2.json": {
+    "sha256": "65ea02158c6b4325b0028fcc087e606e20c8a83f640964ceced248f99740cedb",
+    "bytes": 1786
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "sha256": "a2314e0e6d1a5294cc45ce701e66dbddcca8680f55f996212b9ec2daaf292682",
+    "bytes": 55363
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_000/cam2.online.npz": {
+    "sha256": "04765154f3515417e8cb7a5122524952fc1d3c437d5601c49a2174d13e2c524b",
+    "bytes": 55593
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam0.json": {
+    "sha256": "0a8ce20092ec24543d11bad986d169c282e00ec5bbf63b3092ad4fa0cd21b6b0",
+    "bytes": 1322
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "sha256": "5f2cdbb8728e1e90102eb989c9996c119ffb5abc8ee2aa50fa8d653d4c2f8095",
+    "bytes": 783
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam0.online.npz": {
+    "sha256": "8e2ff6e01972ac3c4e9c5c91c00573983dee3125d1c74026abbb7ef10a1be414",
+    "bytes": 48562
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam1.json": {
+    "sha256": "721c5f7d8148d2aa637945ade35bba028f9bb898516fa6b36fa6f3e2e8632f26",
+    "bytes": 1520
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "sha256": "61787a0ab04f0f3c25dab14e5e6c1229a2c41a6a30b0803bccb57285724b7cd7",
+    "bytes": 23000
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam1.online.npz": {
+    "sha256": "7fe549521889526a31629dd0516d72a99152a955ad9e0c80cfd729bd1a3355e6",
+    "bytes": 23098
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam2.json": {
+    "sha256": "f56c634e2a18955214bb42fe7c086fbeb65613a489006765630f4b32f0389e06",
+    "bytes": 1522
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "sha256": "1e07a22bcf92693a4cc511763e52ae3bf521306137722be7e80908724b8e0469",
+    "bytes": 43067
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_000/clip_007/cam2.online.npz": {
+    "sha256": "8ad9af3565fbcee69ce7b431e85255610ebbfa715cd087576e75b1afc2aa3dcf",
+    "bytes": 43213
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam0.json": {
+    "sha256": "188106b1d5186886868266a8abf1d877fa6ea5876670f74491e7d774c79503d8",
+    "bytes": 1323
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "sha256": "ea8f0dd260ee146c658c69992411cb66d9411ae91f719b2b5078438fced0afae",
+    "bytes": 785
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam0.online.npz": {
+    "sha256": "b5a3866601307ef2d5267abef0cb92fcf2d733b7b3eed9100e28330b4689fcee",
+    "bytes": 103180
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam1.json": {
+    "sha256": "74ac41a1525f4eb38e2209429a56617da4d591d6ed523f082b8116a540d798f7",
+    "bytes": 1798
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "sha256": "0d9adb7b98a365efd86cec3ea6a4e4abb94ec6eba6a68c01b699195991ae284e",
+    "bytes": 66508
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam1.online.npz": {
+    "sha256": "0cf4a9f462925956a3c8aa5332e0149f1225d199953af934aa841951bbc4d7a7",
+    "bytes": 66890
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam2.json": {
+    "sha256": "9e0e4d0c0161aef71050983bf51ec4d22d1b108385c566926ab18b64c9fd6f74",
+    "bytes": 1321
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "sha256": "ea8f0dd260ee146c658c69992411cb66d9411ae91f719b2b5078438fced0afae",
+    "bytes": 785
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_001/clip_001/cam2.online.npz": {
+    "sha256": "800a40d3c554560290bac0c792b85878f8f532a5e3cef6efc353600f946150ed",
+    "bytes": 98891
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam0.json": {
+    "sha256": "d8c8df0d54ec3e0be1213a87f97df4a81476c5db9166adae856fbc90ad86afc3",
+    "bytes": 1249
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "sha256": "5d84bea4b9a556d4b0797621b2890fc3df1efe8cf07240850e5190925cbf29fb",
+    "bytes": 35211
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam0.online.npz": {
+    "sha256": "5d84bea4b9a556d4b0797621b2890fc3df1efe8cf07240850e5190925cbf29fb",
+    "bytes": 35211
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam1.json": {
+    "sha256": "ce21b0dd5d8b9d00a69bfd307bdbaf374592067da24d488210758a033f84effd",
+    "bytes": 1535
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "sha256": "d9a7b69a61ff30aa42d3a781671a7fc6a52b99697d6207709fe9c83e38e674f8",
+    "bytes": 17259
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam1.online.npz": {
+    "sha256": "3c65752d85c9db3a5bc5ada00c6a2e6ade4e1a7d2e097996f2a8c79e61a4c8b3",
+    "bytes": 17356
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam2.json": {
+    "sha256": "4557150868a507e582035a7f8b9aac3b2ca06e95b162dfa4c7ee189f21862130",
+    "bytes": 1249
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "sha256": "7b988bcbcecdf3ea5bbbcfb4ef81f896042662c4f40c9a600711a1eb1ccb824f",
+    "bytes": 19997
+  },
+  "tracks/deep_ocsort_pose_lab__clipreid_vitb16_market1501/video_002/clip_013/cam2.online.npz": {
+    "sha256": "7b988bcbcecdf3ea5bbbcfb4ef81f896042662c4f40c9a600711a1eb1ccb824f",
+    "bytes": 19997
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam0.gsi.npz": {
+    "sha256": "c09a1be42947329351afb1fda624e29ca53cd0c507753ce9416e4ddac779b588",
+    "bytes": 73216
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam0.json": {
+    "sha256": "7eb85761fd46cb74cb2a506b72924cf5618be2eb5c17a403136dfcb8128347b2",
+    "bytes": 1309
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam0.npz": {
+    "sha256": "cb11af2a288714395a82b17cc49f4a313d936cc43be0c475a86c6e39e34dc092",
+    "bytes": 70889
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam0.online.npz": {
+    "sha256": "cb11af2a288714395a82b17cc49f4a313d936cc43be0c475a86c6e39e34dc092",
+    "bytes": 70889
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam1.gsi.npz": {
+    "sha256": "b236ff0b3f7976f2d7c7f0abeb8aee5a18ff264c2c905a1a276466b0e5a09c6b",
+    "bytes": 35759
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam1.json": {
+    "sha256": "e612b147f37afacf8b3ec07b019b87228630fb1d26dbfafdc04f4b2720f694a6",
+    "bytes": 1308
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam1.npz": {
+    "sha256": "74910bd572775d06f437d02d4c3984970f07a5b4a7c20d04f76322ee09152573",
+    "bytes": 34906
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam1.online.npz": {
+    "sha256": "74910bd572775d06f437d02d4c3984970f07a5b4a7c20d04f76322ee09152573",
+    "bytes": 34906
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam2.gsi.npz": {
+    "sha256": "cdf0be1f4569ece24ff19305eaa06b8b958fcd42c4ba5a23d1c23d9d6aa9fedf",
+    "bytes": 56046
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam2.json": {
+    "sha256": "a9f840bb60e343b3015e60da81df3d75210c4944414e2efe8c6e19d39f01a098",
+    "bytes": 1428
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam2.npz": {
+    "sha256": "8a37fb2891e83c5650cde91c7d6b61b73aa6aedbacc6c3d53710cee3ed24958b",
+    "bytes": 55552
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_000/cam2.online.npz": {
+    "sha256": "8a37fb2891e83c5650cde91c7d6b61b73aa6aedbacc6c3d53710cee3ed24958b",
+    "bytes": 55552
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam0.gsi.npz": {
+    "sha256": "bf7d7a663e1a697622f883ad5e54f9663f862974894e18a2f96ac3b5eea78dc7",
+    "bytes": 51334
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam0.json": {
+    "sha256": "518aa599a54ddc8d63f6198ba9a2d3a2f29bed4d73761c58f7b568d79a51f719",
+    "bytes": 1436
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam0.npz": {
+    "sha256": "3ad05b21fb37cf4e70f513cd20ccc576a74d62af3714851c7e78f180def75abf",
+    "bytes": 49317
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam0.online.npz": {
+    "sha256": "d01f927b101926e833582634660cd233544cbd90b4ac36f5fa6a30cd407d9bd8",
+    "bytes": 49402
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam1.gsi.npz": {
+    "sha256": "de23cbb39f5b1476e5356dbbcf1c4be36cff7b04aaef06076fffd11ac6e76428",
+    "bytes": 23984
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam1.json": {
+    "sha256": "d8e22a933b0d71d97ebc020c67b0dde07d48dc6bd1ba995a79dcaf71bd58632a",
+    "bytes": 1308
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam1.npz": {
+    "sha256": "d6ae204f71a8806bdb35d68d24aff46537eccc29794befe97d2c07c1c5a5f847",
+    "bytes": 23298
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam1.online.npz": {
+    "sha256": "d6ae204f71a8806bdb35d68d24aff46537eccc29794befe97d2c07c1c5a5f847",
+    "bytes": 23298
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam2.gsi.npz": {
+    "sha256": "0946d98a086da76b7e3fc634ecfc22e7458924eb57382b6c2e0c54a6b3ce6a42",
+    "bytes": 45151
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam2.json": {
+    "sha256": "41cb04780f97a5b3566ea0893d4384eb5df1853bf86247f2b1d997f58b147c66",
+    "bytes": 1430
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam2.npz": {
+    "sha256": "e4852663a9c8f8b9c8906e63917638bc5b528e9003d7987630ea3451421ae5c0",
+    "bytes": 43707
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_000/clip_007/cam2.online.npz": {
+    "sha256": "e4852663a9c8f8b9c8906e63917638bc5b528e9003d7987630ea3451421ae5c0",
+    "bytes": 43707
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam0.gsi.npz": {
+    "sha256": "cb0a3c2fcbf3a25afa8e57f3ce175839164cee86f936d06a2a9be36b4cba8e82",
+    "bytes": 111488
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam0.json": {
+    "sha256": "4daf1b387b3b2680d4543ddd563bd0b5540a0c5c9f7ce81327c36ad5c3b1a1b1",
+    "bytes": 1434
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam0.npz": {
+    "sha256": "47675ddea5b176ed9c2e1cacdde2cc3c57d9c2cde6ada2006452947f163f8694",
+    "bytes": 105863
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam0.online.npz": {
+    "sha256": "47675ddea5b176ed9c2e1cacdde2cc3c57d9c2cde6ada2006452947f163f8694",
+    "bytes": 105863
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam1.gsi.npz": {
+    "sha256": "ba064ecd6a67f695a6b1f560a33d34095ea6c1dc3d725d6ccbffda7ea0166c57",
+    "bytes": 68276
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam1.json": {
+    "sha256": "59783950e2f5892116a9dfacdede34fe5f4efb9d5bfeb8c44c9bd0b2acdb6181",
+    "bytes": 1676
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam1.npz": {
+    "sha256": "1592a0e01b3c4c84c8335a538934e4bfb748be45543d3537d95ce3b090e6ea3f",
+    "bytes": 67304
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam1.online.npz": {
+    "sha256": "61308820dc7b7dd7184eb4b0c6c8dd159123684c5592318a2cc2a1e7a3dbcf2a",
+    "bytes": 67438
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam2.gsi.npz": {
+    "sha256": "3475534c94c4bebf0f3b6cf0ed5c3ad1662b6539b9b52bc14b75818b639e3c15",
+    "bytes": 103131
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam2.json": {
+    "sha256": "9b8b60ee957a5bcb8788aa68bb76602d519d1741fe26d547a533164622c9f7b9",
+    "bytes": 1678
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam2.npz": {
+    "sha256": "e18119c7baea9beb2809f72d7d4e5e2fc77c989f59a2b6772ee1b34d6dcac45a",
+    "bytes": 100512
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_001/clip_001/cam2.online.npz": {
+    "sha256": "e18119c7baea9beb2809f72d7d4e5e2fc77c989f59a2b6772ee1b34d6dcac45a",
+    "bytes": 100512
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam0.gsi.npz": {
+    "sha256": "f162fc21ae157982d4b12f2d1df9e11766124cc223d26687a93b7592acf118fa",
+    "bytes": 36500
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam0.json": {
+    "sha256": "c26ab5bd51066820c968eb7f12d7fcdfabf227b74df0c598156cf18a0a2033a2",
+    "bytes": 1308
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam0.npz": {
+    "sha256": "ec83cecd95f06355b68c1ebbccbce3ba39ee1b45830be4d140d0f55aa9de4de7",
+    "bytes": 35736
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam0.online.npz": {
+    "sha256": "ec83cecd95f06355b68c1ebbccbce3ba39ee1b45830be4d140d0f55aa9de4de7",
+    "bytes": 35736
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam1.gsi.npz": {
+    "sha256": "8551dee4aec7ea7c779f41e98e4307323c9d701619484a1ad2cc3e87834343b9",
+    "bytes": 18216
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam1.json": {
+    "sha256": "7198dd815ef417ebdb4e369859020d39441327507ccf2c760f001672683dde6c",
+    "bytes": 1309
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam1.npz": {
+    "sha256": "27c999aa9cb2e71955739cc156008e0f5d73a7e0a59d617132d74d1131f7140d",
+    "bytes": 17521
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam1.online.npz": {
+    "sha256": "27c999aa9cb2e71955739cc156008e0f5d73a7e0a59d617132d74d1131f7140d",
+    "bytes": 17521
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam2.gsi.npz": {
+    "sha256": "4b9a4dcd1ffd7a74898f6b8d791bb6f9c5f210bcb3cc0f77ee6d894dbe817172",
+    "bytes": 21107
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam2.json": {
+    "sha256": "ef1da6065d238c9907d311e9183630d229b320d45f370b5e9190889955e699e9",
+    "bytes": 1308
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam2.npz": {
+    "sha256": "8898bc2175027899020ebb7f32a276403907bbd0f33272719456b1d5267587b0",
+    "bytes": 20294
+  },
+  "tracks/strongsort_pp__clipreid_vitb16_market1501/video_002/clip_013/cam2.online.npz": {
+    "sha256": "8898bc2175027899020ebb7f32a276403907bbd0f33272719456b1d5267587b0",
+    "bytes": 20294
+  }
+}

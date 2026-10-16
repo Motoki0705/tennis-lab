@@ -1,0 +1,1466 @@
+{
+  "geometry": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 7.654618157258473,
+      "reprojection_p95_px": 8.16627519453216,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.0,
+      "difference_acceleration_rms_mps2": 313.5408630371094,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.3224815152658826
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "historical-u9000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 65.45793533777832,
+      "reprojection_p95_px": 138.13084239216482,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.005940594059405941,
+      "difference_acceleration_rms_mps2": 429.6985778808594,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.8250913210261366
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "parameters-s42-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 68.19979372964038,
+      "reprojection_p95_px": 157.99643116320394,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.0019801980198019802,
+      "difference_acceleration_rms_mps2": 492.3545837402344,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.8030865936462175
+      }
+    },
+    "integrated_predicted": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 109.08691623332801,
+      "reprojection_p95_px": 166.2144352689389,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.06732673267326733,
+      "difference_acceleration_rms_mps2": 678.5369873046875,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.4603473700636451
+      }
+    },
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "parameters-s43-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 92.7923075781269,
+      "reprojection_p95_px": 181.6003992815737,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.019801980198019802,
+      "difference_acceleration_rms_mps2": 257.349609375,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.366094828195106
+      }
+    },
+    "integrated_predicted": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 90.42470831862165,
+      "reprojection_p95_px": 183.20135845173726,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.023762376237623763,
+      "difference_acceleration_rms_mps2": 649.5362548828125,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.6056769844213814
+      }
+    },
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "parameters-s44-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 163.62718974521383,
+      "reprojection_p95_px": 296.90722720756924,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.0,
+      "difference_acceleration_rms_mps2": 347.70709228515625,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.5194974954168916
+      }
+    },
+    "integrated_predicted": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 136.4486792472876,
+      "reprojection_p95_px": 279.2549996123517,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.05742574257425743,
+      "difference_acceleration_rms_mps2": 726.5119018554688,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.3777732267069975
+      }
+    },
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "position-s42-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 135.31968430723433,
+      "reprojection_p95_px": 316.77824798081934,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.0039603960396039604,
+      "difference_acceleration_rms_mps2": 527.87158203125,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.4916041241762164
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "reprojection-s42-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 106.32497406324066,
+      "reprojection_p95_px": 216.24488913240856,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.011881188118811881,
+      "difference_acceleration_rms_mps2": 448.90338134765625,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 2.08592258117921
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "reprojection-s43-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 89.10118717598263,
+      "reprojection_p95_px": 165.5734725064158,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.10495049504950495,
+      "difference_acceleration_rms_mps2": 355.9820556640625,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.816270064693876
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "reprojection-s44-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 186.1531997044042,
+      "reprojection_p95_px": 350.5610726682479,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.0,
+      "difference_acceleration_rms_mps2": 370.9878845214844,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.7214915098150123
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "rollout_position-s42-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 105.83066043838986,
+      "reprojection_p95_px": 247.4545044315622,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.0039603960396039604,
+      "difference_acceleration_rms_mps2": 522.7025756835938,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.4486020748528334
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "rollout_velocity-s42-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 85.46183386493149,
+      "reprojection_p95_px": 194.2446929631584,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.0,
+      "difference_acceleration_rms_mps2": 480.3597717285156,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.1482180621324383
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  },
+  "velocity-s42-u4000": {
+    "direct": {
+      "reprojection_count": 1389,
+      "eligible_observation_count": 1389,
+      "reprojection_rmse_px": 82.4542596980373,
+      "reprojection_p95_px": 176.81727965838138,
+      "reprojection_evaluable_rate": 1.0,
+      "frame_count": 505,
+      "all_view_missing_frames": 0,
+      "view_count_frames": {
+        "0": 0,
+        "1": 2,
+        "2": 122,
+        "3": 381
+      },
+      "below_ground_rate": 0.009900990099009901,
+      "difference_acceleration_rms_mps2": 481.93505859375,
+      "fit": {
+        "spans": [
+          [
+            0,
+            32
+          ],
+          [
+            32,
+            64
+          ],
+          [
+            64,
+            96
+          ],
+          [
+            96,
+            128
+          ],
+          [
+            128,
+            160
+          ],
+          [
+            160,
+            192
+          ],
+          [
+            192,
+            224
+          ],
+          [
+            224,
+            256
+          ],
+          [
+            256,
+            288
+          ],
+          [
+            288,
+            320
+          ],
+          [
+            320,
+            352
+          ],
+          [
+            352,
+            384
+          ],
+          [
+            384,
+            416
+          ],
+          [
+            416,
+            448
+          ],
+          [
+            448,
+            480
+          ],
+          [
+            480,
+            505
+          ]
+        ],
+        "supported_frames": 505,
+        "requested_frames": 505,
+        "failed": false,
+        "rmse_m": 1.30362766563494
+      }
+    },
+    "integrated_predicted": null,
+    "limitations": [
+      "Model-assisted fixed 2D annotations; not independent 3D labels",
+      "Approximate single-plane camera calibration without distortion correction",
+      "Court inputs are calibration-derived rather than raw detector observations",
+      "Every second observed frame gives 29.97003 Hz versus 30 Hz training",
+      "ODE fits use fixed 32-frame windows; unknown real impacts may be crossed",
+      "Reprojection or small fit residual alone does not establish 3D accuracy"
+    ]
+  }
+}

@@ -114,7 +114,7 @@ def test_interrupted_overwrite_invalidates_completion_marker(
 def test_non_monotonic_frame_idx_rejected(tmp_path: Path) -> None:
     root = tmp_path / "ds"
     index = build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(videos=("video_000",))
+        root, SLCSFixtureDatasetConfig(videos=("video_000",), num_cameras=1)
     )
     manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
     spec = DEFAULT_FIXTURE_DINO_SPEC
@@ -131,7 +131,7 @@ def test_non_monotonic_frame_idx_rejected(tmp_path: Path) -> None:
 def test_frame_idx_out_of_range_rejected(tmp_path: Path) -> None:
     root = tmp_path / "ds"
     index = build_slcs_dataset_fixture(
-        root, SLCSFixtureDatasetConfig(videos=("video_000",))
+        root, SLCSFixtureDatasetConfig(videos=("video_000",), num_cameras=1)
     )
     manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
     spec = DEFAULT_FIXTURE_DINO_SPEC
@@ -171,7 +171,7 @@ def test_cache_must_contain_exact_configured_sample_indices(
 def test_writer_rejects_a_different_sampling_grid(tmp_path: Path) -> None:
     index = build_slcs_dataset_fixture(
         tmp_path / "ds",
-        SLCSFixtureDatasetConfig(videos=("video_000",), num_frames=21),
+        SLCSFixtureDatasetConfig(videos=("video_000",), num_frames=21, num_cameras=1),
     )
     manifest = ClipManifest.load(index.clip_dir(index.clips[0]))
     spec = DEFAULT_FIXTURE_DINO_SPEC

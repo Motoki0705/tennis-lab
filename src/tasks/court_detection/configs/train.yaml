@@ -1,12 +1,23 @@
 defaults:
   - paths: default
   - data: default
-  - model: hierarchical
-  - loss: default
+  - model: dinov3_dpt
+  - loss: pose
   - training: default
   - run: train
   - render_style: default
+  - data/source@mixed.sources.tennis_court_detector: tennis_court_detector
+  - override data/source: synthetic_court
+  - override data/processing: all
+  - override data/augmentation: pose_safe
   - _self_
+
+mixed:
+  sources:
+    synthetic_court: ${data.source}
+  train_batch_counts:
+    synthetic_court: 4
+    tennis_court_detector: 4
 
 hydra:
   run:

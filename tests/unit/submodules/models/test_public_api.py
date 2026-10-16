@@ -11,6 +11,7 @@ from src.submodules.models._base.inference_model import BaseInferenceModel
 def test_models_root_owns_the_documented_public_symbols() -> None:
     expected = {
         "BaseInferenceModel",
+        "BotSortAssociator",
         "DinoPersonDetector",
         "DinoPersonTracker",
         "GvhmrMeshRecovery",
@@ -21,6 +22,7 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "ImageFeatureResult",
         "PersonDetectionRequest",
         "PersonDetectionResult",
+        "Pose2DFrameSequenceRequest",
         "Pose2DRequest",
         "Pose2DResult",
         "SmplCoco17Reconstructor",
@@ -29,6 +31,9 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "TrackResult",
         "ViTPosePose2D",
         "YoloPersonTracker",
+        "filter_detections_by_footpoint",
+        "select_and_complete_tracks",
+        "validate_dino_extension",
     }
     assert set(models.__all__) == expected
     for name in expected:
@@ -42,6 +47,7 @@ def test_nested_packages_do_not_reexport_root_api() -> None:
             "DinoPersonDetector",
             "PersonDetectionRequest",
             "PersonDetectionResult",
+            "validate_dino_extension",
         ),
         "src.submodules.models.gvhmr": ("GvhmrMeshRecovery", "GvhmrRequest"),
         "src.submodules.models.hmr2": ("Hmr2FeatureExtractor", "ImageFeatureRequest"),

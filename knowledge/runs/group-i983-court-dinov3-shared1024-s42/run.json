@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "kind": "four_condition_comparison",
+  "source_commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "source_sha256": {
+    "src/tasks/court_detection/ablation/comparison.py": "25b40d0f3250158cd80797bf995bde8ad27c2520bc18e36e185948c1edb54ca1",
+    "src/tasks/court_detection/scripts/compare_ablation.py": "999b15181a40f0924692eebc532c63829552e3f28f144567ef38e123dcf51bd4"
+  },
+  "command": [
+    ".venv/bin/python",
+    "-m",
+    "src.tasks.court_detection.scripts.compare_ablation",
+    "--evaluations",
+    "knowledge/runs/run-i983-court-dinov3-s-s42/evaluation/evaluation.json",
+    "knowledge/runs/run-i983-court-dinov3-splus-s42/evaluation/evaluation.json",
+    "knowledge/runs/run-i983-court-dinov3-b-s42/evaluation/evaluation.json",
+    "knowledge/runs/run-i983-court-dinov3-l-s42/evaluation/evaluation.json",
+    "--output",
+    "knowledge/runs/group-i983-court-dinov3-shared1024-s42/comparison"
+  ],
+  "inputs": [
+    {
+      "variant": "s",
+      "evaluation": "knowledge/runs/run-i983-court-dinov3-s-s42/evaluation/evaluation.json",
+      "evaluation_sha256": "e163df66e29cf5863131c8c74ac9c9ebf4b629fac05b673163f6d0b0310e14d2",
+      "checkpoint_sha256": "7c03fb429dae1a7090ba27257a38e4ca26663da4e91020c130bb26fb0f7d554b",
+      "selection": "knowledge/runs/run-i983-court-dinov3-s-s42/checkpoint-selection.json",
+      "selected_path_matches_evaluation": true,
+      "selection_includes_independent_digest": false,
+      "training_record": "knowledge/runs/run-i983-court-dinov3-s-s42/run.json",
+      "drive_evaluation": "gdrive:tennis_lab/outputs/court_detection/evaluate/i983-dino-s-shared1024/s42"
+    },
+    {
+      "variant": "splus",
+      "evaluation": "knowledge/runs/run-i983-court-dinov3-splus-s42/evaluation/evaluation.json",
+      "evaluation_sha256": "df094a03dd112e54884b6170b81c97dfb9cdb07b00ade35bf8caafa476e1cca8",
+      "checkpoint_sha256": "075ecaf156c38174cc0c66856c3ba02043a0ad094f0c38e4643dfb00e28a58d8",
+      "selection": "knowledge/runs/run-i983-court-dinov3-splus-s42/checkpoint-selection.json",
+      "selected_path_matches_evaluation": true,
+      "selection_includes_independent_digest": true,
+      "training_record": "knowledge/runs/run-i983-court-dinov3-splus-s42/run.json",
+      "drive_evaluation": "gdrive:tennis_lab/outputs/court_detection/evaluate/i983-dino-splus-shared1024/s42"
+    },
+    {
+      "variant": "b",
+      "evaluation": "knowledge/runs/run-i983-court-dinov3-b-s42/evaluation/evaluation.json",
+      "evaluation_sha256": "0787ebb9d38459388a60cd73f08695ca81817c3f4509d88de40a8b1c9ee07a3f",
+      "checkpoint_sha256": "b8f36ed60b59d11083aaf1001292a7f4f88791efe59bc6ef087693645ec4fae9",
+      "selection": "knowledge/runs/run-i983-court-dinov3-b-s42/checkpoint-selection.json",
+      "selected_path_matches_evaluation": true,
+      "selection_includes_independent_digest": true,
+      "training_record": "knowledge/runs/run-i983-court-dinov3-b-s42/run.json",
+      "drive_evaluation": "gdrive:tennis_lab/outputs/court_detection/evaluate/i983-dino-b-shared1024/s42"
+    },
+    {
+      "variant": "l",
+      "evaluation": "knowledge/runs/run-i983-court-dinov3-l-s42/evaluation/evaluation.json",
+      "evaluation_sha256": "0ea79320e50013c59ee8f2564d725ab3b2292008124cd104b984a7afc661c40e",
+      "checkpoint_sha256": "a342982a88c40911e87ab1d636604ed8aa67ace09a1f6b413ed43025b3d1aec4",
+      "selection": "knowledge/runs/run-i983-court-dinov3-l-s42/checkpoint-selection.json",
+      "selected_path_matches_evaluation": true,
+      "selection_includes_independent_digest": false,
+      "training_record": "knowledge/runs/run-i983-court-dinov3-l-s42/run.json",
+      "drive_evaluation": "gdrive:tennis_lab/outputs/court_detection/evaluate/i983-dino-l-shared1024/s42"
+    }
+  ],
+  "environment": {
+    "python": "3.11.15",
+    "pillow": "12.3.0"
+  },
+  "comparison": "comparison/comparison.md",
+  "provenance": "comparison/provenance.json",
+  "panel_count": 36,
+  "drive_output": "gdrive:tennis_lab/outputs/court_detection/report/i983-shared1024/comparison-s42",
+  "limitations": [
+    "single seed 42",
+    "L resumed after VM loss; RNG/sampler continuity not bitwise guaranteed",
+    "real val also used for checkpoint selection",
+    "projection capacity differs as specified; common downstream is fixed",
+    "S pose mean strongly affected by two invalid-depth projections"
+  ]
+}

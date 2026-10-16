@@ -1,0 +1,22 @@
+{
+  "run": 17,
+  "phase": "path-contract preparation correction",
+  "changed_suite_passed": 24,
+  "seconds": 20.46,
+  "pytest_workers": 4,
+  "files": [
+    "tests/integration/tasks/person_tracking/test_unseen.py",
+    "tests/integration/tasks/person_tracking/test_unseen_resume.py"
+  ],
+  "unique_tests_this_run": 32,
+  "previous_evidence": "verification-r17.json",
+  "ruff": "passed",
+  "mypy_follow_imports_skip": "passed",
+  "knowledge": {
+    "nodes": 432,
+    "errors": 0
+  },
+  "inference_attempts": 0,
+  "scoring_batches": 0,
+  "labels_opened": false
+}

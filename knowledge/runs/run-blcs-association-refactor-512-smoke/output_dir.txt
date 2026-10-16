@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/blcs/train/view_association_refactor/gpu_smoke_512_v1/logs/version_0/checkpoints

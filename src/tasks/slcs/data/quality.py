@@ -98,9 +98,15 @@ def build_label_masks(
     player_yaw: NDArray[np.float32],
     ball_3d: NDArray[np.float32],
     config: QualityConfig,
+    player_reconstruction_valid: NDArray[np.bool_],
+    player_heading_valid: NDArray[np.bool_],
+    ball_reconstruction_valid: NDArray[np.bool_],
     teacher_quality: dict[str, Any] | None = None,
 ) -> dict[str, NDArray[Any]]:
     """Compute label validity masks and confidence weights for a whole clip.
+
+    The three reconstruction validity masks come from the SceneResult v2 and
+    are hard gates: 2D visibility never re-enables a rejected 3D teacher.
 
     Returns a dict with:
         - ``player_label_valid``: ``(P, T)`` bool
@@ -160,6 +166,18 @@ def build_label_masks(
                 raise ValueError(f"Invalid {name} teacher-quality weights")
             weight *= evidence
             valid &= evidence > 0
+
+    for name, mask, expected in (
+        ("player reconstruction", player_reconstruction_valid, player_valid.shape),
+        ("player heading", player_heading_valid, player_valid.shape),
+        ("ball reconstruction", ball_reconstruction_valid, ball_valid.shape),
+    ):
+        if not isinstance(mask, np.ndarray) or mask.dtype != np.bool_ or mask.shape != expected:
+            raise ValueError(f"Teacher masks require boolean {name} validity of shape {expected}")
+    player_valid &= player_reconstruction_valid & player_heading_valid
+    ball_valid &= ball_reconstruction_valid
+    player_weight[~player_valid] = 0
+    ball_weight[~ball_valid] = 0
 
     return {
         "player_label_valid": player_valid,

@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+from typing import cast
 
 import pytest
 from PIL import Image
@@ -70,8 +71,9 @@ def test_all_split_file_stamps_survive_catalog_reload(
                 catalog.verify_sample_files(entry, record.sample_id)
 
 
-def test_unknown_published_schema_disables_only_that_scene(
-    review_project: Path,
+@pytest.mark.parametrize("version", ["v1", "v2", "v9"])
+def test_unsupported_published_schema_disables_only_that_scene(
+    review_project: Path, version: str,
 ) -> None:
     manifest = (
         review_project
@@ -84,14 +86,15 @@ def test_unknown_published_schema_disables_only_that_scene(
         / "dataset.json"
     )
     payload = json.loads(manifest.read_text(encoding="utf-8"))
-    payload["schema"] = "canonical_court_dataset_v9"
+    payload["schema"] = f"canonical_court_dataset_{version}"
     manifest.write_text(json.dumps(payload), encoding="utf-8")
 
     catalog = _service(review_project).datasets
     entry = _entry(catalog, "synthetic_court/B00/val")
 
     assert entry.available is False
-    assert entry.reason is not None and "v9" in entry.reason
+    assert entry.reason is not None
+    assert version in entry.reason or "Only Synthetic Court V3" in entry.reason
     # The Tennis dataset is unaffected by the synthetic schema failure.
     assert _entry(catalog, "tennis_court_detector/val").available is True
 
@@ -145,7 +148,7 @@ def test_tennis_quarantine_is_applied_and_stale_exclusions_fail_loudly(
         stale.records("tennis_court_detector/train")
 
 
-def test_missing_dense_layers_warn_per_layer_and_keep_keypoints(
+def test_dense_layers_are_generated_without_stored_masks(
     catalog: CourtDatasetCatalog,
 ) -> None:
     service = _service(catalog.project_root)
@@ -158,33 +161,20 @@ def test_missing_dense_layers_warn_per_layer_and_keep_keypoints(
         "far_doubles_left",
         "far_doubles_right",
     ]
-    assert ground_truth["rasters"] == []
-    assert len(preview["warnings"]) == 3
-    assert all(
-        "ground truth" in note and "利用できません" in note
-        for note in preview["warnings"]
-    )
+    assert [raster["name"] for raster in ground_truth["rasters"]] == ["seg", "line", "semantic_line"]
+    assert preview["warnings"] == []
 
 
-def test_stale_dense_layer_is_reported_not_substituted(
-    materialized_catalog: CourtDatasetCatalog,
-) -> None:
+
+def test_corrupt_image_shard_is_reported(materialized_catalog: CourtDatasetCatalog) -> None:
     service = _service(materialized_catalog.project_root)
     scene = service.scenes("tennis_court_detector/val", limit=1)["items"][0]["id"]
-    entry = materialized_catalog.entry("tennis_court_detector/val")
-    record = materialized_catalog.records(entry.id)[0]
-    seg_path = record.dense_target_refs["seg"]
-    Image.new("L", (64, 48), color=3).save(seg_path)
-
-    preview = service.preview(scene)
-    names = [raster["name"] for raster in preview["items"][0]["gt"]["rasters"]]
-
-    assert names == ["line", "semantic_line"]
-    assert any(
-        "seg の ground truth" in note and "利用できません" in note
-        for note in preview["warnings"]
-    )
-    assert any("stale" in note for note in preview["warnings"])
+    record = materialized_catalog.records("tennis_court_detector/val")[0]
+    data = bytearray(record.image_path.read_bytes())
+    data[-20] ^= 1
+    record.image_path.write_bytes(data)
+    with pytest.raises(ValueError, match="checksum|disk 上で変化"):
+        service.preview(scene)
 
 
 def test_preview_uses_original_pixels_and_source_sized_rasters(
@@ -198,9 +188,7 @@ def test_preview_uses_original_pixels_and_source_sized_rasters(
 
     assert (preview["width"], preview["height"]) == (32, 24)
     assert preview["frames"] == 1
-    expected = json.loads((Path(record.annotation_path)).read_text(encoding="utf-8"))[
-        0
-    ]["kps"][0]
+    expected = cast(tuple[tuple[float, float], ...], record.payload["keypoints"])[0]
     point = preview["items"][0]["gt"]["points"][0]
     assert (point["x"], point["y"]) == (expected[0], expected[1])
     assert [raster["name"] for raster in preview["items"][0]["gt"]["rasters"]] == [
@@ -267,11 +255,13 @@ def test_source_file_changing_after_catalog_is_refused(
 
     # Rewrite the frame with the same dimensions so only the stat identifies the
     # change; the review must refuse to serve a file it did not stat.
-    Image.new("RGB", (32, 24), color=(7, 8, 9)).save(record.image_path)
+    original = record.image_path.read_bytes()
+    record.image_path.write_bytes(original + b"corrupt")
 
     with pytest.raises(ValueError, match="disk 上で変化"):
         service.preview(scene)
 
+    record.image_path.write_bytes(original)
     service.catalog()
     assert service.preview(scene)["items"]
     assert service.image(scene, 0).startswith(b"\xff\xd8")
@@ -295,7 +285,7 @@ def test_explicit_refresh_recovers_after_image_mtime_change(
 
 @pytest.mark.local_data
 @pytest.mark.skipif(
-    not (REAL_DATA_ROOT / "court" / "data_val.json").is_file()
+    not (REAL_DATA_ROOT / "court_detection/tennis_court_detector-v1/dataset.json").is_file()
     or not (
         REAL_DATA_ROOT
         / "synthetic_data_generation"

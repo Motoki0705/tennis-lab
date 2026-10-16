@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-10T15:07:53.185643+00:00",
+  "session": "i983-l4-ablation-01",
+  "job": "train-l-s42",
+  "completed_epochs": 1,
+  "local": {
+    "bytes": 2734089925,
+    "md5": "0ec5c2755e8440d143818045af1a6840",
+    "sha256": "0c7cb69919f66c0512c334f646350fccdf9378692d07c24e8fcce8fda926197a",
+    "mtime_ns": 1791644629156160149
+  },
+  "drive": {
+    "Path": "last.ckpt",
+    "Name": "last.ckpt",
+    "Size": 2734089925,
+    "MimeType": "application/x-zip",
+    "ModTime": "2026-10-10T15:03:49.156Z",
+    "IsDir": false,
+    "Hashes": {
+      "md5": "0ec5c2755e8440d143818045af1a6840"
+    },
+    "ID": "1sLC4M95Bqmy_NbRgusRX1QylqNH6Lnym"
+  },
+  "drive_path": "gdrive:tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42/logs/version_0/checkpoints/last.ckpt",
+  "verified": true
+}

@@ -9,6 +9,7 @@ Each model exposes ``load()`` / ``unload()`` / ``predict(request) -> result``:
 """
 
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models.dino.extension import validate_dino_extension
 from src.submodules.models.dino.person_detector import (
     DinoPersonDetector,
     PersonDetectionRequest,
@@ -26,10 +27,19 @@ from src.submodules.models.hmr2.feature_extractor import (
     ImageFeatureRequest,
     ImageFeatureResult,
 )
-from src.submodules.models.tracker.common import TrackRequest, TrackResult
-from src.submodules.models.tracker.dino_tracker import DinoPersonTracker
+from src.submodules.models.tracker.common import (
+    TrackRequest,
+    TrackResult,
+    select_and_complete_tracks,
+)
+from src.submodules.models.tracker.dino_tracker import (
+    BotSortAssociator,
+    DinoPersonTracker,
+    filter_detections_by_footpoint,
+)
 from src.submodules.models.tracker.yolo_tracker import YoloPersonTracker
 from src.submodules.models.vitpose.pose2d import (
+    Pose2DFrameSequenceRequest,
     Pose2DRequest,
     Pose2DResult,
     ViTPosePose2D,
@@ -37,6 +47,7 @@ from src.submodules.models.vitpose.pose2d import (
 
 __all__ = [
     "BaseInferenceModel",
+    "BotSortAssociator",
     "DinoPersonDetector",
     "DinoPersonTracker",
     "GvhmrMeshRecovery",
@@ -47,7 +58,9 @@ __all__ = [
     "ImageFeatureResult",
     "PersonDetectionRequest",
     "PersonDetectionResult",
+    "Pose2DFrameSequenceRequest",
     "Pose2DRequest",
+    "Pose2DFrameSequenceRequest",
     "Pose2DResult",
     "SmplCoco17Reconstructor",
     "SmplVertexReconstructor",
@@ -55,4 +68,7 @@ __all__ = [
     "TrackResult",
     "ViTPosePose2D",
     "YoloPersonTracker",
+    "filter_detections_by_footpoint",
+    "select_and_complete_tracks",
+    "validate_dino_extension",
 ]

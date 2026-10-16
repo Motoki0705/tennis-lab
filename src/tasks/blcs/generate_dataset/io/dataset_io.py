@@ -4,7 +4,8 @@ Saves scene data as a directory per scene with structure:
 - meta.json: scene metadata
 - scalars.json: scalar values (num_cameras, rally_length, end_reason,
   camera parameters)
-- {key}.npy: array data files (ball_pos_world, ball_pos_norm, etc.)
+- {key}.npy: array data files (ball_pos_world, ball_pos_norm, etc.) and the
+  ``physics_*`` arrays of the shared ``ball_physics.v1`` record
 
 Each camera produces per-camera npy files (cam_{i}_ball_uv.npy, etc.)
 and its parameters are stored in scalars.json.
@@ -40,6 +41,7 @@ from src.tasks.blcs.data.types import (
     BLCSSceneMeta,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
+from src.utils.physics.ball.record import BallPhysicsRecord, record_keys
 from src.utils.schema.court_normalization import (
     court_coordinate_normalization_metadata,
     validate_court_coordinate_normalization,
@@ -47,7 +49,7 @@ from src.utils.schema.court_normalization import (
 
 logger = logging.getLogger(__name__)
 
-BLCS_DATASET_SCHEMA_ID = "blcs_generated_dataset_v2"
+BLCS_DATASET_SCHEMA_ID = "blcs_generated_dataset_v3"
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,8 +101,7 @@ def validate_blcs_dataset_court_keypoints(
         num_cameras = raw.get("num_cameras")
         if type(num_cameras) is not int:
             raise CourtKeypointContractMismatchError(
-                f"{scalars_path}: num_cameras must be an int; got "
-                f"{num_cameras!r}."
+                f"{scalars_path}: num_cameras must be an int; got {num_cameras!r}."
             )
         if scene_num_cameras != len(records):
             raise CourtKeypointContractMismatchError(
@@ -117,9 +118,7 @@ def validate_blcs_dataset_court_keypoints(
             f"cam_{index}_params" for index in range(len(records))
         }
         actual_parameter_slots = {
-            key
-            for key in raw
-            if key.startswith("cam_") and key.endswith("_params")
+            key for key in raw if key.startswith("cam_") and key.endswith("_params")
         }
         if actual_parameter_slots != expected_parameter_slots:
             raise CourtKeypointContractMismatchError(
@@ -134,7 +133,7 @@ def validate_blcs_dataset_court_keypoints(
                 raise CourtKeypointContractMismatchError(
                     f"{scalars_path}: camera slot {index} requires stable ID "
                     f"{expected_id!r}; got {record.camera_id!r}."
-            )
+                )
             params = raw.get(f"cam_{index}_params")
             if isinstance(params, str):
                 try:
@@ -158,9 +157,7 @@ def validate_blcs_dataset_court_keypoints(
                 raise CourtKeypointContractMismatchError(
                     f"{scalars_path}: invalid {expected_id}_params.C: {error}"
                 ) from error
-            if parameter_record.camera_center_court_m != (
-                record.camera_center_court_m
-            ):
+            if parameter_record.camera_center_court_m != (record.camera_center_court_m):
                 raise CourtKeypointContractMismatchError(
                     f"{scalars_path}: {expected_id} camera center does not exactly "
                     "match CourtKP metadata."
@@ -297,6 +294,14 @@ class BLCSDatasetWriter(BaseDatasetWriter):
 
     def save_scene(self, scene: BLCSSceneData) -> Path:
         """Save a BLCS scene (rally) as a directory with npy + json files."""
+        if (
+            scene.num_balls != 1
+            or scene.ball_pos_world.ndim != 2
+            or scene.ball_pos_world.shape[-1] != 3
+            or scene.ball_present is not None
+            or scene.track_instances
+        ):
+            raise ValueError("BLCS writer only accepts one ball trajectory per scene.")
         dirname = scene.scene_id
         scene_path: Path = self.scenes_dir / dirname
         court_views = self._court_views(scene)
@@ -313,9 +318,10 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "ball_pos_norm": scene.ball_pos_norm.numpy(),
             "ball_vel_world": scene.ball_vel_world.numpy(),
             "ball_vel_norm": scene.ball_vel_norm.numpy(),
+            **scene.physics_record.to_arrays(),
         }
-        if scene.ball_present is not None:
-            arrays["ball_present"] = scene.ball_present.cpu().numpy()
+        if scene.physics_record.frames != len(scene.ball_pos_world):
+            raise ValueError("BLCS physics record and trajectory lengths differ.")
         scalars: dict[str, Any] = {
             "num_cameras": len(scene.cameras),
             "num_balls": scene.num_balls,
@@ -388,8 +394,7 @@ def load_scene(
     )
     if scene_dir.parent.name != "scenes":
         raise ValueError(
-            "BLCS scene contract validation requires "
-            "<dataset>/scenes/<scene>."
+            "BLCS scene contract validation requires <dataset>/scenes/<scene>."
         )
     court_keypoint_result = validate_blcs_dataset_court_keypoints(
         scene_dir.parent.parent,
@@ -445,6 +450,9 @@ def load_scene(
         "ball_vel_norm": np.load(scene_dir / "ball_vel_norm.npy"),
         "num_cameras": num_cameras,
         "cameras": cameras,
+        "physics_record": BallPhysicsRecord.from_arrays(
+            {key: np.load(scene_dir / f"{key}.npy") for key in record_keys()}
+        ),
     }
     ball_present_path = scene_dir / "ball_present.npy"
     if ball_present_path.exists():

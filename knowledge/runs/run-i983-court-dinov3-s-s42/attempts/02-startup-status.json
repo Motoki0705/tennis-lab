@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "phase": "ready",
+  "session": "i983-l4-ablation-03",
+  "jobs": [
+    {
+      "schema_version": 1,
+      "job_id": "train-s-s42-attempt02",
+      "status": "running",
+      "updated_at": "2026-10-11T04:28:36.141897+00:00",
+      "returncode": null,
+      "worker_pid": 12837,
+      "worker_token": "217401",
+      "pid": 12960,
+      "process_token": "219304",
+      "started_at": "2026-10-11T04:27:56.059534+00:00",
+      "transport_alive": true
+    }
+  ],
+  "repo_root": "/content/tennis-lab"
+}

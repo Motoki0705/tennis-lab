@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
-from src.utils.geometry.bbox import bbox_max_side_ratio
+from src.utils.geometry.bbox import bbox_max_side_ratio, pairwise_iou
 
 
 class TestBboxMaxSideRatio:
@@ -25,3 +26,13 @@ class TestBboxMaxSideRatio:
     def test_non_positive_image_size_raises(self) -> None:
         with pytest.raises(ValueError):
             bbox_max_side_ratio(1.0, 1.0, 0.0, 10.0)
+
+
+def test_pairwise_iou_known_values_and_empty_boxes() -> None:
+    first = np.array([[0.0, 0, 10, 10], [5, 5, 5, 5]])
+    second = np.array([[0.0, 0, 10, 10], [5, 0, 15, 10], [20, 20, 30, 30]])
+    iou = pairwise_iou(first, second)
+    np.testing.assert_allclose(iou[0], [1.0, 50 / 150, 0.0])
+    np.testing.assert_allclose(iou[1], 0.0)  # a degenerate box overlaps nothing
+    with pytest.raises(ValueError):
+        pairwise_iou(first[:, :3], second)

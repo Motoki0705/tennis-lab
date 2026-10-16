@@ -70,6 +70,122 @@ REMOVED_MODULES = (
     "src.utils.models.components.ops.time_local.layout",
     "src.utils.models.components.ops.time_local.reference",
 )
+SINGLE_OBJECT_REMOVED_MODULES = (
+    "src.synthetic_data_generation.composition",
+    "src.synthetic_data_generation.composition.contracts",
+    "src.synthetic_data_generation.composition.gaussians",
+    "src.synthetic_data_generation.dataset.blcs",
+    "src.synthetic_data_generation.dataset.blcs.assembler",
+    "src.synthetic_data_generation.dataset.blcs.ball_asset",
+    "src.synthetic_data_generation.dataset.blcs.contracts",
+    "src.synthetic_data_generation.dataset.blcs.diagnostics",
+    "src.synthetic_data_generation.dataset.blcs.handler",
+    "src.synthetic_data_generation.dataset.blcs.mesh_asset",
+    "src.synthetic_data_generation.dataset.blcs.rendering",
+    "src.synthetic_data_generation.dataset.blcs.rendering.mesh",
+    "src.synthetic_data_generation.dataset.blcs.rendering.nht",
+    "src.synthetic_data_generation.dataset.blcs.rendering.request",
+    "src.synthetic_data_generation.dataset.blcs.source",
+    "src.synthetic_data_generation.dataset.blcs.timeline",
+    "src.synthetic_data_generation.dataset.camera_profiles",
+    "src.synthetic_data_generation.dataset.plcs",
+    "src.synthetic_data_generation.dataset.plcs.articulation",
+    "src.synthetic_data_generation.dataset.plcs.assembler",
+    "src.synthetic_data_generation.dataset.plcs.components",
+    "src.synthetic_data_generation.dataset.plcs.components.avatar_asset",
+    "src.synthetic_data_generation.dataset.plcs.composition",
+    "src.synthetic_data_generation.dataset.plcs.coordinates",
+    "src.synthetic_data_generation.dataset.plcs.diagnostics",
+    "src.synthetic_data_generation.dataset.plcs.execution",
+    "src.synthetic_data_generation.dataset.plcs.handler",
+    "src.synthetic_data_generation.dataset.plcs.production",
+    "src.synthetic_data_generation.dataset.plcs.rendering",
+    "src.synthetic_data_generation.dataset.plcs.rendering.contracts",
+    "src.synthetic_data_generation.dataset.plcs.rendering.nht",
+    "src.synthetic_data_generation.dataset.plcs.smplh",
+    "src.synthetic_data_generation.dataset.plcs.timeline",
+    "src.synthetic_data_generation.dataset.plcs.validation",
+    "src.synthetic_data_generation.rendering.foreground",
+    "src.synthetic_data_generation.rendering.nht.composed",
+    "src.tasks.base.data.canonical_tracking",
+    "src.tasks.base.data.lifecycle_slots",
+    "src.tasks.base.data.observation_tracking",
+    "src.tasks.base.generate_dataset.lifecycle_audit",
+    "src.tasks.base.generate_dataset.timeline_composer",
+    "src.tasks.base.training.tracking_lifecycle",
+    "src.tasks.base.training.tracking_lightning_module",
+    "src.tasks.base.training.tracking_metrics",
+    "src.tasks.blcs.axial_reference_contract",
+    "src.tasks.blcs.data.observation_candidates",
+    "src.tasks.blcs.data.tracking_augmentation",
+    "src.tasks.blcs.data.tracking_datamodule",
+    "src.tasks.blcs.data.tracking_dataset",
+    "src.tasks.blcs.data.tracking_types",
+    "src.tasks.blcs.evaluation",
+    "src.tasks.blcs.evaluation.configuration",
+    "src.tasks.blcs.evaluation.real",
+    "src.tasks.blcs.generate_dataset.multi_object_scene_generator",
+    "src.tasks.blcs.generate_dataset.source_api",
+    "src.tasks.blcs.inference.tracking_predictor",
+    "src.tasks.blcs.model_io.axial_reference",
+    "src.tasks.blcs.models.blcs_model",
+    "src.tasks.blcs.models.blcs_multiview_axial_reference_model",
+    "src.tasks.blcs.models.blcs_track_query_model",
+    "src.tasks.blcs.models.blcs_track_query_reference_model",
+    "src.tasks.blcs.models.components.observation_fusion",
+    "src.tasks.blcs.scripts.evaluate_real",
+    "src.tasks.blcs.training.tracking_lightning_module",
+    "src.tasks.blcs.training.tracking_losses",
+    "src.tasks.blcs.training.tracking_matching",
+    "src.tasks.blcs.training.tracking_metrics",
+    "src.tasks.blcs.training.tracking_position",
+    "src.tasks.blcs.visualization.inference.tracking",
+    "src.tasks.plcs.axial_reference_contract",
+    "src.tasks.plcs.data.augmentation.residual",
+    "src.tasks.plcs.data.residual_datamodule",
+    "src.tasks.plcs.data.residual_dataset",
+    "src.tasks.plcs.data.residual_types",
+    "src.tasks.plcs.data.tracking_augmentation",
+    "src.tasks.plcs.data.tracking_datamodule",
+    "src.tasks.plcs.data.tracking_dataset",
+    "src.tasks.plcs.data.tracking_types",
+    "src.tasks.plcs.generate_dataset.multi_object_scene_generator",
+    "src.tasks.plcs.geometry.footpoint",
+    "src.tasks.plcs.geometry.residual_features",
+    "src.tasks.plcs.inference.residual_clip_io",
+    "src.tasks.plcs.inference.residual_predictor",
+    "src.tasks.plcs.inference.tracking_predictor",
+    "src.tasks.plcs.model_io.axial_reference",
+    "src.tasks.plcs.model_io.residual_checkpoint",
+    "src.tasks.plcs.model_io.residual_contracts",
+    "src.tasks.plcs.model_io.track_query_reference_checkpoint",
+    "src.tasks.plcs.models.plcs_model",
+    "src.tasks.plcs.models.plcs_multiview_axial_camtoken_model",
+    "src.tasks.plcs.models.plcs_multiview_axial_foot_residual_model",
+    "src.tasks.plcs.models.plcs_multiview_axial_reference_model",
+    "src.tasks.plcs.models.plcs_multiview_axial_split_model",
+    "src.tasks.plcs.models.plcs_track_query_model",
+    "src.tasks.plcs.models.plcs_track_query_reference_model",
+    "src.tasks.plcs.models.triangulation_residual",
+    "src.tasks.plcs.motion.extraction_config",
+    "src.tasks.plcs.motion.gvhmr_extraction",
+    "src.tasks.plcs.motion.sources.gvhmr",
+    "src.tasks.plcs.scripts.extract_gvhmr_motions",
+    "src.tasks.plcs.scripts.infer_triangulation_residual",
+    "src.tasks.plcs.scripts.migrate_residual_checkpoint",
+    "src.tasks.plcs.scripts.train_triangulation_residual",
+    "src.tasks.plcs.training.residual_lightning_module",
+    "src.tasks.plcs.training.residual_losses",
+    "src.tasks.plcs.training.residual_metrics",
+    "src.tasks.plcs.training.tracking_lightning_module",
+    "src.tasks.plcs.training.tracking_losses",
+    "src.tasks.plcs.training.tracking_matching",
+    "src.tasks.plcs.training.tracking_metrics",
+    "src.tasks.plcs.visualization.adapters.residual",
+    "src.tasks.plcs.visualization.inference.tracking",
+    "src.tasks.plcs.visualization.rendering.residual_comparison",
+)
+
 PROHIBITED_SYMBOLS = frozenset(
     {
         "CLIP_MANIFEST_NAME",
@@ -92,11 +208,143 @@ PROHIBITED_SYMBOLS = frozenset(
         "_sort_tracks",
     }
 )
+# Ball detection consumes only the unified store; retired workflows have no import shims.
+BALL_MDD_CONSOLIDATION_REMOVED_MODULES = (
+    'src.tasks.ball_detection.training.runner',
+    'src.tasks.ball_detection.data.components.augmentation',
+    'src.tasks.ball_detection.data.coordinate_dataset',
+    'src.tasks.ball_detection.data.coordinate_manifest',
+    'src.tasks.ball_detection.data.coordinate_snapshot',
+    'src.tasks.ball_detection.data.play_intervals',
+    'src.tasks.ball_detection.data.play_manifest',
+    'src.tasks.ball_detection.data.pose_windows',
+    'src.tasks.ball_detection.data.temporal_sampling',
+    'src.tasks.ball_detection.inference.checkpoint',
+    'src.tasks.ball_detection.model_io.mdd',
+    'src.tasks.ball_detection.models.mdd_pose.config',
+    'src.tasks.ball_detection.models.mdd_pose.encoder',
+    'src.tasks.ball_detection.models.mdd_pose.model',
+    'src.tasks.ball_detection.models.mdd_pose.pooling',
+    'src.tasks.ball_detection.models.mdd_pose.query',
+    'src.tasks.ball_detection.models.mdd_pose.variants',
+    'src.tasks.ball_detection.models.mdd_pretrain.config',
+    'src.tasks.ball_detection.models.mdd_pretrain.efficient_blocks',
+    'src.tasks.ball_detection.models.mdd_pretrain.encoder',
+    'src.tasks.ball_detection.models.mdd_pretrain.model',
+    'src.tasks.ball_detection.scripts.advance_cnn_campaign',
+    'src.tasks.ball_detection.scripts.eval',
+    'src.tasks.ball_detection.scripts.evaluate_manifest',
+    'src.tasks.ball_detection.scripts.evaluate_mdd_coordinates',
+    'src.tasks.ball_detection.scripts.inference_ui',
+    'src.tasks.ball_detection.scripts.posttrain_mdd_query',
+    'src.tasks.ball_detection.scripts.prepare_mdd_training',
+    'src.tasks.ball_detection.scripts.pretrain_mdd_dpt',
+    'src.tasks.ball_detection.scripts.preview_augmentation',
+    'src.tasks.ball_detection.scripts.preview_heatmaps',
+    'src.tasks.ball_detection.scripts.preview_posttraining_augmentation',
+    'src.tasks.ball_detection.scripts.probe_mdd_posttraining',
+    'src.tasks.ball_detection.scripts.profile_mdd_cnn',
+    'src.tasks.ball_detection.scripts.review_dataset',
+    'src.tasks.ball_detection.scripts.train_best_mdd_posttraining',
+    'src.tasks.ball_detection.scripts.train_cnn_candidate',
+    'src.tasks.ball_detection.scripts.train_mdd_pose',
+    'src.tasks.ball_detection.training.candidate_recall',
+    'src.tasks.ball_detection.training.coordinate_checkpoint',
+    'src.tasks.ball_detection.training.coordinate_compilation',
+    'src.tasks.ball_detection.training.coordinate_evaluation',
+    'src.tasks.ball_detection.training.coordinate_images',
+    'src.tasks.ball_detection.training.coordinate_preparation',
+    'src.tasks.ball_detection.training.coordinate_provenance',
+    'src.tasks.ball_detection.training.coordinate_runtime',
+    'src.tasks.ball_detection.training.coordinate_sampling',
+    'src.tasks.ball_detection.training.heatmap_pretraining.checkpoint',
+    'src.tasks.ball_detection.training.heatmap_pretraining.data',
+    'src.tasks.ball_detection.training.heatmap_pretraining.diagnostics',
+    'src.tasks.ball_detection.training.heatmap_pretraining.evaluation',
+    'src.tasks.ball_detection.training.heatmap_pretraining.objective',
+    'src.tasks.ball_detection.training.heatmap_pretraining.runner',
+    'src.tasks.ball_detection.training.lightning_module',
+    'src.tasks.ball_detection.training.metrics',
+    'src.tasks.ball_detection.training.posttraining.augmentation',
+    'src.tasks.ball_detection.training.posttraining.checkpoint',
+    'src.tasks.ball_detection.training.posttraining.comparison',
+    'src.tasks.ball_detection.training.posttraining.evaluation',
+    'src.tasks.ball_detection.training.posttraining.runner',
+    'src.utils.shared_file_verification',
+)
+
+BALL_STORE_REMOVED_MODULES = (
+    "src.tasks.ball_detection.models.dinov3_rope",
+    "src.tasks.ball_detection.models.spatiotemporal_unet",
+    "src.tasks.ball_detection.data.tracknet_datamodule",
+    "src.tasks.ball_detection.data.youtube_datamodule",
+    "src.tasks.ball_detection.data.mixed_tracknet_datamodule",
+    "src.tasks.ball_detection.data.components.staged_sampler",
+    "src.tasks.ball_detection.data.components.web",
+    "src.tasks.ball_detection.data.components.web.data_access_layer",
+    "src.tasks.ball_detection.data.components.web.data_access_layer.web_store",
+    "src.tasks.ball_detection.data.components.web.data_access_layer.writer",
+    "src.tasks.ball_detection.data.components.web.parser",
+    "src.tasks.ball_detection.data.components.web.parser.ball_yolo",
+    "src.tasks.ball_detection.data.components.web.parser.base",
+    "src.tasks.ball_detection.data.components.web.parser.kaggle",
+    "src.tasks.ball_detection.data.components.web.parser.racketvision",
+    "src.tasks.ball_detection.data.components.web.parser.roboflow",
+    "src.tasks.ball_detection.data.staged_datamodule",
+    "src.tasks.ball_detection.data.web_datamodule",
+    "src.tasks.ball_detection.generate_dataset.annotation_session",
+    "src.tasks.ball_detection.generate_dataset.candidate_workflow",
+    "src.tasks.ball_detection.scripts.analyze_web_bbox_ratio",
+    "src.tasks.ball_detection.scripts.convert_web_dataset",
+    "src.tasks.ball_detection.scripts.train_staged",
+    "src.tasks.ball_detection.scripts.youtube",
+    "src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball",
+    "src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset",
+    "src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images",
+    "src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset",
+    "src.tasks.ball_detection.training.staged_calibration",
+    "src.tasks.ball_detection.training.staged_lightning_module",
+    "src.tasks.ball_detection.training.staged_runner",
+)
+COURT_SINGLE_MODEL_REMOVED_MODULES = (
+    "src.tasks.court_detection.models.encoders",
+    "src.tasks.court_detection.models.decoder",
+    "src.tasks.court_detection.models.hierarchical_model",
+    "src.tasks.court_detection.models.transformer_encoder",
+    "src.tasks.court_detection.models.dense_head",
+    "src.tasks.court_detection.models.pose_head",
+    "src.tasks.court_detection.scripts.train_mixed",
+    "src.tasks.court_detection.scripts.preview_heatmaps",
+    "src.tasks.court_detection.scripts.annotate_youtube_keypoints",
+    "src.tasks.court_detection.scripts.prepare_youtube_dataset",
+    "src.tasks.court_detection.generate_dataset",
+    "src.tasks.court_detection.generate_dataset.annotation_session",
+    "src.tasks.court_detection.data.inputs.tennis_store_migration",
+    "src.tasks.court_detection.training.runner_mixed",
+    "src.tasks.court_detection.training.lightning_module_mixed",
+    "src.tasks.court_detection.visualization.youtube_target_preview",
+)
 COURT_INFERENCE_REMOVED_MODULES = (
     "src.tasks.court_detection.inference.mask_predictor",
     "src.tasks.court_detection.inference.semantic_lines",
 )
+# Dense Court teachers are generated in memory from sparse geometry. The old
+# offline entrypoints and their disk-store helpers must not be reintroduced.
+COURT_OFFLINE_TARGET_REMOVED_MODULES = (
+    "src.tasks.court_detection.scripts.generate_masks",
+    "src.tasks.court_detection.scripts.generate_line_masks",
+    "src.tasks.court_detection.scripts.materialize_targets",
+    "src.tasks.court_detection.data.target_generation.materializer",
+    "src.tasks.court_detection.data.target_generation.store",
+)
 TENNIS_SCENE_REMOVED_MODULES = (
+    "src.tennis_scene.pipeline.components.blcs",
+    "src.tennis_scene.pipeline.components.plcs",
+    "src.tennis_scene.pipeline.components.player_association",
+    "src.tennis_scene.pipeline.dependency_graph",
+    "src.tennis_scene.pipeline.observations",
+    "src.tennis_scene.pipeline.utilts",
+    "src.tennis_scene.pipeline.utilts.court_reference",
     "src.tennis_scene.clip_studio.migration",
     "src.tennis_scene.dataset_pipeline",
     "src.tennis_scene.dataset_pipeline.assemble",
@@ -167,107 +415,96 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
     ),
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
+    # The standalone loss accepts a prediction with optional heads. Reject an
+    # active term with a missing head rather than silently contributing zero.
+    # These two structural checks do not inspect tensor values or alter state.
+    ("src.tasks.blcs.training.losses.BLCSLoss.forward", "Python raise"): 2,
+    # Native RGB preprocessing guards only static dtype/shape metadata. These
+    # deliberately reject ambiguous inputs; fullgraph capture is covered by
+    # tests/unit/tasks/ball_detection/preprocessing/test_mdd.py and the real
+    # CUDA/Inductor numerical diagnostic.
     (
-        "src.tasks.court_detection.models.hierarchical_model."
-        "CourtHierarchicalModel.forward",
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.forward",
         "Python raise",
     ): 1,
     (
-        "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
-        "Python raise",
-    ): 1,
-    (
-        "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.forward",
         "Python shape/value validation branch",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder._validate_input",
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.luminance_to_mdd",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.luminance_to_mdd",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
+        "Python assert",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._decode_with_transformer",
+        "Python raise",
+    ): 2,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._feature_forward_values",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",
+        "Python raise",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",
+        "Python shape/value validation branch",
+    ): 1,
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_input",
         "Python raise",
     ): 6,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder._validate_input",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_input",
         "Python shape/value validation branch",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder._validate_patch_valid_mask",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_patch_valid_mask",
         "Python raise",
     ): 4,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder._validate_patch_valid_mask",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_patch_valid_mask",
         "Python shape/value validation branch",
     ): 2,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder.build_patch_positions",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.build_patch_positions",
         "Python raise",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder.build_patch_positions",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.build_patch_positions",
         "Python shape/value validation branch",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder.build_patch_positions",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.build_patch_positions",
         "runtime implementation/type selection via type",
     ): 2,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
         "forward validation helper self._validate_input",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
         "forward validation helper self._validate_patch_valid_mask",
     ): 1,
     (
-        "src.tasks.court_detection.models.transformer_encoder."
-        "CourtTransformerEncoder.forward",
-        "Python raise",
-    ): 1,
-    (
-        "src.tasks.blcs.models.blcs_track_query_model."
-        "BLCSTrackQueryModel.build_spatial_coordinates",
-        "Python raise",
-    ): 1,
-    (
-        "src.tasks.plcs.models.plcs_track_query_model."
-        "PLCSTrackQueryModel.build_spatial_coordinates",
-        "Python raise",
-    ): 1,
-    (
-        "src.tasks.blcs.models.blcs_track_query_reference_model."
-        "BLCSTrackQueryReferenceModel.build_spatial_coordinates",
-        "Python raise",
-    ): 1,
-    (
-        "src.tasks.plcs.models.plcs_track_query_reference_model."
-        "PLCSTrackQueryReferenceModel.build_spatial_coordinates",
-        "Python raise",
-    ): 1,
-    (
-        "src.tasks.plcs.models.plcs_track_query_reference_model."
-        "PLCSTrackQueryReferenceModel.forward",
-        "forward validation helper validate_reference_context_mask",
-    ): 1,
-    (
-        "src.utils.models.architectures.transformer_sequence_discriminator."
-        "TransformerSequenceDiscriminator.forward",
+        "src.utils.models.architectures.transformer_sequence_discriminator.TransformerSequenceDiscriminator.forward",
         "Python raise",
     ): 9,
     (
-        "src.utils.models.architectures.transformer_sequence_discriminator."
-        "TransformerSequenceDiscriminator.forward",
+        "src.utils.models.architectures.transformer_sequence_discriminator.TransformerSequenceDiscriminator.forward",
         "Python shape/value validation branch",
     ): 5,
     (
-        "src.utils.models.architectures.transformer_sequence_discriminator."
-        "TransformerSequenceDiscriminator.forward",
+        "src.utils.models.architectures.transformer_sequence_discriminator.TransformerSequenceDiscriminator.forward",
         "runtime implementation/type selection via isinstance",
     ): 2,
 }
@@ -396,170 +633,140 @@ TRANSFORMER_SEQUENCE_DISCRIMINATOR_PATH = (
     "TransformerSequenceDiscriminator.forward",
 )
 COURT_POSE_HEAD_PATH = (
-    "src.tasks.court_detection.models.pose_head.CourtPose10DHead.forward",
+    "src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",
 )
 COURT_HIERARCHICAL_PATH = (
-    "src.tasks.court_detection.models.hierarchical_model."
-    "CourtHierarchicalModel.forward",
+    "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
 )
 COURT_TRANSFORMER_PATH = (
-    "src.tasks.court_detection.models.transformer_encoder."
-    "CourtTransformerEncoder.forward",
+    "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
 )
 COURT_TRANSFORMER_INPUT_VALIDATION_PATH = (
     *COURT_TRANSFORMER_PATH,
-    "src.tasks.court_detection.models.transformer_encoder."
+    "src.tasks.court_detection.models.dinov3_dpt."
     "CourtTransformerEncoder._validate_input",
 )
 COURT_TRANSFORMER_PATCH_VALIDATION_PATH = (
     *COURT_TRANSFORMER_PATH,
-    "src.tasks.court_detection.models.transformer_encoder."
+    "src.tasks.court_detection.models.dinov3_dpt."
     "CourtTransformerEncoder._validate_patch_valid_mask",
 )
 COURT_TRANSFORMER_PATCH_POSITIONS_PATH = (
     *COURT_TRANSFORMER_PATH,
-    "src.tasks.court_detection.models.transformer_encoder.build_patch_positions",
+    "src.tasks.court_detection.models.dinov3_dpt.build_patch_positions",
 )
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
-    BLCS_SINGLE_VIEW_MASK_PATH: {
-        "forward validation helper _validate_num_court_tokens": 1,
-        "forward validation helper _validate_padding_mask": 1,
+    # Shared physical integration/normalization retain their public contracts.
+    # Keep these exact paths/counts; do not hide other checks in BLCS forward.
+    ("src.tasks.blcs.training.losses.BLCSLoss.forward",): {"Python raise": 2},
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.tasks.blcs.physics.rollout.rollout_residuals",
+    ): {"Python shape/value validation branch": 1},  # skip empty support
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.tasks.blcs.physics.rollout.rollout_residuals",
+        "src.utils.physics.ball.integrate.integrate_flight",
+    ): {"Python raise": 1},
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.utils.schema.court_normalization.denormalize_court_position",
+        "src.utils.schema.court_normalization._denormalize",
+    ): {
+        "Python shape/value validation branch": 1,
+        "forward validation helper _validate_coordinates": 1,
+        "runtime implementation/type selection via isinstance": 1,
     },
-    BLCS_SINGLE_VIEW_COURT_COUNT_VALIDATION_PATH: {
+    (
+        "src.tasks.blcs.training.losses.BLCSLoss.forward",
+        "src.utils.schema.court_normalization.denormalize_court_position",
+        "src.utils.schema.court_normalization._denormalize",
+        "src.utils.schema.court_normalization._validate_coordinates",
+    ): {
+        "Python raise": 3,
+        "Python shape/value validation branch": 2,
+        "runtime implementation/type selection via isinstance": 1,
+    },
+    (
+        "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
+        "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel._encode_views",
+        "src.tasks.blcs.models.components.padding.build_axial_padding_masks",
+    ): {
         "Python raise": 2,
         "Python shape/value validation branch": 1,
+        "forward validation helper _validate_padding_mask": 1,
         "runtime implementation/type selection via type": 1,
     },
-    BLCS_SINGLE_VIEW_PADDING_VALIDATION_PATH: {
+    (
+        "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
+        "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel._encode_views",
+        "src.tasks.blcs.models.components.padding.build_axial_padding_masks",
+        "src.tasks.blcs.models.components.padding._validate_padding_mask",
+    ): {
         "Python raise": 4,
         "Python shape/value validation branch": 3,
         "runtime implementation/type selection via isinstance": 1,
     },
-    BLCS_SINGLE_VIEW_OUTPUT_MASK_PATH: {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-    },
-    BLCS_AXIAL_MASK_PATH: {
-        "Python raise": 2,
-        "Python shape/value validation branch": 1,
-        "forward validation helper _validate_padding_mask": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    BLCS_AXIAL_PADDING_VALIDATION_PATH: {
-        "Python raise": 4,
-        "Python shape/value validation branch": 3,
-        "runtime implementation/type selection via isinstance": 1,
-    },
-    BLCS_AXIAL_OUTPUT_MASK_PATH: {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-    },
-    BLCS_AXIAL_REFERENCE_OUTPUT_MASK_PATH: {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-    },
-    BLCS_FIXED_QUERY_MASK_PATH: {
-        "Python raise": 6,
-        "Python shape/value validation branch": 4,
-        "runtime implementation/type selection via isinstance": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    BLCS_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 1},
-    BLCS_COMPRESSED_SPATIAL_MASK_PATH: {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-    },
-    PLCS_SPATIAL_COORDINATE_VALIDATION_PATH: {"Python raise": 1},
-    PLCS_FIXED_QUERY_MASK_PATH: {
-        "Python raise": 6,
-        "Python shape/value validation branch": 4,
-        "runtime implementation/type selection via isinstance": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    PLCS_COMPRESSED_SPATIAL_MASK_PATH: {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-    },
-    BLCS_REFERENCE_SPATIAL_PATH: {"Python raise": 1},
-    BLCS_REFERENCE_BUILDER_PATH: {
-        "Python raise": 3,
-        "Python shape/value validation branch": 2,
-        "forward validation helper _require_positive_int": 2,
-        "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 1,
-    },
-    (*BLCS_REFERENCE_BUILDER_PATH, REFERENCE_INDEX_VALIDATION): {
-        "Python raise": 6,
-        "Python shape/value validation branch": 2,
-        "runtime implementation/type selection via isinstance": 1,
-    },
-    (*BLCS_REFERENCE_BUILDER_PATH, REFERENCE_POSITIVE_INT_VALIDATION): {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    (PLCS_REFERENCE_FORWARD,): {
-        "forward validation helper validate_reference_context_mask": 1,
-    },
-    PLCS_REFERENCE_CONTEXT_PATH: {
-        "Python raise": 9,
-        "Python shape/value validation branch": 4,
-        "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 2,
-    },
-    (*PLCS_REFERENCE_CONTEXT_PATH, REFERENCE_INDEX_VALIDATION): {
-        "Python raise": 6,
-        "Python shape/value validation branch": 2,
-        "runtime implementation/type selection via isinstance": 1,
-    },
-    PLCS_REFERENCE_SPATIAL_PATH: {"Python raise": 1},
-    PLCS_REFERENCE_BUILDER_PATH: {
-        "Python raise": 3,
-        "Python shape/value validation branch": 2,
-        "forward validation helper _require_positive_int": 2,
-        "forward validation helper validate_reference_view_index": 1,
-        "runtime implementation/type selection via isinstance": 1,
-    },
-    (*PLCS_REFERENCE_BUILDER_PATH, REFERENCE_POSITIVE_INT_VALIDATION): {
-        "Python raise": 1,
-        "Python shape/value validation branch": 1,
-        "runtime implementation/type selection via type": 1,
-    },
-    SLCS_MASK_PATH: {
+    (
+        "src.tasks.blcs.models.blcs_multiview_axial_model.BLCSMultiViewAxialModel.forward",
+        "src.tasks.blcs.models.components.padding.mask_trajectory_outputs",
+    ): {"Python raise": 1, "Python shape/value validation branch": 1},
+    (
+        "src.tasks.slcs.models.slcs_model.SLCSFusionModel.forward",
+        "src.tasks.slcs.models.components.padding.build_slcs_padding_masks",
+    ): {
         "Python raise": 2,
         "Python shape/value validation branch": 2,
         "forward validation helper _validate_padding_mask": 2,
         "runtime implementation/type selection via type": 2,
     },
-    SLCS_PADDING_VALIDATION_PATH: {
+    (
+        "src.tasks.slcs.models.slcs_model.SLCSFusionModel.forward",
+        "src.tasks.slcs.models.components.padding.build_slcs_padding_masks",
+        "src.tasks.slcs.models.components.padding._validate_padding_mask",
+    ): {
         "Python raise": 5,
         "Python shape/value validation branch": 4,
         "runtime implementation/type selection via isinstance": 1,
     },
-    TRANSFORMER_SEQUENCE_DISCRIMINATOR_PATH: {
+    (
+        "src.utils.models.architectures.transformer_sequence_discriminator.TransformerSequenceDiscriminator.forward",
+    ): {
         "Python raise": 9,
         "Python shape/value validation branch": 5,
         "runtime implementation/type selection via isinstance": 2,
     },
-    COURT_POSE_HEAD_PATH: {
+    ("src.tasks.court_detection.models.dinov3_dpt.CourtPose10DHead.forward",): {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
     },
-    COURT_HIERARCHICAL_PATH: {"Python raise": 1},
-    COURT_TRANSFORMER_PATH: {
-        "Python raise": 1,
+    ("src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",): {
+        "Python assert": 1
+    },
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._decode_with_transformer",
+    ): {"Python raise": 2},
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtHierarchicalModel._feature_forward_values",
+    ): {"Python raise": 1},
+    ("src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",): {
         "forward validation helper self._validate_input": 1,
         "forward validation helper self._validate_patch_valid_mask": 1,
     },
-    COURT_TRANSFORMER_INPUT_VALIDATION_PATH: {
-        "Python raise": 6,
-        "Python shape/value validation branch": 1,
-    },
-    COURT_TRANSFORMER_PATCH_VALIDATION_PATH: {
-        "Python raise": 4,
-        "Python shape/value validation branch": 2,
-    },
-    COURT_TRANSFORMER_PATCH_POSITIONS_PATH: {
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_input",
+    ): {"Python raise": 6, "Python shape/value validation branch": 1},
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder._validate_patch_valid_mask",
+    ): {"Python raise": 4, "Python shape/value validation branch": 2},
+    (
+        "src.tasks.court_detection.models.dinov3_dpt.CourtTransformerEncoder.forward",
+        "src.tasks.court_detection.models.dinov3_dpt.build_patch_positions",
+    ): {
         "Python raise": 1,
         "Python shape/value validation branch": 1,
         "runtime implementation/type selection via type": 2,
@@ -639,6 +846,7 @@ def _repository_consumer_files() -> tuple[Path, ...]:
         "scripts",
         ".spin",
         "experiments",
+        "tests/benchmarks",
     )
     suffixes = {".json", ".py", ".pyi", ".sh", ".toml", ".yaml", ".yml"}
     return tuple(
@@ -1373,17 +1581,14 @@ def test_forward_validation_boundary_controls_freeze_paths_and_counts() -> None:
 
 
 def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct() -> None:
-    shared_helper = "src.utils.models.multiview_padding.build_fixed_query_padding_masks"
-    discovered = {
-        call_path
-        for _, _, call_path in _transitive_forward_functions()
-        if call_path[-1] == shared_helper
+    shared = "src.utils.models.components.rope.apply_rotary_emb"
+    roots = {
+        path[0] for _, _, path in _transitive_forward_functions() if path[-1] == shared
     }
-
-    assert discovered == {
-        BLCS_FIXED_QUERY_MASK_PATH,
-        PLCS_FIXED_QUERY_MASK_PATH,
-    }
+    assert {
+        "src.utils.models.components.attention.MultiHeadSelfAttention.forward",
+        "src.utils.models.components.attention.GroupedQuerySelfAttention.forward",
+    } <= roots
 
 
 def test_transitive_forward_inventory_crosses_repository_modules() -> None:
@@ -1408,8 +1613,13 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
     assert original <= deleted
     removed = (
         *REMOVED_MODULES,
+        *BALL_STORE_REMOVED_MODULES,
+        *BALL_MDD_CONSOLIDATION_REMOVED_MODULES,
         *COURT_INFERENCE_REMOVED_MODULES,
+        *COURT_SINGLE_MODEL_REMOVED_MODULES,
+        *COURT_OFFLINE_TARGET_REMOVED_MODULES,
         *TENNIS_SCENE_REMOVED_MODULES,
+        *SINGLE_OBJECT_REMOVED_MODULES,
     )
     unexpected = {
         module
@@ -1418,11 +1628,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
     }
     assert not unexpected, f"deletions outside the canonical migration: {unexpected}"
 
-    missing = [
-        module
-        for module in removed
-        if _module_path(module) is not None
-    ]
+    missing = [module for module in removed if _module_path(module) is not None]
     assert not missing, f"removed modules still exist: {missing}"
 
     stale: list[str] = []
@@ -1432,7 +1638,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
         text = path.read_text(encoding="utf-8", errors="replace")
         for module in removed:
             references = (module, module.replace(".", "/"))
-            if any(reference in text for reference in references):
+            if any(re.search(re.escape(reference) + r"(?![A-Za-z0-9_])", text) for reference in references):
                 stale.append(f"{path.relative_to(REPOSITORY_ROOT)}: {module}")
     assert not stale, "stale removed-module references:\n" + "\n".join(stale)
 
@@ -1589,7 +1795,7 @@ class ActiveAdapters:
 
 def test_static_src_import_modules_exist() -> None:
     missing: list[str] = []
-    for path in _repository_consumer_python_files():
+    for path in _repository_reference_python_files():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             modules: tuple[str, ...] = ()

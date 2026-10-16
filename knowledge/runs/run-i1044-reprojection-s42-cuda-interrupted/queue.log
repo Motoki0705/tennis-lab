@@ -1,0 +1,125 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791853065391483295_1326108_i1044-reprojection-s42-u4000 (commit=e8d7f72d507f provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name    ┃ Type                    ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model   │ BLCSMultiViewAxialModel │ 51.9 M │ train │     0 │
+│ 1 │ loss_fn │ BLCSLoss                │      0 │ train │     0 │
+└───┴─────────┴─────────────────────────┴────────┴───────┴───────┘
+Trainable params: 51.9 M                                                        
+Non-trainable params: 0                                                         
+Total params: 51.9 M                                                            
+Total estimated model params size (MB): 207.743                                 
+Modules in train mode: 229                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 2. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 49, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1079, in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1123, in _run_stage
+    self.fit_loop.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 217, in run
+    self.advance()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py", line 469, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 153, in run
+    self.advance(data_fetcher)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 352, in advance
+    batch_output = self.automatic_optimization.run(trainer.optimizers[0], batch_idx, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 185, in run
+    closure()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 146, in __call__
+    self._result = self.closure(*args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 131, in closure
+    step_output = self._step_fn()
+                  ^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 319, in _training_step
+    training_step_output = call._call_strategy_hook(trainer, "training_step", *kwargs.values())
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 329, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py", line 391, in training_step
+    return self.lightning_module.training_step(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/training/gan_training.py", line 419, in training_step
+    loss, metrics = self._shared_stage_step(batch, "train")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/training/gan_training.py", line 340, in _shared_stage_step
+    result = self._compute_supervised_result(batch, stage)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/training/lightning_module.py", line 166, in _compute_supervised_result
+    prepared = self.io_adapter.build_training_batch(batch)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/model_io/adapters.py", line 262, in build_training_batch
+    call = self.build_call(batch)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/model_io/adapters.py", line 580, in build_call
+    _validate_uv("ball_uv", ball_uv, ball_vis)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/model_io/adapters.py", line 81, in _validate_uv
+    if not bool(torch.isfinite(tensor).all()):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/experiments/issue1044.py", line 213, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/blcs/experiments/issue1044.py", line 168, in main
+    runner.run(config)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/src/tasks/base/training/runner.py", line 107, in run
+    trainer.fit(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/call.py", line 70, in _call_and_handle_interrupt
+    trainer._teardown()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/trainer.py", line 1102, in _teardown
+    self.strategy.teardown()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/strategies/strategy.py", line 532, in teardown
+    _optimizers_to_device(self.optimizers, torch.device("cpu"))
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/lightning_fabric/utilities/optimizer.py", line 27, in _optimizers_to_device
+    _optimizer_to_device(opt, device)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/lightning_fabric/utilities/optimizer.py", line 41, in _optimizer_to_device
+    v[key] = move_data_to_device(val, device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/lightning_fabric/utilities/apply_func.py", line 110, in move_data_to_device
+    return apply_to_collection(batch, dtype=_TransferableDataType, function=batch_to)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/lightning_utilities/core/apply_func.py", line 70, in apply_to_collection
+    return function(data, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/lightning_fabric/utilities/apply_func.py", line 104, in batch_to
+    data_output = data.to(device, **kwargs)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.AcceleratorError: CUDA error: unknown error
+Search for `cudaErrorUnknown' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+For more detailed error information, run with CUDA_LOG_FILE=stderr
+
+exit_code=1

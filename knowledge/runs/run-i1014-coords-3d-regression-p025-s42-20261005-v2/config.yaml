@@ -1,0 +1,51 @@
+paths:
+  project_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+  artifact_root: /home/kamimura/projects/tennis-lab/outputs
+  output_root: /home/kamimura/projects/tennis-lab/outputs
+  cache_root: /home/kamimura/projects/tennis-lab/data
+  external_asset_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014/third_party
+data:
+  dataset: ball_refiner/single_object
+  evaluation_event_probability: 0.5
+  evaluation_seed: 20991
+corruption:
+  event_probability: 0.25
+  isolated_probability: 0.04
+  gap_min: 3
+  gap_max: 10
+  noise_p95_px: 200.0
+  jitter_sigma_px: 3.0
+  outlier_probability: 0.1
+  triangulation_steps: 3
+model:
+  dimensions: 3
+  architecture: regression
+  width: 96
+  layers: 4
+  heads: 4
+  dropout: 0.05
+  window_length: 128
+  flow_steps: 16
+compile:
+  enabled: false
+  backend: inductor
+  mode: default
+  fullgraph: false
+  dynamic: false
+training:
+  steps: 4000
+  batch_size: 32
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  evaluate_every: 500
+  log_every: 100
+  gan_weight: 0
+  gan_warmup_steps: 500
+  cpu_threads: 2
+run:
+  output_dir: ball_refiner/train/coordinates-3d-regression-p025/20261005-v2-s42
+  seed: 42
+  device: cuda
