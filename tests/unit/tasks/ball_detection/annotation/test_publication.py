@@ -24,6 +24,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing import (
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
     BallPublicationPolicy,
     BallSnapshot,
+    LegacyClipRange,
     LegacySourceGroup,
     PublishRequest,
     SourceSplit,
@@ -38,6 +39,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot i
 from src.tasks.base.annotation.artifacts import read_document
 from src.tasks.base.annotation.contracts import (
     ArtifactRef,
+    FrameRange,
     ProductOutcome,
     PublicationReceipt,
     content_digest,
@@ -419,6 +421,123 @@ def test_legacy_import_requires_complete_explicit_source_mapping(
     group = LegacySourceGroup(source="tracknet", group_id="old", source_id="c" * 64)
     with pytest.raises(ValueError, match="each stored group"):
         freeze_legacy_store(layout, base, (group, group))
+
+
+@pytest.mark.parametrize("after_append", [False, True])
+def test_legacy_chat_clip_cannot_be_readopted_under_canonical_id(
+    tmp_path: Path, after_append: bool
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    base = write_store_clip(
+        tmp_path / "data/baseline",
+        "chat_annotation/old-id",
+        [frame(i, ball()) for i in range(32)],
+        source="chat_annotation",
+    )
+    group = LegacySourceGroup(
+        source="chat_annotation",
+        group_id="chat_annotation",
+        source_id=content_digest(["local", "fixture"]),
+    )
+    with pytest.raises(ValueError, match="each chat_annotation clip"):
+        freeze_legacy_store(layout, base, (group,))
+    base_ref = freeze_legacy_store(
+        layout,
+        base,
+        (group,),
+        clip_ranges=(
+            LegacyClipRange(
+                store_clip_id="chat_annotation/old-id",
+                source_range=FrameRange(start=100, stop=132),
+            ),
+        ),
+    )
+    if after_append:
+        other = Environment(
+            layout.root,
+            base_snapshot=base_ref,
+            dataset_version="other",
+            video_id="other",
+            campaign_id="other",
+            publication_policy=BallPublicationPolicy(
+                jpeg_quality=90,
+                source_splits=(
+                    SourceSplit(
+                        source_id=content_digest(["local", "other"]), split="train"
+                    ),
+                ),
+            ),
+        )
+        receipt, snapshot, _ = result(
+            other,
+            BallPublisher(layout).publish(
+                PublishRequest(
+                    plan=other.plan_ref,
+                    product="frames",
+                    adoptions=(seal(other),),
+                )
+            ),
+        )
+        base_ref = receipt.snapshot
+        assert snapshot.clips[0].canonical_clip_id is not None
+    env = Environment(
+        layout.root,
+        base_snapshot=base_ref,
+        dataset_version="incremental",
+        publication_policy=BallPublicationPolicy(jpeg_quality=90, source_splits=()),
+    )
+    snapshot, _ = load_snapshot(layout, base_ref)
+    assert snapshot.clips[0].clip_id != env.manifest.clip_id
+    assert snapshot.clips[0].canonical_clip_id == env.manifest.clip_id
+    with pytest.raises(ValueError, match="duplicate or change an existing clip"):
+        BallPublisher(layout).publish(
+            PublishRequest(
+                plan=env.plan_ref,
+                product="frames",
+                adoptions=(seal(env),),
+            )
+        )
+    assert not destination(env).exists()
+
+
+def test_interrupted_staging_cleanup_keeps_owner_and_recovers(
+    setup: tuple[Environment, PublishRequest, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env, request, base = setup
+    service = BallPublisher(env.layout)
+    original = publishing.encode_clip
+
+    def interrupted_encode(*args: Any, **kwargs: Any) -> Any:
+        original(*args, **kwargs)
+        raise RuntimeError("encode interrupted")
+
+    with monkeypatch.context() as faults:
+        faults.setattr(publishing, "encode_clip", interrupted_encode)
+        with pytest.raises(RuntimeError, match="encode interrupted"):
+            service.publish(request)
+    staging = destination(env).with_name(".frames.staging-" + request.sha256)
+    owner = staging / "publication-intent.json"
+    owner_bytes = owner.read_bytes()
+
+    def interrupted_cleanup(path: Path) -> None:
+        # Simulate an interrupted recursive removal, after one entry vanished.
+        victim = (
+            path / "publication-intent.json"
+            if path == staging
+            else next(path.iterdir())
+        )
+        victim.unlink()
+        raise RuntimeError("cleanup interrupted")
+
+    with monkeypatch.context() as faults:
+        faults.setattr(publishing.shutil, "rmtree", interrupted_cleanup)
+        with pytest.raises(RuntimeError, match="cleanup interrupted"):
+            service.publish(request)
+    assert owner.read_bytes() == owner_bytes
+    reference = service.publish(request)
+    assert len(result(env, reference)[2].clips) == 2
+    assert len(BallFrameStore(base).clips) == 1
+    assert service.publish(request) == reference
 
 
 def test_second_append_preserves_explicit_masks_and_existing_snapshot(
