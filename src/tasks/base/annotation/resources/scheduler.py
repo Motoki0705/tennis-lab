@@ -375,22 +375,34 @@ class ResourceManager:
             ]
 
     def _recover(self) -> None:
-        for row in self._active():
+        for active in self._active():
             try:
                 with artifact_lock(
-                    self.layout, "resource-lease-" + row["id"], blocking=False
+                    self.layout, "resource-lease-" + active["id"], blocking=False
                 ):
-                    if row["owner"] is not None and owned_members(
-                        ProcessIdentity.from_document(json.loads(row["owner"]))
-                    ):
-                        continue
-                    request = ResourceRequest.model_validate_json(row["request"])
-                    missing = row["state"] == "running"
                     storage = self.storage
                     with self.registry.transaction() as db:
+                        # finish() can commit after the active snapshot and before
+                        # lease acquisition. Read and settle its latest record atomically.
+                        row = db.execute(
+                            "SELECT * FROM resource_requests WHERE id=?",
+                            (active["id"],),
+                        ).fetchone()
+                        if row is None:
+                            raise ValueError(
+                                "resource request disappeared during recovery"
+                            )
+                        if row["state"] not in {"running", "draining"}:
+                            continue
+                        if row["owner"] is not None and owned_members(
+                            ProcessIdentity.from_document(json.loads(row["owner"]))
+                        ):
+                            continue
+                        request = ResourceRequest.model_validate_json(row["request"])
+                        missing = row["state"] == "running"
                         storage.settle(row["id"], database=db)
                         db.execute(
-                            "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=?",
+                            "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=? AND state=?",
                             (
                                 "abandoned" if missing else "complete",
                                 request.gpu_seconds if missing else row["charged"],
@@ -401,6 +413,7 @@ class ResourceManager:
                                 if missing
                                 else row["reason"],
                                 row["id"],
+                                row["state"],
                             ),
                         )
                         # Finished output must be measured before releasing its reservation.
