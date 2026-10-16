@@ -317,6 +317,50 @@ def test_missing_ids_or_usage_are_unknown_and_images_do_not_jump_to_later_respon
     )
 
 
+@pytest.mark.parametrize("notifications", [0, 2])
+def test_unobserved_response_usage_has_unknown_totals(
+    fixture: Fixture, notifications: int
+) -> None:
+    ref = fixture.run(
+        *[
+            event(
+                "event_msg",
+                type="token_count",
+                info={
+                    "model_context_window": 400000,
+                    "total_token_usage": {"input_tokens": 100, "output_tokens": 10},
+                },
+            )
+            for _ in range(notifications)
+        ]
+    )
+    report = verify_report(fixture.layout, ref)
+    assert report.responses == 0 and report.token_notifications == notifications
+    assert all(value is None for value in report.totals.values())
+    assert all(value == 0 for value in report.known_subtotals.values())
+    assert not tuple(iter_responses(fixture.layout, ref))
+    assert "応答別usage未観測" in fixture.layout.artifact_path(
+        report.index_page
+    ).read_text()
+
+
+def test_observed_zero_usage_remains_zero(fixture: Fixture) -> None:
+    ref = fixture.run(
+        usage(
+            "zero",
+            input_tokens=0,
+            cached_input_tokens=0,
+            cache_write_input_tokens=0,
+            output_tokens=0,
+            reasoning_output_tokens=0,
+            total_tokens=0,
+        )
+    )
+    report = verify_report(fixture.layout, ref)
+    assert report.responses == 1
+    assert all(value == 0 for value in report.totals.values())
+
+
 def test_conflicting_duplicate_is_visible_and_cannot_prove_presentation(
     fixture: Fixture,
 ) -> None:
