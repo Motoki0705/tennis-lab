@@ -2,7 +2,7 @@
 
 `BallLearningAdapter`は[共通Learning](../../../base/annotation/learning/README.md)へ渡すtask実装。
 公開snapshotのtrain所属、固定holdout、採用MDD全重みを検証してから、学習・比較評価を別工程として実行する。
-production controllerへの接続と実動画受入は別工程であり、このpackageのCPU合成試験では代替しない。
+production controllerへの接続は[ワークフロー](../../../annotation/README.md)を参照する。CPU合成試験は実動画受入の代替ではない。
 
 ```mermaid
 flowchart LR
@@ -25,7 +25,7 @@ flowchart LR
 testはsource/clip重複の検査だけに用い、学習・候補選択では読まない。
 
 登録時に窓とcoverageを生成し、登録後は保存した入力が欠けていれば停止する。
-追加clipに座標教師を含む窓が無い場合もcoverageを保存して停止し、旧clipだけで追加学習しない。
+追加clipに座標教師を含む窓が無い場合はcoverageを保存し、共通管理へ`NoAdditionalTeachers`を返す。公開を保持した終端結果となり、旧clipだけで追加学習しない。
 初期モデル・recipe・累積snapshot・intentのdigestを通常のfull-model学習recipeへ組み込む。
 新runは全重みを転送し、optimizer/scheduleは初期化する。
 

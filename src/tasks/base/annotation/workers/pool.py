@@ -158,22 +158,52 @@ class WorkerPool:
         state: str,
         reason: str | None,
         *,
+        attempt: str,
+        from_states: tuple[str, ...] = ("running", "exited"),
         result: ArtifactRef | None = None,
-    ) -> None:
+    ) -> bool:
         with self.ledger.registry.transaction() as database:
+            row = database.execute(
+                "SELECT * FROM worker_tasks WHERE id=?", (work_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(work_id)
+            if row["current_attempt"] != attempt or row["state"] not in from_states:
+                return False
             database.execute(
-                "UPDATE worker_tasks SET state=?,reason=?,result=? WHERE id=?",
+                "UPDATE worker_tasks SET state=?,reason=?,result=? WHERE id=? AND current_attempt=? AND state=?",
                 (
                     state,
                     reason,
                     None if result is None else result.canonical_bytes().decode(),
                     work_id,
+                    attempt,
+                    row["state"],
                 ),
             )
-            database.execute(
-                "UPDATE worker_attempts SET state=?,reason=? WHERE id=(SELECT current_attempt FROM worker_tasks WHERE id=?)",
-                (state, reason, work_id),
+            updated = database.execute(
+                "UPDATE worker_attempts SET state=?,reason=? WHERE id=? AND work_id=? AND state=?",
+                (state, reason, attempt, work_id, row["state"]),
             )
+            if updated.rowcount != 1:
+                raise ValueError("task and attempt states disagree")
+            if state == "quota":
+                database.execute(
+                    "INSERT OR REPLACE INTO worker_campaign_stops VALUES (?,?)",
+                    (row["campaign"], reason or "Codex quota exhausted"),
+                )
+        return True
+
+    def _exit_receipt(
+        self, launch_ref: ArtifactRef, directory: Path
+    ) -> tuple[ArtifactRef, ExitReceipt]:
+        ref = annotation_reference(self.layout, directory / "exit.json")
+        execution = read_document(self.layout, ref, ExitReceipt)
+        if execution.launch_digest != launch_ref.digest:
+            raise ValueError("exit receipt belongs to another launch")
+        for reference in references(execution):
+            verify_reference(self.layout, reference)
+        return ref, execution
 
     def _settle_dead_slots(self) -> None:
         # Reclaim resource accounting after dispatcher death without adopting labels.
@@ -187,16 +217,28 @@ class WorkerPool:
         for row in rows:
             try:
                 with artifact_lock(self.layout, "worker-" + row["id"], blocking=False):
-                    _ref, launch = self._launch(row)
+                    row = self._task(row["id"])
+                    if row["state"] != "running":
+                        continue
+                    ref, launch = self._launch(row)
                     directory = Path(launch.directory)
                     self._require_no_members(directory)
                     if (directory / "exit.json").exists():
-                        self._mark(row["id"], "exited", None)
+                        _exit_ref, execution = self._exit_receipt(ref, directory)
+                        self._mark(
+                            row["id"],
+                            "quota" if execution.status == "quota" else "exited",
+                            execution.reason if execution.status == "quota" else None,
+                            attempt=launch.attempt,
+                            from_states=("running",),
+                        )
                     else:
                         self._mark(
                             row["id"],
                             "failed",
                             "supervisor disappeared without an exit receipt",
+                            attempt=launch.attempt,
+                            from_states=("running",),
                         )
             except BlockingIOError:
                 continue
@@ -212,6 +254,72 @@ class WorkerPool:
                 raise WorkerBusy(
                     "attempt still has owned processes, including orphaned descendants"
                 )
+
+    def _recover_unregistered_attempt(self, request: WorkRequest) -> None:
+        """Account for a resource admission interrupted before worker registration.
+
+        The caller holds both admission and work locks. Pending requests have never
+        acquired resources and retain their ID for normal backpressure retries.
+        """
+        if self.resources is None:
+            return
+        with self.ledger.registry.transaction() as database:
+            number = (
+                database.execute(
+                    "SELECT count(*) FROM worker_attempts WHERE work_id=?",
+                    (request.work_id,),
+                ).fetchone()[0]
+                + 1
+            )
+        attempt = f"{request.work_id}-{number:04d}"
+        path = self.layout.path(
+            "campaigns",
+            self.plan.campaign_id,
+            "workers",
+            request.work_id,
+            f"attempt-{number:04d}",
+            "launch.json",
+        )
+        if not path.exists():
+            return
+        ref = annotation_reference(self.layout, path)
+        launch = read_document(self.layout, ref, Launch)
+        if (
+            (launch.work_id, launch.attempt, launch.request, launch.resource_scope)
+            != (request.work_id, attempt, request, self.resources.reference)
+            or load_plan(verify_reference(self.layout, launch.plan)) != self.plan
+            or launch.resource_request is None
+        ):
+            raise ValueError("unregistered launch differs from the worker request")
+        with self.ledger.registry.transaction() as database:
+            resource = database.execute(
+                "SELECT request,state FROM resource_requests WHERE id=?",
+                (self.resources.key(launch.resource_request),),
+            ).fetchone()
+            if resource is None:
+                return
+            if (
+                resource["request"]
+                != launch.resource_request.canonical_bytes().decode()
+            ):
+                raise ValueError("unregistered launch has a different resource request")
+            if resource["state"] == "pending":
+                return
+            reason = "resource admission interrupted before worker registration"
+            database.execute(
+                "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
+                (
+                    attempt,
+                    request.work_id,
+                    number,
+                    ref.canonical_bytes().decode(),
+                    reason,
+                ),
+            )
+            database.execute(
+                "UPDATE worker_tasks SET state='failed',current_attempt=?,reason=?,result=NULL WHERE id=?",
+                (attempt, reason, request.work_id),
+            )
 
     def start(self, request: WorkRequest, *, retry: bool = False) -> str | None:
         self.register(request)
@@ -234,6 +342,7 @@ class WorkerPool:
                 ) as descriptor,
                 artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
+                self._recover_unregistered_attempt(request)
                 self._settle_dead_slots()
                 row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:
@@ -341,9 +450,6 @@ class WorkerPool:
                         storage_bytes=self.worker_storage_bytes,
                         gpu_seconds=0.0,
                     )
-                    resource_descriptor = resource_stack.enter_context(
-                        self.resources.lease(resource_request)
-                    )
                 launch = Launch(
                     work_id=request.work_id,
                     attempt=attempt,
@@ -365,6 +471,10 @@ class WorkerPool:
                     else None,
                 )
                 ref = write_document(self.layout, directory / "launch.json", launch)
+                if self.resources is not None and resource_request is not None:
+                    resource_descriptor = resource_stack.enter_context(
+                        self.resources.lease(resource_request)
+                    )
                 with self.ledger.registry.transaction() as database:
                     database.execute(
                         "INSERT INTO worker_attempts VALUES (?,?,?,'running',?,NULL)",
@@ -413,7 +523,11 @@ class WorkerPool:
                     self.children[attempt] = process
                 except OSError as error:
                     self._mark(
-                        request.work_id, "failed", f"supervisor launch failed: {error}"
+                        request.work_id,
+                        "failed",
+                        f"supervisor launch failed: {error}",
+                        attempt=attempt,
+                        from_states=("running",),
                     )
                     raise
                 return attempt
@@ -431,29 +545,30 @@ class WorkerPool:
             raise ValueError(
                 "reconciliation request differs from the registered campaign"
             )
-        if row["state"] in {
-            "ready",
-            "failed",
-            "deferred",
-            "cancelled",
-            "quota",
-            "timed_out",
-            "validation_failed",
-        }:
-            return row
-        if row["state"] in {"complete", "not_applicable"}:
-            final = read_document(
-                self.layout,
-                ArtifactRef.model_validate_json(row["result"]),
-                AttemptResult,
-            )
-            self._verify_final(final)
-            return row
         try:
             with (
                 artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
                 artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
+                row = self._task(request.work_id)
+                if row["state"] in {
+                    "ready",
+                    "failed",
+                    "deferred",
+                    "cancelled",
+                    "quota",
+                    "timed_out",
+                    "validation_failed",
+                }:
+                    return row
+                if row["state"] in {"complete", "not_applicable"}:
+                    final = read_document(
+                        self.layout,
+                        ArtifactRef.model_validate_json(row["result"]),
+                        AttemptResult,
+                    )
+                    self._verify_final(final)
+                    return row
                 ref, launch = self._launch(row)
                 directory = Path(launch.directory)
                 self._require_no_members(directory)
@@ -472,14 +587,10 @@ class WorkerPool:
                         request.work_id,
                         "failed",
                         "supervisor disappeared without an exit receipt",
+                        attempt=launch.attempt,
                     )
                     return self._task(request.work_id)
-                exit_ref = annotation_reference(self.layout, exit_path)
-                execution = read_document(self.layout, exit_ref, ExitReceipt)
-                if execution.launch_digest != ref.digest:
-                    raise ValueError("exit receipt belongs to another launch")
-                for reference in references(execution):
-                    verify_reference(self.layout, reference)
+                exit_ref, execution = self._exit_receipt(ref, directory)
                 if execution.status != "succeeded":
                     if launch.test_command is None:
                         try:
@@ -499,12 +610,12 @@ class WorkerPool:
                                     + "\n"
                                 ).encode(),
                             )
-                    self._mark(request.work_id, execution.status, execution.reason)
-                    if execution.status == "quota":
-                        self.ledger.stop_campaign(
-                            self.plan.campaign_id,
-                            execution.reason or "Codex quota exhausted",
-                        )
+                    self._mark(
+                        request.work_id,
+                        execution.status,
+                        execution.reason,
+                        attempt=launch.attempt,
+                    )
                     return self._task(request.work_id)
                 final_path = directory / "result.receipt.json"
                 if final_path.exists():
@@ -561,17 +672,19 @@ class WorkerPool:
                             request.work_id,
                             "validation_failed",
                             f"{type(error).__name__}: {error}",
+                            attempt=launch.attempt,
                         )
                         return self._task(request.work_id)
                 self._mark(
                     request.work_id,
                     final.outcome.status,
                     final.outcome.reason,
+                    attempt=launch.attempt,
                     result=final_ref,
                 )
                 return self._task(request.work_id)
         except BlockingIOError:
-            return row
+            return self._task(request.work_id)
 
     def stop(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
@@ -599,5 +712,11 @@ class WorkerPool:
         current = self.reconcile(request)
         if current["state"] in {"complete", "not_applicable"}:
             return current
-        self._mark(request.work_id, "cancelled", reason)
+        self._mark(
+            request.work_id,
+            "cancelled",
+            reason,
+            attempt=launch.attempt,
+            from_states=(current["state"],),
+        )
         return self._task(request.work_id)

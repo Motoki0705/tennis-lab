@@ -447,10 +447,14 @@ def _capture(
             )
         )
     complete_totals = {
-        key: value if not missing[key] and not missing_id and not conflicting else None
+        key: value
+        if entries and not missing[key] and not missing_id and not conflicting
+        else None
         for key, value in known.items()
     }
     summary = f"応答ID {len(entries)}件 / 重複通知 {duplicate}件 / ID欠損 {missing_id}件 / usage欠損 {missing_usage}件。画像単独のtoken料金は算出しません。"
+    if not entries:
+        summary += " 応答別usage未観測のため合計は不明です。"
     return write_document(
         layout,
         directory / "report.json",
@@ -528,17 +532,29 @@ def verify_report(layout: AnnotationLayout, reference: ArtifactRef) -> Telemetry
     return report
 
 
+class ImagePresentationUnavailable(ValueError):
+    """Authentic telemetry cannot establish which model received the images."""
+
+
 def presented_images(
     layout: AnnotationLayout, reference: ArtifactRef
 ) -> tuple[ArtifactRef, ...]:
     """Only exact, catalog-bound bytes followed by an identified response qualify."""
-    report = read_document(layout, reference, TelemetryReport)
+    report = verify_report(layout, reference)
     if report.conflicting_usage_records:
-        raise ValueError("conflicting response IDs cannot prove image presentation")
+        raise ImagePresentationUnavailable(
+            "conflicting response IDs cannot prove image presentation"
+        )
     launch = read_document(layout, report.launch, Launch)
     plan = load_plan(verify_reference(layout, launch.plan))
+    if not report.model_contexts:
+        raise ImagePresentationUnavailable(
+            "logged model is missing; image presentation cannot be verified"
+        )
     if report.model_contexts != (plan.agent_model,):
-        raise ValueError("logged model does not match the frozen campaign")
+        raise ImagePresentationUnavailable(
+            "logged model does not match the frozen campaign"
+        )
     result: set[ArtifactRef] = set()
     for response in iter_responses(layout, reference):
         for output in response.tool_outputs:
