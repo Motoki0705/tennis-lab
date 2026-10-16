@@ -50,6 +50,9 @@ state = pool.reconcile(request)
   [resources](../resources/README.md) のscopeとPSS/保存予約を必須とし、
   `CapacityUnavailable` と `BudgetStopped` を区別する。supervisorが資源leaseを継承し、
   稼働中の計測と終了時の回収を担当する。
+  lease取得前に不変launchを保存する。資源受付後・worker台帳登録前に中断したattemptは、
+  再開時に台帳へ失敗として回収し、明示retryでは新しいattempt/request IDを発行する。
+  まだ資源を取得していないpending要求は同じIDで受付を再試行し、待機枠を重複消費しない。
 
 標準状態は `ready → running → complete`、未回収終了は `exited`（quotaはadmissionでも確定）。
 `failed / quota / timed_out / cancelled / validation_failed / deferred` は理由を保存する。
