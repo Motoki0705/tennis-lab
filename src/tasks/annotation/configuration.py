@@ -202,8 +202,9 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
         plan_path = layout.path("campaigns", plan.campaign_id, "plan.json")
         if plan_path.exists() and load_plan(plan_path) != plan:
             raise ValueError("configuration differs from the existing immutable plan")
-        request_ref = write_document(layout, directory / "request.json", data)
-        plan_ref = annotation_reference(layout, save_plan(layout, plan))
+        # Resolve immutable scope inputs under the scope lock, then validate and
+        # reserve the campaign binding in its registry transaction. A conflict
+        # must not freeze a request/plan that cannot be configured successfully.
         if isinstance(data.budget, ExistingBudget):
             resources = ResourceManager(layout, data.budget.scope)
         else:
@@ -217,6 +218,8 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
                 max_pending_per_stage=scope.max_pending_per_stage,
             )
         resources.bind(plan)
+        request_ref = write_document(layout, directory / "request.json", data)
+        plan_ref = annotation_reference(layout, save_plan(layout, plan))
         runtime = Runtime(
             plan=plan_ref, scope=resources.reference, **data.runtime.model_dump()
         )
