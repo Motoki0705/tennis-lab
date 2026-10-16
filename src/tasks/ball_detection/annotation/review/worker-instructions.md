@@ -7,6 +7,9 @@ Write only in your attempt's `work/`. Request parent-owned services using the fi
 command below plus `--operation NAME --parameters /absolute/path/in/work/params.json`.
 Run it with the stated PYTHONPATH; the services own rendering and revision writes.
 Keep JSON file output out of tool messages. Each service returns a bounded receipt.
+Wait for each requested service to return before issuing another one. Finish all
+image/row requests for the current revision before submitting an edit, then use
+the revision returned by that edit for the next requests.
 
 1. `review_handoff`: parameters are `scope: {start,stop}` (half-open, at most 64
    frames), optional `expected_revision`, `after_row`, and `previous_revision`.

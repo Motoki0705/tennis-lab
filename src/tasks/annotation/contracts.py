@@ -123,6 +123,14 @@ class ReviewOperation(Document):
     service_request: ArtifactRef
 
 
+class ServiceSessionOperation(Document):
+    action: Literal["service_session"] = "service_session"
+    session: PositiveInt
+    maximum_requests: int = Field(ge=1, le=128)
+    maximum_services_per_attempt: PositiveInt
+    duration_seconds: float = Field(gt=0, le=600)
+
+
 class PublishOperation(Document):
     action: Literal["publish_ball"] = "publish_ball"
     review: ArtifactRef
@@ -157,6 +165,7 @@ class OperationInput(Document):
         | PreviewOperation
         | PredictionPreviewOperation
         | ReviewOperation
+        | ServiceSessionOperation
         | PublishOperation
         | BootstrapModelOperation
         | InspectStorageOperation
@@ -178,6 +187,7 @@ class OperationInput(Document):
             "screen_prepare",
             "screen_preview",
             "review_service",
+            "service_session",
             "prediction_preview",
         }:
             return "render"

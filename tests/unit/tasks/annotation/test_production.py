@@ -700,3 +700,277 @@ def test_cli_resumes_only_the_named_worker_campaign(session: ReviewSession) -> N
             )
         ] == [("unrelated", "keep this stop")]
     assert controller.resources.reference == controller.runtime.scope
+
+
+def test_service_fifo_and_child_reply_do_not_need_parent_revisit(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import os
+
+    from src.tasks.annotation.contracts import OperationInput, ReviewOperation
+    from src.tasks.annotation.operations import execute
+    from src.tasks.base.annotation.artifacts import annotation_reference
+    from src.tasks.base.annotation.contracts import FrameRange
+    from src.tasks.base.annotation.workers.review.contracts import RowsRequest
+    from src.tasks.base.annotation.workers.services import ServiceReply
+
+    controller = controller_for(session)
+    layout = session.env.layout
+    refs = [
+        session.request_service(
+            "review_rows",
+            RowsRequest(
+                expected_revision=session.env.head(),
+                scope=FrameRange(start=i, stop=i + 1),
+            ),
+        )
+        for i in (1, 2)
+    ]
+    # Deliberately oppose hash order. FIFO follows submission time, not filenames.
+    refs.sort(key=lambda ref: ref.digest, reverse=True)
+    for index, ref in enumerate(refs):
+        os.utime(layout.artifact_path(ref), ns=(1_000_000 + index, 1_000_000 + index))
+    calls = []
+
+    def dispatch(data: OperationInput) -> dict[str, Any]:
+        calls.append(data)
+        return {"state": "running"}
+
+    controller.broker.operation = dispatch
+    assert controller.production is not None
+    pool = controller.production.pool
+    row = pool.ledger.task(session.request.work_id)
+    controller.broker.process(session.request, row, pool)
+    assert calls == []
+    controller.broker.flush()
+    assert [call.operation.service_request for call in calls] == refs[:1]
+    op = calls[0]
+    assert isinstance(op.operation, ReviewOperation)
+    operation_ref = write_document(
+        layout,
+        layout.path(
+            "campaigns",
+            session.env.plan.campaign_id,
+            "jobs",
+            op.sha256 + "-1",
+            "operation.json",
+        ),
+        op,
+    )
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", operation_ref.digest)
+    # The child writes a durable reply itself. There is no second parent poll.
+    execute(layout, operation_ref)
+    service_digest = layout.artifact_path(refs[0]).stem
+    reply_path = session.directory / "services" / service_digest / "reply.json"
+    reply = read_document(
+        layout, annotation_reference(layout, reply_path), ServiceReply
+    )
+    assert reply.status == "succeeded" and reply.result is not None
+    controller.broker.process(session.request, row, pool)
+    controller.broker.flush()
+    assert [call.operation.service_request for call in calls] == refs
+    # Ending the worker between collection and dispatch prevents admission.
+    controller.broker.process(session.request, row, pool)
+    session.state("deferred")
+    controller.broker.flush()
+    assert len(calls) == 2
+
+
+def test_child_delivers_failure_and_retry_does_not_inherit_old_service_failure(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation.contracts import OperationInput, ReviewOperation
+    from src.tasks.annotation.operations import execute
+    from src.tasks.base.annotation.artifacts import annotation_reference
+    from src.tasks.base.annotation.contracts import ArtifactRef, FrameRange
+    from src.tasks.base.annotation.execution.contracts import StageLaunch
+    from src.tasks.base.annotation.workers.review.contracts import RowsRequest
+    from src.tasks.base.annotation.workers.services import ServiceReply
+
+    controller = controller_for(session)
+    env = session.env
+    service_ref = session.request_service(
+        "review_rows",
+        RowsRequest(expected_revision=env.head(), scope=FrameRange(start=1, stop=2)),
+    )
+    op = OperationInput(
+        plan=env.plan_ref, operation=ReviewOperation(service_request=service_ref)
+    )
+    directory = env.layout.path(
+        "campaigns", env.plan.campaign_id, "jobs", op.sha256 + "-1"
+    )
+
+    def submit(launch: StageLaunch) -> dict[str, Any]:
+        ref = write_document(env.layout, directory / "launch.json", launch)
+        return {"state": "failed", "launch": ref.model_dump()}
+
+    monkeypatch.setattr(controller.stages, "submit", submit)
+    state = controller.operation(op)
+    launch_ref = ArtifactRef.model_validate(state["launch"])
+    monkeypatch.setattr(controller.stages, "status", lambda _ref: state)
+    assert controller.status(details=False)["failures"] == [
+        dict(state, superseded=False)
+    ]
+    # A new worker attempt retires only the prior attempt's services.
+    session.open(2)
+    assert controller.status(details=False)["failures"] == []
+    assert controller.status(details=False)["stages"][0]["superseded"]
+    operation_ref = annotation_reference(env.layout, directory / "operation.json")
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", operation_ref.digest)
+    with pytest.raises(ValueError, match="current running worker attempt"):
+        execute(env.layout, operation_ref)
+    old_directory = env.layout.artifact_path(service_ref).parents[2]
+    reply_ref = annotation_reference(
+        env.layout,
+        old_directory
+        / "services"
+        / env.layout.artifact_path(service_ref).stem
+        / "reply.json",
+    )
+    reply = read_document(env.layout, reply_ref, ServiceReply)
+    assert reply.status == "failed" and reply.result is None
+    assert "current running worker attempt" in reply.reason
+
+    # Live status reuses verified terminal history; details re-verifies it.
+    def unexpected(_ref: ArtifactRef) -> dict[str, Any]:
+        raise ValueError("synthetic changed historical artifact")
+
+    monkeypatch.setattr(controller.stages, "status", unexpected)
+    assert controller.status(details=False)["failures"] == []
+    with pytest.raises(ValueError, match="changed historical artifact"):
+        controller.status(details=True)
+    assert launch_ref == ArtifactRef.model_validate(state["launch"])
+
+
+def test_bounded_service_session_serves_multiple_requests_under_one_lease(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation.contracts import (
+        OperationInput,
+        OperationReceipt,
+        ServiceSessionOperation,
+    )
+    from src.tasks.annotation.operations import execute
+    from src.tasks.annotation.service_sessions import MemberReceipt, SessionReceipt
+    from src.tasks.base.annotation.artifacts import annotation_reference
+    from src.tasks.base.annotation.contracts import FrameRange
+    from src.tasks.base.annotation.workers.review.contracts import RowsRequest
+    from src.tasks.base.annotation.workers.services import ServiceReply
+
+    controller = controller_for(session)
+    layout = session.env.layout
+    refs = [
+        session.request_service(
+            "review_rows",
+            RowsRequest(
+                expected_revision=session.env.head(),
+                scope=FrameRange(start=i, stop=i + 1),
+            ),
+        )
+        for i in (1, 2)
+    ]
+    operation = OperationInput(
+        plan=controller.runtime.plan,
+        operation=ServiceSessionOperation(
+            session=1,
+            maximum_requests=2,
+            maximum_services_per_attempt=512,
+            duration_seconds=3,
+        ),
+    )
+    reference = write_document(
+        layout,
+        layout.path(
+            "campaigns",
+            controller.plan.campaign_id,
+            "jobs",
+            operation.sha256 + "-1",
+            "operation.json",
+        ),
+        operation,
+    )
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+    receipt_ref = execute(layout, reference)
+    receipt = read_document(layout, receipt_ref, OperationReceipt)
+    report = read_document(layout, receipt.results[0], SessionReceipt)
+    assert report.reason == "request limit"
+    assert len(report.members) == 2
+    for member_ref in report.members:
+        member = read_document(layout, member_ref, MemberReceipt)
+        assert member.session == reference and member.result is not None
+        reply = read_document(layout, member.reply, ServiceReply)
+        assert reply.status == "succeeded"
+    for service_ref in refs:
+        path = layout.artifact_path(service_ref)
+        reply_ref = annotation_reference(
+            layout, session.directory / "services" / path.stem / "reply.json"
+        )
+        assert read_document(layout, reply_ref, ServiceReply).result is not None
+    with controller.resources.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM resource_requests").fetchone()[0] == 0
+    # Only the enclosing supervisor may execute the nested operations.
+    member = read_document(layout, report.members[0], MemberReceipt)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", member.operation.digest)
+    with pytest.raises(ValueError, match="campaign stage"):
+        execute(layout, member.operation)
+
+
+def test_service_session_stage_handles_subsequent_requests_without_parent_poll(
+    session: ReviewSession,
+) -> None:
+    from src.tasks.annotation.contracts import OperationInput, ServiceSessionOperation
+    from src.tasks.annotation.service_sessions import SessionReceipt
+    from src.tasks.base.annotation.artifacts import annotation_reference
+    from src.tasks.base.annotation.contracts import FrameRange
+    from src.tasks.base.annotation.workers.review.contracts import RowsRequest
+    from src.tasks.base.annotation.workers.services import ServiceReply
+
+    controller = controller_for(session)
+    layout = session.env.layout
+    operation = OperationInput(
+        plan=controller.runtime.plan,
+        operation=ServiceSessionOperation(
+            session=1,
+            maximum_requests=2,
+            maximum_services_per_attempt=512,
+            duration_seconds=12,
+        ),
+    )
+    state = controller.operation(operation)
+    assert state["state"] == "running"
+    # The second request does not exist at dispatch. The live, owned session
+    # admits it through the same immutable worker binding and returns it directly.
+    for index in (1, 2):
+        service_ref = session.request_service(
+            "review_rows",
+            RowsRequest(
+                expected_revision=session.env.head(),
+                scope=FrameRange(start=index, stop=index + 1),
+            ),
+        )
+        reply_path = (
+            session.directory
+            / "services"
+            / layout.artifact_path(service_ref).stem
+            / "reply.json"
+        )
+        deadline = time.monotonic() + 10
+        while not reply_path.exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        reply = read_document(
+            layout, annotation_reference(layout, reply_path), ServiceReply
+        )
+        assert reply.status == "succeeded"
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        state = controller.operation(operation)
+        if state["state"] == "succeeded":
+            break
+        time.sleep(0.02)
+    assert state["state"] == "succeeded", state
+    result = controller.receipt(state)
+    report = read_document(layout, result.results[0], SessionReceipt)
+    assert len(report.members) == 2
+    with controller.resources.registry.transaction() as db:
+        rows = db.execute("SELECT stage FROM resource_requests").fetchall()
+    assert [row[0] for row in rows] == ["render"]

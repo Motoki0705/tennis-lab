@@ -8,9 +8,17 @@ import time
 from pathlib import Path
 from typing import Any, Literal
 
-from ..artifacts import annotation_reference, read_document, verify_reference
+from ..artifacts import (
+    annotation_reference,
+    artifact_lock,
+    read_document,
+    verify_reference,
+    write_document,
+)
 from ..contracts import ArtifactRef, Digest, Document, Identifier
 from ..paths import AnnotationLayout
+from .contracts import Launch
+from .ledger import WorkerLedger
 
 
 class ServiceRequest(Document):
@@ -24,6 +32,52 @@ class ServiceReply(Document):
     status: Literal["succeeded", "failed"]
     result: ArtifactRef | None
     reason: str | None
+
+
+def require_active_attempt(
+    layout: AnnotationLayout, launch: Launch, actor: ArtifactRef
+) -> None:
+    ledger = WorkerLedger(layout)
+    row = ledger.task(launch.work_id)
+    with ledger.registry.transaction() as db:
+        saved = db.execute(
+            "SELECT launch FROM worker_attempts WHERE id=? AND work_id=?",
+            (launch.attempt, launch.work_id),
+        ).fetchone()
+    if (
+        row["state"] != "running"
+        or row["current_attempt"] != launch.attempt
+        or saved is None
+        or ArtifactRef.model_validate_json(saved["launch"]) != actor
+        or (Path(launch.directory) / "exit.json").exists()
+    ):
+        raise ValueError("service requires the current running worker attempt")
+
+
+def publish_reply(
+    layout: AnnotationLayout, reference: ArtifactRef, reply: ServiceReply
+) -> ArtifactRef:
+    """The resource-owning operation can return a durable result immediately."""
+    if reference.size_bytes > 32768:
+        raise ValueError("worker service request exceeds 32 KiB")
+    request = read_document(layout, reference, ServiceRequest)
+    task_path = layout.artifact_path(request.task_request)
+    directory = task_path.parent
+    if (
+        task_path.name != "request.json"
+        or layout.artifact_path(reference)
+        != directory / "work/service-requests" / (request.sha256 + ".json")
+        or reply.request_digest != request.sha256
+    ):
+        raise ValueError("service reply differs from its immutable attempt/request")
+    verify_reference(layout, request.task_request)
+    if reply.result is not None:
+        verify_reference(layout, reply.result)
+    with artifact_lock(layout, "service-reply-" + request.sha256):
+        result: ArtifactRef = write_document(
+            layout, directory / "services" / request.sha256 / "reply.json", reply
+        )
+        return result
 
 
 def request_service(

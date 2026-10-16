@@ -347,7 +347,7 @@ def main() -> None:
         )
         result = recover(controller, recovery).model_dump(mode="json")
     elif args.command == "status":
-        result = controller.status()
+        result = controller.status(details=args.details)
         if not args.details:
             result = compact_status(result)
     elif args.command == "resume-budget":
@@ -367,12 +367,12 @@ def main() -> None:
         while True:
             try:
                 controller.cycle()
-                result = controller.status()
+                result = controller.status(details=False)
             except BudgetStopped as error:
                 result = {
                     "state": "budget_stopped",
                     "reason": str(error),
-                    "progress": controller.status(),
+                    "progress": controller.status(details=False),
                 }
             summary = json.dumps(compact_status(result), ensure_ascii=False)
             if summary != last or time.monotonic() - printed >= 30:

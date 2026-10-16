@@ -821,6 +821,7 @@ print(json.dumps({"type":"turn.completed"}))
     try:
         while row["state"] in {"running", "exited"} and time.monotonic() < deadline:
             controller._services(request, row)
+            controller.broker.flush()
             time.sleep(0.02)
             row = controller.pool.reconcile(request)
         assert row["state"] == "validation_failed", row
