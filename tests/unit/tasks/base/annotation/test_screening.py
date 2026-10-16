@@ -1268,8 +1268,10 @@ def finish_preview(controller: Controller, example: Example) -> None:
 @pytest.mark.parametrize(
     "invalid", [None, "missing_acquisition", "wrong_source", "reason"]
 )
+@pytest.mark.parametrize("exclusion_stage", ["acquire", "prepare"])
 def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str | None
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str | None,
+    exclusion_stage: str,
 ) -> None:
     from src.tasks.annotation.operations import execute
 
@@ -1291,10 +1293,44 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
     )
     finish_preview(controller, make_example(layout, screening, source))
     duplicate = source.model_copy(update={"video_id": "duplicate"})
+    if exclusion_stage == "prepare":
+        # Different source bytes, but identical decoded frames in the selected clip.
+        media_path = layout.path("campaigns", "inputs", "overlapping-source.mp4")
+        encode_video(
+            media_path, width=64, height=32, time_base=Fraction(1, 10),
+            rate=Fraction(10),
+            frames=(
+                (
+                    av.VideoFrame.from_ndarray(
+                        np.full((32, 64, 3), (i if i < 160 else i + 100) % 255, np.uint8),
+                        format="rgb24",
+                    ),
+                    i, 1,
+                )
+                for i in range(320)
+            ),
+            crf=25, preset="ultrafast",
+        )
+        duplicate = duplicate.model_copy(
+            update={"local_media": annotation_reference(layout, media_path)}
+        )
     controller.collection.register([duplicate])
+    if exclusion_stage == "prepare":
+        duplicate_acquisition = controller.collection.acquire(duplicate.source_id)
+        record_stage(
+            controller,
+            OperationInput(
+                plan=controller.runtime.plan,
+                operation=AcquireOperation(source_id=duplicate.source_id),
+            ),
+            results=(duplicate_acquisition,), exited=True,
+        )
+        make_example(layout, screening, duplicate).finish(name="duplicate")
     data = OperationInput(
         plan=controller.runtime.plan,
-        operation=AcquireOperation(source_id=duplicate.source_id),
+        operation=AcquireOperation(source_id=duplicate.source_id)
+        if exclusion_stage == "acquire"
+        else PrepareOperation(source_id=duplicate.source_id),
     )
     reference = record_stage(controller, data)
     monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
@@ -1307,7 +1343,16 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
     receipt = read_document(layout, receipt_ref, OperationReceipt)
     row = controller.collection.ledger.source(controller.plan, duplicate.source_id)
     assert receipt.status == "not_applicable"
-    assert receipt.reason == row["reason"] == f"duplicate content of {source.source_id}"
+    assert receipt.reason == row["reason"]
+    if exclusion_stage == "acquire":
+        assert receipt.reason == f"duplicate content of {source.source_id}"
+    else:
+        assert receipt.reason is not None and receipt.reason.startswith("duplicate clip content")
+        assert row["preparation"] is not None
+        # The excluded clip's preparation remains evidence, not completed work.
+        read_document(
+            layout, ArtifactRef.model_validate_json(row["preparation"]), PreparationReceipt
+        )
     assert receipt.results == (ArtifactRef.model_validate_json(row["acquisition"]),)
     # Recover an already-excluded source with the same evidence in a new stage attempt.
     recovery = record_stage(controller, data, attempt=2)
@@ -1315,6 +1360,7 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
     recovered = read_document(layout, execute(layout, recovery, attempt=2), OperationReceipt)
     record_stage(controller, data, attempt=2, exited=True)
     assert (recovered.results, recovered.reason) == (receipt.results, receipt.reason)
+    assert controller.collection.ledger.source(controller.plan, duplicate.source_id)["preparation"] == row["preparation"]
     assert restarted.status()["state"] == "preview_ready"
     if invalid is not None:
         # A successful supervisor cannot make mismatched exclusion evidence valid.
