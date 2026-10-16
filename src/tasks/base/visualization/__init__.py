@@ -5,7 +5,6 @@ from src.tasks.base.visualization.preview import (
     draw_normalized_point,
     enable_all_augmentation_blocks,
     resolve_sample_indices,
-    resolve_split_file,
 )
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
@@ -21,5 +20,4 @@ __all__ = [
     "parse_scene_style",
     "parse_view_3d",
     "resolve_sample_indices",
-    "resolve_split_file",
 ]

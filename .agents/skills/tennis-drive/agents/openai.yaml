@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tennis Lab Drive"
+  short_description: "Manage tennis-lab datasets and experiment artifacts"
+  default_prompt: "Use $tennis-drive to find, transfer, verify, or organize tennis-lab data and artifacts."

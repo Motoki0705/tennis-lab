@@ -3,28 +3,36 @@
 from __future__ import annotations
 
 import hashlib
-import shutil
-from collections.abc import Callable, Sequence
+import json
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 
-from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
     DatasetClipRecord,
     load_dataset_manifest,
 )
-from src.tennis_scene.pipeline.dependency_graph import Stage
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.pipeline.artifacts import document_digest
+from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+from src.tennis_scene.schema import (
+    SCENE_MASK_FIELDS,
+    SCENE_REASON_FIELDS,
+    SceneResult,
+    validate_scene_result_arrays,
+)
+from src.utils.checksum import dual_sha256
 from src.utils.io import save_json_atomic, utc_now_iso
 
 ANNOTATION_SCHEMA_VERSION = 1
 ANNOTATION_RELATIVE_DIR = Path("annotations") / "tennis_scene"
+DECLARED_PIPELINE_CONTRACT = "declared_components_v1"
 
-SceneRunner = Callable[[Sequence[Path], Sequence[str]], SceneResult]
+# (video paths, camera IDs, clip directory) -> scene; the clip directory owns the component store.
+SceneRunner = Callable[[Sequence[Path], Sequence[str], Path], SceneResult]
 
 
 @dataclass(frozen=True)
@@ -38,14 +46,11 @@ class AnnotationGenerationResult:
 
 
 def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return cast(str, dual_sha256(path))
 
 
-def _shape_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
+def scene_array_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
+    """Shape/dtype of every present scene array, recorded in ``annotation.json``."""
     arrays: dict[str, np.ndarray | None] = {
         "court_kp": result.court_kp,
         "court_vis": result.court_vis,
@@ -67,6 +72,7 @@ def _shape_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
         "player_track_ids": result.player_track_ids,
         "player_kp_3d": result.player_kp_3d,
     }
+    arrays.update({name: getattr(result, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS)})
     return {
         name: {"shape": list(array.shape), "dtype": str(array.dtype)}
         for name, array in arrays.items()
@@ -75,6 +81,7 @@ def _shape_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
 
 
 def _validate_result(result: SceneResult, record: DatasetClipRecord) -> None:
+    validate_scene_result_arrays(result)
     problems: list[str] = []
     expected_n = record.num_cameras
     expected_t = record.num_frames
@@ -96,33 +103,11 @@ def _validate_result(result: SceneResult, record: DatasetClipRecord) -> None:
         "human_kp_2d": (None, expected_n, expected_t, 17, 2),
         "human_kp_vis": (None, expected_n, expected_t, 17),
     }
-    raw_enabled_stages = result.metadata.get("enabled_stages")
-    if raw_enabled_stages is None:
-        # Archives created before stage-aware publication represented the full
-        # pipeline and therefore retain the original strict requirements.
-        enabled_stages = {Stage.BALL_DETECTION.value, Stage.BLCS.value}
-    elif not isinstance(raw_enabled_stages, (list, tuple)) or any(
-        not isinstance(stage, str) for stage in raw_enabled_stages
-    ):
-        problems.append("metadata.enabled_stages must be a sequence of stage names")
-        enabled_stages = set()
-    else:
-        enabled_stages = set(raw_enabled_stages)
-        unknown_stages = enabled_stages - {stage.value for stage in Stage}
-        if unknown_stages:
-            problems.append(
-                "metadata.enabled_stages contains unknown stages: "
-                f"{sorted(unknown_stages)}"
-            )
-    if Stage.BALL_DETECTION.value in enabled_stages:
-        required_shapes.update(
-            {
-                "ball_uv": (expected_n, expected_t, 2),
-                "ball_vis": (expected_n, expected_t),
-            }
-        )
-    if Stage.BLCS.value in enabled_stages:
-        required_shapes["ball_3d"] = (expected_t, 3)
+    if result.schema_version != 2 or result.metadata.get("pipeline_contract") != DECLARED_PIPELINE_CONTRACT:
+        problems.append(f"only {DECLARED_PIPELINE_CONTRACT} scene v2 results are published, got "
+                        f"schema v{result.schema_version} / {result.metadata.get('pipeline_contract')!r}")
+    # A v2 scene always carries ball arrays; disabled features are all-invalid masks.
+    required_shapes.update({"ball_uv": (expected_n, expected_t, 2), "ball_vis": (expected_n, expected_t), "ball_3d": (expected_t, 3)})
     for name, expected_shape in required_shapes.items():
         value = getattr(result, name)
         if value is None:
@@ -172,71 +157,46 @@ def _resolve_clip_inputs(
 
 
 def _publish_annotation(
-    *,
-    dataset_dir: Path,
-    record: DatasetClipRecord,
-    result: SceneResult,
-    clip_manifest_path: Path,
-    pipeline_config_yaml: str,
-    overwrite: bool,
+    *, dataset_dir: Path, record: DatasetClipRecord, result: SceneResult,
+    clip_manifest_path: Path, pipeline_config_yaml: str,
+    publication_identity: Mapping[str, object],
 ) -> Path:
+    """Publish a marker pointing at the clip store's immutable scene export.
+
+    The component store and its exports are never replaced or modified. The
+    pipeline configuration is stored content-addressed next to the marker.
+    """
     record_path: object = record.path
     if type(record_path) is not str:
-        raise TypeError(
-            "DatasetClipRecord.path must be exactly str; "
-            f"got {type(record_path).__name__}."
-        )
-    clip_dir = dataset_dir / record_path
-    destination = clip_dir / ANNOTATION_RELATIVE_DIR
-    completion_marker = destination / "annotation.json"
-    if completion_marker.exists() and not overwrite:
-        return completion_marker
-    if destination.exists() and not completion_marker.exists() and not overwrite:
-        raise ValueError(
-            f"incomplete annotation directory exists at {destination}; "
-            "inspect it or set overwrite=true"
-        )
-
-    staging = destination.parent / ".tennis_scene.tmp"
-    backup = destination.parent / ".tennis_scene.backup"
-    if staging.exists() or backup.exists():
-        raise ValueError(
-            f"stale annotation transaction exists under {destination.parent}; "
-            "inspect or remove it before retrying"
-        )
-    staging.mkdir(parents=True)
-
-    result.metadata = {
-        **result.metadata,
-        "dataset_clip_id": record.clip_id,
-        "clip_manifest": str(clip_manifest_path.relative_to(dataset_dir)),
-    }
-    scene_path = staging / "scene.npz"
-    save_scene_result(result, scene_path)
-    (staging / "pipeline_config.yaml").write_text(
-        pipeline_config_yaml, encoding="utf-8"
-    )
+        raise TypeError("Dataset clip path must be a string")
+    destination = dataset_dir / record_path / ANNOTATION_RELATIVE_DIR
+    scene_path = indexed_scene_path(destination / "scene.json")
+    config_bytes = pipeline_config_yaml.encode("utf-8")
+    config_path = destination / "configs" / f"{hashlib.sha256(config_bytes).hexdigest()}.yaml"
+    if not config_path.exists():
+        config_path.parent.mkdir(exist_ok=True)
+        temporary = config_path.with_suffix(".yaml.tmp")
+        temporary.write_bytes(config_bytes)
+        temporary.replace(config_path)
+    elif config_path.read_bytes() != config_bytes:
+        raise ValueError(f"Content-addressed pipeline config was modified: {config_path}")
+    _, media_paths, camera_ids = _resolve_clip_inputs(dataset_dir, record)
     annotation = {
-        "version": ANNOTATION_SCHEMA_VERSION,
-        "clip_id": record.clip_id,
-        "generator": "src.tennis_scene",
-        "generated_at": utc_now_iso(),
-        "scene_result": "scene.npz",
-        "pipeline_config": "pipeline_config.yaml",
-        "clip_manifest_sha256": _sha256_file(clip_manifest_path),
-        "arrays": _shape_manifest(result),
+        "version": ANNOTATION_SCHEMA_VERSION, "clip_id": record.clip_id, "generator": "src.tennis_scene",
+        "generated_at": utc_now_iso(), "scene_result": str(scene_path.relative_to(destination)),
+        "scene_index": "scene.json", "pipeline_config": str(config_path.relative_to(destination)),
+        "clip_manifest_sha256": _sha256_file(clip_manifest_path), "arrays": scene_array_manifest(result),
+        "scene_schema_version": result.schema_version, "result_status": result.metadata["status"],
+        "validity_statistics": result.metadata["validity_statistics"],
+        "publication_identity_sha256": document_digest(publication_identity),
+        "media_sha256": {camera: _sha256_file(path) for camera, path in zip(camera_ids, media_paths, strict=True)},
     }
-    save_json_atomic(annotation, staging / "annotation.json")
-
-    if destination.exists():
-        destination.replace(backup)
-    staging.replace(destination)
-    if backup.exists():
-        shutil.rmtree(backup)
+    marker = destination / "annotation.json"
+    save_json_atomic(annotation, marker)
     failure_marker = destination.parent / "tennis_scene.failure.json"
     if failure_marker.exists():
         failure_marker.unlink()
-    return destination / "annotation.json"
+    return marker
 
 
 def generate_pseudo_annotations(
@@ -244,11 +204,18 @@ def generate_pseudo_annotations(
     runner: SceneRunner,
     *,
     pipeline_config_yaml: str,
+    publication_identity: Mapping[str, object],
     clip_ids: Sequence[str] | None = None,
     overwrite: bool = False,
     continue_on_error: bool = True,
 ) -> list[AnnotationGenerationResult]:
-    """Generate missing pseudo annotations while preserving per-clip outcomes."""
+    """Generate missing pseudo annotations while preserving per-clip outcomes.
+
+    ``runner`` must leave the scene export in the clip store
+    (``<clip>/annotations/tennis_scene/scene.json``); this function only
+    publishes the completion marker. An existing marker is reused only when
+    its publication identity, clip manifest and media hashes all match.
+    """
     if (
         not dataset_dir.is_absolute()
         or dataset_dir.resolve(strict=False) != dataset_dir
@@ -267,20 +234,24 @@ def generate_pseudo_annotations(
     for clip_id in selected_ids:
         record = dataset.clips[clip_id]
         destination = root / record.path / ANNOTATION_RELATIVE_DIR / "annotation.json"
-        if destination.exists() and not overwrite:
-            outcomes.append(
-                AnnotationGenerationResult(
-                    clip_id=clip_id,
-                    status="skipped",
-                    annotation_path=destination,
-                )
-            )
-            continue
         try:
             clip_manifest_path, video_paths, camera_ids = _resolve_clip_inputs(
                 root, record
             )
-            result = runner(video_paths, camera_ids)
+            manifest_before = _sha256_file(clip_manifest_path)
+            media_before = {camera: _sha256_file(path) for camera, path in zip(camera_ids, video_paths, strict=True)}
+            if destination.exists() and not overwrite:
+                marker = json.loads(destination.read_text())
+                expected_media = {camera: _sha256_file(path) for camera, path in zip(camera_ids, video_paths, strict=True)}
+                if (marker.get("publication_identity_sha256") != document_digest(publication_identity)
+                    or marker.get("clip_manifest_sha256") != _sha256_file(clip_manifest_path)
+                    or marker.get("media_sha256") != expected_media):
+                    raise ValueError("Stale annotation inputs/model/settings; use overwrite=true")
+                outcomes.append(AnnotationGenerationResult(clip_id, "skipped", destination))
+                continue
+            result = runner(video_paths, camera_ids, clip_manifest_path.parent)
+            if _sha256_file(clip_manifest_path) != manifest_before or any(_sha256_file(path) != media_before[camera] for camera, path in zip(camera_ids, video_paths, strict=True)):
+                raise ValueError("Clip inputs changed during reconstruction")
             _validate_result(result, record)
             annotation_path = _publish_annotation(
                 dataset_dir=root,
@@ -288,7 +259,7 @@ def generate_pseudo_annotations(
                 result=result,
                 clip_manifest_path=clip_manifest_path,
                 pipeline_config_yaml=pipeline_config_yaml,
-                overwrite=overwrite,
+                publication_identity=publication_identity,
             )
             outcomes.append(
                 AnnotationGenerationResult(
@@ -326,4 +297,5 @@ __all__ = [
     "AnnotationGenerationResult",
     "SceneRunner",
     "generate_pseudo_annotations",
+    "scene_array_manifest",
 ]

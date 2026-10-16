@@ -1,0 +1,10 @@
+[Unit]
+Description=Run tennis-lab ops report triage daily (JST)
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Asia/Tokyo
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

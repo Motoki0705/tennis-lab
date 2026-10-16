@@ -11,8 +11,7 @@ Usage:
 
 Notes:
     - Configuration is loaded from `src/submodules/configs/demo_gvhmr.yaml`.
-    - Model checkpoints are read from `ckpt/` (symlinks to
-      third_party/GVHMR/inputs/checkpoints).
+    - Model checkpoints and body models are stored under `ckpt/`.
     - GVHMR inference requires the licensed SMPL-X body model
       (`ckpt/body_models/smplx/SMPLX_NEUTRAL.npz`); download it from
       https://smpl-x.is.tue.mpg.de/.

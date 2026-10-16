@@ -19,7 +19,6 @@ from src.tasks.court_detection.configuration import (
 )
 from src.tasks.court_detection.data.contracts import (
     CourtTargetBundleSpec,
-    CourtTargetKind,
     CourtTargetSpec,
 )
 from src.tasks.court_detection.model_io.adapters import (
@@ -31,11 +30,13 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelIOError,
     CourtModelSpec,
 )
-from src.tasks.court_detection.models import hierarchical_model as model_module
-from src.tasks.court_detection.models.decoder import CourtDPTDecoder
-from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
-from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
-from src.tasks.court_detection.models.pose_head import CourtModelOutput
+from src.tasks.court_detection.models import dinov3_dpt as model_module
+from src.tasks.court_detection.models.dinov3_dpt import (
+    CourtDINOv3Encoder,
+    CourtDPTDecoder,
+    CourtHierarchicalModel,
+    CourtModelOutput,
+)
 from src.utils.models.loading import DINOv3BackboneAdapter
 from src.utils.models.lora import LoRAConfig
 
@@ -144,13 +145,15 @@ class _CountingCourtDINOModel(CourtHierarchicalModel):
         feature_3: torch.Tensor | None = None,
         feature_4: torch.Tensor | None = None,
         patch_valid_mask: torch.Tensor | None = None,
-    ) -> dict[CourtTargetKind, torch.Tensor]:
+    ) -> CourtModelOutput:
         self.calls += 1
         assert patch_valid_mask is None
         assert all(
             value is not None for value in (feature_1, feature_2, feature_3, feature_4)
         )
-        return {"kp": x.new_zeros(x.shape[0], 7, x.shape[-2], x.shape[-1])}
+        return CourtModelOutput(
+            {"kp": x.new_zeros(x.shape[0], 7, x.shape[-2], x.shape[-1])}
+        )
 
 
 def _loss_config(*, pose: bool = False) -> CourtLossConfig:
@@ -296,6 +299,7 @@ def test_dpt_decoder_progressively_fuses_reassembled_features() -> None:
         encoder_channels=(8, 8, 8, 8),
         decoder_channels=16,
         reassemble_factors=(4.0, 2.0, 1.0, 0.5),
+        block_style="wise",
     )
     features = tuple(torch.randn(2, 8, 4, 4) for _ in range(4))
 
@@ -410,6 +414,88 @@ def test_prepared_dinov3_features_flow_through_transformer_dpt_and_pose(
         for gradient in selected_gradients
         if gradient is not None
     )
+
+
+@pytest.mark.parametrize("native_dim", [4, 6, 8])
+@pytest.mark.parametrize("mixed_precision", [False, True])
+def test_backbone_width_does_not_change_downstream_capacity(
+    monkeypatch: pytest.MonkeyPatch, native_dim: int, mixed_precision: bool
+) -> None:
+    fake = FakeDINOv3()
+    fake.embed_dim = native_dim
+    fake.register_parameter("frozen_weight", nn.Parameter(torch.ones(1)))
+    encoder = _encoder(fake)
+    monkeypatch.setattr(model_module, "build_court_encoder", lambda **kwargs: encoder)
+    config = _enabled_model_config()
+    model = CourtHierarchicalModel(config, _bundle())
+    adapter = _adapter(model)
+    call = adapter.prepare_images(torch.zeros(2, 3, 17, 19))
+
+    assert call.model_args[1].shape[1] == native_dim
+    with torch.autocast("cpu", dtype=torch.bfloat16, enabled=mixed_precision):
+        projected = model._feature_forward_values(call.model_args[0], call.model_args[1:5])
+        output = model(*call.model_args)
+    assert all(feature is not None and feature.shape[1] == 8 for feature in projected)
+    projected_dtype = (
+        torch.bfloat16 if mixed_precision and native_dim != 8 else torch.float32
+    )
+    assert all(feature is not None and feature.dtype == projected_dtype for feature in projected)
+    assert all(not parameter.requires_grad for parameter in encoder.parameters())
+    assert fake.grad_enabled is False
+
+    assert torch.isfinite(output.dense_logits["kp"]).all()
+    assert output.pose is not None and torch.isfinite(output.pose.values).all()
+    (output.dense_logits["kp"].square().mean() + output.pose.values.square().mean()).backward()
+    query_grad = model.transformer_encoder.pose_query.grad
+    assert query_grad is not None
+    assert torch.isfinite(query_grad).all() and torch.count_nonzero(query_grad)
+    projection_parameters = list(model.feature_projections.parameters())
+    if native_dim == 8:
+        assert not projection_parameters
+        # Equal-width legacy checkpoints gain no parameter keys.
+        assert not any(key.startswith("feature_projections.") for key in model.state_dict())
+        model.load_state_dict(model.state_dict(), strict=True)
+    else:
+        assert len(projection_parameters) == 8
+        assert all(parameter.grad is not None for parameter in projection_parameters)
+        assert all(torch.isfinite(parameter.grad).all() for parameter in projection_parameters)
+        assert all(torch.count_nonzero(parameter.grad) for parameter in projection_parameters)
+
+    # Projection is the only learned part whose shape depends on native width.
+    fake.embed_dim = 8
+    reference_encoder = _encoder(fake)
+    monkeypatch.setattr(model_module, "build_court_encoder", lambda **kwargs: reference_encoder)
+    reference = CourtHierarchicalModel(config, _bundle())
+    for name in ("transformer_encoder", "decoder", "pose_head", "heads"):
+        assert {key: value.shape for key, value in getattr(model, name).state_dict().items()} == {
+            key: value.shape for key, value in getattr(reference, name).state_dict().items()
+        }
+
+
+def test_shared_downstream_initialization_does_not_depend_on_backbone_rng_draws(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    states = []
+    for native_dim in (4, 6, 8):
+        fake = FakeDINOv3()
+        fake.embed_dim = native_dim
+
+        def build_encoder(native_dim=native_dim, fake=fake, **kwargs):
+            # Simulate a size-dependent pretrained backbone constructor.
+            torch.rand(native_dim * 100)
+            return _encoder(fake)
+
+        monkeypatch.setattr(model_module, "build_court_encoder", build_encoder)
+        torch.manual_seed(42)
+        model = CourtHierarchicalModel(_enabled_model_config(), _bundle())
+        states.append({
+            key: value.clone() for key, value in model.state_dict().items()
+            if not key.startswith(("encoder.", "feature_projections."))
+        })
+    for candidate in states[1:]:
+        assert candidate.keys() == states[0].keys()
+        for key, expected in states[0].items():
+            torch.testing.assert_close(candidate[key], expected, rtol=0, atol=0)
 
 
 def test_pose_training_propagates_content_size_as_dino_patch_mask(

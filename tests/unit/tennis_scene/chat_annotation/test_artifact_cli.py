@@ -38,8 +38,14 @@ def test_server_uses_validated_directory(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(serve_artifacts, "create_server", create)
     monkeypatch.setattr("sys.argv", ["serve_artifacts", "--root", str(root)])
     serve_artifacts.main()
-    create.assert_called_once_with(root, "127.0.0.1", 8000)
-    create.return_value.run.assert_called_once_with(transport="streamable-http")
+    create.assert_called_once_with(root)
+    create.return_value.run.assert_called_once_with(
+        transport="streamable-http",
+        host="127.0.0.1",
+        port=8000,
+        stateless_http=True,
+        json_response=True,
+    )
     assert not root.exists()
 
 

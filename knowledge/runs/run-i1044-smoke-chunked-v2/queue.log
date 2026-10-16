@@ -1,0 +1,32 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791852510915717955_2_i1044-smoke-chunked-v2 (commit=e25ce1c8702a provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/loops/fit_loop.py:321: The number of training batches (2) is smaller than the logging interval Trainer(log_every_n_steps=100). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name    ┃ Type                    ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model   │ BLCSMultiViewAxialModel │ 51.9 M │ train │     0 │
+│ 1 │ loss_fn │ BLCSLoss                │      0 │ train │     0 │
+└───┴─────────┴─────────────────────────┴────────┴───────┴───────┘
+Trainable params: 51.9 M                                                        
+Non-trainable params: 0                                                         
+Total params: 51.9 M                                                            
+Total estimated model params size (MB): 207.743                                 
+Modules in train mode: 229                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:434: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=11` in the `DataLoader` to improve performance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 2. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+`Trainer.fit` stopped: `max_steps=4` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Training complete. Outputs saved to /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-chunked-v2
+{"protocol": "issue1044-v1", "arm": "rollout_velocity", "seed": 42, "optimizer_updates": 4, "elapsed_seconds": 113.81545602201368, "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-chunked-v2/logs/version_0/checkpoints/blcs-epoch=001-step=00004.ckpt", "checkpoint_sha256": "f01660f36a6b814df553eff91643a747ec4670cc7735e4b6c63739b7f36ef2dd", "validation_trajectory_rmse_m": 8.853866577148438, "selection_used_test": false, "run_id": "1791852510915717955_2_i1044-smoke-chunked-v2", "smoke": true, "chunked": true, "gan": false}

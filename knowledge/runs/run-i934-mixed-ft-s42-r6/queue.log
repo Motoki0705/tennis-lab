@@ -1,0 +1,34 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790561702018216327_1832087_i934-mixed-ft-s42-r6-20260928 (commit=8142fc349c26 provider=codex session=01a0e5be-53c1-76e2-a5a0-889df629cd9f)
+Seed set to 42
+Using bfloat16 Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loading `train_dataloader` to estimate number of stepping batches.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+[ball init_weights] strictly loaded 242 tensors from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+[ball_detection] train windows: {"chat_annotation": {"clips": 113, "clips_shorter_than_window": 0, "frames": 63600, "supervised_frames": 54960, "windows": 58060, "windows_without_supervision": 4749}, "meiji": {"clips": 72, "clips_shorter_than_window": 0, "frames": 25905, "supervised_frames": 21871, "windows": 22929, "windows_without_supervision": 2472}, "tracknet": {"clips": 74, "clips_shorter_than_window": 0, "frames": 16118, "supervised_frames": 16042, "windows": 15594, "windows_without_supervision": 6}}
+[ball_detection] val windows: {"chat_annotation": {"clips": 25, "clips_shorter_than_window": 0, "frames": 11610, "supervised_frames": 10931, "windows": 1395, "windows_without_supervision": 35}, "meiji": {"clips": 36, "clips_shorter_than_window": 0, "frames": 26961, "supervised_frames": 23007, "windows": 3046, "windows_without_supervision": 308}, "tracknet": {"clips": 9, "clips_shorter_than_window": 0, "frames": 1573, "supervised_frames": 1568, "windows": 192, "windows_without_supervision": 0}}
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/model_summary/model_summary.py:242: Precision bf16-mixed is not supported by the model summary.  Estimated model size in MB will not be accurate. Using 32 bits instead.
+┏━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name          ┃ Type                   ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model         │ ConvNeXtUNet           │ 20.9 M │ train │     0 │
+│ 1 │ loss_fn       │ FocalBCEWithLogitsLoss │      0 │ train │     0 │
+│ 2 │ train_metrics │ BallDetectionMetrics   │      0 │ train │     0 │
+│ 3 │ val_metrics   │ BallDetectionMetrics   │      0 │ train │     0 │
+│ 4 │ test_metrics  │ BallDetectionMetrics   │      0 │ train │     0 │
+└───┴───────────────┴────────────────────────┴────────┴───────┴───────┘
+Trainable params: 20.9 M                                                        
+Non-trainable params: 0                                                         
+Total params: 20.9 M                                                            
+Total estimated model params size (MB): 83.428                                  
+Modules in train mode: 269                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:378: You have overridden `transfer_batch_to_device` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 4. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/lib/python3.11/site-packages/pytorch_lightning/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 1. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+`Trainer.fit` stopped: `max_epochs=12` reached.
+Training complete. Outputs saved to /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i934_mixed_ft/s42-r6-20260928

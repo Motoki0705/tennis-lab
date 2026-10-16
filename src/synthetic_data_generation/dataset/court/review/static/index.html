@@ -15,11 +15,23 @@
             <span class="brand-mark">⌗</span> COURT <strong>REVIEW</strong
             ><span class="subtitle">視点とラベルを、ひとつの画面で。</span>
           </div>
-          <a href="#statistics">統計を見る ↓</a>
+          <span id="publication-badge"></span>
+          <nav>
+            <a href="#catalog">データ体系 ↓</a>
+            <a href="#statistics">統計を見る ↓</a>
+          </nav>
         </header>
         <aside class="sidebar">
           <label for="scene">シーン</label
           ><select id="scene" aria-label="シーンを選択"></select>
+          <p id="scene-source" class="source-note"></p>
+          <label for="split-filter">splitで絞る</label>
+          <select id="split-filter" aria-label="splitで絞る">
+            <option value="all">全split</option>
+            <option>train</option>
+            <option>validation</option>
+            <option>test</option>
+          </select>
           <div class="list-heading">
             カメラ軌道 <span id="trajectory-count"></span>
           </div>
@@ -43,6 +55,13 @@
             ><span class="validation">● validation</span
             ><span class="test">● test</span>
           </div>
+          <section id="sample-inspector" aria-label="選択sampleの保存教師">
+            <span class="eyebrow">SAMPLE INSPECTOR · 合成truth</span>
+            <div id="sample-info">画像にカーソルを合わせて確認</div>
+            <p>
+              ● renderer可視　○ 画面内・不可視<br />画面外の点は画像に描画しません
+            </p>
+          </section>
           <div class="navigation-hint">
             ドラッグ：回転 · Shift＋ドラッグ：移動 · ホイール：拡大<span
               >↓ スクロールして統計</span
@@ -54,6 +73,21 @@
             <span id="selected-title">軌道を選択</span
             ><small id="image-count"></small>
           </div>
+          <label class="image-mode"
+            >画像表示
+            <select id="image-mode" aria-label="画像表示">
+              <option value="overlay">教師ラベル</option>
+              <option value="raw">生成RGB</option>
+              <option value="compare">RGBと教師を比較</option>
+            </select>
+          </label>
+          <label class="image-mode"
+            >描画court
+            <select id="label-scope" aria-label="描画court">
+              <option value="target">target限定（学習教師）</option>
+              <option value="all">全court参考</option>
+            </select>
+          </label>
           <div
             id="gallery"
             tabindex="0"
@@ -61,6 +95,38 @@
           ></div>
         </aside>
         <div id="status" role="status" hidden></div>
+      </section>
+      <section id="catalog" aria-label="現在の公開データ体系">
+        <div class="stats-heading">
+          <div>
+            <span class="eyebrow">PUBLISHED DATASETS</span>
+            <h2>現在の公開データ体系</h2>
+          </div>
+          <span id="catalog-total"></span>
+        </div>
+        <p class="stats-note">
+          生成RGB → Court
+          Detection用の疎な教師。cameraはm、KPはpixel。splitは軌道group単位です。completedは生成時ゲート通過を表し、目視QAの完了を保証しません。学習で使うsceneはconsumerのsource設定で選びます。
+        </p>
+        <div class="table-scroll">
+          <table id="catalog-table">
+            <thead>
+              <tr>
+                <th>scene / geometry</th>
+                <th>source / 生成元</th>
+                <th>保存形式 / 状態</th>
+                <th>train / val / test</th>
+                <th>採用 / reject</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="stats-note">
+          Court
+          V1・V2は明示版の互換readerがあります。この一覧は設定root内の公開ownerだけを読みます。外観変更scene
+          artifactの存在だけでdataset採用とは扱いません。
+        </p>
       </section>
       <section id="statistics">
         <div class="stats-heading">
@@ -71,6 +137,40 @@
           <span id="schema"></span>
         </div>
         <div id="stat-cards"></div>
+        <div class="review-columns">
+          <section id="split-target-section">
+            <h3>target court × split（採用sample）</h3>
+            <div class="table-scroll"><table id="split-targets"></table></div>
+            <p class="stats-note">
+              0は当該targetへの採用sampleなし。ほかの画像の背景に映るコートは数えません。
+            </p>
+          </section>
+          <section>
+            <h3>rejectの保存状態</h3>
+            <p id="rejection-state"></p>
+            <div id="rejection-reasons"></div>
+            <p class="stats-note">
+              reject画像は未保存。候補の投影やrenderer可視性が未記録なら、不可視とは扱いません。
+            </p>
+          </section>
+        </div>
+        <details id="rejection-details">
+          <summary>reject候補の疎な記録を見る</summary>
+          <div class="table-scroll rejected-scroll">
+            <table id="rejected-table">
+              <thead>
+                <tr>
+                  <th>sample / frame</th>
+                  <th>group / view / split</th>
+                  <th>target</th>
+                  <th>理由</th>
+                  <th>投影 / renderer</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
         <div class="stat-columns">
           <section>
             <h3>split別の画像数</h3>
@@ -88,15 +188,67 @@
         <p class="stats-note">
           統計は保存済みデータセットの値です。coverageは画像数ではなく、画像内の各コートを集計しています。
         </p>
+        <details>
+          <summary>生成元・版・保存authority</summary>
+          <dl id="publication-details"></dl>
+        </details>
+        <details>
+          <summary>renderer可視点のクラス別件数（全コート）</summary>
+          <div id="visibility-classes"></div>
+          <p class="stats-note">
+            保存された生成時alpha/depthゲートの件数です。全コートの点を集計するため、採用画像数とは異なります。
+          </p>
+        </details>
       </section>
     </main>
     <dialog id="lightbox" aria-label="画像とラベルの全画面表示">
       <button id="close" aria-label="全画面表示を閉じる">✕</button
-      ><button id="previous" aria-label="前の画像">‹</button
-      ><img id="large-image" alt="画像と教師ラベル" />
+      ><button id="previous" aria-label="前の画像">‹</button>
+      <div class="lightbox-toolbar">
+        <label
+          >画像表示
+          <select id="large-mode" aria-label="全画面の画像表示">
+            <option value="overlay">教師ラベル</option>
+            <option value="raw">生成RGB</option>
+            <option value="compare">RGBと教師を比較</option>
+          </select></label
+        >
+      </div>
+      <div class="lightbox-scope">
+        <label
+          >描画court
+          <select id="large-scope" aria-label="全画面の描画court">
+            <option value="target">target限定（学習教師）</option>
+            <option value="all">全court参考</option>
+          </select></label
+        >
+      </div>
+      <div id="image-panes">
+        <figure id="raw-pane" hidden>
+          <figcaption>生成RGB · 保存JPEG</figcaption>
+          <img id="raw-image" alt="保存された生成RGB" />
+        </figure>
+        <figure id="label-pane">
+          <figcaption id="large-caption">教師ラベル · 合成truth</figcaption>
+          <img id="large-image" alt="画像と教師ラベル" />
+        </figure>
+      </div>
+      <aside id="label-details" aria-label="sampleと可視性の詳細">
+        <div id="large-sample-info"></div>
+        <div id="point-table"></div>
+      </aside>
       <p id="image-error" role="alert" hidden></p>
       <button id="next" aria-label="次の画像">›</button
       ><span id="position"></span>
+    </dialog>
+    <dialog id="reject-dialog" aria-label="reject候補の保存情報">
+      <button id="reject-close" aria-label="reject詳細を閉じる">閉じる</button>
+      <h2 id="reject-title">reject候補</h2>
+      <p class="missing-image">
+        画像未保存 · この候補の生成RGBは表示できません
+      </p>
+      <div id="reject-info"></div>
+      <div id="reject-projection"></div>
     </dialog>
     <script type="module" src="/static/app.js"></script>
   </body>

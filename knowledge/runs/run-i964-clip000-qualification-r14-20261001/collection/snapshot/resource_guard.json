@@ -1,0 +1,21 @@
+{
+  "status": "failed",
+  "command": [
+    "bash",
+    "-euo",
+    "pipefail",
+    "-c",
+    "\n        bash \"$1/tests/benchmarks/build_dino_extension.sh\" \"$2\" \"$3/dino_extension\"\n        \"$1/.venv/bin/python\" \"$1/tests/benchmarks/pipeline_qualification.py\" --phase execute --report \"$3\"\n        CUDA_VISIBLE_DEVICES=\"\" \"$1/.venv/bin/python\" \"$1/tests/benchmarks/pipeline_qualification.py\" --phase validate --report \"$3\"\n    ",
+    "qualification",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+    "/home/kamimura/projects/tennis-lab",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001"
+  ],
+  "sample_interval_s": 2.0,
+  "measurement": "NVML via nvidia-smi, entire GPU 0; conservative for an all job",
+  "peak_gpu_bytes": 4269801472,
+  "min_host_available_bytes": 9946959872,
+  "output_bytes": 340472260,
+  "wall_seconds": 3121.314364844002,
+  "exit_code": 1
+}

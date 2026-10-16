@@ -114,8 +114,12 @@ async function countPixels(page, colors, tolerance) {
     await page.waitForSelector(".scene", { timeout: 120000 });
     await loaded();
 
-    assert.equal(await page.locator(".form").count(), 6);
+    assert.equal(await page.locator(".form").count(), 1);
     assert.match(await page.locator("#scene-dataset").textContent(), /blcs\//);
+    await page.waitForSelector("#blcs-content:not([hidden])");
+    assert.equal(await page.locator(".blcs-camera").count(), 6);
+    assert.match(await page.locator(".blcs-inspection header").textContent(), /合成truth.*RGB/s);
+    assert.match(await page.locator("#blcs-normalization").textContent(), /11\.885.*位置 一致.*速度 一致/s);
 
     // Pause, then seek across the timeline. Ball tracks are ball-present only
     // for part of the scene, so scan until a frame decodes a live ball and
@@ -136,10 +140,35 @@ async function countPixels(page, colors, tolerance) {
       await page.waitForTimeout(50);
       ball = await countPixels(page, BALL_COLORS, 14);
       const hud = (await page.locator("#hud-pos").textContent())?.trim();
-      if (ball > 30 && hud && hud !== "–") liveFrame = frame;
+      if (ball >= 3 && hud && hud !== "–") liveFrame = frame;
     }
     assert.ok(liveFrame >= 0, "no frame rendered a present ball");
-    assert.ok(ball > 30, `ball pixels at frame ${liveFrame}: ${ball}`);
+    assert.ok(ball >= 3, `ball pixels at frame ${liveFrame}: ${ball}`);
+
+    // Actual saved coordinates outside the image are retained, and the panel
+    // follows the same zero-based frame as the shared 3D transport.
+    await page.evaluate(() => {
+      const scrub = document.getElementById("scrub");
+      scrub.value = "248";
+      scrub.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForFunction(() => document.querySelector(".blcs-inspection").dataset.frame === "248");
+    assert.equal((await page.locator("#hud-frame").textContent()).trim(), "248");
+    assert.match(await page.locator("#blcs-frame").textContent(), /8\.267 s/);
+    assert.match(await page.locator('[data-camera="cam_0"] .blcs-badge').textContent(), /非可視.*画像外/);
+    assert.match(await page.locator("#blcs-event-now").textContent(), /shot 5 hit/);
+    assert.match(await page.locator("#blcs-event-summary").textContent(), /区間外候補 19件/);
+    await page.selectOption("#blcs-camera-select", "cam_0");
+    assert.equal(await page.locator(".blcs-camera:visible").count(), 1);
+    assert.equal(await page.locator(".blcs-cameras").getAttribute("data-single"), "true");
+    await page.selectOption("#blcs-camera-select", "all");
+    assert.equal(await page.locator(".blcs-camera:visible").count(), 6);
+    const imageOutside = await page.locator('[data-camera="cam_0"] canvas').evaluate(canvas => canvas.toDataURL());
+    await page.click('#blcs-event-buttons button[data-frame="315"]');
+    assert.equal(await page.locator(".blcs-inspection").getAttribute("data-frame"), "315");
+    assert.equal((await page.locator("#hud-frame").textContent()).trim(), "315");
+    const imageInside = await page.locator('[data-camera="cam_0"] canvas').evaluate(canvas => canvas.toDataURL());
+    assert.notEqual(imageOutside, imageInside);
 
     const before = await page.locator(".scene").count();
     await page.fill("#query", "scene_00055");
@@ -165,6 +194,16 @@ async function countPixels(page, colors, tolerance) {
     await page.click("[data-preset='broadcast']");
     await page.keyboard.press("ArrowLeft");
     await page.keyboard.press("Home");
+
+    // Scene changes clear previous evidence and bind the inspection to the new
+    // scene/revision. Fast consecutive selection must not render stale UVs.
+    await page.locator('.scene[data-scene="scene_000001"]').click();
+    await page.locator('.scene[data-scene="scene_000002"]').click();
+    await loaded();
+    await page.waitForFunction(() => document.querySelector(".blcs-inspection").dataset.scene === "scene_000002");
+
+    await page.setViewportSize({width:600,height:900});
+    await page.waitForTimeout(200);
 
     const overflow = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,

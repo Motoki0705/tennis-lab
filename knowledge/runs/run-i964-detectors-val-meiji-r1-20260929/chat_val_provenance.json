@@ -1,0 +1,55 @@
+{
+  "schema": "player_detection_evaluation_v1",
+  "checkpoints": {
+    "coco_person": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+    },
+    "player_ft": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/player_detection/chat-player-v1-e8-best-pr937.pth",
+      "sha256": "eb8db0ac1b87a0c0a4730534e5dc8107487a53273221ef90231b9351f1d979d4"
+    }
+  },
+  "dataset": {
+    "path": "/home/kamimura/projects/tennis-lab/data/player_detection/chat-player-v1",
+    "sha256": {
+      "index.npz": "ef3370e4597ed4c20385a2d5bfde9448c9d89b7a508517c6d6dfc90af81ba3b3",
+      "metadata.json": "f1b5c4c1e2bb5d18590985473407f5ad65620b73e5bb0304e1b02d6faebb2e02",
+      "shards/clip-00029.bin": "0950946f1e09e4a78986805430426acd098f961646b2e20dc3d447b56d3ac17f",
+      "shards/clip-00030.bin": "b2b889d35d8cfe6e0634ed5709170420a904f513c5901f103df5c9ff802b1a8b",
+      "shards/clip-00031.bin": "e54e5508590b41e7a89d511d81eeb7acc7d995467782f3cf6075b9a772d89be4",
+      "shards/clip-00032.bin": "555ec0050f8f503a22e959c0c97b46bd64144fd795b709168f241037f06355e1",
+      "shards/clip-00033.bin": "da585c01c674072f9690ee25b3ac98e879ffbbe940336f5d7cf515b675514b3e",
+      "shards/clip-00064.bin": "e36bf8277a8f2bf939e8e56b719210093dd95c8dce216ba859144e53a8971a66",
+      "shards/clip-00065.bin": "ba5a44e8188e24c006daffbfcfcd8ab83d9a7e98e97ab569f6eb451e88a26055",
+      "shards/clip-00066.bin": "2b322c3871374020124a1e3c26ff83781f1917096ce975eeb9170555396c3511",
+      "shards/clip-00067.bin": "807f027cebe6c6cdac2630335a8ce804f7856ee78ccea956cb149643df32ed99",
+      "shards/clip-00068.bin": "1d84f6bd0350630a77bf2348abf648a27d16192dc0d1095d090522bb78ef7d6d",
+      "shards/clip-00079.bin": "bf15e26ffb24391646e2adeed8bb8b2d9db29cee03204f0be72a22ca4cce2661",
+      "shards/clip-00080.bin": "8195538f59b2dad68ce2edd11e49a2034a0e5d109a6233a46d54940bee3d7477",
+      "shards/clip-00081.bin": "9008995da928cea5ccf8ac503adb426a1f3080da1e4ffb57433fd4b44f4239e4",
+      "shards/clip-00082.bin": "59596f556c2da41b6230890a303a69b231ca1c0ca3c8bc0eed2f7d358b239aa5",
+      "shards/clip-00083.bin": "c3248ec00731d41db10c389d2a57c213d7241297d4c5c35966b63903330e1874"
+    }
+  },
+  "input_size": {
+    "short_side": 800,
+    "max_long_side": 1333
+  },
+  "selection": {
+    "require_reviewed": true,
+    "require_located_players": true,
+    "min_visible_box_px": 4.0
+  },
+  "evaluation": {
+    "score_threshold": 0.3,
+    "iou_threshold": 0.5,
+    "max_detections": 100
+  },
+  "split": "val",
+  "frame_stride": 1,
+  "device": "cuda",
+  "matmul_precision": "highest",
+  "cuda_matmul_allow_tf32": false,
+  "cudnn_allow_tf32": true
+}

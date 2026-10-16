@@ -33,6 +33,12 @@ class PinholeCamera:
     def __post_init__(self) -> None:
         if self.K.shape != (3, 3) or self.R.shape != (3, 3) or self.t.shape != (3,):
             raise ValueError("PinholeCamera requires K (3,3), R (3,3) and t (3,).")
+        if not all(np.isfinite(value).all() for value in (self.K, self.R, self.t)):
+            raise ValueError("PinholeCamera matrices must be finite.")
+        if min(self.width, self.height) <= 0 or min(self.K[0, 0], self.K[1, 1]) <= 0:
+            raise ValueError("Image dimensions and focal lengths must be positive.")
+        if not np.allclose(self.K[2], [0.0, 0.0, 1.0]):
+            raise ValueError("PinholeCamera.K must have last row [0, 0, 1].")
         if not np.allclose(self.R @ self.R.T, np.eye(3), atol=1e-6):
             raise ValueError("PinholeCamera.R must be orthonormal.")
         if np.linalg.det(self.R) <= 0.0:
@@ -46,6 +52,8 @@ class PinholeCamera:
     def project(self, points: NDArray[np.floating[Any]]) -> NDArray[np.float64]:
         """Project ``(..., 3)`` court points to ``(..., 2)`` pixel coordinates."""
         cam = np.asarray(points, dtype=np.float64) @ self.R.T + self.t
+        if not np.isfinite(cam).all():
+            raise ValueError("Cannot project non-finite points.")
         if np.any(cam[..., 2] <= 0.0):
             raise ValueError("Cannot project points at or behind the camera plane.")
         uv = cam[..., :2] / cam[..., 2:3]
@@ -125,10 +133,12 @@ def to_blender_camera(
     fits (``fit_camera`` pins the principal point to the image center with
     ``fx == fy``), so both are rejected instead of approximated.
     """
-    if sensor_width_mm <= 0.0:
-        raise ValueError("sensor_width_mm must be positive.")
+    if not np.isfinite(sensor_width_mm) or sensor_width_mm <= 0.0:
+        raise ValueError("sensor_width_mm must be finite and positive.")
     K = camera.K
-    if abs(K[0, 1]) > 1e-9 or not np.isclose(K[0, 0], K[1, 1], rtol=1e-9):
+    if max(abs(K[0, 1]), abs(K[1, 0])) > 1e-9 or not np.isclose(
+        K[0, 0], K[1, 1], rtol=1e-9
+    ):
         raise ValueError(
             "Blender export requires zero skew and square pixels (fx == fy)."
         )

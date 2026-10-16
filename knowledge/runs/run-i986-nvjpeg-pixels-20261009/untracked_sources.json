@@ -1,0 +1,7 @@
+{
+  "reason": "These source files were untracked at queue capture; preserve exact bytes executed as a separate additional patch, without modifying the original captured patch.",
+  "files": {
+    "src/utils/shared_file_verification.py": "6dd73c0bb37e68915dfc8f4a92cdfecc70a6557d89f0f528a5fca24547edaac0",
+    "tests/benchmarks/ball_jpeg_decode_probe.py": "43d676075a29a9358d1fcffbc48ae4deba7d7358523c2477253b7d97fb72eb71"
+  }
+}

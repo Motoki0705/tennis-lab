@@ -1,0 +1,191 @@
+# Readable view only: driver diagnostics containing ][CUDA][ are omitted.
+# Full unmodified log is preserved in queue.log.gz; see log-archive.json.
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791904031966211422_1392693_i1044-final-comparison-v4-cli (commit=9948985912f3 provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+Final synthetic evaluation: position-s42-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: position-s42-u4000
+Final synthetic evaluation: reprojection-s42-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: reprojection-s42-u4000
+Final synthetic evaluation: velocity-s42-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: velocity-s42-u4000
+Final synthetic evaluation: rollout_position-s42-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: rollout_position-s42-u4000
+Final synthetic evaluation: rollout_velocity-s42-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: rollout_velocity-s42-u4000
+Final synthetic evaluation: parameters-s42-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: parameters-s42-u4000
+Final synthetic evaluation: reprojection-s43-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: reprojection-s43-u4000
+Final synthetic evaluation: parameters-s43-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: parameters-s43-u4000
+Final synthetic evaluation: reprojection-s44-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: reprojection-s44-u4000
+Final synthetic evaluation: parameters-s44-u4000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: parameters-s44-u4000
+Final synthetic evaluation: historical-u9000
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: historical-u9000
+Final synthetic evaluation: gt
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final synthetic evaluation: geometry
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final real observation diagnostics: geometry
+Final synthetic evaluation: jitter
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final synthetic evaluation: time_shift
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100
+Final synthetic evaluation: collision_crossing
+evaluation test 1/100
+evaluation test 11/100
+evaluation test 21/100
+evaluation test 31/100
+evaluation test 41/100
+evaluation test 51/100
+evaluation test 61/100
+evaluation test 71/100
+evaluation test 81/100
+evaluation test 91/100

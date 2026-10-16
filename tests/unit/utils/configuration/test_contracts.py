@@ -152,34 +152,6 @@ def test_hybrid_audit_declares_input_output_and_optional_scene_paths() -> None:
     assert "path-direction:output" in fields["output_dir"].value_constraints
 
 
-def test_gvhmr_extraction_boundary_declares_every_storage_and_model_path() -> None:
-    boundary = next(
-        contract
-        for contract in BOUNDARY_CONTRACTS
-        if contract.boundary_id == "src.tasks.plcs.scripts.extract_gvhmr_motions:main"
-    )
-
-    assert boundary.validator_callable == (
-        "src.tasks.plcs.motion.extraction_config.validate_extraction_boundary"
-    )
-    assert (
-        "src.tasks.plcs.motion.extraction_config.EXTRACTION_SCHEMA"
-        in boundary.authority_symbols
-    )
-    assert {path.rsplit(".", maxsplit=1)[-1] for path in boundary.field_paths} >= {
-        "checkpoint_root",
-        "root",
-        "dino_checkpoint",
-        "config",
-        "output_dir",
-        "selection_config",
-    }
-    assert {
-        value.split(":path-role:", maxsplit=1)[1].split(":", maxsplit=1)[0]
-        for value in boundary.path_role_authorities
-        if ":path-role:" in value
-    } >= {"checkpoint", "data", "project"}
-
 
 def test_slcs_boundaries_bind_only_their_actual_public_boundary_schema() -> None:
     expected = {
@@ -392,20 +364,6 @@ def test_task_local_boundaries_keep_task_local_configuration_authority(
     )
 
 
-def test_boundary_catalog_follows_package_reexport_to_actual_adapter() -> None:
-    boundary = next(
-        contract
-        for contract in BOUNDARY_CONTRACTS
-        if contract.boundary_id
-        == "src.tasks.court_detection.scripts.annotate_youtube_keypoints:main"
-    )
-
-    assert (
-        "src.tasks.court_detection.generate_dataset.annotation_session."
-        "AnnotationSessionConfig"
-    ) in boundary.authority_symbols
-
-
 @pytest.mark.parametrize(
     "domain",
     [
@@ -441,8 +399,8 @@ def test_every_strict_schema_field_rejects_an_invalid_exact_type() -> None:
     "symbol",
     [
         "src.tasks.base.configuration.TrainingRuntimeConfig",
-        "src.tasks.ball_detection.configuration.BallYoutubePathContract",
-        "src.tasks.blcs.configuration.TrackQueryModelConfig",
+        "src.tasks.ball_detection.configuration.BallRuntimePaths",
+        "src.tasks.blcs.configuration.AxialModelConfig",
         "src.tasks.court_detection.configuration.CourtTrainingConfig",
         "src.tasks.plcs.configuration.PLCSTrainingConfig",
         "src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig",

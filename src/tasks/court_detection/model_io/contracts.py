@@ -14,7 +14,7 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetKind,
 )
 from src.tasks.court_detection.geometry.pose import CourtDecodedPose
-from src.tasks.court_detection.models.pose_head import (
+from src.tasks.court_detection.models.dinov3_dpt import (
     CourtModelOutput,
     CourtRawPoseOutput,
 )

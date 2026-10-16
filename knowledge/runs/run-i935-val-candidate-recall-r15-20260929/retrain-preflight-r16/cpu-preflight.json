@@ -1,0 +1,95 @@
+{
+  "cuda_initialized": false,
+  "num_cpu_workers": 4,
+  "recipe_overrides": [
+    "paths.project_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection",
+    "paths.data_root=/home/kamimura/projects/tennis-lab/data",
+    "paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt",
+    "paths.output_root=/home/kamimura/projects/tennis-lab/outputs",
+    "paths.artifact_root=/home/kamimura/projects/tennis-lab/outputs",
+    "paths.cache_root=/home/kamimura/projects/tennis-lab/.cache",
+    "paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party",
+    "run.output_dir=ball_detection/train/i935_mixed_ft/s42-r16-20260929"
+  ],
+  "config_diff": [
+    {
+      "path": "data.eval_stride",
+      "old": null,
+      "new": 4
+    },
+    {
+      "path": "paths.project_root",
+      "old": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft",
+      "new": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection"
+    },
+    {
+      "path": "run.output_dir",
+      "old": "ball_detection/train/i934_mixed_ft/s42-r6-20260928",
+      "new": "ball_detection/train/i935_mixed_ft/s42-r16-20260929"
+    },
+    {
+      "path": "training.checkpoint.monitor",
+      "old": "val/f1",
+      "new": "val/meiji/candidate_recall_at_8_20px"
+    },
+    {
+      "path": "training.checkpoint.save_top_k",
+      "old": 1,
+      "new": -1
+    },
+    {
+      "path": "training.validation_candidates",
+      "old": null,
+      "new": {
+        "max_candidates": 8,
+        "nms_kernel": 5,
+        "patch_size": 5,
+        "subpixel_refine": true,
+        "radius_source_px": 20.0
+      }
+    }
+  ],
+  "validation_windows": 9989,
+  "validation_batches": 2498,
+  "windows_by_source": {
+    "tracknet": 387,
+    "meiji": 6717,
+    "chat_annotation": 2885
+  },
+  "sampled_windows_per_source": 64,
+  "sampled_batches": 48,
+  "sampled_loading_total_seconds_including_worker_start_stop": 5.160233602975495,
+  "loading_seconds_per_batch_mean_excluding_first": 0.09649321900066385,
+  "loading_seconds_per_batch_p90_excluding_first": 0.37237260496476665,
+  "synthetic_candidate_native_shape": [
+    4,
+    8,
+    72,
+    128
+  ],
+  "candidate_cpu_seconds_per_batch_mean": 0.018956382267788285,
+  "candidate_cpu_seconds_per_batch_p90": 0.02384218102088198,
+  "old_validation_windows": 4633,
+  "old_total_seconds": 20682.532637119293,
+  "old_validation_seconds_per_epoch_estimated": [
+    265.3366816043854,
+    254.38958835601807,
+    250.87418723106384,
+    251.38688802719116,
+    268.61671328544617,
+    250.98244762420654,
+    252.45361924171448,
+    250.13258576393127,
+    259.80086159706116,
+    253.76559782028198,
+    261.57936573028564,
+    255.10695576667786
+  ],
+  "old_nonvalidation_seconds_estimated": 17608.10714507103,
+  "notes": [
+    "No model forward or GPU; random heatmaps measure processing cost only.",
+    "Old validation wall time subtracts an interpolated final training timestamp.",
+    "Data loading and candidate timing are sequential, not five simultaneous CPU-heavy processes.",
+    "Probe disables pin_memory only; resolved training config retains r6 pin_memory=true."
+  ]
+}

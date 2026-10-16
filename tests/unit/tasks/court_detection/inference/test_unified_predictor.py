@@ -37,7 +37,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelIOError,
     CourtModelSpec,
 )
-from src.tasks.court_detection.models.pose_head import CourtModelOutput
+from src.tasks.court_detection.models.dinov3_dpt import CourtModelOutput
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 from tests.unit.tasks.court_detection.inference.test_pose_output_predictors import (
     _bundle,
@@ -176,8 +176,9 @@ def test_hybrid_receives_one_forward_original_pixel_kp_and_native_line(
         calls = 0
 
         def forward(
-            self, image: torch.Tensor, *args: Any, **kwargs: Any
+            self, x: torch.Tensor, *args: Any, **kwargs: Any
         ) -> CourtModelOutput:
+            image = x
             self.calls += 1
             output = super().forward(image, *args, **kwargs)
             logits = dict(output.dense_logits)

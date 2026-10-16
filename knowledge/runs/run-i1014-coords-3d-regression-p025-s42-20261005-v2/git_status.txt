@@ -1,0 +1,8 @@
+ M knowledge/nodes/ball_refiner/.sequence
+ M src/tasks/OUTPUTS.md
+?? knowledge/nodes/ball_refiner/000030-run-i991-coordinate-gpu-smoke-20261005.md
+?? knowledge/nodes/ball_refiner/000031-run-i991-coords-2d-regression-p025-s42-20261005-v1.md
+?? knowledge/nodes/ball_refiner/000032-run-i991-coords-2d-gan-p025-s42-20261005-v1.md
+?? knowledge/runs/run-i991-coordinate-gpu-smoke-20261005/
+?? knowledge/runs/run-i991-coords-2d-gan-p025-s42-20261005-v1/
+?? knowledge/runs/run-i991-coords-2d-regression-p025-s42-20261005-v1/

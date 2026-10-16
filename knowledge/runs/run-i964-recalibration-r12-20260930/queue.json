@@ -1,0 +1,29 @@
+{
+  "job_id": "1790770959248007705_1601943_i964-recalibration-features-r12-20260930",
+  "state_at_handoff": "jobs",
+  "queue_dir": "/home/kamimura/projects/tennis-lab/.training_queue",
+  "job_file": "/home/kamimura/projects/tennis-lab/.training_queue/jobs/1790770959248007705_1601943_i964-recalibration-features-r12-20260930.job",
+  "resource": "all",
+  "session": "01a0f223-3c51-7b42-8c49-648f9aad0838",
+  "provider": "codex",
+  "issue": 964,
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
+  "feature_code_commit": "da42054d",
+  "frozen_inputs_commit": "3653ed90",
+  "expected_seconds": [
+    3600,
+    6900
+  ],
+  "wall_limit_seconds": 7200,
+  "expected_peak_vram_gb": [
+    8,
+    10
+  ],
+  "expected_disk_gb": [
+    1,
+    2
+  ],
+  "output": "/home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/recalibration/i964-r12-20260930/features",
+  "estimate_posted_before_enqueue": "https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5911203848",
+  "not_waited_for_gpu": true
+}

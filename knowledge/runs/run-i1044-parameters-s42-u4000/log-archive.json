@@ -1,0 +1,12 @@
+{
+  "raw_filename": "1791857516898632174_3137682_i1044-parameters-s42-u4000-cli.log",
+  "raw_bytes": 485415956,
+  "raw_sha256": "8957a2c4eb2510ca0ab61240f2295d4870ab7348bcbc59aa715543528a6dcad0",
+  "compressed_filename": "queue.log.gz",
+  "compressed_bytes": 2414506,
+  "decompressed_sha256_matches_raw": true,
+  "view_filename": "queue-summary.log",
+  "view_excludes": "driver diagnostic lines containing ][CUDA][",
+  "view_excluded_lines": 4928038,
+  "original_queue_log_sha256_matches": true
+}

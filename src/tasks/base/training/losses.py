@@ -29,11 +29,15 @@ class FocalBCEWithLogitsLoss(nn.Module):
             raise ValueError("focal loss gamma must be non-negative.")
         self.gamma = float(gamma)
 
-    def forward(self, logits: Tensor, targets: Tensor) -> Tensor:
+    def elementwise(self, logits: Tensor, targets: Tensor) -> Tensor:
+        """Unreduced loss with the shape of ``logits`` (for caller-side masking)."""
         probs = torch.sigmoid(logits)
         bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
         p_t = probs * targets + (1.0 - probs) * (1.0 - targets)
-        return ((1.0 - p_t) ** self.gamma * bce).mean()
+        return (1.0 - p_t) ** self.gamma * bce
+
+    def forward(self, logits: Tensor, targets: Tensor) -> Tensor:
+        return self.elementwise(logits, targets).mean()
 
 
 def validate_focal_bce_inputs(logits: Tensor, targets: Tensor) -> None:

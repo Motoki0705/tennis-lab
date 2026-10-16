@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-09T18:40:37.235825+09:00",
+  "previous_job": "1791527059751331910_2492550_i986-dpt-pretrain-s42-u60000-v1.job",
+  "resume_job": "1791538837221075032_3695702_i986-dpt-pretrain-s42-resume-e3-v1.job",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-dpt-pretrain/s42-u60000-v1/epoch-002.pt",
+  "checkpoint_sha256": "4eb75952c30400c9d14aa7599e8838e4bc3383a0ac7de350e4febc5113ebd0b3",
+  "global_step": 18000,
+  "code_commit": "e3f1356163e7b2009c580fc1727c1a413c5889a3",
+  "recipe_changed": false,
+  "diagnostic_environment": {
+    "CUDA_LOG_FILE": "stderr"
+  },
+  "command": "env CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 PYTHONUNBUFFERED=1 .venv/bin/python -m src.tasks.ball_detection.scripts.pretrain_mdd_dpt --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json --model-config /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-dpt-pretrain-s42/src/tasks/ball_detection/configs/model/mdd_dpt_pretrain.yaml --output /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-dpt-pretrain/s42-u60000-v1 --epochs 10 --windows-per-epoch 6000 --learning-rate .0002 --warmup-updates 500 --seed 42 --device cuda --precision bf16 --batch-size 1 --num-workers 8 --prefetch-factor 4 --cpu-threads 2 --pin-memory --jpeg-decoder nvjpeg --input-verification upfront --image-prefetch --compile-mode default --selection-scope common --log-every 50 --preview-clips 3 --resume /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-dpt-pretrain/s42-u60000-v1/epoch-002.pt",
+  "reason": "CUDA unknown error after epoch 2; root cause unresolved; one unchanged checkpoint resume"
+}

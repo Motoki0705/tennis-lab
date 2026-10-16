@@ -1,0 +1,25 @@
+{
+  "epoch": 19,
+  "global_step": 33160,
+  "callbacks": [
+    {
+      "key": "ModelCheckpoint{'monitor': 'val/loss', 'mode': 'min', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}",
+      "best_model_path": "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=17.ckpt",
+      "best_score": 1.1920050382614136,
+      "ranking": {
+        "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=02.ckpt": 1.7937047481536865,
+        "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=05.ckpt": 1.7832006216049194,
+        "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=08.ckpt": 1.360463261604309,
+        "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=11.ckpt": 1.2581959962844849,
+        "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=14.ckpt": 1.3936306238174438,
+        "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/court-detection-epoch=17.ckpt": 1.1920050382614136
+      }
+    },
+    {
+      "key": "ModelCheckpoint{'monitor': None, 'mode': 'min', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}",
+      "best_model_path": "/content/tennis-lab/outputs/court_detection/train/i983-dino-b-shared1024/s42/logs/version_0/checkpoints/last.ckpt",
+      "best_score": null,
+      "ranking": {}
+    }
+  ]
+}

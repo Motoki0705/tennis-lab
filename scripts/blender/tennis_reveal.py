@@ -832,9 +832,10 @@ def build(bundle: Path, output: Path, shot: Shot) -> bpy.types.Scene:
     scene.collection.children.link(bpy.data.collections.new(COLLECTION))
 
     fps = float(manifest["fps"])
-    scene.render.fps, scene.render.fps_base = 60, 1.001
-    if abs(60.0 / 1.001 - fps) > 1e-3:
-        raise ValueError(f"Bundle fps {fps} is not 59.94; set fps explicitly.")
+    if not math.isfinite(fps) or not 1.0 <= fps <= 240.0:
+        raise ValueError(f"Bundle fps must be finite and in [1, 240], got {fps}.")
+    scene.render.fps = round(fps)
+    scene.render.fps_base = scene.render.fps / fps
     scene.frame_start, scene.frame_end = 0, num_frames - 1
     scene.render.resolution_x = int(manifest["width"])
     scene.render.resolution_y = int(manifest["height"])
@@ -1017,7 +1018,7 @@ def _build_ball(
     for frame in range(num_frames):
         for k in range(count):
             src = frame - (k + 1) * shot.trail_stride
-            ok = src >= 0 and valid[src] and valid[frame]
+            ok = src >= 0 and valid[src : frame + 1].all()
             center = (
                 positions[src]
                 if ok
@@ -1072,15 +1073,23 @@ def main(argv: list[str]) -> None:
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--frames", default=None, help="start:end inclusive subset")
     parser.add_argument("--samples", type=int, default=None)
+    parser.add_argument("--resolution-percentage", type=int, default=100)
     args = parser.parse_args(argv)
+    if not 1 <= args.resolution_percentage <= 100:
+        parser.error("--resolution-percentage must be in [1, 100]")
+    if args.samples is not None and args.samples < 1:
+        parser.error("--samples must be positive")
     shot = Shot() if args.samples is None else Shot(samples=args.samples)
     scene = build(args.bundle, args.output, shot)
+    scene.render.resolution_percentage = args.resolution_percentage
+    if args.frames is not None:
+        start, end = (int(v) for v in args.frames.split(":"))
+        if not scene.frame_start <= start <= end <= scene.frame_end:
+            parser.error("--frames must be an inclusive range inside the scene")
+        scene.frame_start, scene.frame_end = start, end
+    scene.render.filepath = str(args.output / "frames" / "#####")
     bpy.ops.wm.save_as_mainfile(filepath=str(args.output / "tennis_reveal.blend"))
     if args.render:
-        if args.frames is not None:
-            start, end = (int(v) for v in args.frames.split(":"))
-            scene.frame_start, scene.frame_end = start, end
-        scene.render.filepath = str(args.output / "frames" / "#####")
         bpy.ops.render.render(animation=True)
 
 

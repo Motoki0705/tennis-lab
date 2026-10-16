@@ -1,0 +1,13 @@
+{
+  "results/fixed-spread.csv": "483c8a177f8be3787d05d23f046463801d5c8da80a080a8bad1f9bfcb08b5eac",
+  "results/gate.json": "9dfe75b693adeb02af74b6ebafd33bfb30e15e0ed0f9d73885ed439ca1781ad2",
+  "results/manifest.json": "dd67f6bc3c626c5957ae761c3bb634c8d8c38a310b40d2f58f53ca69f0441c56",
+  "results/raw-spread.csv": "139753e980f35c94744d7114eca5485911e6fdadf1a7878ddab689ea7da09fef",
+  "results/run_state.json": "ff3e3bb682a97f443394d7163f531bff27c8c26491c3d716326b1634f41226c2",
+  "results/seed42.json": "66fab68f9d4b204a952a3e4553216692b52346410d46e12617d5bdbbf6281f2b",
+  "results/seed43.json": "3886ee832cb47a5391fc8681f78499a86a0a9ad5f109032aefd62872d41d1903",
+  "results/seed44.json": "e30e55bc32fd09781e90332cb99255c6b26d4d7f6f8203b6b39c2ad8941ec9c4",
+  "comparison.md": "e61295f63aad2c7d6a4a714b9ebdfc96391673c3f1be4325548761ec192ffa1a",
+  "analysis.log": "1aad2a73b0e11d108a335f4fad8f71d8e587af2c773dcc94514b28031682161c",
+  "csv-normalization.json": "e7907012aaff247a2012be9213ef16137d29d787a3a1c5d02250a2f2edd3a8d2"
+}

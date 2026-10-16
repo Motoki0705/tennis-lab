@@ -11,6 +11,7 @@ from unittest.mock import patch
 import pytest
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf.errors import InterpolationResolutionError
 
 import src.utils.hydra  # noqa: F401 -- registers the public YAML resolvers
 from src.utils.configuration.errors import PathContractError
@@ -102,19 +103,40 @@ def _compose_boundary(boundary: RuntimeBoundary, overrides: list[str]) -> DictCo
         )
 
 
-def _expected_kind(module: str) -> str:
-    name = module.rsplit(".", 1)[1]
-    if name == "materialize_targets" or name.startswith("precompute"):
-        return "precompute"
-    if name.startswith("train"):
-        return "train"
-    if name == "eval" or name.startswith("evaluate"):
-        return "evaluate"
-    if name.startswith("analyze") or name == "visualize_rotation_error_samples":
-        return "analyze"
-    if name.startswith(("preview", "visualize", "predict")):
-        return "visualize"
-    return "generate"
+# Expectations name the semantic validator contract, not a module basename.
+# A new contract must declare its expected output kind rather than defaulting to generate.
+_OUTPUT_KIND_CONTRACTS = {
+    "train": (
+        "ball_refiner_3d.train", "ball.train", "blcs.train", "court_detection.train",
+        "player_detection.train", "plcs.train", "slcs.train",
+    ),
+    "generate": (
+        "ball_refiner_3d.generate_dataset", "ball_detection.generate_dataset",
+        "blcs.api_server", "blcs.generate_dataset", "blcs.generate_dataset_samples",
+        "player_detection.generate_dataset", "player_detection.export_checkpoint",
+        "plcs.generate_dataset", "plcs.generate_dataset_samples",
+        "slcs.generate_dataset", "slcs.make_splits",
+    ),
+    "evaluate": ("ball.eval", "ball.evaluate_manifest", "player_detection.evaluate", "slcs.evaluate"),
+    "visualize": (
+        "ball.preview", "ball.visualize", "blcs.preview_augmentation", "blcs.visualize",
+        "court_detection.preview_augmentation", "court_detection.visualize",
+        "player_detection.preview_dataset", "plcs.preview_augmentation", "plcs.visualize", "slcs.predict_clip",
+    ),
+    "analyze": (
+        "plcs.analyze_angle_velocity", "plcs.analyze_dataset_distribution", "plcs.analyze_loss_dominance",
+        "plcs.analyze_rotation_error_samples", "slcs.analyze_predictions",
+    ),
+    "precompute": ("slcs.precompute_dino_tokens",),
+}
+_EXPECTED_KIND_BY_CONTRACT = {
+    contract: kind for kind, contracts in _OUTPUT_KIND_CONTRACTS.items() for contract in contracts
+}
+
+
+def _expected_kind(boundary: RuntimeBoundary) -> str:
+    assert boundary.validator_key is not None
+    return _EXPECTED_KIND_BY_CONTRACT[boundary.validator_key]
 
 
 @pytest.mark.parametrize(
@@ -145,10 +167,13 @@ def test_all_task_cli_output_contracts(
             "dataset=meiji_3cam",
             f"paths.data_root={tmp_path / 'dataset-root'}",
         ]
-    if "clip_and_predict_youtube_dataset" in boundary.module:
-        overrides += ["workflow.video_id=smoke-video"]
     if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
         overrides += ["evaluation.checkpoint=smoke/model.ckpt"]
+    if boundary.module == "src.tasks.player_detection.scripts.export_checkpoint":
+        overrides += [
+            "export.lightning_checkpoint=smoke/model.ckpt",
+            "export.destination=player_detection/smoke.pth",
+        ]
     if boundary.module == "src.tasks.slcs.scripts.generate_dataset":
         overrides += ["data.dataset_root=smoke/clips"]
     cfg = _compose_boundary(boundary, overrides)
@@ -172,7 +197,7 @@ def test_all_task_cli_output_contracts(
         assert log.name == "hydra"
         run = log.parent
     assert len(run.parts) == 4
-    assert run.parts[:2] == (boundary.domain, _expected_kind(boundary.module))
+    assert run.parts[:2] == (boundary.domain, _expected_kind(boundary))
     assert re.fullmatch(r"\d{8}T\d{6}\.\d{6}Z-[a-f0-9]{8}", run.parts[3])
     job = deepcopy(cfg)
     with open_dict(job):
@@ -204,7 +229,6 @@ def test_all_task_cli_output_contracts(
     for key in (
         "run.output_dir",
         "preview.output_dir",
-        "generate_line_masks.preview_dir",
         "evaluate.output_dir",
         "predict.output_dir",
         "analysis.output_dir",
@@ -295,13 +319,13 @@ def test_tennis_scene_logs_and_outputs_have_named_run(
         assert Path(str(OmegaConf.select(cfg, key))).parts[:4] == log.parts[:4]
 
 
-def test_evaluation_manifest_resolves_output_and_checkpoint_roots(
+def test_evaluation_manifest_keeps_artifact_models_and_pretrained_roots_separate(
     tmp_path: Path,
 ) -> None:
     from src.tasks.ball_detection.evaluation.contracts import load_evaluation_manifest
 
     boundary = next(
-        b for b in _TASK_BOUNDARIES if b.module.endswith(".evaluate_manifest")
+        b for b in _TASK_BOUNDARIES if b.validator_key == "ball.evaluate_manifest"
     )
     cfg = _compose_boundary(
         boundary,
@@ -322,21 +346,25 @@ def test_evaluation_manifest_resolves_output_and_checkpoint_roots(
     assert len(relative.parts) == 4
     assert relative.parts[:3] == ("ball_detection", "evaluate", "detector_comparison")
     assert all(
-        model.checkpoint.is_relative_to(tmp_path / "weights")
+        model.checkpoint.is_relative_to(tmp_path / "media")
         for model in manifest.models
     )
+    assert roots.checkpoint_root == tmp_path / "weights"
 
 
 def test_mixed_training_snapshot_preserves_roots_identity_and_sources(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
-    from src.tasks.court_detection.training.runner_mixed import (
-        MixedCourtDetectionTrainingRunner,
-        resolve_mixed_training_config,
+    from src.tasks.court_detection.training.runner import (
+        CourtDetectionTrainingRunner,
+        resolve_training_config,
     )
 
-    boundary = next(b for b in _TASK_BOUNDARIES if b.module.endswith(".train_mixed"))
+    boundary = next(
+        b
+        for b in _TASK_BOUNDARIES
+        if b.module == "src.tasks.court_detection.scripts.train"
+    )
     cfg = _compose_boundary(boundary, [f"paths.output_root={tmp_path / 'runs'}"])
     log = Path(cfg.hydra.run.dir)
     with open_dict(cfg):
@@ -345,18 +373,48 @@ def test_mixed_training_snapshot_preserves_roots_identity_and_sources(
     output_dir.mkdir(parents=True)
 
     def save_without_training(
-        runner: MixedCourtDetectionTrainingRunner, standard: DictConfig
+        runner: CourtDetectionTrainingRunner, standard: DictConfig
     ) -> None:
         runner.save_config(standard, output_dir)
 
     monkeypatch.setattr(CourtDetectionTrainingRunner, "run", save_without_training)
-    MixedCourtDetectionTrainingRunner().run(cfg)
+    CourtDetectionTrainingRunner().run(cfg)
     saved = cast(DictConfig, OmegaConf.load(output_dir / "config.yaml"))
     assert saved.run.output_dir == cfg.run.output_dir
     assert saved.mixed == cfg.mixed
     assert Path(saved.paths.output_root) == tmp_path / "runs"
     assert all(Path(str(root)).is_absolute() for root in saved.paths.values())
     assert "${" not in (output_dir / "config.yaml").read_text()
-    replay, mixed = resolve_mixed_training_config(saved)
+    replay, mixed = resolve_training_config(saved)
     assert replay.run.output_dir == cfg.run.output_dir
     assert mixed is not None
+
+
+def test_output_root_named_like_the_task_is_rejected_with_the_colliding_root(
+    tmp_path: Path,
+) -> None:
+    # Regression for queue job i931-v2-dataset-meiji-one-clip-20260927:
+    # paths.output_root=<report>/slcs made the precompute log directory
+    # <root>/slcs/precompute/... fail on the reserved basename 'slcs' with no
+    # hint that the override itself was the cause.
+    config_dir = str(PROJECT_ROOT / "src/tasks/slcs/configs")
+    with initialize_config_dir(version_base="1.3", config_dir=config_dir):
+        cfg = compose(
+            config_name="precompute_dino_tokens",
+            overrides=[f"paths.output_root={tmp_path / 'slcs'}"],
+            return_hydra_config=True,
+        )
+        with pytest.raises(
+            InterpolationResolutionError, match="configured output_root"
+        ) as error:
+            _ = cfg.hydra.run.dir
+    assert str(tmp_path / "slcs") in str(error.value)
+
+    with initialize_config_dir(version_base="1.3", config_dir=config_dir):
+        cfg = compose(
+            config_name="precompute_dino_tokens",
+            overrides=[f"paths.output_root={tmp_path / 'report'}"],
+            return_hydra_config=True,
+        )
+    log = Path(cfg.hydra.run.dir).relative_to(tmp_path / "report")
+    assert log.parts[:3] == ("slcs", "precompute", "precompute_dino_tokens")

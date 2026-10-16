@@ -1,0 +1,57 @@
+{
+  "status": "metadata_audit_complete_not_enqueued",
+  "manifest": {
+    "path": "/home/kamimura/projects/tennis-lab/data/ball_refiner/detector-mixed-e9-trainval-r17-20260930/manifest.json",
+    "sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6"
+  },
+  "counts": {
+    "tracknet": {
+      "clips": 83,
+      "frames": 17691
+    },
+    "meiji": {
+      "clips": 108,
+      "frames": 52866
+    },
+    "chat_annotation": {
+      "clips": 138,
+      "frames": 75210
+    }
+  },
+  "total_clips": 329,
+  "total_frames": 145767,
+  "reference": {
+    "path": "knowledge/runs/run-i964-coco-fullframe-r5-20260929/inference.json",
+    "sha256": "c71ae103e64871b93be21e72d121a2b786dd9a1d251c4099de6e44b4414393e0",
+    "subset": "video_002/clip_013, three cameras; timing metadata only",
+    "frames": 1605,
+    "seconds": 457.1172479772358,
+    "seconds_per_frame": 0.2848082541914242,
+    "scope": "synchronized predictor; excludes video decode, model load and archive IO",
+    "floor": 0.01
+  },
+  "estimates_not_measurements": {
+    "detector_hours_by_source": {
+      "tracknet": 1.3995952291390237,
+      "meiji": 4.182409212801065,
+      "chat_annotation": 5.950119110482504
+    },
+    "detector_hours_total": 11.532123552422592,
+    "complete_job_hours_range": [
+      22,
+      33
+    ],
+    "peak_vram_gib_range": [
+      6,
+      9
+    ],
+    "selected_pose_raw_bytes_at_cap6": 192703974,
+    "context_cache_budget_gib": 0.5,
+    "additional_output_budget_gib": 1
+  },
+  "current_grant": {
+    "wall_hours_total": 4,
+    "peak_vram_gb": 10,
+    "new_jobs": 0
+  }
+}

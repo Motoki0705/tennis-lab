@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.tennis_scene.blender_export.bundle import court_geometry, load_validity_masks
+from src.tennis_scene.blender_export.bundle import court_geometry
 from src.tennis_scene.blender_export.gaps import fill_short_gaps
 from src.tennis_scene.blender_export.pointcache import read_pc2, write_pc2
 from src.utils.schema.court import X_MAX, X_MIN, Y_MAX, Y_MIN, net_height_at_x
@@ -77,20 +77,3 @@ def test_court_geometry_lists_ground_lines_inside_runoff() -> None:
     top = np.asarray(court["net"]["top"])
     assert top[0, 0] == -court["net"]["post_x"]
     assert top[:, 1].min() == pytest.approx(net_height_at_x(0.0))
-
-
-def test_load_validity_masks_requires_both_masks(tmp_path: Path) -> None:
-    path = tmp_path / "scene.npz"
-    np.savez(path, player_smpl_valid=np.ones((2, 4), dtype=bool))
-
-    with pytest.raises(KeyError, match="ball_3d_valid"):
-        load_validity_masks(path)
-
-    np.savez(
-        path,
-        player_smpl_valid=np.ones((2, 4), dtype=bool),
-        ball_3d_valid=np.array([1, 0, 1, 1], dtype=np.uint8),
-    )
-    masks = load_validity_masks(path)
-    assert masks["ball_3d_valid"].dtype == np.bool_
-    np.testing.assert_array_equal(masks["ball_3d_valid"], [True, False, True, True])

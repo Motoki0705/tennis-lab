@@ -1,35 +1,15 @@
-"""Court detection model implementations."""
+"""The Court DINOv3/Transformer/DPT model and its output contracts."""
 
-from __future__ import annotations
-
-from src.tasks.court_detection.models.hierarchical_model import (
+from src.tasks.court_detection.models.dinov3_dpt import (
     CourtHierarchicalModel,
     CourtHierarchicalOutput,
-)
-from src.tasks.court_detection.models.pose_head import (
     CourtModelOutput,
-    CourtPose10DHead,
     CourtRawPoseOutput,
-)
-from src.tasks.court_detection.models.transformer_encoder import (
-    CourtIntermediateTransformerEncoder,
-    CourtTransformerEncoder,
-    IntermediateTransformerEncoder,
-    PatchTransformerEncoder,
-    TransformerEncoder,
-    TransformerEncoderOutput,
 )
 
 __all__ = [
     "CourtHierarchicalModel",
     "CourtHierarchicalOutput",
-    "CourtIntermediateTransformerEncoder",
     "CourtModelOutput",
-    "CourtPose10DHead",
     "CourtRawPoseOutput",
-    "CourtTransformerEncoder",
-    "IntermediateTransformerEncoder",
-    "PatchTransformerEncoder",
-    "TransformerEncoder",
-    "TransformerEncoderOutput",
 ]

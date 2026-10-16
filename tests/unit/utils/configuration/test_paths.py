@@ -549,3 +549,33 @@ def test_independent_artifact_input_requires_explicit_role_root_permission(
             resolver=resolver,
             independent_artifact_inputs=True,
         )
+
+
+@pytest.mark.parametrize(
+    "fragment,reason",
+    [
+        ("slcs/precompute/run", "basename of the configured output_root"),
+        ("outputs/legacy", "a legacy root directory name"),
+        ("external_asset/work", "the name of the external_asset path role"),
+    ],
+)
+def test_reserved_prefix_error_names_why_the_prefix_is_reserved(
+    tmp_path: Path,
+    fragment: str,
+    reason: str,
+) -> None:
+    # A root named like a task (output_root=.../slcs) rejects that task's own
+    # "slcs/..." outputs; the error must name the colliding root, not only
+    # the prefix, so the offending override is identifiable from the log.
+    mapping = _root_mapping()
+    mapping["output_root"] = "runs/slcs"
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(mapping, repository_root=tmp_path.resolve())
+    )
+
+    with pytest.raises(PathContractError, match="root-prefixed or legacy") as error:
+        resolver.resolve(PathRole.OUTPUT, fragment)
+
+    assert reason in str(error.value)
+    if fragment.startswith("slcs/"):
+        assert str(tmp_path.resolve() / "runs/slcs") in str(error.value)

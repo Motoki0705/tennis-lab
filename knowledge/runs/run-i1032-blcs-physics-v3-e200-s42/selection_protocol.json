@@ -1,0 +1,21 @@
+{
+  "fixed_before_first_test": true,
+  "selection_monitor": "val/position_error_m",
+  "mode": "min",
+  "validation_frequency_epochs": 5,
+  "training_budget_epochs": 200,
+  "training_seed": 42,
+  "initialization": "random; no resume or pretrained init",
+  "optimizer_updates_expected": 9000,
+  "test_after_fit": false,
+  "test_checkpoint": "best validation, never last by default",
+  "test_split": "test.txt of frozen PR1038 dataset",
+  "test_window": "deterministic center 128 frames; exclude shorter scenes",
+  "test_cameras": "3-6 views, sample-local RNG seed42",
+  "test_precision": "bf16-mixed",
+  "test_augmentation": false,
+  "post_test_retuning": false,
+  "scope": "replace local BLCS checkpoint and record knowledge; tennis_scene integration deferred",
+  "previous_pr": "https://github.com/Motoki0705/tennis-lab/pull/1036",
+  "dataset_pr": "https://github.com/Motoki0705/tennis-lab/pull/1038"
+}

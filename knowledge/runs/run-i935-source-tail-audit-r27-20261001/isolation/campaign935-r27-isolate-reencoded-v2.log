@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolate_inputs.py", line 197, in <module>
+    main(parser.parse_args().mode)
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-source-tail-audit-r27-20261001/isolate_inputs.py", line 126, in main
+    module = BallDetectionModule(build_ball_detection_config(config, PathResolver(roots), device="cpu"))
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/tennis_scene/configuration.py", line 904, in build_ball_detection_config
+    ball = _BALL_SCHEMA.validate(settings)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/src/utils/configuration/schema.py", line 229, in validate
+    raise MissingConfigurationKeyError(
+src.utils.configuration.errors.MissingConfigurationKeyError: Missing required configuration key(s): tennis_scene.ball_detection.enabled.

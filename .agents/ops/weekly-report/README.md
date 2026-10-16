@@ -1,0 +1,117 @@
+# weekly-report: 週次運用レポートと逆提案（#1057）
+
+プロジェクト本体とAI制御（AGENTS.md・`.agents/`・skill・memory・GitHub運用・この自動化自体）を
+共同で改善し続けるため、週1回「運用レポート」issueを作り、人間がチェックした提案を `ai-proposed` 子issueにする。
+設計原則と合意事項は親issue #1053 を参照する。
+
+## 構成
+
+| パス | 役割 |
+|---|---|
+| `weekly_report.py` | CLI入口（`report` / `triage`） |
+| `opsreport/collect.py` | 決定的な収集。gh（open PR/issue、merge済みPR、CI run、過去レポート）、git（期間内commit、行数の多いファイル、TODO系マーカー、worktree/branch数）、掃除モジュール出力、共有memory、`knowledge/`、AI制御ファイル |
+| `opsreport/agent.py` | agent選択、プロンプト組み立て、`../lib/agent_exec.sh` による read-only 実行、出力JSONの厳格な検証 |
+| `opsreport/proposals.py` | 提案のID付与・描画・本文からのチェック状態の解析・子issue番号の追記 |
+| `opsreport/report.py` | issue本文（日本語）の組み立て |
+| `opsreport/triage.py` | チェック済み提案 → 子issue化（重複防止） |
+| `prompt.md` | agentへの依頼文（分析観点・品質基準・出力JSON形式） |
+| `systemd/` | `report`（毎週月曜 08:00 JST）と `triage`（毎日 09:00 JST）の service / timer |
+
+分担: 収集はスクリプト（同じrepo状態なら同じ事実）、コードベース読解と提案文の生成はagent（read-only）、
+issue作成・編集はスクリプト。agentはJSONだけを返し、IDとMarkdownはスクリプトが付ける。
+read-only のagentは git / gh / ネットワークを使えないため、GitHub・git履歴の事実（放置PRの差分規模・mergeable・CI、
+全open issue、checkoutと基準refで内容が異なるファイル一覧など）はすべて `collect.py` が集めてプロンプトに埋め込む。
+model / effort は [`../lib/agents.conf`](../lib/agents.conf) で固定され、このツールからは変更しない。
+
+## 提案ID・チェック・triage
+
+- ID は `R-<ISO年>W<ISO週>-<連番>`（例 `R-2026W41-03`）。放置PR → カテゴリ順に連番を振る。
+  同じ週のレポートが既にあると `report` は失敗する（IDが衝突するため）。判定は本文1行目のメタデータ
+  （`<!-- ops-report:v1 week=… since=… until=… proposals=… -->`）の週で行い、タイトルを変えても再生成できない。
+- 本文のうちtriageが解析するのは `<!-- ops-report:proposals:begin -->` 〜 `end -->` の間だけで、
+  そこにあるIDもメタデータの週・提案数の範囲内でなければエラーになる。agentが書いた文章（概要・提案本文・選択肢など）は
+  チェックボックス記法とHTMLコメントを無害化してから埋め込むので、選択可能な項目やマーカーを偽造できない。
+- 通常の提案は行頭のチェックボックスで選ぶ。選択肢つきの提案（放置PRの「継続 / rebaseして仕上げ / close」など）は
+  **選択肢を1つだけ**チェックする。2つ以上、または見出しだけのチェックはエラーとしてtriageが非ゼロ終了する（他の提案は処理する）。
+- `triage` は open な `ops-report` issueをすべて走査し、選ばれた提案ごとに
+  タイトル `[<ID>] <提案タイトル>`・ラベル `ai-proposed` の子issueを作り、レポートの該当行末に `→ #番号` を追記する。
+- 重複防止: 作成前に全issue（open/closed）のタイトル先頭 `[<ID>]` を走査する。作成後の本文編集が失敗しても、
+  再実行時は既存の子issueを再利用して追記だけ行う。再利用するのは子issue本文1行目の
+  `<!-- ops-report-proposal: <ID> report=#<レポート番号> option=<選択肢(%エンコード)> -->` が
+  ID・レポート・現在選ばれている選択肢のすべてに一致する場合だけで、一致しなければその提案はエラーにする
+  （例: 子issue作成後に本文追記が失敗し、その間に選択肢が close → 継続 に変わった場合）。
+  `→ #番号` の追記直前にも最新の本文を読み直して同じ照合をし、triage実行中に選択が変わっていれば追記せずエラーにする。
+  追記済みの提案も毎回この照合を行うので、後から選択を変えた場合もエラーとして表に出る。同じIDの子issueが2件見つかった場合は停止する。
+- レポートをcloseするとtriage対象外になる。不要な提案は放置でよい。
+- 同時実行（timerと手動実行など）: `report` の「同週チェック → issue作成」と `triage` の「子issue走査 → 作成 → 本文追記」は
+  マシン共通のロックファイル（flock）で排他する。`report` は agent 実行前にも同週チェックをし、ロック内で再確認する。
+- 行末の `→ #番号` はtriageだけが付ける。PRタイトル等に同じ形があれば `→ \#番号` にエスケープして描画する。
+  title走査で見つかった子issueと一致しない `→ #番号` は、子issue本文のマーカーで検証し、不一致ならエラーにする。
+
+## 手動実行
+
+```bash
+cd ~/projects/tennis-lab
+# 本文を標準出力へ（issueは作らない）。agentは実行される。
+.venv/bin/python .agents/ops/weekly-report/weekly_report.py report --dry-run --output /tmp/report.md
+# 本番（ops-report ラベルのissueを作成）
+.venv/bin/python .agents/ops/weekly-report/weekly_report.py report --agent codex
+# チェック済み提案の子issue化（--dry-run で作成予定だけ表示）
+.venv/bin/python .agents/ops/weekly-report/weekly_report.py triage --dry-run
+```
+
+実行ごとに `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/weekly-report/<時刻>-<command>[-dry]-<pid>/` へ
+`run.log`、`collected.json`、`prompt.md`、`agent_output.md`、agent CLIのログ、`report.md`、`result.json` を残す。
+`--log-dir` / `WEEKLY_REPORT_LOG_DIR` の相対パスは、起動時のカレントディレクトリを基準に解決する。
+gh・git・agent・掃除モジュールの失敗、agent出力の形式違反、設定値の不正はすべて非ゼロ終了になる（黙ってskipしない）。
+agentと掃除モジュールは専用のプロセスグループで起動し、タイムアウト・失敗・終了時にグループ全体を
+SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子プロセスを残さない）。
+
+集計期間は `[前回レポートの until, 今回の実行時刻)`（実行時刻は秒単位に切り捨て、メタデータと同じ精度にする）。境界は issue 作成時刻ではなく本文メタデータの `until`
+（収集の基準時刻）で引き継ぐので、収集〜公開の間のイベントも欠落・重複しない。merge済みPRは
+`--search merged:>=<日付>` でmerge期間を検索条件に含めて取得し、件数上限に達したらエラーにする。
+
+## 設定
+
+CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-report.env`（任意）に書く。
+
+| 環境変数 | 既定 | 意味 |
+|---|---|---|
+| `WEEKLY_REPORT_AGENT` | `codex` | `claude` / `codex` / `alternate`（ISO週が偶数→claude、奇数→codex）。既定が `codex` なのは Claude の使用枠を自動運用で消費しないため（#1178） |
+| `WEEKLY_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref。remote追跡refなら実行開始時に `git fetch <remote> <branch>` し（失敗はエラー）、そのcommit SHAを実行中固定して本文メタデータ `base=` に記録する。ローカルref/SHAはfetchせず、本文に「ローカルref、fetchなし」と明記する |
+| `WEEKLY_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
+| `WEEKLY_REPORT_AGENT_TIMEOUT` | `5400` | agent実行のタイムアウト（秒） |
+| `WEEKLY_REPORT_CLEANUP_CMD` | `<python> .agents/ops/cleanup/cleanup.py scan` | 掃除モジュールのコマンド。`--report-json <一時ファイル>` を自動付与し、そのファイルのJSONを読む |
+| `WEEKLY_REPORT_LOG_DIR` | 上記state dir | ログの保存先 |
+| `WEEKLY_REPORT_AGENT_EXEC` | `../lib/agent_exec.sh` | agentラッパー（テストで差し替える） |
+| `WEEKLY_REPORT_LOCK_FILE` | `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/weekly-report.lock` | issue書き込みの排他ロック（下記） |
+| `WEEKLY_REPORT_LOCK_TIMEOUT` | `600` | ロック待ちの上限（秒）。超えたら非ゼロ終了 |
+
+- 放置PRへの推奨: agentは対象の放置PRすべてについて `{"recommendation": "継続|rebaseして仕上げ|close", "reason": …}` を返す必要があり、欠け・余分・形式違反は出力形式エラーになる。
+- 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
+  ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。
+  共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。あれば `SUMMARY.md` と、層の `index.md` を除く各エントリの先頭を渡す。
+- agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutで内容が異なるファイル
+  （無視対象を除く未追跡ファイルを含む）があれば、
+  一覧をagentへ渡し、本文の冒頭に注意を出す。
+
+## systemd --user への導入（merge後に人間が行う）
+
+```bash
+~/projects/tennis-lab/.agents/ops/install_units.sh --dry-run   # リンク予定の確認
+~/projects/tennis-lab/.agents/ops/install_units.sh              # ~/.config/systemd/user へlink + daemon-reload
+systemctl --user enable --now tennis-lab-weekly-report.timer tennis-lab-ops-triage.timer
+systemctl --user start tennis-lab-weekly-report.service         # 1回試す場合
+journalctl --user -u tennis-lab-weekly-report.service            # 実行ログ
+```
+
+unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` を使う。`claude` / `codex` / `gh` は
+`~/.local/bin` か `/usr/bin` にある前提で `PATH` を設定している。
+
+## 改訂の仕方（固めすぎない）
+
+- 分析観点・品質基準・出力形式は `prompt.md` にある。観点の追加や言い回しの変更はここだけ直せばよい。
+  レポート自身が「制御ルールの改訂」カテゴリでこのプロンプトや本ツールの改善を提案してよい（プロンプトにそう書いてある）。
+- カテゴリを増やす場合は `opsreport/proposals.py` の `CATEGORIES` を変える（プロンプトのカテゴリ一覧は自動で反映される）。
+- 収集項目を増やす場合は `opsreport/collect.py` に決定的な関数を足す。観察データ欄に出したいものは `opsreport/report.py`。
+- 挙動を変えたら `tests/e2e/agents_ops/test_weekly_report*.py`（fake gh / fake agent_exec）を更新する。

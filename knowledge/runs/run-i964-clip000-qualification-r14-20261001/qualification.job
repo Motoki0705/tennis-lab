@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# name: i964-clip000-qualification-r14-20261001
+# added: 2026-10-01T02:41:02+09:00
+# provider: codex
+# session: 01a0f34a-563b-75e3-be1f-3354c2608e8f
+# issue: 964
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking
+export TENNIS_RUN_ID=1790790062674261667_32446_i964-clip000-qualification-r14-20261001
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/1790790062674261667_32446_i964-clip000-qualification-r14-20261001
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/1790790062674261667_32446_i964-clip000-qualification-r14-20261001 --name i964-clip000-qualification-r14-20261001 --provider codex --session 01a0f34a-563b-75e3-be1f-3354c2608e8f --issue 964 --cmd timeout\ -k\ 10s\ 5380s\ bash\ /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_qualification.sh\ /home/kamimura/projects/tennis-lab\ /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001
+timeout -k 10s 5380s bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/pipeline_qualification.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001

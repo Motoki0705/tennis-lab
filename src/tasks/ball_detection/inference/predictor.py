@@ -9,16 +9,21 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.inference.checkpoint import load_ball_checkpoint
+from src.tasks.ball_detection.checkpoints.heatmap import load_ball_checkpoint
 from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
-from src.tasks.ball_detection.model_io.contracts import BallModelIOError, BallPrediction
+from src.tasks.ball_detection.model_io.contracts import (
+    DEFAULT_CANDIDATE_CONFIG,
+    BallCandidateConfig,
+    BallModelIOError,
+    BallPrediction,
+)
 from src.tasks.ball_detection.model_io.normalization import (
     IDENTITY_NORMALIZATION,
     BallImageNormalization,
 )
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO
-from src.utils.configuration import PathResolver
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
 
 
@@ -68,18 +73,19 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
         subpixel_refine: bool,
         strict: bool,
         weights_only: bool,
+        checkpoint_role: PathRole = PathRole.CHECKPOINT,
         **kwargs: Any,
     ) -> Self:
         """Restore one checkpoint's model and adapter without training state."""
         if kwargs:
             raise TypeError(f"Unsupported Ball checkpoint options: {sorted(kwargs)}")
-        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver, role=checkpoint_role)
         if len(checkpoints) != 1:
             raise ValueError(
                 f"{cls.__name__} expects a single checkpoint, got {len(checkpoints)} checkpoints."
             )
         resolved_device = resolve_device(device)
-        loaded = load_ball_checkpoint(checkpoints[0], strict=strict, weights_only=weights_only)
+        loaded = load_ball_checkpoint(checkpoints[0], strict=strict, weights_only=weights_only, resolver=resolver)
         return cls(
             model_io=loaded.model_io,
             device=resolved_device,
@@ -90,6 +96,8 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
     def predict(
         self,
         images: Tensor,
+        *,
+        candidate_config: BallCandidateConfig = DEFAULT_CANDIDATE_CONFIG,
     ) -> BallPrediction:
         """Run inference on a batch of frame sequences.
 
@@ -98,7 +106,8 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
                 ``[0, 1]``. Already resized and scaled from raw RGB values.
                 The checkpoint's saved normalization is applied internally.
         Returns:
-            Typed coordinates, confidence, and probability heatmaps on CPU.
+            Typed coordinates, confidence, dense probability heatmaps and
+            unthresholded local candidate evidence on CPU.
         """
         if not isinstance(images, Tensor):
             raise BallModelIOError("Ball detector input must be a Tensor.")
@@ -111,6 +120,7 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
                 logits,
                 call,
                 subpixel_refine=self.subpixel_refine,
+                candidate_config=candidate_config,
             )
 
     @property

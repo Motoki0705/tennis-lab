@@ -12,7 +12,12 @@ defaults:
   - camera: default
   - targeted_velocity: default
   - generator: default
+  - generation: single_object
   - _self_
+
+training:
+  trainer:
+    reload_dataloaders_every_n_epochs: 1
 
 hydra:
   run:

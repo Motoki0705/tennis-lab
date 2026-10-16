@@ -64,17 +64,6 @@
   <em>物理シミュレーションによるボール軌道・イベント・マルチカメラ観測の生成</em>
 </p>
 
-## 開発中
-
-### Multi-object PLCS / BLCS
-
-[PR #650](https://github.com/Motoki0705/tennis-lab/pull/650) で、複数プレーヤー・複数ボールの lifecycle を扱う生成・追跡・可視化パイプラインを開発しています。
-
-| 複数プレーヤー（PLCS） | 複数ボール（BLCS） |
-| :---: | :---: |
-| <img src="assets/plcs/multi_object.gif" width="400" /> | <img src="assets/blcs/multi_object.gif" width="400" /> |
-| `multi_object_lifecycle_v2 / scene_000040` | `multi_object_lifecycle_v4 / scene_000345` |
-
 ## ライセンス / 引用
 
 このリポジトリは [MIT License](LICENSE) の下で公開されています。
@@ -84,12 +73,13 @@
 ### どこに何があるか（タスク）
 
 - Ball Detection: 画像上の2Dボール位置（`src/tasks/ball_detection`）
-- Court Detection: 20点コートキーポイント（`src/tasks/court_detection`）
+- 3D Ball Refiner: 3D座標・欠損maskから全frame軌道とイベント確率を推論（[学習設計・モデル契約](src/tasks/ball_refiner_3d/README.md)）
+- Court Detection: 14点コートキーポイント（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
 - GVHMR: 画像列 -> 2Dスケルトン + SMPL (`third_party/GVHMR`)
 - 統合: 上記をまとめて1本のパイプラインとして回す (`src/tennis_scene/README.md`)
-- 合成データ生成: 再構成済み3D sceneへ物理軌道を合成して学習データを公開する (`src/synthetic_data_generation/README.md`)
+- 合成データ生成: 再構成済み3D sceneからcourt detection用データを公開する (`src/synthetic_data_generation/README.md`)
 
 ### 典型データフロー
 
@@ -108,6 +98,7 @@ Video
 
 - `src/`: タスク実装（各タスクは `configs/` + `scripts/` + `training/` などを持つ）
 - `third_party/`: 外部モジュール（例: GVHMR）。vendor codeは隔離
+- `ckpt/`: 採用checkpoint・外部モデル重み・body modelの実体（git管理外）
 - `data/`: データセット/入力（大きなデータやモデルはコミットしない）
 - `outputs/`: 学習ログ・チェックポイント・生成物（大きなartifactはコミットしない）
 - `assets/`: README用の軽量デモ素材（GIF/PNGなど）

@@ -1,0 +1,21 @@
+{
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.tasks.court_detection.scripts.evaluate_ablation",
+    "--checkpoint",
+    "/content/tennis-lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02/logs/version_0/checkpoints/court-detection-epoch=17.ckpt",
+    "--output",
+    "outputs/court_detection/evaluate/i983-dino-s-shared1024/s42",
+    "--device",
+    "cuda"
+  ],
+  "cwd": null,
+  "persist": [
+    "outputs/court_detection/evaluate/i983-dino-s-shared1024/s42"
+  ],
+  "runner_outputs": [],
+  "job_id": "eval-s-s42",
+  "execution_backend": "notebook_kernel",
+  "kernel_timeout_seconds": 86400
+}

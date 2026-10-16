@@ -1,0 +1,693 @@
+{
+  "comparison": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/comparison.json",
+  "comparison_sha256": "1e3514d9a42c7d86aea78579cdde5479d444c60614f9ec509d1554baab2ed415",
+  "reservation": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/annotations/player_association/unseen_protocol.json",
+  "reservation_sha256": "ec67f552a2c83169b8a9a1ad188fe8ae328ced87355613bf962bc6b40b08f7b7",
+  "pipeline_config_sha256": "839ba623c6493d266b9849b02dda4042ee65dfa89df40595f4fabb4ee2783268",
+  "repository": "/home/kamimura/projects/tennis-lab/third_party/DINO",
+  "baseline_size": [
+    800,
+    1333
+  ],
+  "inputs": [
+    {
+      "clip": "video_000/clip_000",
+      "camera": "cam0",
+      "video": {
+        "camera_id": "cam0",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam0.mp4",
+        "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association/labels.json",
+      "label_sha256": "80aee90d551a6618e5514d161aecdc5d3265093deb652970da563ec001f8f5f9",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_000/clip_000",
+      "baseline_reference": {
+        "artifact_id": "511d4e9667a2ffaa374f2dfb425d9cfb475ef04c0595a011dd870ce4cf8e449e",
+        "path": "components/person_detection/511d4e9667a2ffaa374f2dfb425d9cfb475ef04c0595a011dd870ce4cf8e449e/person_detection.json",
+        "sha256": "42c4b2af06484d704645bbbdf51b93b5a293bae01183cd3d52d68a3da1c2c967",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "16c65e30f9b480a3f78ac7a3c04629f1658d334f6bac8af05bc37a44022869be"
+      },
+      "roi": [
+        [
+          0.0,
+          683.5907727336875
+        ],
+        [
+          1039.8861383175881,
+          349.9519648112261
+        ],
+        [
+          1245.7827767044523,
+          327.22083366834505
+        ],
+        [
+          760.4365794927019,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "b5a3da35c5b9accc1bb75d835fc3dd0314481709bc595a0879df844f673cca08",
+        "path": "components/court_calibration/b5a3da35c5b9accc1bb75d835fc3dd0314481709bc595a0879df844f673cca08/court_calibration.json",
+        "sha256": "48410009fe39eb3a8931a1e53f9c2997361ab0f4ac45175d898563bb9a484eef",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "1d02ab8316895e9969ac8c8622d607944bd499f5e14409458669edd8d83bc4f8"
+      }
+    },
+    {
+      "clip": "video_000/clip_000",
+      "camera": "cam1",
+      "video": {
+        "camera_id": "cam1",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+        "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association/labels.json",
+      "label_sha256": "80aee90d551a6618e5514d161aecdc5d3265093deb652970da563ec001f8f5f9",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_000/clip_000",
+      "baseline_reference": {
+        "artifact_id": "310bf754ceec276adc2c4cf67ae57ac3f708012b02f21823d65c0bd5996b4ec4",
+        "path": "components/person_detection/310bf754ceec276adc2c4cf67ae57ac3f708012b02f21823d65c0bd5996b4ec4/person_detection.json",
+        "sha256": "84e7b107a3cd37082de5fda887bcd27b6a744f7f42dd0273b92468a2b860bab8",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "e2f71a985b003d2a0f922fedc80622e4aad0f25a7c5acdbd04c54a06541dae66"
+      },
+      "roi": [
+        [
+          285.3622034789125,
+          510.97674892340933
+        ],
+        [
+          664.847725148618,
+          485.4378716569399
+        ],
+        [
+          1920.0,
+          670.6785138386349
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          494.0979641615754,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "b5a3da35c5b9accc1bb75d835fc3dd0314481709bc595a0879df844f673cca08",
+        "path": "components/court_calibration/b5a3da35c5b9accc1bb75d835fc3dd0314481709bc595a0879df844f673cca08/court_calibration.json",
+        "sha256": "48410009fe39eb3a8931a1e53f9c2997361ab0f4ac45175d898563bb9a484eef",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "1d02ab8316895e9969ac8c8622d607944bd499f5e14409458669edd8d83bc4f8"
+      }
+    },
+    {
+      "clip": "video_000/clip_000",
+      "camera": "cam2",
+      "video": {
+        "camera_id": "cam2",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam2.mp4",
+        "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association/labels.json",
+      "label_sha256": "80aee90d551a6618e5514d161aecdc5d3265093deb652970da563ec001f8f5f9",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_000/clip_000",
+      "baseline_reference": {
+        "artifact_id": "6fbd793393c97faf7485362b374ad647559a10ac4238f497e222bfea40b31b6d",
+        "path": "components/person_detection/6fbd793393c97faf7485362b374ad647559a10ac4238f497e222bfea40b31b6d/person_detection.json",
+        "sha256": "eb6b9e239c2f3ca3f841f851aea049007d2b070e25e67cc89f0e702eac3b6cc7",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "869f2c3f023c8159adc0db089ff4c71edb1b87b6b40e87e427086b45fe60ddf2"
+      },
+      "roi": [
+        [
+          0.0,
+          697.0824258500861
+        ],
+        [
+          735.8101266341412,
+          384.4183558468258
+        ],
+        [
+          1086.1529574615668,
+          381.8368160028198
+        ],
+        [
+          1920.0,
+          750.8076495117723
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "b5a3da35c5b9accc1bb75d835fc3dd0314481709bc595a0879df844f673cca08",
+        "path": "components/court_calibration/b5a3da35c5b9accc1bb75d835fc3dd0314481709bc595a0879df844f673cca08/court_calibration.json",
+        "sha256": "48410009fe39eb3a8931a1e53f9c2997361ab0f4ac45175d898563bb9a484eef",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "1d02ab8316895e9969ac8c8622d607944bd499f5e14409458669edd8d83bc4f8"
+      }
+    },
+    {
+      "clip": "video_000/clip_007",
+      "camera": "cam0",
+      "video": {
+        "camera_id": "cam0",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 652,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam0.mp4",
+        "sha256": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/annotations/player_association/labels.json",
+      "label_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_000/clip_007",
+      "baseline_reference": {
+        "artifact_id": "d92a27d83936db3df38cb48a25963f1273fac237f5cdaa80f6431ba3b84baab5",
+        "path": "components/person_detection/d92a27d83936db3df38cb48a25963f1273fac237f5cdaa80f6431ba3b84baab5/person_detection.json",
+        "sha256": "5480ef9f30efbf1c4f225ac7bcc33b2eccaf89418dd1c72857bdce90f9b2de72",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "c9ad16e769631cfdb4c718c0c4b3be2c16426065520633a6685c9c703792cc6c"
+      },
+      "roi": [
+        [
+          0.0,
+          684.1332285666626
+        ],
+        [
+          1051.4333427110696,
+          348.06662486776656
+        ],
+        [
+          1259.6612132362782,
+          324.6997594466328
+        ],
+        [
+          697.357413833208,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "8fdaff7d2f1a929d773149ae64e5392b4a8ff19cecfcbdcbae11cba73e85567a",
+        "path": "components/court_calibration/8fdaff7d2f1a929d773149ae64e5392b4a8ff19cecfcbdcbae11cba73e85567a/court_calibration.json",
+        "sha256": "012ad66a36a156a6ad98461913975fd219c2e2e8037ff9df932e1d0fab700b93",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "be79a37c968b543d08fa0ea3ebd3d15dbf1d4aa56298984c43fdd94ae2b9d4bd"
+      }
+    },
+    {
+      "clip": "video_000/clip_007",
+      "camera": "cam1",
+      "video": {
+        "camera_id": "cam1",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 652,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam1.mp4",
+        "sha256": "3c6fd4ff6429584ddd4f6ea5ab633a097cf0655fe28eefac2fb36254a18a872b",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/annotations/player_association/labels.json",
+      "label_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_000/clip_007",
+      "baseline_reference": {
+        "artifact_id": "8e48ec52164763d3abe3151cf59ffb92aea3471a37451c4533ddc4b9772663c5",
+        "path": "components/person_detection/8e48ec52164763d3abe3151cf59ffb92aea3471a37451c4533ddc4b9772663c5/person_detection.json",
+        "sha256": "52f4193af4613e3fb0a972e98b19ff88691d1b3573a38295ae5b7fab7273d642",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "7374eb8594ff4d2d5d5ad69045b538d3e5df46dbceed4fdd7f5d8eaecc9c07a9"
+      },
+      "roi": [
+        [
+          290.17148277154223,
+          508.0309980738083
+        ],
+        [
+          668.7776400126425,
+          480.9970990368813
+        ],
+        [
+          1920.0,
+          670.6564639435545
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          490.2064408900669,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "8fdaff7d2f1a929d773149ae64e5392b4a8ff19cecfcbdcbae11cba73e85567a",
+        "path": "components/court_calibration/8fdaff7d2f1a929d773149ae64e5392b4a8ff19cecfcbdcbae11cba73e85567a/court_calibration.json",
+        "sha256": "012ad66a36a156a6ad98461913975fd219c2e2e8037ff9df932e1d0fab700b93",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "be79a37c968b543d08fa0ea3ebd3d15dbf1d4aa56298984c43fdd94ae2b9d4bd"
+      }
+    },
+    {
+      "clip": "video_000/clip_007",
+      "camera": "cam2",
+      "video": {
+        "camera_id": "cam2",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 652,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/media/cam2.mp4",
+        "sha256": "72b4c445c7adffbd27895fadd7ea00974aab4f7eb27032a46e3cdff97b039d05",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_007/annotations/player_association/labels.json",
+      "label_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_000/clip_007",
+      "baseline_reference": {
+        "artifact_id": "958939a73f81c7f5a2e1f6467a6d94854574c8eaba6207c43fad18af92281ce4",
+        "path": "components/person_detection/958939a73f81c7f5a2e1f6467a6d94854574c8eaba6207c43fad18af92281ce4/person_detection.json",
+        "sha256": "0d5f20c35c3498dc3fae6889e5432a15f59719577acc45980601e195e11d9b41",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "a735db0088715da6c8d28569cfca6f68cbb49a00b0026e888590abb9f5114d3d"
+      },
+      "roi": [
+        [
+          0.0,
+          698.0749873504917
+        ],
+        [
+          745.6977592541984,
+          381.82130611854694
+        ],
+        [
+          1084.85307152032,
+          379.81629577619407
+        ],
+        [
+          1920.0,
+          754.634536458726
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "8fdaff7d2f1a929d773149ae64e5392b4a8ff19cecfcbdcbae11cba73e85567a",
+        "path": "components/court_calibration/8fdaff7d2f1a929d773149ae64e5392b4a8ff19cecfcbdcbae11cba73e85567a/court_calibration.json",
+        "sha256": "012ad66a36a156a6ad98461913975fd219c2e2e8037ff9df932e1d0fab700b93",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "be79a37c968b543d08fa0ea3ebd3d15dbf1d4aa56298984c43fdd94ae2b9d4bd"
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "camera": "cam0",
+      "video": {
+        "camera_id": "cam0",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1300,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/media/cam0.mp4",
+        "sha256": "2af67b3720887e9b75918f6c09be893709d9ad383a9d2846dd832df90cb2a478",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/annotations/player_association/labels.json",
+      "label_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_001/clip_001",
+      "baseline_reference": {
+        "artifact_id": "c9f440a570d3d2fe45362088dd5807432410134711a4cff12a5e16218df7e760",
+        "path": "components/person_detection/c9f440a570d3d2fe45362088dd5807432410134711a4cff12a5e16218df7e760/person_detection.json",
+        "sha256": "c0f6fe7079b08ef2296a272b819fa9b07a0716a1dd52bc418c1fc6f9bf741500",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "eac9ae9ff8a0528a36b36efc4f869f192430d61e26f00b9457a9d8c330d49e88"
+      },
+      "roi": [
+        [
+          0.0,
+          686.9393050877987
+        ],
+        [
+          1043.4468847421397,
+          348.1921361506488
+        ],
+        [
+          1248.4683867264412,
+          325.8245373547509
+        ],
+        [
+          737.4934092578278,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "202a8bed21eaeaaa541f32b2f962de5084dcd8521bd30dbfeafcc2fa8e8848dd",
+        "path": "components/court_calibration/202a8bed21eaeaaa541f32b2f962de5084dcd8521bd30dbfeafcc2fa8e8848dd/court_calibration.json",
+        "sha256": "d06da9ac57458ba8c6047bd10b73a11a4e8a157bbd55db8a1772103e848d985b",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "e3e5f94554f0e375ea1618272510a13f1277e854a7daf88a9c96e15b77f21f4f"
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "camera": "cam1",
+      "video": {
+        "camera_id": "cam1",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1300,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/media/cam1.mp4",
+        "sha256": "945838cf381c7a93f3cd0ff03457ebe44f6a6ef64dc9b9abb760934bbcf434e2",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/annotations/player_association/labels.json",
+      "label_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_001/clip_001",
+      "baseline_reference": {
+        "artifact_id": "76427d4ed172c56c7a25f14e7be4389669e15a2810a5e743e50f9ea32d296989",
+        "path": "components/person_detection/76427d4ed172c56c7a25f14e7be4389669e15a2810a5e743e50f9ea32d296989/person_detection.json",
+        "sha256": "8944027fe378244bb6d82d5d6e8c083ac7065486bc6d49c9c1cd854161e30a87",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "061cc3b538e58ce9653b6caa1b8455d10fa57879d144186fe2bce5b7506bca6a"
+      },
+      "roi": [
+        [
+          289.3994752788541,
+          508.3553402434535
+        ],
+        [
+          673.5719286926189,
+          480.67766798941943
+        ],
+        [
+          1920.0,
+          671.4596503731102
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          489.0618408910552,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "202a8bed21eaeaaa541f32b2f962de5084dcd8521bd30dbfeafcc2fa8e8848dd",
+        "path": "components/court_calibration/202a8bed21eaeaaa541f32b2f962de5084dcd8521bd30dbfeafcc2fa8e8848dd/court_calibration.json",
+        "sha256": "d06da9ac57458ba8c6047bd10b73a11a4e8a157bbd55db8a1772103e848d985b",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "e3e5f94554f0e375ea1618272510a13f1277e854a7daf88a9c96e15b77f21f4f"
+      }
+    },
+    {
+      "clip": "video_001/clip_001",
+      "camera": "cam2",
+      "video": {
+        "camera_id": "cam2",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1300,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/media/cam2.mp4",
+        "sha256": "b123b6429cc7e4037ee90c6c89d15b915227568f0e07922f98214e080321ce95",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_001/annotations/player_association/labels.json",
+      "label_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_001/clip_001",
+      "baseline_reference": {
+        "artifact_id": "b08497f51ed12d03b57de930696101710e1d049eb6ee8e87475a8819784c4917",
+        "path": "components/person_detection/b08497f51ed12d03b57de930696101710e1d049eb6ee8e87475a8819784c4917/person_detection.json",
+        "sha256": "52c98a1c2566588b452ec0cc96499de6061c4a846520512a95b11656d1ad0e31",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "60148087630ce7273a28285cffd76c0bf84abe5a0826990a147ea326adcfe356"
+      },
+      "roi": [
+        [
+          0.0,
+          700.5861064453554
+        ],
+        [
+          744.4226603012147,
+          380.5826286189647
+        ],
+        [
+          1081.9095352065772,
+          377.3466524469763
+        ],
+        [
+          1920.0,
+          750.6789832214943
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "202a8bed21eaeaaa541f32b2f962de5084dcd8521bd30dbfeafcc2fa8e8848dd",
+        "path": "components/court_calibration/202a8bed21eaeaaa541f32b2f962de5084dcd8521bd30dbfeafcc2fa8e8848dd/court_calibration.json",
+        "sha256": "d06da9ac57458ba8c6047bd10b73a11a4e8a157bbd55db8a1772103e848d985b",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "e3e5f94554f0e375ea1618272510a13f1277e854a7daf88a9c96e15b77f21f4f"
+      }
+    },
+    {
+      "clip": "video_002/clip_013",
+      "camera": "cam0",
+      "video": {
+        "camera_id": "cam0",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 535,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/media/cam0.mp4",
+        "sha256": "4f2e7cd91ff9f661feaeb9d3b987336c48dcec55ec99e41f9f7d55b1f646acc3",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/annotations/player_association/labels.json",
+      "label_sha256": "b1b69981509b2d22703b6bdd281c71596dc09f15716f6ad25ba8c833a0708428",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_002/clip_013",
+      "baseline_reference": {
+        "artifact_id": "5474a161f68c21d547b493af3ea190b257fcebb50a2a37faaf33fb3b53fc590d",
+        "path": "components/person_detection/5474a161f68c21d547b493af3ea190b257fcebb50a2a37faaf33fb3b53fc590d/person_detection.json",
+        "sha256": "1e7c803fca294773c0138bcbdf0245308cd0640f5f9185d2c97a98998e046c8f",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "57eab8a6ea49246abb3df3e94f41e49006aacd54eb8911e7b9bb8b8d6586e71b"
+      },
+      "roi": [
+        [
+          0.0,
+          672.71076236819
+        ],
+        [
+          1036.4944600767112,
+          349.79231519506965
+        ],
+        [
+          1244.114014609074,
+          331.4695088672462
+        ],
+        [
+          732.8156771997037,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "aef56efd8f9283bd0a5ce4f7d9f8c8282110b5e9f5159e1a1cdd6e600b666b28",
+        "path": "components/court_calibration/aef56efd8f9283bd0a5ce4f7d9f8c8282110b5e9f5159e1a1cdd6e600b666b28/court_calibration.json",
+        "sha256": "a3e6dbeb220060a72dde7cb6d1e8f99743ceea383dbfb16b242af207d8aeea2f",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "be9b3b1761b0a4f96fb96da21ba30674dc9222a79b3677eeb011336324ba3b4e"
+      }
+    },
+    {
+      "clip": "video_002/clip_013",
+      "camera": "cam1",
+      "video": {
+        "camera_id": "cam1",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 535,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/media/cam1.mp4",
+        "sha256": "12ad6a441ee2381324df1e2d412d73742a7f6d677d8cfe62b9d0323527111075",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/annotations/player_association/labels.json",
+      "label_sha256": "b1b69981509b2d22703b6bdd281c71596dc09f15716f6ad25ba8c833a0708428",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_002/clip_013",
+      "baseline_reference": {
+        "artifact_id": "706e92f30de264939c98dd07bc6e02399160757c8bcf0432f4a837525539c15e",
+        "path": "components/person_detection/706e92f30de264939c98dd07bc6e02399160757c8bcf0432f4a837525539c15e/person_detection.json",
+        "sha256": "165f5e52dd3771d932844cf4e341d3e8b5fac89afba6918ed4c5493642e81dc2",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "e5f4f4b5f0e6bec3f6a8a2454feb1b4c84765b6272c5511d4157cce25fa12893"
+      },
+      "roi": [
+        [
+          296.23768039724155,
+          509.96272342910095
+        ],
+        [
+          678.950461878406,
+          479.4824135339523
+        ],
+        [
+          1920.0,
+          669.8327683337894
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          493.12596620446925,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "aef56efd8f9283bd0a5ce4f7d9f8c8282110b5e9f5159e1a1cdd6e600b666b28",
+        "path": "components/court_calibration/aef56efd8f9283bd0a5ce4f7d9f8c8282110b5e9f5159e1a1cdd6e600b666b28/court_calibration.json",
+        "sha256": "a3e6dbeb220060a72dde7cb6d1e8f99743ceea383dbfb16b242af207d8aeea2f",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "be9b3b1761b0a4f96fb96da21ba30674dc9222a79b3677eeb011336324ba3b4e"
+      }
+    },
+    {
+      "clip": "video_002/clip_013",
+      "camera": "cam2",
+      "video": {
+        "camera_id": "cam2",
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 535,
+        "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/media/cam2.mp4",
+        "sha256": "1ab899862573d0c4c72d0b1e0d8583eb2fc0200b1df57d2b43441113c88abf8c",
+        "width": 1920
+      },
+      "label_path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_002/clips/clip_013/annotations/player_association/labels.json",
+      "label_sha256": "b1b69981509b2d22703b6bdd281c71596dc09f15716f6ad25ba8c833a0708428",
+      "baseline_store": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/pipeline_switch/i964-detectors-r1-20260929/meiji/player_ft/stores/video_002/clip_013",
+      "baseline_reference": {
+        "artifact_id": "5e361ef4a688ef9b590a3ebae0ea2a149070a5e8cb3580fa81396568aa96e54e",
+        "path": "components/person_detection/5e361ef4a688ef9b590a3ebae0ea2a149070a5e8cb3580fa81396568aa96e54e/person_detection.json",
+        "sha256": "3d3efef58f87c76cafab88ff5057a13834470b600a0dd15c62c1e79846586284",
+        "schema": "person_detections",
+        "version": 1,
+        "execution_key": "b61f739467ca09d11ea6a8073a30a06642a98b5376fd6c9bdba421e96e1aaab9"
+      },
+      "roi": [
+        [
+          0.0,
+          698.1422772981723
+        ],
+        [
+          745.766250751293,
+          377.73223802352464
+        ],
+        [
+          1082.5059296313757,
+          375.9119477525146
+        ],
+        [
+          1920.0,
+          756.2503359859124
+        ],
+        [
+          1920.0,
+          1080.0
+        ],
+        [
+          0.0,
+          1080.0
+        ]
+      ],
+      "calibration_reference": {
+        "artifact_id": "aef56efd8f9283bd0a5ce4f7d9f8c8282110b5e9f5159e1a1cdd6e600b666b28",
+        "path": "components/court_calibration/aef56efd8f9283bd0a5ce4f7d9f8c8282110b5e9f5159e1a1cdd6e600b666b28/court_calibration.json",
+        "sha256": "a3e6dbeb220060a72dde7cb6d1e8f99743ceea383dbfb16b242af207d8aeea2f",
+        "schema": "local_court_calibration",
+        "version": 1,
+        "execution_key": "be9b3b1761b0a4f96fb96da21ba30674dc9222a79b3677eeb011336324ba3b4e"
+      }
+    }
+  ],
+  "schema": "coco_fullframe_dev_v1",
+  "status": "planned",
+  "floor": 0.01,
+  "weights": {
+    "coco": {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5"
+    }
+  },
+  "scope": "full_frame_no_roi",
+  "runtime_scope": "synchronized predictor; excludes video decode, model load and archive IO",
+  "torch_allocator_limit_bytes": 6442450944,
+  "wall_limit_seconds": 5400,
+  "archives": {},
+  "report": "/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/coco_fullframe/i964-r5-20260929"
+}

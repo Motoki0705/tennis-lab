@@ -11,5 +11,6 @@ echo "[repro] target commit: ad5554ab0cfdc433408b5762f3eb8792a30e6698 (branch co
 git checkout ad5554ab0cfdc433408b5762f3eb8792a30e6698 2>/dev/null || echo "[repro] WARN: checkout ad5554ab0cfdc433408b5762f3eb8792a30e6698 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
+# #931: the original command read these files from outputs/ (since deleted); the bundle copies are used instead.
 # --- original training command ---
-PYTHONPATH=. .venv/bin/python outputs/court-b00-b03-generation/run_requested.py outputs/court-b00-b03-generation/B00-wide-requested.yaml
+PYTHONPATH=. .venv/bin/python "$SCRIPT_DIR/run_requested.py" "$SCRIPT_DIR/B00-wide-requested.yaml"

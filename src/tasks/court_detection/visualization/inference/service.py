@@ -31,7 +31,11 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtLinePrediction,
     CourtSegmentationPrediction,
 )
-from src.tasks.court_detection.target_schemas import SEMANTIC_LINE_CHANNEL_NAMES
+from src.tasks.court_detection.target_schemas import (
+    DENSE_COVERAGE_SCHEMA_BY_KIND,
+    HARD_DENSE_SCHEMA_BY_KIND,
+    SEMANTIC_LINE_CHANNEL_NAMES,
+)
 from src.tasks.court_detection.visualization.inference.checkpoints import (
     COURT_TASK,
     CourtCheckpointInfo,
@@ -53,6 +57,13 @@ from src.tasks.court_detection.visualization.review.datasets import (
     keypoint_points,
     layer_identity,
     load_ground_truth_masks,
+)
+from src.tasks.court_detection.visualization.review.inspection import (
+    SAMPLE_STATES,
+    dataset_map,
+    record_states,
+    sample_inspection,
+    saved_annotation,
 )
 from src.tasks.court_detection.visualization.review.rasters import (
     heatmap_raster,
@@ -103,6 +114,10 @@ class DetectionService:
         )
 
     # ----------------------------------------------------------------- catalog
+    def annotation(self, scene: str) -> dict[str, object]:
+        """Expose saved sparse annotation only for a validated catalog sample."""
+        return saved_annotation(self.datasets, scene)
+
     def catalog(self) -> dict[str, Any]:
         """Rebuild the catalog from disk; refresh must surface new files.
 
@@ -129,6 +144,7 @@ class DetectionService:
             "datasets": datasets,
             "checkpoints": checkpoints,
             "warnings": self.datasets.warnings(),
+            "court_review": {"families": dataset_map(self.datasets)},
         }
 
     def scenes(
@@ -138,11 +154,15 @@ class DetectionService:
         offset: int = 0,
         limit: int = 100,
         checkpoint: str | None = None,
+        *,
+        sample_state: str = "",
     ) -> dict[str, Any]:
         if offset < 0:
             raise ValueError("Court scene の offset は 0 以上である必要があります。")
         if limit <= 0:
             raise ValueError("Court scene の limit は正の値である必要があります。")
+        if sample_state and sample_state not in SAMPLE_STATES:
+            raise ValueError(f"Unsupported Court sample state: {sample_state!r}.")
         entry = self.datasets.entry(dataset)
         if checkpoint:
             self._require_compatible(self._describe(checkpoint), entry)
@@ -151,6 +171,7 @@ class DetectionService:
             record.sample_id
             for record in self.datasets.records(dataset)
             if needle in record.sample_id.lower()
+            and (not sample_state or sample_state in record_states(record))
         ]
         window = identifiers[offset : offset + limit]
         return {
@@ -186,6 +207,9 @@ class DetectionService:
                 {
                     "index": 0,
                     "name": record.sample_id,
+                    "court_review": sample_inspection(
+                        entry, record, raw, self._input(entry).spec, masks
+                    ),
                     "gt": {
                         "points": points,
                         "segments": _keypoint_segments(points),
@@ -262,6 +286,7 @@ class DetectionService:
             raw=raw,
             threshold=float(threshold),
             channel_names=_keypoint_channel_names(raw.keypoint_channels),
+            dense_schemas=info.dense_schemas(),
         )
         return {
             "scene": scene,
@@ -379,6 +404,7 @@ class DetectionService:
         raw: CourtRawSample,
         threshold: float,
         channel_names: Sequence[str],
+        dense_schemas: Mapping[str, str],
     ) -> tuple[dict[str, object], dict[str, object], list[str]]:
         rasters: list[dict[str, object]] = []
         metrics: dict[str, object] = {}
@@ -407,8 +433,17 @@ class DetectionService:
                     semantic.mask.numpy(), SEMANTIC_LINE_CHANNEL_NAMES
                 ).to_dict()
             )
+        scored = {}
+        for kind in ("seg", "line", "semantic_line"):
+            matches = dense_schemas.get(kind) == DENSE_COVERAGE_SCHEMA_BY_KIND[kind]
+            scored[kind] = getattr(masks, kind) if matches else None
+            if kind in predictions and not matches:
+                warnings.append(
+                    f"{kind}: checkpointの教師schemaは現行coverage教師と異なるため、予測のみ表示しGT採点から除外します。"
+                )
+        score_masks = GroundTruthMasks(**scored)
         sampled, sampled_warnings = _sample_metrics(
-            predictions, masks=masks, threshold=threshold
+            predictions, masks=score_masks, threshold=threshold
         )
         metrics.update(sampled)
         warnings.extend(sampled_warnings)
@@ -582,6 +617,10 @@ def _compatibility_reason(
     for kind, schema in info.dense_schemas().items():
         dataset_schema = identity.dense_schemas.get(kind)
         if dataset_schema != schema:
+            if schema == HARD_DENSE_SCHEMA_BY_KIND.get(
+                kind
+            ) and dataset_schema == DENSE_COVERAGE_SCHEMA_BY_KIND.get(kind):
+                continue  # Same class semantics; displayed but explicitly not scored.
             return (
                 f"{kind} の supervision schema が異なります: dataset {dataset_schema!r} と "
                 f"checkpoint {schema!r}"

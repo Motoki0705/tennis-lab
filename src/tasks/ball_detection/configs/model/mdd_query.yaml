@@ -1,0 +1,13 @@
+# Pose-free member of the typed MDD coordinate family, not the heatmap trainer.
+name: mdd_pose
+compression: conv2d
+pose_pooling: null
+readout: query_only
+frames: 32
+stem_channels: [8, 16, 32, 48]
+mixed_channels: [64, 96]
+dim: 128
+heads: 4
+layers: 2
+dropout: 0.1
+rope_base: 10000.0

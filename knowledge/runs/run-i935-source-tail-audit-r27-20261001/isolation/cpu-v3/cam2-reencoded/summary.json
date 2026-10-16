@@ -1,0 +1,417 @@
+{
+  "status": "complete",
+  "mode": "reencoded",
+  "camera": "cam2",
+  "frames": 270,
+  "seconds": 210.25591878499836,
+  "peak_rss_bytes": 3299422208,
+  "minimum_host_available_bytes": 17141288960,
+  "cuda_initialized": false,
+  "normalization": {
+    "enabled": true,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "checkpoint_model": {
+    "name": "conv_next_unet",
+    "input_mode": "mdd",
+    "in_channels": 2,
+    "num_classes": 1,
+    "num_frames": 8,
+    "input_layout": "bcthw",
+    "dims": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "depth": 2,
+    "drop_path_prob": 0.0,
+    "mdd_a": 0.2,
+    "mdd_b": 0.15
+  },
+  "comparison": {
+    "source_cuda": {
+      "all_rank_native_cells_equal_frames": 0,
+      "same_rank_native_cells": 294,
+      "score_max_abs": 0.512169361114502,
+      "same_rank_position_max_abs_px": 1919.0
+    },
+    "cache_cuda": {
+      "all_rank_native_cells_equal_frames": 265,
+      "same_rank_native_cells": 2150,
+      "score_max_abs": 0.0029655322432518005,
+      "same_rank_position_max_abs_px": 641.672119140625
+    }
+  },
+  "store_coordinate_factor": [
+    0.999739408493042,
+    0.9995365738868713
+  ],
+  "batches": [
+    {
+      "window_starts": [
+        0,
+        4,
+        8,
+        12
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "de41867df7a06de64d301469000783bb9463ba59f977a899bd7175d09e7c8d46",
+      "cache_rgb_sha256": "de41867df7a06de64d301469000783bb9463ba59f977a899bd7175d09e7c8d46",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        16,
+        20,
+        24,
+        28
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "d244952c5d3a24f9f73ec4b80f40375541e5fa016854b05572a90071beeaa8f5",
+      "cache_rgb_sha256": "d244952c5d3a24f9f73ec4b80f40375541e5fa016854b05572a90071beeaa8f5",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        32,
+        36,
+        40,
+        44
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "fb5133267a2b1c2f61bf078b2b10d66fbc4943c48d0b3c8572c49210e4b4487c",
+      "cache_rgb_sha256": "fb5133267a2b1c2f61bf078b2b10d66fbc4943c48d0b3c8572c49210e4b4487c",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        48,
+        52,
+        56,
+        60
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "6512ead66aa2803e12b81988f11065dab27dd34a1809092f6ddb39690800d50e",
+      "cache_rgb_sha256": "6512ead66aa2803e12b81988f11065dab27dd34a1809092f6ddb39690800d50e",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        64,
+        68,
+        72,
+        76
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "0ae65ece927e8a5db33692d10688664f5faa449e8eb673320de096867dc70158",
+      "cache_rgb_sha256": "0ae65ece927e8a5db33692d10688664f5faa449e8eb673320de096867dc70158",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        80,
+        84,
+        88,
+        92
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "abf12f830f60e74da7bb0482d006f4aab256034c5df9502f45bc6491fca5f6a3",
+      "cache_rgb_sha256": "abf12f830f60e74da7bb0482d006f4aab256034c5df9502f45bc6491fca5f6a3",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        96,
+        100,
+        104,
+        108
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "7bd8e3119f333eff32d3f0ef15458697ffbebbe8a2a9827362a9b5ac58b2821d",
+      "cache_rgb_sha256": "7bd8e3119f333eff32d3f0ef15458697ffbebbe8a2a9827362a9b5ac58b2821d",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        112,
+        116,
+        120,
+        124
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "7ec44974889480fd34eab01ffb3f8b73dc5bf10828319ada56687f3ecb687cde",
+      "cache_rgb_sha256": "7ec44974889480fd34eab01ffb3f8b73dc5bf10828319ada56687f3ecb687cde",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        128,
+        132,
+        136,
+        140
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "39ea3c56d57db16c58687c14f863f599f795f350974b2443863661550d5a631d",
+      "cache_rgb_sha256": "39ea3c56d57db16c58687c14f863f599f795f350974b2443863661550d5a631d",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        144,
+        148,
+        152,
+        156
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "49a8bd19aa296bc4ee37c53fcc4f2ccf14aad7b2edd390bd650b70e5b90c5afd",
+      "cache_rgb_sha256": "49a8bd19aa296bc4ee37c53fcc4f2ccf14aad7b2edd390bd650b70e5b90c5afd",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        160,
+        164,
+        168,
+        172
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "907a2f8479ebb6db86d4191b7ebf2f1dc832c0a12b5610bbf37ae4709d07bcb6",
+      "cache_rgb_sha256": "907a2f8479ebb6db86d4191b7ebf2f1dc832c0a12b5610bbf37ae4709d07bcb6",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        176,
+        180,
+        184,
+        188
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "4debca4143fbfbf77876bc135a1752a0559c3d2b8935b7c16ce9b0ee7f3e14f6",
+      "cache_rgb_sha256": "4debca4143fbfbf77876bc135a1752a0559c3d2b8935b7c16ce9b0ee7f3e14f6",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        192,
+        196,
+        200,
+        204
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "466bb628a7b195aa5d601c38a1856e5ded6ac2020ad9ef58e8bed1513bb9d261",
+      "cache_rgb_sha256": "466bb628a7b195aa5d601c38a1856e5ded6ac2020ad9ef58e8bed1513bb9d261",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        208,
+        212,
+        216,
+        220
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "d47dc4b0bef38c22901f4d13291578ac25d7617e266b2ea3870ce1dc44581bc7",
+      "cache_rgb_sha256": "d47dc4b0bef38c22901f4d13291578ac25d7617e266b2ea3870ce1dc44581bc7",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        224,
+        228,
+        232,
+        236
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "0842c2d56286a8cea89415c3d1d712c90a7011dcbe5d50d17156cd0168719e8c",
+      "cache_rgb_sha256": "0842c2d56286a8cea89415c3d1d712c90a7011dcbe5d50d17156cd0168719e8c",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        240,
+        244,
+        248,
+        252
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "25d9de9cfff7045dbc13b53711739d506f6613c320953bb420a3366a325cc5b7",
+      "cache_rgb_sha256": "25d9de9cfff7045dbc13b53711739d506f6613c320953bb420a3366a325cc5b7",
+      "model_input_shape": [
+        4,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    },
+    {
+      "window_starts": [
+        256,
+        260,
+        262
+      ],
+      "rgb_batch_equal_cache": true,
+      "rgb_sha256": "2734bc597eb79e93590c1a0ccba033a88314800e43a16228c956242234b040ba",
+      "cache_rgb_sha256": "2734bc597eb79e93590c1a0ccba033a88314800e43a16228c956242234b040ba",
+      "model_input_shape": [
+        3,
+        2,
+        8,
+        288,
+        512
+      ],
+      "model_input_dtype": "torch.float32",
+      "model_input_abs_mean_delta_cache": 0.0,
+      "model_input_max_delta_cache": 0.0
+    }
+  ]
+}

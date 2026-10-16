@@ -1,0 +1,15 @@
+{
+  "protocol": "issue1044-v1",
+  "arm": "rollout_velocity",
+  "seed": 42,
+  "optimizer_updates": 4,
+  "elapsed_seconds": 33.147472627984826,
+  "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/outputs/blcs/i1044/smoke-gan-v1/checkpoints/final-selected.ckpt",
+  "checkpoint_sha256": "92ea596f41f56009f0e3061dd718fad0a9f40a18274b01792abaa9453119fb8f",
+  "validation_trajectory_rmse_m": 17.779537200927734,
+  "selection_used_test": false,
+  "run_id": "1791852317736062549_2_i1044-smoke-gan-v1",
+  "smoke": true,
+  "chunked": false,
+  "gan": true
+}

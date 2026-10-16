@@ -1,0 +1,119 @@
+diff --git a/src/tasks/ball_refiner_3d/README.md b/src/tasks/ball_refiner_3d/README.md
+index b7c7e0012..25e2d718d 100644
+--- a/src/tasks/ball_refiner_3d/README.md
++++ b/src/tasks/ball_refiner_3d/README.md
+@@ -3,6 +3,8 @@
+ 三角測量した3D座標 `(B,T,3)` と欠損mask `(B,T)`（true=欠損）から、
+ 観測区間を含む全frameの軌道1本と、各frameのイベント確率を推論する。
+ オフラインの双方向Transformer。confidence・court・camera・GTイベントはモデルへ渡さない。
++`model.physics_heads=true` では、ラリーの場（風・k_drag・k_magnus・surface）と
++飛行区間ごとの初期状態（位置・速度・スピン）も出力し、それらを共有の物理積分器で積分した軌道を併せて返す。
+ 
+ ## 構成と依存
+ 
+@@ -10,12 +12,13 @@
+ |---|---|
+ | `configs/` | Hydraのdata・augmentation・model・loss・training・generation・visualization設定 |
+ | `configuration/` | 設定の厳密な検証、path境界、旧実験設定の明示的な読み取り |
+-| [data/](data/README.md) | NPZ読込、拡張、三角測量、イベント教師、窓サンプリング、DataModule |
++| [data/](data/README.md) | NPZ読込、拡張、三角測量、イベント・物理教師、可変長窓サンプリング、DataModule |
+ | `generate_dataset/` | BLCS物理生成adapter、camera選択、保存、既存3D軌道の再投影 |
+-| [models/](models/README.md) | 共通trunk、回帰・Flow generator、軌道discriminatorのforward |
++| [models/](models/README.md) | 共通trunk、回帰・Flow generator、物理head、軌道discriminatorのforward |
++| `physics/` | 物理パラメータのネットワーク単位、`ball_physics.v1` からの教師、区間の積分による軌道再構成 |
+ | `model_io/` | 入出力型、正規化、adapter、factory、checkpoint読込 |
+ | [training/](training/README.md) | BaseTrainingRunner / BaseLightningModuleへの接続、loss、step schedule |
+-| `inference/` | 公開Predictor、窓の統合、Flow sampling、NPZ入出力 |
++| `inference/` | 公開Predictor、クリップ全体の1回forward、予測イベントによる区間分割、Flow sampling、NPZ入出力 |
+ | `evaluation/` | 全ラリー評価、baseline、checkpointと対応付けた予測・指標の保存 |
+ | [visualization/](visualization/dataset_review/README.md) | 静的plotとDataset Review WebUI |
+ | `scripts/` | 引数・path検証と上記APIの呼び出しのみ |
+@@ -55,7 +58,11 @@ GPU実行は[training queue](../../../.agents/skills/training-queue/SKILL.md)に
+ 
+ 入力NPZは `coordinates`, `missing`, `fps` のみ。座標はm、欠損はbool。
+ 公開API `inference.RefinerPredictor` は同じ契約で入力し、CPU上の座標とイベント確率を返す。
+-FPSはcheckpointと一致させる。座標と確率は重複窓の同じ担当窓から採用する。
++FPSはcheckpointと一致させる。窓分割はせず、各クリップ全体（最大4096 frame）を1回のforwardで推論する。
++物理headを持つcheckpointは、予測イベント（確率0.5以上のピーク、3 frame以上離す）でframe 0と各イベントから区間を作り、
++その区間で初期状態を出力して積分軌道を作る（積分定数はcheckpointの `flight_clock`）。
++出力NPZは `ball_refiner_3d.physics_prediction.v1` となり、`integrated_coordinates`、`wind_mps`、`k_drag`、`k_magnus`、
++`surface_probability`、`segment`、`segment_{position_m,velocity_mps,spin_radps}` が加わる。
+ 新しい評価先・推論出力は既存ファイルを上書きしない。
+ 
+ ## 評価指標
+@@ -67,10 +74,14 @@ FPSはcheckpointと一致させる。座標と確率は重複窓の同じ担当
+ `metrics.json` には代表値（`test_fit_residual_rmse_m` など）、全体は `diagnostic_metrics.json`。
+ 当てはめは区間全体の残差を最小化するため、欠損区間の非物理性は同じ区間の観測frameの残差にも現れる。
+ 学習中のvalidationは物理評価を行わない。
++物理headのモデルは、積分軌道（予測イベントで区間分割）の座標誤差と物理指標、GT区間分割での積分軌道（上限）、
++場・surface・区間初期状態のパラメータ誤差（`parameters`）も報告する。
+ 
+ ## 互換性
+ 
+ 既存のイベントヘッド付き `ball_refiner_3d.events.v1` 重みは、そのまま推論・初期重みとして使える。
++物理head導入前のモデル設定は `window_length`（現在はdata設定）を持つため、読み込み時に明示的に
++`physics_heads=false` へ変換する。推論はクリップ全体になるので、旧重みの出力は窓推論時と一致しない。
+ 新しい学習はoptimizer・scheduler・乱数状態を持つLightning `events.v2` checkpointを保存する。
+ 2D/GMM/イベントヘッドなし3Dの重みは明示的に拒否する。
+ 共有dataset・学習済み重み・過去の実験記録は変更しない。
+diff --git a/src/tasks/ball_refiner_3d/data/README.md b/src/tasks/ball_refiner_3d/data/README.md
+index bbe692003..331868e24 100644
+--- a/src/tasks/ball_refiner_3d/data/README.md
++++ b/src/tasks/ball_refiner_3d/data/README.md
+@@ -13,6 +13,10 @@ train/val/test分割はrally単位で固定する。
+ 2D座標はこの生成過程にのみ必要で、2D Refinerは存在しない。
+ 設定の正本は [augmentation/event_only.yaml](../configs/augmentation/event_only.yaml)。
+ 
++`sampling.py` は既定で128 frameの窓を作り、確率 `long_probability` でそれより長い窓
++（ラリー全長まで、上限 `max_length`）を一様に選ぶ。batch内は最長の窓へpaddingし、paddingは欠損かつ教師なしとする。
++物理教師（`physics/targets.py`）は全frameの区間ラベルと状態、ラリーの場とsurfaceで、窓ごとに区間を0から振り直す。
++
+ `targets/events.py` はイベント種別を区別せず、各イベントframeで1となるGaussian教師を作る。
+ 重なる教師はmaxで合成する。ラリー全体で生成してから `sampling.py` が窓を切り出すので、窓外イベントの裾も保持する。
+ モデルへ渡す入力は座標・欠損maskだけ。GT座標とイベント教師はloss専用。
+diff --git a/src/tasks/ball_refiner_3d/models/README.md b/src/tasks/ball_refiner_3d/models/README.md
+index b2f1b0480..e7ac9e197 100644
+--- a/src/tasks/ball_refiner_3d/models/README.md
++++ b/src/tasks/ball_refiner_3d/models/README.md
+@@ -10,6 +10,12 @@
+ 確率はクラス軸softmaxのイベント成分。時間軸では正規化せず、複数イベントを表現する。
+ 欠損座標はゼロ化し、欠損frameもattentionのqueryとして残す。
+ 
++trunkは任意長（最大4096 frame）を受け、`padding` のframeをattentionのkeyから除く。
++`components/physics_heads.py` は物理head。場headは全frameのattention pooling から
++風（水平2成分）・log k_drag・log k_magnus・surface 3クラスを、区間headは各飛行区間内のattention poolingと
++区間先頭frameのtokenから、その先頭frameの位置・速度・スピンを出力する（単位は `physics/units.py`）。
++区間はforwardの入力 `segment`（区間ラベル、paddingは-1）で与える。
++
+ `discriminators/trajectory.py` は生成された3D軌道だけを評価する。
+ G/Dの構成値の正本は [model/_base.yaml](../configs/model/_base.yaml) と
+ [training/_gan.yaml](../configs/training/_gan.yaml)。
+diff --git a/src/tasks/ball_refiner_3d/training/README.md b/src/tasks/ball_refiner_3d/training/README.md
+index ce6ec14e9..159a93f29 100644
+--- a/src/tasks/ball_refiner_3d/training/README.md
++++ b/src/tasks/ball_refiner_3d/training/README.md
+@@ -7,7 +7,8 @@
+ ## 設定
+ 
+ - optimizer・batch・更新回数: [training/_base.yaml](../configs/training/_base.yaml)
+-- 位置／イベントlossと位置係数schedule: [loss/default.yaml](../configs/loss/default.yaml)
++- 位置／イベント／物理lossと位置係数schedule: [loss/default.yaml](../configs/loss/default.yaml)
++- 学習窓: [data/default.yaml](../configs/data/default.yaml) の `window`
+ - optional GAN・discriminator・GAN係数schedule: [training/_gan.yaml](../configs/training/_gan.yaml)
+ - 実行先・resume・初期重み: [run/train.yaml](../configs/run/train.yaml)
+ 
+@@ -16,6 +17,14 @@
+ 座標はXYZを10/20/5mで割り、L1を軸・frame・batchで平均する。
+ 係数の比率はloss実測値や勾配量の比率とは異なる。
+ Flowでは位置側をFlow matchingの速度MSEに置き換える。
++すべての項はpadding frameを除いて平均する。
++
++物理headは `loss.physics` で学習する（`model.physics_heads` と同時に有効化し、どちらか片方は拒否）。
++`field` は場の正規化L1とsurfaceのCE、`segment` は窓内の各区間の初期状態の正規化L1。
++`reconstruction` は予測パラメータを積分した軌道とGTの正規化L1、`consistency` は積分軌道と直接出力の正規化L1で、
++`consistency_gradient` が勾配を受ける側（`direct`: 直接出力を物理へ寄せる、`integrated`: 逆、`both`）を決める。
++積分系の項はパラメータ教師（field・segment）を必須とし、GANとの併用は拒否する。
++学習中の区間はGTの区間分割を窓内で0から振り直したもので、窓の先頭で切れた区間は先頭frameの状態を教師にする。
+ 
+ GANは共通 `ManualGANTrainingStrategy` / LSGANを使う。
+ `training.gan.enabled=true` で有効化し、段階増加は

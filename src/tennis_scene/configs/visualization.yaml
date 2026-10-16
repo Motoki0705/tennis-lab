@@ -2,8 +2,8 @@ defaults:
   - paths: default
   - _self_
 assets:
-  smpl_faces: smplh/neutral/model.npz
-  smpl_joint_regressor: GVHMR/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt
+  smpl_faces: body_models/smplh/neutral/model.npz
+  smpl_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
 input: tennis_scene/tennis_clip.npz
 output: ${tennis_output:tennis_scene,visualize,visualization,${tennis_run_id:}}/tennis_clip.gif
 preview_output: ${tennis_output:tennis_scene,visualize,visualization,${tennis_run_id:}}/preview.png

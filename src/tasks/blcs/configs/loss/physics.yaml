@@ -1,0 +1,8 @@
+# Explicit opt-in to velocity supervision and flight-segment consistency.
+defaults:
+  - reprojection
+  - _self_
+
+velocity_weight: 0.1
+rollout_position_weight: 1.0
+rollout_velocity_weight: 0.1

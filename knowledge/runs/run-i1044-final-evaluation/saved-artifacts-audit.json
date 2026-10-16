@@ -1,0 +1,39 @@
+{
+  "source": "Readonly physics_data_survey investigation of frozen final artifacts; no new inference",
+  "queue_state": "done",
+  "completion_run_id_matches_queue": true,
+  "explicit_exit_code_zero_record": false,
+  "exit_status_evidence": "Queue implementation marks done only when the child wait returns zero; log has no explicit exit_code=0 line.",
+  "synthetic": {
+    "conditions": 16,
+    "files_per_condition": 3,
+    "scenes_per_condition": 100,
+    "unsupported_clips": 0,
+    "metric_keys": 170
+  },
+  "real": {
+    "conditions": 12,
+    "files_per_condition": 3
+  },
+  "stored_original_vs_recomputed_json": {
+    "conditions_compared": 28,
+    "mismatches": 0
+  },
+  "strata": {
+    "rows": 368,
+    "values_and_support_match_source": true
+  },
+  "report": {
+    "files": 16,
+    "png_files": 7,
+    "training_curve_conditions": 10,
+    "physics_head_conditions": 3
+  },
+  "recompute_scope": "Metrics, supports/null, clip diagnostics and B integrated-state metrics from saved arrays. Integration itself is not rerun; original model/store/dataset are unnecessary.",
+  "report_regeneration": "The 20 copied original TensorBoard event files and completed-training/additional-seed receipts allow create_report(bundle) without original training output directories.",
+  "original_output_bytes": {
+    "evaluations": 94418936,
+    "real": 516788,
+    "report": 4245075
+  }
+}

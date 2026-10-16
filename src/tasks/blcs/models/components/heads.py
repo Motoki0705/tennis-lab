@@ -4,9 +4,40 @@ from __future__ import annotations
 
 from typing import TypeAlias
 
+import torch
 from torch import Tensor, nn
 
 from src.utils.models.heads import MLPHead
+
+
+class FlightParameterOutput(nn.Module):
+    """Minimal optional flight head: drag, wind, effective Magnus and reset logit.
+
+    There is deliberately no independent spin, Magnus coefficient or surface
+    prediction: flight only identifies their effective product.
+    """
+
+    def __init__(self, *, input_dim: int, dropout: float) -> None:
+        super().__init__()
+        self.head = MLPHead(
+            input_dim=input_dim,
+            hidden_dim=input_dim // 2,
+            output_dim=8,
+            num_layers=2,
+            dropout=dropout,
+        )
+
+    def forward(self, features: Tensor) -> dict[str, Tensor]:
+        raw = self.head(features)
+        parameters = torch.cat(
+            (
+                0.1 * torch.sigmoid(raw[..., :1] - 1.4),
+                10.0 * torch.tanh(raw[..., 1:4]),
+                2.0 * torch.tanh(raw[..., 4:7]),
+            ),
+            dim=-1,
+        )
+        return {"physics_parameters": parameters, "event_logits": raw[..., 7:8]}
 
 
 class PositionTrajectoryOutput(nn.Module):

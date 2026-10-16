@@ -1,0 +1,16 @@
+{
+  "run_id": "1790685340897606853_510468_i935-val-candidate-recall-r15-20260929",
+  "name": "i935-val-candidate-recall-r15-20260929",
+  "command": "timeout --signal=TERM --kill-after=15s 5385s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection/.venv/bin/python -u -m src.tasks.ball_refiner.scripts.compare_detectors --store /home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1 --cache-manifest /home/kamimura/projects/tennis-lab/data/ball_refiner/detector-ft-e13-trainval-r3-20260928/manifest.json --ft-e13 /home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt --mixed-e0 /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i934_mixed_ft/s42-r6-20260928/logs/version_0/checkpoints/ball-detection-epoch=00.ckpt --mixed-e11 /home/kamimura/projects/tennis-lab/outputs/ball_detection/train/i934_mixed_ft/s42-r6-20260928/logs/version_0/checkpoints/last.ckpt --expected-sha256 cd7927ad27e53ddd6aa77df28eca3c5e674552461ccda083a41e99e629857892 7b9a202b7753edc9edc200271edfad1b09bdee59073bdbaffb2709cbf942aa9b 6a9c0ef21a19241638ae279131f9b7211c47c7fb6ddb4b0753fe762d9026961f --output /home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/detector_selection/i935-val-three-checkpoints-r15-20260929 --device cuda --batch-size 2 --cuda-allocator-limit-gib 5 --cpu-threads 4",
+  "provider": "codex",
+  "session": "01a0ed28-0639-7443-b3d1-8c613cd2429d",
+  "issue": "935",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "fbe33b13125451da090f8f68720d718d9fc69c06",
+  "branch": "campaign930/i935-10-detector-selection",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection",
+  "captured_at": "2026-09-29T21:35:41+09:00"
+}

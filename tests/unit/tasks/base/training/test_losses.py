@@ -72,3 +72,16 @@ def test_perfect_prediction_near_zero_loss() -> None:
     logits = torch.tensor([[20.0, -20.0]])
     targets = torch.tensor([[1.0, 0.0]])
     assert loss(logits, targets).item() < 1e-6
+
+
+def test_elementwise_loss_preserves_shape_and_matches_reduced_loss() -> None:
+    loss = FocalBCEWithLogitsLoss(gamma=1.5)
+    logits = torch.randn(2, 3, 4, 5, requires_grad=True)
+    targets = torch.rand_like(logits)
+    elementwise = loss.elementwise(logits, targets)
+    assert elementwise.shape == logits.shape
+    torch.testing.assert_close(elementwise.mean(), loss(logits, targets))
+    torch.testing.assert_close(
+        torch.autograd.grad(elementwise.mean(), logits, retain_graph=True)[0],
+        torch.autograd.grad(loss(logits, targets), logits)[0],
+    )

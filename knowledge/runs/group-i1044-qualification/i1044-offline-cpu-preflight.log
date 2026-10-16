@@ -1,0 +1,4 @@
+evaluation val 1/100
+historical clips 2 RMSE 0.4112314916833493 roundtrip passed
+evaluation val 1/100
+geometry clips 2 RMSE 0.7658483218791545 roundtrip passed

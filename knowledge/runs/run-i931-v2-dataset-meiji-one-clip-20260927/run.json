@@ -1,0 +1,16 @@
+{
+  "run_id": "1790468591832132284_2084456_i931-v2-dataset-meiji-one-clip-20260927",
+  "name": "i931-v2-dataset-meiji-one-clip-20260927",
+  "command": "bash tests/benchmarks/build_dino_extension.sh /home/kamimura/projects/tennis-lab /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-v2-dataset-meiji-one-clip-20260927/dino_extension && CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 PYTHONPATH=.:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-v2-dataset-meiji-one-clip-20260927/dino_extension/lib .venv/bin/python tests/benchmarks/component_pipeline.py --repo /home/kamimura/projects/tennis-lab --dataset /home/kamimura/projects/tennis-lab/data/slcs/meiji_one_clip_scene_v2 --seed-from /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --clip /home/kamimura/projects/tennis-lab/data/slcs/meiji_one_clip_scene_v2/videos/video_000/clips/clip_000 --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-v2-dataset-meiji-one-clip-20260927 --device cuda && CUDA_VISIBLE_DEVICES=0 .venv/bin/python -m src.tasks.slcs.scripts.precompute_dino_tokens paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-v2-dataset-meiji-one-clip-20260927/slcs paths.checkpoint_root=/home/kamimura/projects/tennis-lab/third_party/dinov3/checkpoints paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party precompute.checkpoint_path=dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth data.dataset_root=slcs/meiji_one_clip_scene_v2",
+  "provider": "claude",
+  "session": "abf284fe-984d-4b6c-afec-7375982b0bb0",
+  "issue": "931",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "f3706f1913bee277ea950be4252af0b3cb12a389",
+  "branch": "campaign930/i931-4-imports",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i931-4-imports",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i931-4-imports",
+  "captured_at": "2026-09-27T09:32:18+09:00"
+}

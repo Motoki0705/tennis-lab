@@ -1,0 +1,28 @@
+{
+  "observed_at": "2026-10-09T15:43:18.693106+09:00",
+  "stage": "heatmap_pretraining",
+  "queue_job": "1791527059751331910_2492550_i986-dpt-pretrain-s42-u60000-v1",
+  "commit": "e3f1356163e7b2009c580fc1727c1a413c5889a3",
+  "code_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-dpt-pretrain-s42",
+  "planned_updates": 60000,
+  "automatic_next_stage": false,
+  "latest_progress": {
+    "epoch": 0,
+    "global_step": 200,
+    "windows": 200,
+    "train_loss": 0.015022169471532665,
+    "grad_norm": 0.027010463178157806,
+    "temporal_gradient_norms": [
+      0.005131273064762354,
+      0.004437722265720367
+    ],
+    "learning_rate": 8e-05,
+    "train_seconds": 102.83883854199667,
+    "windows_per_second": 1.9447905366835243,
+    "mean_input_ready_wait_seconds": 0.02793622083569062,
+    "mean_reader_wait_seconds": 0.008779767904998152,
+    "peak_allocated_gib": 5.684319019317627,
+    "peak_reserved_gib": 7.26953125
+  },
+  "pr": "https://github.com/Motoki0705/tennis-lab/pull/1048"
+}

@@ -18,6 +18,7 @@ Blender world coordinates are court coordinates (meters, XY ground, +Z up).
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,10 +56,6 @@ if TYPE_CHECKING:
 
 BUNDLE_SCHEMA = "tennis_scene_blender_bundle_v1"
 PLATE_PATTERN = "plate/{frame:05d}.jpg"
-# Validity masks written by the component pipeline next to the SceneResult
-# arrays. Invalid frames hold zeros, so the masks are the only way to tell a
-# missing observation from a body at the court origin.
-_VALIDITY_KEYS = ("player_smpl_valid", "ball_3d_valid")
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,24 +70,16 @@ class BlenderBundleConfig:
     plate_jpeg_quality: int
 
     def __post_init__(self) -> None:
+        if not self.camera_id.strip():
+            raise ValueError("camera_id must be non-empty.")
         if self.player_max_gap_frames < 0 or self.ball_max_gap_frames < 0:
             raise ValueError("Gap limits must be >= 0.")
-        if self.max_ball_reprojection_median_px <= 0.0:
-            raise ValueError("max_ball_reprojection_median_px must be positive.")
+        for name in ("max_ball_reprojection_median_px", "sensor_width_mm"):
+            value = getattr(self, name)
+            if not math.isfinite(value) or value <= 0.0:
+                raise ValueError(f"{name} must be finite and positive.")
         if not 1 <= self.plate_jpeg_quality <= 100:
             raise ValueError("plate_jpeg_quality must be in [1, 100].")
-
-
-def load_validity_masks(scene_path: Path) -> dict[str, NDArray[np.bool_]]:
-    """Read the per-frame validity masks that ``SceneResult`` does not carry."""
-    with np.load(scene_path, allow_pickle=False) as archive:
-        missing = [key for key in _VALIDITY_KEYS if key not in archive.files]
-        if missing:
-            raise KeyError(
-                f"{scene_path} lacks validity masks {missing}; Blender export needs "
-                "them to distinguish missing frames from zero-filled arrays."
-            )
-        return {key: np.asarray(archive[key], dtype=bool) for key in _VALIDITY_KEYS}
 
 
 def ball_reprojection_errors_px(
@@ -139,6 +128,8 @@ def _write_plate(
     video_path: Path, output_dir: Path, scene: SceneResult, quality: int
 ) -> None:
     info = probe_video_info(video_path)
+    if not math.isclose(info.fps, scene.fps, rel_tol=1e-5):
+        raise ValueError(f"Video FPS {info.fps} differs from scene FPS {scene.fps}.")
     if (info.width, info.height) != (scene.width, scene.height):
         raise ValueError(
             f"Video {video_path} is {info.width}x{info.height}, scene is "
@@ -172,7 +163,12 @@ def export_blender_bundle(
     if output_dir.exists():
         raise FileExistsError(f"Bundle output already exists: {output_dir}")
     scene = load_scene_result(scene_path)
-    masks = load_validity_masks(scene_path)
+    if scene.schema_version != 2:
+        raise ValueError("Blender export requires SceneResult v2 with validity masks.")
+    player_valid_in = scene.player_smpl_valid
+    ball_valid_in = scene.ball_3d_valid
+    if player_valid_in is None or ball_valid_in is None:
+        raise ValueError("Scene lacks player_smpl_valid/ball_3d_valid.")
     if scene.smpl_vertices_local is None or scene.smpl_global_orient is None:
         raise ValueError("Scene lacks SMPL vertices/global orientation.")
     if scene.ball_3d is None:
@@ -182,6 +178,15 @@ def export_blender_bundle(
     video_paths = scene.metadata.get("video_paths")
     if not isinstance(camera_ids, list) or not isinstance(video_paths, list):
         raise ValueError("Scene metadata must list camera_ids and video_paths.")
+    if (
+        len(camera_ids) != len(video_paths)
+        or len(camera_ids) != scene.court_kp.shape[0]
+    ):
+        raise ValueError(
+            "Scene camera_ids, video_paths and view axis differ in length."
+        )
+    if len(set(camera_ids)) != len(camera_ids):
+        raise ValueError("Scene camera_ids must be unique.")
     if config.camera_id not in camera_ids:
         raise ValueError(
             f"Camera {config.camera_id!r} not in scene cameras {camera_ids}."
@@ -197,7 +202,7 @@ def export_blender_bundle(
         scene.metadata, config.camera_id, width=scene.width, height=scene.height
     )
     reprojection = ball_reprojection_errors_px(
-        scene, masks["ball_3d_valid"], camera, camera_index
+        scene, ball_valid_in, camera, camera_index
     )
     reprojection_median = float(np.median(reprojection))
     if reprojection_median > config.max_ball_reprojection_median_px:
@@ -215,9 +220,8 @@ def export_blender_bundle(
         scene.player_yaw,
         load_smpl_joint_regressor(smpl_joint_regressor_path),
     )
-    if int(faces.max()) >= vertices.shape[2]:
+    if faces.size == 0 or faces.min() < 0 or int(faces.max()) >= vertices.shape[2]:
         raise ValueError("SMPL faces reference vertices beyond the scene mesh.")
-    player_valid_in = masks["player_smpl_valid"]
     if player_valid_in.shape != vertices.shape[:2]:
         raise ValueError(
             f"player_smpl_valid {player_valid_in.shape} does not match players "
@@ -255,7 +259,7 @@ def export_blender_bundle(
 
         ball = fill_short_gaps(
             scene.ball_3d,
-            masks["ball_3d_valid"],
+            ball_valid_in,
             max_gap_frames=config.ball_max_gap_frames,
         )
         np.save(output_dir / "ball_positions.npy", ball.values)
@@ -318,5 +322,4 @@ __all__ = [
     "BlenderBundleConfig",
     "ball_reprojection_errors_px",
     "export_blender_bundle",
-    "load_validity_masks",
 ]

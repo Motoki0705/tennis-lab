@@ -1,0 +1,13 @@
+{
+  "enqueued_at": "2026-10-01T11:11:11.003029+09:00",
+  "name": "i935-meiji-context-r30-20261001",
+  "command": "bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/tests/benchmarks/ball_refiner_meiji_context.sh /home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-meiji-context-r30-20261001-a2 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-meiji-context-r30-20261001/scene-context.yaml /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i964-unseen-r16-20261001/freeze.json /home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-fullframe-pilot-r10-20260928/dino_extension/lib ba6d0dbffd439230ae90f41cac943bbea706467fb628fe04a0d88af037684de3",
+  "provider": "codex",
+  "session": "01a0f522-9464-7821-a71c-47ed97af6e11",
+  "stdout": "queued: 1790820670992689411_1902812_i935-meiji-context-r30-20261001.job\n",
+  "stderr": "",
+  "resource": "all",
+  "queued_before_us": [
+    "1790819790903430816_1781754_i936-head-context-r19-s936-20261001.job"
+  ]
+}

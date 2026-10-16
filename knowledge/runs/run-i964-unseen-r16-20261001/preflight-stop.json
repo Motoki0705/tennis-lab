@@ -1,0 +1,424 @@
+{
+  "schema": "i964_unseen_preflight_stop_v1",
+  "status": "not_enqueued",
+  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "default_commit": "60175414",
+  "entrypoint_commit": "2c26edd2006d4cbef9b73fc48ada57ea5fba208d",
+  "preflight_attempts": 1,
+  "inference_attempts": 0,
+  "scoring_batches": 0,
+  "reserved_media_decoded": false,
+  "reserved_person_labels_opened": false,
+  "opened": "frozen reservation metadata and historical automatic ball/court decision report only; no reserved clip manifest/media was reached",
+  "failure": {
+    "stage": "preflight_side_reference",
+    "original_exception": "KeyError: camera_ids",
+    "cause": "video_001/clip_003 has observe_failed and no annotation-ball side",
+    "handling_fix": "raise explicit ValueError for observe_failed; no alternate side or calibration chosen; no preflight rerun"
+  },
+  "side_reference": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json",
+    "sha256": "80df2f60ebba67d996471009d2aa6f0a94bed35f16905ef95ac01559f9664fd6"
+  },
+  "reserved_side_records": [
+    {
+      "agreement": null,
+      "annotation": {
+        "decided": true,
+        "frames": 426,
+        "hypotheses": [
+          {
+            "cost": 0.04160917161856552,
+            "frames": 426,
+            "support": 0.9882629107981221,
+            "view_half_turns": [
+              false,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.6897537654992462,
+            "frames": 426,
+            "support": 0.3004694835680751,
+            "view_half_turns": [
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.7158684325141731,
+            "frames": 426,
+            "support": 0.2863849765258216,
+            "view_half_turns": [
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.7935207616772241,
+            "frames": 426,
+            "support": 0.176056338028169,
+            "view_half_turns": [
+              false,
+              true,
+              true
+            ]
+          }
+        ],
+        "margin": 0.6481445938806807,
+        "observed_frames": {
+          "cam0": 872,
+          "cam1": 974,
+          "cam2": 1064
+        },
+        "view_half_turns": [
+          false,
+          false,
+          true
+        ]
+      },
+      "ball_agreement": {
+        "cam0": {
+          "annotation_frames": 872,
+          "both_frames": 370,
+          "detector_frames": 460,
+          "detector_where_annotation_absent": 90,
+          "far_frames": 222,
+          "matched_frames": 148,
+          "median_error_px": 140.14535522460938
+        },
+        "cam1": {
+          "annotation_frames": 974,
+          "both_frames": 661,
+          "detector_frames": 872,
+          "detector_where_annotation_absent": 211,
+          "far_frames": 304,
+          "matched_frames": 357,
+          "median_error_px": 7.590126991271973
+        },
+        "cam2": {
+          "annotation_frames": 1064,
+          "both_frames": 694,
+          "detector_frames": 823,
+          "detector_where_annotation_absent": 126,
+          "far_frames": 160,
+          "matched_frames": 534,
+          "median_error_px": 6.633730888366699
+        }
+      },
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "clip_id": "video_000/clip_002",
+      "detector": {
+        "decided": false,
+        "diagnostics": {
+          "frames": 375,
+          "hypotheses": [
+            {
+              "cost": 0.7044888286220812,
+              "frames": 375,
+              "support": 0.32,
+              "view_half_turns": [
+                false,
+                false,
+                true
+              ]
+            },
+            {
+              "cost": 0.782043291121722,
+              "frames": 375,
+              "support": 0.25066666666666665,
+              "view_half_turns": [
+                false,
+                false,
+                false
+              ]
+            },
+            {
+              "cost": 0.8374005196713978,
+              "frames": 375,
+              "support": 0.17333333333333334,
+              "view_half_turns": [
+                false,
+                true,
+                false
+              ]
+            },
+            {
+              "cost": 0.898763009239525,
+              "frames": 375,
+              "support": 0.12533333333333332,
+              "view_half_turns": [
+                false,
+                true,
+                true
+              ]
+            }
+          ],
+          "pair_frames": {
+            "cam0-cam1": 169,
+            "cam0-cam2": 122,
+            "cam1-cam2": 252
+          },
+          "sampled_frames": 678
+        },
+        "message": "ambiguous_margin: Runner-up is only 0.078 worse than the best [[False, False, True] cost=0.704 support=0.320; [False, False, False] cost=0.782 support=0.251; [False, True, False] cost=0.837 support=0.173; [False, True, True] cost=0.899 support=0.125]",
+        "observed_frames": {
+          "cam0": 460,
+          "cam1": 872,
+          "cam2": 823
+        },
+        "reason": "court_side_ambiguous_margin"
+      },
+      "excluded_cameras": {},
+      "frames": 1355,
+      "reference_camera": "cam0"
+    },
+    {
+      "clip_id": "video_001/clip_003",
+      "observe_failed": {
+        "error": "No Court region meets model support/geometry requirements: [{'region_xyxy': [0, 0, 1920, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [240, 0, 1680, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [240, 0, 1680, 810], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [240, 270, 1680, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [240, 0, 1320, 540], 'status': 'ok', 'accepted': False, 'inliers': 7, 'inlier_score': 5.564737319946289, 'area_ratio': 0.028058466439158367, 'convex': True, 'inside_content': True}, {'region_xyxy': [240, 270, 1320, 810], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [240, 540, 1320, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [420, 0, 1500, 540], 'status': 'ok', 'accepted': False, 'inliers': 7, 'inlier_score': 4.822127342224121, 'area_ratio': 0.028047606665487466, 'convex': True, 'inside_content': True}, {'region_xyxy': [420, 270, 1500, 810], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [420, 540, 1500, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [600, 0, 1680, 540], 'status': 'ok', 'accepted': False, 'inliers': 6, 'inlier_score': 4.450023174285889, 'area_ratio': 0.0277102864018516, 'convex': True, 'inside_content': True}, {'region_xyxy': [600, 270, 1680, 810], 'status': 'joint_optimization_failed', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}, {'region_xyxy': [600, 540, 1680, 1080], 'status': 'no_jointly_supported_candidate', 'accepted': False, 'inliers': 0, 'inlier_score': 0.0, 'area_ratio': 0.0, 'convex': False, 'inside_content': False}]",
+        "error_type": "ValueError",
+        "reason": null,
+        "status": "failed"
+      }
+    },
+    {
+      "agreement": null,
+      "annotation": {
+        "decided": true,
+        "frames": 308,
+        "hypotheses": [
+          {
+            "cost": 0.07745985805910066,
+            "frames": 308,
+            "support": 0.974025974025974,
+            "view_half_turns": [
+              false,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.6296388413521462,
+            "frames": 308,
+            "support": 0.37662337662337664,
+            "view_half_turns": [
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.6730897392341745,
+            "frames": 308,
+            "support": 0.33116883116883117,
+            "view_half_turns": [
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.7628956952390926,
+            "frames": 308,
+            "support": 0.237012987012987,
+            "view_half_turns": [
+              false,
+              true,
+              true
+            ]
+          }
+        ],
+        "margin": 0.5521789832930455,
+        "observed_frames": {
+          "cam0": 514,
+          "cam1": 686,
+          "cam2": 512
+        },
+        "view_half_turns": [
+          false,
+          false,
+          true
+        ]
+      },
+      "ball_agreement": {
+        "cam0": {
+          "annotation_frames": 514,
+          "both_frames": 279,
+          "detector_frames": 344,
+          "detector_where_annotation_absent": 56,
+          "far_frames": 147,
+          "matched_frames": 132,
+          "median_error_px": 30.486831665039062
+        },
+        "cam1": {
+          "annotation_frames": 686,
+          "both_frames": 537,
+          "detector_frames": 577,
+          "detector_where_annotation_absent": 36,
+          "far_frames": 169,
+          "matched_frames": 368,
+          "median_error_px": 5.375461101531982
+        },
+        "cam2": {
+          "annotation_frames": 512,
+          "both_frames": 298,
+          "detector_frames": 354,
+          "detector_where_annotation_absent": 54,
+          "far_frames": 44,
+          "matched_frames": 254,
+          "median_error_px": 5.876958847045898
+        }
+      },
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2"
+      ],
+      "clip_id": "video_002/clip_003",
+      "detector": {
+        "decided": false,
+        "diagnostics": {
+          "frames": 243,
+          "hypotheses": [
+            {
+              "cost": 0.5388784323599166,
+              "frames": 243,
+              "support": 0.48559670781893005,
+              "view_half_turns": [
+                false,
+                false,
+                true
+              ]
+            },
+            {
+              "cost": 0.5998473868022218,
+              "frames": 243,
+              "support": 0.448559670781893,
+              "view_half_turns": [
+                false,
+                false,
+                false
+              ]
+            },
+            {
+              "cost": 0.6779964476312604,
+              "frames": 243,
+              "support": 0.345679012345679,
+              "view_half_turns": [
+                false,
+                true,
+                false
+              ]
+            },
+            {
+              "cost": 0.7713507356538217,
+              "frames": 243,
+              "support": 0.24279835390946503,
+              "view_half_turns": [
+                false,
+                true,
+                true
+              ]
+            }
+          ],
+          "pair_frames": {
+            "cam0-cam1": 146,
+            "cam0-cam2": 71,
+            "cam1-cam2": 122
+          },
+          "sampled_frames": 374
+        },
+        "message": "ambiguous_margin: Runner-up is only 0.061 worse than the best [[False, False, True] cost=0.539 support=0.486; [False, False, False] cost=0.600 support=0.449; [False, True, False] cost=0.678 support=0.346; [False, True, True] cost=0.771 support=0.243]",
+        "observed_frames": {
+          "cam0": 344,
+          "cam1": 577,
+          "cam2": 354
+        },
+        "reason": "court_side_ambiguous_margin"
+      },
+      "excluded_cameras": {},
+      "frames": 746,
+      "reference_camera": "cam0"
+    }
+  ],
+  "runtime_evidence": {
+    "camera_frames": 11124,
+    "clips": {
+      "video_000/clip_002": {
+        "num_frames": 1355,
+        "fps": 59.94006
+      },
+      "video_001/clip_003": {
+        "num_frames": 1607,
+        "fps": 59.94006
+      },
+      "video_002/clip_003": {
+        "num_frames": 746,
+        "fps": 59.94006
+      }
+    },
+    "resume_new_frames": 6672,
+    "resume_camera_seconds": 4405.235129253997,
+    "feature_only_linear_minutes": 122.41165961686016,
+    "production_reference_frames": 3030,
+    "production_person_seconds": 2415.917724236031,
+    "production_person_linear_minutes": 147.8254607502839,
+    "production_court_seconds_three_cameras": 182.5163539259811,
+    "production_person_plus_three_courts_minutes": 156.95127844658296,
+    "prior_stage_seconds": {
+      "ball_detection/cam0": 87.92858950200025,
+      "ball_detection/cam1": 15.783367261989042,
+      "ball_detection/cam2": 12.86118558398448,
+      "court_calibration": 0.062049014028161764,
+      "court_detection/cam0": 76.3076596740284,
+      "court_detection/cam1": 60.53215610195184,
+      "court_detection/cam2": 45.61448913597269,
+      "person_detection/cam0": 426.23052785295295,
+      "person_detection/cam1": 375.12538641504943,
+      "person_detection/cam2": 427.5578672370175,
+      "person_tracking/cam0": 530.2587999069947,
+      "person_tracking/cam1": 325.97351549501764,
+      "person_tracking/cam2": 330.7716273289989,
+      "player_selection/cam0": 0.699011561984662,
+      "player_selection/cam1": 0.47225740196881816,
+      "player_selection/cam2": 0.9613687700475566,
+      "pose_estimation/cam0": 0.1076661009574309,
+      "pose_estimation/cam1": 0.1039074530126527,
+      "pose_estimation/cam2": 0.1359968229662627
+    },
+    "caveat": "Projections, not unseen runtime measurements; model load, CPU/GPU contention and density differ. Full video/hash/build overhead is extra."
+  },
+  "gpu_grant_seconds": 7200,
+  "decision": "Do not enqueue a workload whose evidence-based estimate exceeds the grant, per CHILD Shared machine.",
+  "proposed_job": {
+    "count": 1,
+    "resource": "all",
+    "expected_wall_minutes": [
+      150,
+      180
+    ],
+    "requested_wall_seconds": 10800,
+    "expected_peak_vram_gb": [
+      4.3,
+      8.0
+    ],
+    "vram_stop_gb": 9.0,
+    "peak_limit_gb": 10.0,
+    "expected_disk_gb": [
+      1,
+      3
+    ],
+    "disk_stop_gb": 4.8
+  },
+  "queue_job": null,
+  "other_jobs_changed": false,
+  "retuned": false
+}

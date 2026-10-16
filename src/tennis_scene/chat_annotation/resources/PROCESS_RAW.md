@@ -57,11 +57,30 @@ stateは`in_progress` / `completed` / `blocked`、decisionは`pending` / `accept
    行った場合は修正内容と根拠をreasonに記録する。既存内容と同一ならduplicate。
    異なる既存内容があれば新旧を比較し、明示的な採用判断を残す。新しい提出だからという理由だけで
    上書きしない。doneの注釈差替えは人間に確認してheldにする。
+   同一clip/targetの提出が複数ある場合の判断基準は次節に従う。
 5. processedのJSONと処理記録は同じディレクトリの一時ファイルに書いてからatomic renameで公開する。
    公開前に再度検証し、出力JSON/manifestのSHA-256とraw member名を処理記録へ保存する。
    同一clip/targetを複数AIで同時処理しない。必要なら処理記録から公開済みJSONを照合して再開する。
 6. 処理後にREADMEのcompletion CLIを実行する（watcher稼働時は結果を確認する）。
    AI自身でvideosの移動やdoneの作成を行わない。保留理由と次の作業を処理記録に残す。
+
+## 承認済みの判断基準
+
+以下はユーザー承認済みの定型判断。該当する補正・選択は確認なしで行い、処理記録の
+`normalizations`（field・before・after・reason）または`conflict`に記録する。これ以外の補正や
+判断に迷う提出はheldにして人間に確認する。
+
+- **clip_id接尾辞**: ブラウザの重複ダウンロードで付く末尾の`_N`・`(N)`・`_N_`（`(N)`の括弧を
+  `_`へ置換した形）だけを除去してよい。元のclip_idがmanifestに無く、除去後がmanifestに
+  完全一致する場合に限る。解像度・全フレーム数の照合は通常の検証で行う。
+- **bbox_source**: `occluded`または`truncated`が真なのに`bbox_source=observed`となっている
+  player bboxだけは`inferred`へ変更してよい。スキーマ違反がこの種類だけの場合に限り、
+  座標・occluded/truncated・reviewedは変更しない。変更したframe_index/track_idを全件記録する。
+- **競合候補の選択**: 同一clip/targetに内容の異なる検証合格候補が複数あれば、reviewedフレーム数、
+  非nullの座標数（playerのbbox・ballの中心）、rawの受領mtimeの順に大きいものを1件採用する。
+  正規化後に採用候補と同一の候補はduplicate、異なる候補はheldかつ
+  `disposition=not_selected_conflict`とし、原本と採用先を記録する。
+  既に公開済みのprocessedと異なる場合は、この基準で自動差替えせず人間に確認する。
 
 rawのZIPを置いただけではprocessedにもdoneにも進まない。AIの起動・実行スケジュールは
 この最小構成には含めない。AIへは「この文書に従い、output root = <絶対パス> の未処理rawを整理」

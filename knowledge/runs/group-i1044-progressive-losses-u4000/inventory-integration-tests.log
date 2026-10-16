@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1044-blcs-physics
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+created: 2/2 workers
+2 workers [15 items]
+
+scheduling tests via LoadScheduling
+
+tests/unit/utils/configuration/test_inventory.py::test_synthetic_inventory_has_only_the_canonical_production_clis 
+tests/unit/utils/configuration/test_inventory.py::test_task_local_generation_and_visualization_boundaries_remain_in_inventory 
+[gw0] [  6%] PASSED tests/unit/utils/configuration/test_inventory.py::test_synthetic_inventory_has_only_the_canonical_production_clis 
+[gw1] [ 13%] PASSED tests/unit/utils/configuration/test_inventory.py::test_task_local_generation_and_visualization_boundaries_remain_in_inventory 
+tests/unit/utils/configuration/test_inventory.py::test_manual_court_editor_has_an_explicit_non_hydra_path_boundary 
+tests/unit/utils/configuration/test_inventory.py::test_mixed_court_training_boundary_remains_explicitly_registered 
+[gw0] [ 20%] PASSED tests/unit/utils/configuration/test_inventory.py::test_manual_court_editor_has_an_explicit_non_hydra_path_boundary 
+[gw1] [ 26%] PASSED tests/unit/utils/configuration/test_inventory.py::test_mixed_court_training_boundary_remains_explicitly_registered 
+tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_duplicate_boundaries 
+tests/unit/utils/configuration/test_inventory.py::test_default_inventory_contains_only_current_policy 
+[gw1] [ 33%] PASSED tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_duplicate_boundaries 
+[gw0] [ 40%] PASSED tests/unit/utils/configuration/test_inventory.py::test_default_inventory_contains_only_current_policy 
+tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_incomplete_validator_binding 
+tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit 
+[gw1] [ 46%] PASSED tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_incomplete_validator_binding 
+tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed 
+[gw1] [ 53%] PASSED tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed 
+tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable 
+[gw1] [ 60%] PASSED tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable 
+tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings 
+[gw1] [ 66%] PASSED tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings 
+tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh 
+[gw1] [ 73%] PASSED tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh 
+tests/e2e/development/test_configuration_audit.py::test_root_configuration_audit_script_is_the_operational_entrypoint 
+[gw0] [ 80%] PASSED tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit 
+tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed 
+[gw0] [ 86%] PASSED tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed 
+[gw1] [ 93%] PASSED tests/e2e/development/test_configuration_audit.py::test_root_configuration_audit_script_is_the_operational_entrypoint 
+tests/e2e/development/test_configuration_audit.py::test_removed_generated_inventory_option_is_rejected 
+[gw1] [100%] PASSED tests/e2e/development/test_configuration_audit.py::test_removed_generated_inventory_option_is_rejected 
+
+======================== 15 passed in 129.11s (0:02:09) ========================

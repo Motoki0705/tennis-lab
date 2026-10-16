@@ -1,0 +1,7 @@
+{
+  "job_id": "1791853065391483295_1326108_i1044-reprojection-s42-u4000",
+  "observed_utc": "2026-10-13T02:01:54.690860+00:00",
+  "reason": "CUDA unknown error during input finite check; repeats during teardown; source undetermined",
+  "included_in_comparison": false,
+  "retry": "from scratch, same seed and training config"
+}

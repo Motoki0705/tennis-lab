@@ -39,12 +39,39 @@ def test_shipped_config_resolves_roles_and_limits(tmp_path: Path) -> None:
     assert runtime.bundle.camera_id == "cam1"
     assert runtime.bundle.player_max_gap_frames == 12
     assert runtime.bundle.ball_max_gap_frames == 3
+    assert (
+        runtime.smpl_faces_path == tmp_path / "ckpt/body_models/smplh/neutral/model.npz"
+    )
+    assert runtime.smpl_joint_regressor_path == (
+        tmp_path
+        / "src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt"
+    )
 
 
 @pytest.mark.parametrize(
     "override",
-    ["player_max_gap_frames=-1", "plate_jpeg_quality=0", "sensor_width_mm=0"],
+    [
+        "player_max_gap_frames=-1",
+        "plate_jpeg_quality=0",
+        "sensor_width_mm=0",
+    ],
 )
 def test_invalid_limits_are_rejected(tmp_path: Path, override: str) -> None:
     with pytest.raises(SemanticConfigurationError):
         parse_blender_export_config(_config(tmp_path, override))
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("sensor_width_mm", float("nan")),
+        ("max_ball_reprojection_median_px", float("inf")),
+    ],
+)
+def test_non_finite_limits_are_rejected(
+    tmp_path: Path, field: str, value: float
+) -> None:
+    cfg = _config(tmp_path)
+    cfg[field] = value
+    with pytest.raises(SemanticConfigurationError):
+        parse_blender_export_config(cfg)
