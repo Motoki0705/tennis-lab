@@ -55,6 +55,28 @@ def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) 
     assert any(not torch.equal(first["state_dict"][name], last["state_dict"][name]) for name in encoder)
     assert dual_sha256(parent) == parent_hash and dual_sha256(validation) == val_hash
 
+    report_path = tmp_path / "evaluation.json"
+    evaluate = [
+        sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate",
+        "--mode", "coordinates", "--checkpoint", str(output / "epoch-001.pt"),
+        "--output", str(report_path), "--artifact-root", str(tmp_path),
+        "--output-root", str(tmp_path), "--split", "val", "--device", "cpu",
+    ]
+    for manifest, accepted in ((train, False), (validation, True)):
+        evaluated = subprocess.run(
+            [*evaluate, "--manifest", str(manifest)],
+            env=dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2"),
+            text=True, capture_output=True, timeout=90,
+        )
+        if not accepted:
+            assert evaluated.returncode != 0 and "frozen data/split identity" in evaluated.stderr
+            assert not report_path.exists()
+        else:
+            assert evaluated.returncode == 0, evaluated.stdout + evaluated.stderr
+    report = json.loads(report_path.read_text())
+    assert report["manifest_sha256"] == val_hash
+    assert report["split"] == "val" and report["scopes"] == last["validation"]["scopes"]
+
     resumed = tmp_path / "resumed"
     shutil.copytree(output, resumed)
     for name in ("epoch-001.pt", "COMPLETED.json"):
