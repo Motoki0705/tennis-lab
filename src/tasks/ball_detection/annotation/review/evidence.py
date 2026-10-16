@@ -20,13 +20,28 @@ from src.tasks.base.annotation.images.contracts import (
     TileReceipt,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.telemetry.capture import presented_images, verify_report
+from src.tasks.base.annotation.telemetry.capture import (
+    ImagePresentationUnavailable,
+    presented_images,
+    verify_report,
+)
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import Launch
 
 from ..contracts import BallPredictions
 from .contracts import BallFrame, BallLabels, BallReviewPolicy, BallReviewProof
 from .validation import ranges, resolved
+
+
+def review_images(
+    layout: AnnotationLayout, telemetry: ArtifactRef
+) -> tuple[set[ArtifactRef], str | None]:
+    """Keep unusable attempts for audit, but never use them as visual proof."""
+    try:
+        return set(presented_images(layout, telemetry)), None
+    except ImagePresentationUnavailable as error:
+        # Integrity failures are different exceptions and must still stop review.
+        return set(), str(error)
 
 
 def lineage(
@@ -201,7 +216,7 @@ def prove_review(
         check_actor(layout, report.launch, context, manifest)
         if report.launch in by_actor:
             raise ValueError("one worker launch has multiple telemetry reports")
-        by_actor[report.launch] = set(presented_images(layout, reference))
+        by_actor[report.launch], _ = review_images(layout, reference)
     all_shown = set().union(*by_actor.values())
     for frame in labels.frames:
         if frame.decision.reviewed:

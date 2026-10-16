@@ -26,9 +26,8 @@ from .contracts import (
     ConditionSpec,
     LiveWorker,
     Observation,
-    WorkerBinding,
 )
-from .validation import condition
+from .validation import ExpectedWork, condition, validate_work
 
 
 class ObservationLimit(ValueError):
@@ -50,7 +49,7 @@ def worker_snapshot(
     layout: AnnotationLayout,
     spec: ConditionSpec,
     campaign: str,
-    expected: dict[str, WorkerBinding],
+    expected: dict[str, ExpectedWork],
 ) -> tuple[dict[str, int], tuple[AttemptSnapshot, ...], tuple[str, ...]]:
     states: Counter[str] = Counter()
     attempts: list[AttemptSnapshot] = []
@@ -73,15 +72,7 @@ def worker_snapshot(
                 request = WorkRequest.model_validate_json(row["request"])
                 if request.stage not in {binding.stage for binding in spec.bindings}:
                     continue
-                binding = expected.get(row["id"])
-                if binding is None or (
-                    request.work_id != row["id"]
-                    or (request.adapter, request.adapter_version, request.stage)
-                    != (binding.adapter, binding.adapter_version, binding.stage)
-                ):
-                    raise ValueError(
-                        "measured campaign contains work outside its frozen cohort/bindings"
-                    )
+                validate_work(layout, request, row["id"], expected)
                 found.add(row["id"])
                 states[row["state"]] += 1
                 for attempt in db.execute(
