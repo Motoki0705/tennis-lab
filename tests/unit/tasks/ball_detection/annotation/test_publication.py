@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 import json
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,10 @@ from src.tasks.ball_detection.annotation.review.contracts import (
     Note,
 )
 from src.tasks.ball_detection.data.store import BallFrameStore, shard_name
+from src.tasks.ball_detection.data.supervision import (
+    OBSERVED_ONLY,
+    resolve_frame_supervision,
+)
 from src.tasks.ball_detection.data.teacher_masks import LEGACY
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing import (
     publisher as publishing,
@@ -36,6 +41,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot i
     freeze_legacy_store,
     load_snapshot,
 )
+from src.tasks.ball_detection.visualization.review.quality import BallReviewIndex
 from src.tasks.base.annotation.artifacts import read_document
 from src.tasks.base.annotation.contracts import (
     ArtifactRef,
@@ -243,6 +249,28 @@ def test_publication_preserves_base_bytes_rows_and_sealed_review_masks(
     with BallPublisher(env.layout).registry.transaction() as db:
         registered = db.execute("SELECT receipt FROM ball_publications").fetchone()
     assert ArtifactRef.model_validate_json(registered[0]) == reference
+
+
+def test_published_snapshot_exposes_review_overview(
+    setup: tuple[Environment, PublishRequest, Path],
+) -> None:
+    env, request, _ = setup
+    _, _, store = result(env, BallPublisher(env.layout).publish(request))
+    overview = BallReviewIndex(
+        store, resolve_frame_supervision(store, OBSERVED_ONLY)
+    ).overview()
+    assert {source["id"] for source in overview["sources"]} == {
+        "tracknet", "chat_annotation"
+    }
+    assert overview["splits"]["val"] == dict(clips=1, frames=3, groups=1)
+    assert overview["splits"]["train"] == dict(clips=1, frames=32, groups=1)
+    assert overview["counts"]["scored_positive"] == 3
+    assert overview["counts"]["scored_negative"] == 2
+    history = overview["append_history"]
+    assert len(history) == 1
+    assert history[0]["base_clips"] == 1
+    assert history[0]["added_clips"] == 1
+    assert datetime.fromisoformat(history[0]["at"]).utcoffset() is not None
 
 
 def test_replay_and_concurrent_publications_encode_new_clip_only_once(
