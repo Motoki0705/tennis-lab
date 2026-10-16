@@ -21,7 +21,7 @@ from ..catalog import StorageCatalog
 from ..contracts import InventoryScope, ManagedArtifact, Protection, Retention
 from ..inventory import inventory
 from .contracts import Bundle, MigrationPlan, MigrationReader, MigrationReceipt
-from .files import checked_root, copy_file, verify_file
+from .files import checked_root, copy_file, discard_partials, verify_file
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS storage_migrations (
@@ -205,6 +205,10 @@ class MigrationStore:
                     database=database,
                 )
             destination = _destination(self.layout, plan)
+            if plan.mode == "copy":
+                discard_partials(
+                    self.layout.path("migration_staging", plan.sha256, "partials")
+                )
             if plan.mode == "copy" and not destination.exists():
                 staging = self.layout.path("migration_staging", plan.sha256, "root")
                 staging.mkdir(parents=True, exist_ok=True)
