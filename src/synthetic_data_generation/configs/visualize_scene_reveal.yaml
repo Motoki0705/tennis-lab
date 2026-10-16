@@ -1,4 +1,5 @@
-# Staged scene reveal: capture cameras -> SfM points -> NHT Gaussians -> render.
+# Staged scene reveal: capture cameras -> SfM points -> NHT Gaussians -> render
+# -> accepted court alignment -> free-viewpoint camera move.
 defaults:
   - roots: runtime
   - _self_
@@ -28,6 +29,8 @@ reveal:
     splat: 9.0
     view_dependence: 3.0
     hold: 3.0
+    alignment: 4.0
+    camera_move: 14.0
   # Fixed look-at camera in the anchor court frame (metres; origin at the net
   # centre, +x across the court, +y along it, +z up). B00 court-001 lies at
   # x = -14.9 of court-000, so this looks from beyond court-000's outer corner
@@ -38,6 +41,25 @@ reveal:
     target_court_m: [-7.4, 0.0, 0.0]
     up_court: [0.0, 0.0, 1.0]
     horizontal_fov_deg: 60.0
+  # Free-viewpoint move after the alignment overlay: starts at the viewpoint
+  # above and passes through every keyframe (same anchor court frame, up and
+  # field of view).
+  camera_path:
+    # B00's perimeter fence lies just outside the capture cameras (court-000
+    # frame x -23..8 m, y -17.6..16.4 m); low waypoints stay inside it.
+    keyframes:
+      # Down behind court-000's near baseline.
+      - eye_court_m: [4.0, -16.5, 4.5]
+        target_court_m: [0.0, 0.0, 0.5]
+      # Player height in the gap between the two courts.
+      - eye_court_m: [-7.4, -14.0, 2.5]
+        target_court_m: [-7.4, 6.0, 0.5]
+      # Off court-001's outer near corner, clear of its net post.
+      - eye_court_m: [-22.0, -11.0, 4.5]
+        target_court_m: [-14.9, 0.0, 0.3]
+      # High overview from the opposite corner.
+      - eye_court_m: [-21.0, 16.0, 13.0]
+        target_court_m: [-7.4, 0.0, 0.0]
   style:
     background_rgb: [0.02, 0.02, 0.03]
     gaussian_point_rgb: [0.80, 0.86, 0.95]
@@ -48,6 +70,13 @@ reveal:
     camera_line_width_px: 2
     # (xmin, xmax, ymin, ymax, zmin, zmax) in the anchor court frame.
     sfm_crop_court_m: [-40.0, 25.0, -35.0, 30.0, -2.0, 20.0]
+  # Accepted-court overlay (canonical ground lines and court axes).
+  alignment:
+    line_rgb: [0.25, 0.95, 1.0]
+    line_width_px: 3
+    outline_px: 1
+    axis_length_m: 3.0
+    label_font_px: 28
   nht:
     # Exactly nht-render (from PATH) or an absolute path to an nht-render.
     executable: nht-render

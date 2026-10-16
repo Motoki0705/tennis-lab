@@ -19,7 +19,7 @@ from src.synthetic_data_generation.visualization.reveal.contracts import (
     SceneRevealRequest,
 )
 from src.synthetic_data_generation.visualization.reveal.timeline import (
-    NHTAppearanceState,
+    NHTRenderState,
     build_timeline,
 )
 from src.synthetic_data_generation.visualization.reveal.viewpoint import RevealCamera
@@ -78,7 +78,9 @@ def test_work_directory_must_stay_outside_the_reconstruction(tmp_path: Path) -> 
             output=request.output,
             durations=request.durations,
             viewpoint=request.viewpoint,
+            camera_path=request.camera_path,
             style=request.style,
+            alignment=request.alignment,
             nht=request.nht,
         )
 
@@ -96,11 +98,16 @@ def test_distinct_nht_states_are_ordered_by_first_use() -> None:
     states = renderer.ordered_nht_states(timeline, range(len(timeline)))
 
     assert len(states) == len(set(states))
-    assert states[0] == NHTAppearanceState(splat_progress=0.0, view_dependence=0.0)
-    assert states[-1] == NHTAppearanceState(splat_progress=1.0, view_dependence=1.0)
+    assert states[0] == NHTRenderState(
+        splat_progress=0.0, view_dependence=0.0, view_progress=0.0
+    )
+    assert states[-1] == NHTRenderState(
+        splat_progress=1.0, view_dependence=1.0, view_progress=1.0
+    )
     # Cameras/SfM phases need no NHT; crossfade and colorize share one state;
-    # splat and view-dependence add one state per frame (4 each).
-    assert len(states) == 1 + 4 + 4
+    # splat, view-dependence and the camera move add one state per frame
+    # (4 each); hold and alignment reuse the final reveal-viewpoint render.
+    assert len(states) == 1 + 4 + 4 + 4
 
 
 def test_state_renderer_renders_bounded_chunks_once(
@@ -131,8 +138,9 @@ def test_state_renderer_renders_bounded_chunks_once(
     class FakeResult:
         def __init__(self, command: NHTRenderCommandRequest) -> None:
             assert command.arbitrary_cameras is not None
+            # Each state's camera is placed at x = view_progress.
             self._records = {
-                camera.camera_id: FakeRecord(camera.appearance.splat_progress)
+                camera.camera_id: FakeRecord(camera.camera_to_scene.matrix()[0, 3])
                 for camera in command.arbitrary_cameras.cameras
                 if camera.appearance is not None
             }
@@ -154,23 +162,29 @@ def test_state_renderer_renders_bounded_chunks_once(
     monkeypatch.setattr(renderer, "NHTRenderClient", FakeClient)
     renderer._prepare_work_directory(request.work_directory)
     states = tuple(
-        NHTAppearanceState(splat_progress=value, view_dependence=0.0)
+        NHTRenderState(splat_progress=value, view_dependence=0.0, view_progress=value)
         for value in (0.0, 0.5, 1.0)
     )
-    camera = RevealCamera(
-        width=8,
-        height=6,
-        intrinsics=np.asarray(((4.0, 0.0, 3.5), (0.0, 4.0, 2.5), (0.0, 0.0, 1.0))),
-        camera_to_scene=np.eye(4),
-    )
+
+    class FakeTrajectory:
+        def camera_at(self, progress: float) -> RevealCamera:
+            pose = np.eye(4)
+            pose[0, 3] = progress
+            return RevealCamera(
+                width=8,
+                height=6,
+                intrinsics=np.asarray(((4.0, 0.0, 3.5), (0.0, 4.0, 2.5), (0.0, 0.0, 1.0))),
+                camera_to_scene=pose,
+            )
+
     scene_path = tmp_path / "scenes/B00/reconstruction/export/scene.json"
     scene_path.parent.mkdir(parents=True)
     scene_path.write_text("{}")
     state_renderer = renderer._NHTStateRenderer(
-        request, camera, scene_path, policy=_policy(), states=states
+        request, FakeTrajectory(), scene_path, policy=_policy(), states=states  # type: ignore[arg-type]
     )
 
-    values = [float(state_renderer.layer(state)[0][0, 0, 0]) for state in states]
+    values = [float(state_renderer.layer(state).rgb[0, 0, 0]) for state in states]
     state_renderer.layer(states[2])
 
     assert values == [0.0, 0.5, 1.0]
@@ -190,3 +204,29 @@ def test_work_directory_must_be_absent_or_empty(tmp_path: Path) -> None:
     (tmp_path / "leftover").write_text("x")
     with pytest.raises(FileExistsError, match="work_directory"):
         renderer._prepare_work_directory(tmp_path)
+
+
+def test_production_camera_path_starts_at_the_viewpoint_and_has_waypoints() -> None:
+    request = _request()
+
+    assert len(request.camera_path.keyframes) >= 1
+    assert request.alignment.axis_length_m > 0.0
+
+
+def test_camera_path_keyframes_are_validated_against_up() -> None:
+    with pytest.raises(ValueError, match="at least one keyframe"):
+        _request(["reveal.camera_path.keyframes=[]"])
+    with pytest.raises(ValueError, match="parallel"):
+        _request(
+            [
+                "reveal.camera_path.keyframes=[{eye_court_m:[0,0,10],"
+                "target_court_m:[0,0,0]}]"
+            ]
+        )
+    with pytest.raises(ValueError, match="unknown"):
+        _request(
+            [
+                "reveal.camera_path.keyframes=[{eye_court_m:[0,-5,3],"
+                "target_court_m:[0,0,0],roll:1}]"
+            ]
+        )

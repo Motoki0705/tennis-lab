@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-SCENE_REVEAL_METADATA_SCHEMA = "scene_reveal_animation_v1"
+SCENE_REVEAL_METADATA_SCHEMA = "scene_reveal_animation_v2"
 
 
 class RevealPhase(StrEnum):
-    """Ordered phases from capture cameras to the final NHT render."""
+    """Ordered phases from capture cameras to free-viewpoint court overlays."""
 
     CAMERAS = "cameras"
     SFM = "sfm"
@@ -20,6 +20,8 @@ class RevealPhase(StrEnum):
     SPLAT = "splat"
     VIEW_DEPENDENCE = "view_dependence"
     HOLD = "hold"
+    ALIGNMENT = "alignment"
+    CAMERA_MOVE = "camera_move"
 
 
 REVEAL_PHASE_ORDER: tuple[RevealPhase, ...] = tuple(RevealPhase)
@@ -139,6 +141,51 @@ class RevealViewpoint:
         object.__setattr__(self, "up_court", up)
         object.__setattr__(self, "horizontal_fov_deg", fov)
 
+    def moved_to(self, keyframe: RevealKeyframe) -> RevealViewpoint:
+        """Return this viewpoint looking from a camera-path keyframe."""
+        return RevealViewpoint(
+            anchor_court_id=self.anchor_court_id,
+            eye_court_m=keyframe.eye_court_m,
+            target_court_m=keyframe.target_court_m,
+            up_court=self.up_court,
+            horizontal_fov_deg=self.horizontal_fov_deg,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RevealKeyframe:
+    """One camera-path waypoint in the viewpoint's anchor court frame (metres)."""
+
+    eye_court_m: tuple[float, float, float]
+    target_court_m: tuple[float, float, float]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "eye_court_m", _vector3(self.eye_court_m, name="eye_court_m")
+        )
+        object.__setattr__(
+            self, "target_court_m", _vector3(self.target_court_m, name="target_court_m")
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RevealCameraPath:
+    """Waypoints of the free-viewpoint move after the alignment overlay.
+
+    The path starts at :class:`RevealViewpoint` and passes through every
+    keyframe; anchor court, up direction and field of view stay fixed.
+    """
+
+    keyframes: tuple[RevealKeyframe, ...]
+
+    def __post_init__(self) -> None:
+        keyframes = tuple(self.keyframes)
+        if not keyframes:
+            raise ValueError("camera_path needs at least one keyframe.")
+        if any(not isinstance(item, RevealKeyframe) for item in keyframes):
+            raise TypeError("camera_path keyframes must be RevealKeyframe values.")
+        object.__setattr__(self, "keyframes", keyframes)
+
 
 @dataclass(frozen=True, slots=True)
 class RevealOutput:
@@ -200,6 +247,29 @@ class RevealStyle:
 
 
 @dataclass(frozen=True, slots=True)
+class RevealAlignmentStyle:
+    """Court-line and court-axes overlay drawn from the accepted alignment."""
+
+    line_rgb: tuple[float, float, float]
+    line_width_px: int
+    outline_px: int
+    axis_length_m: float
+    label_font_px: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "line_rgb", _rgb(self.line_rgb, name="line_rgb"))
+        _positive_int(self.line_width_px, name="line_width_px")
+        if (
+            isinstance(self.outline_px, bool)
+            or not isinstance(self.outline_px, int)
+            or self.outline_px < 0
+        ):
+            raise ValueError("outline_px must be a non-negative integer.")
+        _positive(self.axis_length_m, name="axis_length_m")
+        _positive_int(self.label_font_px, name="label_font_px")
+
+
+@dataclass(frozen=True, slots=True)
 class RevealNHTSettings:
     """Public ``nht-render`` invocation and staged-appearance parameters."""
 
@@ -232,10 +302,15 @@ class SceneRevealRequest:
     output: RevealOutput
     durations: RevealDurations
     viewpoint: RevealViewpoint
+    camera_path: RevealCameraPath
     style: RevealStyle
+    alignment: RevealAlignmentStyle
     nht: RevealNHTSettings
 
     def __post_init__(self) -> None:
+        # Every waypoint must be a valid look-at with the shared up direction.
+        for keyframe in self.camera_path.keyframes:
+            self.viewpoint.moved_to(keyframe)
         for name in ("scene_root", "output_video", "work_directory"):
             path = getattr(self, name)
             if not isinstance(path, Path) or not path.is_absolute():

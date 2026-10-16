@@ -6,7 +6,7 @@ import json
 import os
 import shutil
 from collections.abc import Iterator, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +33,11 @@ from src.synthetic_data_generation.visualization.reveal.contracts import (
     SceneRevealRequest,
     SceneRevealResult,
 )
+from src.synthetic_data_generation.visualization.reveal.court_overlay import (
+    CourtOverlayGeometry,
+    court_overlay_geometry,
+    draw_court_overlay,
+)
 from src.synthetic_data_generation.visualization.reveal.layers import (
     ProjectedCameras,
     ProjectedPoints,
@@ -47,19 +52,26 @@ from src.synthetic_data_generation.visualization.reveal.sources import (
     radial_reveal_order,
 )
 from src.synthetic_data_generation.visualization.reveal.timeline import (
-    NHTAppearanceState,
+    NHTRenderState,
     RevealFrameState,
     build_timeline,
     frame_index_at,
     phase_frame_counts,
 )
 from src.synthetic_data_generation.visualization.reveal.viewpoint import (
-    RevealCamera,
-    build_reveal_camera,
+    RevealCameraTrajectory,
 )
 from src.utils.video.writer import VideoWriter
 
-NHTLayer = tuple[NDArray[np.float32], NDArray[np.float32]]
+Layer = tuple[NDArray[np.float32], NDArray[np.float32]]
+
+
+@dataclass(frozen=True, slots=True)
+class NHTLayer:
+    """One rendered NHT state: RGB and alpha."""
+
+    rgb: NDArray[np.float32]
+    alpha: NDArray[np.float32]
 
 
 def selected_frame_indices(
@@ -80,9 +92,9 @@ def selected_frame_indices(
 
 def ordered_nht_states(
     timeline: Sequence[RevealFrameState], indices: Sequence[int]
-) -> tuple[NHTAppearanceState, ...]:
+) -> tuple[NHTRenderState, ...]:
     """Return the distinct NHT states needed by ``indices``, in first-use order."""
-    states: dict[NHTAppearanceState, None] = {}
+    states: dict[NHTRenderState, None] = {}
     for index in indices:
         if timeline[index].needs_nht:
             states.setdefault(timeline[index].nht, None)
@@ -95,35 +107,35 @@ class _NHTStateRenderer:
     def __init__(
         self,
         request: SceneRevealRequest,
-        camera: RevealCamera,
+        trajectory: RevealCameraTrajectory,
         scene_path: Path,
         policy: NHTAppearancePolicy,
-        states: tuple[NHTAppearanceState, ...],
+        states: tuple[NHTRenderState, ...],
     ) -> None:
         self._request = request
-        self._camera = camera
+        self._trajectory = trajectory
         self._scene_path = scene_path
         self._policy = policy
         self._states = states
         self._position = {state: index for index, state in enumerate(states)}
         self._client = NHTRenderClient()
-        self._cache: dict[NHTAppearanceState, NHTLayer] = {}
+        self._cache: dict[NHTRenderState, NHTLayer] = {}
         self._invocations = 0
 
-    def layer(self, state: NHTAppearanceState) -> NHTLayer:
-        """Return RGB and alpha for one state, rendering its chunk on first use."""
+    def layer(self, state: NHTRenderState) -> NHTLayer:
+        """Return the render of one state, rendering its chunk on first use."""
         if state not in self._cache:
             start = self._position[state]
             chunk = self._states[start : start + self._request.nht.states_per_invocation]
             self._cache = self._render(chunk)
         return self._cache[state]
 
-    def _render(self, chunk: tuple[NHTAppearanceState, ...]) -> dict[NHTAppearanceState, NHTLayer]:
+    def _render(self, chunk: tuple[NHTRenderState, ...]) -> dict[NHTRenderState, NHTLayer]:
         root = self._request.work_directory / "nht"
         name = f"chunk-{self._invocations:05d}"
         self._invocations += 1
         cameras = tuple(
-            self._camera.nht_render_camera(
+            self._trajectory.camera_at(state.view_progress).nht_render_camera(
                 f"state-{self._position[state]:05d}",
                 NHTAppearanceControls(
                     splat_progress=state.splat_progress,
@@ -141,10 +153,13 @@ class _NHTStateRenderer:
             executable=executable if executable == "nht-render" else Path(executable),
         )
         result = self._client.render(command)
-        layers: dict[NHTAppearanceState, NHTLayer] = {}
+        layers: dict[NHTRenderState, NHTLayer] = {}
         for state, camera in zip(chunk, cameras, strict=True):
             arrays = result.record(camera.camera_id).load_arrays()
-            layers[state] = (np.array(arrays.rgb), np.array(arrays.alpha))
+            layers[state] = NHTLayer(
+                rgb=np.array(arrays.rgb),
+                alpha=np.array(arrays.alpha),
+            )
         shutil.rmtree(root / name)
         (root / f"{name}-request.json").unlink()
         return layers
@@ -163,14 +178,18 @@ class _FrameCompositor:
         request: SceneRevealRequest,
         points: ProjectedPoints,
         cameras: ProjectedCameras,
+        court: CourtOverlayGeometry,
+        trajectory: RevealCameraTrajectory,
         nht: _NHTStateRenderer,
     ) -> None:
         self._request = request
         self._points = points
         self._cameras = cameras
+        self._court = court
+        self._trajectory = trajectory
         self._nht = nht
-        self._camera_layer: tuple[float, NHTLayer] | None = None
-        self._point_layer: tuple[float, NHTLayer] | None = None
+        self._camera_layer: tuple[float, Layer] | None = None
+        self._point_layer: tuple[float, Layer] | None = None
         style = request.style
         self._background = np.broadcast_to(
             np.asarray(style.background_rgb, dtype=np.float32),
@@ -182,11 +201,22 @@ class _FrameCompositor:
         style = self._request.style
         frame = np.array(self._background)
         if state.needs_nht:
-            rgb, alpha = self._nht.layer(state.nht)
+            nht = self._nht.layer(state.nht)
             layer_rgb, layer_alpha = gaussian_layer(
-                state, rgb, alpha, style.gaussian_point_rgb
+                state, nht.rgb, nht.alpha, style.gaussian_point_rgb
             )
             frame = over(frame, layer_rgb, layer_alpha, state.gaussian_opacity)
+        if state.alignment_progress > 0.0:
+            court_layer = draw_court_overlay(
+                self._trajectory.camera_at(state.nht.view_progress),
+                self._court,
+                state.alignment_progress,
+                style=self._request.alignment,
+            )
+            frame = over(frame, *court_layer, 1.0)
+        procedural = state.sfm_opacity > 0.0 or state.camera_opacity > 0.0
+        if procedural and state.nht.view_progress != 0.0:
+            raise ValueError("SfM and capture-camera layers exist only at the reveal viewpoint.")
         if state.sfm_opacity > 0.0 and state.sfm_fraction > 0.0:
             if self._point_layer is None or self._point_layer[0] != state.sfm_fraction:
                 self._point_layer = (
@@ -237,9 +267,14 @@ def _write_video(
 def render_scene_reveal(request: SceneRevealRequest) -> SceneRevealResult:
     """Render and publish the staged reveal described by ``request``."""
     sources = load_reveal_sources(request.scene_root)
-    camera = build_reveal_camera(
-        request.viewpoint, sources.layout, sources.adapter, request.output
+    trajectory = RevealCameraTrajectory(
+        request.viewpoint,
+        request.camera_path,
+        sources.layout,
+        sources.adapter,
+        request.output,
     )
+    camera = trajectory.camera_at(0.0)
     units_per_metre = float(sources.adapter.nht_scene_units_per_metre)
     scene_from_court = sources.scene_from_court(request.viewpoint.anchor_court_id)
     points = crop_points_to_court_box(
@@ -258,6 +293,15 @@ def render_scene_reveal(request: SceneRevealRequest) -> SceneRevealResult:
         frustum_depth_scene=request.style.camera_frustum_depth_m * units_per_metre,
         frustum_stride=request.style.camera_frustum_stride,
     )
+    court = court_overlay_geometry(
+        {
+            item.court_instance_id: sources.scene_from_court(item.court_instance_id)
+            for item in sources.layout.courts
+        },
+        line_rgb=request.alignment.line_rgb,
+        axis_length_m=request.alignment.axis_length_m,
+        units_per_metre=units_per_metre,
+    )
     policy = NHTAppearancePolicy(
         point_radius=request.nht.point_radius_m * units_per_metre,
         splat_order=NHT_SPLAT_ORDER_LARGEST_FIRST,
@@ -268,8 +312,10 @@ def render_scene_reveal(request: SceneRevealRequest) -> SceneRevealResult:
     indices = selected_frame_indices(request, len(timeline))
     states = ordered_nht_states(timeline, indices)
     _prepare_work_directory(request.work_directory)
-    nht = _NHTStateRenderer(request, camera, sources.scene_path, policy, states)
-    compositor = _FrameCompositor(request, projected_points, projected_cameras, nht)
+    nht = _NHTStateRenderer(request, trajectory, sources.scene_path, policy, states)
+    compositor = _FrameCompositor(
+        request, projected_points, projected_cameras, court, trajectory, nht
+    )
 
     video_path: Path | None = None
     still_paths: list[Path] = []
@@ -311,7 +357,15 @@ def render_scene_reveal(request: SceneRevealRequest) -> SceneRevealResult:
             "camera_to_nht_scene": camera.camera_to_scene.tolist(),
         },
         "viewpoint": asdict(request.viewpoint),
+        "camera_path": {
+            **asdict(request.camera_path),
+            "travel_m": trajectory.length_m,
+        },
         "style": asdict(request.style),
+        "alignment": {
+            **asdict(request.alignment),
+            "courts": [label for label, _ in court.labels],
+        },
         "nht": {
             "appearance_policy": policy.to_dict(),
             "distinct_states": len(states),

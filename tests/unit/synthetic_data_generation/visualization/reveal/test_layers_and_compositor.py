@@ -24,7 +24,7 @@ from src.synthetic_data_generation.visualization.reveal.sources import (
     radial_reveal_order,
 )
 from src.synthetic_data_generation.visualization.reveal.timeline import (
-    NHTAppearanceState,
+    NHTRenderState,
     RevealFrameState,
 )
 from src.synthetic_data_generation.visualization.reveal.viewpoint import RevealCamera
@@ -49,11 +49,12 @@ def _state(**overrides: float) -> RevealFrameState:
         "gaussian_opacity": 1.0,
         "color_progress": 1.0,
         "matte_release": 1.0,
+        "alignment_progress": 0.0,
     }
     values.update(overrides)
     return RevealFrameState(
         phase=RevealPhase.HOLD,
-        nht=NHTAppearanceState(splat_progress=1.0, view_dependence=1.0),
+        nht=NHTRenderState(splat_progress=1.0, view_dependence=1.0, view_progress=0.0),
         **values,
     )
 

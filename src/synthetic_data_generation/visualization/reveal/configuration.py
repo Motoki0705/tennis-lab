@@ -8,7 +8,10 @@ from typing import cast
 from omegaconf import DictConfig, OmegaConf
 
 from src.synthetic_data_generation.visualization.reveal.contracts import (
+    RevealAlignmentStyle,
+    RevealCameraPath,
     RevealDurations,
+    RevealKeyframe,
     RevealMode,
     RevealNHTSettings,
     RevealOutput,
@@ -71,6 +74,20 @@ def _numbers(value: object, *, name: str) -> tuple[float, ...]:
     return tuple(_number(item, name=name) for item in value)
 
 
+def _keyframe(value: object, *, name: str) -> RevealKeyframe:
+    mapping = _exact(value, name=name, keys={"eye_court_m", "target_court_m"})
+    return RevealKeyframe(
+        eye_court_m=cast(
+            tuple[float, float, float],
+            _numbers(mapping["eye_court_m"], name=f"{name}.eye_court_m"),
+        ),
+        target_court_m=cast(
+            tuple[float, float, float],
+            _numbers(mapping["target_court_m"], name=f"{name}.target_court_m"),
+        ),
+    )
+
+
 def build_scene_reveal_request(config: DictConfig) -> SceneRevealRequest:
     """Resolve the strict Hydra mapping into the public request contract."""
     top = _exact(config, name="config", keys={"roots", "reveal"})
@@ -92,7 +109,9 @@ def build_scene_reveal_request(config: DictConfig) -> SceneRevealRequest:
             "output",
             "durations_seconds",
             "viewpoint",
+            "camera_path",
             "style",
+            "alignment",
             "nht",
         },
     )
@@ -110,6 +129,8 @@ def build_scene_reveal_request(config: DictConfig) -> SceneRevealRequest:
             "splat",
             "view_dependence",
             "hold",
+            "alignment",
+            "camera_move",
         },
     )
     viewpoint = _exact(
@@ -135,6 +156,21 @@ def build_scene_reveal_request(config: DictConfig) -> SceneRevealRequest:
             "camera_frustum_stride",
             "camera_line_width_px",
             "sfm_crop_court_m",
+        },
+    )
+    camera_path = _exact(raw["camera_path"], name="reveal.camera_path", keys={"keyframes"})
+    keyframes = camera_path["keyframes"]
+    if not isinstance(keyframes, list | tuple):
+        raise TypeError("reveal.camera_path.keyframes must be a list.")
+    alignment = _exact(
+        raw["alignment"],
+        name="reveal.alignment",
+        keys={
+            "line_rgb",
+            "line_width_px",
+            "outline_px",
+            "axis_length_m",
+            "label_font_px",
         },
     )
     nht = _exact(
@@ -197,6 +233,12 @@ def build_scene_reveal_request(config: DictConfig) -> SceneRevealRequest:
                 name="reveal.viewpoint.horizontal_fov_deg",
             ),
         ),
+        camera_path=RevealCameraPath(
+            tuple(
+                _keyframe(item, name=f"reveal.camera_path.keyframes[{index}]")
+                for index, item in enumerate(keyframes)
+            )
+        ),
         style=RevealStyle(
             background_rgb=cast(
                 tuple[float, float, float],
@@ -229,6 +271,22 @@ def build_scene_reveal_request(config: DictConfig) -> SceneRevealRequest:
             sfm_crop_court_m=cast(
                 tuple[float, float, float, float, float, float],
                 _numbers(style["sfm_crop_court_m"], name="reveal.style.sfm_crop_court_m"),
+            ),
+        ),
+        alignment=RevealAlignmentStyle(
+            line_rgb=cast(
+                tuple[float, float, float],
+                _numbers(alignment["line_rgb"], name="reveal.alignment.line_rgb"),
+            ),
+            line_width_px=_integer(
+                alignment["line_width_px"], name="reveal.alignment.line_width_px"
+            ),
+            outline_px=_integer(alignment["outline_px"], name="reveal.alignment.outline_px"),
+            axis_length_m=_number(
+                alignment["axis_length_m"], name="reveal.alignment.axis_length_m"
+            ),
+            label_font_px=_integer(
+                alignment["label_font_px"], name="reveal.alignment.label_font_px"
             ),
         ),
         nht=RevealNHTSettings(

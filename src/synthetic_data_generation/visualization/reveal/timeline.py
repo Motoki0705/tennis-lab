@@ -12,11 +12,16 @@ from src.synthetic_data_generation.visualization.reveal.contracts import (
 
 
 @dataclass(frozen=True, slots=True)
-class NHTAppearanceState:
-    """The ``nht-render`` controls; frames sharing them share one render."""
+class NHTRenderState:
+    """Everything one ``nht-render`` image depends on; equal states share it.
+
+    ``view_progress`` places the camera on the free-viewpoint path (0 is the
+    fixed reveal viewpoint).
+    """
 
     splat_progress: float
     view_dependence: float
+    view_progress: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +32,8 @@ class RevealFrameState:
     cameras and SfM points. ``*_opacity`` fade whole layers. ``color_progress``
     moves Gaussian points from one uniform colour to their decoded colour, and
     ``matte_release`` moves from compositing the NHT alpha over the background
-    to the raw NHT RGB (the exact ``nht-render`` output).
+    to the raw NHT RGB (the exact ``nht-render`` output). ``alignment_progress``
+    draws the accepted court overlay on top of the render.
     """
 
     phase: RevealPhase
@@ -38,7 +44,8 @@ class RevealFrameState:
     gaussian_opacity: float
     color_progress: float
     matte_release: float
-    nht: NHTAppearanceState
+    alignment_progress: float
+    nht: NHTRenderState
 
     @property
     def needs_nht(self) -> bool:
@@ -80,9 +87,11 @@ def _state(phase: RevealPhase, t: float) -> RevealFrameState:
         gaussian_opacity=crossfade,
         color_progress=after(RevealPhase.COLORIZE),
         matte_release=after(RevealPhase.SPLAT),
-        nht=NHTAppearanceState(
+        alignment_progress=after(RevealPhase.ALIGNMENT),
+        nht=NHTRenderState(
             splat_progress=after(RevealPhase.SPLAT),
             view_dependence=after(RevealPhase.VIEW_DEPENDENCE),
+            view_progress=after(RevealPhase.CAMERA_MOVE),
         ),
     )
 

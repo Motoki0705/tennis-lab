@@ -100,3 +100,90 @@ def test_viewpoint_rejects_degenerate_directions() -> None:
         _viewpoint(target_court_m=(16.0, -24.0, 14.0))
     with pytest.raises(ValueError, match="parallel"):
         _viewpoint(eye_court_m=(0.0, 0.0, 10.0), target_court_m=(0.0, 0.0, 0.0))
+
+
+def _trajectory(adapter, layout, *keyframes: tuple[tuple[float, ...], tuple[float, ...]]):
+    from src.synthetic_data_generation.visualization.reveal.contracts import (
+        RevealCameraPath,
+        RevealKeyframe,
+    )
+    from src.synthetic_data_generation.visualization.reveal.viewpoint import (
+        RevealCameraTrajectory,
+    )
+
+    path = RevealCameraPath(
+        tuple(
+            RevealKeyframe(eye_court_m=eye, target_court_m=target)  # type: ignore[arg-type]
+            for eye, target in keyframes
+        )
+    )
+    return RevealCameraTrajectory(_viewpoint(), path, layout, adapter, OUTPUT)
+
+
+def test_trajectory_starts_at_the_viewpoint_and_ends_at_the_last_keyframe(
+    adapter, layout
+) -> None:
+    trajectory = _trajectory(
+        adapter,
+        layout,
+        ((0.0, -16.0, 4.0), (0.0, 0.0, 0.5)),
+        ((-20.0, 10.0, 10.0), (-7.5, 0.0, 0.0)),
+    )
+
+    assert trajectory.viewpoint_at(0.0) == _viewpoint()
+    np.testing.assert_allclose(
+        trajectory.camera_at(0.0).camera_to_scene,
+        build_reveal_camera(_viewpoint(), layout, adapter, OUTPUT).camera_to_scene,
+    )
+    end = trajectory.viewpoint_at(1.0)
+    np.testing.assert_allclose(end.eye_court_m, (-20.0, 10.0, 10.0), atol=1e-9)
+    np.testing.assert_allclose(end.target_court_m, (-7.5, 0.0, 0.0), atol=1e-9)
+
+
+def test_trajectory_passes_through_every_keyframe(adapter, layout) -> None:
+    middle = (0.0, -16.0, 4.0)
+    trajectory = _trajectory(
+        adapter,
+        layout,
+        (middle, (0.0, 0.0, 0.5)),
+        ((-20.0, 10.0, 10.0), (-7.5, 0.0, 0.0)),
+    )
+
+    eyes = np.asarray(
+        [trajectory.viewpoint_at(value).eye_court_m for value in np.linspace(0.0, 1.0, 4001)]
+    )
+
+    assert np.linalg.norm(eyes - middle, axis=1).min() < 0.05
+
+
+def test_trajectory_moves_at_constant_speed(adapter, layout) -> None:
+    # A short first leg and a long second leg: equal progress steps must still
+    # cover equal eye-plus-target travel.
+    trajectory = _trajectory(
+        adapter,
+        layout,
+        ((14.0, -24.0, 14.0), (-7.5, 0.0, 0.0)),
+        ((-30.0, 20.0, 14.0), (-7.5, 0.0, 0.0)),
+    )
+    points = np.asarray(
+        [
+            (*item.eye_court_m, *item.target_court_m)
+            for item in (trajectory.viewpoint_at(value) for value in np.linspace(0, 1, 2001))
+        ]
+    )
+    fine = np.linalg.norm(np.diff(points[:, :3], axis=0), axis=1) + np.linalg.norm(
+        np.diff(points[:, 3:], axis=0), axis=1
+    )
+    # Travel per 1/20 of the progress, measured along the curve.
+    steps = fine.reshape(20, 100).sum(axis=1)
+
+    np.testing.assert_allclose(steps, trajectory.length_m / 20, rtol=0.01)
+
+
+def test_trajectory_rejects_a_motionless_path_and_bad_progress(adapter, layout) -> None:
+    viewpoint = _viewpoint()
+    with pytest.raises(ValueError, match="move the camera"):
+        _trajectory(adapter, layout, (viewpoint.eye_court_m, viewpoint.target_court_m))
+    trajectory = _trajectory(adapter, layout, ((0.0, -16.0, 4.0), (0.0, 0.0, 0.5)))
+    with pytest.raises(ValueError, match="progress"):
+        trajectory.viewpoint_at(1.5)

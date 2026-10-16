@@ -46,14 +46,46 @@ def test_each_phase_ends_on_its_completed_state() -> None:
     assert last(RevealPhase.VIEW_DEPENDENCE).nht.view_dependence == 1.0
 
 
-def test_final_frame_is_the_unmodified_nht_render() -> None:
-    final = build_timeline(_durations(), fps=4.0)[-1]
+def test_hold_ends_on_the_unmodified_nht_render() -> None:
+    timeline = build_timeline(_durations(), fps=4.0)
+    final = [state for state in timeline if state.phase is RevealPhase.HOLD][-1]
 
-    assert final.phase is RevealPhase.HOLD
     assert final.gaussian_opacity == 1.0
     assert final.color_progress == 1.0 and final.matte_release == 1.0
     assert final.nht.splat_progress == 1.0 and final.nht.view_dependence == 1.0
+    assert final.nht.view_progress == 0.0 and final.alignment_progress == 0.0
     assert final.sfm_opacity == 0.0 and final.camera_opacity == 0.0
+
+
+def test_alignment_is_drawn_on_the_final_render_before_the_camera_moves() -> None:
+    timeline = build_timeline(_durations(), fps=4.0)
+    alignment = [state for state in timeline if state.phase is RevealPhase.ALIGNMENT]
+    move = [state for state in timeline if state.phase is RevealPhase.CAMERA_MOVE]
+    hold = [state for state in timeline if state.phase is RevealPhase.HOLD][-1]
+
+    # Alignment reuses the held render: only the overlay changes.
+    assert {state.nht for state in alignment} == {hold.nht}
+    assert alignment[-1].alignment_progress == 1.0
+    # The camera then moves with the overlay kept and the render complete.
+    assert all(state.alignment_progress == 1.0 for state in move)
+    assert all(
+        state.nht.splat_progress == 1.0 and state.nht.view_dependence == 1.0
+        for state in move
+    )
+    assert move[-1].nht.view_progress == 1.0
+    assert timeline[-1] is move[-1]
+
+
+def test_camera_leaves_the_reveal_viewpoint_only_after_the_alignment() -> None:
+    timeline = build_timeline(_durations(), fps=4.0)
+    move_start = REVEAL_PHASE_ORDER.index(RevealPhase.CAMERA_MOVE)
+
+    for state in timeline:
+        moving = REVEAL_PHASE_ORDER.index(state.phase) >= move_start
+        assert (state.nht.view_progress > 0.0) is moving
+        if moving:
+            # Procedural SfM/camera layers are projected for the fixed viewpoint.
+            assert state.sfm_opacity == 0.0 and state.camera_opacity == 0.0
 
 
 def test_progress_values_never_decrease() -> None:
@@ -61,8 +93,11 @@ def test_progress_values_never_decrease() -> None:
     for name in ("camera_fraction", "sfm_fraction", "gaussian_opacity", "color_progress"):
         values = [getattr(state, name) for state in timeline]
         assert values == sorted(values), name
-    splat = [state.nht.splat_progress for state in timeline]
-    assert splat == sorted(splat)
+    for name in ("splat_progress", "view_dependence", "view_progress"):
+        values = [getattr(state.nht, name) for state in timeline]
+        assert values == sorted(values), name
+    alignment = [state.alignment_progress for state in timeline]
+    assert alignment == sorted(alignment)
 
 
 def test_nht_is_needed_only_once_gaussians_fade_in() -> None:
