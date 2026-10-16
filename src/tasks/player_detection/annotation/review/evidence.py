@@ -20,7 +20,11 @@ from src.tasks.base.annotation.images.contracts import (
     TileReceipt,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.telemetry.capture import presented_images, verify_report
+from src.tasks.base.annotation.telemetry.capture import (
+    ImagePresentationUnavailable,
+    presented_images,
+    verify_report,
+)
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import Launch
 
@@ -59,31 +63,38 @@ def lineage(
     return result
 
 
-ManualBoxes = dict[tuple[int, str], PlayerBox]
+ObservationBoxes = dict[tuple[int, str], PlayerBox]
 
 
-def remember_manual_boxes(
-    boxes: ManualBoxes, index: int, decision: FrameDecision
+def remember_observation_boxes(
+    boxes: ObservationBoxes, index: int, decision: FrameDecision
 ) -> None:
     for item in decision.observations:
-        if item.proposal_id is None:
-            key = (index, item.observation_id)
-            if item.box is not None:
-                boxes[key] = item.box
-            elif item.classification in {"player", "unresolved"}:
-                # Explicitly losing the location invalidates an older bbox.
-                boxes.pop(key, None)
+        key = (index, item.observation_id)
+        if item.box is not None:
+            boxes[key] = item.box
+        elif item.classification in {"player", "unresolved"}:
+            # Explicitly losing the location invalidates an older bbox.
+            boxes.pop(key, None)
 
 
-def manual_box_history(
-    layout: AnnotationLayout, revisions: set[ArtifactRef]
-) -> ManualBoxes:
-    """Retain the most recent located bbox for each stable manual observation.
+def observation_box_history(
+    layout: AnnotationLayout,
+    revisions: set[ArtifactRef],
+    predictions: PlayerPredictions,
+) -> ObservationBoxes:
+    """Retain the most recent located bbox for every stable observation.
 
+    Original proposals seed the history; later decisions replace or invalidate
+    their locations exactly as they do for manually added observations.
     Include ordered edits within each revision: adding and then removing a box
     in one atomic command does not leave that bbox in the final payload.
     """
-    boxes: ManualBoxes = {}
+    boxes: ObservationBoxes = {
+        (row.frame_index, item.observation_id): item.box
+        for row in predictions.rows
+        for item in row.observations
+    }
     nodes = sorted(
         (read_document(layout, reference, Revision) for reference in revisions),
         key=lambda node: node.sequence,
@@ -95,18 +106,16 @@ def manual_box_history(
                 command.expected_revision != node.previous
                 or command.context != node.context
             ):
-                raise ValueError(
-                    "manual bbox history command differs from its revision"
-                )
+                raise ValueError("bbox history command differs from its revision")
             edits = read_document(layout, command.changes, PlayerEdits)
             for operation in edits.operations:
                 if isinstance(operation, ReplaceFrame):
-                    remember_manual_boxes(
+                    remember_observation_boxes(
                         boxes, operation.frame_index, operation.decision
                     )
         labels = read_document(layout, node.payload, PlayerLabels)
         for frame in labels.frames:
-            remember_manual_boxes(boxes, frame.frame.frame_index, frame.decision)
+            remember_observation_boxes(boxes, frame.frame.frame_index, frame.decision)
     return boxes
 
 
@@ -114,7 +123,6 @@ def manual_box_history(
 class Catalog:
     images: dict[str, RenderedImage]
     receipts: dict[str, RenderReceipt]
-    predictions: PlayerPredictions
 
     def frames(self, evidence: tuple[str, ...], index: int) -> tuple[str, ...]:
         if len(set(evidence)) != len(evidence) or any(
@@ -158,7 +166,7 @@ def catalog(
             labels = read_document(layout, node.payload, PlayerLabels)
         _drawings(request, predictions, labels)
         saved[image.sha256], receipts[image.sha256] = image, receipt
-    return Catalog(saved, receipts, predictions)
+    return Catalog(saved, receipts)
 
 
 def _drawings(
@@ -226,20 +234,10 @@ def check_frame_images(
         raise ValueError(
             "complete target inventory or empty target requires a full-frame image"
         )
-    raw = {
-        o.observation_id: o.box
-        for o in saved.predictions.rows[frame.frame.frame_index].observations
-    }
     boxes = list(removed_boxes)
     for item in decision.observations:
-        box = item.box
-        if (
-            item.classification in {"non_player", "duplicate"}
-            and item.proposal_id is not None
-        ):
-            box = raw[item.proposal_id]
-        if box is not None:
-            boxes.append(box)
+        if item.box is not None:
+            boxes.append(item.box)
     for box in boxes:
         if not any(
             t.crop.left <= box.x1
@@ -253,29 +251,29 @@ def check_frame_images(
             )
 
 
-def check_manual_removal_images(
+def check_removal_images(
     frame: PlayerFrame,
     manifest: ClipManifest,
     policy: PlayerReviewPolicy,
     saved: Catalog,
-    history: ManualBoxes,
+    history: ObservationBoxes,
 ) -> None:
     """History-dependent gate used both before edits commit and before adoption.
 
-    Stateless payload validation cannot recover a removed manual bbox. Its
+    Stateless payload validation cannot recover a removed observation's bbox. Its
     geometry comes from history; its images must come from this frame's current
     decision, whose review_actor is separately checked against telemetry.
     """
     boxes = []
     for item in frame.decision.observations:
-        if item.proposal_id is None and item.classification in {
+        if item.classification in {
             "non_player",
             "duplicate",
         }:
             key = (frame.frame.frame_index, item.observation_id)
             if key not in history:
                 raise ValueError(
-                    "removed manual observation has no prior bbox for image verification"
+                    "removed observation has no prior bbox for image verification"
                 )
             boxes.append(history[key])
     if boxes:
@@ -303,6 +301,28 @@ def check_actor(
         )
 
 
+@dataclass(frozen=True)
+class ImagePresentationProof:
+    images: frozenset[ArtifactRef]
+    unavailable_reason: str | None
+
+
+def image_presentation_proof(
+    layout: AnnotationLayout, reference: ArtifactRef
+) -> ImagePresentationProof:
+    """Keep authentic but unavailable past evidence explicit and recoverable.
+
+    presented_images verifies all referenced bytes before it can report missing
+    model/response provenance. Integrity errors must still propagate.
+    """
+    try:
+        return ImagePresentationProof(
+            frozenset(presented_images(layout, reference)), None
+        )
+    except ImagePresentationUnavailable as exc:
+        return ImagePresentationProof(frozenset(), str(exc))
+
+
 def prove_review(
     layout: AnnotationLayout,
     context: ReviewContext,
@@ -315,24 +335,31 @@ def prove_review(
     proof = read_document(layout, proof_ref, PlayerReviewProof)
     if len(set(proof.telemetry)) != len(proof.telemetry):
         raise ValueError("duplicate worker telemetry proof")
-    by_actor: dict[ArtifactRef, set[ArtifactRef]] = {}
+    by_actor: dict[ArtifactRef, ImagePresentationProof] = {}
     for reference in proof.telemetry:
         report = verify_report(layout, reference)
         check_actor(layout, report.launch, context, manifest)
         if report.launch in by_actor:
             raise ValueError("one worker launch has multiple telemetry reports")
-        by_actor[report.launch] = set(presented_images(layout, reference))
-    all_shown = set().union(*by_actor.values())
+        by_actor[report.launch] = image_presentation_proof(layout, reference)
+    all_shown = set().union(*(item.images for item in by_actor.values()))
     for frame in labels.frames:
         if frame.decision.reviewed:
-            shown = (
-                by_actor.get(frame.review_actor, set()) if frame.review_actor else set()
+            presentation = (
+                by_actor.get(frame.review_actor) if frame.review_actor else None
             )
+            shown = presentation.images if presentation is not None else frozenset()
             if any(
                 saved.images[key].image not in shown for key in frame.decision.evidence
             ):
+                reason = (
+                    f": {presentation.unavailable_reason}"
+                    if presentation is not None
+                    and presentation.unavailable_reason is not None
+                    else ""
+                )
                 raise ValueError(
-                    "review claim images were not actually shown to its worker"
+                    "review claim images were not actually shown to its worker" + reason
                 )
     presented = ranges(
         tile.frame_index

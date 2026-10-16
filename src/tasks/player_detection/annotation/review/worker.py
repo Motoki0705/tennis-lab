@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shlex
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -57,17 +58,24 @@ from src.utils.paths import PROJECT_ROOT
 from ..contracts import PlayerFrameProposals
 from .adapter import PlayerReviewAdapter
 from .contracts import PlayerFrame, PlayerLabels
+from .evidence import image_presentation_proof
 from .storage import retained_revision
 from .validation import inputs
 
 ProofState = Literal["unreviewed", "verified", "pending_current_attempt", "missing"]
 
 
+@dataclass(frozen=True)
+class FrameProof:
+    state: ProofState
+    missing_reason: str | None
+
+
 def proof_states(
     layout: AnnotationLayout,
     context: ReviewContext,
     labels: PlayerLabels,
-) -> dict[int, ProofState]:
+) -> dict[int, FrameProof]:
     plan = read_document(layout, context.plan, CampaignPlan)
     context_ref = annotation_reference(
         layout, layout.path("annotations", "player", labels.clip_id, "context.json")
@@ -86,20 +94,22 @@ def proof_states(
     proven, pending = {}, set()
     for attempt in history:
         if attempt.telemetry is not None:
-            proven[attempt.launch] = set(presented_images(layout, attempt.telemetry))
+            proven[attempt.launch] = image_presentation_proof(layout, attempt.telemetry)
         elif attempt.state == "running" and attempt.execution is None:
             from src.tasks.base.annotation.workers.contracts import Launch
 
             if read_document(layout, attempt.launch, Launch).attempt == current:
                 pending.add(attempt.launch)
     catalog = {image.sha256: image.image for image in labels.images}
-    result: dict[int, ProofState] = {}
+    result: dict[int, FrameProof] = {}
     for frame in labels.frames:
+        presentation = (
+            proven.get(frame.review_actor) if frame.review_actor is not None else None
+        )
         if not frame.decision.reviewed:
             state: ProofState = "unreviewed"
-        elif all(
-            catalog[key] in proven.get(frame.review_actor, set())
-            for key in frame.decision.evidence
+        elif presentation is not None and all(
+            catalog[key] in presentation.images for key in frame.decision.evidence
         ):
             state = "verified"
         else:
@@ -108,7 +118,15 @@ def proof_states(
                 if frame.review_actor in pending
                 else "missing"
             )
-        result[frame.frame.frame_index] = state
+        reason = None
+        if state == "missing":
+            reason = (
+                presentation.unavailable_reason
+                if presentation is not None
+                and presentation.unavailable_reason is not None
+                else "review images have no verified presentation to this worker"
+            )
+        result[frame.frame.frame_index] = FrameProof(state, reason)
     return result
 
 
@@ -118,6 +136,7 @@ class PlayerRowPage(Document):
     rows: tuple[PlayerFrame, ...] = Field(min_length=1, max_length=8)
     proposals: tuple[PlayerFrameProposals, ...] = Field(min_length=1, max_length=8)
     image_proof: tuple[ProofState, ...] = Field(min_length=1, max_length=8)
+    image_proof_reasons: tuple[str | None, ...] = Field(min_length=1, max_length=8)
     images: tuple[RenderedImage, ...] = Field(max_length=256)
 
 
@@ -137,7 +156,9 @@ class PlayerReviewServices(PlayerReviewAdapter):
         states = proof_states(
             layout, context, read_document(layout, payload, PlayerLabels)
         )
-        missing = any(states[row.frame_index] == "missing" for row in summary.rows)
+        missing = any(
+            states[row.frame_index].state == "missing" for row in summary.rows
+        )
         return summary.model_copy(
             update={
                 "rows": tuple(
@@ -145,7 +166,13 @@ class PlayerReviewServices(PlayerReviewAdapter):
                         update={
                             "detail": row.detail
                             + " image_proof="
-                            + states[row.frame_index]
+                            + states[row.frame_index].state
+                            + (
+                                " image_proof_reason="
+                                + str(states[row.frame_index].missing_reason)
+                                if states[row.frame_index].missing_reason is not None
+                                else ""
+                            )
                         }
                     )
                     for row in summary.rows
@@ -185,7 +212,10 @@ class PlayerReviewServices(PlayerReviewAdapter):
             scope=request.scope,
             rows=rows,
             proposals=predictions.rows[request.scope.start : request.scope.stop],
-            image_proof=tuple(states[row.frame.frame_index] for row in rows),
+            image_proof=tuple(states[row.frame.frame_index].state for row in rows),
+            image_proof_reasons=tuple(
+                states[row.frame.frame_index].missing_reason for row in rows
+            ),
             images=tuple(image for image in labels.images if image.sha256 in used),
         )
 
@@ -428,6 +458,9 @@ class PlayerReviewWorker:
             or read_document(layout, report.execution, ExitReceipt) != execution
         ):
             raise ValueError("player completion telemetry belongs to another attempt")
+        # Historical evidence can be re-reviewed; this completing worker must
+        # itself have verifiable model/response provenance, as required by the pool.
+        presented_images(layout, telemetry)
         decision = read_document(layout, result, ReviewWorkerResult)
         if not decision.reason.strip():
             raise ValueError("review completion/deferral requires a nonempty reason")

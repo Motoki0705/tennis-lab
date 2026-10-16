@@ -482,6 +482,8 @@ class Environment:
         exit_status: Literal[
             "succeeded", "failed", "quota", "timed_out", "cancelled"
         ] = "succeeded",
+        telemetry_fault: Literal["missing_model", "conflicting_response_id"]
+        | None = None,
     ) -> ArtifactRef:
         actor = actor or self.actor
         launch = read_document(self.layout, actor, Launch)
@@ -518,8 +520,9 @@ class Environment:
                 cli_version="fixture",
                 model_provider="openai",
             ),
-            event("turn_context", model=self.plan.agent_model),
         ]
+        if telemetry_fault != "missing_model":
+            events.append(event("turn_context", model=self.plan.agent_model))
         for i, image in enumerate(catalog if shown is None else shown):
             events.extend(
                 [
@@ -556,6 +559,18 @@ class Environment:
                 usage={"input_tokens": 100, "output_tokens": 10, "total_tokens": 110},
             )
         )
+        if telemetry_fault == "conflicting_response_id":
+            events.append(
+                event(
+                    "token_usage_record",
+                    response_id="response-1",
+                    usage={
+                        "input_tokens": 200,
+                        "output_tokens": 20,
+                        "total_tokens": 220,
+                    },
+                )
+            )
         rollout = Path(launch.directory) / "rollout.jsonl"
         rollout.write_text("".join(json.dumps(e) + "\n" for e in events))
         result: ArtifactRef = capture(
