@@ -119,7 +119,11 @@ class Example:
 
 
 def setup(
-    tmp_path: Path, seconds: int = 32
+    tmp_path: Path,
+    seconds: int = 32,
+    *,
+    fps: int = 10,
+    timestamps_ms: tuple[int, ...] | None = None,
 ) -> tuple[AnnotationLayout, Screening, SourceCandidate]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -197,21 +201,29 @@ def setup(
         )
     )
     media_path = inputs / "video.mp4"
+    if timestamps_ms is None:
+        timestamps_ms = tuple(range(0, seconds * 1000, 1000 // fps))
     encode_video(
         media_path,
         width=64,
         height=32,
         time_base=Fraction(1, 1000),
-        rate=Fraction(10),
+        rate=Fraction(fps),
         frames=(
             (
                 av.VideoFrame.from_ndarray(
                     np.full((32, 64, 3), i % 255, np.uint8), format="rgb24"
                 ),
-                i * 100,
-                100,
+                timestamp,
+                following - timestamp,
             )
-            for i in range(seconds * 10)
+            for i, (timestamp, following) in enumerate(
+                zip(
+                    timestamps_ms,
+                    (*timestamps_ms[1:], seconds * 1000),
+                    strict=True,
+                )
+            )
         ),
         crf=25,
         preset="ultrafast",
@@ -285,6 +297,74 @@ def test_real_timeline_selection_and_resume(
     )
     prepared = example.screening.collection.prepare(example.source.source_id)
     assert prepared.size_bytes > 0
+
+
+@pytest.mark.parametrize(
+    ("fps", "timestamps_ms", "start"),
+    [
+        pytest.param(1, None, 0.0, id="low-fps"),
+        pytest.param(
+            10,
+            tuple(t for t in range(0, 32000, 100) if not 11600 <= t < 12600),
+            0.0,
+            id="vfr-gap-between-pages",
+        ),
+        pytest.param(
+            10,
+            (0, *range(1000, 32000, 100)),
+            0.1,
+            id="vfr-window-start-gap",
+        ),
+        pytest.param(
+            10,
+            tuple(t for t in range(0, 32000, 100) if not 14100 <= t < 15000),
+            0.0,
+            id="vfr-window-end-gap",
+        ),
+    ],
+)
+def test_detail_requires_actual_pts_density_at_boundaries_and_between_samples(
+    tmp_path: Path, fps: int, timestamps_ms: tuple[int, ...] | None, start: float
+) -> None:
+    layout, screening, source = setup(tmp_path, fps=fps, timestamps_ms=timestamps_ms)
+    ref = screening.request(source.source_id, "attempt-1")
+    request = read_document(layout, ref, ScreeningRequest)
+    detail_ref = request_preview(
+        layout, request, start=start, stop=start + 15.0, step=0.5
+    )
+    detail = read_document(layout, detail_ref, PreviewReceipt)
+    example = Example(layout, screening, source, ref, request, detail_ref, detail)
+    decision = example.decision()
+    clip = decision.clips[0].model_copy(update={"start": start, "stop": start + 15.0})
+    with pytest.raises(ValueError, match="actual PTS"):
+        example.finish(decision=decision.model_copy(update={"clips": (clip,)}))
+    assert (
+        screening.collection.ledger.source(screening.plan, source.source_id)["state"]
+        == "acquired"
+    )
+    assert not (attempt_directory(layout, request) / "selection.json").exists()
+
+
+@pytest.mark.parametrize("outside_gap", [False, True])
+def test_vfr_detail_with_sufficient_actual_pts_density_can_be_selected(
+    tmp_path: Path, outside_gap: bool
+) -> None:
+    # Variable frame durations, with an optional sparse interval outside the clip.
+    timestamps = tuple(
+        base + offset
+        for base in range(0, 32000, 500)
+        for offset in (0, 100, 300)
+        if not (outside_gap and 25000 < base + offset < 26000)
+    )
+    layout, screening, source = setup(tmp_path, timestamps_ms=timestamps)
+    ref = screening.request(source.source_id, "attempt-1")
+    request = read_document(layout, ref, ScreeningRequest)
+    detail_ref = request_preview(layout, request, start=0.0, stop=32.0, step=0.5)
+    detail = read_document(layout, detail_ref, PreviewReceipt)
+    example = Example(layout, screening, source, ref, request, detail_ref, detail)
+    selection = read_document(layout, example.finish(), SelectionReceipt)
+    assert len(selection.windows) == 1
+    assert (selection.windows[0].start, selection.windows[0].stop) == (0.0, 15.0)
 
 
 @pytest.mark.parametrize(
@@ -479,7 +559,9 @@ def test_wrong_presentation_request_and_coarse_evidence_fail(example: Example) -
         )
 
 
-def test_cli_boundary_rejects_relative_and_external_request_paths(tmp_path: Path) -> None:
+def test_cli_boundary_rejects_relative_and_external_request_paths(
+    tmp_path: Path,
+) -> None:
     from src.tasks.base.annotation.screening.__main__ import PATH_BOUNDARY
     from src.utils.configuration import PathContractError
 
