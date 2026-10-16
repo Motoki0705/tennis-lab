@@ -43,6 +43,7 @@ from .contracts import (
     PlayerSelectionPolicy,
 )
 from .inputs import Inputs, resolve_inputs
+from .precision import apply_precision, precision_contract
 
 
 def evaluation_config(
@@ -243,9 +244,7 @@ def validate_evaluation(
         "split": "val",
         "frame_stride": config.frame_stride,
         "device": inputs.recipe.device,
-        "matmul_precision": inputs.training.matmul_precision,
-        "cuda_matmul_allow_tf32": inputs.training.allow_tf32,
-        "cudnn_allow_tf32": inputs.training.allow_tf32,
+        **precision_contract(inputs.training),
     }
     if canonical_bytes(provenance) != canonical_bytes(expected):
         raise ValueError(
@@ -348,9 +347,7 @@ def evaluate(
             raise ValueError(
                 "partial player evaluation requires a new explicit attempt"
             )
-        torch.set_float32_matmul_precision(inputs.training.matmul_precision)
-        torch.backends.cuda.matmul.allow_tf32 = inputs.training.allow_tf32
-        torch.backends.cudnn.allow_tf32 = inputs.training.allow_tf32
+        apply_precision(inputs.training)
         evaluate_checkpoints(config)
     comparison = PlayerComparison(
         request=reference,

@@ -438,15 +438,92 @@ def test_frozen_configuration_cannot_change_or_rebaseline(example: Example) -> N
     assert configure(example.layout, example.configuration) == ref
 
 
+@pytest.mark.parametrize("field", ["previously_allocated_bytes", "previously_used_gpu_seconds"])
+@pytest.mark.parametrize("recovery", ["create", "reuse"])
+def test_scope_input_conflict_allows_corrected_configuration(
+    example: Example, field: str, recovery: str
+) -> None:
+    original = example.configuration
+    assert isinstance(original.budget, NewBudget)
+    first = example.receipt(configure(example.layout, original))
+    resources = ResourceManager(example.layout, first.scope)
+    baseline = example.layout.artifact_path(resources.scope.baseline)
+    inode, digest = baseline.stat().st_ino, file_digest(baseline)
+    plan = original.plan.model_copy(update={"campaign_id": "next"})
+    conflicting = original.model_copy(
+        update={
+            "plan": plan,
+            "budget": original.budget.model_copy(update={field: 0}),
+        }
+    )
+    with pytest.raises(ValueError, match="immutable"):
+        configure(example.layout, conflicting)
+    assert not example.layout.path("campaigns", "next").exists()
+    corrected = original.model_copy(
+        update={
+            "plan": plan,
+            "budget": original.budget
+            if recovery == "create"
+            else ExistingBudget(scope=first.scope),
+        }
+    )
+    reference = configure(example.layout, corrected)
+    receipt = example.receipt(reference)
+    assert receipt.scope == first.scope
+    assert read_document(example.layout, receipt.request, Configuration) == corrected
+    assert configure(example.layout, corrected) == reference
+    assert baseline.stat().st_ino == inode and file_digest(baseline) == digest
+
+
+@pytest.mark.parametrize("action", ["create", "reuse"])
+def test_campaign_binding_conflict_allows_corrected_configuration(
+    example: Example, action: str
+) -> None:
+    original = example.configuration
+    assert isinstance(original.budget, NewBudget)
+    first = example.receipt(configure(example.layout, original))
+    resources = ResourceManager(example.layout, first.scope)
+    plan = original.plan.model_copy(update={"campaign_id": "next"})
+    resources.bind(plan)
+    other_budget = original.budget.model_copy(update={"scope_id": "other"})
+    other = example.receipt(
+        configure(
+            example.layout,
+            original.model_copy(
+                update={
+                    "plan": original.plan.model_copy(update={"campaign_id": "other"}),
+                    "budget": other_budget,
+                }
+            ),
+        )
+    )
+    conflicting = original.model_copy(
+        update={
+            "plan": plan,
+            "budget": other_budget if action == "create" else ExistingBudget(scope=other.scope),
+        }
+    )
+    with pytest.raises(ValueError, match="different budget scope or plan"):
+        configure(example.layout, conflicting)
+    assert not example.layout.path("campaigns", "next").exists()
+    corrected = original.model_copy(
+        update={"plan": plan, "budget": ExistingBudget(scope=first.scope)}
+    )
+    receipt = example.receipt(configure(example.layout, corrected))
+    assert receipt.scope == first.scope
+    assert read_document(example.layout, receipt.request, Configuration) == corrected
+
+
+@pytest.mark.parametrize("boundary", ["request.json", "runtime.json"])
 def test_interrupted_configuration_recovers_the_original_scope(
-    example: Example, monkeypatch: pytest.MonkeyPatch
+    example: Example, monkeypatch: pytest.MonkeyPatch, boundary: str
 ) -> None:
     import src.tasks.annotation.configuration as module
 
     original = module.write_document
 
     def interrupted(layout: Any, path: Path, document: Any) -> Any:
-        if path.name == "runtime.json":
+        if path.name == boundary:
             raise RuntimeError("fixture interruption after scope binding")
         return original(layout, path, document)
 
