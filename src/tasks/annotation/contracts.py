@@ -69,7 +69,6 @@ class HistoryOperation(Document):
 class AcquireOperation(Document):
     action: Literal["acquire"] = "acquire"
     source_id: Digest
-    retry: bool = False
 
 
 class ScreenOperation(Document):

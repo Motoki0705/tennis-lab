@@ -173,6 +173,8 @@ class Controller:
             str(self.layout.artifact_path(reference)),
             "--sha256",
             reference.digest,
+            "--attempt",
+            str(attempt),
         ]
         if self.layout.mode == "test":
             command += ["--test-root", str(self.layout.root)]

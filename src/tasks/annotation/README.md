@@ -67,6 +67,7 @@ screen/review workerの画像・編集要求は親controllerへ渡す。親がre
 学習recipe未設定なら公開結果を保持した `blocked`。採用条件未設定、学習失敗、採用版競合も
 理由を表示して停止する。`complete` は追加教師なし、または学習後の採用/不採用の確定を表す。
 不採用は `workflow.learning.state = rejected` として採用と区別する。
+公開clipがheatmap負例のみ、またはMDDの有効窓を持たない場合はcoverageと公開receiptを保持し、`learning.status = no_additional_teachers`で完了する。
 
 ## 再開と報告
 
@@ -78,6 +79,7 @@ screen/review workerの画像・編集要求は親controllerへ渡す。親がre
 失敗を自動で再試行しない。取得・推論・公開などは、失敗または中断を確認してから
 同じ `OperationInput` を `submit --attempt N`（直前の番号+1）で実行する。
 実行中・成功済み工程に新しいattemptを作ることは拒否する。
+取得のretryは検証済みattempt番号から取得工程へ渡す。`AcquireOperation`自体は変更せず、同じdigestの履歴として失敗をsupersededにする。
 
 worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固定root内に保存し、
 `recover --runtime PATH --sha256 HASH --operation PATH` で実行する。
@@ -94,5 +96,5 @@ queueへ投入する。資源stopは原因解消後の `resume-budget --reason T
 scopeや累計を初期化して上限を回避しない。
 
 `stage` はsupervisor専用で、固定した入力digestとの対応を要求する。
-旧ChatGPT/QA入口の撤去とplayerの統合は後続の実装範囲。旧形式の読取と保存台帳への登録は
+置換済みballの旧run/qa/intakeと旧annotateのball注釈・finalize入口は撤去済み。置換先が未実装のplayer用入口は残す。旧形式の読取と保存台帳への登録は
 [migration](migration/README.md)を参照する。
