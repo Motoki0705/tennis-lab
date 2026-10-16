@@ -447,10 +447,14 @@ def _capture(
             )
         )
     complete_totals = {
-        key: value if not missing[key] and not missing_id and not conflicting else None
+        key: value
+        if entries and not missing[key] and not missing_id and not conflicting
+        else None
         for key, value in known.items()
     }
     summary = f"応答ID {len(entries)}件 / 重複通知 {duplicate}件 / ID欠損 {missing_id}件 / usage欠損 {missing_usage}件。画像単独のtoken料金は算出しません。"
+    if not entries:
+        summary += " 応答別usage未観測のため合計は不明です。"
     return write_document(
         layout,
         directory / "report.json",

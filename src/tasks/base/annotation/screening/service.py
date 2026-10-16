@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shlex
+from fractions import Fraction
 from pathlib import Path
 
 from src.utils.paths import PROJECT_ROOT
@@ -22,6 +23,7 @@ from ..media import probe_video
 from ..paths import AnnotationLayout
 from ..plan import references
 from .contracts import (
+    ClipDecision,
     PresentedImages,
     PreviewReceipt,
     ScreeningEvidence,
@@ -69,6 +71,28 @@ def request_preview(
         start=start,
         stop=stop,
         step=step,
+    )
+
+
+def _covers_detail_window(
+    preview: PreviewReceipt, clip: ClipDecision, maximum_gap: float
+) -> bool:
+    """Measure actual displayed samples, including both selected-window edges."""
+    start, stop = Fraction(str(clip.start)), Fraction(str(clip.stop))
+    clock = Fraction(preview.time_base)
+    timestamps = (
+        (sample.source_pts - preview.origin_pts) * clock
+        for page in preview.pages
+        for sample in page.samples
+    )
+    samples = [timestamp for timestamp in timestamps if start <= timestamp < stop]
+    if not samples:
+        return False
+    boundaries = [start, *samples, stop]
+    limit = Fraction(str(maximum_gap))
+    return all(
+        later - earlier <= limit
+        for earlier, later in zip(boundaries, boundaries[1:], strict=False)
     )
 
 
@@ -329,6 +353,14 @@ class Screening:
             if not detailed:
                 raise ValueError(
                     "selected clip requires presented detailed coverage of the whole window"
+                )
+            if not any(
+                _covers_detail_window(preview, clip, self.policy.detail_step_seconds)
+                for preview in detailed
+            ):
+                raise ValueError(
+                    "selected clip requires actual PTS sample gaps no greater than "
+                    f"{self.policy.detail_step_seconds} seconds, including window boundaries"
                 )
         decision_ref = write_asset(
             self.layout,

@@ -57,6 +57,9 @@ GPU工程はmain repositoryの共有queueに投入する。queue workerの起動
 screen/review workerの画像・編集要求は親controllerへ渡す。親がrequest/attempt/版/区間を
 検証し、CPU工程で処理してから不変の参照を返す。採用には実際のrollout画像提示を照合し、
 単なる画像生成や自己申告では完了にしない。
+受付済み要求は親所有のSQLite台帳にattempt単位で累積保存し、固定上限を判定する。
+inboxの並び順・削除・親の再開で枠を戻さず、同一要求の回収で二重計上しない。
+workerにソース動画の全量decodeや共有cacheへの書込みを任せない。
 
 予測は新規clipだけをtask別に束ねる。保存済み予測をreview requestへ変換する際は推論しない。
 要求した動画数が準備済みで、全準備receiptのclipとレビュー対象が一致し、全workerが採用まで
@@ -75,6 +78,13 @@ screen/review workerの画像・編集要求は親controllerへ渡す。親がre
 `run --max-seconds` の終了時も受付済みsupervisorは自身のtimeout・資源管理に従う。
 `status --details` はworkerの現在attempt、全工程の履歴、公開完了参照、学習結果を返す。
 最新attemptに置き換わった古い失敗は `superseded: true` と表示し、現在の失敗と分ける。
+`cycle` / `status` はsourceの状態にかかわらず登録済みworkerを照合する。
+選別がsourceを更新した直後に中断しても、workerの完了receiptと台帳更新を回収する。
+`preview_ready` は台帳のprepared/predictedに加え、工程ごとの最新試行の成功終了、
+operation receiptと登録成果物の一致、予測receiptの入力・モデル・成果物hashを要求する。
+predictedの保存後でも終了receiptがなければ完了にしない。未回収・失敗はblockedとし、
+`submit --attempt N` で新しい試行を明示して回収する。保存済み予測は検証して再利用し、
+回収のために推論し直さない。
 
 失敗を自動で再試行しない。取得・推論・公開などは、失敗または中断を確認してから
 同じ `OperationInput` を `submit --attempt N`（直前の番号+1）で実行する。

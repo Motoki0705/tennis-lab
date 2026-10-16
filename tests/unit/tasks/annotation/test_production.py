@@ -634,10 +634,16 @@ def test_source_and_product_guards_precede_publication(session: ReviewSession) -
 def test_explicit_operation_retry_keeps_history_without_stale_failure(
     session: ReviewSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from src.tasks.annotation.contracts import BootstrapModelOperation, OperationInput
+    from src.tasks.annotation.contracts import (
+        BootstrapModelOperation,
+        OperationInput,
+        OperationReceipt,
+    )
     from src.tasks.base.annotation.contracts import ArtifactRef
     from src.tasks.base.annotation.execution.contracts import StageLaunch
 
+    # This test exercises stage attempts; no review supervisor was launched.
+    session.state("ready")
     controller = controller_for(session)
     env = session.env
     operation = OperationInput(
@@ -674,7 +680,26 @@ def test_explicit_operation_retry_keeps_history_without_stale_failure(
         controller.operation(operation, attempt=3)
     assert controller.operation(operation, attempt=2)["state"] == "running"
     states[operation.sha256 + "-2"] = "succeeded"
-    assert controller.operation(operation)["state"] == "succeeded"
+    success = controller.operation(operation)
+    assert success["state"] == "succeeded"
+    assert any(
+        failure["state"] == "invalid_receipt"
+        for failure in controller.status()["failures"]
+    )
+    launch = read_document(
+        env.layout, ArtifactRef.model_validate(success["launch"]), StageLaunch
+    )
+    assert launch.input is not None
+    write_document(
+        env.layout,
+        env.layout.artifact_path(launch.input).parent / "result.json",
+        OperationReceipt(
+            operation=launch.input,
+            status="complete",
+            results=(env.blob,),
+            reason=None,
+        ),
+    )
     reported = controller.status()
     assert reported["failures"] == []
     assert [(row["state"], row["superseded"]) for row in reported["stages"]] == [
@@ -690,6 +715,8 @@ def test_acquisition_retry_reuses_logical_operation_and_supersedes_failure(
     from src.tasks.annotation.contracts import AcquireOperation, OperationInput
     from src.tasks.base.annotation.collection.contracts import SourceCandidate
 
+    # Keep the unrelated synthetic review idle while acquisition is retried.
+    session.state("ready")
     env = session.env
     controller = controller_for(session)
     source = env.manifest.source

@@ -516,6 +516,14 @@ class Learning:
                     resume_checkpoint=resume_checkpoint,
                 )
                 return write_document(self.layout, current / "request.json", restored)
+            if int(current.name) > 1 and not any(
+                (current / name).exists()
+                for name in ("retry.json", "request.json", "failure.json", "completed.json")
+            ):
+                # write_document may create the next directory before publishing
+                # retry.json. Only an explicit retry can recover this gap, and
+                # the immediately preceding attempt must still be a failure.
+                current = root / str(int(current.name) - 1)
             if (
                 not (current / "failure.json").exists()
                 or (current / "completed.json").exists()
