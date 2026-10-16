@@ -3,13 +3,31 @@
 from __future__ import annotations
 
 from ..artifacts import read_document, verify_reference, write_document
-from ..contracts import ArtifactRef, ModelRef, content_digest
+from ..contracts import (
+    ArtifactRef,
+    Document,
+    ModelRef,
+    PublicationReceipt,
+    content_digest,
+)
+from ..execution.contracts import StageExit, StageLaunch
 from ..paths import AnnotationLayout
-from ..plan import references
+from ..plan import CampaignPlan, references
 from ..registry import Registry
 from ..storage.catalog import StorageCatalog
 from ..storage.references import protection
-from .contracts import ModelState, SelectionRecord, SelectionVerdict
+from .contracts import (
+    CampaignCompletion,
+    CompletedStage,
+    EvaluationReceipt,
+    FixedEvaluation,
+    LearningIntent,
+    ModelState,
+    SelectionRecord,
+    SelectionVerdict,
+    StageInput,
+    TrainingReceipt,
+)
 from .validation import check_evaluation
 
 _SCHEMA = """
@@ -27,6 +45,43 @@ CREATE TABLE IF NOT EXISTS annotation_model_selections (
     id TEXT PRIMARY KEY, record TEXT NOT NULL
 );
 """
+
+
+def _selection_documents(
+    layout: AnnotationLayout,
+    verdict: SelectionVerdict,
+    intent: LearningIntent,
+    evaluation: EvaluationReceipt,
+) -> tuple[Document, ...]:
+    """Retain the known evidence graph used by check_evaluation on every replay."""
+    evaluated = read_document(layout, verdict.evaluation, CompletedStage)
+    trained = read_document(layout, evaluation.training, CompletedStage)
+    documents: list[Document] = [intent, evaluation, evaluated, trained]
+    for completed in (evaluated, trained):
+        request = read_document(layout, completed.request, StageInput)
+        execution = read_document(layout, completed.execution, StageExit)
+        launch = read_document(layout, execution.launch, StageLaunch)
+        documents.extend((request, execution, launch))
+    documents.append(read_document(layout, trained.result, TrainingReceipt))
+    completion = read_document(layout, intent.completion, CampaignCompletion)
+    documents.extend(
+        (
+            completion,
+            read_document(layout, completion.plan, CampaignPlan),
+            read_document(layout, intent.fixed_evaluation, FixedEvaluation),
+        )
+    )
+    publications = {intent.publication}
+    publications.update(
+        product.publication
+        for task in completion.tasks
+        for product in task.products
+        if product.publication is not None
+    )
+    documents.extend(
+        read_document(layout, ref, PublicationReceipt) for ref in publications
+    )
+    return tuple(documents)
 
 
 class ModelRegistry:
@@ -116,6 +171,7 @@ class ModelRegistry:
             verify_reference(self.layout, ref)
         if self.adopted_state(expected.model) != expected:
             raise ValueError("evaluation baseline generation is not the adopted state")
+        evidence = _selection_documents(self.layout, verdict, intent, evaluation)
         # The pointer and complete receipt payload commit together. A crash before
         # the file write is recovered from this exact row, without another CAS.
         with self.registry.transaction() as db:
@@ -178,11 +234,11 @@ class ModelRegistry:
             self.catalog.protect(
                 protection(
                     self.layout,
-                    identity="model-selection-v1-" + verdict_ref.digest,
+                    identity="model-selection-v2-" + verdict_ref.digest,
                     kind="model",
                     reason="model decision, compared weights, and fixed learning inputs",
                     roots=(verdict_ref,),
-                    documents=(verdict, record, evaluation, intent),
+                    documents=(verdict, record, *evidence),
                 ),
                 database=db,
             )

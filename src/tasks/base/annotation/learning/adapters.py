@@ -1,5 +1,6 @@
 """Task-owned learning entry points; base never imports concrete task modules."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -23,6 +24,13 @@ class EvaluationResolver(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class NoAdditionalTeachers:
+    """Valid publication with no new teachers usable by this learning recipe."""
+
+    reason: str
+
+
 class LearningAdapter(Protocol):
     task: str
     product: str
@@ -37,8 +45,10 @@ class LearningAdapter(Protocol):
         """Verify exact manifest membership and nested identities, using metadata."""
         ...
 
-    def validate_intent(self, layout: AnnotationLayout, intent: LearningIntent) -> None:
-        """Check recipe, initialization weights and task-owned input contracts."""
+    def validate_intent(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> NoAdditionalTeachers | None:
+        """Check inputs; explicitly report publications with no usable new teachers."""
         ...
 
     def input_references(

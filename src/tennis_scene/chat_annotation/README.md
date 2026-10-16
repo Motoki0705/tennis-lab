@@ -10,8 +10,8 @@ MP4と、Chatへ貼り付ける短いリクエスト本文を作る。対象は�
 [PROTOCOL.md](resources/PROTOCOL.md)、機械契約は
 [runtime/contracts.py](runtime/contracts.py)を参照する。対象別REQUESTには機械契約から生成したJSON Schemaを含める。
 
-ローカルのCodex CLIによるボール注釈・並列実行・採用判定・再アノテーションの運用は
-[local_agent](local_agent/README.md) を参照する。
+ballの実行・レビュー・採用は[新ワークフロー](../../tasks/annotation/README.md)を使う。
+保存済みlocal-agent campaignの形式と補助ツールは[local_agent](local_agent/README.md)を参照する。
 
 ## 実行
 
@@ -209,20 +209,21 @@ GPTが独自に作るコードやChat上での注釈結果そのものは自動�
   --report /absolute/path/report.json
 ```
 
-注釈の初期JSONは対象を指定して作成する。
+player注釈の初期JSONは対象を指定して作成する。置換先が未実装のplayer用入口は残している。
 
 ```bash
 .venv/bin/python -m src.tennis_scene.chat_annotation.scripts.annotate init \
   --manifest /absolute/path/clip_manifest.json \
   --video /absolute/path/clip.mp4 \
   --output /absolute/path/annotation_CLIP.json \
-  --target ball # or player
+  --target player
 ```
 
-同CLIの`finalize`は単一動画用で、`--video`、`--manifest`、`--annotations`、`--output`を受け取り、
+同CLIの`finalize`はplayer専用・単一動画用で、`--video`、`--manifest`、`--annotations`、`--output`を受け取り、
 有効なcompleted/partialだけをローカル確認用の注釈JSON、overlay動画、ZIPとして生成する。
 このローカル確認用ZIPには前2点を格納するため、そのままMCPへ提出できない。MCPにはJSONのみをまとめ直して提出する。構造・入力エラーや
 動画生成失敗ではZIPを公開せず非0終了する。既存の出力ディレクトリは上書きしない。
+ballと旧combined注釈のfinalize、およびball補間のCLI入口は提供しない。既存形式の`validate`と移行readerは引き続き利用できる。
 
 
 ## MCP受領と注釈の整理
