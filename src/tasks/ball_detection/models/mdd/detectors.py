@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Self, cast
 
 import torch
 from torch import Tensor, nn
@@ -96,8 +96,8 @@ class MDDDPTDetector(nn.Module):
                                          mode="bilinear", align_corners=False))
         return cast(Tensor, logits.reshape(b, t, *logits.shape[-2:]))
 
-class DeepMDDQueryDetector(nn.Module):
-    """Transfer target; initialized query decoder with the exact pretrained CNN topology."""
+class DeepMDDQueryTrunk(nn.Module):
+    """Shared query path; registration names and operation order match stage two."""
     def __init__(self, config: MDDPretrainConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
         super().__init__()
         self.config = config
@@ -111,7 +111,6 @@ class DeepMDDQueryDetector(nn.Module):
                                     config.dropout, config.rope_base)
         self.blocks = nn.ModuleList(QueryFusionBlock(query_config, ffn=nn.Sequential(
             SwiGLU(config.dim, config.ffn_dim), nn.Dropout(config.dropout))) for _ in range(config.layers))
-        self.head = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, 2))
         self.encoder_frozen = False
 
     def freeze_encoder(self, frozen: bool) -> None:
@@ -119,14 +118,15 @@ class DeepMDDQueryDetector(nn.Module):
         self.encoder.requires_grad_(not frozen)
         self.encoder.train(self.training and not frozen)
 
-    def train(self, mode: bool = True) -> DeepMDDQueryDetector:
+    def train(self, mode: bool = True) -> Self:
         super().train(mode)
         if self.encoder_frozen:
             self.encoder.eval()
         return self
 
-    def forward(self, rgb: Tensor, timestamps: Tensor) -> Tensor:
-        feature = self.encoder(self.mdd(rgb))[-1]
+    def encode_queries(self, rgb: Tensor, timestamps: Tensor) -> tuple[tuple[Tensor, ...], Tensor]:
+        features = self.encoder(self.mdd(rgb))
+        feature = features[-1]
         b, t, _, h, w = feature.shape
         patches = self.projection(feature.flatten(-2).transpose(-1, -2))
         yy = torch.arange(h, device=feature.device, dtype=feature.dtype) * 64
@@ -138,4 +138,16 @@ class DeepMDDQueryDetector(nn.Module):
         query = self.ball_query.expand(b, t, -1)
         for block in self.blocks:
             query = block(query, patches, timestamps - timestamps[:, :1])
+        return features, query
+
+
+class DeepMDDQueryDetector(DeepMDDQueryTrunk):
+    """Stage-two coordinate regression with the exact pretrained CNN topology."""
+
+    def __init__(self, config: MDDPretrainConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
+        super().__init__(config, mdd_a=mdd_a, mdd_b=mdd_b)
+        self.head = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, 2))
+
+    def forward(self, rgb: Tensor, timestamps: Tensor) -> Tensor:
+        _, query = self.encode_queries(rgb, timestamps)
         return cast(Tensor, self.head(query).float().sigmoid())
