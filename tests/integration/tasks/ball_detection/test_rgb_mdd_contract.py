@@ -71,6 +71,12 @@ def test_dpt_save_encoder_transfer_query_restore_and_model_io(tmp_path: Path, ch
     save_coordinate_checkpoint(dict(schema="mdd_query_posttraining.v1", stage="query_posttraining",
         model_config=asdict(target.config), recipe=recipe, state_dict=target.state_dict()), query_path)
     loaded, _, _ = restore_coordinate_model(torch.load(query_path, weights_only=True))
+    if channels == 2:
+        historical = torch.load(query_path, weights_only=True)
+        historical["model_config"].pop("input_channels")
+        historical["recipe"]["model"].pop("input_channels")
+        legacy_model, _, _ = restore_coordinate_model(historical)
+        assert legacy_model.config == target.config
     loaded.eval()
     batch = dict(rgb=rgb, timestamps=times)
     with torch.no_grad():

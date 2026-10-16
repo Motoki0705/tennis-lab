@@ -10,6 +10,7 @@ import torch
 from src.tasks.ball_detection.checkpoints.coordinates import (
     save_coordinate_checkpoint,
 )
+from src.tasks.ball_detection.checkpoints.provenance import parent_provenance
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
     MDDDPTDetector,
@@ -70,7 +71,11 @@ def transfer_encoder(path: Path, model: DeepMDDQueryDetector) -> dict[str, Any]:
     model.encoder.load_state_dict(weights, strict=True)
     model.freeze_encoder(True)
     return dict(checkpoint=str(path), sha256=dual_sha256(path), global_step=saved["global_step"],
-                input_contract=saved["recipe"]["input_contract"], image_decode=saved["recipe"]["image_decode"])
+                input_contract=saved["recipe"]["input_contract"], image_decode=saved["recipe"]["image_decode"],
+                transferred_modules=["encoder"],
+                transferred_parameters=[k for k in model.state_dict() if k.startswith("encoder.")],
+                initialized_parameters=[k for k in model.state_dict() if not k.startswith("encoder.")],
+                discarded_modules=["decoder", "head"], ancestry=parent_provenance(saved))
 
 
 def completed_pretraining(run: Path, manifest: Path) -> tuple[Path, dict[str, Any]]:

@@ -74,8 +74,8 @@ class MDDPretrainConfig:
     activation_checkpointing: bool
     encoder_variant: str
     temporal_mixing: str
-    # Missing in historical configs/checkpoints means the original 2ch model.
-    input_channels: int = 2
+    # Legacy 2ch records are converted explicitly at their loading boundary.
+    input_channels: int
 
     @property
     def frames(self) -> int:
@@ -118,7 +118,7 @@ class MDDPretrainConfig:
 class MDDHybridConfig(MDDPretrainConfig):
     """Stage three uses the explicit RGB+MDD contract and a fresh DPT decoder."""
 
-    input_channels: int = 5
+    input_channels: int
 
     def __post_init__(self) -> None:
         super().__post_init__()
