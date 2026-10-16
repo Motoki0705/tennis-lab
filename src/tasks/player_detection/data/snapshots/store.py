@@ -41,7 +41,7 @@ def clip_identity(clip: ClipRecord, source_id: str) -> str:
 
 
 def clip_semantic_digest(store: PlayerFrameStore, clip: ClipRecord) -> str:
-    """Global row positions and v1/v2 encoding are not annotation semantics."""
+    """Global row positions are not annotation semantics."""
     header = asdict(clip)
     for field in ("index", "split"):
         header.pop(field)
@@ -165,6 +165,7 @@ def load_snapshot(
 def freeze_existing_store(
     layout: AnnotationLayout, directory: Path, bindings: tuple[SourceBinding, ...]
 ) -> ArtifactRef:
+    """Pin a v2 store; callers must explicitly migrate older stores first."""
     index, metadata = (
         data_reference(layout, directory / INDEX_FILE),
         data_reference(layout, directory / METADATA_FILE),

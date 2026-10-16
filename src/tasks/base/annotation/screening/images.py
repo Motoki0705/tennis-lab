@@ -63,7 +63,7 @@ def make_sheets(
             start,
             stop,
             step,
-            "384x216+28/24.v1",
+            "384x216+28/24.v2",
         ]
     )
     directory = output / request_id
@@ -118,7 +118,43 @@ def make_sheets(
                 tiles.clear()
                 samples.clear()
 
-            next_time, last_time = start, start
+            def append_sample(
+                frame: av.VideoFrame, pts: int, timestamp: Fraction
+            ) -> None:
+                pixels = frame.to_ndarray(format="bgr24")
+                scale = min(384 / frame.width, 216 / frame.height)
+                preview_pixels = cv2.resize(
+                    pixels,
+                    (
+                        max(1, round(frame.width * scale)),
+                        max(1, round(frame.height * scale)),
+                    ),
+                )
+                tile: NDArray[np.uint8] = np.zeros((244, 384, 3), np.uint8)
+                tile[28 : 28 + preview_pixels.shape[0], : preview_pixels.shape[1]] = (
+                    preview_pixels
+                )
+                seconds = float(timestamp)
+                cv2.putText(
+                    tile,
+                    f"source t={seconds:.3f}s",
+                    (6, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.55,
+                    (255, 255, 255),
+                    1,
+                    cv2.LINE_AA,
+                )
+                tiles.append(tile)
+                samples.append(ImageSample(source_pts=pts, seconds=seconds))
+                if len(tiles) == 24:
+                    flush()
+
+            start_time, stop_time, step_time = (
+                Fraction(str(value)) for value in (start, stop, step)
+            )
+            next_time, last_time = start_time, start_time
+            pending: tuple[av.VideoFrame, int, Fraction] | None = None
             previous_pts: int | None = None
             with av.open(str(source_path)) as container:
                 stream = container.streams.video[0]
@@ -139,49 +175,35 @@ def make_sheets(
                     if previous_pts is not None and frame.pts <= previous_pts:
                         raise ValueError("source PTS must increase")
                     previous_pts = frame.pts
-                    timestamp = float((frame.pts - origin_pts) * clock)
-                    if timestamp >= stop:
+                    timestamp = (frame.pts - origin_pts) * clock
+                    if timestamp >= stop_time:
                         last_time = timestamp
                         break
-                    last_time = timestamp + float(frame.duration * clock)
-                    if timestamp + 1e-6 < next_time:
+                    last_time = timestamp + frame.duration * clock
+                    if timestamp < start_time:
                         continue
-                    pixels = frame.to_ndarray(format="bgr24")
-                    scale = min(384 / frame.width, 216 / frame.height)
-                    preview_pixels = cv2.resize(
-                        pixels,
-                        (
-                            max(1, round(frame.width * scale)),
-                            max(1, round(frame.height * scale)),
-                        ),
-                    )
-                    tile: NDArray[np.uint8] = np.zeros((244, 384, 3), np.uint8)
-                    tile[
-                        28 : 28 + preview_pixels.shape[0], : preview_pixels.shape[1]
-                    ] = preview_pixels
-                    cv2.putText(
-                        tile,
-                        f"source t={timestamp:.3f}s",
-                        (6, 20),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.55,
-                        (255, 255, 255),
-                        1,
-                        cv2.LINE_AA,
-                    )
-                    tiles.append(tile)
-                    samples.append(ImageSample(source_pts=frame.pts, seconds=timestamp))
-                    next_time = (
-                        start + (math.floor((timestamp - start) / step) + 1) * step
-                    )
-                    if len(tiles) == 24:
-                        flush()
+                    # Keep the last real frame before the gap limit. Sampling
+                    # after a fixed grid deadline can exceed step even at high fps.
+                    if timestamp > next_time and pending is not None:
+                        append_sample(*pending)
+                        next_time = pending[2] + step_time
+                        pending = None
+                    if timestamp >= next_time:
+                        # If the source itself is sparse, retain the actual gap;
+                        # finalization will reject insufficient detail coverage.
+                        append_sample(frame, frame.pts, timestamp)
+                        next_time = timestamp + step_time
+                        pending = None
+                    else:
+                        pending = (frame, frame.pts, timestamp)
+            if pending is not None and next_time < stop_time:
+                append_sample(*pending)
             flush()
             if not pages:
                 raise ValueError(
                     "no real source frame falls inside the requested preview interval"
                 )
-            if last_time + 1e-6 < stop:
+            if last_time + Fraction(1, 1000000) < stop_time:
                 raise ValueError("source ended before the requested preview interval")
             receipt = PreviewReceipt(
                 source=source,
@@ -190,7 +212,7 @@ def make_sheets(
                 start=start,
                 stop=stop,
                 step=step,
-                decoded_until=last_time,
+                decoded_until=float(last_time),
                 pages=tuple(pages),
             )
             (staging / "preview.json").write_bytes(receipt.canonical_bytes() + b"\n")

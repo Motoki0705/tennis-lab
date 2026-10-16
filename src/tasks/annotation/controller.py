@@ -12,6 +12,10 @@ from src.tasks.base.annotation.artifacts import (
     verify_reference,
     write_document,
 )
+from src.tasks.base.annotation.collection.contracts import (
+    AcquisitionReceipt,
+    SourceCandidate,
+)
 from src.tasks.base.annotation.collection.service import Collection
 from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
@@ -126,11 +130,32 @@ class Controller:
         if attempt is None:
             attempts = [
                 int(path.name.rsplit("-", 1)[1])
-                for path in jobs.glob(data.sha256 + "-*")
+                for path in jobs.glob(data.logical_id + "-*")
             ]
             attempt = max(attempts, default=1)
+            if attempts:
+                prior = read_document(
+                    self.layout,
+                    annotation_reference(
+                        self.layout,
+                        jobs / f"{data.logical_id}-{attempt}" / "operation.json",
+                    ),
+                    OperationInput,
+                )
+                if prior.logical_id != data.logical_id:
+                    raise ValueError("stage attempt differs from its logical operation")
+                if (
+                    isinstance(data.operation, AcquireOperation)
+                    and isinstance(prior.operation, AcquireOperation)
+                    and data.operation.retry
+                    and not prior.operation.retry
+                ):
+                    attempt += 1
+                else:
+                    # Ordinary resume recovers the pinned retry directive as well.
+                    data = prior
         cost = self.runtime.cost(data.stage)
-        request_id = f"{data.sha256}-{attempt}"
+        request_id = f"{data.logical_id}-{attempt}"
         directory = self.layout.path(
             "campaigns", self.plan.campaign_id, "jobs", request_id
         )
@@ -207,6 +232,38 @@ class Controller:
         data = read_document(self.layout, launch.input, OperationInput)
         if data.plan != self.runtime.plan or data.stage != launch.resource.stage:
             raise ValueError("stage result differs from the runtime plan/stage")
+        operation = data.operation
+        if isinstance(operation, AcquireOperation) or (
+            isinstance(operation, ScreenOperation)
+            and receipt.status == "not_applicable"
+        ):
+            source = self.collection.ledger.source(self.plan, operation.source_id)
+            if source["acquisition"] is None or receipt.results != (
+                ArtifactRef.model_validate_json(source["acquisition"]),
+            ):
+                raise ValueError(
+                    "source receipt differs from its registered acquisition"
+                )
+            acquisition = read_document(
+                self.layout, receipt.results[0], AcquisitionReceipt
+            )
+            candidate = SourceCandidate.model_validate_json(source["candidate"])
+            if (
+                acquisition.source.canonical_id != operation.source_id
+                or acquisition.candidate_digest != candidate.sha256
+                or acquisition.configuration != self.plan.preparation
+            ):
+                raise ValueError("acquisition receipt differs from the frozen source")
+            for dependency in references(acquisition):
+                verify_reference(self.layout, dependency)
+            if receipt.status == "not_applicable" and (
+                source["state"] != "excluded"
+                or not receipt.reason
+                or receipt.reason != source["reason"]
+            ):
+                raise ValueError("source exclusion differs from its registered reason")
+        elif receipt.status == "not_applicable":
+            raise ValueError("this operation cannot return a source exclusion")
         if isinstance(data.operation, PredictOperation):
             operation = data.operation
             if receipt.status != "complete" or len(receipt.results) != len(
@@ -329,7 +386,15 @@ class Controller:
                 ),
             )
 
-    def _screen(self, source_id: str) -> dict[str, Any]:
+    def retry_screen(
+        self, source_id: str, *, resume_quota: bool = False
+    ) -> dict[str, Any]:
+        """Explicitly retry a screening worker without rerunning its preparation."""
+        return self._screen(source_id, retry=True, resume_quota=resume_quota)
+
+    def _screen(
+        self, source_id: str, *, retry: bool = False, resume_quota: bool = False
+    ) -> dict[str, Any]:
         data = OperationInput(
             plan=self.runtime.plan, operation=ScreenOperation(source_id=source_id)
         )
@@ -351,9 +416,11 @@ class Controller:
         )
         self.pool.register(request)
         row = self.pool.reconcile(request)
-        if row["state"] == "ready":
+        if resume_quota:
+            self.pool.ledger.resume_campaign(self.plan.campaign_id)
+        if row["state"] == "ready" or retry:
             try:
-                self.pool.start(request)
+                self.pool.start(request, retry=retry)
             except (WorkerBusy, CapacityUnavailable, WorkerStopped) as error:
                 return {"state": "waiting", "reason": str(error)}
             row = self.pool.reconcile(request)
@@ -481,7 +548,7 @@ class Controller:
             identity, number = path.parent.name.rsplit("-", 1)
             if (
                 data.plan != self.runtime.plan
-                or identity != data.sha256
+                or identity != data.logical_id
                 or not number.isdigit()
                 or int(number) < 1
             ):
