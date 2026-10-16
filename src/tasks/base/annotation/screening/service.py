@@ -264,6 +264,10 @@ class Screening:
         verify_reference(self.layout, request.source.media)
         decision = read_document(self.layout, decision_ref, SourceDecision)
         check_decision(request, self.policy, decision)
+        if decision.status == "deferred":
+            raise ValueError(
+                "technically incomplete screening cannot finalize a source"
+            )
         presentation = read_document(self.layout, presentation_ref, PresentedImages)
         if presentation.request_digest != request_ref.digest:
             raise ValueError("presentation evidence belongs to another request")
