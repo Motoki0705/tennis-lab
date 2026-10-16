@@ -188,6 +188,10 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
             raise ValueError(
                 "screen/review must use Codex capacity; other operations cannot"
             )
+        if stage == "infer_player" and declared[stage].kind != "gpu":
+            raise ValueError(
+                "infer_player requires an explicit shared GPU reservation"
+            )
         if stage in {"train_ball", "evaluate_ball"} and declared[stage].kind != "gpu":
             raise ValueError("learning stages require explicit shared GPU reservations")
     for cost in data.runtime.costs:
