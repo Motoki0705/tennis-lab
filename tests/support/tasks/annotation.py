@@ -5,6 +5,7 @@ from src.tasks.annotation.controller import Controller
 from src.tasks.base.annotation.artifacts import write_asset, write_document
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.execution.contracts import StageExit, StageLaunch
+from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.resources import ResourceRequest
 from src.utils.paths import PROJECT_ROOT
 
@@ -20,7 +21,7 @@ def record_stage(
 ) -> ArtifactRef:
     """Publish synthetic supervisor evidence without starting a queue or model."""
     layout = controller.layout
-    request_id = f"{data.sha256}-{attempt}"
+    request_id = f"{data.logical_id}-{attempt}"
     directory = layout.path(
         "campaigns", controller.plan.campaign_id, "jobs", request_id
     )
@@ -73,20 +74,27 @@ def record_stage(
             ),
         )
     if exited:
-        log = write_asset(layout, directory / "log.txt", b"synthetic supervisor\n")
-        write_document(
-            layout,
-            directory / "exit.json",
-            StageExit(
-                launch=launch,
-                status="failed" if failed else "succeeded",
-                exit_code=1 if failed else 0,
-                started_at="2026-10-16T00:00:00Z",
-                ended_at="2026-10-16T00:00:01Z",
-                elapsed_seconds=1.0,
-                stdout=log,
-                stderr=log,
-                reason="synthetic failure" if failed else None,
-            ),
-        )
+        record_stage_exit(layout, launch, failed=failed)
     return operation
+
+
+def record_stage_exit(
+    layout: AnnotationLayout, launch: ArtifactRef, *, failed: bool = False
+) -> None:
+    directory = layout.artifact_path(launch).parent
+    log = write_asset(layout, directory / "log.txt", b"synthetic supervisor\n")
+    write_document(
+        layout,
+        directory / "exit.json",
+        StageExit(
+            launch=launch,
+            status="failed" if failed else "succeeded",
+            exit_code=1 if failed else 0,
+            started_at="2026-10-16T00:00:00Z",
+            ended_at="2026-10-16T00:00:01Z",
+            elapsed_seconds=1.0,
+            stdout=log,
+            stderr=log,
+            reason="synthetic failure" if failed else None,
+        ),
+    )

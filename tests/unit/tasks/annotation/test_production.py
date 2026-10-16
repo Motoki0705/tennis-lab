@@ -29,6 +29,7 @@ from src.tasks.base.annotation.collection.contracts import (
     AcquisitionReceipt,
     PreparationConfig,
     PreparationReceipt,
+    SourceCandidate,
 )
 from src.tasks.base.annotation.contracts import ArtifactRef, content_digest
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
@@ -305,7 +306,7 @@ def record_input_stages(controller: Controller, *, prediction: bool = True) -> N
         layout,
         layout.path("campaigns", "fixture-acquisition.json"),
         AcquisitionReceipt(
-            candidate_digest="c" * 64,
+            candidate_digest=SourceCandidate.model_validate_json(source["candidate"]).sha256,
             configuration=controller.plan.preparation,
             source=manifest.source,
         ),
@@ -1034,6 +1035,12 @@ def test_acquisition_retry_reuses_logical_operation_and_supersedes_failure(
     ]
     with pytest.raises(ValueError, match="failed or interrupted"):
         controller.operation(operation, attempt=3)
+    # The explicit retry directive must obey the same terminal-failure gate.
+    with pytest.raises(ValueError, match="failed or interrupted"):
+        controller.operation(OperationInput(
+            plan=env.plan_ref,
+            operation=AcquireOperation(source_id=candidate.source_id, retry=True),
+        ))
 
 
 def test_bootstrap_is_explicit_and_pins_planned_model(
