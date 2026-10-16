@@ -1003,3 +1003,179 @@ def test_deferred_decision_cannot_bypass_adapter_and_finalize(example: Example) 
         example.screening.plan, example.source.source_id
     )
     assert row["state"] == "acquired" and row["selection"] is None
+
+
+def sealed_screening_attempt(
+    example: Example,
+) -> tuple[Controller, WorkRequest, ArtifactRef, Path]:
+    """Synthetic old-code completion with real selection/launch/exit artifacts."""
+    from src.tasks.annotation.screening import ScreeningAdapter
+    from src.tasks.base.annotation.workers.contracts import (
+        AttemptResult,
+        ExitReceipt,
+        Launch,
+        WorkOutcome,
+    )
+    from src.utils.paths import PROJECT_ROOT
+
+    controller = controller_for(example)
+    layout, plan = example.layout, example.screening.plan
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=example.request.prepared_input,
+        inputs=(),
+    )
+    controller.pool.register(request)
+    directory = layout.path(
+        "campaigns", plan.campaign_id, "workers", request.work_id, "attempt-0001"
+    )
+    prepared = ScreeningAdapter().prepare(layout, plan, request, directory)
+    task_ref = annotation_reference(layout, directory / "request.json")
+    body = read_document(layout, task_ref, ScreeningRequest)
+    detail = request_preview(layout, body, start=0.0, stop=15.0, step=0.5)
+    sample = Example(
+        layout,
+        example.screening,
+        example.source,
+        task_ref,
+        body,
+        detail,
+        read_document(layout, detail, PreviewReceipt),
+    )
+    selection = sample.finish()
+    launch = Launch(
+        work_id=request.work_id,
+        attempt=request.work_id + "-0001",
+        plan=controller.runtime.plan,
+        request=request,
+        prepared=prepared,
+        directory=str(directory),
+        code_root=str(PROJECT_ROOT),
+        codex_binary=sys.executable,
+        codex_home=str(layout.path("cache", "codex")),
+        timeout_seconds=20.0,
+        test_command=("synthetic-no-process",),
+        test_root=str(layout.root),
+    )
+    launch_ref = write_document(layout, directory / "launch.json", launch)
+    event = write_asset(
+        layout, directory / "synthetic-events.txt", b"SYNTHETIC FIXTURE ONLY"
+    )
+    execution = write_document(
+        layout,
+        directory / "exit.json",
+        ExitReceipt(
+            launch_digest=launch_ref.digest,
+            exit_code=0,
+            status="succeeded",
+            started_at="2026-01-01T00:00:00Z",
+            ended_at="2026-01-01T00:00:01Z",
+            elapsed_seconds=1.0,
+            events=event,
+            errors=event,
+            thread_id="synthetic",
+            reason=None,
+        ),
+    )
+    result = write_document(
+        layout,
+        directory / "result.receipt.json",
+        AttemptResult(
+            launch=launch_ref,
+            exit=execution,
+            result=event,
+            telemetry=None,
+            outcome=WorkOutcome(status="complete", receipt=selection),
+        ),
+    )
+    with controller.pool.ledger.registry.transaction() as db:
+        db.execute(
+            "INSERT INTO worker_attempts VALUES (?,?,1,'complete',?,NULL)",
+            (
+                launch.attempt,
+                request.work_id,
+                launch_ref.canonical_bytes().decode(),
+            ),
+        )
+        db.execute(
+            "UPDATE worker_tasks SET state='complete',current_attempt=?,result=? WHERE id=?",
+            (
+                launch.attempt,
+                result.canonical_bytes().decode(),
+                request.work_id,
+            ),
+        )
+    return controller, request, selection, directory
+
+
+@pytest.mark.parametrize(
+    "mode", ["recover_after_crash", "no_unresolved_service", "prepared_source"]
+)
+def test_explicit_reopen_preserves_old_evidence_and_refuses_prepared_sources(
+    example: Example, monkeypatch: pytest.MonkeyPatch, mode: str
+) -> None:
+    from src.tasks.annotation import recovery as recovery_module
+    from src.tasks.annotation.contracts import RecoveryInput, ReopenScreening
+
+    controller, request, selection, directory = sealed_screening_attempt(example)
+    layout = example.layout
+    request_ref = write_document(layout, directory / "work-request.json", request)
+    before = {
+        path: path.read_bytes()
+        for path in (
+            layout.artifact_path(selection),
+            directory / "result.receipt.json",
+            directory / "launch.json",
+        )
+    }
+    operation = RecoveryInput(
+        plan=controller.runtime.plan,
+        reason="synthetic old code sealed an unfinished image request",
+        operation=ReopenScreening(
+            request=request_ref,
+            after_attempt=request.work_id + "-0001",
+            selection=selection,
+        ),
+    )
+    if mode != "no_unresolved_service":
+        service = ServiceRequest(
+            task_request=annotation_reference(layout, directory / "request.json"),
+            operation="screen_preview",
+            parameters={"start": 16.0, "stop": 31.0, "step": 0.5},
+        )
+        write_document(
+            layout,
+            directory / "work/service-requests" / f"{service.sha256}.json",
+            service,
+        )
+    if mode == "prepared_source":
+        controller.collection.prepare(example.source.source_id)
+    if mode != "recover_after_crash":
+        with pytest.raises(ValueError, match="unresolved image|prepared or excluded"):
+            recovery_module.recover(controller, operation)
+        assert controller.pool.reconcile(request)["state"] == "complete"
+        return
+    original = recovery_module.write_document
+
+    def fail_after_transaction(
+        layout: AnnotationLayout, path: Path, value: object
+    ) -> ArtifactRef:
+        if path.name == "result.json":
+            raise OSError("synthetic crash after atomic invalidation")
+        return original(layout, path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(recovery_module, "write_document", fail_after_transaction)
+        with pytest.raises(OSError, match="synthetic crash"):
+            recovery_module.recover(controller, operation)
+    result = recovery_module.recover(controller, operation)
+    assert recovery_module.recover(controller, operation) == result
+    row = controller.collection.ledger.source(controller.plan, example.source.source_id)
+    assert row["state"] == "acquired" and row["selection"] is None
+    assert controller.pool.reconcile(request)["state"] == "validation_failed"
+    assert all(path.read_bytes() == content for path, content in before.items())
+    with controller.resources.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM screening_reopens").fetchone()[0] == 1

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -661,3 +662,238 @@ def test_production_code_pin_is_checked_before_any_configuration_write(
     with pytest.raises(ValueError, match="frozen commit/diff"):
         configure(production, data)
     assert not production.root.exists()
+
+
+def test_explicit_code_update_keeps_plan_runtime_inputs_and_budget(
+    example: Example, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation.code_update import CodeUpdateReceipt, update_code
+    from src.tasks.base.annotation.reproducibility import (
+        CodeRevision,
+        require_frozen_code,
+    )
+
+    layout = example.layout
+    configured = example.receipt(configure(layout, example.configuration))
+    runtime = read_document(layout, configured.runtime, Runtime)
+    controller = Controller(layout, runtime)
+    original_plan = layout.artifact_path(configured.plan).read_bytes()
+    original_runtime = layout.artifact_path(configured.runtime).read_bytes()
+    original_scope = controller.resources.scope
+    identity = ("c" * 40, hashlib.sha256(b"").hexdigest())
+    monkeypatch.setattr(
+        "src.tasks.annotation.code_update.checkout_identity", lambda _: identity
+    )
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.reproducibility.checkout_identity",
+        lambda _: identity,
+    )
+    reference = update_code(
+        controller,
+        configured.runtime,
+        example.blob,
+        reason="synthetic verified bug fix",
+    )
+    assert (
+        update_code(
+            controller,
+            configured.runtime,
+            example.blob,
+            reason="synthetic verified bug fix",
+        )
+        == reference
+    )
+    receipt = read_document(layout, reference, CodeUpdateReceipt)
+    updated = read_document(layout, receipt.runtime, Runtime)
+    revision = read_document(layout, receipt.revision, CodeRevision)
+    assert updated == runtime.model_copy(update={"code_revision": receipt.revision})
+    assert (
+        revision.plan,
+        revision.scope,
+        revision.previous_runtime,
+        revision.verification,
+    ) == (configured.plan, configured.scope, configured.runtime, example.blob)
+    assert layout.artifact_path(configured.plan).read_bytes() == original_plan
+    assert layout.artifact_path(configured.runtime).read_bytes() == original_runtime
+    assert b'"code_revision"' not in original_runtime
+    assert controller.resources.scope == original_scope
+    require_frozen_code(
+        PROJECT_ROOT,
+        controller.plan,
+        layout=layout,
+        revision=receipt.revision,
+        scope=runtime.scope,
+    )
+    with pytest.raises(ValueError, match="frozen commit/diff"):
+        require_frozen_code(PROJECT_ROOT, controller.plan)
+    with pytest.raises(ValueError, match="another plan or resource scope"):
+        require_frozen_code(
+            PROJECT_ROOT,
+            controller.plan,
+            layout=layout,
+            revision=receipt.revision,
+            scope=example.blob,
+        )
+    layout.artifact_path(example.blob).write_bytes(b"changed verification evidence")
+    with pytest.raises(ValueError, match="size changed|hash changed"):
+        require_frozen_code(
+            PROJECT_ROOT,
+            controller.plan,
+            layout=layout,
+            revision=receipt.revision,
+            scope=runtime.scope,
+        )
+
+
+def test_code_update_refuses_live_resource_owner(
+    example: Example, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation.code_update import update_code
+    from src.tasks.base.annotation.resources import ResourceRequest
+
+    configured = example.receipt(configure(example.layout, example.configuration))
+    controller = Controller(
+        example.layout, read_document(example.layout, configured.runtime, Runtime)
+    )
+    monkeypatch.setattr(
+        "src.tasks.annotation.code_update.checkout_identity",
+        lambda _: ("c" * 40, hashlib.sha256(b"").hexdigest()),
+    )
+    request = ResourceRequest(
+        request_id="live-before-code-update",
+        plan=configured.plan,
+        stage="acquire",
+        pss_bytes=1024,
+        storage_bytes=1024,
+        gpu_seconds=0.0,
+    )
+    with (
+        controller.resources.lease(request),
+        pytest.raises(ValueError, match="stop and drain"),
+    ):
+        update_code(
+            controller,
+            configured.runtime,
+            example.blob,
+            reason="synthetic live guard",
+        )
+    assert not list(
+        example.layout.path(
+            "campaigns", controller.plan.campaign_id, "code-updates"
+        ).glob("*/result.json")
+    )
+
+
+def test_code_update_reads_old_attempt_without_launching_or_changing_its_cost(
+    example: Example, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation.code_update import CodeUpdateReceipt, update_code
+    from src.tasks.annotation.contracts import OperationInput, ScreenOperation
+    from src.tasks.base.annotation.execution.contracts import StageLaunch
+    from src.tasks.base.annotation.execution.runner import stage_directory
+
+    layout = example.layout
+    configured = example.receipt(configure(layout, example.configuration))
+    runtime = read_document(layout, configured.runtime, Runtime)
+    controller = Controller(layout, runtime)
+    identity = ("c" * 40, hashlib.sha256(b"").hexdigest())
+    monkeypatch.setattr(
+        "src.tasks.annotation.code_update.checkout_identity", lambda _: identity
+    )
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.reproducibility.checkout_identity",
+        lambda _: identity,
+    )
+    revision = read_document(
+        layout,
+        update_code(
+            controller, configured.runtime, example.blob, reason="synthetic update"
+        ),
+        CodeUpdateReceipt,
+    )
+    operation = OperationInput(
+        plan=runtime.plan, operation=ScreenOperation(source_id="a" * 64)
+    )
+
+    def record_pending(launch: StageLaunch) -> dict[str, object]:
+        ref = write_document(
+            layout, stage_directory(layout, launch) / "launch.json", launch
+        )
+        return {"state": "pending", "launch": ref.model_dump()}
+
+    monkeypatch.setattr(controller.stages, "submit", record_pending)
+    first = controller.operation(operation)
+    old_ref = ArtifactRef.model_validate(first["launch"])
+    original = layout.artifact_path(old_ref).read_bytes()
+    updated = Controller(layout, read_document(layout, revision.runtime, Runtime))
+    monkeypatch.setattr(updated.stages, "status", lambda _: first)
+    monkeypatch.setattr(
+        updated.stages, "submit", lambda _: pytest.fail("old code must not relaunch")
+    )
+    assert updated.operation(operation) == first
+    assert layout.artifact_path(old_ref).read_bytes() == original
+    updated.jobs.runtime = updated.runtime.model_copy(
+        update={
+            "costs": tuple(
+                cost.model_copy(update={"storage_bytes": cost.storage_bytes + 1})
+                for cost in runtime.costs
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="resource/command configuration changed"):
+        updated.operation(operation)
+
+
+def test_explicit_pending_cancellation_preserves_request_and_recovers_receipt(
+    example: Example, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation import recovery
+    from src.tasks.annotation.contracts import CancelPendingStage, RecoveryInput
+    from src.tasks.base.annotation.execution.contracts import StageLaunch
+    from src.tasks.base.annotation.resources import ResourceRequest
+
+    configured = example.receipt(configure(example.layout, example.configuration))
+    controller = Controller(
+        example.layout, read_document(example.layout, configured.runtime, Runtime)
+    )
+    request = ResourceRequest(
+        request_id="cancel-pending",
+        plan=configured.plan,
+        stage="acquire",
+        pss_bytes=1024,
+        storage_bytes=1024,
+        gpu_seconds=0.0,
+    )
+    controller.resources.submit(request)
+    launch = write_document(
+        example.layout,
+        example.layout.path("campaigns", "fixture", "pending-launch.json"),
+        StageLaunch(
+            scope=configured.scope,
+            resource=request,
+            command=("fixture-command-never-executed",),
+            code_root=str(PROJECT_ROOT),
+            timeout_seconds=10.0,
+        ),
+    )
+    data = RecoveryInput(
+        plan=configured.plan,
+        reason="old code attempt replaced after a verified fix",
+        operation=CancelPendingStage(launch=launch),
+    )
+    original = recovery.write_document
+
+    def interrupt(layout: Any, path: Path, document: Any) -> Any:
+        if path.name == "result.json":
+            raise RuntimeError("fixture interruption after cancellation")
+        return original(layout, path, document)
+
+    monkeypatch.setattr(recovery, "write_document", interrupt)
+    with pytest.raises(RuntimeError, match="fixture interruption"):
+        recovery.recover(controller, data)
+    monkeypatch.setattr(recovery, "write_document", original)
+    ref = recovery.recover(controller, data)
+    assert recovery.recover(controller, data) == ref
+    row = controller.resources._row(request)
+    assert row["state"] == "cancelled" and row["reason"] == data.reason
+    assert row["request"] == request.canonical_bytes().decode()

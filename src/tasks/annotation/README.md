@@ -155,11 +155,30 @@ worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固�
 | `retry_worker` | 既存WorkRequest参照、再試行元の `after_attempt`。保留・失敗だけが対象 |
 | `retry_learning` | 登録済みintent参照、`train` / `evaluate`、必要なら同intentのresume checkpoint |
 | `resume_workers` | quota等で止まった当該campaignのworker受付を再開。資源stopは解除しない |
+| `cancel_pending_stage` | 未起動stageの `launch` 参照。理由を残して予約を取消す。稼働中stageは対象外 |
+| `reopen_incomplete_screening` | `request`・`after_attempt`・`selection` を固定。未応答/失敗の画像要求が残る、準備前の誤確定selectionだけを保留へ戻す |
+| `observe_host_space` | 認可記録と結んだ `ObservedHostSpacePolicy` の参照。間接host mountの予約控除を実空き監視へ変更し、下限到達時は実行中の所有処理も停止する |
 
 再試行理由と結果を不変保存し、同じ要求の再送は結果を返す。worker開始後、結果保存前に親が
 落ちた場合は、変わったattemptを再起動せず現在状態の確認を要求する。学習再試行は次のtickで
 queueへ投入する。資源stopは原因解消後の `resume-budget --reason TEXT` で解除する。
 scopeや累計を初期化して上限を回避しない。
+
+### 不具合修正後に同じcampaignを続ける
+
+controllerと所有jobを停止・終了確認し、修正版をテストしてcommitする。
+`code-update --runtime PATH --sha256 HASH --verification EVIDENCE_PATH --reason TEXT`
+は、旧runtime・同じplan/scope・修正commit/diff・検証記録を結ぶ不変の更新記録と
+新runtimeを保存する。旧plan、候補、成果物、保存baseline、GPU積算、工程costは変更しない。
+以降は返されたreceiptのruntimeを指定する。全stage・screen/review worker・学習launchが
+更新記録を参照し、子processでもコード版を照合する。コードがdirty、jobが稼働中、
+またはqueue待ちなら更新を拒否する。旧controllerを同時に再起動しない。
+
+成功済みstageは旧launchの結果を読む。旧版で未起動のstageは勝手に新コードへ付け替えず、
+`cancel_pending_stage` で取消し、必要な工程だけ通常の `submit --attempt N` で再試行する。
+画像サービスの未完了を素材不足として誤確定した選別は、全関連jobの停止・予約取消後に
+`reopen_incomplete_screening` で戻し、`retry_worker` を使う。旧selectionとworkerの結果は
+不変保存し、撤回理由と対応先を台帳に残す。準備済みclipや公開済み教師はこの操作の対象外。
 
 `stage` はsupervisor専用で、固定した入力digestとの対応を要求する。
 旧ChatGPT/QA入口の撤去とplayerの統合は後続の実装範囲。旧形式の読取と保存台帳への登録は

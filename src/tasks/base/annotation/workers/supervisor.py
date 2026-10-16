@@ -103,7 +103,13 @@ def supervise(
         raise ValueError("test command/root is forbidden in production")
     plan = load_plan(verify_reference(layout, launch.plan))
     if layout.mode == "production":
-        require_frozen_code(Path(launch.code_root), plan)
+        require_frozen_code(
+            Path(launch.code_root),
+            plan,
+            layout=layout,
+            revision=launch.code_revision,
+            scope=launch.resource_scope,
+        )
     for reference in references(launch.request):
         verify_reference(layout, reference)
     owner = capture_supervisor(os.getpid())
@@ -181,8 +187,8 @@ def supervise(
                         break
                     except subprocess.TimeoutExpired:
                         if resources is not None:
-                            # Budget exhaustion latches a stop for NEW submissions.
-                            # This worker still has its frozen timeout and reservation.
+                            # Reserved mode only latches new-admission stops. Explicit
+                            # observed-host mode raises here to terminate owned work.
                             resources.watch()
             except subprocess.TimeoutExpired:
                 status, reason, code = (
