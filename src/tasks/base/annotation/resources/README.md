@@ -44,6 +44,10 @@ lockだけが消えた場合も、生きた子孫がいる間は枠を保持す�
   開始前inodeの割当を差し引き、正の増分を合算する。古い素材を削除しても、
   別の新規出力を追加した分は相殺しない。論理bytes・entry数・unique inode数も別に残す。
   baselineの元pathは保護する必要があり、移動・削除すると保守的に追加量へ数える。
+- 保存走査のI/O: Linux mount情報で9p上と確認したroot（WSLのWindows driveなど）は、
+  metadata取得とdirectory列挙を最大8並列・待機64件以内で行う。全entryを毎回照合し、
+  symlink非追跡、inode重複排除、baseline anchor、permission/I/Oエラーの扱いは変えない。
+  通常のLinux filesystemは従来の逐次走査を使う。
 - PSS: 所有groupの全processと `observe()` したcontrollerをPID/start-timeで照合し、
   `/proc/PID/smaps_rollup` のPSSを重複なく合算する。RSSへの代替はしない。
   各groupは実測PSSに加え、予想ピークの未使用部分を予約する。
