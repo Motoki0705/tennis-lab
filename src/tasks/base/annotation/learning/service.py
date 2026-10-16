@@ -573,11 +573,14 @@ class Learning:
                 raise ValueError("only a recorded failed stage can be retried")
             previous = annotation_reference(self.layout, current / "request.json")
             request = read_document(self.layout, previous, StageInput)
+            resume_dependencies: tuple[ArtifactRef, ...] = ()
             if resume_checkpoint is not None:
                 if stage != "train":
                     raise ValueError("evaluation cannot resume training")
                 verify_reference(self.layout, resume_checkpoint)
-                adapter.validate_resume(self.layout, intent, resume_checkpoint)
+                resume_dependencies = adapter.resume_references(
+                    self.layout, intent, resume_checkpoint
+                )
             next_request = StageInput(
                 intent=ref,
                 stage=stage,
@@ -595,6 +598,7 @@ class Learning:
                     previous=previous,
                     reason=reason,
                     resume_checkpoint=resume_checkpoint,
+                    resume_dependencies=resume_dependencies,
                 ),
             )
             next_ref = write_document(self.layout, target / "request.json", next_request)

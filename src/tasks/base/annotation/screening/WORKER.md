@@ -12,7 +12,7 @@ chronological, nonoverlapping 15-second media windows, spread across distinct
 rallies where possible. Do not select another camera view or replay of the same
 rally as a new example. Record singles/doubles, surface, setting and camera style.
 
-For each candidate window generate detail sheets at 0.5-second intervals and view
+For each candidate window generate detail sheets with `step=0.5` and view
 **every detail page**. Refine ambiguous play/slow-motion boundaries at 0.1-second
 intervals. Normal-speed actual play starts when the serve toss is released and
 ends when the point ends. Exclude slow motion, replays, instruction, pauses,

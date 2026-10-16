@@ -78,8 +78,14 @@ class ClipDecision(Interval):
             raise ValueError(
                 "slow-motion/replay cannot be selected as normal-speed play"
             )
-        seconds = sum(interval.stop - interval.start for interval in self.in_play)
-        if seconds <= policy.window_seconds * policy.minimum_play_fraction_exclusive:
+        seconds = sum(
+            Fraction(str(interval.stop)) - Fraction(str(interval.start))
+            for interval in self.in_play
+        )
+        minimum_seconds = Fraction(str(policy.window_seconds)) * Fraction(
+            str(policy.minimum_play_fraction_exclusive)
+        )
+        if seconds <= minimum_seconds:
             raise ValueError(
                 "strictly more than 7.5 seconds of normal-speed play is required"
             )
