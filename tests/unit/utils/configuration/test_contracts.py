@@ -254,6 +254,7 @@ def test_synthetic_registry_exposes_only_supported_runtime_boundaries() -> None:
         "src.synthetic_data_generation.scripts.run_appearance_variant:main",
         "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
         "src.synthetic_data_generation.scripts.visualize_dataset:main",
+        "src.synthetic_data_generation.scripts.visualize_scene_reveal:main",
     }
     assert (
         "src.synthetic_data_generation.configuration.ScenePipelineConfiguration"
