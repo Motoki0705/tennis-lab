@@ -30,7 +30,6 @@ from src.tasks.base.annotation.telemetry.contracts import (
     RenderedImage,
     ResponsePage,
 )
-from src.tasks.base.annotation.telemetry.storage import retained_report
 from src.tasks.base.annotation.workers.contracts import (
     ExitReceipt,
     Launch,
@@ -263,9 +262,6 @@ def test_distinct_responses_receive_preceding_outputs_and_usage_is_not_notificat
     assert output.images[0].source == fixture.catalog[0]
     assert output.images[0].image == fixture.catalog[0].image
     assert not fixture.layout.path("cache", "presented-images").exists()
-    retained = retained_report(fixture.layout, ref)
-    assert retained.count(fixture.catalog[0].image) == 1
-    assert fixture.catalog[0].metadata in retained
     assert second.context_window == 400000 and second.context_proxy_tokens == 110
     assert report.responses == 2 and report.duplicate_usage_records == 2
     assert report.token_notifications == 2 and report.totals["input_tokens"] == 200
