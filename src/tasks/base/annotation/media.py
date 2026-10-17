@@ -42,6 +42,10 @@ class Timeline:
         )
         return (ticks - self.pts[0]) * self.time_base
 
+    def boundary_seconds(self, index: int) -> float:
+        """Canonical float seconds for screening and selected-window comparisons."""
+        return float(self.boundary(index))
+
 
 def probe_video(path: Path) -> Timeline:
     timestamps: list[int] = []
