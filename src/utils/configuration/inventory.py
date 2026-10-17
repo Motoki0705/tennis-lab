@@ -445,6 +445,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "slcs.dataset_scene_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.person_tracking.scripts.migrate_features": (
+        "person_tracking.migrate_features",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.person_tracking.scripts.review_dataset": (
         "person_tracking.dataset_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -669,6 +673,10 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "main",
         domain="slcs",
         executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.person_tracking.scripts.migrate_features", "main",
+        domain="person_tracking", executable_module=True,
     ),
     _non_hydra_boundary(
         "src.tasks.person_tracking.scripts.review_dataset",
