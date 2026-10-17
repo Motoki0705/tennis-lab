@@ -49,8 +49,8 @@ def test_five_channel_stem_gets_gradients_in_a_full_cpu_graph(kind: str) -> None
     assert gradient is not None and (gradient.abs().sum((0, 2, 3)) > 0).all()
 
 
-@pytest.mark.parametrize("channels", [2, 5])
-def test_dpt_save_encoder_transfer_query_restore_and_model_io(tmp_path: Path, channels: int) -> None:
+@pytest.mark.parametrize("channels,historical", [(2, False), (5, False), (2, True)])
+def test_dpt_save_encoder_transfer_query_restore_and_model_io(tmp_path: Path, channels: int, historical: bool) -> None:
     torch.set_num_threads(2)
     source = MDDDPTDetector(config(channels)).eval()
     optimizer = torch.optim.AdamW(source.parameters())
@@ -58,6 +58,9 @@ def test_dpt_save_encoder_transfer_query_restore_and_model_io(tmp_path: Path, ch
     recipe = dict(input_contract=source.mdd.input_contract(), image_decode={})
     save_pretraining(path, source, optimizer, epoch=0, step=0, recipe=recipe, code={}, report={}, best=0., best_epoch=0)
     saved = torch.load(path, weights_only=True)
+    if historical:
+        saved["model_config"].pop("input_channels")
+        torch.save(saved, path)
     assert pretraining_config(saved) == source.config
     restored_dpt = MDDDPTDetector(pretraining_config(saved)).eval()
     restored_dpt.load_state_dict(saved["state_dict"], strict=True)
@@ -70,9 +73,11 @@ def test_dpt_save_encoder_transfer_query_restore_and_model_io(tmp_path: Path, ch
     for name, value in source.encoder.state_dict().items():
         torch.testing.assert_close(value, target.encoder.state_dict()[name], atol=0, rtol=0)
     recipe.update(parent=parent, model=asdict(target.config), manifest_sha256="fixture")
+    if historical:
+        recipe["model"].pop("input_channels")
     query_path = tmp_path / "query.pt"
     save_coordinate_checkpoint(dict(schema="mdd_query_posttraining.v1", stage="query_posttraining",
-        model_config=asdict(target.config), recipe=recipe, state_dict=target.state_dict()), query_path)
+        model_config=recipe["model"], recipe=recipe, state_dict=target.state_dict()), query_path)
     loaded, _, _ = restore_coordinate_model(torch.load(query_path, weights_only=True))
     loaded.eval()
     batch = dict(rgb=rgb, timestamps=times)
@@ -86,10 +91,13 @@ def test_config_and_contract_cannot_disagree_or_reinterpret_old_weights(tmp_path
     source = MDDDPTDetector(config(2))
     saved: dict[str, Any] = dict(schema="mdd_dpt_pretraining.v2", model_config=asdict(source.config),
                  recipe=dict(input_contract=source.mdd.input_contract()))
-    # Even an otherwise valid 2ch contract cannot fill in missing configuration.
+    # Missing channels need a complete, explicitly versioned historical contract.
     saved["model_config"].pop("input_channels")
-    with pytest.raises(ValueError, match="Incomplete pretraining CNN configuration"):
+    contract = saved["recipe"].pop("input_contract")
+    with pytest.raises(ValueError, match="input contract"):
         pretraining_config(saved)
+    saved["recipe"]["input_contract"] = contract
+    assert pretraining_config(saved) == source.config
     saved["model_config"]["input_channels"] = 5
     with pytest.raises(ValueError, match="input contract"):
         pretraining_config(saved)

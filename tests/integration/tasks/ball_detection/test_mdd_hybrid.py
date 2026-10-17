@@ -209,17 +209,20 @@ def test_transfer_only_reads_stage_two_and_leaves_all_new_parameters_initialized
     assert all(p.requires_grad for p in target.parameters())
 
 
-@pytest.mark.parametrize("violation", ["two_channels", "contract", "heads", "missing_weight", "extra_dpt", "shape", "stage_one"])
+@pytest.mark.parametrize("violation", ["two_channels", "historical_two_channels", "missing_channels", "contract", "heads", "missing_weight", "extra_dpt", "shape", "stage_one"])
 def test_transfer_rejects_incompatible_sources(tmp_path: Path, violation: str) -> None:
     cfg = MDDPretrainConfig(**asdict(config()))
-    if violation == "two_channels":
+    if violation in {"two_channels", "historical_two_channels"}:
         cfg = replace(cfg, input_channels=2)
     if violation == "heads":
         cfg = replace(cfg, heads=4)
     path = tmp_path / "query.pt"
     query_checkpoint(path, cfg=cfg, parent=tmp_path / "unused-parent.pt")
     saved = torch.load(path, weights_only=True)
-    if violation == "contract":
+    if violation in {"historical_two_channels", "missing_channels"}:
+        saved["model_config"].pop("input_channels")
+        saved["recipe"]["model"].pop("input_channels")
+    elif violation == "contract":
         saved["recipe"]["input_contract"]["rgb_normalization"] = "imagenet"
     elif violation == "missing_weight":
         del saved["state_dict"]["projection.weight"]
