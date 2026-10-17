@@ -88,6 +88,8 @@ summary、checkpoint・dataset hashと照合する。frameの欠落・順序違�
 負例frame当たり最大誤検出数と最小負例数を明示する。policy未設定時は共通管理が
 学習・評価を保存したうえで`not_configured`とし、現行モデルを維持する。
 採用時の世代比較とpointer更新は共通ModelRegistryが所有する。
+共通の必須`retained_references`契約には、recipe、固定partition、run binding、
+学習完了・来歴、比較評価文書の型付き参照を渡す。
 
 合成CPU試験は小さなDINO代替を使う。実Lightningのstrict初期重み読込、optimizer/schedule、
 best/last、途中再開、exportと共通lifecycleを通すが、実DINOのCUDA loss/勾配・検出品質・

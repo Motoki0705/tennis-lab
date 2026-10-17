@@ -109,6 +109,10 @@ class PlayerDetectionLightningModule(BaseLightningModule):
         self._evaluate(batch, self.val_metrics)
 
     def on_validation_epoch_end(self) -> None:
+        if self.trainer.sanity_checking:
+            # A sanity subset can contain only negatives; it cannot select a model.
+            self.val_metrics.reset()
+            return
         headline, _ = self.val_metrics.compute()
         self.val_metrics.reset()
         for name in HEADLINE_METRICS:
