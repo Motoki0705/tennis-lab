@@ -52,7 +52,6 @@ class DeepMDDEncoder(nn.Module):
     def __init__(self, config: MDDPretrainConfig) -> None:
         super().__init__()
         self.activation_checkpointing = config.activation_checkpointing
-        self.input_channels = config.input_channels
         widths = (*config.stem_channels, *config.mixed_channels)
         stages: list[nn.Module] = []
         previous = config.input_channels
@@ -71,8 +70,6 @@ class DeepMDDEncoder(nn.Module):
         self.feature_channels = widths[2:]
 
     def forward(self, mdd: Tensor) -> tuple[Tensor, ...]:
-        if mdd.ndim != 5 or mdd.shape[1] != self.input_channels:
-            raise ValueError(f"Encoder requires B,{self.input_channels},T,H,W input")
         b, c, t, height, width = mdd.shape
         x = mdd.transpose(1, 2).reshape(b * t, c, height, width)
         features: list[Tensor] = []

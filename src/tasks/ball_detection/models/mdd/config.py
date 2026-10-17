@@ -74,8 +74,7 @@ class MDDPretrainConfig:
     activation_checkpointing: bool
     encoder_variant: str
     temporal_mixing: str
-    # Missing in historical configs/checkpoints means the original 2ch model.
-    input_channels: int = 2
+    input_channels: int
 
     @property
     def frames(self) -> int:
@@ -106,7 +105,6 @@ class MDDPretrainConfig:
         raw = yaml.safe_load(path.read_text())
         if not isinstance(raw, dict) or raw.pop("name", None) != "mdd_dpt_pretrain":
             raise ValueError("Expected mdd_dpt_pretrain model config")
-        raw.setdefault("input_channels", 2)
         if set(raw) != set(cls.__dataclass_fields__):
             raise ValueError("Pretraining configuration must declare every field exactly")
         for name in ("stem_channels", "mixed_channels", "residual_blocks"):
@@ -118,7 +116,7 @@ class MDDPretrainConfig:
 class MDDHybridConfig(MDDPretrainConfig):
     """Stage three uses the explicit RGB+MDD contract and a fresh DPT decoder."""
 
-    input_channels: int = 5
+    input_channels: int
 
     def __post_init__(self) -> None:
         super().__post_init__()
