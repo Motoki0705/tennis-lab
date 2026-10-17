@@ -1,6 +1,5 @@
 ---
 title: "pre-commit の mypy は staged ファイルだけを --follow-imports=skip で検査する"
-type: gotcha
 applies_to: all
 source: "PR #613, PR #614, PR #627 (2026-07)"
 created: 2026-07-06
