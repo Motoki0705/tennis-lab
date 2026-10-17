@@ -3,7 +3,7 @@
 [親Issue #1088](https://github.com/Motoki0705/tennis-lab/issues/1088) の変更後設計。
 新規クリップにball/player検出器で予測案を作り、ローカルCodexによるレビュー・修正を経て
 採用データを公開する。公開が完了したキャンペーンごとに、前回の採用重みと累積教師から
-検出器を追加学習し、固定validationで条件を満たすモデルを次のキャンペーンへ渡す。
+検出器を継続学習し、検証で選んだ候補を設定済みの評価条件で比較して次のキャンペーンへ渡す。
 
 この文書は責務・依存・永続化の設計契約であり、機能が実装済みであることを示さない。
 実装と実データ検証の状態は各サブIssueで管理する。
@@ -18,6 +18,9 @@
 `load_plan(expected_digest=...)` で登録済みplanの改変を検出する。
 ballとposeが同じdataset versionを参照するときは、公開する `component` を分ける。
 素材の共有台帳・取得・明示区間の準備APIは [collection](collection/README.md) を参照する。
+ballのJPEG保存方式では、準備・照合後に動画を削除し、推論・GPT確認・公開・学習で同じJPEGを使う。
+URL・元動画hash・実時刻の来歴は保持する。保持条件と削除後の再開は
+[collectionの保存契約](collection/README.md#jpegを残して動画を削除する保存方式)を正本とする。
 工程の受付・予約と予算計測のAPIは [resources](resources/README.md) を参照する。
 保存台帳・inode別容量計測・GC dry-runは [storage](storage/README.md) を参照する。
 固定した並列条件と実workerの生存・資源・usageの比較証跡は [benchmarks](benchmarks/README.md) を参照する。
@@ -83,6 +86,11 @@ task adapterを選んでbaseへ渡すcomposition rootは、baseの外側に置�
 
 ## 3. 1キャンペーンの流れ
 
+planで指定したtask/productだけを実行する。以下は選択可能な工程を合わせた図であり、
+ball単独のplanがplayer・tracking・poseの完成を待つことはない。
+親controllerは用意された工程を運用し、未対応の機能や実装不具合は管理元へ戻す。
+短い実行指示の中で、別taskの機能開発へ作業を拡張しない。
+
 ```mermaid
 flowchart TD
     Plan["不変planを作る\n件数・モデル・方針・保存先・予算"] --> Source["共有台帳で新規素材を選ぶ"]
@@ -105,7 +113,8 @@ flowchart TD
     BBox --> Complete
     PoseStore --> Complete
     Complete --> Train["追加教師のあるtaskを累積学習\n前回採用重みから新run"]
-    Train --> Eval["固定validationで評価"]
+    Train --> Val["validationでcandidateを選ぶ"]
+    Val --> Eval["固定した比較用データで\n現行モデルとcandidateを評価"]
     Eval --> Select["task別に合否判定\n合格時のみ原子的採用"]
     Select --> Next["次のキャンペーンが新しい採用版を固定"]
 ```
@@ -263,7 +272,7 @@ stateDiagram-v2
     training --> evaluation_pending: checkpoint確定
     evaluation_pending --> evaluating
     evaluating --> evaluation_failed
-    evaluating --> selection_pending: 固定validation完了
+    evaluating --> selection_pending: 設定済み比較評価完了
     selection_pending --> policy_missing: 採用条件未設定
     selection_pending --> rejected: 条件不合格
     selection_pending --> stale_baseline: 比較元モデルが変更済み
@@ -276,8 +285,12 @@ optimizer/scheduleは追加学習recipeで明示する。
 同じrunのresumeは同じsnapshot・recipe・初期モデルを要求し、dataset差し替えに使わない。
 
 train/validation/testは元動画・clip identityで分離する。
-採用条件にはvalidationの指標、許容退行、支持数/評価完了条件を含める。
-testをcandidateの反復的な調整へ使わない。
+新規動画にも事前にsplitを割り当て、公開後に既存・新規の評価集合を固定できる。
+その生成recipeをplanに固定し、実際のmanifestは公開snapshotと結びつけてから学習intentに保存する。
+学習済み群を忘却防止に使う場合は、前モデルの学習manifestを根拠に抽出頻度を分ける。
+ballの[学習adapter](../../ball_detection/training/annotation/README.md)が群分け・評価集計を所有する。
+validationで一つのcandidateを選び、testは選ばれたcandidateと現行モデルの最終比較に使う。
+採用条件には指標、許容退行、支持数/評価完了条件を含め、testによるepochの選び直しはしない。
 MDDに存在しないconfidence/presenceを指標へ使わず、playerのpartial labelを完全教師と扱わない。
 
 採用時は「現在のモデル版が、評価した比較元と同じか」をtransaction内で照合する。

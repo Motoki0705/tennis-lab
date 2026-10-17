@@ -426,6 +426,7 @@ class BenchmarkRunner:
                             request, reason=f"invalid benchmark review service: {error}"
                         )
                     rows.append(row)
+                self.broker.flush()
                 all_complete = all(row["state"] == "complete" for row in rows)
                 observation = self._observe(force=all_complete)
             except BudgetStopped as error:

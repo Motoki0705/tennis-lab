@@ -23,8 +23,10 @@ from src.tasks.base.annotation.contracts import (
     FrameMap,
     FrameRange,
     SourceIdentity,
+    SourceProvenance,
     content_digest,
 )
+from src.tasks.base.annotation.jpeg_media import write_jpeg_archive
 from src.tasks.base.annotation.media import encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan
@@ -42,7 +44,11 @@ class Fixture:
 
 
 def example(
-    tmp_path: Path, count: int = 65, *, task: Literal["ball", "player"] = "ball"
+    tmp_path: Path,
+    count: int = 65,
+    *,
+    task: Literal["ball", "player"] = "ball",
+    jpeg: bool = False,
 ) -> Fixture:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -51,7 +57,12 @@ def example(
         layout,
         inputs / "inference.json",
         (
-            MDDInferenceConfig(stride=16, device="cpu", precision="float32")
+            MDDInferenceConfig(
+                stride=16,
+                device="cpu",
+                precision="float32",
+                decode="opencv_jpeg_rgb24_native" if jpeg else "pyav_rgb24_native",
+            )
             if task == "ball"
             else DinoInferenceConfig(
                 confidence_threshold=0.3, short_side=32, max_long_side=64
@@ -152,9 +163,17 @@ def example(
         media=media,
         origin_url="local:fixture",
     )
+    jpeg_storage = None
+    if jpeg:
+        archive = inputs / "frames.bin"
+        jpeg_storage = write_jpeg_archive(archive, video, timeline, 0, count)
+        media = annotation_reference(layout, archive)
+        video.unlink()
     manifest = ClipManifest(
-        source=source,
+        schema_version="annotation.clip.v2" if jpeg else "annotation.clip.v1",
+        source=SourceProvenance.from_source(source) if jpeg else source,
         media=media,
+        jpeg=jpeg_storage,
         preparation_digest="e" * 64,
         width=64,
         height=32,

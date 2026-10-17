@@ -108,6 +108,7 @@ metadata欠落、不明なidentity、scale/単位不一致はload/resume/evaluat
 - **`prefetch.py`**: イテレータの先読み `PrefetchIterator`。
 - **`video/transforms.py`**: `BgrToTensorTransform` と tensor の ImageNet 正規化。
 - **`encoding.py`**: JPEG エンコードと、選択フレームの JPEG 列挙。
+- **`jpeg_source.py`**: 不変動画から指定PTSの最大32枚を読み、固定codec環境でJPEGへ再生成する。publication時のframe別hashと照合し、画像入力を保持したまま動画を保存元に使う。
 - **`sampling.py`**: 秒指定の parse、time range ベース sampling、uniform sampling。
 - **`types.py`**: `VideoInfo`、`FramePacket`、`TemporalWindow`、`TemporalBatch`。
 - **`youtube.py`**: YouTube ダウンロード済み動画の探索、ダウンロード、H.264 向け encoder args、transcode。

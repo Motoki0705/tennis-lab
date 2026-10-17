@@ -27,6 +27,7 @@ from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan
 from ..registry import Registry
 from ..workers.processes import ProcessIdentity, owned_members, process_snapshot
+from . import host_space
 from .contracts import (
     BudgetLimits,
     BudgetResumption,
@@ -96,6 +97,7 @@ class ResourceManager:
             self._baseline_path()
             return
         self.registry.initialize("annotation.resources.v1", _SCHEMA)
+        self.registry.initialize("annotation.observed-host-space.v1", host_space.SCHEMA)
         self._baseline_path()
         with self.registry.transaction() as db:
             row = db.execute(
@@ -184,6 +186,7 @@ class ResourceManager:
         previously_allocated_bytes: int,
         previously_used_gpu_seconds: float,
         max_pending_per_stage: int,
+        free_space_mounts: tuple[Path, ...] = (),
     ) -> ResourceManager:
         if layout.review_namespace is not None:
             raise ValueError(
@@ -193,6 +196,7 @@ class ResourceManager:
             scope_id=scope_id,
             limits=limits,
             roots=tuple(str(p) for p in roots),
+            free_space_mounts=tuple(str(p) for p in free_space_mounts),
             previously_allocated_bytes=previously_allocated_bytes,
             previously_used_gpu_seconds=previously_used_gpu_seconds,
             max_pending_per_stage=max_pending_per_stage,
@@ -203,6 +207,10 @@ class ResourceManager:
             baseline=ArtifactRef(
                 role="annotation", path="pending", digest="0" * 64, size_bytes=0
             ),
+        )
+        free_bytes(
+            tuple(str(root) for root in roots),
+            mounts=tuple(str(path) for path in free_space_mounts),
         )
         if not any(layout.root.is_relative_to(root) for root in roots):
             raise ValueError("storage inventory must include the annotation root")
@@ -470,7 +478,11 @@ class ResourceManager:
             previous = ResourceSample.model_validate_json(cached["sample"])
             storage, storage_measured_at = (
                 previous.storage.model_copy(
-                    update={"free_bytes": free_bytes(self.scope.roots)}
+                    update={
+                        "free_bytes": free_bytes(
+                            self.scope.roots, mounts=self.scope.free_space_mounts
+                        )
+                    }
                 ),
                 previous.storage_measured_at,
             )
@@ -486,6 +498,7 @@ class ResourceManager:
                 self.scope.roots,
                 self._baseline_path(),
                 self.scope.previously_allocated_bytes,
+                free_space_mounts=self.scope.free_space_mounts,
             )
             storage_measured_at = measured_at
             storage_monotonic_ns = monotonic_ns
@@ -530,17 +543,37 @@ class ResourceManager:
                 Counter(row["stage"] for row in rows if row["state"] == "pending")
             ),
             stopped_reason=stopped,
+            free_space_mount_bytes={
+                mount: free_bytes((), mounts=(mount,))
+                for mount in self.scope.free_space_mounts
+            },
         )
 
     def _problem(self, sample: ResourceSample) -> str | None:
         limit = self.scope.limits
         if sample.storage.additional_bytes >= limit.additional_storage_bytes:
             return "additional storage budget reached"
-        if sample.storage.free_bytes < limit.minimum_free_bytes:
+        policy = host_space.current(self)
+        if policy is not None:
+            if free_bytes((), mounts=(policy.mount,)) < policy.minimum_free_bytes:
+                return f"observed host space below reserve: {policy.mount}"
+            ordinary_free = free_bytes(
+                self.scope.roots,
+                mounts=tuple(
+                    m for m in self.scope.free_space_mounts if m != policy.mount
+                ),
+            )
+        else:
+            ordinary_free = sample.storage.free_bytes
+        if ordinary_free < limit.minimum_free_bytes:
             return "free storage is below the required reserve"
         if sample.pss_bytes >= limit.total_pss_bytes:
             return "owned-process PSS budget reached"
-        if sample.gpu_charged_seconds + sample.gpu_active_seconds >= limit.gpu_seconds:
+        if (
+            limit.gpu_seconds is not None
+            and sample.gpu_charged_seconds + sample.gpu_active_seconds
+            >= limit.gpu_seconds
+        ):
             return "cumulative GPU time budget reached"
         return None
 
@@ -628,7 +661,7 @@ class ResourceManager:
                     result: ResourceSample = ResourceSample.model_validate_json(
                         cached["sample"]
                     )
-                    return result
+                    return self._watch_result(result)
                 sample: ResourceSample = self._sample(
                     refresh_storage=False, watchdog=True
                 )
@@ -659,9 +692,16 @@ class ResourceManager:
                 with path.open("ab") as handle:
                     handle.write(sample.canonical_bytes() + b"\n")
                     handle.flush()
-                return sample
+                return self._watch_result(sample)
         except BlockingIOError:
             return None
+
+    def _watch_result(self, sample: ResourceSample) -> ResourceSample:
+        # Observed-space operation cannot rely on reserved headroom. Supervisors
+        # catch this failure and terminate their own process groups, including GPU jobs.
+        if sample.stopped_reason is not None and host_space.current(self) is not None:
+            raise BudgetStopped(sample.stopped_reason)
+        return sample
 
     def resume(self, *, reason: str) -> ArtifactRef:
         if not reason.strip():
@@ -765,16 +805,29 @@ class ResourceManager:
             ):
                 raise CapacityUnavailable("PSS reservations do not fit")
             storage_reserved = sum(item.storage_bytes for item in requests)
+            policy = host_space.current(self)
+            admission_free = sample.storage.free_bytes
+            if policy is not None:
+                if policy.plan != request.plan:
+                    raise ValueError(
+                        "observed host-space policy is bound to another campaign"
+                    )
+                admission_free = free_bytes(
+                    self.scope.roots,
+                    mounts=tuple(
+                        m for m in self.scope.free_space_mounts if m != policy.mount
+                    ),
+                )
             if (
                 sample.storage.additional_bytes
                 + storage_reserved
                 + request.storage_bytes
                 > self.scope.limits.additional_storage_bytes
-                or sample.storage.free_bytes - storage_reserved - request.storage_bytes
+                or admission_free - storage_reserved - request.storage_bytes
                 < self.scope.limits.minimum_free_bytes
             ):
                 raise CapacityUnavailable("storage reservations do not fit")
-            if (
+            if self.scope.limits.gpu_seconds is not None and (
                 sample.gpu_charged_seconds
                 + sample.gpu_reserved_seconds
                 + request.gpu_seconds

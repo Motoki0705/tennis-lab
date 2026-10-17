@@ -33,6 +33,7 @@ from src.tasks.base.annotation.plan import (
 from src.tasks.base.annotation.reproducibility import require_frozen_code
 from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
 from src.tasks.base.annotation.resources.contracts import BudgetScope
+from src.tasks.base.annotation.resources.measurements import free_bytes
 from src.tasks.base.annotation.screening.contracts import ScreeningPolicy
 from src.utils.paths import PROJECT_ROOT
 
@@ -48,6 +49,7 @@ class NewBudget(Document):
     action: Literal["create"] = "create"
     scope_id: Identifier
     roots: tuple[str, ...] = Field(min_length=1)
+    free_space_mounts: tuple[str, ...] = ()
     previously_allocated_bytes: int = Field(ge=0)
     previously_used_gpu_seconds: float = Field(ge=0)
     max_pending_per_stage: PositiveInt
@@ -97,6 +99,7 @@ def validate_runtime(
 
 
 def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
+    scope: BudgetScope
     established = isinstance(data.budget, ExistingBudget)
     if isinstance(data.budget, ExistingBudget):
         scope = read_document(layout, data.budget.scope, BudgetScope)
@@ -110,6 +113,7 @@ def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
             scope_id=data.budget.scope_id,
             limits=BudgetLimits.from_budget(data.plan.resources),
             roots=data.budget.roots,
+            free_space_mounts=data.budget.free_space_mounts,
             baseline=ArtifactRef(
                 role="annotation", path="pending", digest="0" * 64, size_bytes=0
             ),
@@ -146,6 +150,7 @@ def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
         raise ValueError(
             "production inventory must include the complete main repository"
         )
+    free_bytes(scope.roots, mounts=scope.free_space_mounts)
     return scope
 
 
@@ -162,7 +167,31 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
         require_frozen_code(PROJECT_ROOT, plan)
     validate_inputs(layout, plan)
     read_document(layout, plan.selection, ScreeningPolicy)
-    read_document(layout, plan.preparation, PreparationConfig)
+    preparation = read_document(layout, plan.preparation, PreparationConfig)
+    if preparation.retained_media == "jpeg_q90":
+        from src.tasks.ball_detection.annotation.contracts import MDDInferenceConfig
+        from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+            BallPublicationPolicy,
+        )
+
+        if any(task.task != "ball" for task in plan.tasks):
+            raise ValueError(
+                "JPEG-only annotation currently requires a ball-only campaign"
+            )
+        for task in plan.tasks:
+            inference = read_document(layout, task.inference, MDDInferenceConfig)
+            if inference.decode != "opencv_jpeg_rgb24_native":
+                raise ValueError(
+                    "JPEG preparation requires the explicit JPEG inference decoder"
+                )
+            for product in task.products:
+                policy = read_document(
+                    layout, product.generation_policy, BallPublicationPolicy
+                )
+                if policy.image_storage != "jpeg" or policy.jpeg_quality != 90:
+                    raise ValueError(
+                        "JPEG preparation requires unchanged Q90 JPEG publication"
+                    )
     if any(task.task not in {"ball", "player"} for task in plan.tasks):
         raise ValueError("workflow has no adapter for a configured task")
     required = {
@@ -198,7 +227,10 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
         if (
             cost.pss_bytes > scope.limits.total_pss_bytes
             or cost.storage_bytes > scope.limits.additional_storage_bytes
-            or cost.gpu_seconds > scope.limits.gpu_seconds
+            or (
+                scope.limits.gpu_seconds is not None
+                and cost.gpu_seconds > scope.limits.gpu_seconds
+            )
         ):
             raise ValueError("a stage reservation exceeds the total campaign budget")
     directory = layout.path("campaigns", plan.campaign_id, "configuration")
@@ -220,6 +252,7 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
                 previously_allocated_bytes=scope.previously_allocated_bytes,
                 previously_used_gpu_seconds=scope.previously_used_gpu_seconds,
                 max_pending_per_stage=scope.max_pending_per_stage,
+                free_space_mounts=tuple(Path(path) for path in scope.free_space_mounts),
             )
         resources.bind(plan)
         request_ref = write_document(layout, directory / "request.json", data)

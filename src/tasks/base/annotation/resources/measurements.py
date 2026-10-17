@@ -7,6 +7,7 @@ import os
 import stat as stat_modes
 import subprocess
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..workers.processes import ProcessIdentity, process_snapshot
@@ -71,8 +72,69 @@ def gpu_usage(pids: set[int]) -> GPUUsage:
         )
 
 
+def _parallel_metadata_roots(roots: tuple[str, ...]) -> tuple[str, ...]:
+    """Use bounded I/O concurrency for 9p mounts, including WSL host volumes."""
+    mounts = []
+    for line in Path("/proc/self/mountinfo").read_text().splitlines():
+        fields, separator, filesystem = line.partition(" - ")
+        if not separator:
+            raise ValueError("invalid Linux mount information")
+        mount = fields.split()[4]
+        for escaped, decoded in (
+            (r"\040", " "),
+            (r"\011", "\t"),
+            (r"\012", "\n"),
+            (r"\134", "\\"),
+        ):
+            mount = mount.replace(escaped, decoded)
+        mounts.append((Path(mount), filesystem.split()[0]))
+    mounts.sort(key=lambda item: len(item[0].parts), reverse=True)
+    return tuple(
+        root
+        for root in roots
+        if next(kind for mount, kind in mounts if Path(root).is_relative_to(mount))
+        == "9p"
+    )
+
+
+def _metadata_entry(
+    path: str,
+) -> tuple[str, os.stat_result, tuple[str, ...]] | None:
+    try:
+        metadata = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    children: tuple[str, ...] = ()
+    if stat_modes.S_ISDIR(metadata.st_mode):
+        try:
+            with os.scandir(path) as entries:
+                children = tuple(item.path for item in entries)
+        except FileNotFoundError:
+            pass
+    return path, metadata, children
+
+
+def _parallel_allocations(
+    roots: tuple[str, ...],
+) -> Iterator[tuple[str, os.stat_result]]:
+    # Bound both simultaneous host requests and queued futures. No metadata is
+    # reused between inventories, and permission/I/O errors remain fatal.
+    pending = list(roots)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        while pending:
+            batch = [pending.pop() for _ in range(min(64, len(pending)))]
+            for result in executor.map(_metadata_entry, batch):
+                if result is not None:
+                    path, metadata, children = result
+                    yield path, metadata
+                    pending.extend(children)
+
+
 def allocations(roots: tuple[str, ...]) -> Iterator[tuple[str, os.stat_result]]:
+    parallel = _parallel_metadata_roots(roots)
     for root in roots:
+        if root in parallel:
+            continue
         pending = [Path(root)]
         while pending:
             path = pending.pop()
@@ -87,6 +149,7 @@ def allocations(roots: tuple[str, ...]) -> Iterator[tuple[str, os.stat_result]]:
                         pending.extend(Path(item.path) for item in entries)
                 except FileNotFoundError:
                     continue
+    yield from _parallel_allocations(parallel)
 
 
 def write_baseline(path: Path, roots: tuple[str, ...]) -> None:
@@ -105,7 +168,7 @@ def write_baseline(path: Path, roots: tuple[str, ...]) -> None:
         os.fsync(handle.fileno())
 
 
-def free_bytes(roots: tuple[str, ...]) -> int:
+def free_bytes(roots: tuple[str, ...], *, mounts: tuple[str, ...] = ()) -> int:
     available = []
     for root in roots:
         path = Path(root)
@@ -113,10 +176,24 @@ def free_bytes(roots: tuple[str, ...]) -> int:
             path = path.parent
         stat = os.statvfs(path)
         available.append(stat.f_bavail * stat.f_frsize)
+    for mount in mounts:
+        path = Path(mount)
+        # A detached host volume can leave an ordinary directory behind. Never
+        # measure that directory's parent filesystem as the configured volume.
+        if path.resolve() != path or not path.is_mount():
+            raise ValueError(f"required free-space mount is unavailable: {mount}")
+        stat = os.statvfs(path)
+        available.append(stat.f_bavail * stat.f_frsize)
     return min(available)
 
 
-def storage_usage(roots: tuple[str, ...], baseline: Path, prepaid: int) -> StorageUsage:
+def storage_usage(
+    roots: tuple[str, ...],
+    baseline: Path,
+    prepaid: int,
+    *,
+    free_space_mounts: tuple[str, ...] = (),
+) -> StorageUsage:
     # Keep the original anchor: deleting old files cannot credit new files elsewhere.
     prior: dict[tuple[int, int], tuple[int, str]] = {}
     with baseline.open() as handle:
@@ -146,7 +223,7 @@ def storage_usage(roots: tuple[str, ...], baseline: Path, prepaid: int) -> Stora
         logical_bytes=logical,
         entries=count,
         unique_inodes=len(seen),
-        free_bytes=free_bytes(roots),
+        free_bytes=free_bytes(roots, mounts=free_space_mounts),
     )
 
 

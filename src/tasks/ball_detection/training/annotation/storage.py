@@ -48,14 +48,20 @@ def input_references(
         inputs.prepared_ref,
         *references(inputs.prepared),
         *references(inputs.recipe),
+        *references(inputs.fixed),
     ]
     snapshots = {intent.train.manifest, inputs.prepared.snapshot}
     if publication.base_snapshot is not None:
         snapshots.add(publication.base_snapshot)
-    for partition in (
+    partitions = [
         inputs.fixed.validation,
         *((inputs.fixed.test,) if inputs.fixed.test is not None else ()),
-    ):
+    ]
+    if inputs.fixed.original is not None:
+        original = read_document(layout, inputs.fixed.original, FixedEvaluation)
+        refs.extend(references(original))
+        partitions.extend((original.validation, *((original.test,) if original.test else ())))
+    for partition in partitions:
         holdout = read_document(layout, partition.manifest, HoldoutWindows)
         refs.extend((partition.manifest, *references(holdout)))
         snapshots.add(holdout.snapshot)

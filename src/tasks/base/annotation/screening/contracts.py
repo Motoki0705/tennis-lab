@@ -101,7 +101,7 @@ class SourceDecision(Document):
     )
     source_sha256: Digest
     requested_maximum: PositiveInt
-    status: Literal["accepted", "insufficient"]
+    status: Literal["accepted", "insufficient", "deferred"]
     match_type: Literal["singles", "doubles", "mixed_content", "unknown"]
     surface: str = Field(min_length=1)
     setting: str = Field(min_length=1)
@@ -114,7 +114,9 @@ class SourceDecision(Document):
     def count_and_overlap(self) -> Self:
         if len(self.clips) > self.requested_maximum:
             raise ValueError("selected clips exceed the requested maximum")
-        if (self.status == "accepted") != (len(self.clips) == self.requested_maximum):
+        if self.status != "deferred" and (
+            (self.status == "accepted") != (len(self.clips) == self.requested_maximum)
+        ):
             raise ValueError(
                 "accepted requires the requested count; a shortage is insufficient"
             )

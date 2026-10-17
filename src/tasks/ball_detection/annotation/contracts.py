@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from src.tasks.base.annotation.contracts import Digest, Document
+from src.tasks.base.annotation.contracts import ClipManifest, Digest, Document
 
 
 class MDDCheckpointSpec(Document):
@@ -29,9 +29,22 @@ class MDDInferenceConfig(Document):
         "nearest_window_center_then_earliest_start"
     )
     coordinates: Literal["native_pixel_endpoint"] = "native_pixel_endpoint"
-    decode: Literal["pyav_rgb24_native"] = "pyav_rgb24_native"
+    decode: Literal["pyav_rgb24_native", "opencv_jpeg_rgb24_native"] = (
+        "pyav_rgb24_native"
+    )
     device: Literal["cuda", "cpu"]
     precision: Literal["float32", "bfloat16"]
+
+    def validate_media(self, manifest: ClipManifest) -> None:
+        expected = (
+            "opencv_jpeg_rgb24_native"
+            if manifest.jpeg is not None
+            else "pyav_rgb24_native"
+        )
+        if self.decode != expected:
+            raise ValueError(
+                "frozen inference decoder differs from the prepared media format"
+            )
 
 
 class BallProposal(Document):

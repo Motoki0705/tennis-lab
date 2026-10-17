@@ -57,6 +57,11 @@ class LearningRuntime(Document):
         return self
 
 
+class ReplaySampling(Document):
+    previously_trained_manifest: ArtifactRef
+    untrained_fraction: float = Field(gt=0, lt=1)
+
+
 class BallLearningRecipe(Document):
     schema_version: Literal["ball.annotation-learning-recipe.v1"] = (
         "ball.annotation-learning-recipe.v1"
@@ -75,6 +80,7 @@ class BallLearningRecipe(Document):
     log_every: int = Field(ge=1)
     preview_clips: int = Field(ge=0)
     stress_evaluation: bool
+    replay: ReplaySampling | None = None
 
     @_after
     def training_budget(self) -> Self:
@@ -114,6 +120,15 @@ class BallSelectionPolicy(Document):
         return self
 
 
+class BalancedSelectionPolicy(Document):
+    schema_version: Literal["ball.annotation-balanced-selection.v1"] = "ball.annotation-balanced-selection.v1"
+    existing_weight: float = Field(default=0.5, ge=0.5, le=0.5)
+    new_weight: float = Field(default=0.5, ge=0.5, le=0.5)
+    strict_improvement: Literal[True] = True
+    maximum_existing_regression_px: float = Field(default=0.0, ge=0.0, le=0.0)
+    minimum_frames_per_fps: int = Field(ge=1)
+
+
 class BallTrainingProvenance(Document):
     schema_version: Literal["ball.annotation-training-provenance.v1"] = (
         "ball.annotation-training-provenance.v1"
@@ -138,3 +153,4 @@ class BallEvaluationMetrics(Document):
     request: ArtifactRef
     validation_manifest: ArtifactRef
     comparison: ArtifactRef
+    test_manifest: ArtifactRef | None = None

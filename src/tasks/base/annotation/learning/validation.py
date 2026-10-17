@@ -6,7 +6,7 @@ from ..artifacts import read_document, verify_reference
 from ..contracts import ArtifactRef, Document, PublicationReceipt
 from ..execution.contracts import StageExit, StageLaunch
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, load_plan, references
+from ..plan import CampaignPlan, LearningPlan, load_plan, references
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -75,6 +75,17 @@ def check_partitions(*partitions: DatasetPartition) -> None:
         clips.update(partition.clips)
 
 
+def check_evaluation_binding(layout: AnnotationLayout, plan: LearningPlan, intent: LearningIntent) -> None:
+    fixed = read_document(layout, intent.fixed_evaluation, FixedEvaluation)
+    if intent.evaluation_recipe != plan.evaluation_recipe:
+        raise ValueError("learning evaluation recipe differs from the frozen plan")
+    if plan.evaluation_recipe is None:
+        if intent.fixed_evaluation != plan.validation or fixed.recipe is not None:
+            raise ValueError("learning fixed evaluation differs from the frozen plan")
+    elif (fixed.recipe, fixed.original) != (plan.evaluation_recipe, plan.validation):
+        raise ValueError("resolved evaluation differs from the planned recipe or original holdouts")
+
+
 def completed_request(
     layout: AnnotationLayout, completed: CompletedStage
 ) -> StageInput:
@@ -140,15 +151,14 @@ def check_evaluation_value(
     if (
         task.model,
         task.learning.recipe,
-        task.learning.validation,
         task.learning.selection_policy,
     ) != (
         intent.parent.model,
         intent.recipe,
-        intent.fixed_evaluation,
         intent.selection_policy,
     ):
         raise ValueError("learning intent differs from its frozen plan")
+    check_evaluation_binding(layout, task.learning, intent)
     if (
         request.stage != "evaluate"
         or result.request != completed.request
@@ -161,6 +171,7 @@ def check_evaluation_value(
     if (
         result.baseline != intent.parent
         or result.validation != fixed.validation
+        or result.test != (fixed.test if fixed.recipe is not None else None)
         or fixed.task != intent.task
     ):
         raise ValueError("evaluation baseline or fixed validation changed")

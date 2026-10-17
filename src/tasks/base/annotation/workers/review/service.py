@@ -25,8 +25,7 @@ from ...paths import AnnotationLayout
 from ...plan import CampaignPlan
 from ...telemetry.contracts import RenderedImage
 from ..contracts import Launch, WorkRequest
-from ..ledger import WorkerLedger
-from ..services import ServiceRequest
+from ..services import ServiceRequest, require_active_attempt
 from .contracts import (
     MAX_EDIT_BYTES,
     MAX_PARAMETERS_BYTES,
@@ -118,21 +117,7 @@ def service_input(
 
 
 def require_active(layout: AnnotationLayout, attempt: ReviewAttempt) -> None:
-    ledger = WorkerLedger(layout)
-    row = ledger.task(attempt.launch.work_id)
-    with ledger.registry.transaction() as db:
-        saved = db.execute(
-            "SELECT launch FROM worker_attempts WHERE id=? AND work_id=?",
-            (attempt.launch.attempt, attempt.launch.work_id),
-        ).fetchone()
-    if (
-        row["state"] != "running"
-        or row["current_attempt"] != attempt.launch.attempt
-        or saved is None
-        or ArtifactRef.model_validate_json(saved["launch"]) != attempt.actor
-        or (attempt.directory / "exit.json").exists()
-    ):
-        raise ValueError("review service requires the current running worker attempt")
+    require_active_attempt(layout, attempt.launch, attempt.actor)
 
 
 def execute_service(

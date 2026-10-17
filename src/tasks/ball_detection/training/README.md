@@ -76,6 +76,8 @@ stage 3の教師仕様で明示する必要がある。
 既存窓はプレイ区間・最低位置教師数で選別するため、全不在／非プレー窓の供給は別途設計する。
 
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
+保存済みbestの指標は、学習時と同じrecipeの`selection_scope`で再計算して照合する。
+`balanced_existing_new`では既存・新規validationの等重み平均を使い、Commonで代用しない。
 最終epoch保存後に完了記録を残す前に停止した場合は、更新を追加せず残りのstress評価と完了記録を再開する。
 full_modelでは元の初期checkpoint/hashを指定したまま、当該run内のcheckpointを`--resume`に渡す。
 新しい親モデル・累積データを使う次サイクルと、同一サイクルの中断再開を区別する。
@@ -93,7 +95,9 @@ coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習�
 validationは同じclip/frame/FPSを窓中心に近い予測で一度採点し、同距離なら早いstartを使う。
 Commonはpose側とGT/split等のidentityが一致するsubset、Fullは全validation。
 full_modelの単独CLI評価は`--mode coordinates --split val --manifest <固定validation manifest>`を使い、保存済み`validation_manifest_sha256`と照合する。累積trainのmanifestでは代用できない。
-FPSごとの平均source-pixel誤差を等重み平均し、事後学習のbestはclean Commonで選ぶ。testは使わない。
+FPSごとの平均source-pixel誤差を等重み平均する。事後学習のbestは既定ではclean Common、
+新旧cohortを持つ固定manifestでは明示した`balanced_existing_new`で選ぶ。選択にtestは使わない。
+注釈cycleのreplay比率・新旧評価・最終採否は[annotation/](annotation/README.md)を参照する。
 
 `evaluation/fixed_validation.py`は採用MDDと候補の学習manifestが異なる場合も、同じ固定validation loader、
 decoder・precision・compile設定で比較する。採点するFPS/clip/frame集合を教師maskから事前計算し、

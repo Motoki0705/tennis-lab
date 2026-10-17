@@ -13,7 +13,10 @@
   digestを固定する。既存の `restore_coordinate_model` で全重みをstrict復元し、
   MDD-only query modelであることを確認する。pose依存modelを別方式に読み替えない。
 - `MDDInferenceConfig` は32frame、stride、重複処理、復号方式、座標系、device、精度を
-  固定する。RGBはPyAVでnative解像度のuint8へ復号し、resize/JPEG再圧縮を行わない。
+  固定する。JPEG準備では `opencv_jpeg_rgb24_native`、既存動画入力では `pyav_rgb24_native` を指定し、
+  manifestの保存形式と異なる設定を拒否する。保存済みJPEGをOpenCVでnative解像度のRGB uint8へ復号し、
+  推論時のresize/JPEG再圧縮を行わない。媒体と削除・再取得の契約は
+  [collection](../../base/annotation/collection/README.md#jpegを残して動画を削除する保存方式)を参照する。
   窓の先頭を基準とする実source PTSの秒をfloat32で渡す。MDD前処理の正本は既存model。
 - 最後の窓は末尾の実32frameから始め、全frameを覆う。32frame未満は理由付きで
   拒否し、padding/同一frameの複製は行わない。通常の15秒選別clipで不足することを
@@ -25,7 +28,9 @@
 - 出力は `coordinates_only_unreviewed`。confidence・球の有無・可視性を作らない。
   対象球や遮蔽等の意味は後続レビューの責務であり、座標だけで教師採用しない。
 - 1 adapter instanceに1モデル・1推論設定を保持し、複数clipで再利用する。CPUに
-  置くRGBは1窓分と逐次decode中の1frameに限定する。複数レビューworkerにモデルを
+  置くRGBは1窓分と逐次decode中の1frameに限定する。媒体を先頭から順に読み、
+  重なる実frameを同じbufferで保持する。末尾窓を含め、窓ごとのRGBとPTSは維持する。
+  複数レビューworkerにモデルを
   複製せず、GPU実行は共有training queueと資源admission側で管理する。
 
 保存先は `predictions/ball/<clip-id>/<request-digest>/` の `coordinates.json` と

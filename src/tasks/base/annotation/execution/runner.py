@@ -52,7 +52,13 @@ def validate_launch(layout: AnnotationLayout, launch: StageLaunch) -> None:
     if layout.mode == "production":
         if launch.test_root is not None:
             raise ValueError("test root is forbidden in production")
-        require_frozen_code(PROJECT_ROOT, plan)
+        require_frozen_code(
+            PROJECT_ROOT,
+            plan,
+            layout=layout,
+            revision=launch.code_revision,
+            scope=launch.scope,
+        )
     elif launch.test_root != str(layout.root):
         raise ValueError("test stages must explicitly pin their isolated root")
 

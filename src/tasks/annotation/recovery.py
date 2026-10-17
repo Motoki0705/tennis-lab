@@ -13,6 +13,7 @@ from src.tasks.base.annotation.artifacts import (
     write_document,
 )
 from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.learning.contracts import (
     CampaignCompletion,
     LearningIntent,
@@ -21,8 +22,11 @@ from src.tasks.base.annotation.plan import references
 from src.tasks.base.annotation.workers.contracts import WorkRequest
 
 from .contracts import (
+    CancelPendingStage,
+    ObserveHostSpace,
     RecoveryInput,
     RecoveryReceipt,
+    ReopenScreening,
     ResumeWorkers,
     RetryLearning,
     RetryWorker,
@@ -47,7 +51,9 @@ def recover(controller: Controller, data: RecoveryInput) -> ArtifactRef:
     ):
         request_ref = write_document(layout, directory / "request.json", data)
         if (directory / "result.json").exists():
-            result_ref = annotation_reference(layout, directory / "result.json")
+            result_ref: ArtifactRef = annotation_reference(
+                layout, directory / "result.json"
+            )
             result = read_document(layout, result_ref, RecoveryReceipt)
             if result.request != request_ref:
                 raise ValueError("recovery receipt belongs to another request")
@@ -57,11 +63,53 @@ def recover(controller: Controller, data: RecoveryInput) -> ArtifactRef:
         result = RecoveryReceipt(request=request_ref)
         if isinstance(operation, ResumeWorkers):
             controller.pool.ledger.resume_campaign(controller.plan.campaign_id)
+        elif isinstance(operation, ObserveHostSpace):
+            from src.tasks.base.annotation.resources.contracts import (
+                ObservedHostSpacePolicy,
+            )
+            from src.tasks.base.annotation.resources.host_space import activate
+
+            policy = read_document(layout, operation.policy, ObservedHostSpacePolicy)
+            if policy.plan != data.plan:
+                raise ValueError("observed host-space policy belongs to another plan")
+            activate(controller.resources, operation.policy)
+        elif isinstance(operation, CancelPendingStage):
+            launch = read_document(layout, operation.launch, StageLaunch)
+            if (
+                launch.resource.plan != data.plan
+                or launch.scope != controller.runtime.scope
+            ):
+                raise ValueError(
+                    "pending stage belongs to another plan or resource scope"
+                )
+            manager = controller.resources
+            with manager.registry.transaction() as db:
+                row = db.execute(
+                    "SELECT state,reason FROM resource_requests WHERE id=?",
+                    (manager.key(launch.resource),),
+                ).fetchone()
+            if (
+                row is None
+                or row["state"] != "cancelled"
+                or row["reason"] != data.reason
+            ):
+                manager.cancel_pending(launch.resource, reason=data.reason)
+        elif isinstance(operation, ReopenScreening):
+            from .screening_recovery import reopen_incomplete_screening
+
+            reopen_incomplete_screening(controller, request_ref, data)
         elif isinstance(operation, RetryWorker):
             request = read_document(layout, operation.request, WorkRequest)
             if request.adapter == "ball_review" and controller.production is not None:
                 pool = controller.production.pool
             elif request.adapter == "source_screening":
+                source = controller.collection.ledger.source(
+                    controller.plan, request.subject_id
+                )
+                if source["state"] == "prepared":
+                    raise ValueError(
+                        "prepared source selection is immutable; resume preparation rather than retrying screening"
+                    )
                 pool = controller.pool
             else:
                 raise ValueError("worker recovery has no configured adapter")

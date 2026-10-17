@@ -15,6 +15,8 @@ from src.tasks.base.annotation.collection.contracts import (
     SourceCandidate,
 )
 from src.tasks.base.annotation.collection.ledger import CollectionLedger
+from src.tasks.base.annotation.collection.restoration import verify_restoration
+from src.tasks.base.annotation.collection.retirement import verify_acquisition_media
 from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.execution.runner import StageRunner
@@ -25,6 +27,7 @@ from src.tasks.base.annotation.plan import (
     require_execution_layout,
 )
 from src.tasks.base.annotation.predictions import PredictionContext, PredictionReceipt
+from src.tasks.base.annotation.reproducibility import CodeRevision, require_frozen_code
 from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
@@ -38,8 +41,10 @@ from .contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    RestoreSourceOperation,
     Runtime,
     ScreenOperation,
+    ServiceSessionOperation,
 )
 
 
@@ -129,6 +134,10 @@ class Operations:
                         "only a failed or interrupted operation can be retried"
                     )
         cost = self.runtime.cost(data.stage)
+        storage_bytes = cost.storage_bytes
+        if isinstance(data.operation, ServiceSessionOperation):
+            # Runtime costs remain per request, including after a code update.
+            storage_bytes *= data.operation.maximum_requests
         request_id = f"{data.logical_id}-{attempt}"
         directory = self.layout.path(
             "campaigns", self.plan.campaign_id, "jobs", request_id
@@ -149,13 +158,14 @@ class Operations:
         if self.layout.mode == "test":
             command += ["--test-root", str(self.layout.root)]
         launch = StageLaunch(
+            code_revision=self.runtime.code_revision,
             scope=self.runtime.scope,
             resource=ResourceRequest(
                 request_id=request_id,
                 plan=self.runtime.plan,
                 stage=data.stage,
                 pss_bytes=cost.pss_bytes,
-                storage_bytes=cost.storage_bytes,
+                storage_bytes=storage_bytes,
                 gpu_seconds=cost.gpu_seconds,
             ),
             command=tuple(command),
@@ -171,7 +181,52 @@ class Operations:
             launch_ref = annotation_reference(self.layout, path)
             existing = read_document(self.layout, launch_ref, StageLaunch)
             if existing != launch:
-                raise ValueError("operation resource/command configuration changed")
+                comparable = existing.model_copy(
+                    update={
+                        "code_root": launch.code_root,
+                        "code_revision": launch.code_revision,
+                        "command": (launch.command[0], *existing.command[1:]),
+                    }
+                )
+                if (
+                    isinstance(data.operation, ServiceSessionOperation)
+                    and self.runtime.code_revision is not None
+                    and existing.code_revision != self.runtime.code_revision
+                    and existing.resource.storage_bytes == cost.storage_bytes
+                ):
+                    revision = read_document(
+                        self.layout, self.runtime.code_revision, CodeRevision
+                    )
+                    previous_runtime = read_document(
+                        self.layout, revision.previous_runtime, Runtime
+                    )
+                    if previous_runtime.costs == self.runtime.costs:
+                        # Read legacy one-request reservations only as history.
+                        # The immutable launch is never changed or resubmitted.
+                        comparable = comparable.model_copy(
+                            update={
+                                "resource": existing.resource.model_copy(
+                                    update={"storage_bytes": storage_bytes}
+                                )
+                            }
+                        )
+                if (
+                    self.runtime.code_revision is None
+                    or comparable != launch
+                    or existing.command[0] != existing.code_root + "/.venv/bin/python"
+                ):
+                    raise ValueError("operation resource/command configuration changed")
+                require_frozen_code(
+                    PROJECT_ROOT,
+                    self.plan,
+                    layout=self.layout,
+                    revision=self.runtime.code_revision,
+                    scope=self.runtime.scope,
+                )
+                # A recorded attempt keeps its original code and launch forever.
+                # Pending old-code attempts require explicit cancellation/retry.
+                old_state: dict[str, Any] = self.stages.status(launch_ref)
+                return old_state
             state: dict[str, Any] = self.stages.status(launch_ref)
             # Backlog rejection can leave a launch without a resource request.
             # Both unregistered and pending requests can resume the same attempt.
@@ -235,13 +290,34 @@ class Operations:
             ):
                 raise ValueError("acquisition receipt differs from the frozen source")
             for dependency in references(acquisition):
-                verify_reference(self.layout, dependency)
+                if dependency == acquisition.source.media:
+                    verify_acquisition_media(
+                        self.layout, self.plan, operation.source_id,
+                        receipt.results[0], acquisition,
+                    )
+                else:
+                    verify_reference(self.layout, dependency)
             if receipt.status == "not_applicable" and (
                 source["state"] != "excluded"
                 or not receipt.reason
                 or receipt.reason != source["reason"]
             ):
                 raise ValueError("source exclusion differs from its registered reason")
+        elif isinstance(operation, RestoreSourceOperation):
+            if len(receipt.results) != 1:
+                raise ValueError("source restoration must return exactly one receipt")
+            restoration = verify_restoration(
+                self.layout, self.plan, operation.source_id,
+                operation.attempt, receipt.results[0],
+            )
+            expected_status = (
+                "complete" if restoration.status == "restored" else "not_applicable"
+            )
+            expected_reason = (
+                None if restoration.status == "restored" else restoration.reason
+            )
+            if (receipt.status, receipt.reason) != (expected_status, expected_reason):
+                raise ValueError("operation result differs from the restoration outcome")
         elif receipt.status == "not_applicable":
             raise ValueError("this operation cannot return a source exclusion")
         if isinstance(data.operation, PredictOperation):

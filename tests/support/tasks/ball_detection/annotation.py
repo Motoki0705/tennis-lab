@@ -43,6 +43,7 @@ from src.tasks.base.annotation.contracts import (
     FrameRange,
     ModelRef,
     SourceIdentity,
+    SourceProvenance,
     content_digest,
 )
 from src.tasks.base.annotation.editing import (
@@ -53,6 +54,7 @@ from src.tasks.base.annotation.editing import (
 )
 from src.tasks.base.annotation.images import render_page
 from src.tasks.base.annotation.images.contracts import Crop, Point, RenderRequest, Tile
+from src.tasks.base.annotation.jpeg_media import write_jpeg_archive
 from src.tasks.base.annotation.media import encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, LearningPlan, save_plan
@@ -118,7 +120,9 @@ class Environment:
         dataset_version: str = "fixture",
         video_id: str = "fixture",
         campaign_id: str = "review",
+        actor_attempt: str = "first",
         frame_count: int = 32,
+        jpeg: bool = False,
         model: ModelRef | None = None,
         learning: LearningPlan | None = None,
         plan_transform: Callable[[CampaignPlan], CampaignPlan] | None = None,
@@ -146,7 +150,15 @@ class Environment:
                     av.VideoFrame.from_ndarray(
                         np.full(
                             (32, 64, 3),
-                            i * 7 + (0 if video_id == "fixture" else 1),
+                            (
+                                i * 7
+                                + (
+                                    0
+                                    if video_id == "fixture"
+                                    else 1 + sum(video_id.encode()) % 16
+                                )
+                            )
+                            % 256,
                             dtype=np.uint8,
                         ),
                         format="rgb24",
@@ -190,6 +202,20 @@ class Environment:
                 )
             ),
         )
+        if jpeg:
+            assert isinstance(self.manifest.source, SourceIdentity)
+            archive = media_path.with_name("frames.bin")
+            storage = write_jpeg_archive(archive, media_path, native, 0, frame_count)
+            self.manifest = ClipManifest.model_validate(
+                {
+                    **self.manifest.model_dump(),
+                    "schema_version": "annotation.clip.v2",
+                    "source": SourceProvenance.from_source(self.manifest.source),
+                    "media": annotation_reference(self.layout, archive),
+                    "jpeg": storage,
+                }
+            )
+            media_path.unlink()
         self.manifest_ref = self.save(self.manifest)
         self.blob = write_asset(
             self.layout,
@@ -211,7 +237,12 @@ class Environment:
         )
         policy_ref = self.save(self.policy)
         inference = self.save(
-            MDDInferenceConfig(stride=16, device="cpu", precision="float32")
+            MDDInferenceConfig(
+                stride=16,
+                device="cpu",
+                precision="float32",
+                decode="opencv_jpeg_rgb24_native" if jpeg else "pyav_rgb24_native",
+            )
         )
         model = model or ModelRef(
             task="ball",
@@ -298,7 +329,7 @@ class Environment:
             origin_url=self.manifest.source.origin_url,
             selection_reason="synthetic review fixture",
             evidence=self.plan.selection,
-            local_media=self.manifest.source.media,
+            local_media=media,
         )
         predictions = Predictions(self.layout, self.plan)
         if collect_source is not None:
@@ -316,7 +347,7 @@ class Environment:
         self.adapter, self.store = BallReviewAdapter(), RevisionStore(self.layout)
         self.initial = self.store.initialize(self.context, self.adapter)
         self.context_ref = read_document(self.layout, self.initial, Revision).context
-        self.actor = self.new_actor("first")
+        self.actor = self.new_actor(actor_attempt)
 
     def _register_source(
         self,
