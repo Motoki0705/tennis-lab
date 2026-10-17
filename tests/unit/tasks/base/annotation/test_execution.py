@@ -7,7 +7,11 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
+from threading import Event
 
 import pytest
 
@@ -29,7 +33,11 @@ from src.tasks.base.annotation.execution.queue import (
     queue_state,
     validate_queue,
 )
-from src.tasks.base.annotation.execution.runner import StageRunner, stage_directory
+from src.tasks.base.annotation.execution.runner import (
+    StageRunner,
+    stage_directory,
+    stage_lock,
+)
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
 from src.tasks.base.annotation.reproducibility import require_frozen_code
@@ -39,6 +47,7 @@ from src.tasks.base.annotation.resources import (
     ResourceManager,
     ResourceRequest,
 )
+from src.tasks.base.annotation.resources.measurements import process_usage
 from src.tasks.base.annotation.workers.processes import owned_members, process_snapshot
 from src.utils.paths import PROJECT_ROOT
 
@@ -46,6 +55,11 @@ from src.utils.paths import PROJECT_ROOT
 @pytest.fixture
 def setup(tmp_path: Path) -> tuple[AnnotationLayout, ResourceManager, StageLaunch]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
+    controller = process_snapshot(os.getpid())
+    assert controller is not None
+    controller_pss = sum(
+        item.pss_bytes for item in process_usage((), (controller[0],))
+    )
     ref = write_asset(layout, layout.path("campaigns", "input.txt"), b"fixture")
     plan = CampaignPlan.model_validate_json(
         json.dumps(
@@ -68,7 +82,9 @@ def setup(tmp_path: Path) -> tuple[AnnotationLayout, ResourceManager, StageLaunc
                     "codex_workers": 1,
                     "additional_storage_bytes": 100_000_000,
                     "minimum_free_bytes": 1,
-                    "total_pss_bytes": 2 * 1024**3,
+                    # StageRunner observes this pytest process. Keep the same
+                    # reservation headroom after imports from the full suite.
+                    "total_pss_bytes": controller_pss + 2 * 1024**3,
                     "gpu_seconds": 60,
                     "stages": [
                         {
@@ -139,7 +155,13 @@ def wait_exit(runner: StageRunner, ref: ArtifactRef) -> dict[str, object]:
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         state: dict[str, object] = runner.status(ref)
-        if state["state"] not in {"running", "unfinished", "queued", "draining"}:
+        if state["state"] not in {
+            "running",
+            "unfinished",
+            "queued",
+            "draining",
+            "waiting",
+        }:
             return state
         time.sleep(0.02)
     raise AssertionError("stage supervisor did not exit")
@@ -205,20 +227,14 @@ def test_stage_capacity_and_missing_receipt_are_explicit(setup: tuple) -> None:
     try:
         # owner.json precedes Popen: wait for the operation itself to acknowledge
         # startup so the kill snapshot cannot miss a concurrently spawned child.
-        deadline = time.monotonic() + 5
-        while not marker.exists() and time.monotonic() < deadline:
-            time.sleep(0.02)
-        assert marker.exists()
+        wait_for(marker.exists)
         operation = process_snapshot(int(marker.read_text()))
         assert operation is not None and operation[0] in owned_members(snap[0])
     finally:
         signal_owned(snap[0], signal.SIGKILL)
         process.wait(timeout=5)
     # wait() reaps only the supervisor, not its separately killed child.
-    deadline = time.monotonic() + 5
-    while owned_members(snap[0]) and time.monotonic() < deadline:
-        time.sleep(0.02)
-    assert not owned_members(snap[0])
+    wait_for(lambda: not owned_members(snap[0]))
     assert wait_exit(runner, first)["state"] == "failed"
     assert StageRunner(layout).status(first)["state"] == "interrupted"
     assert manager.sample().gpu_charged_seconds == 0
@@ -234,6 +250,258 @@ def queue_config(layout: AnnotationLayout) -> QueueConfiguration:
         session="fixture-session",
         issue=1088,
     )
+
+
+def live_queue_config(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch
+) -> QueueConfiguration:
+    config = queue_config(layout)
+    script = Path(config.script)
+    script.write_bytes(
+        (
+            PROJECT_ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
+        ).read_bytes()
+    )
+    # Every namespace, including the system-lock probe, belongs to this test.
+    for name in tuple(os.environ):
+        if name.startswith("TRAINING_QUEUE_TEST_"):
+            monkeypatch.delenv(name)
+    for name, value in {
+        "TRAINING_QUEUE_DIR": config.directory,
+        "TRAINING_QUEUE_LOCK_FILE": str(layout.repository / "gpu.lock"),
+        "TRAINING_QUEUE_SYSTEM_LOCK_FILE": str(layout.repository / "system.lock"),
+        "TRAINING_QUEUE_TEST_TERM_GRACE_SECONDS": "1",
+        "GIT_CEILING_DIRECTORIES": str(PROJECT_ROOT),
+        "CUDA_VISIBLE_DEVICES": "",
+    }.items():
+        monkeypatch.setenv(name, value)
+    binaries = layout.repository / "bin"
+    binaries.mkdir()
+    telemetry = binaries / "nvidia-smi"
+    telemetry.write_text(
+        "#!/bin/sh\necho 'synthetic test: no GPU telemetry' >&2\nexit 1\n"
+    )
+    telemetry.chmod(0o755)
+    monkeypatch.setenv("PATH", str(binaries) + os.pathsep + os.environ["PATH"])
+    return config.model_copy(update={"script_digest": file_digest(script)})
+
+
+def wait_for(predicate: Callable[[], bool]) -> None:
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        if predicate():
+            return
+        time.sleep(0.02)
+    raise AssertionError("queue transition did not complete")
+
+
+@contextmanager
+def running_queue(
+    layout: AnnotationLayout, config: QueueConfiguration
+) -> Iterator[None]:
+    with (layout.repository / "worker.log").open("wb") as log:
+        worker = subprocess.Popen(
+            ["bash", config.script, "serve", "--idle-timeout", "30"],
+            cwd=layout.repository,
+            stdout=log,
+            stderr=log,
+            start_new_session=True,
+        )
+        try:
+            wait_for(lambda: (Path(config.directory) / "worker.pid").exists())
+            yield
+        finally:
+            worker.terminate()
+            worker.wait(timeout=15)
+
+
+def gpu_launch(launch: StageLaunch, config: QueueConfiguration) -> StageLaunch:
+    return launch.model_copy(
+        update={
+            "queue": config,
+            "resource": launch.resource.model_copy(
+                update={"stage": "gpu", "gpu_seconds": 30.0}
+            ),
+        }
+    )
+
+
+@pytest.mark.parametrize("capacity", ["pss", "storage"])
+def test_queued_capacity_wait_reuses_unexecuted_request(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch, capacity: str
+) -> None:
+    layout, manager, launch = setup
+    config = live_queue_config(layout, monkeypatch)
+    reservation = launch.resource.model_copy(
+        update={
+            "request_id": "reservation",
+            "pss_bytes": 1_500_000_000 if capacity == "pss" else 100_000_000,
+            "storage_bytes": 70_000_000 if capacity == "storage" else 100_000,
+        }
+    )
+    launch = gpu_launch(launch, config)
+    launch = launch.model_copy(
+        update={
+            "resource": launch.resource.model_copy(
+                update={
+                    "pss_bytes": 1_000_000_000 if capacity == "pss" else 100_000_000,
+                    "storage_bytes": 40_000_000 if capacity == "storage" else 100_000,
+                }
+            )
+        }
+    )
+    runner = StageRunner(layout)
+    with ExitStack() as reservations:
+        reservations.enter_context(manager.lease(reservation))
+        result = runner.submit(launch)
+        ref = ArtifactRef.model_validate(result["launch"])
+        job = result["queue_job"]
+        with running_queue(layout, config):
+            wait_for(
+                lambda: (
+                    runner.status(ref)["state"] == "failed"
+                    or "reservations do not fit"
+                    in (runner.status(ref).get("reason") or "")
+                )
+            )
+            state = runner.status(ref)
+            assert state["state"] == "waiting", state
+            assert "reservations do not fit" in state["reason"]
+            assert not (stage_directory(layout, launch) / "owner.json").exists()
+            assert not (stage_directory(layout, launch) / "exit.json").exists()
+            assert (Path(config.directory) / "running" / job).exists()
+            reservations.close()
+            assert wait_exit(runner, ref)["state"] == "succeeded"
+            wait_for(lambda: (Path(config.directory) / "done" / job).exists())
+            assert runner.submit(launch)["state"] == "succeeded"
+    assert (
+        len(list((Path(config.directory) / "control/registrations").glob("*.receipt")))
+        == 1
+    )
+    assert not list((Path(config.directory) / "failed").glob("*.job"))
+    assert (stage_directory(layout, launch) / "stdout.log").read_text() == "completed\n"
+
+
+@pytest.mark.parametrize("action", ["budget_stop", "resource_cancel", "queue_cancel"])
+def test_queued_capacity_wait_does_not_retry_stop_or_cancel(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch, action: str
+) -> None:
+    layout, manager, launch = setup
+    config = live_queue_config(layout, monkeypatch)
+    reservation = launch.resource.model_copy(
+        update={"request_id": "reservation", "storage_bytes": 70_000_000}
+    )
+    launch = gpu_launch(launch, config)
+    launch = launch.model_copy(
+        update={
+            "resource": launch.resource.model_copy(update={"storage_bytes": 40_000_000})
+        }
+    )
+    runner = StageRunner(layout)
+    with manager.lease(reservation):
+        result = runner.submit(launch)
+        ref = ArtifactRef.model_validate(result["launch"])
+        job = result["queue_job"]
+        with running_queue(layout, config):
+            wait_for(
+                lambda: (
+                    manager.request_status(launch.resource)
+                    == ("pending", "storage reservations do not fit")
+                )
+            )
+            assert runner.status(ref)["state"] == "waiting"
+            if action == "budget_stop":
+                # Simulate an already-persisted watchdog stop, not the separate
+                # admission/watchdog transaction race covered by another issue.
+                with manager.registry.transaction() as db:
+                    db.execute(
+                        "UPDATE resource_scopes SET stop_reason=? WHERE id=?",
+                        ("synthetic budget stop", manager.scope.scope_id),
+                    )
+            elif action == "resource_cancel":
+                manager.cancel_pending(launch.resource, reason="synthetic cancellation")
+            else:
+                subprocess.run(
+                    ["bash", config.script, "cancel", job],
+                    cwd=layout.repository,
+                    check=True,
+                    capture_output=True,
+                    timeout=10,
+                )
+            expected = "cancelled" if action == "queue_cancel" else "failed"
+            assert wait_exit(runner, ref)["state"] == expected
+            assert (Path(config.directory) / expected / job).exists()
+            directory = stage_directory(layout, launch)
+            assert not (directory / "owner.json").exists()
+            assert not (directory / "stdout.log").exists()
+            assert not (directory / "exit.json").exists()
+            state, reason = manager.request_status(launch.resource)
+            if action == "budget_stop":
+                assert (state, reason) == ("pending", "synthetic budget stop")
+                log = (
+                    Path(config.directory) / "logs" / (Path(job).stem + ".log")
+                ).read_text()
+                assert "BudgetStopped: synthetic budget stop" in log
+            elif action == "resource_cancel":
+                assert (state, reason) == ("cancelled", "synthetic cancellation")
+    assert manager.sample().gpu_charged_seconds == 0
+
+
+def test_live_queue_waits_for_registration_lock_handoff(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, _manager, launch = setup
+    config = live_queue_config(layout, monkeypatch)
+    launch = gpu_launch(launch, config)
+    runner = StageRunner(layout)
+    registered, release = Event(), Event()
+
+    def hold_registration(
+        layout: AnnotationLayout,
+        config: QueueConfiguration,
+        ref: ArtifactRef,
+        code_root: Path,
+    ) -> str:
+        job: str = enqueue(layout, config, ref, code_root)
+        registered.set()
+        assert release.wait(timeout=15), "registration was not released"
+        return job
+
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.execution.runner.enqueue", hold_registration
+    )
+    with running_queue(layout, config), ThreadPoolExecutor(max_workers=1) as pool:
+        submitted = pool.submit(runner.submit, launch)
+        try:
+            assert registered.wait(timeout=10)
+            ref = annotation_reference(
+                layout, stage_directory(layout, launch) / "launch.json"
+            )
+            lock = layout.path("cache", "locks", stage_lock(launch) + ".lock")
+            inode = lock.stat().st_ino
+
+            def blocked_on_registration() -> bool:
+                return any(
+                    "-> FLOCK" in line and f":{inode} " in line
+                    for line in Path("/proc/locks").read_text().splitlines()
+                )
+
+            wait_for(
+                lambda: (
+                    blocked_on_registration()
+                    or queue_state(config, ref)["state"] == "failed"
+                )
+            )
+            assert blocked_on_registration(), queue_state(config, ref)
+            assert not (stage_directory(layout, launch) / "owner.json").exists()
+        finally:
+            release.set()
+        result = submitted.result(timeout=10)
+        assert wait_exit(runner, ref)["state"] == "succeeded"
+        job = result["queue_job"]
+        wait_for(lambda: (Path(config.directory) / "done" / job).exists())
+        assert runner.submit(launch)["state"] == "succeeded"
+    assert (stage_directory(layout, launch) / "stdout.log").read_text() == "completed\n"
 
 
 def test_queue_registration_is_pinned_and_idempotent(
@@ -274,6 +542,155 @@ def test_queue_registration_is_pinned_and_idempotent(
     Path(config.script).write_text("changed --idempotency-key")
     with pytest.raises(ValueError, match="changed"):
         validate_queue(layout, config)
+
+
+def registered_queue(
+    layout: AnnotationLayout, launch: StageLaunch
+) -> tuple[QueueConfiguration, ArtifactRef]:
+    config = queue_config(layout)
+    ref = write_document(
+        layout, stage_directory(layout, launch) / "launch.json", launch
+    )
+    queue = Path(config.directory)
+    registration = (
+        queue
+        / "control/registrations"
+        / (
+            hashlib.sha256(("annotation-stage:" + ref.digest).encode()).hexdigest()
+            + ".receipt"
+        )
+    )
+    registration.parent.mkdir(parents=True)
+    registration.write_text("a" * 64 + " moving.job\n")
+    for state in ("jobs", "running", "done", "failed", "cancelled"):
+        (queue / state).mkdir()
+    return config, ref
+
+
+@pytest.mark.parametrize(
+    ("transitions", "expected"),
+    [
+        ([("jobs", "running")], "running"),
+        ([("running", "jobs")], "running"),
+        ([("jobs", "running"), ("running", "done")], "failed"),
+    ],
+)
+def test_queue_state_reconciles_job_moves_during_observation(
+    setup: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    transitions: list[tuple[str, str]],
+    expected: str,
+) -> None:
+    layout, _manager, launch = setup
+    config, ref = registered_queue(layout, launch)
+    queue = Path(config.directory)
+    (queue / transitions[0][0] / "moving.job").write_text("fixture; never executed")
+    real_exists = Path.exists
+    moves: list[str] = []
+
+    def move_after_observation(path: Path) -> bool:
+        exists = real_exists(path)
+        # Model the worker's atomic renames immediately after a positive stat.
+        if exists and len(moves) < len(transitions):
+            source, target = transitions[len(moves)]
+            if path == queue / source / "moving.job":
+                path.rename(queue / target / "moving.job")
+                moves.append(target)
+        return exists
+
+    monkeypatch.setattr(Path, "exists", move_after_observation)
+    result = queue_state(config, ref)
+    assert moves == [target for _source, target in transitions]
+    assert result["state"] == expected
+    if expected == "failed":
+        assert "queue is done" in result["reason"]
+    else:
+        # A single observation may precede the rename; it remains nonterminal.
+        current = "queued" if transitions[-1][1] == "jobs" else "running"
+        assert queue_state(config, ref)["state"] == current
+
+
+def test_queue_state_reports_continuous_moves_as_unfinished(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, _manager, launch = setup
+    config, ref = registered_queue(layout, launch)
+    queue = Path(config.directory)
+    (queue / "jobs/moving.job").write_text("fixture; never executed")
+    real_exists = Path.exists
+
+    def move_on_every_observation(path: Path) -> bool:
+        exists = real_exists(path)
+        if exists and path in (queue / "jobs/moving.job", queue / "running/moving.job"):
+            target = "running" if path.parent.name == "jobs" else "jobs"
+            path.rename(queue / target / path.name)
+        return exists
+
+    monkeypatch.setattr(Path, "exists", move_on_every_observation)
+    result = queue_state(config, ref)
+    assert result["state"] == "unfinished"
+    assert "no unique lifecycle state" in result["reason"]
+
+
+@pytest.mark.parametrize("states", [(), ("jobs", "running")])
+def test_queue_state_does_not_hide_stable_inconsistency(
+    setup: tuple, states: tuple[str, ...]
+) -> None:
+    layout, _manager, launch = setup
+    config, ref = registered_queue(layout, launch)
+    for state in states:
+        (Path(config.directory) / state / "moving.job").write_text("fixture")
+    result = queue_state(config, ref)
+    assert result["state"] == "unfinished"
+    assert "inspect queue if this persists" in result["reason"]
+
+
+def test_stage_status_collects_receipt_published_after_initial_check(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, _manager, launch = setup
+    directory = stage_directory(layout, launch)
+    ref = write_document(layout, directory / "launch.json", launch)
+    stdout = write_asset(layout, directory / "stdout.log", b"completed")
+    stderr = write_asset(layout, directory / "stderr.log", b"")
+    receipt = StageExit(
+        launch=ref,
+        status="succeeded",
+        exit_code=0,
+        started_at="2026-01-01T00:00:00Z",
+        ended_at="2026-01-01T00:00:01Z",
+        elapsed_seconds=1.0,
+        stdout=stdout,
+        stderr=stderr,
+        reason=None,
+    )
+    from src.tasks.base.annotation.execution import runner
+
+    real_lock = runner.artifact_lock
+    published = False
+
+    @contextmanager
+    def finish_before_lock(
+        root: AnnotationLayout, name: str, *, blocking: bool = True
+    ) -> Iterator[int]:
+        nonlocal published
+        if name == runner.stage_lock(launch) and not published:
+            published = True
+            write_document(layout, directory / "exit.json", receipt)
+        with real_lock(root, name, blocking=blocking) as descriptor:
+            yield descriptor
+
+    monkeypatch.setattr(runner, "artifact_lock", finish_before_lock)
+    state = StageRunner(layout).status(ref)
+    assert published
+    assert state["state"] == "succeeded"
+    assert (
+        read_document(layout, ArtifactRef.model_validate(state["exit"]), StageExit)
+        == receipt
+    )
+    with real_lock(layout, runner.stage_lock(launch)):
+        assert StageRunner(layout).status(ref)["state"] == "draining"
+    assert StageRunner(layout).status(ref)["state"] == "succeeded"
 
 
 def test_gpu_stage_requires_queue_and_keeps_queue_process_group(
