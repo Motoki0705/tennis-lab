@@ -475,10 +475,10 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
             "status": "not_installed",
             "note": f"{MEMORY_DIR} が存在しない（共有memory未導入）",
         }
-    index = mem_dir / "INDEX.md"
+    summary = mem_dir / "SUMMARY.md"
     entries = []
     for path in sorted(mem_dir.rglob("*.md")):
-        if path == index:
+        if path == summary or path.name == "index.md":
             continue
         rel = path.relative_to(cfg.repo_root)
         head = path.read_text(encoding="utf-8").splitlines()[:15]
@@ -487,8 +487,8 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
         )
     return {
         "status": "ok",
-        "index": _truncate(index.read_text(encoding="utf-8"))
-        if index.is_file()
+        "summary": _truncate(summary.read_text(encoding="utf-8"))
+        if summary.is_file()
         else None,
         "entries": entries[:300],
         "entries_total": len(entries),
@@ -550,10 +550,16 @@ def collect_meta(
     cwd = cfg.repo_root
     head_sha = shell.git(["rev-parse", "HEAD"], cwd=cwd).strip()
     branch = shell.git(["branch", "--show-current"], cwd=cwd).strip() or "(detached)"
-    dirty = shell.git(["status", "--porcelain", "--untracked-files=no"], cwd=cwd)
-    # Tracked files whose checkout content differs from the base (committed or not).
+    dirty = shell.git(["status", "--porcelain", "--untracked-files=all"], cwd=cwd)
+    # Files whose checkout content differs from the base, including untracked files.
     # The agent cannot run git, so it needs this list to avoid citing them as base.
-    diff_files = shell.git(["diff", "--name-only", cfg.rev], cwd=cwd).splitlines()
+    tracked_diff = shell.git(["diff", "--name-only", "-z", cfg.rev], cwd=cwd).split(
+        "\0"
+    )
+    untracked = shell.git(
+        ["ls-files", "--others", "--exclude-standard", "-z"], cwd=cwd
+    ).split("\0")
+    diff_files = sorted((set(tracked_diff) | set(untracked)) - {""})
     return {
         "generated_at": cfg.now.isoformat(timespec="minutes"),
         "period_start": since.isoformat(timespec="seconds"),

@@ -11,6 +11,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from drive_core import (
+    CONTENT_HASH_ARGUMENTS,
     DriveToolError,
     ManifestEntry,
     RcloneBackend,
@@ -40,6 +41,7 @@ def _receipt(action: str, backend: RcloneBackend, **fields: Any) -> dict[str, An
     return {
         "action": action,
         "remote_root": backend.remote_root,
+        "rclone_config": str(backend.config_path),
         "observed_at": datetime.now(UTC).isoformat(),
         **fields,
     }
@@ -181,13 +183,13 @@ def _run_inventory(args: argparse.Namespace, backend: RcloneBackend) -> int:
     path = backend.normalize_relative(args.path)
     backend.resolve(path)
     values = backend.json(
-        ["lsjson", backend.remote_path(path), "--recursive", "--hash"]
+        ["lsjson", backend.remote_path(path), "--recursive", *CONTENT_HASH_ARGUMENTS]
     )
     if not isinstance(values, list):
         raise DriveToolError("rclone returned an invalid inventory")
     entries: list[dict[str, Any]] = []
     for item in values:
-        relative = backend.normalize_relative(str(item["Path"]))
+        relative = backend.normalize_listed_relative(str(item["Path"]))
         entries.append(
             {
                 "path": relative,
