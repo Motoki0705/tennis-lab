@@ -135,6 +135,25 @@ class StorageCatalog:
                 (reason, protection_id),
             )
 
+    def protect_once(
+        self, protection: Protection, *, database: sqlite3.Connection | None = None
+    ) -> None:
+        """Verify files on first registration; replay only an identical live pin.
+
+        This is for immutable execution inputs already checked by their readers.
+        Replaying a pin does not assert that the current file bytes were re-read.
+        """
+        with self._transaction(database) as connection:
+            old = connection.execute(
+                "SELECT document,released_reason FROM storage_protections WHERE protection_id=?",
+                (protection.protection_id,),
+            ).fetchone()
+            if old is not None:
+                if old[0] != protection.canonical_bytes().decode() or old[1] is not None:
+                    raise ValueError("input protection changed or was released")
+                return
+            self.protect(protection, database=connection)
+
     def snapshot(self) -> CatalogSnapshot:
         # No scheduler status/recovery: inspection never changes owners or leases.
         with closing(

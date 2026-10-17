@@ -27,20 +27,6 @@ class WorkerReferences:
             """,
         )
 
-    def _retain_once(self, record: Protection, database: sqlite3.Connection) -> None:
-        # A retained immutable reference need not rehash a multi-GB model on every
-        # polling tick. Readers still verify the files they consume. A changed
-        # collector or a released identity must never silently reuse this pin.
-        old = database.execute(
-            "SELECT document, released_reason FROM storage_protections WHERE protection_id=?",
-            (record.protection_id,),
-        ).fetchone()
-        if old is not None:
-            if old[0] != record.canonical_bytes().decode() or old[1] is not None:
-                raise ValueError("worker input protection changed or was released")
-            return
-        self.catalog.protect(record, database=database)
-
     def register(
         self,
         plan_ref: ArtifactRef,
@@ -50,7 +36,7 @@ class WorkerReferences:
         *,
         database: sqlite3.Connection,
     ) -> None:
-        self._retain_once(
+        self.catalog.protect_once(
             protection(
                 self.layout,
                 identity="worker-plan-v1-" + plan.sha256,
@@ -59,9 +45,9 @@ class WorkerReferences:
                 roots=(plan_ref,),
                 documents=(plan,),
             ),
-            database,
+            database=database,
         )
-        self._retain_once(
+        self.catalog.protect_once(
             protection(
                 self.layout,
                 identity="worker-inputs-v1-" + request.sha256,
@@ -71,7 +57,7 @@ class WorkerReferences:
                 documents=(request,),
                 dependencies=dependencies,
             ),
-            database,
+            database=database,
         )
 
     def launch(

@@ -40,8 +40,8 @@ def stage_lock(launch: StageLaunch) -> str:
 
 def validate_launch(layout: AnnotationLayout, launch: StageLaunch) -> None:
     plan = load_plan(verify_reference(layout, launch.resource.plan))
-    if launch.input is not None:
-        verify_reference(layout, launch.input)
+    for reference in references(launch):
+        verify_reference(layout, reference)
     gpu = launch.resource.gpu_seconds > 0
     if gpu != (launch.queue is not None):
         raise ValueError("GPU stages must use the shared queue, CPU stages must not")
@@ -55,8 +55,6 @@ def validate_launch(layout: AnnotationLayout, launch: StageLaunch) -> None:
         require_frozen_code(PROJECT_ROOT, plan)
     elif launch.test_root != str(layout.root):
         raise ValueError("test stages must explicitly pin their isolated root")
-    manager = ResourceManager(layout, launch.scope)
-    manager.submit(launch.resource)
 
 
 class StageRunner:
@@ -74,9 +72,11 @@ class StageRunner:
                 raise ValueError(
                     "stage request identity already contains a different launch"
                 )
+            manager.submit(launch.resource, inputs=(ref, *references(launch)))
             return self.status(ref)
         with artifact_lock(self.layout, stage_lock(launch), blocking=False) as lock_fd:
             ref = write_document(self.layout, directory / "launch.json", launch)
+            manager.submit(launch.resource, inputs=(ref, *references(launch)))
             if (directory / "exit.json").exists():
                 return self.status(ref)
             manager.observe(os.getpid())
