@@ -122,6 +122,8 @@ class Environment:
         model: ModelRef | None = None,
         learning: LearningPlan | None = None,
         plan_transform: Callable[[CampaignPlan], CampaignPlan] | None = None,
+        collect_source: Callable[[CampaignPlan, SourceCandidate], ArtifactRef]
+        | None = None,
         **policy_changes: Any,
     ) -> None:
         self.layout = AnnotationLayout.testing(root)
@@ -299,41 +301,11 @@ class Environment:
             local_media=self.manifest.source.media,
         )
         predictions = Predictions(self.layout, self.plan)
-        with predictions.registry.transaction() as db:
-            db.execute(
-                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
-                (
-                    self.manifest.source.canonical_id,
-                    "local",
-                    "fixture",
-                    video_id,
-                    campaign_id,
-                    candidate.canonical_bytes().decode(),
-                    "prepared",
-                ),
-            )
-            db.execute(
-                "INSERT INTO clips VALUES (?,?,?,?,?)",
-                (
-                    self.manifest.clip_id,
-                    self.manifest.source.canonical_id,
-                    campaign_id,
-                    self.manifest_ref.canonical_bytes().decode(),
-                    media.digest,
-                ),
-            )
-            db.execute(
-                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
-                (
-                    content_digest(["ball", self.manifest.clip_id]),
-                    campaign_id,
-                    "ball",
-                    self.manifest.clip_id,
-                    model.sha256,
-                    inference.digest,
-                    "pending",
-                ),
-            )
+        if collect_source is not None:
+            self.manifest_ref = collect_source(self.plan, candidate)
+            self.manifest = read_document(self.layout, self.manifest_ref, ClipManifest)
+        else:
+            self._register_source(predictions, candidate, media, model, inference)
         prediction = predictions.run(self.manifest_ref, ProposalFixture())
         self.context = ReviewContext(
             plan=self.plan_ref,
@@ -345,6 +317,50 @@ class Environment:
         self.initial = self.store.initialize(self.context, self.adapter)
         self.context_ref = read_document(self.layout, self.initial, Revision).context
         self.actor = self.new_actor("first")
+
+    def _register_source(
+        self,
+        predictions: Predictions,
+        candidate: SourceCandidate,
+        media: ArtifactRef,
+        model: ModelRef,
+        inference: ArtifactRef,
+    ) -> None:
+        with predictions.registry.transaction() as db:
+            db.execute(
+                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
+                (
+                    self.manifest.source.canonical_id,
+                    "local",
+                    "fixture",
+                    candidate.video_id,
+                    self.plan.campaign_id,
+                    candidate.canonical_bytes().decode(),
+                    "prepared",
+                ),
+            )
+            db.execute(
+                "INSERT INTO clips VALUES (?,?,?,?,?)",
+                (
+                    self.manifest.clip_id,
+                    self.manifest.source.canonical_id,
+                    self.plan.campaign_id,
+                    self.manifest_ref.canonical_bytes().decode(),
+                    media.digest,
+                ),
+            )
+            db.execute(
+                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
+                (
+                    content_digest(["ball", self.manifest.clip_id]),
+                    self.plan.campaign_id,
+                    "ball",
+                    self.manifest.clip_id,
+                    model.sha256,
+                    inference.digest,
+                    "pending",
+                ),
+            )
 
     def save(self, document: Any) -> ArtifactRef:
         result: ArtifactRef = write_document(
