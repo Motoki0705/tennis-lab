@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -18,7 +19,7 @@ from ..artifacts import (
 from ..contracts import ArtifactRef, ClipManifest, Document, SourceProvenance
 from ..media import check_clip
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan
+from ..plan import CampaignPlan, load_plan
 from ..storage import StorageCatalog
 from ..storage.contracts import ManagedArtifact, Protection
 from .contracts import AcquisitionReceipt, PreparationConfig, PreparationReceipt
@@ -166,7 +167,29 @@ def verify_acquisition_media(
         verify_reference(layout, acquired.source.media)
         return
     config = read_document(layout, plan.preparation, PreparationConfig)
-    row = CollectionLedger(layout).source(plan, source_id)
+    ledger = CollectionLedger(layout)
+    row = ledger.source(plan, source_id)
+    with ledger.registry.transaction() as database:
+        owner = database.execute(
+            "SELECT s.*, c.digest AS plan_digest FROM source_content sc "
+            "JOIN sources s ON s.id=sc.source_id "
+            "LEFT JOIN campaigns c ON c.id=s.campaign_id WHERE sc.digest=?",
+            (acquired.source.media.digest,),
+        ).fetchone()
+    if owner is not None and owner["id"] != source_id:
+        _require_content_duplicate(row, owner["id"])
+        if row["acquisition"] != reference.canonical_bytes().decode():
+            raise ValueError("duplicate source differs from its registered acquisition")
+        owner_ref = ArtifactRef.model_validate_json(owner["acquisition"])
+        original = read_document(layout, owner_ref, AcquisitionReceipt)
+        if original.source.media != acquired.source.media:
+            raise ValueError("duplicate source does not reference the same owned blob")
+        owner_plan = load_plan(
+            layout.path("campaigns", owner["campaign_id"], "plan.json"),
+            expected_digest=owner["plan_digest"],
+        )
+        verify_acquisition_media(layout, owner_plan, owner["id"], owner_ref, original)
+        return
     if (
         row["state"] == "prepared"
         and config.retained_media == "jpeg_q90"
@@ -189,6 +212,39 @@ def verify_acquisition_media(
     verify_retirement_intent(
         layout, plan, source_id, acquisition, basis, verified, excluded=excluded
     )
+
+
+def _require_content_duplicate(row: dict[str, Any], owner_id: str) -> None:
+    if (
+        row["state"] != "excluded"
+        or row["reason"] != f"duplicate content of {owner_id}"
+        or row["selection"] is not None
+        or row["preparation"] is not None
+    ):
+        raise ValueError("shared source acquisition is not a verified content duplicate")
+
+
+def _verify_shared_acquisitions(
+    layout: AnnotationLayout,
+    database: sqlite3.Connection,
+    source_id: str,
+    media: ArtifactRef,
+) -> None:
+    owner = database.execute(
+        "SELECT source_id FROM source_content WHERE digest=?", (media.digest,)
+    ).fetchone()
+    if owner is None or owner["source_id"] != source_id:
+        raise ValueError("source retirement requires the registered content owner")
+    for row in database.execute(
+        "SELECT * FROM sources WHERE acquisition IS NOT NULL AND id!=?", (source_id,)
+    ):
+        reference = ArtifactRef.model_validate_json(row["acquisition"])
+        acquired = read_document(layout, reference, AcquisitionReceipt)
+        if layout.artifact_path(acquired.source.media) != layout.artifact_path(media):
+            continue
+        if acquired.source.media != media or acquired.source.canonical_id != row["id"]:
+            raise ValueError("shared source acquisition differs from the owned blob")
+        _require_content_duplicate(dict(row), source_id)
 
 
 def retire_source(
@@ -251,6 +307,7 @@ def retire_source(
         # Hold the registry writer lock through unlink, so a new explicit reader
         # protection cannot race the last dependency check.
         with catalog.registry.transaction() as database:
+            _verify_shared_acquisitions(layout, database, source_id, media)
             for row in database.execute(
                 "SELECT document FROM storage_protections WHERE released_reason IS NULL"
             ):
