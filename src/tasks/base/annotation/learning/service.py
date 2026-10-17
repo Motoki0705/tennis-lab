@@ -271,7 +271,7 @@ class Learning:
                 or verdict.policy != intent.selection_policy
             ):
                 raise ValueError("cached verdict differs from the fixed inputs")
-            selection_ref = self.models.select(verdict_ref)
+            selection_ref = self.models.select(verdict_ref, adapter)
             selection = read_document(self.layout, selection_ref, SelectionRecord)
             return LearningOutcome(
                 intent=intent_ref,

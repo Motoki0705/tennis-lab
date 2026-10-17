@@ -58,11 +58,20 @@ class Adapter:
     task = "detector"
     product = "boxes"
 
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        return self.dependencies
+
     def __init__(self) -> None:
         self.accept = True
         self.complete_metrics = True
         self.use_test = False
         self.selections = 0
+        self.dependencies: tuple[ArtifactRef, ...] = ()
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
@@ -271,6 +280,11 @@ class Environment:
         )
         self.recipe = write_asset(
             self.layout, self.layout.path("models", "recipe.txt"), b"fresh optimizer"
+        )
+        self.adapter.dependencies = (
+            write_asset(
+                self.layout, self.layout.path("models", "nested-input.bin"), b"task input"
+            ),
         )
         self.runtime = LearningRuntime(
             scope=self.common,
@@ -482,6 +496,7 @@ def selection_dependencies(
         env.val.manifest,
         env.test.manifest,
         *publication.adoptions,
+        *env.adapter.dependencies,
     ]
     directory = env.layout.artifact_path(intent_ref).parent
     for stage in ("train", "evaluate"):
@@ -816,6 +831,25 @@ def test_registered_intent_and_runtime_cannot_be_silently_replaced(
         )
 
 
+def test_missing_task_dependency_rolls_back_model_selection(env: Environment) -> None:
+    intent = env.register()
+    env.train_and_evaluate(intent, finish_selection=False)
+    registry = env.learning.models
+    before = registry.catalog.snapshot().digest
+    dependency = env.adapter.dependencies[0]
+    path = env.layout.artifact_path(dependency)
+    payload = path.read_bytes()
+    path.unlink()
+    with pytest.raises(ValueError, match="missing or size changed"):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert registry.current("detector").generation == 1
+    assert registry.catalog.snapshot().digest == before
+    with registry.registry.transaction() as db:
+        assert db.execute("SELECT * FROM annotation_model_selections").fetchone() is None
+    write_asset(env.layout, path, payload)
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "adopted"
+
+
 def test_real_stage_runner_binds_scope_and_one_queue_registration(
     env: Environment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -896,7 +930,7 @@ def test_direct_selection_still_requires_the_frozen_policy(env: Environment) -> 
         ),
     )
     with pytest.raises(ValueError, match="frozen adoption policy"):
-        env.learning.models.select(verdict)
+        env.learning.models.select(verdict, env.adapter)
     assert env.learning.models.current("detector").generation == 1
 
 
