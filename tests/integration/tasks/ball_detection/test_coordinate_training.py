@@ -2,8 +2,10 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
+import time
 from collections import Counter
 from dataclasses import replace
 from pathlib import Path
@@ -38,6 +40,8 @@ from src.tasks.ball_detection.preprocessing.mdd import (
 )
 from src.tasks.ball_detection.training.sampling import FPSMixSampler
 from src.utils.checksum import dual_sha256
+from src.utils.data.file_ranges import FileRangeReader
+from src.utils.data.verification import file_version
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
@@ -151,6 +155,43 @@ def test_snapshot_hardlinks_rgb_but_freezes_indexes_and_detects_modified_bytes(t
         dataset[0]
 
 
+@pytest.mark.parametrize("operation", ["create", "delete"])
+@pytest.mark.parametrize("jpeg_decoder", ["opencv", "nvjpeg"])
+def test_other_snapshot_link_changes_stop_verified_readers(
+    tmp_path: Path, operation: str, jpeg_decoder: str,
+) -> None:
+    source = write_store_clip(tmp_path / "ball", "clip", [frame(i, ball()) for i in range(128)])
+    store, hashes = snapshot_ball_store(source, tmp_path / "active")
+    sibling = tmp_path / "sibling"
+    if operation == "delete":
+        snapshot_ball_store(source, sibling)
+    data = build_coordinate_manifest(store, PlayIntervalConfig(), TemporalSamplingConfig(),
+                                     input_kind="mdd_only", shard_hashes=hashes)
+    manifest = tmp_path / "windows.json"
+    manifest.write_text(json.dumps(data))
+    dataset = FrozenBallWindowDataset(manifest, split="train", requires_pose=False, jpeg_decoder=jpeg_decoder)
+    dataset[0]
+    shard = store.directory / "shards" / shard_name(store.clips[0].index)
+    expected = file_version(shard)
+    reader = FileRangeReader()
+    try:
+        reader.read(shard, [(0, 1)], expected)
+        time.sleep(.02)  # Cross the timestamp granularity of the WSL filesystem.
+        if operation == "create":
+            snapshot_ball_store(source, sibling)
+        else:
+            shutil.rmtree(sibling)
+        assert file_version(shard)[:4] == expected[:4]
+        assert file_version(shard)[4] != expected[4]
+        assert dual_sha256(shard) == hashes[store.clips[0].clip_id]
+        with pytest.raises(ValueError, match="RGB shard changed during dataset use"):
+            dataset[0]
+        with pytest.raises(ValueError, match="File changed after checksum verification"):
+            reader.read(shard, [(0, 1)], expected)
+    finally:
+        reader.close()
+
+
 @pytest.fixture
 def preparation(tmp_path: Path) -> tuple[Path, dict]:
     root = tmp_path / "ball"
@@ -192,6 +233,8 @@ def test_cpu_training_and_explicit_test_evaluation_report_both_scopes(preparatio
                              "--output", str(output), "--epochs", "1", "--learning-rate", ".001", "--seed", "5",
                              "--mdd-a", ".27", "--mdd-b", "-.05",
                              "--device", "cpu", "--windows-per-epoch", "3", "--batch-size", "2",
+                             "--precision", "fp32", "--jpeg-decoder", "opencv", "--compile-mode", "off",
+                             "--input-verification", "lazy",
                              "--num-workers", "2"], env=env, capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
     saved = torch.load(output / "epoch-000.pt", weights_only=True)
@@ -255,6 +298,8 @@ def test_epoch_resume_matches_uninterrupted_training_and_rejects_changed_recipe(
     command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "coordinates", "--initialize", "scratch",
                "--manifest", variant["manifest"], "--model-config", variant["model_config"],
                "--learning-rate", ".001", "--seed", "5", "--device", "cpu",
+               "--precision", "fp32", "--jpeg-decoder", "opencv", "--compile-mode", "off",
+               "--input-verification", "lazy",
                "--windows-per-epoch", "6", "--batch-size", "2", "--num-workers", "2"]
     resumed, full = tmp_path / "resumed", tmp_path / "uninterrupted"
     for arguments in (["--output", str(resumed), "--epochs", "1"],
