@@ -9,6 +9,11 @@ baseからball/playerのモデル・ラベル実装をimportしない。
   `resource=all` で登録する。queue scriptのpath/hash、provider/session/issueを固定する。
   queue内で初めて資源leaseを取得し、queueが作ったprocess groupを維持する。
   GPU工程自身による `setsid` や別queueへの分離は認めない。
+  公開直後のqueued supervisorは登録元の工程lock解放を待ってからleaseを取得する。
+  予約容量不足の `CapacityUnavailable` は未実行のpending要求に限り2秒間隔で再受付し、
+  同じqueue job・request IDを保持する。この間の工程状態は理由付きの `waiting`。
+  予算停止・取消・実行済み要求はこの待機で再試行しない。待機中もqueueの`all`予約を
+  保持し、工程timeoutと資源GPU時間の計測はlease取得後に始まる。
 - planのcommit/diffを起動時に照合し、未追跡のソースがあれば拒否する。入力artifact、
   コマンド、timeout、資源要求は `campaigns/<campaign>/jobs/<request-id>/launch.json`
   に保存する。実行途中の設定変更は別のrun plan/明示的な試行にする。

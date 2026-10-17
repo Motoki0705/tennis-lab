@@ -189,4 +189,13 @@ class StageRunner:
                     "reason": "no owning supervisor or completion receipt; inspect logs before an explicit new attempt",
                 }
         except BlockingIOError:
+            if launch.queue is not None:
+                manager = ResourceManager(self.layout, launch.scope)
+                state, reason = manager.request_status(launch.resource)
+                if state == "pending":
+                    return {
+                        "state": "waiting",
+                        "launch": ref.model_dump(),
+                        "reason": reason or "waiting for queued resource admission",
+                    }
             return {"state": "running", "launch": ref.model_dump()}
