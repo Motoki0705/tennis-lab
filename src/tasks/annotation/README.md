@@ -136,6 +136,8 @@ predictedの保存後でも終了receiptがなければ完了にしない。未�
 `screen_prepare` の `submit --attempt N` はworker attemptを増やさない。
 quotaによるcampaign全体のworker停止は、原因解消後に同コマンドへ
 `--resume-quota` を付けて明示解除する。通常の `run` / `tick` は失敗workerを再試行しない。
+Controllerは予算停止時とcampaignのquota停止確認時に、選別・review両poolの未起動資源要求を
+[workerの取消契約](../base/annotation/workers/README.md)に従って取り消し、共有待機枠を返す。
 
 worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固定root内に保存し、
 `recover --runtime PATH --sha256 HASH --operation PATH` で実行する。

@@ -64,6 +64,10 @@ state = pool.reconcile(request)
   再開時に台帳へ失敗として回収し、明示retryでは新しいattempt/request IDを発行する。
   まだ資源を取得していないpending要求は同じIDで受付を再試行し、待機枠を重複消費しない。
   benchmarkでも資源要求は共有の資源台帳で照合し、workerの復旧状態は条件別台帳に記録する。
+  終端停止の `stop()` は未起動のpending要求も取り消す。稼働中workerを止めずに
+  未起動要求だけを取り消す場合は `cancel_pending()` を使う。共有資源台帳とworker attemptに
+  `cancelled` と停止理由を保存し、両台帳の更新間で中断しても同じ取消記録を回収する。
+  取消済みattemptは明示retryで新しいattempt/request IDを発行し、通常の容量待ちと区別する。
 
 標準状態は `ready → running → complete`、未回収終了は `exited`（quotaはadmissionでも確定）。
 `failed / quota / timed_out / cancelled / validation_failed / deferred` は理由を保存する。
