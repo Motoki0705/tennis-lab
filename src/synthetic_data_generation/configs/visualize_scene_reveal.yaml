@@ -1,0 +1,95 @@
+# Staged scene reveal: capture cameras -> SfM points -> NHT Gaussians -> render
+# -> accepted court alignment -> free-viewpoint camera move.
+defaults:
+  - roots: runtime
+  - _self_
+
+reveal:
+  # Data-root-relative canonical scene workspace.
+  scene_root: synthetic_data_generation/scenes/B00
+  # Output-root-relative publication; metadata is written next to it as .json
+  # and stills mode writes PNGs into the same path without the suffix.
+  output_video: synthetic_data_generation/scene-reveal/B00/scene-reveal.mp4
+  # Output-root-relative scratch for nht-render chunks; must be absent or empty.
+  work_directory: synthetic_data_generation/scene-reveal/B00/work
+  # video | stills
+  mode: video
+  # Only for stills mode: seconds from the start of the timeline.
+  still_times_seconds: []
+  output:
+    width: 1920
+    height: 1080
+    fps: 30.0
+    crf: 17
+  durations_seconds:
+    cameras: 4.0
+    sfm: 4.0
+    sfm_to_gaussians: 3.0
+    colorize: 3.0
+    splat: 9.0
+    view_dependence: 3.0
+    hold: 3.0
+    alignment: 4.0
+    camera_move: 14.0
+  # Fixed look-at camera in the anchor court frame (metres; origin at the net
+  # centre, +x across the court, +y along it, +z up). B00 court-001 lies at
+  # x = -14.9 of court-000, so this looks from beyond court-000's outer corner
+  # across both courts.
+  viewpoint:
+    anchor_court_id: court-000
+    eye_court_m: [16.0, -24.0, 14.0]
+    target_court_m: [-7.4, 0.0, 0.0]
+    up_court: [0.0, 0.0, 1.0]
+    horizontal_fov_deg: 60.0
+  # Free-viewpoint move after the alignment overlay: starts at the viewpoint
+  # above and passes through every keyframe (same anchor court frame, up and
+  # field of view).
+  camera_path:
+    # B00's perimeter fence lies just outside the capture cameras (court-000
+    # frame x -23..8 m, y -17.6..16.4 m); low waypoints stay inside it.
+    keyframes:
+      # Down behind court-000's near baseline.
+      - eye_court_m: [4.0, -16.5, 4.5]
+        target_court_m: [0.0, 0.0, 0.5]
+      # Player height in the gap between the two courts.
+      - eye_court_m: [-7.4, -14.0, 2.5]
+        target_court_m: [-7.4, 6.0, 0.5]
+      # Off court-001's outer near corner, clear of its net post.
+      - eye_court_m: [-22.0, -11.0, 4.5]
+        target_court_m: [-14.9, 0.0, 0.3]
+      # High overview from the opposite corner.
+      - eye_court_m: [-21.0, 16.0, 13.0]
+        target_court_m: [-7.4, 0.0, 0.0]
+  style:
+    background_rgb: [0.02, 0.02, 0.03]
+    gaussian_point_rgb: [0.80, 0.86, 0.95]
+    sfm_point_radius_px: 1
+    camera_rgb: [1.0, 0.72, 0.18]
+    camera_frustum_depth_m: 1.2
+    camera_frustum_stride: 8
+    camera_line_width_px: 2
+    # (xmin, xmax, ymin, ymax, zmin, zmax) in the anchor court frame.
+    sfm_crop_court_m: [-40.0, 25.0, -35.0, 30.0, -2.0, 20.0]
+  # Accepted-court overlay (canonical ground lines and court axes).
+  alignment:
+    line_rgb: [0.25, 0.95, 1.0]
+    line_width_px: 3
+    outline_px: 1
+    axis_length_m: 3.0
+    label_font_px: 28
+  nht:
+    # Exactly nht-render (from PATH) or an absolute path to an nht-render.
+    executable: nht-render
+    # Gaussian point-sphere radius before splatting, in metres.
+    point_radius_m: 0.03
+    # Fraction of the splat phase over which one Gaussian grows.
+    splat_stagger: 0.3
+    # Distinct NHT states rendered per nht-render process (bounds memory).
+    states_per_invocation: 16
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${roots.output_root},hydra/scene_reveal}
+  output_subdir: null
+  job:
+    chdir: false

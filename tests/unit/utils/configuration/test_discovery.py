@@ -88,6 +88,7 @@ def test_catalog_does_not_publish_legacy_synthetic_boundaries() -> None:
         "src.synthetic_data_generation.scripts.run_appearance_variant:main",
         "src.synthetic_data_generation.scripts.run_scene_pipeline:main",
         "src.synthetic_data_generation.scripts.visualize_dataset:main",
+        "src.synthetic_data_generation.scripts.visualize_scene_reveal:main",
     }
     discovery_source = (
         PROJECT_ROOT / "src/utils/configuration/discovery.py"

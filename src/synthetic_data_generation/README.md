@@ -168,6 +168,11 @@ The publication request, manifest and bundle schemas are version 2. The request
 specifies Court trajectory/frame indices, captured camera IDs and drawing settings.
 The overview contains Court, alignment and captured-camera panels.
 
+`visualize_scene_reveal` renders a staged reveal animation of one scene, from
+the capture cameras to the final NHT render, then overlays the accepted court
+alignment and moves the camera through the reconstructed scene.
+See [visualization/reveal](visualization/reveal/README.md).
+
 ## Court LINE推論の共有
 
 新しいalignment実行は、保存モデル構成を読む共通Court predictorと、その[配布checkpoint](../tasks/court_detection/README.md#共通推論と幾何補正)を使います。LINE確率のnative gridを既存の地面投影・集約へ渡すため、複数コートの観測を保持します。Hへの置換やKPの向き推定はこの経路では行いません。旧LINE専用の手書きモデル再構築・architecture設定は廃止しました。
