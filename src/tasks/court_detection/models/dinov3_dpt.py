@@ -26,7 +26,6 @@ from src.tasks.court_detection.data.contracts import (
     CourtTargetKind,
 )
 from src.tasks.court_detection.geometry.pose import POSE10D_RAW_ORDER
-from src.utils.models.blocks import Conv2dWiseWiseBlock as Conv2dWiseWiseBlock
 from src.utils.models.components import (
     RotaryFrequencyComputer,
     TransformerBlock,
@@ -223,6 +222,7 @@ def build_court_decoder(
             encoder_channels=encoder_channels,
             decoder_channels=decoder_channels,
             reassemble_factors=_require_reassemble_factors(config.reassemble_factors),
+            block_style="wise",
         )
     raise ValueError(f"Unsupported court decoder: {config.name}")
 
