@@ -18,9 +18,9 @@ from ..artifacts import (
 )
 from ..contracts import ArtifactRef, Document, Identifier, MediaFingerprint
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, file_digest
+from ..plan import CampaignPlan, file_digest, references
 from .acquisition import stage_source
-from .contracts import PreparationConfig, SourceCandidate
+from .contracts import AcquisitionReceipt, PreparationConfig, SourceCandidate
 from .ledger import CollectionLedger
 from .retirement import verify_prepared, verify_retirement_intent
 
@@ -33,10 +33,9 @@ class RestorationReceipt(Document):
     reason: str
 
 
-def restore_source(
-    layout: AnnotationLayout, plan: CampaignPlan, source_id: str, attempt: str
-) -> ArtifactRef:
-    """Caller owns the source lock; failed attempts remain terminal until explicitly retried."""
+def _verify_retired_source(
+    layout: AnnotationLayout, plan: CampaignPlan, source_id: str
+) -> tuple[ArtifactRef, AcquisitionReceipt]:
     row = CollectionLedger(layout).source(plan, source_id)
     excluded = row["state"] == "excluded"
     if excluded:
@@ -48,17 +47,70 @@ def restore_source(
     verify_retirement_intent(
         layout, plan, source_id, acquisition, preparation, acquired, excluded=excluded
     )
+    return acquisition, acquired
+
+
+def verify_restoration(
+    layout: AnnotationLayout,
+    plan: CampaignPlan,
+    source_id: str,
+    attempt: str,
+    reference: ArtifactRef,
+) -> RestorationReceipt:
+    """Validate a terminal attempt without downloading or requiring failed bytes to exist."""
+    acquisition, acquired = _verify_retired_source(layout, plan, source_id)
+    record: RestorationReceipt = read_document(layout, reference, RestorationReceipt)
+    expected = layout.path(
+        "sources", source_id, plan.preparation.digest, "restorations", attempt + ".json"
+    )
+    if (
+        layout.artifact_path(reference) != expected
+        or record.acquisition != acquisition
+        or record.attempt != attempt
+    ):
+        raise ValueError("restoration receipt belongs to another source or attempt")
+    row = CollectionLedger(layout).source(plan, source_id)
+    candidate = SourceCandidate.model_validate_json(row["candidate"])
+    if (
+        acquired.source.canonical_id != source_id
+        or acquired.candidate_digest != candidate.sha256
+        or acquired.configuration != plan.preparation
+    ):
+        raise ValueError("restoration acquisition differs from the frozen source")
+    for dependency in references(acquired):
+        if (
+            dependency != acquired.source.media
+            or record.status == "restored"
+            or layout.artifact_path(dependency).exists()
+        ):
+            verify_reference(layout, dependency)
+    original = MediaFingerprint(
+        digest=acquired.source.media.digest,
+        size_bytes=acquired.source.media.size_bytes,
+    )
+    if (
+        not record.reason.strip()
+        or (record.status == "unavailable" and record.downloaded is not None)
+        or (record.status == "different_content" and record.downloaded in (None, original))
+        or (record.status == "restored" and record.downloaded not in (None, original))
+    ):
+        raise ValueError("restoration outcome differs from its downloaded content")
+    return record
+
+
+def restore_source(
+    layout: AnnotationLayout, plan: CampaignPlan, source_id: str, attempt: str
+) -> ArtifactRef:
+    """Caller owns the source lock; failed attempts remain terminal until explicitly retried."""
     path = layout.path(
         "sources", source_id, plan.preparation.digest, "restorations", attempt + ".json"
     )
     if path.exists():
         ref = annotation_reference(layout, path)
-        record = read_document(layout, ref, RestorationReceipt)
-        if record.acquisition != acquisition or record.attempt != attempt:
-            raise ValueError("restoration receipt belongs to another source or attempt")
-        if record.status == "restored":
-            verify_reference(layout, acquired.source.media)
+        verify_restoration(layout, plan, source_id, attempt, ref)
         return ref
+    acquisition, acquired = _verify_retired_source(layout, plan, source_id)
+    row = CollectionLedger(layout).source(plan, source_id)
     candidate = SourceCandidate.model_validate_json(row["candidate"])
     config = read_document(layout, plan.preparation, PreparationConfig)
     blob = layout.artifact_path(acquired.source.media)

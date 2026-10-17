@@ -61,12 +61,20 @@ def test_published_mixed_splits_replay_train_validate_and_final_test(tmp_path: P
         env.adapter.validate_evaluation(env.layout, env.intent, forged)
 
 
-def test_lost_resolved_holdout_is_rejected_without_recreation(tmp_path: Path) -> None:
+@pytest.mark.parametrize("entrypoint", ["resolve_inputs", "register"])
+@pytest.mark.parametrize("split", ["validation", "test"])
+def test_lost_resolved_holdout_is_rejected_without_recreation(
+    tmp_path: Path, entrypoint: str, split: str
+) -> None:
     env = LearningEnvironment(tmp_path, cohorts=True)
     inputs = resolve_inputs(env.layout, env.intent)
     assert inputs.test_holdout is not None
-    path = env.layout.artifact_path(inputs.test_holdout.manifest)
+    holdout = inputs.holdout if split == "validation" else inputs.test_holdout
+    path = env.layout.artifact_path(holdout.manifest)
     path.unlink()
     with pytest.raises(ValueError, match="missing or size changed"):
-        resolve_inputs(env.layout, env.intent)
+        if entrypoint == "register":
+            env.learning.register(env.completion, env.adapter)
+        else:
+            resolve_inputs(env.layout, env.intent)
     assert not path.exists()
