@@ -1,0 +1,16 @@
+{
+  "run_id": "1792034618291181895_178064_annotation-8d800c4cf4a4dd63",
+  "name": "annotation-8d800c4cf4a4dd63",
+  "command": "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/.venv/bin/python -m src.tasks.base.annotation.execution --launch /home/kamimura/projects/tennis-lab/outputs/chat_annotation/campaigns/initial-model-preview-20261015/jobs/62e31b7a9d38a00c0364387eaa152beb8e054f85f47ee5e0359c949ab4c1ccbe-1/launch.json --sha256 8d800c4cf4a4dd634a6add356b75ca0e955bf0eeb349b56177f7cdfcc0182dcb --queued",
+  "provider": "codex",
+  "session": "01a13898-67ee-7641-86c1-4cf77195d15c",
+  "issue": "1088",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "d734b1308ed9181e7ed2ffb8d3d8c941f747f590",
+  "branch": "codex/annotation-budget-roots",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots",
+  "captured_at": "2026-10-15T12:32:51+09:00"
+}

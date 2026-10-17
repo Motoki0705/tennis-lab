@@ -1,0 +1,32 @@
+[
+  {
+    "file": "exit.json",
+    "source": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/campaigns/initial-model-preview-20261015/jobs/62e31b7a9d38a00c0364387eaa152beb8e054f85f47ee5e0359c949ab4c1ccbe-1/exit.json",
+    "sha256": "68d134e607ca9bf21a37e707e05edb4ab6d7371dc19c0cd4c7e2c9f5a8f38c4c",
+    "size_bytes": 977
+  },
+  {
+    "file": "stderr.log",
+    "source": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/campaigns/initial-model-preview-20261015/jobs/62e31b7a9d38a00c0364387eaa152beb8e054f85f47ee5e0359c949ab4c1ccbe-1/stderr.log",
+    "sha256": "58b5089472b2d156d9b7cda7978169d9eeebcdf12ae197b0b57ef246dbca6129",
+    "size_bytes": 5151
+  },
+  {
+    "file": "launch.json",
+    "source": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/campaigns/initial-model-preview-20261015/jobs/62e31b7a9d38a00c0364387eaa152beb8e054f85f47ee5e0359c949ab4c1ccbe-1/launch.json",
+    "sha256": "8d800c4cf4a4dd634a6add356b75ca0e955bf0eeb349b56177f7cdfcc0182dcb",
+    "size_bytes": 1773
+  },
+  {
+    "file": "operation.json",
+    "source": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/campaigns/initial-model-preview-20261015/jobs/62e31b7a9d38a00c0364387eaa152beb8e054f85f47ee5e0359c949ab4c1ccbe-1/operation.json",
+    "sha256": "f856bcebef477e30ef3b654d67e678c3529ae7dd0dccfcd0a6c56ce70df65b2a",
+    "size_bytes": 461
+  },
+  {
+    "file": "inference-configuration.json",
+    "source": "/home/kamimura/projects/tennis-lab/outputs/chat_annotation/campaigns/initial-model-preview-20261015/inputs/player-inference.json",
+    "sha256": "7f6b8156b0d8b7508c256c6b22f45f650e64b11759dccb2a39a9f5b46048b390",
+    "size_bytes": 202
+  }
+]
