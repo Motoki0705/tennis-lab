@@ -1,0 +1,5 @@
+schema_version = "annotation.worker-decision.v1"
+agent_model = "gpt-6.1-sol"
+agent_effort = "max"
+decided_on = "2026-10-16"
+source = "User decision recorded in #1233 (parent #1088)"

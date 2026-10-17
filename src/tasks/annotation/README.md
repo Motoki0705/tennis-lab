@@ -52,6 +52,7 @@ plan・scope・runtimeとその参照を持つreceiptを不変保存する。実
 モデルpathをソースへ埋め込まない。
 
 ```bash
+.venv/bin/python -m src.tasks.annotation worker-decision
 .venv/bin/python -m src.tasks.annotation schema --type configuration
 .venv/bin/python -m src.tasks.annotation configure --configuration /absolute/configuration.json --sha256 INPUT_HASH
 .venv/bin/python -m src.tasks.annotation register --runtime /absolute/runtime.json --sha256 HASH --candidates /absolute/candidates.json
@@ -64,6 +65,16 @@ RuntimeSettings）を持つ。`budget.action = reuse` と既存 `scope` 参照�
 使用量を継承する。新しい予算を明示作成する場合のみ `action = create` とscope ID、全計測root、
 開始前の保存/GPU使用量、待機上限を指定する。作成の再送や中断後の再開でも同じbaselineを使う。
 既存の停止状態をconfigureで解除しない。
+
+新規planの `agent_model` / `agent_effort` は `worker-decision` で取得する。
+運用条件の正本は [worker-decision.toml](../../../.agents/skills/annotation-workflow/worker-decision.toml)。
+決定日・出典を持つ記録を固定コード版から読み、configureは予算・台帳・planを作る前に
+一致を検証する。直接の `save_plan()` でも新規保存には同じ検証を行い、preview・production・
+benchmark・テストモードのいずれにも例外を設けない。値は必須で、暗黙の既定値や補正はない。
+既存planの読込・同一内容の再送は保存済み条件を維持する。不一致の上書きは従来どおり拒否し、
+過去planへ現在の決定を遡及適用しない。親の作成手順は
+[annotation-workflow skill](../../../.agents/skills/annotation-workflow/SKILL.md#計画と初期確認)を参照する。
+
 計測rootはディレクトリまたは通常ファイルを指定できる。既存scopeの一時ファイルが
 消えていても、元のbaselineとrootを維持して再利用する。Codex状態の保存先は、全体を
 計測するディレクトリrootの配下に置く。状態ファイルの一部だけを列挙したroot集合で
