@@ -11,7 +11,10 @@ from typing import Literal
 import av
 import numpy as np
 
-from src.tasks.ball_detection.annotation.contracts import MDDInferenceConfig
+from src.tasks.ball_detection.annotation.contracts import (
+    InferenceConfig,
+    MDDInferenceConfig,
+)
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     write_asset,
@@ -49,6 +52,7 @@ def example(
     *,
     task: Literal["ball", "player"] = "ball",
     jpeg: bool = False,
+    inference_config: InferenceConfig | None = None,
 ) -> Fixture:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -57,7 +61,7 @@ def example(
         layout,
         inputs / "inference.json",
         (
-            MDDInferenceConfig(
+            inference_config or MDDInferenceConfig(
                 stride=16,
                 device="cpu",
                 precision="float32",

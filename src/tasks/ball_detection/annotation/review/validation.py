@@ -13,7 +13,7 @@ from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import load_plan, references
 from src.tasks.base.annotation.predictions import PredictionReceipt
 
-from ..contracts import BallPredictions
+from ..contracts import PredictionDocument
 from ..validation import validate_predictions
 from .contracts import (
     BallFrame,
@@ -26,7 +26,7 @@ from .contracts import (
 
 def inputs(
     layout: AnnotationLayout, context: ReviewContext, manifest: ClipManifest
-) -> tuple[ArtifactRef, BallReviewPolicy, BallPredictions]:
+) -> tuple[ArtifactRef, BallReviewPolicy, PredictionDocument]:
     plan = load_plan(verify_reference(layout, context.plan))
     task = next((t for t in plan.tasks if t.task == "ball"), None)
     if (
@@ -154,7 +154,7 @@ def validate_labels(
     manifest: ClipManifest,
     policy_ref: ArtifactRef,
     policy: BallReviewPolicy,
-    predictions: BallPredictions,
+    predictions: PredictionDocument,
 ) -> None:
     if (labels.clip_id, labels.prediction, labels.policy, len(labels.frames)) != (
         manifest.clip_id,
@@ -183,7 +183,8 @@ def validate_labels(
                 raise ValueError("ball center lies outside native pixels")
             if item.origin == "model_confirmed" and (
                 not policy.allow_prediction_confirmation
-                or item.center != (proposal.x, proposal.y)
+                or proposal.center is None
+                or item.center != proposal.center
             ):
                 raise ValueError(
                     "model confirmation must preserve the actual proposal under an allowing policy"
