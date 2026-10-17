@@ -15,6 +15,7 @@ from src.tasks.annotation.contracts import (
     OperationInput,
     PredictOperation,
     Runtime,
+    ServiceSessionOperation,
     StageCost,
 )
 from src.tasks.annotation.jobs import Operations
@@ -94,6 +95,9 @@ def operations(
                 StageCapacity(
                     stage="infer_ball", kind="gpu", parallel=1, threads_per_process=1
                 ),
+                StageCapacity(
+                    stage="render", kind="cpu", parallel=1, threads_per_process=1
+                ),
             ),
         ),
         tasks=(
@@ -157,6 +161,68 @@ def operations(
         ),
     )
     return Operations(layout, runtime, plan, resources), manifest
+
+
+@pytest.mark.parametrize(
+    ("maximum_requests", "remaining_bytes", "expected_state"),
+    [
+        (2, 11 * 1024**2 // 10, "waiting"),
+        (2, 2 * 1024**2 - 1, "waiting"),
+        (2, 2 * 1024**2, "running"),
+        (2, 2 * 1024**2 + 1, "running"),
+        (128, 64 * 1024**2, "waiting"),
+    ],
+)
+def test_session_admission_reserves_every_request_at_storage_boundary(
+    operations: tuple[Operations, ArtifactRef],
+    monkeypatch: pytest.MonkeyPatch,
+    maximum_requests: int,
+    remaining_bytes: int,
+    expected_state: str,
+) -> None:
+    jobs, _ = operations
+    data = OperationInput(
+        plan=jobs.runtime.plan,
+        operation=ServiceSessionOperation(
+            session=1,
+            maximum_requests=maximum_requests,
+            maximum_services_per_attempt=512,
+            duration_seconds=3,
+        ),
+    )
+    sample = jobs.resources.sample()
+    sample = sample.model_copy(
+        update={
+            "storage": sample.storage.model_copy(
+                update={
+                    "additional_bytes": (
+                        jobs.resources.scope.limits.additional_storage_bytes
+                        - remaining_bytes
+                    ),
+                    "free_bytes": 1024**3,
+                }
+            )
+        }
+    )
+    monkeypatch.setattr(jobs.resources, "_sample", lambda **_kwargs: sample)
+    launches: list[StageLaunch] = []
+
+    def admit(launch: StageLaunch) -> dict[str, Any]:
+        launches.append(launch)
+        # Exercise real admission without spawning a supervisor or using a GPU.
+        with jobs.resources.lease(launch.resource):
+            return {"state": "running"}
+
+    monkeypatch.setattr(jobs.stages, "submit", admit)
+    state = jobs.operation(data)
+    assert state["state"] == expected_state, state
+    cost = jobs.runtime.cost("render")
+    assert launches[0].resource.storage_bytes == cost.storage_bytes * maximum_requests
+    assert launches[0].resource.pss_bytes == cost.pss_bytes
+    assert launches[0].timeout_seconds == cost.timeout_seconds
+    if expected_state == "waiting":
+        assert state["reason"] == "storage reservations do not fit"
+        assert jobs.resources._row(launches[0].resource)["state"] == "pending"
 
 
 @pytest.mark.parametrize(
