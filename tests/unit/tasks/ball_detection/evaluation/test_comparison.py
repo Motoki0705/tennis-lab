@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from src.tasks.ball_detection.checkpoints.pretraining import SCHEMA
+from src.tasks.ball_detection.preprocessing import RGBToMDD
 from tests.benchmarks.ball_detection.pretraining_comparison import (
     compare_pretraining,
     main,
@@ -29,7 +30,7 @@ def test_comparison_refuses_partial_or_undeclared_cnn_sets(tmp_path: Path) -> No
 def test_selection_uses_common_then_full_error_and_rejects_budget_or_seed_differences(tmp_path: Path) -> None:
     recipe: dict[str, Any] = dict(epochs=1, windows_per_epoch=6, batch_size=1, seed=42, learning_rate=.0002, warmup_updates=0,
         schedule="cosine", weight_decay=.01, gradient_clip=1., manifest_sha256="same-data", selection_scope="common",
-        selection_metric="macro_mean_error_px", sigma_ratio=.012, focal_gamma=2., input_contract={}, image_decode={},
+        selection_metric="macro_mean_error_px", sigma_ratio=.012, focal_gamma=2., input_contract=RGBToMDD().input_contract(), image_decode={},
         supervision="observed", test_usage="none", runtime=dict(precision="bf16", compile_mode="default", image_prefetch=True))
     runs = {v: tmp_path / v for v in ("residual", "convnext_v2", "fasternet")}
     records: dict[str, dict[str, Any]] = {}
@@ -47,6 +48,10 @@ def test_selection_uses_common_then_full_error_and_rejects_budget_or_seed_differ
     with patch("tests.benchmarks.ball_detection.pretraining_comparison.completed_pretraining", side_effect=completed):
         report = compare_pretraining(runs, tmp_path / "manifest")
         assert report["winner"] == "fasternet"
+        records["residual"]["recipe"]["input_contract"] = {}
+        with pytest.raises(ValueError, match="Missing explicit RGB/MDD input contract"):
+            compare_pretraining(runs, tmp_path / "manifest")
+        records["residual"]["recipe"]["input_contract"] = recipe["input_contract"]
         records["convnext_v2"]["recipe"]["runtime"] = dict(recipe["runtime"], image_prefetch=False)
         report = compare_pretraining(runs, tmp_path / "manifest")
         assert report["same_image_prefetch"] is False

@@ -43,7 +43,9 @@ pose artifact、JPEG shardのhash、学習窓と全除外範囲を固定でき�
 時刻は選んだframeの実PTS秒を使い、一定FPSの時刻を捏造しない。
 
 `dataset.py`は固定manifestからRGB・任意のpose・observed座標と教師maskを同じ32枚で返す。
-RGBを間引いてからモデル内の`RGBToMDD`でMDDを再計算する。native-FPSのMDDを間引かない。
+RGBを間引いてからモデル内でMDDを再計算する。native-FPSのMDDを間引かない。
+5ch構成でもdatasetは同じRGBを渡し、拡張後にモデルがRGBとMDDを結合する。
+入力契約は [models/mdd](../../models/mdd/README.md) を参照。
 crop/resize、時間の反復、欠損位置の補完はしない。
 座標lossは`training/coordinates/objective.py`が担当する。
 
