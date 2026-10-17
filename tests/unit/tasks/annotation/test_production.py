@@ -508,8 +508,7 @@ def test_production_publishes_replacement_after_duplicate_exclusion(
     session: ReviewSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from src.tasks.annotation import operations
-    from src.tasks.annotation.contracts import OperationReceipt
-    from src.tasks.annotation.production import CompletionEvidence
+    from src.tasks.annotation.contracts import CompletionEvidence, OperationReceipt
     from src.tasks.annotation.reviews import CampaignReview
     from src.tasks.base.annotation.contracts import PublicationReceipt
     from src.tasks.base.annotation.learning.contracts import CampaignCompletion
@@ -1008,6 +1007,11 @@ def test_publication_uses_all_adoptions_and_resumes_without_reencoding(
     assert snapshot.stat().st_ino == inode
     status = restored.status()
     assert status["state"] == "blocked"
+    assert status["annotation"]["complete"] is True
+    product = status["annotation"]["products"][0]
+    assert (product["task"], product["product"], product["status"]) == ("ball", "frames", "published")
+    assert product["publication"] is not None and product["added_clips"] == 1
+    assert status["workflow"]["learning"]["status"] == "not_configured"
     assert len(status["stages"]) == 4
     assert all(stage["state"] == "succeeded" for stage in status["stages"])
     assert controller.stages.children == {}

@@ -24,6 +24,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.annotation.migration.legacy_format.media import check_clip, decode_range
 from src.tasks.player_detection.configuration import GenerateDatasetConfig
 from src.tasks.player_detection.data.store import (
     BBOX_SOURCE_CODES,
@@ -41,7 +42,6 @@ from src.tasks.player_detection.generate_dataset.sources import (
     ClipSource,
     collect_clip_sources,
 )
-from src.tennis_scene.chat_annotation.runtime.media import check_clip, decode_range
 from src.utils.data.splits import GroupSplitConfig, make_group_split_map
 
 

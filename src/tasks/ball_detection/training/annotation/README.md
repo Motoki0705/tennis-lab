@@ -80,3 +80,19 @@ macro平均の整合性を検証する。実checkpointのstate hash、学習mani
 各集合内はFPS別平均の等重み平均とし、元動画pixel座標の誤差を用いる。
 policy未設定なら共通管理が学習・評価を保存したうえで`not_configured`を返し、現行モデルを保持する。
 合格後の世代照合とpointer切替は共通ModelRegistryの責務。
+
+## hybridの接続境界
+
+現行adapterはquery posttraining v1の全重み初期化・座標評価を前提とする。
+`model_kind=mdd_hybrid` / `mdd_hybrid_training.v1`の登録先はなく、
+`train_hybrid(DictConfig)`を呼ぶだけでは同じLearning契約を満たさない。
+hybrid単体の学習・継続・再開APIは[training](../README.md#学習済み重みと再開)を参照する。
+
+productionへの接続は次の設計判断が必要で、query経路へ暗黙に読み替えない。
+
+- hybrid用recipeに存在閾値・損失配分・encoder/query別freeze・不在教師種別と窓配分をどう固定するか。
+- 累積trainと別入力の固定validation/testを、単一manifestを受け取るhybrid runnerへどう渡すか。
+- 既存の旧・新clip replay比率と、hybridのplay/absent/nonplay比率をどう両立するか。
+- presenceのFP/FNを採否条件に含めるか。checkpoint spec・工程receipt・比較評価・採用後の推論もhybrid契約へ対応させる必要がある。
+
+これらを決めてから、入力検証・runner・evidence・採否を一貫して接続する。

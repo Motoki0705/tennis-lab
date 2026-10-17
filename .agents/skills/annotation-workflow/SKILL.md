@@ -27,6 +27,27 @@ description: Run tennis-lab annotation campaigns with pinned inputs, local image
 CLIの `schema --type configuration` で入力契約を確認し、`configure` でplan・資源scope・
 runtimeを固定する。継続campaignは `budget.action = reuse` で既存scopeを参照し、
 code版・入力hash・工程costを結ぶ。
+
+新規planの注釈worker条件は [決定記録](worker-decision.toml) から取得する。
+`worker-decision` が返す `agent_model` / `agent_effort` をplanへそのまま入れる。
+現在のユーザー決定は `gpt-6.1-sol` / `max`（2026-10-16）。テストfixtureや過去planの
+`high` 等を本番条件に流用せず、決定記録との不一致をconfigureで修正・補完させない。
+
+```bash
+.venv/bin/python -m src.tasks.annotation worker-decision
+.venv/bin/python -m src.tasks.annotation schema --type configuration
+```
+
+取得結果の例（出典・決定日も確認する）:
+
+```json
+{"schema_version":"annotation.worker-decision.v1","agent_model":"gpt-6.1-sol","agent_effort":"max","decided_on":"2026-10-16","source":"User decision recorded in #1233 (parent #1088)"}
+```
+
+残るplan条件をユーザーの決定と入力参照から構成してからconfigureする。
+既存campaignの再開では保存済みplanを使い、worker条件を含めて書き換えない。
+変更後の条件は次に作るcampaignへ適用する。
+
 実行前に対象worktreeを固定し、実行中のコードを編集しない。
 1サイクル全体の保存ピーク・GPU時間・空き容量を事前に見積もる。WSLではLinux内の空きと
 仮想ディスクを置くhost volumeの空きを別に確認する。必要容量が確保されるまで運用を開始しない。
@@ -53,6 +74,8 @@ controllerのレビュー範囲照合と公開receiptを確認し、設定済み
 追加教師がないtask、条件未設定、保留、失敗、不採用をそれぞれ表示する。
 「注釈・dataset公開完了」と「学習・評価・採用完了」を分け、各receiptの参照と検証方法を
 報告する。次campaignのモデルは採用台帳の確定版を参照し、最新checkpointを推測しない。
+統合CLIの `report` で詳細状態を不変保存し、返された参照を報告へ添える。
+成果物別status・receipt・学習結果の意味はCLI READMEの「再開と報告」を正本とする。
 
 実動画・GPUで実行した範囲、合成試験だけの範囲、累積資源消費、残る判断と停止条件を明記する。
 

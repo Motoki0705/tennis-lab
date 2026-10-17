@@ -3,6 +3,8 @@
 共通の[注釈基盤](../../base/annotation/README.md)にplayer bbox固有の処理を接続する。
 差分編集・画像確認・教師採用の実装は [review](review/README.md) を参照する。
 production への全工程接続と実運用のレビュー方針値は未完了である。
+既存ball storeからの選手IDレビュー・pose生成とreaderは [pose](pose/README.md) が所有する。
+これは旧所有先から移した既存機能であり、修正bboxからの新production接続を実装したものではない。
 `PlayerPredictionAdapter` は、ballと同じ `Predictions` 台帳から新規clipだけを
 推論する。別モデルになったことを理由に既存教師を再生成・上書きしない。
 
@@ -30,3 +32,30 @@ production への全工程接続と実運用のレビュー方針値は未完了
 単体試験は実VFR MP4と合成検出出力でframe/PTS・BGR・native box・score閾値の
 float32境界・空候補・観測ID・export対応・cacheを検証する。実DINOモデルのCUDA
 推論と画像上の品質確認はpilotで実施する。
+
+## 保存済み予測の確認用動画
+
+`scripts.preview_predictions` は保存済みの player receipt・推論設定・予測・入力 clip の
+hash、観測 ID、全 frame/PTS を照合し、bbox と元 confidence を重ねた無音 MP4 を CPU で生成する。
+モデルはロードせず、固定したモデル参照の hash を来歴へ残す。重みファイルの再検査・推論は行わない。
+native 解像度・全 frame・可変フレーム間隔を保ち、画像は1 frameずつ処理する。
+動画には未確認予測であることと target/context を表示し、空検出もそのまま残す。
+
+```bash
+.venv/bin/python -m src.tasks.player_detection.scripts.preview_predictions \
+  --prediction /absolute/main-repo/outputs/chat_annotation/predictions/player/CLIP/REQUEST/receipt.json \
+  --sha256 RECEIPT_SHA256 \
+  --output "$PWD/tmp/player-preview" \
+  --reason 'player予測の誤検出・見逃し・bbox修正負担を確認'
+```
+
+出力先は実行コードの worktree 内 `tmp/` の未作成ディレクトリに限定する。
+`preview.mp4` と、入力/モデル/設定の参照、frame/PTS対応、動画hash、描画版・提示理由を持つ
+`provenance.json` を保存する。campaign 台帳・予測・採用状態は変更せず、生成は画像確認や
+方針承認の証拠にはならない。既存の静止画 preview は[統合CLI](../../annotation/README.md#画像確認公開学習)を使う。
+
+方針の確定には代表例で誤り・漏れ・修正負担と未確認条件を記録する。
+対象選手・bbox の意味、レビュー範囲、教師条件、数値の採否閾値をこのスクリプトから決めない。
+固定評価は[snapshot契約](../data/snapshots/README.md)に従い source 動画ごとに分離する。
+確認済み空 target のない旧 store では負例の誤検出を評価できず、partial label 評価も
+全画面 AP の代わりにはならない（[評価実装](../evaluation/partial_labels.py)）。
