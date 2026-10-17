@@ -32,6 +32,9 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
 JSON索引は100応答ごと、記録とHTMLは応答ごとに分ける。HTML索引は画像を埋め込まず、
 応答ページで必要な画像だけ読む。画像bytesは `cache/presented-images/<sha>.*` に重複なく
 保存する。reportから参照される画像・renderer metadataはGCの保護対象である。
+`retained_report()`は通常応答とorphanの両方の`ImageInput.source`を`read_rendered()`で
+検証し、`RenderReceipt.request`と`RenderRequest`のmanifest・annotation参照まで収集する。
+ラベルや編集に引用しなかった閲覧画像も同じ対象とし、unbound画像のsourceは推測しない。
 raw rolloutは移動せず、path/hash/sizeを記録する。共有レポートには推論文やtool入力/出力の
 全文を複製せず、入力/outputのhash、文字数、時刻、画像を残す。
 
