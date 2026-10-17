@@ -109,6 +109,9 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser(
+        "worker-decision", help="show the user-decided model/effort for new plans"
+    )
     schema = commands.add_parser("schema")
     schema.add_argument(
         "--type",
@@ -187,6 +190,11 @@ def main() -> None:
         measurement.add_argument("--sha256", required=True)
         measurement.add_argument("--test-root", type=Path)
     args = parser.parse_args()
+    if args.command == "worker-decision":
+        from src.tasks.base.annotation.worker_decision import load_worker_decision
+
+        print(load_worker_decision().model_dump_json())
+        return
     if args.command == "schema":
         from src.tasks.base.annotation.benchmarks.contracts import (
             ComparisonSpec,
