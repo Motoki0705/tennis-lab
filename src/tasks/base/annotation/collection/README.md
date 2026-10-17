@@ -107,6 +107,11 @@ workerの `not_applicable` 完了を照合し、これらの保護を残して�
 decode不能や尺の不適合で画像選別に進めない場合は、その機械的な除外記録を保持する。
 内容重複による除外や選別未完了はこの対象に含めない。controllerの `retire_excluded`
 operationはprepare枠で実行・再開し、除外を準備済み動画数へ加算しない。
+ただし同じblobを共有する内容重複sourceは、重複元が削除条件を満たすときに一緒に媒体を失う。
+削除前にcampaign横断でそのblobを参照する全登録済み取得記録を照合し、重複元以外が
+未選別・未準備の内容重複除外であることを要求する。削除後の重複側の取得receiptは、
+既存の内容hash所有者と除外理由、同一blob参照から重複元のplan・保持証拠・削除intentを検証する。
+重複側に選別結果や削除intentを作らず、既存の取得記録・台帳schemaも変更しない。
 
 削除intentを先に永続化し、内容hash・file identityを再確認してunlinkし、完了receiptを残す。
 削除直後に停止しても `Collection.prepare()` は保存済みJPEGとintentを検証して再開する。
@@ -120,6 +125,10 @@ intentのない消失やJPEGの改変は失敗とする。controllerはprepared�
 失敗は `unavailable`、異なるbytesは `different_content` として記録し、自動再試行やJPEGの置換をしない。
 通信失敗だけでYouTube側の削除とは断定しない。URLが消えていても保存済みJPEGでcycleを続けられる。
 意図的に再試行する場合は別の `attempt` を指定する。
+保存済み再取得receiptはsource・attempt・元の取得参照・削除証拠・downloaded fingerprintを照合する。
+`unavailable` はfingerprintなし、`different_content` は元と異なるfingerprint、`restored` は
+現存する元bytesを要求する。既に元動画がある場合の `restored` はfingerprintなしでも有効である。
+後のattemptで復元されても過去の失敗receiptは有効な終端結果として保持する。
 
 検証: [test_collection.py](../../../../../tests/unit/tasks/base/annotation/test_collection.py)
 で並行登録、過去素材、同内容、先行制限、実MP4のframe/PTS、公開前/後の障害、再試行を確認する。
