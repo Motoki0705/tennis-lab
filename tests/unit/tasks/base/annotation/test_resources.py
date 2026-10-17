@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import signal
+import sqlite3
 import subprocess
 import sys
 import time
@@ -18,8 +19,10 @@ import pytest
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     artifact_lock,
+    read_document,
     write_asset,
 )
+from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, save_plan
 from src.tasks.base.annotation.resources import (
@@ -29,7 +32,7 @@ from src.tasks.base.annotation.resources import (
     ResourceManager,
     ResourceRequest,
 )
-from src.tasks.base.annotation.resources.contracts import GPUUsage
+from src.tasks.base.annotation.resources.contracts import BudgetResumption, GPUUsage
 from src.tasks.base.annotation.resources.measurements import (
     gpu_usage,
     process_usage,
@@ -285,9 +288,70 @@ def test_measured_limit_latches_until_explicit_resume(tmp_path: Path) -> None:
     item = request(layout, plan, "new")
     with pytest.raises(BudgetStopped), guard.lease(item):
         pytest.fail("latched stop ignored")
-    guard.resume(reason="removed the fixture's unreferenced output")
+    reference = guard.resume(reason="removed the fixture's unreferenced output")
+    resumption = read_document(layout, reference, BudgetResumption)
+    assert resumption.scope == guard.reference
+    assert resumption.reason == "removed the fixture's unreferenced output"
+    assert (
+        resumption.checked_sample.stopped_reason == "additional storage budget reached"
+    )
+    assert resumption.checked_sample.storage.additional_bytes < 1_000_000
+    with guard.registry.transaction() as db:
+        row = db.execute("SELECT * FROM resource_resumptions").fetchone()
+    assert ArtifactRef.model_validate_json(row["reference"]) == reference
+    assert row["scope"] == guard.scope.scope_id
     with guard.lease(item):
         pass
+
+
+@pytest.mark.parametrize("boundary", ["evidence", "commit", "sample_cache"])
+def test_resume_reason_and_stop_clear_survive_interruption_together(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, boundary: str
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    guard = manager(layout, make_plan(layout))
+    original_scope = guard.scope.canonical_bytes()
+    with guard.registry.transaction() as db:
+        db.execute(
+            "UPDATE resource_scopes SET stop_reason=? WHERE id=?",
+            ("fixture maintenance", guard.scope.scope_id),
+        )
+
+    def fail(*args: Any, **kwargs: Any) -> None:
+        raise OSError("injected interruption")
+
+    if boundary == "evidence":
+        monkeypatch.setattr(
+            "src.tasks.base.annotation.resources.scheduler.write_document", fail
+        )
+    elif boundary == "commit":
+        with guard.registry.transaction() as db:
+            db.execute(
+                "CREATE TRIGGER fail_resume BEFORE UPDATE ON resource_scopes "
+                "WHEN NEW.stop_reason IS NULL BEGIN "
+                "SELECT RAISE(ABORT, 'injected interruption'); END"
+            )
+    else:
+        monkeypatch.setattr(guard, "_record", fail)
+    with pytest.raises((OSError, sqlite3.IntegrityError), match="injected"):
+        guard.resume(reason="maintenance finished")
+
+    with guard.registry.transaction() as db:
+        stop = db.execute(
+            "SELECT stop_reason FROM resource_scopes WHERE id=?",
+            (guard.scope.scope_id,),
+        ).fetchone()[0]
+        rows = db.execute("SELECT reference FROM resource_resumptions").fetchall()
+    if boundary == "sample_cache":
+        assert stop is None and len(rows) == 1
+        reference = ArtifactRef.model_validate_json(rows[0][0])
+        resumption = read_document(layout, reference, BudgetResumption)
+        assert resumption.reason == "maintenance finished"
+        assert resumption.scope == guard.reference
+        assert resumption.checked_sample.stopped_reason == "fixture maintenance"
+    else:
+        assert stop == "fixture maintenance" and rows == []
+    assert guard.scope.canonical_bytes() == original_scope
 
 
 def test_real_pss_counts_controller_once_and_rejects_recycled_observer() -> None:

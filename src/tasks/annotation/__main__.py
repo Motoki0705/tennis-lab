@@ -335,8 +335,12 @@ def main() -> None:
         if not args.details:
             result = compact_status(result)
     elif args.command == "resume-budget":
-        controller.resources.resume(reason=args.reason)
-        result = {"state": "budget_resumed", "reason": args.reason}
+        resumption = controller.resources.resume(reason=args.reason)
+        result = {
+            "state": "budget_resumed",
+            "reason": args.reason,
+            "resumption": resumption.model_dump(mode="json"),
+        }
     elif args.command == "retry-screen":
         result = controller.retry_screen(args.source_id, resume_quota=args.resume_quota)
     else:

@@ -28,6 +28,7 @@ from ..registry import Registry
 from ..workers.processes import ProcessIdentity, owned_members, process_snapshot
 from .contracts import (
     BudgetLimits,
+    BudgetResumption,
     BudgetScope,
     GPUUsage,
     ResourceRequest,
@@ -66,6 +67,9 @@ CREATE TABLE IF NOT EXISTS resource_baselines (
 );
 CREATE TABLE IF NOT EXISTS resource_watchdogs (
  scope TEXT PRIMARY KEY, sample TEXT NOT NULL, measured_at REAL NOT NULL, boot TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS resource_resumptions (
+ id TEXT PRIMARY KEY, scope TEXT NOT NULL, reference TEXT NOT NULL
 );
 """
 
@@ -623,7 +627,7 @@ class ResourceManager:
         except BlockingIOError:
             return None
 
-    def resume(self, *, reason: str) -> None:
+    def resume(self, *, reason: str) -> ArtifactRef:
         if not reason.strip():
             raise ValueError("resuming requires an explicit reason")
         with artifact_lock(self.layout, "resource-admission"):
@@ -631,21 +635,32 @@ class ResourceManager:
             sample = self._sample()
             if problem := self._problem(sample):
                 raise BudgetStopped(problem)
-            with self.registry.transaction() as db:
-                db.execute(
-                    "UPDATE resource_scopes SET stop_reason=NULL WHERE id=?",
-                    (self.scope.scope_id,),
-                )
-            write_document(
+            reference: ArtifactRef = write_document(
                 self.layout,
                 self.layout.path(
                     "resources",
                     self.scope.scope_id,
                     "resume-" + str(time.time_ns()) + ".json",
                 ),
-                sample,
+                BudgetResumption(
+                    scope=self.reference, reason=reason, checked_sample=sample
+                ),
             )
+            with self.registry.transaction() as db:
+                db.execute(
+                    "INSERT INTO resource_resumptions VALUES (?,?,?)",
+                    (
+                        reference.digest,
+                        self.scope.scope_id,
+                        reference.canonical_bytes().decode(),
+                    ),
+                )
+                db.execute(
+                    "UPDATE resource_scopes SET stop_reason=NULL WHERE id=?",
+                    (self.scope.scope_id,),
+                )
             self._record(sample.model_copy(update={"stopped_reason": None}))
+            return reference
 
     def _admit(self, request: ResourceRequest) -> None:
         with artifact_lock(self.layout, "resource-admission"):
