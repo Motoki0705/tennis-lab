@@ -13,6 +13,7 @@ from src.tasks.ball_detection.data.store import (
     BallFrameStore,
     ClipRecord,
 )
+from src.tasks.ball_detection.data.teacher_masks import LEGACY
 from src.tasks.ball_detection.evaluation.holdout_inference import FramePredictions
 
 
@@ -27,6 +28,9 @@ class HoldoutReferences:
     occluded: NDArray[np.bool_]
     uv: NDArray[np.float32]
     wrist_distance: NDArray[np.float32]
+    # None is the old reference-array contract. Store v2 always supplies masks;
+    # v1 clips are represented explicitly by the LEGACY sentinel on export.
+    coordinate_mask: NDArray[np.uint8] | None = None
 
     def __post_init__(self) -> None:
         n = len(self.row)
@@ -41,6 +45,12 @@ class HoldoutReferences:
             raise ValueError("Only located references may carry coordinates")
         if np.isinf(self.wrist_distance).any() or (self.wrist_distance < 0).any():
             raise ValueError("Wrist distances must be nonnegative or NaN (unknown)")
+        if self.coordinate_mask is not None:
+            mask = self.coordinate_mask
+            if mask.dtype != np.uint8 or mask.shape != (n,) or not np.isin(mask, [0, 1, LEGACY]).all():
+                raise ValueError("Invalid holdout coordinate mask")
+            if ((mask == 1) & (~self.annotated | (self.point_kind != "observed"))).any():
+                raise ValueError("Adopted holdout references require reviewed observed points")
 
 
 def clip_references(store: BallFrameStore, clip: ClipRecord) -> HoldoutReferences:
@@ -65,6 +75,7 @@ def clip_references(store: BallFrameStore, clip: ClipRecord) -> HoldoutReference
         rows, np.full(len(rows), clip.clip_id), np.full(len(rows), clip.camera_id),
         np.arange(len(rows), dtype=np.int64), store.frames["annotated"][rows],
         np.asarray(kinds), occluded, uv, np.full(len(rows), np.nan, np.float32),
+        np.full(len(rows), LEGACY, np.uint8) if store.teacher_masks is None else store.teacher_masks.coordinate[rows].copy(),
     )
 
 
@@ -106,6 +117,10 @@ def summarize_holdout(
         raise ValueError("Invalid holdout thresholds")
     located = reference.annotated & np.isfinite(reference.uv).all(axis=1)
     observed = reference.annotated & (reference.point_kind == "observed")
+    if reference.coordinate_mask is not None:
+        eligible = (reference.coordinate_mask == LEGACY) | (reference.coordinate_mask == 1)
+        located &= eligible
+        observed &= eligible
     detected = prediction.score >= score_threshold
     errors = np.linalg.norm(prediction.uv - reference.uv, axis=1)
     candidate_errors = np.linalg.norm(prediction.candidate_uv - reference.uv[:, None], axis=-1)
