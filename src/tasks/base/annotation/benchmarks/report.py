@@ -43,6 +43,12 @@ class _Resources:
         self.count = 0
         self.last_sample_digest: str | None = None
         self.last_time: float | None = None
+        self.last_clock: tuple[str, str] | None = None
+        self.last_wall_time: float | None = None
+        self.clock_bases: set[str] = set()
+        self.wall_regressions = 0
+        self.unknown_storage_age = 0
+        self.unknown_gaps = 0
         self.gap: float | None = None
         self.storage_age: float | None = None
         self.maxima: dict[str, int] = {}
@@ -64,13 +70,42 @@ class _Resources:
         if sample.sha256 == self.last_sample_digest:
             return
         self.last_sample_digest = sample.sha256
-        stamp = _seconds(sample.measured_at)
-        age = stamp - _seconds(sample.storage_measured_at)
-        if age < 0 or (self.last_time is not None and stamp < self.last_time):
+        wall_stamp = _seconds(sample.measured_at)
+        if self.last_wall_time is not None and wall_stamp < self.last_wall_time:
+            self.wall_regressions += 1
+        self.last_wall_time = wall_stamp
+        if sample.measured_monotonic_ns is not None:
+            if sample.clock_boot_id != observation.boot_id:
+                raise ValueError("resource monotonic clock belongs to another boot")
+            clock = (observation.boot_id, "monotonic")
+            stamp = sample.measured_monotonic_ns / 1e9
+            age = (
+                None
+                if sample.storage_measured_monotonic_ns is None
+                else (
+                    sample.measured_monotonic_ns - sample.storage_measured_monotonic_ns
+                )
+                / 1e9
+            )
+        else:
+            clock = (observation.boot_id, "wall_clock")
+            stamp = wall_stamp
+            age = stamp - _seconds(sample.storage_measured_at)
+        self.clock_bases.add(clock[1])
+        if self.last_clock is not None and clock != self.last_clock:
+            self.unknown_gaps += 1
+            self.last_time = None
+        self.last_clock = clock
+        if (age is not None and age < 0) or (
+            self.last_time is not None and stamp < self.last_time
+        ):
             raise ValueError("resource measurement timestamps moved backwards")
         if self.last_time is not None:
             self.gap = max(self.gap or 0.0, stamp - self.last_time)
-        self.storage_age = max(self.storage_age or 0.0, age)
+        if age is None:
+            self.unknown_storage_age += 1
+        else:
+            self.storage_age = max(self.storage_age or 0.0, age)
         self.last_time = stamp
         self.count += 1
         values = {
@@ -106,16 +141,16 @@ class _Resources:
         current = {}
         for process in sample.processes:
             identity = (observation.boot_id, process.pid, process.start_ticks)
-            value = (process.read_bytes, process.write_bytes)
+            counters = (process.read_bytes, process.write_bytes)
             previous = self.io.get(identity)
             if previous is not None:
-                if value[0] < previous[0] or value[1] < previous[1]:
+                if counters[0] < previous[0] or counters[1] < previous[1]:
                     raise ValueError(
                         "I/O counters decreased for the same process identity"
                     )
-                self.reads += value[0] - previous[0]
-                self.writes += value[1] - previous[1]
-            current[identity] = value
+                self.reads += counters[0] - previous[0]
+                self.writes += counters[1] - previous[1]
+            current[identity] = counters
         self.io = current
 
     def result(self) -> ResourceSummary:
@@ -133,6 +168,10 @@ class _Resources:
         return ResourceSummary(
             **{name: self.maxima.get(name) for name in maxima_names},
             samples=self.count,
+            timing_bases=tuple(sorted(self.clock_bases)),
+            wall_clock_regressions=self.wall_regressions,
+            unknown_storage_age_samples=self.unknown_storage_age,
+            unmeasured_time_gaps=self.unknown_gaps,
             maximum_sample_gap_seconds=self.gap,
             maximum_storage_age_seconds=self.storage_age,
             minimum_free_observed_bytes=self.free,

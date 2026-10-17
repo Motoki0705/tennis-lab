@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import time
 from collections import Counter
 from pathlib import Path
@@ -111,6 +112,7 @@ def main() -> None:
             "recovery",
             "benchmark_condition",
             "benchmark_comparison",
+            "benchmark_runtime",
         ),
         required=True,
     )
@@ -152,7 +154,22 @@ def main() -> None:
     stage.add_argument("--sha256", required=True)
     stage.add_argument("--attempt", type=int, required=True)
     stage.add_argument("--test-root", type=Path)
-    for name in ("benchmark-observe", "benchmark-report"):
+    for name in (
+        "benchmark-run",
+        "benchmark-tick",
+        "benchmark-status",
+        "benchmark-recover",
+    ):
+        benchmark = commands.add_parser(name)
+        benchmark.add_argument("--runtime", type=Path, required=True)
+        benchmark.add_argument("--sha256", required=True)
+        benchmark.add_argument("--condition", required=True)
+        benchmark.add_argument("--test-root", type=Path)
+        if name == "benchmark-run":
+            benchmark.add_argument("--max-seconds", type=float, required=True)
+        elif name == "benchmark-recover":
+            benchmark.add_argument("--operation", type=Path, required=True)
+    for name in ("benchmark-observe", "benchmark-report", "benchmark-stage"):
         measurement = commands.add_parser(name)
         measurement.add_argument("--operation", type=Path, required=True)
         measurement.add_argument("--sha256", required=True)
@@ -164,6 +181,7 @@ def main() -> None:
             ConditionSpec,
         )
 
+        from .benchmark.contracts import BenchmarkRuntime
         from .configuration import Configuration
 
         models: dict[str, type[Document]] = {
@@ -174,6 +192,7 @@ def main() -> None:
             "recovery": RecoveryInput,
             "benchmark_condition": ConditionSpec,
             "benchmark_comparison": ComparisonSpec,
+            "benchmark_runtime": BenchmarkRuntime,
         }
         print(
             json.dumps(
@@ -198,7 +217,8 @@ def main() -> None:
         "configuration"
         if args.command == "configure"
         else "operation"
-        if args.command in {"stage", "benchmark-observe", "benchmark-report"}
+        if args.command
+        in {"stage", "benchmark-observe", "benchmark-report", "benchmark-stage"}
         else "runtime"
     )
     ref = annotation_reference(layout, paths.declared(primary).path)
@@ -214,6 +234,62 @@ def main() -> None:
         from .operations import execute
 
         print(execute(layout, ref, attempt=args.attempt).model_dump_json())
+        return
+    if args.command == "benchmark-stage":
+        from .benchmark.operations import execute as execute_benchmark
+
+        print(execute_benchmark(layout, ref).model_dump_json())
+        return
+    if args.command in {
+        "benchmark-run",
+        "benchmark-tick",
+        "benchmark-status",
+        "benchmark-recover",
+    }:
+        from .benchmark.runner import BenchmarkRunner
+
+        if args.command == "benchmark-run" and (
+            not math.isfinite(args.max_seconds) or args.max_seconds <= 0
+        ):
+            raise ValueError("benchmark run duration must be positive")
+        runner = BenchmarkRunner(layout, ref, args.condition)
+        if args.command == "benchmark-recover":
+            from .benchmark.recovery import recover as recover_benchmark
+
+            recovery = read_document(
+                layout,
+                annotation_reference(layout, paths.declared("operation").path),
+                RecoveryInput,
+            )
+            print(recover_benchmark(runner, recovery).model_dump_json())
+            return
+        if args.command == "benchmark-status":
+            benchmark_result = runner.status()
+        else:
+            until = (
+                time.monotonic() + args.max_seconds
+                if args.command == "benchmark-run"
+                else 0.0
+            )
+            while True:
+                benchmark_result = runner.tick()
+                blocked = benchmark_result["state"] == "blocked" and (
+                    benchmark_result["reason"] is not None
+                    or not any(
+                        benchmark_result["task_states"].get(state, 0)
+                        for state in ("ready", "running", "exited")
+                    )
+                )
+                if (
+                    args.command != "benchmark-run"
+                    or benchmark_result["state"]
+                    in {"workers_complete", "budget_stopped"}
+                    or blocked
+                    or time.monotonic() >= until
+                ):
+                    break
+                time.sleep(min(1.0, max(0.0, until - time.monotonic())))
+        print(json.dumps(benchmark_result, ensure_ascii=False))
         return
     if args.command in {"benchmark-observe", "benchmark-report"}:
         from src.tasks.base.annotation.benchmarks.capture import observe
@@ -264,7 +340,9 @@ def main() -> None:
     elif args.command == "retry-screen":
         result = controller.retry_screen(args.source_id, resume_quota=args.resume_quota)
     else:
-        if args.command == "run" and args.max_seconds <= 0:
+        if args.command == "run" and (
+            not math.isfinite(args.max_seconds) or args.max_seconds <= 0
+        ):
             raise ValueError("controller run duration must be positive")
         deadline = time.monotonic() + (args.max_seconds if args.command == "run" else 0)
         last, printed = "", 0.0
