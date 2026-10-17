@@ -5,6 +5,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+import pytest
 import torch
 import yaml
 
@@ -45,7 +46,8 @@ def test_pretraining_cli_saves_evaluation_gif_and_transferable_encoder(tmp_path:
     assert saved["recipe"]["test_usage"] == "none"
 
 
-def test_diagnostic_prefix_resumes_with_the_original_schedule_and_weights(tmp_path: Path) -> None:
+@pytest.mark.parametrize("historical", [False, True])
+def test_diagnostic_prefix_resumes_with_the_original_schedule_and_weights(tmp_path: Path, historical: bool) -> None:
     _, plan = preparation_fixture.__wrapped__(tmp_path)
     model_config = tmp_path / "pretraining.yaml"
     model_config.write_text(yaml.safe_dump(dict(name="mdd_dpt_pretrain", **asdict(small_config()))))
@@ -68,6 +70,12 @@ def test_diagnostic_prefix_resumes_with_the_original_schedule_and_weights(tmp_pa
     stop = json.loads((resumed / "DIAGNOSTIC_STOP.json").read_text())
     assert stop["global_step"] == 3 and stop["total_updates"] == 6
     assert stop["complete"] is False and not (resumed / "COMPLETED.json").exists()
+    if historical:
+        checkpoint = resumed / "epoch-000.pt"
+        saved = torch.load(checkpoint, weights_only=True)
+        saved["model_config"].pop("input_channels")
+        saved["recipe"]["model"].pop("input_channels")
+        torch.save(saved, checkpoint)
     run(resumed, ["--resume", str(resumed / "epoch-000.pt")])
     actual = torch.load(resumed / "epoch-001.pt", weights_only=True)
     expected = torch.load(full / "epoch-001.pt", weights_only=True)
