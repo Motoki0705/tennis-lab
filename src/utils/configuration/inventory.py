@@ -140,7 +140,6 @@ _PATH_AUTHORITY = "src.utils.configuration.paths.PathResolver.resolve"
 _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.ball_refiner_3d.scripts.train": "ball_refiner_3d.train",
     "src.tasks.ball_refiner_3d.scripts.generate_dataset": "ball_refiner_3d.generate_dataset",
-    "src.tennis_scene.chat_annotation.scripts.prepare": "tennis_scene.chat_annotation.prepare",
     "src.synthetic_data_generation.scripts.run_appearance_variant": "synthetic.appearance_variant",
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
@@ -193,7 +192,6 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.ball_refiner_3d.scripts.train": "src.tasks.ball_refiner_3d.configuration.training.validate_training",
     "src.tasks.ball_refiner_3d.scripts.generate_dataset": "src.tasks.ball_refiner_3d.configuration.generation.validate_generation",
-    "src.tennis_scene.chat_annotation.scripts.prepare": "src.tennis_scene.chat_annotation.configuration.validate_prepare_config",
     "src.synthetic_data_generation.scripts.run_appearance_variant": "src.synthetic_data_generation.appearance.configuration.validate_appearance_boundary",
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "src.synthetic_data_generation.visualization.publication.configuration.validate_publication_boundary",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary",
@@ -341,37 +339,8 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "ball_refiner_3d.predict",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tennis_scene.chat_annotation.player_pose.__main__": (
-        "tennis_scene.chat_annotation.player_pose",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
-    **{
-        f"src.tennis_scene.chat_annotation.local_agent.{name}": (
-            "tennis_scene.chat_annotation.local_agent",
-            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-        )
-        for name in (
-            "__main__",
-            "audit",
-            "ct",
-            "dispatcher",
-            "efficiency",
-            "intake",
-            "phase2",
-            "prefetch",
-            "qa",
-            "status",
-        )
-    },
-    **{
-        f"src.tennis_scene.chat_annotation.scripts.{script}": (
-            f"tennis_scene.chat_annotation.{script}",
-            "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-        )
-        for script in ("serve_artifacts", "sync_done", "review_ui")
-    },
-    "src.tennis_scene.chat_annotation.scripts.annotate": (
-        "tennis_scene.chat_annotation.tools",
+    "src.tasks.player_detection.annotation.pose.__main__": (
+        "player_detection.annotation.pose",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     **{
@@ -540,55 +509,8 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.review_dataset", "main", domain="ball_refiner_3d", executable_module=True),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.train"),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.generate_dataset"),
-    _non_hydra_boundary("src.tennis_scene.chat_annotation.player_pose.__main__", "main",
-                        domain="tennis_scene", executable_module=True),
-    *(
-        _non_hydra_boundary(
-            f"src.tennis_scene.chat_annotation.local_agent.{name}",
-            "main",
-            domain="tennis_scene",
-            executable_module=name == "__main__",
-        )
-        for name in (
-            "__main__",
-            "audit",
-            "ct",
-            "dispatcher",
-            "efficiency",
-            "intake",
-            "phase2",
-            "prefetch",
-            "qa",
-            "status",
-        )
-    ),
-    _non_hydra_boundary(
-        "src.tennis_scene.chat_annotation.scripts.review_ui",
-        "main",
-        domain="tennis_scene",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.tennis_scene.chat_annotation.scripts.serve_artifacts",
-        "main",
-        domain="tennis_scene",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.tennis_scene.chat_annotation.scripts.sync_done",
-        "main",
-        domain="tennis_scene",
-        executable_module=True,
-    ),
-    _non_hydra_boundary(
-        "src.tennis_scene.chat_annotation.scripts.annotate",
-        "main",
-        domain="tennis_scene",
-        executable_module=True,
-    ),
-    _runtime_boundary(
-        "tennis_scene", "src.tennis_scene.chat_annotation.scripts.prepare"
-    ),
+    _non_hydra_boundary("src.tasks.player_detection.annotation.pose.__main__", "main",
+                        domain="player_detection", executable_module=True),
     _non_hydra_boundary(
         "src.tasks.court_detection.scripts.audit_hybrid_inference",
         "main",

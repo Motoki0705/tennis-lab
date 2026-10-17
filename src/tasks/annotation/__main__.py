@@ -84,12 +84,13 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
             "state": status["state"],
             "collection": status.get("collection"),
             "task_states": status.get("task_states"),
+            "annotation": status.get("annotation"),
             "workflow": None
             if status.get("workflow") is None
             else {
                 "state": status["workflow"]["state"],
                 "reason": status["workflow"].get("reason"),
-                "learning_state": status["workflow"].get("learning", {}).get("state"),
+                "learning": status["workflow"].get("learning"),
             },
             "worker_states": dict(
                 Counter(row["state"] for row in status.get("workers", []))
@@ -101,6 +102,7 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
                 {"state": row["state"], "reason": row.get("reason")}
                 for row in status.get("failures", [])
             ][:10],
+            "failure_count": len(status.get("failures", [])),
         }.items()
         if value is not None
     }
@@ -133,6 +135,7 @@ def main() -> None:
         "submit",
         "recover",
         "status",
+        "report",
         "tick",
         "run",
         "resume-budget",
@@ -363,6 +366,11 @@ def main() -> None:
         result = controller.status(details=args.details)
         if not args.details:
             result = compact_status(result)
+    elif args.command == "report":
+        from .reporting import report
+
+        print(report(controller, ref).model_dump_json())
+        return
     elif args.command == "resume-budget":
         resumption = controller.resources.resume(reason=args.reason)
         result = {

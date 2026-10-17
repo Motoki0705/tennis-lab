@@ -735,6 +735,53 @@ def test_cli_schema_and_configuration_round_trip(example: Example) -> None:
     assert configure(example.layout, example.configuration) == result
     assert not (example.layout.repository / ".training_queue").exists()
 
+    from src.tasks.annotation.reporting import WorkflowReport
+
+    report_command = [
+        sys.executable, "-m", "src.tasks.annotation", "report",
+        "--runtime", str(example.layout.artifact_path(receipt.runtime)),
+        "--sha256", receipt.runtime.digest, "--test-root", str(example.layout.root),
+    ]
+    report_result = subprocess.run(
+        report_command, cwd=PROJECT_ROOT, capture_output=True, text=True,
+        timeout=20, check=True,
+    )
+    report_ref = ArtifactRef.model_validate(json.loads(report_result.stdout))
+    report = read_document(example.layout, report_ref, WorkflowReport)
+    assert report.runtime == receipt.runtime
+    assert report.progress["annotation"]["complete"] is False
+    assert report.progress["annotation"]["products"][0]["status"] == "pending"
+    repeated = subprocess.run(
+        report_command, cwd=PROJECT_ROOT, capture_output=True, text=True,
+        timeout=20, check=True,
+    )
+    assert json.loads(repeated.stdout) == report_ref.model_dump(mode="json")
+    assert not (example.layout.repository / ".training_queue").exists()
+
+
+@pytest.mark.parametrize("name,counts", [("one", (1, 2, 3)), ("another", (3, 4, 2))])
+def test_cli_plans_other_campaign_counts_without_source_changes(
+    example: Example, name: str, counts: tuple[int, int, int]
+) -> None:
+    configured = example.configuration.model_copy(update={
+        "plan": example.configuration.plan.model_copy(update={
+            "campaign_id": name,
+            "counts": CollectionCounts(channels=counts[0], videos_per_channel=counts[1], max_clips_per_video=counts[2]),
+        })
+    })
+    request = write_document(example.layout, example.layout.path("campaigns", "inputs", name + ".json"), configured)
+    result = subprocess.run(
+        [sys.executable, "-m", "src.tasks.annotation", "configure",
+         "--configuration", str(example.layout.artifact_path(request)),
+         "--sha256", request.digest, "--test-root", str(example.layout.root)],
+        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=20, check=True,
+    )
+    receipt = example.receipt(ArtifactRef.model_validate(json.loads(result.stdout)))
+    plan = read_document(example.layout, receipt.plan, CampaignPlan)
+    assert plan.campaign_id == name
+    assert (plan.counts.videos, plan.counts.max_clips) == (counts[0] * counts[1], counts[0] * counts[1] * counts[2])
+    assert not (example.layout.repository / ".training_queue").exists()
+
 
 @pytest.mark.parametrize("damage", ["limits", "missing_reference"])
 def test_reuse_never_creates_a_replacement_budget(

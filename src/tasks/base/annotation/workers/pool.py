@@ -119,6 +119,9 @@ class WorkerPool:
             catalog,
             classifier=adapter.classify_tool,
             classifier_id=f"{adapter.name}.{adapter.version}",
+            evidence_resolver=lambda category, text: adapter.tool_evidence(
+                self.layout, launch_ref, category, text
+            ),
         )
         write_document(self.layout, directory / "telemetry.ref.json", ref)
         return ref
