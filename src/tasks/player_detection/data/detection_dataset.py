@@ -52,6 +52,7 @@ def select_detection_frames(
     stats = {
         "split_frames": int(rows.size),
         "dropped_unreviewed": 0,
+        "dropped_annotation_ignore": 0,
         "dropped_context": 0,
         "dropped_unconfirmed_empty": 0,
         "dropped_unresolved_player": 0,

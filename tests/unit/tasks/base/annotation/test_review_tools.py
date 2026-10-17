@@ -707,8 +707,9 @@ def test_parallel_edits_only_commit_one_expected_revision(env: Environment) -> N
     assert read_document(env.layout, head, Revision).sequence == 1
 
 
+@pytest.mark.parametrize("phase", ["revision_after", "receipt_before", "receipt_after"])
 def test_edit_commit_receipt_gap_is_recoverable(
-    env: Environment, monkeypatch: pytest.MonkeyPatch
+    env: Environment, monkeypatch: pytest.MonkeyPatch, phase: str
 ) -> None:
     from src.tasks.base.annotation.editing import store
 
@@ -720,22 +721,29 @@ def test_edit_commit_receipt_gap_is_recoverable(
         pass
 
     def crash(layout: AnnotationLayout, path: Path, document: Document) -> ArtifactRef:
-        if path.name == "receipt.json":
+        if path.name == "receipt.json" and phase == "receipt_before":
             raise Crash("committed head; receipt not written")
         result: ArtifactRef = original(layout, path, document)
+        if path.name == "receipt.json" and phase == "receipt_after":
+            raise Crash("receipt written; caller not notified")
+        if isinstance(document, Revision) and document.sequence == 1 and phase == "revision_after":
+            raise Crash("revision written; head not committed")
         return result
 
     monkeypatch.setattr(store, "write_document", crash)
     with pytest.raises(Crash):
         env.store.apply(command, env.adapter)
     head, _ = env.store.current(revision.context, env.adapter)
-    assert read_document(env.layout, head, Revision).sequence == 1
+    assert read_document(env.layout, head, Revision).sequence == (0 if phase == "revision_after" else 1)
     monkeypatch.setattr(store, "write_document", original)
     receipt = read_document(
         env.layout, RevisionStore(env.layout).apply(command, env.adapter), EditReceipt
     )
-    assert receipt.revision == head
-    assert env.store.current(revision.context, env.adapter)[0] == head
+    assert read_document(env.layout, receipt.revision, Revision).sequence == 1
+    if phase != "revision_after":
+        assert receipt.revision == head
+    assert env.store.current(revision.context, env.adapter)[0] == receipt.revision
+    assert RevisionStore(env.layout).apply(command, env.adapter) == env.store.apply(command, env.adapter)
 
 
 def test_adoption_requires_task_validation_then_seals_the_exact_revision(
