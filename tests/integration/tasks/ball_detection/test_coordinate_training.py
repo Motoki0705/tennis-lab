@@ -38,6 +38,7 @@ from src.tasks.ball_detection.preprocessing.mdd import (
     luminance_to_mdd,
     mdd_coefficients,
 )
+from src.tasks.ball_detection.preprocessing.rgb_mdd import RGBToRGBMDD
 from src.tasks.ball_detection.training.sampling import FPSMixSampler
 from src.utils.checksum import dual_sha256
 from src.utils.data.file_ranges import FileRangeReader
@@ -75,7 +76,7 @@ def pose_manifest(root: Path, directory: Path) -> Path:
 
 def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: Path) -> None:
     root = write_store_clip(tmp_path / "ball", "train/plain", [
-        frame(i, ball(xy=(8., 9.))) if i < 128 else frame(i) for i in range(400)
+        frame(i, ball(xy=(8. + i / 16, 9. + i / 32))) if i < 128 else frame(i) for i in range(400)
     ], size=(32, 32))
     store = BallFrameStore(root)
     data = build_coordinate_manifest(store, PlayIntervalConfig(), TemporalSamplingConfig(), input_kind="mdd_only")
@@ -89,6 +90,9 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
     assert "pose" not in sample and "pose_valid" not in sample
     torch.testing.assert_close(sample["frame_indices"], torch.arange(32) * 4)
     torch.testing.assert_close(sample["timestamps"], torch.arange(32).float() * 4 / 30)
+    frame_indices = sample["frame_indices"].float()
+    expected_uv = torch.stack((8 + frame_indices / 16, 9 + frame_indices / 32), -1) / 31
+    torch.testing.assert_close(sample["uv"], expected_uv)
     gray = []
     for frame_index in range(128):
         image = store.read_bgr(store.row_of(store.clips[0], frame_index)).astype(np.float32) / 255
@@ -100,6 +104,9 @@ def test_low_clip_presence_needs_no_pose_and_mdd_follows_sampled_rgb(tmp_path: P
     native = RGBToMDD()(sample["rgb"][None])[0]
     assert sample["rgb"].dtype == torch.uint8 and "mdd" not in sample
     torch.testing.assert_close(native, expected)
+    five_channels = RGBToRGBMDD()(sample["rgb"][None])[0]
+    torch.testing.assert_close(five_channels[3:], expected)
+    torch.testing.assert_close(five_channels[:3], sample["rgb"].transpose(0, 1).float() / 255)
     assert not torch.allclose(native, wrong_order)
     batch = collate_window_samples([sample])
     assert "pose" not in batch and batch["rgb"].shape == (1, 32, 3, 32, 32)
