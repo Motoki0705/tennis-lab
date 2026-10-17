@@ -15,6 +15,7 @@
 - リクエストは source のbytes hash・実PTSの原点/time base・全長、policy、
   plan、最大clip数に結び付く。15秒未満・設定上限超過・非対応の映像形式は
   preflightの理由付き選外として台帳に記録する。
+  全長の秒表現は[準備と共通のPTS境界契約](../collection/README.md)に従う。
 - `python -m src.tasks.base.annotation.screening --request PATH
   --request-sha256 HASH images --start S --stop E --step STEP` は CPUで逐次decodeし、
   最大24タイルのJPEGページを1ページずつ生成する。時刻はsourceの実PTSから
