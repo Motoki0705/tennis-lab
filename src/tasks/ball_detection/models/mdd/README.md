@@ -9,6 +9,7 @@
 | `pose.py` | DeepSets / Attention Pooling / Hierarchical Transformer / Skeleton GNNによるframeごとのpose token |
 | `attention.py` | 同時刻のCross-Attentionと実時間RoPEのSelf-Attention。pose融合とquery-onlyの違いは明示する |
 | `detectors.py` | MDDPoseDetector、MDDQueryDetector、MDDDPTDetector、DeepMDDQueryDetector |
+| `hybrid.py` | DeepMDDHybridDetector。時間queryを最下層にconcatし、DPT heatmapと存在logitを返す |
 | `variants.py` | 有効なpose32条件＋poseなしquery-only4条件を列挙 |
 
 圧縮比較用encoderと深いCNNは異なる構造として維持する。深いCNN候補を圧縮方式と無条件に直積しない。
@@ -37,7 +38,44 @@ RGBのdtype・shape・32フレーム契約は`model_io`で検証する。DPTの�
 深いquery decoderはSwiGLU（中間幅8/3 dimを64単位で切上げ）、dim256なら704。
 
 DPTは`src/utils/models/dpt.py`をcourtと共有し、CNNの4特徴を融合して入力1/4のheatmap logitsを出す。
-事後学習は同一CNNだけをstrict転送し、新規query decoderを学習する。encoder固定/解除は学習側が制御する。
+2段目の事後学習は同一CNNだけをstrict転送し、新規query decoderを学習する。encoder固定/解除は学習側が制御する。
+
+## Query＋DPTハイブリッド
+
+`MDDHybridConfig` / `configs/model/mdd_hybrid.yaml` は5chを必須とする。
+`DeepMDDQueryTrunk` が既存のencoderとquery経路を共有する。32フレームに対する
+時間Self-Attention後のquery `(B,T,dim)` を、1/64特徴の各セルへ同じ値でbroadcastし、
+チャンネル方向にconcatする。1/8・1/16・1/32特徴はそのままDPTに渡す。
+DPTの最下層入力幅だけ `mixed_channels[-1] + dim` に拡張し、既存の1×1投影で
+`decoder_channels` に揃える。別の圧縮層を加えず、concatの情報を直接投影できる。
+
+`forward(rgb, timestamps)` は `MDDHybridOutput` を返す。
+
+| field | shape | 用途 |
+|---|---|---|
+| `heatmap_logits` | `(B,32,ceil(H/4),ceil(W/4))` | native格子のdense教師。不在では全面0を教師にできる |
+| `presence_logits` | `(B,32)` | queryのLayerNorm→Linearから得る存在logit |
+
+forwardは存在判定でheatmapをmaskしないため、両方の損失を独立に学習できる。
+座標回帰headは持たない。推論用の座標・不在契約は
+[ball_detectionの出力契約](../../README.md#ハイブリッドの出力契約)を参照。
+
+## 3段目への重み転送
+
+[`initialize_hybrid_from_query`](../../checkpoints/hybrid.py) は2段目のquery checkpointと
+`MDDHybridConfig` から新規モデルと転送receiptを返す。
+
+| 処理 | 登録名 |
+|---|---|
+| 2段目から転送 | `encoder.*`, `projection.*`, `spatial_position.*`, `ball_query`, `blocks.*`（RoPE bufferも含む） |
+| 新規初期化 | `decoder.*`, `heatmap_head.*`, `presence_head.*` |
+| 転送対象外 | 2段目の座標回帰 `head.*`、optimizer、freeze状態 |
+
+1段目checkpointへの参照は来歴としてのみ扱い、ファイルを開かず、DPT重みを使わない。
+入力契約と転送部の構成を照合し、余分・欠落・形状違いのstateを拒否する。
+DPT幅とactivation checkpointingだけは転送部の重みに影響しないため変更可能。
+receiptには読み込んだcheckpointのhash、転送・新規初期化の全stateキー、構成を残す。
+返却モデルの全parameterは学習可能。freeze、損失配分、保存・再開レシピは学習側が決める。
 
 ファイル配置の整理でstate_dictの登録名・forwardの計算順は変更しない。
 既存のscene用ConvNeXtは`../conv_next_unet.py`のnative heatmap・候補・patch契約を維持する。

@@ -53,6 +53,14 @@ OpenCVとnvJPEGには画素差があるため、評価時は保存decoder/API/ve
 
 ## 学習済み重みと再開
 
+5chの3段目（hybrid）の構造と初期化APIは [models/mdd](../models/mdd/README.md#3段目への重み転送) にある。
+このCLIのstageにはまだ追加していない。#1230で損失配分、checkpoint/resume schema、
+転送receiptの保存、存在閾値の評価方法を定義する。
+現在の `heatmap_valid & ~position_valid` は確認済み不在の教師で、未確定位置を負例にしない。
+人工遮蔽では既知位置の教師を維持する。増強で画面外へ移った点の扱いとpresence maskは
+stage 3の教師仕様で明示する必要がある。
+既存窓はプレイ区間・最低位置教師数で選別するため、全不在／非プレー窓の供給は別途設計する。
+
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
 coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習のcosineでは元の総予算を維持する。
 `--stop-after-epoch`によるDPTの診断停止も元の総予算を変えない。自動で次stageを起動しない。
