@@ -60,6 +60,8 @@ query posttraining v1、`--initial-checkpoint-sha256`にそのSHA-256を明示�
 両manifestをrunへ複製する。これらの入力はrunの途中では変更できない。
 
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
+保存済みbestの指標は、学習時と同じrecipeの`selection_scope`で再計算して照合する。
+`balanced_existing_new`では既存・新規validationの等重み平均を使い、Commonで代用しない。
 最終epoch保存後に完了記録を残す前に停止した場合は、更新を追加せず残りのstress評価と完了記録を再開する。
 full_modelでは元の初期checkpoint/hashを指定したまま、当該run内のcheckpointを`--resume`に渡す。
 新しい親モデル・累積データを使う次サイクルと、同一サイクルの中断再開を区別する。

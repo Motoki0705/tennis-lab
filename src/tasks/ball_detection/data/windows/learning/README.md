@@ -29,7 +29,8 @@ snapshotの全file hash・clip identityと、宣言したsamplingから再構築
 validation/testを確定する。既存のGT・画素・split・窓membershipを照合したうえで、
 累積storeを参照するmanifestへ`existing`/`new`の集合を付ける。元のholdout参照も保持する。
 新規側のCommon subsetは要求しない。両集合には各FPSの教師が必要で、不足時に
-別集合の平均へ置き換えない。登録後のmanifest欠損・改変は再生成せずエラーとする。
+別集合の平均へ置き換えない。登録後のvalidation/test manifest欠損・改変は、
+共通Learningの`register`による再登録時も保存済み参照から検証し、再生成せずエラーとする。
 
 これらはtask用APIであり、モデル推論・学習・モデル採用を実行しない。
 production CLIでは資源管理下の工程から呼び、共通学習管理には検証した参照を渡す。

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
     BallSnapshot,
 )
@@ -184,10 +185,11 @@ def test_altered_input_or_checkpoint_is_not_resumed(tmp_path: Path) -> None:
     assert not env.layout.artifact_path(inputs.prepared.manifest).exists()
 
 
+@pytest.mark.parametrize("cohorts", [False, True])
 def test_interrupted_epoch_resumes_only_remaining_updates(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cohorts: bool
 ) -> None:
-    env = LearningEnvironment(tmp_path)
+    env = LearningEnvironment(tmp_path, cohorts=cohorts)
     started = env.tick()
     original = joint.train_epoch
 
@@ -203,6 +205,18 @@ def test_interrupted_epoch_resumes_only_remaining_updates(
     first = output_reference(
         env.layout, run_root(env.layout, env.intent) / "attempt-001/epoch-000.pt"
     )
+    interrupted_checkpoint = torch.load(
+        env.layout.artifact_path(first), weights_only=True, map_location="cpu"
+    )
+    scope = "balanced_existing_new" if cohorts else "common"
+    assert interrupted_checkpoint["recipe"]["selection_scope"] == scope
+    assert interrupted_checkpoint["best_score"] == selection_score(
+        interrupted_checkpoint["validation"], scope
+    )
+    if cohorts:
+        assert interrupted_checkpoint["best_score"] != selection_score(
+            interrupted_checkpoint["validation"], "common"
+        )
     env.executor.record_exit(started.launch, failed=True)
     assert env.tick().state == "failed"
     env.learning.retry(
@@ -221,10 +235,20 @@ def test_interrupted_epoch_resumes_only_remaining_updates(
         weights_only=True,
         map_location="cpu",
     )
-    assert latest["global_step"] == 2 and latest["epoch"] == 1
+    assert latest["global_step"] == env.recipe.total_updates and latest["epoch"] == 1
     assert output_reference(env.layout, env.layout.artifact_path(first)) == first
     assert (
-        max(int(state["step"]) for state in latest["optimizer"]["state"].values()) == 2
+        max(int(state["step"]) for state in latest["optimizer"]["state"].values())
+        == env.recipe.total_updates
+    )
+    selected = torch.load(
+        env.layout.artifact_path(provenance.selected_checkpoint),
+        weights_only=True,
+        map_location="cpu",
+    )
+    best = json.loads(env.layout.artifact_path(provenance.best_record).read_bytes())
+    assert best["selection_error_px"] == latest["best_score"] == selection_score(
+        selected["validation"], scope
     )
 
 
