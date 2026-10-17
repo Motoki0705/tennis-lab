@@ -112,15 +112,21 @@ def queue_state(config: QueueConfiguration, launch: ArtifactRef) -> dict[str, st
             "state": "pending",
             "reason": "launch has not been registered in the queue",
         }
-    states = [
-        state
-        for state in ("jobs", "running", "done", "failed", "cancelled")
-        if (Path(config.directory) / state / job).exists()
-    ]
-    if len(states) != 1:
+    directory = Path(config.directory)
+    for _ in range(3):
+        # Atomic renames can appear in both directories (or neither on requeue).
+        # Retry ambiguous observations; the bound limits polling, not job moves.
+        states = [
+            state
+            for state in ("jobs", "running", "done", "failed", "cancelled")
+            if (directory / state / job).exists()
+        ]
+        if len(states) == 1:
+            break
+    else:
         return {
-            "state": "interrupted",
-            "reason": "queue registration has no unique lifecycle state",
+            "state": "unfinished",
+            "reason": "queue registration has no unique lifecycle state during observation; inspect queue if this persists",
         }
     state = states[0]
     if state in {"done", "failed", "cancelled"}:

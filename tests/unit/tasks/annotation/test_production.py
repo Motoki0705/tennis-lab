@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts 
     SourceSplit,
 )
 from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
     read_document,
     write_document,
 )
@@ -34,12 +36,33 @@ from src.tasks.base.annotation.collection.contracts import (
 from src.tasks.base.annotation.contracts import ArtifactRef, content_digest
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, StageCapacity
+from src.tasks.base.annotation.plan import CampaignPlan, StageCapacity, save_plan
 from src.tasks.base.annotation.predictions import Predictions
-from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+from src.tasks.base.annotation.resources import (
+    BudgetLimits,
+    BudgetStopped,
+    CapacityUnavailable,
+    ResourceManager,
+    ResourceRequest,
+)
+from src.tasks.base.annotation.resources.contracts import GPUUsage
 from src.tasks.base.annotation.workers.contracts import WorkRequest
 from tests.support.tasks.annotation import record_stage
 from tests.support.tasks.ball_detection.review_worker import ReviewSession
+
+
+@pytest.fixture(autouse=True)
+def no_hardware_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="synthetic production tests do not query a GPU",
+        ),
+    )
 
 
 @pytest.fixture
@@ -58,6 +81,14 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
     )
 
     configured_learning = getattr(request, "param", False)
+    duplicate_stage = (
+        configured_learning.removeprefix("duplicate_")
+        if isinstance(configured_learning, str)
+        and configured_learning.startswith("duplicate_")
+        else None
+    )
+    if duplicate_stage is not None:
+        configured_learning = False
 
     def transform(plan: CampaignPlan) -> CampaignPlan:
         from src.tasks.base.annotation.plan import LearningPlan
@@ -206,6 +237,10 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
                 selection_policy=None,
             ),
         )
+    if duplicate_stage is not None:
+        learning_options["collect_source"] = lambda plan, candidate: (
+            collect_replacement(layout, plan, candidate, duplicate_stage)
+        )
     result = ReviewSession(
         layout.root,
         **learning_options,
@@ -219,6 +254,8 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
             ),
         ),
     )
+    if duplicate_stage is not None:
+        return result
     env = result.env
     receipt = env.save(
         PreparationReceipt(
@@ -240,6 +277,120 @@ def session(tmp_path: Path, request: pytest.FixtureRequest) -> ReviewSession:
     return result
 
 
+def collect_replacement(
+    layout: AnnotationLayout,
+    plan: CampaignPlan,
+    replacement: SourceCandidate,
+    duplicate_stage: str,
+) -> ArtifactRef:
+    """Exclude real duplicate media, then admit and prepare the review source."""
+    from fractions import Fraction
+
+    import av
+    import numpy as np
+
+    from src.tasks.annotation.reviews import sources
+    from src.tasks.base.annotation.artifacts import annotation_reference
+    from src.tasks.base.annotation.collection.contracts import (
+        SelectionReceipt,
+        TimeWindow,
+    )
+    from src.tasks.base.annotation.collection.service import Collection, SourceExcluded
+    from src.tasks.base.annotation.media import encode_video, probe_video
+
+    collection = Collection(layout, plan)
+
+    def source(video_id: str, channel: str, tail: int) -> SourceCandidate:
+        path = layout.path("campaigns", "inputs", video_id + ".mp4")
+        frames = []
+        for index in range(64):
+            frame = av.VideoFrame.from_ndarray(
+                np.full((32, 64, 3), 100 if index < 32 else tail, np.uint8),
+                format="rgb24",
+            )
+            frame.pict_type = av.video.frame.PictureType.I
+            frames.append((frame, index * 100, 100))
+        encode_video(
+            path,
+            width=64,
+            height=32,
+            time_base=Fraction(1, 1000),
+            rate=Fraction(10),
+            frames=frames,
+            crf=16,
+            preset="ultrafast",
+        )
+        return replacement.model_copy(
+            update={
+                "video_id": video_id,
+                "channel_id": channel,
+                "local_media": annotation_reference(layout, path),
+            }
+        )
+
+    def select(owner: Collection, candidate: SourceCandidate, stop: float) -> None:
+        row = owner.ledger.source(owner.plan, candidate.source_id)
+        acquired = read_document(
+            layout,
+            ArtifactRef.model_validate_json(row["acquisition"]),
+            AcquisitionReceipt,
+        )
+        owner.select(
+            write_document(
+                layout,
+                layout.path(
+                    "campaigns",
+                    owner.plan.campaign_id,
+                    candidate.video_id + ".selection.json",
+                ),
+                SelectionReceipt(
+                    source_id=candidate.source_id,
+                    source_digest=acquired.source.media.digest,
+                    policy=owner.plan.selection,
+                    evidence=owner.plan.selection,
+                    requested_maximum=1,
+                    windows=(
+                        TimeWindow(
+                            start=0.0, stop=stop, target_start=0.0, target_stop=stop
+                        ),
+                    ),
+                    shortage_reason=None,
+                ),
+            )
+        )
+
+    historical = source("historical", "archive", 20)
+    prior = Collection(layout, plan.model_copy(update={"campaign_id": "history"}))
+    assert prior.register([historical])[0].disposition == "registered"
+    prior.acquire(historical.source_id)
+    select(prior, historical, 3.2)
+    prior.prepare(historical.source_id)
+
+    duplicate = source(
+        "duplicate", replacement.channel_id, 20 if duplicate_stage == "acquire" else 40
+    )
+    assert collection.register([duplicate])[0].disposition == "registered"
+    if duplicate_stage == "acquire":
+        with pytest.raises(SourceExcluded, match="duplicate content"):
+            collection.acquire(duplicate.source_id)
+    else:
+        collection.acquire(duplicate.source_id)
+        select(collection, duplicate, 3.2)
+        with pytest.raises(SourceExcluded, match="duplicate clip content"):
+            collection.prepare(duplicate.source_id)
+    assert collection.ledger.summary(plan)["sources_by_state"] == {"excluded": 1}
+    assert sources(layout, plan) is None
+    assert collection.register([replacement])[0].disposition == "registered"
+    collection.acquire(replacement.source_id)
+    assert replacement.local_media is not None
+    timeline = probe_video(layout.artifact_path(replacement.local_media))
+    select(collection, replacement, float(timeline.boundary(len(timeline.pts))))
+    prepared = read_document(
+        layout, collection.prepare(replacement.source_id), PreparationReceipt
+    )
+    return prepared.clips[0]
+
+
 def finish(session: ReviewSession, *, deferred: bool = False) -> None:
     image = session.image(1, 2)
     session.confirm(image, 1, 3)
@@ -247,7 +398,7 @@ def finish(session: ReviewSession, *, deferred: bool = False) -> None:
     session.finish(report, status="deferred" if deferred else "complete")
 
 
-def controller_for(session: ReviewSession) -> Controller:
+def controller_for(session: ReviewSession, *, pending_limit: int = 10) -> Controller:
     env = session.env
     scope = ResourceManager.create(
         env.layout,
@@ -256,7 +407,7 @@ def controller_for(session: ReviewSession) -> Controller:
         roots=(env.layout.repository,),
         previously_allocated_bytes=0,
         previously_used_gpu_seconds=0,
-        max_pending_per_stage=10,
+        max_pending_per_stage=pending_limit,
     )
     script = env.layout.repository / "queue.sh"
     script.write_text("# synthetic queue --idempotency-key\n")
@@ -292,9 +443,14 @@ def record_input_stages(controller: Controller, *, prediction: bool = True) -> N
     """Give the synthetic ledger the corresponding immutable supervisor receipts."""
     layout = controller.layout
     with controller.collection.ledger.registry.transaction() as database:
-        source = database.execute("SELECT * FROM sources").fetchone()
+        source = database.execute(
+            "SELECT * FROM sources WHERE campaign_id=? AND state='prepared'",
+            (controller.plan.campaign_id,),
+        ).fetchone()
         predicted = database.execute(
-            "SELECT receipt FROM annotation_predictions"
+            "SELECT p.receipt FROM annotation_predictions p "
+            "JOIN annotation_tasks t ON t.id=p.task_id WHERE t.campaign_id=?",
+            (controller.plan.campaign_id,),
         ).fetchone()[0]
     from src.tasks.base.annotation.contracts import ClipManifest
     from src.tasks.base.annotation.predictions import PredictionReceipt
@@ -302,14 +458,20 @@ def record_input_stages(controller: Controller, *, prediction: bool = True) -> N
     prediction_ref = ArtifactRef.model_validate_json(predicted)
     context = read_document(layout, prediction_ref, PredictionReceipt).context
     manifest = read_document(layout, context.manifest, ClipManifest)
-    acquisition = write_document(
-        layout,
-        layout.path("campaigns", "fixture-acquisition.json"),
-        AcquisitionReceipt(
-            candidate_digest=SourceCandidate.model_validate_json(source["candidate"]).sha256,
-            configuration=controller.plan.preparation,
-            source=manifest.source,
-        ),
+    acquisition = (
+        ArtifactRef.model_validate_json(source["acquisition"])
+        if source["acquisition"] is not None
+        else write_document(
+            layout,
+            layout.path("campaigns", "fixture-acquisition.json"),
+            AcquisitionReceipt(
+                candidate_digest=SourceCandidate.model_validate_json(
+                    source["candidate"]
+                ).sha256,
+                configuration=controller.plan.preparation,
+                source=manifest.source,
+            ),
+        )
     )
     with controller.collection.ledger.registry.transaction() as database:
         database.execute(
@@ -336,6 +498,135 @@ def record_input_stages(controller: Controller, *, prediction: bool = True) -> N
             results=(reference,),
             exited=True,
         )
+
+
+@pytest.mark.parametrize(
+    "session", ["duplicate_acquire", "duplicate_prepare"], indirect=True
+)
+def test_production_publishes_replacement_after_duplicate_exclusion(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation import operations
+    from src.tasks.annotation.contracts import OperationReceipt
+    from src.tasks.annotation.production import CompletionEvidence
+    from src.tasks.annotation.reviews import CampaignReview
+    from src.tasks.base.annotation.contracts import PublicationReceipt
+    from src.tasks.base.annotation.learning.contracts import CampaignCompletion
+
+    finish(session)
+    env = session.env
+    controller = controller_for(session)
+    record_input_stages(controller)
+    excluded = controller.collection.ledger.source(
+        env.plan, content_digest(["local", "duplicate"])
+    )
+    acquisition = ArtifactRef.model_validate_json(excluded["acquisition"])
+    action: AcquireOperation | PrepareOperation = AcquireOperation(
+        source_id=excluded["id"]
+    )
+    if excluded["preparation"] is not None:
+        record_stage(
+            controller,
+            OperationInput(plan=env.plan_ref, operation=action),
+            results=(acquisition,),
+            exited=True,
+        )
+        action = PrepareOperation(source_id=excluded["id"])
+    data = OperationInput(plan=env.plan_ref, operation=action)
+    reference = record_stage(controller, data, exited=True)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+    result = read_document(
+        env.layout, operations.execute(env.layout, reference), OperationReceipt
+    )
+    assert result.status == "not_applicable"
+    assert result.results == (acquisition,) and result.reason == excluded["reason"]
+    assert controller.publication_failures() == []
+
+    deadline = time.monotonic() + 40
+    progress = controller.cycle()["workflow"]
+    while progress["state"] == "publishing" and time.monotonic() < deadline:
+        time.sleep(0.1)
+        progress = controller.cycle()["workflow"]
+    assert progress["state"] == "blocked", progress
+    assert progress["learning"]["status"] == "not_configured"
+    review_ref = close_reviews(env.layout, env.plan, env.plan_ref)
+    assert review_ref is not None
+    review = read_document(env.layout, review_ref, CampaignReview)
+    assert {row.source_id: row.state for row in review.sources} == {
+        excluded["id"]: "excluded",
+        env.manifest.source.canonical_id: "prepared",
+    }
+    evidence = next(row for row in review.sources if row.state == "excluded")
+    assert evidence.reason == excluded["reason"]
+    assert evidence.preparation == (
+        ArtifactRef.model_validate_json(excluded["preparation"])
+        if excluded["preparation"] is not None
+        else None
+    )
+    assert len(review.reviews) == 1
+    completion_evidence = read_document(
+        env.layout,
+        ArtifactRef.model_validate(progress["completion"]),
+        CompletionEvidence,
+    )
+    completion = read_document(
+        env.layout, completion_evidence.completion, CampaignCompletion
+    )
+    publication_ref = completion.tasks[0].products[0].publication
+    assert publication_ref is not None
+    publication = read_document(
+        env.layout,
+        publication_ref,
+        PublicationReceipt,
+    )
+    assert publication.added_clips == (env.manifest.clip_id,)
+    assert publication.adoptions == validate_closed(
+        env.layout, env.plan, env.plan_ref, review_ref
+    )
+    restored = Controller(env.layout, controller.runtime)
+    assert restored.cycle()["workflow"] == progress
+    assert restored.publication_failures() == []
+    assert restored.status()["failures"] == []
+
+
+@pytest.mark.parametrize("session", ["duplicate_prepare"], indirect=True)
+@pytest.mark.parametrize(
+    ("invalid", "message"),
+    [
+        ("receipt", "artifact hash changed"),
+        ("source", "source completion names a different preparation"),
+        ("reason", "excluded source requires its reason"),
+    ],
+)
+def test_review_closure_rejects_invalid_preparation_exclusion_evidence(
+    session: ReviewSession, invalid: str, message: str
+) -> None:
+    finish(session)
+    env = session.env
+    source_id = content_digest(["local", "duplicate"])
+    with session.ledger.registry.transaction() as database:
+        source = database.execute(
+            "SELECT * FROM sources WHERE id=?", (source_id,)
+        ).fetchone()
+        reference = ArtifactRef.model_validate_json(source["preparation"])
+        if invalid == "receipt":
+            path = env.layout.artifact_path(reference)
+            path.write_bytes(b"X" + path.read_bytes()[1:])
+        elif invalid == "source":
+            preparation = read_document(env.layout, reference, PreparationReceipt)
+            other = env.save(
+                preparation.model_copy(
+                    update={"source_id": env.manifest.source.canonical_id}
+                )
+            )
+            database.execute(
+                "UPDATE sources SET preparation=? WHERE id=?",
+                (other.model_dump_json(), source_id),
+            )
+        else:
+            database.execute("UPDATE sources SET reason='' WHERE id=?", (source_id,))
+    with pytest.raises(ValueError, match=message):
+        close_reviews(env.layout, env.plan, env.plan_ref)
 
 
 @pytest.mark.parametrize(
@@ -504,6 +795,84 @@ def test_live_input_stage_waits_without_publishing_or_stopping_the_campaign(
     )
     assert controller.production.cycle()["state"] == "reviewing"
     assert controller.status()["state"] == "running"
+
+
+@pytest.mark.parametrize("stop_at", ["budget_poll", "budget_during_cycle", "quota"])
+def test_controller_stop_cancels_pending_workers_and_frees_other_scope(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch, stop_at: str
+) -> None:
+    finish(session, deferred=True)
+    controller = controller_for(session, pending_limit=1)
+    record_input_stages(controller)
+    assert controller.production is not None
+    pool = controller.production.pool
+    assert pool.reconcile(session.request)["state"] == "deferred"
+    # Only admission is exercised; a worker must never start in this test.
+    pool.test_command = (
+        sys.executable,
+        "-c",
+        "raise AssertionError('unexpected launch')",
+    )
+    pool.worker_pss_bytes = controller.plan.resources.total_pss_bytes + 1
+    with pytest.raises(CapacityUnavailable, match="PSS reservations"):
+        pool.start(session.request, retry=True)
+    pending = [
+        r for r in controller.resources.status()["requests"] if r["state"] == "pending"
+    ]
+    assert len(pending) == 1
+    other_plan = controller.plan.model_copy(update={"campaign_id": "other-campaign"})
+    other = ResourceManager.create(
+        controller.layout,
+        scope_id="other-scope",
+        limits=BudgetLimits.from_budget(other_plan.resources),
+        roots=(controller.layout.repository,),
+        previously_allocated_bytes=0,
+        previously_used_gpu_seconds=0,
+        max_pending_per_stage=1,
+    )
+    request = ResourceRequest(
+        request_id="other-review",
+        plan=annotation_reference(
+            controller.layout, save_plan(controller.layout, other_plan)
+        ),
+        stage="review",
+        pss_bytes=1024**2,
+        storage_bytes=0,
+        gpu_seconds=0,
+    )
+    with pytest.raises(CapacityUnavailable, match="backlog is full"):
+        other.submit(request)
+
+    reason = "fixture campaign stop"
+    if stop_at == "quota":
+        pool.ledger.stop_campaign(controller.plan.campaign_id, reason)
+        assert controller.cycle()["workflow"]["state"] == "blocked"
+    else:
+        if stop_at == "budget_poll":
+            with controller.resources.registry.transaction() as db:
+                db.execute(
+                    "UPDATE resource_scopes SET stop_reason=? WHERE id=?",
+                    (reason, controller.resources.scope.scope_id),
+                )
+            # Refresh the shared sample without depending on its two-second TTL.
+            assert controller.resources.sample().stopped_reason == reason
+        else:
+
+            def budget_stop():
+                raise BudgetStopped(reason)
+
+            monkeypatch.setattr(controller.production, "cycle", budget_stop)
+        with pytest.raises(BudgetStopped, match=reason):
+            controller.cycle()
+
+    with other.lease(request):
+        assert other._row(request)["state"] == "running"
+    cancelled = {r["id"]: r for r in controller.resources.status()["requests"]}[
+        pending[0]["id"]
+    ]
+    assert (cancelled["state"], cancelled["reason"]) == ("cancelled", reason)
+    assert pool.ledger.task(session.request.work_id)["state"] == "cancelled"
+    assert not pool.children
 
 
 def test_cached_workflow_completion_does_not_hide_unresolved_stage_failure(
@@ -1037,10 +1406,12 @@ def test_acquisition_retry_reuses_logical_operation_and_supersedes_failure(
         controller.operation(operation, attempt=3)
     # The explicit retry directive must obey the same terminal-failure gate.
     with pytest.raises(ValueError, match="failed or interrupted"):
-        controller.operation(OperationInput(
-            plan=env.plan_ref,
-            operation=AcquireOperation(source_id=candidate.source_id, retry=True),
-        ))
+        controller.operation(
+            OperationInput(
+                plan=env.plan_ref,
+                operation=AcquireOperation(source_id=candidate.source_id, retry=True),
+            )
+        )
 
 
 def test_bootstrap_is_explicit_and_pins_planned_model(
