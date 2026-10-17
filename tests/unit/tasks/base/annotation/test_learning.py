@@ -1,0 +1,1037 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any, Literal
+
+import pytest
+
+from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
+    read_document,
+    write_asset,
+    write_document,
+)
+from src.tasks.base.annotation.contracts import (
+    ArtifactRef,
+    ModelRef,
+    ProductOutcome,
+    PublicationReceipt,
+    content_digest,
+)
+from src.tasks.base.annotation.execution.contracts import (
+    QueueConfiguration,
+    StageExit,
+    StageLaunch,
+)
+from src.tasks.base.annotation.execution.runner import stage_directory
+from src.tasks.base.annotation.learning import Learning, ModelRegistry
+from src.tasks.base.annotation.learning.contracts import (
+    CampaignCompletion,
+    CompletedStage,
+    DatasetPartition,
+    EvaluationReceipt,
+    FixedEvaluation,
+    LearningIntent,
+    LearningRuntime,
+    Retry,
+    SelectionRecord,
+    SelectionVerdict,
+    StageCost,
+    StageFailure,
+    StageInput,
+    TaskProducts,
+    TrainingReceipt,
+)
+from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
+from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+
+
+class Crash(BaseException):
+    pass
+
+
+class Adapter:
+    task = "detector"
+    product = "boxes"
+
+    def __init__(self) -> None:
+        self.accept = True
+        self.complete_metrics = True
+        self.use_test = False
+        self.selections = 0
+
+    def training_partition(
+        self, layout: AnnotationLayout, snapshot: ArtifactRef
+    ) -> DatasetPartition:
+        members = json.loads(layout.artifact_path(snapshot).read_bytes())
+        return DatasetPartition(
+            manifest=snapshot,
+            split="train",
+            sources=tuple(members["sources"]),
+            clips=tuple(members["clips"]),
+        )
+
+    def validate_partition(
+        self, layout: AnnotationLayout, partition: DatasetPartition
+    ) -> None:
+        members = json.loads(layout.artifact_path(partition.manifest).read_bytes())
+        assert members == {
+            "sources": list(partition.sources),
+            "clips": list(partition.clips),
+        }
+
+    def validate_intent(self, layout: AnnotationLayout, intent: LearningIntent) -> None:
+        assert layout.artifact_path(intent.recipe).read_bytes() == b"fresh optimizer"
+
+    def command(
+        self, layout: AnnotationLayout, request: ArtifactRef, result: Path
+    ) -> tuple[str, ...]:
+        return (
+            sys.executable,
+            "fixture-only",
+            str(layout.artifact_path(request)),
+            str(result),
+        )
+
+    def validate_training(
+        self, layout: AnnotationLayout, intent: LearningIntent, receipt: TrainingReceipt
+    ) -> None:
+        assert (
+            layout.artifact_path(receipt.provenance).read_bytes()
+            == intent.canonical_bytes()
+        )
+
+    def validate_evaluation(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        receipt: EvaluationReceipt,
+    ) -> None:
+        metrics = json.loads(layout.artifact_path(receipt.metrics).read_bytes())
+        if not metrics["complete"]:
+            raise ValueError("required task validation metric is missing")
+
+    def validate_resume(
+        self, layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
+    ) -> None:
+        if layout.artifact_path(checkpoint).read_bytes() != intent.canonical_bytes():
+            raise ValueError("checkpoint belongs to another training intent")
+
+    def select(
+        self, layout: AnnotationLayout, intent: LearningIntent, evaluation: ArtifactRef
+    ) -> SelectionVerdict:
+        self.selections += 1
+        assert intent.selection_policy is not None
+        return SelectionVerdict(
+            evaluation=evaluation,
+            policy=intent.selection_policy,
+            status="passed" if self.accept else "rejected",
+            reason="fixture task judgment",
+        )
+
+
+class Executor:
+    """Persist fake queue admission; never execute a command or allocate a GPU."""
+
+    def __init__(self, layout: AnnotationLayout) -> None:
+        self.layout = layout
+        self.accepted: list[ArtifactRef] = []
+        self.crash_after_accept = False
+
+    def status(self, ref: ArtifactRef) -> dict[str, Any]:
+        launch = read_document(self.layout, ref, StageLaunch)
+        directory = stage_directory(self.layout, launch)
+        if (directory / "exit.json").exists():
+            exit_ref = annotation_reference(self.layout, directory / "exit.json")
+            receipt = read_document(self.layout, exit_ref, StageExit)
+            return {
+                "state": receipt.status,
+                "exit": exit_ref.model_dump(),
+                "reason": receipt.reason,
+            }
+        return {
+            "state": "queued" if (directory / "queue.accepted").exists() else "pending"
+        }
+
+    def submit(self, launch: StageLaunch) -> dict[str, Any]:
+        directory = stage_directory(self.layout, launch)
+        ref = write_document(self.layout, directory / "launch.json", launch)
+        if not (directory / "queue.accepted").exists():
+            write_asset(
+                self.layout, directory / "queue.accepted", ref.canonical_bytes()
+            )
+            self.accepted.append(ref)
+        if self.crash_after_accept:
+            self.crash_after_accept = False
+            raise Crash("queue accepted, parent response lost")
+        return {"state": "queued"}
+
+    def finish(
+        self, ref: ArtifactRef, adapter: Adapter, *, failed: bool = False
+    ) -> ArtifactRef:
+        launch = read_document(self.layout, ref, StageLaunch)
+        assert launch.input is not None
+        request = read_document(self.layout, launch.input, StageInput)
+        intent = read_document(self.layout, request.intent, LearningIntent)
+        result_path = Path(launch.command[-1])
+        if request.stage == "train":
+            weights = write_asset(
+                self.layout,
+                result_path.parent / "weights.bin",
+                (intent.sha256 + "weights").encode(),
+            )
+            candidate = ModelRef(
+                task=intent.task,
+                version="candidate-" + intent.sha256[:12],
+                training_weights=weights,
+                inference_weights=weights,
+                configuration=intent.parent.model.configuration,
+            )
+            provenance = write_asset(
+                self.layout,
+                result_path.parent / "provenance.json",
+                intent.canonical_bytes(),
+            )
+            result: TrainingReceipt | EvaluationReceipt = TrainingReceipt(
+                request=launch.input, candidate=candidate, provenance=provenance
+            )
+        else:
+            assert request.training is not None
+            completed = read_document(self.layout, request.training, CompletedStage)
+            training = read_document(self.layout, completed.result, TrainingReceipt)
+            fixed = read_document(self.layout, intent.fixed_evaluation, FixedEvaluation)
+            metrics = write_asset(
+                self.layout,
+                result_path.parent / "metrics.json",
+                json.dumps(
+                    {"complete": adapter.complete_metrics, "task_metric": 2.5}
+                ).encode(),
+            )
+            partition = fixed.test if adapter.use_test else fixed.validation
+            assert partition is not None
+            result = EvaluationReceipt(
+                request=launch.input,
+                training=request.training,
+                candidate=training.candidate,
+                baseline=intent.parent,
+                validation=partition,
+                metrics=metrics,
+            )
+        result_ref = write_document(self.layout, result_path, result)
+        directory = stage_directory(self.layout, launch)
+        stdout = write_asset(
+            self.layout, directory / "stdout.log", b"synthetic execution"
+        )
+        stderr = write_asset(self.layout, directory / "stderr.log", b"")
+        write_document(
+            self.layout,
+            directory / "exit.json",
+            StageExit(
+                launch=ref,
+                status="failed" if failed else "succeeded",
+                exit_code=1 if failed else 0,
+                started_at="2026-01-01T00:00:00Z",
+                ended_at="2026-01-01T00:00:01Z",
+                elapsed_seconds=1.0,
+                stdout=stdout,
+                stderr=stderr,
+                reason="interrupted after checkpoint" if failed else None,
+            ),
+        )
+        return result_ref
+
+
+class Environment:
+    def __init__(self, root: Path) -> None:
+        self.layout = AnnotationLayout.testing(root)
+        self.executor = Executor(self.layout)
+        self.adapter = Adapter()
+        self.learning = Learning(self.layout, executor=self.executor)
+        self.common = write_asset(
+            self.layout, self.layout.path("models", "fixture.bin"), b"fixture"
+        )
+        self.model = ModelRef(
+            task="detector",
+            version="initial",
+            training_weights=self.common,
+            inference_weights=self.common,
+            configuration=self.common,
+        )
+        self.learning.models.bootstrap(self.model, self.common)
+        self.val = self.partition("validation", "val")
+        self.test = self.partition("test", "test")
+        self.fixed = write_document(
+            self.layout,
+            self.layout.path("models", "fixed-evaluation.json"),
+            FixedEvaluation(task="detector", validation=self.val, test=self.test),
+        )
+        self.recipe = write_asset(
+            self.layout, self.layout.path("models", "recipe.txt"), b"fresh optimizer"
+        )
+        self.runtime = LearningRuntime(
+            scope=self.common,
+            queue=QueueConfiguration(
+                script="/fixture/queue.sh",
+                script_digest=self.common.digest,
+                directory="/fixture/queue",
+                session="fixture",
+                issue=1135,
+            ),
+            train=StageCost(
+                stage="train",
+                pss_bytes=1,
+                storage_bytes=1,
+                gpu_seconds=60.0,
+                timeout_seconds=40.0,
+            ),
+            evaluate=StageCost(
+                stage="evaluate",
+                pss_bytes=1,
+                storage_bytes=1,
+                gpu_seconds=60.0,
+                timeout_seconds=40.0,
+            ),
+        )
+
+    def partition(
+        self, split: Literal["train", "validation", "test"], identity: str
+    ) -> DatasetPartition:
+        source, clip = (
+            content_digest(["source", identity]),
+            content_digest(["clip", identity]),
+        )
+        ref = write_asset(
+            self.layout,
+            self.layout.path("models", identity + "-dataset.json"),
+            json.dumps({"sources": [source], "clips": [clip]}).encode(),
+        )
+        return DatasetPartition(
+            manifest=ref, split=split, sources=(source,), clips=(clip,)
+        )
+
+    def campaign(
+        self,
+        name: str = "cycle-one",
+        *,
+        policy: bool = True,
+        configured: bool = True,
+        added: bool = True,
+        incomplete: bool = False,
+        overlap: str | None = None,
+        model: ModelRef | None = None,
+    ) -> ArtifactRef:
+        train = self.partition("train", overlap or name)
+        ref = self.common.model_dump()
+        selected = model or self.model
+        products = [
+            {
+                "product": p,
+                "dataset_task": "detector",
+                "dataset_version": name,
+                "component": p,
+                "base_snapshot": None,
+                "generation_policy": ref,
+            }
+            for p in ("boxes", "poses", "ball-join")
+        ]
+        plan = CampaignPlan.model_validate_json(
+            json.dumps(
+                {
+                    "campaign_id": name,
+                    "phase": "production",
+                    "annotation_root": str(self.layout.root),
+                    "counts": {
+                        "channels": 1,
+                        "videos_per_channel": 1,
+                        "max_clips_per_video": 1,
+                    },
+                    "selection": ref,
+                    "preparation": ref,
+                    "code_commit": "a" * 40,
+                    "code_diff_digest": "b" * 64,
+                    "agent_model": "gpt-6.1-sol",
+                    "agent_effort": "high",
+                    "resources": {
+                        "codex_workers": 1,
+                        "additional_storage_bytes": 1_000_000,
+                        "minimum_free_bytes": 1,
+                        "total_pss_bytes": 2 * 1024**3,
+                        "gpu_seconds": 120,
+                        "stages": [
+                            {
+                                "stage": stage,
+                                "kind": "gpu",
+                                "parallel": 1,
+                                "threads_per_process": 1,
+                            }
+                            for stage in ("train", "evaluate")
+                        ],
+                    },
+                    "tasks": [
+                        {
+                            "task": "detector",
+                            "model": selected.model_dump(),
+                            "inference": ref,
+                            "review": {
+                                "policy": ref,
+                                "preview_evidence": ref,
+                                "decision": ref,
+                            },
+                            "learning": {
+                                "recipe": self.recipe.model_dump(),
+                                "validation": self.fixed.model_dump(),
+                                "selection_policy": ref if policy else None,
+                            }
+                            if configured
+                            else None,
+                            "products": products,
+                        }
+                    ],
+                }
+            )
+        )
+        plan_ref = annotation_reference(self.layout, save_plan(self.layout, plan))
+        publication = PublicationReceipt(
+            task="detector",
+            product="boxes",
+            request_id=content_digest(name),
+            base_snapshot=None,
+            snapshot=train.manifest,
+            adoptions=(self.common,) if added else (),
+            added_clips=train.clips if added else (),
+            reused_clips=() if added else train.clips,
+        )
+        publication_ref = write_document(
+            self.layout,
+            self.layout.path("campaigns", name, "publication.json"),
+            publication,
+        )
+        outcomes = (
+            ProductOutcome(
+                product="boxes",
+                status="published",
+                publication=publication_ref,
+                reason=None,
+            ),
+            ProductOutcome(
+                product="poses",
+                status="pending" if incomplete else "not_applicable",
+                publication=None,
+                reason=None if incomplete else "fixture has no pose targets",
+            ),
+            ProductOutcome(
+                product="ball-join",
+                status="not_applicable",
+                publication=None,
+                reason="fixture has no joined target",
+            ),
+        )
+        return write_document(
+            self.layout,
+            self.layout.path("campaigns", name, "completion.json"),
+            CampaignCompletion(
+                plan=plan_ref, tasks=(TaskProducts(task="detector", products=outcomes),)
+            ),
+        )
+
+    def register(self, **kwargs: Any) -> ArtifactRef:
+        result = self.learning.register(self.campaign(**kwargs), self.adapter)
+        assert result.intent is not None
+        return result.intent
+
+    def train_and_evaluate(
+        self, intent: ArtifactRef, *, finish_selection: bool = True
+    ) -> Any:
+        outcome = self.learning.tick(intent, self.adapter, self.runtime)
+        assert outcome.state == "training_pending" and outcome.launch is not None
+        self.executor.finish(outcome.launch, self.adapter)
+        outcome = self.learning.tick(intent, self.adapter, self.runtime)
+        assert outcome.state == "evaluation_pending" and outcome.launch is not None
+        self.executor.finish(outcome.launch, self.adapter)
+        return (
+            self.learning.tick(intent, self.adapter, self.runtime)
+            if finish_selection
+            else outcome
+        )
+
+
+@pytest.fixture
+def env(tmp_path: Path) -> Environment:
+    return Environment(tmp_path / "annotation")
+
+
+@pytest.mark.parametrize(
+    ("options", "state"),
+    [
+        ({"incomplete": True}, "annotation_incomplete"),
+        ({"added": False}, "no_additional_teachers"),
+        ({"configured": False}, "not_configured"),
+    ],
+)
+def test_missing_products_and_teachers_do_not_enqueue(
+    env: Environment, options: dict, state: str
+) -> None:
+    completion = env.campaign(**options)
+    for _ in range(2):
+        result = env.learning.register(completion, env.adapter)
+        assert result.status == state and result.intent is None
+    assert env.executor.accepted == []
+    assert env.learning.models.current("detector").model == env.model
+
+
+@pytest.mark.parametrize("identity", ["val", "test"])
+def test_source_and_clip_leakage_is_rejected_before_registration(
+    env: Environment, identity: str
+) -> None:
+    with pytest.raises(ValueError, match="overlap"):
+        env.learning.register(env.campaign(overlap=identity), env.adapter)
+    assert env.executor.accepted == []
+
+
+def test_completion_must_cover_all_products_once(env: Environment) -> None:
+    original = env.campaign()
+    value = read_document(env.layout, original, CampaignCompletion)
+    invalid = value.model_copy(
+        update={
+            "tasks": (
+                value.tasks[0].model_copy(
+                    update={"products": value.tasks[0].products[:1]}
+                ),
+            )
+        }
+    )
+    ref = write_document(
+        env.layout, env.layout.path("campaigns", "incomplete.json"), invalid
+    )
+    with pytest.raises(ValueError, match="exactly once"):
+        env.learning.register(ref, env.adapter)
+
+
+def test_registration_replay_and_two_generations_preserve_campaign_pin(
+    env: Environment,
+) -> None:
+    completion = env.campaign()
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        registrations = list(
+            pool.map(lambda _: env.learning.register(completion, env.adapter), range(8))
+        )
+    assert len(set(r.intent for r in registrations)) == 1
+    intent = registrations[0].intent
+    assert intent is not None
+    result = env.train_and_evaluate(intent)
+    assert result.state == "adopted" and len(env.executor.accepted) == 2
+    adopted = env.learning.models.current("detector")
+    assert adopted.generation == 2
+    replay = Learning(env.layout, executor=env.executor).tick(
+        intent, env.adapter, env.runtime
+    )
+    assert (
+        replay == result
+        and len(env.executor.accepted) == 2
+        and env.adapter.selections == 1
+    )
+    old = read_document(env.layout, completion, CampaignCompletion)
+    plan = read_document(env.layout, old.plan, CampaignPlan)
+    assert plan.tasks[0].model == env.model
+    second = env.register(name="cycle-two", model=adopted.model)
+    assert env.train_and_evaluate(second).state == "adopted"
+    assert env.learning.models.current("detector").generation == 3
+    assert len(env.executor.accepted) == 4
+
+
+@pytest.mark.parametrize(
+    "mode", ["reject", "no_policy", "partial_metrics", "test_evaluation"]
+)
+def test_unqualified_results_never_change_current_model(
+    env: Environment, mode: str
+) -> None:
+    env.adapter.accept = mode != "reject"
+    env.adapter.complete_metrics = mode != "partial_metrics"
+    env.adapter.use_test = mode == "test_evaluation"
+    intent = env.register(policy=mode != "no_policy")
+    result = env.train_and_evaluate(intent)
+    expected = {
+        "reject": "rejected",
+        "no_policy": "not_configured",
+        "partial_metrics": "failed",
+        "test_evaluation": "failed",
+    }[mode]
+    assert result.state == expected
+    assert env.learning.models.current("detector").model == env.model
+    assert env.learning.tick(intent, env.adapter, env.runtime) == result
+    assert len(env.executor.accepted) == 2
+
+
+def test_queue_acceptance_response_loss_does_not_duplicate_job(
+    env: Environment,
+) -> None:
+    intent = env.register()
+    env.executor.crash_after_accept = True
+    with pytest.raises(Crash):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    restarted = Learning(env.layout, executor=Executor(env.layout))
+    assert restarted.tick(intent, env.adapter, env.runtime).state == "training_pending"
+    assert len(env.executor.accepted) == 1
+
+
+def test_failed_training_with_checkpoint_requires_explicit_same_intent_retry(
+    env: Environment,
+) -> None:
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    result_ref = env.executor.finish(state.launch, env.adapter, failed=True)
+    training = read_document(env.layout, result_ref, TrainingReceipt)
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.state == "failed"
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "failed"
+    with pytest.raises(ValueError, match="another training intent"):
+        env.learning.retry(
+            intent, env.adapter, "train", reason="recover", resume_checkpoint=env.common
+        )
+    retry = env.learning.retry(
+        intent,
+        env.adapter,
+        "train",
+        reason="recover after interrupted checkpoint",
+        resume_checkpoint=training.provenance,
+    )
+    assert read_document(env.layout, retry, StageInput).attempt == 2
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.state == "training_pending" and len(env.executor.accepted) == 2
+    assert env.learning.models.current("detector").generation == 1
+
+
+def stale_failure(
+    env: Environment, stage: Literal["train", "evaluate"]
+) -> tuple[ArtifactRef, ArtifactRef, Path]:
+    """Persist the false interruption produced by the previous queue observer."""
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    if stage == "evaluate":
+        env.executor.finish(state.launch, env.adapter)
+        state = env.learning.tick(intent, env.adapter, env.runtime)
+        assert state.launch is not None
+    launch = read_document(env.layout, state.launch, StageLaunch)
+    assert launch.input is not None
+    directory = env.layout.artifact_path(launch.input).parent
+    write_document(
+        env.layout,
+        directory / "failure.json",
+        StageFailure(
+            request=launch.input,
+            launch=state.launch,
+            reason="queue registration has no unique lifecycle state",
+        ),
+    )
+    return intent, state.launch, directory
+
+
+@pytest.mark.parametrize("stage", ["train", "evaluate"])
+def test_tick_recovers_success_after_stale_queue_failure(
+    env: Environment, stage: Literal["train", "evaluate"]
+) -> None:
+    intent, launch, directory = stale_failure(env, stage)
+    failure = (directory / "failure.json").read_bytes()
+    env.executor.finish(launch, env.adapter)
+    outcome = Learning(env.layout, executor=env.executor).tick(
+        intent, env.adapter, env.runtime
+    )
+    assert outcome.state == ("evaluation_pending" if stage == "train" else "adopted")
+    assert (directory / "completed.json").is_file()
+    assert (directory / "failure.json").read_bytes() == failure
+    assert len(env.executor.accepted) == 2
+
+
+@pytest.mark.parametrize("partial_retry", [False, True])
+@pytest.mark.parametrize(
+    "state",
+    [
+        "pending",
+        "unregistered",
+        "queued",
+        "waiting",
+        "running",
+        "draining",
+        "unfinished",
+    ],
+)
+def test_retry_rechecks_old_job_before_creating_or_restoring_attempt(
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
+    state: str,
+    partial_retry: bool,
+) -> None:
+    intent, launch, directory = stale_failure(env, "train")
+    if partial_retry:
+        request = read_document(env.layout, launch, StageLaunch).input
+        assert request is not None
+        write_document(
+            env.layout,
+            directory.parent / "2/retry.json",
+            Retry(previous=request, reason="recover", resume_checkpoint=None),
+        )
+    monkeypatch.setattr(env.executor, "status", lambda _ref: {"state": state})
+    if not partial_retry:
+        outcome = env.learning.tick(intent, env.adapter, env.runtime)
+        assert outcome.state == (
+            "training_pending"
+            if state in {"pending", "unregistered", "queued", "waiting"}
+            else "training"
+        )
+    with pytest.raises(ValueError, match="not terminated"):
+        env.learning.retry(intent, env.adapter, "train", reason="recover")
+    assert not (directory.parent / "2/request.json").exists()
+    assert len(env.executor.accepted) == 1
+
+
+@pytest.mark.parametrize("stage", ["train", "evaluate"])
+@pytest.mark.parametrize("partial_retry", ["none", "directory", "receipt"])
+def test_retry_collects_old_success_instead_of_duplicate_execution(
+    env: Environment, stage: Literal["train", "evaluate"], partial_retry: str
+) -> None:
+    intent, launch, directory = stale_failure(env, stage)
+    target = directory.parent / "2"
+    if partial_retry != "none":
+        target.mkdir()
+    if partial_retry == "receipt":
+        request = read_document(env.layout, launch, StageLaunch).input
+        assert request is not None
+        write_document(
+            env.layout,
+            target / "retry.json",
+            Retry(previous=request, reason="recover", resume_checkpoint=None),
+        )
+    env.executor.finish(launch, env.adapter)
+    accepted = len(env.executor.accepted)
+    with pytest.raises(ValueError, match="completed successfully"):
+        env.learning.retry(intent, env.adapter, stage, reason="recover")
+    assert (directory / "completed.json").exists()
+    assert not (target / "request.json").exists()
+    assert len(env.executor.accepted) == accepted
+    outcome = env.learning.tick(intent, env.adapter, env.runtime)
+    assert outcome.state == ("evaluation_pending" if stage == "train" else "adopted")
+    assert len(env.executor.accepted) == 2
+
+
+def test_unconfirmed_interruption_does_not_become_durable_failure(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    launch = read_document(env.layout, state.launch, StageLaunch)
+    assert launch.input is not None
+    directory = env.layout.artifact_path(launch.input).parent
+    monkeypatch.setattr(env.executor, "status", lambda _ref: {"state": "interrupted"})
+    with pytest.raises(ValueError, match="termination is unconfirmed"):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert not (directory / "failure.json").exists()
+    assert len(env.executor.accepted) == 1
+
+
+def test_retry_rejects_unconfirmed_old_job(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intent, _launch, directory = stale_failure(env, "train")
+    monkeypatch.setattr(env.executor, "status", lambda _ref: {"state": "interrupted"})
+    with pytest.raises(ValueError, match="termination is unconfirmed"):
+        env.learning.retry(intent, env.adapter, "train", reason="recover")
+    assert not (directory.parent / "2").exists()
+    assert len(env.executor.accepted) == 1
+
+
+def test_model_commit_file_gap_recovers_without_second_promotion(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.base.annotation.learning import models
+
+    intent = env.register()
+    env.train_and_evaluate(intent, finish_selection=False)
+    real_write = models.write_document
+
+    def interrupted(*args: Any, **kwargs: Any) -> ArtifactRef:
+        raise Crash("pointer committed, receipt file not written")
+
+    monkeypatch.setattr(models, "write_document", interrupted)
+    with pytest.raises(Crash):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert env.learning.models.current("detector").generation == 2
+    monkeypatch.setattr(models, "write_document", real_write)
+    result = Learning(env.layout, executor=env.executor).tick(
+        intent, env.adapter, env.runtime
+    )
+    assert (
+        result.state == "adopted"
+        and env.learning.models.current("detector").generation == 2
+    )
+    assert len(env.executor.accepted) == 2 and env.adapter.selections == 1
+
+
+def test_parallel_candidates_cannot_overwrite_newer_adopted_model(
+    env: Environment,
+) -> None:
+    first, second = env.register(name="parallel-one"), env.register(name="parallel-two")
+    env.train_and_evaluate(first, finish_selection=False)
+    env.train_and_evaluate(second, finish_selection=False)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(
+            pool.map(
+                lambda ref: Learning(env.layout, executor=env.executor).tick(
+                    ref, env.adapter, env.runtime
+                ),
+                (first, second),
+            )
+        )
+    assert {r.state for r in results} == {"adopted", "reevaluation_required"}
+    assert env.learning.models.current("detector").generation == 2
+    for result in results:
+        assert result.selection is not None
+        selection = read_document(env.layout, result.selection, SelectionRecord)
+        assert selection.expected.model == env.model
+        if result.state == "reevaluation_required":
+            assert selection.observed.generation == 2 and selection.adopted is None
+
+
+def test_registered_intent_and_runtime_cannot_be_silently_replaced(
+    env: Environment,
+) -> None:
+    intent = env.register()
+    env.learning.tick(intent, env.adapter, env.runtime)
+    changed = env.runtime.model_copy(
+        update={"train": env.runtime.train.model_copy(update={"timeout_seconds": 20.0})}
+    )
+    with pytest.raises(ValueError, match="immutable"):
+        env.learning.tick(intent, env.adapter, changed)
+    with pytest.raises(ValueError, match="registration already differs"):
+        ModelRegistry(env.layout).bootstrap(
+            env.model.model_copy(update={"version": "latest"}), env.common
+        )
+
+
+def test_real_stage_runner_binds_scope_and_one_queue_registration(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intent_ref = env.register()
+    intent = read_document(env.layout, intent_ref, LearningIntent)
+    completion = read_document(env.layout, intent.completion, CampaignCompletion)
+    plan = read_document(env.layout, completion.plan, CampaignPlan)
+    manager = ResourceManager.create(
+        env.layout,
+        scope_id="fixture-learning",
+        limits=BudgetLimits.from_budget(plan.resources),
+        roots=(env.layout.repository,),
+        previously_allocated_bytes=0,
+        previously_used_gpu_seconds=0.0,
+        max_pending_per_stage=5,
+    )
+    script = env.layout.repository / "queue.sh"
+    script.write_text("# fixture protocol --idempotency-key\n")
+    queue = QueueConfiguration(
+        script=str(script),
+        script_digest=file_digest(script),
+        directory=str(env.layout.repository / ".training_queue"),
+        session="fixture",
+        issue=1135,
+    )
+    runtime = env.runtime.model_copy(
+        update={"scope": manager.reference, "queue": queue}
+    )
+    calls: list[list[str]] = []
+    # Patch only the queue CLI call; other subprocess tools retain their behavior.
+    from src.tasks.base.annotation.execution import queue as queue_module
+
+    original_run = subprocess.run
+
+    def register(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+        if command[:2] != ["bash", str(script)]:
+            return original_run(command, **kwargs)
+        calls.append(command)
+        assert command[command.index("--resource") + 1] == "all"
+        key = command[command.index("--idempotency-key") + 1]
+        receipt = (
+            Path(queue.directory)
+            / "control/registrations"
+            / (hashlib.sha256(key.encode()).hexdigest() + ".receipt")
+        )
+        receipt.parent.mkdir(parents=True, exist_ok=True)
+        receipt.write_text("a" * 64 + " fixture.job\n")
+        job = Path(queue.directory) / "jobs/fixture.job"
+        job.parent.mkdir(parents=True, exist_ok=True)
+        job.write_text("fixture; not executed")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(queue_module.subprocess, "run", register)
+    learning = Learning(env.layout)
+    first = learning.tick(intent_ref, env.adapter, runtime)
+    second = Learning(env.layout).tick(intent_ref, env.adapter, runtime)
+    assert (
+        first.state == second.state == "training_pending"
+        and first.launch == second.launch
+    )
+    assert len(calls) == 1
+    sample = manager.sample()
+    assert sample.gpu_charged_seconds == 0 and sample.pending_by_stage == {"train": 1}
+
+
+def test_direct_selection_still_requires_the_frozen_policy(env: Environment) -> None:
+    intent = env.register(policy=False)
+    outcome = env.train_and_evaluate(intent)
+    assert outcome.evaluation is not None
+    verdict = write_document(
+        env.layout,
+        env.layout.path("models", "unconfigured-verdict.json"),
+        SelectionVerdict(
+            evaluation=outcome.evaluation,
+            policy=env.common,
+            status="passed",
+            reason="must not bypass missing policy",
+        ),
+    )
+    with pytest.raises(ValueError, match="frozen adoption policy"):
+        env.learning.models.select(verdict)
+    assert env.learning.models.current("detector").generation == 1
+
+
+def test_evaluation_retry_reuses_completed_training(env: Environment) -> None:
+    intent = env.register()
+    env.adapter.complete_metrics = False
+    assert env.train_and_evaluate(intent).state == "failed"
+    with pytest.raises(ValueError, match="evaluation has started"):
+        env.learning.retry(
+            intent, env.adapter, "train", reason="must not replace trained weights"
+        )
+    env.adapter.complete_metrics = True
+    env.learning.retry(
+        intent, env.adapter, "evaluate", reason="repair evaluation runtime"
+    )
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.state == "evaluation_pending" and state.launch is not None
+    env.executor.finish(state.launch, env.adapter)
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "adopted"
+    assert len(env.executor.accepted) == 3
+
+
+@pytest.mark.parametrize("boundary", ["intent", "evaluation", "retry"])
+def test_durable_file_gaps_resume_without_new_job(
+    env: Environment, monkeypatch: pytest.MonkeyPatch, boundary: str
+) -> None:
+    from src.tasks.base.annotation.learning import service
+
+    real_write = service.write_document
+
+    def interrupted(layout: AnnotationLayout, path: Path, document: Any) -> ArtifactRef:
+        ref = real_write(layout, path, document)
+        match = (
+            (boundary == "intent" and path.name == "intent.json")
+            or (
+                boundary == "evaluation"
+                and path.name == "completed.json"
+                and path.parent.parent.name == "evaluate"
+            )
+            or (boundary == "retry" and path.name == "retry.json")
+        )
+        if match:
+            raise Crash("durable write before parent acknowledgment")
+        return ref
+
+    completion = env.campaign()
+    if boundary == "intent":
+        monkeypatch.setattr(service, "write_document", interrupted)
+        with pytest.raises(Crash):
+            env.learning.register(completion, env.adapter)
+        monkeypatch.setattr(service, "write_document", real_write)
+        assert env.learning.register(completion, env.adapter).status == "ready"
+        assert not env.executor.accepted
+        return
+    registered = env.learning.register(completion, env.adapter)
+    assert registered.intent is not None
+    intent = registered.intent
+    if boundary == "evaluation":
+        env.train_and_evaluate(intent, finish_selection=False)
+        monkeypatch.setattr(service, "write_document", interrupted)
+        with pytest.raises(Crash):
+            env.learning.tick(intent, env.adapter, env.runtime)
+        monkeypatch.setattr(service, "write_document", real_write)
+        assert env.learning.tick(intent, env.adapter, env.runtime).state == "adopted"
+        assert len(env.executor.accepted) == 2
+    else:
+        state = env.learning.tick(intent, env.adapter, env.runtime)
+        assert state.launch is not None
+        env.executor.finish(state.launch, env.adapter, failed=True)
+        assert env.learning.tick(intent, env.adapter, env.runtime).state == "failed"
+        monkeypatch.setattr(service, "write_document", interrupted)
+        with pytest.raises(Crash):
+            env.learning.retry(intent, env.adapter, "train", reason="explicit retry")
+        monkeypatch.setattr(service, "write_document", real_write)
+        restored = env.learning.retry(
+            intent, env.adapter, "train", reason="explicit retry"
+        )
+        assert read_document(env.layout, restored, StageInput).attempt == 2
+        assert (
+            env.learning.tick(intent, env.adapter, env.runtime).state
+            == "training_pending"
+        )
+        assert len(env.executor.accepted) == 2
+
+
+@pytest.mark.parametrize("stage", ["train", "evaluate"])
+@pytest.mark.parametrize("error", [Crash, OSError])
+def test_retry_recovers_directory_created_before_retry_publication(
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
+    stage: Literal["train", "evaluate"],
+    error: type[BaseException],
+) -> None:
+    from src.tasks.base.annotation import artifacts
+
+    intent = env.register()
+    if stage == "train":
+        state = env.learning.tick(intent, env.adapter, env.runtime)
+        assert state.launch is not None
+        env.executor.finish(state.launch, env.adapter, failed=True)
+        assert env.learning.tick(intent, env.adapter, env.runtime).state == "failed"
+    else:
+        env.adapter.complete_metrics = False
+        assert env.train_and_evaluate(intent).state == "failed"
+        env.adapter.complete_metrics = True
+    accepted = len(env.executor.accepted)
+    real_replace = artifacts.os.replace
+    directory = env.layout.artifact_path(intent).parent / stage / "2"
+
+    def interrupted(source: Path, target: Path) -> None:
+        if target == directory / "retry.json":
+            assert directory.is_dir()
+            raise error("interrupted before retry publication")
+        real_replace(source, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(artifacts.os, "replace", interrupted)
+        with pytest.raises(error, match="before retry publication"):
+            env.learning.retry(intent, env.adapter, stage, reason="explicit retry")
+    assert directory.is_dir()
+    assert not (directory / "retry.json").exists()
+    assert not (directory / "request.json").exists()
+    executor = Executor(env.layout)
+    restarted = Learning(env.layout, executor=executor)
+    with pytest.raises(ValueError, match="no durable stage request"):
+        restarted.tick(intent, env.adapter, env.runtime)
+    assert len(env.executor.accepted) == accepted
+    restored = restarted.retry(intent, env.adapter, stage, reason="explicit retry")
+    request = read_document(env.layout, restored, StageInput)
+    assert request.attempt == 2 and request.stage == stage
+    assert env.layout.artifact_path(restored) == directory / "request.json"
+    outcome = restarted.tick(intent, env.adapter, env.runtime)
+    assert outcome.state == (
+        "training_pending" if stage == "train" else "evaluation_pending"
+    )
+    assert len(executor.accepted) == 1
+    assert restarted.tick(intent, env.adapter, env.runtime) == outcome
+    assert len(executor.accepted) == 1
