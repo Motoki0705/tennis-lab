@@ -380,7 +380,8 @@ def test_short_clip_fails_without_model_or_padding(
         fixture.service.run(fixture.reference, BallPredictionAdapter())
 
 
-def test_real_mdd_checkpoint_roundtrip_and_native_forward(tmp_path: Path) -> None:
+@pytest.mark.parametrize("historical", [False, True])
+def test_real_mdd_checkpoint_roundtrip_and_native_forward(tmp_path: Path, historical: bool) -> None:
     import torch
 
     from src.tasks.ball_detection.models.mdd import (
@@ -403,14 +404,18 @@ def test_real_mdd_checkpoint_roundtrip_and_native_forward(tmp_path: Path) -> Non
         activation_checkpointing=False,
         encoder_variant="residual",
         temporal_mixing="dense3d",
+        input_channels=2,
     )
     model = DeepMDDQueryDetector(config).eval()
     fixture = example(tmp_path)
     directory = fixture.layout.path("campaigns", "inputs")
     checkpoint = directory / "model.pt"
     input_contract = model.mdd.input_contract()
+    architecture = asdict(config)
+    if historical:
+        architecture.pop("input_channels")
     recipe = {
-        "model": asdict(config),
+        "model": architecture,
         "input_contract": input_contract,
         "image_decode": {"decoder": "fixture"},
         "parent": {
@@ -423,7 +428,7 @@ def test_real_mdd_checkpoint_roundtrip_and_native_forward(tmp_path: Path) -> Non
         {
             "schema": "mdd_query_posttraining.v1",
             "stage": "query_posttraining",
-            "model_config": asdict(config),
+            "model_config": architecture,
             "recipe": recipe,
             "state_dict": model.state_dict(),
         },
@@ -435,7 +440,7 @@ def test_real_mdd_checkpoint_roundtrip_and_native_forward(tmp_path: Path) -> Non
         directory / "spec.json",
         MDDCheckpointSpec(
             checkpoint_schema="mdd_query_posttraining.v1",
-            architecture=asdict(config),
+            architecture=architecture,
             input_contract=input_contract,
             training_manifest_digest="f" * 64,
         ),
@@ -470,7 +475,7 @@ def test_real_mdd_checkpoint_roundtrip_and_native_forward(tmp_path: Path) -> Non
         directory / "bad-spec.json",
         MDDCheckpointSpec(
             checkpoint_schema="mdd_query_posttraining.v1",
-            architecture={**asdict(config), "dim": 32},
+            architecture={**architecture, "dim": 32},
             input_contract=input_contract,
             training_manifest_digest="f" * 64,
         ),
