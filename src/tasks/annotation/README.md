@@ -82,11 +82,15 @@ workerにソース動画の全量decodeや共有cacheへの書込みを任せな
 
 予測は新規clipだけをtask別に束ね、1工程で同じモデルinstanceを共有する。
 保存済み予測をreview requestへ変換する際は推論しない。
-要求した動画数が準備済みで、全準備receiptのclipとレビュー対象が一致し、全workerが採用まで
+要求した動画数が準備済みで、`state=prepared` のsourceの準備receiptにある全clipとレビュー対象が一致し、全workerが採用まで
 完了した場合だけ公開する。保留・失敗・対象外workerを成功や公開対象外へ読み替えない。
 公開と学習へ進む直前には、取得・準備・推論の各操作の最新attemptの成功終了とoperation receiptを検証し、
 その成果物が対象source/clipの台帳参照と一致することを要求する。予測の保存と台帳更新だけでは
 進めず、失敗・中断・未回収は明示的な新attemptによる復旧まで停止する。
+内容重複で除外されたsourceの取得も、台帳の取得参照・source・除外理由と照合済みの
+`not_applicable` receiptで完了照合する。除外sourceの準備receiptは理由とともにレビュー集合へ保持し、
+hashとsourceの対応を検証するが、公開動画数やレビュー対象clipには数えない。
+取得時・準備時いずれの重複除外でも、補充sourceの準備と全レビューの完了後に公開へ進める。
 
 公開結果のtask/product/base snapshot・採用版・追加clip集合を照合してから
 `workflow/products.json` を作り、`workflow/completion.json` でレビューと公開操作に結ぶ。
