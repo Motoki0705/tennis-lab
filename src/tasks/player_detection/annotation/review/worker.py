@@ -1,4 +1,4 @@
-"""Player worker protocol: native images, bounded edits, retry evidence and final adoption."""
+"""Player bbox review with native images, bounded edits and an unsealed ID handoff."""
 
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ from src.tasks.base.annotation.artifacts import (
     write_document,
 )
 from src.tasks.base.annotation.contracts import (
-    AdoptionReceipt,
     ArtifactRef,
     ClipManifest,
     Document,
@@ -57,7 +56,7 @@ from src.utils.paths import PROJECT_ROOT
 
 from ..contracts import PlayerFrameProposals
 from .adapter import PlayerReviewAdapter
-from .contracts import PlayerFrame, PlayerLabels
+from .contracts import WORKER_ADAPTER, WORKER_VERSION, PlayerFrame, PlayerLabels
 from .evidence import image_presentation_proof
 from .storage import retained_revision
 from .validation import inputs
@@ -81,8 +80,8 @@ def proof_states(
         layout, layout.path("annotations", "player", labels.clip_id, "context.json")
     )
     work = WorkRequest(
-        adapter="player_bbox_review",
-        adapter_version="v1",
+        adapter=WORKER_ADAPTER,
+        adapter_version=WORKER_VERSION,
         stage="review",
         subject_id=labels.clip_id,
         payload=context_ref,
@@ -267,8 +266,8 @@ class PlayerReviewServices(PlayerReviewAdapter):
 
 
 class PlayerReviewWorker:
-    name = "player_bbox_review"
-    version = "v1"
+    name = WORKER_ADAPTER
+    version = WORKER_VERSION
 
     def input_references(
         self,
@@ -489,18 +488,12 @@ class PlayerReviewWorker:
             raise ValueError(
                 "current rollout is missing from registered attempt history"
             )
-        if sealed is None:
-            adoption = adapter.prepare_adoption(
-                layout, context, manifest, head, reports, reason=decision.reason
-            )
-        else:
-            adoption = sealed
-            adapter.validate_adoption(
-                layout,
-                context,
-                manifest,
-                head,
-                read_document(layout, sealed, AdoptionReceipt),
-            )
-        store.seal(head, adoption, adapter)
-        return WorkOutcome(status="complete", receipt=result, adoption=adoption)
+        if sealed is not None:
+            raise ValueError("bbox review cannot complete after final teacher adoption")
+        from .id_review import freeze_for_id_review
+
+        reviewed = adapter.prepare_adoption(
+            layout, context, manifest, head, reports, reason=decision.reason
+        )
+        binding = freeze_for_id_review(store, request.payload, head, reviewed)
+        return WorkOutcome(status="complete", receipt=binding)

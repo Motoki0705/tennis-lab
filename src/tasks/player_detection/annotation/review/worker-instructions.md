@@ -67,5 +67,6 @@ as detector supervision. Teacher masks are derived by the parent.
 
 Finish with `work/result.json`: `status` (`complete` or `deferred`), current
 `revision` ArtifactRef, and a nonempty `reason`. Defer uncertainty or unmet policy.
-The parent verifies actual image bytes and per-attempt authorship before sealing
-the exact revision. Your completion statement alone is not adoption evidence.
+The parent verifies actual image bytes and per-attempt authorship, then freezes
+the exact bbox revision for downstream ID review. Completion does not seal or
+adopt teachers; final ID corrections must be applied before final adoption.

@@ -523,6 +523,8 @@ def test_small_encoded_video_page_preserves_pts_crop_and_coordinate_conventions(
         tile.clip_pts == env.manifest.frames[2].clip_pts
         and tile.time_base == env.manifest.time_base
     )
+    assert tile.source_pts == env.manifest.frames[2].source_pts
+    assert tile.source_frame_index == env.manifest.frames[2].source_frame_index
     edge = native_to_image(tile, 10.0, 4.0, coordinates="edge")
     center = native_to_image(tile, 10.0, 4.0, coordinates="pixel_center")
     assert edge == (tile.image_rect.left, tile.image_rect.top)
@@ -611,6 +613,36 @@ def test_drawings_and_annotation_versions_are_distinct_inputs(tmp_path: Path) ->
     env.layout.artifact_path(env.manifest.media).write_bytes(b"changed video")
     with pytest.raises(ValueError, match="changed"):
         render_page(env.layout, env.image_request(annotation=initial))
+
+
+@pytest.mark.parametrize("change", ["reason", "crop", "scale"])
+def test_image_identity_records_presentation_reason_crop_and_scale(
+    tmp_path: Path, change: str
+) -> None:
+    env = Environment(tmp_path / "annotation", real_video=True)
+    request = env.image_request()
+    original = render_page(env.layout, request)
+    if change == "reason":
+        changed = request.model_copy(
+            update={"reason": "inspect the same frame for a new question"}
+        )
+    elif change == "crop":
+        tile = request.tiles[0].model_copy(
+            update={"crop": Crop(left=0, top=0, right=64, bottom=32)}
+        )
+        changed = request.model_copy(update={"tiles": (tile,)})
+    else:
+        changed = request.model_copy(update={"tile_width": 256, "tile_height": 128})
+    rendered = render_page(env.layout, changed)
+    saved, receipt = read_rendered(env.layout, rendered)
+    _, before = read_rendered(env.layout, original)
+    assert saved == changed and receipt.request != before.request
+    assert rendered.metadata != original.metadata
+    assert receipt.tiles[0].source_pts == before.tiles[0].source_pts
+    if change == "reason":
+        assert rendered.image.digest == original.image.digest
+    else:
+        assert rendered.image.digest != original.image.digest
 
 
 def test_edits_are_atomic_versioned_idempotent_and_keep_resolved_note_history(
@@ -843,7 +875,9 @@ def test_review_rejects_replacement_of_registered_campaign_plan(
             update={
                 "tasks": (
                     task.model_copy(
-                        update={"review": task.review.model_copy(update={"policy": policy})}
+                        update={
+                            "review": task.review.model_copy(update={"policy": policy})
+                        }
                     ),
                 )
             }
@@ -1085,9 +1119,12 @@ def test_generated_and_presented_images_do_not_mark_reviewed_rows(
     retained = retained_report(env.layout, shown)
     request, receipt = read_rendered(env.layout, image)
     assert retained.count(image.image) == 1
-    assert {image.metadata, receipt.request, request.manifest, request.annotation} <= set(
-        retained
-    )
+    assert {
+        image.metadata,
+        receipt.request,
+        request.manifest,
+        request.annotation,
+    } <= set(retained)
     assert not env.layout.path("cache", "presented-images").exists()
     tiles = presented_tiles(
         env.layout, image, shown, manifest=env.manifest_ref, annotation=initial
