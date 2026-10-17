@@ -83,7 +83,7 @@ def setup(tmp_path: Path) -> tuple[AnnotationLayout, ResourceManager, StageLaunc
                 "code_commit": "a" * 40,
                 "code_diff_digest": "b" * 64,
                 "agent_model": "gpt-6.1-sol",
-                "agent_effort": "high",
+                "agent_effort": "max",
                 "resources": {
                     "codex_workers": 1,
                     "additional_storage_bytes": 100_000_000,
@@ -690,6 +690,63 @@ def test_queue_registration_is_pinned_and_idempotent(
     Path(config.script).write_text("changed --idempotency-key")
     with pytest.raises(ValueError, match="changed"):
         validate_queue(layout, config)
+
+
+@pytest.mark.parametrize("registered_before_loss", [False, True])
+def test_stage_retry_recovers_lost_queue_registration_response(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch, registered_before_loss: bool
+) -> None:
+    layout, manager, launch = setup
+    config = queue_config(layout)
+    launch = launch.model_copy(
+        update={
+            "queue": config,
+            "resource": launch.resource.model_copy(
+                update={"stage": "gpu", "gpu_seconds": 30.0}
+            ),
+        }
+    )
+    calls: list[list[str]] = []
+    queue = Path(config.directory)
+    run = subprocess.run
+
+    def register(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+        if command[:2] != ["bash", config.script]:
+            return run(command, **kwargs)
+        calls.append(command)
+        first = len(calls) == 1
+        if not first or registered_before_loss:
+            key = command[command.index("--idempotency-key") + 1]
+            receipt = queue / "control/registrations" / (
+                hashlib.sha256(key.encode()).hexdigest() + ".receipt"
+            )
+            if not receipt.exists():
+                receipt.parent.mkdir(parents=True, exist_ok=True)
+                receipt.write_text("a" * 64 + " recovered.job\n")
+                pending = queue / "jobs/recovered.job"
+                pending.parent.mkdir(exist_ok=True)
+                pending.write_text("fixture")
+        if first:
+            raise subprocess.CalledProcessError(1, command, stderr="response lost")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.execution.queue.subprocess.run", register
+    )
+    with pytest.raises(subprocess.CalledProcessError):
+        StageRunner(layout).submit(launch)
+    ref = annotation_reference(layout, stage_directory(layout, launch) / "launch.json")
+    expected = "queued" if registered_before_loss else "pending"
+    assert StageRunner(layout).status(ref)["state"] == expected
+    pinned = manager.storage.catalog.snapshot().digest
+    result = StageRunner(layout).submit(launch)
+    assert result["state"] == "queued"
+    assert result["queue_job"] == "recovered.job"
+    assert ArtifactRef.model_validate(result["launch"]) == ref
+    assert manager.storage.catalog.snapshot().digest == pinned
+    assert calls[0] == calls[1]
+    assert len(tuple((queue / "control/registrations").iterdir())) == 1
+    assert len(tuple((queue / "jobs").iterdir())) == 1
 
 
 def registered_queue(

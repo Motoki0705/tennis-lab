@@ -27,6 +27,7 @@ from .contracts import (
     ResponsePage,
     ResponseRecord,
     TelemetryReport,
+    ToolEvidence,
     ToolOutput,
     Usage,
 )
@@ -36,6 +37,7 @@ from .viewer import index_page, response_page
 MAX_RECORD_BYTES = 64 * 1024**2
 MAX_PENDING_OUTPUTS = 1024
 Classifier = Callable[[str | None, str], str]
+EvidenceResolver = Callable[[str, str], ToolEvidence | None]
 
 
 def locate_rollout(launch: Launch, execution: ExitReceipt) -> Path:
@@ -107,9 +109,11 @@ def capture(
     rollout: Path | None = None,
     classifier: Classifier | None = None,
     classifier_id: str = "unclassified.v1",
+    evidence_resolver: EvidenceResolver | None = None,
 ) -> ArtifactRef:
     if not classifier_id.strip() or (
-        classifier is not None and classifier_id == "unclassified.v1"
+        (classifier is not None or evidence_resolver is not None)
+        and classifier_id == "unclassified.v1"
     ):
         raise ValueError("task classification requires an explicit version identity")
     launch = read_document(layout, launch_ref, Launch)
@@ -168,6 +172,7 @@ def capture(
             catalog_hash,
             classifier,
             classifier_id,
+            evidence_resolver,
         )
 
 
@@ -183,6 +188,7 @@ def _capture(
     catalog_hash: str,
     classifier: Classifier | None,
     classifier_id: str,
+    evidence_resolver: EvidenceResolver | None,
 ) -> ArtifactRef:
     before = path.stat()
     digest = hashlib.sha256()
@@ -326,6 +332,15 @@ def _capture(
             ]
             if any(not isinstance(text, str) for text in text_parts):
                 raise ValueError("tool text block must contain text")
+            category = "unknown" if call is None else call.category
+            evidence = (
+                evidence_resolver(category, "\n".join(text_parts))
+                if evidence_resolver is not None
+                else None
+            )
+            if evidence is not None:
+                for reference in references(evidence):
+                    verify_reference(layout, reference)
             pending.append(
                 ToolOutput(
                     call_id=call_id,
@@ -339,7 +354,8 @@ def _capture(
                     timestamp=stamp,
                     images=images,
                     observed_view_paths=views,
-                    category="unknown" if call is None else call.category,
+                    category=category,
+                    evidence=evidence,
                 )
             )
             if len(pending) > MAX_PENDING_OUTPUTS:

@@ -100,7 +100,7 @@ def example(tmp_path: Path) -> Example:
         code_commit="a" * 40,
         code_diff_digest="b" * 64,
         agent_model="gpt-6.1-sol",
-        agent_effort="low",
+        agent_effort="max",
         resources=ResourceBudget(
             codex_workers=1,
             additional_storage_bytes=64 * 1024**2,
@@ -683,6 +683,21 @@ def test_interrupted_configuration_recovers_the_original_scope(
 
 
 def test_cli_schema_and_configuration_round_trip(example: Example) -> None:
+    # Follow the parent skill: read the operational decision, then configure.
+    decision_result = subprocess.run(
+        [sys.executable, "-m", "src.tasks.annotation", "worker-decision"],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=True,
+    )
+    decision = json.loads(decision_result.stdout)
+    assert decision["decided_on"] == "2026-10-16" and "#1233" in decision["source"]
+    raw = example.configuration.model_dump(mode="json")
+    for field in ("agent_model", "agent_effort"):
+        raw["plan"][field] = decision[field]
+    configured = Configuration.model_validate_json(json.dumps(raw))
     schema = subprocess.run(
         [
             sys.executable,
@@ -704,7 +719,7 @@ def test_cli_schema_and_configuration_round_trip(example: Example) -> None:
     request = write_document(
         example.layout,
         example.layout.path("campaigns", "inputs", "configure.json"),
-        example.configuration,
+        configured,
     )
     command = [
         sys.executable,
@@ -728,12 +743,143 @@ def test_cli_schema_and_configuration_round_trip(example: Example) -> None:
     )
     result = ArtifactRef.model_validate(json.loads(completed.stdout))
     receipt = example.receipt(result)
+    saved_plan = read_document(example.layout, receipt.plan, CampaignPlan)
+    assert (saved_plan.agent_model, saved_plan.agent_effort) == ("gpt-6.1-sol", "max")
     assert (
         read_document(example.layout, receipt.request, Configuration)
         == example.configuration
     )
     assert configure(example.layout, example.configuration) == result
     assert not (example.layout.repository / ".training_queue").exists()
+
+    from src.tasks.annotation.reporting import WorkflowReport
+
+    report_command = [
+        sys.executable, "-m", "src.tasks.annotation", "report",
+        "--runtime", str(example.layout.artifact_path(receipt.runtime)),
+        "--sha256", receipt.runtime.digest, "--test-root", str(example.layout.root),
+    ]
+    report_result = subprocess.run(
+        report_command, cwd=PROJECT_ROOT, capture_output=True, text=True,
+        timeout=20, check=True,
+    )
+    report_ref = ArtifactRef.model_validate(json.loads(report_result.stdout))
+    report = read_document(example.layout, report_ref, WorkflowReport)
+    assert report.runtime == receipt.runtime
+    assert report.progress["annotation"]["complete"] is False
+    assert report.progress["annotation"]["products"][0]["status"] == "pending"
+    repeated = subprocess.run(
+        report_command, cwd=PROJECT_ROOT, capture_output=True, text=True,
+        timeout=20, check=True,
+    )
+    assert json.loads(repeated.stdout) == report_ref.model_dump(mode="json")
+    assert not (example.layout.repository / ".training_queue").exists()
+
+
+@pytest.mark.parametrize("name,counts", [("one", (1, 2, 3)), ("another", (3, 4, 2))])
+def test_cli_plans_other_campaign_counts_without_source_changes(
+    example: Example, name: str, counts: tuple[int, int, int]
+) -> None:
+    configured = example.configuration.model_copy(update={
+        "plan": example.configuration.plan.model_copy(update={
+            "campaign_id": name,
+            "counts": CollectionCounts(channels=counts[0], videos_per_channel=counts[1], max_clips_per_video=counts[2]),
+        })
+    })
+    request = write_document(example.layout, example.layout.path("campaigns", "inputs", name + ".json"), configured)
+    result = subprocess.run(
+        [sys.executable, "-m", "src.tasks.annotation", "configure",
+         "--configuration", str(example.layout.artifact_path(request)),
+         "--sha256", request.digest, "--test-root", str(example.layout.root)],
+        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=20, check=True,
+    )
+    receipt = example.receipt(ArtifactRef.model_validate(json.loads(result.stdout)))
+    plan = read_document(example.layout, receipt.plan, CampaignPlan)
+    assert plan.campaign_id == name
+    assert (plan.counts.videos, plan.counts.max_clips) == (counts[0] * counts[1], counts[0] * counts[1] * counts[2])
+    assert not (example.layout.repository / ".training_queue").exists()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("agent_model", "unapproved-model"),
+        *(("agent_effort", value) for value in ("low", "medium", "high", "xhigh", "ultra")),
+    ],
+)
+def test_configuration_rejects_undecided_worker_before_budget_or_plan(
+    example: Example, field: str, value: str
+) -> None:
+    data = example.configuration.model_copy(
+        update={"plan": example.configuration.plan.model_copy(update={field: value})}
+    )
+    with pytest.raises(ValueError, match="agent_model|user decision"):
+        configure(example.layout, data)
+    assert not example.layout.path("resources").exists()
+    assert not example.layout.path("campaigns", data.plan.campaign_id).exists()
+    assert not example.layout.registry.exists()
+
+
+@pytest.mark.parametrize("field,value", [("agent_model", "other"), ("agent_effort", "high")])
+def test_cli_rejects_undecided_worker_without_side_effects(
+    example: Example, field: str, value: str
+) -> None:
+    raw = example.configuration.model_dump(mode="json")
+    raw["plan"][field] = value
+    request = write_asset(
+        example.layout,
+        example.layout.path("campaigns", "inputs", "invalid-configuration.json"),
+        json.dumps(raw).encode(),
+    )
+    result = subprocess.run(
+        [
+            sys.executable, "-m", "src.tasks.annotation", "configure",
+            "--configuration", str(example.layout.artifact_path(request)),
+            "--sha256", request.digest, "--test-root", str(example.layout.root),
+        ],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "agent_model" in result.stderr or "user decision" in result.stderr
+    assert not example.layout.path("resources").exists()
+    assert not example.layout.path("campaigns", example.configuration.plan.campaign_id).exists()
+    assert not example.layout.registry.exists()
+
+
+def test_existing_configuration_keeps_pinned_worker_and_hashes(
+    example: Example, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.base.annotation.worker_decision import DECISION_PATH
+
+    historical_decision = example.layout.repository / "historical-decision.toml"
+    historical_decision.write_text(
+        DECISION_PATH.read_text().replace('agent_effort = "max"', 'agent_effort = "high"')
+    )
+    original = example.configuration.model_copy(
+        update={"plan": example.configuration.plan.model_copy(update={"agent_effort": "high"})}
+    )
+    # Freeze an old campaign under its former code, then resume with current code.
+    with monkeypatch.context() as context:
+        context.setattr(
+            "src.tasks.base.annotation.worker_decision.DECISION_PATH", historical_decision
+        )
+        reference = configure(example.layout, original)
+    receipt = example.receipt(reference)
+    paths = [
+        example.layout.artifact_path(ref)
+        for ref in (reference, receipt.request, receipt.plan, receipt.runtime, receipt.scope)
+    ]
+    before = [(path.read_bytes(), file_digest(path), path.stat().st_ino) for path in paths]
+    assert configure(example.layout, original) == reference
+    plan = read_document(example.layout, receipt.plan, CampaignPlan)
+    assert plan.agent_effort == "high"
+    with pytest.raises(ValueError, match="immutable"):
+        configure(example.layout, example.configuration)
+    assert [(path.read_bytes(), file_digest(path), path.stat().st_ino) for path in paths] == before
 
 
 @pytest.mark.parametrize("damage", ["limits", "missing_reference"])

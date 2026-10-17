@@ -474,6 +474,9 @@ class _Worker:
     def telemetry_images(self, *args: Any) -> tuple:
         return ()
 
+    def tool_evidence(self, *args: Any) -> None:
+        return None
+
     def classify_tool(self, name: str | None, raw_input: str) -> str:
         return "fixture"
 

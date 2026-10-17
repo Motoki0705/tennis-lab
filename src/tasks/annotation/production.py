@@ -11,8 +11,6 @@ from src.tasks.ball_detection.annotation.review.worker import BallReviewWorker
 from src.tasks.ball_detection.training.annotation.adapter import BallLearningAdapter
 from src.tasks.base.annotation.artifacts import read_document, write_document
 from src.tasks.base.annotation.contracts import (
-    ArtifactRef,
-    Document,
     ProductOutcome,
     PublicationReceipt,
 )
@@ -31,7 +29,13 @@ from src.tasks.base.annotation.workers.contracts import WorkRequest
 from src.tasks.base.annotation.workers.ledger import WorkerBusy, WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
 
-from .contracts import OperationInput, OperationReceipt, PublishOperation, Runtime
+from .contracts import (
+    CompletionEvidence,
+    OperationInput,
+    OperationReceipt,
+    PublishOperation,
+    Runtime,
+)
 from .reviews import (
     CampaignReview,
     close_reviews,
@@ -39,12 +43,6 @@ from .reviews import (
     require_supported,
     validate_closed,
 )
-
-
-class CompletionEvidence(Document):
-    review: ArtifactRef
-    publication_operation: ArtifactRef
-    completion: ArtifactRef
 
 
 class ProductionWorkflow:

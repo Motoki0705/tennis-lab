@@ -29,6 +29,7 @@ from src.tasks.base.annotation.plan import (
     references,
     save_plan,
     validate_inputs,
+    validate_new_plan_worker,
 )
 from src.tasks.base.annotation.reproducibility import require_frozen_code
 from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
@@ -163,6 +164,7 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
         )
     if plan.annotation_root != str(layout.root):
         raise ValueError("configuration plan belongs to a different annotation root")
+    validate_new_plan_worker(layout, plan)
     if layout.mode == "production":
         require_frozen_code(PROJECT_ROOT, plan)
     validate_inputs(layout, plan)

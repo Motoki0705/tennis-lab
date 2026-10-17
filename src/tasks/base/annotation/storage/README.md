@@ -1,4 +1,4 @@
-# 保存台帳・容量計測・GC dry-run
+# 保存台帳・容量計測・参照保護GC
 
 `StorageCatalog` は成果物の所有者、工程、種類、再生成可否、保持理由、依存参照を
 共通SQLiteに登録する。source / clip / cache / attempt / prediction / adoption evidence /
@@ -9,11 +9,11 @@ log / shard / tracking / pose / snapshot / checkpoint / configuration を区別�
 
 所有者・種類・保持期限の登録は明示APIで行う。標準writerのうち、下記の永続成果物は
 業務状態の確定時に保護参照も登録する。保護対象に自動で所有者やTTLを付与しない。
-全参照・実行中ownerの網羅はまだ証明していないため、すべてのplanは
-`execution_ready=false` となる。削除・移動APIはない。
+dry-runは削除許可ではないため、すべてのplanは `execution_ready=false` となる。
+削除は保存済みdry-runに対する理由付きの `GCRequest` と、実行時の参照再照合を要求する。
+全legacy reader・実行中ownerの自動収集を完了したという意味ではない。
 元データを保持する移行は[migration](migration/README.md)を参照する。
 保存形式・copy/共有・RGB cacheの同入力比較は[comparison](comparison/README.md)を参照する。
-一般GCの実行直前の再検査・実行journalは後続の実装範囲である。
 
 ## 参照の保護
 
@@ -40,6 +40,12 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 別registryやtransaction外のconnectionは拒否する。内部で別の書込transactionを開かない。
 `protect_once()` は初回のファイル検証を行い、同一内容かつ未解除の保護の再送では
 ファイルを再hashしない。入力の読取時検証を代替しない。異なる内容や解除済みIDは拒否する。
+
+`with catalog.reader(Protection(kind="reader", ...)):` は読取開始前に入力を固定し、
+context終了時に理由付きで解放する。各読取には新しいprotection IDを使う。
+プロセスが強制終了した場合は保護を残し、経過時間だけで解除しない。
+`register()` / `protect()` はファイル検証も同じ書込transaction内で行うため、
+検証後・登録前にGCがそのpathを退役させる競合は起きない。
 
 ## 標準writerからの接続
 
@@ -82,10 +88,12 @@ rendererの依存は[telemetry collector](../telemetry/README.md)、ballの固�
 画像証跡の追加列挙は`adoption-v2`、task学習依存の追加列挙は`model-selection-v3`を使い、
 旧collectorの保護を上書きせず、業務操作の再送時に新しい保護を追加する。
 
-この接続はreader lease、実行中に追加される全worker artifact、学習途中のcheckpointや全cacheの
-自動参照収集を完成させるものではない。外部Codex raw rolloutのpathはtelemetryに出典として
+reader contextは明示APIであり、全readerへの自動接続、実行中に追加される全worker artifact、
+学習途中のcheckpointや全cacheの自動参照収集を完成させるものではない。
+外部Codex raw rolloutのpathはtelemetryに出典として
 残るが、固定rootのGCが操作する対象ではない。未知の成果物は従来どおり候補化しない。
-削除実行前には、これらの残る参照と全writerの競合を照合する仕組みが必要である。
+既存データを期限付き管理対象へ登録する際は、そのproducer/consumerが上記の保護契約に
+参加することを確認する。未監査の旧campaignやcacheを一括登録して削除可能にしない。
 
 ## 計測と試算
 
@@ -130,3 +138,41 @@ plan作成後の参照追加は新しいcatalog digestと次のdry-runに反映�
 
 合成fixtureでは共有hardlink、外部link、symlink、参照の推移、transaction rollback、
 内容変更、境界・走査上限を検証する。実環境の全量計測と保存方式比較は別の検証である。
+
+## GCの明示実行と再開
+
+```python
+from src.tasks.base.annotation.storage import GCRequest, GCStore
+
+# 上で保存したinventory_ref / plan_refの内容を確認し、削除判断を別に行う。
+request = GCRequest(
+    inventory=inventory_ref,
+    plan=plan_ref,
+    reason=explicit_deletion_reason,
+)
+receipt_ref = GCStore(layout).execute(request, max_entries=10000)
+```
+
+ライブラリAPIであり、呼出側がCPU/I/O資源を受付する。対象は固定annotation root内の
+登録済み・期限切れ・無参照の通常ファイルだけで、data/checkpoint/別outputs root、
+registry、lock、storage証跡は拒否する。directoryを再帰削除せず、未登録ファイルも残す。
+元動画などの削除可否を「再取得できるはず」という推測で決めない。
+
+1. 保存済みinventory/planのhash・対応・上限を検証する。
+2. 参照登録と同じSQLite書込transactionでcatalog digest、TTL、候補のhash・inode・
+   link数を再照合し、全候補の退役journalをcommitする。参照が増えた場合は新しいdry-runを要求する。
+3. ファイルごとに削除intentをcommitし、directory fdと `O_NOFOLLOW` を使って内容・
+   inode・残るhardlink数を再検証してunlinkする。親directoryをfsyncし、完了を記録する。
+4. 完了receiptのpayloadをDBに確定してから不変ファイルを保存する。
+
+退役commit後はファイルがまだ存在していても、そのpathへの参照・依存・所有者登録を拒否する。
+参照登録が先にcommitすればGCが停止し、GCが先なら新readerが開始前に失敗する。
+同じ要求の再送・並行実行は同じjournalを回収する。unlink後・DB更新前の停止は保存済みintentから、
+DB完了後・receipt保存前の停止は保存済みpayloadから回復する。退役pathが再作成された場合は
+新しいbytesを削除せず停止する。再生成するcacheには新しいpath identityを使う。
+
+要求とreceiptは `storage/gc/<request digest>/` に保存する。receiptの
+`planned_reclaimable_allocated_bytes` はdry-run時のinode単位の試算であり、実空き増加の測定値ではない。
+`test_storage_gc.py` は参照追加との競合・保持期限・symlink/内容変更・共有inodeに加え、
+退役前後、unlink前後、完了DB更新後、receipt保存前後のSIGKILLと並行再開を検証する。
+実データの削除判断や、未接続のlegacy consumerの保護を合成試験で代替しない。

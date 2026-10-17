@@ -12,6 +12,8 @@ chat-annotation の処理済み player ラベルから、テニスプレーヤ�
 pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使えます。
 
 新規clipへの予測案とレビューの接続は [annotation](annotation/README.md) を参照してください。
+修正bboxからの[追跡・ID・pose](annotation/pose/README.md)と、
+確認済み負例を含む[累積bbox公開](generate_dataset/publishing/README.md)を接続しています。
 追加学習前の既存データ固定とvalidation/testの支持対象は
 [snapshot・固定partition](data/snapshots/README.md)で管理します。
 公開後の追加学習・中断再開・固定validation比較・モデル採否は
@@ -45,7 +47,8 @@ mixed評価では負例上の検出もFP/APへ反映し、負例画像数とGT i
 
 通常readerはv2専用です。v2の空frameにはnative JPEGと
 `(0,4)`のbbox・`(0,)`のlabelを使います。schema、確認済み不在フラグの整合性、instance範囲を
-readerで検証します。実DINOのmixed/all-empty loss・勾配確認はGPU受入で実行する項目です。
+readerで検証します。全空/混在batchのCPU matcher/loss検証とCUDA受入の範囲は
+[累積bbox公開](generate_dataset/publishing/README.md)に記載しています。
 
 既存v1 storeを使う場合は、次の明示的な移行を先に実行し、出力されたv2を指定します。
 sourceとdestinationは絶対パスで指定し、destinationはsourceの外にある未作成ディレクトリにします。

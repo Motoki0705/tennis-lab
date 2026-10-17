@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 import json
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -397,6 +398,8 @@ def test_replay_and_concurrent_publications_encode_new_clip_only_once(
         "after_rename",
         "before_receipt",
         "after_receipt",
+        "before_commit",
+        "after_commit",
     ],
 )
 def test_interrupted_publication_recovers_without_duplicate_additions(
@@ -441,7 +444,24 @@ def test_interrupted_publication_recovers_without_duplicate_additions(
         return reference
 
     service = BallPublisher(env.layout)
+    original_transaction = service.registry.transaction
+
+    @contextmanager
+    def transaction():
+        with original_transaction() as db:
+            yield db
+            row = db.execute(
+                "SELECT receipt FROM ball_publications WHERE request_id=?",
+                (request.sha256,),
+            ).fetchone()
+            complete = row is not None and row[0] is not None
+            if complete and phase == "before_commit":
+                raise RuntimeError("injected interruption before commit")
+        if complete and phase == "after_commit":
+            raise RuntimeError("injected interruption after commit")
+
     with monkeypatch.context() as faults:
+        faults.setattr(service.registry, "transaction", transaction)
         faults.setattr(publishing, "encode_clip", encode)
         faults.setattr(publishing, "_durable_document", durable)
         faults.setattr(publishing.os, "rename", rename)
@@ -449,7 +469,7 @@ def test_interrupted_publication_recovers_without_duplicate_additions(
         with pytest.raises(RuntimeError, match="injected"):
             service.publish(request)
     assert destination(env).exists() == (
-        phase in {"after_rename", "before_receipt", "after_receipt"}
+        phase in {"after_rename", "before_receipt", "after_receipt", "before_commit", "after_commit"}
     )
     assert len(BallFrameStore(base).clips) == 1
     if phase not in {"shard", "metadata"}:
@@ -458,6 +478,7 @@ def test_interrupted_publication_recovers_without_duplicate_additions(
             "encode_clip",
             lambda *a, **kw: pytest.fail("completed staging must not be encoded again"),
         )
+    service = BallPublisher(env.layout)
     reference = service.publish(request)
     receipt, _, store = result(env, reference)
     assert receipt.added_clips == (env.manifest.clip_id,)

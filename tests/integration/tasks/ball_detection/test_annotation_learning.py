@@ -230,6 +230,51 @@ def test_explicit_retry_recovers_completed_run_without_extra_updates(
     assert (run / "COMPLETED.json").exists()
 
 
+@pytest.mark.parametrize("artifact", ["comparison.json", "metrics.json", "receipt"])
+@pytest.mark.parametrize("after_write", [False, True])
+def test_evaluation_publication_boundaries_reuse_persisted_comparison(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, artifact: str, after_write: bool
+) -> None:
+    from src.tasks.ball_detection.training.annotation import stages
+
+    env = LearningEnvironment(tmp_path)
+    env.executor.finish(env.tick().launch)
+    pending = env.tick()
+    launch = read_document(env.layout, pending.launch, StageLaunch)
+    target = Path(launch.command[-1]).name if artifact == "receipt" else artifact
+    compare = stages.compare_full_models
+    calls = []
+
+    def counted(*args, **kwargs):
+        calls.append(True)
+        return compare(*args, **kwargs)
+
+    monkeypatch.setattr(stages, "compare_full_models", counted)
+
+    def interrupt(writer):
+        def write(layout, path, document):
+            if path.name == target and not after_write:
+                raise RuntimeError("before evaluation artifact")
+            result = writer(layout, path, document)
+            if path.name == target and after_write:
+                raise RuntimeError("after evaluation artifact")
+            return result
+        return write
+
+    with monkeypatch.context() as patcher:
+        patcher.setattr(stages, "write_asset", interrupt(stages.write_asset))
+        patcher.setattr(stages, "write_document", interrupt(stages.write_document))
+        with pytest.raises(RuntimeError, match="evaluation artifact"):
+            env.executor.finish(pending.launch)
+    recovered = env.executor.finish(pending.launch)
+    assert env.executor.finish(pending.launch) == recovered
+    assert len(calls) == (2 if artifact == "comparison.json" and not after_write else 1)
+    receipt = read_document(env.layout, recovered, EvaluationReceipt)
+    env.adapter.validate_evaluation(env.layout, env.intent, receipt)
+    assert env.tick().state == "not_configured"
+    assert len(env.executor.submitted) == 2
+
+
 def test_altered_input_or_checkpoint_is_not_resumed(tmp_path: Path) -> None:
     env = LearningEnvironment(tmp_path)
     started = env.tick()

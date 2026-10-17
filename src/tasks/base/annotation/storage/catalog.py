@@ -27,6 +27,13 @@ CREATE TABLE IF NOT EXISTS storage_protections (
     document TEXT NOT NULL,
     released_reason TEXT
 );
+CREATE TABLE IF NOT EXISTS storage_retired (
+    path TEXT PRIMARY KEY,
+    collection_id TEXT NOT NULL,
+    reference TEXT NOT NULL,
+    entry TEXT NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('pending', 'removing', 'deleted'))
+);
 """
 
 
@@ -34,6 +41,7 @@ CREATE TABLE IF NOT EXISTS storage_protections (
 class CatalogSnapshot:
     artifacts: dict[str, ManagedArtifact]
     protections: tuple[Protection, ...]
+    retired: tuple[str, ...]
     digest: str
 
 
@@ -65,14 +73,13 @@ class StorageCatalog:
     def register(
         self, artifact: ManagedArtifact, *, database: sqlite3.Connection | None = None
     ) -> None:
-        for reference in (artifact.reference, *artifact.dependencies):
-            verify_reference(self.layout, reference)
         path = self.key(artifact.reference)
         dependencies = [self.key(item) for item in artifact.dependencies]
         if path in dependencies or len(dependencies) != len(set(dependencies)):
             raise ValueError("artifact dependencies must be distinct other paths")
         document = artifact.canonical_bytes().decode()
         with self._transaction(database) as connection:
+            self._verify_live(connection, (artifact.reference, *artifact.dependencies))
             old = connection.execute(
                 "SELECT document FROM storage_artifacts WHERE path=?", (path,)
             ).fetchone()
@@ -88,13 +95,12 @@ class StorageCatalog:
     def protect(
         self, protection: Protection, *, database: sqlite3.Connection | None = None
     ) -> None:
-        for reference in protection.references:
-            verify_reference(self.layout, reference)
         paths = [self.key(item) for item in protection.references]
         if len(paths) != len(set(paths)):
             raise ValueError("protection references must have distinct physical paths")
         document = protection.canonical_bytes().decode()
         with self._transaction(database) as connection:
+            self._verify_live(connection, protection.references)
             old = connection.execute(
                 "SELECT document, released_reason FROM storage_protections WHERE protection_id=?",
                 (protection.protection_id,),
@@ -106,6 +112,34 @@ class StorageCatalog:
             connection.execute(
                 "INSERT OR IGNORE INTO storage_protections VALUES (?, ?, NULL)",
                 (protection.protection_id, document),
+            )
+
+    def _verify_live(
+        self, database: sqlite3.Connection, references: tuple[ArtifactRef, ...]
+    ) -> None:
+        for reference in references:
+            if (
+                database.execute(
+                    "SELECT 1 FROM storage_retired WHERE path=?", (self.key(reference),)
+                ).fetchone()
+                is not None
+            ):
+                raise ValueError("artifact path has been retired by GC")
+            verify_reference(self.layout, reference)
+
+    @contextmanager
+    def reader(self, protection: Protection) -> Iterator[None]:
+        """Pin explicit reader inputs; abrupt process death conservatively keeps pins."""
+        if protection.kind != "reader":
+            raise ValueError("reader context requires a reader protection")
+        self.protect(protection)
+        try:
+            yield
+        finally:
+            self.release(
+                protection.protection_id,
+                expected_digest=protection.sha256,
+                reason="reader context exited",
             )
 
     def release(
@@ -149,23 +183,47 @@ class StorageCatalog:
                 (protection.protection_id,),
             ).fetchone()
             if old is not None:
-                if old[0] != protection.canonical_bytes().decode() or old[1] is not None:
+                if (
+                    old[0] != protection.canonical_bytes().decode()
+                    or old[1] is not None
+                ):
                     raise ValueError("input protection changed or was released")
                 return
             self.protect(protection, database=connection)
 
-    def snapshot(self) -> CatalogSnapshot:
+    def snapshot(
+        self, *, database: sqlite3.Connection | None = None
+    ) -> CatalogSnapshot:
         # No scheduler status/recovery: inspection never changes owners or leases.
+        if database is not None:
+            with self._transaction(database) as connection:
+                return self._snapshot(connection)
         with closing(
             sqlite3.connect(self.layout.registry.as_uri() + "?mode=ro", uri=True)
         ) as database:
             database.execute("BEGIN")
-            artifacts = database.execute(
+            return self._snapshot(database)
+
+    @staticmethod
+    def _snapshot(database: sqlite3.Connection) -> CatalogSnapshot:
+        artifacts = [
+            tuple(row)
+            for row in database.execute(
                 "SELECT path, document FROM storage_artifacts ORDER BY path"
-            ).fetchall()
-            protections = database.execute(
+            )
+        ]
+        protections = [
+            tuple(row)
+            for row in database.execute(
                 "SELECT protection_id, document, released_reason FROM storage_protections ORDER BY protection_id"
-            ).fetchall()
+            )
+        ]
+        retired = [
+            tuple(row)
+            for row in database.execute(
+                "SELECT path, collection_id, reference, entry, state FROM storage_retired ORDER BY path"
+            )
+        ]
         return CatalogSnapshot(
             artifacts={
                 path: ManagedArtifact.model_validate_json(raw)
@@ -176,5 +234,6 @@ class StorageCatalog:
                 for _, raw, released in protections
                 if released is None
             ),
-            digest=content_digest([artifacts, protections]),
+            retired=tuple(row[0] for row in retired),
+            digest=content_digest([artifacts, protections, retired]),
         )
