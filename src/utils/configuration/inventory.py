@@ -276,6 +276,22 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.annotation.__main__": (
+        "annotation.workflow.cli",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.base.annotation.execution.__main__": (
+        "base.annotation.execution.cli",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.base.annotation.workers.__main__": (
+        "base.annotation.workers.cli",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.base.annotation.screening.__main__": (
+        "base.annotation.screening.cli",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_detection.scripts.train_blcs_ablation": (
         "blcs.ablation.train",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -478,6 +494,26 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.tasks.annotation.__main__", "main",
+        domain="base", executable_module=True,
+        optional_policy="runtime/candidates/operation are required by their subcommands; test_root is an explicit test-only boundary",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.base.annotation.execution.__main__", "main",
+        domain="base", executable_module=True,
+        optional_policy="queued selects the shared queue owner; lock/resource FDs apply only to CPU stages; test_root selects test-only storage",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.base.annotation.workers.__main__", "main",
+        domain="base", executable_module=True,
+        optional_policy="test_root selects an explicit test-only layout; production uses the shared main-repository root",
+    ),
+    _non_hydra_boundary(
+        "src.tasks.base.annotation.screening.__main__", "main",
+        domain="base", executable_module=True,
+        optional_policy="decision is required only for check; interval arguments are required only for images",
+    ),
     _non_hydra_boundary("src.submodules.visualization.review.__main__", "main", domain="submodules", executable_module=True),
     _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.evaluate", "main", domain="ball_refiner_3d", executable_module=True),

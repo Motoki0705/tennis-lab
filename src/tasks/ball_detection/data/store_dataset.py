@@ -22,6 +22,7 @@ from src.tasks.ball_detection.data.store import (
     ClipRecord,
 )
 from src.tasks.ball_detection.data.supervision import FrameSupervision
+from src.tasks.ball_detection.data.teacher_masks import LEGACY
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -152,6 +153,7 @@ class BallStoreDataset(BallDetectionDataset):
                 bool(self.store.frames["annotated"][row])
                 and len(instances.point_kind) == 1
                 and instances.point_kind[0] == POINT_KIND_CODES["observed"]
+                and (self.store.teacher_masks is None or self.store.teacher_masks.coordinate[row] in (1, LEGACY))
             )
             observed_xy = (float(instances.xy[0, 0]), float(instances.xy[0, 1])) if observed else None
             frames.append(WindowFrame(self.store.read_bgr(row), points, supervised, row, observed_xy))

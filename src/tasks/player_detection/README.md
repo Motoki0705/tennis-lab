@@ -2,10 +2,16 @@
 
 出力先は [タスク出力規約](../OUTPUTS.md) に従います。
 
+bboxの予測・修正、追跡/IDレビュー、pose公開、検出器の追加学習をつなぐ変更後設計は、
+[注釈・継続学習のアーキテクチャ](../base/annotation/README.md)を参照してください。
+実装状況は同資料からリンクしたサブIssueで管理します。
+
 chat-annotation の処理済み player ラベルから、テニスプレーヤー（主コート上の選手）の検出器を作ります。
 公式 DINO 4-scale Swin-L の COCO person logit（class id 1）を「tennis player」として fine-tune し、
 `DinoPersonDetector` がそのまま読める DINO 形式の checkpoint を export します。
 pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使えます。
+
+新規clipへの予測案とレビューの接続は [annotation](annotation/README.md) を参照してください。
 
 ## 流れ
 
