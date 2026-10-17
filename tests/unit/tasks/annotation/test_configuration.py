@@ -902,11 +902,68 @@ def test_code_update_refuses_live_resource_owner(
     )
 
 
-def test_code_update_reads_old_attempt_without_launching_or_changing_its_cost(
+def test_code_update_keeps_single_request_cost_and_reserves_whole_new_session(
     example: Example, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from src.tasks.annotation.code_update import CodeUpdateReceipt, update_code
-    from src.tasks.annotation.contracts import OperationInput, ScreenOperation
+    from src.tasks.annotation.contracts import OperationInput, ServiceSessionOperation
+    from src.tasks.base.annotation.execution.contracts import StageLaunch
+
+    layout = example.layout
+    configured = example.receipt(configure(layout, example.configuration))
+    runtime = read_document(layout, configured.runtime, Runtime)
+    controller = Controller(layout, runtime)
+    monkeypatch.setattr(
+        "src.tasks.annotation.code_update.checkout_identity",
+        lambda _: ("c" * 40, hashlib.sha256(b"").hexdigest()),
+    )
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.reproducibility.checkout_identity",
+        lambda _: ("c" * 40, hashlib.sha256(b"").hexdigest()),
+    )
+    revision = read_document(
+        layout,
+        update_code(
+            controller, configured.runtime, example.blob, reason="synthetic update"
+        ),
+        CodeUpdateReceipt,
+    )
+    updated = Controller(layout, read_document(layout, revision.runtime, Runtime))
+    assert updated.runtime.costs == runtime.costs
+    launches: list[StageLaunch] = []
+
+    def capture(launch: StageLaunch) -> dict[str, object]:
+        launches.append(launch)
+        return {"state": "pending"}
+
+    monkeypatch.setattr(updated.stages, "submit", capture)
+    updated.operation(
+        OperationInput(
+            plan=runtime.plan,
+            operation=ServiceSessionOperation(
+                session=1,
+                maximum_requests=128,
+                maximum_services_per_attempt=512,
+                duration_seconds=3,
+            ),
+        )
+    )
+    assert (
+        launches[0].resource.storage_bytes == runtime.cost("render").storage_bytes * 128
+    )
+    assert launches[0].code_revision == revision.revision
+
+
+@pytest.mark.parametrize("service_session", [False, True])
+def test_code_update_reads_old_attempt_without_launching_or_changing_its_cost(
+    example: Example, monkeypatch: pytest.MonkeyPatch, service_session: bool
+) -> None:
+    from src.tasks.annotation.code_update import CodeUpdateReceipt, update_code
+    from src.tasks.annotation.contracts import (
+        OperationInput,
+        ScreenOperation,
+        ServiceSessionOperation,
+    )
     from src.tasks.base.annotation.execution.contracts import StageLaunch
     from src.tasks.base.annotation.execution.runner import stage_directory
 
@@ -930,10 +987,28 @@ def test_code_update_reads_old_attempt_without_launching_or_changing_its_cost(
         CodeUpdateReceipt,
     )
     operation = OperationInput(
-        plan=runtime.plan, operation=ScreenOperation(source_id="a" * 64)
+        plan=runtime.plan,
+        operation=ServiceSessionOperation(
+            session=1,
+            maximum_requests=128,
+            maximum_services_per_attempt=512,
+            duration_seconds=3,
+        )
+        if service_session
+        else ScreenOperation(source_id="a" * 64),
     )
 
     def record_pending(launch: StageLaunch) -> dict[str, object]:
+        # Reproduce a launch written by the pre-fix code with a one-request cost.
+        launch = launch.model_copy(
+            update={
+                "resource": launch.resource.model_copy(
+                    update={
+                        "storage_bytes": runtime.cost(operation.stage).storage_bytes
+                    }
+                )
+            }
+        )
         ref = write_document(
             layout, stage_directory(layout, launch) / "launch.json", launch
         )
