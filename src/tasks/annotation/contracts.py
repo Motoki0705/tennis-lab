@@ -18,6 +18,7 @@ from src.tasks.base.annotation.contracts import (
     PositiveInt,
 )
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
+from src.tasks.base.annotation.storage.comparison.contracts import ReadLimits
 
 
 class StageCost(Document):
@@ -112,6 +113,17 @@ class BootstrapModelOperation(Document):
     evidence: ArtifactRef
 
 
+class InspectStorageOperation(Document):
+    action: Literal["inspect_storage"] = "inspect_storage"
+    specification: ArtifactRef
+    limits: ReadLimits
+
+
+class CompareStorageOperation(Document):
+    action: Literal["compare_storage"] = "compare_storage"
+    request: ArtifactRef
+
+
 class OperationInput(Document):
     plan: ArtifactRef
     operation: Annotated[
@@ -123,6 +135,8 @@ class OperationInput(Document):
         | ReviewOperation
         | PublishOperation
         | BootstrapModelOperation
+        | InspectStorageOperation
+        | CompareStorageOperation
         | PredictOperation,
         Field(discriminator="action"),
     ]

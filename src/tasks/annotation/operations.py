@@ -26,8 +26,10 @@ from src.tasks.base.annotation.workers.services import ServiceRequest
 from .contracts import (
     AcquireOperation,
     BootstrapModelOperation,
+    CompareStorageOperation,
     HistoryManifest,
     HistoryOperation,
+    InspectStorageOperation,
     OperationInput,
     OperationReceipt,
     PredictOperation,
@@ -199,6 +201,40 @@ def execute(
                 raise ValueError("model bootstrap task is absent from the frozen plan")
             state = ModelRegistry(layout).bootstrap(task.model, op.evidence)
             result = (write_document(layout, directory / "model.json", state),)
+        elif isinstance(op, InspectStorageOperation):
+            from src.tasks.base.annotation.storage.comparison.sources import capture
+
+            from .storage_comparison import open_store
+
+            result = (
+                write_document(
+                    layout,
+                    directory / "capture.json",
+                    capture(
+                        layout,
+                        op.specification,
+                        op.limits,
+                        open_store,
+                    ),
+                ),
+            )
+        elif isinstance(op, CompareStorageOperation):
+            from src.tasks.base.annotation.storage.comparison.engine import compare
+
+            from .storage_comparison import open_store
+
+            result = (
+                write_document(
+                    layout,
+                    directory / "comparison.json",
+                    compare(
+                        layout,
+                        op.request,
+                        directory / "comparison",
+                        open_store,
+                    ),
+                ),
+            )
         elif isinstance(op, PredictOperation):
             adapter: PredictionAdapter
             if op.task == "ball":
