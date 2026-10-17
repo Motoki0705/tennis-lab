@@ -12,7 +12,7 @@ import pytest
 from src.tasks.ball_detection.data.store import BallFrameStore, shard_name
 from src.tasks.ball_detection.visualization.inference.service import DetectionService
 from src.tasks.ball_detection.visualization.review.players import PlayerCatalog
-from src.tasks.player_detection.annotation.player_pose.storage import (
+from src.tasks.player_detection.annotation.pose.storage import (
     digest,
     write_json,
     write_npz,

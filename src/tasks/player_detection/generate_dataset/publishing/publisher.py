@@ -28,7 +28,7 @@ from src.tasks.base.annotation.publication import (
 )
 from src.tasks.base.annotation.storage.catalog import StorageCatalog
 from src.tasks.base.annotation.storage.references import protection
-from src.tasks.player_detection.annotation.player_pose.corrected import (
+from src.tasks.player_detection.annotation.pose.corrected import (
     FinalReview,
     ReviewedInput,
     load_final,
@@ -426,7 +426,7 @@ class PlayerPublisher:
             request_id=request.sha256,
             base_snapshot=product.base_snapshot,
             snapshot=snapshot_ref,
-            adoptions=tuple(i.input.adoption for i, _, _ in additions),
+            adoptions=tuple(i.binding.bbox_review for i, _, _ in additions),
             added_clips=tuple(added_ids),
             reused_clips=tuple(c.clip_id for c in base.clips) if base else (),
         )
@@ -503,7 +503,7 @@ def load_publication(
         product.base_snapshot,
         added,
         reused,
-        tuple(inputs.input.adoption for inputs, _, _ in final),
+        tuple(inputs.binding.bbox_review for inputs, _, _ in final),
     ) or tuple(c.clip_id for c in snapshot.clips) != reused + added:
         raise ValueError(
             "Player publication receipt differs from the frozen reviews/snapshot"

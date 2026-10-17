@@ -11,10 +11,27 @@ import numpy as np
 import pytest
 
 from src.tasks.annotation.migration import LegacyReader, LegacySelection, LegacySource
+from src.tasks.annotation.migration.legacy_format.contracts import (
+    ClipManifest,
+    FrameMap,
+    FrameRange,
+    Policies,
+    SourceInfo,
+    read_json,
+    sha256_file,
+)
+from src.tasks.annotation.migration.legacy_format.layout import (
+    done_video_path,
+    video_path,
+)
+from src.tasks.annotation.migration.legacy_format.manifests import (
+    load_prepared_manifests,
+)
 from src.tasks.ball_detection.generate_dataset.frame_store.sources.chat_annotation import (
     ChatAnnotationSourceConfig,
     collect_chat_annotation,
 )
+from src.tasks.base.annotation.media import decode_range, encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.storage.migration import (
     MigrationStore,
@@ -22,16 +39,7 @@ from src.tasks.base.annotation.storage.migration import (
     imported_root,
 )
 from src.tasks.player_detection.generate_dataset.sources import collect_clip_sources
-from src.tennis_scene.chat_annotation.configuration import PrepareConfig
-from src.tennis_scene.chat_annotation.layout import done_video_path, video_path
-from src.tennis_scene.chat_annotation.manifests import load_prepared_manifests
-from src.tennis_scene.chat_annotation.preparation import prepare
-from src.tennis_scene.chat_annotation.runtime.contracts import (
-    Policies,
-    make_template,
-    read_json,
-    write_json,
-)
+from tests.support.legacy_annotations import make_template, write_json
 
 
 @pytest.fixture
@@ -50,25 +58,105 @@ def legacy(tmp_path: Path) -> tuple[Path, LegacyReader]:
         for packet in stream.encode():
             container.mux(packet)
     root = tmp_path / "legacy"
-    run = prepare(
-        PrepareConfig(
-            url=None,
-            urls=(),
-            local_video=source,
-            format_selector="unused",
-            js_runtimes=None,
-            remote_components=None,
-            output=root,
-            duration_seconds=2.0,
-            context_seconds=0.2,
-            max_bytes=1000000,
+    # Retained v2 artifacts are fixtures, not output from a retired writer CLI.
+    timeline = probe_video(source)
+    info = SourceInfo(
+        source_id="synthetic",
+        youtube_id=None,
+        url=None,
+        title="Synthetic source",
+        filename=source.name,
+        sha256=sha256_file(source),
+        bytes=source.stat().st_size,
+        acquired_at="fixture",
+    )
+    record = root / "sources/synthetic/source_record.json"
+    write_json(record, info.model_dump())
+    (record.parent / source.name).write_bytes(source.read_bytes())
+    (root / "project_kits").mkdir()
+    run = root / "_preparation/synthetic/fixture"
+    intervals = [FrameRange(start=0, stop=10), FrameRange(start=10, stop=20)]
+    names = []
+    for index, interval in enumerate(intervals):
+        name = f"clip_{index}"
+        names.append(name)
+        media = root / "videos/synthetic" / f"synthetic__fixture__{name}.mp4"
+        media.parent.mkdir(parents=True, exist_ok=True)
+        frames = decode_range(source, timeline, interval.start, interval.stop)
+        encode_video(
+            media,
+            width=timeline.width,
+            height=timeline.height,
+            time_base=timeline.time_base,
+            rate=timeline.rate,
             crf=18,
             preset="ultrafast",
-            policies=Policies(ball_max_gap_seconds=0.2),
-            download_workers=1,
-            max_clips_per_video=2,
-            sampling_strategy="uniform_midpoints",
+            frames=(
+                (
+                    frame,
+                    timeline.pts[i] - timeline.pts[interval.start],
+                    timeline.durations[i],
+                )
+                for i, frame in enumerate(frames, interval.start)
+            ),
         )
+        manifest = ClipManifest(
+            schema_version="tennis_chat_clip.v1",
+            kit_version="5.0.0",
+            kit_id="c" * 64,
+            clip_id=name,
+            source=info,
+            filename=media.name,
+            sha256=sha256_file(media),
+            bytes=media.stat().st_size,
+            width=timeline.width,
+            height=timeline.height,
+            time_base=str(timeline.time_base),
+            nominal_fps=str(timeline.rate),
+            source_start_pts=timeline.pts[0],
+            media_range=interval,
+            target_range=interval,
+            policies=Policies(ball_max_gap_seconds=0.2),
+            frames=[
+                FrameMap(
+                    frame_index=i - interval.start,
+                    source_frame_index=i,
+                    source_pts=timeline.pts[i],
+                    clip_pts=timeline.pts[i] - timeline.pts[interval.start],
+                    duration_pts=timeline.durations[i],
+                    is_target=True,
+                )
+                for i in range(interval.start, interval.stop)
+            ],
+        )
+        path = run / "clips" / name / "clip_manifest.json"
+        write_json(path, manifest.model_dump())
+        write_json(
+            run / "ready" / f"{name}.json",
+            {
+                "files": {
+                    "clip_manifest.json": sha256_file(path),
+                    media.name: manifest.sha256,
+                }
+            },
+        )
+    write_json(
+        run / "prepared.json",
+        {
+            "schema_version": "tennis_chat_preparation.v2",
+            "source_sha256": info.sha256,
+            "kit_id": "c" * 64,
+            "settings": {"sampling": {"max_clips_per_video": 2}, "max_bytes": 1000000},
+            "requested_target_ranges": [
+                interval.model_dump() for interval in intervals
+            ],
+            "selected_target_ranges": [interval.model_dump() for interval in intervals],
+            "candidate_clip_count": 2,
+            "clips": names,
+            "source_frame_count": 20,
+            "selected_frame_count": 20,
+            "coverage_mode": "full",
+        },
     )
     manifests = load_prepared_manifests(root)
     annotations = []
@@ -88,9 +176,9 @@ def legacy(tmp_path: Path) -> tuple[Path, LegacyReader]:
     raw = "annotated/raw/both-clips.zip"
     (root / raw).parent.mkdir(parents=True)
     with zipfile.ZipFile(root / raw, "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in annotations:
-            if "/ball/" in path:
-                archive.write(root / path, Path(path).name)
+        for annotation_path in annotations:
+            if "/ball/" in annotation_path:
+                archive.write(root / annotation_path, Path(annotation_path).name)
     record = next((root / "sources").glob("*/source_record.json"))
     original = record.parent / read_json(record)["filename"]
     reader = LegacyReader(

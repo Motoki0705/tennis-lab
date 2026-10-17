@@ -8,6 +8,9 @@ import cv2
 import numpy as np
 import pytest
 
+from src.tasks.annotation.migration.legacy_format.contracts import (
+    read_json,
+)
 from src.tasks.player_detection.configuration import FrameSelectionConfig
 from src.tasks.player_detection.data.detection_dataset import select_detection_frames
 from src.tasks.player_detection.data.store import (
@@ -16,7 +19,7 @@ from src.tasks.player_detection.data.store import (
     PlayerFrameStore,
 )
 from src.tasks.player_detection.generate_dataset.builder import build_dataset
-from src.tennis_scene.chat_annotation.runtime.contracts import read_json, write_json
+from tests.support.legacy_annotations import write_json
 from tests.support.tasks.player_detection.chat_root import (
     SyntheticRoot,
     frame_pixels,

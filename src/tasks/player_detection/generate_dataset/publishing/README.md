@@ -1,6 +1,6 @@
 # 最終player bboxの累積公開
 
-`PlayerPublisher.publish(PublishRequest(plan, reviews))` は、[最終IDレビュー](../../annotation/player_pose/README.md)
+`PlayerPublisher.publish(PublishRequest(plan, reviews))` は、[最終IDレビュー](../../annotation/pose/README.md)
 の `FinalReview` だけを受け取り、planで固定した `player_detection/<version>/boxes` へ公開する。
 `PlayerPublicationPolicy(image_storage="reuse_ball_jpeg", split="inherit_ball_source")` を
 player/boxes productの `generation_policy` に指定する。実行時にsplitや閾値を決め直さない。

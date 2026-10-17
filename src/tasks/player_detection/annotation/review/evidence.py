@@ -31,6 +31,8 @@ from src.tasks.base.annotation.workers.contracts import Launch
 from ..contracts import Box as PlayerBox
 from ..contracts import PlayerPredictions
 from .contracts import (
+    WORKER_ADAPTER,
+    WORKER_VERSION,
     FrameDecision,
     PlayerEdits,
     PlayerFrame,
@@ -289,8 +291,8 @@ def check_actor(
     launch = read_document(layout, actor, Launch)
     if (
         launch.plan != context.plan
-        or launch.request.adapter != "player_bbox_review"
-        or launch.request.adapter_version != "v1"
+        or launch.request.adapter != WORKER_ADAPTER
+        or launch.request.adapter_version != WORKER_VERSION
         or launch.request.stage != "review"
         or launch.request.subject_id != manifest.clip_id
         or launch.work_id != launch.request.work_id

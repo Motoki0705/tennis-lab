@@ -34,6 +34,10 @@ from src.tasks.player_detection.annotation.review.contracts import (
     PlayerReviewProof,
     PlayerTeacherMask,
 )
+from src.tasks.player_detection.annotation.review.id_review import (
+    IdReviewBinding,
+    load_id_review_input,
+)
 from src.tasks.player_detection.annotation.review.worker import PlayerRowPage
 from tests.support.tasks.player_detection.review_worker import ReviewSession
 
@@ -48,6 +52,11 @@ def test_registered_worker_uses_parent_boxes_and_bounded_rows(
 ) -> None:
     env = session.env
     assert session.request.adapter == "player_bbox_review"
+    assert session.request.adapter_version == "v2"
+    with pytest.raises(ValueError, match="exact adapter/version"):
+        session.worker.require_work(
+            session.request.model_copy(update={"adapter_version": "v1"})
+        )
     protected = {
         r
         for p in StorageCatalog(env.layout).snapshot().protections
@@ -95,19 +104,33 @@ def test_registered_worker_uses_parent_boxes_and_bounded_rows(
         )
 
 
-def test_worker_completion_validates_images_and_defers_seal_until_id_review(
+def test_worker_completion_validates_images_and_keeps_bbox_editable_for_id_review(
     session: ReviewSession,
 ) -> None:
     env = session.env
     session.confirm(session.image(1), 1, 2)
     outcome = session.finish(session.evidence())
-    assert outcome.status == "complete" and outcome.adoption is not None
-    adoption = read_document(env.layout, outcome.adoption, AdoptionReceipt)
+    assert outcome.status == "complete" and outcome.adoption is None
+    binding, labels = load_id_review_input(env.store, outcome.receipt)
+    assert binding.revision == env.head() and labels == env.labels()
+    adoption = read_document(env.layout, binding.bbox_review, AdoptionReceipt)
     mask = read_document(env.layout, adoption.teacher_mask, PlayerTeacherMask)
     assert (
         mask.rows[1].supervision == "positive" and mask.rows[2].supervision == "ignore"
     )
     assert env.store.current(env.context_ref, session.services)[1] is None
+    protected = {
+        ref
+        for record in StorageCatalog(env.layout).snapshot().protections
+        if record.protection_id == "player-id-review-v1-" + outcome.receipt.digest
+        for ref in record.references
+    }
+    assert {
+        outcome.receipt,
+        binding.revision,
+        binding.bbox_review,
+        labels.images[0].image,
+    }.issubset(protected)
 
 
 def test_retry_retains_reviewed_boxes_and_images_from_cancelled_attempt(
@@ -244,8 +267,9 @@ def test_unavailable_prior_proof_recovers_only_after_reinspection(
         assert env.store.current(env.context_ref, session.services)[1] is None
     else:
         outcome = session.finish(report)
-        assert outcome.status == "complete" and outcome.adoption is not None
-        adoption = read_document(env.layout, outcome.adoption, AdoptionReceipt)
+        assert outcome.status == "complete" and outcome.adoption is None
+        binding = read_document(env.layout, outcome.receipt, IdReviewBinding)
+        adoption = read_document(env.layout, binding.bbox_review, AdoptionReceipt)
         evidence = read_document(env.layout, adoption.review_evidence, ReviewEvidence)
         proof = read_document(env.layout, evidence.evidence[0], PlayerReviewProof)
         assert set(proof.telemetry) == {prior, report}

@@ -11,7 +11,7 @@ import numpy as np
 from src.tasks.ball_detection.data.annotation_states import annotation_states
 from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
 from src.tasks.ball_detection.data.windows.intervals import PlayIntervalConfig
-from src.tasks.player_detection.annotation.player_pose.dataset import PlayerPoseStore
+from src.tasks.player_detection.annotation.pose.dataset import PlayerPoseStore
 from src.utils.checksum import dual_sha256
 
 from .contracts import AnnotationDetails, ClipInput, PoseInput

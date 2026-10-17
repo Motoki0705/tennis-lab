@@ -10,23 +10,26 @@ from src.submodules.models import Pose2DResult
 from src.tasks.base.annotation.artifacts import read_document
 from src.tasks.base.annotation.contracts import PublicationReceipt
 from src.tasks.person_tracking.contracts import ScoreOrigin
-from src.tasks.player_detection.annotation.player_pose import approved
-from src.tasks.player_detection.annotation.player_pose.approved import (
+from src.tasks.player_detection.annotation.pose import approved
+from src.tasks.player_detection.annotation.pose.approved import (
     generate_pose,
     validate_result,
 )
-from src.tasks.player_detection.annotation.player_pose.corrected import (
+from src.tasks.player_detection.annotation.pose.corrected import (
+    BboxInput,
+    TrackingReceipt,
     finalize_review,
     load_final,
     load_tracking,
     real_observations,
     track_corrected,
 )
-from src.tasks.player_detection.annotation.player_pose.publisher import (
+from src.tasks.player_detection.annotation.pose.publisher import (
     PosePublicationRequest,
     PosePublisher,
     PublishedPoseStore,
 )
+from src.tasks.player_detection.annotation.review.id_review import IdReviewBinding
 from src.tasks.player_detection.configuration import (
     FrameSelectionConfig,
     InputSizeConfig,
@@ -409,7 +412,7 @@ def test_estimated_observation_is_not_a_pose_crop_or_positive_teacher(tmp_path):
 
 
 def test_final_id_commit_resumes_after_seal_before_receipt(tmp_path, monkeypatch):
-    from src.tasks.player_detection.annotation.player_pose import corrected
+    from src.tasks.player_detection.annotation.pose import corrected
 
     fixture = PublicationFixture(tmp_path / "annotation", finalize=False)
     original = corrected.write_document
@@ -452,10 +455,10 @@ def test_pose_rejects_retargeted_input_identity(fixture, field):
 
 def test_pose_reuse_checks_id_review_evidence_and_exact_pose_reference(fixture):
     from src.tasks.base.annotation.artifacts import annotation_reference, write_asset
-    from src.tasks.player_detection.annotation.player_pose.corrected import (
+    from src.tasks.player_detection.annotation.pose.corrected import (
         IdentityReview,
     )
-    from src.tasks.player_detection.annotation.player_pose.storage import write_npz
+    from src.tasks.player_detection.annotation.pose.storage import write_npz
 
     env = fixture.env
     original = generate_pose(
@@ -508,7 +511,7 @@ def test_pose_publication_resumes_without_inference_and_rechecks_receipt(
     fixture, monkeypatch, stage
 ):
     from src.tasks.base.annotation import publication
-    from src.tasks.player_detection.annotation.player_pose import publisher
+    from src.tasks.player_detection.annotation.pose import publisher
 
     env = fixture.env
     result = generate_pose(
@@ -647,3 +650,39 @@ def test_bbox_edit_after_tracking_invalidates_id_review(tmp_path):
     )
     with pytest.raises(ValueError, match="Bbox revision changed"):
         finalize_review(env.layout, fixture.review)
+
+
+@pytest.mark.parametrize(
+    "field", ["context", "revision", "frame", "frame_digest", "observation_ids"]
+)
+def test_tracking_rejects_retargeted_bbox_worker_handoff(tmp_path, field):
+    fixture = PublicationFixture(tmp_path / "annotation", finalize=False)
+    env = fixture.env
+    binding = read_document(env.layout, fixture.binding, IdReviewBinding)
+    if field in {"context", "revision"}:
+        binding = binding.model_copy(update={field: env.blob})
+    else:
+        frame = binding.frames[1]
+        changed = {
+            "frame": frame.frame.model_copy(
+                update={"source_pts": frame.frame.source_pts + 1}
+            ),
+            "frame_digest": "0" * 64,
+            "observation_ids": tuple(reversed(frame.observation_ids)),
+        }[field]
+        binding = binding.model_copy(
+            update={
+                "frames": (
+                    binding.frames[0],
+                    frame.model_copy(update={field: changed}),
+                    *binding.frames[2:],
+                )
+            }
+        )
+    value = read_document(env.layout, fixture.input, BboxInput)
+    forged_input = env.save(value.model_copy(update={"id_review": env.save(binding)}))
+    receipt = read_document(env.layout, fixture.tracking, TrackingReceipt)
+    with pytest.raises(ValueError, match="ID review"):
+        load_tracking(
+            env.layout, env.save(receipt.model_copy(update={"input": forged_input}))
+        )

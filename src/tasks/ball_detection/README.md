@@ -20,7 +20,7 @@ RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規C
 | `preprocessing/mdd.py` | モデルが使う固定FP32 MDDの唯一の実装 |
 | `model_io/` | 入出力の検証、モデル生成、座標/heatmapの別々の契約 |
 | `checkpoints/` | schema別の保存・読込・encoder転送・再現性の照合 |
-| [training/](training/README.md) | 3つの学習系統、共通epoch/runtime、LR、FPS sampler |
+| [training/](training/README.md) | 5chのDPT→query→hybridと継続学習、既存heatmap/座標学習、共通runtime |
 | `evaluation/` | 学習中/単独評価で共通の採点、重複排除、clean/stress |
 | `inference/` | scene向け公開predictorとtrajectory gate |
 | [annotation/](annotation/README.md) | 新規clipの事前推論・注釈レビュー・累積教師公開 |
@@ -37,8 +37,8 @@ RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規C
 |---|---|
 | `generate_dataset` | 設定からframe storeを生成 |
 | `prepare_data` | 凍結したプレイ窓・pose/MDD-onlyのmanifestと比較設定を準備 |
-| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates`。座標系は`--initialize scratch\|encoder`も明示 |
-| `evaluate` | `--mode heatmap\|manifest\|coordinates`。保存されたcheckpoint契約で採点 |
+| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates\|hybrid`。座標系は`--initialize scratch\|encoder`も明示 |
+| `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid`。保存されたcheckpoint契約で採点 |
 | `review` | `--mode dataset\|inference`でWebUIを起動 |
 | `visualize` | checkpointのclip推論をGIFへ描画 |
 | `preview` | `--kind spatial\|heatmaps\|video`で教師・画像変換を確認 |
@@ -83,6 +83,7 @@ pipelineでの座標変換・保存・単一点の受理は[pipelineの契約](.
 
 5ch query＋DPTは [`model_io/mdd_hybrid.py`](model_io/mdd_hybrid.py) の
 `build_mdd_hybrid_detector` でモデルとadapterを構築する。
+学習済みモデルは同moduleの`load_mdd_hybrid_detector(path)`で、保存された存在閾値とともに復元する。
 `MDDQueryInput`（RGB uint8と実timestamps）を渡し、`BallPrediction`を継承した
 `BallHybridPrediction` を得る。構造・重み転送は [models/mdd](models/mdd/README.md) を参照。
 

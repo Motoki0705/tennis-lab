@@ -22,7 +22,7 @@ from src.tasks.ball_detection.data.windows.snapshot import snapshot_ball_store
 from src.tasks.ball_detection.data.windows.temporal import TemporalSamplingConfig
 from src.tasks.ball_detection.models.mdd import MDDPoseConfig
 from src.tasks.ball_detection.models.mdd.variants import coordinate_variants
-from src.tasks.player_detection.annotation.player_pose.dataset import PlayerPoseStore
+from src.tasks.player_detection.annotation.pose.dataset import PlayerPoseStore
 from src.utils.checksum import dual_sha256
 
 

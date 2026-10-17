@@ -11,6 +11,11 @@ import numpy as np
 import torch
 
 from src.submodules.models.dino.architecture import preprocess_frame
+from src.tasks.annotation.migration.legacy_format.layout import published_video_path
+from src.tasks.annotation.migration.legacy_format.manifests import (
+    load_prepared_manifests,
+)
+from src.tasks.annotation.migration.legacy_format.media import check_clip, decode_range
 from src.tasks.base.training.qualitative_saving import save_qualitative_clip
 from src.tasks.player_detection.configuration import PlayerTrainingConfig
 from src.tasks.player_detection.data.detection_dataset import DetectionBatch
@@ -20,9 +25,6 @@ from src.tasks.player_detection.models.dino_detector import (
     decode_player_detections,
 )
 from src.tasks.player_detection.visualization.overlays import draw_overlay
-from src.tennis_scene.chat_annotation.layout import published_video_path
-from src.tennis_scene.chat_annotation.manifests import load_prepared_manifests
-from src.tennis_scene.chat_annotation.runtime.media import check_clip, decode_range
 
 
 class PlayerClipRenderer:

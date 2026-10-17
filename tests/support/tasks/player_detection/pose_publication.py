@@ -28,8 +28,8 @@ from src.tasks.base.annotation.predictions import PredictionReceipt
 from src.tasks.person_tracking.features import FeatureExtractor, UnpromptedEncoder
 from src.tasks.person_tracking.strongsort_offline import AFLink
 from src.tasks.player_detection.annotation.contracts import Box, PlayerPredictions
-from src.tasks.player_detection.annotation.player_pose.approved import PosePolicy
-from src.tasks.player_detection.annotation.player_pose.corrected import (
+from src.tasks.player_detection.annotation.pose.approved import PosePolicy
+from src.tasks.player_detection.annotation.pose.corrected import (
     BboxInput,
     IdentityReview,
     TrackingModels,
@@ -44,6 +44,7 @@ from src.tasks.player_detection.annotation.review.contracts import (
     PlayerObservation,
     manual_observation_id,
 )
+from src.tasks.player_detection.annotation.review.id_review import freeze_for_id_review
 from src.tasks.player_detection.generate_dataset.publishing.publisher import (
     PlayerPublicationPolicy,
 )
@@ -241,6 +242,9 @@ class PublicationFixture:
             (telemetry,),
             reason="synthetic bbox review",
         )
+        self.binding = freeze_for_id_review(
+            env.store, env.context_ref, env.head(), self.adoption
+        )
         directory = env.layout.repository / "data/ball_detection" / (version + "-ball")
         frames = [
             SourceFrame(
@@ -288,7 +292,7 @@ class PublicationFixture:
         )
         self.input = pin_input(
             env.layout,
-            BboxInput(adoption=self.adoption, ball_snapshot=self.ball_snapshot),
+            BboxInput(id_review=self.binding, ball_snapshot=self.ball_snapshot),
         )
         self.extractor = FeatureExtractor(None, UnpromptedEncoder(Encoder(), 2))
         self.models = TrackingModels(clip_reid=env.blob, aflink=env.blob)
