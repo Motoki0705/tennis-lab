@@ -16,7 +16,7 @@ from src.tasks.base.annotation.learning.validation import check_evaluation
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.player_detection.data.snapshots.partitions import validate_partition
 
-from . import checkpoints, evaluation
+from . import checkpoints, evaluation, storage
 from .contracts import PlayerSelectionPolicy
 from .inputs import resolve_inputs, run_root, training_partition
 
@@ -24,6 +24,14 @@ from .inputs import resolve_inputs, run_root, training_partition
 class PlayerLearningAdapter:
     task = "player"
     product = "boxes"
+
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.retained_references(layout, intent, evaluation)
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
