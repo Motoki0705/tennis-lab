@@ -63,5 +63,13 @@ logical bytes、inode重複除外後のallocated bytes、files、hardlink数を�
 方式間で共通のtemplateを持つため、各方式の容量を単純加算しない。
 これはGCの削減可能量や実解放量の保証ではない。
 
-reportの `adopted_policy` は常にnull。実素材・実attempt数での結果、利用readerとの整合、
-予算と保持方針を確認した後、採用理由を別の意思決定記録に残す。
+reportの `adopted_policy` は常にnull。測定は運用方式を自動で変更しない。
+実素材・実attempt数での結果、利用readerとの整合、予算と保持方針を確認した後、
+`decisions.record_decision(layout, PolicyDecision(...))` で明示した選択を不変保存する。
+
+`PolicyDecision` はdecision ID、report参照、選んだ `PolicyChoice(format, shards, cache)`、
+採用理由、利用範囲、保持理由、reader互換性の根拠参照を必須にする。reportに無い方式、
+固定rows/attempts/passesと異なる測定、根拠のhash変更、同じIDへの決定の上書きを拒否する。
+決定は `storage/decisions/<ID>.json` に保存し、測定要求・capture・inventory・reader根拠と
+ともに台帳で保護する。保存後・保護前の中断は同じ決定の再送で回復できる。
+小さな合成fixtureの選択にはその利用範囲を記録し、実素材で採用したとは扱わない。

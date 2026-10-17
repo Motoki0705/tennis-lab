@@ -145,7 +145,8 @@ class GCPlan(Document):
     created_at_ns: int = Field(ge=0)
     inventory_digest: Digest
     catalog_digest: Digest
-    # The catalog is explicit, not a claim that every legacy reader is registered.
+    # A dry-run never authorizes deletion; GCStore requires a separate GCRequest.
+    # The catalog is not a claim that every legacy reader is registered.
     execution_ready: Literal[False] = False
     decisions: tuple[GCDecision, ...]
     stages: tuple[StageUsage, ...]
