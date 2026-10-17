@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -1397,12 +1398,8 @@ __all__ = [
 ]
 
 
-
-
 def research_path_resolver(project: Path, artifacts: tuple[Path, ...], outputs: tuple[Path, ...], cache: Path) -> PathResolver:
     """Resolve explicit artifact/output roots for standalone preview and analysis."""
-    import os
-
     if not all(path.is_absolute() for path in (project, *artifacts, *outputs, cache)):
         raise ValueError("Research CLI paths must be explicit absolute paths")
     artifact_root = Path(os.path.commonpath([path.parent for path in artifacts]))
