@@ -3,6 +3,8 @@
 共通の[注釈基盤](../../base/annotation/README.md)にplayer bbox固有の処理を接続する。
 差分編集・画像確認・教師採用の実装は [review](review/README.md) を参照する。
 production への全工程接続と実運用のレビュー方針値は未完了である。
+既存ball storeからの選手IDレビュー・pose生成とreaderは [pose](pose/README.md) が所有する。
+これは旧所有先から移した既存機能であり、修正bboxからの新production接続を実装したものではない。
 `PlayerPredictionAdapter` は、ballと同じ `Predictions` 台帳から新規clipだけを
 推論する。別モデルになったことを理由に既存教師を再生成・上書きしない。
 

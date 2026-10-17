@@ -2,11 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Callable
+from typing import Literal, Protocol, Self, TypeVar, cast
 
 from pydantic import Field
 
 from ..contracts import ArtifactRef, Digest, Document, PositiveInt
+from ..contracts import after_validator as _after_validator
+
+_Model = TypeVar("_Model")
+
+
+class _AfterValidator(Protocol):
+    def __call__(
+        self, function: Callable[[_Model], _Model]
+    ) -> Callable[[_Model], _Model]: ...
+
+
+after_validator = cast(_AfterValidator, _after_validator)
 
 
 class Usage(Document):
@@ -35,6 +48,25 @@ class ImageInput(Document):
     binding: Literal["exact_bytes", "exact_bytes_and_view_path", "unbound"]
 
 
+class ToolEvidence(Document):
+    artifacts: tuple[ArtifactRef, ...] = ()
+    dependencies: tuple[ArtifactRef, ...] = ()
+    unavailable_reason: str | None = None
+
+    @after_validator
+    def explicit_outcome(self) -> Self:
+        if self.artifacts:
+            if self.unavailable_reason is not None:
+                raise ValueError("linked tool evidence cannot be unavailable")
+        elif (
+            self.dependencies
+            or not self.unavailable_reason
+            or not self.unavailable_reason.strip()
+        ):
+            raise ValueError("unlinked tool evidence requires an explicit reason")
+        return self
+
+
 class ToolOutput(Document):
     call_id: str
     name: str | None
@@ -48,6 +80,7 @@ class ToolOutput(Document):
     images: tuple[ImageInput, ...]
     observed_view_paths: tuple[str, ...]
     category: str
+    evidence: ToolEvidence | None = None
 
 
 class ResponseRecord(Document):
