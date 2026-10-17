@@ -17,6 +17,7 @@ from ..contracts import (
     after_validator,
 )
 from ..execution.contracts import QueueConfiguration
+from ..reproducibility import CodeBoundDocument
 
 _M = TypeVar("_M")
 
@@ -171,7 +172,7 @@ class StageCost(Document):
         return self
 
 
-class LearningRuntime(Document):
+class LearningRuntime(CodeBoundDocument):
     scope: ArtifactRef
     queue: QueueConfiguration
     train: StageCost

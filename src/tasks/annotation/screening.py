@@ -7,6 +7,7 @@ from pathlib import Path
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     read_document,
+    verify_reference,
     write_document,
 )
 from src.tasks.base.annotation.collection.contracts import SelectionReceipt
@@ -19,6 +20,8 @@ from src.tasks.base.annotation.screening.contracts import (
     PreviewReceipt,
     ScreeningInput,
     ScreeningRequest,
+    SourceDecision,
+    check_decision,
 )
 from src.tasks.base.annotation.screening.service import Screening
 from src.tasks.base.annotation.storage.references import distinct
@@ -30,6 +33,36 @@ from src.tasks.base.annotation.workers.contracts import (
     WorkOutcome,
     WorkRequest,
 )
+from src.tasks.base.annotation.workers.services import ServiceReply, ServiceRequest
+
+
+def unfinished_services(
+    layout: AnnotationLayout, directory: Path, task_request: ArtifactRef
+) -> tuple[str, ...]:
+    """Do not turn pending or failed image requests into a material shortage."""
+    reasons: list[str] = []
+    for path in sorted((directory / "work/service-requests").glob("*.json")):
+        if path.stat().st_size > 32768:
+            raise ValueError("worker service request exceeds 32 KiB")
+        request = read_document(
+            layout, annotation_reference(layout, path), ServiceRequest
+        )
+        if request.task_request != task_request or path.stem != request.sha256:
+            raise ValueError("screening service changed its task/attempt identity")
+        reply_path = directory / "services" / request.sha256 / "reply.json"
+        if not reply_path.exists():
+            reasons.append(f"{request.sha256}: pending")
+            continue
+        reply = read_document(
+            layout, annotation_reference(layout, reply_path), ServiceReply
+        )
+        if reply.request_digest != request.sha256:
+            raise ValueError("screening service response belongs to another request")
+        if reply.status != "succeeded" or reply.result is None:
+            reasons.append(f"{request.sha256}: failed ({reply.reason})")
+        else:
+            verify_reference(layout, reply.result)
+    return tuple(reasons)
 
 
 class ScreeningAdapter:
@@ -137,6 +170,15 @@ class ScreeningAdapter:
             or body.source.canonical_id != request.subject_id
         ):
             raise ValueError("worker changed its source/input binding")
+        screening = Screening(Collection(layout, plan))
+        decision = read_document(layout, result, SourceDecision)
+        check_decision(body, screening.policy, decision)
+        pending = unfinished_services(layout, directory, ref)
+        if decision.status == "deferred" or pending:
+            reason = "screening is technically incomplete: " + decision.notes
+            if pending:
+                reason += "; unresolved image services: " + "; ".join(pending)
+            return WorkOutcome(status="deferred", receipt=result, reason=reason)
         presentation = write_document(
             layout,
             directory / "presented.json",
@@ -146,7 +188,7 @@ class ScreeningAdapter:
                 images=presented_images(layout, telemetry),
             ),
         )
-        selection_ref = Screening(Collection(layout, plan)).finalize(
+        selection_ref = screening.finalize(
             ref, result, presentation, self.previews(layout, directory)
         )
         selection = read_document(layout, selection_ref, SelectionReceipt)

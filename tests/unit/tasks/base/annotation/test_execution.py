@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from threading import Event
+from typing import Any
 
 import pytest
 
@@ -211,6 +212,50 @@ def test_cpu_receipt_resume_and_accounted_runtime_caches(setup: tuple) -> None:
         for reference in record.references
     }
     assert {ref, input_ref, dependency} <= retained
+
+
+def test_watchdog_emergency_terminates_the_stage_child(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, manager, launch = setup
+    original = subprocess.Popen
+
+    def with_emergency(command: list[str], **kwargs: Any) -> Any:
+        if command[1:3] == ["-m", "src.tasks.base.annotation.execution"]:
+            injected = (
+                "import runpy; from src.tasks.base.annotation.resources import ResourceManager, BudgetStopped\n"
+                "def emergency(self): raise BudgetStopped('synthetic observed host space emergency')\n"
+                "ResourceManager.watch = emergency\n"
+                "runpy.run_module('src.tasks.base.annotation.execution', run_name='__main__')\n"
+            )
+            command = [command[0], "-c", injected, *command[3:]]
+        return original(command, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", with_emergency)
+    launch = launch.model_copy(
+        update={
+            "command": (sys.executable, "-c", "import time; time.sleep(60)"),
+            "timeout_seconds": 90.0,
+        }
+    )
+    runner = StageRunner(layout)
+    result = runner.submit(launch)
+    ref = ArtifactRef.model_validate(result["launch"])
+    state = wait_exit(runner, ref)
+    assert state["state"] == "failed"
+    directory = stage_directory(layout, launch)
+    receipt = read_document(
+        layout, annotation_reference(layout, directory / "exit.json"), StageExit
+    )
+    assert "synthetic observed host space emergency" in receipt.reason
+    assert receipt.elapsed_seconds < 15
+    from src.tasks.base.annotation.workers.processes import ProcessIdentity
+
+    owner = ProcessIdentity.from_document(
+        json.loads((directory / "owner.json").read_text())
+    )
+    assert not owned_members(owner)
+    assert manager.sample().active_by_stage == {}
 
 
 def test_queue_wait_protects_launch_and_explicit_input_dependencies(
