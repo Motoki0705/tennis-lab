@@ -20,7 +20,7 @@ from src.tasks.base.annotation.learning.contracts import (
 from src.tasks.base.annotation.learning.validation import check_evaluation
 from src.tasks.base.annotation.paths import AnnotationLayout
 
-from . import evidence
+from . import evidence, storage
 from .contracts import BallSelectionPolicy
 from .inputs import resolve_inputs
 from .selection import rejection_reasons
@@ -29,6 +29,14 @@ from .selection import rejection_reasons
 class BallLearningAdapter:
     task = "ball"
     product = "frames"
+
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.retained_references(layout, intent, evaluation)
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
