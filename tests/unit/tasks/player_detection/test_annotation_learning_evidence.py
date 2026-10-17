@@ -13,6 +13,7 @@ from src.tasks.base.annotation.artifacts import (
     read_document,
 )
 from src.tasks.base.annotation.execution.contracts import StageLaunch
+from src.tasks.base.annotation.learning import Learning
 from src.tasks.base.annotation.learning.contracts import TrainingReceipt
 from src.tasks.base.annotation.learning.execution import stage_request
 from src.tasks.player_detection.data.snapshots.contracts import ExistingPlayerSnapshot
@@ -28,12 +29,41 @@ from src.tasks.player_detection.training.annotation.evaluation import (
     verify_model_evaluation,
 )
 from src.tasks.player_detection.training.annotation.inputs import resolve_inputs
-from tests.support.tasks.player_detection.chat_root import SyntheticRoot
+from tests.support.tasks.player_detection.chat_root import (
+    FRAMES,
+    SyntheticRoot,
+    player,
+    publish_player_annotation,
+)
 from tests.support.tasks.player_detection.learning import (
     Environment,
     tiny_evaluation,
     use_cpu_dino,
 )
+
+
+@pytest.mark.parametrize("all_train_masked", [False, True])
+def test_no_eligible_new_player_teachers_are_recorded_without_jobs(
+    synthetic_root: SyntheticRoot, all_train_masked: bool,
+) -> None:
+    from src.tennis_scene.chat_annotation.runtime.contracts import ClipManifest
+
+    for path in synthetic_root.root.glob("_preparation/*/run/clips/*/clip_manifest.json"):
+        manifest = ClipManifest.model_validate_json(path.read_bytes())
+        if all_train_masked or manifest.source.source_id == "src_b":
+            publish_player_annotation(
+                synthetic_root.root, manifest,
+                {index: [player("unresolved", None)] for index in range(FRAMES)},
+            )
+    env = Environment(synthetic_root, added_sources=("src_b",), register=False)
+    first = env.learning.register(env.completion, env.adapter)
+    assert first.status == "no_additional_teachers" and first.intent is None
+    assert "no added player clip" in first.reason
+    restarted = Learning(env.layout, executor=env.executor)
+    assert restarted.register(env.completion, env.adapter) == first
+    assert not env.layout.path("campaigns", "fixture", "learning", "player", "intent.json").exists()
+    assert env.executor.submitted == []
+    assert env.learning.models.current("player").model == env.parent
 
 
 def test_learning_retains_native_shards_fixed_supports_and_training_settings(

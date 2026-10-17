@@ -13,6 +13,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.base.annotation.artifacts import read_document, verify_reference
 from src.tasks.base.annotation.contracts import ArtifactRef, PublicationReceipt
+from src.tasks.base.annotation.learning.adapters import NoAdditionalTeachers
 from src.tasks.base.annotation.learning.contracts import (
     CampaignCompletion,
     DatasetPartition,
@@ -33,6 +34,7 @@ from src.tasks.player_detection.data.detection_dataset import (
     PlayerDetectionDataset,
     select_detection_frames,
 )
+from src.tasks.player_detection.data.selection import frame_eligibility
 from src.tasks.player_detection.data.snapshots.contracts import PlayerPartition
 from src.tasks.player_detection.data.snapshots.partitions import (
     describe_partition,
@@ -203,7 +205,9 @@ class Inputs:
         return FrozenPlayerDataModule(runtime, dataset)
 
 
-def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:
+def prepare_inputs(
+    layout: AnnotationLayout, intent: LearningIntent
+) -> Inputs | NoAdditionalTeachers:
     if intent.task != "player":
         raise ValueError("player learning cannot execute another task")
     verify_inputs(layout, intent)
@@ -249,35 +253,7 @@ def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:
     validation = validate_partition(layout, fixed.validation)
     if fixed.test is not None:
         validate_partition(layout, fixed.test)
-    _, train = describe_partition(
-        layout, publication.snapshot, "train", recipe.selection
-    )
-    if not layout.artifact_path(train.manifest).exists():
-        if layout.path(
-            "campaigns", plan.campaign_id, "learning", "player", "intent.json"
-        ).exists():
-            raise ValueError(
-                "registered player learning intent has lost its pinned training support"
-            )
-        train = freeze_partition(
-            layout, publication.snapshot, "train", recipe.selection
-        )
-    support = validate_partition(layout, train)
-    if recipe.train_samples_per_epoch > support.selected_frames:
-        raise ValueError(
-            "player training sample budget exceeds the pinned eligible pool"
-        )
     snapshot, store = load_snapshot(layout, publication.snapshot)
-    selected = select_detection_frames(
-        store, "train", recipe.selection.selection(), frame_stride=1
-    )
-    available = {
-        snapshot.clips[store.clip_of(int(row)).index].clip_id for row in selected.frames
-    }
-    if not available.intersection(publication.added_clips):
-        raise ValueError(
-            "no_additional_player_teachers: no added clip supplies eligible train frames"
-        )
     if set(publication.added_clips + publication.reused_clips) != {
         item.clip_id for item in snapshot.clips
     }:
@@ -341,10 +317,45 @@ def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:
         raise ValueError("DINO source differs from the pinned model revision")
     if intent.selection_policy is not None:
         read_document(layout, intent.selection_policy, PlayerSelectionPolicy)
+    added = set(publication.added_clips)
+    selection = recipe.selection.selection()
+    if not any(
+        snapshot.clips[store.clip_of(int(row)).index].clip_id in added
+        and frame_eligibility(store, int(row), selection).reason == "eligible"
+        for row in store.split_frames("train")
+    ):
+        return NoAdditionalTeachers(
+            "no added player clip supplies eligible train frames; publication retained, old-only training is forbidden"
+        )
+    _, train = describe_partition(
+        layout, publication.snapshot, "train", recipe.selection
+    )
+    if not layout.artifact_path(train.manifest).exists():
+        if layout.path(
+            "campaigns", plan.campaign_id, "learning", "player", "intent.json"
+        ).exists():
+            raise ValueError(
+                "registered player learning intent has lost its pinned training support"
+            )
+        train = freeze_partition(
+            layout, publication.snapshot, "train", recipe.selection
+        )
+    support = validate_partition(layout, train)
+    if recipe.train_samples_per_epoch > support.selected_frames:
+        raise ValueError(
+            "player training sample budget exceeds the pinned eligible pool"
+        )
     inputs = Inputs(recipe, settings, training, train, support, fixed, validation, spec)
     if (
         training.optimizer.warmup_steps is not None
         and training.optimizer.warmup_steps >= inputs.total_updates
     ):
         raise ValueError("warmup must end before the total update budget")
+    return inputs
+
+
+def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:
+    inputs = prepare_inputs(layout, intent)
+    if isinstance(inputs, NoAdditionalTeachers):
+        raise ValueError("no_additional_player_teachers: " + inputs.reason)
     return inputs
