@@ -15,6 +15,10 @@ if TYPE_CHECKING:
 
 SCHEMA = """CREATE TABLE IF NOT EXISTS observed_host_space_policies (
  scope TEXT PRIMARY KEY, reference TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS observed_host_space_history (
+ scope TEXT NOT NULL, plan TEXT NOT NULL, reference TEXT NOT NULL,
+ PRIMARY KEY(scope, plan)
 );"""
 
 
@@ -57,10 +61,16 @@ def activate(manager: ResourceManager, reference: ArtifactRef) -> None:
             (manager.scope.scope_id,),
         ).fetchone()
         encoded = reference.canonical_bytes().decode()
-        if previous is not None:
-            if previous[0] != encoded:
-                raise ValueError("observed host-space authorization is immutable")
+        if previous is not None and previous[0] == encoded:
             return
+        authorized = db.execute(
+            "SELECT reference FROM observed_host_space_history WHERE scope=? AND plan=?",
+            (manager.scope.scope_id, policy.plan.digest),
+        ).fetchone()
+        if authorized is not None:
+            raise ValueError(
+                "host-space authorization is immutable or has been superseded"
+            )
         active = db.execute(
             "SELECT count(*) FROM resource_requests WHERE scope=? AND state IN ('running','draining')",
             (manager.scope.scope_id,),
@@ -69,8 +79,30 @@ def activate(manager: ResourceManager, reference: ArtifactRef) -> None:
             raise ValueError(
                 "stop and drain resource owners before authorizing host space"
             )
+        if previous is not None:
+            old = read_document(
+                manager.layout,
+                ArtifactRef.model_validate_json(previous[0]),
+                ObservedHostSpacePolicy,
+            )
+            if old.scope != manager.reference or old.plan == policy.plan:
+                raise ValueError(
+                    "observed host-space authorization is immutable for each plan"
+                )
+            verify_reference(manager.layout, old.authorization)
+            # Existing v1 registries have only a current pointer. Preserve it
+            # in the append-only history in the same transaction as the switch.
+            db.execute(
+                "INSERT OR IGNORE INTO observed_host_space_history VALUES (?,?,?)",
+                (manager.scope.scope_id, old.plan.digest, previous[0]),
+            )
         db.execute(
-            "INSERT INTO observed_host_space_policies VALUES (?,?)",
+            "INSERT INTO observed_host_space_history VALUES (?,?,?)",
+            (manager.scope.scope_id, policy.plan.digest, encoded),
+        )
+        db.execute(
+            "INSERT INTO observed_host_space_policies VALUES (?,?) "
+            "ON CONFLICT(scope) DO UPDATE SET reference=excluded.reference",
             (manager.scope.scope_id, encoded),
         )
         # A new policy must not use the old watchdog's interpretation.

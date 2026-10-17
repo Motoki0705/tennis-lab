@@ -19,6 +19,7 @@ from src.tasks.annotation.contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    RestoreSourceOperation,
     Runtime,
     ScreenOperation,
     StageCost,
@@ -260,6 +261,7 @@ def setup(
     jpeg: bool = False,
     acquire: bool = True,
     videos_per_channel: int = 1,
+    maximum_unprepared_sources: int = 1,
 ) -> tuple[AnnotationLayout, Screening, SourceCandidate]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -277,7 +279,7 @@ def setup(
             if jpeg
             else "keep",
             minimum_clip_frames=32,
-            maximum_unprepared_sources=1,
+            maximum_unprepared_sources=maximum_unprepared_sources,
         ),
     )
     reference = policy.model_dump(mode="json")
@@ -1895,6 +1897,199 @@ def finish_preview(controller: Controller, example: Example) -> None:
         results=results,
         exited=True,
     )
+
+
+def run_source_operation(
+    controller: Controller, data: OperationInput, monkeypatch: pytest.MonkeyPatch
+) -> OperationReceipt:
+    from src.tasks.annotation.operations import execute
+
+    reference = record_stage(controller, data)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+    result = execute(controller.layout, reference)
+    record_stage(controller, data, exited=True)
+    return read_document(controller.layout, result, OperationReceipt)
+
+
+def test_duplicate_acquisition_survives_shared_source_retirement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, screening, source = setup(
+        tmp_path, jpeg=True, acquire=False, videos_per_channel=2,
+        maximum_unprepared_sources=2,
+    )
+    controller = create_controller(layout, screening.plan)
+    original = run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=source.source_id),
+        ),
+        monkeypatch,
+    )
+    duplicate = source.model_copy(update={"video_id": "duplicate"})
+    controller.collection.register([duplicate])
+    excluded = run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=duplicate.source_id),
+        ),
+        monkeypatch,
+    )
+    from src.tasks.base.annotation.collection.contracts import AcquisitionReceipt
+
+    acquired = read_document(layout, original.results[0], AcquisitionReceipt)
+    duplicate_acquired = read_document(layout, excluded.results[0], AcquisitionReceipt)
+    assert excluded.status == "not_applicable"
+    assert excluded.reason == f"duplicate content of {source.source_id}"
+    assert acquired.source.media == duplicate_acquired.source.media
+    assert layout.artifact_path(acquired.source.media).is_file()
+    finish_preview(controller, make_example(layout, screening, source))
+    assert not layout.artifact_path(acquired.source.media).exists()
+    restarted = Controller(layout, controller.runtime)
+    status = restarted.status()
+    assert status["collection"]["sources_by_state"] == {"excluded": 1, "prepared": 1}
+    assert status["state"] == "preview_ready", status["failures"]
+    assert not status["failures"]
+
+
+@pytest.mark.parametrize("outcome", ["unavailable", "different_content"])
+def test_unsuccessful_restore_keeps_controller_ready_with_retained_jpegs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    from src.tasks.base.annotation.collection import restoration
+
+    layout, screening, source = setup(tmp_path, jpeg=True, acquire=False)
+    controller = create_controller(layout, screening.plan)
+    run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=source.source_id),
+        ),
+        monkeypatch,
+    )
+    example = make_example(layout, screening, source)
+    finish_preview(controller, example)
+    assert controller.status()["state"] == "preview_ready"
+    prepared = controller.collection.prepare(source.source_id)
+    calls = 0
+    return_original = False
+
+    def stage(candidate, config, staging, layout):
+        nonlocal calls
+        calls += 1
+        if not return_original and outcome == "unavailable":
+            raise FileNotFoundError("synthetic unavailable source")
+        media = staging / "media"
+        media.write_bytes(
+            layout.artifact_path(candidate.local_media).read_bytes()
+            if return_original else b"different source content"
+        )
+        return media
+
+    monkeypatch.setattr(restoration, "stage_source", stage)
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=RestoreSourceOperation(source_id=source.source_id, attempt="first"),
+    )
+    result = run_source_operation(controller, data, monkeypatch)
+    assert result.status == "not_applicable"
+    receipt = read_document(layout, result.results[0], restoration.RestorationReceipt)
+    assert receipt.status == outcome
+    assert result.reason == receipt.reason
+    assert calls == 1
+    assert not layout.artifact_path(example.request.source.media).exists()
+    restarted = Controller(layout, controller.runtime)
+    for _ in range(2):
+        status = restarted.status()
+        assert status["state"] == "preview_ready", status["failures"]
+        assert not status["failures"]
+        assert restarted.collection.prepare(source.source_id) == prepared
+        assert run_source_operation(restarted, data, monkeypatch) == result
+    assert calls == 1
+
+    # An explicit later success must not invalidate either earlier terminal failure.
+    return_original = True
+    restored = run_source_operation(
+        restarted,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=RestoreSourceOperation(source_id=source.source_id, attempt="second"),
+        ),
+        monkeypatch,
+    )
+    assert restored.status == "complete"
+    assert calls == 2
+    assert restarted.status()["state"] == "preview_ready"
+    assert run_source_operation(restarted, data, monkeypatch) == result
+    assert restarted.collection.prepare(source.source_id) == prepared
+    # A further explicit attempt sees the restored blob, so no download is needed.
+    existing = run_source_operation(
+        restarted,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=RestoreSourceOperation(source_id=source.source_id, attempt="existing"),
+        ),
+        monkeypatch,
+    )
+    assert existing.status == "complete"
+    assert read_document(
+        layout, existing.results[0], restoration.RestorationReceipt
+    ).downloaded is None
+    assert calls == 2
+    assert restarted.status()["state"] == "preview_ready"
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    ["missing_result", "attempt", "acquisition", "status", "reason", "downloaded", "restored_missing_media"],
+)
+def test_restore_operation_rejects_mismatched_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str
+) -> None:
+    from src.tasks.base.annotation.collection import restoration
+    from src.tasks.base.annotation.contracts import MediaFingerprint
+
+    example = make_example(*setup(tmp_path, jpeg=True))
+    controller = controller_for(example)
+    layout = example.layout
+    example.finish()
+    controller.collection.prepare(example.source.source_id)
+
+    def unavailable(*args):
+        raise FileNotFoundError("synthetic unavailable source")
+
+    monkeypatch.setattr(restoration, "stage_source", unavailable)
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=RestoreSourceOperation(source_id=example.source.source_id, attempt="first"),
+    )
+    result = run_source_operation(controller, data, monkeypatch)
+    directory = layout.artifact_path(result.operation).parent
+    state = controller.stages.status(annotation_reference(layout, directory / "launch.json"))
+    assert controller.receipt(state) == result
+    if invalid in {"attempt", "acquisition", "downloaded", "restored_missing_media"}:
+        inner = read_document(layout, result.results[0], restoration.RestorationReceipt)
+        updates: dict[str, Any] = {
+            "attempt": {"attempt": "another-attempt"},
+            "acquisition": {"acquisition": controller.plan.preparation},
+            "downloaded": {"downloaded": MediaFingerprint(digest="a" * 64, size_bytes=1)},
+            "restored_missing_media": {"status": "restored"},
+        }[invalid]
+        path = layout.artifact_path(result.results[0])
+        path.write_bytes(inner.model_copy(update=updates).canonical_bytes())
+        result = result.model_copy(update={"results": (annotation_reference(layout, path),)})
+    outer: dict[str, Any] = (
+        {"results": ()} if invalid == "missing_result"
+        else {"status": "complete", "reason": None} if invalid in {"status", "restored_missing_media"}
+        else {"reason": "unrelated reason"} if invalid == "reason"
+        else {}
+    )
+    (directory / "result.json").write_bytes(result.model_copy(update=outer).canonical_bytes())
+    with pytest.raises((ValueError, OSError)):
+        controller.receipt(state)
 
 
 @pytest.mark.parametrize(

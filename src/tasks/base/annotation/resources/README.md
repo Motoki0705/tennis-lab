@@ -24,7 +24,11 @@ watchdogに使う。mount消失やsymlinkへの変更は計測エラーとし、
 対象は保存rootを含まない間接的なhost mountだけ。WSL内の書き込みが既存VHD領域を再利用する
 場合に備え、このmountから保存予約を控除せず、認可された実空き下限で判定する。
 それ以外のfilesystemの予約控除、追加保存上限、PSS/GPU累計、baselineは維持する。
-既存policyの上書きは拒否し、停止解除には従来どおり明示的なresumeが必要。
+同じplanの認可変更は拒否する。次campaignでもscopeを継承する場合は、controllerを停止し、
+scope内のrunning/draining要求がなくなった後、次planの認可を同じrecoveryで追記する。
+認可履歴と現在の認可参照を同じtransactionで更新し、過去planの認可への巻戻しは拒否する。
+旧台帳に履歴がない場合も、現在の認可を履歴に追加してから切り替える。既存ファイルの移行は不要。
+新planの認可はbaseline・GPU累計・永続stopを変更せず、停止解除には従来どおり明示的なresumeが必要。
 policy適用中はwatchdogが停止を検出するとCPU/GPU工程・注釈workerのsupervisorが所有子孫を
 終了させる。約2秒の監視間隔と終了処理の遅延があり、hard quotaの非超過保証ではない。
 `free_space_mount_bytes` に各監視mountの実空きも記録する。

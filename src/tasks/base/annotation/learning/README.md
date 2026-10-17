@@ -17,6 +17,8 @@ snapshotの内容とmembershipはadapterが検査し、baseが元動画・clip�
 旧・新holdoutを確定する。元の評価参照とrecipeを解決済み `FixedEvaluation` に保存し、
 planを途中で書き換えない。追加clipはtrain/validation/testのいずれかに属し、
 trainに利用可能な追加教師が必要となる。
+再登録では同じ公開receiptの登録をロックして既存intentを先に調べ、保存済みの評価参照と
+各partitionを検証する。登録済み入力の欠損・改変を検出した場合は評価の生成処理へ進まない。
 `EvaluationReceipt.validation` は候補選択に使った固定validationと一致させる。
 recipeで最終test比較を指定した場合は `EvaluationReceipt.test` も固定testと照合する。
 testを学習やepochの選び直しへ使わない。recipeのない既存経路はvalidation比較を維持する。
@@ -50,6 +52,13 @@ testを学習やepochの選び直しへ使わない。recipeのない既存経�
   retryを拒否し、`tick()`で後続工程へ進める。照合のために旧ジョブを再投入しない。
   次試行のrequest保存前なら、途中までのretry記録を残したまま旧試行の検証済み完了を
   `tick()`でも回収する。新しいrequestが確定済みの試行を巻き戻す処理は行わない。
+
+コード更新後も初回の `runtime.json` は保持し、更新記録のplan/scope・旧runtime・検証根拠を
+照合したruntimeを `code-updates/<revision digest>/runtime.json` へ別保存する。
+変更できるのはコード版の参照だけで、scope・queue設定・工程costは不変。
+既存launchも上書きせず、旧コードの成功・失敗を回収する。未起動の旧launchは明示的に
+取消し、失敗の回収後に `retry()` した次attemptと後続評価から新しいコード版を使う。
+初回runtimeと旧launchのhashは維持するため、既存campaignのファイル移行は不要。
 
 工程要求はqueue投入前に固定入力を保持する。`LearningAdapter.resume_references()` は
 同じintentの再開checkpointを検証し、その依存を列挙する。retryはその依存を
