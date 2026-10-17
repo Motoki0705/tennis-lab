@@ -13,7 +13,8 @@ AFLinkは論文再実装と公開重みを当面使うが、**重みの独立し
 |---|---|
 | `contracts.py` | 1 frameの検出row、source画素box、score、COCO17 pose、外観と明示mask、追跡の実観測→検出row対応 |
 | `features.py` | 通常profileは検出へViTPoseを適用してpose promptと外観を抽出する。生成専用profileは外観だけを抽出する。crop幾何は後段pose推論と共有 |
-| `archive.py` | 連続frame・一意rowを検証して特徴をNPZへ保存/読込。元検出artifact・重みhashなどの出自は呼び出し側が渡す |
+| `archive.py` | 連続frame・一意rowを検証してv3特徴NPZを保存/読込。元検出artifact・重みhashなどの出自は呼び出し側が渡す |
+| `migration.py` / `scripts.migrate_features` | v2特徴NPZを明示的に検証し、全観測のscore由来を`LEGACY`と記録した別のv3へ移行する |
 | `botsort_pose.py` | XYWH Kalman、high/lowの2段対応、外観EMAとpose距離を使う固定camera向けBoT-SORT派生 |
 | `deep_ocsort_pose.py` | 公式Deep OC-SORTのobservation-centric Kalman再更新・方向速度・adaptive appearanceに共通poseコストを加えたadapter。出自・差分は`deep_ocsort_vendor/NOTICE.md` |
 | `strongsort.py` / `strongsort_offline.py` | 論文からのStrongSORT・AFLink・GSI推論再実装。明示的なpose重み（既定0）で共通pose距離を両照合段へ加算できる。GSI補間は別maskで保持。[出自と重みの制約](strongsort_NOTICE.md) |
@@ -35,6 +36,18 @@ track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わ
 1 cameraごとにtrackerを構築し、空frameも含め0から順に渡す。
 上限6は共通コート選別後のgroupにだけ適用する。
 
+`score_origin` は各観測のscoreを `MODEL` / `LEGACY`（出自未指定の既存score）/
+`MISSING` に分ける。モデル提案をそのまま保持する場合だけ元scoreを使い、注釈で追加・
+修正したboxには元モデルのscoreを流用しない。`MISSING` 行の数値配列はmasked zeroを
+要求し、`score_at()` は `None` を返す。scoreで選別する消費側は `require_scores()` で
+不在を拒否する。モデル版や修正履歴との対応は呼出側のprovenanceに保存する。
+
+StrongSORTはscoreなし観測もbox・外観・設定済みposeで対応付ける。Kalman更新の測定ノイズは、
+scoreありなら従来どおり基準ノイズの `1 - score` 倍、scoreなしなら明示設定
+`unscored_measurement_noise_scale` 倍（既定1）とする。この係数は信頼度ではなく、
+`TrackingConfig.identity()` に記録される。BoT-SORT / Deep OC-SORTはscoreなし入力を
+状態更新前に拒否する。score順の重複box選別にもscoreなし観測を渡さない。
+
 `TrackingConfig`は採用済み`strongsort_pp_pose`＋CLIPだけを受け付ける。
 データセット生成用の`DatasetTrackingConfig`は`strongsort_pp_appearance`＋CLIPを固定し、
 pose重み0でpose距離・更新を計算しない。`FeatureExtractor(None, UnpromptedEncoder(...))`は
@@ -54,7 +67,9 @@ pose必須の消費側は`require_poses()`で明示検証する。通常profile�
 
 外観はCLIP-ReID既定。低いcrop等の外観不足はzero embeddingとmaskで明示する。poseの第3channelは
 ViTPoseの回帰heatmapの最大値（確率ではなく有限の実数）を加工せず保持する。1を超える値や負の値を
-clip/sigmoidで変換しない。特徴archiveはこの契約を明示したv2のみを読み、v1を暗黙変換しない。
+clip/sigmoidで変換しない。特徴archiveの通常reader/writerはscore由来も保存するv3専用。
+v2は明示的な移行を要求するエラーで停止し、キャッシュ再利用・再開の検証でも
+読み替えや再生成をしない。v1は受け付けない。
 非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
 双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。
 BoT-SORT+poseでは外観不一致をhigh/low両段でIoUによって打ち消さない。
@@ -64,6 +79,17 @@ BoT-SORT+poseでは外観不一致をhigh/low両段でIoUによって打ち消�
 SOLIDERの出自と前処理は[notice](../player_association/appearance/solider_vendor/NOTICE.md)を参照。
 `encode_appearance`は保存済みposeを再利用し、encoder追加でViTPoseを再推論しない。
 CLIP用adapterはpromptを使わないことを明示する。重み不足やモデル出力不正は停止する。
+
+既存v2を利用する場合は、次の明示的な移行で作成したv3を指定する。
+sourceとdestinationは絶対パスとし、destinationは未作成の別ファイルにする。
+元ファイルは変更せず、score（0を含む）・pose・外観・row・空frame・provenanceを保ち、
+全観測に`ScoreOrigin.LEGACY`を記録する。v2以外・不正なv2・既存destinationは拒否する。
+既存manifestの参照パス・hashは自動更新しないため、移行先を使う呼出側が明示的に指定する。
+
+```bash
+.venv/bin/python -m src.tasks.person_tracking.scripts.migrate_features \
+  /absolute/path/to/v2-features.npz /absolute/path/to/new-v3-features.npz
+```
 
 [BoT-SORT原論文](https://arxiv.org/abs/2206.14651)と
 [Ultralyticsの実装](https://docs.ultralytics.com/reference/trackers/bot_sort/)を参照した派生方式。
