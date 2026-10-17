@@ -9,6 +9,9 @@ import torch
 
 from src.tasks.ball_detection.data.windows.learning import contracts as window_contracts
 from src.tasks.ball_detection.data.windows.learning.contracts import HoldoutWindows
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+    BallSnapshot,
+)
 from src.tasks.ball_detection.training.annotation import contracts as learning_contracts
 from src.tasks.ball_detection.training.annotation.contracts import (
     BallEvaluationMetrics,
@@ -110,6 +113,18 @@ def test_published_teachers_train_and_evaluate_through_shared_lifecycle(
         else None
     )
     env = LearningEnvironment(tmp_path, selection_policy=policy)
+    snapshot = read_document(env.layout, env.intent.train.manifest, BallSnapshot)
+    initial_inputs = resolve_inputs(env.layout, env.intent)
+    retained_inputs = set(env.learning.storage.inputs(env.intent_ref))
+    assert {
+        snapshot.index,
+        snapshot.metadata,
+        *(item.shard for item in snapshot.clips),
+        initial_inputs.prepared_ref,
+        initial_inputs.prepared.manifest,
+        initial_inputs.holdout.manifest,
+        initial_inputs.recipe.augmentation,
+    } <= retained_inputs
     outcome = env.tick()
     assert outcome.state == "training_pending" and len(env.executor.submitted) == 1
     assert env.tick().launch == outcome.launch and len(env.executor.submitted) == 1
@@ -151,6 +166,13 @@ def test_published_teachers_train_and_evaluate_through_shared_lifecycle(
     finished = env.tick()
     assert finished.state == ("rejected" if configured else "not_configured")
     assert finished.training is not None and finished.evaluation is not None
+    assert {
+        provenance.latest_checkpoint,
+        provenance.selected_checkpoint,
+        provenance.completed,
+        provenance.run_config,
+        provenance.best_record,
+    } <= set(env.learning.storage.completed_inputs(finished.training))
     assert env.learning.models.current("ball").model == env.parent
     assert env.tick() == finished and len(env.executor.submitted) == 2
     validate_resume(env.layout, env.intent, provenance.latest_checkpoint)

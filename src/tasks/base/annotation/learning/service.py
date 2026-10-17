@@ -18,12 +18,12 @@ from ..contracts import ArtifactRef, PublicationReceipt
 from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
-from ..plan import references
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
 from .adapters import LearningAdapter, NoAdditionalTeachers
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
+    EvaluationReceipt,
     FixedEvaluation,
     LearningIntent,
     LearningOutcome,
@@ -34,8 +34,10 @@ from .contracts import (
     SelectionVerdict,
     StageFailure,
     StageInput,
+    TrainingReceipt,
 )
 from .models import ModelRegistry
+from .storage import LearningReferences
 from .validation import (
     check_completion,
     check_evaluation,
@@ -66,6 +68,7 @@ class Learning:
         self.models = ModelRegistry(layout)
         self.registry = self.models.registry
         self.registry.initialize("annotation-learning-intents-v1", _SCHEMA)
+        self.storage = LearningReferences(layout)
         self.executor: StageExecutor = (
             executor if executor is not None else StageRunner(layout)
         )
@@ -142,6 +145,7 @@ class Learning:
             return self._skip(
                 completion_ref, task.task, "no_additional_teachers", eligibility.reason
             )
+        dependencies = adapter.input_references(self.layout, intent)
         directory = self._directory(intent)
         with artifact_lock(
             self.layout,
@@ -160,11 +164,12 @@ class Learning:
                     )
             else:
                 ref = write_document(self.layout, directory / "intent.json", intent)
-                with self.registry.transaction() as db:
-                    db.execute(
-                        "INSERT INTO annotation_learning_intents VALUES (?,?,?)",
-                        (task.task, product.publication.digest, ref.model_dump_json()),
-                    )
+            with self.registry.transaction() as db:
+                self.storage.register(ref, intent, dependencies, database=db)
+                db.execute(
+                    "INSERT OR IGNORE INTO annotation_learning_intents VALUES (?,?,?)",
+                    (task.task, product.publication.digest, ref.model_dump_json()),
+                )
         return LearningRegistration(
             task=task.task,
             status="ready",
@@ -217,6 +222,7 @@ class Learning:
         publication = read_document(self.layout, intent.publication, PublicationReceipt)
         if publication.product != adapter.product:
             raise ValueError("learning adapter product mismatch")
+        self.storage.inputs(ref)
         return intent
 
     def tick(
@@ -331,6 +337,7 @@ class Learning:
                 raise ValueError("retry directory has no durable stage request")
             request = StageInput(intent=ref, stage=stage, attempt=1, training=training)
             request_ref = write_document(self.layout, request_path, request)
+        self.storage.request(request_ref, request)
         return current, request_ref, request
 
     def _launch(
@@ -360,10 +367,27 @@ class Learning:
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
             input=request_ref,
-            dependencies=(*references(intent), *references(request)),
+            dependencies=self.storage.request(request_ref, request),
             queue=runtime.queue,
             test_root=str(self.layout.root) if self.layout.mode == "test" else None,
         )
+
+    def _validated_result(
+        self,
+        completed: CompletedStage,
+        intent: LearningIntent,
+        adapter: LearningAdapter,
+        stage: Literal["train", "evaluate"],
+    ) -> TrainingReceipt | EvaluationReceipt:
+        if stage == "train":
+            training: TrainingReceipt
+            _, training = check_training_value(self.layout, completed)
+            adapter.validate_training(self.layout, intent, training)
+            return training
+        evaluation: EvaluationReceipt
+        _, evaluation = check_evaluation_value(self.layout, completed)
+        adapter.validate_evaluation(self.layout, intent, evaluation)
+        return evaluation
 
     def _stage(
         self,
@@ -383,6 +407,10 @@ class Learning:
             completed = read_document(self.layout, completed_ref, CompletedStage)
             if completed.request != request_ref:
                 raise ValueError("completed stage belongs to another request")
+            result = self._validated_result(completed, intent, adapter, stage)
+            self.storage.complete(
+                completed_ref, completed, adapter.result_references(self.layout, result)
+            )
             return completed_ref
         launch = self._launch(intent, request_ref, request, adapter, runtime, directory)
         launch_ref = write_document(
@@ -486,12 +514,7 @@ class Learning:
                 result=annotation_reference(self.layout, directory / "result.json"),
                 execution=ArtifactRef.model_validate(state["exit"]),
             )
-            if stage == "train":
-                _, train_result = check_training_value(self.layout, completed)
-                adapter.validate_training(self.layout, intent, train_result)
-            else:
-                _, eval_result = check_evaluation_value(self.layout, completed)
-                adapter.validate_evaluation(self.layout, intent, eval_result)
+            result = self._validated_result(completed, intent, adapter, stage)
         except (ValueError, OSError) as error:
             failure = failure or StageFailure(
                 request=request_ref,
@@ -507,7 +530,32 @@ class Learning:
                 training=training,
                 reason=failure.reason,
             )
-        return write_document(self.layout, directory / "completed.json", completed)
+        completed_ref = write_document(
+            self.layout, directory / "completed.json", completed
+        )
+        self.storage.complete(
+            completed_ref, completed, adapter.result_references(self.layout, result)
+        )
+        return completed_ref
+
+    def _require_failed_stage(
+        self,
+        ref: ArtifactRef,
+        intent: LearningIntent,
+        adapter: LearningAdapter,
+        directory: Path,
+        request_ref: ArtifactRef,
+        launch_ref: ArtifactRef,
+    ) -> None:
+        result = self._reconcile_stage(
+            ref, intent, adapter, directory, request_ref, launch_ref, submit=False
+        )
+        if isinstance(result, ArtifactRef):
+            raise ValueError(
+                "previous stage completed successfully; collect it with tick"
+            )
+        if result.state != "failed":
+            raise ValueError("previous stage has not terminated; retry is unsafe")
 
     def retry(
         self,
@@ -532,9 +580,9 @@ class Learning:
             if not attempts:
                 raise ValueError("no failed stage to retry")
             current = root / str(max(attempts))
-            if (current / "retry.json").exists() and not (
-                current / "request.json"
-            ).exists():
+            if (current / "retry.json").exists() and not any(
+                (current / name).exists() for name in ("failure.json", "completed.json")
+            ):
                 partial = read_document(
                     self.layout,
                     annotation_reference(self.layout, current / "retry.json"),
@@ -556,8 +604,50 @@ class Learning:
                     raise ValueError(
                         "incomplete retry belongs to another learning stage"
                     )
-                # Recheck the old job even when resuming a partially written retry.
-                current = root / str(old.attempt)
+                previous_directory = root / str(old.attempt)
+                failure_path = previous_directory / "failure.json"
+                if (
+                    not failure_path.exists()
+                    or (previous_directory / "completed.json").exists()
+                    or partial.previous
+                    != annotation_reference(
+                        self.layout, previous_directory / "request.json"
+                    )
+                ):
+                    raise ValueError(
+                        "retry must match the immediately preceding failed stage"
+                    )
+                failure = read_document(
+                    self.layout,
+                    annotation_reference(self.layout, failure_path),
+                    StageFailure,
+                )
+                if failure.request != partial.previous:
+                    raise ValueError(
+                        "retry must match the immediately preceding failed stage"
+                    )
+                self._require_failed_stage(
+                    ref,
+                    intent,
+                    adapter,
+                    previous_directory,
+                    partial.previous,
+                    failure.launch,
+                )
+                restored = StageInput(
+                    intent=ref,
+                    stage=stage,
+                    attempt=old.attempt + 1,
+                    training=old.training,
+                    resume_checkpoint=resume_checkpoint,
+                )
+                # An existing request must match byte-for-byte before repairing
+                # protection lost after the durable request write.
+                restored_ref = write_document(
+                    self.layout, current / "request.json", restored
+                )
+                self.storage.request(restored_ref, restored)
+                return restored_ref
             if int(current.name) > 1 and not any(
                 (current / name).exists()
                 for name in (
@@ -589,20 +679,17 @@ class Learning:
                 annotation_reference(self.layout, current / "failure.json"),
                 StageFailure,
             )
-            result = self._reconcile_stage(
-                ref, intent, adapter, current, previous, failure.launch, submit=False
+            self._require_failed_stage(
+                ref, intent, adapter, current, previous, failure.launch
             )
-            if isinstance(result, ArtifactRef):
-                raise ValueError(
-                    "previous stage completed successfully; collect it with tick"
-                )
-            if result.state != "failed":
-                raise ValueError("previous stage has not terminated; retry is unsafe")
+            resume_dependencies: tuple[ArtifactRef, ...] = ()
             if resume_checkpoint is not None:
                 if stage != "train":
                     raise ValueError("evaluation cannot resume training")
                 verify_reference(self.layout, resume_checkpoint)
-                adapter.validate_resume(self.layout, intent, resume_checkpoint)
+                resume_dependencies = adapter.resume_references(
+                    self.layout, intent, resume_checkpoint
+                )
             next_request = StageInput(
                 intent=ref,
                 stage=stage,
@@ -620,6 +707,11 @@ class Learning:
                     previous=previous,
                     reason=reason,
                     resume_checkpoint=resume_checkpoint,
+                    resume_dependencies=resume_dependencies,
                 ),
             )
-            return write_document(self.layout, target / "request.json", next_request)
+            next_ref = write_document(
+                self.layout, target / "request.json", next_request
+            )
+            self.storage.request(next_ref, next_request)
+            return next_ref

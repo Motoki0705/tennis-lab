@@ -16,6 +16,11 @@ snapshotの内容とmembershipはadapterが検査し、baseが元動画・clip�
 評価ジョブの `EvaluationReceipt.validation` は固定validationに一致する必要があり、
 testを代わりに使うことはできない。test membershipは学習との分離検査に使う。
 
+`LearningReferences` はintent登録と同じtransactionで入力を保護する。
+`LearningAdapter.input_references()` はsnapshot内のindex・metadata・shardや固定評価の
+実ファイルを型付き契約から列挙する。queue待機中にも保護し、同じintentの再登録で
+対象を変更することはできない。未登録・解除済みの保護は明示的なエラーになる。
+
 `tick(intent, adapter, runtime)` は学習→評価→採用を進め、一回ごとの状態を返す。
 
 - 学習・評価コマンドは `StageRunner` とmainの共有training queueを通る。scope、queueの
@@ -40,6 +45,20 @@ testを代わりに使うことはできない。test membershipは学習との�
   retryを拒否し、`tick()`で後続工程へ進める。照合のために旧ジョブを再投入しない。
   次試行のrequest保存前なら、途中までのretry記録を残したまま旧試行の検証済み完了を
   `tick()`でも回収する。新しいrequestが確定済みの試行を巻き戻す処理は行わない。
+
+工程要求はqueue投入前に固定入力を保持する。`LearningAdapter.resume_references()` は
+同じintentの再開checkpointを検証し、その依存を列挙する。retryはその依存を
+`Retry.resume_dependencies` に不変保存し、checkpointとともに返却前に保護する。
+retry記録やrequestの保存後（保護登録の失敗を含む）に中断した場合は、同じ引数の
+明示的な`retry()`で復旧する。理由・再開checkpoint、直前の失敗とそのrequest、
+保存済みretry/requestの内容を照合し、一致すれば保存済みの依存を保護登録して
+同じrequestを返す。照合が合わなければ明示的に拒否し、試行番号を増やさない。
+成功した工程は `LearningAdapter.result_references()` が検査済みcheckpoint・来歴・
+評価根拠の実ファイルを列挙し、結果の保護記録と同時に確定する。完了ファイルの保存後に
+保護登録が失敗しても、再送では保存結果を再検証して登録し、学習を重複起動しない。
+評価の起動には、学習結果の保護済み依存も渡す。
+これらは失敗・完了後も保持する。自動解除、過去intentの一括移行、未完了runの
+全checkpoint収集は含まない。[保存台帳](../storage/README.md)のGCは引き続きdry-runである。
 
 `ModelRegistry.bootstrap(model, evidence)` で初期モデルを根拠付きで明示登録する。
 最終採用は、task判定、成功した学習・評価、固定validation・policyの参照を再検証してから行う。

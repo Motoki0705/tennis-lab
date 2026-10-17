@@ -64,6 +64,18 @@ class BallLearningAdapter:
         inputs.expected_recipe(layout, intent)
         return None
 
+    def input_references(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> tuple[ArtifactRef, ...]:
+        dependencies: tuple[ArtifactRef, ...] = storage.input_references(layout, intent)
+        return dependencies
+
+    def result_references(
+        self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
+    ) -> tuple[ArtifactRef, ...]:
+        dependencies: tuple[ArtifactRef, ...] = storage.result_references(layout, result)
+        return dependencies
+
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path
     ) -> tuple[str, ...]:
@@ -92,10 +104,11 @@ class BallLearningAdapter:
     ) -> None:
         evidence.validate_evaluation(layout, intent, receipt)
 
-    def validate_resume(
+    def resume_references(
         self, layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
-    ) -> None:
+    ) -> tuple[ArtifactRef, ...]:
         evidence.validate_resume(layout, intent, checkpoint)
+        return ()
 
     def select(
         self, layout: AnnotationLayout, intent: LearningIntent, evaluation: ArtifactRef
