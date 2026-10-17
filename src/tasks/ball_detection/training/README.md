@@ -42,6 +42,9 @@ snapshotを共有するrunの開始前に、同READMEの[snapshot運用制約](.
 ```
 
 CNN候補は`configs/model/mdd_dpt_{pretrain,convnext_v2,fasternet}.yaml`で選ぶ。
+5chの事前学習には `configs/model/mdd_dpt_rgb_mdd.yaml` を指定する。
+事後学習は保存された入力契約とencoder構成を引き継ぐ。
+入力仕様と旧2chとの互換範囲は [models/mdd](../models/mdd/README.md) を参照。
 pose/圧縮比較は`prepare_data`が作るmodel設定を`--stage coordinates --initialize scratch --model-config ...`へ渡す。
 CPU smokeでは`--device cpu --precision fp32 --jpeg-decoder opencv --compile-mode off --input-verification lazy --num-workers 0`を明示する。CUDAの事前/事後学習はBF16固定。
 
@@ -62,6 +65,14 @@ query posttraining v1、`--initial-checkpoint-sha256`にそのSHA-256を明示�
 親checkpointのoptimizer・epoch・step・bestは使わず、AdamWとscheduleをstep 0から開始する。
 親ファイルhash・全重みhash・train/validation各manifest hashをrecipe/checkpointに保存し、
 両manifestをrunへ複製する。これらの入力はrunの途中では変更できない。
+
+5chの3段目（hybrid）の構造と初期化APIは [models/mdd](../models/mdd/README.md#3段目への重み転送) にある。
+このCLIのstageにはまだ追加していない。#1230で損失配分、checkpoint/resume schema、
+転送receiptの保存、存在閾値の評価方法を定義する。
+現在の `heatmap_valid & ~position_valid` は確認済み不在の教師で、未確定位置を負例にしない。
+人工遮蔽では既知位置の教師を維持する。増強で画面外へ移った点の扱いとpresence maskは
+stage 3の教師仕様で明示する必要がある。
+既存窓はプレイ区間・最低位置教師数で選別するため、全不在／非プレー窓の供給は別途設計する。
 
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
 full_modelでは元の初期checkpoint/hashを指定したまま、当該run内のcheckpointを`--resume`に渡す。

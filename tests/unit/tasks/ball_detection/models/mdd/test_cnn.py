@@ -25,7 +25,7 @@ from src.utils.paths import PROJECT_ROOT
 def small_config() -> MDDPretrainConfig:
     return MDDPretrainConfig(stem_channels=(4, 8, 8, 8), mixed_channels=(8, 16),
         residual_blocks=(0, 1, 1, 1, 1, 1), decoder_channels=8, dim=16, heads=2, layers=1, ffn_dim=64, dropout=0., rope_base=10000., activation_checkpointing=False,
-        encoder_variant="residual", temporal_mixing="dense3d")
+        encoder_variant="residual", temporal_mixing="dense3d", input_channels=2)
 
 
 def test_dpt_trains_all_spatial_stages_and_both_3d_layers() -> None:
