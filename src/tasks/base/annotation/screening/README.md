@@ -7,8 +7,9 @@
 
 選別は [Collection](../collection/README.md) の取得と準備の間に入る。
 `ScreeningPolicy` を campaign plan の `selection` に固定し、
-`Screening(collection).request(source_id, attempt_id)` でリクエスト・schema・
-全体overview・worker指示を作る。共通workerがその指示を実行し、最後に
+`Screening(collection).prepare(source_id)` をCPU工程で実行し、全体overviewと
+不変のsource入力を作る。`request(prepared_input, worker_attempt_directory)` は
+共通workerの受付時に小さいリクエスト・schema・指示だけを作る。workerがその指示を実行し、最後に
 `finalize(request, decision, presentation, previews)` を呼ぶ。
 このモジュールは Codex の起動や追加のQAレビューを実行しない。
 
@@ -17,7 +18,8 @@
   preflightの理由付き選外として台帳に記録する。
   全長の秒表現は[準備と共通のPTS境界契約](../collection/README.md)に従う。
 - `python -m src.tasks.base.annotation.screening --request PATH
-  --request-sha256 HASH images --start S --stop E --step STEP` は CPUで逐次decodeし、
+  --request-sha256 HASH images --start S --stop E --step STEP` はworker自身のworkに
+  画像要求を書き、親controllerへ返す。親は資源管理下のCPU工程で逐次decodeし、
   最大24タイルのJPEGページを1ページずつ生成する。時刻はsourceの実PTSから
   計算する。前の採用PTSからstep以内の最後の実frameを選び、窓末尾も覆う。
   疎な映像の実際の間隔はそのまま記録し、frameの複製やpaddingはしない。
@@ -37,11 +39,16 @@
   `SelectionReceipt` を公開して台帳へ登録する。receipt公開直後に中断しても
   同じ参照で再開できる。未選択や不足を準備済み・公開済みと扱わない。
 
-保存先は固定rootの `campaigns/<campaign>/screening/<source>/<attempt>/`。
-workerの自由な作業は `work/`、共通画像コマンドの生成先は `previews/`。
+全体overviewとsource入力は `campaigns/<campaign>/screening/<source>/`、
+workerの指示・結果は共通の `campaigns/<campaign>/workers/<work-id>/<attempt>/` に置く。
+workerの自由な作業は `work/`、親が描画する追加画像はattemptの `previews/` に置く。
+画像要求・応答の対応は `work/service-requests/<hash>.json` と `services/<hash>/reply.json`。
+親はrequestのsource/plan/attempt・区間・画像数を照合し、1要求600frame、
+policyで宣言した0.1秒以上の間隔に制限する。描画済み画像は閲覧済みとは扱わない。
 正式receiptと提示記録は親が作り、workerが編集する入力にしない。
 機械検証は提示された画像と宣言された区間の整合性を確認する。実プレーや
 速度の意味判断はworkerの選別であり、機械的に正しさを保証するものではない。
 
 #1123 の単体テストは合成動画で境界・画像提示・hash・原子的公開・台帳再開を
-検証する。実動画・Codex実ログによる接続検証は #1125 / #1140 / #1141 で行う。
+検証する。合成workerと実CPU描画stageの接続でも、rolloutのない結果が採用されないことを
+確認する。実動画・Codex実ログによる接続検証はpilotで行う。

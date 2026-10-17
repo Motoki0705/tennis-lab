@@ -180,19 +180,23 @@ class PreviewReceipt(Document):
         return self
 
 
-class ScreeningRequest(Document):
-    schema_version: Literal["annotation.screening-request.v1"] = (
-        "annotation.screening-request.v1"
-    )
+class ScreeningInput(Document):
     plan_digest: Digest
     source: SourceIdentity
     policy: ArtifactRef
-    requested_maximum: PositiveInt
-    attempt_path: str
     source_duration: float = Field(gt=0)
     source_origin_pts: int
     time_base: str
     overview: ArtifactRef
+
+
+class ScreeningRequest(ScreeningInput):
+    schema_version: Literal["annotation.screening-request.v1"] = (
+        "annotation.screening-request.v1"
+    )
+    prepared_input: ArtifactRef
+    requested_maximum: PositiveInt
+    attempt_path: str
 
 
 class PresentedImages(Document):
@@ -208,3 +212,18 @@ class ScreeningEvidence(Document):
     decision: ArtifactRef
     presentation: ArtifactRef
     previews: tuple[ArtifactRef, ...]
+
+
+def check_decision(
+    request: ScreeningRequest, policy: ScreeningPolicy, decision: SourceDecision
+) -> None:
+    if decision.source_sha256 != request.source.media.digest:
+        raise ValueError("decision refers to a different source")
+    if decision.requested_maximum != request.requested_maximum:
+        raise ValueError("decision changes the requested clip count")
+    for clip in decision.clips:
+        clip.validate_policy(policy)
+        if clip.stop > request.source_duration:
+            raise ValueError("selected window extends beyond the source")
+    if any(interval.stop > request.source_duration for interval in decision.rejected):
+        raise ValueError("rejected interval extends beyond the source")

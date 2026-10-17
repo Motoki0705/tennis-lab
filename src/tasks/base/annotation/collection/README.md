@@ -25,8 +25,10 @@ screeningが所有し、このモジュールは明示された `SelectionReceip
 動画名やchannel表示名ではなく `(provider, video_id)`、元動画内容hash、clip区間identityを照合する。
 新規channelの予約もcampaign横断で行う。既存データは収集前に
 `CollectionLedger.import_history(source, evidence)` で読取棚卸しを登録する。
-同じcanonical sourceの別エンコードも、追加hashを照合用に登録する。
-既知sourceと異なるchannel identityは明示的に拒否する。
+取得未完了でもcanonical IDが確認できた素材は `HistoricalSource(media=None)` で履歴に
+含める。未完了ファイルを取得済みmediaとして扱わず、内容hashの重複表には登録しない。
+同じcanonical sourceの取得済みmediaや別エンコードは、追加hashを照合用に登録する。
+media以外の履歴source identityと根拠は再登録時も一致を要求し、異なるchannel identityを拒否する。
 別campaignが確保済みのchannel/source、同内容の再アップロードは新規取得数に加えない。
 
 取得/準備はsourceごとのOS file lockで多重起動を防ぐ。停止するとlockは解放される。

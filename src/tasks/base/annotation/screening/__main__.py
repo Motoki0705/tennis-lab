@@ -15,9 +15,16 @@ from src.utils.configuration import (
 )
 
 from ..artifacts import annotation_reference, read_document
+from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
-from .contracts import PreviewReceipt, ScreeningPolicy, ScreeningRequest, SourceDecision
-from .service import attempt_directory, check_decision, request_preview
+from ..workers.services import ServiceRequest, request_service
+from .contracts import (
+    PreviewReceipt,
+    ScreeningPolicy,
+    ScreeningRequest,
+    SourceDecision,
+    check_decision,
+)
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="base.annotation.screening.cli",
@@ -62,9 +69,20 @@ def main() -> None:
     if ref.digest != args.request_sha256:
         raise ValueError("screening request hash mismatch")
     request = read_document(layout, ref, ScreeningRequest)
+    directory = layout.artifact_path(
+        ArtifactRef(
+            role="annotation", path=request.attempt_path, digest="0" * 64, size_bytes=0
+        )
+    )
     if args.command == "images":
-        preview_ref = request_preview(
-            layout, request, start=args.start, stop=args.stop, step=args.step
+        preview_ref = request_service(
+            layout,
+            directory,
+            ServiceRequest(
+                task_request=ref,
+                operation="screen_preview",
+                parameters={"start": args.start, "stop": args.stop, "step": args.step},
+            ),
         )
         preview = read_document(layout, preview_ref, PreviewReceipt)
         print(
@@ -80,7 +98,7 @@ def main() -> None:
         )
     else:
         path = paths.declared("decision").path
-        if not path.is_relative_to(attempt_directory(layout, request) / "work"):
+        if not path.is_relative_to(directory / "work"):
             raise ValueError("worker decisions must stay in attempt/work")
         decision = read_document(
             layout, annotation_reference(layout, path), SourceDecision

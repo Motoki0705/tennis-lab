@@ -14,6 +14,7 @@ from ..plan import CampaignPlan, save_plan
 from ..registry import Registry
 from .contracts import (
     AcquisitionReceipt,
+    HistoricalSource,
     PreparationReceipt,
     RegistrationResult,
     SelectionReceipt,
@@ -188,13 +189,16 @@ class CollectionLedger:
             )
             return result
 
-    def import_history(self, source: SourceIdentity, evidence: ArtifactRef) -> None:
+    def import_history(
+        self, source: HistoricalSource | SourceIdentity, evidence: ArtifactRef
+    ) -> None:
         """Seed read-only inventory before planning; never claim historical media as new."""
         verify_reference(self.layout, evidence)
-        verify_reference(self.layout, source.media)
+        if source.media is not None:
+            verify_reference(self.layout, source.media)
         with self.registry.transaction() as database:
             existing = database.execute(
-                "SELECT state,channel_id FROM sources WHERE id=?",
+                "SELECT state,channel_id,candidate,reason FROM sources WHERE id=?",
                 (source.canonical_id,),
             ).fetchone()
             if existing is not None:
@@ -202,6 +206,13 @@ class CollectionLedger:
                     raise ValueError("cannot rewrite a campaign source as historical")
                 if existing["channel_id"] != source.channel_id:
                     raise ValueError("historical source channel identity mismatch")
+                previous = HistoricalSource.model_validate_json(existing["candidate"])
+                if (
+                    previous.model_dump(exclude={"media"})
+                    != source.model_dump(exclude={"media"})
+                    or existing["reason"] != evidence.canonical_bytes().decode()
+                ):
+                    raise ValueError("historical source or evidence changed")
             else:
                 database.execute(
                     "INSERT OR IGNORE INTO channels VALUES (?,?,NULL)",
@@ -220,10 +231,11 @@ class CollectionLedger:
                     ),
                 )
             # Every inventoried encoding must participate in content matching.
-            database.execute(
-                "INSERT OR IGNORE INTO source_content VALUES (?,?)",
-                (source.media.digest, source.canonical_id),
-            )
+            if source.media is not None:
+                database.execute(
+                    "INSERT OR IGNORE INTO source_content VALUES (?,?)",
+                    (source.media.digest, source.canonical_id),
+                )
 
     def source(self, plan: CampaignPlan, source_id: str) -> dict[str, Any]:
         with self.registry.transaction() as database:
