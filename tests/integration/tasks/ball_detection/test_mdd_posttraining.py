@@ -57,11 +57,14 @@ def test_shared_epoch_bf16_compile_freeze_and_unfreeze(tmp_path: Path) -> None:
     assert all(torch.isfinite(p).all() for p in model.parameters())
 
 
-def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(tmp_path: Path) -> None:
+@pytest.mark.parametrize("input_channels,historical", [(2, False), (2, True), (5, False)])
+def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(
+    tmp_path: Path, input_channels: int, historical: bool,
+) -> None:
     _, plan = preparation_fixture.__wrapped__(tmp_path)
     manifest = plan["datasets"]["mdd_only"]["path"]
     cfg = tmp_path / "model.yaml"
-    cfg.write_text(yaml.safe_dump(dict(name="mdd_dpt_pretrain", **asdict(small_config()))))
+    cfg.write_text(yaml.safe_dump(dict(name="mdd_dpt_pretrain", **asdict(replace(small_config(), input_channels=input_channels)))))
     aug = tmp_path / "augmentation.yaml"
     aug.write_text(yaml.safe_dump(asdict(replace(AugmentationConfig.load(Path(__file__).resolve().parents[4] / "src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml"), camera_probability=1., occlusion_probability=1.))))
     pre, post = tmp_path / "pre", tmp_path / "post"
@@ -91,6 +94,13 @@ def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(tmp_
     assert json.loads((post / "COMPLETED.json").read_text())["stage"] == "query_posttraining"
     assert json.loads((post / "config.json").read_text())["recipe"]["runtime"]["input_verification"] == "lazy"
     assert list((post / "previews").rglob("*.gif"))
+
+    if historical:
+        for checkpoint in post.glob("epoch-*.pt"):
+            saved = torch.load(checkpoint, weights_only=True)
+            saved["model_config"].pop("input_channels")
+            saved["recipe"]["model"].pop("input_channels")
+            torch.save(saved, checkpoint)
 
     evaluation = tmp_path / "post-evaluation.json"
     evaluated = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate",
