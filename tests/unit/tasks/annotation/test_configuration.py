@@ -216,10 +216,14 @@ def test_configuration_freezes_extra_free_space_mount_without_scanning_it(
 @pytest.mark.parametrize(
     "variant", ["valid", "video_decoder", "video_output", "quality"]
 )
+@pytest.mark.parametrize("hybrid", [False, True])
 def test_jpeg_configuration_requires_one_explicit_frame_contract(
-    example: Example, variant: str
+    example: Example, variant: str, hybrid: bool
 ) -> None:
-    from src.tasks.ball_detection.annotation.contracts import MDDInferenceConfig
+    from src.tasks.ball_detection.annotation.contracts import (
+        HybridInferenceConfig,
+        MDDInferenceConfig,
+    )
     from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
         BallPublicationPolicy,
     )
@@ -239,19 +243,22 @@ def test_jpeg_configuration_requires_one_explicit_frame_contract(
             maximum_unprepared_sources=1,
         ),
     )
-    inference = write_document(
-        layout,
-        inputs / "inference.json",
-        MDDInferenceConfig(
-            stride=32,
-            device="cpu",
-            precision="float32",
-            decode=(
-                "pyav_rgb24_native"
-                if variant == "video_decoder"
-                else "opencv_jpeg_rgb24_native"
-            ),
+    coordinate_config = MDDInferenceConfig(
+        stride=32,
+        device="cpu",
+        precision="float32",
+        decode=(
+            "pyav_rgb24_native"
+            if variant == "video_decoder"
+            else "opencv_jpeg_rgb24_native"
         ),
+    )
+    inference = write_document(
+        layout, inputs / "inference.json",
+        HybridInferenceConfig(
+            **coordinate_config.model_dump(exclude={"schema_version"}),
+            presence_threshold=.5, subpixel=False,
+        ) if hybrid else coordinate_config,
     )
     publication = write_document(
         layout,

@@ -54,6 +54,8 @@ from src.tasks.base.annotation.workers.review.service import (
 )
 from src.utils.paths import PROJECT_ROOT
 
+from ..contracts import BallProposal, HybridProposal
+from ..preview import proposal_drawings
 from .adapter import BallReviewAdapter
 from .contracts import BallFrame, BallLabels
 from .evidence import review_images
@@ -119,6 +121,7 @@ class BallRowPage(Document):
     revision: ArtifactRef
     scope: FrameRange
     rows: tuple[BallFrame, ...] = Field(min_length=1, max_length=8)
+    predictions: tuple[BallProposal | HybridProposal, ...] = Field(min_length=1, max_length=8)
     image_proof: tuple[ProofState, ...] = Field(min_length=1, max_length=8)
     image_proof_reasons: tuple[str | None, ...] = Field(min_length=1, max_length=8)
     images: tuple[RenderedImage, ...] = Field(max_length=256)
@@ -220,11 +223,13 @@ class BallReviewServices(BallReviewAdapter):
         labels = read_document(layout, node.payload, BallLabels)
         states, unavailable = proof_states(layout, context, labels)
         rows = labels.frames[request.scope.start : request.scope.stop]
+        _, _, predictions = inputs(layout, context, manifest)
         used = {key for frame in rows for key in frame.decision.evidence}
         return BallRowPage(
             revision=request.expected_revision,
             scope=request.scope,
             rows=rows,
+            predictions=predictions.rows[request.scope.start : request.scope.stop],
             image_proof=tuple(states[row.frame.frame_index] for row in rows),
             image_proof_reasons=tuple(
                 unavailable.get(row.review_actor) if row.review_actor else None
@@ -253,7 +258,7 @@ class BallReviewServices(BallReviewAdapter):
             markers: tuple[Point, ...]
             if request.drawing == "prediction":
                 row = predictions.rows[tile.frame_index]
-                markers = (Point(x=row.x, y=row.y),)
+                markers = proposal_drawings(row)
             elif request.drawing == "revision":
                 markers = tuple(
                     Point(x=o.center[0], y=o.center[1], color="cyan")

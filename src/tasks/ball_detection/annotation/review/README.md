@@ -5,6 +5,14 @@
 注釈対象区間を保持する。初期状態にはモデル座標を教師としてコピーせず、全行を未確認・存在不明にする。
 元予測は不変の別 artifact のまま、画像の描画や一括確認に使う。
 
+hybridの不在予測も、初期ラベルは `reviewed=false, presence=unknown` のままにする。
+handoffの `prediction=absent_unreviewed` と `review_rows.predictions` は元予測であり、
+同じ行の確認済みlabelとは別に表示する。存在logit・heatmap peakの意味は
+[予測契約](../README.md#hybridの予測案)を参照する。
+不在予測は画像に点を描かず、workerは全画面と前後の文脈を確認する。球が見えれば
+`replace` で追加し、判断できなければunknownや未解決の状態を保存する。
+点がないことやモデルの低scoreだけで `confirm_absence` を実行しない。
+
 ## 方針と状態
 
 `BallReviewPolicy` は一括予測確認の可否、対象frameの確認/解決率、画像の最低倍率、補間の最大秒数を
@@ -46,8 +54,12 @@ heatmap負例だけのclipがMDDの追加座標教師になるわけではない
   更新する。frame/PTS/対象区間は編集できない。解消したnoteも以前のrevisionに残る。
 - `confirm_predictions`: 明示した範囲の元予測をvisible球として確認する。方針による許可と、
   各frameを含む画像参照が必要。確認済みframeを一括で上書きしない。
+  不在予測を含むbatchは全体を拒否する。確認後に範囲を分け、対象なしには
+  `confirm_absence`、誤った不在予測の修正には `replace` を使う。
 - `confirm_absence`: 未確認の範囲を対象なし、または指定trackの画面外として確認する。
   各frameの全画面画像が必要で、局所cropから不在としない。
+  hybridの不在予測にも同じ画像・worker証拠を要求するため、`ball.review-policy.v1` の
+  方針・確認率・倍率・採用条件は変わらない。方針を変える場合は定性確認とユーザー判断を別途行う。
 - `interpolate`: 同一trackの可視端点と実PTS比を使う。端点・内部の全frameの確認、方針の時間上限を
   要求し、イベント/ID境界・blocking noteを端点も含めて跨がない。内部の実観測・確定不在を
   上書きしない。端点変更で古くなった補間は拒否し、必要なら同じbatchで再計算する。
@@ -89,5 +101,4 @@ actorを固定した不変artifactで、判断のないattemptも含む。参照
 
 このAPIの検証は合成VFR MP4・合成rollout・ローカルの合成CLI processを使う。
 実Codexの画像入力互換性、実動画の品質、本番の方針値は未検証。
-composition rootのservice dispatchに接続済みだが、controllerの自動進行は現在previewのみ。
-productionの収集→レビュー→公開→学習の一括進行は別途接続する。
+実行可能なcampaignの範囲と起動手順は[CLI](../../../annotation/README.md)を参照する。
