@@ -11,6 +11,7 @@ GPUを使うコマンドはすべて元repo共通training queueの`resource=all`
 | `native_rgb_correctness.py` | FP32 MDD、native/compile出力と勾配の数値確認 |
 | `checkpoint_replay.py` | 明示checkpointから上限付き失敗prefixを再生。学習重みは保存しない |
 | `architecture.py` | CNN候補のparameter/MAC数をmeta deviceで比較 |
+| `pretraining_comparison.py` | 完了済みのresidual/ConvNeXt V2/FasterNetの3runを同一recipe・予算で照合し、Common誤差で順位をJSONへ保存。学習やsweepは起動しない |
 | `detection_holdout.py` | Meiji holdoutの固定checkpoint比較 |
 | `detection_evidence.py` | sceneへの検出証拠出力とload-only再開の契約確認 |
 
