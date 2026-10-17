@@ -130,6 +130,16 @@ class PlayerReviewAdapter:
             raise ValueError("edit does not address the current player payload/context")
         check_actor(layout, command.actor, context, manifest)
         edits = read_document(layout, command.changes, PlayerEdits)
+        if edits.id_review is not None:
+            from .id_review import validate_binding
+
+            validate_binding(
+                layout,
+                edits.id_review,
+                command.context,
+                command.expected_revision,
+                labels,
+            )
         if len({image.sha256 for image in edits.images}) != len(edits.images):
             raise ValueError("edit contains duplicate review images")
         merged = {image.sha256: image for image in (*labels.images, *edits.images)}

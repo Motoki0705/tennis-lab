@@ -206,6 +206,12 @@ class OperationInput(Document):
         return action
 
 
+class CompletionEvidence(Document):
+    review: ArtifactRef
+    publication_operation: ArtifactRef
+    completion: ArtifactRef
+
+
 class OperationReceipt(Document):
     operation: ArtifactRef
     status: Literal["complete", "not_applicable"]

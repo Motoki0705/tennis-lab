@@ -77,6 +77,13 @@ DPT幅とactivation checkpointingだけは転送部の重みに影響しない�
 receiptには読み込んだcheckpointのhash、転送・新規初期化の全stateキー、構成を残す。
 返却モデルの全parameterは学習可能。freeze、損失配分、保存・再開レシピは学習側が決める。
 
+3段階の実行・必須Hydra設定・不在教師・来歴・resume/継続学習の違いは
+[training README](../../training/README.md#学習済み重みと再開)を参照。
+学習済みhybridの保存schemaは`mdd_hybrid_training.v1`。
+`checkpoints/hybrid_training.py`の`restore_hybrid_model`で、親のcheckpointを開かずに復元する。
+新snapshotの継続学習では、3段目からDPTと存在headも含む全重みを引き継ぐ。
+query→hybridでDPTを新規初期化する処理とは別の初期化modeである。
+
 ファイル配置の整理でstate_dictの登録名・forwardの計算順は変更しない。
 既存のscene用ConvNeXtは`../conv_next_unet.py`のnative heatmap・候補・patch契約を維持する。
 座標出力からheatmapを捏造せず、scene/refinerへの座標モデル接続は別の契約として扱う。

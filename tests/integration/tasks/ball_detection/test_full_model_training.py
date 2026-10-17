@@ -1,12 +1,12 @@
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.provenance import data_identity
 from src.utils.checksum import dual_sha256
 from src.utils.models.state import state_dict_sha256
 from tests.support.tasks.ball_detection.learning import (
@@ -43,6 +43,10 @@ def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) 
     assert recipe["runtime"]["input_verification"] == "lazy"
     assert recipe["parent"]["mode"] == "full_model"
     assert recipe["parent"]["sha256"] == parent_hash
+    assert recipe["parent"]["ancestry"]["schema"] == initial["schema"]
+    assert recipe["parent"]["ancestry"]["global_step"] == initial["global_step"]
+    assert recipe["data_identity"] == data_identity(train)
+    assert recipe["initialization"] == dict(mode="full_model", seed=42)
     assert recipe["initial_state_sha256"] == state_dict_sha256(initial["state_dict"])
     assert recipe["manifest_sha256"] == dual_sha256(train) != initial["recipe"]["manifest_sha256"]
     assert recipe["validation_manifest_sha256"] == val_hash
@@ -79,12 +83,17 @@ def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) 
     assert report["split"] == "val" and report["scopes"] == last["validation"]["scopes"]
 
     resumed = tmp_path / "resumed"
-    shutil.copytree(output, resumed)
-    for name in ("epoch-001.pt", "COMPLETED.json"):
-        (resumed / name).unlink()
-    for name in ("train.jsonl", "metrics.jsonl"):
-        rows = [json.loads(line) for line in (resumed / name).read_text().splitlines()]
-        (resumed / name).write_text("".join(json.dumps(row) + "\n" for row in rows if row["epoch"] == 0))
+    stopped = invoke(full_model_arguments(parent, train, validation, resumed) + ["--stop-after-epoch", "0"])
+    assert stopped.returncode == 0, stopped.stdout + stopped.stderr
+    diagnostic = json.loads((resumed / "DIAGNOSTIC_STOP.json").read_text())
+    assert diagnostic == dict(epoch=0, global_step=1, complete=False, checkpoint="epoch-000.pt",
+                              sha256=dual_sha256(resumed / "epoch-000.pt"))
+    assert not (resumed / "epoch-001.pt").exists() and not (resumed / "COMPLETED.json").exists()
+
+    rejected_stop = invoke(full_model_arguments(parent, train, validation, resumed)
+        + ["--resume", str(resumed / "epoch-000.pt"), "--stop-after-epoch", "0"])
+    assert rejected_stop.returncode != 0 and "precedes the first resumed epoch" in rejected_stop.stderr
+    assert not (resumed / "epoch-001.pt").exists()
 
     # A new train/validation snapshot or different adopted parent starts a new
     # run. None may silently reuse the interrupted optimizer and schedule.

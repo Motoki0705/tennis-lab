@@ -49,6 +49,13 @@ def retained_revision(
             retained.extend(references(command))
             edits = read_document(layout, command.changes, PlayerEdits)
             retained.extend(references(edits))
+            if edits.id_review is not None:
+                from .id_review import IdReviewBinding
+
+                binding = read_document(layout, edits.id_review, IdReviewBinding)
+                retained.extend(references(binding))
+                review = read_document(layout, binding.bbox_review, AdoptionReceipt)
+                retained.extend(_review_references(layout, review))
             images.update((image.sha256, image) for image in edits.images)
             actors.add(command.actor)
     for image in images.values():
@@ -60,18 +67,32 @@ def retained_revision(
     return result
 
 
-def retained_references(
+def _review_references(
     layout: AnnotationLayout,
-    context: ReviewContext,
-    revision_ref: ArtifactRef,
     receipt: AdoptionReceipt,
 ) -> tuple[ArtifactRef, ...]:
-    retained = list(retained_revision(layout, context, revision_ref))
     evidence = read_document(layout, receipt.review_evidence, ReviewEvidence)
+    retained = [*references(receipt), *references(evidence)]
     for reference in evidence.evidence:
         proof = read_document(layout, reference, PlayerReviewProof)
         retained.extend(references(proof))
         for telemetry in proof.telemetry:
             retained.extend(retained_report(layout, telemetry))
     result: tuple[ArtifactRef, ...] = distinct(layout, retained)
+    return result
+
+
+def retained_references(
+    layout: AnnotationLayout,
+    context: ReviewContext,
+    revision_ref: ArtifactRef,
+    receipt: AdoptionReceipt,
+) -> tuple[ArtifactRef, ...]:
+    result: tuple[ArtifactRef, ...] = distinct(
+        layout,
+        (
+            *retained_revision(layout, context, revision_ref),
+            *_review_references(layout, receipt),
+        ),
+    )
     return result

@@ -8,6 +8,7 @@ def main() -> None:
         "heatmap": "src.tasks.ball_detection.evaluation.heatmap_cli",
         "manifest": "src.tasks.ball_detection.evaluation.manifest_cli",
         "coordinates": "src.tasks.ball_detection.evaluation.coordinate_cli",
+        "hybrid": "src.tasks.ball_detection.evaluation.hybrid_cli",
     }, description="Ball detection evaluation; checkpoint contracts remain explicit.")
 
 
