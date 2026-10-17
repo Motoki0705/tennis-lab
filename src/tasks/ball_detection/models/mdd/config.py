@@ -74,8 +74,15 @@ class MDDPretrainConfig:
     activation_checkpointing: bool
     encoder_variant: str
     temporal_mixing: str
+    input_channels: int
+
+    @property
+    def frames(self) -> int:
+        return 32
 
     def __post_init__(self) -> None:
+        if type(self.input_channels) is not int or self.input_channels not in (2, 5):
+            raise ValueError("input_channels must be 2 (MDD) or 5 (RGB+MDD)")
         if self.encoder_variant not in {"residual", "convnext_v2", "fasternet"}:
             raise ValueError("Unknown CNN encoder variant")
         if self.temporal_mixing not in {"dense3d", "factorized"}:
@@ -100,6 +107,31 @@ class MDDPretrainConfig:
             raise ValueError("Expected mdd_dpt_pretrain model config")
         if set(raw) != set(cls.__dataclass_fields__):
             raise ValueError("Pretraining configuration must declare every field exactly")
+        for name in ("stem_channels", "mixed_channels", "residual_blocks"):
+            raw[name] = tuple(raw[name])
+        return cls(**raw)
+
+
+@dataclass(frozen=True)
+class MDDHybridConfig(MDDPretrainConfig):
+    """Stage three uses the explicit RGB+MDD contract and a fresh DPT decoder."""
+
+    input_channels: int
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.input_channels != 5:
+            raise ValueError("Hybrid detection requires the five-channel RGB+MDD contract")
+        if self.decoder_channels < 2:
+            raise ValueError("Hybrid DPT decoder_channels must be at least two")
+
+    @classmethod
+    def load(cls, path: Path) -> MDDHybridConfig:
+        raw = yaml.safe_load(path.read_text())
+        if not isinstance(raw, dict) or raw.pop("name", None) != "mdd_hybrid":
+            raise ValueError("Expected mdd_hybrid model config")
+        if set(raw) != set(cls.__dataclass_fields__):
+            raise ValueError("Hybrid configuration must declare every field exactly")
         for name in ("stem_channels", "mixed_channels", "residual_blocks"):
             raw[name] = tuple(raw[name])
         return cls(**raw)

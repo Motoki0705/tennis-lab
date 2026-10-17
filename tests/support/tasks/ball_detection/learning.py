@@ -22,9 +22,10 @@ from src.tasks.ball_detection.training.runtime.images import jpeg_decoder_contra
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
-def full_model_checkpoint(directory: Path) -> Path:
+def full_model_checkpoint(directory: Path, *, input_channels: int = 2) -> Path:
     directory.mkdir(parents=True)
     config = MDDPretrainConfig(
+        input_channels=input_channels,
         stem_channels=(4, 8, 8, 8), mixed_channels=(8, 16),
         residual_blocks=(0, 1, 1, 1, 1, 1), decoder_channels=8,
         dim=16, heads=2, layers=1, ffn_dim=64, dropout=0., rope_base=10000.,
