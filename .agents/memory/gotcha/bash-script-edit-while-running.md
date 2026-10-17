@@ -1,6 +1,5 @@
 ---
 title: "実行中のbashスクリプトをその場で書き換えると、実行中のプロセスが新しい内容を途中から実行する"
-type: gotcha
 applies_to: all
 source: "chat_annotation の dispatcher 事故（2026-09-30）"
 created: 2026-09-30

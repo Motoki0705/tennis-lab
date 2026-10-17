@@ -17,7 +17,11 @@ JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`�
 
 ## 実行例
 
-以下のartifact/outputは絶対pathで指定する。元/1/2/1/4 FPSはmanifestで固定され、各窓32枚を選んでからMDDを生成する。
+窓/FPSの仕様と`prepare_data`による凍結手順は[data/windows](../data/windows/README.md)を参照。
+snapshotを共有するrunの開始前に、同READMEの[snapshot運用制約](../data/windows/README.md#snapshotを共有するrunの運用)を確認する。
+以下のartifact/outputは絶対pathで指定する。
+すべてのMDD学習経路では`--precision`・`--jpeg-decoder`・`--compile-mode`・`--input-verification`を必ず指定する。
+事前/事後学習のseed・warmup、事後学習のepoch数・窓数・学習率も必須で、指定漏れは学習前に拒否する。
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.train --stage dpt_pretrain \
@@ -25,7 +29,8 @@ JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`�
   --model-config /absolute/configs/model/mdd_dpt_convnext_v2.yaml \
   --output /absolute/new-pretrain-run --epochs 10 --windows-per-epoch 6000 \
   --learning-rate 0.0002 --warmup-updates 500 --seed 42 \
-  --device cuda --precision bf16 --batch-size 1 --jpeg-decoder nvjpeg --pin-memory
+  --device cuda --precision bf16 --batch-size 1 --jpeg-decoder nvjpeg --pin-memory \
+  --compile-mode default --input-verification upfront
 
 .venv/bin/python -m src.tasks.ball_detection.scripts.train --stage coordinates --initialize encoder \
   --manifest /absolute/mdd_only_windows.json --pretraining-run /absolute/completed-pretrain-run \
@@ -33,12 +38,12 @@ JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`�
   --output /absolute/new-posttrain-run --epochs 10 --freeze-epochs 1 \
   --windows-per-epoch 6000 --learning-rate 0.0001 --encoder-lr-ratio 0.1 \
   --warmup-updates 500 --seed 42 --device cuda --precision bf16 --batch-size 1 \
-  --jpeg-decoder nvjpeg --pin-memory --stress-evaluation
+  --jpeg-decoder nvjpeg --pin-memory --compile-mode default --input-verification upfront --stress-evaluation
 ```
 
 CNN候補は`configs/model/mdd_dpt_{pretrain,convnext_v2,fasternet}.yaml`で選ぶ。
 pose/圧縮比較は`prepare_data`が作るmodel設定を`--stage coordinates --initialize scratch --model-config ...`へ渡す。
-CPU smokeでは`--device cpu --precision fp32 --jpeg-decoder opencv --compile-mode off --num-workers 0`を明示する。CUDAの事前/事後学習はBF16固定。
+CPU smokeでは`--device cpu --precision fp32 --jpeg-decoder opencv --compile-mode off --input-verification lazy --num-workers 0`を明示する。CUDAの事前/事後学習はBF16固定。
 
 画像先読みは`--image-prefetch`の明示指定で有効化する。compile、decoder、prefetch、入力整合性検証の設定はrun/checkpointに保存する。
 CPUはJPEG byte列まで、nvJPEGでRGB uint8へ復号し、モデル内FP32で輝度・MDDを計算する。
