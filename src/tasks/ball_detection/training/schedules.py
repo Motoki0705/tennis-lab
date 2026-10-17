@@ -1,9 +1,9 @@
+"""Learning-rate schedules shared by pretraining and fine-tuning."""
+
 import math
 from dataclasses import dataclass
 
 import torch
-
-"""Learning-rate schedules shared by pretraining and fine-tuning."""
 
 
 def learning_rate(step: int, *, peak: float, total: int, warmup: int) -> float:
