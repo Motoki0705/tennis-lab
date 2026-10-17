@@ -19,6 +19,9 @@ from src.tasks.ball_detection.checkpoints.posttraining import (
     resume_posttraining,
 )
 from src.tasks.ball_detection.checkpoints.provenance import (
+    data_identity,
+)
+from src.tasks.ball_detection.checkpoints.provenance import (
     source_identity as post_source_identity,
 )
 from src.tasks.ball_detection.data.augmentation.video import (
@@ -47,6 +50,7 @@ from src.utils.models.state import state_dict_sha256
 def add_training_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--resume", type=Path)
     p.add_argument("--epochs", type=int, required=True)
+    p.add_argument("--stop-after-epoch", type=int, help="Diagnostic stop; preserve the full cosine budget")
     p.add_argument("--freeze-epochs", type=int, default=1)
     p.add_argument("--windows-per-epoch", type=int, required=True)
     p.add_argument("--learning-rate", type=float, required=True)
@@ -75,6 +79,8 @@ def add_training_arguments(p: argparse.ArgumentParser) -> None:
 def validate_training_arguments(p: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     if min(args.epochs, args.windows_per_epoch, args.batch_size, args.log_every) < 1 or args.preview_clips < 0:
         p.error("Invalid training budget")
+    if args.stop_after_epoch is not None and not 0 <= args.stop_after_epoch < args.epochs:
+        p.error("Diagnostic stop must lie within the full run budget")
     if not 1 <= args.freeze_epochs < args.epochs:
         p.error("Require at least one frozen epoch followed by joint fine-tuning")
     if not math.isfinite(args.learning_rate) or args.learning_rate <= 0 or not 0 < args.encoder_lr_ratio <= 1:
@@ -139,6 +145,8 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
         (args.output / "validation_manifest.json").write_bytes(validation_manifest.read_bytes())
         if replay_manifest is not None:
             (args.output / "replay_manifest.json").write_bytes(replay_manifest.read_bytes())
+    if args.stop_after_epoch is not None and args.stop_after_epoch < first_epoch:
+        raise ValueError("Diagnostic stop precedes the first resumed epoch")
     augmenter = VideoAugmenter(augmentation, args.seed)
     compile_coordinate_model(model, mode=args.compile_mode)
     schedule = FineTuneSchedule(args.learning_rate, args.epochs * len(train_loader),
@@ -173,6 +181,10 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
                 epoch=epoch, global_step=step, selection_error_px=best, **report), indent=2))
         with (args.output / "metrics.jsonl").open("a") as stream:
             stream.write(json.dumps(dict(epoch=epoch, global_step=step, train_loss=result.mean_loss, **report)) + "\n")
+        if epoch == args.stop_after_epoch and epoch + 1 < args.epochs:
+            (args.output / "DIAGNOSTIC_STOP.json").write_text(json.dumps(dict(
+                epoch=epoch, global_step=step, complete=False, checkpoint=path.name, sha256=dual_sha256(path))))
+            return
     if args.stress_evaluation:
         saved = torch.load(args.output / f"epoch-{best_epoch:03d}.pt", map_location="cpu", weights_only=True)
         saved_config, preprocessing = query_checkpoint_config(saved)
@@ -203,6 +215,7 @@ def finetuning_recipe(
         initial_state_sha256=initial_state_sha256, optimizer_initialization="fresh", schedule_initialization="step_zero",
         selection_scope=getattr(args, "selection_scope", "common"), selection_profile="clean", test_usage="none", input_contract=input_contract,
         image_decode=jpeg_decoder_contract(args.jpeg_decoder), stress_evaluation=args.stress_evaluation,
+        data_identity=data_identity(args.manifest), initialization=dict(mode=parent["mode"], seed=args.seed),
         **({"replay_sampling": sampling} if sampling is not None else {}))
 
 

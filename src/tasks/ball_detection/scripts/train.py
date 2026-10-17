@@ -8,6 +8,7 @@ def main() -> None:
         "convnext_heatmap": "src.tasks.ball_detection.training.convnext_heatmap.cli",
         "dpt_pretrain": "src.tasks.ball_detection.training.dpt_pretrain.runner",
         "coordinates": "src.tasks.ball_detection.training.coordinates",
+        "hybrid": "src.tasks.ball_detection.training.hybrid.runner",
     }, description="Ball detection training; choose an explicit learning stage.")
 
 

@@ -40,6 +40,16 @@ def response_page(
             f"入力 {output.input_chars} chars / 出力文章 {output.text_chars} chars</p>"
             f"<p>{html.escape(output.input_timestamp or '開始時刻不明')} → {html.escape(output.timestamp or '終了時刻不明')}</p>"
         )
+        if output.evidence is not None:
+            if output.evidence.unavailable_reason is not None:
+                parts.append(
+                    f"<p>操作証跡未対応: {html.escape(output.evidence.unavailable_reason)}</p>"
+                )
+            for reference in output.evidence.artifacts:
+                parts.append(
+                    f'<p><a href="{_link(layout, directory, reference)}">操作結果・注釈差分</a>'
+                    f" / SHA256 {reference.digest}</p>"
+                )
         for item in output.images:
             link = _link(layout, directory, item.image)
             metadata_link = (

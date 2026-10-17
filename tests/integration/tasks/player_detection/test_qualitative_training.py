@@ -13,6 +13,10 @@ from omegaconf import DictConfig
 from PIL import Image, ImageSequence
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from src.tasks.annotation.migration.legacy_format.layout import published_video_path
+from src.tasks.annotation.migration.legacy_format.manifests import (
+    load_prepared_manifests,
+)
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
 from src.tasks.player_detection.configuration import PlayerTrainingConfig
 from src.tasks.player_detection.data.datamodule import PlayerDetectionDataModule
@@ -26,8 +30,6 @@ from src.tasks.player_detection.training.lightning_module import (
     PlayerDetectionLightningModule,
 )
 from src.tasks.player_detection.visualization.qualitative import PlayerClipRenderer
-from src.tennis_scene.chat_annotation.layout import published_video_path
-from src.tennis_scene.chat_annotation.manifests import load_prepared_manifests
 from tests.support.tasks.player_detection.chat_root import (
     FRAMES,
     make_synthetic_root,

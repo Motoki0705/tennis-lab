@@ -3,6 +3,9 @@
 `LegacyReader` は旧 `tennis_chat_preparation.v2` と `tennis_chat_clip.v1` を読み、
 検証済みの閉じたファイル集合を[共通移行処理](../../base/annotation/storage/migration/README.md)へ渡す。
 通常の収集・注釈フローとは別の入口で、旧データを新しい教師として採用する処理ではない。
+旧形式のschema・manifest索引・動画照合・ZIP/注釈検証は `legacy_format/` が所有する。
+旧writer、運用CLI、独立QA、remoteサービス、kit生成は含まない。既存ball/player dataset
+readerもこの形式定義を直接使い、削除済みの `src.tennis_scene.chat_annotation` には依存しない。
 
 `LegacySelection` に次を明示する。root全体の自動探索や、未対応ファイルの黙ったスキップは行わない。
 
@@ -56,6 +59,6 @@ prepared runにない元素材、Project kit、任意のQA成果物、local-agen
 扱わず、元の場所に残す。特にcampaign設定のpathを書き換えて再開可能と見せたり、pose
 manifest内のball store参照を自動変更したりしない。追加形式は別readerで検証して扱う。
 
-CPUの合成動画では、元動画・2つのclip・ball/player JSON・複数clip入りZIPを実際の旧writerで
-生成し、コピー後に既存ball/player dataset collectorから読めることを検証する。実動画、GPU、
+CPUの合成動画では、元動画・2つのclip・ball/player JSON・複数clip入りZIPを旧形式のfixtureとして
+組み立て、コピー後に既存ball/player dataset collectorから読めることを検証する。実動画、GPU、
 既存運用データの移動はこのテストでは行わない。

@@ -84,12 +84,13 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
             "state": status["state"],
             "collection": status.get("collection"),
             "task_states": status.get("task_states"),
+            "annotation": status.get("annotation"),
             "workflow": None
             if status.get("workflow") is None
             else {
                 "state": status["workflow"]["state"],
                 "reason": status["workflow"].get("reason"),
-                "learning_state": status["workflow"].get("learning", {}).get("state"),
+                "learning": status["workflow"].get("learning"),
             },
             "worker_states": dict(
                 Counter(row["state"] for row in status.get("workers", []))
@@ -101,6 +102,7 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
                 {"state": row["state"], "reason": row.get("reason")}
                 for row in status.get("failures", [])
             ][:10],
+            "failure_count": len(status.get("failures", [])),
         }.items()
         if value is not None
     }
@@ -109,6 +111,9 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser(
+        "worker-decision", help="show the user-decided model/effort for new plans"
+    )
     schema = commands.add_parser("schema")
     schema.add_argument(
         "--type",
@@ -133,6 +138,7 @@ def main() -> None:
         "submit",
         "recover",
         "status",
+        "report",
         "tick",
         "run",
         "resume-budget",
@@ -187,6 +193,11 @@ def main() -> None:
         measurement.add_argument("--sha256", required=True)
         measurement.add_argument("--test-root", type=Path)
     args = parser.parse_args()
+    if args.command == "worker-decision":
+        from src.tasks.base.annotation.worker_decision import load_worker_decision
+
+        print(load_worker_decision().model_dump_json())
+        return
     if args.command == "schema":
         from src.tasks.base.annotation.benchmarks.contracts import (
             ComparisonSpec,
@@ -363,6 +374,11 @@ def main() -> None:
         result = controller.status(details=args.details)
         if not args.details:
             result = compact_status(result)
+    elif args.command == "report":
+        from .reporting import report
+
+        print(report(controller, ref).model_dump_json())
+        return
     elif args.command == "resume-budget":
         resumption = controller.resources.resume(reason=args.reason)
         result = {
