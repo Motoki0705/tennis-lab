@@ -32,6 +32,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.clip import VideoFram
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     artifact_lock,
+    data_reference,
     read_document,
     sync_directory,
     verify_reference,
@@ -54,7 +55,7 @@ from src.utils.video.jpeg_source import jpeg_video_runtime
 from .adopted import AdoptedClip, load_adopted
 from .contracts import BallPublicationPolicy, BallSnapshot, PublishRequest, SnapshotClip
 from .partition import publication_splits
-from .snapshot import data_reference, load_snapshot, validate_snapshot
+from .snapshot import load_snapshot, validate_snapshot
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS ball_publications (
