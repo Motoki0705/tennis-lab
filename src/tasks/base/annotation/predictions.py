@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from sqlite3 import Row
 from typing import Protocol
 
 from .artifacts import (
@@ -22,7 +23,7 @@ from .contracts import (
     content_digest,
 )
 from .paths import AnnotationLayout
-from .plan import CampaignPlan, references
+from .plan import CampaignPlan, TaskPlan, references
 
 
 class PredictionContext(Document):
@@ -107,11 +108,7 @@ class Predictions:
 
     def completed(self, adapter: PredictionAdapter) -> tuple[ArtifactRef, ...]:
         """Verify registered results for this campaign without producing predictions."""
-        task = next(
-            (task for task in self.plan.tasks if task.task == adapter.task), None
-        )
-        if task is None:
-            raise ValueError("prediction task is absent from the frozen campaign")
+        task = self._task(adapter)
         with self.registry.transaction() as database:
             rows = database.execute(
                 "SELECT t.*,c.manifest,p.receipt FROM annotation_tasks t "
@@ -128,40 +125,80 @@ class Predictions:
                         "advanced annotation task has no prediction receipt"
                     )
                 continue
-            if row["state"] not in {"predicted", "reviewing", "adopted"} or (
-                row["model_digest"],
-                row["inference_digest"],
-            ) != (task.model.sha256, task.inference.digest):
-                raise ValueError("prediction ledger differs from the frozen campaign")
-            manifest_ref = ArtifactRef.model_validate_json(row["manifest"])
-            manifest = read_document(self.layout, manifest_ref, ClipManifest)
-            if manifest.clip_id != row["clip_id"]:
-                raise ValueError("registered clip identity differs from its manifest")
-            context = PredictionContext(
-                task=task.task,
-                manifest=manifest_ref,
-                clip_id=manifest.clip_id,
-                model=task.model,
-                configuration=task.inference,
-            )
-            for reference in references(context):
-                verify_reference(self.layout, reference)
-            verify_reference(self.layout, manifest.media)
+            self._completed_row(row, task, adapter)
             receipt_ref = ArtifactRef.model_validate_json(row["receipt"])
-            self._verify(receipt_ref, context, manifest, adapter)
             results.append(receipt_ref)
         return tuple(results)
+
+    def require_completed(
+        self,
+        reference: ArtifactRef,
+        adapter: PredictionAdapter,
+        *,
+        unreviewed: bool = False,
+    ) -> PredictionReceipt:
+        """Validate one exact registered result without loading an inference model."""
+        task = self._task(adapter)
+        with self.registry.transaction() as database:
+            rows = database.execute(
+                "SELECT t.*,c.manifest,p.receipt FROM annotation_tasks t "
+                "JOIN clips c ON c.id=t.clip_id "
+                "JOIN annotation_predictions p ON p.task_id=t.id "
+                "WHERE t.campaign_id=? AND t.task=? AND p.receipt=?",
+                (
+                    self.plan.campaign_id,
+                    task.task,
+                    reference.canonical_bytes().decode(),
+                ),
+            ).fetchall()
+        if len(rows) != 1:
+            raise ValueError(
+                "prediction receipt is not registered to this campaign/task"
+            )
+        if unreviewed and rows[0]["state"] != "predicted":
+            raise ValueError("prediction preview requires an unreviewed prediction")
+        return self._completed_row(rows[0], task, adapter)
+
+    def _task(self, adapter: PredictionAdapter) -> TaskPlan:
+        task = next(
+            (task for task in self.plan.tasks if task.task == adapter.task), None
+        )
+        if task is None:
+            raise ValueError("prediction task is absent from the frozen campaign")
+        return task
+
+    def _completed_row(
+        self, row: Row, task: TaskPlan, adapter: PredictionAdapter
+    ) -> PredictionReceipt:
+        if row["state"] not in {"predicted", "reviewing", "adopted"} or (
+            row["model_digest"],
+            row["inference_digest"],
+        ) != (task.model.sha256, task.inference.digest):
+            raise ValueError("prediction ledger differs from the frozen campaign")
+        manifest_ref = ArtifactRef.model_validate_json(row["manifest"])
+        manifest = read_document(self.layout, manifest_ref, ClipManifest)
+        if manifest.clip_id != row["clip_id"]:
+            raise ValueError("registered clip identity differs from its manifest")
+        context = PredictionContext(
+            task=task.task,
+            manifest=manifest_ref,
+            clip_id=manifest.clip_id,
+            model=task.model,
+            configuration=task.inference,
+        )
+        for reference in references(context):
+            verify_reference(self.layout, reference)
+        verify_reference(self.layout, manifest.media)
+        return self._verify(
+            ArtifactRef.model_validate_json(row["receipt"]), context, manifest, adapter
+        )
 
     def run(self, manifest_ref: ArtifactRef, adapter: PredictionAdapter) -> ArtifactRef:
         if self.plan.phase == "benchmark" or self.layout.review_namespace is not None:
             raise ValueError(
                 "benchmark review must reuse predictions without inference"
             )
-        task = next(
-            (task for task in self.plan.tasks if task.task == adapter.task), None
-        )
-        if task is None:
-            raise ValueError("prediction task is absent from the frozen campaign")
+        task = self._task(adapter)
         manifest = read_document(self.layout, manifest_ref, ClipManifest)
         context = PredictionContext(
             task=task.task,
@@ -240,11 +277,14 @@ class Predictions:
         context: PredictionContext,
         manifest: ClipManifest,
         adapter: PredictionAdapter,
-    ) -> None:
-        receipt = read_document(self.layout, reference, PredictionReceipt)
+    ) -> PredictionReceipt:
+        receipt: PredictionReceipt = read_document(
+            self.layout, reference, PredictionReceipt
+        )
         if (
             receipt.context != context
             or receipt.prediction.request_id != context.request_id
         ):
             raise ValueError("prediction receipt differs from the frozen request")
         adapter.validate(self.layout, context, manifest, receipt.prediction.artifact)
+        return receipt

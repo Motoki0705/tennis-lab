@@ -7,7 +7,8 @@ from typing import Literal
 from pydantic import Field
 
 from ...contracts import ArtifactRef, Document, FrameRange
-from ...images.contracts import Crop
+from ...images.contracts import ImageTile as ImageTile
+from ...images.contracts import PageView
 from ..contracts import WorkRequest
 
 MAX_EDIT_BYTES = 1_048_576
@@ -29,24 +30,14 @@ class HandoffRequest(Document):
     expected_revision: ArtifactRef | None = None
 
 
-class ImageTile(Document):
-    frame_index: int = Field(ge=0)
-    crop: Crop
-
-
 class RowsRequest(Document):
     expected_revision: ArtifactRef
     scope: FrameRange
 
 
-class ImageRequest(Document):
+class ImageRequest(PageView):
     expected_revision: ArtifactRef
     drawing: Literal["plain", "prediction", "revision"]
-    tiles: tuple[ImageTile, ...] = Field(min_length=1, max_length=16)
-    columns: int = Field(ge=1, le=4)
-    tile_width: int = Field(ge=32, le=1024)
-    tile_height: int = Field(ge=32, le=1024)
-    reason: str = Field(min_length=1, max_length=500)
 
 
 class EditRequest(Document):
