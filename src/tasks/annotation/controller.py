@@ -19,7 +19,6 @@ from src.tasks.base.annotation.collection.contracts import (
 from src.tasks.base.annotation.collection.service import Collection
 from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
-from src.tasks.base.annotation.execution.queue import validate_queue
 from src.tasks.base.annotation.execution.runner import StageRunner
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import load_plan, references
@@ -40,6 +39,7 @@ from src.tasks.base.annotation.workers.pool import WorkerPool
 from src.tasks.base.annotation.workers.services import ServiceReply, ServiceRequest
 from src.utils.paths import PROJECT_ROOT
 
+from .configuration import validate_runtime
 from .contracts import (
     AcquireOperation,
     CandidateManifest,
@@ -73,26 +73,8 @@ class Controller:
         self.collection = Collection(layout, self.plan)
         # Register the prediction receipt table without loading either model.
         Predictions(layout, self.plan)
-        if len({cost.stage for cost in runtime.costs}) != len(runtime.costs):
-            raise ValueError("stage costs must be unique")
-        declared = {stage.stage: stage for stage in self.plan.resources.stages}
-        for cost in runtime.costs:
-            if cost.stage not in declared or (cost.gpu_seconds > 0) != (
-                declared[cost.stage].kind == "gpu"
-            ):
-                raise ValueError(
-                    "runtime resource costs differ from declared stage kinds"
-                )
-            if cost.gpu_seconds and cost.timeout_seconds + 10 > cost.gpu_seconds:
-                raise ValueError("GPU timeout must leave the reserved teardown margin")
+        validate_runtime(layout, runtime, self.plan, self.resources.scope.roots)
         codex_home = Path(runtime.codex_home)
-        if not codex_home.is_absolute() or codex_home.resolve() != codex_home:
-            raise ValueError("Codex state must use an explicit normalized directory")
-        if not any(
-            codex_home.is_relative_to(Path(root)) for root in self.resources.scope.roots
-        ):
-            raise ValueError("Codex state must be inside the resource inventory")
-        validate_queue(layout, runtime.queue)
         screen = runtime.cost("screen")
         self.pool = WorkerPool(
             layout,

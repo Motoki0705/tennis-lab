@@ -24,7 +24,9 @@ description: Run tennis-lab annotation campaigns with pinned inputs, local image
 
 初めて使うモデル・代表素材はpreviewで定性確認する。未設定のレビュー条件や採用閾値を
 ソースの既定値として埋め込まない。productionには確認済み方針と明示モデル参照を固定する。
-CLI READMEに従いplanと資源scopeを準備し、runtimeにcode版・入力hash・工程costを結ぶ。
+CLIの `schema --type configuration` で入力契約を確認し、`configure` でplan・資源scope・
+runtimeを固定する。継続campaignは `budget.action = reuse` で既存scopeを参照し、
+code版・入力hash・工程costを結ぶ。
 実行前に対象worktreeを固定し、実行中のコードを編集しない。
 
 ## 実行と再開
