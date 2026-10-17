@@ -333,6 +333,7 @@ class WorkerPool:
                 artifact_lock(
                     self.layout, "worker-" + request.work_id, blocking=False
                 ) as descriptor,
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
                 self._recover_unregistered_attempt(request)
                 self._settle_dead_slots()
@@ -537,8 +538,9 @@ class WorkerPool:
     def reconcile(self, request: WorkRequest) -> dict[str, Any]:
         self._registered_task(request)
         try:
-            with artifact_lock(
-                self.layout, "worker-" + request.work_id, blocking=False
+            with (
+                artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
                 return self._reconcile_locked(request)
         except BlockingIOError:

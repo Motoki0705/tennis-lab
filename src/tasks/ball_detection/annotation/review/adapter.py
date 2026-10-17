@@ -261,7 +261,7 @@ class BallReviewAdapter:
                     else "unresolved"
                     if not resolved(f)
                     else f.decision.presence,
-                    detail=brief(f),
+                    detail=f"digest={f.sha256} {brief(f)}",
                 )
                 for f in labels.frames[start : scope.stop]
             ),

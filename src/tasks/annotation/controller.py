@@ -48,6 +48,7 @@ from .contracts import (
     PredictOperation,
     PrepareOperation,
     PreviewOperation,
+    ReviewOperation,
     Runtime,
     ScreenOperation,
 )
@@ -348,14 +349,29 @@ class Controller:
                 continue
             result, error = None, None
             try:
-                _service, task, _attempt = preview_input(self.layout, service_ref)
-                if task.prepared_input != request.payload:
-                    raise ValueError("service refers to another worker input")
+                if request.adapter == ScreeningAdapter.name:
+                    _service, task, _attempt = preview_input(self.layout, service_ref)
+                    if task.prepared_input != request.payload:
+                        raise ValueError("service refers to another worker input")
+                    op = OperationInput(
+                        plan=self.runtime.plan,
+                        operation=PreviewOperation(service_request=service_ref),
+                    )
+                elif request.adapter == "ball_review":
+                    from src.tasks.base.annotation.workers.review.service import (
+                        service_input,
+                    )
+
+                    _service, review = service_input(self.layout, service_ref)
+                    if review.input.work != request:
+                        raise ValueError("review service refers to another worker")
+                    op = OperationInput(
+                        plan=self.runtime.plan,
+                        operation=ReviewOperation(service_request=service_ref),
+                    )
+                else:
+                    raise ValueError("worker has no registered parent service")
                 self._admit_service(launch.attempt, service)
-                op = OperationInput(
-                    plan=self.runtime.plan,
-                    operation=PreviewOperation(service_request=service_ref),
-                )
                 state = self.operation(op)
                 if state["state"] in {
                     "running",
@@ -367,11 +383,11 @@ class Controller:
                     continue
                 if state["state"] != "succeeded":
                     raise RuntimeError(
-                        f"image stage {state['state']}: {state.get('reason')}"
+                        f"service stage {state['state']}: {state.get('reason')}"
                     )
                 receipt = self.receipt(state)
                 if receipt.status != "complete" or len(receipt.results) != 1:
-                    raise ValueError("preview stage returned no exact image receipt")
+                    raise ValueError("service stage returned no exact result receipt")
                 result = receipt.results[0]
             except (ValueError, RuntimeError) as failure:
                 error = f"{type(failure).__name__}: {failure}"
