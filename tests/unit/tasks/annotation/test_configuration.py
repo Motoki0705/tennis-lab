@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ from src.tasks.annotation.configuration import (
 from src.tasks.annotation.contracts import Runtime, RuntimeSettings, StageCost
 from src.tasks.annotation.controller import Controller
 from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
     read_document,
     write_asset,
     write_document,
@@ -960,6 +962,157 @@ def test_code_update_reads_old_attempt_without_launching_or_changing_its_cost(
     )
     with pytest.raises(ValueError, match="resource/command configuration changed"):
         updated.operation(operation)
+
+
+@pytest.mark.parametrize("registered_resource", [False, True])
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_code_update_cancels_unregistered_worker_launch_before_explicit_retry(
+    example: Example,
+    monkeypatch: pytest.MonkeyPatch,
+    registered_resource: bool,
+    interrupted: bool,
+) -> None:
+    from src.tasks.annotation.code_update import CodeUpdateReceipt, update_code
+    from src.tasks.base.annotation.resources import CapacityUnavailable
+    from src.tasks.base.annotation.workers.contracts import (
+        Launch,
+        PreparedWorker,
+        WorkOutcome,
+        WorkRequest,
+    )
+    from src.tasks.base.annotation.workers.ledger import WorkerStopped
+
+    layout = example.layout
+    configured = example.receipt(configure(layout, example.configuration))
+    controller = Controller(layout, read_document(layout, configured.runtime, Runtime))
+    pool = controller.pool
+    adapter = pool.adapters["source_screening"]
+    monkeypatch.setattr(adapter, "input_references", lambda *_: ())
+    monkeypatch.setattr(
+        adapter,
+        "prepare",
+        lambda _layout, _plan, _request, directory: PreparedWorker(
+            prompt=write_asset(layout, directory / "prompt.md", b"synthetic worker"),
+            inputs=(example.blob,),
+        ),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "validate",
+        lambda *_: WorkOutcome(
+            status="complete", receipt=example.blob, adoption=None, reason=None
+        ),
+    )
+    pool.test_command = (
+        sys.executable,
+        "-c",
+        "import sys,json,pathlib; sys.stdin.read(); "
+        "pathlib.Path('result.json').write_text('{}'); "
+        "print(json.dumps({'type':'thread.started','thread_id':'fixture-thread'})); "
+        "print(json.dumps({'type':'turn.completed','usage':{}}))",
+    )
+    request = WorkRequest(
+        adapter=adapter.name,
+        adapter_version=adapter.version,
+        stage="screen",
+        subject_id="a" * 64,
+        payload=example.blob,
+        inputs=(example.blob,),
+    )
+
+    def full(*_args, **_kwargs):
+        raise CapacityUnavailable("synthetic resource backpressure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            controller.resources, "_admit" if registered_resource else "submit", full
+        )
+        with pytest.raises(CapacityUnavailable, match="backpressure"):
+            pool.start(request)
+    assert pool.ledger.task(request.work_id)["state"] == "ready"
+    assert pool.ledger.history(controller.plan, request) == ()
+    path = layout.path(
+        "campaigns",
+        controller.plan.campaign_id,
+        "workers",
+        request.work_id,
+        "attempt-0001",
+        "launch.json",
+    )
+    old_ref = annotation_reference(layout, path)
+    original = path.read_bytes()
+    old = read_document(layout, old_ref, Launch)
+    assert old.resource_request is not None
+    identity = ("c" * 40, hashlib.sha256(b"").hexdigest())
+    monkeypatch.setattr(
+        "src.tasks.annotation.code_update.checkout_identity", lambda _: identity
+    )
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.reproducibility.checkout_identity",
+        lambda _: identity,
+    )
+    if interrupted:
+        from src.tasks.annotation import code_update
+
+        cancel = controller.resources.cancel_pending
+
+        def interrupt_cancel(request, *, reason):
+            cancel(request, reason=reason)
+            raise RuntimeError("interrupted after cancellation")
+
+        def interrupt_result(layout, path, document):
+            if path.name == "result.json":
+                raise RuntimeError("interrupted after cancellation")
+            return write_document(layout, path, document)
+
+        with monkeypatch.context() as patch:
+            if registered_resource:
+                patch.setattr(controller.resources, "cancel_pending", interrupt_cancel)
+            else:
+                patch.setattr(code_update, "write_document", interrupt_result)
+            with pytest.raises(RuntimeError, match="interrupted after cancellation"):
+                update_code(
+                    controller,
+                    configured.runtime,
+                    example.blob,
+                    reason="fix waiting worker",
+                )
+    result = update_code(
+        controller, configured.runtime, example.blob, reason="fix waiting worker"
+    )
+    receipt = read_document(layout, result, CodeUpdateReceipt)
+    updated = Controller(layout, read_document(layout, receipt.runtime, Runtime))
+    updated.pool.adapters[adapter.name] = adapter
+    updated.pool.test_command = pool.test_command
+    assert pool.ledger.task(request.work_id)["state"] == "cancelled"
+    with pytest.raises(WorkerStopped, match="explicit retry"):
+        updated.pool.start(request)
+    history = updated.pool.ledger.history(controller.plan, request)
+    assert len(history) == 1 and history[0].state == "cancelled"
+    assert history[0].launch == old_ref
+    if registered_resource:
+        assert controller.resources._row(old.resource_request)["state"] == "cancelled"
+    assert (
+        update_code(
+            controller, configured.runtime, example.blob, reason="fix waiting worker"
+        )
+        == result
+    )
+    assert updated.pool.start(request, retry=True) == request.work_id + "-0002"
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        state = updated.pool.reconcile(request)
+        if state["state"] != "running":
+            break
+        time.sleep(0.05)
+    assert state["state"] == "complete"
+    history = updated.pool.ledger.history(controller.plan, request)
+    assert [item.state for item in history] == ["cancelled", "complete"]
+    assert (
+        read_document(layout, history[1].launch, Launch).code_revision
+        == receipt.revision
+    )
+    assert path.read_bytes() == original
 
 
 def test_explicit_pending_cancellation_preserves_request_and_recovers_receipt(
