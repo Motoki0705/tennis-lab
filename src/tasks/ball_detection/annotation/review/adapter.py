@@ -52,7 +52,8 @@ class BallReviewAdapter:
     ) -> tuple[ArtifactRef, ...]:
         from .storage import retained_references
 
-        return retained_references(layout, context, revision, receipt)
+        result: tuple[ArtifactRef, ...] = retained_references(layout, context, revision, receipt)
+        return result
 
     def initialize(
         self, layout: AnnotationLayout, context: ReviewContext, manifest: ClipManifest
@@ -248,6 +249,7 @@ class BallReviewAdapter:
     ) -> HandoffContent:
         labels = read_document(layout, payload, BallLabels)
         self.validate(layout, context, manifest, labels)
+        _, _, predictions = inputs(layout, context, manifest)
         if scope.stop > len(labels.frames) or scope.stop - scope.start > 64:
             raise ValueError("ball handoff must contain at most 64 native frames")
         start = scope.start
@@ -272,7 +274,10 @@ class BallReviewAdapter:
                     else "unresolved"
                     if not resolved(f)
                     else f.decision.presence,
-                    detail=f"digest={f.sha256} {brief(f)}",
+                    detail=(
+                        f"digest={f.sha256} {brief(f)} "
+                        + predictions.rows[f.frame.frame_index].summary()
+                    ),
                 )
                 for f in labels.frames[start : scope.stop]
             ),

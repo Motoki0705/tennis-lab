@@ -15,6 +15,7 @@ import numpy as np
 from src.tasks.ball_detection.annotation.contracts import (
     BallPredictions,
     BallProposal,
+    InferenceConfig,
     MDDInferenceConfig,
 )
 from src.tasks.ball_detection.annotation.review.adapter import BallReviewAdapter
@@ -58,7 +59,11 @@ from src.tasks.base.annotation.jpeg_media import write_jpeg_archive
 from src.tasks.base.annotation.media import encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, LearningPlan, save_plan
-from src.tasks.base.annotation.predictions import PredictionContext, Predictions
+from src.tasks.base.annotation.predictions import (
+    PredictionAdapter,
+    PredictionContext,
+    Predictions,
+)
 from src.tasks.base.annotation.telemetry.capture import capture
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import (
@@ -124,6 +129,8 @@ class Environment:
         frame_count: int = 32,
         jpeg: bool = False,
         model: ModelRef | None = None,
+        inference_config: InferenceConfig | None = None,
+        prediction_adapter: PredictionAdapter | None = None,
         learning: LearningPlan | None = None,
         plan_transform: Callable[[CampaignPlan], CampaignPlan] | None = None,
         collect_source: Callable[[CampaignPlan, SourceCandidate], ArtifactRef]
@@ -237,7 +244,7 @@ class Environment:
         )
         policy_ref = self.save(self.policy)
         inference = self.save(
-            MDDInferenceConfig(
+            inference_config or MDDInferenceConfig(
                 stride=16,
                 device="cpu",
                 precision="float32",
@@ -337,7 +344,7 @@ class Environment:
             self.manifest = read_document(self.layout, self.manifest_ref, ClipManifest)
         else:
             self._register_source(predictions, candidate, media, model, inference)
-        prediction = predictions.run(self.manifest_ref, ProposalFixture())
+        prediction = predictions.run(self.manifest_ref, prediction_adapter or ProposalFixture())
         self.context = ReviewContext(
             plan=self.plan_ref,
             task="ball",

@@ -171,7 +171,7 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
     read_document(layout, plan.selection, ScreeningPolicy)
     preparation = read_document(layout, plan.preparation, PreparationConfig)
     if preparation.retained_media == "jpeg_q90":
-        from src.tasks.ball_detection.annotation.contracts import MDDInferenceConfig
+        from src.tasks.ball_detection.annotation.contracts import read_inference
         from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
             BallPublicationPolicy,
         )
@@ -181,7 +181,7 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
                 "JPEG-only annotation currently requires a ball-only campaign"
             )
         for task in plan.tasks:
-            inference = read_document(layout, task.inference, MDDInferenceConfig)
+            inference = read_inference(layout, task.inference)
             if inference.decode != "opencv_jpeg_rgb24_native":
                 raise ValueError(
                     "JPEG preparation requires the explicit JPEG inference decoder"
