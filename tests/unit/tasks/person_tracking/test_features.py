@@ -7,6 +7,7 @@ import torch
 
 from src.submodules.models import Pose2DFrameSequenceRequest, Pose2DResult
 from src.tasks.person_tracking.archive import load_features, save_features
+from src.tasks.person_tracking.contracts import ScoreOrigin
 from src.tasks.person_tracking.features import FeatureConfig, FeatureExtractor
 
 
@@ -56,7 +57,22 @@ def test_empty_frames_do_not_call_models_and_preserve_dimension() -> None:
     result = FeatureExtractor(pose, encoder).extract(0, np.zeros((10, 10, 3), np.uint8),
               np.empty(0, np.int64), np.empty((0, 4), np.float32), np.empty(0, np.float32))
     assert pose.calls == 0 and encoder.prompts == []
-    assert result.embeddings.shape == (0, 2) and result.poses.shape == (0, 17, 3)
+    assert result.embeddings.shape == (0, 2) and result.require_poses().shape == (0, 17, 3)
+
+
+@pytest.mark.parametrize('count', [0, 2])
+def test_extraction_preserves_missing_score_origins_including_empty_frames(count: int) -> None:
+    pose, encoder = Pose(), Encoder()
+    origin = np.array([ScoreOrigin.MODEL, ScoreOrigin.MISSING], np.uint8)[:count]
+    result = FeatureExtractor(pose, encoder).extract(
+        0, np.zeros((100, 100, 3), np.uint8), np.arange(count, dtype=np.int64),
+        np.array([[0, 0, 20, 40], [30, 0, 50, 40]], np.float32)[:count],
+        np.array([.9, 0], np.float32)[:count], score_origin=origin,
+    )
+    np.testing.assert_array_equal(result.score_origin, origin)
+    assert pose.calls == (1 if count else 0)
+    if count:
+        assert result.score_at(1) is None
 
 
 def test_invalid_detection_fails_before_model_call() -> None:
@@ -121,4 +137,4 @@ def test_negative_heatmap_peak_is_preserved_as_low_confidence() -> None:
     result = FeatureExtractor(NegativePose(), Encoder()).extract(
         0, np.zeros((1080, 1920, 3), np.uint8), np.array([0], np.int64),
         np.array([[10, 10, 40, 60]], np.float32), np.array([.9], np.float32))
-    np.testing.assert_array_equal(result.poses[..., 2], np.full((1, 17), -.01, np.float32))
+    np.testing.assert_array_equal(result.require_poses()[..., 2], np.full((1, 17), -.01, np.float32))
