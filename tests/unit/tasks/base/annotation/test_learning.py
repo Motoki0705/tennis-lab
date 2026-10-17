@@ -652,7 +652,16 @@ def test_tick_recovers_success_after_stale_queue_failure(
 
 @pytest.mark.parametrize("partial_retry", [False, True])
 @pytest.mark.parametrize(
-    "state", ["pending", "unregistered", "queued", "running", "draining", "unfinished"]
+    "state",
+    [
+        "pending",
+        "unregistered",
+        "queued",
+        "waiting",
+        "running",
+        "draining",
+        "unfinished",
+    ],
 )
 def test_retry_rechecks_old_job_before_creating_or_restoring_attempt(
     env: Environment,
@@ -674,7 +683,7 @@ def test_retry_rechecks_old_job_before_creating_or_restoring_attempt(
         outcome = env.learning.tick(intent, env.adapter, env.runtime)
         assert outcome.state == (
             "training_pending"
-            if state in {"pending", "unregistered", "queued"}
+            if state in {"pending", "unregistered", "queued", "waiting"}
             else "training"
         )
     with pytest.raises(ValueError, match="not terminated"):
