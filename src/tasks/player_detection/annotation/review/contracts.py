@@ -21,6 +21,9 @@ from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 
 from ..contracts import Box
 
+WORKER_ADAPTER = "player_bbox_review"
+WORKER_VERSION = "v2"
+
 _M = TypeVar("_M")
 
 
@@ -195,6 +198,7 @@ class PlayerEdits(Document):
     schema_version: Literal["player.review-edits.v1"] = "player.review-edits.v1"
     operations: tuple[Operation, ...] = Field(min_length=1, max_length=128)
     images: tuple[RenderedImage, ...] = Field(default=(), max_length=128)
+    id_review: ArtifactRef | None = None
 
 
 class PlayerReviewProof(Document):
