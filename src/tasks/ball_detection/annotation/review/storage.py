@@ -25,17 +25,17 @@ from .contracts import BallEdits, BallLabels, BallReviewProof
 from .evidence import lineage
 
 
-def retained_references(
+def retained_revision(
     layout: AnnotationLayout,
     context: ReviewContext,
     revision_ref: ArtifactRef,
-    receipt: AdoptionReceipt,
 ) -> tuple[ArtifactRef, ...]:
     retained: list[ArtifactRef] = []
     images: dict[str, RenderedImage] = {}
     actors: set[ArtifactRef] = set()
     for reference in lineage(layout, context, revision_ref):
         revision = read_document(layout, reference, Revision)
+        retained.extend((reference, *references(revision)))
         labels = read_document(layout, revision.payload, BallLabels)
         retained.extend(references(labels))
         images.update((image.sha256, image) for image in labels.images)
@@ -46,6 +46,7 @@ def retained_references(
         )
         if revision.command is not None:
             command = read_document(layout, revision.command, EditCommand)
+            retained.extend(references(command))
             edits = read_document(layout, command.changes, BallEdits)
             retained.extend(references(edits))
             images.update((image.sha256, image) for image in edits.images)
@@ -55,10 +56,22 @@ def retained_references(
         retained.extend((*references(rendered), *references(request)))
     for actor in actors:
         retained.extend(references(read_document(layout, actor, Launch)))
+    result: tuple[ArtifactRef, ...] = distinct(layout, retained)
+    return result
+
+
+def retained_references(
+    layout: AnnotationLayout,
+    context: ReviewContext,
+    revision_ref: ArtifactRef,
+    receipt: AdoptionReceipt,
+) -> tuple[ArtifactRef, ...]:
+    retained = list(retained_revision(layout, context, revision_ref))
     evidence = read_document(layout, receipt.review_evidence, ReviewEvidence)
     for reference in evidence.evidence:
         proof = read_document(layout, reference, BallReviewProof)
         retained.extend(references(proof))
         for telemetry in proof.telemetry:
             retained.extend(retained_report(layout, telemetry))
-    return distinct(layout, retained)
+    result: tuple[ArtifactRef, ...] = distinct(layout, retained)
+    return result

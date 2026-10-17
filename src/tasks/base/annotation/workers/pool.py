@@ -138,8 +138,12 @@ class WorkerPool:
         return adapter
 
     def register(self, request: WorkRequest) -> None:
-        self._adapter(request)
-        self.ledger.register(self.plan, request)
+        adapter = self._adapter(request)
+        self.ledger.register(
+            self.plan,
+            request,
+            dependencies=adapter.input_references(self.layout, self.plan, request),
+        )
 
     def _launch(self, row: dict[str, Any]) -> tuple[ArtifactRef, Launch]:
         with self.ledger.registry.transaction() as database:
@@ -192,6 +196,8 @@ class WorkerPool:
                     "INSERT OR REPLACE INTO worker_campaign_stops VALUES (?,?)",
                     (row["campaign"], reason or "Codex quota exhausted"),
                 )
+            if state not in {"running", "exited"}:
+                self.ledger.storage.settle(attempt, database=database)
         return True
 
     def _exit_receipt(
@@ -486,6 +492,7 @@ class WorkerPool:
                         self.resources.lease(resource_request)
                     )
                 with self.ledger.registry.transaction() as database:
+                    self.ledger.storage.launch(ref, launch, database=database)
                     database.execute(
                         "INSERT INTO worker_attempts VALUES (?,?,?,'running',?,NULL)",
                         (
@@ -750,19 +757,26 @@ class WorkerPool:
             "not_applicable",
         }:
             return current
-        with artifact_lock(self.layout, "worker-" + request.work_id):
-            current = self._task(request.work_id)
-            if current["current_attempt"] != launch.attempt:
-                return current
-            # Another reconciler may have persisted a receipt while stop waited.
-            current = self._reconcile_locked(request)
-            if current["state"] in {"complete", "not_applicable"}:
-                return current
-            self._mark(
-                request.work_id,
-                "cancelled",
-                reason,
-                attempt=launch.attempt,
-                from_states=(current["state"],),
-            )
-            return self._task(request.work_id)
+        try:
+            with (
+                artifact_lock(self.layout, "worker-" + request.work_id),
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
+            ):
+                current = self._task(request.work_id)
+                if current["current_attempt"] != launch.attempt:
+                    return current
+                self._require_no_members(Path(launch.directory))
+                # Recover any receipt committed while stop waited for these locks.
+                current = self._reconcile_locked(request)
+                if current["state"] in {"complete", "not_applicable"}:
+                    return current
+                self._mark(
+                    request.work_id,
+                    "cancelled",
+                    reason,
+                    attempt=launch.attempt,
+                    from_states=(current["state"],),
+                )
+        except BlockingIOError as error:
+            raise WorkerBusy("attempt is still owned during cancellation") from error
+        return self._task(request.work_id)

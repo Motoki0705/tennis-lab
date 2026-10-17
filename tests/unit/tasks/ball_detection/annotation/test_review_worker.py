@@ -39,8 +39,9 @@ from src.tasks.base.annotation.editing import EditCommand, Revision
 from src.tasks.base.annotation.handoff import read_handoff
 from src.tasks.base.annotation.images import read_rendered
 from src.tasks.base.annotation.images.contracts import Point
+from src.tasks.base.annotation.storage import StorageCatalog
 from src.tasks.base.annotation.telemetry.contracts import TelemetryReport
-from src.tasks.base.annotation.workers.contracts import AttemptResult
+from src.tasks.base.annotation.workers.contracts import AttemptResult, Launch
 from src.tasks.base.annotation.workers.pool import WorkerPool
 from src.tasks.base.annotation.workers.review.contracts import (
     EditRequest,
@@ -60,6 +61,30 @@ from tests.support.tasks.ball_detection.review_worker import ReviewSession
 @pytest.fixture
 def session(tmp_path: Path) -> ReviewSession:
     return ReviewSession(tmp_path / "annotation")
+
+
+def test_ball_input_pin_and_retry_inputs_include_media_prediction_and_edit_evidence(
+    session: ReviewSession,
+) -> None:
+    env = session.env
+    protected = {
+        ref
+        for pin in StorageCatalog(env.layout).snapshot().protections
+        for ref in pin.references
+    }
+    assert env.manifest.media in protected
+    assert env.manifest.source.media in protected
+    assert env.context.prediction in protected
+    image = session.image(1)
+    edit = session.confirm(image, 1, 2)
+    session.open(2)
+    launch = read_document(env.layout, env.actor, Launch)
+    revision = read_document(env.layout, edit.revision, Revision)
+    assert edit.revision in launch.prepared.inputs
+    assert revision.payload in launch.prepared.inputs
+    assert edit.command in launch.prepared.inputs
+    assert image.image in launch.prepared.inputs
+    assert image.metadata in launch.prepared.inputs
 
 
 def test_parent_renders_pinned_markers_and_serves_bounded_exact_rows(

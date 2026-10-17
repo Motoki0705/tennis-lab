@@ -48,6 +48,7 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 | ball/playerの既存store固定 | snapshot manifest、index、metadata、全clip shard |
 | `BallPublisher.publish` | 公開receipt、要求、採用receipt、公開snapshotと全ファイル、base snapshotのファイル |
 | `ModelRegistry.bootstrap/select` | 初期モデルの重み/config/根拠、採否判断、比較したモデルの重み、学習・評価の完了記録/receipt/要求/intent、実行receipt/launch/log、campaign完了記録/plan/公開receipt、固定学習・評価入力 |
+| `WorkerLedger.register` / `WorkerPool.start` | 登録済みworkの固定入力、adapterが列挙する依存、processが所有するattempt入力。詳細は[workers](../workers/README.md) |
 
 ~~~mermaid
 flowchart LR
@@ -77,7 +78,7 @@ rendererの依存は[telemetry collector](../telemetry/README.md)、ballの固�
 画像証跡の追加列挙は`adoption-v2`、task学習依存の追加列挙は`model-selection-v3`を使い、
 旧collectorの保護を上書きせず、業務操作の再送時に新しい保護を追加する。
 
-この接続はreader lease、pending/active worker、学習途中のcheckpointや全cacheの
+この接続はreader lease、実行中に追加される全worker artifact、学習途中のcheckpointや全cacheの
 自動参照収集を完成させるものではない。外部Codex raw rolloutのpathはtelemetryに出典として
 残るが、固定rootのGCが操作する対象ではない。未知の成果物は従来どおり候補化しない。
 削除実行前には、これらの残る参照と全writerの競合を照合する仕組みが必要である。
