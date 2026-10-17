@@ -220,7 +220,7 @@ def branch_config(repo: Path, branch: str) -> list[list[str]]:
         "config",
         "-z",
         "--get-regexp",
-        "^" + re.escape(f"branch.{branch}") + r"\.",
+        "^" + re.escape(f"branch.{branch}") + r"\.[^.]+$",
         ok_codes=(0, 1),
     ).stdout
     pairs: list[list[str]] = []
@@ -411,15 +411,27 @@ def cmd_apply_auto(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
 
 def cmd_delete(args: argparse.Namespace, repo: Path, cfg: Config) -> int:
     wanted = [parse_id(raw) for raw in args.ids]
+    candidate_ids = {i for i, _ in wanted}
+    candidate_ids.update(f"{i}@{sha}" for i, sha in wanted if sha is not None)
     with exclusive_lock(args.state_dir):
         inv = build_inventory(
             repo,
             cfg,
             invoking_cwd=Path.cwd(),
             measure_disk=False,
-            only_ids={i for i, _ in wanted},
+            only_ids=candidate_ids,
         )
         index = {e.id: i for i, e in enumerate(inv.entries)}
+        # A SHA-like suffix can be part of the actual branch/worktree name.
+        # Validate the whole batch before deleting any of its entries.
+        for entry_id, expect in wanted:
+            literal_id = f"{entry_id}@{expect}"
+            if expect is not None and literal_id in index:
+                raise CleanupError(
+                    f"ambiguous ID {literal_id}: the complete name exists, but "
+                    f"the suffix is parsed as tip {expect} for {entry_id}; "
+                    "append @<tip> to the complete ID"
+                )
         failed = False
         for entry_id, expect in wanted:
             if entry_id not in index:
