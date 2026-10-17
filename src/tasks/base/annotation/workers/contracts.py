@@ -133,6 +133,18 @@ class AttemptResult(Document):
     telemetry: ArtifactRef | None
 
 
+class AttemptEvidence(Document):
+    """Verified on-disk evidence survives retries and mutable task-state changes."""
+
+    number: int = Field(ge=1)
+    state: str
+    reason: str | None
+    launch: ArtifactRef
+    execution: ArtifactRef | None
+    result: ArtifactRef | None
+    telemetry: ArtifactRef | None
+
+
 class TaskAdapter(Protocol):
     name: str
     version: str

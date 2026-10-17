@@ -47,7 +47,8 @@ from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
-def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, base_splits: tuple[str, ...] = ("train", "val", "test"), setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None) -> tuple[Environment, ArtifactRef, ArtifactRef]:
+def publish(tmp_path: Path, *, absent: bool = False, frame_count: int = 34, setup: Callable[[AnnotationLayout, ArtifactRef], dict[str, Any]] | None = None,
+            base_splits: tuple[str, ...] = ("train", "val", "test")) -> tuple[Environment, ArtifactRef, ArtifactRef]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     directory = tmp_path / "data/ball_detection/base"
     for split in base_splits:
