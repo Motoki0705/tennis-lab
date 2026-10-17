@@ -513,9 +513,9 @@ class Learning:
             if not attempts:
                 raise ValueError("no failed stage to retry")
             current = root / str(max(attempts))
-            if (current / "retry.json").exists() and not (
-                current / "request.json"
-            ).exists():
+            if (current / "retry.json").exists() and not any(
+                (current / name).exists() for name in ("failure.json", "completed.json")
+            ):
                 partial = read_document(
                     self.layout,
                     annotation_reference(self.layout, current / "retry.json"),
@@ -537,6 +537,28 @@ class Learning:
                     raise ValueError(
                         "incomplete retry belongs to another learning stage"
                     )
+                previous_directory = root / str(old.attempt)
+                failure_path = previous_directory / "failure.json"
+                if (
+                    not failure_path.exists()
+                    or (previous_directory / "completed.json").exists()
+                    or partial.previous
+                    != annotation_reference(
+                        self.layout, previous_directory / "request.json"
+                    )
+                ):
+                    raise ValueError(
+                        "retry must match the immediately preceding failed stage"
+                    )
+                failure = read_document(
+                    self.layout,
+                    annotation_reference(self.layout, failure_path),
+                    StageFailure,
+                )
+                if failure.request != partial.previous:
+                    raise ValueError(
+                        "retry must match the immediately preceding failed stage"
+                    )
                 restored = StageInput(
                     intent=ref,
                     stage=stage,
@@ -544,6 +566,8 @@ class Learning:
                     training=old.training,
                     resume_checkpoint=resume_checkpoint,
                 )
+                # An existing request must match byte-for-byte before repairing
+                # protection lost after the durable request write.
                 restored_ref = write_document(
                     self.layout, current / "request.json", restored
                 )
@@ -551,7 +575,12 @@ class Learning:
                 return restored_ref
             if int(current.name) > 1 and not any(
                 (current / name).exists()
-                for name in ("retry.json", "request.json", "failure.json", "completed.json")
+                for name in (
+                    "retry.json",
+                    "request.json",
+                    "failure.json",
+                    "completed.json",
+                )
             ):
                 # write_document may create the next directory before publishing
                 # retry.json. Only an explicit retry can recover this gap, and
@@ -592,6 +621,8 @@ class Learning:
                     resume_dependencies=resume_dependencies,
                 ),
             )
-            next_ref = write_document(self.layout, target / "request.json", next_request)
+            next_ref = write_document(
+                self.layout, target / "request.json", next_request
+            )
             self.storage.request(next_ref, next_request)
             return next_ref

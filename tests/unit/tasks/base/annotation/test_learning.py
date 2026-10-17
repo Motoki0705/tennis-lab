@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -38,9 +39,11 @@ from src.tasks.base.annotation.learning.contracts import (
     FixedEvaluation,
     LearningIntent,
     LearningRuntime,
+    Retry,
     SelectionRecord,
     SelectionVerdict,
     StageCost,
+    StageFailure,
     StageInput,
     TaskProducts,
     TrainingReceipt,
@@ -853,9 +856,9 @@ def test_failed_training_with_checkpoint_requires_explicit_same_intent_retry(
     assert env.learning.models.current("detector").generation == 1
 
 
-@pytest.mark.parametrize("interrupted", [False, True])
+@pytest.mark.parametrize("boundary", [None, "retry", "protection"])
 def test_retry_retains_checkpoint_dependencies_before_dispatch(
-    env: Environment, monkeypatch: pytest.MonkeyPatch, interrupted: bool
+    env: Environment, monkeypatch: pytest.MonkeyPatch, boundary: str | None
 ) -> None:
     from src.tasks.base.annotation.learning import service
     from tests.support.annotation_storage import assert_expired_but_protected
@@ -872,6 +875,7 @@ def test_retry_retains_checkpoint_dependencies_before_dispatch(
     assert dependency not in retained(env)
     env.adapter.resume_dependencies = (dependency,)
     real_write = service.write_document
+    persisted_request: ArtifactRef | None = None
 
     def crash(layout: AnnotationLayout, path: Path, document: Any) -> ArtifactRef:
         reference = real_write(layout, path, document)
@@ -879,10 +883,22 @@ def test_retry_retains_checkpoint_dependencies_before_dispatch(
             raise Crash("retry dependencies persisted before request")
         return reference
 
-    if interrupted:
+    def fail_protection(
+        reference: ArtifactRef, request: StageInput
+    ) -> tuple[ArtifactRef, ...]:
+        nonlocal persisted_request
+        assert read_document(env.layout, reference, StageInput) == request
+        persisted_request = reference
+        raise sqlite3.OperationalError("request persisted before protection")
+
+    if boundary is not None:
         with monkeypatch.context() as patch:
-            patch.setattr(service, "write_document", crash)
-            with pytest.raises(Crash, match="dependencies persisted"):
+            if boundary == "retry":
+                patch.setattr(service, "write_document", crash)
+            else:
+                patch.setattr(env.learning.storage, "request", fail_protection)
+            error = Crash if boundary == "retry" else sqlite3.OperationalError
+            with pytest.raises(error, match="persisted"):
                 env.learning.retry(
                     intent,
                     env.adapter,
@@ -892,6 +908,7 @@ def test_retry_retains_checkpoint_dependencies_before_dispatch(
                 )
         # Recovery must use the dependencies already frozen in retry.json.
         env.adapter.resume_dependencies = ()
+        assert dependency not in retained(env)
 
     restarted = Learning(env.layout, executor=env.executor)
     retry = restarted.retry(
@@ -903,6 +920,19 @@ def test_retry_retains_checkpoint_dependencies_before_dispatch(
     )
     assert len(env.executor.accepted) == 1
     assert {retry, training.provenance, dependency} <= retained(env)
+    if boundary == "protection":
+        assert retry == persisted_request
+        assert (
+            restarted.retry(
+                intent,
+                env.adapter,
+                "train",
+                reason="resume failed run",
+                resume_checkpoint=training.provenance,
+            )
+            == retry
+        )
+        assert not (env.layout.artifact_path(retry).parent.parent / "3").exists()
     assert_expired_but_protected(
         env.layout, (training.provenance, dependency), "training"
     )
@@ -910,6 +940,87 @@ def test_retry_retains_checkpoint_dependencies_before_dispatch(
     assert state.state == "training_pending" and state.launch is not None
     launch = read_document(env.layout, state.launch, StageLaunch)
     assert {training.provenance, dependency} <= set(launch.dependencies)
+
+
+@pytest.mark.parametrize(
+    ("mismatch", "message"),
+    [
+        ("reason", "same explicit inputs"),
+        ("checkpoint", "same explicit inputs"),
+        ("request", "immutable document already has different content"),
+        ("previous", "immediately preceding failed stage"),
+        ("failure", "immediately preceding failed stage"),
+        ("missing_failure", "immediately preceding failed stage"),
+        ("completed", "immediately preceding failed stage"),
+    ],
+)
+def test_retry_replay_rejects_mismatched_durable_state(
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
+    mismatch: str,
+    message: str,
+) -> None:
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    env.executor.finish(state.launch, env.adapter, failed=True)
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "failed"
+    saved = env.learning.retry(intent, env.adapter, "train", reason="explicit retry")
+    request_path = env.layout.artifact_path(saved)
+    retry_path = request_path.parent / "retry.json"
+    retry = read_document(
+        env.layout, annotation_reference(env.layout, retry_path), Retry
+    )
+    previous = env.layout.artifact_path(retry.previous).parent
+    if mismatch == "request":
+        changed_request = read_document(env.layout, saved, StageInput).model_copy(
+            update={"attempt": 3}
+        )
+        request_path.write_bytes(changed_request.canonical_bytes() + b"\n")
+    elif mismatch == "previous":
+        copied = write_document(
+            env.layout,
+            env.layout.path("models", "copied-request.json"),
+            read_document(env.layout, retry.previous, StageInput),
+        )
+        retry_path.write_bytes(
+            retry.model_copy(update={"previous": copied}).canonical_bytes() + b"\n"
+        )
+    elif mismatch == "failure":
+        failure_path = previous / "failure.json"
+        failure = read_document(
+            env.layout, annotation_reference(env.layout, failure_path), StageFailure
+        )
+        failure_path.write_bytes(
+            failure.model_copy(update={"request": saved}).canonical_bytes() + b"\n"
+        )
+    elif mismatch == "missing_failure":
+        (previous / "failure.json").unlink()
+    elif mismatch == "completed":
+        write_document(
+            env.layout,
+            previous / "completed.json",
+            CompletedStage(
+                request=retry.previous, result=env.common, execution=env.common
+            ),
+        )
+
+    def unexpected_protection(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("mismatched retry must be rejected before protection")
+
+    monkeypatch.setattr(env.learning.storage, "request", unexpected_protection)
+    before = (request_path.read_bytes(), retry_path.read_bytes())
+    with pytest.raises(ValueError, match=message):
+        env.learning.retry(
+            intent,
+            env.adapter,
+            "train",
+            reason="changed reason" if mismatch == "reason" else "explicit retry",
+            resume_checkpoint=env.common if mismatch == "checkpoint" else None,
+        )
+    assert (request_path.read_bytes(), retry_path.read_bytes()) == before
+    assert not (request_path.parent.parent / "3").exists()
+    assert len(env.executor.accepted) == 1
 
 
 def test_model_commit_file_gap_recovers_without_second_promotion(
@@ -1114,7 +1225,9 @@ def test_direct_selection_still_requires_the_frozen_policy(env: Environment) -> 
     assert env.learning.models.current("detector").generation == 1
 
 
-def test_evaluation_retry_reuses_completed_training(env: Environment) -> None:
+def test_evaluation_retry_reuses_completed_training(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
     intent = env.register()
     env.adapter.complete_metrics = False
     assert env.train_and_evaluate(intent).state == "failed"
@@ -1123,9 +1236,26 @@ def test_evaluation_retry_reuses_completed_training(env: Environment) -> None:
             intent, env.adapter, "train", reason="must not replace trained weights"
         )
     env.adapter.complete_metrics = True
-    env.learning.retry(
+    saved: ArtifactRef | None = None
+
+    def fail_protection(
+        reference: ArtifactRef, request: StageInput
+    ) -> tuple[ArtifactRef, ...]:
+        nonlocal saved
+        assert read_document(env.layout, reference, StageInput) == request
+        saved = reference
+        raise sqlite3.OperationalError("request persisted before protection")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(env.learning.storage, "request", fail_protection)
+        with pytest.raises(sqlite3.OperationalError, match="before protection"):
+            env.learning.retry(
+                intent, env.adapter, "evaluate", reason="repair evaluation runtime"
+            )
+    restored = env.learning.retry(
         intent, env.adapter, "evaluate", reason="repair evaluation runtime"
     )
+    assert restored == saved
     state = env.learning.tick(intent, env.adapter, env.runtime)
     assert state.state == "evaluation_pending" and state.launch is not None
     env.executor.finish(state.launch, env.adapter)
@@ -1300,7 +1430,6 @@ def selection_dependencies(
     )
     refs.extend((training.provenance, evaluation.metrics))
     return tuple(refs)
-
 
 
 @pytest.mark.parametrize("accept", [True, False])
