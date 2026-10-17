@@ -1,6 +1,5 @@
 ---
 title: "新しいworktreeには .venv がないので、メインtreeの .venv へのsymlinkを張る"
-type: workflow
 applies_to: all
 source: "PR #570（2026-06-25）"
 created: 2026-06-25

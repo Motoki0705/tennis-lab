@@ -69,6 +69,29 @@ def test_checked_proposals_become_children_once(ops_env: Any) -> None:
     assert json.loads(second.stdout)["created"] == []
 
 
+def test_triage_with_relative_log_dir_from_another_directory(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(ops_env, report["number"], _check)
+    caller = ops_env.tmp / "caller"
+    caller.mkdir()
+
+    result = ops_env.run("triage", "--log-dir", "relative logs", cwd=caller)
+
+    assert result.returncode == 0, result.stderr
+    assert len(_children(ops_env)) == 2
+    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
+        "body"
+    ]
+    assert len(re.findall(r"→ #\d", body)) == 2
+    (run_dir,) = (caller / "relative logs").iterdir()
+    assert (run_dir / f"report-{report['number']}.md").read_text(
+        encoding="utf-8"
+    ) == body
+    for name in ("run.log", "child-body.md", "result.json"):
+        assert (run_dir / name).is_file(), name
+    assert not (ops_env.repo / "relative logs").exists()
+
+
 def test_crash_between_create_and_annotate_does_not_duplicate(ops_env: Any) -> None:
     report = _report_issue(ops_env)
     _edit_body(ops_env, report["number"], _check)
