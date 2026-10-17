@@ -116,13 +116,14 @@ class Environment:
         dataset_version: str = "fixture",
         video_id: str = "fixture",
         campaign_id: str = "review",
+        frame_count: int = 32,
         **policy_changes: Any,
     ) -> None:
         self.layout = AnnotationLayout.testing(root)
         media_path = self.layout.path("clips", video_id, "media.mp4")
         media_path.parent.mkdir(parents=True)
         pts, durations, current = [], [], 0
-        for i in range(32):
+        for i in range(frame_count):
             duration = 3000 if i % 2 == 0 else 6000
             pts.append(current)
             durations.append(duration)
@@ -146,7 +147,7 @@ class Environment:
                     pts[i],
                     durations[i],
                 )
-                for i in range(32)
+                for i in range(frame_count)
             ),
             crf=16,
             preset="ultrafast",
@@ -167,8 +168,8 @@ class Environment:
             height=32,
             time_base=str(native.time_base),
             nominal_fps="30",
-            source_range=FrameRange(start=100, stop=132),
-            target_range=FrameRange(start=1, stop=31),
+            source_range=FrameRange(start=100, stop=100 + frame_count),
+            target_range=FrameRange(start=1, stop=frame_count - 1),
             frames=tuple(
                 FrameMap(
                     frame_index=i,
