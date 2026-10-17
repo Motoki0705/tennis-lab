@@ -19,6 +19,7 @@ from ..artifacts import (
 )
 from ..paths import AnnotationLayout
 from ..plan import load_plan, references
+from ..resources import ResourceManager
 from .command import codex_command, worker_environment
 from .contracts import ExitReceipt, Launch
 from .processes import capture_supervisor, owned_members, signal_owned
@@ -68,7 +69,12 @@ def event_summary(path: Path) -> tuple[str | None, bool, str | None, bool]:
 
 
 def supervise(
-    path: Path, expected_digest: str, lock_fd: int, *, test_root: Path | None = None
+    path: Path,
+    expected_digest: str,
+    lock_fd: int,
+    *,
+    test_root: Path | None = None,
+    resource_fd: int | None = None,
 ) -> int:
     layout = (
         AnnotationLayout.testing(test_root)
@@ -103,6 +109,19 @@ def supervise(
         directory / "owner.json",
         (json.dumps(owner.document(), sort_keys=True) + "\n").encode(),
     )
+    resources = None
+    if launch.resource_scope is not None:
+        if resource_fd is None or launch.resource_request is None:
+            raise ValueError("resource lease descriptor/request is missing")
+        if (launch.resource_request.plan, launch.resource_request.stage) != (
+            launch.plan,
+            launch.request.stage,
+        ):
+            raise ValueError("resource reservation differs from the worker plan/stage")
+        resources = ResourceManager(layout, launch.resource_scope)
+        resources.attach(launch.resource_request, resource_fd, owner)
+    elif layout.mode != "test":
+        raise ValueError("production supervisor requires a resource reservation")
     started_at, started = datetime.now(UTC).isoformat(), time.monotonic()
     status = "failed"
     reason: str | None = None
@@ -134,7 +153,19 @@ def supervise(
                     cwd=directory / "work",
                     env=worker_environment(launch, plan),
                 )
-                code = child.wait(timeout=launch.timeout_seconds)
+                deadline = time.monotonic() + launch.timeout_seconds
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise subprocess.TimeoutExpired(command, launch.timeout_seconds)
+                    try:
+                        code = child.wait(timeout=min(2.0, remaining))
+                        break
+                    except subprocess.TimeoutExpired:
+                        if resources is not None:
+                            # Budget exhaustion latches a stop for NEW submissions.
+                            # This worker still has its frozen timeout and reservation.
+                            resources.poll()
             except subprocess.TimeoutExpired:
                 status, reason, code = (
                     "timed_out",
@@ -145,6 +176,12 @@ def supervise(
                 status, reason, code = "cancelled", str(error), 130
             except OSError as error:
                 status, reason, code = "failed", f"{type(error).__name__}: {error}", 127
+            except (ValueError, RuntimeError, KeyError) as error:
+                status, reason, code = (
+                    "failed",
+                    f"resource monitoring failed: {type(error).__name__}: {error}",
+                    1,
+                )
             finally:
                 # Codex/tools share this session. Clean descendants before an attempt can finish.
                 signal.signal(signal.SIGTERM, signal.SIG_IGN)
@@ -195,4 +232,6 @@ def supervise(
             reason=reason,
         ),
     )
+    if resources is not None and launch.resource_request is not None:
+        resources.finish(launch.resource_request, reason=reason)
     return code if status == "succeeded" else (code or 1)

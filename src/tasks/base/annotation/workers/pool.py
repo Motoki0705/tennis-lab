@@ -8,7 +8,7 @@ import shutil
 import signal
 import subprocess
 import time
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,7 @@ from ..artifacts import (
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan, references, save_plan
+from ..resources import ResourceManager, ResourceRequest
 from .contracts import (
     AttemptResult,
     ExitReceipt,
@@ -52,9 +53,22 @@ class WorkerPool:
         codex_binary: str = "codex",
         timeout_seconds: float = 3600,
         test_command: tuple[str, ...] | None = None,
+        resources: ResourceManager | None = None,
+        worker_pss_bytes: int | None = None,
+        worker_storage_bytes: int | None = None,
     ) -> None:
         if test_command is not None and layout.mode != "test":
             raise ValueError("test commands are forbidden in production")
+        if layout.mode == "production" and resources is None:
+            raise ValueError("production workers require a persistent resource budget")
+        if resources is not None:
+            resources.bind(plan)
+            resources.observe(os.getpid())
+            if worker_pss_bytes is None or worker_storage_bytes is None:
+                raise ValueError("worker PSS/storage reservations must be explicit")
+        self.resources = resources
+        self.worker_pss_bytes = worker_pss_bytes
+        self.worker_storage_bytes = worker_storage_bytes
         self.layout, self.plan = layout, plan
         self.adapters = {adapter.name: adapter for adapter in adapters}
         if len(self.adapters) != len(adapters):
@@ -195,6 +209,72 @@ class WorkerPool:
                     "attempt still has owned processes, including orphaned descendants"
                 )
 
+    def _recover_unregistered_attempt(self, request: WorkRequest) -> None:
+        """Account for a resource admission interrupted before worker registration.
+
+        The caller holds both admission and work locks. Pending requests have never
+        acquired resources and retain their ID for normal backpressure retries.
+        """
+        if self.resources is None:
+            return
+        with self.ledger.registry.transaction() as database:
+            number = (
+                database.execute(
+                    "SELECT count(*) FROM worker_attempts WHERE work_id=?",
+                    (request.work_id,),
+                ).fetchone()[0]
+                + 1
+            )
+        attempt = f"{request.work_id}-{number:04d}"
+        path = self.layout.path(
+            "campaigns",
+            self.plan.campaign_id,
+            "workers",
+            request.work_id,
+            f"attempt-{number:04d}",
+            "launch.json",
+        )
+        if not path.exists():
+            return
+        ref = annotation_reference(self.layout, path)
+        launch = read_document(self.layout, ref, Launch)
+        if (
+            (launch.work_id, launch.attempt, launch.request, launch.resource_scope)
+            != (request.work_id, attempt, request, self.resources.reference)
+            or load_plan(verify_reference(self.layout, launch.plan)) != self.plan
+            or launch.resource_request is None
+        ):
+            raise ValueError("unregistered launch differs from the worker request")
+        with self.ledger.registry.transaction() as database:
+            resource = database.execute(
+                "SELECT request,state FROM resource_requests WHERE id=?",
+                (self.resources.key(launch.resource_request),),
+            ).fetchone()
+            if resource is None:
+                return
+            if (
+                resource["request"]
+                != launch.resource_request.canonical_bytes().decode()
+            ):
+                raise ValueError("unregistered launch has a different resource request")
+            if resource["state"] == "pending":
+                return
+            reason = "resource admission interrupted before worker registration"
+            database.execute(
+                "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
+                (
+                    attempt,
+                    request.work_id,
+                    number,
+                    ref.canonical_bytes().decode(),
+                    reason,
+                ),
+            )
+            database.execute(
+                "UPDATE worker_tasks SET state='failed',current_attempt=?,reason=?,result=NULL WHERE id=?",
+                (attempt, reason, request.work_id),
+            )
+
     def start(self, request: WorkRequest, *, retry: bool = False) -> str | None:
         self.register(request)
         # Registration is idempotent; successful results and pending finalization never rerun a model.
@@ -207,11 +287,13 @@ class WorkerPool:
             raise FileNotFoundError(f"Codex executable not found: {self.binary}")
         try:
             with (
+                ExitStack() as resource_stack,
                 artifact_lock(self.layout, "worker-admission"),
                 artifact_lock(
                     self.layout, "worker-" + request.work_id, blocking=False
                 ) as descriptor,
             ):
+                self._recover_unregistered_attempt(request)
                 self._settle_dead_slots()
                 row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:
@@ -298,12 +380,32 @@ class WorkerPool:
                     )
                     path.mkdir(parents=True, exist_ok=True)
                 code_root = PROJECT_ROOT
+                plan_ref = annotation_reference(
+                    self.layout, save_plan(self.layout, self.plan)
+                )
+                resource_request = None
+                resource_descriptor = None
+                if self.resources is not None:
+                    assert (
+                        self.worker_pss_bytes is not None
+                        and self.worker_storage_bytes is not None
+                    )
+                    resource_request = ResourceRequest(
+                        request_id="worker-" + attempt,
+                        plan=plan_ref,
+                        stage=request.stage,
+                        pss_bytes=self.worker_pss_bytes,
+                        storage_bytes=self.worker_storage_bytes,
+                        gpu_seconds=0.0,
+                    )
                 launch = Launch(
                     work_id=request.work_id,
                     attempt=attempt,
-                    plan=annotation_reference(
-                        self.layout, save_plan(self.layout, self.plan)
-                    ),
+                    plan=plan_ref,
+                    resource_scope=None
+                    if self.resources is None
+                    else self.resources.reference,
+                    resource_request=resource_request,
                     request=request,
                     prepared=prepared,
                     directory=str(directory),
@@ -321,6 +423,10 @@ class WorkerPool:
                     else None,
                 )
                 ref = write_document(self.layout, directory / "launch.json", launch)
+                if self.resources is not None and resource_request is not None:
+                    resource_descriptor = resource_stack.enter_context(
+                        self.resources.lease(resource_request)
+                    )
                 with self.ledger.registry.transaction() as database:
                     database.execute(
                         "INSERT INTO worker_attempts VALUES (?,?,?,'running',?,NULL)",
@@ -346,6 +452,8 @@ class WorkerPool:
                     "--lock-fd",
                     str(descriptor),
                 ]
+                if resource_descriptor is not None:
+                    command.extend(("--resource-fd", str(resource_descriptor)))
                 if self.layout.mode == "test":
                     command.extend(("--test-root", str(self.layout.root)))
                 environment = os.environ.copy()
@@ -360,7 +468,9 @@ class WorkerPool:
                             stdout=log,
                             stderr=log,
                             start_new_session=True,
-                            pass_fds=(descriptor,),
+                            pass_fds=(descriptor,)
+                            if resource_descriptor is None
+                            else (descriptor, resource_descriptor),
                         )
                     self.children[attempt] = process
                 except OSError as error:

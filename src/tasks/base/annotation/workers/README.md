@@ -12,7 +12,11 @@ ball/playerの意味・ラベルschema・レビュー方針は解釈しない。
 渡し、baseからtaskモジュールへのimportは設けない。
 
 ```python
-pool = WorkerPool(layout, plan, (adapter,))
+resources = ResourceManager(layout, scope_ref)
+pool = WorkerPool(
+    layout, plan, (adapter,), resources=resources,
+    worker_pss_bytes=worker_peak, worker_storage_bytes=worker_output_budget,
+)
 pool.register(request)
 attempt = pool.start(request)  # 完了済みなら None、稼働/枠不足は WorkerBusy
 state = pool.reconcile(request)
@@ -45,8 +49,13 @@ state = pool.reconcile(request)
   完了と停止・retryが競合しても、確定済みreceiptや後続attemptを古い停止で取り消さない。
 - Codex合計と同名工程の並列枠をcampaign横断で共有する。異なる上限が併存する場合は
   稼働中planと新規planの小さい上限を適用する。終了済みattemptは枠を返し、結果の
-  validationはそのcampaignのadapterで再開する。PSS・保存量・GPU予算によるadmissionは
-  後続のresources層で接続する。
+  validationはそのcampaignのadapterで再開する。productionでは
+  [resources](../resources/README.md) のscopeとPSS/保存予約を必須とし、
+  `CapacityUnavailable` と `BudgetStopped` を区別する。supervisorが資源leaseを継承し、
+  稼働中の計測と終了時の回収を担当する。
+  lease取得前に不変launchを保存する。資源受付後・worker台帳登録前に中断したattemptは、
+  再開時に台帳へ失敗として回収し、明示retryでは新しいattempt/request IDを発行する。
+  まだ資源を取得していないpending要求は同じIDで受付を再試行し、待機枠を重複消費しない。
 
 標準状態は `ready → running → complete`、未回収終了は `exited`（quotaはadmissionでも確定）。
 `failed / quota / timed_out / cancelled / validation_failed / deferred` は理由を保存する。
