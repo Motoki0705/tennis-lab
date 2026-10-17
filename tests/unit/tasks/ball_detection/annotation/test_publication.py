@@ -26,6 +26,9 @@ from src.tasks.ball_detection.data.teacher_masks import LEGACY
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing import (
     publisher as publishing,
 )
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing import (
+    snapshot as snapshot_module,
+)
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
     BallPublicationPolicy,
     BallSnapshot,
@@ -58,6 +61,10 @@ from src.tasks.base.annotation.learning.validation import check_completion
 from src.tasks.base.annotation.paths import AnnotationLayout
 from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+
+
+def test_snapshot_does_not_reexport_shared_data_reference() -> None:
+    assert not hasattr(snapshot_module, "data_reference")
 
 
 def seal(env: Environment, *, sealed: bool = True) -> ArtifactRef:

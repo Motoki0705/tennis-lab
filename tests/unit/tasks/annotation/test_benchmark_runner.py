@@ -51,6 +51,7 @@ from src.tasks.base.annotation.plan import (
 )
 from src.tasks.base.annotation.resources import (
     BudgetLimits,
+    CapacityUnavailable,
     ResourceManager,
     ResourceRequest,
 )
@@ -68,7 +69,9 @@ from tests.support.tasks.ball_detection.annotation import Environment
 
 
 class Setup:
-    def __init__(self, root: Path, observation_limit: int = 1000) -> None:
+    def __init__(
+        self, root: Path, observation_limit: int = 1000, *, pending_limit: int = 50
+    ) -> None:
         def transform(plan: CampaignPlan) -> CampaignPlan:
             return plan.model_copy(
                 update={
@@ -103,7 +106,7 @@ class Setup:
             roots=(env.layout.repository,),
             previously_allocated_bytes=0,
             previously_used_gpu_seconds=3,
-            max_pending_per_stage=50,
+            max_pending_per_stage=pending_limit,
         )
         self.conditions = []
         for number in (10, 25, 50):
@@ -219,10 +222,8 @@ class Setup:
         self.reference = self.env.save(self.runtime)
 
 
-@pytest.fixture
-def setup(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
-) -> Setup:
+@pytest.fixture(autouse=True)
+def no_hardware_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "src.tasks.base.annotation.resources.scheduler.gpu_usage",
         lambda _pids: GPUUsage(
@@ -233,6 +234,10 @@ def setup(
             reason="CPU fixture",
         ),
     )
+
+
+@pytest.fixture
+def setup(tmp_path: Path, request: pytest.FixtureRequest) -> Setup:
     return Setup(tmp_path / "annotation", getattr(request, "param", 1000))
 
 
@@ -459,6 +464,9 @@ def test_capacity_wait_restarts_same_unlaunched_attempt(
         with runner.pool.ledger.registry.transaction() as db:
             attempts = db.execute("SELECT id,state FROM worker_attempts").fetchall()
         assert [tuple(row) for row in attempts] == [(launch.attempt, "complete")]
+        # Worker reconciliation joins its supervisor, but cached resource polls
+        # can leave its lease draining. Recover it before inspecting the ledger.
+        runner.resources.sample()
         with runner.resources.registry.transaction() as db:
             rows = db.execute(
                 "SELECT id,state,request FROM resource_requests WHERE stage='review'"
@@ -563,6 +571,69 @@ def test_observation_limit_stops_active_worker_and_never_completes(
         until = time.monotonic() + 15
         while runner.stop("fixture teardown") and time.monotonic() < until:
             time.sleep(0.05)
+
+
+def test_observation_stop_frees_pending_capacity_for_other_campaign(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ResourceManager, "observe", lambda self, pid: None)
+    setup = Setup(tmp_path / "annotation", observation_limit=1, pending_limit=2)
+    runner = setup.runner()
+    runner._initialize()
+    assert runner.pool is not None
+    work = read_document(runner.layout, runner.requests[0], WorkRequest)
+    other = ResourceRequest(
+        request_id="other-campaign-waiting",
+        plan=setup.env.plan_ref,
+        stage="review",
+        pss_bytes=runner.runtime.cost("review").pss_bytes,
+        storage_bytes=0,
+        gpu_seconds=0,
+    )
+    runner.resources.submit(other)
+    next_request = other.model_copy(update={"request_id": "other-campaign-next"})
+    blocker = other.model_copy(
+        update={
+            "request_id": "capacity-blocker",
+            "stage": "render",
+            "pss_bytes": runner.plan.resources.total_pss_bytes - other.pss_bytes // 2,
+        }
+    )
+    with runner.resources.lease(blocker):
+        assert runner.tick()["task_states"] == {"ready": 1}
+        launch_ref = annotation_reference(
+            runner.layout,
+            runner.layout.path(
+                "campaigns",
+                runner.plan.campaign_id,
+                "workers",
+                work.work_id,
+                "attempt-0001",
+                "launch.json",
+            ),
+        )
+        launch = read_document(runner.layout, launch_ref, Launch)
+        assert launch.resource_request is not None
+        assert runner.resources._row(launch.resource_request)["reason"] == (
+            "PSS reservations do not fit"
+        )
+        with pytest.raises(CapacityUnavailable, match="backlog is full"):
+            runner.resources.submit(next_request)
+
+    # Reopening must recover the condition's pending request from the shared DB.
+    runner = setup.runner()
+    stopped = runner.tick()
+    assert stopped["state"] == "blocked"
+    assert stopped["reason"] == "benchmark observation limit reached"
+    with runner.resources.lease(next_request):
+        assert runner.resources._row(next_request)["state"] == "running"
+    cancelled = runner.resources._row(launch.resource_request)
+    assert (cancelled["state"], cancelled["reason"]) == ("cancelled", stopped["reason"])
+    assert runner.resources._row(other)["state"] == "pending"
+    assert runner.pool is not None and not runner.pool.children
+    assert runner.pool.ledger.task(work.work_id)["state"] == "cancelled"
+    assert runner.stop("repeat stop") == ()
+    assert runner.resources._row(launch.resource_request) == cancelled
 
 
 def test_observation_interval_survives_repeated_runner_restarts(
@@ -775,6 +846,11 @@ def test_benchmark_run_services_healthy_worker_after_another_fails(
         result = json.loads(capsys.readouterr().out)
         assert result["state"] == "blocked"
         assert result["task_states"] == {"complete": 1, "failed": 1}
+        # Service receipts can precede supervisor exit. Join remaining children,
+        # then bypass poll()'s cache to recover their finished resource leases.
+        for child in runner.jobs.stages.children.values():
+            assert child.wait(timeout=10) == 0
+        runner.resources.sample()
         with setup.manager.registry.transaction() as db:
             assert (
                 db.execute(
