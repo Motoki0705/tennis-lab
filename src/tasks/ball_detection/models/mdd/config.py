@@ -74,8 +74,15 @@ class MDDPretrainConfig:
     activation_checkpointing: bool
     encoder_variant: str
     temporal_mixing: str
+    input_channels: int
+
+    @property
+    def frames(self) -> int:
+        return 32
 
     def __post_init__(self) -> None:
+        if type(self.input_channels) is not int or self.input_channels not in (2, 5):
+            raise ValueError("input_channels must be 2 (MDD) or 5 (RGB+MDD)")
         if self.encoder_variant not in {"residual", "convnext_v2", "fasternet"}:
             raise ValueError("Unknown CNN encoder variant")
         if self.temporal_mixing not in {"dense3d", "factorized"}:

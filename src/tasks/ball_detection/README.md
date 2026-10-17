@@ -1,6 +1,8 @@
 # Ball Detection
 
-MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契約と、MDDの座標回帰契約を明示的に分ける。
+RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規CNN構成と旧2ch構成の
+入力仕様は [models/mdd](models/mdd/README.md) を参照。
+既存ConvNeXtのnative heatmap契約と、MDDの座標回帰契約を明示的に分ける。
 
 モデル事前推論から注釈修正・増分公開・累積追加学習への変更後設計は、
 [注釈・継続学習のアーキテクチャ](../base/annotation/README.md)を参照する。

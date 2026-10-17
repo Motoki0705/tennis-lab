@@ -10,6 +10,7 @@ from pathlib import Path
 import torch
 
 from src.tasks.ball_detection.checkpoints.coordinates import (
+    query_checkpoint_config,
     save_coordinate_checkpoint,
 )
 from src.tasks.ball_detection.checkpoints.posttraining import (
@@ -32,7 +33,7 @@ from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDatase
 from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.evaluation.stress import evaluate
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
-from src.tasks.ball_detection.preprocessing import RGBToMDD
+from src.tasks.ball_detection.preprocessing.rgb_mdd import input_transform_from_contract
 from src.tasks.ball_detection.training.coordinates.loop import train_epoch
 from src.tasks.ball_detection.training.runtime.compilation import (
     compile_coordinate_model,
@@ -136,7 +137,7 @@ def main() -> None:
     runtime.configure(device)
     torch.manual_seed(args.seed)
     model = DeepMDDQueryDetector(config)
-    model.mdd = RGBToMDD.from_contract(pretrained["recipe"]["input_contract"])
+    model.mdd = input_transform_from_contract(pretrained["recipe"]["input_contract"], input_channels=config.input_channels)
     transfer = transfer_encoder(parent, model)
     model.to(device)
     parameters = [dict(params=list(model.encoder.parameters()), role="encoder"),
@@ -190,6 +191,9 @@ def main() -> None:
             stream.write(json.dumps(dict(epoch=epoch, global_step=step, train_loss=result.mean_loss, **report)) + "\n")
     if args.stress_evaluation:
         saved = torch.load(args.output / f"epoch-{best_epoch:03d}.pt", map_location="cpu", weights_only=True)
+        saved_config, preprocessing = query_checkpoint_config(saved)
+        if saved_config != model.config or preprocessing.input_contract() != model.mdd.input_contract():
+            raise ValueError("Selected checkpoint model or input contract changed")
         model.load_state_dict(saved["state_dict"], strict=True)
         stress = {profile: evaluate(model, val_loader, device, frame_steps=val.frame_steps, precision=args.precision,
             prefetch=args.image_prefetch, augmenter=augmenter, profile=profile,
