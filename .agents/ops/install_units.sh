@@ -6,6 +6,7 @@
 #
 # Units must reference the main checkout via %h/projects/tennis-lab (or TENNIS_LAB_ROOT
 # set in the unit) so they keep working after worktrees are removed.
+# The installer itself must also belong to the main checkout; linked sources are rejected.
 set -euo pipefail
 
 main() {
@@ -18,8 +19,14 @@ main() {
     esac
   done
 
-  local ops_dir unit_dir
+  local ops_dir unit_dir git_dir common_dir
   ops_dir="$(cd "$(dirname "$0")" && pwd)"
+  git_dir="$(git -C "$ops_dir" rev-parse --path-format=absolute --git-dir)"
+  common_dir="$(git -C "$ops_dir" rev-parse --path-format=absolute --git-common-dir)"
+  if [[ "$git_dir" != "$common_dir" ]]; then
+    echo "install_units: refusing linked worktree source; use the installer in the main checkout" >&2
+    exit 2
+  fi
   unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
   # Enumerate into a file first so a find/sort failure aborts here (pipefail) instead of
