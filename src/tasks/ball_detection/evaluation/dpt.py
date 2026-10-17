@@ -11,6 +11,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from src.tasks.ball_detection.evaluation.coordinates import CoordinateMetrics
+from src.tasks.ball_detection.model_io.predict import predict_dpt_heatmaps
 from src.tasks.ball_detection.models.mdd import MDDDPTDetector
 from src.tasks.ball_detection.training.dpt_pretrain.objective import heatmap_objective
 from src.tasks.ball_detection.training.runtime.compilation import (
@@ -119,7 +120,7 @@ def evaluate(model: MDDDPTDetector, loader: DataLoader[Any], device: torch.devic
         for i, batch in enumerate(coordinate_batches(loader, device, prefetch=image_prefetch), 1):
             rgb = image_input(batch, device)
             with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
-                logits = model(rgb)
+                logits = predict_dpt_heatmaps(model, rgb)
             _, per_frame = heatmap_objective(logits, batch, sigma_ratio=sigma_ratio, gamma=gamma)
             probability = logits.float().sigmoid()
             uv, confidence = heatmaps_to_argmax(probability)
