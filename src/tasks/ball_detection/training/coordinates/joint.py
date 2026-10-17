@@ -107,14 +107,9 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
     parameters = [dict(params=list(model.encoder.parameters()), role="encoder"),
                   dict(params=[p for n, p in model.named_parameters() if not n.startswith("encoder.")], role="decoder")]
     optimizer = torch.optim.AdamW(parameters, lr=args.learning_rate, weight_decay=.01)
-    recipe = dict(parent=transfer, model=asdict(config), runtime=asdict(runtime), augmentation=asdict(augmentation),
-        epochs=args.epochs, freeze_epochs=args.freeze_epochs, windows_per_epoch=args.windows_per_epoch,
-        batch_size=args.batch_size, seed=args.seed, learning_rate=args.learning_rate, encoder_lr_ratio=args.encoder_lr_ratio,
-        warmup_updates=args.warmup_updates, schedule="warmup then cosine to 0.1 peak", weight_decay=.01, gradient_clip=1.,
-        manifest_sha256=manifest_digest, validation_manifest_sha256=validation_digest,
-        initial_state_sha256=initial_state_sha256, optimizer_initialization="fresh", schedule_initialization="step_zero", selection_scope="common", selection_profile="clean", test_usage="none",
-        input_contract=model.mdd.input_contract(), image_decode=jpeg_decoder_contract(args.jpeg_decoder),
-        stress_evaluation=args.stress_evaluation)
+    recipe = finetuning_recipe(args, parent=transfer, model_config=asdict(config), runtime=runtime,
+        augmentation=augmentation, manifest_sha256=manifest_digest, validation_manifest_sha256=validation_digest,
+        initial_state_sha256=initial_state_sha256, input_contract=model.mdd.input_contract())
     code = post_source_identity()
     first_epoch, step, best, best_epoch = 0, 0, float("inf"), -1
     if args.resume:
@@ -169,6 +164,22 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
         (args.output / "stress.json").write_text(json.dumps(stress, indent=2))
     (args.output / "COMPLETED.json").write_text(json.dumps(dict(stage="query_posttraining", global_step=step,
         best_epoch=best_epoch, best_error_px=best, pretrained_checkpoint=transfer["sha256"], initial_state_sha256=initial_state_sha256), indent=2))
+
+
+def finetuning_recipe(
+    args: argparse.Namespace, *, parent: dict[str, Any], model_config: dict[str, Any],
+    runtime: CoordinateRuntime, augmentation: AugmentationConfig, manifest_sha256: str,
+    validation_manifest_sha256: str, initial_state_sha256: str, input_contract: dict[str, Any],
+) -> dict[str, Any]:
+    """One recipe authority for execution and pre-queue restart verification."""
+    return dict(parent=parent, model=model_config, runtime=asdict(runtime), augmentation=asdict(augmentation),
+        epochs=args.epochs, freeze_epochs=args.freeze_epochs, windows_per_epoch=args.windows_per_epoch,
+        batch_size=args.batch_size, seed=args.seed, learning_rate=args.learning_rate, encoder_lr_ratio=args.encoder_lr_ratio,
+        warmup_updates=args.warmup_updates, schedule="warmup then cosine to 0.1 peak", weight_decay=.01, gradient_clip=1.,
+        manifest_sha256=manifest_sha256, validation_manifest_sha256=validation_manifest_sha256,
+        initial_state_sha256=initial_state_sha256, optimizer_initialization="fresh", schedule_initialization="step_zero",
+        selection_scope="common", selection_profile="clean", test_usage="none", input_contract=input_contract,
+        image_decode=jpeg_decoder_contract(args.jpeg_decoder), stress_evaluation=args.stress_evaluation)
 
 
 def validate_partitions(train: FrozenBallWindowDataset, validation: FrozenBallWindowDataset) -> None:

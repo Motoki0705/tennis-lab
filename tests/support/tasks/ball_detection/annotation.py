@@ -53,7 +53,7 @@ from src.tasks.base.annotation.images import render_page
 from src.tasks.base.annotation.images.contracts import Crop, Point, RenderRequest, Tile
 from src.tasks.base.annotation.media import encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, save_plan
+from src.tasks.base.annotation.plan import CampaignPlan, LearningPlan, save_plan
 from src.tasks.base.annotation.predictions import PredictionContext, Predictions
 from src.tasks.base.annotation.telemetry.capture import capture
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
@@ -117,6 +117,8 @@ class Environment:
         video_id: str = "fixture",
         campaign_id: str = "review",
         frame_count: int = 32,
+        model: ModelRef | None = None,
+        learning: LearningPlan | None = None,
         **policy_changes: Any,
     ) -> None:
         self.layout = AnnotationLayout.testing(root)
@@ -206,7 +208,7 @@ class Environment:
         inference = self.save(
             MDDInferenceConfig(stride=16, device="cpu", precision="float32")
         )
-        model = ModelRef(
+        model = model or ModelRef(
             task="ball",
             version="fixture",
             training_weights=self.blob,
@@ -256,7 +258,7 @@ class Environment:
                                 "preview_evidence": ref,
                                 "decision": ref,
                             },
-                            "learning": None,
+                            "learning": learning.model_dump() if learning else None,
                             "products": [
                                 {
                                     "product": "frames",

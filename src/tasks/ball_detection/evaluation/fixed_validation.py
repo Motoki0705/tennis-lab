@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -32,10 +33,44 @@ def expected_support(data: FrozenBallWindowDataset) -> dict[str, dict[str, Any]]
         groups["full"].update(keys)
         if record["common_evaluation"]:
             groups["common"].update(keys)
-    return {scope: dict(membership_sha256=frame_membership_sha256(keys), frame_fps_pairs=len(keys),
-                       unique_observed_frames=len({key[1:] for key in keys}),
-                       observed_frames_by_step={str(step): sum(key[0] == step for key in keys) for step in data.frame_steps})
-            for scope, keys in groups.items()}
+    sources = {r["clip"]["clip_id"]: r["clip"]["source"] for r in data.records}
+    names = sorted({sources[key[1]] for key in groups["full"]})
+
+    def summary(keys: set[tuple[int, str, int]]) -> dict[str, Any]:
+        return dict(membership_sha256=frame_membership_sha256(keys), frame_fps_pairs=len(keys),
+                    unique_observed_frames=len({key[1:] for key in keys}),
+                    observed_frames_by_step={str(step): sum(key[0] == step for key in keys) for step in data.frame_steps})
+
+    return {scope: dict(**summary(keys), by_source={name: summary({key for key in keys if sources[key[1]] == name})
+                                                  for name in names}) for scope, keys in groups.items()}
+
+
+def verify_group(actual: dict[str, Any], support: dict[str, Any]) -> None:
+    if any(actual[key] != support[key] for key in ("membership_sha256", "frame_fps_pairs", "unique_observed_frames")):
+        raise ValueError("evaluated frame membership differs from fixed validation teachers")
+    counts = {step: group["observed_frames"] for step, group in actual["by_frame_step"].items()}
+    if counts != support["observed_frames_by_step"]:
+        raise ValueError("evaluated FPS support differs from fixed validation teachers")
+    means = []
+    for group in actual["by_frame_step"].values():
+        available = group["observed_frames"] > 0
+        if group["available"] is not available:
+            raise ValueError("evaluation availability differs from its support")
+        for key in ("mean_error_px", "median_error_px", "p95_error_px"):
+            value = group[key]
+            if available and (type(value) not in (int, float) or not math.isfinite(value) or value < 0):
+                raise ValueError("evaluation metrics must be finite nonnegative numbers")
+            if not available and value is not None:
+                raise ValueError("empty evaluation group must not invent metrics")
+        if available:
+            means.append(group["mean_error_px"])
+    macro = actual["macro_mean_error_px"]
+    if len(means) != len(counts):
+        if macro is not None:
+            raise ValueError("missing FPS must not produce a macro metric")
+    elif (not means or type(macro) not in (int, float) or not math.isfinite(macro)
+          or not math.isclose(macro, math.fsum(means) / len(means), rel_tol=1e-12, abs_tol=1e-12)):
+        raise ValueError("evaluation macro metric disagrees with its FPS means")
 
 
 def verify_support(report: dict[str, Any], expected: dict[str, dict[str, Any]]) -> None:
@@ -43,11 +78,11 @@ def verify_support(report: dict[str, Any], expected: dict[str, dict[str, Any]]) 
         raise ValueError("unexpected coordinate evaluation schema")
     for scope, support in expected.items():
         actual = report["scopes"][scope]
-        if any(actual[key] != support[key] for key in ("membership_sha256", "frame_fps_pairs", "unique_observed_frames")):
-            raise ValueError("evaluated frame membership differs from fixed validation teachers")
-        counts = {step: group["observed_frames"] for step, group in actual["by_frame_step"].items()}
-        if counts != support["observed_frames_by_step"]:
-            raise ValueError("evaluated FPS support differs from fixed validation teachers")
+        verify_group(actual, support)
+        if set(actual["by_source"]) != set(support["by_source"]):
+            raise ValueError("evaluation sources differ from fixed validation teachers")
+        for name, group in support["by_source"].items():
+            verify_group(actual["by_source"][name], group)
         selection_score(report, scope)
 
 
