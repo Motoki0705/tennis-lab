@@ -38,6 +38,7 @@ class SnapshotClip(Document):
     split: Split
     semantic_digest: Digest
     shard: ArtifactRef
+    canonical_clip_id: Digest | None = None
 
 
 class ExistingPlayerSnapshot(Document):
@@ -48,6 +49,8 @@ class ExistingPlayerSnapshot(Document):
     metadata: ArtifactRef
     source_bindings: tuple[SourceBinding, ...] = Field(min_length=1)
     clips: tuple[SnapshotClip, ...] = Field(min_length=1)
+    # None denotes an explicitly frozen baseline. Publications pin their request.
+    request: ArtifactRef | None = None
 
     @_after
     def identities(self) -> Self:

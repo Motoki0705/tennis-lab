@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pytest
@@ -63,73 +62,98 @@ def queue_fixture(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(torch.cuda, "empty_cache", lambda: None)
 
 
-def test_full_tracking_generation_does_not_load_vitpose(
+def test_tracking_requires_corrected_input_before_loading_models(
     store: BallFrameStore,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from types import SimpleNamespace
-
-    from src.submodules.models.dino import extension, person_detector
+    from src.submodules.models.dino import person_detector
     from src.submodules.models.vitpose import pose2d
-    from src.tasks.person_tracking import strongsort_offline
     from src.tasks.player_association.appearance import encoders
 
     campaign = campaign_fixture(store, tmp_path)
     queue_fixture(monkeypatch)
-    monkeypatch.setattr(
-        extension, "validate_dino_extension", lambda: tmp_path / "weight"
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Missing corrected input must stop before model construction")
+
+    monkeypatch.setattr(person_detector, "DinoPersonDetector", forbidden)
+    monkeypatch.setattr(pose2d, "ViTPosePose2D", forbidden)
+    monkeypatch.setattr(encoders, "ClipReIDEncoder", forbidden)
+    with pytest.raises(ValueError, match="pinned corrected bbox input"):
+        generation.generate_clip(campaign, 0)
+
+
+def test_full_tracking_generation_does_not_load_vitpose(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.submodules.models.dino import person_detector
+    from src.submodules.models.vitpose import pose2d
+    from src.tasks.base.annotation.paths import AnnotationLayout
+    from src.tasks.person_tracking import strongsort_offline
+    from src.tasks.player_association.appearance import encoders
+    from src.tasks.player_detection.annotation.pose.corrected import load_input
+    from tests.support.tasks.player_detection.pose_publication import (
+        Linker,
+        PublicationFixture,
     )
+
+    fixture = PublicationFixture(tmp_path / "annotation", finalize=False)
+    inputs = load_input(fixture.env.layout, fixture.input)
+    campaign = tmp_path / "campaign"
+    weight = fixture.env.layout.repository / "ckpt" / "tracking.pth"
+    weight.parent.mkdir(parents=True, exist_ok=True)
+    weight.write_bytes(b"synthetic tracking weights")
+    config = {
+        "project_root": str(fixture.env.layout.repository),
+        "corrected_inputs": {
+            inputs.manifest.clip_id: fixture.input.model_dump(mode="json")
+        },
+        "assets": {name: str(weight) for name in ("clip_reid", "aflink")},
+        "asset_hashes": {name: digest(weight) for name in ("clip_reid", "aflink")},
+        "cuda_memory_fraction": 0.5,
+        "generation_mode": "review_then_pose.v1",
+    }
     monkeypatch.setattr(
-        pose2d,
-        "ViTPosePose2D",
-        lambda *_a, **_k: pytest.fail("tracking must not load pose"),
+        generation,
+        "load_campaign",
+        lambda _: (
+            config,
+            {"clips": [{"clip_id": inputs.manifest.clip_id, "selected": True}]},
+            inputs.store,
+        ),
     )
+    monkeypatch.setattr(AnnotationLayout, "production", lambda _: fixture.env.layout)
+    queue_fixture(monkeypatch)
 
-    class Detector:
-        def __init__(self, *_a: Any, **_k: Any) -> None:
-            pass
+    def forbidden(*args, **kwargs):
+        pytest.fail("corrected tracking must not load a detector or pose model")
 
-        def predict(self, request: object) -> Any:
-            return SimpleNamespace(
-                boxes_xyxy=np.array([[2, 2, 15, 20]], np.float32),
-                scores=np.array([0.9], np.float32),
-            )
-
-        def unload(self) -> None:
-            pass
+    monkeypatch.setattr(person_detector, "DinoPersonDetector", forbidden)
+    monkeypatch.setattr(pose2d, "ViTPosePose2D", forbidden)
 
     class Encoder:
         name = "fixture"
         input_size = (16, 8)
 
-        def __init__(self, *_a: Any, **_k: Any) -> None:
-            pass
-
-        def embed(self, crops: torch.Tensor) -> torch.Tensor:
+        def embed(self, crops):
             values = torch.zeros(len(crops), 1280)
             values[:, 0] = 1
             return values
 
-    af = strongsort_offline.AFLink.__new__(strongsort_offline.AFLink)
-    monkeypatch.setattr(
-        af, "links", lambda boxes, seen: ({i: i for i in range(len(boxes))}, [])
-    )
-    monkeypatch.setattr(strongsort_offline, "AFLink", lambda _: af)
-    monkeypatch.setattr(person_detector, "DinoPersonDetector", Detector)
-    monkeypatch.setattr(encoders, "ClipReIDEncoder", Encoder)
+    monkeypatch.setattr(encoders, "ClipReIDEncoder", lambda *args: Encoder())
+    monkeypatch.setattr(strongsort_offline, "AFLink", lambda _: Linker())
     generation.generate_clip(campaign, 0)
     root = clip_root(campaign, 0)
     record = read_json(root / "generation.json")
-    assert record["all_detections"] == 4 and record["pose_crops"] == 0
+    assert record["all_detections"] == 6 and record["pose_crops"] == 0
+    assert record["detector_calls"] == 0
     with np.load(root / "tracks.npz") as data:
         assert "keypoints" not in data.files
-        assert data["detection_rows"].tolist() == [[-1, -1, 2, 3]]
-    monkeypatch.setattr(
-        person_detector,
-        "DinoPersonDetector",
-        lambda *_a, **_k: pytest.fail("resume must use committed tracking"),
-    )
+        rows = data["detection_rows"]
+        assert sorted(rows[rows >= 0].tolist()) == list(range(6))
+    monkeypatch.setattr(encoders, "ClipReIDEncoder", forbidden)
     generation.generate_clip(campaign, 0)
 
 

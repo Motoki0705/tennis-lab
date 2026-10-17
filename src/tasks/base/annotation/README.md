@@ -362,7 +362,7 @@ token・時間のほか、品質、GPU事前推論・追加学習コスト、探
 | `local_agent`のcampaign/attempt/process制御 | baseのworkers/ledger/resources |
 | ball候補・ball編集・球状態のschema/検証 | ball taskのannotation |
 | player候補・bbox編集・人物schema/検証 | player taskのannotation |
-| `player_pose` | player taskの追跡/ID/pose連携 |
+| `player_pose` | [player taskの追跡/ID/pose連携](../../player_detection/annotation/pose/README.md) |
 | 共通の画像ページ・版付き更新・入力組立 | baseのimages/editing/handoffとtask adapter |
 | `qa`・`audit`・QA note・QA待ち・`phase2`再注釈 | 独立QA/既存clip再注釈の運用入口を廃止 |
 | ChatGPT kit・Project/REQUEST・handoff・MCP/Tunnel/Docker | remote運用入口と専用依存を廃止 |
@@ -465,6 +465,27 @@ bbox公開とpose公開は別receiptを持ち、pose対象外を理由にbbox教
 CPU fixtureによる契約・障害注入・CLI E2E、実モデルでの少数clip/短時間学習、
 2サイクルと10/25/50並列の実測を区別して結果を残す。
 自動テストだけで実モデルの品質・GPU資源・実稼働並列数を検証済みにしない。
+
+### 故障注入の検証範囲
+
+接続済みball経路では、成果物公開・receipt保存・台帳commitを別の境界として検証する。
+保存済み成果物を再利用できること、同じ要求が同じreceiptへ収束すること、異なる要求の
+競合が明示的に拒否されることを確認する。公開前に失われた計算の再実行と、確定済み処理の
+二重登録は区別する。
+
+| 境界 | 合成CPUテストの入口 |
+|---|---|
+| 素材取得・clip公開・準備receipt・取得/準備の並行所有 | [test_collection.py](../../../../tests/unit/tasks/base/annotation/test_collection.py) |
+| 予測成果・予測receipt・台帳commit・同一要求の並行再送 | [test_inference.py](../../../../tests/unit/tasks/ball_detection/annotation/test_inference.py) |
+| revision公開・head commit・編集receipt | [test_review_tools.py](../../../../tests/unit/tasks/base/annotation/test_review_tools.py) |
+| 採用証拠・教師mask・採用receipt・seal commit・並行seal | [test_review.py](../../../../tests/unit/tasks/ball_detection/annotation/test_review.py) |
+| shard/metadata・snapshot rename・公開receipt・台帳commit | [test_publication.py](../../../../tests/unit/tasks/ball_detection/annotation/test_publication.py) |
+| queue登録の応答喪失・stage完了receipt | [test_execution.py](../../../../tests/unit/tasks/base/annotation/test_execution.py) |
+| 学習checkpoint再開・評価comparison/metrics/receipt | [test_annotation_learning.py](../../../../tests/integration/tasks/ball_detection/test_annotation_learning.py) |
+| 学習/evaluation要求・完了記録・モデルpointer/receipt | [test_learning.py](../../../../tests/unit/tasks/base/annotation/test_learning.py) |
+| 移行・GCの実プロセス強制終了と並行再開 | [storage](storage/README.md)、[migration](storage/migration/README.md) |
+
+この範囲はplayerのID/pose工程や本番GPU campaign全体の故障試験を代替しない。
 
 ## 14. 本運用前に固定する判断
 

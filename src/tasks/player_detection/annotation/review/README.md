@@ -70,8 +70,9 @@ missing score を保持した `PlayerLabels` を返す。追跡側はここか�
 画像根拠・frame digest・元観測 ID の検証と CAS は通常の編集と共通で、古い binding や
 改変した ID/frame/PTS を拒否する。適用後の新しい版へ古い ID 判断を再利用しない。
 最終版で証拠を再検証して `prepare_adoption()` / `seal()` を行う。
-tracking/ID worker・pose・production composition 自体の接続と、引継ぎ protection の退役は
-後続工程の責務であり、この契約の追加だけで全工程接続済みとは扱わない。
+修正bboxからの[追跡・ID・pose公開](../pose/README.md)はこのbindingを入力とし、
+`finalize_review()` が最終ID判定と教師を保存して入力revisionをsealする。
+production compositionへの全工程登録と、引継ぎ protection の退役は後続工程の責務である。
 
 操作上限と再試行は共通 [review services](../../../base/annotation/workers/review/README.md)、
 worker の手順は [worker instructions](worker-instructions.md) を参照。

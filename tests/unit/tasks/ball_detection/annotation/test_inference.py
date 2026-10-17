@@ -212,14 +212,21 @@ def test_decoder_final_validation_precedes_publication(
     assert not list(fixture.layout.root.rglob("coordinates.json"))
 
 
+@pytest.mark.parametrize("after_write", [False, True])
 def test_prediction_receipt_gap_reuses_coordinates(
-    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, after_write: bool
 ) -> None:
+    from src.tasks.base.annotation import predictions
+
+    original = predictions.write_document
+
+    def interrupted(*args, **kwargs):
+        if after_write:
+            original(*args, **kwargs)
+        raise OSError("receipt gap")
+
     with monkeypatch.context() as patch:
-        patch.setattr(
-            "src.tasks.base.annotation.predictions.write_document",
-            lambda *_: (_ for _ in ()).throw(OSError("receipt gap")),
-        )
+        patch.setattr(predictions, "write_document", interrupted)
         with pytest.raises(OSError, match="receipt gap"):
             fixture.service.run(fixture.reference, BallPredictionAdapter())
     calls = len(SpyPredictor.calls)
@@ -227,15 +234,19 @@ def test_prediction_receipt_gap_reuses_coordinates(
     assert len(SpyPredictor.calls) == calls and SpyPredictor.loads == 1
 
 
+@pytest.mark.parametrize("after_commit", [False, True])
 def test_database_gap_reuses_prediction_receipt(
-    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, after_commit: bool
 ) -> None:
+    original = fixture.service._commit
+
+    def interrupted(*args, **kwargs):
+        if after_commit:
+            original(*args, **kwargs)
+        raise RuntimeError("database gap")
+
     with monkeypatch.context() as patch:
-        patch.setattr(
-            fixture.service,
-            "_commit",
-            lambda *_: (_ for _ in ()).throw(RuntimeError("database gap")),
-        )
+        patch.setattr(fixture.service, "_commit", interrupted)
         with pytest.raises(RuntimeError, match="database gap"):
             fixture.service.run(fixture.reference, BallPredictionAdapter())
     fixture.service.run(fixture.reference, BallPredictionAdapter())
