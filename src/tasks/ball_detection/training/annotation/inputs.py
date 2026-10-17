@@ -26,6 +26,7 @@ from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.tasks.ball_detection.training.coordinates.joint import finetuning_recipe
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
+    file_reference,
     read_document,
     verify_reference,
 )
@@ -46,23 +47,12 @@ from src.tasks.base.annotation.learning.validation import (
     verify_inputs,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import file_digest
 
 from .contracts import BallLearningRecipe, BallSelectionPolicy
 
 
 def output_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
-    relative = path.relative_to(layout.repository / "outputs").as_posix()
-    layout.artifact_path(
-        ArtifactRef(role="artifact", path=relative, digest="0" * 64, size_bytes=0)
-    )
-    result = ArtifactRef(
-        role="artifact",
-        path=relative,
-        digest=file_digest(path),
-        size_bytes=path.stat().st_size,
-    )
-    return result
+    return file_reference(layout, path, role="artifact")
 
 
 def run_root(layout: AnnotationLayout, intent: LearningIntent) -> Path:
@@ -139,7 +129,7 @@ class Inputs:
         self, layout: AnnotationLayout, intent: LearningIntent
     ) -> dict[str, Any]:
         model, parent = initialize_parent(layout, intent, self.recipe)
-        return finetuning_recipe(
+        result: dict[str, Any] = finetuning_recipe(
             self.arguments(layout, run_root(layout, intent), None),
             parent=parent,
             model_config=asdict(model.config),
@@ -152,6 +142,7 @@ class Inputs:
             initial_state_sha256=parent["state_dict_sha256"],
             input_contract=model.mdd.input_contract(),
         )
+        return result
 
 
 def resolve_inputs(layout: AnnotationLayout, intent: LearningIntent) -> Inputs:

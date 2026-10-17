@@ -48,7 +48,8 @@ class PlayerDetectionMetrics:
 
     def reset(self) -> None:
         self._map = MeanAveragePrecision(box_format="xyxy", iou_type="bbox", backend="pycocotools")
-        self._counts = np.zeros(6, dtype=np.int64)  # TP, FP, FN, images, target instances, negative images
+        # TP, FP, FN, images, GT, negative images, negative FP, negative images with FP.
+        self._counts = np.zeros(8, dtype=np.int64)
 
     def update(self, detections: list[FrameDetections], targets: list[torch.Tensor]) -> None:
         if len(detections) != len(targets):
@@ -74,6 +75,10 @@ class PlayerDetectionMetrics:
             self._counts[3] += 1
             self._counts[4] += target.shape[0]
             self._counts[5] += int(target.shape[0] == 0)
+            if target.shape[0] == 0:
+                count = int(keep.sum())
+                self._counts[6] += count
+                self._counts[7] += int(count > 0)
 
     def compute(self) -> tuple[dict[str, float], dict[str, float]]:
         """Return ``(headline, diagnostics)`` with disjoint keys."""
@@ -82,7 +87,7 @@ class PlayerDetectionMetrics:
         if self._counts[4] == 0:
             raise ValueError("COCO mAP requires positive target instances; negative-only evaluation cannot select a model")
         coco = {key: float(value) for key, value in self._map.compute().items() if value.numel() == 1}
-        true_positive, false_positive, false_negative, images, target_instances, negative_images = (int(v) for v in self._counts)
+        true_positive, false_positive, false_negative, images, target_instances, negative_images, negative_fp, negative_with_fp = (int(v) for v in self._counts)
         precision = true_positive / max(true_positive + false_positive, 1)
         recall = true_positive / max(true_positive + false_negative, 1)
         f1 = 2 * precision * recall / max(precision + recall, 1e-12)
@@ -102,6 +107,8 @@ class PlayerDetectionMetrics:
             "images": float(images),
             "target_instances": float(target_instances),
             "negative_images": float(negative_images),
+            "negative_false_positives": float(negative_fp),
+            "negative_images_with_false_positives": float(negative_with_fp),
             "false_positives_per_image": false_positive / images,
             "score_threshold": self.config.score_threshold,
             "iou_threshold": self.config.iou_threshold,

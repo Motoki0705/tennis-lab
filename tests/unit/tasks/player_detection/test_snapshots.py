@@ -186,7 +186,7 @@ def test_snapshot_cannot_reassign_clip_or_teacher_identity(
         validate_snapshot(example.layout, snapshot.model_copy(update={"clips": clips}))
 
 
-def test_sparse_v1_import_never_fills_missing_frames_or_negative_flags(
+def test_migrated_sparse_store_never_fills_missing_frames_or_negative_flags(
     example: Example,
 ) -> None:
     sparse = legacy_store(

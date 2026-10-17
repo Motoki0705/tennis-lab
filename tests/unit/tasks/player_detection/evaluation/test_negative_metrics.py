@@ -23,6 +23,7 @@ def test_detection_on_confirmed_absence_is_a_false_positive_and_reduces_ap() -> 
     assert headline["map"] < reference.compute()[0]["map"]
     assert headline["precision"] == .5 and headline["recall"] == 1.
     assert diagnostic["false_positives"] == diagnostic["negative_images"] == 1.
+    assert diagnostic["negative_false_positives"] == diagnostic["negative_images_with_false_positives"] == 1.
     assert diagnostic["target_instances"] == 1. and diagnostic["images"] == 2.
     assert match_detections(boxes, torch.tensor([.99]), empty, iou_threshold=.5) == (0, 1, 0)
 
