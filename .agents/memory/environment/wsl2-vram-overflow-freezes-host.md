@@ -1,6 +1,5 @@
 ---
 title: "WSL2 で 16GB の VRAM を使い切ると、エラーにならずホスト全体が周期的に固まる"
-type: environment
 applies_to: all
 source: "#540 PLCS multiview 学習（2026-06-20）"
 created: 2026-06-20
