@@ -7,9 +7,17 @@ labels: ["research"]
 
 <!--
 研究ループの手順: .agents/skills/research-loop/SKILL.md
+Issue・Projectの管理: .agents/skills/issue-management/SKILL.md
 このissueは人間とAIの唯一の合意点。合意後はAIがサイクル子issue（05_research_cycle）を
 停止条件まで自律で回す。目標指標・評価条件・停止条件の変更は人間との再合意が必要。
 -->
+
+<!-- 進捗要約。Status・優先度・子の完了件数はProjectで管理する。 -->
+- 確認日:
+- 到達点・根拠ノード:
+- 次の一手:
+- 阻害要因・解除条件（なければ「なし」）:
+- 関連PR・成果物:
 
 ## 問題提起
 

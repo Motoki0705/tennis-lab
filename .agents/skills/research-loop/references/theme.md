@@ -3,6 +3,7 @@
 テーマissueは人間とAIの唯一の合意点。ここで固定した内容が、以降の自律サイクルの
 契約になる。template: [04_research_theme.md](../../../../.github/ISSUE_TEMPLATE/04_research_theme.md)
 （タイトル `[研究テーマ] `、ラベル `research`）。
+作成・Project登録・状態更新は [issue-management](../../issue-management/SKILL.md) に従う。
 
 ## AIが用意するもの
 

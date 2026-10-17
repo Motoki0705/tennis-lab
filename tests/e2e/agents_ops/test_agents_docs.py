@@ -28,6 +28,8 @@ DOCS = [
     ROOT / "CLAUDE.md",
     AGENTS_README,
     MEMORY_SKILL,
+    *sorted((ROOT / ".agents/skills/issue-management").rglob("*.md")),
+    *sorted((ROOT / ".github/ISSUE_TEMPLATE").glob("*.md")),
     MEMORY_SUMMARY,
     *(MEMORY_DIR / layer / LAYER_INDEX for layer in LAYERS),
     ROOT / ".github/copilot-instructions.md",
