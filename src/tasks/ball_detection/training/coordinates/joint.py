@@ -30,6 +30,7 @@ from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.evaluation.stress import evaluate
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.tasks.ball_detection.training.coordinates.loop import train_epoch
+from src.tasks.ball_detection.training.replay import ReplayFPSMixSampler, replay_recipe
 from src.tasks.ball_detection.training.runtime.compilation import (
     compile_coordinate_model,
 )
@@ -66,6 +67,9 @@ def add_training_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--log-every", type=int, default=50)
     p.add_argument("--preview-clips", type=int, default=3)
     p.add_argument("--stress-evaluation", action="store_true", help="Fixed val stress profiles, after selection of clean best")
+    p.add_argument("--replay-manifest", type=Path, help="Immutable manifest used to train the initial model")
+    p.add_argument("--untrained-fraction", type=float, help="Window draw fraction reserved for untrained clips")
+    p.add_argument("--selection-scope", choices=("common", "balanced_existing_new"), default="common")
 
 
 def validate_training_arguments(p: argparse.ArgumentParser, args: argparse.Namespace) -> None:
@@ -92,14 +96,27 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
     if dual_sha256(args.manifest) != manifest_digest or dual_sha256(validation_manifest) != validation_digest:
         raise ValueError("Manifest changed while preparing posttraining")
     validate_partitions(data, val)
+    if (getattr(args, "selection_scope", "common") == "balanced_existing_new") != ("evaluation_cohorts" in val.manifest):
+        raise ValueError("Selection scope must agree with the fixed validation cohorts")
     runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
         args.cpu_threads, args.compile_mode, 8, args.jpeg_decoder, args.input_verification, args.image_prefetch)
-    sampler = FPSMixSampler(data, windows_per_epoch=args.windows_per_epoch, seed=args.seed)
+    replay_manifest = getattr(args, "replay_manifest", None)
+    untrained_fraction = getattr(args, "untrained_fraction", None)
+    sampling = replay_recipe(replay_manifest, untrained_fraction)
+    sampler: FPSMixSampler
+    if sampling is None:
+        sampler = FPSMixSampler(data, windows_per_epoch=args.windows_per_epoch, seed=args.seed)
+    else:
+        assert replay_manifest is not None and untrained_fraction is not None
+        sampler = ReplayFPSMixSampler(data, windows_per_epoch=args.windows_per_epoch, seed=args.seed,
+            previously_trained_manifest=replay_manifest, untrained_fraction=untrained_fraction)
     train_loader = runtime.loader(data, batch_size=args.batch_size, sampler=sampler, seed=args.seed)
     val_loader = runtime.loader(val, batch_size=args.batch_size, seed=args.seed)
     device = torch.device(args.device)
     torch.manual_seed(args.seed)
     model, transfer = initialize()
+    if sampling is not None and transfer.get("parent_manifest_sha256") != sampling["previously_trained_manifest_sha256"]:
+        raise ValueError("Replay membership does not belong to the initial model's training manifest")
     config = model.config
     initial_state_sha256 = state_dict_sha256(model.state_dict())
     runtime.configure(device)
@@ -120,6 +137,8 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
         (args.output / "config.json").write_text(json.dumps(dict(recipe=recipe, code=code), indent=2))
         (args.output / "data_manifest.json").write_bytes(args.manifest.read_bytes())
         (args.output / "validation_manifest.json").write_bytes(validation_manifest.read_bytes())
+        if replay_manifest is not None:
+            (args.output / "replay_manifest.json").write_bytes(replay_manifest.read_bytes())
     augmenter = VideoAugmenter(augmentation, args.seed)
     compile_coordinate_model(model, mode=args.compile_mode)
     schedule = FineTuneSchedule(args.learning_rate, args.epochs * len(train_loader),
@@ -131,12 +150,15 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
             output=args.output, log_every=args.log_every, augmenter=augmenter,
             schedule=schedule, preview=bool(args.preview_clips))
         step = result.global_step
+        if isinstance(sampler, ReplayFPSMixSampler):
+            (args.output / f"sampling-epoch-{epoch:03d}.json").write_text(json.dumps(sampler.last_report, indent=2))
         report = evaluate(model, val_loader, device, frame_steps=val.frame_steps, precision=args.precision,
             prefetch=args.image_prefetch, augmenter=augmenter, profile="clean", output=args.output / "previews" / f"val-epoch-{epoch:03d}",
             preview_clips=args.preview_clips)
-        score = selection_score(report, "common")
+        score = selection_score(report, recipe["selection_scope"])
         if (dual_sha256(args.manifest) != recipe["manifest_sha256"]
-                or dual_sha256(validation_manifest) != recipe["validation_manifest_sha256"]):
+                or dual_sha256(validation_manifest) != recipe["validation_manifest_sha256"]
+                or replay_recipe(replay_manifest, untrained_fraction) != sampling):
             raise ValueError("Manifest changed during posttraining")
         improved = score < best
         if improved:
@@ -172,14 +194,16 @@ def finetuning_recipe(
     validation_manifest_sha256: str, initial_state_sha256: str, input_contract: dict[str, Any],
 ) -> dict[str, Any]:
     """One recipe authority for execution and pre-queue restart verification."""
+    sampling = replay_recipe(getattr(args, "replay_manifest", None), getattr(args, "untrained_fraction", None))
     return dict(parent=parent, model=model_config, runtime=asdict(runtime), augmentation=asdict(augmentation),
         epochs=args.epochs, freeze_epochs=args.freeze_epochs, windows_per_epoch=args.windows_per_epoch,
         batch_size=args.batch_size, seed=args.seed, learning_rate=args.learning_rate, encoder_lr_ratio=args.encoder_lr_ratio,
         warmup_updates=args.warmup_updates, schedule="warmup then cosine to 0.1 peak", weight_decay=.01, gradient_clip=1.,
         manifest_sha256=manifest_sha256, validation_manifest_sha256=validation_manifest_sha256,
         initial_state_sha256=initial_state_sha256, optimizer_initialization="fresh", schedule_initialization="step_zero",
-        selection_scope="common", selection_profile="clean", test_usage="none", input_contract=input_contract,
-        image_decode=jpeg_decoder_contract(args.jpeg_decoder), stress_evaluation=args.stress_evaluation)
+        selection_scope=getattr(args, "selection_scope", "common"), selection_profile="clean", test_usage="none", input_contract=input_contract,
+        image_decode=jpeg_decoder_contract(args.jpeg_decoder), stress_evaluation=args.stress_evaluation,
+        **({"replay_sampling": sampling} if sampling is not None else {}))
 
 
 def validate_partitions(train: FrozenBallWindowDataset, validation: FrozenBallWindowDataset) -> None:
@@ -194,5 +218,5 @@ def validate_partitions(train: FrozenBallWindowDataset, validation: FrozenBallWi
     val_groups = {(r["clip"]["source"], r["clip"]["group_id"]) for r in validation.records}
     if train_ids & val_ids or train_groups & val_groups:
         raise ValueError("Training clips/sources overlap fixed validation")
-    if not any(record["common_evaluation"] for record in validation.records):
+    if "evaluation_cohorts" not in validation.manifest and not any(record["common_evaluation"] for record in validation.records):
         raise ValueError("Fixed validation must contain the declared Common selection subset")

@@ -46,12 +46,18 @@ def full_model_checkpoint(directory: Path, *, input_channels: int = 2) -> Path:
     return path
 
 
-def training_manifests(directory: Path) -> tuple[Path, Path]:
+def training_manifests(directory: Path, *, overlap_clip_ids: bool = False) -> tuple[Path, Path]:
     result = []
     for split in ("train", "val"):
-        clip_id = f"{split}/clip"
+        clip_id = "train/clip" if overlap_clip_ids else f"{split}/clip"
         root = write_store_clip(directory / split, clip_id,
             [frame(i, ball(xy=(10. + i / 4, 20.))) for i in range(32)], split=split, size=(96, 64))
+        if overlap_clip_ids and split == "val":
+            # Keep source groups distinct so only clip membership overlaps.
+            metadata_path = root / "metadata.json"
+            metadata = json.loads(metadata_path.read_text())
+            metadata["clips"][0]["group_id"] = "val"
+            metadata_path.write_text(json.dumps(metadata))
         store = BallFrameStore(root)
         reference = dict(clip_ids=[clip_id], clip_semantic_sha256={clip_id: clip_semantic_digest(store, store.clips[0])})
         manifest = build_coordinate_manifest(store, PlayIntervalConfig(), TemporalSamplingConfig((1,)),

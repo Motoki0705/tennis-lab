@@ -69,9 +69,12 @@ def validate_snapshot(
             identity.semantic_digest,
         ):
             raise ValueError("snapshot clip labels, timeline or split changed")
-        expected = destination / "shards" / shard_name(clip.index)
+        expected = destination / store.image_path(clip).relative_to(store.directory)
         if layout.artifact_path(identity.shard) != expected:
             raise ValueError("snapshot clip refers to the wrong RGB shard")
+        video = store.video_frames.get(clip.clip_id)
+        if video and (identity.shard.digest, identity.shard.size_bytes) != (video.media_sha256, video.media_bytes):
+            raise ValueError("snapshot video hash differs from its storage contract")
         if splits.setdefault(identity.source_id, identity.split) != identity.split:
             raise ValueError("snapshot splits one source across partitions")
     return store

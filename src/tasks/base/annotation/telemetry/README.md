@@ -30,8 +30,11 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
 
 保存先は `campaigns/<campaign>/reports/telemetry/<attempt>/`。
 JSON索引は100応答ごと、記録とHTMLは応答ごとに分ける。HTML索引は画像を埋め込まず、
-応答ページで必要な画像だけ読む。画像bytesは `cache/presented-images/<sha>.*` に重複なく
-保存する。reportから参照される画像・renderer metadataはGCの保護対象である。
+応答ページで必要な画像だけ読む。一意に対応した不変renderer画像は、ログ内のbytesと
+保存ファイルを再照合して直接参照し、画像を二重保存しない。対応が不明な画像はログの
+bytesを `cache/presented-images/<sha>.*` に保存する。reportから参照される画像・
+renderer metadataはGCの保護対象である。参照共有は独立したバックアップではなく、
+元画像の改変・消失は検証エラーになる。既存reportやcacheは書き換えない。
 `retained_report()`は通常応答とorphanの両方の`ImageInput.source`を`read_rendered()`で
 検証し、`RenderReceipt.request`と`RenderRequest`のmanifest・annotation参照まで収集する。
 ラベルや編集に引用しなかった閲覧画像も同じ対象とし、unbound画像のsourceは推測しない。

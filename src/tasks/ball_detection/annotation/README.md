@@ -25,7 +25,9 @@
 - 出力は `coordinates_only_unreviewed`。confidence・球の有無・可視性を作らない。
   対象球や遮蔽等の意味は後続レビューの責務であり、座標だけで教師採用しない。
 - 1 adapter instanceに1モデル・1推論設定を保持し、複数clipで再利用する。CPUに
-  置くRGBは1窓分と逐次decode中の1frameに限定する。複数レビューworkerにモデルを
+  置くRGBは1窓分と逐次decode中の1frameに限定する。動画を先頭から1回だけ復号し、
+  重なる実frameを同じbufferで保持する。末尾窓を含め、窓ごとのRGBとPTSは維持する。
+  複数レビューworkerにモデルを
   複製せず、GPU実行は共有training queueと資源admission側で管理する。
 
 保存先は `predictions/ball/<clip-id>/<request-digest>/` の `coordinates.json` と

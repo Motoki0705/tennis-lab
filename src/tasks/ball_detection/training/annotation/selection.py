@@ -2,19 +2,45 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from src.tasks.ball_detection.evaluation.coordinates import selection_score
+from src.tasks.base.annotation.artifacts import verify_reference
+from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.paths import AnnotationLayout
 
-from .contracts import BallSelectionPolicy
+from .contracts import BalancedSelectionPolicy, BallSelectionPolicy
+
+
+def read_policy(layout: AnnotationLayout, reference: ArtifactRef) -> BallSelectionPolicy | BalancedSelectionPolicy:
+    payload = verify_reference(layout, reference).read_bytes()
+    raw = json.loads(payload)
+    if raw.get("schema_version") == "ball.annotation-balanced-selection.v1":
+        balanced: BalancedSelectionPolicy = BalancedSelectionPolicy.model_validate_json(payload)
+        return balanced
+    legacy: BallSelectionPolicy = BallSelectionPolicy.model_validate_json(payload)
+    return legacy
 
 
 def rejection_reasons(
-    comparison: dict[str, Any], policy: BallSelectionPolicy
+    comparison: dict[str, Any], policy: BallSelectionPolicy | BalancedSelectionPolicy
 ) -> tuple[str, ...]:
     baseline = comparison["baseline"]["evaluation"]
     candidate = comparison["candidate"]["evaluation"]
     reasons = []
+    if isinstance(policy, BalancedSelectionPolicy):
+        if comparison["split"] != "test" or comparison["test_usage"] != "final_comparison":
+            raise ValueError("Balanced adoption requires the final test comparison")
+        for name in ("existing", "new"):
+            if any(g["observed_frames"] < policy.minimum_frames_per_fps
+                   for g in candidate["scopes"][name]["by_frame_step"].values()):
+                reasons.append(f"{name} test support is below the agreed minimum")
+        if selection_score(candidate, "balanced_existing_new") >= selection_score(baseline, "balanced_existing_new"):
+            reasons.append("Equally weighted existing/new test error did not improve")
+        if selection_score(candidate, "existing") > selection_score(baseline, "existing"):
+            reasons.append("Existing test error worsened")
+        return tuple(reasons)
     common = candidate["scopes"]["common"]
     if any(
         group["observed_frames"] < policy.minimum_common_frames_per_fps

@@ -70,7 +70,7 @@ def test_bad_training_inputs_fail_before_model_initialization(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, match: str,
 ) -> None:
     path = full_model_checkpoint(tmp_path / "parent")
-    train, validation = training_manifests(tmp_path)
+    train, validation = training_manifests(tmp_path, overlap_clip_ids=fault == "clip")
     output = tmp_path / "output"
     val = json.loads(validation.read_text())
     if fault == "output":
@@ -78,7 +78,9 @@ def test_bad_training_inputs_fail_before_model_initialization(
     elif fault == "source":
         val["clips"][0]["clip"]["group_id"] = "train"
     elif fault == "clip":
-        val["clips"][0]["clip"]["clip_id"] = "train/clip"
+        train_clip = json.loads(train.read_text())["clips"][0]["clip"]
+        assert val["clips"][0]["clip"]["clip_id"] == train_clip["clip_id"]
+        assert val["clips"][0]["clip"]["group_id"] != train_clip["group_id"]
     else:
         val["clips"][0]["common_evaluation"] = False
     validation.write_text(json.dumps(val))

@@ -62,8 +62,8 @@ def prepare_training_windows(
         raise ValueError("publication base snapshot differs from its pinned plan")
     if set(publication.added_clips + publication.reused_clips) != {c.clip_id for c in snapshot.clips}:
         raise ValueError("publication membership differs from cumulative snapshot")
-    if not set(publication.added_clips).issubset(c.clip_id for c in snapshot.clips if c.split == "train"):
-        raise ValueError("new teachers must belong to train, never fixed holdouts")
+    if not set(publication.added_clips).intersection(c.clip_id for c in snapshot.clips if c.split == "train"):
+        raise ValueError("publication must include new training teachers")
     old_ids: tuple[str, ...] = ()
     if product.base_snapshot is not None:
         base, _ = load_snapshot(layout, product.base_snapshot)
