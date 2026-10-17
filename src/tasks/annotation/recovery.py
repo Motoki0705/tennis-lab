@@ -62,6 +62,13 @@ def recover(controller: Controller, data: RecoveryInput) -> ArtifactRef:
             if request.adapter == "ball_review" and controller.production is not None:
                 pool = controller.production.pool
             elif request.adapter == "source_screening":
+                source = controller.collection.ledger.source(
+                    controller.plan, request.subject_id
+                )
+                if source["state"] == "prepared":
+                    raise ValueError(
+                        "prepared source selection is immutable; resume preparation rather than retrying screening"
+                    )
                 pool = controller.pool
             else:
                 raise ValueError("worker recovery has no configured adapter")

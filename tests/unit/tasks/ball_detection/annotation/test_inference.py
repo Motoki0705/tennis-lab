@@ -55,12 +55,18 @@ class SpyPredictor:
 
 @pytest.fixture
 def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
+    return prediction_fixture(tmp_path, monkeypatch)
+
+
+def prediction_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, jpeg: bool = False
+) -> Fixture:
     SpyPredictor.loads = 0
     SpyPredictor.calls = []
     monkeypatch.setattr(
         "src.tasks.ball_detection.annotation.inference.MDDPredictor", SpyPredictor
     )
-    return example(tmp_path)
+    return example(tmp_path, jpeg=jpeg)
 
 
 @pytest.mark.parametrize(
@@ -81,7 +87,13 @@ def test_windows_cover_only_real_frames(count: int, stride: int) -> None:
         window_starts(31, stride)
 
 
-def test_native_pixels_vfr_and_cache_skip_inference(fixture: Fixture) -> None:
+@pytest.mark.parametrize("jpeg", [False, True])
+def test_native_pixels_vfr_and_cache_skip_inference(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, jpeg: bool
+) -> None:
+    fixture = prediction_fixture(tmp_path, monkeypatch, jpeg=jpeg)
+    if jpeg:
+        assert not list(fixture.layout.root.rglob("*.mp4"))
     result = fixture.service.run(fixture.reference, BallPredictionAdapter())
     receipt = read_document(fixture.layout, result, PredictionReceipt)
     document = read_document(
@@ -109,6 +121,32 @@ def test_native_pixels_vfr_and_cache_skip_inference(fixture: Fixture) -> None:
         database.execute("UPDATE annotation_tasks SET state='published'")
     assert fixture.service.run(fixture.reference, BallPredictionAdapter()) == result
     assert SpyPredictor.loads == 1
+
+
+def test_jpeg_inference_uses_exact_saved_rgb(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.base.annotation.media import decode_clip
+
+    fixture = example(tmp_path, jpeg=True)
+    path = fixture.layout.artifact_path(fixture.manifest.media)
+    native = [
+        frame.to_ndarray(format="rgb24").transpose(2, 0, 1)
+        for frame in decode_clip(path, fixture.manifest, 0, 65)
+    ]
+    starts = iter(window_starts(65, 16))
+
+    class PixelPredictor(SpyPredictor):
+        def __call__(self, rgb, seconds):
+            start = next(starts)
+            np.testing.assert_array_equal(rgb, np.stack(native[start : start + 32]))
+            return super().__call__(rgb, seconds)
+
+    monkeypatch.setattr(
+        "src.tasks.ball_detection.annotation.inference.MDDPredictor", PixelPredictor
+    )
+    fixture.service.run(fixture.reference, BallPredictionAdapter())
+    assert next(starts, None) is None
 
 
 @pytest.mark.parametrize("count", [32, 33, 47, 63, 65])
@@ -207,7 +245,10 @@ def test_database_gap_reuses_prediction_receipt(
 def test_concurrent_inference_has_one_model_call_sequence(fixture: Fixture) -> None:
     def run(_number: int) -> ArtifactRef | None:
         try:
-            return fixture.service.run(fixture.reference, BallPredictionAdapter())
+            result: ArtifactRef = fixture.service.run(
+                fixture.reference, BallPredictionAdapter()
+            )
+            return result
         except BlockingIOError:
             return None
 

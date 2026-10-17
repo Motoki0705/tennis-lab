@@ -19,6 +19,7 @@ from src.tasks.annotation.contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    RestoreSourceOperation,
     Runtime,
     ScreenOperation,
     StageCost,
@@ -80,6 +81,7 @@ from src.tasks.base.annotation.workers.services import (
     ServiceRequest,
     request_service,
 )
+from src.utils.paths import PROJECT_ROOT
 from tests.support.tasks.annotation import record_stage, record_stage_exit
 
 
@@ -256,8 +258,10 @@ def setup(
     fps: int | Fraction = 10,
     frame_count: int | None = None,
     timestamps_ms: tuple[int, ...] | None = None,
+    jpeg: bool = False,
     acquire: bool = True,
     videos_per_channel: int = 1,
+    maximum_unprepared_sources: int = 1,
 ) -> tuple[AnnotationLayout, Screening, SourceCandidate]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -267,10 +271,13 @@ def setup(
         inputs / "preparation.json",
         PreparationConfig(
             format_selector="bestvideo",
-            crf=25,
-            preset="ultrafast",
+            crf=None if jpeg else 25,
+            preset=None if jpeg else "ultrafast",
+            retained_media="jpeg_q90" if jpeg else "video",
+            source_retention="delete_after_verified_frames" if jpeg else "keep",
+            excluded_source_retention="delete_after_verified_exclusion" if jpeg else "keep",
             minimum_clip_frames=32,
-            maximum_unprepared_sources=1,
+            maximum_unprepared_sources=maximum_unprepared_sources,
         ),
     )
     reference = policy.model_dump(mode="json")
@@ -762,6 +769,198 @@ def test_empty_selection_preserves_reason_and_releases_lead(example: Example) ->
         )["state"]
         == "excluded"
     )
+
+
+def excluded_worker(example: Example, selection: ArtifactRef, state: str) -> None:
+    from src.tasks.base.annotation.storage.contracts import Protection
+    from src.tasks.base.annotation.workers.contracts import (
+        AttemptResult,
+        ExitReceipt,
+        Launch,
+        PreparedWorker,
+        WorkOutcome,
+    )
+    from src.tasks.base.annotation.workers.ledger import WorkerLedger
+
+    layout, plan = example.layout, example.screening.plan
+    request = WorkRequest(adapter="source_screening", adapter_version="v1", stage="screen",
+                          subject_id=example.source.source_id, payload=example.request.prepared_input, inputs=())
+    directory = layout.path("campaigns", "fixture", "fixture-attempt")
+    launch = write_document(layout, directory / "launch.json", Launch(
+        work_id=request.work_id,
+        attempt="fixture-attempt",
+        plan=annotation_reference(layout, save_plan(layout, plan)),
+        request=request,
+        prepared=PreparedWorker(prompt=write_asset(layout, directory / "prompt.txt", b"fixture")),
+        directory=str(directory),
+        code_root=str(PROJECT_ROOT),
+        codex_binary="codex",
+        codex_home=str(layout.repository / ".codex-fixture"),
+        timeout_seconds=10,
+        test_command=(sys.executable, "-c", "pass"),
+        test_root=str(layout.repository),
+    ))
+    execution = write_document(layout, directory / "exit.json", ExitReceipt(
+        launch_digest=launch.digest,
+        exit_code=0,
+        status="succeeded",
+        started_at="2026-01-01T00:00:00Z",
+        ended_at="2026-01-01T00:00:00Z",
+        elapsed_seconds=0,
+        events=write_asset(layout, directory / "events.jsonl", b""),
+        errors=write_asset(layout, directory / "stderr.log", b""),
+        thread_id=None,
+        reason=None,
+    ))
+    result = write_document(layout, layout.path("campaigns", "fixture", "worker-result.json"), AttemptResult(
+        launch=launch, exit=execution, result=selection, telemetry=None,
+        outcome=WorkOutcome(status="not_applicable", receipt=selection, reason="no play"),
+    ))
+    ledger = WorkerLedger(layout)
+    with ledger.registry.transaction() as db:
+        db.execute("INSERT INTO worker_tasks VALUES (?,?,?,?,?,?,?,NULL)", (
+            request.work_id, plan.campaign_id, plan.sha256, request.canonical_bytes().decode(),
+            state, "fixture-attempt", result.canonical_bytes().decode(),
+        ))
+    StorageCatalog(layout).protect(Protection(
+        protection_id="worker-inputs-v1-" + request.sha256, kind="active", reason="fixture screening inputs",
+        references=(example.request.source.media, example.request.prepared_input, example.request.overview),
+    ))
+
+
+@pytest.mark.parametrize("state", ["running", "not_applicable"])
+def test_excluded_source_waits_for_worker_and_retains_review_evidence(tmp_path: Path, state: str) -> None:
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    selection = sample.finish(decision=sample.decision(empty=True))
+    collection = sample.screening.collection
+    video = sample.layout.artifact_path(sample.request.source.media)
+    with pytest.raises(ValueError, match="completed screening worker"):
+        collection.retire_excluded(sample.source.source_id)
+    excluded_worker(sample, selection, state)
+    if state != "not_applicable":
+        with pytest.raises(ValueError, match="completed screening worker"):
+            collection.retire_excluded(sample.source.source_id)
+        assert video.is_file()
+        return
+    receipt = collection.retire_excluded(sample.source.source_id)
+    assert not video.exists()
+    assert sample.source.local_media is not None
+    assert sample.layout.artifact_path(sample.source.local_media).is_file()
+    assert collection.retire_excluded(sample.source.source_id) == receipt
+    kept = {ref for p in StorageCatalog(sample.layout).snapshot().protections for ref in p.references}
+    assert selection in kept and sample.request.source.media not in kept
+    assert all(page.image in kept and sample.layout.artifact_path(page.image).is_file() for page in sample.detail.pages)
+    assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
+    from src.tasks.base.annotation.collection.restoration import RestorationReceipt
+
+    restored = collection.restore_source(sample.source.source_id, attempt="restore-empty")
+    assert read_document(sample.layout, restored, RestorationReceipt).status == "restored"
+    assert video.is_file()
+    assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
+
+
+@pytest.mark.parametrize("excluded", [False, True])
+@pytest.mark.parametrize("invalid", [None, "missing_intent", "retained_evidence"])
+def test_acquisition_receipt_validates_retired_source_evidence(
+    tmp_path: Path, excluded: bool, invalid: str | None
+) -> None:
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    controller = controller_for(sample)
+    layout, collection = sample.layout, sample.screening.collection
+    acquisition = ArtifactRef.model_validate_json(
+        collection.ledger.source(collection.plan, sample.source.source_id)["acquisition"]
+    )
+    operation = record_stage(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=sample.source.source_id),
+        ),
+        results=(acquisition,), exited=True,
+    )
+    state = controller.stages.status(annotation_reference(
+        layout, layout.artifact_path(operation).parent / "launch.json"
+    ))
+    assert controller.receipt(state).results == (acquisition,)
+    selection = sample.finish(decision=sample.decision(empty=excluded))
+    if excluded:
+        excluded_worker(sample, selection, "not_applicable")
+        collection.retire_excluded(sample.source.source_id)
+        retained = selection
+    else:
+        prepared = collection.prepare(sample.source.source_id)
+        clip = read_document(layout, prepared, PreparationReceipt).clips[0]
+        retained = read_document(layout, clip, ClipManifest).media
+    assert not layout.artifact_path(sample.request.source.media).exists()
+    if invalid == "missing_intent":
+        layout.path(
+            "sources", sample.source.source_id,
+            collection.plan.preparation.digest, "retirement-intent.json",
+        ).unlink()
+    elif invalid == "retained_evidence":
+        layout.artifact_path(retained).write_bytes(b"tampered retained evidence")
+    if invalid is None:
+        assert Controller(layout, controller.runtime).receipt(state).results == (acquisition,)
+    else:
+        with pytest.raises((ValueError, OSError)):
+            Controller(layout, controller.runtime).receipt(state)
+
+
+def test_excluded_source_tampering_blocks_deletion(tmp_path: Path) -> None:
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    selection = sample.finish(decision=sample.decision(empty=True))
+    excluded_worker(sample, selection, "not_applicable")
+    sample.layout.artifact_path(sample.detail.pages[0].image).write_bytes(b"corrupt")
+    with pytest.raises(ValueError, match="size changed"):
+        sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert sample.layout.artifact_path(sample.request.source.media).is_file()
+
+
+def test_excluded_source_recovers_after_unlink(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.tasks.base.annotation.collection import retirement
+
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    selected = sample.finish(decision=sample.decision(empty=True))
+    excluded_worker(sample, selected, "not_applicable")
+    original = retirement.write_document
+
+    def crash(layout: AnnotationLayout, path: Path, value: object) -> ArtifactRef:
+        if path.name == "retired.json":
+            raise OSError("fixture crash after unlink")
+        return original(layout, path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(retirement, "write_document", crash)
+        with pytest.raises(OSError, match="fixture crash"):
+            sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert not sample.layout.artifact_path(sample.request.source.media).exists()
+    result = sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert sample.layout.artifact_path(result).is_file()
+    controller = controller_for(sample)
+
+    def no_screening(*args: object) -> None:
+        pytest.fail("retired source must not be screened or protected as live video again")
+
+    monkeypatch.setattr(controller, "_screen", no_screening)
+    monkeypatch.setattr(controller, "operation", lambda *a, **k: {"state": "succeeded"})
+    controller.cycle()
+
+
+def test_preflight_excluded_source_keeps_explicit_failure(tmp_path: Path) -> None:
+    layout, screening, source = setup(tmp_path, 3, jpeg=True)
+    with pytest.raises(SourceExcluded, match="duration"):
+        screening.prepare(source.source_id)
+    row = screening.collection.ledger.source(screening.plan, source.source_id)
+    selection = read_document(layout, ArtifactRef.model_validate_json(row["selection"]), SelectionReceipt)
+    result = screening.collection.retire_excluded(source.source_id)
+    assert layout.artifact_path(result).is_file()
+    assert layout.artifact_path(selection.evidence).is_file()
+
+
+def test_excluded_deletion_requires_explicit_policy(example: Example) -> None:
+    example.finish(decision=example.decision(empty=True))
+    with pytest.raises(ValueError, match="not enabled"):
+        example.screening.collection.retire_excluded(example.source.source_id)
 
 
 def test_source_hash_and_image_tampering_are_detected(example: Example) -> None:
@@ -1369,6 +1568,199 @@ def finish_preview(controller: Controller, example: Example) -> None:
         results=results,
         exited=True,
     )
+
+
+def run_source_operation(
+    controller: Controller, data: OperationInput, monkeypatch: pytest.MonkeyPatch
+) -> OperationReceipt:
+    from src.tasks.annotation.operations import execute
+
+    reference = record_stage(controller, data)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+    result = execute(controller.layout, reference)
+    record_stage(controller, data, exited=True)
+    return read_document(controller.layout, result, OperationReceipt)
+
+
+def test_duplicate_acquisition_survives_shared_source_retirement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, screening, source = setup(
+        tmp_path, jpeg=True, acquire=False, videos_per_channel=2,
+        maximum_unprepared_sources=2,
+    )
+    controller = create_controller(layout, screening.plan)
+    original = run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=source.source_id),
+        ),
+        monkeypatch,
+    )
+    duplicate = source.model_copy(update={"video_id": "duplicate"})
+    controller.collection.register([duplicate])
+    excluded = run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=duplicate.source_id),
+        ),
+        monkeypatch,
+    )
+    from src.tasks.base.annotation.collection.contracts import AcquisitionReceipt
+
+    acquired = read_document(layout, original.results[0], AcquisitionReceipt)
+    duplicate_acquired = read_document(layout, excluded.results[0], AcquisitionReceipt)
+    assert excluded.status == "not_applicable"
+    assert excluded.reason == f"duplicate content of {source.source_id}"
+    assert acquired.source.media == duplicate_acquired.source.media
+    assert layout.artifact_path(acquired.source.media).is_file()
+    finish_preview(controller, make_example(layout, screening, source))
+    assert not layout.artifact_path(acquired.source.media).exists()
+    restarted = Controller(layout, controller.runtime)
+    status = restarted.status()
+    assert status["collection"]["sources_by_state"] == {"excluded": 1, "prepared": 1}
+    assert status["state"] == "preview_ready", status["failures"]
+    assert not status["failures"]
+
+
+@pytest.mark.parametrize("outcome", ["unavailable", "different_content"])
+def test_unsuccessful_restore_keeps_controller_ready_with_retained_jpegs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    from src.tasks.base.annotation.collection import restoration
+
+    layout, screening, source = setup(tmp_path, jpeg=True, acquire=False)
+    controller = create_controller(layout, screening.plan)
+    run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=source.source_id),
+        ),
+        monkeypatch,
+    )
+    example = make_example(layout, screening, source)
+    finish_preview(controller, example)
+    assert controller.status()["state"] == "preview_ready"
+    prepared = controller.collection.prepare(source.source_id)
+    calls = 0
+    return_original = False
+
+    def stage(candidate, config, staging, layout):
+        nonlocal calls
+        calls += 1
+        if not return_original and outcome == "unavailable":
+            raise FileNotFoundError("synthetic unavailable source")
+        media = staging / "media"
+        media.write_bytes(
+            layout.artifact_path(candidate.local_media).read_bytes()
+            if return_original else b"different source content"
+        )
+        return media
+
+    monkeypatch.setattr(restoration, "stage_source", stage)
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=RestoreSourceOperation(source_id=source.source_id, attempt="first"),
+    )
+    result = run_source_operation(controller, data, monkeypatch)
+    assert result.status == "not_applicable"
+    receipt = read_document(layout, result.results[0], restoration.RestorationReceipt)
+    assert receipt.status == outcome
+    assert result.reason == receipt.reason
+    assert calls == 1
+    assert not layout.artifact_path(example.request.source.media).exists()
+    restarted = Controller(layout, controller.runtime)
+    for _ in range(2):
+        status = restarted.status()
+        assert status["state"] == "preview_ready", status["failures"]
+        assert not status["failures"]
+        assert restarted.collection.prepare(source.source_id) == prepared
+        assert run_source_operation(restarted, data, monkeypatch) == result
+    assert calls == 1
+
+    # An explicit later success must not invalidate either earlier terminal failure.
+    return_original = True
+    restored = run_source_operation(
+        restarted,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=RestoreSourceOperation(source_id=source.source_id, attempt="second"),
+        ),
+        monkeypatch,
+    )
+    assert restored.status == "complete"
+    assert calls == 2
+    assert restarted.status()["state"] == "preview_ready"
+    assert run_source_operation(restarted, data, monkeypatch) == result
+    assert restarted.collection.prepare(source.source_id) == prepared
+    # A further explicit attempt sees the restored blob, so no download is needed.
+    existing = run_source_operation(
+        restarted,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=RestoreSourceOperation(source_id=source.source_id, attempt="existing"),
+        ),
+        monkeypatch,
+    )
+    assert existing.status == "complete"
+    assert read_document(
+        layout, existing.results[0], restoration.RestorationReceipt
+    ).downloaded is None
+    assert calls == 2
+    assert restarted.status()["state"] == "preview_ready"
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    ["missing_result", "attempt", "acquisition", "status", "reason", "downloaded", "restored_missing_media"],
+)
+def test_restore_operation_rejects_mismatched_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str
+) -> None:
+    from src.tasks.base.annotation.collection import restoration
+    from src.tasks.base.annotation.contracts import MediaFingerprint
+
+    example = make_example(*setup(tmp_path, jpeg=True))
+    controller = controller_for(example)
+    layout = example.layout
+    example.finish()
+    controller.collection.prepare(example.source.source_id)
+
+    def unavailable(*args):
+        raise FileNotFoundError("synthetic unavailable source")
+
+    monkeypatch.setattr(restoration, "stage_source", unavailable)
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=RestoreSourceOperation(source_id=example.source.source_id, attempt="first"),
+    )
+    result = run_source_operation(controller, data, monkeypatch)
+    directory = layout.artifact_path(result.operation).parent
+    state = controller.stages.status(annotation_reference(layout, directory / "launch.json"))
+    assert controller.receipt(state) == result
+    if invalid in {"attempt", "acquisition", "downloaded", "restored_missing_media"}:
+        inner = read_document(layout, result.results[0], restoration.RestorationReceipt)
+        updates: dict[str, Any] = {
+            "attempt": {"attempt": "another-attempt"},
+            "acquisition": {"acquisition": controller.plan.preparation},
+            "downloaded": {"downloaded": MediaFingerprint(digest="a" * 64, size_bytes=1)},
+            "restored_missing_media": {"status": "restored"},
+        }[invalid]
+        path = layout.artifact_path(result.results[0])
+        path.write_bytes(inner.model_copy(update=updates).canonical_bytes())
+        result = result.model_copy(update={"results": (annotation_reference(layout, path),)})
+    outer: dict[str, Any] = (
+        {"results": ()} if invalid == "missing_result"
+        else {"status": "complete", "reason": None} if invalid in {"status", "restored_missing_media"}
+        else {"reason": "unrelated reason"} if invalid == "reason"
+        else {}
+    )
+    (directory / "result.json").write_bytes(result.model_copy(update=outer).canonical_bytes())
+    with pytest.raises((ValueError, OSError)):
+        controller.receipt(state)
 
 
 @pytest.mark.parametrize(

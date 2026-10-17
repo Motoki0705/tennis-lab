@@ -203,9 +203,87 @@ def test_configuration_freezes_extra_free_space_mount_without_scanning_it(
     guard = ResourceManager(example.layout, receipt.scope)
     assert guard.scope.free_space_mounts == ("/",)
     assert guard.scope.roots == (str(example.layout.repository),)
-    for line in example.layout.artifact_path(guard.scope.baseline).read_text().splitlines():
+    for line in (
+        example.layout.artifact_path(guard.scope.baseline).read_text().splitlines()
+    ):
         assert Path(json.loads(line)[3]).is_relative_to(example.layout.repository)
     assert configure(example.layout, configured) == reference
+
+
+@pytest.mark.parametrize(
+    "variant", ["valid", "video_decoder", "video_output", "quality"]
+)
+def test_jpeg_configuration_requires_one_explicit_frame_contract(
+    example: Example, variant: str
+) -> None:
+    from src.tasks.ball_detection.annotation.contracts import MDDInferenceConfig
+    from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+        BallPublicationPolicy,
+    )
+
+    layout = example.layout
+    inputs = layout.path("campaigns", "jpeg-inputs")
+    preparation = write_document(
+        layout,
+        inputs / "preparation.json",
+        PreparationConfig(
+            format_selector="fixture",
+            retained_media="jpeg_q90",
+            source_retention="delete_after_verified_frames",
+            crf=None,
+            preset=None,
+            minimum_clip_frames=32,
+            maximum_unprepared_sources=1,
+        ),
+    )
+    inference = write_document(
+        layout,
+        inputs / "inference.json",
+        MDDInferenceConfig(
+            stride=32,
+            device="cpu",
+            precision="float32",
+            decode=(
+                "pyav_rgb24_native"
+                if variant == "video_decoder"
+                else "opencv_jpeg_rgb24_native"
+            ),
+        ),
+    )
+    publication = write_document(
+        layout,
+        inputs / "publication.json",
+        BallPublicationPolicy(
+            jpeg_quality=80 if variant == "quality" else 90,
+            image_storage="video_q90" if variant == "video_output" else "jpeg",
+            source_splits=(),
+        ),
+    )
+    task = example.configuration.plan.tasks[0]
+    plan = example.configuration.plan.model_copy(
+        update={
+            "preparation": preparation,
+            "tasks": (
+                task.model_copy(
+                    update={
+                        "inference": inference,
+                        "products": (
+                            task.products[0].model_copy(
+                                update={"generation_policy": publication}
+                            ),
+                        ),
+                    }
+                ),
+            ),
+        }
+    )
+    config = example.configuration.model_copy(update={"plan": plan})
+    if variant == "valid":
+        assert example.receipt(configure(layout, config)).plan
+    else:
+        with pytest.raises(ValueError, match="JPEG preparation requires"):
+            configure(layout, config)
+        assert not layout.path("resources", "shared", "scope.json").exists()
 
 
 @pytest.mark.parametrize("remove_file", [False, True])

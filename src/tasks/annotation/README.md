@@ -60,6 +60,14 @@ requestとplanを保存する。scope入力や紐付けの競合で拒否され�
 planの詳細は[plan](../base/annotation/plan.py)、予算の計測定義は
 [resources](../base/annotation/resources/README.md)を参照する。
 
+JPEGを残すball campaignでは、[素材の保存契約](../base/annotation/collection/README.md#jpegを残して動画を削除する保存方式)
+のpreparation・推論decoder・公開policyを一緒に指定する。保存済みJPEGがある通常処理は
+元動画を要求しない。元動画が必要になった場合だけ、`restore_source` operationへ
+`source_id` と明示した `attempt` を渡す。取得不能・元のbytesと不一致の結果も記録し、
+同じattemptを自動再実行しない。controllerは再取得receiptを専用に検証し、`restored` を
+`complete`、`unavailable` / `different_content` を理由の一致した `not_applicable` として受理する。
+後者も正常な終端結果であり、保存済みJPEGによるcampaignの継続を妨げない。
+
 pathは固定annotation root内の実ファイルを指定する。相対path・外部path・hash不一致は拒否する。
 `CandidateManifest` はcanonical source IDと根拠参照の一覧。過去のsource/channelは収集前に
 `HistoryManifest` を持つ `HistoryOperation` を `submit --operation PATH` で登録し、

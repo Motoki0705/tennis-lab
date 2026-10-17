@@ -17,6 +17,7 @@ def validate_predictions(
 ) -> BallPredictions:
     document: BallPredictions = read_document(layout, result, BallPredictions)
     config = read_document(layout, context.configuration, MDDInferenceConfig)
+    config.validate_media(manifest)
     owners = window_owners(len(manifest.frames), config.stride)
     if document.context_digest != context.sha256 or len(document.rows) != len(
         manifest.frames

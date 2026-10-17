@@ -34,6 +34,7 @@ from .contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    RetireExcludedOperation,
     Runtime,
     ScreenOperation,
 )
@@ -118,7 +119,8 @@ class Controller:
         return result
 
     def receipt(self, state: dict[str, Any]) -> OperationReceipt:
-        return self.jobs.receipt(state)
+        receipt: OperationReceipt = self.jobs.receipt(state)
+        return receipt
 
     def _services(
         self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool | None = None
@@ -248,7 +250,44 @@ class Controller:
                 lead += state["state"] in {"running", "succeeded", "draining"}
             elif row["state"] == "acquired":
                 state = self._screen(row["id"])
+            elif (
+                row["state"] == "excluded"
+                and row["selection"] is not None
+                and self.collection.config.excluded_source_retention == "delete_after_verified_exclusion"
+            ):
+                intent = self.layout.path("sources", row["id"], self.plan.preparation.digest, "retirement-intent.json")
+                if not intent.exists():
+                    screening = self._screen(row["id"])
+                    if screening["state"] != "not_applicable":
+                        progress[row["id"]] = screening
+                        continue
+                state = self.operation(OperationInput(
+                    plan=self.runtime.plan, operation=RetireExcludedOperation(source_id=row["id"])
+                ))
             elif row["state"] == "screened":
+                # Selection can commit just before worker finalization. Settle
+                # that finalization before handing its source inputs to prepare.
+                if (
+                    self.collection.config.source_retention
+                    == "delete_after_verified_frames"
+                ):
+                    screening = self._screen(row["id"])
+                    if screening["state"] != "complete":
+                        progress[row["id"]] = screening
+                        continue
+                state = self.operation(
+                    OperationInput(
+                        plan=self.runtime.plan,
+                        operation=PrepareOperation(source_id=row["id"]),
+                    )
+                )
+            elif (
+                row["state"] == "prepared"
+                and self.collection.config.source_retention
+                == "delete_after_verified_frames"
+            ):
+                # Reconcile the existing prepare job even if its process exited
+                # between the prepared DB commit and source retirement receipt.
                 state = self.operation(
                     OperationInput(
                         plan=self.runtime.plan,
