@@ -34,9 +34,18 @@ class BallLearningAdapter:
     task = "ball"
     product = "frames"
 
-    def resolve_evaluation(self, layout: AnnotationLayout, plan: LearningPlan,
-                           publication: ArtifactRef) -> ArtifactRef:
+    def resolve_evaluation(
+        self, layout: AnnotationLayout, plan: LearningPlan, publication: ArtifactRef
+    ) -> ArtifactRef:
         return resolve_evaluation(layout, plan, publication)
+
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.retained_references(layout, intent, evaluation)
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
@@ -62,11 +71,20 @@ class BallLearningAdapter:
                 "new clips contain no eligible MDD coordinate window; publication retained, old-only training is forbidden"
             )
         if inputs.recipe.replay is not None:
-            data = FrozenBallWindowDataset(verify_reference(layout, require_additional_teachers(inputs.prepared)),
-                                            split="train", requires_pose=False)
-            ReplayFPSMixSampler(data, windows_per_epoch=inputs.recipe.windows_per_epoch, seed=inputs.recipe.seed,
-                previously_trained_manifest=verify_reference(layout, inputs.recipe.replay.previously_trained_manifest),
-                untrained_fraction=inputs.recipe.replay.untrained_fraction)
+            data = FrozenBallWindowDataset(
+                verify_reference(layout, require_additional_teachers(inputs.prepared)),
+                split="train",
+                requires_pose=False,
+            )
+            ReplayFPSMixSampler(
+                data,
+                windows_per_epoch=inputs.recipe.windows_per_epoch,
+                seed=inputs.recipe.seed,
+                previously_trained_manifest=verify_reference(
+                    layout, inputs.recipe.replay.previously_trained_manifest
+                ),
+                untrained_fraction=inputs.recipe.replay.untrained_fraction,
+            )
         inputs.expected_recipe(layout, intent)
         return None
 
@@ -79,7 +97,9 @@ class BallLearningAdapter:
     def result_references(
         self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
     ) -> tuple[ArtifactRef, ...]:
-        dependencies: tuple[ArtifactRef, ...] = storage.result_references(layout, result)
+        dependencies: tuple[ArtifactRef, ...] = storage.result_references(
+            layout, result
+        )
         return dependencies
 
     def command(

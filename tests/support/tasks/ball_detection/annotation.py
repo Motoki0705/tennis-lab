@@ -126,6 +126,8 @@ class Environment:
         model: ModelRef | None = None,
         learning: LearningPlan | None = None,
         plan_transform: Callable[[CampaignPlan], CampaignPlan] | None = None,
+        collect_source: Callable[[CampaignPlan, SourceCandidate], ArtifactRef]
+        | None = None,
         **policy_changes: Any,
     ) -> None:
         self.layout = AnnotationLayout.testing(root)
@@ -330,41 +332,11 @@ class Environment:
             local_media=media,
         )
         predictions = Predictions(self.layout, self.plan)
-        with predictions.registry.transaction() as db:
-            db.execute(
-                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
-                (
-                    self.manifest.source.canonical_id,
-                    "local",
-                    "fixture",
-                    video_id,
-                    campaign_id,
-                    candidate.canonical_bytes().decode(),
-                    "prepared",
-                ),
-            )
-            db.execute(
-                "INSERT INTO clips VALUES (?,?,?,?,?)",
-                (
-                    self.manifest.clip_id,
-                    self.manifest.source.canonical_id,
-                    campaign_id,
-                    self.manifest_ref.canonical_bytes().decode(),
-                    media.digest,
-                ),
-            )
-            db.execute(
-                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
-                (
-                    content_digest(["ball", self.manifest.clip_id]),
-                    campaign_id,
-                    "ball",
-                    self.manifest.clip_id,
-                    model.sha256,
-                    inference.digest,
-                    "pending",
-                ),
-            )
+        if collect_source is not None:
+            self.manifest_ref = collect_source(self.plan, candidate)
+            self.manifest = read_document(self.layout, self.manifest_ref, ClipManifest)
+        else:
+            self._register_source(predictions, candidate, media, model, inference)
         prediction = predictions.run(self.manifest_ref, ProposalFixture())
         self.context = ReviewContext(
             plan=self.plan_ref,
@@ -376,6 +348,50 @@ class Environment:
         self.initial = self.store.initialize(self.context, self.adapter)
         self.context_ref = read_document(self.layout, self.initial, Revision).context
         self.actor = self.new_actor(actor_attempt)
+
+    def _register_source(
+        self,
+        predictions: Predictions,
+        candidate: SourceCandidate,
+        media: ArtifactRef,
+        model: ModelRef,
+        inference: ArtifactRef,
+    ) -> None:
+        with predictions.registry.transaction() as db:
+            db.execute(
+                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
+                (
+                    self.manifest.source.canonical_id,
+                    "local",
+                    "fixture",
+                    candidate.video_id,
+                    self.plan.campaign_id,
+                    candidate.canonical_bytes().decode(),
+                    "prepared",
+                ),
+            )
+            db.execute(
+                "INSERT INTO clips VALUES (?,?,?,?,?)",
+                (
+                    self.manifest.clip_id,
+                    self.manifest.source.canonical_id,
+                    self.plan.campaign_id,
+                    self.manifest_ref.canonical_bytes().decode(),
+                    media.digest,
+                ),
+            )
+            db.execute(
+                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
+                (
+                    content_digest(["ball", self.manifest.clip_id]),
+                    self.plan.campaign_id,
+                    "ball",
+                    self.manifest.clip_id,
+                    model.sha256,
+                    inference.digest,
+                    "pending",
+                ),
+            )
 
     def save(self, document: Any) -> ArtifactRef:
         result: ArtifactRef = write_document(
@@ -500,6 +516,7 @@ class Environment:
         catalog: tuple[RenderedImage, ...],
         *,
         shown: tuple[RenderedImage, ...] | None = None,
+        orphaned: tuple[RenderedImage, ...] = (),
         actor: ArtifactRef | None = None,
         exit_status: Literal[
             "succeeded", "failed", "quota", "timed_out", "cancelled"
@@ -543,35 +560,39 @@ class Environment:
             ),
             event("turn_context", model=self.plan.agent_model),
         ]
-        for i, image in enumerate(catalog if shown is None else shown):
-            events.extend(
-                [
-                    event(
-                        "response_item",
-                        type="custom_tool_call",
-                        call_id=f"view-{i}",
-                        name="view_image",
-                        input=json.dumps(
-                            {"path": str(self.layout.artifact_path(image.image))}
+
+        def append_images(images: tuple[RenderedImage, ...], prefix: str) -> None:
+            for i, image in enumerate(images):
+                events.extend(
+                    [
+                        event(
+                            "response_item",
+                            type="custom_tool_call",
+                            call_id=f"{prefix}-{i}",
+                            name="view_image",
+                            input=json.dumps(
+                                {"path": str(self.layout.artifact_path(image.image))}
+                            ),
                         ),
-                    ),
-                    event(
-                        "response_item",
-                        type="custom_tool_call_output",
-                        call_id=f"view-{i}",
-                        output=[
-                            {
-                                "type": "input_image",
-                                "detail": "original",
-                                "image_url": "data:image/jpeg;base64,"
-                                + base64.b64encode(
-                                    self.layout.artifact_path(image.image).read_bytes()
-                                ).decode(),
-                            }
-                        ],
-                    ),
-                ]
-            )
+                        event(
+                            "response_item",
+                            type="custom_tool_call_output",
+                            call_id=f"{prefix}-{i}",
+                            output=[
+                                {
+                                    "type": "input_image",
+                                    "detail": "original",
+                                    "image_url": "data:image/jpeg;base64,"
+                                    + base64.b64encode(
+                                        self.layout.artifact_path(image.image).read_bytes()
+                                    ).decode(),
+                                }
+                            ],
+                        ),
+                    ]
+                )
+
+        append_images(catalog if shown is None else shown, "view")
         events.append(
             event(
                 "token_usage_record",
@@ -579,6 +600,7 @@ class Environment:
                 usage={"input_tokens": 100, "output_tokens": 10, "total_tokens": 110},
             )
         )
+        append_images(orphaned, "orphan")
         if evidence_issue == "missing_model":
             events = [event for event in events if event["type"] != "turn_context"]
         elif evidence_issue == "conflicting_response":

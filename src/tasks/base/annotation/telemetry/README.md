@@ -35,6 +35,9 @@ JSON索引は100応答ごと、記録とHTMLは応答ごとに分ける。HTML�
 bytesを `cache/presented-images/<sha>.*` に保存する。reportから参照される画像・
 renderer metadataはGCの保護対象である。参照共有は独立したバックアップではなく、
 元画像の改変・消失は検証エラーになる。既存reportやcacheは書き換えない。
+`retained_report()`は通常応答とorphanの両方の`ImageInput.source`を`read_rendered()`で
+検証し、`RenderReceipt.request`と`RenderRequest`のmanifest・annotation参照まで収集する。
+ラベルや編集に引用しなかった閲覧画像も同じ対象とし、unbound画像のsourceは推測しない。
 raw rolloutは移動せず、path/hash/sizeを記録する。共有レポートには推論文やtool入力/出力の
 全文を複製せず、入力/outputのhash、文字数、時刻、画像を残す。
 
