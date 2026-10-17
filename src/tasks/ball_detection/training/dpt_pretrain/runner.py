@@ -10,6 +10,9 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.configuration import (
+    checkpoint_training_recipe,
+)
 from src.tasks.ball_detection.checkpoints.pretraining import (
     SCHEMA,
     pretraining_config,
@@ -157,14 +160,15 @@ def main() -> None:
         (args.output / "data_manifest.json").write_bytes(args.manifest.read_bytes())
     else:
         saved = torch.load(args.resume, map_location="cpu", weights_only=True)
-        if args.resume.parent != args.output or saved.get("schema") != SCHEMA or saved["recipe"] != recipe:
+        saved_config = pretraining_config(saved)
+        if args.resume.parent != args.output or saved.get("schema") != SCHEMA or checkpoint_training_recipe(saved, saved_config) != recipe:
             raise ValueError("Resume requires the same output directory, pretraining stage and exact recipe")
         if saved["code"]["source_sha256"] != code["source_sha256"]:
             raise ValueError("Resume implementation changed")
         epoch_start = saved["epoch"] + 1
         if epoch_start >= args.epochs or any(int(p.stem.split("-")[1]) >= epoch_start for p in args.output.glob("epoch-*.pt")):
             raise ValueError("Resume must use the latest completed epoch with remaining budget")
-        if pretraining_config(saved) != config:
+        if saved_config != config:
             raise ValueError("Resume pretraining model configuration changed")
         model.load_state_dict(saved["state_dict"], strict=True)
         optimizer.load_state_dict(saved["optimizer"])

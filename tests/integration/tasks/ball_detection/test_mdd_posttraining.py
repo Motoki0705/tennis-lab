@@ -57,7 +57,8 @@ def test_shared_epoch_bf16_compile_freeze_and_unfreeze(tmp_path: Path) -> None:
     assert all(torch.isfinite(p).all() for p in model.parameters())
 
 
-def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(tmp_path: Path) -> None:
+@pytest.mark.parametrize("historical", [False, True])
+def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(tmp_path: Path, historical: bool) -> None:
     _, plan = preparation_fixture.__wrapped__(tmp_path)
     manifest = plan["datasets"]["mdd_only"]["path"]
     cfg = tmp_path / "model.yaml"
@@ -91,6 +92,13 @@ def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(tmp_
     assert json.loads((post / "COMPLETED.json").read_text())["stage"] == "query_posttraining"
     assert json.loads((post / "config.json").read_text())["recipe"]["runtime"]["input_verification"] == "lazy"
     assert list((post / "previews").rglob("*.gif"))
+
+    if historical:
+        for checkpoint in post.glob("epoch-*.pt"):
+            saved = torch.load(checkpoint, weights_only=True)
+            saved["model_config"].pop("input_channels")
+            saved["recipe"]["model"].pop("input_channels")
+            torch.save(saved, checkpoint)
 
     evaluation = tmp_path / "post-evaluation.json"
     evaluated = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate",

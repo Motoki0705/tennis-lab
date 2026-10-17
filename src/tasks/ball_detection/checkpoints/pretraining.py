@@ -7,6 +7,7 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.configuration import checkpoint_model_config
 from src.tasks.ball_detection.checkpoints.coordinates import (
     save_coordinate_checkpoint,
 )
@@ -15,29 +16,16 @@ from src.tasks.ball_detection.models.mdd import (
     MDDDPTDetector,
     MDDPretrainConfig,
 )
-from src.tasks.ball_detection.preprocessing.rgb_mdd import input_transform_from_contract
 from src.utils.checksum import dual_sha256
 
 SCHEMA = "mdd_dpt_pretraining.v2"
 
 
 def pretraining_config(saved: dict[str, Any]) -> MDDPretrainConfig:
-    """The v1 schema denotes exactly the original residual/dense3d CNN."""
-    raw = dict(saved["model_config"])
-    expected = set(MDDPretrainConfig.__dataclass_fields__)
-    if saved.get("schema") == "mdd_dpt_pretraining.v1":
-        if set(raw) != expected - {"encoder_variant", "temporal_mixing"} or raw["input_channels"] != 2:
-            raise ValueError("Invalid historical v1 pretraining configuration")
-        raw.update(encoder_variant="residual", temporal_mixing="dense3d")
-    elif saved.get("schema") != SCHEMA:
+    """Identify historical CNNs by schema and their exact saved input contract."""
+    if saved.get("schema") not in {"mdd_dpt_pretraining.v1", SCHEMA}:
         raise ValueError("Unsupported pretraining checkpoint schema")
-    if set(raw) != expected:
-        raise ValueError("Incomplete pretraining CNN configuration")
-    for key in ("stem_channels", "mixed_channels", "residual_blocks"):
-        raw[key] = tuple(raw[key])
-    config = MDDPretrainConfig(**raw)
-    input_transform_from_contract(saved["recipe"]["input_contract"], input_channels=config.input_channels)
-    return config
+    return checkpoint_model_config(saved)
 
 
 def save_pretraining(path: Path, model: MDDDPTDetector, optimizer: torch.optim.Optimizer,
