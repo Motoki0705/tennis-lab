@@ -271,7 +271,7 @@ class Learning:
                 or verdict.policy != intent.selection_policy
             ):
                 raise ValueError("cached verdict differs from the fixed inputs")
-            selection_ref = self.models.select(verdict_ref)
+            selection_ref = self.models.select(verdict_ref, adapter)
             selection = read_document(self.layout, selection_ref, SelectionRecord)
             return LearningOutcome(
                 intent=intent_ref,
@@ -297,6 +297,24 @@ class Learning:
         attempt = max(attempts, default=1)
         current = root / str(attempt)
         request_path = current / "request.json"
+        if (
+            attempt > 1
+            and not request_path.exists()
+            and (root / str(attempt - 1) / "completed.json").exists()
+        ):
+            # Reconciliation may recover the old success while refusing a
+            # partially published retry. Keep that history, but use the success.
+            previous = root / str(attempt - 1) / "request.json"
+            if (current / "retry.json").exists():
+                retry = read_document(
+                    self.layout,
+                    annotation_reference(self.layout, current / "retry.json"),
+                    Retry,
+                )
+                if retry.previous != annotation_reference(self.layout, previous):
+                    raise ValueError("incomplete retry belongs to another stage")
+            attempt -= 1
+            current, request_path = previous.parent, previous
         if request_path.exists():
             request_ref = annotation_reference(self.layout, request_path)
             request = read_document(self.layout, request_ref, StageInput)
@@ -357,41 +375,56 @@ class Learning:
         directory, request_ref, request = self._stage_input(
             self._directory(intent), ref, stage, training
         )
-        completed_path, failed_path = (
-            directory / "completed.json",
-            directory / "failure.json",
-        )
+        completed_path = directory / "completed.json"
         if completed_path.exists():
             completed_ref = annotation_reference(self.layout, completed_path)
             completed = read_document(self.layout, completed_ref, CompletedStage)
             if completed.request != request_ref:
                 raise ValueError("completed stage belongs to another request")
             return completed_ref
+        launch = self._launch(intent, request_ref, request, adapter, runtime, directory)
+        launch_ref = write_document(
+            self.layout, stage_directory(self.layout, launch) / "launch.json", launch
+        )
+        return self._reconcile_stage(
+            ref, intent, adapter, directory, request_ref, launch_ref, submit=True
+        )
+
+    def _reconcile_stage(
+        self,
+        ref: ArtifactRef,
+        intent: LearningIntent,
+        adapter: LearningAdapter,
+        directory: Path,
+        request_ref: ArtifactRef,
+        launch_ref: ArtifactRef,
+        *,
+        submit: bool,
+    ) -> ArtifactRef | LearningOutcome:
+        request = read_document(self.layout, request_ref, StageInput)
+        launch = read_document(self.layout, launch_ref, StageLaunch)
+        if request.intent != ref or launch.input != request_ref:
+            raise ValueError("learning launch belongs to another stage request")
+        stage, training = request.stage, request.training
+        failed_path = directory / "failure.json"
+        failure: StageFailure | None = None
         if failed_path.exists():
             failure = read_document(
                 self.layout,
                 annotation_reference(self.layout, failed_path),
                 StageFailure,
             )
-            if failure.request != request_ref:
+            if failure.request != request_ref or failure.launch != launch_ref:
                 raise ValueError("failure receipt belongs to another request")
-            return LearningOutcome(
-                intent=ref,
-                stage=stage,
-                state="failed",
-                launch=failure.launch,
-                training=training,
-                reason=failure.reason,
-            )
-        launch = self._launch(intent, request_ref, request, adapter, runtime, directory)
-        launch_ref = write_document(
-            self.layout, stage_directory(self.layout, launch) / "launch.json", launch
-        )
         pending = "training_pending" if stage == "train" else "evaluation_pending"
         active = "training" if stage == "train" else "evaluating"
         try:
             state = self.executor.status(launch_ref)
-            if state["state"] in {"pending", "unregistered"}:
+            if (
+                submit
+                and failure is None
+                and state["state"] in {"pending", "unregistered"}
+            ):
                 state = self.executor.submit(launch)
         except (BudgetStopped, CapacityUnavailable, BlockingIOError) as error:
             return LearningOutcome.model_validate(
@@ -404,12 +437,19 @@ class Learning:
                     reason=str(error),
                 )
             )
-        if state["state"] in {"pending", "queued", "running", "draining", "unfinished"}:
+        if state["state"] in {
+            "pending",
+            "unregistered",
+            "queued",
+            "running",
+            "draining",
+            "unfinished",
+        }:
             return LearningOutcome.model_validate(
                 dict(
                     intent=ref,
                     state=pending
-                    if state["state"] in {"pending", "queued"}
+                    if state["state"] in {"pending", "unregistered", "queued"}
                     else active,
                     stage=stage,
                     training=training,
@@ -417,8 +457,12 @@ class Learning:
                     reason=state.get("reason"),
                 )
             )
+        if state["state"] not in {"succeeded", "failed", "timed_out", "cancelled"}:
+            raise ValueError(
+                f"learning stage termination is unconfirmed: {state['state']}"
+            )
         if state["state"] != "succeeded":
-            failure = StageFailure(
+            failure = failure or StageFailure(
                 request=request_ref,
                 launch=launch_ref,
                 reason=state.get("reason") or "learning stage " + str(state["state"]),
@@ -445,7 +489,7 @@ class Learning:
                 _, eval_result = check_evaluation_value(self.layout, completed)
                 adapter.validate_evaluation(self.layout, intent, eval_result)
         except (ValueError, OSError) as error:
-            failure = StageFailure(
+            failure = failure or StageFailure(
                 request=request_ref,
                 launch=launch_ref,
                 reason=f"invalid learning result: {error}",
@@ -459,7 +503,7 @@ class Learning:
                 training=training,
                 reason=failure.reason,
             )
-        return write_document(self.layout, completed_path, completed)
+        return write_document(self.layout, directory / "completed.json", completed)
 
     def retry(
         self,
@@ -508,17 +552,16 @@ class Learning:
                     raise ValueError(
                         "incomplete retry belongs to another learning stage"
                     )
-                restored = StageInput(
-                    intent=ref,
-                    stage=stage,
-                    attempt=old.attempt + 1,
-                    training=old.training,
-                    resume_checkpoint=resume_checkpoint,
-                )
-                return write_document(self.layout, current / "request.json", restored)
+                # Recheck the old job even when resuming a partially written retry.
+                current = root / str(old.attempt)
             if int(current.name) > 1 and not any(
                 (current / name).exists()
-                for name in ("retry.json", "request.json", "failure.json", "completed.json")
+                for name in (
+                    "retry.json",
+                    "request.json",
+                    "failure.json",
+                    "completed.json",
+                )
             ):
                 # write_document may create the next directory before publishing
                 # retry.json. Only an explicit retry can recover this gap, and
@@ -531,6 +574,26 @@ class Learning:
                 raise ValueError("only a recorded failed stage can be retried")
             previous = annotation_reference(self.layout, current / "request.json")
             request = read_document(self.layout, previous, StageInput)
+            if (request.intent, request.stage, request.attempt) != (
+                ref,
+                stage,
+                int(current.name),
+            ):
+                raise ValueError("previous attempt belongs to another learning stage")
+            failure = read_document(
+                self.layout,
+                annotation_reference(self.layout, current / "failure.json"),
+                StageFailure,
+            )
+            result = self._reconcile_stage(
+                ref, intent, adapter, current, previous, failure.launch, submit=False
+            )
+            if isinstance(result, ArtifactRef):
+                raise ValueError(
+                    "previous stage completed successfully; collect it with tick"
+                )
+            if result.state != "failed":
+                raise ValueError("previous stage has not terminated; retry is unsafe")
             if resume_checkpoint is not None:
                 if stage != "train":
                     raise ValueError("evaluation cannot resume training")

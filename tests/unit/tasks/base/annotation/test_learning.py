@@ -38,9 +38,11 @@ from src.tasks.base.annotation.learning.contracts import (
     FixedEvaluation,
     LearningIntent,
     LearningRuntime,
+    Retry,
     SelectionRecord,
     SelectionVerdict,
     StageCost,
+    StageFailure,
     StageInput,
     TaskProducts,
     TrainingReceipt,
@@ -58,11 +60,20 @@ class Adapter:
     task = "detector"
     product = "boxes"
 
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        return self.dependencies
+
     def __init__(self) -> None:
         self.accept = True
         self.complete_metrics = True
         self.use_test = False
         self.selections = 0
+        self.dependencies: tuple[ArtifactRef, ...] = ()
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
@@ -271,6 +282,11 @@ class Environment:
         )
         self.recipe = write_asset(
             self.layout, self.layout.path("models", "recipe.txt"), b"fresh optimizer"
+        )
+        self.adapter.dependencies = (
+            write_asset(
+                self.layout, self.layout.path("models", "nested-input.bin"), b"task input"
+            ),
         )
         self.runtime = LearningRuntime(
             scope=self.common,
@@ -482,6 +498,7 @@ def selection_dependencies(
         env.val.manifest,
         env.test.manifest,
         *publication.adoptions,
+        *env.adapter.dependencies,
     ]
     directory = env.layout.artifact_path(intent_ref).parent
     for stage in ("train", "evaluate"):
@@ -707,6 +724,137 @@ def test_failed_training_with_checkpoint_requires_explicit_same_intent_retry(
     assert env.learning.models.current("detector").generation == 1
 
 
+def stale_failure(
+    env: Environment, stage: Literal["train", "evaluate"]
+) -> tuple[ArtifactRef, ArtifactRef, Path]:
+    """Persist the false interruption produced by the previous queue observer."""
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    if stage == "evaluate":
+        env.executor.finish(state.launch, env.adapter)
+        state = env.learning.tick(intent, env.adapter, env.runtime)
+        assert state.launch is not None
+    launch = read_document(env.layout, state.launch, StageLaunch)
+    assert launch.input is not None
+    directory = env.layout.artifact_path(launch.input).parent
+    write_document(
+        env.layout,
+        directory / "failure.json",
+        StageFailure(
+            request=launch.input,
+            launch=state.launch,
+            reason="queue registration has no unique lifecycle state",
+        ),
+    )
+    return intent, state.launch, directory
+
+
+@pytest.mark.parametrize("stage", ["train", "evaluate"])
+def test_tick_recovers_success_after_stale_queue_failure(
+    env: Environment, stage: Literal["train", "evaluate"]
+) -> None:
+    intent, launch, directory = stale_failure(env, stage)
+    failure = (directory / "failure.json").read_bytes()
+    env.executor.finish(launch, env.adapter)
+    outcome = Learning(env.layout, executor=env.executor).tick(
+        intent, env.adapter, env.runtime
+    )
+    assert outcome.state == ("evaluation_pending" if stage == "train" else "adopted")
+    assert (directory / "completed.json").is_file()
+    assert (directory / "failure.json").read_bytes() == failure
+    assert len(env.executor.accepted) == 2
+
+
+@pytest.mark.parametrize("partial_retry", [False, True])
+@pytest.mark.parametrize(
+    "state", ["pending", "unregistered", "queued", "running", "draining", "unfinished"]
+)
+def test_retry_rechecks_old_job_before_creating_or_restoring_attempt(
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
+    state: str,
+    partial_retry: bool,
+) -> None:
+    intent, launch, directory = stale_failure(env, "train")
+    if partial_retry:
+        request = read_document(env.layout, launch, StageLaunch).input
+        assert request is not None
+        write_document(
+            env.layout,
+            directory.parent / "2/retry.json",
+            Retry(previous=request, reason="recover", resume_checkpoint=None),
+        )
+    monkeypatch.setattr(env.executor, "status", lambda _ref: {"state": state})
+    if not partial_retry:
+        outcome = env.learning.tick(intent, env.adapter, env.runtime)
+        assert outcome.state == (
+            "training_pending"
+            if state in {"pending", "unregistered", "queued"}
+            else "training"
+        )
+    with pytest.raises(ValueError, match="not terminated"):
+        env.learning.retry(intent, env.adapter, "train", reason="recover")
+    assert not (directory.parent / "2/request.json").exists()
+    assert len(env.executor.accepted) == 1
+
+
+@pytest.mark.parametrize("stage", ["train", "evaluate"])
+@pytest.mark.parametrize("partial_retry", ["none", "directory", "receipt"])
+def test_retry_collects_old_success_instead_of_duplicate_execution(
+    env: Environment, stage: Literal["train", "evaluate"], partial_retry: str
+) -> None:
+    intent, launch, directory = stale_failure(env, stage)
+    target = directory.parent / "2"
+    if partial_retry != "none":
+        target.mkdir()
+    if partial_retry == "receipt":
+        request = read_document(env.layout, launch, StageLaunch).input
+        assert request is not None
+        write_document(
+            env.layout,
+            target / "retry.json",
+            Retry(previous=request, reason="recover", resume_checkpoint=None),
+        )
+    env.executor.finish(launch, env.adapter)
+    accepted = len(env.executor.accepted)
+    with pytest.raises(ValueError, match="completed successfully"):
+        env.learning.retry(intent, env.adapter, stage, reason="recover")
+    assert (directory / "completed.json").exists()
+    assert not (target / "request.json").exists()
+    assert len(env.executor.accepted) == accepted
+    outcome = env.learning.tick(intent, env.adapter, env.runtime)
+    assert outcome.state == ("evaluation_pending" if stage == "train" else "adopted")
+    assert len(env.executor.accepted) == 2
+
+
+def test_unconfirmed_interruption_does_not_become_durable_failure(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intent = env.register()
+    state = env.learning.tick(intent, env.adapter, env.runtime)
+    assert state.launch is not None
+    launch = read_document(env.layout, state.launch, StageLaunch)
+    assert launch.input is not None
+    directory = env.layout.artifact_path(launch.input).parent
+    monkeypatch.setattr(env.executor, "status", lambda _ref: {"state": "interrupted"})
+    with pytest.raises(ValueError, match="termination is unconfirmed"):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert not (directory / "failure.json").exists()
+    assert len(env.executor.accepted) == 1
+
+
+def test_retry_rejects_unconfirmed_old_job(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intent, _launch, directory = stale_failure(env, "train")
+    monkeypatch.setattr(env.executor, "status", lambda _ref: {"state": "interrupted"})
+    with pytest.raises(ValueError, match="termination is unconfirmed"):
+        env.learning.retry(intent, env.adapter, "train", reason="recover")
+    assert not (directory.parent / "2").exists()
+    assert len(env.executor.accepted) == 1
+
+
 def test_model_commit_file_gap_recovers_without_second_promotion(
     env: Environment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -816,6 +964,25 @@ def test_registered_intent_and_runtime_cannot_be_silently_replaced(
         )
 
 
+def test_missing_task_dependency_rolls_back_model_selection(env: Environment) -> None:
+    intent = env.register()
+    env.train_and_evaluate(intent, finish_selection=False)
+    registry = env.learning.models
+    before = registry.catalog.snapshot().digest
+    dependency = env.adapter.dependencies[0]
+    path = env.layout.artifact_path(dependency)
+    payload = path.read_bytes()
+    path.unlink()
+    with pytest.raises(ValueError, match="missing or size changed"):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert registry.current("detector").generation == 1
+    assert registry.catalog.snapshot().digest == before
+    with registry.registry.transaction() as db:
+        assert db.execute("SELECT * FROM annotation_model_selections").fetchone() is None
+    write_asset(env.layout, path, payload)
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "adopted"
+
+
 def test_real_stage_runner_binds_scope_and_one_queue_registration(
     env: Environment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -896,7 +1063,7 @@ def test_direct_selection_still_requires_the_frozen_policy(env: Environment) -> 
         ),
     )
     with pytest.raises(ValueError, match="frozen adoption policy"):
-        env.learning.models.select(verdict)
+        env.learning.models.select(verdict, env.adapter)
     assert env.learning.models.current("detector").generation == 1
 
 
