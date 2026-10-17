@@ -30,7 +30,9 @@ from src.tasks.base.annotation.handoff import (
 )
 from src.tasks.base.annotation.images.contracts import Point, RenderRequest, Tile
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan
+from src.tasks.base.annotation.plan import CampaignPlan, references
+from src.tasks.base.annotation.predictions import PredictionReceipt
+from src.tasks.base.annotation.storage.references import distinct
 from src.tasks.base.annotation.telemetry.capture import verify_report
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import (
@@ -55,6 +57,7 @@ from src.utils.paths import PROJECT_ROOT
 from .adapter import BallReviewAdapter
 from .contracts import BallFrame, BallLabels
 from .evidence import review_images
+from .storage import retained_revision
 from .validation import inputs
 
 ProofState = Literal["unreviewed", "verified", "pending_current_attempt", "missing"]
@@ -280,6 +283,33 @@ class BallReviewWorker:
     name = "ball_review"
     version = "v1"
 
+    def input_references(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+    ) -> tuple[ArtifactRef, ...]:
+        self.require_work(request)
+        context = read_document(layout, request.payload, ReviewContext)
+        manifest = read_document(layout, context.manifest, ClipManifest)
+        receipt = read_document(layout, context.prediction, PredictionReceipt)
+        if (
+            read_document(layout, context.plan, CampaignPlan) != plan
+            or context.task != "ball"
+            or manifest.clip_id != request.subject_id
+            or request.inputs != (context.manifest, context.prediction)
+            or receipt.context.manifest != context.manifest
+            or receipt.context.clip_id != manifest.clip_id
+        ):
+            raise ValueError(
+                "ball input references differ from the fixed campaign/clip"
+            )
+        result: tuple[ArtifactRef, ...] = distinct(
+            layout,
+            (*references(context), *references(manifest), receipt.prediction.artifact),
+        )
+        return result
+
     @classmethod
     def require_work(cls, request: WorkRequest) -> None:
         if (request.adapter, request.adapter_version, request.stage) != (
@@ -363,7 +393,10 @@ class BallReviewWorker:
             + str(layout.root)
         )
         return PreparedWorker(
-            prompt=write_asset(layout, directory / "prompt.md", prompt.encode())
+            prompt=write_asset(layout, directory / "prompt.md", prompt.encode()),
+            inputs=distinct(
+                layout, (ref, handoff, *retained_revision(layout, context, revision))
+            ),
         )
 
     def telemetry_images(

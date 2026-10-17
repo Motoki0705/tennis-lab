@@ -13,13 +13,15 @@ from src.tasks.base.annotation.collection.contracts import SelectionReceipt
 from src.tasks.base.annotation.collection.service import Collection
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan
+from src.tasks.base.annotation.plan import CampaignPlan, references
 from src.tasks.base.annotation.screening.contracts import (
     PresentedImages,
     PreviewReceipt,
+    ScreeningInput,
     ScreeningRequest,
 )
 from src.tasks.base.annotation.screening.service import Screening
+from src.tasks.base.annotation.storage.references import distinct
 from src.tasks.base.annotation.telemetry.capture import presented_images
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import (
@@ -34,6 +36,28 @@ class ScreeningAdapter:
     name = "source_screening"
     version = "v1"
 
+    def input_references(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+    ) -> tuple[ArtifactRef, ...]:
+        body = read_document(layout, request.payload, ScreeningInput)
+        overview = read_document(layout, body.overview, PreviewReceipt)
+        if (
+            body.plan_digest != plan.sha256
+            or body.source.canonical_id != request.subject_id
+            or body.policy != plan.selection
+            or overview.source != body.source.media
+        ):
+            raise ValueError(
+                "screening input references differ from the fixed source/plan"
+            )
+        result: tuple[ArtifactRef, ...] = distinct(
+            layout, (*references(body), *references(overview))
+        )
+        return result
+
     def prepare(
         self,
         layout: AnnotationLayout,
@@ -47,7 +71,11 @@ class ScreeningAdapter:
         if body.source.canonical_id != request.subject_id:
             raise ValueError("screening work identity differs from the prepared source")
         return PreparedWorker(
-            prompt=annotation_reference(layout, directory / "prompt.md")
+            prompt=annotation_reference(layout, directory / "prompt.md"),
+            inputs=(
+                ref,
+                annotation_reference(layout, directory / "decision.schema.json"),
+            ),
         )
 
     @staticmethod

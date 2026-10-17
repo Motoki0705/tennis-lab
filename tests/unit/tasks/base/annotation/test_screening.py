@@ -62,6 +62,7 @@ from src.tasks.base.annotation.screening.contracts import (
     Interval,
     PresentedImages,
     PreviewReceipt,
+    ScreeningInput,
     ScreeningPolicy,
     ScreeningRequest,
     SourceDecision,
@@ -72,6 +73,7 @@ from src.tasks.base.annotation.screening.service import (
     attempt_directory,
     request_preview,
 )
+from src.tasks.base.annotation.storage import StorageCatalog
 from src.tasks.base.annotation.workers.contracts import WorkOutcome, WorkRequest
 from src.tasks.base.annotation.workers.services import (
     ServiceReply,
@@ -946,6 +948,16 @@ print(json.dumps({"type":"turn.completed"}))
 """
     controller.pool.test_command = (sys.executable, "-c", script, str(layout.root))
     controller.pool.start(request)
+    protected = {
+        ref
+        for pin in StorageCatalog(layout).snapshot().protections
+        for ref in pin.references
+    }
+    source_input = read_document(layout, prepared, ScreeningInput)
+    overview = read_document(layout, source_input.overview, PreviewReceipt)
+    assert source_input.source.media in protected
+    assert source_input.overview in protected
+    assert all(page.image in protected for page in overview.pages)
     deadline = time.monotonic() + 20
     row = controller.pool.reconcile(request)
     try:
