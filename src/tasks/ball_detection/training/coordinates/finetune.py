@@ -11,7 +11,7 @@ from src.tasks.ball_detection.checkpoints.pretraining import (
     transfer_encoder,
 )
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
-from src.tasks.ball_detection.preprocessing import RGBToMDD
+from src.tasks.ball_detection.preprocessing.rgb_mdd import input_transform_from_contract
 from src.tasks.ball_detection.training.runtime.images import (
     jpeg_decoder_contract,
 )
@@ -69,7 +69,9 @@ def main() -> None:
         raise ValueError("Posttraining JPEG decoder must match pretraining exactly")
     def initialize() -> tuple[DeepMDDQueryDetector, dict[str, Any]]:
         model = DeepMDDQueryDetector(config)
-        model.mdd = RGBToMDD.from_contract(pretrained["recipe"]["input_contract"])
+        model.mdd = input_transform_from_contract(
+            pretrained["recipe"]["input_contract"], input_channels=config.input_channels,
+        )
         transfer = transfer_encoder(parent, model)
         return model, transfer
 

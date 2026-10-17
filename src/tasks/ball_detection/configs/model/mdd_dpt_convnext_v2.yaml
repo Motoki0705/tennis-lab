@@ -1,4 +1,5 @@
 name: mdd_dpt_pretrain
+input_channels: 2
 stem_channels:
 - 16
 - 32
