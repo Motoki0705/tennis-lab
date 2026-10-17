@@ -62,6 +62,7 @@ cd ~/projects/tennis-lab
 
 実行ごとに `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/weekly-report/<時刻>-<command>[-dry]-<pid>/` へ
 `run.log`、`collected.json`、`prompt.md`、`agent_output.md`、agent CLIのログ、`report.md`、`result.json` を残す。
+`--log-dir` / `WEEKLY_REPORT_LOG_DIR` の相対パスは、起動時のカレントディレクトリを基準に解決する。
 gh・git・agent・掃除モジュールの失敗、agent出力の形式違反、設定値の不正はすべて非ゼロ終了になる（黙ってskipしない）。
 agentと掃除モジュールは専用のプロセスグループで起動し、タイムアウト・失敗・終了時にグループ全体を
 SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子プロセスを残さない）。
@@ -76,7 +77,7 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 
 | 環境変数 | 既定 | 意味 |
 |---|---|---|
-| `WEEKLY_REPORT_AGENT` | `alternate` | `claude` / `codex` / `alternate`（ISO週が偶数→claude、奇数→codex） |
+| `WEEKLY_REPORT_AGENT` | `codex` | `claude` / `codex` / `alternate`（ISO週が偶数→claude、奇数→codex）。既定が `codex` なのは Claude の使用枠を自動運用で消費しないため（#1178） |
 | `WEEKLY_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref。remote追跡refなら実行開始時に `git fetch <remote> <branch>` し（失敗はエラー）、そのcommit SHAを実行中固定して本文メタデータ `base=` に記録する。ローカルref/SHAはfetchせず、本文に「ローカルref、fetchなし」と明記する |
 | `WEEKLY_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
 | `WEEKLY_REPORT_AGENT_TIMEOUT` | `5400` | agent実行のタイムアウト（秒） |
@@ -89,8 +90,9 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/weekly-rep
 - 放置PRへの推奨: agentは対象の放置PRすべてについて `{"recommendation": "継続|rebaseして仕上げ|close", "reason": …}` を返す必要があり、欠け・余分・形式違反は出力形式エラーになる。
 - 掃除モジュール: `WEEKLY_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
   ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。
-  共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。
-- agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutで内容が異なるファイルがあれば、
+  共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。あれば `SUMMARY.md` と、層の `index.md` を除く各エントリの先頭を渡す。
+- agentは `--repo-root`（既定はこのcheckout）を読む。base refとcheckoutで内容が異なるファイル
+  （無視対象を除く未追跡ファイルを含む）があれば、
   一覧をagentへ渡し、本文の冒頭に注意を出す。
 
 ## systemd --user への導入（merge後に人間が行う）
