@@ -13,7 +13,7 @@ from src.tasks.person_tracking.features import FeatureExtractor
 from src.tasks.person_tracking.sequence import TrackingConfig, track_sequence
 from src.tasks.person_tracking.strongsort import StrongSort, StrongSortConfig
 from src.tasks.person_tracking.strongsort_offline import AFLink
-from src.tennis_scene.chat_annotation.player_pose import generation
+from src.tasks.player_detection.annotation.player_pose import generation
 
 
 def two_people(index: int, reverse: bool = False) -> DetectionFeatures:

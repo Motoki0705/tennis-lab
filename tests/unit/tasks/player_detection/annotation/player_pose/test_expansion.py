@@ -5,32 +5,32 @@ import numpy as np
 import pytest
 
 from src.tasks.ball_detection.data.store import SHARDS_DIR, BallFrameStore, shard_name
-from src.tennis_scene.chat_annotation.player_pose.dataset import (
+from src.tasks.player_detection.annotation.player_pose.dataset import (
     PlayerPoseStore,
     update_entry,
 )
-from src.tennis_scene.chat_annotation.player_pose.expansion import (
+from src.tasks.player_detection.annotation.player_pose.expansion import (
     plan_expansion,
     reuse_approved,
 )
-from src.tennis_scene.chat_annotation.player_pose.reviews import validate_and_remap
-from src.tennis_scene.chat_annotation.player_pose.selection import (
+from src.tasks.player_detection.annotation.player_pose.reviews import validate_and_remap
+from src.tasks.player_detection.annotation.player_pose.selection import (
     initialize,
     presence_counts,
 )
-from src.tennis_scene.chat_annotation.player_pose.storage import (
+from src.tasks.player_detection.annotation.player_pose.storage import (
     clip_root,
     digest,
     read_json,
     write_json,
     write_npz,
 )
-from tests.unit.tennis_scene.chat_annotation.player_pose.test_campaign import (
+from tests.unit.tasks.player_detection.annotation.player_pose.test_campaign import (
     decision,
     raw_tracks,
     segment,
 )
-from tests.unit.tennis_scene.chat_annotation.player_pose.test_campaign import (
+from tests.unit.tasks.player_detection.annotation.player_pose.test_campaign import (
     store as store,
 )
 

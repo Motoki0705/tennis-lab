@@ -1,7 +1,7 @@
 # ChatGPT Project用のテニス動画アノテーション準備
 
-ball frame storeからの人物検出・追跡とGPTによる選手IDレビューは
-[player_pose](player_pose/README.md)を参照する。
+修正済み人物bboxからの追跡と選手IDレビュー・pose公開は
+[player_pose](../../tasks/player_detection/annotation/player_pose/README.md)を参照する。
 
 YouTube URLから動画を取得し、前後の参考区間を含む最大15秒・500,000,000 bytes以下の
 MP4と、Chatへ貼り付ける短いリクエスト本文を作る。対象は対象コートのプレーヤーと

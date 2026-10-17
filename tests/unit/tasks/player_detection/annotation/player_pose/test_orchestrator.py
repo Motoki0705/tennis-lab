@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from src.tennis_scene.chat_annotation.player_pose import orchestrator, reporting
-from src.tennis_scene.chat_annotation.player_pose.storage import (
+from src.tasks.player_detection.annotation.player_pose import orchestrator, reporting
+from src.tasks.player_detection.annotation.player_pose.storage import (
     clip_root,
     read_json,
     write_json,
@@ -14,7 +14,7 @@ def test_pose_queue_resumes_failed_attempt_and_excludes_unapproved(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from src.tennis_scene.chat_annotation.player_pose import publication
+    from src.tasks.player_detection.annotation.player_pose import publication
 
     campaign = tmp_path / "campaign"
     dataset = tmp_path / "poses"

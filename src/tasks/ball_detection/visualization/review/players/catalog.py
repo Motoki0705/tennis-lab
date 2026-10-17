@@ -8,7 +8,7 @@ from threading import RLock
 from typing import Any
 
 from src.tasks.ball_detection.data.store import SHARDS_DIR, BallFrameStore, shard_name
-from src.tennis_scene.chat_annotation.player_pose.dataset import PlayerPoseStore
+from src.tasks.player_detection.annotation.player_pose.dataset import PlayerPoseStore
 
 from .readers import (
     file_stamp,

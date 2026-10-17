@@ -7,21 +7,21 @@ import pytest
 
 from src.tasks.ball_detection.data.store import POINT_KIND_CODES, BallFrameStore
 from src.tasks.ball_detection.generate_dataset.frame_store.builder import build_dataset
-from src.tennis_scene.chat_annotation.player_pose import runner
-from src.tennis_scene.chat_annotation.player_pose.dataset import PlayerPoseStore
-from src.tennis_scene.chat_annotation.player_pose.generation import (
+from src.tasks.player_detection.annotation.player_pose import runner
+from src.tasks.player_detection.annotation.player_pose.dataset import PlayerPoseStore
+from src.tasks.player_detection.annotation.player_pose.generation import (
     _cached_chunk,
     _save_chunk,
 )
-from src.tennis_scene.chat_annotation.player_pose.reviews import (
+from src.tasks.player_detection.annotation.player_pose.reviews import (
     accept_review,
     validate_and_remap,
 )
-from src.tennis_scene.chat_annotation.player_pose.selection import (
+from src.tasks.player_detection.annotation.player_pose.selection import (
     initialize,
     presence_counts,
 )
-from src.tennis_scene.chat_annotation.player_pose.storage import (
+from src.tasks.player_detection.annotation.player_pose.storage import (
     clip_root,
     digest,
     read_json,
@@ -217,8 +217,8 @@ def test_real_images_fake_codex_and_publication(
     import torch
 
     from src.submodules.models import Pose2DResult
-    from src.tennis_scene.chat_annotation.player_pose import selected_pose
-    from src.tennis_scene.chat_annotation.player_pose.publication import publish
+    from src.tasks.player_detection.annotation.player_pose import selected_pose
+    from src.tasks.player_detection.annotation.player_pose.publication import publish
 
     fake = tmp_path / "fake-codex"
     fake.write_text("""#!/usr/bin/env python3
@@ -333,7 +333,7 @@ print(json.dumps({'type':'turn.completed'}))
 def test_queue_resume_does_not_duplicate_an_owned_job(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from src.tennis_scene.chat_annotation.player_pose import orchestrator
+    from src.tasks.player_detection.annotation.player_pose import orchestrator
 
     campaign = tmp_path / "campaign"
     campaign.mkdir()
@@ -367,7 +367,7 @@ def test_queue_resume_does_not_duplicate_an_owned_job(
 def test_queue_stops_after_three_clip_failures(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from src.tennis_scene.chat_annotation.player_pose import orchestrator
+    from src.tasks.player_detection.annotation.player_pose import orchestrator
 
     campaign = tmp_path / "campaign"
     campaign.mkdir()

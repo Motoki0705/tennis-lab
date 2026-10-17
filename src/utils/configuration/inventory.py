@@ -341,8 +341,8 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "ball_refiner_3d.predict",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tennis_scene.chat_annotation.player_pose.__main__": (
-        "tennis_scene.chat_annotation.player_pose",
+    "src.tasks.player_detection.annotation.player_pose.__main__": (
+        "tasks.player_detection.annotation.player_pose",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     **{
@@ -540,8 +540,8 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.review_dataset", "main", domain="ball_refiner_3d", executable_module=True),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.train"),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.generate_dataset"),
-    _non_hydra_boundary("src.tennis_scene.chat_annotation.player_pose.__main__", "main",
-                        domain="tennis_scene", executable_module=True),
+    _non_hydra_boundary("src.tasks.player_detection.annotation.player_pose.__main__", "main",
+                        domain="player_detection", executable_module=True),
     *(
         _non_hydra_boundary(
             f"src.tennis_scene.chat_annotation.local_agent.{name}",

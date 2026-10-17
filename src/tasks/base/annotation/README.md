@@ -362,7 +362,7 @@ token・時間のほか、品質、GPU事前推論・追加学習コスト、探
 | `local_agent`のcampaign/attempt/process制御 | baseのworkers/ledger/resources |
 | ball候補・ball編集・球状態のschema/検証 | ball taskのannotation |
 | player候補・bbox編集・人物schema/検証 | player taskのannotation |
-| `player_pose` | player taskの追跡/ID/pose連携 |
+| `player_pose` | [player taskの追跡/ID/pose連携](../../player_detection/annotation/player_pose/README.md) |
 | 共通の画像ページ・版付き更新・入力組立 | baseのimages/editing/handoffとtask adapter |
 | `qa`・`audit`・QA note・QA待ち・`phase2`再注釈 | 独立QA/既存clip再注釈の運用入口を廃止 |
 | ChatGPT kit・Project/REQUEST・handoff・MCP/Tunnel/Docker | remote運用入口と専用依存を廃止 |

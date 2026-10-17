@@ -34,6 +34,8 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from .supervision import COLUMN, SCHEMA, validate_supervision
+
 SCHEMA_VERSION: Final = "player_detection_frames.v2"
 INDEX_FILE: Final = "index.npz"
 METADATA_FILE: Final = "metadata.json"
@@ -171,6 +173,11 @@ class PlayerFrameStore:
         )
         with np.load(directory / INDEX_FILE) as data:
             columns = {name: data[name] for name in data.files}
+        self.teacher_supervision: NDArray[np.uint8] | None = None
+        if "teacher_schema" in metadata:
+            if metadata["teacher_schema"] != SCHEMA or COLUMN not in columns:
+                raise ValueError("Invalid explicit player teacher schema/column")
+            self.teacher_supervision = columns.pop(COLUMN)
         frame_count = _require_columns(columns, FRAME_FIELDS, extra={}, table="frame")
         instance_count = _require_columns(columns, INSTANCE_FIELDS,
             extra={"bbox_xyxy": (np.float32, (4,))}, table="instance")
@@ -181,6 +188,7 @@ class PlayerFrameStore:
             name: columns[name] for name in (*INSTANCE_FIELDS, "bbox_xyxy")
         }
         self._validate(frame_count, instance_count)
+        validate_supervision(self)
         self._shards: dict[int, np.memmap] = {}
 
     def _validate(self, frame_count: int, instance_count: int) -> None:

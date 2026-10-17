@@ -14,9 +14,12 @@ from src.tasks.person_tracking.sequence import (
 )
 from src.tasks.person_tracking.strongsort import StrongSort, StrongSortConfig
 from src.tasks.person_tracking.strongsort_offline import AFLink
-from src.tennis_scene.chat_annotation.player_pose import orchestrator, selected_pose
-from src.tennis_scene.chat_annotation.player_pose.reviews import validate_and_remap
-from tests.unit.tennis_scene.chat_annotation.player_pose.test_campaign import (
+from src.tasks.player_detection.annotation.player_pose import (
+    orchestrator,
+    selected_pose,
+)
+from src.tasks.player_detection.annotation.player_pose.reviews import validate_and_remap
+from tests.unit.tasks.player_detection.annotation.player_pose.test_campaign import (
     decision,
     raw_tracks,
     segment,

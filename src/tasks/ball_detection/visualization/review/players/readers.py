@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 
 from src.tasks.ball_detection.data.store import SHARDS_DIR, BallFrameStore, shard_name
-from src.tennis_scene.chat_annotation.player_pose.storage import digest
+from src.tasks.player_detection.annotation.player_pose.storage import digest
 
 
 def within(path: Path, *roots: Path) -> Path:

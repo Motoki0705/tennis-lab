@@ -29,11 +29,10 @@ def enqueue_clip(
         raise ValueError("Unknown GPU generation stage")
     token = hashlib.sha256(str(campaign.resolve()).encode()).hexdigest()[:16]
     name = f"i988-{token}-{stage}-{index:05d}-a{attempt}"
-    extension = str(Path(config["assets"]["dino_extension"]).parent)
     command = shlex.join(
         [
             "env",
-            f"PYTHONPATH={extension}:{config['project_root']}",
+            f"PYTHONPATH={config['project_root']}",
             "OMP_NUM_THREADS=2",
             "OPENBLAS_NUM_THREADS=2",
             "MKL_NUM_THREADS=2",
@@ -41,7 +40,7 @@ def enqueue_clip(
             config["python"],
             "-u",
             "-m",
-            "src.tennis_scene.chat_annotation.player_pose",
+            "src.tasks.player_detection.annotation.player_pose",
             "generate-clip" if stage == "tracking" else "pose-clip",
             "--campaign",
             str(campaign),
