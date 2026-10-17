@@ -17,6 +17,7 @@ from src.tasks.player_detection.training.annotation.checkpoints import (
 from src.tasks.player_detection.training.annotation.contracts import (
     PlayerSelectionPolicy,
     PlayerTrainingProvenance,
+    RunBinding,
 )
 from src.tasks.player_detection.training.annotation.inputs import (
     resolve_inputs,
@@ -75,6 +76,15 @@ def test_cpu_lightning_saves_bound_best_last_and_exact_export(
     assert env.learning.models.current("player").model == env.parent
     next_stage = env.tick()
     assert next_stage.state == "evaluation_pending"
+    assert next_stage.training is not None
+    assert {
+        provenance.latest_checkpoint,
+        provenance.selected_checkpoint,
+        provenance.completed,
+        provenance.run_binding,
+        provenance.initial_configuration,
+        receipt.candidate.inference_weights,
+    } <= set(env.learning.storage.completed_inputs(next_stage.training))
     # Re-reading the completed attempt does not create another optimizer run.
     assert env.executor.finish(pending.launch) == result
     assert (
@@ -152,11 +162,13 @@ def test_cpu_lifecycle_evaluates_same_support_and_keeps_or_adopts_model(
 
 
 @pytest.mark.parametrize("before_export", [False, True])
-def test_explicit_resume_preserves_input_checkpoint_and_does_not_add_updates(
+def test_explicit_resume_retains_checkpoint_and_initial_configuration_without_extra_updates(
     synthetic_root: SyntheticRoot,
     monkeypatch: pytest.MonkeyPatch,
     before_export: bool,
 ) -> None:
+    from tests.support.annotation_storage import assert_expired_but_protected
+
     env = Environment(synthetic_root)
     use_cpu_dino(monkeypatch)
     first = env.tick()
@@ -193,16 +205,26 @@ def test_explicit_resume_preserves_input_checkpoint_and_does_not_add_updates(
     )
     latest = file_reference(env.layout, latest_path, role="artifact")
     with pytest.raises(ValueError, match="frozen"):
-        env.adapter.validate_resume(env.layout, env.intent, latest)
+        env.adapter.resume_references(env.layout, env.intent, latest)
     frozen = freeze_resume_checkpoint(env.layout, env.intent, latest)
     assert frozen.digest == latest.digest
     assert freeze_resume_checkpoint(env.layout, env.intent, latest) == frozen
+    value = torch.load(latest_path, weights_only=False, map_location="cpu")
+    binding = RunBinding.model_validate(value["annotation_learning"])
+    assert binding.initial_configuration not in {
+        reference
+        for record in env.learning.storage.catalog.snapshot().protections
+        for reference in record.references
+    }
     env.learning.retry(
         env.intent_ref,
         env.adapter,
         "train",
         reason="resume CPU fixture",
         resume_checkpoint=frozen,
+    )
+    assert_expired_but_protected(
+        env.layout, (frozen, binding.initial_configuration), "training"
     )
     second = env.tick()
     assert second.launch is not None

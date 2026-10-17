@@ -42,6 +42,20 @@ class LearningAdapter(Protocol):
         """Check inputs; explicitly report publications with no usable new teachers."""
         ...
 
+    def input_references(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> tuple[ArtifactRef, ...]:
+        """Enumerate task-owned dataset files and prepared inputs after validation."""
+        ...
+
+    def result_references(
+        self,
+        layout: AnnotationLayout,
+        result: TrainingReceipt | EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        """Enumerate task-owned checkpoint and evaluation evidence after validation."""
+        ...
+
     def command(
         self, layout: AnnotationLayout, request: ArtifactRef, result: Path
     ) -> tuple[str, ...]:
@@ -63,10 +77,10 @@ class LearningAdapter(Protocol):
         """Require all configured validation metrics; never substitute test results."""
         ...
 
-    def validate_resume(
+    def resume_references(
         self, layout: AnnotationLayout, intent: LearningIntent, checkpoint: ArtifactRef
-    ) -> None:
-        """Only this intent's training checkpoint can resume its optimizer/schedule."""
+    ) -> tuple[ArtifactRef, ...]:
+        """Validate this intent's resume checkpoint and enumerate its dependencies."""
         ...
 
     def select(
