@@ -31,6 +31,7 @@ from src.tasks.base.annotation.plan import (
     save_plan,
 )
 from src.tasks.base.annotation.reports import publication_summary
+from src.tasks.base.annotation.worker_decision import load_worker_decision
 
 
 @pytest.fixture
@@ -38,6 +39,7 @@ def products(
     tmp_path: Path,
 ) -> tuple[AnnotationLayout, ArtifactRef, CampaignCompletion]:
     layout = AnnotationLayout.testing(tmp_path / "a")
+    worker = load_worker_decision()
     blob = write_asset(layout, layout.path("models", "input"), b"synthetic input")
     tasks = tuple(
         TaskPlan(
@@ -77,8 +79,8 @@ def products(
         preparation=blob,
         code_commit="a" * 40,
         code_diff_digest="b" * 64,
-        agent_model="gpt-6.1-sol",
-        agent_effort="max",
+        agent_model=worker.agent_model,
+        agent_effort=worker.agent_effort,
         resources=ResourceBudget(
             codex_workers=1,
             additional_storage_bytes=1024,

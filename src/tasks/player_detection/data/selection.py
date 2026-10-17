@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 from src.tasks.player_detection.configuration import FrameSelectionConfig
 
 from .store import BBOX_SOURCE_CODES, PlayerFrameStore
+from .supervision import IGNORE
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +34,8 @@ def frame_eligibility(store: PlayerFrameStore, row: int, selection: FrameSelecti
     empty: NDArray[np.float32] = np.empty((0, 4), dtype=np.float32)
     if not store.frames["is_target"][row]:
         return FrameEligibility("context", empty)
+    if store.teacher_supervision is not None and store.teacher_supervision[row] == IGNORE:
+        return FrameEligibility("annotation_ignore", empty)
     if selection.require_reviewed and not store.frames["reviewed"][row]:
         return FrameEligibility("unreviewed", empty)
     instances = store.instances_of(row)
