@@ -172,7 +172,7 @@ class Controller:
             row = self.pool.stop(request, reason=f"invalid service request: {error}")
         return {"state": row["state"], "reason": row["reason"]}
 
-    def _reconcile_workers(self) -> list[dict[str, Any]]:
+    def _worker_requests(self) -> list[tuple[WorkerPool, WorkRequest]]:
         with self.pool.ledger.registry.transaction() as db:
             requests = [
                 WorkRequest.model_validate_json(row["request"])
@@ -181,15 +181,45 @@ class Controller:
                     (self.plan.campaign_id,),
                 )
             ]
-        reconciled = []
+        workers = []
         for request in requests:
             pool = self.pool
             if request.adapter != ScreeningAdapter.name and self.production is not None:
                 pool = self.production.pool
-            reconciled.append(pool.reconcile(request))
-        return reconciled
+            workers.append((pool, request))
+        return workers
+
+    def _cancel_pending_workers(self, reason: str | None = None) -> None:
+        if reason is None:
+            with self.pool.ledger.registry.transaction() as db:
+                stopped = db.execute(
+                    "SELECT reason FROM worker_campaign_stops WHERE campaign=?",
+                    (self.plan.campaign_id,),
+                ).fetchone()
+            if stopped is None:
+                return
+            reason = stopped["reason"]
+        for pool, request in self._worker_requests():
+            pool.cancel_pending(request, reason=reason)
+
+    def _reconcile_workers(self) -> list[dict[str, Any]]:
+        workers = self._worker_requests()
+        for pool, request in workers:
+            pool.reconcile(request)
+        # Reconciliation can latch a quota stop, including through status().
+        self._cancel_pending_workers()
+        return [pool.ledger.task(request.work_id) for pool, request in workers]
 
     def cycle(self) -> dict[str, Any]:
+        try:
+            return self._cycle()
+        except BudgetStopped as error:
+            self._cancel_pending_workers(str(error))
+            raise
+        finally:
+            self._cancel_pending_workers()
+
+    def _cycle(self) -> dict[str, Any]:
         sample = self.resources.poll()
         if sample.stopped_reason is not None:
             raise BudgetStopped(sample.stopped_reason)
@@ -418,7 +448,11 @@ class Controller:
                 continue
             try:
                 receipt = self.receipt(state)
-                if receipt.status != "complete":
+                # A verified acquisition exclusion still reconciles its saved
+                # acquisition; preparation exclusions do not complete preparation.
+                if receipt.status != "complete" and not isinstance(
+                    operation, AcquireOperation
+                ):
                     continue
                 if isinstance(operation, (AcquireOperation, PrepareOperation)):
                     if len(receipt.results) != 1:

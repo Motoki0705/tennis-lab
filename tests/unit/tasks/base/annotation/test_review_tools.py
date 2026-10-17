@@ -68,6 +68,7 @@ from src.tasks.base.annotation.plan import CampaignPlan, save_plan
 from src.tasks.base.annotation.predictions import PredictionContext, Predictions
 from src.tasks.base.annotation.telemetry.capture import capture
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
+from src.tasks.base.annotation.telemetry.storage import retained_report
 from src.tasks.base.annotation.workers.contracts import (
     ExitReceipt,
     Launch,
@@ -1080,6 +1081,14 @@ def test_generated_and_presented_images_do_not_mark_reviewed_rows(
             env.layout, image, unshown, manifest=env.manifest_ref, annotation=initial
         )
     shown = telemetry_for(env, image, present=True)
+    # Exercise retention with renderer-authored metadata and its real input chain.
+    retained = retained_report(env.layout, shown)
+    request, receipt = read_rendered(env.layout, image)
+    assert retained.count(image.image) == 1
+    assert {image.metadata, receipt.request, request.manifest, request.annotation} <= set(
+        retained
+    )
+    assert not env.layout.path("cache", "presented-images").exists()
     tiles = presented_tiles(
         env.layout, image, shown, manifest=env.manifest_ref, annotation=initial
     )

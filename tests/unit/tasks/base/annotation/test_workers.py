@@ -31,6 +31,7 @@ from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
 )
+from src.tasks.base.annotation.resources.contracts import GPUUsage
 from src.tasks.base.annotation.storage import (
     InventoryScope,
     ManagedArtifact,
@@ -57,6 +58,20 @@ from src.tasks.base.annotation.workers.processes import (
     owned_members,
     signal_owned,
 )
+
+
+@pytest.fixture(autouse=True)
+def no_hardware_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="synthetic worker tests do not query a GPU",
+        ),
+    )
 
 
 @dataclass
@@ -1310,3 +1325,79 @@ def test_pending_resource_admission_reuses_unlaunched_attempt(
     requests = resources.status()["requests"]
     assert len(requests) == 1 and requests[0]["state"] == "complete"
     assert setup.launches() == 1
+
+
+@pytest.mark.parametrize("retry_pending", [False, True])
+def test_stop_cancels_unlaunched_resource_attempt(
+    setup: Setup,
+    resource_pool: WorkerPool,
+    monkeypatch: pytest.MonkeyPatch,
+    retry_pending: bool,
+) -> None:
+    resources = resource_pool.resources
+    assert resources is not None
+    if retry_pending:
+        setup.adapter.outcome = "deferred"
+        resource_pool.start(setup.request)
+        assert settled(resource_pool, setup.request)["state"] == "deferred"
+        setup.adapter.outcome = "complete"
+
+    def temporarily_full(_request):
+        raise CapacityUnavailable("fixture PSS reservations do not fit")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resources, "_admit", temporarily_full)
+        with pytest.raises(CapacityUnavailable, match="PSS reservations"):
+            resource_pool.start(setup.request, retry=retry_pending)
+    pending = [r for r in resources.status()["requests"] if r["state"] == "pending"]
+    assert len(pending) == 1
+    stopped = resource_pool.stop(setup.request, reason="campaign ended")
+    assert (stopped["state"], stopped["reason"]) == ("cancelled", "campaign ended")
+    requests = {r["id"]: r for r in resources.status()["requests"]}
+    assert (
+        requests[pending[0]["id"]]["state"],
+        requests[pending[0]["id"]]["reason"],
+    ) == ("cancelled", "campaign ended")
+    assert resource_pool.stop(setup.request, reason="repeated stop") == stopped
+    history = resource_pool.ledger.history(resource_pool.plan, setup.request)
+    assert history[-1].state == "cancelled"
+    assert history[-1].execution is None and history[-1].result is None
+    with pytest.raises(WorkerStopped, match="explicit retry.*cancelled"):
+        resource_pool.start(setup.request)
+    attempt = resource_pool.start(setup.request, retry=True)
+    assert attempt == setup.request.work_id + ("-0003" if retry_pending else "-0002")
+    assert settled(resource_pool, setup.request)["state"] == "complete"
+    assert setup.launches() == (2 if retry_pending else 1)
+
+
+def test_stop_recovers_interrupted_pending_cancellation(
+    setup: Setup, resource_pool: WorkerPool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resources = resource_pool.resources
+    assert resources is not None
+
+    def temporarily_full(_request):
+        raise CapacityUnavailable("fixture PSS reservations do not fit")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(resources, "_admit", temporarily_full)
+        with pytest.raises(CapacityUnavailable, match="PSS reservations"):
+            resource_pool.start(setup.request)
+    with resource_pool.ledger.registry.transaction() as db:
+        db.execute(
+            "CREATE TRIGGER interrupt_cancel BEFORE INSERT ON worker_attempts "
+            "WHEN NEW.state='cancelled' "
+            "BEGIN SELECT RAISE(ABORT, 'interrupted cancellation'); END"
+        )
+    with pytest.raises(sqlite3.IntegrityError, match="interrupted cancellation"):
+        resource_pool.stop(setup.request, reason="original cancellation")
+    with resource_pool.ledger.registry.transaction() as db:
+        db.execute("DROP TRIGGER interrupt_cancel")
+    assert resources.status()["requests"][0]["state"] == "cancelled"
+    assert resource_pool.ledger.task(setup.request.work_id)["state"] == "ready"
+    stopped = resource_pool.stop(setup.request, reason="recover cancellation")
+    assert (stopped["state"], stopped["reason"]) == (
+        "cancelled",
+        "original cancellation",
+    )
+    assert setup.launches() == 0
