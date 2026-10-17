@@ -86,3 +86,12 @@ class LearningAdapter(Protocol):
     def select(
         self, layout: AnnotationLayout, intent: LearningIntent, evaluation: ArtifactRef
     ) -> SelectionVerdict: ...
+
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        """Enumerate task-owned fixed inputs and completed-stage dependencies."""
+        ...
