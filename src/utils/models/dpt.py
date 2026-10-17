@@ -58,7 +58,13 @@ class DPTFeatureFusionBlock(nn.Module):
 
 
 class DPTDecoder(nn.Module):
-    """DPT decoder for ViT features reassembled at multiple image scales."""
+    """DPT decoder for features reassembled at multiple image scales.
+
+    The deepest fusion has no skip input. Its skip_block remains registered for
+    strict restoration of existing full-model state_dicts, but is never used in
+    forward and receives no gradients. With residual style, its two convolutions
+    are therefore included in parameter counts without being trained.
+    """
 
     def __init__(
         self,
@@ -66,7 +72,7 @@ class DPTDecoder(nn.Module):
         encoder_channels: Sequence[int],
         decoder_channels: int,
         reassemble_factors: Sequence[float],
-        block_style: str = "wise",
+        block_style: str,
     ) -> None:
         super().__init__()
         self.encoder_channels = tuple(int(channel) for channel in encoder_channels)
