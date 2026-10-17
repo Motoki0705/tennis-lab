@@ -195,7 +195,7 @@ def plan_for(
     layout: AnnotationLayout, reference: ArtifactRef, name: str = "fixture"
 ) -> CampaignPlan:
     ref = reference.model_dump()
-    return CampaignPlan.model_validate_json(
+    plan: CampaignPlan = CampaignPlan.model_validate_json(
         json.dumps(
             {
                 "campaign_id": name,
@@ -211,7 +211,7 @@ def plan_for(
                 "code_commit": "a" * 40,
                 "code_diff_digest": "b" * 64,
                 "agent_model": "gpt-6.1-sol",
-                "agent_effort": "high",
+                "agent_effort": "max",
                 "resources": {
                     "codex_workers": 1,
                     "additional_storage_bytes": 30 * 1024**3,
@@ -255,6 +255,7 @@ def plan_for(
             }
         )
     )
+    return plan
 
 
 @pytest.fixture
@@ -994,6 +995,7 @@ def test_codex_model_environment_and_module_boundaries(setup: Setup) -> None:
     assert read_document(setup.layout, ref, Launch) == launch
     command = codex_command(launch, setup.plan)
     assert command[command.index("-m") + 1] == "gpt-6.1-sol"
+    assert 'model_reasoning_effort="max"' in command
     assert "--ignore-user-config" in command and "--ignore-rules" in command
     assert "workspace-write" in command and 'approval_policy="never"' in command
     assert command[command.index("-C") + 1].endswith("/work")

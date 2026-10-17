@@ -268,7 +268,7 @@ class Environment:
                     "code_commit": "a" * 40,
                     "code_diff_digest": "b" * 64,
                     "agent_model": "gpt-6.1-sol",
-                    "agent_effort": "high",
+                    "agent_effort": "max",
                     "resources": {
                         "codex_workers": 1,
                         "additional_storage_bytes": 100_000_000,
