@@ -1,6 +1,5 @@
 ---
 title: "codex-scheduled-followup の timer は、作成時の cli_heartbeat.py を絶対パスで実行し続ける"
-type: gotcha
 applies_to: all
 source: "PR #1054 作業中の観察（2026-10-10）"
 created: 2026-10-10

@@ -19,11 +19,12 @@ def test_conv2d_wisewise_block_preserves_spatial_shape() -> None:
 
 def test_task_modules_use_the_shared_classes_directly() -> None:
     """Task modules import the canonical utils blocks without local shims."""
-    from src.tasks.court_detection.models.dinov3_dpt import (
-        Conv2dWiseWiseBlock as DecoderWiseWise,
-    )
-    from src.tasks.court_detection.models.dinov3_dpt import (
-        Conv2dWiseWiseBlock as EncoderWiseWise,
-    )
+    from src.tasks.court_detection.configuration import CourtDecoderConfig
+    from src.tasks.court_detection.models.dinov3_dpt import build_court_decoder
 
-    assert DecoderWiseWise is EncoderWiseWise is Conv2dWiseWiseBlock
+    decoder = build_court_decoder(
+        config=CourtDecoderConfig(name="dpt", size="tiny", channels=64, reassemble_factors=(1.,) * 4),
+        encoder_channels=(4, 8, 8, 16),
+    )
+    assert all(isinstance(block.skip_block, Conv2dWiseWiseBlock)
+               and isinstance(block.output_block, Conv2dWiseWiseBlock) for block in decoder.fusion_blocks)
