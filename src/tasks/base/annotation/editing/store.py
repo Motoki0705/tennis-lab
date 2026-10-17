@@ -121,6 +121,16 @@ class RevisionStore:
             row["revision"]
         ), ArtifactRef.model_validate_json(row["adoption"]) if row["adoption"] else None
 
+    def bind_context(
+        self, context: ReviewContext, adapter: ReviewAdapter
+    ) -> ArtifactRef:
+        """Pin a canonical request context without initializing or adopting labels."""
+        _, manifest, _ = self.context(context, adapter)
+        result: ArtifactRef = write_document(
+            self.layout, self._directory(context, manifest) / "context.json", context
+        )
+        return result
+
     def initialize(self, context: ReviewContext, adapter: ReviewAdapter) -> ArtifactRef:
         _, manifest, key = self.context(context, adapter)
         directory = self._directory(context, manifest)

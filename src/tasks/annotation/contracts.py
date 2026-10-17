@@ -98,6 +98,17 @@ class ReviewOperation(Document):
     service_request: ArtifactRef
 
 
+class PublishOperation(Document):
+    action: Literal["publish_ball"] = "publish_ball"
+    review: ArtifactRef
+
+
+class BootstrapModelOperation(Document):
+    action: Literal["bootstrap_model"] = "bootstrap_model"
+    task: Identifier
+    evidence: ArtifactRef
+
+
 class OperationInput(Document):
     plan: ArtifactRef
     operation: Annotated[
@@ -107,6 +118,8 @@ class OperationInput(Document):
         | PrepareOperation
         | PreviewOperation
         | ReviewOperation
+        | PublishOperation
+        | BootstrapModelOperation
         | PredictOperation,
         Field(discriminator="action"),
     ]
@@ -138,3 +151,34 @@ class OperationReceipt(Document):
     status: Literal["complete", "not_applicable"]
     results: tuple[ArtifactRef, ...]
     reason: str | None
+
+
+class RetryWorker(Document):
+    action: Literal["retry_worker"] = "retry_worker"
+    request: ArtifactRef
+    after_attempt: str = Field(min_length=1)
+
+
+class RetryLearning(Document):
+    action: Literal["retry_learning"] = "retry_learning"
+    intent: ArtifactRef
+    stage: Literal["train", "evaluate"]
+    resume_checkpoint: ArtifactRef | None = None
+
+
+class ResumeWorkers(Document):
+    action: Literal["resume_workers"] = "resume_workers"
+
+
+class RecoveryInput(Document):
+    plan: ArtifactRef
+    reason: str = Field(min_length=1)
+    operation: Annotated[
+        RetryWorker | RetryLearning | ResumeWorkers, Field(discriminator="action")
+    ]
+
+
+class RecoveryReceipt(Document):
+    request: ArtifactRef
+    worker_attempt: str | None = None
+    learning_request: ArtifactRef | None = None

@@ -59,7 +59,7 @@ flowchart TB
 
 矢印はコードの依存を表す。baseはball/playerのラベル・モデル出力・損失・指標を解釈しない。
 task adapterを選んでbaseへ渡すcomposition rootは、baseの外側に置く
-（予定入口: `python -m src.tasks.annotation`）。base内部にtask名による分岐や
+（入口: `python -m src.tasks.annotation`）。base内部にtask名による分岐や
 具体taskのimportを置かず、共通処理をtaskごとに複製しない。
 
 | 所有先 | 所有する責務 | taskへ委譲する部分 |

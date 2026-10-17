@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, Literal
@@ -34,6 +35,7 @@ from src.tasks.base.annotation.artifacts import (
     write_asset,
     write_document,
 )
+from src.tasks.base.annotation.collection.contracts import SourceCandidate
 from src.tasks.base.annotation.contracts import (
     ArtifactRef,
     ClipManifest,
@@ -119,6 +121,9 @@ class Environment:
         frame_count: int = 32,
         model: ModelRef | None = None,
         learning: LearningPlan | None = None,
+        plan_transform: Callable[[CampaignPlan], CampaignPlan] | None = None,
+        collect_source: Callable[[CampaignPlan, SourceCandidate], ArtifactRef]
+        | None = None,
         **policy_changes: Any,
     ) -> None:
         self.layout = AnnotationLayout.testing(root)
@@ -280,45 +285,27 @@ class Environment:
                 }
             )
         )
+        if plan_transform is not None:
+            self.plan = plan_transform(self.plan)
         self.plan_ref = annotation_reference(
             self.layout, save_plan(self.layout, self.plan)
         )
+        candidate = SourceCandidate(
+            provider="local",
+            channel_id=self.manifest.source.channel_id,
+            video_id=self.manifest.source.video_id,
+            title="synthetic review source",
+            origin_url=self.manifest.source.origin_url,
+            selection_reason="synthetic review fixture",
+            evidence=self.plan.selection,
+            local_media=self.manifest.source.media,
+        )
         predictions = Predictions(self.layout, self.plan)
-        with predictions.registry.transaction() as db:
-            db.execute(
-                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
-                (
-                    self.manifest.source.canonical_id,
-                    "local",
-                    "fixture",
-                    video_id,
-                    campaign_id,
-                    "{}",
-                    "prepared",
-                ),
-            )
-            db.execute(
-                "INSERT INTO clips VALUES (?,?,?,?,?)",
-                (
-                    self.manifest.clip_id,
-                    self.manifest.source.canonical_id,
-                    campaign_id,
-                    self.manifest_ref.canonical_bytes().decode(),
-                    media.digest,
-                ),
-            )
-            db.execute(
-                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
-                (
-                    content_digest(["ball", self.manifest.clip_id]),
-                    campaign_id,
-                    "ball",
-                    self.manifest.clip_id,
-                    model.sha256,
-                    inference.digest,
-                    "pending",
-                ),
-            )
+        if collect_source is not None:
+            self.manifest_ref = collect_source(self.plan, candidate)
+            self.manifest = read_document(self.layout, self.manifest_ref, ClipManifest)
+        else:
+            self._register_source(predictions, candidate, media, model, inference)
         prediction = predictions.run(self.manifest_ref, ProposalFixture())
         self.context = ReviewContext(
             plan=self.plan_ref,
@@ -330,6 +317,50 @@ class Environment:
         self.initial = self.store.initialize(self.context, self.adapter)
         self.context_ref = read_document(self.layout, self.initial, Revision).context
         self.actor = self.new_actor("first")
+
+    def _register_source(
+        self,
+        predictions: Predictions,
+        candidate: SourceCandidate,
+        media: ArtifactRef,
+        model: ModelRef,
+        inference: ArtifactRef,
+    ) -> None:
+        with predictions.registry.transaction() as db:
+            db.execute(
+                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
+                (
+                    self.manifest.source.canonical_id,
+                    "local",
+                    "fixture",
+                    candidate.video_id,
+                    self.plan.campaign_id,
+                    candidate.canonical_bytes().decode(),
+                    "prepared",
+                ),
+            )
+            db.execute(
+                "INSERT INTO clips VALUES (?,?,?,?,?)",
+                (
+                    self.manifest.clip_id,
+                    self.manifest.source.canonical_id,
+                    self.plan.campaign_id,
+                    self.manifest_ref.canonical_bytes().decode(),
+                    media.digest,
+                ),
+            )
+            db.execute(
+                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
+                (
+                    content_digest(["ball", self.manifest.clip_id]),
+                    self.plan.campaign_id,
+                    "ball",
+                    self.manifest.clip_id,
+                    model.sha256,
+                    inference.digest,
+                    "pending",
+                ),
+            )
 
     def save(self, document: Any) -> ArtifactRef:
         result: ArtifactRef = write_document(

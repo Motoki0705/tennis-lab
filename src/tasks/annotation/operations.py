@@ -25,6 +25,7 @@ from src.tasks.base.annotation.workers.services import ServiceRequest
 
 from .contracts import (
     AcquireOperation,
+    BootstrapModelOperation,
     HistoryManifest,
     HistoryOperation,
     OperationInput,
@@ -32,6 +33,7 @@ from .contracts import (
     PredictOperation,
     PrepareOperation,
     PreviewOperation,
+    PublishOperation,
     ReviewOperation,
     ScreenOperation,
 )
@@ -78,7 +80,9 @@ def preview_input(
     return request, task, directory
 
 
-def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
+def execute(
+    layout: AnnotationLayout, reference: ArtifactRef, *, attempt: int = 1
+) -> ArtifactRef:
     """The supervisor pins this exact input; direct CLI calls cannot bypass ownership."""
     if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
         raise ValueError("operation must be launched by its resource-accounted stage")
@@ -123,7 +127,13 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
                 ),
             )
         elif isinstance(op, AcquireOperation):
-            result = (Collection(layout, plan).acquire(op.source_id, retry=op.retry),)
+            if attempt < 1 or directory.name != f"{data.logical_id}-{attempt}":
+                raise ValueError(
+                    "acquisition attempt differs from its pinned operation directory"
+                )
+            result = (
+                Collection(layout, plan).acquire(op.source_id, retry=op.retry or attempt > 1),
+            )
         elif isinstance(op, ScreenOperation):
             from src.tasks.base.annotation.screening.service import Screening
 
@@ -133,14 +143,14 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         elif isinstance(op, PreviewOperation):
             from src.tasks.base.annotation.screening.images import make_sheets
 
-            service, task, attempt = preview_input(layout, op.service_request)
+            service, task, worker_directory = preview_input(layout, op.service_request)
             if task.plan_digest != plan.sha256:
                 raise ValueError("preview request belongs to another campaign")
             result = (
                 make_sheets(
                     layout,
                     task.source.media,
-                    attempt / "previews",
+                    worker_directory / "previews",
                     origin_pts=task.source_origin_pts,
                     time_base=task.time_base,
                     **service.parameters,
@@ -161,6 +171,34 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
             result = (
                 execute_service(layout, plan, op.service_request, BallReviewServices()),
             )
+        elif isinstance(op, PublishOperation):
+            from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+                PublishRequest,
+            )
+            from src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher import (
+                BallPublisher,
+            )
+
+            from .reviews import validate_closed
+
+            adoptions = validate_closed(layout, plan, data.plan, op.review)
+            result = (
+                BallPublisher(layout).publish(
+                    PublishRequest(
+                        plan=data.plan, product="frames", adoptions=adoptions
+                    )
+                ),
+            )
+        elif isinstance(op, BootstrapModelOperation):
+            from src.tasks.base.annotation.learning.models import ModelRegistry
+
+            if not plan.allows_adoption:
+                raise ValueError("model bootstrap requires an explicit production plan")
+            task = next((task for task in plan.tasks if task.task == op.task), None)
+            if task is None:
+                raise ValueError("model bootstrap task is absent from the frozen plan")
+            state = ModelRegistry(layout).bootstrap(task.model, op.evidence)
+            result = (write_document(layout, directory / "model.json", state),)
         elif isinstance(op, PredictOperation):
             adapter: PredictionAdapter
             if op.task == "ball":
