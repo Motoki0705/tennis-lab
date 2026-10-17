@@ -71,4 +71,5 @@ def full_model_arguments(parent: Path, train: Path, validation: Path, output: Pa
         "--epochs", "2", "--freeze-epochs", "1", "--windows-per-epoch", "1",
         "--learning-rate", ".001", "--warmup-updates", "0", "--device", "cpu",
         "--precision", "fp32", "--jpeg-decoder", "opencv", "--compile-mode", "off",
+        "--input-verification", "lazy", "--seed", "42",
         "--num-workers", "0", "--cpu-threads", "2", "--preview-clips", "0", "--log-every", "1"]

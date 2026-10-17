@@ -67,6 +67,7 @@ def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(tmp_
     pre, post = tmp_path / "pre", tmp_path / "post"
     env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
     base = ["--manifest", manifest, "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv",
+            "--seed", "42", "--input-verification", "lazy",
             "--num-workers", "0", "--compile-mode", "off", "--warmup-updates", "0", "--windows-per-epoch", "3", "--log-every", "1"]
     first = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "dpt_pretrain", *base,
         "--model-config", str(cfg), "--output", str(pre), "--epochs", "1", "--learning-rate", ".001", "--preview-clips", "0"],
@@ -88,6 +89,7 @@ def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(tmp_
     assert all(not r["encoder_frozen"] and r["encoder_learning_rate"] > 0 for r in logs if r["epoch"] == 1)
     assert set(json.loads((post / "stress.json").read_text())) == {"camera", "occlusion", "combined"}
     assert json.loads((post / "COMPLETED.json").read_text())["stage"] == "query_posttraining"
+    assert json.loads((post / "config.json").read_text())["recipe"]["runtime"]["input_verification"] == "lazy"
     assert list((post / "previews").rglob("*.gif"))
 
     evaluation = tmp_path / "post-evaluation.json"
