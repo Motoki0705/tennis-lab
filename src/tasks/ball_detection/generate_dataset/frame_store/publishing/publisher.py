@@ -44,6 +44,7 @@ from src.tasks.base.annotation.contracts import (
     PublicationReceipt,
     content_digest,
 )
+from src.tasks.base.annotation.jpeg_media import JpegArchive
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import ProductPlan, load_plan
 from src.tasks.base.annotation.registry import Registry
@@ -203,8 +204,10 @@ class BallPublisher:
         ):
             raise ValueError("publication cannot duplicate or change an existing clip")
         splits = publication_splits(
-            policy, {c.source_id: c.split for c in base.clips} if base else {},
-            {a.source_id for a in additions}, expected_new_sources=plan.counts.videos,
+            policy,
+            {c.source_id: c.split for c in base.clips} if base else {},
+            {a.source_id for a in additions},
+            expected_new_sources=plan.counts.videos,
         )
         return Inputs(product, policy, base, store, additions, splits)
 
@@ -221,7 +224,14 @@ class BallPublisher:
         clips: list[dict[str, Any]] = []
         heatmaps, coordinates = [], []
         base = inputs.store
-        videos = {key: value.model_dump(mode="json") for key, value in base.video_frames.items()} if base else {}
+        videos = (
+            {
+                key: value.model_dump(mode="json")
+                for key, value in base.video_frames.items()
+            }
+            if base
+            else {}
+        )
         if base is not None:
             assert inputs.base is not None
             clips = cast(list[dict[str, Any]], base.metadata["clips"]).copy()
@@ -257,23 +267,45 @@ class BallPublisher:
             spec, index = added.spec, len(tables)
             shard = directory / "shards" / shard_name(index)
             as_video = inputs.policy.image_storage == "video_q90"
+            shared_jpeg = isinstance(spec.media, JpegArchive)
+            if isinstance(spec.media, JpegArchive):
+                if as_video or inputs.policy.jpeg_quality != 90:
+                    raise ValueError(
+                        "prepared JPEG frames require unchanged Q90 JPEG publication"
+                    )
+                source = annotation_reference(self.layout, spec.media.path)
+                if source.digest != spec.media_sha256:
+                    raise ValueError(
+                        "prepared JPEG archive differs from the adopted media"
+                    )
+                _link_verified(self.layout, source, shard)
             if as_video:
                 if not isinstance(spec.media, VideoFrames):
-                    raise ValueError("Video publication requires the prepared native video")
+                    raise ValueError(
+                        "Video publication requires the prepared native video"
+                    )
                 shard = directory / "media" / video_name(index)
                 source = annotation_reference(self.layout, spec.media.path)
                 if source.digest != spec.media_sha256:
                     raise ValueError("Prepared video differs from the adopted media")
                 _link_verified(self.layout, source, shard)
             table = encode_clip(
-                spec, None if as_video else shard, inputs.policy.jpeg_quality,
+                spec,
+                None if as_video or shared_jpeg else shard,
+                inputs.policy.jpeg_quality,
                 StoredSize(spec.width, spec.height),
             )
+            if isinstance(spec.media, JpegArchive) and table.jpeg_hashes != tuple(
+                row.digest for row in spec.media.storage.frames
+            ):
+                raise ValueError("publication changed prepared JPEG frame bytes")
             tables.append(table)
             if as_video:
                 videos[spec.clip_id] = VideoFrameStorage(
-                    media_sha256=spec.media_sha256, media_bytes=shard.stat().st_size,
-                    jpeg_quality=inputs.policy.jpeg_quality, runtime=jpeg_video_runtime(),
+                    media_sha256=spec.media_sha256,
+                    media_bytes=shard.stat().st_size,
+                    jpeg_quality=inputs.policy.jpeg_quality,
+                    runtime=jpeg_video_runtime(),
                     frame_sha256=table.jpeg_hashes,
                 ).model_dump(mode="json")
             with shard.open("rb") as stored:
@@ -389,7 +421,10 @@ class BallPublisher:
         old_count = len(base.clips) if base else 0
         if base is not None:
             assert inputs.base is not None
-            if any(store.video_frames.get(key) != value for key, value in base.video_frames.items()):
+            if any(
+                store.video_frames.get(key) != value
+                for key, value in base.video_frames.items()
+            ):
                 raise ValueError("publication changed existing video storage contracts")
             if (
                 cast(list[dict[str, Any]], store.metadata["clips"])[:old_count]
@@ -423,8 +458,12 @@ class BallPublisher:
                     raise ValueError("publication changed existing snapshot identities")
         for offset, added in enumerate(inputs.additions, old_count):
             clip, spec = store.clips[offset], added.spec
-            if (clip.clip_id in store.video_frames) != (inputs.policy.image_storage == "video_q90"):
-                raise ValueError("published image storage differs from the planned policy")
+            if (clip.clip_id in store.video_frames) != (
+                inputs.policy.image_storage == "video_q90"
+            ):
+                raise ValueError(
+                    "published image storage differs from the planned policy"
+                )
             identity = snapshot.clips[offset]
             if (identity.clip_id, identity.source_id) != (
                 spec.clip_id,

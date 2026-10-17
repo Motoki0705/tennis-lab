@@ -181,8 +181,49 @@ def destination(env: Environment) -> Path:
     return path
 
 
+def test_jpeg_only_review_and_publication_share_exact_image_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hashlib
+    import os
+
+    policy = BallPublicationPolicy(
+        jpeg_quality=90,
+        source_splits=(
+            SourceSplit(source_id=content_digest(["local", "fixture"]), split="train"),
+        ),
+    )
+    env = Environment(tmp_path / "annotation", jpeg=True, publication_policy=policy)
+    assert not list(env.layout.root.rglob("*.mp4"))
+    # Both fresh renderer pages and cached images work after video deletion.
+    first = env.page((0, 1, 2))
+    assert env.page((0, 1, 2)) == first
+    request = PublishRequest(
+        plan=env.plan_ref, product="frames", adoptions=(seal(env),)
+    )
+
+    def no_encode(*args, **kwargs):
+        raise AssertionError("publication must not JPEG-encode saved frames again")
+
+    monkeypatch.setattr("cv2.imencode", no_encode)
+    receipt_ref = BallPublisher(env.layout).publish(request)
+    receipt, snapshot, store = result(env, receipt_ref)
+    assert receipt.snapshot is not None and len(snapshot.clips) == 1
+    assert env.manifest.jpeg is not None
+    source_path = env.layout.artifact_path(env.manifest.media)
+    published_path = store.image_path(store.clips[0])
+    assert os.path.samefile(source_path, published_path)
+    assert published_path.stat().st_nlink == 2
+    for row, jpeg in zip(
+        store.clip_rows(store.clips[0]), env.manifest.jpeg.frames, strict=True
+    ):
+        assert hashlib.sha256(store.read_jpeg(int(row))).hexdigest() == jpeg.digest
+    assert BallPublisher(env.layout).publish(request) == receipt_ref
+
+
 def test_publication_pointer_and_protection_are_atomic_after_files_appear(
-    setup: tuple[Environment, PublishRequest, Path], monkeypatch: pytest.MonkeyPatch,
+    setup: tuple[Environment, PublishRequest, Path],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from src.tasks.base.annotation.storage.catalog import StorageCatalog
 
@@ -259,8 +300,13 @@ def test_publication_preserves_base_bytes_rows_and_sealed_review_masks(
 
     assert_expired_but_protected(
         env.layout,
-        (reference, receipt.snapshot, snapshot.index, snapshot.metadata,
-         *(clip.shard for clip in snapshot.clips)),
+        (
+            reference,
+            receipt.snapshot,
+            snapshot.index,
+            snapshot.metadata,
+            *(clip.shard for clip in snapshot.clips),
+        ),
         "publication",
     )
     assert len(receipt.reused_clips) == 1 and len(snapshot.clips) == 2

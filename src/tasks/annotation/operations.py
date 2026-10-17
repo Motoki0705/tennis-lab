@@ -37,6 +37,8 @@ from .contracts import (
     PrepareOperation,
     PreviewOperation,
     PublishOperation,
+    RestoreSourceOperation,
+    RetireExcludedOperation,
     ReviewOperation,
     ScreenOperation,
 )
@@ -139,12 +141,26 @@ def execute(
             result = (
                 Collection(layout, plan).acquire(op.source_id, retry=op.retry or attempt > 1),
             )
+        elif isinstance(op, RestoreSourceOperation):
+            from src.tasks.base.annotation.collection.restoration import (
+                RestorationReceipt,
+            )
+
+            ref = Collection(layout, plan).restore_source(
+                op.source_id, attempt=op.attempt
+            )
+            restoration = read_document(layout, ref, RestorationReceipt)
+            result = (ref,)
+            if restoration.status != "restored":
+                status, reason = "not_applicable", restoration.reason
         elif isinstance(op, ScreenOperation):
             from src.tasks.base.annotation.screening.service import Screening
 
             result = (Screening(Collection(layout, plan)).prepare(op.source_id),)
         elif isinstance(op, PrepareOperation):
             result = (Collection(layout, plan).prepare(op.source_id),)
+        elif isinstance(op, RetireExcludedOperation):
+            result = (Collection(layout, plan).retire_excluded(op.source_id),)
         elif isinstance(op, PreviewOperation):
             from src.tasks.base.annotation.screening.images import make_sheets
 

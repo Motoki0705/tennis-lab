@@ -91,11 +91,11 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
         raise FileExistsError("New fine-tuning run requires a new output directory")
     manifest_digest, validation_digest = dual_sha256(args.manifest), dual_sha256(validation_manifest)
     augmentation = AugmentationConfig.load(args.augmentation_config)
+    validate_partitions(json.loads(args.manifest.read_text()), json.loads(validation_manifest.read_text()))
     data = FrozenBallWindowDataset(args.manifest, split="train", requires_pose=False, jpeg_decoder=args.jpeg_decoder)
     val = FrozenBallWindowDataset(validation_manifest, split="val", requires_pose=False, jpeg_decoder=args.jpeg_decoder)
     if dual_sha256(args.manifest) != manifest_digest or dual_sha256(validation_manifest) != validation_digest:
         raise ValueError("Manifest changed while preparing posttraining")
-    validate_partitions(data, val)
     if (getattr(args, "selection_scope", "common") == "balanced_existing_new") != ("evaluation_cohorts" in val.manifest):
         raise ValueError("Selection scope must agree with the fixed validation cohorts")
     runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
@@ -206,17 +206,19 @@ def finetuning_recipe(
         **({"replay_sampling": sampling} if sampling is not None else {}))
 
 
-def validate_partitions(train: FrozenBallWindowDataset, validation: FrozenBallWindowDataset) -> None:
-    """Reject known clip/source leakage before initializing a model or using CUDA.
+def validate_partitions(train: dict[str, Any], validation: dict[str, Any]) -> None:
+    """Reject clip/source leakage before binding manifests to their frame stores.
 
     These are store-level group identities. Annotation learning additionally
     verifies its canonical source identities through the published snapshot.
     """
-    train_ids = {r["clip"]["clip_id"] for r in train.records}
-    val_ids = {r["clip"]["clip_id"] for r in validation.records}
-    train_groups = {(r["clip"]["source"], r["clip"]["group_id"]) for r in train.records}
-    val_groups = {(r["clip"]["source"], r["clip"]["group_id"]) for r in validation.records}
+    train_records = [r for r in train["clips"] if r["clip"]["split"] == "train"]
+    val_records = [r for r in validation["clips"] if r["clip"]["split"] == "val"]
+    train_ids = {r["clip"]["clip_id"] for r in train_records}
+    val_ids = {r["clip"]["clip_id"] for r in val_records}
+    train_groups = {(r["clip"]["source"], r["clip"]["group_id"]) for r in train_records}
+    val_groups = {(r["clip"]["source"], r["clip"]["group_id"]) for r in val_records}
     if train_ids & val_ids or train_groups & val_groups:
         raise ValueError("Training clips/sources overlap fixed validation")
-    if "evaluation_cohorts" not in validation.manifest and not any(record["common_evaluation"] for record in validation.records):
+    if "evaluation_cohorts" not in validation and not any(record["common_evaluation"] for record in val_records):
         raise ValueError("Fixed validation must contain the declared Common selection subset")

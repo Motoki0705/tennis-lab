@@ -38,6 +38,9 @@ code版・入力hash・工程costを結ぶ。
 履歴を登録してから新規候補を登録する。`run` / `tick` で共通台帳を進め、workerに必要な
 画像・編集は親サービスが提供する。既存clipの再注釈、独立QA、旧remote入口を追加しない。
 新入口で未対応のproductを、暗黙に除外してcampaign全体を完了させない。
+動画の保持・削除は固定したpreparation policyに従う。JPEG保存方式では、元動画の不在を
+推論・レビューの障害として再ダウンロードせず、prepared/retirement receiptを確認する。
+詳細は[素材の保存契約](../../../src/tasks/base/annotation/collection/README.md#jpegを残して動画を削除する保存方式)を参照する。
 
 停止時は `status --details` の現在attempt、理由、工程log、receiptを読む。予算超過なら
 新規投入を止め、合意した対象rootすべての条件が回復するまで同じscopeのstopを保持する。
@@ -54,6 +57,9 @@ controllerのレビュー範囲照合と公開receiptを確認し、設定済み
 実動画・GPUで実行した範囲、合成試験だけの範囲、累積資源消費、残る判断と停止条件を明記する。
 
 ## 親controllerの定期監視
+
+ユーザーが監視の停止を指示した場合は、その指示を優先する。サイクルの開始・再開だけを
+理由に既存taskを再開・再登録しない。以下は監視が依頼されている間に適用する。
 
 サイクルの開始・再開時は [codex-scheduled-followup](../codex-scheduled-followup/SKILL.md) を読み、
 親controllerの作業を2時間（120分）ごとに監視する。ユーザーが別の間隔を明示した場合は

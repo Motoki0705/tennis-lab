@@ -82,8 +82,19 @@ class ScreenOperation(Document):
     source_id: Digest
 
 
+class RestoreSourceOperation(Document):
+    action: Literal["restore_source"] = "restore_source"
+    source_id: Digest
+    attempt: Identifier
+
+
 class PrepareOperation(Document):
     action: Literal["prepare"] = "prepare"
+    source_id: Digest
+
+
+class RetireExcludedOperation(Document):
+    action: Literal["retire_excluded"] = "retire_excluded"
     source_id: Digest
 
 
@@ -138,8 +149,10 @@ class OperationInput(Document):
     operation: Annotated[
         HistoryOperation
         | AcquireOperation
+        | RestoreSourceOperation
         | ScreenOperation
         | PrepareOperation
+        | RetireExcludedOperation
         | PreviewOperation
         | PredictionPreviewOperation
         | ReviewOperation
@@ -166,6 +179,10 @@ class OperationInput(Document):
     @property
     def stage(self) -> str:
         action = self.operation.action
+        if action == "restore_source":
+            return "acquire"
+        if action == "retire_excluded":
+            return "prepare"
         if isinstance(self.operation, PredictOperation):
             return "infer_" + self.operation.task
         if action in {

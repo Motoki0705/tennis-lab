@@ -27,6 +27,7 @@ from src.tasks.base.annotation.contracts import (
     ClipManifest,
 )
 from src.tasks.base.annotation.editing import ReviewContext, Revision, RevisionStore
+from src.tasks.base.annotation.jpeg_media import JpegArchive
 from src.tasks.base.annotation.paths import AnnotationLayout
 
 
@@ -111,7 +112,9 @@ def load_adopted(
         annotation_path=layout.artifact_path(revision.payload),
         annotation_sha256=revision.payload.digest,
         media_sha256=manifest.media.digest,
-        media=VideoFrames(
+        media=JpegArchive(media_path, manifest.jpeg, manifest.width, manifest.height)
+        if manifest.jpeg is not None
+        else VideoFrames(
             media_path,
             tuple(f.clip_pts for f in manifest.frames),
             Fraction(manifest.time_base),

@@ -22,7 +22,12 @@ from src.tasks.base.annotation.contracts import (
     ClipManifest,
     canonical_bytes,
 )
-from src.tasks.base.annotation.media import Timeline, check_clip, decode_range
+from src.tasks.base.annotation.media import (
+    Timeline,
+    check_clip,
+    decode_clip,
+    decode_range,
+)
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.predictions import PredictionContext
 
@@ -39,12 +44,22 @@ if TYPE_CHECKING:
 
 
 def _rgb_windows(
-    video: Path, timeline: Timeline, starts: tuple[int, ...]
+    video: Path,
+    timeline: Timeline,
+    starts: tuple[int, ...],
+    manifest: ClipManifest | None = None,
 ) -> Generator[tuple[int, NDArray[np.uint8]], None, None]:
     """Borrow one rolling RGB buffer until the next window; decode each frame once."""
-    rgb = np.empty((32, 3, timeline.height, timeline.width), dtype=np.uint8)
+    rgb: NDArray[np.uint8] = np.empty(
+        (32, 3, timeline.height, timeline.width), dtype=np.uint8
+    )
     previous_start: int | None = None
-    with closing(decode_range(video, timeline, 0, len(timeline.pts))) as decoded:
+    frames = (
+        decode_range(video, timeline, 0, len(timeline.pts))
+        if manifest is None or manifest.jpeg is None
+        else decode_clip(video, manifest, 0, len(timeline.pts))
+    )
+    with closing(frames) as decoded:
         for start in starts:
             retained = 0 if previous_start is None else 32 - (start - previous_start)
             # Move each retained frame separately: overlapping array assignment
@@ -177,6 +192,7 @@ class BallPredictionAdapter:
         directory: Path,
     ) -> ArtifactRef:
         config = read_document(layout, context.configuration, MDDInferenceConfig)
+        config.validate_media(manifest)
         starts = window_starts(len(manifest.frames), config.stride)
         owners = window_owners(len(manifest.frames), config.stride)
         path = directory / "coordinates.json"
@@ -196,7 +212,7 @@ class BallPredictionAdapter:
             self._identity = identity
         rows: list[BallProposal | None] = [None] * len(manifest.frames)
         clock = Fraction(manifest.time_base)
-        with closing(_rgb_windows(video, timeline, starts)) as windows:
+        with closing(_rgb_windows(video, timeline, starts, manifest)) as windows:
             for start, rgb in windows:
                 seconds = np.asarray(
                     [

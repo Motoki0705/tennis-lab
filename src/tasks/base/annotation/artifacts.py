@@ -18,6 +18,7 @@ D = TypeVar("D", bound=Document)
 
 
 def verify_reference(layout: AnnotationLayout, reference: ArtifactRef) -> Path:
+    """Verify a live dependency. Historical media fingerprints are not file references."""
     path: Path = layout.artifact_path(reference)
     if not path.is_file() or path.stat().st_size != reference.size_bytes:
         raise ValueError(f"artifact missing or size changed: {path}")
