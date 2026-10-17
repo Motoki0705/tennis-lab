@@ -11,30 +11,17 @@ from src.tasks.ball_detection.data.store import (
 )
 from src.tasks.ball_detection.data.windows.manifest import clip_semantic_digest
 from src.tasks.base.annotation.artifacts import (
+    data_reference as _data_reference,
+)
+from src.tasks.base.annotation.artifacts import (
     read_document,
     verify_reference,
     write_document,
 )
 from src.tasks.base.annotation.contracts import ArtifactRef, content_digest
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import file_digest
 
 from .contracts import BallSnapshot, LegacyClipRange, LegacySourceGroup, SnapshotClip
-
-
-def data_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
-    relative = path.relative_to(layout.repository / "data").as_posix()
-    # Validate the exact path (including symlinks) before hashing it.
-    layout.artifact_path(
-        ArtifactRef(role="data", path=relative, digest="0" * 64, size_bytes=0)
-    )
-    result = ArtifactRef(
-        role="data",
-        path=relative,
-        digest=file_digest(path),
-        size_bytes=path.stat().st_size,
-    )
-    return result
 
 
 def validate_snapshot(
@@ -65,7 +52,7 @@ def validate_snapshot(
         else:
             candidate = staging / source.relative_to(destination)
             # The same data-root/symlink boundary applies to in-progress files.
-            if data_reference(layout, candidate).model_dump(
+            if _data_reference(layout, candidate).model_dump(
                 exclude={"path"}
             ) != reference.model_dump(exclude={"path"}):
                 raise ValueError("staging snapshot file hash or size changed")
@@ -103,8 +90,8 @@ def freeze_legacy_store(
     clip_ranges: tuple[LegacyClipRange, ...] = (),
 ) -> ArtifactRef:
     """Pin a v1 baseline without rewriting it or inventing canonical source IDs."""
-    index = data_reference(layout, directory / "index.npz")
-    metadata = data_reference(layout, directory / "metadata.json")
+    index = _data_reference(layout, directory / "index.npz")
+    metadata = _data_reference(layout, directory / "metadata.json")
     store = BallFrameStore(directory)
     if store.metadata["schema_version"] != SCHEMA_VERSION:
         raise ValueError(
@@ -148,7 +135,7 @@ def freeze_legacy_store(
                 source_id=mapping[c.source, c.group_id],
                 split=c.split,
                 semantic_digest=clip_semantic_digest(store, c),
-                shard=data_reference(
+                shard=_data_reference(
                     layout, directory / "shards" / shard_name(c.index)
                 ),
             )

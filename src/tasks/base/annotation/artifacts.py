@@ -40,6 +40,20 @@ def annotation_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
     return reference
 
 
+def data_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
+    """Pin an existing data-root file after validating the path and symlink boundary."""
+    relative = path.relative_to(layout.repository / "data").as_posix()
+    layout.artifact_path(
+        ArtifactRef(role="data", path=relative, digest="0" * 64, size_bytes=0)
+    )
+    return ArtifactRef(
+        role="data",
+        path=relative,
+        digest=file_digest(path),
+        size_bytes=path.stat().st_size,
+    )
+
+
 def read_document(layout: AnnotationLayout, reference: ArtifactRef, kind: type[D]) -> D:
     document: D = kind.model_validate_json(
         verify_reference(layout, reference).read_bytes()
