@@ -443,6 +443,7 @@ class Learning:
             "pending",
             "unregistered",
             "queued",
+            "waiting",
             "running",
             "draining",
             "unfinished",
@@ -451,7 +452,8 @@ class Learning:
                 dict(
                     intent=ref,
                     state=pending
-                    if state["state"] in {"pending", "unregistered", "queued"}
+                    if state["state"]
+                    in {"pending", "unregistered", "queued", "waiting"}
                     else active,
                     stage=stage,
                     training=training,
