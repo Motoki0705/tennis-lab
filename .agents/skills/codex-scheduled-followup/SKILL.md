@@ -23,8 +23,9 @@ Use `これはハートビートです。` as the default heartbeat prompt. Keep
 
 ## Monitor and report on every heartbeat
 
-For monitoring, define three branches:
+For monitoring, check the session context first and choose the matching branch:
 
+- Context missing: if the monitored work or its completion condition cannot be identified from context, state what is missing in the final response and ask the user to provide it. Do not guess, start new work, or report completion.
 - Still running or unchanged: inspect once. Do not start another polling loop or duplicate the job.
 - Finished: validate the result, continue the already-authorized remaining work, and retain evidence of partial completion so retries can resume.
 - Failed: inspect the failure; repair within scope where possible and report a real blocker if one remains. Never promote failure to completion. For delivery failures, distinguish the active timer from `delivery_health` and use the evidence-preserving `recover` route for an authorized restoration; never silently reset or automatically resend an uncertain delivery.
