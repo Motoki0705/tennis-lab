@@ -29,6 +29,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from src.tasks.annotation.migration.legacy_format.contracts import sha256_file
 from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     BallInstance,
     ClipLabels,
@@ -36,7 +37,6 @@ from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     JpegSequence,
     SourceFrame,
 )
-from src.tennis_scene.chat_annotation.runtime.contracts import sha256_file
 
 LABEL_FILE = "Label.csv"
 COLUMNS = ("file name", "visibility", "x-coordinate", "y-coordinate", "status")

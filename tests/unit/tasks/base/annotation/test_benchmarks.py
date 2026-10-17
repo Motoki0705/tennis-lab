@@ -494,6 +494,32 @@ def test_usage_preserves_attempts_without_response_records(
     assert summary.missing_metric_counts == dict.fromkeys(Usage.model_fields, 0)
 
 
+def test_usage_keeps_equal_response_ids_from_distinct_attempts(fixture: Fixture) -> None:
+    attempts = []
+    known = dict.fromkeys(Usage.model_fields, 0)
+    known.update(input_tokens=100, output_tokens=10, total_tokens=110)
+    for number in (1, 2):
+        attempt = fixture.exit(fixture.attempt(number=number))
+        assert attempt.execution is not None
+        launch = read_document(fixture.layout, attempt.launch, Launch)
+        response = {"type": "token_usage_record", "payload": {"response_id": "same-id", "usage": known}}
+        rows = [
+            {"type": "session_meta", "payload": {"id": "fixture-thread", "cwd": str(Path(launch.directory) / "work")}},
+            {"type": "turn_context", "payload": {"model": "gpt-6.1-sol"}},
+            response,
+            response,
+        ]
+        rollout = Path(launch.directory) / "rollout.jsonl"
+        rollout.write_text("".join(json.dumps(row) + "\n" for row in rows))
+        telemetry = capture(fixture.layout, attempt.launch, attempt.execution, (), rollout=rollout)
+        attempts.append(attempt.model_copy(update={"telemetry": telemetry}))
+    fixture.observation(attempts=tuple(attempts))
+    summary = report(fixture).conditions[0].usage
+    assert summary.attempts == summary.reports == 2
+    assert summary.known_responses == summary.exact_api_responses == 2
+    assert summary.totals == {key: value * 2 for key, value in known.items()}
+
+
 def test_usage_aggregates_unique_responses_images_and_missing_fields(
     fixture: Fixture,
 ) -> None:

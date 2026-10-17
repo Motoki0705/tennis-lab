@@ -10,6 +10,23 @@ from typing import Any, Protocol, Self, TypeVar, cast
 
 from pydantic import Field
 
+from src.tasks.annotation.migration.legacy_format.contracts import (
+    BallAnnotation,
+    ClipManifest,
+    PlayerAnnotation,
+    SourceInfo,
+    SupportedAnnotation,
+    annotation_clip_id,
+    loads_json,
+    parse_annotation,
+)
+from src.tasks.annotation.migration.legacy_format.layout import published_video_path
+from src.tasks.annotation.migration.legacy_format.prepared import verify_prepared_run
+from src.tasks.annotation.migration.legacy_format.raw_zip import (
+    MAX_ZIP_BYTES,
+    inspect_zip,
+)
+from src.tasks.annotation.migration.legacy_format.validation import validate_annotation
 from src.tasks.base.annotation.contracts import Document, content_digest, relative_path
 from src.tasks.base.annotation.storage.contracts import ArtifactKind
 from src.tasks.base.annotation.storage.contracts import (
@@ -21,20 +38,6 @@ from src.tasks.base.annotation.storage.migration import (
     describe_file,
 )
 from src.tasks.base.annotation.storage.migration.files import checked_root, read_file
-from src.tennis_scene.chat_annotation.artifacts.store import MAX_ZIP_BYTES, inspect_zip
-from src.tennis_scene.chat_annotation.layout import published_video_path
-from src.tennis_scene.chat_annotation.preparation import verify_prepared_run
-from src.tennis_scene.chat_annotation.runtime.contracts import (
-    BallAnnotation,
-    ClipManifest,
-    PlayerAnnotation,
-    SourceInfo,
-    SupportedAnnotation,
-    annotation_clip_id,
-    loads_json,
-    parse_annotation,
-)
-from src.tennis_scene.chat_annotation.runtime.validation import validate_annotation
 
 _Model = TypeVar("_Model")
 

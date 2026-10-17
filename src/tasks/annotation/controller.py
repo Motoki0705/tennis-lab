@@ -17,6 +17,7 @@ from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import load_plan
 from src.tasks.base.annotation.predictions import PredictionReceipt, Predictions
+from src.tasks.base.annotation.reports import publication_summary
 from src.tasks.base.annotation.resources import (
     BudgetStopped,
     CapacityUnavailable,
@@ -31,6 +32,7 @@ from .configuration import validate_runtime
 from .contracts import (
     AcquireOperation,
     CandidateManifest,
+    CompletionEvidence,
     OperationInput,
     OperationReceipt,
     PredictOperation,
@@ -699,6 +701,15 @@ class Controller:
                 if production["state"] == "complete"
                 else "pending"
             )
+        completion = None
+        if production is not None and production.get("completion") is not None:
+            evidence = read_document(
+                self.layout,
+                ArtifactRef.model_validate(production["completion"]),
+                CompletionEvidence,
+            )
+            completion = evidence.completion
+        annotation = publication_summary(self.layout, self.runtime.plan, completion)
         return {
             "state": state,
             "collection": summary,
@@ -708,4 +719,5 @@ class Controller:
             "failures": failures,
             "preview_adopts_teachers": False,
             "workflow": production,
+            "annotation": annotation,
         }
