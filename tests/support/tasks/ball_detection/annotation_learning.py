@@ -94,7 +94,7 @@ def holdout(layout: AnnotationLayout, snapshot: ArtifactRef, *, split: str = "va
     val = store.clip_by_id("val/clip")
     raw = build_coordinate_manifest(store, PlayIntervalConfig(), TemporalSamplingConfig((1,)), input_kind="mdd_only",
         common_reference=dict(clip_ids=[val.clip_id], clip_semantic_sha256={val.clip_id: clip_semantic_digest(store, val)}))
-    manifest = write_asset(layout, layout.path("models", "fixed-windows.json"), canonical_bytes(raw) + b"\n")
+    manifest = write_asset(layout, layout.path("models", f"fixed-{split}-windows.json"), canonical_bytes(raw) + b"\n")
     return HoldoutWindows(snapshot=snapshot, manifest=manifest, split=split)
 
 

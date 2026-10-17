@@ -35,6 +35,13 @@ epoch予算や空の群は拒否する。同じ群内では全候補を一巡し
 各epochの候補数・抽出数・unique窓数を保存する。比率は入力窓数の割合であり、
 全データを各epochに一度ずつ読む保証ではない。学習履歴と今回公開されたかどうかは区別する。
 
+採否時の`retained_references`はvalidation/test双方の`HoldoutWindows`を開き、実際の
+window manifestとsnapshot参照を列挙する。`BallLearningRecipe`、`TrainingWindows`、
+`BallTrainingProvenance`、`BallEvaluationMetrics`の型付き参照も明示的に収集する。
+これらは[共通の採否transaction](../../../base/annotation/learning/README.md)で保護される。
+回帰テストは実際のHoldoutWindowsと完了記録を使い、依存を個別に期限切れ登録してGC候補に
+ならないことを検証する。入力・来歴schemaに参照を持つ文書型が増えた場合も検証対象への追加を要求する。
+
 登録時に窓とcoverageを生成し、登録後は保存した入力が欠けていれば停止する。
 追加clipに座標教師を含む窓が無い場合はcoverageを保存し、共通管理へ`NoAdditionalTeachers`を返す。公開を保持した終端結果となり、旧clipだけで追加学習しない。
 初期モデル・recipe・累積snapshot・intentのdigestを通常のfull-model学習recipeへ組み込む。

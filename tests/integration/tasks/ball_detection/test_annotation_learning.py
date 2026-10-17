@@ -7,10 +7,15 @@ from pathlib import Path
 import pytest
 import torch
 
+from src.tasks.ball_detection.data.windows.learning import contracts as window_contracts
+from src.tasks.ball_detection.data.windows.learning.contracts import HoldoutWindows
+from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
     BallSnapshot,
 )
+from src.tasks.ball_detection.training.annotation import contracts as learning_contracts
 from src.tasks.ball_detection.training.annotation.contracts import (
+    BalancedSelectionPolicy,
     BallEvaluationMetrics,
     BallSelectionPolicy,
     BallTrainingProvenance,
@@ -27,13 +32,77 @@ from src.tasks.base.annotation.artifacts import read_document, write_asset
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.learning.contracts import (
     EvaluationReceipt,
+    FixedEvaluation,
     StageInput,
     TrainingReceipt,
+)
+from src.tasks.base.annotation.plan import references
+from tests.support.annotation_storage import (
+    assert_expired_but_protected,
+    reference_document_types,
 )
 from tests.support.tasks.ball_detection.learning_pipeline import (
     LearningEnvironment,
     save,
 )
+
+
+def test_model_decision_preserves_ball_fixed_input_dependencies(tmp_path: Path) -> None:
+    env = LearningEnvironment(
+        tmp_path,
+        cohorts=True,
+        selection_policy=BalancedSelectionPolicy(minimum_frames_per_fps=1),
+    )
+    training = read_document(
+        env.layout, env.executor.finish(env.tick().launch), TrainingReceipt
+    )
+    evaluation = read_document(
+        env.layout, env.executor.finish(env.tick().launch), EvaluationReceipt
+    )
+    fixed = read_document(env.layout, env.intent.fixed_evaluation, FixedEvaluation)
+    assert fixed.test is not None
+    validation = read_document(env.layout, fixed.validation.manifest, HoldoutWindows)
+    test = read_document(env.layout, fixed.test.manifest, HoldoutWindows)
+    assert validation.manifest != test.manifest
+    provenance = read_document(env.layout, training.provenance, BallTrainingProvenance)
+    metrics = read_document(env.layout, evaluation.metrics, BallEvaluationMetrics)
+    assert (
+        provenance.validation_manifest
+        == metrics.validation_manifest
+        == validation.manifest
+    )
+    inputs = resolve_inputs(env.layout, env.intent)
+    assert inputs.recipe.replay is not None
+    assert inputs.recipe.replay.previously_trained_manifest in env.learning.storage.inputs(
+        env.intent_ref
+    )
+    documents = (
+        validation,
+        test,
+        provenance,
+        metrics,
+        inputs.prepared,
+        inputs.recipe,
+        inputs.recipe.replay,
+    )
+    assert {type(document) for document in documents} == reference_document_types(
+        window_contracts, learning_contracts
+    )
+    outcome = env.tick()
+    assert outcome.state in {"adopted", "rejected"}
+    assert_expired_but_protected(
+        env.layout, (validation.manifest, test.manifest), "model"
+    )
+    assert_expired_but_protected(
+        env.layout,
+        tuple(
+            reference
+            for document in documents
+            for reference in references(document)
+        ),
+        "model",
+    )
+    assert env.tick() == outcome
 
 
 @pytest.mark.parametrize("configured", [False, True])
@@ -184,10 +253,11 @@ def test_altered_input_or_checkpoint_is_not_resumed(tmp_path: Path) -> None:
     assert not env.layout.artifact_path(inputs.prepared.manifest).exists()
 
 
+@pytest.mark.parametrize("cohorts", [False, True])
 def test_interrupted_epoch_resumes_only_remaining_updates(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cohorts: bool
 ) -> None:
-    env = LearningEnvironment(tmp_path)
+    env = LearningEnvironment(tmp_path, cohorts=cohorts)
     started = env.tick()
     original = joint.train_epoch
 
@@ -203,6 +273,18 @@ def test_interrupted_epoch_resumes_only_remaining_updates(
     first = output_reference(
         env.layout, run_root(env.layout, env.intent) / "attempt-001/epoch-000.pt"
     )
+    interrupted_checkpoint = torch.load(
+        env.layout.artifact_path(first), weights_only=True, map_location="cpu"
+    )
+    scope = "balanced_existing_new" if cohorts else "common"
+    assert interrupted_checkpoint["recipe"]["selection_scope"] == scope
+    assert interrupted_checkpoint["best_score"] == selection_score(
+        interrupted_checkpoint["validation"], scope
+    )
+    if cohorts:
+        assert interrupted_checkpoint["best_score"] != selection_score(
+            interrupted_checkpoint["validation"], "common"
+        )
     env.executor.record_exit(started.launch, failed=True)
     assert env.tick().state == "failed"
     env.learning.retry(
@@ -221,10 +303,20 @@ def test_interrupted_epoch_resumes_only_remaining_updates(
         weights_only=True,
         map_location="cpu",
     )
-    assert latest["global_step"] == 2 and latest["epoch"] == 1
+    assert latest["global_step"] == env.recipe.total_updates and latest["epoch"] == 1
     assert output_reference(env.layout, env.layout.artifact_path(first)) == first
     assert (
-        max(int(state["step"]) for state in latest["optimizer"]["state"].values()) == 2
+        max(int(state["step"]) for state in latest["optimizer"]["state"].values())
+        == env.recipe.total_updates
+    )
+    selected = torch.load(
+        env.layout.artifact_path(provenance.selected_checkpoint),
+        weights_only=True,
+        map_location="cpu",
+    )
+    best = json.loads(env.layout.artifact_path(provenance.best_record).read_bytes())
+    assert best["selection_error_px"] == latest["best_score"] == selection_score(
+        selected["validation"], scope
     )
 
 
