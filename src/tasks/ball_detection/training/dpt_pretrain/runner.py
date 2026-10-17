@@ -10,13 +10,21 @@ from typing import Any
 
 import torch
 
-from src.tasks.ball_detection.checkpoints.pretraining import SCHEMA, save_pretraining
+from src.tasks.ball_detection.checkpoints.configuration import (
+    checkpoint_training_recipe,
+)
+from src.tasks.ball_detection.checkpoints.pretraining import (
+    SCHEMA,
+    pretraining_config,
+    save_pretraining,
+)
 from src.tasks.ball_detection.checkpoints.provenance import (
     source_identity,
 )
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
 from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.evaluation.dpt import evaluate
+from src.tasks.ball_detection.model_io.predict import predict_dpt_heatmaps
 from src.tasks.ball_detection.models.mdd import (
     MDDDPTDetector,
     MDDPretrainConfig,
@@ -152,13 +160,16 @@ def main() -> None:
         (args.output / "data_manifest.json").write_bytes(args.manifest.read_bytes())
     else:
         saved = torch.load(args.resume, map_location="cpu", weights_only=True)
-        if args.resume.parent != args.output or saved.get("schema") != SCHEMA or saved["recipe"] != recipe:
+        saved_config = pretraining_config(saved)
+        if args.resume.parent != args.output or saved.get("schema") != SCHEMA or checkpoint_training_recipe(saved, saved_config) != recipe:
             raise ValueError("Resume requires the same output directory, pretraining stage and exact recipe")
         if saved["code"]["source_sha256"] != code["source_sha256"]:
             raise ValueError("Resume implementation changed")
         epoch_start = saved["epoch"] + 1
         if epoch_start >= args.epochs or any(int(p.stem.split("-")[1]) >= epoch_start for p in args.output.glob("epoch-*.pt")):
             raise ValueError("Resume must use the latest completed epoch with remaining budget")
+        if saved_config != config:
+            raise ValueError("Resume pretraining model configuration changed")
         model.load_state_dict(saved["state_dict"], strict=True)
         optimizer.load_state_dict(saved["optimizer"])
         torch.set_rng_state(saved["torch_rng"])
@@ -193,7 +204,7 @@ def main() -> None:
                 context["surface_phase"] = "forward"
                 with coordinate_compile_scope(model):
                     with torch.autocast(device.type, dtype=torch.bfloat16, enabled=args.precision == "bf16"):
-                        logits = model(rgb)
+                        logits = predict_dpt_heatmaps(model, rgb)
                     context["surface_phase"] = "loss"
                     loss, _ = heatmap_objective(logits, batch, sigma_ratio=args.sigma_ratio, gamma=args.focal_gamma)
                     context["surface_phase"] = "backward"
