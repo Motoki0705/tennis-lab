@@ -466,6 +466,27 @@ CPU fixtureによる契約・障害注入・CLI E2E、実モデルでの少数cl
 2サイクルと10/25/50並列の実測を区別して結果を残す。
 自動テストだけで実モデルの品質・GPU資源・実稼働並列数を検証済みにしない。
 
+### 故障注入の検証範囲
+
+接続済みball経路では、成果物公開・receipt保存・台帳commitを別の境界として検証する。
+保存済み成果物を再利用できること、同じ要求が同じreceiptへ収束すること、異なる要求の
+競合が明示的に拒否されることを確認する。公開前に失われた計算の再実行と、確定済み処理の
+二重登録は区別する。
+
+| 境界 | 合成CPUテストの入口 |
+|---|---|
+| 素材取得・clip公開・準備receipt・取得/準備の並行所有 | [test_collection.py](../../../../tests/unit/tasks/base/annotation/test_collection.py) |
+| 予測成果・予測receipt・台帳commit・同一要求の並行再送 | [test_inference.py](../../../../tests/unit/tasks/ball_detection/annotation/test_inference.py) |
+| revision公開・head commit・編集receipt | [test_review_tools.py](../../../../tests/unit/tasks/base/annotation/test_review_tools.py) |
+| 採用証拠・教師mask・採用receipt・seal commit・並行seal | [test_review.py](../../../../tests/unit/tasks/ball_detection/annotation/test_review.py) |
+| shard/metadata・snapshot rename・公開receipt・台帳commit | [test_publication.py](../../../../tests/unit/tasks/ball_detection/annotation/test_publication.py) |
+| queue登録の応答喪失・stage完了receipt | [test_execution.py](../../../../tests/unit/tasks/base/annotation/test_execution.py) |
+| 学習checkpoint再開・評価comparison/metrics/receipt | [test_annotation_learning.py](../../../../tests/integration/tasks/ball_detection/test_annotation_learning.py) |
+| 学習/evaluation要求・完了記録・モデルpointer/receipt | [test_learning.py](../../../../tests/unit/tasks/base/annotation/test_learning.py) |
+| 移行・GCの実プロセス強制終了と並行再開 | [storage](storage/README.md)、[migration](storage/migration/README.md) |
+
+この範囲はplayerのID/pose工程や本番GPU campaign全体の故障試験を代替しない。
+
 ## 14. 本運用前に固定する判断
 
 初期候補は明示的に登録し、最も新しいファイルや`last`を自動選択しない。

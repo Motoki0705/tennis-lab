@@ -600,3 +600,65 @@ def test_unclosed_or_duplicate_bundle_cannot_be_planned(environment: Any) -> Non
     payload["files"] = (plan.bundle.files[0], plan.bundle.files[0])
     with pytest.raises(ValueError, match="unique, sorted"):
         Bundle.model_validate(payload)
+
+
+@pytest.mark.parametrize("phase", ["receipt_before", "receipt_after", "transaction", "commit_after"])
+def test_sigkill_at_migration_publication_boundaries(environment: Any, phase: str) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    layout, source, reader, plan = environment
+    store = MigrationStore(layout)
+    before = reader.inspect(source)
+
+    def killed_run() -> None:
+        def stop() -> None:
+            os.kill(os.getpid(), signal.SIGKILL)
+
+        with pytest.MonkeyPatch.context() as patch:
+            if phase.startswith("receipt"):
+                original = implementation.write_document
+
+                def write(layout, path, document):
+                    if isinstance(document, MigrationReceipt) and phase == "receipt_before":
+                        stop()
+                    result = original(layout, path, document)
+                    if isinstance(document, MigrationReceipt):
+                        stop()
+                    return result
+
+                patch.setattr(implementation, "write_document", write)
+            elif phase == "transaction":
+                original_protect = store.catalog.protect
+
+                def protect(*args, **kwargs):
+                    original_protect(*args, **kwargs)
+                    stop()
+
+                patch.setattr(store.catalog, "protect", protect)
+            else:
+                original_publish = store._publish
+
+                def publish(*args, **kwargs):
+                    original_publish(*args, **kwargs)
+                    stop()
+
+                patch.setattr(store, "_publish", publish)
+            apply(store, plan, reader)
+
+    process = multiprocessing.get_context("fork").Process(target=killed_run)
+    process.start()
+    process.join(20)
+    if process.is_alive():
+        process.kill()
+        process.join(5)
+        pytest.fail("migration failpoint process did not finish")
+    assert process.exitcode == -signal.SIGKILL
+    with sqlite3.connect(layout.registry) as database:
+        rows = database.execute("SELECT * FROM storage_imported_roots").fetchall()
+        assert bool(rows) == (phase == "commit_after")
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        receipts = list(pool.map(lambda _: apply(MigrationStore(layout), plan, reader), range(2)))
+    assert receipts[0] == receipts[1]
+    assert reader.inspect(source) == before
+    assert reader.inspect(imported_root(layout, plan.root_id, reader)) == before
+    assert len(store.catalog.snapshot().protections) == 1
