@@ -47,6 +47,7 @@ from src.tasks.base.annotation.resources import (
     ResourceManager,
     ResourceRequest,
 )
+from src.tasks.base.annotation.resources.measurements import process_usage
 from src.tasks.base.annotation.workers.processes import owned_members, process_snapshot
 from src.utils.paths import PROJECT_ROOT
 
@@ -54,6 +55,11 @@ from src.utils.paths import PROJECT_ROOT
 @pytest.fixture
 def setup(tmp_path: Path) -> tuple[AnnotationLayout, ResourceManager, StageLaunch]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
+    controller = process_snapshot(os.getpid())
+    assert controller is not None
+    controller_pss = sum(
+        item.pss_bytes for item in process_usage((), (controller[0],))
+    )
     ref = write_asset(layout, layout.path("campaigns", "input.txt"), b"fixture")
     plan = CampaignPlan.model_validate_json(
         json.dumps(
@@ -76,7 +82,9 @@ def setup(tmp_path: Path) -> tuple[AnnotationLayout, ResourceManager, StageLaunc
                     "codex_workers": 1,
                     "additional_storage_bytes": 100_000_000,
                     "minimum_free_bytes": 1,
-                    "total_pss_bytes": 2 * 1024**3,
+                    # StageRunner observes this pytest process. Keep the same
+                    # reservation headroom after imports from the full suite.
+                    "total_pss_bytes": controller_pss + 2 * 1024**3,
                     "gpu_seconds": 60,
                     "stages": [
                         {
