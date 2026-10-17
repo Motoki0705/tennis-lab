@@ -11,7 +11,7 @@ import numpy as np
 from src.tasks.person_tracking.contracts import DetectionFeatures
 
 _FIELDS = ('rows', 'boxes', 'scores', 'poses', 'embeddings', 'appearance_valid')
-# v2 preserves unbounded pose peaks. v3 additionally records missing score origins.
+# v2 requires explicit migration; v3 additionally records missing score origins.
 _LEGACY_SCHEMA = 'person_detection_features_v2'
 _SCHEMA = 'person_detection_features_v3'
 
@@ -38,22 +38,33 @@ def save_features(path: Path, frames: list[DetectionFeatures], provenance: dict[
 
 
 def load_features(path: Path) -> tuple[list[DetectionFeatures], dict[str, Any]]:
+    """Read only v3 archives; historical inputs require explicit migration."""
     with np.load(path, allow_pickle=False) as archive:
         if 'metadata' not in archive.files:
             raise ValueError('Feature archive fields differ from the contract')
         metadata = json.loads(str(archive['metadata'].item()))
-        if metadata['schema'] not in {_SCHEMA, _LEGACY_SCHEMA}:
+        if metadata['schema'] == _LEGACY_SCHEMA:
+            raise ValueError(
+                f'{path}: {_LEGACY_SCHEMA} requires explicit migration to {_SCHEMA}; '
+                'run python -m src.tasks.person_tracking.scripts.migrate_features '
+                '<absolute-source.npz> <absolute-new-destination.npz>'
+            )
+        if metadata['schema'] != _SCHEMA:
             raise ValueError('Unsupported feature archive schema')
-        fields = (*_FIELDS, 'score_origin') if metadata['schema'] == _SCHEMA else _FIELDS
+        fields = (*_FIELDS, 'score_origin')
         if set(archive.files) != {*fields, 'offsets', 'metadata'}:
             raise ValueError('Feature archive fields differ from the contract')
         arrays = {field: archive[field] for field in fields}
         offsets = archive['offsets']
+    return _restore_frames(arrays, offsets), dict(metadata['provenance'])
+
+
+def _restore_frames(arrays: dict[str, np.ndarray], offsets: np.ndarray) -> list[DetectionFeatures]:
+    """Validate the shared timeline and observation contract after schema decoding."""
     count = len(arrays['rows'])
     if offsets.ndim != 1 or offsets.dtype != np.int64 or len(offsets) < 2 or offsets[0] != 0 \
             or offsets[-1] != count or (np.diff(offsets) < 0).any() \
             or any(len(array) != count for array in arrays.values()) or len(np.unique(arrays['rows'])) != count:
         raise ValueError('Feature archive timeline or detection row axis is inconsistent')
-    frames = [DetectionFeatures(frame, **{field: arrays[field][start:end] for field in fields})
-              for frame, (start, end) in enumerate(zip(offsets[:-1], offsets[1:], strict=True))]
-    return frames, dict(metadata['provenance'])
+    return [DetectionFeatures(frame, **{field: array[start:end] for field, array in arrays.items()})
+            for frame, (start, end) in enumerate(zip(offsets[:-1], offsets[1:], strict=True))]
