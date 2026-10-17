@@ -15,7 +15,9 @@ from src.tasks.ball_detection.training.hybrid.objective import hybrid_objective
 from src.tasks.ball_detection.training.hybrid.runner import (
     freeze_for_epoch,
     parameter_role,
+    prepare_run_directory,
 )
+from src.utils.configuration.errors import PathContractError
 from tests.support.tasks.ball_detection.hybrid import hybrid_recipe
 
 
@@ -39,6 +41,45 @@ def test_invalid_decisions_fail(field: str, value: object, tmp_path: Path) -> No
     OmegaConf.update(cfg, field, value)
     with pytest.raises(ValueError):
         resolve_recipe(cfg)
+
+
+def test_hybrid_paths_use_separate_declared_roots(tmp_path: Path) -> None:
+    manifest = tmp_path / "snapshots" / "windows.json"
+    checkpoint = tmp_path / "models" / "query.pt"
+    output = tmp_path / "runs" / "new-run"
+    cfg = hybrid_recipe(manifest, checkpoint, output)
+    cfg.resume = "new-run/epoch-000.pt"
+    resolved = resolve_recipe(cfg)
+    assert resolved["manifest"] == str(manifest)
+    assert resolved["initialization"]["checkpoint"] == str(checkpoint)
+    assert resolved["output"] == str(output)
+    assert resolved["resume"] == str(output / "epoch-000.pt")
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("field", ["manifest", "initialization.checkpoint", "run.output_dir", "resume"])
+@pytest.mark.parametrize("value", ["../escape", "/absolute/escape"])
+def test_hybrid_paths_reject_root_escape(tmp_path: Path, field: str, value: str) -> None:
+    cfg = hybrid_recipe(tmp_path / "windows.json", tmp_path / "query.pt", tmp_path / "run")
+    OmegaConf.update(cfg, field, value)
+    with pytest.raises(PathContractError):
+        resolve_recipe(cfg)
+    assert not (tmp_path / "run").exists()
+
+
+def test_run_directory_allows_hydra_logs_but_preserves_existing_artifacts(tmp_path: Path) -> None:
+    output = tmp_path / "run"
+    hydra = output / "hydra"
+    hydra.mkdir(parents=True)
+    log = hydra / "runner.log"
+    log.write_text("existing Hydra log")
+    prepare_run_directory(output)
+    checkpoint = output / "epoch-000.pt"
+    checkpoint.write_bytes(b"existing checkpoint")
+    with pytest.raises(FileExistsError, match="already contains artifacts"):
+        prepare_run_directory(output)
+    assert log.read_text() == "existing Hydra log"
+    assert checkpoint.read_bytes() == b"existing checkpoint"
 
 
 def test_absence_supervises_every_heatmap_cell_and_presence_but_unknown_is_ignored() -> None:

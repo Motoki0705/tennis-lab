@@ -14,7 +14,10 @@ from src.tasks.ball_detection.checkpoints.pretraining import (
     save_pretraining,
     transfer_encoder,
 )
-from src.tasks.ball_detection.model_io.predict import predict_coordinates
+from src.tasks.ball_detection.model_io.predict import (
+    predict_coordinates,
+    predict_dpt_heatmaps,
+)
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
     MDDDPTDetector,
@@ -61,7 +64,7 @@ def test_dpt_save_encoder_transfer_query_restore_and_model_io(tmp_path: Path, ch
     rgb = torch.randint(256, (1, 32, 3, 33, 49), dtype=torch.uint8)
     times = torch.arange(32)[None].float() / 30
     with torch.no_grad():
-        torch.testing.assert_close(source(rgb), restored_dpt(rgb), atol=0, rtol=0)
+        torch.testing.assert_close(predict_dpt_heatmaps(source, rgb), restored_dpt(rgb), atol=0, rtol=0)
     target = DeepMDDQueryDetector(config(channels)).eval()
     parent = transfer_encoder(path, target)
     for name, value in source.encoder.state_dict().items():
@@ -89,9 +92,10 @@ def test_config_and_contract_cannot_disagree_or_reinterpret_old_weights(tmp_path
     source = MDDDPTDetector(config(2))
     saved: dict[str, Any] = dict(schema="mdd_dpt_pretraining.v2", model_config=asdict(source.config),
                  recipe=dict(input_contract=source.mdd.input_contract()))
-    # Historical v2 records lack input_channels, and retain exactly the 2ch contract.
+    # Even an otherwise valid 2ch contract cannot fill in missing configuration.
     saved["model_config"].pop("input_channels")
-    assert pretraining_config(saved).input_channels == 2
+    with pytest.raises(ValueError, match="Incomplete pretraining CNN configuration"):
+        pretraining_config(saved)
     saved["model_config"]["input_channels"] = 5
     with pytest.raises(ValueError, match="input contract"):
         pretraining_config(saved)
@@ -105,7 +109,7 @@ def test_config_and_contract_cannot_disagree_or_reinterpret_old_weights(tmp_path
 
 def test_encoder_and_query_boundary_reject_wrong_channel_or_time_contract() -> None:
     model = DeepMDDQueryDetector(config())
-    with pytest.raises(ValueError, match="Encoder requires"):
+    with pytest.raises(RuntimeError, match="channels"):
         model.encoder(torch.zeros(1, 2, 32, 8, 8))
     rgb = torch.zeros(1, 32, 3, 8, 8, dtype=torch.uint8)
     for times in (torch.zeros(1, 32), torch.full((1, 32), float("nan"))):

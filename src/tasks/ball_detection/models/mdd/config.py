@@ -74,7 +74,6 @@ class MDDPretrainConfig:
     activation_checkpointing: bool
     encoder_variant: str
     temporal_mixing: str
-    # Legacy 2ch records are converted explicitly at their loading boundary.
     input_channels: int
 
     @property
@@ -106,7 +105,6 @@ class MDDPretrainConfig:
         raw = yaml.safe_load(path.read_text())
         if not isinstance(raw, dict) or raw.pop("name", None) != "mdd_dpt_pretrain":
             raise ValueError("Expected mdd_dpt_pretrain model config")
-        raw.setdefault("input_channels", 2)
         if set(raw) != set(cls.__dataclass_fields__):
             raise ValueError("Pretraining configuration must declare every field exactly")
         for name in ("stem_channels", "mixed_channels", "residual_blocks"):

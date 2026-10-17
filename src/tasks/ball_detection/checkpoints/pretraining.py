@@ -25,7 +25,6 @@ SCHEMA = "mdd_dpt_pretraining.v2"
 def pretraining_config(saved: dict[str, Any]) -> MDDPretrainConfig:
     """The v1 schema denotes exactly the original residual/dense3d CNN."""
     raw = dict(saved["model_config"])
-    raw.setdefault("input_channels", 2)
     expected = set(MDDPretrainConfig.__dataclass_fields__)
     if saved.get("schema") == "mdd_dpt_pretraining.v1":
         if set(raw) != expected - {"encoder_variant", "temporal_mixing"} or raw["input_channels"] != 2:

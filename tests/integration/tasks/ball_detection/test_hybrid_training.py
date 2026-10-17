@@ -207,20 +207,20 @@ def test_three_five_channel_stages_resume_transfer_evaluate_and_continue(tmp_pat
     # Exercise the public Hydra stage entry as well as the adapter-callable function.
     cli_recipe = OmegaConf.to_container(cfg, resolve=True)
     assert isinstance(cli_recipe, dict)
-    cli_recipe["defaults"] = [{"override hydra/job_logging": "disabled"}, {"override hydra/hydra_logging": "disabled"}]
-    cli_recipe["hydra"] = dict(run=dict(dir="."), output_subdir=None, job=dict(chdir=False))
+    full = tmp_path / cfg.run.output_dir
+    cli_recipe["hydra"] = dict(run=dict(dir=str(full / "hydra")), output_subdir=None, job=dict(chdir=False))
     (tmp_path / "recipe.yaml").write_text(yaml.safe_dump(cli_recipe))
     run_cli(["--stage", "hybrid", "--config-path", str(tmp_path), "--config-name", "recipe"])
-    full = Path(cfg.output)
-    cfg.output = str(tmp_path / "hybrid_resume")
+    assert (full / "hydra" / "runner.log").is_file()
+    cfg.run.output_dir = "hybrid_resume"
     cfg.stop_after_epoch = 0
     train_hybrid(cfg)
-    resumed = Path(cfg.output)
+    resumed = tmp_path / cfg.run.output_dir
     checkpoint = weights(resumed / "epoch-000.pt")
     assert all(torch.equal(checkpoint["state_dict"][k], parent["state_dict"][k]) for k in receipt["transferred_parameters"])
     assert any(not torch.equal(checkpoint["state_dict"][k], fresh.state_dict()[k]) for k in receipt["initialized_parameters"])
     # A changed threshold, source or freeze policy cannot be a resume.
-    cfg.resume, cfg.stop_after_epoch = str(resumed / "epoch-000.pt"), None
+    cfg.resume, cfg.stop_after_epoch = f"{cfg.run.output_dir}/epoch-000.pt", None
     changed = copy.deepcopy(cfg)
     changed.presence_threshold = .6
     with pytest.raises(ValueError, match="identical recipe"):
@@ -254,8 +254,9 @@ def test_three_five_channel_stages_resume_transfer_evaluate_and_continue(tmp_pat
         restore_hybrid_model(tampered)
     # A new output on the same snapshot is not cumulative learning.
     cfg.resume = None
-    cfg.initialization = dict(mode="continual", checkpoint=str(full / "epoch-001.pt"))
-    cfg.output = str(tmp_path / "continued")
+    cfg.paths.checkpoint_root = str(full)
+    cfg.initialization = dict(mode="continual", checkpoint="epoch-001.pt")
+    cfg.run.output_dir = "continued"
     with pytest.raises(ValueError, match="new snapshot"):
         train_hybrid(cfg)
     # Retain every old split, then add reviewed cumulative training frames.
@@ -268,17 +269,17 @@ def test_three_five_channel_stages_resume_transfer_evaluate_and_continue(tmp_pat
     moved = data_identity(new_manifest)
     moved["splits"]["val/main"] = "train"
     with pytest.raises(ValueError, match="retain old clips and their splits"):
-        initialize_hybrid(Path(cfg.initialization.checkpoint), fresh.config, mode="continual",
+        initialize_hybrid(full / cfg.initialization.checkpoint, fresh.config, mode="continual",
                           data=moved, image_decode=final["recipe"]["image_decode"])
-    cfg.manifest = str(new_manifest)
+    cfg.paths.artifact_root, cfg.manifest = str(new_manifest.parent), new_manifest.name
     cfg.epochs, cfg.freeze.encoder_epochs, cfg.freeze.query_epochs = 1, 0, 0
-    restored, continuation = initialize_hybrid(Path(cfg.initialization.checkpoint), fresh.config, mode="continual",
+    restored, continuation = initialize_hybrid(full / cfg.initialization.checkpoint, fresh.config, mode="continual",
         data=data_identity(new_manifest), image_decode=final["recipe"]["image_decode"])
     assert all(torch.equal(v, restored.state_dict()[k]) for k, v in final["state_dict"].items())
     assert continuation["initialized_parameters"] == []
     receipt = train_hybrid(cfg)
     assert receipt["complete"] and receipt["global_step"] == 4
-    continued = weights(Path(cfg.output) / "epoch-000.pt")
+    continued = weights(tmp_path / cfg.run.output_dir / "epoch-000.pt")
     assert continued["recipe"]["parent"]["sha256"] != continued["recipe"]["parent"]["ancestry"]["parent"]["sha256"]
     assert continued["recipe"]["data_identity"]["snapshot"] != final["recipe"]["data_identity"]["snapshot"]
     assert continued["validation"]["scopes"]["full"]["presence_frame_fps_pairs"] > 0

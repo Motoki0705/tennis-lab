@@ -34,6 +34,7 @@ from src.tasks.ball_detection.data.windows.hybrid import (
 )
 from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.evaluation.hybrid import evaluate_hybrid
+from src.tasks.ball_detection.model_io.mdd_coordinates import validate_rgb_timestamps
 from src.tasks.ball_detection.models.mdd import DeepMDDHybridDetector, MDDHybridConfig
 from src.tasks.ball_detection.training.hybrid.configuration import resolve_recipe
 from src.tasks.ball_detection.training.hybrid.objective import hybrid_objective
@@ -66,6 +67,13 @@ def parameter_role(name: str) -> str:
     if root in HYBRID_NEW_MODULES:
         return "new"
     raise ValueError(f"Hybrid parameter has no optimizer/freeze role: {name}")
+
+
+def prepare_run_directory(output: Path) -> None:
+    """Allow Hydra's log directory, but never reuse existing training artifacts."""
+    output.mkdir(parents=True, exist_ok=True)
+    if any(child.name != "hydra" or not child.is_dir() for child in output.iterdir()):
+        raise FileExistsError(f"Hybrid run already contains artifacts: {output}")
 
 
 def freeze_for_epoch(model: DeepMDDHybridDetector, *, epoch: int, freeze: dict[str, int]) -> None:
@@ -136,9 +144,10 @@ def train_hybrid(cfg: DictConfig) -> dict[str, Any]:
         first_epoch, step, best, best_epoch = resume_hybrid(resume, output, model, optimizer,
             recipe=recipe, code=code, device=device)
     else:
-        output.mkdir(parents=True, exist_ok=False)
+        prepare_run_directory(output)
+        with (output / "config.json").open("x") as stream:
+            json.dump(dict(recipe=recipe, code=code), stream, indent=2)
         effective_manifest.write_text(manifest_text)
-        (output / "config.json").write_text(json.dumps(dict(recipe=recipe, code=code), indent=2))
         (output / "transfer.json").write_text(json.dumps(parent, indent=2))
     stop = config["stop_after_epoch"]
     if stop is not None and stop < first_epoch:
@@ -161,6 +170,8 @@ def train_hybrid(cfg: DictConfig) -> dict[str, Any]:
                 context.update(epoch=epoch, completed_updates=step, attempted_update=step + 1,
                                batch=batch_identity(batch), surface_phase="input")
                 rgb = image_input(batch, device)
+                timestamps = batch["timestamps"].to(device)
+                validate_rgb_timestamps(model.config, rgb, timestamps)
                 lr = learning_rate(step, peak=config["learning_rate"], total=total_updates, warmup=config["warmup_updates"])
                 for group in optimizer.param_groups:
                     role = group["role"]
@@ -170,7 +181,7 @@ def train_hybrid(cfg: DictConfig) -> dict[str, Any]:
                 with coordinate_compile_scope(model):
                     context["surface_phase"] = "forward"
                     with torch.autocast(device.type, dtype=torch.bfloat16, enabled=runtime.precision == "bf16"):
-                        prediction = model(rgb, batch["timestamps"].to(device))
+                        prediction = model(rgb, timestamps)
                     loss, losses = hybrid_objective(prediction, batch, loss_config=config["loss"])
                     context["surface_phase"] = "backward"
                     loss.backward()

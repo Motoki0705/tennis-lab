@@ -6,7 +6,10 @@ from typing import Any, TypeAlias
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.model_io.mdd_coordinates import validate_rgb_timestamps
+from src.tasks.ball_detection.model_io.mdd_coordinates import (
+    validate_rgb_input,
+    validate_rgb_timestamps,
+)
 from src.tasks.ball_detection.model_io.mdd_pose import (
     MDDPoseAdapter,
     MDDPoseInput,
@@ -15,11 +18,18 @@ from src.tasks.ball_detection.model_io.mdd_pose import (
 from src.tasks.ball_detection.model_io.mdd_query import MDDQueryAdapter, MDDQueryInput
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
+    MDDDPTDetector,
     MDDPoseDetector,
     MDDQueryDetector,
 )
 
 CoordinateModel: TypeAlias = MDDPoseDetector | MDDQueryDetector | DeepMDDQueryDetector
+
+
+def predict_dpt_heatmaps(model: MDDDPTDetector, rgb: Tensor) -> Tensor:
+    """Keep the RGB contract outside the compiled DPT computation."""
+    validate_rgb_input(rgb, frames=model.config.frames)
+    return model(rgb)
 
 
 def predict_coordinates(model: CoordinateModel, batch: dict[str, Any], device: torch.device) -> Tensor:

@@ -1,9 +1,8 @@
-"""Resolve every decision before opening data or creating a run directory."""
+"""Resolve every decision before opening data or writing training artifacts."""
 
 from __future__ import annotations
 
 import math
-from pathlib import Path
 from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
@@ -11,7 +10,9 @@ from omegaconf import DictConfig, OmegaConf
 from src.tasks.ball_detection.data.windows.hybrid import AbsencePolicy
 from src.tasks.ball_detection.models.mdd import MDDHybridConfig
 from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
+from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.hydra import register_boundary_validator
+from src.utils.paths import PROJECT_ROOT
 
 
 def validate_loss(loss: dict[str, Any]) -> None:
@@ -31,7 +32,7 @@ def resolve_recipe(cfg: DictConfig) -> dict[str, Any]:
     raw = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     if not isinstance(raw, dict):
         raise ValueError("Hybrid recipe must be a mapping")
-    expected = {"model", "manifest", "output", "initialization", "resume", "stop_after_epoch", "presence_threshold",
+    expected = {"paths", "run", "model", "manifest", "initialization", "resume", "stop_after_epoch", "presence_threshold",
                 "loss", "freeze", "absence", "epochs", "windows_per_epoch", "batch_size", "learning_rate",
                 "encoder_lr_ratio", "query_lr_ratio", "warmup_updates", "seed", "selection_scope", "device", "runtime"}
     if set(raw) != expected:
@@ -72,11 +73,22 @@ def resolve_recipe(cfg: DictConfig) -> dict[str, Any]:
     initial = config["initialization"]
     if set(initial) != {"mode", "checkpoint"} or initial["mode"] not in {"query", "continual"}:
         raise ValueError("Initialization must explicitly select query or continual and its checkpoint")
-    for name, value in ((k, config[k]) for k in ("manifest", "output", "resume")):
-        if value is not None and (not isinstance(value, str) or not Path(value).is_absolute()):
-            raise ValueError(f"{name} must be an absolute path")
-    if not isinstance(initial["checkpoint"], str) or not Path(initial["checkpoint"]).is_absolute():
-        raise ValueError("Initialization checkpoint must be an absolute path")
+    roots = RuntimePathRoots.from_mapping(config.pop("paths"), repository_root=PROJECT_ROOT)
+    resolver = PathResolver(roots)
+    run = config.pop("run")
+    if not isinstance(run, dict) or set(run) != {"output_dir"} or not isinstance(run["output_dir"], str):
+        raise ValueError("Hybrid run must declare only a relative output_dir")
+    config["output"] = str(resolver.resolve(PathRole.OUTPUT, run["output_dir"]))
+    for name, role in (("manifest", PathRole.ARTIFACT), ("resume", PathRole.OUTPUT)):
+        value = config[name]
+        if name == "resume" and value is None:
+            continue
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a role-relative path")
+        config[name] = str(resolver.resolve(role, value))
+    if not isinstance(initial["checkpoint"], str):
+        raise ValueError("Initialization checkpoint must be a checkpoint-relative path")
+    initial["checkpoint"] = str(resolver.resolve(PathRole.CHECKPOINT, initial["checkpoint"]))
     if config["device"] not in {"cpu", "cuda"} or config["selection_scope"] not in {"common", "full"}:
         raise ValueError("Explicit CPU/CUDA device and common/full scope required")
     if set(config["runtime"]) != set(CoordinateRuntime.__dataclass_fields__):

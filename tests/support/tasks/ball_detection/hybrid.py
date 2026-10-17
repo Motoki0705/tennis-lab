@@ -14,8 +14,10 @@ def hybrid_recipe(manifest: Path, checkpoint: Path, output: Path) -> DictConfig:
     with initialize_config_dir(config_dir=str(root), version_base="1.3"):
         cfg = compose(config_name="train_mdd_hybrid")
     cfg.model = dict(name="mdd_hybrid", **asdict(config()))
-    cfg.manifest, cfg.output = str(manifest), str(output)
-    cfg.initialization = dict(mode="query", checkpoint=str(checkpoint))
+    cfg.paths.artifact_root, cfg.paths.checkpoint_root = str(manifest.parent), str(checkpoint.parent)
+    cfg.paths.output_root = str(output.parent)
+    cfg.manifest, cfg.run.output_dir = manifest.name, output.name
+    cfg.initialization = dict(mode="query", checkpoint=checkpoint.name)
     cfg.presence_threshold = .5
     cfg.loss.heatmap_weight, cfg.loss.presence_weight = 1., 1.
     cfg.freeze = dict(encoder_epochs=1, query_epochs=1)
