@@ -26,6 +26,7 @@ from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan, references, save_plan
 from ..resources import ResourceManager, ResourceRequest
+from ..telemetry.capture import capture, presented_images, verify_report
 from .contracts import (
     AttemptResult,
     ExitReceipt,
@@ -84,6 +85,39 @@ class WorkerPool:
     def _task(self, work_id: str) -> dict[str, Any]:
         result: dict[str, Any] = self.ledger.task(work_id)
         return result
+
+    def _telemetry(
+        self,
+        request: WorkRequest,
+        launch: Launch,
+        launch_ref: ArtifactRef,
+        exit_ref: ArtifactRef,
+    ) -> ArtifactRef | None:
+        if launch.test_command is not None:
+            return None
+        adapter = self._adapter(request)
+        directory = Path(launch.directory)
+        catalog = adapter.telemetry_images(self.layout, self.plan, request, directory)
+        ref = capture(
+            self.layout,
+            launch_ref,
+            exit_ref,
+            catalog,
+            classifier=adapter.classify_tool,
+            classifier_id=f"{adapter.name}.{adapter.version}",
+        )
+        write_document(self.layout, directory / "telemetry.ref.json", ref)
+        return ref
+
+    def _verify_final(self, final: AttemptResult) -> None:
+        for reference in references(final):
+            verify_reference(self.layout, reference)
+        if final.telemetry is not None:
+            report = verify_report(self.layout, final.telemetry)
+            if (report.launch, report.execution) != (final.launch, final.exit):
+                raise ValueError("telemetry belongs to another attempt")
+        elif read_document(self.layout, final.launch, Launch).test_command is None:
+            raise ValueError("a real Codex result requires rollout telemetry")
 
     def _adapter(self, request: WorkRequest) -> TaskAdapter:
         adapter = self.adapters.get(request.adapter)
@@ -526,8 +560,7 @@ class WorkerPool:
                 ArtifactRef.model_validate_json(row["result"]),
                 AttemptResult,
             )
-            for reference in references(final):
-                verify_reference(self.layout, reference)
+            self._verify_final(final)
             return row
         ref, launch = self._launch(row)
         directory = Path(launch.directory)
@@ -552,6 +585,24 @@ class WorkerPool:
             return self._task(request.work_id)
         exit_ref, execution = self._exit_receipt(ref, directory)
         if execution.status != "succeeded":
+            if launch.test_command is None:
+                try:
+                    self._telemetry(request, launch, ref, exit_ref)
+                except (ValueError, OSError) as error:
+                    write_asset(
+                        self.layout,
+                        directory / "telemetry-error.json",
+                        (
+                            json.dumps(
+                                {
+                                    "launch": ref.model_dump(),
+                                    "execution": exit_ref.model_dump(),
+                                    "error": f"{type(error).__name__}: {error}",
+                                }
+                            )
+                            + "\n"
+                        ).encode(),
+                    )
             self._mark(
                 request.work_id,
                 execution.status,
@@ -565,10 +616,14 @@ class WorkerPool:
             final = read_document(self.layout, final_ref, AttemptResult)
             if (final.launch, final.exit) != (ref, exit_ref):
                 raise ValueError("finalized result belongs to another attempt")
-            for reference in references(final):
-                verify_reference(self.layout, reference)
+            self._verify_final(final)
         else:
             try:
+                telemetry = self._telemetry(request, launch, ref, exit_ref)
+                if telemetry is not None:
+                    # Enforce the pinned model and unambiguous response IDs;
+                    # the task decides which bound images must be reviewed.
+                    presented_images(self.layout, telemetry)
                 raw_result = directory / launch.prepared.result_path
                 result = write_asset(
                     self.layout,
@@ -585,14 +640,24 @@ class WorkerPool:
                     directory,
                     result,
                     execution,
+                    telemetry,
                 )
-                outcome = WorkOutcome.model_validate_json(outcome.canonical_bytes())
-                if outcome.adoption is not None and not self.plan.allows_adoption:
+                outcome = WorkOutcome.model_validate_json(
+                    outcome.canonical_bytes()
+                )
+                if (
+                    outcome.adoption is not None
+                    and not self.plan.allows_adoption
+                ):
                     raise ValueError("preview campaigns cannot adopt teachers")
                 for reference in references(outcome):
                     verify_reference(self.layout, reference)
                 final = AttemptResult(
-                    launch=ref, exit=exit_ref, result=result, outcome=outcome
+                    launch=ref,
+                    exit=exit_ref,
+                    result=result,
+                    outcome=outcome,
+                    telemetry=telemetry,
                 )
                 final_ref = write_document(self.layout, final_path, final)
             except (ValueError, OSError) as error:

@@ -29,6 +29,7 @@ from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
 )
+from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.command import codex_command, worker_environment
 from src.tasks.base.annotation.workers.contracts import (
     AttemptResult,
@@ -54,6 +55,7 @@ class Adapter:
     validations: int = 0
     outcome: str = "complete"
     adopt: bool = False
+    expects_telemetry: bool = False
 
     def prepare(
         self,
@@ -75,8 +77,10 @@ class Adapter:
         directory: Path,
         result: ArtifactRef,
         execution: ExitReceipt,
+        telemetry: ArtifactRef | None,
     ) -> WorkOutcome:
         del plan, request
+        assert (telemetry is not None) == self.expects_telemetry
         self.validations += 1
         assert execution.status == "succeeded"
         if json.loads(layout.artifact_path(result).read_text()) != {"fixture": True}:
@@ -97,6 +101,20 @@ class Adapter:
             )
         )
         return outcome
+
+    def telemetry_images(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+        directory: Path,
+    ) -> tuple[RenderedImage, ...]:
+        del layout, plan, request, directory
+        return ()
+
+    def classify_tool(self, name: str | None, raw_input: str) -> str:
+        del name, raw_input
+        return "fixture"
 
 
 @dataclass
@@ -840,6 +858,60 @@ def test_worker_budget_admission_precedes_process_launch(setup: Setup) -> None:
         pool.start(setup.request)
     assert setup.launches() == 0
     assert resources.status()["requests"][0]["reason"] == "PSS reservations do not fit"
+
+
+@pytest.mark.parametrize("bad_log", [None, "missing", "wrong_model"])
+def test_real_command_protocol_requires_exact_rollout_before_adapter_validation(
+    setup: Setup,
+    monkeypatch: pytest.MonkeyPatch,
+    bad_log: str | None,
+) -> None:
+    """Local fake CLI exercises log ingestion, without an API or a test-command bypass."""
+    codex_home = setup.layout.repository / "fake-codex-home"
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    binary = setup.layout.repository / "fake-codex"
+    binary.write_text(f"""#!{sys.executable}
+import json, os, pathlib, sys
+sys.stdin.read()
+thread = "11111111-1111-1111-1111-111111111111"
+print(json.dumps({{"type":"thread.started","thread_id":thread}}), flush=True)
+pathlib.Path("result.json").write_text('{{"fixture":true}}')
+if {bad_log!r} != "missing":
+    root = pathlib.Path(os.environ["CODEX_HOME"]) / "sessions/2026/10/14"
+    root.mkdir(parents=True, exist_ok=True)
+    records = [
+        {{"type":"session_meta","payload":{{"id":thread,"cwd":str(pathlib.Path.cwd()),"cli_version":"synthetic-protocol"}}}},
+        {{"type":"turn_context","payload":{{"model":"wrong" if {bad_log!r} == "wrong_model" else "gpt-6.1-sol"}}}},
+        {{"type":"token_usage_record","payload":{{"response_id":"synthetic-response","usage":{{"input_tokens":10,"output_tokens":2}}}}}},
+    ]
+    (root / ("rollout-fixture-" + thread + ".jsonl")).write_text("".join(json.dumps(r)+"\\n" for r in records))
+print(json.dumps({{"type":"turn.completed","usage":{{}}}}), flush=True)
+""")
+    binary.chmod(0o700)
+    setup.adapter.expects_telemetry = True
+    pool = WorkerPool(
+        setup.layout, setup.plan, (setup.adapter,), codex_binary=str(binary)
+    )
+    pool.register(setup.request)
+    pool.start(setup.request)
+    state = settled(pool, setup.request)
+    if bad_log is None:
+        assert state["state"] == "complete" and setup.adapter.validations == 1
+        final = read_document(
+            setup.layout,
+            ArtifactRef.model_validate_json(state["result"]),
+            AttemptResult,
+        )
+        assert final.telemetry is not None
+        assert pool.reconcile(setup.request)["state"] == "complete"
+    else:
+        assert state["state"] == "validation_failed" and setup.adapter.validations == 0
+        assert isinstance(state["reason"], str)
+        assert (
+            "rollout" in state["reason"]
+            if bad_log == "missing"
+            else "model" in state["reason"]
+        )
 
 
 @pytest.fixture

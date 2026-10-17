@@ -20,6 +20,7 @@ from ..contracts import (
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan
 from ..resources.contracts import ResourceRequest
+from ..telemetry.contracts import RenderedImage
 
 _M = TypeVar("_M")
 
@@ -129,6 +130,7 @@ class AttemptResult(Document):
     exit: ArtifactRef
     result: ArtifactRef
     outcome: WorkOutcome
+    telemetry: ArtifactRef | None
 
 
 class TaskAdapter(Protocol):
@@ -143,6 +145,16 @@ class TaskAdapter(Protocol):
         directory: Path,
     ) -> PreparedWorker: ...
 
+    def telemetry_images(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+        directory: Path,
+    ) -> tuple[RenderedImage, ...]: ...
+
+    def classify_tool(self, name: str | None, raw_input: str) -> str: ...
+
     def validate(
         self,
         layout: AnnotationLayout,
@@ -151,4 +163,5 @@ class TaskAdapter(Protocol):
         directory: Path,
         result: ArtifactRef,
         execution: ExitReceipt,
+        telemetry: ArtifactRef | None,
     ) -> WorkOutcome: ...
