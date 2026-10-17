@@ -276,6 +276,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.base.annotation.workers.__main__": (
+        "base.annotation.workers.cli",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.base.annotation.screening.__main__": (
         "base.annotation.screening.cli",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -482,6 +486,11 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.tasks.base.annotation.workers.__main__", "main",
+        domain="base", executable_module=True,
+        optional_policy="test_root selects an explicit test-only layout; production uses the shared main-repository root",
+    ),
     _non_hydra_boundary(
         "src.tasks.base.annotation.screening.__main__", "main",
         domain="base", executable_module=True,
