@@ -24,7 +24,9 @@ RGBは255で割った `[0,1]` のみで、ImageNet正規化を加えない。MDD
 窓先頭はMDDの2chだけゼロで、RGBの3chは実画像を保持する。
 
 `MDDPretrainConfig.input_channels` は必須で、5chは`5`、MDD-only比較構成は`2`を明示する。
-設定・checkpointでの省略は拒否し、MDD-only DPT/queryのstate_dict名・計算順は維持する。
+Python構築・YAML設定での省略は拒否する。checkpointの履歴形式は
+[`checkpoints`](../../checkpoints/README.md) の明示的な識別条件に従う。
+MDD-only DPT/queryのstate_dict名・計算順は維持する。
 保存した `recipe.input_contract` と設定のチャンネル数を読込・encoder転送時に照合し、
 2ch/5ch間の転送や正規化・順序の読み替えを拒否する。
 RGB特徴の並列branchはない。圧縮比較・pose系は従来の2ch契約のまま。
