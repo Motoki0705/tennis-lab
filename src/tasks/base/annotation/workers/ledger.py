@@ -9,7 +9,7 @@ from typing import Any
 from ..artifacts import annotation_reference, read_document, verify_reference
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, references, save_plan
+from ..plan import CampaignPlan, references, require_execution_layout, save_plan
 from ..registry import Registry
 from ..telemetry.capture import verify_report
 from .contracts import AttemptEvidence, AttemptResult, ExitReceipt, Launch, WorkRequest
@@ -46,6 +46,7 @@ class WorkerLedger:
         self.registry.initialize("workers.v1", SCHEMA)
 
     def register(self, plan: CampaignPlan, request: WorkRequest) -> None:
+        require_execution_layout(self.layout, plan)
         save_plan(self.layout, plan)
         for reference in references(request):
             verify_reference(self.layout, reference)
