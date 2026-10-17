@@ -48,8 +48,11 @@ root pointerのDB更新は同じtransactionで行う。`root_id` の更新には
 
 元動画、旧root、旧snapshotの移動・削除は行わない。元データの整理は別の計画と明示判断が
 必要であり、このreceiptを削除許可として使わない。登録済みimportは全ファイルを保持し、
-receiptから依存グラフを保護する。一般GCの実行可否は引き続き `execution_ready=false`。
+receiptから依存グラフを保護する。移行receiptはGCの削除判断を代替せず、
+[GC](../README.md#gcの明示実行と再開)は保持中のimportとその依存を候補にしない。
 
 合成fixtureで、読取のみのdry-run、元inode保持、旧reader互換、独立コピー、hash変更、
 symlink/FIFO、コピー・rename・DB transaction中断、再開、pointer競合、共有参照を検証する。
+receipt保存前後・DB transaction内・commit後のSIGKILLからも別processで再開し、
+同じplanの並行再送が一つのpointer/receiptへ収束することを検証する。
 実データの移行実行・全legacy成果物の網羅・保存方式比較を完了したという証拠ではない。
