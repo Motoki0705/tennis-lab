@@ -22,6 +22,7 @@ from src.tasks.ball_detection.checkpoints.provenance import (
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
 from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.evaluation.dpt import evaluate
+from src.tasks.ball_detection.model_io.predict import predict_dpt_heatmaps
 from src.tasks.ball_detection.models.mdd import (
     MDDDPTDetector,
     MDDPretrainConfig,
@@ -201,7 +202,7 @@ def main() -> None:
                 context["surface_phase"] = "forward"
                 with coordinate_compile_scope(model):
                     with torch.autocast(device.type, dtype=torch.bfloat16, enabled=args.precision == "bf16"):
-                        logits = model(rgb)
+                        logits = predict_dpt_heatmaps(model, rgb)
                     context["surface_phase"] = "loss"
                     loss, _ = heatmap_objective(logits, batch, sigma_ratio=args.sigma_ratio, gamma=args.focal_gamma)
                     context["surface_phase"] = "backward"

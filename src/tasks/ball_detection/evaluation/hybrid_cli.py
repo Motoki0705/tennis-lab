@@ -12,6 +12,9 @@ import torch
 from src.tasks.ball_detection.checkpoints.hybrid_training import restore_hybrid_model
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
 from src.tasks.ball_detection.evaluation.hybrid import evaluate_hybrid
+from src.tasks.ball_detection.training.runtime.compilation import (
+    compile_coordinate_model,
+)
 from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import (
@@ -58,6 +61,7 @@ def main() -> None:
     device = torch.device(args.device)
     runtime.configure(device)
     model.to(device)
+    compile_coordinate_model(model, mode=runtime.compile_mode, recompile_limit=runtime.compile_recompile_limit)
     data = FrozenBallWindowDataset(args.manifest, split=args.split, requires_pose=False, jpeg_decoder=runtime.jpeg_decoder)
     loader = runtime.loader(data, batch_size=recipe["batch_size"])
     report = evaluate_hybrid(model, loader, device, frame_steps=data.frame_steps,

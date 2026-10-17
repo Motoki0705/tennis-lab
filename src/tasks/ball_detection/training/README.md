@@ -20,7 +20,7 @@ JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`�
 
 窓/FPSの仕様と`prepare_data`による凍結手順は[data/windows](../data/windows/README.md)を参照。
 snapshotを共有するrunの開始前に、同READMEの[snapshot運用制約](../data/windows/README.md#snapshotを共有するrunの運用)を確認する。
-以下のartifact/outputは絶対pathで指定する。
+DPT/座標系CLIのartifact/outputは絶対pathで指定する。
 DPT/座標系のCLIでは`--precision`・`--jpeg-decoder`・`--compile-mode`・`--input-verification`を必ず指定する。
 事前/事後学習のseed・warmup、事後学習のepoch数・窓数・学習率も必須で、指定漏れは学習前に拒否する。
 
@@ -58,13 +58,14 @@ OpenCVとnvJPEGには画素差があるため、評価時は保存decoder/API/ve
 5chの3段目（hybrid）の構造と初期化APIは [models/mdd](../models/mdd/README.md#3段目への重み転送) にある。
 1段目は `mdd_dpt_rgb_mdd.yaml`、2段目はその保存構成を引き継ぐ。
 3段目のHydra設定の正本は [`train_mdd_hybrid.yaml`](../configs/train_mdd_hybrid.yaml)。
-`???` は要決定値で、省略するとデータ読込・run作成前に拒否する。
+`???` は要決定値で、省略するとデータ読込・学習artifact作成前に拒否する。
 値の候補は同YAMLのコメントだけに置き、コードの既定値にはしない。
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.train --stage hybrid \
-  manifest=/absolute/mdd_only_windows.json output=/absolute/new-hybrid-run \
-  initialization.mode=query initialization.checkpoint=/absolute/query-run/epoch-NNN.pt \
+  paths.artifact_root=/absolute/snapshots manifest=mdd_only_windows.json \
+  paths.output_root=/absolute/training-runs paths.checkpoint_root=/absolute/query-run \
+  initialization.mode=query initialization.checkpoint=epoch-NNN.pt \
   epochs=10 windows_per_epoch=6000 learning_rate=0.0001 warmup_updates=500 seed=42 \
   device=cuda runtime.precision=bf16 runtime.jpeg_decoder=nvjpeg \
   runtime.compile_mode=default runtime.input_verification=upfront runtime.pin_memory=true \
@@ -76,6 +77,11 @@ OpenCVとnvJPEGには画素差があるため、評価時は保存decoder/API/ve
 ```
 
 モデル幅を変えたCPU試験等では `model.*` も指定し、転送元構成と一致させる。
+hybridのパスは共通の`paths`契約で解決する。manifestはartifact root、初期化checkpointは
+checkpoint root、`resume`はoutput rootからの相対パスで、絶対パスやroot外への逸脱を拒否する。
+出力先は`paths.output_root`配下の`run.output_dir`、Hydraログはその`hydra/`配下になる。
+既定のrun名は共通の`ball_detection/train/<model>/<run-id>`形式で、再開時は元の`run.output_dir`を指定する。
+新規runではHydraログ以外の既存artifactを拒否する。
 freezeはepoch単位で独立指定する。0は最初から更新、総epoch数は最後まで固定、
 Nはepoch N（0始まり）から解除。固定中はdropoutも停止し、optimizerの対象群のLRを0にする。
 query固定中にも、queryを通るencoderの勾配は保持する。DPT・heatmap head・presence headは常に更新する。
@@ -128,10 +134,11 @@ seed・初期化方針、コードhash、転送元checkpoint hashと祖先receip
 queryからの転送は同じ元manifestを要求し、1段目のDPTファイルは開かない。
 3段目の保存モデル読込・再開は祖先ファイルを必要としない。
 
-`resume=/absolute/run/epoch-NNN.pt`は元run内の最新完了epoch・同じ総予算・同じrecipe/閾値/
+`run.output_dir=<元runの相対パス> resume=<元runの相対パス>/epoch-NNN.pt`は
+元run内の最新完了epoch・同じ総予算・同じrecipe/閾値/
 freeze/供給源/snapshot/コードを要求し、optimizerとRNGを復元する。
 `stop_after_epoch=N`は予算を変えない診断停止。2段目にも`--stop-after-epoch N`がある。
-継続学習は新しいoutputで`initialization.mode=continual`と採用hybrid checkpointを指定する。
+継続学習は新しい`run.output_dir`で`initialization.mode=continual`と採用hybrid checkpointを指定する。
 全重みを引き継ぐが、optimizer・step・freeze方針は新規runのものを使う。
 snapshotのindex/metadataは変わっている必要があり、既存clipとそのsplitを保持する。
 旧clipの注釈更新は新snapshotのhashとして記録される。同snapshotでmodeだけ変えて再開することは拒否する。
@@ -164,7 +171,8 @@ bestは引き続き全observedのmacro平均位置誤差で選ぶため、全不
   --output /absolute/new-evaluation.json --split val --device cuda
 ```
 
-CLIは保存されたmanifest・decoder/version・precision・閾値を照合する。
+CLIは保存されたmanifest・decoder/version・precision・閾値を照合し、
+保存されたcompile modeとrecompile limitをモデルのdevice配置後に適用する。
 testは明示した単独評価でのみ利用し、学習・checkpoint選択に使わない。
 
 2段目の人工遮蔽でも既知GTは維持する。camera拡張はRGBとGTへ同じ2D affineを適用し、画面外GTを除く。

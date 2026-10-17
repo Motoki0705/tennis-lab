@@ -10,6 +10,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from src.tasks.ball_detection.evaluation.coordinates import CoordinateMetrics
+from src.tasks.ball_detection.model_io.mdd_coordinates import validate_rgb_timestamps
 from src.tasks.ball_detection.models.mdd import DeepMDDHybridDetector
 from src.tasks.ball_detection.training.hybrid.configuration import validate_threshold
 from src.tasks.ball_detection.training.hybrid.objective import hybrid_objective
@@ -106,8 +107,10 @@ def evaluate_hybrid(model: DeepMDDHybridDetector, loader: DataLoader[Any], devic
     with torch.no_grad(), coordinate_compile_scope(model):
         for batch in coordinate_batches(loader, device, prefetch=image_prefetch):
             rgb = image_input(batch, device)
+            timestamps = batch["timestamps"].to(device)
+            validate_rgb_timestamps(model.config, rgb, timestamps)
             with torch.autocast(device.type, dtype=torch.bfloat16, enabled=precision == "bf16"):
-                output = model(rgb, batch["timestamps"].to(device))
+                output = model(rgb, timestamps)
             _, losses = hybrid_objective(output, batch, loss_config=loss_config)
             heatmaps = output.heatmap_logits.float().sigmoid()
             uv, _ = heatmaps_to_argmax(heatmaps)
