@@ -115,9 +115,14 @@ def update_code(
                 directory / "runtime.json",
                 previous.model_copy(update={"code_revision": revision_ref}),
             )
-            completed: ArtifactRef = write_document(
-                layout,
-                result_path,
-                CodeUpdateReceipt(revision=revision_ref, runtime=runtime_ref),
-            )
-            return completed
+        # These methods take the admission locks themselves. No controller or
+        # owned job may be running while the operator performs this update.
+        controller.pool.cancel_pending_code_update(revision_ref)
+        if controller.production is not None:
+            controller.production.pool.cancel_pending_code_update(revision_ref)
+        completed: ArtifactRef = write_document(
+            layout,
+            result_path,
+            CodeUpdateReceipt(revision=revision_ref, runtime=runtime_ref),
+        )
+        return completed
