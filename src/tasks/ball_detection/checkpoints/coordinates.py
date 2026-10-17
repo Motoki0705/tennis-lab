@@ -8,6 +8,7 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.configuration import checkpoint_model_config
 from src.tasks.ball_detection.model_io.predict import CoordinateModel
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
@@ -17,9 +18,24 @@ from src.tasks.ball_detection.models.mdd import (
     MDDQueryDetector,
 )
 from src.tasks.ball_detection.preprocessing import RGBToMDD
+from src.tasks.ball_detection.preprocessing.rgb_mdd import input_transform_from_contract
 from src.utils.checksum import dual_sha256
 
 COORDINATE_CHECKPOINT_SCHEMA = "mdd_coordinates.v4"
+
+
+def query_checkpoint_config(saved: dict[str, Any]) -> tuple[MDDPretrainConfig, RGBToMDD]:
+    """Validate a stage-two config and its inherited input identity without loading weights."""
+    if saved.get("schema") != "mdd_query_posttraining.v1" or saved.get("stage") != "query_posttraining":
+        raise ValueError("Expected a query posttraining checkpoint with matching stage and schema")
+    recipe = saved["recipe"]
+    if recipe["model"] != saved["model_config"]:
+        raise ValueError("Posttraining model configuration differs from its recipe")
+    if recipe["input_contract"] != recipe["parent"]["input_contract"] or recipe["image_decode"] != recipe["parent"]["image_decode"]:
+        raise ValueError("Posttraining preprocessing differs from the transferred encoder")
+    config = checkpoint_model_config(saved)
+    preprocessing = input_transform_from_contract(recipe["input_contract"], input_channels=config.input_channels)
+    return config, preprocessing
 
 
 def restore_coordinate_model(saved: dict[str, Any]) -> tuple[CoordinateModel, dict[str, Any], str]:
@@ -34,15 +50,9 @@ def restore_coordinate_model(saved: dict[str, Any]) -> tuple[CoordinateModel, di
         recipe = saved["training_state"]["recipe"]
         manifest = saved["manifest_sha256"]
     elif saved.get("schema") == "mdd_query_posttraining.v1":
-        if saved.get("stage") != "query_posttraining":
-            raise ValueError("Posttraining checkpoint stage differs from its schema")
+        query_config, preprocessing = query_checkpoint_config(saved)
         recipe = saved["recipe"]
-        if recipe["model"] != saved["model_config"]:
-            raise ValueError("Posttraining model configuration differs from its recipe")
-        if recipe["input_contract"] != recipe["parent"]["input_contract"] or recipe["image_decode"] != recipe["parent"]["image_decode"]:
-            raise ValueError("Posttraining preprocessing differs from the transferred encoder")
-        preprocessing = RGBToMDD.from_contract(recipe["input_contract"])
-        model = DeepMDDQueryDetector(MDDPretrainConfig(**saved["model_config"]), mdd_a=preprocessing.a, mdd_b=preprocessing.b)
+        model = DeepMDDQueryDetector(query_config, mdd_a=preprocessing.a, mdd_b=preprocessing.b)
         manifest = recipe["manifest_sha256"]
     else:
         raise ValueError("Unsupported coordinate checkpoint schema; explicit v4 or posttraining v1 required")
