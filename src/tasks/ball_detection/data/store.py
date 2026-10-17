@@ -22,7 +22,9 @@ Label semantics (sources map onto these; the builder never invents labels):
 
 * ``annotated`` is False for a frame the annotator did not review; it carries
   no supervision at all.
-* An annotated frame with no instance asserts that no ball in play is visible.
+* In v1, an annotated frame with no instance asserts that no ball in play is
+  visible. In v2, review facts and adopted teachers are separate: an empty
+  reviewed frame is a negative only when its explicit heatmap mask says so.
 * ``point_kind`` records how an instance's position was obtained:
   ``observed`` (seen in the image), ``interpolated`` (filled across a short
   gap), ``occlusion_estimated`` (hidden, position estimated from context),
@@ -35,6 +37,10 @@ Label semantics (sources map onto these; the builder never invents labels):
   interpolation must not cross (as annotated; not every source provides it).
 * ``event`` is the typed hit/bounce label where the source provides one;
   sources without event labels store ``unlabeled`` (never ``none``).
+
+The v2 teacher mask columns are defined in ``teacher_masks.py``. They restrict
+the training policy without erasing labels or changing copied legacy clips.
+Readers must reject missing/invalid masks rather than infer eligibility.
 """
 
 from __future__ import annotations
@@ -49,6 +55,8 @@ from typing import Final, Literal, cast
 import cv2
 import numpy as np
 from numpy.typing import NDArray
+
+from .teacher_masks import EXPLICIT_MASK_SCHEMA, MASK_FIELDS, FrameTeacherMasks
 
 SCHEMA_VERSION: Final = "ball_detection_frames.v1"
 INDEX_FILE: Final = "index.npz"
@@ -203,10 +211,10 @@ class BallFrameStore:
             raise ValueError(f"Ball store directory must be absolute: {directory}")
         self.directory = directory
         metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
-        if metadata["schema_version"] != SCHEMA_VERSION:
+        if metadata["schema_version"] not in (SCHEMA_VERSION, EXPLICIT_MASK_SCHEMA):
             raise ValueError(
                 f"Unsupported ball store schema {metadata['schema_version']!r}; "
-                f"expected {SCHEMA_VERSION!r}"
+                f"expected {SCHEMA_VERSION!r} or {EXPLICIT_MASK_SCHEMA!r}"
             )
         self.metadata: dict[str, object] = metadata
         self.clips: tuple[ClipRecord, ...] = tuple(_clip_record(clip) for clip in metadata["clips"])
@@ -215,6 +223,12 @@ class BallFrameStore:
         self.frames = {name: columns[name] for name in FRAME_FIELDS}
         self.instances = {name: columns[name] for name in (*INSTANCE_FIELDS, INSTANCE_XY)}
         self.clip_start: NDArray[np.int64] = self._validate(columns)
+        self.teacher_masks: FrameTeacherMasks | None = None
+        if metadata["schema_version"] == EXPLICIT_MASK_SCHEMA:
+            self.teacher_masks = FrameTeacherMasks.from_columns(columns, len(self))
+            self.teacher_masks.validate(self)
+        elif any(name in columns for name in MASK_FIELDS):
+            raise ValueError("Ball teacher mask columns require the explicit v2 schema")
         self._shards: dict[int, np.memmap] = {}
 
     def _validate(self, columns: Mapping[str, NDArray[np.generic]]) -> NDArray[np.int64]:
