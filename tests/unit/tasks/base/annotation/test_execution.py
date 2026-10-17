@@ -384,6 +384,25 @@ def live_queue_config(
             PROJECT_ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
         ).read_bytes()
     )
+    # Keep the real repro capture, but do not scan the developer checkout on
+    # every job before the resource-wait assertions can start.
+    repro_source = layout.repository / "repro-source"
+    subprocess.run(["git", "init", "-q", str(repro_source)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture",
+        ],
+        cwd=repro_source,
+        check=True,
+    )
     # Every namespace, including the system-lock probe, belongs to this test.
     for name in tuple(os.environ):
         if name.startswith("TRAINING_QUEUE_TEST_"):
@@ -394,6 +413,8 @@ def live_queue_config(
         "TRAINING_QUEUE_SYSTEM_LOCK_FILE": str(layout.repository / "system.lock"),
         "TRAINING_QUEUE_TEST_TERM_GRACE_SECONDS": "1",
         "GIT_CEILING_DIRECTORIES": str(PROJECT_ROOT),
+        "GIT_DIR": str(repro_source / ".git"),
+        "GIT_WORK_TREE": str(repro_source),
         "CUDA_VISIBLE_DEVICES": "",
     }.items():
         monkeypatch.setenv(name, value)
@@ -502,6 +523,11 @@ def test_queued_capacity_wait_reuses_unexecuted_request(
     )
     assert not list((Path(config.directory) / "failed").glob("*.job"))
     assert (stage_directory(layout, launch) / "stdout.log").read_text() == "completed\n"
+    repro = json.loads(
+        (Path(config.directory) / "repro" / Path(job).stem / "run.json").read_text()
+    )
+    assert repro["repo_root"] == str(layout.repository / "repro-source")
+    assert repro["commit"]
 
 
 @pytest.mark.parametrize("action", ["budget_stop", "resource_cancel", "queue_cancel"])
