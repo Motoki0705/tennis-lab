@@ -21,7 +21,7 @@ from ..artifacts import (
 )
 from ..paths import AnnotationLayout
 from ..plan import load_plan, references
-from ..resources import ResourceManager
+from ..resources import CapacityUnavailable, ResourceManager
 from ..workers.processes import (
     ProcessIdentity,
     capture_supervisor,
@@ -82,9 +82,8 @@ def supervise(
         if queued:
             assert launch.queue is not None
             owner = queue_owner(layout, launch.queue)
-            lock_fd = stack.enter_context(
-                artifact_lock(layout, stage_lock(launch), blocking=False)
-            )
+            # Publication makes the job runnable before submit() releases this lock.
+            lock_fd = stack.enter_context(artifact_lock(layout, stage_lock(launch)))
             # Idempotent queue replay cannot rerun a completed command.
             if (directory / "exit.json").exists():
                 prior: StageExit = read_document(
@@ -94,8 +93,19 @@ def supervise(
                 )
                 if prior.launch != ref:
                     raise ValueError("stage exit belongs to another launch")
-                return prior.exit_code
-            resource_fd = stack.enter_context(manager.lease(launch.resource))
+                prior_exit_code: int = prior.exit_code
+                return prior_exit_code
+            while True:
+                try:
+                    resource_fd = stack.enter_context(manager.lease(launch.resource))
+                    break
+                except CapacityUnavailable:
+                    # Only unexecuted, pending requests can wait for reservations.
+                    # BudgetStopped and owner signals must still terminate the job.
+                    state, _reason = manager.request_status(launch.resource)
+                    if state != "pending":
+                        raise
+                    time.sleep(2.0)
         else:
             owner = capture_supervisor(os.getpid())
         if lock_fd is None or resource_fd is None:
