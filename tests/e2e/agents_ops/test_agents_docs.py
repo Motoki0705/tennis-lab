@@ -1,7 +1,8 @@
-"""Validate the AI-operations entry points (AGENTS.md -> .agents/README.md -> memory).
+"""Validate the AI-operations entry points (AGENTS.md -> memory SUMMARY -> layer index -> entry).
 
 The shared memory is meant to be cheap to edit and delete, so these checks keep
-the index, the entry files and the cross-document links from silently drifting.
+the summary, the layer indexes, the entry files and the cross-document links from
+silently drifting, and keep the always-read files small.
 """
 
 from __future__ import annotations
@@ -17,22 +18,30 @@ ROOT = Path(__file__).resolve().parents[3]
 AGENTS_MD = ROOT / "AGENTS.md"
 AGENTS_README = ROOT / ".agents/README.md"
 MEMORY_DIR = ROOT / ".agents/memory"
-MEMORY_INDEX = MEMORY_DIR / "INDEX.md"
-MEMORY_META_FILES = {"README.md", "INDEX.md"}
+MEMORY_SUMMARY = MEMORY_DIR / "SUMMARY.md"
+MEMORY_SKILL = ROOT / ".agents/skills/memory/SKILL.md"
+LAYERS = ("workflow", "decision", "environment", "gotcha", "review")
+LAYER_INDEX = "index.md"
 
 DOCS = [
     AGENTS_MD,
     ROOT / "CLAUDE.md",
     AGENTS_README,
-    MEMORY_DIR / "README.md",
-    MEMORY_INDEX,
+    MEMORY_SKILL,
+    MEMORY_SUMMARY,
+    *(MEMORY_DIR / layer / LAYER_INDEX for layer in LAYERS),
     ROOT / ".github/copilot-instructions.md",
     *sorted((ROOT / ".github/agents").glob("*.md")),
 ]
 
-REQUIRED_KEYS = ("title", "type", "applies_to", "source", "created", "last_verified", "evidence")
-MEMORY_TYPES = {"gotcha", "environment", "decision", "workflow"}
+REQUIRED_KEYS = ("title", "applies_to", "source", "created", "last_verified", "evidence")
 APPLIES_TO = {"all", "claude", "codex"}
+
+# Size caps keep the always-read files cheap. The values are hypotheses: revise
+# them from operation (the memory skill points here as their single source).
+SUMMARY_MAX_LINES = 40
+INDEX_MAX_ENTRIES = 30
+ENTRY_MAX_LINES = 40
 
 # A link may point at a sibling issue's file that is not merged yet, but only when
 # the same line says so explicitly ("#1057で実装中").
@@ -46,8 +55,16 @@ SECRET_PATTERNS = (
 )
 
 
+def _layer_entries(layer: str) -> list[Path]:
+    return sorted(p for p in (MEMORY_DIR / layer).glob("*.md") if p.name != LAYER_INDEX)
+
+
 def _memory_entries() -> list[Path]:
-    return sorted(p for p in MEMORY_DIR.glob("*.md") if p.name not in MEMORY_META_FILES)
+    return [entry for layer in LAYERS for entry in _layer_entries(layer)]
+
+
+def _entry_id(path: Path) -> str:
+    return str(path.relative_to(MEMORY_DIR))
 
 
 def _lines_outside_fences(text: str) -> list[str]:
@@ -116,33 +133,67 @@ def test_relative_links_resolve(doc: Path) -> None:
     assert not broken, f"{doc.relative_to(ROOT)}: broken links: {broken}"
 
 
-def test_entry_chain_from_agents_md_to_memory_index() -> None:
+def test_entry_chain_from_agents_md_to_memory_summary() -> None:
     agents_targets = {target for _, target, _ in _links(AGENTS_MD)}
     assert ".agents/README.md" in agents_targets
-    assert ".agents/memory/INDEX.md" in agents_targets
+    assert ".agents/memory/SUMMARY.md" in agents_targets
+    assert ".agents/skills/memory/SKILL.md" in agents_targets
     readme_targets = {target for _, target, _ in _links(AGENTS_README)}
-    assert "memory/INDEX.md" in readme_targets
+    assert "memory/SUMMARY.md" in readme_targets
+    summary_targets = {target for _, target, _ in _links(MEMORY_SUMMARY)}
+    missing = [layer for layer in LAYERS if f"{layer}/{LAYER_INDEX}" not in summary_targets]
+    assert not missing, f"SUMMARY.md does not link the layer indexes {missing}"
     assert (ROOT / "CLAUDE.md").read_text(encoding="utf-8").splitlines()[0] == "@AGENTS.md"
 
 
-def test_memory_index_matches_entry_files() -> None:
-    entries = _memory_entries()
-    assert entries, "shared memory has no entries"
-    indexed = [(text, target) for text, target, line in _links(MEMORY_INDEX) if line.startswith("- ")]
-    indexed_files = [target for _, target in indexed]
-    assert len(indexed_files) == len(set(indexed_files)), "INDEX.md lists an entry twice"
-    assert set(indexed_files) == {p.name for p in entries}, "INDEX.md and entry files differ"
-    for text, target in indexed:
-        title = _frontmatter(MEMORY_DIR / target)["title"]
-        assert text == title, f"INDEX.md link text for {target} must equal its title"
+def test_memory_dir_holds_only_summary_and_layers() -> None:
+    stray = sorted(
+        p.name
+        for p in MEMORY_DIR.iterdir()
+        if not (p == MEMORY_SUMMARY or (p.is_dir() and p.name in LAYERS))
+    )
+    assert not stray, f"put memory entries in a layer directory, not at the top: {stray}"
+    for layer in LAYERS:
+        nested = [p.name for p in (MEMORY_DIR / layer).iterdir() if not p.name.endswith(".md")]
+        assert not nested, f"{layer}/ must hold only Markdown files: {nested}"
 
 
-@pytest.mark.parametrize("entry", _memory_entries(), ids=lambda p: p.name)
+@pytest.mark.parametrize("layer", LAYERS)
+def test_layer_index_matches_entry_files(layer: str) -> None:
+    index = MEMORY_DIR / layer / LAYER_INDEX
+    indexed = [(text, target, line) for text, target, line in _links(index) if line.startswith("- ")]
+    indexed_files = [target for _, target, _ in indexed]
+    assert len(indexed_files) == len(set(indexed_files)), f"{layer}/index.md lists an entry twice"
+    assert set(indexed_files) == {p.name for p in _layer_entries(layer)}, (
+        f"{layer}/index.md and entry files differ"
+    )
+    assert len(indexed) <= INDEX_MAX_ENTRIES, f"{layer}/ has {len(indexed)} entries; compress it"
+    for text, target, line in indexed:
+        meta = _frontmatter(MEMORY_DIR / layer / target)
+        assert text == meta["title"], f"{layer}/index.md link text for {target} must equal its title"
+        scope = meta["applies_to"]
+        assert line.endswith(f" ({scope})") == (scope != "all"), (
+            f"{layer}/index.md line for {target} must end with ' ({scope})' only when not 'all'"
+        )
+
+
+def test_memory_is_not_empty() -> None:
+    assert _memory_entries(), "shared memory has no entries"
+
+
+def test_memory_summary_stays_small() -> None:
+    lines = len(MEMORY_SUMMARY.read_text(encoding="utf-8").splitlines())
+    assert lines <= SUMMARY_MAX_LINES, f"SUMMARY.md has {lines} lines; compress it"
+
+
+@pytest.mark.parametrize("entry", _memory_entries(), ids=_entry_id)
 def test_memory_entry_frontmatter(entry: Path) -> None:
     meta = _frontmatter(entry)
     missing = [key for key in REQUIRED_KEYS if not meta.get(key)]
     assert not missing, f"{entry.name}: missing frontmatter keys {missing}"
-    assert meta["type"] in MEMORY_TYPES, f"{entry.name}: unknown type {meta['type']!r}"
+    assert "type" not in meta, f"{entry.name}: the layer directory is the type; drop the 'type' key"
+    lines = len(entry.read_text(encoding="utf-8").splitlines())
+    assert lines <= ENTRY_MAX_LINES, f"{entry.name}: {lines} lines; split or compress it"
     assert meta["applies_to"] in APPLIES_TO, f"{entry.name}: unknown applies_to {meta['applies_to']!r}"
     created = _as_date(meta["created"], "created", entry.name)
     verified = _as_date(meta["last_verified"], "last_verified", entry.name)
@@ -150,7 +201,11 @@ def test_memory_entry_frontmatter(entry: Path) -> None:
     assert re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*\.md", entry.name), f"{entry.name}: use kebab-case"
 
 
-@pytest.mark.parametrize("entry", _memory_entries(), ids=lambda p: p.name)
+@pytest.mark.parametrize(
+    "entry",
+    [MEMORY_SUMMARY, *(MEMORY_DIR / layer / LAYER_INDEX for layer in LAYERS), *_memory_entries()],
+    ids=_entry_id,
+)
 def test_memory_entry_has_no_personal_data(entry: Path) -> None:
     text = entry.read_text(encoding="utf-8")
     for pattern in SECRET_PATTERNS:
