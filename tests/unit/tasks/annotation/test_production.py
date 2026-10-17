@@ -1017,7 +1017,7 @@ def test_acquisition_retry_reuses_logical_operation_and_supersedes_failure(
     def settled() -> dict[str, Any]:
         deadline = time.monotonic() + 40
         while True:
-            state = controller.operation(operation)
+            state: dict[str, Any] = controller.operation(operation)
             if state["state"] not in {"running", "draining", "pending"}:
                 return state
             assert time.monotonic() < deadline, state
@@ -1491,6 +1491,91 @@ def test_bounded_service_session_serves_multiple_requests_under_one_lease(
     monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", member.operation.digest)
     with pytest.raises(ValueError, match="campaign stage"):
         execute(layout, member.operation)
+
+
+@pytest.mark.parametrize("stop_after", [0, 1])
+def test_service_session_honors_budget_stop_before_next_request(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch, stop_after: int
+) -> None:
+    from src.tasks.annotation import service_completion
+    from src.tasks.annotation.contracts import OperationReceipt, ServiceSessionOperation
+    from src.tasks.annotation.operations import execute
+    from src.tasks.annotation.service_sessions import SessionReceipt
+    from src.tasks.base.annotation.contracts import FrameRange
+    from src.tasks.base.annotation.workers.review.contracts import RowsRequest
+
+    controller = controller_for(session)
+    layout = session.env.layout
+    services = [
+        session.request_service(
+            "review_rows",
+            RowsRequest(
+                expected_revision=session.env.head(),
+                scope=FrameRange(start=index, stop=index + 1),
+            ),
+        )
+        for index in (1, 2)
+    ]
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=ServiceSessionOperation(
+            session=1,
+            maximum_requests=2,
+            maximum_services_per_attempt=512,
+            duration_seconds=3,
+        ),
+    )
+    reference = write_document(
+        layout,
+        layout.path(
+            "campaigns",
+            controller.plan.campaign_id,
+            "jobs",
+            data.logical_id + "-1",
+            "operation.json",
+        ),
+        data,
+    )
+    reason = "synthetic storage budget reached"
+
+    def stop_budget() -> None:
+        with controller.resources.registry.transaction() as db:
+            db.execute(
+                "UPDATE resource_scopes SET stop_reason=? WHERE id=?",
+                (reason, controller.resources.scope.scope_id),
+            )
+
+    complete = service_completion.execute_and_reply
+
+    def complete_then_stop(*args: Any, **kwargs: Any) -> ArtifactRef:
+        result = complete(*args, **kwargs)
+        stop_budget()
+        return result
+
+    if stop_after == 0:
+        stop_budget()
+    monkeypatch.setattr(service_completion, "execute_and_reply", complete_then_stop)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+    receipt = read_document(layout, execute(layout, reference), OperationReceipt)
+    report = read_document(layout, receipt.results[0], SessionReceipt)
+    assert len(report.members) == stop_after
+    assert report.reason == f"budget stopped: {reason}"
+    for index, service in enumerate(services):
+        reply = (
+            session.directory
+            / "services"
+            / layout.artifact_path(service).stem
+            / "reply.json"
+        )
+        assert reply.exists() == (index < stop_after)
+    with controller.resources.registry.transaction() as db:
+        assert (
+            db.execute(
+                "SELECT stop_reason FROM resource_scopes WHERE id=?",
+                (controller.resources.scope.scope_id,),
+            ).fetchone()[0]
+            == reason
+        )
 
 
 def test_service_session_stage_handles_subsequent_requests_without_parent_poll(
