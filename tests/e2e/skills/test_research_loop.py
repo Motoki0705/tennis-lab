@@ -348,6 +348,25 @@ def test_openalex_parse_filters_and_markdown(
     assert "Court \\| detection" in table and table.count("\n") == 2
 
 
+@pytest.mark.parametrize("arxiv_id", ["1901.00002v2", "hep-ex/0307015v1"])
+def test_openalex_arxiv_id_round_trips_to_pdf(
+    ls: ModuleType, tmp_path: Path, arxiv_id: str
+) -> None:
+    payload = json.loads(OPENALEX_JSON)
+    payload["results"][0]["ids"]["arxiv"] = f"https://arxiv.org/abs/{arxiv_id}"
+    pdf = b"%PDF-1.5\n" + b"0" * ls.MIN_PDF_BYTES
+    expected_url = f"https://arxiv.org/pdf/{arxiv_id}"
+    fake = FakeHTTP({ls.OPENALEX_API: [json.dumps(payload).encode()], expected_url: [pdf]})
+
+    [paper] = ls.search("court", ["openalex"], 1, None, fake)
+
+    assert paper.arxiv_id == arxiv_id
+    out = tmp_path / "paper.pdf"
+    ls.download_arxiv_pdf(paper.arxiv_id, out, fake)
+    assert out.read_bytes() == pdf
+    assert fake.calls[-1][0] == expected_url
+
+
 def test_retry_is_bounded_and_logged(
     ls: ModuleType, capsys: pytest.CaptureFixture[str]
 ) -> None:
