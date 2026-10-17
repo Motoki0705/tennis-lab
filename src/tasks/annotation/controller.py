@@ -704,7 +704,11 @@ class Controller:
                 continue
             try:
                 receipt = self.receipt(state)
-                if receipt.status != "complete":
+                # A verified acquisition exclusion still reconciles its saved
+                # acquisition; preparation exclusions do not complete preparation.
+                if receipt.status != "complete" and not isinstance(
+                    operation, AcquireOperation
+                ):
                     continue
                 if isinstance(operation, (AcquireOperation, PrepareOperation)):
                     if len(receipt.results) != 1:
