@@ -1,6 +1,5 @@
 ---
 title: ".gitignore の汎用パターン（lib/, runs/, *.json）が新しいディレクトリを黙って無視する"
-type: gotcha
 applies_to: all
 source: "#533 の knowledge/runs/、#1053 の .agents/ops/lib/agent_exec.sh（2026-10-10 に base commit から欠落）"
 created: 2026-06-19

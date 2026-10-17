@@ -1,6 +1,5 @@
 ---
 title: "test推論をbackfillできない古いckptは、結果がknowledgeノードにあれば削除してよい（ユーザー判断）"
-type: decision
 applies_to: all
 source: "ユーザー判断（2026-06-21、PLCS ckpt 約111GBの整理）"
 created: 2026-06-21
