@@ -3,7 +3,7 @@
 公開済みの累積snapshotと固定validation/testを追加学習へ接続するAPIは
 [learning/](learning/README.md)を参照。新規clipの座標教師が不足する場合の停止と被覆記録もここが担当する。
 
-`play_intervals.py`は注釈からプレイ区間を提案する純粋関数。
+`intervals.py`は注釈からプレイ区間を提案する純粋関数。
 推論時のプレイ検出器ではなく、固定済み学習データの選択にだけ使う。
 設定値の正本は`PlayIntervalConfig`、実行値は生成manifestへ保存する。
 
@@ -27,16 +27,52 @@
 カタログ更新で承認状況を再読込するため、UI表示自体は学習対象の凍結や承認ではない。
 
 レビュー後に学習対象を固定するAPIは
-`play_manifest.build_play_manifest(pose_directory, PlayIntervalConfig(...))`。
+`pose_manifest.build_play_manifest(pose_directory, PlayIntervalConfig(...))`。
 返り値をJSONとして実験出力先に保存すると、approved subset、ball snapshot、
 pose artifact、JPEG shardのhash、学習窓と全除外範囲を固定できる。
 この保存処理はWebUIの閲覧とは分離し、生成物をソースリポジトリへ追加しない。
 
-上のAPIと既存WebUIはnative-FPSの候補を扱う。
-`temporal_sampling.py`はそのプレイ区間内で元FPS/1/2/1/4の32枚を選び、
-選んだframeの証拠率・実測教師数を改めて判定する。参照区間と大きいPTS gapは跨がない。
-開始strideの単位、MDD再計算順、poseがない全clipからの選択、学習manifest固定の手順は
-[座標モデルの学習準備](../../training/README.md)を参照。
+## FPSと32frame窓
 
-`coordinate_dataset.py`は固定manifestからMDD・任意のpose・observed座標を同じ32枚で返す。
-`pose_windows.py`は従来のposeありAPIと座標lossを保持する。crop/resize、時間の反復、欠損位置の補完はしない。
+上のAPIと既存WebUIはnative-FPSの候補を扱う。
+`temporal.py`はプレイ区間内で元FPS/1/2/1/4（`frame_step=1/2/4`）の32枚を選び、
+選んだframeの証拠率・observed教師数を改めて判定する。
+窓のframe列は`start + frame_step * arange(32)`、開始strideの単位は**sampled frame**。
+`window_stride=16`なら元frameでの開始間隔は16/32/64枚となり、区間末尾を覆う窓も追加する。
+プレイ区間はnative PTSから決め、窓はreference-only frameと大きいPTS gapを跨がない。
+時刻は選んだframeの実PTS秒を使い、一定FPSの時刻を捏造しない。
+
+`dataset.py`は固定manifestからRGB・任意のpose・observed座標と教師maskを同じ32枚で返す。
+RGBを間引いてからモデル内の`RGBToMDD`でMDDを再計算する。native-FPSのMDDを間引かない。
+crop/resize、時間の反復、欠損位置の補完はしない。
+座標lossは`training/coordinates/objective.py`が担当する。
+
+## 学習manifestの凍結
+
+`manifest.py`は`mdd_pose`をpose承認済みclipから、`mdd_only`をposeの有無によらず全clipから選ぶ。
+`mdd_only`にはclip全体の存在率による足切りを設けず、プレイ区間と窓ごとの条件を使う。
+Common評価はpose参照とGT・split・timeline・RGBのidentityが一致するsubset、Full評価は全validation。
+
+レビュー後、次の公開入口で新しい絶対pathへ凍結する（学習は開始しない）:
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.prepare_data \
+  --ball-store /absolute/ball-store --poses /absolute/approved-poses \
+  --model-config /absolute/configs/model/mdd_pose.yaml \
+  --output /absolute/new-prepared-data --frame-steps 1 2 4 --window-stride 16
+```
+
+`preparation.py`はindex/metadataとpose artifactをコピーし、RGB shardを`ball_snapshot/`へhardlinkする。
+`mdd_pose_windows.json`・`mdd_only_windows.json`に窓・除外clip・入力hash・評価subsetを保存し、
+`models/`に比較設定を出力する。各split/FPSの窓とCommon評価窓を検証した後に
+`experiments.json`を公開し、`PREPARATION_INCOMPLETE`を取り除く。完了したplanのmanifest/model pathを
+[学習入口](../../training/README.md)へ渡す。凍結出力はソースリポジトリへ追加しない。
+
+## snapshotを共有するrunの運用
+
+同じ元storeのshardを共有するsnapshotを学習・評価runが読んでいる間は、
+`prepare_data`によるsnapshotの追加と、既存snapshotの削除を行わない。
+hardlinkの作成・削除は共有inodeのctimeを変えるため、RGB内容が同じでも、
+検証済みdatasetの次回読込や`FileRangeReader`の範囲読込は変更を検出して停止する。
+必要なsnapshotをrun開始前にまとめて準備し、削除は共有する全runの終了後に行う。
+この検査はmtimeを戻した内容変更も検出するため、ctimeの照合を省略しない。
