@@ -4,6 +4,10 @@ RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規C
 入力仕様は [models/mdd](models/mdd/README.md) を参照。
 既存ConvNeXtのnative heatmap契約と、MDDの座標回帰契約を明示的に分ける。
 
+モデル事前推論から注釈修正・増分公開・累積追加学習への変更後設計は、
+[注釈・継続学習のアーキテクチャ](../base/annotation/README.md)を参照する。
+実装状況は同資料からリンクしたサブIssueで管理する。
+
 ## 構成と責任
 
 | 場所 | 責任 |
@@ -19,6 +23,7 @@ RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規C
 | [training/](training/README.md) | 5chのDPT→query→hybridと継続学習、既存heatmap/座標学習、共通runtime |
 | `evaluation/` | 学習中/単独評価で共通の採点、重複排除、clean/stress |
 | `inference/` | scene向け公開predictorとtrajectory gate |
+| [annotation/](annotation/README.md) | 新規clipの事前推論・注釈レビュー・累積教師公開 |
 | [visualization/](visualization/README.md) | WebUI・描画・GIF・教師/拡張preview |
 | [dataset_statistics/](dataset_statistics/README.md) | 注釈構成・欠損・位置・速度・窓・pose品質のCPU統計 |
 | `generate_dataset/` | 原本から統一frame storeを生成 |

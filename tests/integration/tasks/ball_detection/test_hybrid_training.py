@@ -252,6 +252,11 @@ def test_three_five_channel_stages_resume_transfer_evaluate_and_continue(tmp_pat
     tampered["recipe"]["input_contract"]["channels"] = 2
     with pytest.raises(ValueError):
         restore_hybrid_model(tampered)
+    missing_channels = copy.deepcopy(final)
+    missing_channels["model_config"].pop("input_channels")
+    missing_channels["recipe"]["model"].pop("input_channels")
+    with pytest.raises(TypeError, match="input_channels"):
+        restore_hybrid_model(missing_channels)
     # A new output on the same snapshot is not cumulative learning.
     cfg.resume = None
     cfg.paths.checkpoint_root = str(full)

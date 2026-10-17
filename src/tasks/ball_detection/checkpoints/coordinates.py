@@ -8,6 +8,7 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.configuration import checkpoint_model_config
 from src.tasks.ball_detection.model_io.predict import CoordinateModel
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
@@ -32,11 +33,7 @@ def query_checkpoint_config(saved: dict[str, Any]) -> tuple[MDDPretrainConfig, R
         raise ValueError("Posttraining model configuration differs from its recipe")
     if recipe["input_contract"] != recipe["parent"]["input_contract"] or recipe["image_decode"] != recipe["parent"]["image_decode"]:
         raise ValueError("Posttraining preprocessing differs from the transferred encoder")
-    raw = dict(saved["model_config"])
-    # Historical query v1 checkpoints used the original two-channel input.
-    # The input contract below must independently agree with that conversion.
-    raw.setdefault("input_channels", 2)
-    config = MDDPretrainConfig(**raw)
+    config = checkpoint_model_config(saved)
     preprocessing = input_transform_from_contract(recipe["input_contract"], input_channels=config.input_channels)
     return config, preprocessing
 
