@@ -459,6 +459,9 @@ def test_capacity_wait_restarts_same_unlaunched_attempt(
         with runner.pool.ledger.registry.transaction() as db:
             attempts = db.execute("SELECT id,state FROM worker_attempts").fetchall()
         assert [tuple(row) for row in attempts] == [(launch.attempt, "complete")]
+        # Worker reconciliation joins its supervisor, but cached resource polls
+        # can leave its lease draining. Recover it before inspecting the ledger.
+        runner.resources.sample()
         with runner.resources.registry.transaction() as db:
             rows = db.execute(
                 "SELECT id,state,request FROM resource_requests WHERE stage='review'"
@@ -775,6 +778,11 @@ def test_benchmark_run_services_healthy_worker_after_another_fails(
         result = json.loads(capsys.readouterr().out)
         assert result["state"] == "blocked"
         assert result["task_states"] == {"complete": 1, "failed": 1}
+        # Service receipts can precede supervisor exit. Join remaining children,
+        # then bypass poll()'s cache to recover their finished resource leases.
+        for child in runner.jobs.stages.children.values():
+            assert child.wait(timeout=10) == 0
+        runner.resources.sample()
         with setup.manager.registry.transaction() as db:
             assert (
                 db.execute(
