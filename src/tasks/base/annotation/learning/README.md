@@ -42,6 +42,13 @@ testを学習やepochの選び直しへ使わない。recipeのない既存経�
   次試行ディレクトリの作成後、再試行情報の保存前に停止した場合も、明示的な`retry()`で
   直前の失敗を照合し、同じ試行番号へ復旧する。`tick()`だけでは再試行を開始しない。
 
+コード更新後も初回の `runtime.json` は保持し、更新記録のplan/scope・旧runtime・検証根拠を
+照合したruntimeを `code-updates/<revision digest>/runtime.json` へ別保存する。
+変更できるのはコード版の参照だけで、scope・queue設定・工程costは不変。
+既存launchも上書きせず、旧コードの成功・失敗を回収する。未起動の旧launchは明示的に
+取消し、失敗の回収後に `retry()` した次attemptと後続評価から新しいコード版を使う。
+初回runtimeと旧launchのhashは維持するため、既存campaignのファイル移行は不要。
+
 工程要求はqueue投入前に固定入力を保持する。`LearningAdapter.resume_references()` は
 同じintentの再開checkpointを検証し、その依存を列挙する。retryはその依存を
 `Retry.resume_dependencies` に不変保存し、checkpointとともに返却前に保護する。

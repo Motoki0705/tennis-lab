@@ -63,6 +63,9 @@ state = pool.reconcile(request)
   lease取得前に不変launchを保存する。資源受付後・worker台帳登録前に中断したattemptは、
   再開時に台帳へ失敗として回収し、明示retryでは新しいattempt/request IDを発行する。
   まだ資源を取得していないpending要求は同じIDで受付を再試行し、待機枠を重複消費しない。
+  コード更新時は未登録launchも照合し、旧launchを保持した `cancelled` attemptを台帳へ登録する。
+  pending資源要求があれば取消し、未登録の資源要求なら予約を作らない。
+  取消とworker台帳登録の間で中断しても同じ取消理由から回収し、明示retryで次attemptへ進む。
   benchmarkでも資源要求は共有の資源台帳で照合し、workerの復旧状態は条件別台帳に記録する。
 
 標準状態は `ready → running → complete`、未回収終了は `exited`（quotaはadmissionでも確定）。

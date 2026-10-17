@@ -207,6 +207,10 @@ controllerと所有jobを停止・終了確認し、修正版をテストしてc
 以降は返されたreceiptのruntimeを指定する。全stage・screen/review worker・学習launchが
 更新記録を参照し、子processでもコード版を照合する。コードがdirty、jobが稼働中、
 またはqueue待ちなら更新を拒否する。旧controllerを同時に再起動しない。
+資源待ちでlaunchだけを保存したscreen/review workerは、資源要求の登録前も含めて
+更新時に旧attemptを `cancelled` として履歴へ回収し、pending予約を取消す。
+新runtimeで `retry_worker`（または `retry-screen`）を明示すると、次attemptを新コードで起動する。
+通常tickは取消済みworkerを自動再試行しない。取消途中で中断した更新も同じ入力で再送できる。
 
 成功済みstageは旧launchの結果を読む。旧版で未起動のstageは勝手に新コードへ付け替えず、
 `cancel_pending_stage` で取消し、必要な工程だけ通常の `submit --attempt N` で再試行する。
