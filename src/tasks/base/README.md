@@ -6,6 +6,9 @@
 
 ## Modules
 
+### annotation/
+- [注釈・公開・継続学習の変更後アーキテクチャ](annotation/README.md): ball/playerの予測、ローカルCodexによる修正、増分snapshot公開、累積追加学習をつなぐ設計契約。責務・状態・保存先・移設範囲とサブIssueの依存関係を示す。実装状況はリンク先の各Issueで管理する。
+
 ### Top-level
 - **`__init__.py`**: data/training/inferenceの共有APIを再export。
 
