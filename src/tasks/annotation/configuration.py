@@ -89,12 +89,15 @@ def validate_runtime(
     codex_home = Path(settings.codex_home)
     if not codex_home.is_absolute() or codex_home.resolve() != codex_home:
         raise ValueError("Codex state must use an explicit normalized directory")
-    if not any(codex_home.is_relative_to(Path(root)) for root in roots):
+    if not any(
+        Path(root).is_dir() and codex_home.is_relative_to(Path(root)) for root in roots
+    ):
         raise ValueError("Codex state must be inside the resource inventory")
     validate_queue(layout, settings.queue)
 
 
 def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
+    established = isinstance(data.budget, ExistingBudget)
     if isinstance(data.budget, ExistingBudget):
         scope = read_document(layout, data.budget.scope, BudgetScope)
         if layout.artifact_path(data.budget.scope) != layout.path(
@@ -114,11 +117,29 @@ def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
             previously_used_gpu_seconds=data.budget.previously_used_gpu_seconds,
             max_pending_per_stage=data.budget.max_pending_per_stage,
         )
+        path = layout.path("resources", scope.scope_id, "scope.json")
+        if path.exists():
+            existing = read_document(
+                layout, annotation_reference(layout, path), BudgetScope
+            )
+            if existing != scope.model_copy(update={"baseline": existing.baseline}):
+                raise ValueError(
+                    "existing resource scope differs from the requested budget"
+                )
+            verify_reference(layout, existing.baseline)
+            scope, established = existing, True
     if scope.limits != BudgetLimits.from_budget(data.plan.resources):
         raise ValueError("campaign limits differ from the reused budget scope")
     roots = tuple(Path(root) for root in scope.roots)
-    if any(not root.is_dir() for root in roots):
-        raise ValueError("every storage inventory root must already be a directory")
+    for root in roots:
+        if root.is_file() or root.is_dir():
+            continue
+        # Keep original inventory anchors when transient files disappear.
+        if established and not root.exists():
+            continue
+        raise ValueError(
+            "new inventory roots must exist as regular files or directories"
+        )
     if not any(layout.root.is_relative_to(root) for root in roots):
         raise ValueError("storage inventory must include the annotation root")
     if layout.mode == "production" and layout.repository not in roots:
