@@ -19,6 +19,7 @@ from ..artifacts import (
 )
 from ..paths import AnnotationLayout
 from ..plan import load_plan, references
+from ..reproducibility import require_frozen_code
 from ..resources import ResourceManager
 from .command import codex_command, worker_environment
 from .contracts import ExitReceipt, Launch
@@ -101,6 +102,8 @@ def supervise(
     ):
         raise ValueError("test command/root is forbidden in production")
     plan = load_plan(verify_reference(layout, launch.plan))
+    if layout.mode == "production":
+        require_frozen_code(Path(launch.code_root), plan)
     for reference in references(launch.request):
         verify_reference(layout, reference)
     owner = capture_supervisor(os.getpid())
@@ -165,7 +168,7 @@ def supervise(
                         if resources is not None:
                             # Budget exhaustion latches a stop for NEW submissions.
                             # This worker still has its frozen timeout and reservation.
-                            resources.poll()
+                            resources.watch()
             except subprocess.TimeoutExpired:
                 status, reason, code = (
                     "timed_out",

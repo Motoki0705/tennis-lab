@@ -20,6 +20,7 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.collection.contracts import (
     AcquisitionReceipt,
+    HistoricalSource,
     PreparationConfig,
     PreparationReceipt,
     SelectionReceipt,
@@ -321,8 +322,47 @@ def test_historical_source_and_channel_cannot_be_collected_as_new(
     )
 
 
-def test_history_registers_each_encoding_of_the_same_source(
+def test_incomplete_historical_download_still_reserves_source_and_channel(
     layout: AnnotationLayout,
+) -> None:
+    plan = plan_for(layout)
+    ledger = CollectionLedger(layout)
+    historical = HistoricalSource(
+        provider="youtube",
+        channel_id="old-channel",
+        video_id="old-video",
+        origin_url="https://www.youtube.com/watch?v=old-video",
+    )
+    ledger.import_history(historical, plan.selection)
+    ledger.import_history(historical, plan.selection)
+    ledger.register_campaign(plan)
+    candidate = SourceCandidate(
+        provider="youtube",
+        channel_id="old-channel",
+        video_id="old-video",
+        title="fixture",
+        origin_url=historical.origin_url,
+        selection_reason="fixture",
+        evidence=plan.selection,
+    )
+    assert ledger.register_source(plan, candidate).disposition == "duplicate_source"
+    assert (
+        ledger.register_source(
+            plan, candidate.model_copy(update={"video_id": "different"})
+        ).disposition
+        == "duplicate_channel"
+    )
+    with ledger.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM source_content").fetchone()[0] == 0
+    with pytest.raises(ValueError, match="historical source"):
+        ledger.import_history(
+            historical.model_copy(update={"channel_id": "changed"}), plan.selection
+        )
+
+
+@pytest.mark.parametrize("incomplete_first", [False, True])
+def test_history_registers_each_encoding_of_the_same_source(
+    layout: AnnotationLayout, incomplete_first: bool,
 ) -> None:
     collection = Collection(layout, plan_for(layout))
     versions = [candidate(layout, collection.plan, name) for name in ("one", "two")]
@@ -335,6 +375,11 @@ def test_history_registers_each_encoding_of_the_same_source(
             media=version.local_media,
             origin_url="local:historical-video",
         )
+        if incomplete_first:
+            historical = HistoricalSource.model_validate(
+                source.model_dump(exclude={"media"})
+            )
+            collection.ledger.import_history(historical, collection.plan.selection)
         collection.ledger.import_history(source, collection.plan.selection)
         collection.ledger.import_history(source, collection.plan.selection)
         with pytest.raises(ValueError, match="channel identity mismatch"):
@@ -342,6 +387,19 @@ def test_history_registers_each_encoding_of_the_same_source(
                 source.model_copy(update={"channel_id": "wrong-channel"}),
                 collection.plan.selection,
             )
+    changed_evidence = layout.path("campaigns", "inputs", "changed-evidence.txt")
+    changed_evidence.write_text("different evidence")
+    with pytest.raises(ValueError, match="historical source or evidence changed"):
+        collection.ledger.import_history(
+            source, annotation_reference(layout, changed_evidence)
+        )
+    with pytest.raises(ValueError, match="historical source or evidence changed"):
+        collection.ledger.import_history(
+            source.model_copy(update={"origin_url": "local:different-origin"}),
+            collection.plan.selection,
+        )
+    with collection.ledger.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM source_content").fetchone()[0] == 2
     for index, version in enumerate(versions):
         reupload = candidate(
             layout,

@@ -25,6 +25,7 @@ from ..artifacts import (
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan, references, save_plan
+from ..reproducibility import require_frozen_code
 from ..resources import ResourceManager, ResourceRequest
 from ..telemetry.capture import capture, presented_images, verify_report
 from .contracts import (
@@ -52,6 +53,7 @@ class WorkerPool:
         adapters: tuple[TaskAdapter, ...],
         *,
         codex_binary: str = "codex",
+        codex_home: Path | None = None,
         timeout_seconds: float = 3600,
         test_command: tuple[str, ...] | None = None,
         resources: ResourceManager | None = None,
@@ -71,6 +73,9 @@ class WorkerPool:
         self.worker_pss_bytes = worker_pss_bytes
         self.worker_storage_bytes = worker_storage_bytes
         self.layout, self.plan = layout, plan
+        self.codex_home = (
+            codex_home or Path(os.environ.get("CODEX_HOME", "~/.codex")).expanduser()
+        ).resolve()
         self.adapters = {adapter.name: adapter for adapter in adapters}
         if len(self.adapters) != len(adapters):
             raise ValueError("adapter names must be unique")
@@ -315,6 +320,8 @@ class WorkerPool:
         state = self.reconcile(request)
         if state["state"] in {"complete", "not_applicable"}:
             return None
+        if self.layout.mode == "production":
+            require_frozen_code(PROJECT_ROOT, self.plan)
         require_process_backend()
         binary = shutil.which(self.binary)
         if self.test_command is None and binary is None:
@@ -445,11 +452,7 @@ class WorkerPool:
                     directory=str(directory),
                     code_root=str(code_root),
                     codex_binary=binary or self.binary,
-                    codex_home=str(
-                        Path(os.environ.get("CODEX_HOME", "~/.codex"))
-                        .expanduser()
-                        .resolve()
-                    ),
+                    codex_home=str(self.codex_home),
                     timeout_seconds=self.timeout,
                     test_command=self.test_command,
                     test_root=str(self.layout.root)

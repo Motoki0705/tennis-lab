@@ -25,7 +25,13 @@ from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan
 from ..registry import Registry
 from ..workers.processes import ProcessIdentity, owned_members, process_snapshot
-from .contracts import BudgetLimits, BudgetScope, ResourceRequest, ResourceSample
+from .contracts import (
+    BudgetLimits,
+    BudgetScope,
+    GPUUsage,
+    ResourceRequest,
+    ResourceSample,
+)
 from .measurements import (
     free_bytes,
     gpu_usage,
@@ -54,6 +60,12 @@ CREATE TABLE IF NOT EXISTS resource_samples (
  scope TEXT PRIMARY KEY, sample TEXT NOT NULL, storage_at REAL NOT NULL,
  measured_at REAL NOT NULL, boot TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS resource_baselines (
+ digest TEXT PRIMARY KEY, fingerprint TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS resource_watchdogs (
+ scope TEXT PRIMARY KEY, sample TEXT NOT NULL, measured_at REAL NOT NULL, boot TEXT NOT NULL
+);
 """
 
 
@@ -69,9 +81,9 @@ class ResourceManager:
     def __init__(self, layout: AnnotationLayout, reference: ArtifactRef) -> None:
         self.layout, self.reference = layout, reference
         self.scope = read_document(layout, reference, BudgetScope)
-        verify_reference(layout, self.scope.baseline)
         self.registry = Registry(layout)
         self.registry.initialize("annotation.resources.v1", _SCHEMA)
+        self._baseline_path()
         with self.registry.transaction() as db:
             row = db.execute(
                 "SELECT reference FROM resource_scopes WHERE id=?",
@@ -84,6 +96,44 @@ class ResourceManager:
                 "INSERT OR IGNORE INTO resource_scopes(id,reference) VALUES (?,?)",
                 (self.scope.scope_id, encoded),
             )
+
+    def _baseline_path(self) -> Path:
+        """Cache verified immutable inventory bytes, invalidated by any file change."""
+        ref = self.scope.baseline
+        path: Path = self.layout.artifact_path(ref)
+
+        def fingerprint() -> str:
+            stat = path.stat()
+            result: str = content_digest(
+                [
+                    str(path),
+                    stat.st_dev,
+                    stat.st_ino,
+                    stat.st_size,
+                    stat.st_mtime_ns,
+                    stat.st_ctime_ns,
+                    stat.st_mode,
+                ]
+            )
+            return result
+
+        with artifact_lock(self.layout, "resource-baseline-" + ref.digest):
+            before = fingerprint()
+            with self.registry.transaction() as db:
+                cached = db.execute(
+                    "SELECT fingerprint FROM resource_baselines WHERE digest=?",
+                    (ref.digest,),
+                ).fetchone()
+            if cached is None or cached[0] != before:
+                verify_reference(self.layout, ref)
+                if fingerprint() != before:
+                    raise ValueError("resource baseline changed during verification")
+                with self.registry.transaction() as db:
+                    db.execute(
+                        "INSERT OR REPLACE INTO resource_baselines VALUES (?,?)",
+                        (ref.digest, before),
+                    )
+        return path
 
     @classmethod
     def create(
@@ -249,6 +299,11 @@ class ResourceManager:
                 ),
             )
 
+    def request_status(self, request: ResourceRequest) -> tuple[str, str | None]:
+        """Read admission state without resampling or changing the reservation."""
+        row = self._row(request)
+        return row["state"], row["reason"]
+
     def _active(self) -> list[dict[str, Any]]:
         with self.registry.transaction() as db:
             return [
@@ -301,7 +356,9 @@ class ResourceManager:
             except BlockingIOError:
                 continue
 
-    def _sample(self, *, refresh_storage: bool = True) -> ResourceSample:
+    def _sample(
+        self, *, refresh_storage: bool = True, watchdog: bool = False
+    ) -> ResourceSample:
         active = self._active()
         with self.registry.transaction() as db:
             observers = tuple(
@@ -337,7 +394,7 @@ class ResourceManager:
             not refresh_storage
             and cached is not None
             and cached["boot"] == boot
-            and now - cached["storage_at"] < 30
+            and (watchdog or now - cached["storage_at"] < 30)
         ):
             previous = ResourceSample.model_validate_json(cached["sample"])
             storage, storage_measured_at = (
@@ -347,9 +404,11 @@ class ResourceManager:
                 previous.storage_measured_at,
             )
         else:
+            if watchdog:
+                raise RuntimeError("watchdog requires an admission-time storage sample")
             storage = storage_usage(
                 self.scope.roots,
-                verify_reference(self.layout, self.scope.baseline),
+                self._baseline_path(),
                 self.scope.previously_allocated_bytes,
             )
             storage_measured_at = measured_at
@@ -367,7 +426,15 @@ class ResourceManager:
             scope_id=self.scope.scope_id,
             storage=storage,
             processes=processes,
-            gpu=gpu_usage({item.pid for item in processes}),
+            gpu=GPUUsage(
+                status="unavailable",
+                owned_vram_bytes=None,
+                device_vram_bytes=None,
+                maximum_utilization_percent=None,
+                reason="watchdog measures PSS/free space; GPU telemetry is recorded by controller samples",
+            )
+            if watchdog
+            else gpu_usage({item.pid for item in processes}),
             pss_bytes=sum(p.pss_bytes for p in processes),
             rss_bytes=sum(p.rss_bytes for p in processes),
             gpu_charged_seconds=self.scope.previously_used_gpu_seconds
@@ -458,6 +525,63 @@ class ResourceManager:
                 return result
             self._recover()
             return self._record(self._sample(refresh_storage=False))
+
+    def watch(self) -> ResourceSample | None:
+        """Bounded supervisor check, independent of slow inventory/admission scans.
+
+        It never releases reservations, runs a disk inventory, invokes nvidia-smi,
+        or overwrites the admission cache. The controller owns full samples.
+        """
+        try:
+            with artifact_lock(self.layout, "resource-watchdog", blocking=False):
+                boot = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+                with self.registry.transaction() as db:
+                    cached = db.execute(
+                        "SELECT * FROM resource_watchdogs WHERE scope=?",
+                        (self.scope.scope_id,),
+                    ).fetchone()
+                if (
+                    cached is not None
+                    and cached["boot"] == boot
+                    and time.monotonic() - cached["measured_at"] < 2
+                ):
+                    result: ResourceSample = ResourceSample.model_validate_json(
+                        cached["sample"]
+                    )
+                    return result
+                sample: ResourceSample = self._sample(
+                    refresh_storage=False, watchdog=True
+                )
+                problem = self._problem(sample)
+                with self.registry.transaction() as db:
+                    if problem is not None:
+                        db.execute(
+                            "UPDATE resource_scopes SET stop_reason=? WHERE id=? AND stop_reason IS NULL",
+                            (problem, self.scope.scope_id),
+                        )
+                    stopped = db.execute(
+                        "SELECT stop_reason FROM resource_scopes WHERE id=?",
+                        (self.scope.scope_id,),
+                    ).fetchone()[0]
+                    sample = sample.model_copy(update={"stopped_reason": stopped})
+                    db.execute(
+                        "INSERT OR REPLACE INTO resource_watchdogs VALUES (?,?,?,?)",
+                        (
+                            self.scope.scope_id,
+                            sample.canonical_bytes().decode(),
+                            time.monotonic(),
+                            boot,
+                        ),
+                    )
+                path = self.layout.path(
+                    "resources", self.scope.scope_id, "watchdog.jsonl"
+                )
+                with path.open("ab") as handle:
+                    handle.write(sample.canonical_bytes() + b"\n")
+                    handle.flush()
+                return sample
+        except BlockingIOError:
+            return None
 
     def resume(self, *, reason: str) -> None:
         if not reason.strip():

@@ -519,3 +519,77 @@ def test_completed_allocation_invalidates_cached_storage_before_admission(
         (layout.root / "fixture-oversized-output").write_bytes(b"x" * 1_100_000)
     with pytest.raises(BudgetStopped, match="storage"), guard.lease(next_item):
         pytest.fail("completed writes were omitted from cached storage")
+
+
+def test_deleted_baseline_anchor_cannot_credit_a_surviving_hardlink(
+    tmp_path: Path,
+) -> None:
+    data = tmp_path / "data"
+    data.mkdir()
+    anchor = data / "anchor"
+    anchor.write_bytes(b"a" * 1024**2)
+    baseline = tmp_path / "baseline.jsonl"
+    write_baseline(baseline, (str(data),))
+    os.link(anchor, data / "survivor")
+    anchor.unlink()
+    assert storage_usage((str(data),), baseline, 0).additional_bytes >= 1024**2
+
+
+def test_inventory_cache_detects_same_size_tampering_even_with_restored_mtime(
+    tmp_path: Path,
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout)
+    guard = manager(layout, plan)
+    path = layout.artifact_path(guard.scope.baseline)
+    prior = path.stat()
+    original = path.read_bytes()
+    path.write_bytes(b"!" + original[1:])
+    os.utime(path, ns=(prior.st_atime_ns, prior.st_mtime_ns))
+    with pytest.raises(ValueError, match="hash changed"):
+        ResourceManager(layout, guard.reference)
+
+
+def test_slow_inventory_does_not_block_watchdog_or_release_unmeasured_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout, additional_storage_bytes=1_000_000)
+    guard = manager(layout, plan)
+    first = request(layout, plan, "writer", stage="decode", storage=500_000)
+    with guard.lease(first):
+        (layout.root / "oversized").write_bytes(b"x" * 1_100_000)
+    entered, release = Event(), Event()
+
+    def slow(*args: object, **kwargs: object):
+        entered.set()
+        assert release.wait(timeout=5)
+        return storage_usage(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.storage_usage", slow
+    )
+    later = request(layout, plan, "reader", stage="review")
+
+    def admit() -> None:
+        with guard.lease(later):
+            pytest.fail("unmeasured oversized output released capacity")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        full = pool.submit(guard.sample)
+        assert entered.wait(timeout=2)
+        try:
+            started = time.monotonic()
+            watch = guard.watch()
+            assert watch is not None
+            assert time.monotonic() - started < 1
+            assert watch.gpu.status == "unavailable"
+            waiting = pool.submit(admit)
+            assert not waiting.done()
+        finally:
+            release.set()
+        assert (
+            full.result(timeout=5).stopped_reason == "additional storage budget reached"
+        )
+        with pytest.raises(BudgetStopped):
+            waiting.result(timeout=5)
