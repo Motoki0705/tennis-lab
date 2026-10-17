@@ -95,7 +95,7 @@ def test_registered_worker_uses_parent_boxes_and_bounded_rows(
         )
 
 
-def test_worker_completion_validates_images_and_seals_mask(
+def test_worker_completion_validates_images_and_defers_seal_until_id_review(
     session: ReviewSession,
 ) -> None:
     env = session.env
@@ -107,7 +107,7 @@ def test_worker_completion_validates_images_and_seals_mask(
     assert (
         mask.rows[1].supervision == "positive" and mask.rows[2].supervision == "ignore"
     )
-    assert env.store.current(env.context_ref, session.services)[1] == outcome.adoption
+    assert env.store.current(env.context_ref, session.services)[1] is None
 
 
 def test_retry_retains_reviewed_boxes_and_images_from_cancelled_attempt(

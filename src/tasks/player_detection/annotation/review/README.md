@@ -57,10 +57,10 @@ telemetry の参照を証拠履歴に保持する。ハッシュ不整合や不�
 
 `prepare_adoption()` は全 attempt の証拠・明示 policy・導出 mask を検証して receipt を保存する。
 `seal()` の前までは同じ観測 ID と期待 revision を指定して bbox を修正できる。
-後続 ID review は bbox revision と観測 ID を入力として固定し、その後 bbox が変われば
-古い ID review を適用しない接続が必要。seal 後の修正は共通 store が拒否するため、
-**後続からの修正が残る間に seal しない**ことは将来の composition の責務である。
-現 worker は完了時に bbox 教師を seal する単体 adapter であり、ID/pose を含む全工程接続済みとは扱わない。
+worker完了時にはsealせず、後続の[IDレビュー](../player_pose/README.md)へ採用receiptを渡す。
+IDレビューはbbox revisionと観測IDを固定する。その後のbbox変更は古い追跡入力・IDレビューを
+無効にし、新しい採用revisionからやり直す。`finalize_review()` が最終ID判定と教師を保存してsealする。
+seal後の修正は共通storeが拒否する。
 
 操作上限と再試行は共通 [review services](../../../base/annotation/workers/review/README.md)、
 worker の手順は [worker instructions](worker-instructions.md) を参照。

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.tennis_scene.chat_annotation.player_pose import __main__ as cli
+from src.tasks.player_detection.annotation.player_pose import __main__ as cli
 from src.utils.configuration.errors import PathContractError
 
 

@@ -122,7 +122,7 @@ def initialize(campaign: Path, config: dict[str, Any]) -> dict[str, Any]:
     }
     project = Path(config["project_root"])
     folders = [
-        project / "src/tennis_scene/chat_annotation/player_pose",
+        project / "src/tasks/player_detection/annotation/player_pose",
         project / "src/tasks/person_tracking",
         project / "src/tasks/player_association",
         project / "src/submodules",
@@ -130,7 +130,7 @@ def initialize(campaign: Path, config: dict[str, Any]) -> dict[str, Any]:
     config["code_hashes"] = {
         str(p): digest(p) for folder in folders for p in sorted(folder.rglob("*.py"))
     }
-    instruction = project / "src/tennis_scene/chat_annotation/player_pose/WORKER.md"
+    instruction = project / "src/tasks/player_detection/annotation/player_pose/WORKER.md"
     if instruction.exists():
         config["code_hashes"][str(instruction)] = digest(instruction)
     plan = {

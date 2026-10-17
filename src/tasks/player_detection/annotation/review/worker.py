@@ -502,5 +502,6 @@ class PlayerReviewWorker:
                 head,
                 read_document(layout, sealed, AdoptionReceipt),
             )
-        store.seal(head, adoption, adapter)
+        # ID review may still require bbox corrections. The final ID stage seals
+        # this exact revision; any intervening edit invalidates its tracking input.
         return WorkOutcome(status="complete", receipt=result, adoption=adoption)

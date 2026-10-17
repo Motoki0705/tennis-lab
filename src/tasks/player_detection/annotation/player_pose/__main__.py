@@ -4,6 +4,9 @@ import argparse
 import json
 from pathlib import Path
 
+from src.tennis_scene.chat_annotation.artifacts.configuration import (
+    artifact_path_resolver,
+)
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -12,12 +15,11 @@ from src.utils.configuration import (
     PathRole,
 )
 
-from ..artifacts.configuration import artifact_path_resolver
 from .selection import initialize
 from .storage import read_json
 
 PATH_BOUNDARY = NonHydraPathBoundary(
-    name="tennis_scene.chat_annotation.player_pose",
+    name="tasks.player_detection.annotation.player_pose",
     fields=(
         BoundaryPathField(
             "campaign",

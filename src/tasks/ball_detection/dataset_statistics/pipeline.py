@@ -16,7 +16,7 @@ from src.tasks.ball_detection.data.windows.intervals import (
     PlayIntervalConfig,
     mask_intervals,
 )
-from src.tennis_scene.chat_annotation.player_pose.dataset import PlayerPoseStore
+from src.tasks.player_detection.annotation.player_pose.dataset import PlayerPoseStore
 from src.utils.checksum import dual_sha256
 
 from .aggregation import aggregate
