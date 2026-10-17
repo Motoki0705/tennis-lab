@@ -192,6 +192,8 @@ class FrameSelectionConfig:
     ``require_located_players`` drops frames containing an ``unresolved``
     player: such a player is present without a box, so any detection on it
     would otherwise be trained as a false positive.
+    Empty targets always require an explicit confirmed-absence flag, even when
+    ``require_reviewed`` is false. Context frames never provide teachers.
     """
 
     require_reviewed: bool
