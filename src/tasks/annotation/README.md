@@ -75,6 +75,10 @@ GPU工程はmain repositoryの共有queueに投入する。queue workerの起動
 `compare_storage` で形式・shard共有・RGB cacheを比較する。操作入力・測定定義は
 [保存比較](../base/annotation/storage/comparison/README.md)を参照する。
 
+10/25/50の並列条件は `benchmark-observe` / `benchmark-report` で既存workerの生存数と
+資源・usageを記録する。固定入力、測定値の意味、未到達・欠測の扱いは
+[並列条件の観測](../base/annotation/benchmarks/README.md)を参照する。
+
 ## 画像確認・公開・学習
 
 screen/review workerの画像・編集要求は親controllerへ渡す。親がrequest/attempt/版/区間を
