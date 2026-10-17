@@ -459,6 +459,8 @@ def test_capacity_wait_restarts_same_unlaunched_attempt(
         with runner.pool.ledger.registry.transaction() as db:
             attempts = db.execute("SELECT id,state FROM worker_attempts").fetchall()
         assert [tuple(row) for row in attempts] == [(launch.attempt, "complete")]
+        # Worker completion can precede the next throttled resource poll.
+        runner.resources.sample()
         with runner.resources.registry.transaction() as db:
             rows = db.execute(
                 "SELECT id,state,request FROM resource_requests WHERE stage='review'"

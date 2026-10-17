@@ -1030,6 +1030,105 @@ def test_registered_intent_and_runtime_cannot_be_silently_replaced(
         )
 
 
+@pytest.mark.parametrize("collect_failure", [False, True])
+@pytest.mark.parametrize("move_checkout", [False, True])
+def test_code_update_after_learning_failure_preserves_history_and_retries(
+    env: Environment,
+    monkeypatch: pytest.MonkeyPatch,
+    collect_failure: bool,
+    move_checkout: bool,
+) -> None:
+    from src.tasks.base.annotation.learning import service
+    from src.tasks.base.annotation.reproducibility import CodeRevision
+
+    command = env.adapter.command
+
+    def checkout_command(layout, request, result):
+        return (
+            str(service.PROJECT_ROOT / ".venv/bin/python"),
+            *command(layout, request, result)[1:],
+        )
+
+    monkeypatch.setattr(env.adapter, "command", checkout_command)
+    intent_ref = env.register()
+    intent = read_document(env.layout, intent_ref, LearningIntent)
+    completion = read_document(env.layout, intent.completion, CampaignCompletion)
+    first = env.learning.tick(intent_ref, env.adapter, env.runtime)
+    assert first.launch is not None
+    env.executor.finish(first.launch, env.adapter, failed=True)
+    if collect_failure:
+        assert env.learning.tick(intent_ref, env.adapter, env.runtime).state == "failed"
+    directory = env.layout.path("campaigns", "cycle-one", "learning", "detector")
+    original_runtime = (directory / "runtime.json").read_bytes()
+    original_launch = env.layout.artifact_path(first.launch).read_bytes()
+    revision = write_document(
+        env.layout,
+        env.layout.path("campaigns", "cycle-one", "code-update.json"),
+        CodeRevision(
+            plan=completion.plan,
+            scope=env.runtime.scope,
+            previous_runtime=annotation_reference(
+                env.layout, directory / "runtime.json"
+            ),
+            code_commit="c" * 40,
+            code_diff_digest=hashlib.sha256(b"").hexdigest(),
+            verification=env.common,
+            reason="verified fix for the failed training command",
+        ),
+    )
+    runtime = env.runtime.model_copy(update={"code_revision": revision})
+    if move_checkout:
+        monkeypatch.setattr(
+            service, "PROJECT_ROOT", env.layout.repository / "fixed-code"
+        )
+    learning = Learning(env.layout, executor=env.executor)
+    changed_cost = runtime.model_copy(
+        update={
+            "train": runtime.train.model_copy(update={"storage_bytes": 2}),
+        }
+    )
+    with pytest.raises(ValueError, match="immutable"):
+        learning.tick(intent_ref, env.adapter, changed_cost)
+    wrong_scope = write_document(
+        env.layout,
+        env.layout.path("campaigns", "cycle-one", "wrong-scope-update.json"),
+        read_document(env.layout, revision, CodeRevision).model_copy(
+            update={"scope": env.recipe}
+        ),
+    )
+    with pytest.raises(ValueError, match="another plan or scope"):
+        learning.tick(
+            intent_ref,
+            env.adapter,
+            runtime.model_copy(update={"code_revision": wrong_scope}),
+        )
+    assert learning.tick(intent_ref, env.adapter, runtime).state == "failed"
+    assert len(env.executor.accepted) == 1
+    retry = learning.retry(intent_ref, env.adapter, "train", reason="retry fixed code")
+    assert read_document(env.layout, retry, StageInput).attempt == 2
+    state = learning.tick(intent_ref, env.adapter, runtime)
+    assert state.launch is not None and state.launch != first.launch
+    assert (
+        read_document(env.layout, state.launch, StageLaunch).code_revision == revision
+    )
+    assert learning.tick(intent_ref, env.adapter, runtime).launch == state.launch
+    env.executor.finish(state.launch, env.adapter)
+    state = learning.tick(intent_ref, env.adapter, runtime)
+    assert state.state == "evaluation_pending" and state.launch is not None
+    assert (
+        read_document(env.layout, state.launch, StageLaunch).code_revision == revision
+    )
+    env.executor.finish(state.launch, env.adapter)
+    assert learning.tick(intent_ref, env.adapter, runtime).state == "adopted"
+    assert len(env.executor.accepted) == 3
+    assert (directory / "runtime.json").read_bytes() == original_runtime
+    assert env.layout.artifact_path(first.launch).read_bytes() == original_launch
+    saved = annotation_reference(
+        env.layout, directory / "code-updates" / revision.digest / "runtime.json"
+    )
+    assert read_document(env.layout, saved, LearningRuntime) == runtime
+
+
 def test_real_stage_runner_binds_scope_and_one_queue_registration(
     env: Environment, monkeypatch: pytest.MonkeyPatch
 ) -> None:

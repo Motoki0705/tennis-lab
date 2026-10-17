@@ -31,7 +31,7 @@ from ..plan import (
     require_execution_layout,
     save_plan,
 )
-from ..reproducibility import require_frozen_code
+from ..reproducibility import CodeRevision, require_frozen_code
 from ..resources import ResourceManager, ResourceRequest
 from ..telemetry.capture import capture, presented_images, verify_report
 from .contracts import (
@@ -263,7 +263,32 @@ class WorkerPool:
                     "attempt still has owned processes, including orphaned descendants"
                 )
 
-    def _recover_unregistered_attempt(self, request: WorkRequest) -> None:
+    def cancel_pending_code_update(self, revision: ArtifactRef) -> None:
+        """Retire unstarted launches before publishing a code-update receipt."""
+        with artifact_lock(self.layout, "worker-admission", blocking=False):
+            with self.ledger.registry.transaction() as database:
+                requests = [
+                    WorkRequest.model_validate_json(row[0])
+                    for row in database.execute(
+                        "SELECT request FROM worker_tasks WHERE campaign=?",
+                        (self.plan.campaign_id,),
+                    )
+                ]
+            for request in requests:
+                if request.adapter not in self.adapters:
+                    continue
+                with (
+                    artifact_lock(
+                        self.layout, "worker-" + request.work_id, blocking=False
+                    ),
+                    artifact_lock(self.layout, "worker-services-" + request.work_id),
+                ):
+                    self._registered_task(request)
+                    self._recover_unregistered_attempt(request, cancel_for=revision)
+
+    def _recover_unregistered_attempt(
+        self, request: WorkRequest, *, cancel_for: ArtifactRef | None = None
+    ) -> None:
         """Account for a resource admission interrupted before worker registration.
 
         The caller holds both admission and work locks. Pending requests have never
@@ -301,30 +326,61 @@ class WorkerPool:
             raise ValueError("unregistered launch differs from the worker request")
         with self.resources.registry.transaction() as database:
             resource = database.execute(
-                "SELECT request,state FROM resource_requests WHERE id=?",
+                "SELECT request,state,reason FROM resource_requests WHERE id=?",
                 (self.resources.key(launch.resource_request),),
             ).fetchone()
-        if resource is None:
-            return
-        if resource["request"] != launch.resource_request.canonical_bytes().decode():
+        if (
+            resource is not None
+            and resource["request"]
+            != launch.resource_request.canonical_bytes().decode()
+        ):
             raise ValueError("unregistered launch has a different resource request")
-        if resource["state"] == "pending":
-            return
+        state = "failed"
         reason = "resource admission interrupted before worker registration"
+        if cancel_for is not None and launch.code_revision != cancel_for:
+            update = read_document(self.layout, cancel_for, CodeRevision)
+            if update.plan != launch.plan or update.scope != launch.resource_scope:
+                raise ValueError(
+                    "worker code revision belongs to another plan or scope"
+                )
+            verify_reference(self.layout, update.previous_runtime)
+            verify_reference(self.layout, update.verification)
+            self._require_no_members(path.parent)
+            if resource is not None and resource["state"] in {"running", "draining"}:
+                raise WorkerBusy("stop and drain worker resources before updating code")
+            cancellation = (
+                "unstarted worker cancelled for code revision " + cancel_for.digest
+            )
+            if resource is None or resource["state"] == "pending":
+                if resource is not None:
+                    self.resources.cancel_pending(
+                        launch.resource_request, reason=cancellation
+                    )
+                state, reason = "cancelled", cancellation
+            elif (
+                resource["state"] == "cancelled" and resource["reason"] == cancellation
+            ):
+                # Recover a crash after resource cancellation but before worker registration.
+                state, reason = "cancelled", cancellation
+        if state != "cancelled" and (
+            resource is None or resource["state"] == "pending"
+        ):
+            return
         with self.ledger.registry.transaction() as database:
             database.execute(
-                "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
+                "INSERT INTO worker_attempts VALUES (?,?,?,?,?,?)",
                 (
                     attempt,
                     request.work_id,
                     number,
+                    state,
                     ref.canonical_bytes().decode(),
                     reason,
                 ),
             )
             database.execute(
-                "UPDATE worker_tasks SET state='failed',current_attempt=?,reason=?,result=NULL WHERE id=?",
-                (attempt, reason, request.work_id),
+                "UPDATE worker_tasks SET state=?,current_attempt=?,reason=?,result=NULL WHERE id=?",
+                (state, attempt, reason, request.work_id),
             )
 
     def start(self, request: WorkRequest, *, retry: bool = False) -> str | None:
@@ -354,7 +410,9 @@ class WorkerPool:
                 ) as descriptor,
                 artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
-                self._recover_unregistered_attempt(request)
+                self._recover_unregistered_attempt(
+                    request, cancel_for=self.code_revision
+                )
                 self._settle_dead_slots()
                 row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:

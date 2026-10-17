@@ -322,6 +322,108 @@ def test_authorized_host_observation_preserves_other_limits_and_stops_live_watch
             pytest.fail("an observed disk stop must persist")
 
 
+@pytest.mark.parametrize("legacy_policy", [False, True])
+@pytest.mark.parametrize("stop_budget", [False, True])
+def test_observed_host_policy_reauthorization_preserves_scope_across_campaigns(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    legacy_policy: bool,
+    stop_budget: bool,
+) -> None:
+    from src.tasks.base.annotation.resources.contracts import ObservedHostSpacePolicy
+    from src.tasks.base.annotation.resources.host_space import activate, current
+
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    host = tmp_path / "host"
+    host.mkdir()
+    available = {"host": 15}
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == host)
+    monkeypatch.setattr(
+        os,
+        "statvfs",
+        lambda path: SimpleNamespace(
+            f_bavail=available["host"] if Path(path) == host else 10**12,
+            f_frsize=1,
+        ),
+    )
+    first_plan = make_plan(layout, "first", minimum_free_bytes=100)
+    second_plan = make_plan(layout, "second", minimum_free_bytes=100)
+    guard = manager(layout, first_plan, free_space_mounts=(host,))
+    original_scope = layout.artifact_path(guard.reference).read_bytes()
+    baseline = layout.artifact_path(guard.scope.baseline).read_bytes()
+    first = request(layout, first_plan, "first-job", stage="gpu", gpu=10, storage=20)
+    second = request(layout, second_plan, "second-job", stage="gpu", gpu=20, storage=20)
+    authorization = write_asset(
+        layout, layout.path("resources", "approval.txt"), b"synthetic approval"
+    )
+    policies = tuple(
+        write_document(
+            layout,
+            layout.path("resources", name + "-policy.json"),
+            ObservedHostSpacePolicy(
+                scope=guard.reference,
+                plan=item.plan,
+                mount=str(host),
+                minimum_free_bytes=10,
+                authorization=authorization,
+                reason="authorize " + name,
+            ),
+        )
+        for name, item in (("first", first), ("second", second))
+    )
+    if legacy_policy:
+        # The pre-fix database has only the current-policy pointer, no history rows.
+        guard.bind(first_plan)
+        with guard.registry.transaction() as db:
+            db.execute(
+                "INSERT INTO observed_host_space_policies VALUES (?,?)",
+                (
+                    guard.scope.scope_id,
+                    policies[0].canonical_bytes().decode(),
+                ),
+            )
+    else:
+        activate(guard, policies[0])
+    changed_policy = write_document(
+        layout,
+        layout.path("resources", "changed-policy.json"),
+        read_document(layout, policies[0], ObservedHostSpacePolicy).model_copy(
+            update={"minimum_free_bytes": 1}
+        ),
+    )
+    with pytest.raises(ValueError, match="immutable"):
+        activate(guard, changed_policy)
+    with guard.lease(first):
+        if stop_budget:
+            available["host"] = 9
+            with pytest.raises(BudgetStopped):
+                guard.watch()
+        with pytest.raises(ValueError, match="stop and drain"):
+            activate(guard, policies[1])
+    assert guard.sample().gpu_charged_seconds == 10
+    activate(guard, policies[1])
+    activate(guard, policies[1])
+    active_policy = current(guard)
+    assert active_policy is not None and active_policy.plan == second.plan
+    assert (guard.sample().stopped_reason is not None) == stop_budget
+    available["host"] = 15
+    if stop_budget:
+        guard.resume(reason="explicit resume for second campaign")
+    with guard.lease(second):
+        pass
+    assert guard.sample().gpu_charged_seconds == 30
+    assert layout.artifact_path(guard.reference).read_bytes() == original_scope
+    assert layout.artifact_path(guard.scope.baseline).read_bytes() == baseline
+    with guard.registry.transaction() as db:
+        history = db.execute(
+            "SELECT reference FROM observed_host_space_history WHERE scope=?",
+            (guard.scope.scope_id,),
+        ).fetchall()
+    assert {ArtifactRef.model_validate_json(row[0]) for row in history} == set(policies)
+    with pytest.raises(ValueError, match="superseded"):
+        activate(guard, policies[0])
+
+
 def request(
     layout: AnnotationLayout,
     plan: CampaignPlan,
