@@ -998,6 +998,69 @@ def test_source_survives_uncommitted_jpeg_preparation(
     assert not list(layout.path("sources").rglob("retirement-intent.json"))
 
 
+@pytest.mark.parametrize("cross_campaign", [False, True])
+@pytest.mark.parametrize(
+    "invalid", [None, "missing_intent", "retained_media", "reason", "unexcluded"]
+)
+def test_duplicate_media_requires_verified_owner_retirement(
+    layout: AnnotationLayout, cross_campaign: bool, invalid: str | None
+) -> None:
+    from src.tasks.base.annotation.collection.retirement import verify_acquisition_media
+
+    collection, source, _, acquired = jpeg_collection(layout)
+    other = (
+        Collection(layout, collection.plan.model_copy(update={"campaign_id": "other"}))
+        if cross_campaign else collection
+    )
+    duplicate = candidate(
+        layout, other.plan, "duplicate", "channel-b", media=source.local_media
+    )
+    other.register([duplicate])
+    with pytest.raises(SourceExcluded, match="duplicate content"):
+        other.acquire(duplicate.source_id)
+    row = other.ledger.source(other.plan, duplicate.source_id)
+    reference = ArtifactRef.model_validate_json(row["acquisition"])
+    duplicate_acquired = read_document(layout, reference, AcquisitionReceipt)
+    assert acquired.source.media == duplicate_acquired.source.media
+    if invalid == "unexcluded":
+        with other.ledger.registry.transaction() as database:
+            database.execute(
+                "UPDATE sources SET state='acquired', reason=NULL WHERE id=?",
+                (duplicate.source_id,),
+            )
+        with pytest.raises(ValueError, match="not a verified content duplicate"):
+            collection.prepare(source.source_id)
+        assert layout.artifact_path(acquired.source.media).is_file()
+        return
+    prepared = read_document(
+        layout, collection.prepare(source.source_id), PreparationReceipt
+    )
+    assert not layout.artifact_path(acquired.source.media).exists()
+    if invalid == "missing_intent":
+        layout.path(
+            "sources", source.source_id, collection.plan.preparation.digest,
+            "retirement-intent.json",
+        ).unlink()
+    elif invalid == "retained_media":
+        manifest = read_document(layout, prepared.clips[0], ClipManifest)
+        layout.artifact_path(manifest.media).write_bytes(b"corrupt JPEGs")
+    elif invalid == "reason":
+        with other.ledger.registry.transaction() as database:
+            database.execute(
+                "UPDATE sources SET reason='unrelated exclusion' WHERE id=?",
+                (duplicate.source_id,),
+            )
+    if invalid is None:
+        verify_acquisition_media(
+            layout, other.plan, duplicate.source_id, reference, duplicate_acquired
+        )
+    else:
+        with pytest.raises((ValueError, OSError)):
+            verify_acquisition_media(
+                layout, other.plan, duplicate.source_id, reference, duplicate_acquired
+            )
+
+
 def test_source_retirement_recovers_after_unlink(
     layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch
 ) -> None:

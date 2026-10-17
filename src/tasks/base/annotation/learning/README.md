@@ -17,6 +17,8 @@ snapshotの内容とmembershipはadapterが検査し、baseが元動画・clip�
 旧・新holdoutを確定する。元の評価参照とrecipeを解決済み `FixedEvaluation` に保存し、
 planを途中で書き換えない。追加clipはtrain/validation/testのいずれかに属し、
 trainに利用可能な追加教師が必要となる。
+再登録では同じ公開receiptの登録をロックして既存intentを先に調べ、保存済みの評価参照と
+各partitionを検証する。登録済み入力の欠損・改変を検出した場合は評価の生成処理へ進まない。
 `EvaluationReceipt.validation` は候補選択に使った固定validationと一致させる。
 recipeで最終test比較を指定した場合は `EvaluationReceipt.test` も固定testと照合する。
 testを学習やepochの選び直しへ使わない。recipeのない既存経路はvalidation比較を維持する。
