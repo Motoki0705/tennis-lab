@@ -1,6 +1,5 @@
 ---
 title: "tests/ はPythonパッケージではないので、テストモジュール同士で import できない"
-type: gotcha
 applies_to: all
 source: "PR #627（2026-07-10）"
 created: 2026-07-10
