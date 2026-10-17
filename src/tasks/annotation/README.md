@@ -30,6 +30,12 @@ workerの画像・注釈サービスは、各稼働attemptの未回答要求を�
 通常campaignは最大128要求・600秒のCPU service sessionを使い、同じrender枠の中で
 到着した要求を続けて処理する。各要求のworker・入力・結果・返信を個別receiptに結び、
 session全体を既存supervisorのPSS/空き/GPU監視と保存予約の対象にする。
+`render` の保存costは1要求分とし、session受付時に最大要求数倍を予約する。
+PSSとtimeoutは同時に1要求だけを実行するsession単位のままとする。予約全体が残予算や
+空き容量に収まらなければ受付待ちとなり、要求数や固定costを黙って縮小しない。
+各要求の前に共有scopeの永続stopを確認し、停止時は未処理要求を保留したまま
+`budget stopped: ...` をsession終了理由に記録する。新規sessionは明示的な予算再開まで
+起動できない。この確認は保存走査を増やさず、watchdogのcacheにも依存しない。
 controllerの定期保存走査と終了時の全走査は維持し、短い要求ごとの全走査だけを避ける。
 session失敗は明示的な工程再試行を必要とし、勝手に次のsessionへ進めない。
 終了・交代したattemptからの要求は実行せず、旧attemptのサービス失敗は履歴に残したまま
@@ -225,6 +231,8 @@ controllerと所有jobを停止・終了確認し、修正版をテストしてc
 `code-update --runtime PATH --sha256 HASH --verification EVIDENCE_PATH --reason TEXT`
 は、旧runtime・同じplan/scope・修正commit/diff・検証記録を結ぶ不変の更新記録と
 新runtimeを保存する。旧plan、候補、成果物、保存baseline、GPU積算、工程costは変更しない。
+引き継いだ `render` costも1要求分として新規sessionの最大要求数倍を予約する。
+旧コードが1要求分だけ予約したsessionのlaunchは変更せず、更新後は履歴として回収する。
 以降は返されたreceiptのruntimeを指定する。全stage・screen/review worker・学習launchが
 更新記録を参照し、子processでもコード版を照合する。コードがdirty、jobが稼働中、
 またはqueue待ちなら更新を拒否する。旧controllerを同時に再起動しない。

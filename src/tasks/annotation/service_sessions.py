@@ -74,6 +74,19 @@ def execute_session(layout: AnnotationLayout, reference: ArtifactRef) -> Artifac
     reason = "duration limit"
     while time.monotonic() - started < op.duration_seconds:
         with ledger.registry.transaction() as db:
+            budget = db.execute(
+                "SELECT s.stop_reason FROM resource_campaigns c "
+                "JOIN resource_scopes s ON s.id=c.scope "
+                "WHERE c.campaign=? AND c.plan=?",
+                (plan.campaign_id, plan.sha256),
+            ).fetchone()
+            if budget is None:
+                raise ValueError(
+                    "service session requires its registered campaign budget"
+                )
+            if budget[0] is not None:
+                reason = f"budget stopped: {budget[0]}"
+                break
             rows = [
                 dict(row)
                 for row in db.execute(

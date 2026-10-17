@@ -27,7 +27,7 @@ from src.tasks.base.annotation.plan import (
     require_execution_layout,
 )
 from src.tasks.base.annotation.predictions import PredictionContext, PredictionReceipt
-from src.tasks.base.annotation.reproducibility import require_frozen_code
+from src.tasks.base.annotation.reproducibility import CodeRevision, require_frozen_code
 from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
@@ -44,6 +44,7 @@ from .contracts import (
     RestoreSourceOperation,
     Runtime,
     ScreenOperation,
+    ServiceSessionOperation,
 )
 
 
@@ -133,6 +134,10 @@ class Operations:
                         "only a failed or interrupted operation can be retried"
                     )
         cost = self.runtime.cost(data.stage)
+        storage_bytes = cost.storage_bytes
+        if isinstance(data.operation, ServiceSessionOperation):
+            # Runtime costs remain per request, including after a code update.
+            storage_bytes *= data.operation.maximum_requests
         request_id = f"{data.logical_id}-{attempt}"
         directory = self.layout.path(
             "campaigns", self.plan.campaign_id, "jobs", request_id
@@ -160,7 +165,7 @@ class Operations:
                 plan=self.runtime.plan,
                 stage=data.stage,
                 pss_bytes=cost.pss_bytes,
-                storage_bytes=cost.storage_bytes,
+                storage_bytes=storage_bytes,
                 gpu_seconds=cost.gpu_seconds,
             ),
             command=tuple(command),
@@ -176,16 +181,38 @@ class Operations:
             launch_ref = annotation_reference(self.layout, path)
             existing = read_document(self.layout, launch_ref, StageLaunch)
             if existing != launch:
+                comparable = existing.model_copy(
+                    update={
+                        "code_root": launch.code_root,
+                        "code_revision": launch.code_revision,
+                        "command": (launch.command[0], *existing.command[1:]),
+                    }
+                )
+                if (
+                    isinstance(data.operation, ServiceSessionOperation)
+                    and self.runtime.code_revision is not None
+                    and existing.code_revision != self.runtime.code_revision
+                    and existing.resource.storage_bytes == cost.storage_bytes
+                ):
+                    revision = read_document(
+                        self.layout, self.runtime.code_revision, CodeRevision
+                    )
+                    previous_runtime = read_document(
+                        self.layout, revision.previous_runtime, Runtime
+                    )
+                    if previous_runtime.costs == self.runtime.costs:
+                        # Read legacy one-request reservations only as history.
+                        # The immutable launch is never changed or resubmitted.
+                        comparable = comparable.model_copy(
+                            update={
+                                "resource": existing.resource.model_copy(
+                                    update={"storage_bytes": storage_bytes}
+                                )
+                            }
+                        )
                 if (
                     self.runtime.code_revision is None
-                    or existing.model_copy(
-                        update={
-                            "code_root": launch.code_root,
-                            "code_revision": launch.code_revision,
-                            "command": (launch.command[0], *existing.command[1:]),
-                        }
-                    )
-                    != launch
+                    or comparable != launch
                     or existing.command[0] != existing.code_root + "/.venv/bin/python"
                 ):
                     raise ValueError("operation resource/command configuration changed")
