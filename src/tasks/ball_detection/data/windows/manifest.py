@@ -34,6 +34,10 @@ def clip_semantic_digest(store: BallFrameStore, clip: ClipRecord) -> str:
     for name in ("frame_index", "pts", "annotated", "is_target", "segment_break", "event", "inst_count"):
         digest.update(name.encode())
         digest.update(store.frames[name][rows].tobytes())
+    if store.teacher_masks is not None and store.teacher_masks.explicit[rows].any():
+        digest.update(b"adopted_teacher_masks.v1")
+        digest.update(store.teacher_masks.heatmap[rows].tobytes())
+        digest.update(store.teacher_masks.coordinate[rows].tobytes())
     first = int(store.frames["inst_start"][rows[0]])
     last = first + int(store.frames["inst_count"][rows].sum())
     tracks = [clip.track_ids[int(i)] for i in store.instances["track_index"][first:last]]
