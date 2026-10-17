@@ -35,7 +35,12 @@ def _run_list(args: argparse.Namespace, backend: RcloneBackend) -> int:
     if not isinstance(values, list):
         raise DriveToolError("rclone returned an unexpected directory listing.")
     entries = _entries_from_rclone(args.path, values)
-    _print_entries(entries, output_format=args.format, limit=args.limit)
+    _print_entries(
+        entries,
+        output_format=args.format,
+        limit=args.limit,
+        rclone_config=backend.config_path,
+    )
     return 0
 
 
@@ -55,7 +60,12 @@ def _run_search(args: argparse.Namespace, backend: RcloneBackend) -> int:
         if (args.type == "any" or entry.type == args.type)
         and fnmatch.fnmatchcase(PurePosixPath(entry.path).name, args.name)
     ]
-    _print_entries(matches, output_format=args.format, limit=args.limit)
+    _print_entries(
+        matches,
+        output_format=args.format,
+        limit=args.limit,
+        rclone_config=backend.config_path,
+    )
     return 0
 
 
@@ -132,6 +142,7 @@ def _transfer(
 
     payload = {
         "action": direction,
+        "rclone_config": str(backend.config_path),
         "source": source,
         "destination": destination,
         "status": "planned" if dry_run else "completed",
@@ -212,11 +223,12 @@ def _run_inspect(args: argparse.Namespace, backend: RcloneBackend) -> int:
         )
     payload: dict[str, Any] = {
         "path": normalized_path,
+        "rclone_config": str(backend.config_path),
         "type": "directory" if is_directory else "file",
         "size_bytes": None if is_directory else int(stat.get("Size", 0)),
         "modified": str(stat.get("ModTime", "")),
         "id": resolved.get("ID") if resolved else None,
-        "mime_type": str(stat.get("MimeType", "")),
+        "mime_type": stat.get("MimeType") or None,
     }
     if args.checksum:
         payload["hashes"] = _normalized_hashes(stat)
@@ -241,6 +253,7 @@ def _run_verify(args: argparse.Namespace, backend: RcloneBackend) -> int:
     )
     payload = {
         "local_path": str(local_path),
+        "rclone_config": str(backend.config_path),
         "drive_path": normalized_drive_path,
         **asdict(result),
     }
@@ -282,12 +295,18 @@ def _add_transfer_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the command-line parser shared by all shell wrappers."""
+    """Build the Drive skill's command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--remote-root",
         default=os.environ.get("TENNIS_LAB_DRIVE_REMOTE", DEFAULT_REMOTE_ROOT),
         help="Constrained rclone project root.",
+    )
+    parser.add_argument(
+        "--rclone-config",
+        type=lambda value: Path(value).expanduser().resolve(),
+        default=os.environ.get("RCLONE_CONFIG"),
+        help="Explicit configuration file (default: RCLONE_CONFIG); required for operations.",
     )
     parser.add_argument(
         "--rclone-bin",
@@ -337,7 +356,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect_parser = subparsers.add_parser("inspect", help="Inspect one Drive entry.")
     inspect_parser.add_argument("path", help="Existing Drive-relative path.")
-    inspect_parser.add_argument("--metadata-only", action="store_true", help="Return identity without recursively calculating directory size.")
+    inspect_parser.add_argument(
+        "--metadata-only",
+        action="store_true",
+        help="Return identity without recursively calculating directory size.",
+    )
     inspect_parser.add_argument(
         "--checksum", action="store_true", help="Return hashes exposed by rclone."
     )
@@ -363,9 +386,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
+        if args.rclone_config is None:
+            raise DriveToolError("Pass --rclone-config or set RCLONE_CONFIG.")
         backend = RcloneBackend(
             remote_root=args.remote_root,
             executable=args.rclone_bin,
+            config_path=args.rclone_config,
             timeout=args.timeout_seconds,
         )
         handlers = {
@@ -380,7 +406,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handlers[args.command](args, backend)
     except (DriveToolError, OSError) as exc:
         _print_object(
-            {"ok": False, "command": args.command, "error": str(exc)}, args.format
+            {
+                "ok": False,
+                "command": args.command,
+                "rclone_config": str(args.rclone_config)
+                if args.rclone_config is not None
+                else None,
+                "error": str(exc),
+            },
+            args.format,
         )
         return 1
 

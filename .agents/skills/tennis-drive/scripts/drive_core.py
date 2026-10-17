@@ -17,6 +17,11 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 DEFAULT_REMOTE_ROOT = "gdrive:tennis_lab"
+CONTENT_HASH_TYPES = ("sha256", "sha1", "md5")
+CONTENT_HASH_ARGUMENTS = (
+    "--hash",
+    *(argument for name in CONTENT_HASH_TYPES for argument in ("--hash-type", name)),
+)
 OutputFormat = Literal["table", "json"]
 ManifestEntry = tuple[Literal["file", "directory"], int | None, dict[str, str]]
 
@@ -53,8 +58,18 @@ class RcloneBackend:
     """Execute rclone while constraining all remote paths to one root."""
 
     def __init__(
-        self, *, remote_root: str, executable: str, timeout: int = 3600
+        self,
+        *,
+        remote_root: str,
+        executable: str,
+        config_path: Path,
+        timeout: int = 3600,
     ) -> None:
+        self.config_path = config_path.expanduser().resolve()
+        if not self.config_path.is_file():
+            raise DriveToolError(
+                f"rclone configuration file does not exist: {self.config_path}"
+            )
         if shutil.which(executable) is None:
             raise DriveToolError(
                 f"rclone executable not found: {executable}. Install rclone first."
@@ -91,6 +106,11 @@ class RcloneBackend:
         """Validate and normalize a Drive-root-relative POSIX path."""
         if any(character in relative_path for character in ("\n", "\r", "\\", ":")):
             raise DriveToolError(f"Unsafe Drive-relative path: {relative_path}")
+        return RcloneBackend.normalize_listed_relative(relative_path)
+
+    @staticmethod
+    def normalize_listed_relative(relative_path: str) -> str:
+        """Constrain listed names to the subtree while preserving punctuation."""
         path = PurePosixPath(relative_path)
         if path.is_absolute() or ".." in path.parts:
             raise DriveToolError(f"Unsafe Drive-relative path: {relative_path}")
@@ -145,6 +165,10 @@ class RcloneBackend:
             parent = parent.rstrip("/") + ("" if parent.endswith(":") else "/") + name
         return found
 
+    def command(self, arguments: Sequence[str]) -> list[str]:
+        """Build an rclone command using the explicitly selected configuration."""
+        return [self.executable, "--config", str(self.config_path), *arguments]
+
     def run(
         self,
         arguments: Sequence[str],
@@ -154,7 +178,7 @@ class RcloneBackend:
     ) -> subprocess.CompletedProcess[str] | None:
         """Run rclone, mapping its directory-not-found exit code when requested."""
         try:
-            command = [self.executable, *arguments]
+            command = self.command(arguments)
             if capture_output:
                 result = subprocess.run(
                     command,
@@ -204,7 +228,7 @@ class RcloneBackend:
         """Return one local or remote entry, or None when it does not exist."""
         arguments = ["lsjson", location, "--stat"]
         if hashes:
-            arguments.append("--hash")
+            arguments.extend(CONTENT_HASH_ARGUMENTS)
         result = self.run(arguments, allow_not_found=True)
         if result is None:
             return None
@@ -247,7 +271,11 @@ def _entries_from_rclone(
 
 
 def _print_entries(
-    entries: list[Entry], *, output_format: OutputFormat, limit: int
+    entries: list[Entry],
+    *,
+    output_format: OutputFormat,
+    limit: int,
+    rclone_config: Path,
 ) -> None:
     truncated = len(entries) > limit
     displayed = entries[:limit]
@@ -256,6 +284,7 @@ def _print_entries(
             json.dumps(
                 {
                     "schema_version": 1,
+                    "rclone_config": str(rclone_config),
                     "count": len(displayed),
                     "truncated": truncated,
                     "entries": [asdict(entry) for entry in displayed],
@@ -339,13 +368,12 @@ def _manifest(
             ".": ("file", int(stat.get("Size", 0)), _normalized_hashes(stat))
         }
 
-    values = backend.json(["lsjson", location, "--recursive", "--hash"])
+    values = backend.json(["lsjson", location, "--recursive", *CONTENT_HASH_ARGUMENTS])
     if not isinstance(values, list):
         raise DriveToolError("rclone returned an unexpected directory listing.")
     entries: dict[str, ManifestEntry] = {}
     for value in values:
-        path = str(value.get("Path", ""))
-        RcloneBackend.normalize_relative(path)
+        path = RcloneBackend.normalize_listed_relative(str(value.get("Path", "")))
         if path in entries:
             raise DriveToolError(f"Duplicate path in inventory: {location}/{path}")
         if bool(value.get("IsDir", False)):
@@ -373,7 +401,7 @@ def _sha256_remote(backend: RcloneBackend, remote_path: str) -> str:
     with (
         tempfile.TemporaryFile() as errors,
         subprocess.Popen(
-            [backend.executable, "cat", remote_path],
+            backend.command(["cat", remote_path]),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=errors,
@@ -413,7 +441,7 @@ def _compare_file(
 
     local_hashes = local_entry[2]
     drive_hashes = drive_entry[2]
-    for hash_name in ("sha256", "sha1", "md5"):
+    for hash_name in CONTENT_HASH_TYPES:
         if hash_name in local_hashes and hash_name in drive_hashes:
             return (
                 "match"

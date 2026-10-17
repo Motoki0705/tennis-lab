@@ -299,6 +299,7 @@ def test_dpt_decoder_progressively_fuses_reassembled_features() -> None:
         encoder_channels=(8, 8, 8, 8),
         decoder_channels=16,
         reassemble_factors=(4.0, 2.0, 1.0, 0.5),
+        block_style="wise",
     )
     features = tuple(torch.randn(2, 8, 4, 4) for _ in range(4))
 
