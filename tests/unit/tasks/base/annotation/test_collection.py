@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from fractions import Fraction
 from pathlib import Path
+from threading import Event
 
 import av
 import numpy as np
@@ -76,7 +77,7 @@ def plan_for(
             maximum_unprepared_sources=lead,
         ),
     )
-    return CampaignPlan.model_validate_json(
+    plan: CampaignPlan = CampaignPlan.model_validate_json(
         json.dumps(
             {
                 "campaign_id": name,
@@ -92,7 +93,7 @@ def plan_for(
                 "code_commit": "a" * 40,
                 "code_diff_digest": "b" * 64,
                 "agent_model": "gpt-6.1-sol",
-                "agent_effort": "high",
+                "agent_effort": "max",
                 "resources": {
                     "codex_workers": 2,
                     "additional_storage_bytes": 30 * 1024**3,
@@ -137,6 +138,7 @@ def plan_for(
             }
         )
     )
+    return plan
 
 
 def candidate(
@@ -528,19 +530,24 @@ def test_unprepared_lead_is_global_and_exclusion_releases_it(
     assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
 
 
+@pytest.mark.parametrize("after_commit", [False, True])
 def test_acquisition_publish_before_ledger_failure_recovers(
     layout: AnnotationLayout,
     monkeypatch: pytest.MonkeyPatch,
+    after_commit: bool,
 ) -> None:
     collection = Collection(layout, plan_for(layout))
     source = candidate(layout, collection.plan, "first")
     collection.register([source])
+    record = collection.ledger.record_acquisition
+
+    def interrupted(*args):
+        if after_commit:
+            record(*args)
+        raise RuntimeError("receipt gap")
+
     with monkeypatch.context() as patch:
-        patch.setattr(
-            collection.ledger,
-            "record_acquisition",
-            lambda *_: (_ for _ in ()).throw(RuntimeError("receipt gap")),
-        )
+        patch.setattr(collection.ledger, "record_acquisition", interrupted)
         with pytest.raises(RuntimeError, match="receipt gap"):
             collection.acquire(source.source_id)
     monkeypatch.setattr(
@@ -551,6 +558,33 @@ def test_acquisition_publish_before_ledger_failure_recovers(
     assert collection.ledger.summary(collection.plan)["sources_by_state"] == {
         "acquired": 1
     }
+
+
+@pytest.mark.parametrize("after_write", [False, True])
+def test_acquisition_receipt_boundary_requires_retry_and_recovers(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch, after_write: bool
+) -> None:
+    from src.tasks.base.annotation.collection import acquisition
+
+    collection = Collection(layout, plan_for(layout))
+    source = candidate(layout, collection.plan, "first")
+    collection.register([source])
+    write = acquisition.write_document
+
+    def interrupted(*args, **kwargs):
+        if after_write:
+            write(*args, **kwargs)
+        raise OSError("acquisition receipt boundary")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(acquisition, "write_document", interrupted)
+        with pytest.raises(OSError, match="receipt boundary"):
+            collection.acquire(source.source_id)
+    with pytest.raises(ValueError, match="explicit"):
+        collection.acquire(source.source_id)
+    recovered = Collection(layout, collection.plan).acquire(source.source_id, retry=True)
+    assert collection.acquire(source.source_id) == recovered
+    assert collection.ledger.summary(collection.plan)["sources_by_state"] == {"acquired": 1}
 
 
 @pytest.mark.parametrize("blocked_by", ["channel", "lead"])
@@ -621,9 +655,11 @@ def test_acquisition_sync_failure_rechecks_retry_and_replacement_limits(
     }
 
 
+@pytest.mark.parametrize("after_commit", [False, True])
 def test_clip_publication_is_atomic_and_recovers_ledger_gap(
     layout: AnnotationLayout,
     monkeypatch: pytest.MonkeyPatch,
+    after_commit: bool,
 ) -> None:
     collection = Collection(layout, plan_for(layout))
     source = candidate(layout, collection.plan, "first")
@@ -638,12 +674,15 @@ def test_clip_publication_is_atomic_and_recovers_ledger_gap(
             collection.prepare(source.source_id)
     assert not list(layout.path("clips").iterdir())
     assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
+    record = collection.ledger.record_preparation
+
+    def interrupted(*args):
+        if after_commit:
+            record(*args)
+        raise RuntimeError("receipt gap")
+
     with monkeypatch.context() as patch:
-        patch.setattr(
-            collection.ledger,
-            "record_preparation",
-            lambda *_: (_ for _ in ()).throw(RuntimeError("receipt gap")),
-        )
+        patch.setattr(collection.ledger, "record_preparation", interrupted)
         with pytest.raises(RuntimeError, match="receipt gap"):
             collection.prepare(source.source_id)
     monkeypatch.setattr(
@@ -653,6 +692,83 @@ def test_clip_publication_is_atomic_and_recovers_ledger_gap(
     receipt = collection.prepare(source.source_id)
     assert collection.prepare(source.source_id) == receipt
     assert collection.ledger.summary(collection.plan)["annotation_tasks"] == 4
+
+
+@pytest.mark.parametrize("phase", ["rename_after", "receipt_before", "receipt_after"])
+def test_preparation_publication_boundaries_reuse_completed_clip(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
+    from src.tasks.base.annotation.collection import preparation
+
+    collection = Collection(layout, plan_for(layout))
+    source = candidate(layout, collection.plan, "first")
+    collection.register([source])
+    select(collection, source, windows=(TimeWindow(start=0.0, stop=15.0, target_start=1.0, target_stop=14.0),))
+    rename = preparation.os.rename
+    write = preparation.write_document
+
+    def interrupted_rename(*args, **kwargs):
+        rename(*args, **kwargs)
+        if phase == "rename_after":
+            raise RuntimeError("published clip, response lost")
+
+    def interrupted_write(layout, path, document):
+        if isinstance(document, PreparationReceipt) and phase == "receipt_before":
+            raise RuntimeError("prepared receipt not saved")
+        result = write(layout, path, document)
+        if isinstance(document, PreparationReceipt) and phase == "receipt_after":
+            raise RuntimeError("prepared receipt saved, response lost")
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(preparation.os, "rename", interrupted_rename)
+        patch.setattr(preparation, "write_document", interrupted_write)
+        with pytest.raises(RuntimeError):
+            collection.prepare(source.source_id)
+    monkeypatch.setattr(preparation, "encode_video", lambda *a, **kw: pytest.fail("published clip must not be encoded again"))
+    restored = Collection(layout, collection.plan)
+    receipt = restored.prepare(source.source_id)
+    assert restored.prepare(source.source_id) == receipt
+    assert restored.ledger.summary(collection.plan)["prepared_clips"] == 1
+    assert restored.ledger.summary(collection.plan)["annotation_tasks"] == 2
+
+
+@pytest.mark.parametrize("stage", ["acquire", "prepare"])
+def test_parallel_source_operations_reject_second_owner_then_reuse_receipt(
+    layout: AnnotationLayout, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    from src.tasks.base.annotation.collection import service
+
+    collection = Collection(layout, plan_for(layout))
+    source = candidate(layout, collection.plan, "first")
+    collection.register([source])
+    if stage == "prepare":
+        select(collection, source)
+    contender = Collection(layout, collection.plan)
+    published, release = Event(), Event()
+    name = "acquire_source" if stage == "acquire" else "prepare_source"
+    operation = getattr(service, name)
+    calls = []
+
+    def held(*args, **kwargs):
+        result = operation(*args, **kwargs)
+        calls.append(result)
+        published.set()
+        assert release.wait(20)
+        return result
+
+    monkeypatch.setattr(service, name, held)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        running = pool.submit(getattr(collection, stage), source.source_id)
+        try:
+            assert published.wait(20)
+            with pytest.raises(BlockingIOError):
+                getattr(contender, stage)(source.source_id)
+        finally:
+            release.set()
+        receipt = running.result(timeout=20)
+    assert getattr(contender, stage)(source.source_id) == receipt
+    assert calls == [receipt]
 
 
 def test_manifest_preserves_real_frames_pts_and_context(

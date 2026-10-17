@@ -11,10 +11,7 @@ import av
 import numpy as np
 from omegaconf import OmegaConf
 
-from src.tasks.player_detection.configuration import GenerateDatasetConfig
-from src.tennis_scene.chat_annotation.layout import video_path
-from src.tennis_scene.chat_annotation.runtime.contracts import (
-    KIT_VERSION,
+from src.tasks.annotation.migration.legacy_format.contracts import (
     ClipManifest,
     FrameMap,
     FrameRange,
@@ -22,11 +19,12 @@ from src.tennis_scene.chat_annotation.runtime.contracts import (
     PlayerAnnotation,
     Policies,
     SourceInfo,
-    make_template,
     sha256_file,
-    write_json,
 )
-from src.tennis_scene.chat_annotation.runtime.media import encode_video, probe_video
+from src.tasks.annotation.migration.legacy_format.layout import video_path
+from src.tasks.base.annotation.media import encode_video, probe_video
+from src.tasks.player_detection.configuration import GenerateDatasetConfig
+from tests.support.legacy_annotations import KIT_VERSION, make_template, write_json
 
 WIDTH, HEIGHT, FRAMES = 96, 64, 6
 

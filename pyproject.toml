@@ -46,7 +46,6 @@ dependencies = [
     "fastapi>=0.135.3",
     "requests>=2.34.2",
     "lap>=0.5.12",
-    "mcp==2.3.0",
 ]
 
 [tool.uv]
@@ -98,11 +97,7 @@ namespaces = false
 "src.tasks.court_side.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tasks.player_association.review" = ["static/*.html", "static/*.css", "static/*.js"]
 "src.tennis_scene.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
-"src.tennis_scene.chat_annotation.player_pose" = ["WORKER.md"]
-"src.tennis_scene.chat_annotation" = ["resources/*.md", "resources/*.txt", "resources/*/*.txt"]
-"src.tennis_scene.chat_annotation.web" = ["static/*.html", "static/*.css", "static/*.js"]
-"src.tennis_scene.chat_annotation.artifacts" = ["Dockerfile", "Dockerfile.dockerignore", "compose.yaml"]
-"src.tennis_scene.chat_annotation.local_agent" = ["WORKER.md"]
+"src.tasks.player_detection.annotation.pose" = ["WORKER.md"]
 "src.synthetic_data_generation.dataset.court.review" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.synthetic_data_generation.alignment.manual" = ["static/*.html", "static/*.css", "static/*.js", "static/*.mjs"]
 "src.tennis_scene.clip_studio.web" = ["static/*.html", "static/*.css", "static/*.js"]
@@ -301,7 +296,6 @@ module = [
     "src.synthetic_data_generation.alignment.manual.models",
     "src.synthetic_data_generation.appearance.contracts",
     "src.synthetic_data_generation.appearance.configuration",
-    "src.tennis_scene.chat_annotation.local_agent.configuration",
     "src.synthetic_data_generation.alignment.manual.web",
     "src.synthetic_data_generation.dataset.court.review.web",
     "src.tasks.base.visualization.review.web",
@@ -310,7 +304,6 @@ module = [
     "src.tasks.plcs.visualization.review.dataset_web",
     "src.tasks.plcs.visualization.inference.web",
     "src.tasks.plcs.visualization.review.web",
-    "src.tennis_scene.chat_annotation.web.app",
 ]
 disallow_untyped_decorators = false
 

@@ -46,7 +46,7 @@ from tests.support.tasks.player_detection.learning import (
 def test_no_eligible_new_player_teachers_are_recorded_without_jobs(
     synthetic_root: SyntheticRoot, all_train_masked: bool,
 ) -> None:
-    from src.tennis_scene.chat_annotation.runtime.contracts import ClipManifest
+    from src.tasks.annotation.migration.legacy_format.contracts import ClipManifest
 
     for path in synthetic_root.root.glob("_preparation/*/run/clips/*/clip_manifest.json"):
         manifest = ClipManifest.model_validate_json(path.read_bytes())

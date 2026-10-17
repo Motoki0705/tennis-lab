@@ -26,7 +26,7 @@ from src.tasks.base.annotation.screening.contracts import (
 from src.tasks.base.annotation.screening.service import Screening
 from src.tasks.base.annotation.storage.references import distinct
 from src.tasks.base.annotation.telemetry.capture import presented_images
-from src.tasks.base.annotation.telemetry.contracts import RenderedImage
+from src.tasks.base.annotation.telemetry.contracts import RenderedImage, ToolEvidence
 from src.tasks.base.annotation.workers.contracts import (
     ExitReceipt,
     PreparedWorker,
@@ -138,6 +138,11 @@ class ScreeningAdapter:
                 RenderedImage(image=page.image, metadata=ref) for page in preview.pages
             )
         return tuple(result)
+
+    def tool_evidence(
+        self, layout: AnnotationLayout, launch: ArtifactRef, category: str, text: str
+    ) -> ToolEvidence | None:
+        return None  # Screening has no annotation edits or review handoffs.
 
     def classify_tool(self, name: str | None, raw_input: str) -> str:
         del name

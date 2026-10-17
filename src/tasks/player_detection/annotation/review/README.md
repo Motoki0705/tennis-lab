@@ -2,7 +2,7 @@
 
 `PlayerReviewAdapter` / `PlayerReviewServices` / `PlayerReviewWorker` は共通の
 [RevisionStore](../../../base/annotation/editing/README.md)、native renderer、worker pool・
-service broker・画像入力 telemetry を使う。work 名は `player_bbox_review / v1 / review`。
+service broker・画像入力 telemetry を使う。work 名は `player_bbox_review / v2 / review`。
 production composition への登録、tracking/ID review、pose、dataset publisher はこのモジュールに含まない。
 実運用のラベル定義・採用値は未設定であり、この実装だけで production を有効にしない。
 
@@ -57,10 +57,22 @@ telemetry の参照を証拠履歴に保持する。ハッシュ不整合や不�
 
 `prepare_adoption()` は全 attempt の証拠・明示 policy・導出 mask を検証して receipt を保存する。
 `seal()` の前までは同じ観測 ID と期待 revision を指定して bbox を修正できる。
-後続 ID review は bbox revision と観測 ID を入力として固定し、その後 bbox が変われば
-古い ID review を適用しない接続が必要。seal 後の修正は共通 store が拒否するため、
-**後続からの修正が残る間に seal しない**ことは将来の composition の責務である。
-現 worker は完了時に bbox 教師を seal する単体 adapter であり、ID/pose を含む全工程接続済みとは扱わない。
+現 worker は完了時に画像証拠・方針・教師候補 mask を検証し、`freeze_for_id_review()` で
+`IdReviewBinding` を返す。`WorkOutcome.adoption` は空のままで、bbox 教師を seal しない。
+binding は context・revision・検証済み bbox review receipt と、全 frame/PTS・frame hash・
+元候補/追加観測 ID を固定する。bbox review receipt はその版の教師候補であり、採用済みを意味しない。
+binding と revision 履歴・画像・telemetry は、後続へ渡す間も active protection で保持する。
+
+`load_id_review_input()` は現行の未 seal 版との一致と観測対応を検証し、修正 bbox・手動追加・
+missing score を保持した `PlayerLabels` を返す。追跡側はここから入力を作り、観測 ID を保持する。
+後続修正は `PlayerEdits.id_review` に binding を指定し、binding の revision を
+`EditCommand.expected_revision` に指定して、通常の `RevisionStore.apply()` へ渡す。
+画像根拠・frame digest・元観測 ID の検証と CAS は通常の編集と共通で、古い binding や
+改変した ID/frame/PTS を拒否する。適用後の新しい版へ古い ID 判断を再利用しない。
+最終版で証拠を再検証して `prepare_adoption()` / `seal()` を行う。
+修正bboxからの[追跡・ID・pose公開](../pose/README.md)はこのbindingを入力とし、
+`finalize_review()` が最終ID判定と教師を保存して入力revisionをsealする。
+production compositionへの全工程登録と、引継ぎ protection の退役は後続工程の責務である。
 
 操作上限と再試行は共通 [review services](../../../base/annotation/workers/review/README.md)、
 worker の手順は [worker instructions](worker-instructions.md) を参照。

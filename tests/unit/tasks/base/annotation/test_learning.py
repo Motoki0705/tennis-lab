@@ -398,7 +398,7 @@ class Environment:
                     "code_commit": "a" * 40,
                     "code_diff_digest": "b" * 64,
                     "agent_model": "gpt-6.1-sol",
-                    "agent_effort": "high",
+                    "agent_effort": "max",
                     "resources": {
                         "codex_workers": 1,
                         "additional_storage_bytes": 1_000_000,
@@ -1202,8 +1202,9 @@ def test_retry_replay_rejects_mismatched_durable_state(
     assert len(env.executor.accepted) == 1
 
 
+@pytest.mark.parametrize("after_write", [False, True])
 def test_model_commit_file_gap_recovers_without_second_promotion(
-    env: Environment, monkeypatch: pytest.MonkeyPatch
+    env: Environment, monkeypatch: pytest.MonkeyPatch, after_write: bool
 ) -> None:
     from src.tasks.base.annotation.learning import models
     from tests.support.annotation_storage import assert_expired_but_protected
@@ -1213,6 +1214,8 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
     real_write = models.write_document
 
     def interrupted(*args: Any, **kwargs: Any) -> ArtifactRef:
+        if after_write:
+            real_write(*args, **kwargs)
         raise Crash("pointer committed, receipt file not written")
 
     monkeypatch.setattr(models, "write_document", interrupted)

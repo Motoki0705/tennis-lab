@@ -6,9 +6,14 @@ import pytest
 from pydantic import ValidationError
 
 from src.tasks.base.annotation.artifacts import read_document
-from src.tasks.base.annotation.contracts import AdoptionReceipt, FrameRange
+from src.tasks.base.annotation.contracts import (
+    AdoptionReceipt,
+    FrameRange,
+    ReviewEvidence,
+)
 from src.tasks.base.annotation.editing import Revision, RevisionConflict
 from src.tasks.base.annotation.editing.contracts import EditReceipt
+from src.tasks.base.annotation.handoff import build_handoff, read_handoff
 from src.tasks.base.annotation.images import render_page
 from src.tasks.base.annotation.images.contracts import Box as DrawingBox
 from src.tasks.base.annotation.images.contracts import Crop, RenderRequest, Tile
@@ -24,6 +29,12 @@ from src.tasks.player_detection.annotation.review.contracts import (
     PlayerTeacherMask,
     manual_observation_id,
 )
+from src.tasks.player_detection.annotation.review.id_review import (
+    IdReviewBinding,
+    freeze_for_id_review,
+    load_id_review_input,
+)
+from src.tasks.player_detection.annotation.review.storage import retained_revision
 from src.tasks.player_detection.annotation.review.validation import teacher_rows
 from tests.support.tasks.player_detection.annotation import Environment
 
@@ -91,6 +102,230 @@ def confirm(env: Environment, index: int = 1) -> None:
             images=(image,),
         )
     )
+
+
+def reviewed_binding(env: Environment):
+    head = env.head()
+    review = env.adapter.prepare_adoption(
+        env.layout,
+        env.context,
+        env.manifest,
+        head,
+        (env.telemetry(env.labels().images),),
+        reason="bbox review before ID review",
+    )
+    return freeze_for_id_review(env.store, env.context_ref, head, review)
+
+
+def test_id_review_keeps_corrected_added_boxes_and_applies_removal_to_same_ids(
+    env: Environment,
+) -> None:
+    image = env.page((1,))
+    initial = proposals(env)
+    corrected = manual(initial[0], box={"x1": 2.0, "y1": 1.0, "x2": 23.0, "y2": 31.0})
+    added = PlayerObservation(
+        observation_id=manual_observation_id(env.manifest.clip_id, 1, "missed"),
+        proposal_id=None,
+        manual_id="missed",
+        classification="player",
+        box_state="observed",
+        box=Box(x1=27.0, y1=1.0, x2=34.0, y2=31.0),
+        origin="manual",
+        confidence=0.0,
+        score_origin="missing",
+        duplicate_of=None,
+    )
+    observations = tuple(
+        sorted((corrected, added, initial[1]), key=lambda o: o.observation_id)
+    )
+    env.apply(
+        PlayerEdits(
+            operations=(env.replace(1, image, observations=observations),),
+            images=(image,),
+        )
+    )
+    original = env.head()
+    reference = reviewed_binding(env)
+    binding, labels = load_id_review_input(env.store, reference)
+    assert (
+        binding.revision == original
+        and binding.frames[1].frame == env.manifest.frames[1]
+    )
+    assert labels.frames[1].decision.observations == observations
+    assert binding.frames[1].observation_ids == tuple(
+        o.observation_id for o in observations
+    )
+    assert env.store.current(env.context_ref, env.adapter)[1] is None
+    final = tuple(
+        reject(o) if o.observation_id == initial[1].observation_id else o
+        for o in observations
+    )
+    changes = PlayerEdits(
+        operations=(env.replace(1, image, observations=final),),
+        images=(image,),
+        id_review=reference,
+    )
+    command = env.command(changes)
+    edit_ref = env.store.apply(command, env.adapter)
+    edit = read_document(env.layout, edit_ref, EditReceipt)
+    assert edit.previous == original and edit.revision == env.head()
+    assert env.store.apply(command, env.adapter) == edit_ref
+    assert env.labels(original).frames[1].decision.observations == observations
+    # Retiring the handoff pin must not orphan its original review proof/mask.
+    reviewed = read_document(env.layout, binding.bbox_review, AdoptionReceipt)
+    evidence = read_document(env.layout, reviewed.review_evidence, ReviewEvidence)
+    assert {
+        reference,
+        binding.bbox_review,
+        reviewed.teacher_mask,
+        reviewed.review_evidence,
+        *evidence.evidence,
+    }.issubset(retained_revision(env.layout, env.context, env.head()))
+    assert set(teacher_rows(env.labels())[1].observation_ids) == {
+        corrected.observation_id,
+        added.observation_id,
+    }
+    with pytest.raises(RevisionConflict):
+        load_id_review_input(env.store, reference)
+    with pytest.raises(RevisionConflict, match="different bbox revision"):
+        env.apply(
+            PlayerEdits(
+                operations=(env.replace(1, image, observations=final),),
+                id_review=reference,
+            )
+        )
+
+
+@pytest.mark.parametrize("fault", ["ids", "pts", "hash", "mask"])
+def test_id_review_rejects_changed_binding_without_changing_head(
+    env: Environment, fault: str
+) -> None:
+    confirm(env)
+    reference = reviewed_binding(env)
+    binding = read_document(env.layout, reference, IdReviewBinding)
+    if fault == "hash":
+        path = env.layout.artifact_path(reference)
+        path.write_bytes(path.read_bytes() + b" ")
+    elif fault == "mask":
+        review = read_document(env.layout, binding.bbox_review, AdoptionReceipt)
+        review = review.model_copy(update={"teacher_mask": env.context_ref})
+        reference = env.save(binding.model_copy(update={"bbox_review": env.save(review)}))
+    else:
+        frame = binding.frames[1]
+        frame = (
+            frame.model_copy(update={"observation_ids": ("f" * 64,)})
+            if fault == "ids"
+            else frame.model_copy(
+                update={"frame": frame.frame.model_copy(update={"source_pts": 123})}
+            )
+        )
+        reference = env.save(
+            binding.model_copy(
+                update={"frames": (binding.frames[0], frame, *binding.frames[2:])}
+            )
+        )
+    head = env.head()
+    with pytest.raises(ValueError):
+        load_id_review_input(env.store, reference)
+    assert env.head() == head
+
+
+def test_player_mixed_batch_is_atomic_and_preserves_notes_and_implicit_observations(
+    env: Environment,
+) -> None:
+    confirm(env)
+    image = env.page((1, 2))
+    head = env.head()
+    labels = env.labels()
+    first = env.replace(
+        1,
+        image,
+        observations=labels.frames[1].decision.observations,
+        notes=(Note(note_id="pending", text="check identity", blocking=True),),
+    )
+    invalid = env.replace(2, image).model_copy(
+        update={"expected_frame_digest": "f" * 64}
+    )
+    with pytest.raises(ValueError, match="exact current frame"):
+        env.apply(PlayerEdits(operations=(first, invalid), images=(image,)))
+    assert env.head() == head and env.labels() == labels
+    with pytest.raises(ValueError, match="overwrite a reviewed frame"):
+        env.apply(
+            PlayerEdits(
+                operations=(
+                    first,
+                    ConfirmPredictions(
+                        scope=FrameRange(start=1, stop=2), evidence=(image.sha256,)
+                    ),
+                ),
+                images=(image,),
+            )
+        )
+    assert env.head() == head
+
+
+def test_player_handoff_reloads_diff_notes_unresolved_and_final_adoption(
+    env: Environment,
+) -> None:
+    image = env.page((1,))
+    edit = env.apply(
+        PlayerEdits(
+            operations=(
+                env.replace(
+                    1,
+                    image,
+                    observations=proposals(env),
+                    notes=(
+                        Note(note_id="pending", text="check identity", blocking=True),
+                    ),
+                ),
+            ),
+            images=(image,),
+        )
+    )
+    noted = env.head()
+    partial = read_handoff(
+        env.layout,
+        build_handoff(
+            env.store,
+            env.context_ref,
+            env.adapter,
+            FrameRange(start=1, stop=3),
+            previous_revision=env.initial,
+        ),
+    )
+    assert partial.content.reviewed_ranges == (FrameRange(start=1, stop=2),)
+    assert partial.content.unresolved_ranges == (FrameRange(start=1, stop=3),)
+    assert partial.commands == (read_document(env.layout, edit, EditReceipt).command,)
+    assert partial.adoption is None
+    env.apply(
+        PlayerEdits(operations=(env.replace(1, image, observations=proposals(env)),))
+    )
+    final = env.head()
+    review = env.adapter.prepare_adoption(
+        env.layout,
+        env.context,
+        env.manifest,
+        final,
+        (env.telemetry(env.labels().images),),
+        reason="final after explicit ID decisions",
+    )
+    env.store.seal(final, review, env.adapter)
+    handoff = read_handoff(
+        env.layout,
+        build_handoff(
+            env.store,
+            env.context_ref,
+            env.adapter,
+            FrameRange(start=1, stop=3),
+            previous_revision=noted,
+        ),
+    )
+    assert handoff.adoption == review and handoff.revision == final
+    assert handoff.content.reviewed_ranges == (FrameRange(start=1, stop=2),)
+    assert handoff.content.unresolved_ranges == (FrameRange(start=2, stop=3),)
+    assert env.labels(noted).frames[1].decision.notes[0].note_id == "pending"
+    assert not env.labels().frames[1].decision.notes
 
 
 def test_policy_requires_all_explicit_values_and_definitions(env: Environment) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 import torch
 from torch import Tensor, nn
@@ -56,7 +57,8 @@ class MDDHybridAdapter:
 
     @property
     def model_type(self) -> type[nn.Module]:
-        return DeepMDDHybridDetector
+        model_type: type[nn.Module] = DeepMDDHybridDetector
+        return model_type
 
     def validate_model_pair(self, model: nn.Module) -> None:
         if not isinstance(model, DeepMDDHybridDetector) or model.config != self.config:
@@ -103,4 +105,16 @@ def build_mdd_hybrid_detector(config: MDDHybridConfig, *, presence_threshold: fl
     adapter = MDDHybridAdapter(config, presence_threshold=presence_threshold,
                                subpixel=subpixel, candidate_config=candidate_config)
     adapter.validate_model_pair(model)
+    return bind_model_io(model, adapter)
+
+
+def load_mdd_hybrid_detector(path: Path) -> BoundModelIO[MDDQueryInput, MDDHybridOutput, BallHybridPrediction]:
+    """Load an adopted checkpoint without ancestor files; use its explicit threshold."""
+    from src.tasks.ball_detection.checkpoints.hybrid_training import (
+        restore_hybrid_model,
+    )
+
+    model, recipe = restore_hybrid_model(torch.load(path, map_location="cpu", weights_only=True))
+    model.eval()
+    adapter = MDDHybridAdapter(model.config, presence_threshold=recipe["presence_threshold"])
     return bind_model_io(model, adapter)

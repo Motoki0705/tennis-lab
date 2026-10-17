@@ -101,6 +101,70 @@ def hashes(root: Path) -> dict[str, str]:
     return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob("*") if p.is_file()}
 
 
+@pytest.mark.parametrize("interrupt", [False, True])
+def test_policy_choice_retains_measured_inputs_and_explicit_reader_evidence(fixture: Fixture, monkeypatch: pytest.MonkeyPatch, interrupt: bool) -> None:
+    from src.tasks.base.annotation.storage import StorageCatalog
+    from src.tasks.base.annotation.storage.comparison.decisions import (
+        PolicyChoice,
+        PolicyDecision,
+        record_decision,
+    )
+
+    report = fixture.run()
+    report_ref = write_document(fixture.layout, fixture.output() / "report.json", report)
+    choice = PolicyDecision(
+        decision_id="synthetic-reader-choice", report=report_ref,
+        selected=PolicyChoice(format="native", shards="share", cache="shared_rgb"),
+        reason="Measured equal JPEG/teacher bytes and shared inode/cache accounting",
+        usage_scope="Synthetic two-attempt reader fixture only; no production policy change",
+        retention_reason="Keep original JPEG shards and regenerate RGB after its explicit TTL",
+        reader_compatibility=(fixture.specification,),
+    )
+    if interrupt:
+        with monkeypatch.context() as patch:
+            def interrupted(*args, **kwargs):
+                raise RuntimeError("decision saved before protection")
+
+            patch.setattr(StorageCatalog, "protect", interrupted)
+            with pytest.raises(RuntimeError, match="before protection"):
+                record_decision(fixture.layout, choice)
+    saved = record_decision(fixture.layout, choice)
+    assert read_document(fixture.layout, saved, PolicyDecision) == choice
+    assert record_decision(fixture.layout, choice) == saved
+    snapshot = StorageCatalog(fixture.layout).snapshot()
+    assert len(snapshot.protections) == 1
+    protected = snapshot.protections[0].references
+    assert {saved, report_ref, report.request, fixture.specification, fixture.captured} <= set(protected)
+    with pytest.raises(ValueError, match="different content"):
+        record_decision(fixture.layout, choice.model_copy(update={"reason": "silently change the decision"}))
+    with pytest.raises(ValueError, match="explicit reasons"):
+        record_decision(fixture.layout, choice.model_copy(update={"reason": " "}))
+
+
+def test_policy_choice_rejects_unmeasured_policy_and_changed_evidence(fixture: Fixture) -> None:
+    from src.tasks.base.annotation.storage.comparison.decisions import (
+        PolicyChoice,
+        PolicyDecision,
+        record_decision,
+    )
+
+    report = fixture.run()
+    reduced = report.model_copy(update={"policies": (report.policies[0],)})
+    reference = write_document(fixture.layout, fixture.output() / "reduced.json", reduced)
+    other = report.policies[-1]
+    choice = PolicyDecision(
+        decision_id="choice", report=reference,
+        selected=PolicyChoice(format=other.format, shards=other.shards, cache=other.cache),
+        reason="explicit selection", usage_scope="synthetic only", retention_reason="keep source",
+        reader_compatibility=(fixture.specification,),
+    )
+    with pytest.raises(ValueError, match="not measured"):
+        record_decision(fixture.layout, choice)
+    fixture.layout.artifact_path(reference).write_bytes(b"changed report")
+    with pytest.raises(ValueError, match="missing or size changed|hash changed"):
+        record_decision(fixture.layout, choice)
+
+
 @pytest.mark.parametrize("adapter", ["image_records", "ball_frames", "player_frames"])
 def test_formats_copies_and_caches_preserve_same_inputs(tmp_path: Path, adapter: str) -> None:
     fixture = make_fixture(tmp_path, adapter)

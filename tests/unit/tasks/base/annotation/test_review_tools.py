@@ -359,7 +359,7 @@ class Environment:
                     "code_commit": "a" * 40,
                     "code_diff_digest": "b" * 64,
                     "agent_model": "gpt-6.1-sol",
-                    "agent_effort": "high",
+                    "agent_effort": "max",
                     "resources": {
                         "codex_workers": 1,
                         "additional_storage_bytes": 100_000_000,
@@ -523,6 +523,8 @@ def test_small_encoded_video_page_preserves_pts_crop_and_coordinate_conventions(
         tile.clip_pts == env.manifest.frames[2].clip_pts
         and tile.time_base == env.manifest.time_base
     )
+    assert tile.source_pts == env.manifest.frames[2].source_pts
+    assert tile.source_frame_index == env.manifest.frames[2].source_frame_index
     edge = native_to_image(tile, 10.0, 4.0, coordinates="edge")
     center = native_to_image(tile, 10.0, 4.0, coordinates="pixel_center")
     assert edge == (tile.image_rect.left, tile.image_rect.top)
@@ -613,6 +615,36 @@ def test_drawings_and_annotation_versions_are_distinct_inputs(tmp_path: Path) ->
         render_page(env.layout, env.image_request(annotation=initial))
 
 
+@pytest.mark.parametrize("change", ["reason", "crop", "scale"])
+def test_image_identity_records_presentation_reason_crop_and_scale(
+    tmp_path: Path, change: str
+) -> None:
+    env = Environment(tmp_path / "annotation", real_video=True)
+    request = env.image_request()
+    original = render_page(env.layout, request)
+    if change == "reason":
+        changed = request.model_copy(
+            update={"reason": "inspect the same frame for a new question"}
+        )
+    elif change == "crop":
+        tile = request.tiles[0].model_copy(
+            update={"crop": Crop(left=0, top=0, right=64, bottom=32)}
+        )
+        changed = request.model_copy(update={"tiles": (tile,)})
+    else:
+        changed = request.model_copy(update={"tile_width": 256, "tile_height": 128})
+    rendered = render_page(env.layout, changed)
+    saved, receipt = read_rendered(env.layout, rendered)
+    _, before = read_rendered(env.layout, original)
+    assert saved == changed and receipt.request != before.request
+    assert rendered.metadata != original.metadata
+    assert receipt.tiles[0].source_pts == before.tiles[0].source_pts
+    if change == "reason":
+        assert rendered.image.digest == original.image.digest
+    else:
+        assert rendered.image.digest != original.image.digest
+
+
 def test_edits_are_atomic_versioned_idempotent_and_keep_resolved_note_history(
     env: Environment,
 ) -> None:
@@ -675,8 +707,9 @@ def test_parallel_edits_only_commit_one_expected_revision(env: Environment) -> N
     assert read_document(env.layout, head, Revision).sequence == 1
 
 
+@pytest.mark.parametrize("phase", ["revision_after", "receipt_before", "receipt_after"])
 def test_edit_commit_receipt_gap_is_recoverable(
-    env: Environment, monkeypatch: pytest.MonkeyPatch
+    env: Environment, monkeypatch: pytest.MonkeyPatch, phase: str
 ) -> None:
     from src.tasks.base.annotation.editing import store
 
@@ -688,22 +721,29 @@ def test_edit_commit_receipt_gap_is_recoverable(
         pass
 
     def crash(layout: AnnotationLayout, path: Path, document: Document) -> ArtifactRef:
-        if path.name == "receipt.json":
+        if path.name == "receipt.json" and phase == "receipt_before":
             raise Crash("committed head; receipt not written")
         result: ArtifactRef = original(layout, path, document)
+        if path.name == "receipt.json" and phase == "receipt_after":
+            raise Crash("receipt written; caller not notified")
+        if isinstance(document, Revision) and document.sequence == 1 and phase == "revision_after":
+            raise Crash("revision written; head not committed")
         return result
 
     monkeypatch.setattr(store, "write_document", crash)
     with pytest.raises(Crash):
         env.store.apply(command, env.adapter)
     head, _ = env.store.current(revision.context, env.adapter)
-    assert read_document(env.layout, head, Revision).sequence == 1
+    assert read_document(env.layout, head, Revision).sequence == (0 if phase == "revision_after" else 1)
     monkeypatch.setattr(store, "write_document", original)
     receipt = read_document(
         env.layout, RevisionStore(env.layout).apply(command, env.adapter), EditReceipt
     )
-    assert receipt.revision == head
-    assert env.store.current(revision.context, env.adapter)[0] == head
+    assert read_document(env.layout, receipt.revision, Revision).sequence == 1
+    if phase != "revision_after":
+        assert receipt.revision == head
+    assert env.store.current(revision.context, env.adapter)[0] == receipt.revision
+    assert RevisionStore(env.layout).apply(command, env.adapter) == env.store.apply(command, env.adapter)
 
 
 def test_adoption_requires_task_validation_then_seals_the_exact_revision(
@@ -843,7 +883,9 @@ def test_review_rejects_replacement_of_registered_campaign_plan(
             update={
                 "tasks": (
                     task.model_copy(
-                        update={"review": task.review.model_copy(update={"policy": policy})}
+                        update={
+                            "review": task.review.model_copy(update={"policy": policy})
+                        }
                     ),
                 )
             }
@@ -1085,9 +1127,12 @@ def test_generated_and_presented_images_do_not_mark_reviewed_rows(
     retained = retained_report(env.layout, shown)
     request, receipt = read_rendered(env.layout, image)
     assert retained.count(image.image) == 1
-    assert {image.metadata, receipt.request, request.manifest, request.annotation} <= set(
-        retained
-    )
+    assert {
+        image.metadata,
+        receipt.request,
+        request.manifest,
+        request.annotation,
+    } <= set(retained)
     assert not env.layout.path("cache", "presented-images").exists()
     tiles = presented_tiles(
         env.layout, image, shown, manifest=env.manifest_ref, annotation=initial

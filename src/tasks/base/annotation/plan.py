@@ -23,6 +23,7 @@ from .contracts import (
     after_validator,
 )
 from .paths import AnnotationLayout
+from .worker_decision import load_worker_decision
 
 _M = TypeVar("_M")
 
@@ -190,11 +191,20 @@ def load_plan(path: Path, *, expected_digest: str | None = None) -> CampaignPlan
     return plan
 
 
+def validate_new_plan_worker(layout: AnnotationLayout, plan: CampaignPlan) -> None:
+    """Apply the current decision to new plans, preserving frozen campaign inputs."""
+    if not layout.path("campaigns", plan.campaign_id, "plan.json").exists():
+        load_worker_decision().require(
+            agent_model=plan.agent_model, agent_effort=plan.agent_effort
+        )
+
+
 def save_plan(layout: AnnotationLayout, plan: CampaignPlan) -> Path:
     """Create once, or return exactly the same plan under the campaign lock."""
     plan = CampaignPlan.model_validate_json(plan.canonical_bytes())
     if plan.annotation_root != str(layout.root):
         raise ValueError("plan annotation root differs from the execution root")
+    validate_new_plan_worker(layout, plan)
     validate_inputs(layout, plan)
     directory = layout.path("campaigns", plan.campaign_id)
     directory.mkdir(parents=True, exist_ok=True)

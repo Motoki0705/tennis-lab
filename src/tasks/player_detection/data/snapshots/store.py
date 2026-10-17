@@ -32,6 +32,7 @@ from ..store import (
     PlayerFrameStore,
     shard_name,
 )
+from ..supervision import LEGACY
 from .contracts import ExistingPlayerSnapshot, SnapshotClip, SourceBinding
 
 
@@ -75,6 +76,10 @@ def clip_semantic_digest(store: PlayerFrameStore, clip: ClipRecord) -> str:
             canonical_bytes(["instance", name, selected.dtype.str, selected.shape])
         )
         digest.update(selected.tobytes())
+    if store.teacher_supervision is not None:
+        supervision = store.teacher_supervision[rows]
+        if np.any(supervision != LEGACY):
+            digest.update(canonical_bytes(["teacher_supervision", supervision.tolist()]))
     return digest.hexdigest()
 
 
@@ -104,7 +109,7 @@ def _check_clip(store: PlayerFrameStore, clip: ClipRecord) -> None:
 
 
 def validate_snapshot(
-    layout: AnnotationLayout, snapshot: ExistingPlayerSnapshot
+    layout: AnnotationLayout, snapshot: ExistingPlayerSnapshot, *, staging: Path | None = None
 ) -> PlayerFrameStore:
     directory = layout.artifact_path(snapshot.index).parent
     if (
@@ -115,9 +120,19 @@ def validate_snapshot(
             "player snapshot index/metadata must share the exact store directory"
         )
     files = (snapshot.index, snapshot.metadata, *(c.shard for c in snapshot.clips))
+    def verify(ref: ArtifactRef) -> None:
+        if staging is None:
+            verify_reference(layout, ref)
+        else:
+            source = layout.artifact_path(ref)
+            if not source.is_relative_to(directory):
+                raise ValueError("Player snapshot file escapes its directory")
+            actual = data_reference(layout, staging / source.relative_to(directory))
+            if actual.model_dump(exclude={"path"}) != ref.model_dump(exclude={"path"}):
+                raise ValueError("Player staging snapshot file changed")
     for ref in files:
-        verify_reference(layout, ref)
-    store = PlayerFrameStore(directory)
+        verify(ref)
+    store = PlayerFrameStore(staging or directory)
     mapping = {b.store_source_id: b.source_id for b in snapshot.source_bindings}
     if set(mapping) != {c.source_id for c in store.clips} or len(store.clips) != len(
         snapshot.clips
@@ -136,7 +151,7 @@ def validate_snapshot(
             identity.split,
             identity.semantic_digest,
         ) != (
-            clip_identity(clip, source),
+            identity.canonical_clip_id or clip_identity(clip, source),
             clip.clip_id,
             source,
             clip.split,
@@ -145,6 +160,10 @@ def validate_snapshot(
             raise ValueError(
                 "player snapshot clip labels, native timeline, identity or split changed"
             )
+        if identity.canonical_clip_id is not None and (
+            snapshot.request is None or identity.canonical_clip_id != clip.clip_id
+        ):
+            raise ValueError("Published canonical player clip identity differs")
         if layout.artifact_path(identity.shard) != directory / SHARDS_DIR / shard_name(
             clip.index
         ):
@@ -153,7 +172,7 @@ def validate_snapshot(
             raise ValueError("one canonical player source crosses dataset partitions")
     # A mutation during reader construction/digesting must not produce a snapshot.
     for ref in files:
-        verify_reference(layout, ref)
+        verify(ref)
     return store
 
 
