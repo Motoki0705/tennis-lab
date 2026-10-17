@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import tempfile
 from bisect import bisect_left, bisect_right
-from fractions import Fraction
 from pathlib import Path
 
 from ..artifacts import (
@@ -40,13 +39,13 @@ from .contracts import (
 def window_ranges(
     timeline: Timeline, window: TimeWindow
 ) -> tuple[FrameRange, FrameRange]:
-    boundaries = [timeline.boundary(i) for i in range(len(timeline.pts) + 1)]
-    if Fraction(str(window.stop)) > boundaries[-1]:
+    boundaries = [timeline.boundary_seconds(i) for i in range(len(timeline.pts) + 1)]
+    if window.stop > boundaries[-1]:
         raise ValueError("selected window extends beyond the real source")
 
     def quantize(start: float, stop: float) -> FrameRange:
-        first = bisect_left(boundaries, Fraction(str(start)))
-        last = bisect_right(boundaries, Fraction(str(stop))) - 1
+        first = bisect_left(boundaries, start)
+        last = bisect_right(boundaries, stop) - 1
         if first >= last:
             raise ValueError("selected interval contains no complete real frame")
         return FrameRange(start=first, stop=last)

@@ -53,7 +53,7 @@ def retained_adoption(
     retained.extend(adapter.retained_references(layout, context, revision_ref, receipt))
     return protection(
         layout,
-        identity="adoption-v1-" + adoption_ref.digest,
+        identity="adoption-v2-" + adoption_ref.digest,
         kind="adoption",
         reason="sealed annotation, full revision lineage, and task-enumerated review evidence",
         roots=(adoption_ref,),

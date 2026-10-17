@@ -25,6 +25,14 @@ class PlayerLearningAdapter:
     task = "player"
     product = "boxes"
 
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        return storage.retained_references(layout, intent, evaluation)
+
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
     ) -> DatasetPartition:
