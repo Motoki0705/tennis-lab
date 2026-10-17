@@ -6,7 +6,7 @@ from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.editing import ChangeResult, ChangeSummary
 from src.tasks.base.annotation.editing.contracts import DeltaItem
 
-from ..contracts import BallPredictions
+from ..contracts import PredictionDocument
 from .contracts import (
     BallEdits,
     BallFrame,
@@ -36,7 +36,7 @@ def apply_operations(
     edits: BallEdits,
     manifest: ClipManifest,
     policy: BallReviewPolicy,
-    predictions: BallPredictions,
+    predictions: PredictionDocument,
     saved: Catalog,
     actor: ArtifactRef,
 ) -> ChangeResult:
@@ -73,11 +73,15 @@ def apply_operations(
                     )
                 if isinstance(operation, ConfirmPredictions):
                     proposal = predictions.rows[index]
+                    if proposal.center is None:
+                        raise ValueError(
+                            "predicted absence cannot be confirmed as a visible ball; inspect full frames and use confirm_absence or replace"
+                        )
                     observations: tuple[BallObservation, ...] = (
                         BallObservation(
                             track_id=operation.track_id,
                             state="visible",
-                            center=(proposal.x, proposal.y),
+                            center=proposal.center,
                             origin="model_confirmed",
                         ),
                     )

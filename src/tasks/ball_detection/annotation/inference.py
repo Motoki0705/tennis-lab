@@ -1,4 +1,4 @@
-"""One shared MDD model instance serving new clips at native resolution and real PTS."""
+"""One pinned model instance serving new clips at native resolution and real PTS."""
 
 from __future__ import annotations
 
@@ -34,9 +34,14 @@ from src.tasks.base.annotation.predictions import PredictionContext
 from .contracts import (
     BallPredictions,
     BallProposal,
+    HybridInferenceConfig,
+    HybridPredictions,
+    HybridProposal,
     MDDCheckpointSpec,
     MDDInferenceConfig,
+    read_inference,
 )
+from .hybrid import HybridPredictor, HybridWindow
 from .windows import window_owners, window_starts
 
 if TYPE_CHECKING:
@@ -181,7 +186,7 @@ class BallPredictionAdapter:
     task = "ball"
 
     def __init__(self) -> None:
-        self._predictor: MDDPredictor | None = None
+        self._predictor: MDDPredictor | HybridPredictor | None = None
         self._identity: tuple[str, str] | None = None
 
     def produce(
@@ -191,11 +196,12 @@ class BallPredictionAdapter:
         manifest: ClipManifest,
         directory: Path,
     ) -> ArtifactRef:
-        config = read_document(layout, context.configuration, MDDInferenceConfig)
+        config = read_inference(layout, context.configuration)
         config.validate_media(manifest)
         starts = window_starts(len(manifest.frames), config.stride)
         owners = window_owners(len(manifest.frames), config.stride)
-        path = directory / "coordinates.json"
+        hybrid = isinstance(config, HybridInferenceConfig)
+        path = directory / ("hybrid.json" if hybrid else "coordinates.json")
         if path.exists():
             reference = annotation_reference(layout, path)
             self.validate(layout, context, manifest, reference)
@@ -208,9 +214,14 @@ class BallPredictionAdapter:
                 "a shared inference adapter cannot silently switch its model/configuration"
             )
         if self._predictor is None:
-            self._predictor = MDDPredictor(layout, context, config)
+            self._predictor = (
+                HybridPredictor(layout, context, config)
+                if isinstance(config, HybridInferenceConfig)
+                else MDDPredictor(layout, context, config)
+            )
             self._identity = identity
-        rows: list[BallProposal | None] = [None] * len(manifest.frames)
+        rows: list[BallProposal | HybridProposal | None] = [None] * len(manifest.frames)
+        heatmap_size = ((manifest.height + 3) // 4, (manifest.width + 3) // 4)
         clock = Fraction(manifest.time_base)
         with closing(_rgb_windows(video, timeline, starts, manifest)) as windows:
             for start, rgb in windows:
@@ -222,29 +233,57 @@ class BallPredictionAdapter:
                     dtype=np.float32,
                 )
                 values = self._predictor(rgb, seconds)
-                for local, (u, v) in enumerate(values):
+                if isinstance(values, HybridWindow) != hybrid:
+                    raise ValueError("prediction output differs from the explicit model family")
+                if isinstance(values, HybridWindow) and values.heatmap_size != heatmap_size:
+                    raise ValueError("hybrid heatmap grid differs from native /4 dimensions")
+                coordinates = values.coordinates if isinstance(values, HybridWindow) else values
+                for local, (u, v) in enumerate(coordinates):
                     index = start + local
                     if owners[index] != start:
                         continue
                     mapped = manifest.frames[index]
-                    rows[index] = BallProposal(
+                    identity_fields = dict(
                         frame_index=index,
                         source_frame_index=mapped.source_frame_index,
                         source_pts=mapped.source_pts,
                         clip_pts=mapped.clip_pts,
-                        x=float(u) * (manifest.width - 1),
-                        y=float(v) * (manifest.height - 1),
                         window_start=start,
                     )
+                    if isinstance(values, HybridWindow):
+                        present = bool(values.present[local])
+                        rows[index] = HybridProposal(
+                            **identity_fields,
+                            presence="present" if present else "absent",
+                            presence_logit=float(values.presence_logits[local]),
+                            presence_score=float(values.presence_scores[local]),
+                            x=float(u) * (manifest.width - 1) if present else None,
+                            y=float(v) * (manifest.height - 1) if present else None,
+                            heatmap_peak=float(values.heatmap_peaks[local]),
+                        )
+                    else:
+                        rows[index] = BallProposal(
+                            **identity_fields,
+                            x=float(u) * (manifest.width - 1),
+                            y=float(v) * (manifest.height - 1),
+                        )
         if any(row is None for row in rows):
-            raise ValueError("MDD inference did not cover every real clip frame")
+            raise ValueError("ball inference did not cover every real clip frame")
+        document = (
+            HybridPredictions(
+                context_digest=context.sha256,
+                heatmap_size=heatmap_size,
+                rows=tuple(row for row in rows if isinstance(row, HybridProposal)),
+            )
+            if hybrid else BallPredictions(
+                context_digest=context.sha256,
+                rows=tuple(row for row in rows if isinstance(row, BallProposal)),
+            )
+        )
         return write_document(
             layout,
             path,
-            BallPredictions(
-                context_digest=context.sha256,
-                rows=tuple(row for row in rows if row is not None),
-            ),
+            document,
         )
 
     def validate(

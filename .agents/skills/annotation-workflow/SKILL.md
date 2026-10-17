@@ -28,6 +28,12 @@ CLIの `schema --type configuration` で入力契約を確認し、`configure` �
 runtimeを固定する。継続campaignは `budget.action = reuse` で既存scopeを参照し、
 code版・入力hash・工程costを結ぶ。
 
+ballのhybridモデルは[予測契約](../../../src/tasks/ball_detection/annotation/README.md#hybridの予測案)
+の明示schemaで登録し、checkpointの存在閾値を推論設定へ固定する。不在予測も未レビューであり、
+既存方針による画像確認・教師maskの検証を通す。初回は小規模な新規clipで不在の誤りや
+見逃しを含むpreviewを行う。確認範囲や採用条件を変更するなら、根拠を示してユーザーの判断を
+得て方針を版上げする。進行中campaignのplanをモデル変更のために書き換えない。
+
 新規planの注釈worker条件は [決定記録](worker-decision.toml) から取得する。
 `worker-decision` が返す `agent_model` / `agent_effort` をplanへそのまま入れる。
 現在のユーザー決定は `gpt-6.1-sol` / `max`（2026-10-16）。テストfixtureや過去planの
