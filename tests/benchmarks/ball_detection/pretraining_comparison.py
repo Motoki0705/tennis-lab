@@ -1,6 +1,7 @@
-"""Select one CNN only after comparable pretraining runs have all completed."""
+"""Summarize completed residual/ConvNeXt V2/FasterNet pretraining runs."""
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -67,31 +68,18 @@ def compare_pretraining(runs: dict[str, Path], manifest: Path) -> dict[str, Any]
                 + ("; runtime recovery settings changed: epoch-0 speed predates recovery" if any(r["execution_recoveries"] for r in rows) else ""))
 
 
-def save_comparison(report: dict[str, Any], directory: Path) -> None:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ("residual", "convnext-v2", "fasternet", "manifest", "output"):
+        parser.add_argument(f"--{name}", type=Path, required=True)
+    args = parser.parse_args()
+    if not all(path.is_absolute() for path in vars(args).values()):
+        parser.error("Run, manifest and output paths must be absolute")
+    report = compare_pretraining(dict(residual=args.residual, convnext_v2=args.convnext_v2,
+                                     fasternet=args.fasternet), args.manifest)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, indent=2) + "\n")
 
-    directory.mkdir(parents=True, exist_ok=True)
-    (directory / "comparison.json").write_text(json.dumps(report, indent=2))
-    plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 11, "axes.spines.top": False, "axes.spines.right": False})
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), layout="constrained")
-    rows = report["ranking"]
-    names = [r["variant"] for r in rows]
-    axes[0].barh(names, [r["common_error_px"] for r in rows], color=["#147d92", "#638bb4", "#9fb5c7"])
-    axes[0].invert_yaxis()
-    axes[0].set(xlabel="Common validation error (source pixels; lower is better)", title="Pretraining accuracy")
-    for i, row in enumerate(rows):
-        axes[0].text(row["common_error_px"], i, f"  {row['common_error_px']:.2f}", va="center")
-        rate = row["steady_epoch0_windows_per_second"]
-        if rate is not None:
-            axes[1].scatter(rate, row["common_error_px"], s=95, color=f"C{i}")
-            axes[1].annotate(row["variant"] + (" (overlap)" if row["image_prefetch"] else " (serial)"), (rate, row["common_error_px"]), xytext=(5, 7), textcoords="offset points")
-    axes[1].set(xlabel="Training windows / second (higher is better)", ylabel="Common error (pixels)", title="Accuracy and measured throughput")
-    for axis in axes:
-        axis.grid(alpha=.2)
-    fig.suptitle("Three CNNs | Same DPT, frozen data, seed and update budget", fontweight="bold")
-    fig.supxlabel("Single seed. Labels record decode overlap. Throughput includes the input pipeline; it does not isolate CNN speed.", fontsize=9)
-    for ext in ("png", "pdf"):
-        fig.savefig(directory / f"comparison.{ext}", dpi=180, bbox_inches="tight")
-    plt.close(fig)
+
+if __name__ == "__main__":
+    main()
