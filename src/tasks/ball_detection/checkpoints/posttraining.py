@@ -6,6 +6,10 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.configuration import (
+    checkpoint_training_recipe,
+)
+from src.tasks.ball_detection.checkpoints.coordinates import query_checkpoint_config
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.utils.checksum import dual_sha256
 
@@ -17,10 +21,13 @@ def resume_posttraining(path: Path, output: Path, model: DeepMDDQueryDetector,
                         code: dict[str, Any], device: torch.device) -> tuple[int, int, float, int]:
     """Resume the original cosine budget and restore best metadata from its checkpoint."""
     saved = torch.load(path, map_location="cpu", weights_only=True)
-    if path.parent != output or saved.get("schema") != SCHEMA or saved["recipe"] != recipe:
+    config, preprocessing = query_checkpoint_config(saved)
+    if path.parent != output or saved.get("schema") != SCHEMA or checkpoint_training_recipe(saved, config) != recipe:
         raise ValueError("Resume requires identical posttraining recipe and output")
     if saved["code"]["source_sha256"] != code["source_sha256"]:
         raise ValueError("Resume source code changed; use the recorded commit for a historical run")
+    if config != model.config or preprocessing.input_contract() != model.mdd.input_contract():
+        raise ValueError("Resume model configuration or input contract changed")
     first_epoch = saved["epoch"] + 1
     if path.name != f"epoch-{saved['epoch']:03d}.pt":
         raise ValueError("Resume checkpoint filename differs from its epoch")
