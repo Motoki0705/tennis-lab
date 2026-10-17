@@ -9,7 +9,14 @@ from fractions import Fraction
 from pathlib import PurePosixPath
 from typing import Annotated, Literal, Protocol, Self, TypeVar, cast
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
 
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9_-][A-Za-z0-9_.-]*$")]
@@ -23,7 +30,15 @@ class _AfterValidator(Protocol):
     ) -> Callable[[_Model], _Model]: ...
 
 
+class _ManifestSerializer(Protocol):
+    def __call__(
+        self,
+        function: Callable[[_Model, SerializerFunctionWrapHandler], dict[str, object]],
+    ) -> Callable[[_Model, SerializerFunctionWrapHandler], dict[str, object]]: ...
+
+
 after_validator = cast(_AfterValidator, model_validator(mode="after"))
+manifest_serializer = cast(_ManifestSerializer, model_serializer(mode="wrap"))
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -117,10 +132,55 @@ class FrameMap(Document):
     duration_pts: PositiveInt
 
 
+class MediaFingerprint(Document):
+    """Historical bytes, deliberately not a dependency on an existing file."""
+
+    digest: Digest
+    size_bytes: PositiveInt
+
+
+class SourceProvenance(Document):
+    provider: Identifier
+    channel_id: Identifier
+    video_id: Identifier
+    media: MediaFingerprint
+    origin_url: str = Field(min_length=1)
+
+    @property
+    def canonical_id(self) -> str:
+        return content_digest([self.provider, self.video_id])
+
+    @classmethod
+    def from_source(cls, source: SourceIdentity) -> SourceProvenance:
+        return cls(
+            provider=source.provider,
+            channel_id=source.channel_id,
+            video_id=source.video_id,
+            origin_url=source.origin_url,
+            media=MediaFingerprint(
+                digest=source.media.digest, size_bytes=source.media.size_bytes
+            ),
+        )
+
+
+class JpegFrame(Document):
+    offset: int = Field(ge=0)
+    length: PositiveInt
+    digest: Digest
+
+
+class JpegStorage(Document):
+    encoding: Literal["opencv_bgr_q90"] = "opencv_bgr_q90"
+    frames: tuple[JpegFrame, ...] = Field(min_length=1)
+
+
 class ClipManifest(Document):
-    schema_version: Literal["annotation.clip.v1"] = "annotation.clip.v1"
-    source: SourceIdentity
+    schema_version: Literal["annotation.clip.v1", "annotation.clip.v2"] = (
+        "annotation.clip.v1"
+    )
+    source: SourceIdentity | SourceProvenance
     media: ArtifactRef
+    jpeg: JpegStorage | None = None
     preparation_digest: Digest
     width: PositiveInt
     height: PositiveInt
@@ -130,8 +190,37 @@ class ClipManifest(Document):
     target_range: FrameRange
     frames: tuple[FrameMap, ...] = Field(min_length=1)
 
+    @manifest_serializer
+    def serialize_manifest(
+        self, handler: SerializerFunctionWrapHandler
+    ) -> dict[str, object]:
+        result: dict[str, object] = handler(self)
+        if self.schema_version == "annotation.clip.v1":
+            # Preserve the identity of existing immutable prediction/review inputs.
+            result.pop("jpeg", None)
+        return result
+
     @after_validator
     def consistent(self) -> Self:
+        if self.schema_version == "annotation.clip.v1":
+            if self.jpeg is not None or not isinstance(self.source, SourceIdentity):
+                raise ValueError("v1 clips require video and a live source identity")
+        else:
+            if self.jpeg is None or not isinstance(self.source, SourceProvenance):
+                raise ValueError(
+                    "v2 clips require JPEG storage and historical source provenance"
+                )
+            if len(self.jpeg.frames) != len(self.frames):
+                raise ValueError("JPEG/frame mapping count mismatch")
+            offset = 0
+            for jpeg in self.jpeg.frames:
+                if jpeg.offset != offset:
+                    raise ValueError(
+                        "JPEG ranges must be contiguous in presentation order"
+                    )
+                offset += jpeg.length
+            if offset != self.media.size_bytes:
+                raise ValueError("JPEG ranges must cover the complete media archive")
         try:
             time_base, fps = Fraction(self.time_base), Fraction(self.nominal_fps)
         except (ValueError, ZeroDivisionError) as error:

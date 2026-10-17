@@ -19,6 +19,7 @@ from ..contracts import (
 )
 from ..paths import AnnotationLayout
 from ..plan import CampaignPlan
+from ..reproducibility import CodeBoundDocument
 from ..resources.contracts import ResourceRequest
 from ..telemetry.contracts import RenderedImage
 
@@ -49,6 +50,7 @@ class WorkRequest(Document):
 
 class PreparedWorker(Document):
     prompt: ArtifactRef
+    inputs: tuple[ArtifactRef, ...] = ()
     result_path: str = "work/result.json"
     writable_directories: tuple[str, ...] = ("work",)
 
@@ -86,7 +88,7 @@ class WorkOutcome(Document):
         return self
 
 
-class Launch(Document):
+class Launch(CodeBoundDocument):
     schema_version: Literal["annotation.worker-launch.v1"] = (
         "annotation.worker-launch.v1"
     )
@@ -125,6 +127,31 @@ class ExitReceipt(Document):
     reason: str | None
 
 
+class ChildIdentity(Document):
+    pid: int = Field(gt=0)
+    start_ticks: int = Field(gt=0)
+    group: int = Field(gt=0)
+    session: int = Field(gt=0)
+    boot_id: str = Field(min_length=1)
+
+
+class ChildReceipt(Document):
+    """The actual CLI child, separate from its supervisor and reserved capacity."""
+
+    launch_digest: Digest
+    captured_at: str
+    process: ChildIdentity | None
+    unavailable_reason: str | None
+
+    @_after
+    def explicit_missing_identity(self) -> Self:
+        if (self.process is None) != bool(self.unavailable_reason):
+            raise ValueError(
+                "an unavailable child identity requires an explicit reason"
+            )
+        return self
+
+
 class AttemptResult(Document):
     launch: ArtifactRef
     exit: ArtifactRef
@@ -133,9 +160,30 @@ class AttemptResult(Document):
     telemetry: ArtifactRef | None
 
 
+class AttemptEvidence(Document):
+    """Verified on-disk evidence survives retries and mutable task-state changes."""
+
+    number: int = Field(ge=1)
+    state: str
+    reason: str | None
+    launch: ArtifactRef
+    execution: ArtifactRef | None
+    result: ArtifactRef | None
+    telemetry: ArtifactRef | None
+
+
 class TaskAdapter(Protocol):
     name: str
     version: str
+
+    def input_references(
+        self,
+        layout: AnnotationLayout,
+        plan: CampaignPlan,
+        request: WorkRequest,
+    ) -> tuple[ArtifactRef, ...]:
+        """Enumerate dependencies of the opaque payload, without changing it."""
+        ...
 
     def prepare(
         self,

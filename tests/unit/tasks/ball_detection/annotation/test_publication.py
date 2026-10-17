@@ -26,6 +26,9 @@ from src.tasks.ball_detection.data.teacher_masks import LEGACY
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing import (
     publisher as publishing,
 )
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing import (
+    snapshot as snapshot_module,
+)
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
     BallPublicationPolicy,
     BallSnapshot,
@@ -58,6 +61,10 @@ from src.tasks.base.annotation.learning.validation import check_completion
 from src.tasks.base.annotation.paths import AnnotationLayout
 from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+
+
+def test_snapshot_does_not_reexport_shared_data_reference() -> None:
+    assert not hasattr(snapshot_module, "data_reference")
 
 
 def seal(env: Environment, *, sealed: bool = True) -> ArtifactRef:
@@ -174,6 +181,80 @@ def destination(env: Environment) -> Path:
     return path
 
 
+def test_jpeg_only_review_and_publication_share_exact_image_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hashlib
+    import os
+
+    policy = BallPublicationPolicy(
+        jpeg_quality=90,
+        source_splits=(
+            SourceSplit(source_id=content_digest(["local", "fixture"]), split="train"),
+        ),
+    )
+    env = Environment(tmp_path / "annotation", jpeg=True, publication_policy=policy)
+    assert not list(env.layout.root.rglob("*.mp4"))
+    # Both fresh renderer pages and cached images work after video deletion.
+    first = env.page((0, 1, 2))
+    assert env.page((0, 1, 2)) == first
+    request = PublishRequest(
+        plan=env.plan_ref, product="frames", adoptions=(seal(env),)
+    )
+
+    def no_encode(*args, **kwargs):
+        raise AssertionError("publication must not JPEG-encode saved frames again")
+
+    monkeypatch.setattr("cv2.imencode", no_encode)
+    receipt_ref = BallPublisher(env.layout).publish(request)
+    receipt, snapshot, store = result(env, receipt_ref)
+    assert receipt.snapshot is not None and len(snapshot.clips) == 1
+    assert env.manifest.jpeg is not None
+    source_path = env.layout.artifact_path(env.manifest.media)
+    published_path = store.image_path(store.clips[0])
+    assert os.path.samefile(source_path, published_path)
+    assert published_path.stat().st_nlink == 2
+    for row, jpeg in zip(
+        store.clip_rows(store.clips[0]), env.manifest.jpeg.frames, strict=True
+    ):
+        assert hashlib.sha256(store.read_jpeg(int(row))).hexdigest() == jpeg.digest
+    assert BallPublisher(env.layout).publish(request) == receipt_ref
+
+
+def test_publication_pointer_and_protection_are_atomic_after_files_appear(
+    setup: tuple[Environment, PublishRequest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.base.annotation.storage.catalog import StorageCatalog
+
+    env, request, _ = setup
+    publisher = BallPublisher(env.layout)
+    original = publisher.catalog.protect
+    before = StorageCatalog(env.layout).snapshot().digest
+
+    def crash(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("after publication protection")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publisher.catalog, "protect", crash)
+        with pytest.raises(RuntimeError, match="after publication protection"):
+            publisher.publish(request)
+    assert (destination(env) / "snapshot.json").is_file()
+    assert StorageCatalog(env.layout).snapshot().digest == before
+    with publisher.registry.transaction() as db:
+        assert db.execute("SELECT receipt FROM ball_publications").fetchone()[0] is None
+
+    def forbid(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("recoverable publication must not re-encode")
+
+    monkeypatch.setattr(publisher, "_build", forbid)
+    result = publisher.publish(request)
+    first = StorageCatalog(env.layout).snapshot().digest
+    assert publisher.publish(request) == result
+    assert StorageCatalog(env.layout).snapshot().digest == first
+
+
 def result(
     env: Environment, reference: ArtifactRef
 ) -> tuple[PublicationReceipt, BallSnapshot, BallFrameStore]:
@@ -215,6 +296,19 @@ def test_publication_preserves_base_bytes_rows_and_sealed_review_masks(
     assert completion.complete and check_completion(env.layout, completion) == env.plan
     receipt, snapshot, store = result(env, reference)
     assert receipt.added_clips == (env.manifest.clip_id,)
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    assert_expired_but_protected(
+        env.layout,
+        (
+            reference,
+            receipt.snapshot,
+            snapshot.index,
+            snapshot.metadata,
+            *(clip.shard for clip in snapshot.clips),
+        ),
+        "publication",
+    )
     assert len(receipt.reused_clips) == 1 and len(snapshot.clips) == 2
     assert store.clips[0] == old.clips[0]
     assert store.metadata["clips"][0] == old.metadata["clips"][0]
@@ -528,8 +622,11 @@ def test_legacy_chat_clip_cannot_be_readopted_under_canonical_id(
     assert not destination(env).exists()
 
 
+@pytest.mark.parametrize("cleanup_target", ["shards", "media"])
 def test_interrupted_staging_cleanup_keeps_owner_and_recovers(
-    setup: tuple[Environment, PublishRequest, Path], monkeypatch: pytest.MonkeyPatch
+    setup: tuple[Environment, PublishRequest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    cleanup_target: str,
 ) -> None:
     env, request, base = setup
     service = BallPublisher(env.layout)
@@ -546,15 +643,22 @@ def test_interrupted_staging_cleanup_keeps_owner_and_recovers(
     staging = destination(env).with_name(".frames.staging-" + request.sha256)
     owner = staging / "publication-intent.json"
     owner_bytes = owner.read_bytes()
+    original_cleanup = publishing.shutil.rmtree
 
     def interrupted_cleanup(path: Path) -> None:
+        if path != staging and path.name != cleanup_target:
+            original_cleanup(path)
+            return
         # Simulate an interrupted recursive removal, after one entry vanished.
         victim = (
             path / "publication-intent.json"
             if path == staging
-            else next(path.iterdir())
+            else next(path.iterdir(), path)
         )
-        victim.unlink()
+        if victim.is_dir():
+            victim.rmdir()
+        else:
+            victim.unlink()
         raise RuntimeError("cleanup interrupted")
 
     with monkeypatch.context() as faults:

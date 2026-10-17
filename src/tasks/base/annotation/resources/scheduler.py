@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import time
 from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +27,10 @@ from ..paths import AnnotationLayout
 from ..plan import CampaignPlan, load_plan
 from ..registry import Registry
 from ..workers.processes import ProcessIdentity, owned_members, process_snapshot
+from . import host_space
 from .contracts import (
     BudgetLimits,
+    BudgetResumption,
     BudgetScope,
     GPUUsage,
     ResourceRequest,
@@ -39,6 +43,7 @@ from .measurements import (
     storage_usage,
     write_baseline,
 )
+from .storage import ResourceReferences
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS resource_scopes (
@@ -66,6 +71,9 @@ CREATE TABLE IF NOT EXISTS resource_baselines (
 CREATE TABLE IF NOT EXISTS resource_watchdogs (
  scope TEXT PRIMARY KEY, sample TEXT NOT NULL, measured_at REAL NOT NULL, boot TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS resource_resumptions (
+ id TEXT PRIMARY KEY, scope TEXT NOT NULL, reference TEXT NOT NULL
+);
 """
 
 
@@ -79,10 +87,17 @@ class BudgetStopped(RuntimeError):
 
 class ResourceManager:
     def __init__(self, layout: AnnotationLayout, reference: ArtifactRef) -> None:
+        benchmark = layout.review_namespace is not None
+        layout = layout.shared()
         self.layout, self.reference = layout, reference
         self.scope = read_document(layout, reference, BudgetScope)
         self.registry = Registry(layout)
+        if benchmark:
+            self._require_registered_scope()
+            self._baseline_path()
+            return
         self.registry.initialize("annotation.resources.v1", _SCHEMA)
+        self.registry.initialize("annotation.observed-host-space.v1", host_space.SCHEMA)
         self._baseline_path()
         with self.registry.transaction() as db:
             row = db.execute(
@@ -96,6 +111,31 @@ class ResourceManager:
                 "INSERT OR IGNORE INTO resource_scopes(id,reference) VALUES (?,?)",
                 (self.scope.scope_id, encoded),
             )
+
+    @cached_property
+    def storage(self) -> ResourceReferences:
+        # Opening a benchmark scope only verifies existing state. Initialize the
+        # protection tables on its first mutation, outside the caller's transaction.
+        return ResourceReferences(self.layout)
+
+    def _require_registered_scope(self) -> None:
+        error = "benchmark must reuse an exact registered shared scope"
+        if not self.layout.registry.exists():
+            raise ValueError(error)
+        with sqlite3.connect(
+            self.layout.registry.as_uri() + "?mode=ro", uri=True
+        ) as db:
+            table = db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='resource_scopes'"
+            ).fetchone()
+            if table is None:
+                raise ValueError(error)
+            row = db.execute(
+                "SELECT reference FROM resource_scopes WHERE id=?",
+                (self.scope.scope_id,),
+            ).fetchone()
+            if row is None or row[0] != self.reference.canonical_bytes().decode():
+                raise ValueError(error)
 
     def _baseline_path(self) -> Path:
         """Cache verified immutable inventory bytes, invalidated by any file change."""
@@ -146,11 +186,17 @@ class ResourceManager:
         previously_allocated_bytes: int,
         previously_used_gpu_seconds: float,
         max_pending_per_stage: int,
+        free_space_mounts: tuple[Path, ...] = (),
     ) -> ResourceManager:
+        if layout.review_namespace is not None:
+            raise ValueError(
+                "benchmark review must reuse an existing shared resource scope"
+            )
         values = dict(
             scope_id=scope_id,
             limits=limits,
             roots=tuple(str(p) for p in roots),
+            free_space_mounts=tuple(str(p) for p in free_space_mounts),
             previously_allocated_bytes=previously_allocated_bytes,
             previously_used_gpu_seconds=previously_used_gpu_seconds,
             max_pending_per_stage=max_pending_per_stage,
@@ -161,6 +207,10 @@ class ResourceManager:
             baseline=ArtifactRef(
                 role="annotation", path="pending", digest="0" * 64, size_bytes=0
             ),
+        )
+        free_bytes(
+            tuple(str(root) for root in roots),
+            mounts=tuple(str(path) for path in free_space_mounts),
         )
         if not any(layout.root.is_relative_to(root) for root in roots):
             raise ValueError("storage inventory must include the annotation root")
@@ -258,7 +308,12 @@ class ResourceManager:
             raise ValueError("resource request is missing or was changed")
         return dict(row)
 
-    def submit(self, request: ResourceRequest) -> None:
+    def submit(
+        self,
+        request: ResourceRequest,
+        *,
+        inputs: tuple[ArtifactRef, ...] | None = None,
+    ) -> None:
         plan = load_plan(verify_reference(self.layout, request.plan))
         self.bind(plan)
         stages = [
@@ -271,6 +326,7 @@ class ResourceManager:
             raise ValueError(
                 "GPU stages require a positive time reservation; other stages require zero"
             )
+        storage = self.storage
         with self.registry.transaction() as db:
             row = db.execute(
                 "SELECT request FROM resource_requests WHERE id=?", (self.key(request),)
@@ -280,6 +336,15 @@ class ResourceManager:
                     raise ValueError(
                         "resource request identity was reused with different costs/inputs"
                     )
+                storage.register(
+                    self.key(request),
+                    request.plan,
+                    plan,
+                    self.reference,
+                    self.scope,
+                    inputs,
+                    database=db,
+                )
                 return
             pending = db.execute(
                 "SELECT count(*) FROM resource_requests WHERE stage=? AND state='pending'",
@@ -297,6 +362,15 @@ class ResourceManager:
                     request.stage,
                     stage.kind,
                 ),
+            )
+            storage.register(
+                self.key(request),
+                request.plan,
+                plan,
+                self.reference,
+                self.scope,
+                inputs,
+                database=db,
             )
 
     def request_status(self, request: ResourceRequest) -> tuple[str, str | None]:
@@ -316,43 +390,47 @@ class ResourceManager:
     def _recover(self) -> None:
         for active in self._active():
             try:
-                with (
-                    artifact_lock(
-                        self.layout, "resource-lease-" + active["id"], blocking=False
-                    ),
-                    self.registry.transaction() as db,
+                with artifact_lock(
+                    self.layout, "resource-lease-" + active["id"], blocking=False
                 ):
-                    # finish() can commit after the active snapshot and before
-                    # lease acquisition. Read and settle its latest record atomically.
-                    row = db.execute(
-                        "SELECT * FROM resource_requests WHERE id=?",
-                        (active["id"],),
-                    ).fetchone()
-                    if row is None:
-                        raise ValueError("resource request disappeared during recovery")
-                    if row["state"] not in {"running", "draining"}:
-                        continue
-                    if row["owner"] is not None and owned_members(
-                        ProcessIdentity.from_document(json.loads(row["owner"]))
-                    ):
-                        continue
-                    request = ResourceRequest.model_validate_json(row["request"])
-                    missing = row["state"] == "running"
-                    db.execute(
-                        "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=? AND state=?",
-                        (
-                            "abandoned" if missing else "complete",
-                            request.gpu_seconds if missing else row["charged"],
-                            "reserved_upper_bound" if missing else row["charge_kind"],
-                            "owner exited without a finish receipt"
-                            if missing
-                            else row["reason"],
-                            row["id"],
-                            row["state"],
-                        ),
-                    )
-                    # Finished output must be measured before releasing its reservation.
-                    db.execute("UPDATE resource_samples SET storage_at=-1")
+                    storage = self.storage
+                    with self.registry.transaction() as db:
+                        # finish() can commit after the active snapshot and before
+                        # lease acquisition. Read and settle its latest record atomically.
+                        row = db.execute(
+                            "SELECT * FROM resource_requests WHERE id=?",
+                            (active["id"],),
+                        ).fetchone()
+                        if row is None:
+                            raise ValueError(
+                                "resource request disappeared during recovery"
+                            )
+                        if row["state"] not in {"running", "draining"}:
+                            continue
+                        if row["owner"] is not None and owned_members(
+                            ProcessIdentity.from_document(json.loads(row["owner"]))
+                        ):
+                            continue
+                        request = ResourceRequest.model_validate_json(row["request"])
+                        missing = row["state"] == "running"
+                        storage.settle(row["id"], database=db)
+                        db.execute(
+                            "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=? AND state=?",
+                            (
+                                "abandoned" if missing else "complete",
+                                request.gpu_seconds if missing else row["charged"],
+                                "reserved_upper_bound"
+                                if missing
+                                else row["charge_kind"],
+                                "owner exited without a finish receipt"
+                                if missing
+                                else row["reason"],
+                                row["id"],
+                                row["state"],
+                            ),
+                        )
+                        # Finished output must be measured before releasing its reservation.
+                        db.execute("UPDATE resource_samples SET storage_at=-1")
             except BlockingIOError:
                 continue
 
@@ -385,10 +463,11 @@ class ResourceManager:
             if row["owner"] is not None
         )
         processes = process_usage(owners, observers)
-        boot, now = (
+        boot, monotonic_ns = (
             Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
-            time.monotonic(),
+            time.monotonic_ns(),
         )
+        now = monotonic_ns / 1e9
         measured_at = datetime.now(UTC).isoformat()
         if (
             not refresh_storage
@@ -399,9 +478,18 @@ class ResourceManager:
             previous = ResourceSample.model_validate_json(cached["sample"])
             storage, storage_measured_at = (
                 previous.storage.model_copy(
-                    update={"free_bytes": free_bytes(self.scope.roots)}
+                    update={
+                        "free_bytes": free_bytes(
+                            self.scope.roots, mounts=self.scope.free_space_mounts
+                        )
+                    }
                 ),
                 previous.storage_measured_at,
+            )
+            storage_monotonic_ns = (
+                previous.storage_measured_monotonic_ns
+                if previous.clock_boot_id == boot
+                else None
             )
         else:
             if watchdog:
@@ -410,8 +498,10 @@ class ResourceManager:
                 self.scope.roots,
                 self._baseline_path(),
                 self.scope.previously_allocated_bytes,
+                free_space_mounts=self.scope.free_space_mounts,
             )
             storage_measured_at = measured_at
+            storage_monotonic_ns = monotonic_ns
         active_seconds = sum(
             max(0.0, now - row["started"])
             for row in rows
@@ -423,6 +513,9 @@ class ResourceManager:
         return ResourceSample(
             measured_at=measured_at,
             storage_measured_at=storage_measured_at,
+            clock_boot_id=boot,
+            measured_monotonic_ns=monotonic_ns,
+            storage_measured_monotonic_ns=storage_monotonic_ns,
             scope_id=self.scope.scope_id,
             storage=storage,
             processes=processes,
@@ -450,17 +543,37 @@ class ResourceManager:
                 Counter(row["stage"] for row in rows if row["state"] == "pending")
             ),
             stopped_reason=stopped,
+            free_space_mount_bytes={
+                mount: free_bytes((), mounts=(mount,))
+                for mount in self.scope.free_space_mounts
+            },
         )
 
     def _problem(self, sample: ResourceSample) -> str | None:
         limit = self.scope.limits
         if sample.storage.additional_bytes >= limit.additional_storage_bytes:
             return "additional storage budget reached"
-        if sample.storage.free_bytes < limit.minimum_free_bytes:
+        policy = host_space.current(self)
+        if policy is not None:
+            if free_bytes((), mounts=(policy.mount,)) < policy.minimum_free_bytes:
+                return f"observed host space below reserve: {policy.mount}"
+            ordinary_free = free_bytes(
+                self.scope.roots,
+                mounts=tuple(
+                    m for m in self.scope.free_space_mounts if m != policy.mount
+                ),
+            )
+        else:
+            ordinary_free = sample.storage.free_bytes
+        if ordinary_free < limit.minimum_free_bytes:
             return "free storage is below the required reserve"
         if sample.pss_bytes >= limit.total_pss_bytes:
             return "owned-process PSS budget reached"
-        if sample.gpu_charged_seconds + sample.gpu_active_seconds >= limit.gpu_seconds:
+        if (
+            limit.gpu_seconds is not None
+            and sample.gpu_charged_seconds + sample.gpu_active_seconds
+            >= limit.gpu_seconds
+        ):
             return "cumulative GPU time budget reached"
         return None
 
@@ -548,7 +661,7 @@ class ResourceManager:
                     result: ResourceSample = ResourceSample.model_validate_json(
                         cached["sample"]
                     )
-                    return result
+                    return self._watch_result(result)
                 sample: ResourceSample = self._sample(
                     refresh_storage=False, watchdog=True
                 )
@@ -579,11 +692,18 @@ class ResourceManager:
                 with path.open("ab") as handle:
                     handle.write(sample.canonical_bytes() + b"\n")
                     handle.flush()
-                return sample
+                return self._watch_result(sample)
         except BlockingIOError:
             return None
 
-    def resume(self, *, reason: str) -> None:
+    def _watch_result(self, sample: ResourceSample) -> ResourceSample:
+        # Observed-space operation cannot rely on reserved headroom. Supervisors
+        # catch this failure and terminate their own process groups, including GPU jobs.
+        if sample.stopped_reason is not None and host_space.current(self) is not None:
+            raise BudgetStopped(sample.stopped_reason)
+        return sample
+
+    def resume(self, *, reason: str) -> ArtifactRef:
         if not reason.strip():
             raise ValueError("resuming requires an explicit reason")
         with artifact_lock(self.layout, "resource-admission"):
@@ -591,21 +711,32 @@ class ResourceManager:
             sample = self._sample()
             if problem := self._problem(sample):
                 raise BudgetStopped(problem)
-            with self.registry.transaction() as db:
-                db.execute(
-                    "UPDATE resource_scopes SET stop_reason=NULL WHERE id=?",
-                    (self.scope.scope_id,),
-                )
-            write_document(
+            reference: ArtifactRef = write_document(
                 self.layout,
                 self.layout.path(
                     "resources",
                     self.scope.scope_id,
                     "resume-" + str(time.time_ns()) + ".json",
                 ),
-                sample,
+                BudgetResumption(
+                    scope=self.reference, reason=reason, checked_sample=sample
+                ),
             )
+            with self.registry.transaction() as db:
+                db.execute(
+                    "INSERT INTO resource_resumptions VALUES (?,?,?)",
+                    (
+                        reference.digest,
+                        self.scope.scope_id,
+                        reference.canonical_bytes().decode(),
+                    ),
+                )
+                db.execute(
+                    "UPDATE resource_scopes SET stop_reason=NULL WHERE id=?",
+                    (self.scope.scope_id,),
+                )
             self._record(sample.model_copy(update={"stopped_reason": None}))
+            return reference
 
     def _admit(self, request: ResourceRequest) -> None:
         with artifact_lock(self.layout, "resource-admission"):
@@ -674,16 +805,29 @@ class ResourceManager:
             ):
                 raise CapacityUnavailable("PSS reservations do not fit")
             storage_reserved = sum(item.storage_bytes for item in requests)
+            policy = host_space.current(self)
+            admission_free = sample.storage.free_bytes
+            if policy is not None:
+                if policy.plan != request.plan:
+                    raise ValueError(
+                        "observed host-space policy is bound to another campaign"
+                    )
+                admission_free = free_bytes(
+                    self.scope.roots,
+                    mounts=tuple(
+                        m for m in self.scope.free_space_mounts if m != policy.mount
+                    ),
+                )
             if (
                 sample.storage.additional_bytes
                 + storage_reserved
                 + request.storage_bytes
                 > self.scope.limits.additional_storage_bytes
-                or sample.storage.free_bytes - storage_reserved - request.storage_bytes
+                or admission_free - storage_reserved - request.storage_bytes
                 < self.scope.limits.minimum_free_bytes
             ):
                 raise CapacityUnavailable("storage reservations do not fit")
-            if (
+            if self.scope.limits.gpu_seconds is not None and (
                 sample.gpu_charged_seconds
                 + sample.gpu_reserved_seconds
                 + request.gpu_seconds
@@ -692,7 +836,9 @@ class ResourceManager:
                 raise CapacityUnavailable(
                     "remaining cumulative GPU budget cannot cover this reservation"
                 )
+            storage = self.storage
             with self.registry.transaction() as db:
+                storage.admit(self.key(request), database=db)
                 db.execute(
                     "UPDATE resource_requests SET state='running' WHERE id=? AND state='pending'",
                     (self.key(request),),

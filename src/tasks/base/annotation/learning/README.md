@@ -8,12 +8,25 @@ checkpoint、recipe、評価指標と合否判定を担当する。baseからbal
 ball、player bbox、player poseのいずれかが未公開・失敗・保留なら学習を始めない。
 理由付き対象外は公開済みとは別の完了状態である。adapterの学習対象productに
 追加教師がなければ `no_additional_teachers`、学習設定がなければ `not_configured` を保存する。
+公開clipがあっても、adapterの`validate_intent`が`NoAdditionalTeachers`を返した場合は理由付きで同じ終端結果を保存し、学習intentやqueue jobを作らない。
 
 追加教師がある場合は、公開receipt、累積train snapshot、前採用モデルの世代と重み、
 recipe、固定validation/test membership、採用条件を `LearningIntent` に固定する。
 snapshotの内容とmembershipはadapterが検査し、baseが元動画・clipのsplit間重複を拒否する。
-評価ジョブの `EvaluationReceipt.validation` は固定validationに一致する必要があり、
-testを代わりに使うことはできない。test membershipは学習との分離検査に使う。
+`LearningPlan.evaluation_recipe` を指定したtaskは、`EvaluationResolver` が公開後に
+旧・新holdoutを確定する。元の評価参照とrecipeを解決済み `FixedEvaluation` に保存し、
+planを途中で書き換えない。追加clipはtrain/validation/testのいずれかに属し、
+trainに利用可能な追加教師が必要となる。
+再登録では同じ公開receiptの登録をロックして既存intentを先に調べ、保存済みの評価参照と
+各partitionを検証する。登録済み入力の欠損・改変を検出した場合は評価の生成処理へ進まない。
+`EvaluationReceipt.validation` は候補選択に使った固定validationと一致させる。
+recipeで最終test比較を指定した場合は `EvaluationReceipt.test` も固定testと照合する。
+testを学習やepochの選び直しへ使わない。recipeのない既存経路はvalidation比較を維持する。
+
+`LearningReferences` はintent登録と同じtransactionで入力を保護する。
+`LearningAdapter.input_references()` はsnapshot内のindex・metadata・shardや固定評価の
+実ファイルを型付き契約から列挙する。queue待機中にも保護し、同じintentの再登録で
+対象を変更することはできない。未登録・解除済みの保護は明示的なエラーになる。
 
 `tick(intent, adapter, runtime)` は学習→評価→採用を進め、一回ごとの状態を返す。
 
@@ -40,12 +53,37 @@ testを代わりに使うことはできない。test membershipは学習との�
   次試行のrequest保存前なら、途中までのretry記録を残したまま旧試行の検証済み完了を
   `tick()`でも回収する。新しいrequestが確定済みの試行を巻き戻す処理は行わない。
 
+コード更新後も初回の `runtime.json` は保持し、更新記録のplan/scope・旧runtime・検証根拠を
+照合したruntimeを `code-updates/<revision digest>/runtime.json` へ別保存する。
+変更できるのはコード版の参照だけで、scope・queue設定・工程costは不変。
+既存launchも上書きせず、旧コードの成功・失敗を回収する。未起動の旧launchは明示的に
+取消し、失敗の回収後に `retry()` した次attemptと後続評価から新しいコード版を使う。
+初回runtimeと旧launchのhashは維持するため、既存campaignのファイル移行は不要。
+
+工程要求はqueue投入前に固定入力を保持する。`LearningAdapter.resume_references()` は
+同じintentの再開checkpointを検証し、その依存を列挙する。retryはその依存を
+`Retry.resume_dependencies` に不変保存し、checkpointとともに返却前に保護する。
+retry記録やrequestの保存後（保護登録の失敗を含む）に中断した場合は、同じ引数の
+明示的な`retry()`で復旧する。理由・再開checkpoint、直前の失敗とそのrequest、
+保存済みretry/requestの内容を照合し、一致すれば保存済みの依存を保護登録して
+同じrequestを返す。照合が合わなければ明示的に拒否し、試行番号を増やさない。
+成功した工程は `LearningAdapter.result_references()` が検査済みcheckpoint・来歴・
+評価根拠の実ファイルを列挙し、結果の保護記録と同時に確定する。完了ファイルの保存後に
+保護登録が失敗しても、再送では保存結果を再検証して登録し、学習を重複起動しない。
+評価の起動には、学習結果の保護済み依存も渡す。
+これらは失敗・完了後も保持する。自動解除、過去intentの一括移行、未完了runの
+全checkpoint収集は含まない。[保存台帳](../storage/README.md)のGCは引き続きdry-runである。
+
 `ModelRegistry.bootstrap(model, evidence)` で初期モデルを根拠付きで明示登録する。
 最終採用は、task判定、成功した学習・評価、固定validation・policyの参照を再検証してから行う。
 現行の `ModelState`（モデル全参照と世代）が評価基準と一致するときだけ、新世代へ切り替える。
 比較元が変わっていれば `reevaluation_required` を保存し、自動で評価基準を読み替えない。
 
 現行pointerと採用結果の全文はSQLiteの一つのtransactionでcommitする。
+`ModelRegistry.select(verdict, adapter)`は、共通の採否根拠に加えて必須の
+`LearningAdapter.retained_references(layout, intent, evaluation)`が列挙するtask固有の
+固定入力・学習来歴・評価記録の依存参照を同じtransactionで保護する。不採用・再評価要求・
+保存済み判断の再送でも列挙し、参照欠落や保護失敗は判断とpointer更新をrollbackする。
 直後にreceiptファイルの保存が失敗しても、同じDB行から復元でき、採用を二重実行しない。
 進行中campaignのplanを書き換える処理や既存clipを再推論する呼び出しは持たない。
 次campaignの計画作成時に `current(task)` を読み、採用版を新planへ固定する。

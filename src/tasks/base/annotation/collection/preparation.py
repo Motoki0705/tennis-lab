@@ -21,8 +21,10 @@ from ..contracts import (
     FrameMap,
     FrameRange,
     SourceIdentity,
+    SourceProvenance,
     content_digest,
 )
+from ..jpeg_media import write_jpeg_archive
 from ..media import Timeline, check_clip, decode_range, encode_video, probe_video
 from ..paths import AnnotationLayout
 from ..plan import file_digest
@@ -90,12 +92,17 @@ def prepare_clip(
         )
     clip_id = content_digest([source.canonical_id, media_range.model_dump()])
     digest = preparation_identity(source, configuration, selection, window)
+    provenance = (
+        SourceProvenance.from_source(source)
+        if config.retained_media == "jpeg_q90"
+        else source
+    )
     destination = layout.path("clips", clip_id)
     with artifact_lock(layout, "clip-" + clip_id):
         if destination.exists():
             reference = annotation_reference(layout, destination / "manifest.json")
             manifest = read_document(layout, reference, ClipManifest)
-            if manifest.preparation_digest != digest or manifest.source != source:
+            if manifest.preparation_digest != digest or manifest.source != provenance:
                 raise ValueError(
                     "existing clip differs from the immutable preparation inputs"
                 )
@@ -113,37 +120,49 @@ def prepare_clip(
             prefix="building-", dir=destination.parent
         ) as temporary:
             staging = Path(temporary)
-            video = staging / "media.mp4"
+            filename = (
+                "frames.bin" if config.retained_media == "jpeg_q90" else "media.mp4"
+            )
+            video = staging / filename
             start, stop = media_range.start, media_range.stop
             source_path = verify_reference(layout, source.media)
-            encode_video(
-                video,
-                width=timeline.width,
-                height=timeline.height,
-                time_base=timeline.time_base,
-                rate=timeline.rate,
-                frames=(
-                    (
-                        frame,
-                        timeline.pts[index] - timeline.pts[start],
-                        timeline.durations[index],
-                    )
-                    for index, frame in enumerate(
-                        decode_range(source_path, timeline, start, stop), start
-                    )
-                ),
-                crf=config.crf,
-                preset=config.preset,
-            )
+            jpeg = None
+            if config.retained_media == "jpeg_q90":
+                jpeg = write_jpeg_archive(video, source_path, timeline, start, stop)
+            else:
+                assert config.crf is not None and config.preset is not None
+                encode_video(
+                    video,
+                    width=timeline.width,
+                    height=timeline.height,
+                    time_base=timeline.time_base,
+                    rate=timeline.rate,
+                    frames=(
+                        (
+                            frame,
+                            timeline.pts[index] - timeline.pts[start],
+                            timeline.durations[index],
+                        )
+                        for index, frame in enumerate(
+                            decode_range(source_path, timeline, start, stop), start
+                        )
+                    ),
+                    crf=config.crf,
+                    preset=config.preset,
+                )
             media = ArtifactRef(
                 role="annotation",
-                path=(destination / "media.mp4").relative_to(layout.root).as_posix(),
+                path=(destination / filename).relative_to(layout.root).as_posix(),
                 digest=file_digest(video),
                 size_bytes=video.stat().st_size,
             )
             manifest = ClipManifest(
-                source=source,
+                schema_version="annotation.clip.v2"
+                if jpeg is not None
+                else "annotation.clip.v1",
+                source=provenance,
                 media=media,
+                jpeg=jpeg,
                 preparation_digest=digest,
                 width=timeline.width,
                 height=timeline.height,

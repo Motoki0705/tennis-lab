@@ -24,8 +24,14 @@ from ..artifacts import (
 )
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, load_plan, references, save_plan
-from ..reproducibility import require_frozen_code
+from ..plan import (
+    CampaignPlan,
+    load_plan,
+    references,
+    require_execution_layout,
+    save_plan,
+)
+from ..reproducibility import CodeRevision, require_frozen_code
 from ..resources import ResourceManager, ResourceRequest
 from ..telemetry.capture import capture, presented_images, verify_report
 from .contracts import (
@@ -59,7 +65,9 @@ class WorkerPool:
         resources: ResourceManager | None = None,
         worker_pss_bytes: int | None = None,
         worker_storage_bytes: int | None = None,
+        code_revision: ArtifactRef | None = None,
     ) -> None:
+        require_execution_layout(layout, plan)
         if test_command is not None and layout.mode != "test":
             raise ValueError("test commands are forbidden in production")
         if layout.mode == "production" and resources is None:
@@ -70,6 +78,7 @@ class WorkerPool:
             if worker_pss_bytes is None or worker_storage_bytes is None:
                 raise ValueError("worker PSS/storage reservations must be explicit")
         self.resources = resources
+        self.code_revision = code_revision
         self.worker_pss_bytes = worker_pss_bytes
         self.worker_storage_bytes = worker_storage_bytes
         self.layout, self.plan = layout, plan
@@ -131,8 +140,12 @@ class WorkerPool:
         return adapter
 
     def register(self, request: WorkRequest) -> None:
-        self._adapter(request)
-        self.ledger.register(self.plan, request)
+        adapter = self._adapter(request)
+        self.ledger.register(
+            self.plan,
+            request,
+            dependencies=adapter.input_references(self.layout, self.plan, request),
+        )
 
     def _launch(self, row: dict[str, Any]) -> tuple[ArtifactRef, Launch]:
         with self.ledger.registry.transaction() as database:
@@ -185,6 +198,8 @@ class WorkerPool:
                     "INSERT OR REPLACE INTO worker_campaign_stops VALUES (?,?)",
                     (row["campaign"], reason or "Codex quota exhausted"),
                 )
+            if state not in {"running", "exited"}:
+                self.ledger.storage.settle(attempt, database=database)
         return True
 
     def _exit_receipt(
@@ -248,11 +263,41 @@ class WorkerPool:
                     "attempt still has owned processes, including orphaned descendants"
                 )
 
-    def _recover_unregistered_attempt(self, request: WorkRequest) -> None:
+    def cancel_pending_code_update(self, revision: ArtifactRef) -> None:
+        """Retire unstarted launches before publishing a code-update receipt."""
+        with artifact_lock(self.layout, "worker-admission", blocking=False):
+            with self.ledger.registry.transaction() as database:
+                requests = [
+                    WorkRequest.model_validate_json(row[0])
+                    for row in database.execute(
+                        "SELECT request FROM worker_tasks WHERE campaign=?",
+                        (self.plan.campaign_id,),
+                    )
+                ]
+            for request in requests:
+                if request.adapter not in self.adapters:
+                    continue
+                with (
+                    artifact_lock(
+                        self.layout, "worker-" + request.work_id, blocking=False
+                    ),
+                    artifact_lock(self.layout, "worker-services-" + request.work_id),
+                ):
+                    self._registered_task(request)
+                    self._recover_unregistered_attempt(request, cancel_for=revision)
+
+    def _recover_unregistered_attempt(
+        self,
+        request: WorkRequest,
+        *,
+        cancel_reason: str | None = None,
+        cancel_for: ArtifactRef | None = None,
+    ) -> None:
         """Account for a resource admission interrupted before worker registration.
 
         The caller holds both admission and work locks. Pending requests have never
-        acquired resources and retain their ID for normal backpressure retries.
+        acquired resources and retain their ID for normal backpressure retries,
+        unless a terminal stop explicitly cancels them.
         """
         if self.resources is None:
             return
@@ -284,34 +329,65 @@ class WorkerPool:
             or launch.resource_request is None
         ):
             raise ValueError("unregistered launch differs from the worker request")
-        with self.ledger.registry.transaction() as database:
+        with self.resources.registry.transaction() as database:
             resource = database.execute(
-                "SELECT request,state FROM resource_requests WHERE id=?",
+                "SELECT request,state,reason FROM resource_requests WHERE id=?",
                 (self.resources.key(launch.resource_request),),
             ).fetchone()
-            if resource is None:
+        if (
+            resource is not None
+            and resource["request"]
+            != launch.resource_request.canonical_bytes().decode()
+        ):
+            raise ValueError("unregistered launch has a different resource request")
+        state = "failed"
+        reason = "resource admission interrupted before worker registration"
+        cancellation = cancel_reason
+        code_update = cancel_for is not None and launch.code_revision != cancel_for
+        if code_update:
+            assert cancel_for is not None
+            update = read_document(self.layout, cancel_for, CodeRevision)
+            if update.plan != launch.plan or update.scope != launch.resource_scope:
+                raise ValueError(
+                    "worker code revision belongs to another plan or scope"
+                )
+            verify_reference(self.layout, update.previous_runtime)
+            verify_reference(self.layout, update.verification)
+            self._require_no_members(path.parent)
+            if resource is not None and resource["state"] in {"running", "draining"}:
+                raise WorkerBusy("stop and drain worker resources before updating code")
+            cancellation = (
+                "unstarted worker cancelled for code revision " + cancel_for.digest
+            )
+        if resource is None:
+            if not code_update:
                 return
-            if (
-                resource["request"]
-                != launch.resource_request.canonical_bytes().decode()
-            ):
-                raise ValueError("unregistered launch has a different resource request")
-            if resource["state"] == "pending":
+            assert cancellation is not None
+            state, reason = "cancelled", cancellation
+        elif resource["state"] == "pending":
+            if cancellation is None:
                 return
-            reason = "resource admission interrupted before worker registration"
+            self.resources.cancel_pending(launch.resource_request, reason=cancellation)
+            state, reason = "cancelled", cancellation
+        elif resource["state"] == "cancelled":
+            # Recover cancellation between the shared and worker ledgers without
+            # replacing the original reason with a later stop or code update.
+            state, reason = "cancelled", resource["reason"]
+        with self.ledger.registry.transaction() as database:
             database.execute(
-                "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
+                "INSERT INTO worker_attempts VALUES (?,?,?,?,?,?)",
                 (
                     attempt,
                     request.work_id,
                     number,
+                    state,
                     ref.canonical_bytes().decode(),
                     reason,
                 ),
             )
             database.execute(
-                "UPDATE worker_tasks SET state='failed',current_attempt=?,reason=?,result=NULL WHERE id=?",
-                (attempt, reason, request.work_id),
+                "UPDATE worker_tasks SET state=?,current_attempt=?,reason=?,result=NULL WHERE id=?",
+                (state, attempt, reason, request.work_id),
             )
 
     def start(self, request: WorkRequest, *, retry: bool = False) -> str | None:
@@ -321,7 +397,13 @@ class WorkerPool:
         if state["state"] in {"complete", "not_applicable"}:
             return None
         if self.layout.mode == "production":
-            require_frozen_code(PROJECT_ROOT, self.plan)
+            require_frozen_code(
+                PROJECT_ROOT,
+                self.plan,
+                layout=self.layout,
+                revision=self.code_revision,
+                scope=self.resources.reference if self.resources is not None else None,
+            )
         require_process_backend()
         binary = shutil.which(self.binary)
         if self.test_command is None and binary is None:
@@ -333,8 +415,11 @@ class WorkerPool:
                 artifact_lock(
                     self.layout, "worker-" + request.work_id, blocking=False
                 ) as descriptor,
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
-                self._recover_unregistered_attempt(request)
+                self._recover_unregistered_attempt(
+                    request, cancel_for=self.code_revision
+                )
                 self._settle_dead_slots()
                 row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:
@@ -432,7 +517,10 @@ class WorkerPool:
                         and self.worker_storage_bytes is not None
                     )
                     resource_request = ResourceRequest(
-                        request_id="worker-" + attempt,
+                        request_id=("benchmark-" + self.plan.campaign_id + "-")
+                        + attempt
+                        if self.plan.phase == "benchmark"
+                        else "worker-" + attempt,
                         plan=plan_ref,
                         stage=request.stage,
                         pss_bytes=self.worker_pss_bytes,
@@ -440,6 +528,7 @@ class WorkerPool:
                         gpu_seconds=0.0,
                     )
                 launch = Launch(
+                    code_revision=self.code_revision,
                     work_id=request.work_id,
                     attempt=attempt,
                     plan=plan_ref,
@@ -465,6 +554,7 @@ class WorkerPool:
                         self.resources.lease(resource_request)
                     )
                 with self.ledger.registry.transaction() as database:
+                    self.ledger.storage.launch(ref, launch, database=database)
                     database.execute(
                         "INSERT INTO worker_attempts VALUES (?,?,?,'running',?,NULL)",
                         (
@@ -537,8 +627,9 @@ class WorkerPool:
     def reconcile(self, request: WorkRequest) -> dict[str, Any]:
         self._registered_task(request)
         try:
-            with artifact_lock(
-                self.layout, "worker-" + request.work_id, blocking=False
+            with (
+                artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
                 return self._reconcile_locked(request)
         except BlockingIOError:
@@ -680,12 +771,30 @@ class WorkerPool:
         )
         return self._task(request.work_id)
 
+    def cancel_pending(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
+        """Cancel an unlaunched resource attempt without stopping active processes."""
+        if not reason.strip():
+            raise ValueError("cancelling requires a reason")
+        row = self._registered_task(request)
+        if self.resources is None:
+            return row
+        with artifact_lock(self.layout, "worker-admission"):
+            # A concurrent start must finish admission before its state is checked.
+            row = self._registered_task(request)
+            if row["state"] in {"running", "exited"}:
+                return row
+            with artifact_lock(self.layout, "worker-" + request.work_id):
+                self._recover_unregistered_attempt(request, cancel_reason=reason)
+                return self._task(request.work_id)
+
     def stop(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
             raise ValueError("stop requires a reason")
         row = self._registered_task(request)
         if row["state"] not in {"running", "exited"}:
-            return row
+            row = self.cancel_pending(request, reason=reason)
+            if row["state"] not in {"running", "exited"}:
+                return row
         _ref, launch = self._launch(row)
         owner_path = Path(launch.directory) / "owner.json"
         if not owner_path.exists():
@@ -710,19 +819,26 @@ class WorkerPool:
             "not_applicable",
         }:
             return current
-        with artifact_lock(self.layout, "worker-" + request.work_id):
-            current = self._task(request.work_id)
-            if current["current_attempt"] != launch.attempt:
-                return current
-            # Another reconciler may have persisted a receipt while stop waited.
-            current = self._reconcile_locked(request)
-            if current["state"] in {"complete", "not_applicable"}:
-                return current
-            self._mark(
-                request.work_id,
-                "cancelled",
-                reason,
-                attempt=launch.attempt,
-                from_states=(current["state"],),
-            )
-            return self._task(request.work_id)
+        try:
+            with (
+                artifact_lock(self.layout, "worker-" + request.work_id),
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
+            ):
+                current = self._task(request.work_id)
+                if current["current_attempt"] != launch.attempt:
+                    return current
+                self._require_no_members(Path(launch.directory))
+                # Recover any receipt committed while stop waited for these locks.
+                current = self._reconcile_locked(request)
+                if current["state"] in {"complete", "not_applicable"}:
+                    return current
+                self._mark(
+                    request.work_id,
+                    "cancelled",
+                    reason,
+                    attempt=launch.attempt,
+                    from_states=(current["state"],),
+                )
+        except BlockingIOError as error:
+            raise WorkerBusy("attempt is still owned during cancellation") from error
+        return self._task(request.work_id)

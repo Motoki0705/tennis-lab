@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
@@ -22,6 +22,8 @@ Area = Literal[
     "cache",
     "resources",
     "models",
+    "storage_inventories",
+    "storage_plans",
     "migration_plans",
     "migration_staging",
     "migration_archive",
@@ -35,6 +37,8 @@ _AREAS: dict[Area, str] = {
     "cache": "cache",
     "resources": "resources",
     "models": "models",
+    "storage_inventories": "storage/inventories",
+    "storage_plans": "storage/plans",
     "migration_plans": "migration/plans",
     "migration_staging": "migration/staging",
     "migration_archive": "migration/archive",
@@ -59,6 +63,7 @@ class AnnotationLayout:
     repository: Path
     root: Path
     mode: Literal["production", "test"]
+    review_namespace: str | None = None
 
     def __post_init__(self) -> None:
         if self.mode not in {"production", "test"}:
@@ -76,6 +81,19 @@ class AnnotationLayout:
         ):
             raise ValueError("production root is fixed to outputs/chat_annotation")
         _no_symlinks(self.root, self.repository)
+        if self.review_namespace is not None and not _COMPONENT.fullmatch(
+            self.review_namespace
+        ):
+            raise ValueError("benchmark review namespace must be one campaign identity")
+
+    def for_benchmark(self, campaign_id: str) -> AnnotationLayout:
+        if self.review_namespace not in {None, campaign_id}:
+            raise ValueError("cannot replace an existing benchmark review namespace")
+        return replace(self, review_namespace=campaign_id)
+
+    def shared(self) -> AnnotationLayout:
+        """Resource accounting and shared immutable input references keep one root."""
+        return replace(self, review_namespace=None)
 
     @classmethod
     def production(cls, source_root: Path = PROJECT_ROOT) -> AnnotationLayout:
@@ -116,7 +134,17 @@ class AnnotationLayout:
         for part in components:
             if not _COMPONENT.fullmatch(part):
                 raise ValueError("output identity must be one filename component")
-        candidate = self.root / _AREAS[area]
+        if self.review_namespace is not None and area == "models":
+            raise ValueError("benchmark review cannot write model adoption artifacts")
+        candidate = (
+            self.root
+            / "campaigns"
+            / self.review_namespace
+            / "benchmark"
+            / "annotations"
+            if self.review_namespace is not None and area == "annotations"
+            else self.root / _AREAS[area]
+        )
         for part in components:
             candidate /= part
         _no_symlinks(candidate, self.repository)
@@ -131,7 +159,13 @@ class AnnotationLayout:
 
     @property
     def registry(self) -> Path:
-        candidate = self.root / "registry.sqlite3"
+        candidate = (
+            self.path(
+                "campaigns", self.review_namespace, "benchmark", "registry.sqlite3"
+            )
+            if self.review_namespace is not None
+            else self.root / "registry.sqlite3"
+        )
         _no_symlinks(candidate, self.repository)
         return candidate
 

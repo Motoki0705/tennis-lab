@@ -8,10 +8,12 @@
 | `dpt_pretrain` | ランダム初期化、または同run再開 | `dpt_pretrain/`。CNN＋DPT、observed正例と確認済み不在のheatmap教師 |
 | `coordinates` | `--initialize scratch` | `coordinates/scratch.py`。pose32条件/query-only4条件、observed座標、constant LR |
 | `coordinates` | `--initialize encoder` | `coordinates/finetune.py`。完了DPTのCNN転送、query-only、拡張、freeze→joint |
+| `coordinates` | `--initialize full_model` | `coordinates/full_model.py`。採用query checkpointの全重みを転送し、optimizer/scheduleを初期化。累積trainと固定validationを個別指定 |
 | `hybrid` | Hydra `initialization.mode=query` | `hybrid/runner.py`。2段目のencoder/queryを転送し、DPTと両headを新規初期化 |
 | `hybrid` | Hydra `initialization.mode=continual` | 採用hybridの全重みを、新しい累積snapshotへweights-only転送 |
 
-座標系のepoch更新は `coordinates/loop.py` と `runtime/execution.py` を共有する。
+encoder/full_modelのrunは`coordinates/joint.py`、座標系のepoch更新は `coordinates/loop.py` と `runtime/execution.py` を共有する。
+注釈公開後の共通Learningへの接続は[annotation/](annotation/README.md)。固定intent、工程receipt、比較と採用条件を検証する。
 JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`、epoch内FPS混合は `sampling.py`。
 段階別runnerが他のrunnerから共通関数をimportしない。評価は `evaluation/`、保存形式は `checkpoints/` が担当する。
 窓datasetは同じsampleに`position_valid`と`heatmap_valid`を供給し、各objectiveが使う教師を明示する。
@@ -54,6 +56,18 @@ CPUはJPEG byte列まで、nvJPEGでRGB uint8へ復号し、モデル内FP32で�
 OpenCVとnvJPEGには画素差があるため、評価時は保存decoder/API/versionを照合し、変更は明示overrideで記録する。
 
 ## 学習済み重みと再開
+
+追加学習は`--stage coordinates --initialize full_model`を使用し、`--manifest`に累積train、
+`--validation-manifest`に固定validationのwindow manifest、`--initial-checkpoint`に採用済みの
+query posttraining v1、`--initial-checkpoint-sha256`にそのSHA-256を明示する。
+`--augmentation-config`・新しい`--output`と学習予算/runtime引数はencoder初期化と共通。
+親と新しいtrainのmanifestが異なっていてもよい。validationのclip/source groupがtrainに混入した場合、
+またはCommon評価subsetが無い場合はモデル初期化前に停止する。
+
+全パラメータ・bufferの名前/dtype/shape/値を照合し、入力前処理とJPEG decoder契約を継承する。
+親checkpointのoptimizer・epoch・step・bestは使わず、AdamWとscheduleをstep 0から開始する。
+親ファイルhash・全重みhash・train/validation各manifest hashをrecipe/checkpointに保存し、
+両manifestをrunへ複製する。これらの入力はrunの途中では変更できない。
 
 5chの3段目（hybrid）の構造と初期化APIは [models/mdd](../models/mdd/README.md#3段目への重み転送) にある。
 1段目は `mdd_dpt_rgb_mdd.yaml`、2段目はその保存構成を引き継ぐ。
@@ -119,6 +133,11 @@ manifest生成時にmetadata内の元注釈path/SHA・clip/frame対応を照合�
 hybridの読込・評価・同run再開では元注釈を再度開かない。1段目DPTも読込時に同じ検証・除外を行う。
 
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
+保存済みbestの指標は、学習時と同じrecipeの`selection_scope`で再計算して照合する。
+`balanced_existing_new`では既存・新規validationの等重み平均を使い、Commonで代用しない。
+最終epoch保存後に完了記録を残す前に停止した場合は、更新を追加せず残りのstress評価と完了記録を再開する。
+full_modelでは元の初期checkpoint/hashを指定したまま、当該run内のcheckpointを`--resume`に渡す。
+新しい親モデル・累積データを使う次サイクルと、同一サイクルの中断再開を区別する。
 coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習のcosineでは元の総予算を維持する。
 `--stop-after-epoch`によるDPTの診断停止も元の総予算を変えない。自動で次stageを起動しない。
 
@@ -143,11 +162,12 @@ freeze/供給源/snapshot/コードを要求し、optimizerとRNGを復元する
 snapshotのindex/metadataは変わっている必要があり、既存clipとそのsplitを保持する。
 旧clipの注釈更新は新snapshotのhashとして記録される。同snapshotでmodeだけ変えて再開することは拒否する。
 
-このブランチには#1088/#1136の学習adapterがないため、接続APIを用意している。
-adapterは`training.hybrid.runner.train_hybrid(DictConfig)`へ累積snapshotのmanifestと
-採用checkpointを渡す。推論は`model_io.mdd_hybrid.load_mdd_hybrid_detector(path)`、
+hybridの接続APIは`training.hybrid.runner.train_hybrid(DictConfig)`で、累積snapshotのmanifestと
+採用checkpointを受け取る。推論は`model_io.mdd_hybrid.load_mdd_hybrid_detector(path)`、
 独立した固定holdoutの採点は`evaluation.hybrid.evaluate_hybrid(...)`を使える。
 fixtureで新snapshotへの全重み転送・optimizer/stepリセット・追加学習・評価を確認する。
+現行の注釈・継続学習adapterはqueryモデル専用で、hybridは未接続。
+接続前に必要な設計判断は[annotation/](annotation/README.md#hybridの接続境界)を参照する。
 公開snapshot作成・採否・deployはadapter側の責任で、このAPIは自動実行しない。
 
 ## 評価と可視化
@@ -155,7 +175,16 @@ fixtureで新snapshotへの全重み転送・optimizer/stepリセット・追加
 位置が既知のobserved GTだけを座標loss/誤差に使う。不明位置には教師を作らない。
 validationは同じclip/frame/FPSを窓中心に近い予測で一度採点し、同距離なら早いstartを使う。
 Commonはpose側とGT/split等のidentityが一致するsubset、Fullは全validation。
-FPSごとの平均source-pixel誤差を等重み平均し、事後学習のbestはclean Commonで選ぶ。testは使わない。
+full_modelの単独CLI評価は`--mode coordinates --split val --manifest <固定validation manifest>`を使い、保存済み`validation_manifest_sha256`と照合する。累積trainのmanifestでは代用できない。
+FPSごとの平均source-pixel誤差を等重み平均する。事後学習のbestは既定ではclean Common、
+新旧cohortを持つ固定manifestでは明示した`balanced_existing_new`で選ぶ。選択にtestは使わない。
+注釈cycleのreplay比率・新旧評価・最終採否は[annotation/](annotation/README.md)を参照する。
+
+`evaluation/fixed_validation.py`は採用MDDと候補の学習manifestが異なる場合も、同じ固定validation loader、
+decoder・precision・compile設定で比較する。採点するFPS/clip/frame集合を教師maskから事前計算し、
+両モデルの実採点集合hashと支持数を照合する。全scope/FPSに教師が必要で、欠測を別scopeで代用しない。
+比較artifactには両checkpoint/state hash・各学習manifest hash・固定validation hash・runtime・
+Common/Full/source別指標と候補−baseline差を保存する。この比較API自体は採用閾値を持たない。
 
 hybridも同じ窓中心優先、FPS別・source別・Full/Common集計を使い、平均・P95と支持数を出す。
 位置誤差は存在判定で選別する前のheatmap座標を、全observed GTに対して採点する。

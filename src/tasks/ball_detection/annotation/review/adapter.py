@@ -43,6 +43,17 @@ from .validation import (
 class BallReviewAdapter:
     task = "ball"
 
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        context: ReviewContext,
+        revision: ArtifactRef,
+        receipt: AdoptionReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        from .storage import retained_references
+
+        return retained_references(layout, context, revision, receipt)
+
     def initialize(
         self, layout: AnnotationLayout, context: ReviewContext, manifest: ClipManifest
     ) -> BallLabels:
@@ -120,7 +131,7 @@ class BallReviewAdapter:
             predictions,
             allowed_revisions=lineage(layout, context, command.expected_revision),
         )
-        result = apply_operations(
+        result: ChangeResult = apply_operations(
             labels, edits, manifest, policy, predictions, saved, command.actor
         )
         self.validate(layout, context, manifest, result.payload)
@@ -261,7 +272,7 @@ class BallReviewAdapter:
                     else "unresolved"
                     if not resolved(f)
                     else f.decision.presence,
-                    detail=brief(f),
+                    detail=f"digest={f.sha256} {brief(f)}",
                 )
                 for f in labels.frames[start : scope.stop]
             ),

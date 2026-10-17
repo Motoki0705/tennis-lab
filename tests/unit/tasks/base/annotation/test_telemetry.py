@@ -260,6 +260,8 @@ def test_distinct_responses_receive_preceding_outputs_and_usage_is_not_notificat
     output = second.tool_outputs[0]
     assert output.category == "render" and output.text_chars == 3
     assert output.images[0].source == fixture.catalog[0]
+    assert output.images[0].image == fixture.catalog[0].image
+    assert not fixture.layout.path("cache", "presented-images").exists()
     assert second.context_window == 400000 and second.context_proxy_tokens == 110
     assert report.responses == 2 and report.duplicate_usage_records == 2
     assert report.token_notifications == 2 and report.totals["input_tokens"] == 200
@@ -460,6 +462,51 @@ def test_identical_images_do_not_use_batch_order_to_guess_metadata(
     )
     assert not presented_images(fixture.layout, ref)
     assert verify_report(fixture.layout, ref).unbound_image_inputs == 2
+    response = next(iter_responses(fixture.layout, ref))
+    for image in response.tool_outputs[0].images:
+        assert image.image not in (original.image, second.image)
+        assert fixture.layout.artifact_path(image.image).read_bytes() == picture()
+
+
+def test_unique_view_path_reuses_only_the_matching_immutable_image(
+    fixture: Fixture,
+) -> None:
+    original = fixture.catalog[0]
+    second = RenderedImage(
+        image=write_asset(
+            fixture.layout, fixture.layout.path("cache", "same.png"), picture()
+        ),
+        metadata=write_asset(
+            fixture.layout, fixture.layout.path("cache", "other.json"), b'{"frame":11}'
+        ),
+    )
+    fixture.catalog = (original, second)
+    tool = fixture.tool("view", images=(picture(),))
+    ref = fixture.run(
+        tool[0],
+        event(
+            "event_msg",
+            type="item_completed",
+            item={
+                "type": "ImageView",
+                "path": fixture.layout.artifact_path(second.image).as_uri(),
+            },
+        ),
+        tool[1],
+        usage("a"),
+    )
+    image = next(iter_responses(fixture.layout, ref)).tool_outputs[0].images[0]
+    assert image.binding == "exact_bytes_and_view_path"
+    assert image.image == second.image and image.source == second
+    assert not fixture.layout.path("cache", "presented-images").exists()
+    verify_report(fixture.layout, ref)
+
+
+def test_shared_renderer_image_corruption_is_detected(fixture: Fixture) -> None:
+    ref = fixture.run(*fixture.tool("view", images=(picture(),)), usage("a"))
+    fixture.layout.artifact_path(fixture.catalog[0].image).write_bytes(picture("blue"))
+    with pytest.raises(ValueError, match="artifact (hash|missing or size) changed"):
+        verify_report(fixture.layout, ref)
 
 
 def test_compaction_does_not_claim_discarded_context_images_were_seen(

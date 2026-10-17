@@ -25,7 +25,7 @@ class BudgetLimits(Document):
     additional_storage_bytes: PositiveInt
     minimum_free_bytes: PositiveInt
     total_pss_bytes: PositiveInt
-    gpu_seconds: PositiveInt
+    gpu_seconds: PositiveInt | None
 
     @classmethod
     def from_budget(cls, budget: ResourceBudget) -> BudgetLimits:
@@ -39,6 +39,7 @@ class BudgetScope(Document):
     scope_id: Identifier
     limits: BudgetLimits
     roots: tuple[str, ...] = Field(min_length=1)
+    free_space_mounts: tuple[str, ...] = ()
     baseline: ArtifactRef
     previously_allocated_bytes: int = Field(ge=0)
     previously_used_gpu_seconds: float = Field(ge=0)
@@ -58,6 +59,14 @@ class BudgetScope(Document):
             if i != j
         ):
             raise ValueError("storage roots must not overlap")
+        mounts = [Path(path) for path in self.free_space_mounts]
+        if len(set(mounts)) != len(mounts) or any(
+            not path.is_absolute() or str(path.resolve()) != str(path)
+            for path in mounts
+        ):
+            raise ValueError(
+                "free-space mounts must be unique normalized absolute paths without symlinks"
+            )
         return self
 
 
@@ -101,6 +110,9 @@ class GPUUsage(Document):
 class ResourceSample(Document):
     measured_at: str
     storage_measured_at: str
+    clock_boot_id: str | None = None
+    measured_monotonic_ns: int | None = Field(default=None, ge=0)
+    storage_measured_monotonic_ns: int | None = Field(default=None, ge=0)
     scope_id: Identifier
     storage: StorageUsage
     processes: tuple[ProcessUsage, ...]
@@ -113,3 +125,26 @@ class ResourceSample(Document):
     active_by_stage: dict[str, int]
     pending_by_stage: dict[str, int]
     stopped_reason: str | None
+    free_space_mount_bytes: dict[str, int] = Field(default_factory=dict)
+
+
+class ObservedHostSpacePolicy(Document):
+    """Explicitly monitor an indirect host volume instead of reserving writes there."""
+
+    scope: ArtifactRef
+    plan: ArtifactRef
+    mount: str
+    minimum_free_bytes: PositiveInt
+    authorization: ArtifactRef
+    reason: str = Field(min_length=1)
+
+
+class BudgetResumption(Document):
+    """Prepared evidence; the registry commits it atomically with clearing the stop."""
+
+    schema_version: Literal["annotation.budget-resumption.v1"] = (
+        "annotation.budget-resumption.v1"
+    )
+    scope: ArtifactRef
+    reason: str = Field(min_length=1)
+    checked_sample: ResourceSample

@@ -10,7 +10,7 @@ from typing import Any
 
 from PIL import Image
 
-from ..artifacts import write_asset
+from ..artifacts import verify_reference, write_asset
 from ..paths import AnnotationLayout
 from .contracts import ImageInput, RenderedImage
 
@@ -51,9 +51,6 @@ def archive_image(
     suffix, mime = extensions[kind]
     if prefix != f"data:{mime};base64":
         raise ValueError("image MIME and actual encoded format differ")
-    actual = write_asset(
-        layout, layout.path("cache", "presented-images", digest + "." + suffix), data
-    )
     candidates = [
         entry
         for entry in catalog
@@ -71,6 +68,17 @@ def archive_image(
         ]
         if len(matched) == 1:
             source, binding = matched[0], "exact_bytes_and_view_path"
+    if source is None:
+        actual = write_asset(
+            layout, layout.path("cache", "presented-images", digest + "." + suffix), data
+        )
+    else:
+        # Reuse an immutable renderer artifact only after comparing it to the
+        # logged bytes. The work image and a guessed metadata match are never
+        # substitutes for the data URL that the model actually received.
+        if verify_reference(layout, source.image).read_bytes() != data:
+            raise ValueError("rendered image differs from the logged image bytes")
+        actual = source.image
     result: ImageInput = ImageInput.model_validate(
         {
             "image": actual,

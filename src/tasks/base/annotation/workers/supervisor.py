@@ -22,8 +22,8 @@ from ..plan import load_plan, references
 from ..reproducibility import require_frozen_code
 from ..resources import ResourceManager
 from .command import codex_command, worker_environment
-from .contracts import ExitReceipt, Launch
-from .processes import capture_supervisor, owned_members, signal_owned
+from .contracts import ChildIdentity, ChildReceipt, ExitReceipt, Launch
+from .processes import capture_supervisor, owned_members, process_snapshot, signal_owned
 
 
 def event_summary(path: Path) -> tuple[str | None, bool, str | None, bool]:
@@ -103,7 +103,13 @@ def supervise(
         raise ValueError("test command/root is forbidden in production")
     plan = load_plan(verify_reference(layout, launch.plan))
     if layout.mode == "production":
-        require_frozen_code(Path(launch.code_root), plan)
+        require_frozen_code(
+            Path(launch.code_root),
+            plan,
+            layout=layout,
+            revision=launch.code_revision,
+            scope=launch.resource_scope,
+        )
     for reference in references(launch.request):
         verify_reference(layout, reference)
     owner = capture_supervisor(os.getpid())
@@ -156,6 +162,21 @@ def supervise(
                     cwd=directory / "work",
                     env=worker_environment(launch, plan),
                 )
+                snapshot = process_snapshot(child.pid)
+                write_document(
+                    layout,
+                    directory / "child.json",
+                    ChildReceipt(
+                        launch_digest=ref.digest,
+                        captured_at=datetime.now(UTC).isoformat(),
+                        process=None
+                        if snapshot is None
+                        else ChildIdentity(**snapshot[0].document()),
+                        unavailable_reason="child exited before its identity was captured"
+                        if snapshot is None
+                        else None,
+                    ),
+                )
                 deadline = time.monotonic() + launch.timeout_seconds
                 while True:
                     remaining = deadline - time.monotonic()
@@ -166,8 +187,8 @@ def supervise(
                         break
                     except subprocess.TimeoutExpired:
                         if resources is not None:
-                            # Budget exhaustion latches a stop for NEW submissions.
-                            # This worker still has its frozen timeout and reservation.
+                            # Reserved mode only latches new-admission stops. Explicit
+                            # observed-host mode raises here to terminate owned work.
                             resources.watch()
             except subprocess.TimeoutExpired:
                 status, reason, code = (

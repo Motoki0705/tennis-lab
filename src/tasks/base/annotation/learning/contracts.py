@@ -17,6 +17,7 @@ from ..contracts import (
     after_validator,
 )
 from ..execution.contracts import QueueConfiguration
+from ..reproducibility import CodeBoundDocument
 
 _M = TypeVar("_M")
 
@@ -62,9 +63,13 @@ class FixedEvaluation(Document):
     task: Identifier
     validation: DatasetPartition
     test: DatasetPartition | None
+    recipe: ArtifactRef | None = None
+    original: ArtifactRef | None = None
 
     @_after
     def split_names(self) -> Self:
+        if (self.recipe is None) != (self.original is None):
+            raise ValueError("resolved evaluation requires both original evaluation and recipe")
         if self.validation.split != "validation" or (
             self.test is not None and self.test.split != "test"
         ):
@@ -86,6 +91,7 @@ class LearningIntent(Document):
     recipe: ArtifactRef
     fixed_evaluation: ArtifactRef
     selection_policy: ArtifactRef | None
+    evaluation_recipe: ArtifactRef | None = None
 
     @_after
     def coherent(self) -> Self:
@@ -123,6 +129,7 @@ class EvaluationReceipt(Document):
     baseline: ModelState
     validation: DatasetPartition
     metrics: ArtifactRef
+    test: DatasetPartition | None = None
 
 
 class CompletedStage(Document):
@@ -165,7 +172,7 @@ class StageCost(Document):
         return self
 
 
-class LearningRuntime(Document):
+class LearningRuntime(CodeBoundDocument):
     scope: ArtifactRef
     queue: QueueConfiguration
     train: StageCost
@@ -206,6 +213,7 @@ class Retry(Document):
     previous: ArtifactRef
     reason: str = Field(min_length=1)
     resume_checkpoint: ArtifactRef | None
+    resume_dependencies: tuple[ArtifactRef, ...]
 
 
 class StageFailure(Document):

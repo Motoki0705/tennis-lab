@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from threading import Event
+from typing import Any
 
 import pytest
 
@@ -39,7 +40,12 @@ from src.tasks.base.annotation.execution.runner import (
     stage_lock,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
+from src.tasks.base.annotation.plan import (
+    CampaignPlan,
+    file_digest,
+    references,
+    save_plan,
+)
 from src.tasks.base.annotation.reproducibility import require_frozen_code
 from src.tasks.base.annotation.resources import (
     BudgetLimits,
@@ -169,8 +175,18 @@ def wait_exit(runner: StageRunner, ref: ArtifactRef) -> dict[str, object]:
 
 def test_cpu_receipt_resume_and_accounted_runtime_caches(setup: tuple) -> None:
     layout, manager, launch = setup
+    input_ref = write_asset(
+        layout, layout.path("campaigns", "operation-input"), b"input"
+    )
+    dependency = write_asset(layout, layout.path("campaigns", "input-media"), b"media")
     code = "import json,os;print(json.dumps({k:os.environ[k] for k in ('TMPDIR','TORCH_HOME','CUDA_CACHE_PATH','CUDA_VISIBLE_DEVICES','OMP_NUM_THREADS')}))"
-    launch = launch.model_copy(update={"command": (sys.executable, "-c", code)})
+    launch = launch.model_copy(
+        update={
+            "command": (sys.executable, "-c", code),
+            "input": input_ref,
+            "dependencies": (dependency,),
+        }
+    )
     runner = StageRunner(layout)
     result = runner.submit(launch)
     ref = ArtifactRef.model_validate(result["launch"])
@@ -190,6 +206,112 @@ def test_cpu_receipt_resume_and_accounted_runtime_caches(setup: tuple) -> None:
     assert StageRunner(layout).submit(launch)["state"] == "succeeded"
     assert (directory / "exit.json").read_bytes() == before
     assert manager.sample().gpu_charged_seconds == 0
+    retained = {
+        reference
+        for record in manager.storage.catalog.snapshot().protections
+        for reference in record.references
+    }
+    assert {ref, input_ref, dependency} <= retained
+
+
+def test_watchdog_emergency_terminates_the_stage_child(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, manager, launch = setup
+    original = subprocess.Popen
+
+    def with_emergency(command: list[str], **kwargs: Any) -> Any:
+        if command[1:3] == ["-m", "src.tasks.base.annotation.execution"]:
+            injected = (
+                "import runpy; from src.tasks.base.annotation.resources import ResourceManager, BudgetStopped\n"
+                "def emergency(self): raise BudgetStopped('synthetic observed host space emergency')\n"
+                "ResourceManager.watch = emergency\n"
+                "runpy.run_module('src.tasks.base.annotation.execution', run_name='__main__')\n"
+            )
+            command = [command[0], "-c", injected, *command[3:]]
+        return original(command, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", with_emergency)
+    launch = launch.model_copy(
+        update={
+            "command": (sys.executable, "-c", "import time; time.sleep(60)"),
+            "timeout_seconds": 90.0,
+        }
+    )
+    runner = StageRunner(layout)
+    result = runner.submit(launch)
+    ref = ArtifactRef.model_validate(result["launch"])
+    state = wait_exit(runner, ref)
+    assert state["state"] == "failed"
+    directory = stage_directory(layout, launch)
+    receipt = read_document(
+        layout, annotation_reference(layout, directory / "exit.json"), StageExit
+    )
+    assert "synthetic observed host space emergency" in receipt.reason
+    assert receipt.elapsed_seconds < 15
+    from src.tasks.base.annotation.workers.processes import ProcessIdentity
+
+    owner = ProcessIdentity.from_document(
+        json.loads((directory / "owner.json").read_text())
+    )
+    assert not owned_members(owner)
+    assert manager.sample().active_by_stage == {}
+
+
+def test_queue_wait_protects_launch_and_explicit_input_dependencies(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, manager, launch = setup
+    input_ref = write_asset(
+        layout, layout.path("campaigns", "operation-input"), b"input"
+    )
+    dependency = write_asset(layout, layout.path("campaigns", "input-media"), b"media")
+    launch = launch.model_copy(
+        update={
+            "queue": queue_config(layout),
+            "resource": launch.resource.model_copy(
+                update={"stage": "gpu", "gpu_seconds": 30.0}
+            ),
+            "input": input_ref,
+            "dependencies": (dependency,),
+        }
+    )
+
+    def queued(
+        layout: AnnotationLayout,
+        config: QueueConfiguration,
+        reference: ArtifactRef,
+        code: Path,
+    ) -> str:
+        assert manager._row(launch.resource)["state"] == "pending"
+        protections = manager.storage.catalog.snapshot().protections
+        retained = {ref for record in protections for ref in record.references}
+        assert {reference, input_ref, dependency, manager.scope.baseline} <= retained
+        assert not any(
+            record.protection_id.startswith("resource-attempt-v1-")
+            for record in protections
+        )
+        return "fixture.job"
+
+    monkeypatch.setattr("src.tasks.base.annotation.execution.runner.enqueue", queued)
+    result = StageRunner(layout).submit(launch)
+    assert result["state"] == "queued"
+    before = manager.storage.catalog.snapshot().digest
+    assert StageRunner(layout).submit(launch) == result
+    assert manager.storage.catalog.snapshot().digest == before
+
+
+def test_missing_explicit_dependency_rejects_stage_before_admission(
+    setup: tuple,
+) -> None:
+    layout, manager, launch = setup
+    dependency = write_asset(layout, layout.path("campaigns", "input-media"), b"media")
+    layout.artifact_path(dependency).unlink()
+    launch = launch.model_copy(update={"dependencies": (dependency,)})
+    with pytest.raises(ValueError, match="artifact missing"):
+        StageRunner(layout).submit(launch)
+    with pytest.raises(ValueError, match="missing"):
+        manager._row(launch.resource)
 
 
 def test_timeout_reaps_all_operation_descendants(setup: tuple) -> None:
@@ -262,6 +384,25 @@ def live_queue_config(
             PROJECT_ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
         ).read_bytes()
     )
+    # Keep the real repro capture, but do not scan the developer checkout on
+    # every job before the resource-wait assertions can start.
+    repro_source = layout.repository / "repro-source"
+    subprocess.run(["git", "init", "-q", str(repro_source)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture",
+        ],
+        cwd=repro_source,
+        check=True,
+    )
     # Every namespace, including the system-lock probe, belongs to this test.
     for name in tuple(os.environ):
         if name.startswith("TRAINING_QUEUE_TEST_"):
@@ -272,6 +413,8 @@ def live_queue_config(
         "TRAINING_QUEUE_SYSTEM_LOCK_FILE": str(layout.repository / "system.lock"),
         "TRAINING_QUEUE_TEST_TERM_GRACE_SECONDS": "1",
         "GIT_CEILING_DIRECTORIES": str(PROJECT_ROOT),
+        "GIT_DIR": str(repro_source / ".git"),
+        "GIT_WORK_TREE": str(repro_source),
         "CUDA_VISIBLE_DEVICES": "",
     }.items():
         monkeypatch.setenv(name, value)
@@ -380,6 +523,11 @@ def test_queued_capacity_wait_reuses_unexecuted_request(
     )
     assert not list((Path(config.directory) / "failed").glob("*.job"))
     assert (stage_directory(layout, launch) / "stdout.log").read_text() == "completed\n"
+    repro = json.loads(
+        (Path(config.directory) / "repro" / Path(job).stem / "run.json").read_text()
+    )
+    assert repro["repo_root"] == str(layout.repository / "repro-source")
+    assert repro["commit"]
 
 
 @pytest.mark.parametrize("action", ["budget_stop", "resource_cancel", "queue_cancel"])
@@ -715,10 +863,10 @@ def test_gpu_stage_requires_queue_and_keeps_queue_process_group(
             ),
         }
     )
-    manager.submit(launch.resource)
     ref = write_document(
         layout, stage_directory(layout, launch) / "launch.json", launch
     )
+    manager.submit(launch.resource, inputs=(ref, *references(launch)))
     repro = Path(config.directory) / "repro/synthetic"
     repro.mkdir(parents=True)
     (repro / "run.json").write_text(
