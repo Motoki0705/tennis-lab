@@ -499,6 +499,45 @@ def test_apply_auto_logs_tip_and_branch_is_restorable(lab: Lab) -> None:
     assert lab.git("config", "branch.feat/logged.description") == "line one\nline two"
 
 
+@pytest.mark.parametrize("has_config", [False, True])
+def test_branch_config_does_not_capture_longer_branch_names(
+    lab: Lab, has_config: bool
+) -> None:
+    tip = lab.branch("feat/x")
+    sibling_tip = lab.branch("feat/x.v2")
+    lab.pr("feat/x", tip)
+    lab.git("config", "branch.feat/x.v2.remote", "sibling-remote")
+    lab.git("config", "branch.feat/x.v2.merge", "refs/heads/feat/x.v2")
+    expected_config = (
+        [
+            ["branch.feat/x.remote", "origin"],
+            ["branch.feat/x.merge", "refs/heads/feat/x"],
+        ]
+        if has_config
+        else []
+    )
+    for key, value in expected_config:
+        lab.git("config", key, value)
+    before = lab.git("config", "--local", "--list")
+
+    proc = lab.run("apply-auto")
+    assert proc.returncode == 0, proc.stderr
+    assert not lab.has_branch("feat/x")
+    assert lab.tip("feat/x.v2") == sibling_tip
+    assert lab.git("config", "branch.feat/x.v2.remote") == "sibling-remote"
+    assert lab.git("config", "branch.feat/x.v2.merge") == "refs/heads/feat/x.v2"
+    records = lab.log()
+    assert [r["phase"] for r in records] == ["intent", "done"]
+    assert all(r["branch_config"] == expected_config for r in records)
+
+    # Restore only the deleted branch's settings; the sibling must be unchanged.
+    lab.git("branch", "feat/x", records[0]["tip"])
+    for key, value in records[0]["branch_config"]:
+        lab.git("config", "--add", key, value)
+    assert lab.tip("feat/x") == tip
+    assert lab.git("config", "--local", "--list") == before
+
+
 # ----------------------------------------------- approved worktree removal: clean only
 
 
@@ -641,6 +680,51 @@ def test_approved_branch_delete_with_tip_guard(lab: Lab) -> None:
     proc = lab.run("delete", "feat/checked-out")
     assert proc.returncode == 1 and "checked_out_in_worktree" in proc.stderr
     assert wt.exists() and lab.has_branch("feat/checked-out")
+
+
+@pytest.mark.parametrize("prefix", ["", "branch:"])
+@pytest.mark.parametrize("suffix_length", [7, 40])
+def test_approved_delete_rejects_ambiguous_branch_id(
+    lab: Lab, prefix: str, suffix_length: int
+) -> None:
+    tip = lab.branch("feat/target")
+    full_name = f"feat/target@{tip[:suffix_length]}"
+    full_tip = lab.branch(full_name)
+    other_tip = lab.branch("feat/other")
+
+    # A matching SHA suffix must not redirect approval to the shorter branch,
+    # and argument validation must finish before any deletion in the batch.
+    proc = lab.run("delete", "branch:feat/other", f"{prefix}{full_name}")
+    assert proc.returncode == 1 and "ambiguous ID" in proc.stderr
+    assert lab.tip("feat/target") == tip
+    assert lab.tip(full_name) == full_tip
+    assert lab.tip("feat/other") == other_tip
+    assert lab.log() == []
+
+    # Appending the complete branch's own tip makes the intended ID explicit.
+    proc = lab.run("delete", f"{prefix}{full_name}@{full_tip[:12]}")
+    assert proc.returncode == 0, proc.stderr
+    assert not lab.has_branch(full_name)
+    assert lab.tip("feat/target") == tip
+    (record,) = [r for r in lab.log() if r["phase"] == "done"]
+    assert record["id"] == f"branch:{full_name}" and record["tip"] == full_tip
+
+
+def test_approved_delete_rejects_ambiguous_worktree_id(lab: Lab) -> None:
+    short_path = _clean_pushed_worktree(lab, "target")
+    tip = lab.tip("feat/target")
+    full_path = _clean_pushed_worktree(lab, f"target@{tip[:7]}")
+
+    proc = lab.run("delete", wt_id(full_path))
+    assert proc.returncode == 1 and "ambiguous ID" in proc.stderr
+    assert short_path.exists() and full_path.exists()
+    assert lab.log() == []
+
+    full_tip = lab.git("rev-parse", "HEAD", cwd=full_path)
+    proc = lab.run("delete", f"{wt_id(full_path)}@{full_tip[:12]}")
+    assert proc.returncode == 0, proc.stderr
+    assert short_path.exists() and not full_path.exists()
+    assert lab.has_branch(f"feat/target@{tip[:7]}")
 
 
 # ---------------------------------------------------------------------- protection

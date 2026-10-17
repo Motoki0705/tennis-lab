@@ -27,7 +27,8 @@ def test_pretraining_cli_saves_evaluation_gif_and_transferable_encoder(tmp_path:
     result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "dpt_pretrain",
         "--manifest", plan["datasets"]["mdd_only"]["path"], "--model-config", str(model_config),
         "--output", str(output), "--epochs", "1", "--windows-per-epoch", "3", "--warmup-updates", "0",
-        "--learning-rate", ".001", "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv",
+        "--learning-rate", ".001", "--seed", "42", "--input-verification", "upfront",
+        "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv",
         "--num-workers", "0", "--compile-mode", "off", "--preview-clips", "1"],
         env=env, text=True, capture_output=True, timeout=120)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -52,6 +53,7 @@ def test_diagnostic_prefix_resumes_with_the_original_schedule_and_weights(tmp_pa
     command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "dpt_pretrain",
         "--manifest", plan["datasets"]["mdd_only"]["path"], "--model-config", str(model_config),
         "--epochs", "2", "--windows-per-epoch", "3", "--warmup-updates", "1", "--learning-rate", ".001",
+        "--seed", "42", "--input-verification", "upfront",
         "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv", "--num-workers", "0",
         "--compile-mode", "off", "--preview-clips", "0", "--log-every", "1"]
 
