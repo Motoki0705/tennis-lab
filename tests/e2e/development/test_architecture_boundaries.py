@@ -421,7 +421,8 @@ EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
     ("src.tasks.blcs.training.losses.BLCSLoss.forward", "Python raise"): 2,
     # Native RGB preprocessing guards only static dtype/shape metadata. These
     # deliberately reject ambiguous inputs; fullgraph capture is covered by
-    # test_native_mdd.py and the real CUDA/Inductor numerical diagnostic.
+    # tests/unit/tasks/ball_detection/preprocessing/test_mdd.py and the real
+    # CUDA/Inductor numerical diagnostic.
     (
         "src.tasks.ball_detection.preprocessing.mdd.RGBToMDD.forward",
         "Python raise",

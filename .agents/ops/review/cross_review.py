@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Poll open PRs, cross-review them with the other agent, and run the merge gate.
+"""Poll open agent-authored PRs, review them with Codex, and run the merge gate.
 
 The rules (authorship, review, dedup, gate, auto-merge flag) are documented in
 README.md next to this file. All data given to the reviewer is collected here
@@ -33,17 +33,14 @@ from opsproc import CommandError, run, run_process_group  # noqa: E402
 from review_policy import (  # noqa: E402
     CHANGES_REQUESTED_LABEL,
     ESCALATION_STREAK,
-    FOLLOWUP_LABEL,
     NEEDS_HUMAN_LABEL,
+    REVIEWER,
     AuthorConflictError,
     Check,
     Comment,
-    Finding,
-    FollowupData,
     GateDecision,
     GateInput,
     GateResult,
-    Issue,
     Review,
     ReviewRecord,
     ReviewTarget,
@@ -51,8 +48,6 @@ from review_policy import (  # noqa: E402
     escalated_streaks,
     escalation_marker,
     evaluate_gate,
-    followup_issues,
-    followup_marker,
     gate_marker,
     gate_records,
     gate_should_comment,
@@ -61,12 +56,10 @@ from review_policy import (  # noqa: E402
     load_shared_patterns,
     neutralize_markers,
     normalize_rollup,
-    parse_followup_data,
     parse_review,
     request_changes_streak,
-    review_header,
+    review_marker,
     review_records,
-    reviewer_for,
 )
 
 HERE = Path(__file__).resolve().parent
@@ -75,6 +68,9 @@ EXIT_LOCKED = 75
 MAX_DIFF_CHARS = 200_000
 MAX_COMMENT_CHARS = 60_000
 TERM_GRACE_SECONDS = 10.0
+# agents.conf profile pinning the reviewer's model / effort / service tier
+# (REVIEW_CODEX_*), separate from the defaults other jobs use.
+REVIEW_PROFILE = "review"
 # Full diff written into the review worktree when the prompt copy is truncated (the
 # read-only reviewer can read files but cannot run git).
 FULL_DIFF_NAME = ".cross-review-full.diff"
@@ -193,46 +189,6 @@ class GitHub:
             cwd=self.repo,
         )  # fmt: skip
         return _printed_url(out, f"gh pr comment {number}")
-
-    def followup_candidates(self, author: str) -> list[Issue]:
-        """Issues (not PRs) with the follow-up label opened by ``author``, any state."""
-        pages = self._json(
-            "api",
-            "--paginate",
-            "--slurp",
-            f"repos/{{owner}}/{{repo}}/issues?labels={FOLLOWUP_LABEL}"
-            f"&state=all&creator={author}&per_page=100",
-        )
-        return [
-            Issue(
-                number=int(item["number"]),
-                author=str(item["user"]["login"]),
-                body=str(item["body"] or ""),
-                url=str(item["html_url"]),
-            )
-            for page in pages
-            for item in page
-            if "pull_request" not in item
-        ]
-
-    def edit_issue(self, number: int, issue: int, body: str) -> None:
-        run(
-            [
-                "gh", "issue", "edit", str(issue),
-                "--body-file", str(self._body_file("issue", number, body)),
-            ],
-            cwd=self.repo,
-        )  # fmt: skip
-
-    def create_issue(self, number: int, title: str, body: str, label: str) -> str:
-        out = run(
-            [
-                "gh", "issue", "create", "--title", title, "--label", label,
-                "--body-file", str(self._body_file("issue", number, body)),
-            ],
-            cwd=self.repo,
-        )  # fmt: skip
-        return _printed_url(out, f"gh issue create for #{number}")
 
     def add_label(self, number: int, label: str) -> None:
         run(["gh", "pr", "edit", str(number), "--add-label", label], cwd=self.repo)
@@ -356,7 +312,6 @@ def build_prompt(
     *,
     author: str,
     author_source: str,
-    reviewer: str,
     agents_md: str,
     changed: Sequence[str],
     checks: Sequence[Check],
@@ -371,7 +326,6 @@ def build_prompt(
         else "diff 全体を示します。"
     )
     prompt = string.Template(settings.prompt_template).substitute(
-        reviewer=reviewer,
         author=author,
         author_source=author_source,
         pr_number=pr.number,
@@ -392,7 +346,7 @@ def build_prompt(
 
 
 def run_reviewer(
-    settings: Settings, *, reviewer: str, cwd: Path, prompt: str, run_dir: Path
+    settings: Settings, *, cwd: Path, prompt: str, run_dir: Path
 ) -> Review:
     prompt_file = run_dir / "prompt.md"
     out_file = run_dir / "agent_output.md"
@@ -400,7 +354,8 @@ def run_reviewer(
     run_in_process_group(
         [
             str(settings.agent_exec),
-            "--agent", reviewer,
+            "--agent", REVIEWER,
+            "--profile", REVIEW_PROFILE,
             "--cwd", str(cwd),
             "--prompt-file", str(prompt_file),
             "--out", str(out_file),
@@ -433,13 +388,12 @@ def format_review_comment(
     *,
     author: str,
     author_source: str,
-    reviewer: str,
     elapsed: float,
     diff_truncated: bool,
 ) -> str:
     lines = [
-        review_header(target, reviewer, review),
-        f"## クロスレビュー（{reviewer} → {author} 作成PR）",
+        review_marker(target, REVIEWER, review.outcome),
+        f"## 自動レビュー（{REVIEWER} → {author} 作成PR）",
         "",
         f"- 判定: **{review.verdict}**",
         f"- 対象 head: `{target.head}`（merge-base `{target.merge_base}`、base `{pr.base_ref}`）",
@@ -482,15 +436,14 @@ REASON_TEXT = {
     "ci_failed": "失敗した CI check がある",
     "ci_pending": "CI が完了していない",
     "ci_missing_required": "必須 check（required_checks.txt）が未登録",
-    "review_missing": "最新 head へのクロスレビューが無い",
-    "review_request_changes": "クロスレビューが request_changes",
-    "review_comment_blocking": "クロスレビューが comment で、blocker/major の指摘がある",
+    "review_missing": "最新の対象への自動レビューが無い",
+    "review_request_changes": "自動レビューが request_changes",
     "touches_shared": "共有基盤パスに触れている",
 }
 
 
 def format_gate_comment(
-    target: ReviewTarget, result: GateResult, *, action: str, followup: str | None
+    target: ReviewTarget, result: GateResult, *, action: str
 ) -> str:
     lines = [
         gate_marker(target, result.decision.value, result.reasons),
@@ -500,8 +453,6 @@ def format_gate_comment(
         f"- 対象 head: `{target.head}`（merge-base `{target.merge_base}`）",
         f"- 動作: {action}",
     ]
-    if followup is not None:
-        lines.append(f"- 軽微指摘の追補 issue: {followup}")
     if result.reasons:
         lines += ["", "### 理由", ""]
         lines += [f"- `{reason}`: {REASON_TEXT[reason]}" for reason in result.reasons]
@@ -526,7 +477,6 @@ def review_head(
     *,
     author: str,
     author_source: str,
-    reviewer: str,
     target: ReviewTarget,
     diff: str,
     changed: Sequence[str],
@@ -550,7 +500,6 @@ def review_head(
         pr,
         author=author,
         author_source=author_source,
-        reviewer=reviewer,
         agents_md=git.show(pr.base_sha, "AGENTS.md"),
         changed=changed,
         checks=checks,
@@ -558,14 +507,13 @@ def review_head(
     )
     started = time.monotonic()
     report.note(
-        f"#{number}: reviewing head {pr.head_sha[:12]} with {reviewer} (author {author}); log {run_dir}"
+        f"#{number}: reviewing head {pr.head_sha[:12]} with {REVIEWER} (author {author}); log {run_dir}"
     )
     with git.review_worktree(pr) as worktree:
         if truncated:
             write_new_file(worktree / FULL_DIFF_NAME, diff)
         review = run_reviewer(
             settings,
-            reviewer=reviewer,
             cwd=worktree,
             prompt=prompt,
             run_dir=run_dir,
@@ -577,23 +525,18 @@ def review_head(
         review,
         author=author,
         author_source=author_source,
-        reviewer=reviewer,
         elapsed=elapsed,
         diff_truncated=truncated,
     )
     (run_dir / "review_comment.md").write_text(body, encoding="utf-8")
-    report.note(f"#{number}: {reviewer} verdict={review.verdict} ({elapsed:.0f}s)")
+    report.note(f"#{number}: {REVIEWER} verdict={review.verdict} ({elapsed:.0f}s)")
     url = None
     if settings.dry_run:
         print(f"----- [dry-run] review comment for #{number} -----\n{body}")
     else:
         url = gh.comment(number, body)
     return ReviewRecord(
-        target=target,
-        reviewer=reviewer,
-        outcome=review.outcome,
-        light_findings=review.light_findings,
-        url=url,
+        target=target, reviewer=REVIEWER, outcome=review.outcome, url=url
     )
 
 
@@ -659,7 +602,6 @@ def refetch_for_gate(
     git: Git,
     pr: PullRequest,
     reviewed: ReviewTarget,
-    reviewer: str,
     report: RunReport,
 ) -> PullRequest | None:
     """Re-read the PR right before the gate; ``None`` when the review no longer applies.
@@ -670,11 +612,10 @@ def refetch_for_gate(
     is not stale. Contradicting author signals raise, as on the first view.
     """
     fresh = gh.view(pr.number)
-    author = detect_author_agent(fresh.head_ref, fresh.labels)
-    if author is None or reviewer_for(author) != reviewer:
+    if detect_author_agent(fresh.head_ref, fresh.labels) is None:
         report.note(
-            f"#{pr.number}: author changed since the first view "
-            f"(branch={fresh.head_ref!r} labels={list(fresh.labels)}; reviewed by {reviewer}); "
+            f"#{pr.number}: no longer an agent-authored PR "
+            f"(branch={fresh.head_ref!r} labels={list(fresh.labels)}); "
             "gate deferred to the next poll"
         )
         return None
@@ -714,17 +655,16 @@ def process_pr(
         if pr.head_ref.startswith(f"{author}/")
         else f"label `agent:{author}`"
     )
-    reviewer = reviewer_for(author)
     comments = gh.comments(number)
     reviewed = review_input(git, pr)
     target = reviewed.target
 
     records = review_records(comments, trusted_login=login)
-    current = latest_review_for(records, target=target, reviewer=reviewer)
+    current = latest_review_for(records, target=target, reviewer=REVIEWER)
     if current is not None:
         report.note(
             f"#{number}: head {pr.head_sha[:12]} (merge-base {target.merge_base[:12]}) "
-            f"already reviewed by {reviewer}: {current.outcome.verdict}"
+            f"already reviewed by {REVIEWER}: {current.outcome.verdict}"
         )
     else:
         current = review_head(
@@ -734,7 +674,6 @@ def process_pr(
             pr,
             author=author,
             author_source=author_source,
-            reviewer=reviewer,
             target=target,
             diff=reviewed.diff,
             changed=reviewed.changed,
@@ -742,14 +681,13 @@ def process_pr(
             report=report,
         )
         records = (*records, current)
-    # Label, escalation and follow-up are re-derived from the recorded reviews on every
-    # poll, so a step that failed once is retried without reviewing again.
+    # Label and escalation are re-derived from the recorded reviews on every poll, so a
+    # step that failed once is retried without reviewing again.
     sync_review_label(settings, gh, pr, current.outcome.verdict)
-    escalate_streak(settings, gh, login, pr, reviewer, records, comments, report)
-    followup = ensure_followup_issue(settings, gh, login, pr, current, report)
+    escalate_streak(settings, gh, login, pr, records, comments, report)
 
     # Gate on the PR / CI state as it is now, for the exact target that was reviewed.
-    fresh = refetch_for_gate(gh, git, pr, target, reviewer, report)
+    fresh = refetch_for_gate(gh, git, pr, target, report)
     if fresh is None:
         return
     pr = fresh
@@ -770,7 +708,7 @@ def process_pr(
         f"#{number}: gate={result.decision.value} reasons={list(result.reasons)} "
         f"shared={[path for path, _ in result.shared_hits]}"
     )
-    apply_gate(settings, gh, login, pr, target, result, comments, followup, report)
+    apply_gate(settings, gh, login, pr, target, result, comments, report)
 
 
 def escalate_streak(
@@ -778,7 +716,6 @@ def escalate_streak(
     gh: GitHub,
     login: str,
     pr: PullRequest,
-    reviewer: str,
     records: Sequence[ReviewRecord],
     comments: Sequence[Comment],
     report: RunReport,
@@ -787,7 +724,7 @@ def escalate_streak(
 
     Once per streak (keyed by the streak's first review); a passing review starts over.
     """
-    streak = request_changes_streak(records, reviewer=reviewer)
+    streak = request_changes_streak(records, reviewer=REVIEWER)
     if len(streak) < ESCALATION_STREAK:
         return
     start = streak[0].target
@@ -797,7 +734,7 @@ def escalate_streak(
         escalation_marker(start),
         "## 人間の判断が必要です",
         "",
-        f"クロスレビュー（{reviewer}）が {len(streak)} 回連続で request_changes を返しました。"
+        f"自動レビュー（{REVIEWER}）が {len(streak)} 回連続で request_changes を返しました。"
         f"自動の修正・再レビューでは収束していないため、ラベル `{NEEDS_HUMAN_LABEL}` を付けました。"
         "merge gate は request_changes のあいだ blocked のままです。",
         "",
@@ -820,99 +757,6 @@ def escalate_streak(
     gh.comment(pr.number, body)
 
 
-def _finding_lines(findings: Sequence[Finding]) -> list[str]:
-    inert = neutralize_markers
-    lines = []
-    for finding in findings:
-        where = finding.path or "(全体)"
-        if finding.path and finding.line:
-            where = f"{finding.path}:{finding.line}"
-        lines.append(
-            f"- **{finding.severity}** `{inert(where)}` ({inert(finding.rule)}): "
-            f"{inert(finding.detail)}"
-        )
-    return lines
-
-
-def format_followup_issue(pr: PullRequest, review: ReviewRecord) -> str:
-    if review.url is None:
-        raise ValueError("a follow-up needs a posted review comment")
-    lines = [
-        followup_marker(pr.number, review.target.head),
-        FollowupData((review.url,), review.light_findings).line(),
-        f"PR #{pr.number}（{pr.url}）のクロスレビューは merge を止めない判定"
-        f"（`{review.outcome.verdict}`）でしたが、次の軽微な指摘がありました。"
-        "別 PR で対応するか、不要なら close してください。",
-        "",
-        f"- レビューコメント: {review.url}",
-        f"- 対象 head: `{review.target.head}`",
-        "",
-        "### 指摘",
-        "",
-        *_finding_lines(review.light_findings),
-        "",
-        "<sub>.agents/ops/review/cross_review.py による自動起票</sub>",
-    ]
-    return "\n".join(lines) + "\n"
-
-
-def extend_followup_issue(issue: Issue, review: ReviewRecord) -> str | None:
-    """The issue body with ``review``'s link and new findings appended, or ``None``
-    when the issue already lists that review. Text below the data line is kept."""
-    if review.url is None:
-        raise ValueError("a follow-up needs a posted review comment")
-    data = parse_followup_data(issue)
-    if review.url in data.reviews:
-        return None
-    merged = data.merged_with(review.url, review.light_findings)
-    new = merged.findings[len(data.findings) :]
-    first, _, rest = issue.body.split("\n", 2)
-    section = [
-        "",
-        f"### 再レビューでの追加（merge-base `{review.target.merge_base[:12]}`）",
-        "",
-        f"- レビューコメント: {review.url}",
-        "",
-        *(_finding_lines(new) or ["（新しい指摘なし）"]),
-    ]
-    return "\n".join([first, merged.line(), rest.rstrip("\n"), *section]) + "\n"
-
-
-def ensure_followup_issue(
-    settings: Settings,
-    gh: GitHub,
-    login: str,
-    pr: PullRequest,
-    review: ReviewRecord,
-    report: RunReport,
-) -> str | None:
-    """File (once per PR head) the follow-up issue for a passing review's minor/nit
-    findings, or extend it for a later review of the same head; return its URL, or
-    ``None`` when the review needs none."""
-    if not (review.outcome.passed and review.light_findings):
-        return None
-    if settings.dry_run or review.url is None:
-        report.note(f"#{pr.number}: would file a follow-up issue (dry-run)")
-        return "（dry-run のため起票しない）"
-    filed = followup_issues(gh.followup_candidates(login), trusted_login=login)
-    existing = filed.get((pr.number, review.target.head))
-    if existing is not None:
-        # Same head re-reviewed (e.g. after a base retarget): extend the one issue.
-        body = extend_followup_issue(existing, review)
-        if body is not None:
-            gh.edit_issue(pr.number, existing.number, body)
-            report.note(f"#{pr.number}: extended follow-up issue {existing.url}")
-        return existing.url
-    url = gh.create_issue(
-        pr.number,
-        f"[追補] PR #{pr.number} のレビュー軽微指摘",
-        format_followup_issue(pr, review),
-        FOLLOWUP_LABEL,
-    )
-    report.note(f"#{pr.number}: filed follow-up issue {url}")
-    return url
-
-
 def apply_gate(
     settings: Settings,
     gh: GitHub,
@@ -921,7 +765,6 @@ def apply_gate(
     target: ReviewTarget,
     result: GateResult,
     comments: Sequence[Comment],
-    followup: str | None,
     report: RunReport,
 ) -> None:
     if result.decision is GateDecision.MERGE:
@@ -944,7 +787,7 @@ def apply_gate(
         and record.reasons == result.reasons
         for record in gate_records(comments, trusted_login=login)
     )
-    body = format_gate_comment(target, result, action=action, followup=followup)
+    body = format_gate_comment(target, result, action=action)
     if settings.dry_run:
         print(
             f"----- [dry-run] gate for #{pr.number} (would comment: {gate_should_comment(result) and not already}) -----\n{body}"
@@ -1056,7 +899,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         git = Git(repo, args.remote)
         login = gh.login()
         if not settings.dry_run:
-            required = {NEEDS_HUMAN_LABEL, CHANGES_REQUESTED_LABEL, FOLLOWUP_LABEL}
+            required = {NEEDS_HUMAN_LABEL, CHANGES_REQUESTED_LABEL}
             missing = required - gh.label_names()
             if missing:
                 log.error(
