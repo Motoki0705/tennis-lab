@@ -403,7 +403,7 @@ def search_openalex(
                 url=url,
                 pdf_url=_text(oa.get("oa_url")),
                 doi=doi.removeprefix("https://doi.org/") if doi else None,
-                arxiv_id=arxiv_url.rsplit("/", 1)[-1] if arxiv_url else None,
+                arxiv_id=arxiv_url.split("/abs/", 1)[-1] if arxiv_url else None,
                 citations=work.get("cited_by_count"),
             )
         )
