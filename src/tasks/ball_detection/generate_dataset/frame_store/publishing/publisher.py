@@ -25,6 +25,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.builder import (
 )
 from src.tasks.base.annotation.artifacts import (
     artifact_lock,
+    data_reference,
     read_document,
     sync_directory,
     verify_reference,
@@ -44,7 +45,7 @@ from src.tasks.base.annotation.storage.references import protection
 
 from .adopted import AdoptedClip, load_adopted
 from .contracts import BallPublicationPolicy, BallSnapshot, PublishRequest, SnapshotClip
-from .snapshot import data_reference, load_snapshot, validate_snapshot
+from .snapshot import load_snapshot, validate_snapshot
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS ball_publications (
