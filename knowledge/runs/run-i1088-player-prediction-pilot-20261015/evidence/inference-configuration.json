@@ -1,0 +1,1 @@
+{"confidence_threshold":0.3,"coordinates":"native_pixel_xyxy_edges","decode":"pyav_bgr24_native","device":"cuda","max_long_side":1333,"schema_version":"player.annotation-inference.v1","short_side":800}
