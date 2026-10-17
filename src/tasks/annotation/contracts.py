@@ -19,6 +19,7 @@ from src.tasks.base.annotation.contracts import (
 )
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
 from src.tasks.base.annotation.images.contracts import PageView
+from src.tasks.base.annotation.reproducibility import CodeBoundDocument
 from src.tasks.base.annotation.storage.comparison.contracts import ReadLimits
 
 
@@ -47,7 +48,7 @@ class RuntimeSettings(Document):
         return matching[0]
 
 
-class Runtime(RuntimeSettings):
+class Runtime(RuntimeSettings, CodeBoundDocument):
     schema_version: Literal["annotation.runtime.v1"] = "annotation.runtime.v1"
     plan: ArtifactRef
     scope: ArtifactRef
@@ -82,8 +83,19 @@ class ScreenOperation(Document):
     source_id: Digest
 
 
+class RestoreSourceOperation(Document):
+    action: Literal["restore_source"] = "restore_source"
+    source_id: Digest
+    attempt: Identifier
+
+
 class PrepareOperation(Document):
     action: Literal["prepare"] = "prepare"
+    source_id: Digest
+
+
+class RetireExcludedOperation(Document):
+    action: Literal["retire_excluded"] = "retire_excluded"
     source_id: Digest
 
 
@@ -109,6 +121,14 @@ class PredictionPreviewOperation(Document):
 class ReviewOperation(Document):
     action: Literal["review_service"] = "review_service"
     service_request: ArtifactRef
+
+
+class ServiceSessionOperation(Document):
+    action: Literal["service_session"] = "service_session"
+    session: PositiveInt
+    maximum_requests: int = Field(ge=1, le=128)
+    maximum_services_per_attempt: PositiveInt
+    duration_seconds: float = Field(gt=0, le=600)
 
 
 class PublishOperation(Document):
@@ -138,11 +158,14 @@ class OperationInput(Document):
     operation: Annotated[
         HistoryOperation
         | AcquireOperation
+        | RestoreSourceOperation
         | ScreenOperation
         | PrepareOperation
+        | RetireExcludedOperation
         | PreviewOperation
         | PredictionPreviewOperation
         | ReviewOperation
+        | ServiceSessionOperation
         | PublishOperation
         | BootstrapModelOperation
         | InspectStorageOperation
@@ -166,12 +189,17 @@ class OperationInput(Document):
     @property
     def stage(self) -> str:
         action = self.operation.action
+        if action == "restore_source":
+            return "acquire"
+        if action == "retire_excluded":
+            return "prepare"
         if isinstance(self.operation, PredictOperation):
             return "infer_" + self.operation.task
         if action in {
             "screen_prepare",
             "screen_preview",
             "review_service",
+            "service_session",
             "prediction_preview",
         }:
             return "render"
@@ -202,11 +230,34 @@ class ResumeWorkers(Document):
     action: Literal["resume_workers"] = "resume_workers"
 
 
+class CancelPendingStage(Document):
+    action: Literal["cancel_pending_stage"] = "cancel_pending_stage"
+    launch: ArtifactRef
+
+
+class ReopenScreening(Document):
+    action: Literal["reopen_incomplete_screening"] = "reopen_incomplete_screening"
+    request: ArtifactRef
+    after_attempt: str = Field(min_length=1)
+    selection: ArtifactRef
+
+
+class ObserveHostSpace(Document):
+    action: Literal["observe_host_space"] = "observe_host_space"
+    policy: ArtifactRef
+
+
 class RecoveryInput(Document):
     plan: ArtifactRef
     reason: str = Field(min_length=1)
     operation: Annotated[
-        RetryWorker | RetryLearning | ResumeWorkers, Field(discriminator="action")
+        RetryWorker
+        | RetryLearning
+        | ResumeWorkers
+        | CancelPendingStage
+        | ReopenScreening
+        | ObserveHostSpace,
+        Field(discriminator="action"),
     ]
 
 

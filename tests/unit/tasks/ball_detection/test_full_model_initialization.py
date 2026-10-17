@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from src.tasks.ball_detection.checkpoints.initialization import initialize_full_model
-from src.tasks.ball_detection.training.coordinates import full_model
+from src.tasks.ball_detection.training.coordinates import full_model, joint
 from src.utils.checksum import dual_sha256
 from src.utils.models.state import state_dict_sha256
 from tests.support.tasks.ball_detection.learning import (
@@ -70,7 +70,7 @@ def test_bad_training_inputs_fail_before_model_initialization(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, match: str,
 ) -> None:
     path = full_model_checkpoint(tmp_path / "parent")
-    train, validation = training_manifests(tmp_path)
+    train, validation = training_manifests(tmp_path, overlap_clip_ids=fault == "clip")
     output = tmp_path / "output"
     val = json.loads(validation.read_text())
     if fault == "output":
@@ -78,7 +78,9 @@ def test_bad_training_inputs_fail_before_model_initialization(
     elif fault == "source":
         val["clips"][0]["clip"]["group_id"] = "train"
     elif fault == "clip":
-        val["clips"][0]["clip"]["clip_id"] = "train/clip"
+        train_clip = json.loads(train.read_text())["clips"][0]["clip"]
+        assert val["clips"][0]["clip"]["clip_id"] == train_clip["clip_id"]
+        assert val["clips"][0]["clip"]["group_id"] != train_clip["group_id"]
     else:
         val["clips"][0]["common_evaluation"] = False
     validation.write_text(json.dumps(val))
@@ -87,6 +89,7 @@ def test_bad_training_inputs_fail_before_model_initialization(
         pytest.fail("Initialization must not occur after invalid input")
 
     monkeypatch.setattr(full_model, "initialize_full_model", forbidden)
+    monkeypatch.setattr(joint, "FrozenBallWindowDataset", forbidden)
     monkeypatch.setattr(sys, "argv", ["full_model", *full_model_arguments(path, train, validation, output)])
     with pytest.raises((ValueError, FileExistsError), match=match):
         full_model.main()

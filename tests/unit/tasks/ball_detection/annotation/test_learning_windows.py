@@ -39,12 +39,16 @@ from tests.support.tasks.ball_detection.annotation_learning import (
 )
 
 
-def test_new_and_old_train_windows_are_cumulative_and_holdouts_stay_fixed(tmp_path: Path) -> None:
-    env, publication, base = publish(tmp_path)
+@pytest.mark.parametrize("new_splits", [("train",), ("train", "val", "test")])
+def test_new_and_old_train_windows_are_cumulative_and_holdouts_stay_fixed(
+    tmp_path: Path, new_splits: tuple[str, ...]
+) -> None:
+    env, publication, base = publish(tmp_path, new_splits=new_splits)
     fixed = freeze_holdout(env.layout, holdout(env.layout, base))
     fixed_test = freeze_holdout(env.layout, holdout(env.layout, base, split="test"))
     original = env.layout.artifact_path(fixed.manifest).read_bytes()
     receipt = read_document(env.layout, publication, PublicationReceipt)
+    assert len(receipt.added_clips) == len(new_splits)
     partition = training_partition(env.layout, receipt.snapshot)
     check_partitions(partition, fixed, fixed_test)
     reference = prepare_training_windows(env.layout, publication, policy(), env.layout.path("campaigns", "prepared"))

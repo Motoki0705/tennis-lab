@@ -28,6 +28,14 @@ PATH_BOUNDARY = NonHydraPathBoundary(
     name="annotation.workflow.cli",
     fields=(
         BoundaryPathField(
+            "verification",
+            PathRole.OUTPUT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            required=False,
+        ),
+        BoundaryPathField(
             "runtime",
             PathRole.OUTPUT,
             PathDirection.INPUT,
@@ -128,6 +136,7 @@ def main() -> None:
         "tick",
         "run",
         "resume-budget",
+        "code-update",
         "retry-screen",
     ):
         command = commands.add_parser(name)
@@ -145,6 +154,9 @@ def main() -> None:
         elif name == "status":
             command.add_argument("--details", action="store_true")
         elif name == "resume-budget":
+            command.add_argument("--reason", required=True)
+        elif name == "code-update":
+            command.add_argument("--verification", type=Path, required=True)
             command.add_argument("--reason", required=True)
         elif name == "retry-screen":
             command.add_argument("--source-id", required=True)
@@ -208,7 +220,13 @@ def main() -> None:
     paths = PATH_BOUNDARY.validate(
         {
             name: getattr(args, name)
-            for name in ("runtime", "candidates", "operation", "configuration")
+            for name in (
+                "runtime",
+                "candidates",
+                "operation",
+                "configuration",
+                "verification",
+            )
             if getattr(args, name, None) is not None
         },
         resolver=layout.resolver,
@@ -305,6 +323,17 @@ def main() -> None:
     from .controller import Controller
 
     controller = Controller(layout, read_document(layout, ref, Runtime))
+    if args.command == "code-update":
+        from .code_update import update_code
+
+        result_ref = update_code(
+            controller,
+            ref,
+            annotation_reference(layout, paths.declared("verification").path),
+            reason=args.reason,
+        )
+        print(result_ref.model_dump_json())
+        return
     if args.command == "register":
         candidates = read_document(
             layout,
@@ -331,7 +360,7 @@ def main() -> None:
         )
         result = recover(controller, recovery).model_dump(mode="json")
     elif args.command == "status":
-        result = controller.status()
+        result = controller.status(details=args.details)
         if not args.details:
             result = compact_status(result)
     elif args.command == "resume-budget":
@@ -353,12 +382,12 @@ def main() -> None:
         while True:
             try:
                 controller.cycle()
-                result = controller.status()
+                result = controller.status(details=False)
             except BudgetStopped as error:
                 result = {
                     "state": "budget_stopped",
                     "reason": str(error),
-                    "progress": controller.status(),
+                    "progress": controller.status(details=False),
                 }
             summary = json.dumps(compact_status(result), ensure_ascii=False)
             if summary != last or time.monotonic() - printed >= 30:

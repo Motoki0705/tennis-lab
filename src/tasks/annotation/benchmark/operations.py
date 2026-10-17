@@ -25,6 +25,12 @@ from ..contracts import OperationInput, OperationReceipt, ReviewOperation
 def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
     if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
         raise ValueError("benchmark service requires its resource-accounted stage")
+    from ..service_completion import execute_and_reply
+
+    return execute_and_reply(layout, reference, lambda: _execute(layout, reference))
+
+
+def _execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
     data = read_document(layout, reference, OperationInput)
     plan = read_document(layout, data.plan, CampaignPlan)
     if plan.phase != "benchmark" or not isinstance(data.operation, ReviewOperation):

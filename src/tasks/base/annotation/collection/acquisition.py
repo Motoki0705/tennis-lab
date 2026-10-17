@@ -21,6 +21,40 @@ from ..plan import file_digest
 from .contracts import AcquisitionReceipt, PreparationConfig, SourceCandidate
 
 
+def stage_source(
+    candidate: SourceCandidate,
+    config: PreparationConfig,
+    staging: Path,
+    layout: AnnotationLayout,
+) -> Path:
+    """Acquire into caller-owned temporary storage and verify provider identity."""
+    media: Path
+    if candidate.local_media is not None:
+        original = verify_reference(layout, candidate.local_media)
+        media = staging / "media"
+        shutil.copyfile(original, media)
+        return media
+    from src.utils.video.youtube import download_youtube_video
+
+    media = download_youtube_video(
+        url=candidate.origin_url,
+        video_id=candidate.video_id,
+        output_dir=staging,
+        format_selector=config.format_selector,
+        js_runtimes=config.js_runtimes,
+        remote_components=config.remote_components,
+    )
+    info = json.loads((staging / f"{candidate.video_id}.info.json").read_bytes())
+    if (
+        info.get("id") != candidate.video_id
+        or info.get("channel_id") != candidate.channel_id
+    ):
+        raise ValueError(
+            "download metadata differs from canonical video/channel identity"
+        )
+    return media
+
+
 def acquire_source(
     layout: AnnotationLayout,
     candidate: SourceCandidate,
@@ -31,32 +65,7 @@ def acquire_source(
     directory.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="building-", dir=directory) as temporary:
         staging = Path(temporary)
-        if candidate.local_media is not None:
-            original = verify_reference(layout, candidate.local_media)
-            media = staging / "media"
-            shutil.copyfile(original, media)
-        else:
-            # Keep the heavyweight video package out of ledger/plan imports.
-            from src.utils.video.youtube import download_youtube_video
-
-            media = download_youtube_video(
-                url=candidate.origin_url,
-                video_id=candidate.video_id,
-                output_dir=staging,
-                format_selector=config.format_selector,
-                js_runtimes=config.js_runtimes,
-                remote_components=config.remote_components,
-            )
-            info = json.loads(
-                (staging / f"{candidate.video_id}.info.json").read_bytes()
-            )
-            if (
-                info.get("id") != candidate.video_id
-                or info.get("channel_id") != candidate.channel_id
-            ):
-                raise ValueError(
-                    "download metadata differs from canonical video/channel identity"
-                )
+        media = stage_source(candidate, config, staging, layout)
         digest = file_digest(media)
         if candidate.local_media is not None and digest != candidate.local_media.digest:
             raise ValueError("local source changed while copying the pinned input")

@@ -186,10 +186,10 @@ def validate_training(
         or best["epoch"] != latest["best_epoch"]
         or best["global_step"] != selected["global_step"]
         or best["selection_error_px"] != latest["best_score"]
-        or selection_score(selected["validation"], "common") != latest["best_score"]
+        or selection_score(selected["validation"], expected["selection_scope"]) != latest["best_score"]
     ):
         raise ValueError(
-            "selected checkpoint differs from completed clean Common selection"
+            "selected checkpoint differs from completed clean validation selection"
         )
     model, _ = initialize_full_model(
         verify_reference(layout, provenance.selected_checkpoint),
@@ -220,6 +220,10 @@ def validate_evaluation(
     layout: AnnotationLayout, intent: LearningIntent, receipt: EvaluationReceipt
 ) -> dict[str, Any]:
     inputs = resolve_inputs(layout, intent)
+    final_test = inputs.fixed.recipe is not None
+    holdout = inputs.test_holdout if final_test else inputs.holdout
+    if holdout is None:
+        raise ValueError("Final test holdout is missing")
     verify_inputs(layout, receipt)
     request = read_document(layout, receipt.request, StageInput)
     if (
@@ -228,6 +232,7 @@ def validate_evaluation(
         or request.training != receipt.training
         or receipt.baseline != intent.parent
         or receipt.validation != inputs.fixed.validation
+        or receipt.test != (inputs.fixed.test if final_test else None)
     ):
         raise ValueError("evaluation baseline, stage or fixed validation changed")
     training_request, training = check_training(layout, receipt.training)
@@ -241,6 +246,7 @@ def validate_evaluation(
     if (
         metrics.request != receipt.request
         or metrics.validation_manifest != inputs.holdout.manifest
+        or metrics.test_manifest != (holdout.manifest if final_test else None)
     ):
         raise ValueError("evaluation metrics refer to different fixed inputs")
     raw: dict[str, Any] = json.loads(
@@ -255,10 +261,10 @@ def validate_evaluation(
         raw["validation_manifest_sha256"],
     ) != (
         "ball.fixed-validation-comparison.v1",
-        "val",
+        "test" if final_test else "val",
         "clean",
-        "none",
-        inputs.holdout.manifest.digest,
+        "final_comparison" if final_test else "none",
+        holdout.manifest.digest,
     ):
         raise ValueError("evaluation substituted its fixed validation contract")
     if (
@@ -268,14 +274,15 @@ def validate_evaluation(
     ):
         raise ValueError("evaluation runtime differs from the pinned recipe")
     data = FrozenBallWindowDataset(
-        verify_reference(layout, inputs.holdout.manifest),
-        split="val",
+        verify_reference(layout, holdout.manifest),
+        split="test" if final_test else "val",
         requires_pose=False,
         jpeg_decoder=runtime.jpeg_decoder,
     )
     support = expected_support(data)
     if raw["support"] != support:
         raise ValueError("evaluation support differs from fixed teachers")
+    scopes = ("full", "existing", "new", "balanced_existing_new") if final_test else ("common", "full")
     for name, model in (
         ("baseline", intent.parent.model),
         ("candidate", receipt.candidate),
@@ -299,13 +306,13 @@ def validate_evaluation(
         ):
             raise ValueError("evaluation model identities differ")
         verify_support(row["evaluation"], support)
-        for scope in ("common", "full"):
+        for scope in scopes:
             if not math.isfinite(selection_score(row["evaluation"], scope)):
                 raise ValueError("evaluation contains nonfinite selection metrics")
     expected_delta = {
         scope: selection_score(raw["candidate"]["evaluation"], scope)
         - selection_score(raw["baseline"]["evaluation"], scope)
-        for scope in ("common", "full")
+        for scope in scopes
     }
     if raw["candidate_minus_baseline_px"] != expected_delta:
         raise ValueError("evaluation differences are inconsistent")

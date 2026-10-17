@@ -24,6 +24,25 @@ flowchart LR
 base内部には具体taskの分岐を置かない。SQLiteのworkflow進捗は表示用cacheであり、
 再開時は不変の要求・実行・公開receiptを照合する。
 
+workerの画像・注釈サービスは、各稼働attemptの未回答要求を送信順で1件ずつ集め、
+全workerのうち最も古い要求から資源付き工程へ渡す。工程自身が結果receiptの保存後に
+返信を確定するため、他workerの受付やcontrollerの次の巡回を待たない。
+通常campaignは最大128要求・600秒のCPU service sessionを使い、同じrender枠の中で
+到着した要求を続けて処理する。各要求のworker・入力・結果・返信を個別receiptに結び、
+session全体を既存supervisorのPSS/空き/GPU監視と保存予約の対象にする。
+`render` の保存costは1要求分とし、session受付時に最大要求数倍を予約する。
+PSSとtimeoutは同時に1要求だけを実行するsession単位のままとする。予約全体が残予算や
+空き容量に収まらなければ受付待ちとなり、要求数や固定costを黙って縮小しない。
+各要求の前に共有scopeの永続stopを確認し、停止時は未処理要求を保留したまま
+`budget stopped: ...` をsession終了理由に記録する。新規sessionは明示的な予算再開まで
+起動できない。この確認は保存走査を増やさず、watchdogのcacheにも依存しない。
+controllerの定期保存走査と終了時の全走査は維持し、短い要求ごとの全走査だけを避ける。
+session失敗は明示的な工程再試行を必要とし、勝手に次のsessionへ進めない。
+終了・交代したattemptからの要求は実行せず、旧attemptのサービス失敗は履歴に残したまま
+新attemptの進行を妨げない。注釈編集のrevision照合・実画像確認・採用条件は維持する。
+通常のrun/statusでは、同じcontrollerが照合済みの終了stageをメモリ内で再利用する。
+`status --details` は全履歴とログhashを再照合し、再起動時にもcacheを持ち越さない。
+
 ## 固定入力と起動
 
 `Runtime` はplan・資源scope・queue script版・Codex保存先・工程別のPSS/保存量/
@@ -59,6 +78,14 @@ Codex/学習の起動は行わない。作成後は `configuration/result.json` 
 requestとplanを保存する。scope入力や紐付けの競合で拒否された設定は保存されず、修正して再送できる。
 planの詳細は[plan](../base/annotation/plan.py)、予算の計測定義は
 [resources](../base/annotation/resources/README.md)を参照する。
+
+JPEGを残すball campaignでは、[素材の保存契約](../base/annotation/collection/README.md#jpegを残して動画を削除する保存方式)
+のpreparation・推論decoder・公開policyを一緒に指定する。保存済みJPEGがある通常処理は
+元動画を要求しない。元動画が必要になった場合だけ、`restore_source` operationへ
+`source_id` と明示した `attempt` を渡す。取得不能・元のbytesと不一致の結果も記録し、
+同じattemptを自動再実行しない。controllerは再取得receiptを専用に検証し、`restored` を
+`complete`、`unavailable` / `different_content` を理由の一致した `not_applicable` として受理する。
+後者も正常な終端結果であり、保存済みJPEGによるcampaignの継続を妨げない。
 
 pathは固定annotation root内の実ファイルを指定する。相対path・外部path・hash不一致は拒否する。
 `CandidateManifest` はcanonical source IDと根拠参照の一覧。過去のsource/channelは収集前に
@@ -189,11 +216,36 @@ worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固�
 | `retry_worker` | 既存WorkRequest参照、再試行元の `after_attempt`。保留・失敗だけが対象 |
 | `retry_learning` | 登録済みintent参照、`train` / `evaluate`、必要なら同intentのresume checkpoint |
 | `resume_workers` | quota等で止まった当該campaignのworker受付を再開。資源stopは解除しない |
+| `cancel_pending_stage` | 未起動stageの `launch` 参照。理由を残して予約を取消す。稼働中stageは対象外 |
+| `reopen_incomplete_screening` | `request`・`after_attempt`・`selection` を固定。未応答/失敗の画像要求が残る、準備前の誤確定selectionだけを保留へ戻す |
+| `observe_host_space` | 認可記録と結んだ `ObservedHostSpacePolicy` の参照。間接host mountの予約控除を実空き監視へ変更し、下限到達時は実行中の所有処理も停止する |
 
 再試行理由と結果を不変保存し、同じ要求の再送は結果を返す。worker開始後、結果保存前に親が
 落ちた場合は、変わったattemptを再起動せず現在状態の確認を要求する。学習再試行は次のtickで
 queueへ投入する。資源stopは原因解消後の `resume-budget --reason TEXT` で解除する。
 scopeや累計を初期化して上限を回避しない。
+
+### 不具合修正後に同じcampaignを続ける
+
+controllerと所有jobを停止・終了確認し、修正版をテストしてcommitする。
+`code-update --runtime PATH --sha256 HASH --verification EVIDENCE_PATH --reason TEXT`
+は、旧runtime・同じplan/scope・修正commit/diff・検証記録を結ぶ不変の更新記録と
+新runtimeを保存する。旧plan、候補、成果物、保存baseline、GPU積算、工程costは変更しない。
+引き継いだ `render` costも1要求分として新規sessionの最大要求数倍を予約する。
+旧コードが1要求分だけ予約したsessionのlaunchは変更せず、更新後は履歴として回収する。
+以降は返されたreceiptのruntimeを指定する。全stage・screen/review worker・学習launchが
+更新記録を参照し、子processでもコード版を照合する。コードがdirty、jobが稼働中、
+またはqueue待ちなら更新を拒否する。旧controllerを同時に再起動しない。
+資源待ちでlaunchだけを保存したscreen/review workerは、資源要求の登録前も含めて
+更新時に旧attemptを `cancelled` として履歴へ回収し、pending予約を取消す。
+新runtimeで `retry_worker`（または `retry-screen`）を明示すると、次attemptを新コードで起動する。
+通常tickは取消済みworkerを自動再試行しない。取消途中で中断した更新も同じ入力で再送できる。
+
+成功済みstageは旧launchの結果を読む。旧版で未起動のstageは勝手に新コードへ付け替えず、
+`cancel_pending_stage` で取消し、必要な工程だけ通常の `submit --attempt N` で再試行する。
+画像サービスの未完了を素材不足として誤確定した選別は、全関連jobの停止・予約取消後に
+`reopen_incomplete_screening` で戻し、`retry_worker` を使う。旧selectionとworkerの結果は
+不変保存し、撤回理由と対応先を台帳に残す。準備済みclipや公開済み教師はこの操作の対象外。
 
 `stage` はsupervisor専用で、固定した入力digestとの対応を要求する。
 置換済みballの旧run/qa/intakeと旧annotateのball注釈・finalize入口は撤去済み。置換先が未実装のplayer用入口は残す。旧形式の読取と保存台帳への登録は

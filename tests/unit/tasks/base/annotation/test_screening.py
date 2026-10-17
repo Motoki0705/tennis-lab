@@ -19,6 +19,7 @@ from src.tasks.annotation.contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    RestoreSourceOperation,
     Runtime,
     ScreenOperation,
     StageCost,
@@ -80,6 +81,7 @@ from src.tasks.base.annotation.workers.services import (
     ServiceRequest,
     request_service,
 )
+from src.utils.paths import PROJECT_ROOT
 from tests.support.tasks.annotation import record_stage, record_stage_exit
 
 
@@ -256,8 +258,10 @@ def setup(
     fps: int | Fraction = 10,
     frame_count: int | None = None,
     timestamps_ms: tuple[int, ...] | None = None,
+    jpeg: bool = False,
     acquire: bool = True,
     videos_per_channel: int = 1,
+    maximum_unprepared_sources: int = 1,
 ) -> tuple[AnnotationLayout, Screening, SourceCandidate]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     inputs = layout.path("campaigns", "inputs")
@@ -267,10 +271,15 @@ def setup(
         inputs / "preparation.json",
         PreparationConfig(
             format_selector="bestvideo",
-            crf=25,
-            preset="ultrafast",
+            crf=None if jpeg else 25,
+            preset=None if jpeg else "ultrafast",
+            retained_media="jpeg_q90" if jpeg else "video",
+            source_retention="delete_after_verified_frames" if jpeg else "keep",
+            excluded_source_retention="delete_after_verified_exclusion"
+            if jpeg
+            else "keep",
             minimum_clip_frames=32,
-            maximum_unprepared_sources=1,
+            maximum_unprepared_sources=maximum_unprepared_sources,
         ),
     )
     reference = policy.model_dump(mode="json")
@@ -764,6 +773,233 @@ def test_empty_selection_preserves_reason_and_releases_lead(example: Example) ->
     )
 
 
+def excluded_worker(example: Example, selection: ArtifactRef, state: str) -> None:
+    from src.tasks.base.annotation.storage.contracts import Protection
+    from src.tasks.base.annotation.workers.contracts import (
+        AttemptResult,
+        ExitReceipt,
+        Launch,
+        PreparedWorker,
+        WorkOutcome,
+    )
+    from src.tasks.base.annotation.workers.ledger import WorkerLedger
+
+    layout, plan = example.layout, example.screening.plan
+    request = WorkRequest(adapter="source_screening", adapter_version="v1", stage="screen",
+                          subject_id=example.source.source_id, payload=example.request.prepared_input, inputs=())
+    directory = layout.path("campaigns", "fixture", "fixture-attempt")
+    launch = write_document(layout, directory / "launch.json", Launch(
+        work_id=request.work_id,
+        attempt="fixture-attempt",
+        plan=annotation_reference(layout, save_plan(layout, plan)),
+        request=request,
+        prepared=PreparedWorker(prompt=write_asset(layout, directory / "prompt.txt", b"fixture")),
+        directory=str(directory),
+        code_root=str(PROJECT_ROOT),
+        codex_binary="codex",
+        codex_home=str(layout.repository / ".codex-fixture"),
+        timeout_seconds=10,
+        test_command=(sys.executable, "-c", "pass"),
+        test_root=str(layout.repository),
+    ))
+    execution = write_document(layout, directory / "exit.json", ExitReceipt(
+        launch_digest=launch.digest,
+        exit_code=0,
+        status="succeeded",
+        started_at="2026-01-01T00:00:00Z",
+        ended_at="2026-01-01T00:00:00Z",
+        elapsed_seconds=0,
+        events=write_asset(layout, directory / "events.jsonl", b""),
+        errors=write_asset(layout, directory / "stderr.log", b""),
+        thread_id=None,
+        reason=None,
+    ))
+    result = write_document(layout, layout.path("campaigns", "fixture", "worker-result.json"), AttemptResult(
+        launch=launch, exit=execution, result=selection, telemetry=None,
+        outcome=WorkOutcome(status="not_applicable", receipt=selection, reason="no play"),
+    ))
+    ledger = WorkerLedger(layout)
+    with ledger.registry.transaction() as db:
+        db.execute(
+            "INSERT INTO worker_tasks VALUES (?,?,?,?,?,?,?,NULL)",
+            (
+                request.work_id,
+                plan.campaign_id,
+                plan.sha256,
+                request.canonical_bytes().decode(),
+                state,
+                "fixture-attempt",
+                result.canonical_bytes().decode(),
+            ),
+        )
+    StorageCatalog(layout).protect(
+        Protection(
+            protection_id="worker-inputs-v1-" + request.sha256,
+            kind="active",
+            reason="fixture screening inputs",
+            references=(
+                example.request.source.media,
+                example.request.prepared_input,
+                example.request.overview,
+            ),
+        )
+    )
+
+
+@pytest.mark.parametrize("state", ["running", "not_applicable"])
+def test_excluded_source_waits_for_worker_and_retains_review_evidence(
+    tmp_path: Path, state: str
+) -> None:
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    selection = sample.finish(decision=sample.decision(empty=True))
+    collection = sample.screening.collection
+    video = sample.layout.artifact_path(sample.request.source.media)
+    with pytest.raises(ValueError, match="completed screening worker"):
+        collection.retire_excluded(sample.source.source_id)
+    excluded_worker(sample, selection, state)
+    if state != "not_applicable":
+        with pytest.raises(ValueError, match="completed screening worker"):
+            collection.retire_excluded(sample.source.source_id)
+        assert video.is_file()
+        return
+    receipt = collection.retire_excluded(sample.source.source_id)
+    assert not video.exists()
+    assert sample.source.local_media is not None
+    assert sample.layout.artifact_path(sample.source.local_media).is_file()
+    assert collection.retire_excluded(sample.source.source_id) == receipt
+    kept = {
+        ref
+        for p in StorageCatalog(sample.layout).snapshot().protections
+        for ref in p.references
+    }
+    assert selection in kept and sample.request.source.media not in kept
+    assert all(
+        page.image in kept and sample.layout.artifact_path(page.image).is_file()
+        for page in sample.detail.pages
+    )
+    assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
+    from src.tasks.base.annotation.collection.restoration import RestorationReceipt
+
+    restored = collection.restore_source(
+        sample.source.source_id, attempt="restore-empty"
+    )
+    assert (
+        read_document(sample.layout, restored, RestorationReceipt).status == "restored"
+    )
+    assert video.is_file()
+    assert collection.ledger.summary(collection.plan)["prepared_clips"] == 0
+
+
+@pytest.mark.parametrize("excluded", [False, True])
+@pytest.mark.parametrize("invalid", [None, "missing_intent", "retained_evidence"])
+def test_acquisition_receipt_validates_retired_source_evidence(
+    tmp_path: Path, excluded: bool, invalid: str | None
+) -> None:
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    controller = controller_for(sample)
+    layout, collection = sample.layout, sample.screening.collection
+    acquisition = ArtifactRef.model_validate_json(
+        collection.ledger.source(collection.plan, sample.source.source_id)["acquisition"]
+    )
+    operation = record_stage(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=sample.source.source_id),
+        ),
+        results=(acquisition,), exited=True,
+    )
+    state = controller.stages.status(annotation_reference(
+        layout, layout.artifact_path(operation).parent / "launch.json"
+    ))
+    assert controller.receipt(state).results == (acquisition,)
+    selection = sample.finish(decision=sample.decision(empty=excluded))
+    if excluded:
+        excluded_worker(sample, selection, "not_applicable")
+        collection.retire_excluded(sample.source.source_id)
+        retained = selection
+    else:
+        prepared = collection.prepare(sample.source.source_id)
+        clip = read_document(layout, prepared, PreparationReceipt).clips[0]
+        retained = read_document(layout, clip, ClipManifest).media
+    assert not layout.artifact_path(sample.request.source.media).exists()
+    if invalid == "missing_intent":
+        layout.path(
+            "sources", sample.source.source_id,
+            collection.plan.preparation.digest, "retirement-intent.json",
+        ).unlink()
+    elif invalid == "retained_evidence":
+        layout.artifact_path(retained).write_bytes(b"tampered retained evidence")
+    if invalid is None:
+        assert Controller(layout, controller.runtime).receipt(state).results == (acquisition,)
+    else:
+        with pytest.raises((ValueError, OSError)):
+            Controller(layout, controller.runtime).receipt(state)
+
+
+def test_excluded_source_tampering_blocks_deletion(tmp_path: Path) -> None:
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    selection = sample.finish(decision=sample.decision(empty=True))
+    excluded_worker(sample, selection, "not_applicable")
+    sample.layout.artifact_path(sample.detail.pages[0].image).write_bytes(b"corrupt")
+    with pytest.raises(ValueError, match="size changed"):
+        sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert sample.layout.artifact_path(sample.request.source.media).is_file()
+
+
+def test_excluded_source_recovers_after_unlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.base.annotation.collection import retirement
+
+    sample = make_example(*setup(tmp_path, jpeg=True))
+    selected = sample.finish(decision=sample.decision(empty=True))
+    excluded_worker(sample, selected, "not_applicable")
+    original = retirement.write_document
+
+    def crash(layout: AnnotationLayout, path: Path, value: object) -> ArtifactRef:
+        if path.name == "retired.json":
+            raise OSError("fixture crash after unlink")
+        return original(layout, path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(retirement, "write_document", crash)
+        with pytest.raises(OSError, match="fixture crash"):
+            sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert not sample.layout.artifact_path(sample.request.source.media).exists()
+    result = sample.screening.collection.retire_excluded(sample.source.source_id)
+    assert sample.layout.artifact_path(result).is_file()
+    controller = controller_for(sample)
+
+    def no_screening(*args: object) -> None:
+        pytest.fail(
+            "retired source must not be screened or protected as live video again"
+        )
+
+    monkeypatch.setattr(controller, "_screen", no_screening)
+    monkeypatch.setattr(controller, "operation", lambda *a, **k: {"state": "succeeded"})
+    controller.cycle()
+
+
+def test_preflight_excluded_source_keeps_explicit_failure(tmp_path: Path) -> None:
+    layout, screening, source = setup(tmp_path, 3, jpeg=True)
+    with pytest.raises(SourceExcluded, match="duration"):
+        screening.prepare(source.source_id)
+    row = screening.collection.ledger.source(screening.plan, source.source_id)
+    selection = read_document(
+        layout, ArtifactRef.model_validate_json(row["selection"]), SelectionReceipt
+    )
+    result = screening.collection.retire_excluded(source.source_id)
+    assert layout.artifact_path(result).is_file()
+    assert layout.artifact_path(selection.evidence).is_file()
+
+
+def test_excluded_deletion_requires_explicit_policy(example: Example) -> None:
+    example.finish(decision=example.decision(empty=True))
+    with pytest.raises(ValueError, match="not enabled"):
+        example.screening.collection.retire_excluded(example.source.source_id)
+
+
 def test_source_hash_and_image_tampering_are_detected(example: Example) -> None:
     with pytest.raises(ValueError, match="different source"):
         example.finish(
@@ -963,6 +1199,7 @@ print(json.dumps({"type":"turn.completed"}))
     try:
         while row["state"] in {"running", "exited"} and time.monotonic() < deadline:
             controller._services(request, row)
+            controller.broker.flush()
             time.sleep(0.02)
             row = controller.pool.reconcile(request)
         assert row["state"] == "validation_failed", row
@@ -1102,6 +1339,7 @@ def test_service_limit_survives_inbox_reordering_deletion_and_restart(
             path = directory / "work/service-requests" / (service.sha256 + ".json")
             write_document(example.layout, path, service)
             controller._services(request, row)
+            controller.broker.flush()
             reply = read_document(
                 example.layout,
                 annotation_reference(
@@ -1115,6 +1353,7 @@ def test_service_limit_survives_inbox_reordering_deletion_and_restart(
                 assert "request count" in (reply.reason or "")
             # Reprocessing the accepted request must not consume another slot.
             controller._services(request, row)
+            controller.broker.flush()
             if remove_old:
                 path.unlink()
             controller = Controller(example.layout, runtime)
@@ -1314,6 +1553,295 @@ def test_preview_requires_latest_receipts_and_explicit_prediction_recovery(
     assert restarted.status()["state"] == "blocked"
 
 
+@pytest.mark.parametrize(
+    "reply_status,decision_status,empty,expected",
+    [
+        (None, "insufficient", False, "deferred"),
+        ("failed", "insufficient", False, "deferred"),
+        ("succeeded", "deferred", False, "deferred"),
+        (None, "insufficient", True, "deferred"),
+        ("succeeded", "insufficient", False, "complete"),
+    ],
+)
+def test_technical_screening_incompletion_does_not_seal_or_exclude_source(
+    example: Example,
+    monkeypatch: pytest.MonkeyPatch,
+    reply_status: str | None,
+    decision_status: str,
+    empty: bool,
+    expected: str,
+) -> None:
+    from src.tasks.annotation.screening import ScreeningAdapter
+    from src.tasks.base.annotation.workers.contracts import ExitReceipt
+
+    layout = example.layout
+    directory = attempt_directory(layout, example.request)
+    service = ServiceRequest(
+        task_request=example.request_ref,
+        operation="screen_preview",
+        parameters={"start": 0.0, "stop": 15.0, "step": 0.5},
+    )
+    write_document(
+        layout, directory / "work/service-requests" / f"{service.sha256}.json", service
+    )
+    if reply_status is not None:
+        write_document(
+            layout,
+            directory / "services" / service.sha256 / "reply.json",
+            ServiceReply(
+                request_digest=service.sha256,
+                status="succeeded" if reply_status == "succeeded" else "failed",
+                result=example.detail_ref if reply_status == "succeeded" else None,
+                reason=None
+                if reply_status == "succeeded"
+                else "fixture render failure",
+            ),
+        )
+    result = write_document(
+        layout,
+        directory / "work/result.json",
+        example.decision(empty=empty).model_copy(update={"status": decision_status}),
+    )
+    events = write_asset(
+        layout, directory / "fixture-events.txt", b"SYNTHETIC TEST ONLY"
+    )
+    overview = read_document(layout, example.request.overview, PreviewReceipt)
+    shown = tuple(
+        page.image for preview in (overview, example.detail) for page in preview.pages
+    )
+    monkeypatch.setattr(
+        "src.tasks.annotation.screening.presented_images", lambda *_: shown
+    )
+    outcome = ScreeningAdapter().validate(
+        layout,
+        example.screening.plan,
+        WorkRequest(
+            adapter="source_screening",
+            adapter_version="v1",
+            stage="screen",
+            subject_id=example.source.source_id,
+            payload=example.request.prepared_input,
+            inputs=(),
+        ),
+        directory,
+        result,
+        ExitReceipt(
+            launch_digest="a" * 64,
+            exit_code=0,
+            status="succeeded",
+            started_at="2026-01-01T00:00:00Z",
+            ended_at="2026-01-01T00:00:01Z",
+            elapsed_seconds=1.0,
+            events=events,
+            errors=events,
+            thread_id="synthetic",
+            reason=None,
+        ),
+        events,
+    )
+    assert outcome.status == expected
+    row = example.screening.collection.ledger.source(
+        example.screening.plan, example.source.source_id
+    )
+    if expected == "deferred":
+        assert row["state"] == "acquired" and row["selection"] is None
+        assert not (directory / "selection.json").exists()
+        assert outcome.receipt == result
+        assert "technically incomplete" in (outcome.reason or "")
+    else:
+        assert row["state"] == "screened"
+        assert (
+            len(read_document(layout, outcome.receipt, SelectionReceipt).windows) == 1
+        )
+    assert layout.artifact_path(example.request.source.media).is_file()
+
+
+def test_deferred_decision_cannot_bypass_adapter_and_finalize(example: Example) -> None:
+    decision = example.decision().model_copy(update={"status": "deferred"})
+    with pytest.raises(ValueError, match="technically incomplete"):
+        example.finish(decision=decision)
+    row = example.screening.collection.ledger.source(
+        example.screening.plan, example.source.source_id
+    )
+    assert row["state"] == "acquired" and row["selection"] is None
+
+
+def sealed_screening_attempt(
+    example: Example,
+) -> tuple[Controller, WorkRequest, ArtifactRef, Path]:
+    """Synthetic old-code completion with real selection/launch/exit artifacts."""
+    from src.tasks.annotation.screening import ScreeningAdapter
+    from src.tasks.base.annotation.workers.contracts import (
+        AttemptResult,
+        ExitReceipt,
+        Launch,
+        WorkOutcome,
+    )
+    from src.utils.paths import PROJECT_ROOT
+
+    controller = controller_for(example)
+    layout, plan = example.layout, example.screening.plan
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=example.request.prepared_input,
+        inputs=(),
+    )
+    controller.pool.register(request)
+    directory = layout.path(
+        "campaigns", plan.campaign_id, "workers", request.work_id, "attempt-0001"
+    )
+    prepared = ScreeningAdapter().prepare(layout, plan, request, directory)
+    task_ref = annotation_reference(layout, directory / "request.json")
+    body = read_document(layout, task_ref, ScreeningRequest)
+    detail = request_preview(layout, body, start=0.0, stop=15.0, step=0.5)
+    sample = Example(
+        layout,
+        example.screening,
+        example.source,
+        task_ref,
+        body,
+        detail,
+        read_document(layout, detail, PreviewReceipt),
+    )
+    selection = sample.finish()
+    launch = Launch(
+        work_id=request.work_id,
+        attempt=request.work_id + "-0001",
+        plan=controller.runtime.plan,
+        request=request,
+        prepared=prepared,
+        directory=str(directory),
+        code_root=str(PROJECT_ROOT),
+        codex_binary=sys.executable,
+        codex_home=str(layout.path("cache", "codex")),
+        timeout_seconds=20.0,
+        test_command=("synthetic-no-process",),
+        test_root=str(layout.root),
+    )
+    launch_ref = write_document(layout, directory / "launch.json", launch)
+    event = write_asset(
+        layout, directory / "synthetic-events.txt", b"SYNTHETIC FIXTURE ONLY"
+    )
+    execution = write_document(
+        layout,
+        directory / "exit.json",
+        ExitReceipt(
+            launch_digest=launch_ref.digest,
+            exit_code=0,
+            status="succeeded",
+            started_at="2026-01-01T00:00:00Z",
+            ended_at="2026-01-01T00:00:01Z",
+            elapsed_seconds=1.0,
+            events=event,
+            errors=event,
+            thread_id="synthetic",
+            reason=None,
+        ),
+    )
+    result = write_document(
+        layout,
+        directory / "result.receipt.json",
+        AttemptResult(
+            launch=launch_ref,
+            exit=execution,
+            result=event,
+            telemetry=None,
+            outcome=WorkOutcome(status="complete", receipt=selection),
+        ),
+    )
+    with controller.pool.ledger.registry.transaction() as db:
+        db.execute(
+            "INSERT INTO worker_attempts VALUES (?,?,1,'complete',?,NULL)",
+            (
+                launch.attempt,
+                request.work_id,
+                launch_ref.canonical_bytes().decode(),
+            ),
+        )
+        db.execute(
+            "UPDATE worker_tasks SET state='complete',current_attempt=?,result=? WHERE id=?",
+            (
+                launch.attempt,
+                result.canonical_bytes().decode(),
+                request.work_id,
+            ),
+        )
+    return controller, request, selection, directory
+
+
+@pytest.mark.parametrize(
+    "mode", ["recover_after_crash", "no_unresolved_service", "prepared_source"]
+)
+def test_explicit_reopen_preserves_old_evidence_and_refuses_prepared_sources(
+    example: Example, monkeypatch: pytest.MonkeyPatch, mode: str
+) -> None:
+    from src.tasks.annotation import recovery as recovery_module
+    from src.tasks.annotation.contracts import RecoveryInput, ReopenScreening
+
+    controller, request, selection, directory = sealed_screening_attempt(example)
+    layout = example.layout
+    request_ref = write_document(layout, directory / "work-request.json", request)
+    before = {
+        path: path.read_bytes()
+        for path in (
+            layout.artifact_path(selection),
+            directory / "result.receipt.json",
+            directory / "launch.json",
+        )
+    }
+    operation = RecoveryInput(
+        plan=controller.runtime.plan,
+        reason="synthetic old code sealed an unfinished image request",
+        operation=ReopenScreening(
+            request=request_ref,
+            after_attempt=request.work_id + "-0001",
+            selection=selection,
+        ),
+    )
+    if mode != "no_unresolved_service":
+        service = ServiceRequest(
+            task_request=annotation_reference(layout, directory / "request.json"),
+            operation="screen_preview",
+            parameters={"start": 16.0, "stop": 31.0, "step": 0.5},
+        )
+        write_document(
+            layout,
+            directory / "work/service-requests" / f"{service.sha256}.json",
+            service,
+        )
+    if mode == "prepared_source":
+        controller.collection.prepare(example.source.source_id)
+    if mode != "recover_after_crash":
+        with pytest.raises(ValueError, match="unresolved image|prepared or excluded"):
+            recovery_module.recover(controller, operation)
+        assert controller.pool.reconcile(request)["state"] == "complete"
+        return
+    original = recovery_module.write_document
+
+    def fail_after_transaction(
+        layout: AnnotationLayout, path: Path, value: object
+    ) -> ArtifactRef:
+        if path.name == "result.json":
+            raise OSError("synthetic crash after atomic invalidation")
+        return original(layout, path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(recovery_module, "write_document", fail_after_transaction)
+        with pytest.raises(OSError, match="synthetic crash"):
+            recovery_module.recover(controller, operation)
+    result = recovery_module.recover(controller, operation)
+    assert recovery_module.recover(controller, operation) == result
+    row = controller.collection.ledger.source(controller.plan, example.source.source_id)
+    assert row["state"] == "acquired" and row["selection"] is None
+    assert controller.pool.reconcile(request)["state"] == "validation_failed"
+    assert all(path.read_bytes() == content for path, content in before.items())
+    with controller.resources.registry.transaction() as db:
+        assert db.execute("SELECT count(*) FROM screening_reopens").fetchone()[0] == 1
+
+
 class SyntheticPredictionAdapter:
     task = "ball"
 
@@ -1369,6 +1897,199 @@ def finish_preview(controller: Controller, example: Example) -> None:
         results=results,
         exited=True,
     )
+
+
+def run_source_operation(
+    controller: Controller, data: OperationInput, monkeypatch: pytest.MonkeyPatch
+) -> OperationReceipt:
+    from src.tasks.annotation.operations import execute
+
+    reference = record_stage(controller, data)
+    monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
+    result = execute(controller.layout, reference)
+    record_stage(controller, data, exited=True)
+    return read_document(controller.layout, result, OperationReceipt)
+
+
+def test_duplicate_acquisition_survives_shared_source_retirement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, screening, source = setup(
+        tmp_path, jpeg=True, acquire=False, videos_per_channel=2,
+        maximum_unprepared_sources=2,
+    )
+    controller = create_controller(layout, screening.plan)
+    original = run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=source.source_id),
+        ),
+        monkeypatch,
+    )
+    duplicate = source.model_copy(update={"video_id": "duplicate"})
+    controller.collection.register([duplicate])
+    excluded = run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=duplicate.source_id),
+        ),
+        monkeypatch,
+    )
+    from src.tasks.base.annotation.collection.contracts import AcquisitionReceipt
+
+    acquired = read_document(layout, original.results[0], AcquisitionReceipt)
+    duplicate_acquired = read_document(layout, excluded.results[0], AcquisitionReceipt)
+    assert excluded.status == "not_applicable"
+    assert excluded.reason == f"duplicate content of {source.source_id}"
+    assert acquired.source.media == duplicate_acquired.source.media
+    assert layout.artifact_path(acquired.source.media).is_file()
+    finish_preview(controller, make_example(layout, screening, source))
+    assert not layout.artifact_path(acquired.source.media).exists()
+    restarted = Controller(layout, controller.runtime)
+    status = restarted.status()
+    assert status["collection"]["sources_by_state"] == {"excluded": 1, "prepared": 1}
+    assert status["state"] == "preview_ready", status["failures"]
+    assert not status["failures"]
+
+
+@pytest.mark.parametrize("outcome", ["unavailable", "different_content"])
+def test_unsuccessful_restore_keeps_controller_ready_with_retained_jpegs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    from src.tasks.base.annotation.collection import restoration
+
+    layout, screening, source = setup(tmp_path, jpeg=True, acquire=False)
+    controller = create_controller(layout, screening.plan)
+    run_source_operation(
+        controller,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=AcquireOperation(source_id=source.source_id),
+        ),
+        monkeypatch,
+    )
+    example = make_example(layout, screening, source)
+    finish_preview(controller, example)
+    assert controller.status()["state"] == "preview_ready"
+    prepared = controller.collection.prepare(source.source_id)
+    calls = 0
+    return_original = False
+
+    def stage(candidate, config, staging, layout):
+        nonlocal calls
+        calls += 1
+        if not return_original and outcome == "unavailable":
+            raise FileNotFoundError("synthetic unavailable source")
+        media = staging / "media"
+        media.write_bytes(
+            layout.artifact_path(candidate.local_media).read_bytes()
+            if return_original else b"different source content"
+        )
+        return media
+
+    monkeypatch.setattr(restoration, "stage_source", stage)
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=RestoreSourceOperation(source_id=source.source_id, attempt="first"),
+    )
+    result = run_source_operation(controller, data, monkeypatch)
+    assert result.status == "not_applicable"
+    receipt = read_document(layout, result.results[0], restoration.RestorationReceipt)
+    assert receipt.status == outcome
+    assert result.reason == receipt.reason
+    assert calls == 1
+    assert not layout.artifact_path(example.request.source.media).exists()
+    restarted = Controller(layout, controller.runtime)
+    for _ in range(2):
+        status = restarted.status()
+        assert status["state"] == "preview_ready", status["failures"]
+        assert not status["failures"]
+        assert restarted.collection.prepare(source.source_id) == prepared
+        assert run_source_operation(restarted, data, monkeypatch) == result
+    assert calls == 1
+
+    # An explicit later success must not invalidate either earlier terminal failure.
+    return_original = True
+    restored = run_source_operation(
+        restarted,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=RestoreSourceOperation(source_id=source.source_id, attempt="second"),
+        ),
+        monkeypatch,
+    )
+    assert restored.status == "complete"
+    assert calls == 2
+    assert restarted.status()["state"] == "preview_ready"
+    assert run_source_operation(restarted, data, monkeypatch) == result
+    assert restarted.collection.prepare(source.source_id) == prepared
+    # A further explicit attempt sees the restored blob, so no download is needed.
+    existing = run_source_operation(
+        restarted,
+        OperationInput(
+            plan=controller.runtime.plan,
+            operation=RestoreSourceOperation(source_id=source.source_id, attempt="existing"),
+        ),
+        monkeypatch,
+    )
+    assert existing.status == "complete"
+    assert read_document(
+        layout, existing.results[0], restoration.RestorationReceipt
+    ).downloaded is None
+    assert calls == 2
+    assert restarted.status()["state"] == "preview_ready"
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    ["missing_result", "attempt", "acquisition", "status", "reason", "downloaded", "restored_missing_media"],
+)
+def test_restore_operation_rejects_mismatched_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str
+) -> None:
+    from src.tasks.base.annotation.collection import restoration
+    from src.tasks.base.annotation.contracts import MediaFingerprint
+
+    example = make_example(*setup(tmp_path, jpeg=True))
+    controller = controller_for(example)
+    layout = example.layout
+    example.finish()
+    controller.collection.prepare(example.source.source_id)
+
+    def unavailable(*args):
+        raise FileNotFoundError("synthetic unavailable source")
+
+    monkeypatch.setattr(restoration, "stage_source", unavailable)
+    data = OperationInput(
+        plan=controller.runtime.plan,
+        operation=RestoreSourceOperation(source_id=example.source.source_id, attempt="first"),
+    )
+    result = run_source_operation(controller, data, monkeypatch)
+    directory = layout.artifact_path(result.operation).parent
+    state = controller.stages.status(annotation_reference(layout, directory / "launch.json"))
+    assert controller.receipt(state) == result
+    if invalid in {"attempt", "acquisition", "downloaded", "restored_missing_media"}:
+        inner = read_document(layout, result.results[0], restoration.RestorationReceipt)
+        updates: dict[str, Any] = {
+            "attempt": {"attempt": "another-attempt"},
+            "acquisition": {"acquisition": controller.plan.preparation},
+            "downloaded": {"downloaded": MediaFingerprint(digest="a" * 64, size_bytes=1)},
+            "restored_missing_media": {"status": "restored"},
+        }[invalid]
+        path = layout.artifact_path(result.results[0])
+        path.write_bytes(inner.model_copy(update=updates).canonical_bytes())
+        result = result.model_copy(update={"results": (annotation_reference(layout, path),)})
+    outer: dict[str, Any] = (
+        {"results": ()} if invalid == "missing_result"
+        else {"status": "complete", "reason": None} if invalid in {"status", "restored_missing_media"}
+        else {"reason": "unrelated reason"} if invalid == "reason"
+        else {}
+    )
+    (directory / "result.json").write_bytes(result.model_copy(update=outer).canonical_bytes())
+    with pytest.raises((ValueError, OSError)):
+        controller.receipt(state)
 
 
 @pytest.mark.parametrize(

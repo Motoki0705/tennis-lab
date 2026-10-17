@@ -22,9 +22,10 @@ from src.tasks.base.annotation.resources import (
     CapacityUnavailable,
     ResourceManager,
 )
-from src.tasks.base.annotation.workers.contracts import WorkRequest
+from src.tasks.base.annotation.workers.contracts import Launch, WorkRequest
 from src.tasks.base.annotation.workers.ledger import WorkerBusy, WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
+from src.tasks.base.annotation.workers.services import ServiceRequest
 
 from .configuration import validate_runtime
 from .contracts import (
@@ -34,11 +35,15 @@ from .contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    PreviewOperation,
+    RetireExcludedOperation,
+    ReviewOperation,
     Runtime,
     ScreenOperation,
 )
 from .jobs import Operations
 from .screening import ScreeningAdapter
+from .service_sessions import ServiceSessions
 from .services import ServiceBroker
 
 if TYPE_CHECKING:
@@ -48,6 +53,14 @@ if TYPE_CHECKING:
 class Controller:
     def __init__(self, layout: AnnotationLayout, runtime: Runtime) -> None:
         self.layout, self.runtime = layout, runtime
+        # Only the live run uses these verified, in-memory snapshots. Explicit
+        # detailed status rechecks the immutable history, including log hashes.
+        self._operation_inputs: dict[Path, OperationInput] = {}
+        self._stage_inputs: dict[
+            Path, tuple[ArtifactRef, StageLaunch, tuple[str, str], int, Launch | None]
+        ] = {}
+        self._terminal_stages: dict[str, dict[str, Any]] = {}
+        self._stage_results: dict[str, tuple[ArtifactRef, ...]] = {}
         self.plan = load_plan(verify_reference(layout, runtime.plan))
         if self.plan.phase == "benchmark" or layout.review_namespace is not None:
             raise ValueError("benchmark conditions require the dedicated review runner")
@@ -74,6 +87,7 @@ class Controller:
             resources=self.resources,
             worker_pss_bytes=screen.pss_bytes,
             worker_storage_bytes=screen.storage_bytes,
+            code_revision=runtime.code_revision,
         )
         self.jobs = Operations(layout, runtime, self.plan, self.resources)
         self.stages = self.jobs.stages
@@ -83,6 +97,9 @@ class Controller:
             runtime.maximum_services_per_attempt,
             self.operation,
             self.receipt,
+        )
+        self.service_sessions = ServiceSessions(
+            layout, runtime, self.plan.campaign_id, self.operation, self.receipt
         )
         self.production: ProductionWorkflow | None = None
         if self.plan.phase == "production":
@@ -118,7 +135,8 @@ class Controller:
         return result
 
     def receipt(self, state: dict[str, Any]) -> OperationReceipt:
-        return self.jobs.receipt(state)
+        receipt: OperationReceipt = self.jobs.receipt(state)
+        return receipt
 
     def _services(
         self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool | None = None
@@ -248,7 +266,53 @@ class Controller:
                 lead += state["state"] in {"running", "succeeded", "draining"}
             elif row["state"] == "acquired":
                 state = self._screen(row["id"])
+            elif (
+                row["state"] == "excluded"
+                and row["selection"] is not None
+                and self.collection.config.excluded_source_retention
+                == "delete_after_verified_exclusion"
+            ):
+                intent = self.layout.path(
+                    "sources",
+                    row["id"],
+                    self.plan.preparation.digest,
+                    "retirement-intent.json",
+                )
+                if not intent.exists():
+                    screening = self._screen(row["id"])
+                    if screening["state"] != "not_applicable":
+                        progress[row["id"]] = screening
+                        continue
+                state = self.operation(
+                    OperationInput(
+                        plan=self.runtime.plan,
+                        operation=RetireExcludedOperation(source_id=row["id"]),
+                    )
+                )
             elif row["state"] == "screened":
+                # Selection can commit just before worker finalization. Settle
+                # that finalization before handing its source inputs to prepare.
+                if (
+                    self.collection.config.source_retention
+                    == "delete_after_verified_frames"
+                ):
+                    screening = self._screen(row["id"])
+                    if screening["state"] != "complete":
+                        progress[row["id"]] = screening
+                        continue
+                state = self.operation(
+                    OperationInput(
+                        plan=self.runtime.plan,
+                        operation=PrepareOperation(source_id=row["id"]),
+                    )
+                )
+            elif (
+                row["state"] == "prepared"
+                and self.collection.config.source_retention
+                == "delete_after_verified_frames"
+            ):
+                # Reconcile the existing prepare job even if its process exited
+                # between the prepared DB commit and source retirement receipt.
                 state = self.operation(
                     OperationInput(
                         plan=self.runtime.plan,
@@ -265,9 +329,12 @@ class Controller:
                 "*/operation.json"
             )
         ):
-            data = read_document(
-                self.layout, annotation_reference(self.layout, path), OperationInput
-            )
+            data = self._operation_inputs.get(path)
+            if data is None:
+                data = read_document(
+                    self.layout, annotation_reference(self.layout, path), OperationInput
+                )
+                self._operation_inputs[path] = data
             if data.logical_id in seen_operations:
                 continue
             seen_operations.add(data.logical_id)
@@ -303,6 +370,7 @@ class Controller:
                 )
                 progress[data.logical_id] = self.operation(data)
         production = self.production.cycle() if self.production is not None else None
+        self.service_sessions.tick(self.broker)
         return {
             "collection": self.collection.ledger.summary(self.plan),
             "progress": progress,
@@ -311,79 +379,131 @@ class Controller:
         }
 
     def _stage_states(
-        self,
+        self, *, details: bool = True
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         from src.tasks.base.annotation.learning.contracts import StageInput
 
         jobs: list[dict[str, Any]] = []
         keys: list[tuple[str, str]] = []
         latest: dict[tuple[str, str], tuple[int, dict[str, Any]]] = {}
-        for path in sorted(
-            self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
-                "*/operation.json"
+        with self.pool.ledger.registry.transaction() as db:
+            attempts = dict(
+                db.execute(
+                    "SELECT id,current_attempt FROM worker_tasks WHERE campaign=?",
+                    (self.plan.campaign_id,),
+                )
             )
-        ):
-            operation_ref = annotation_reference(self.layout, path)
-            data = read_document(self.layout, operation_ref, OperationInput)
-            identity, number = path.parent.name.rsplit("-", 1)
-            if (
-                data.plan != self.runtime.plan
-                or identity != data.logical_id
-                or not number.isdigit()
-                or int(number) < 1
-            ):
-                raise ValueError("stage attempt differs from its immutable operation")
+
+        def stage_status(ref: ArtifactRef) -> dict[str, Any]:
+            state = None if details else self._terminal_stages.get(ref.digest)
+            if state is None:
+                state = self.stages.status(ref)
+                if state["state"] in {"succeeded", "failed", "cancelled", "timed_out"}:
+                    self._terminal_stages[ref.digest] = dict(state)
+            return dict(state)
+
+        def record(
+            key: tuple[str, str],
+            number: int,
+            state: dict[str, Any],
+            worker: Launch | None = None,
+        ) -> None:
+            state["attempt"] = number
+            state["superseded"] = (
+                worker is not None and attempts.get(worker.work_id) != worker.attempt
+            )
+            jobs.append(state)
+            keys.append(key)
+            if key not in latest or number > latest[key][0]:
+                latest[key] = (number, state)
+
+        root = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
+        for path in sorted(root.glob("*/operation.json")):
             launch_path = path.parent / "launch.json"
-            if launch_path.exists():
-                launch_ref = annotation_reference(self.layout, launch_path)
-                launch = read_document(self.layout, launch_ref, StageLaunch)
+            cached = None if details else self._stage_inputs.get(launch_path)
+            if cached is None:
+                operation_ref = annotation_reference(self.layout, path)
+                data = read_document(self.layout, operation_ref, OperationInput)
+                identity, number_text = path.parent.name.rsplit("-", 1)
+                if (
+                    data.plan != self.runtime.plan
+                    or identity != data.logical_id
+                    or not number_text.isdigit()
+                    or int(number_text) < 1
+                ):
+                    raise ValueError(
+                        "stage attempt differs from its immutable operation"
+                    )
+                number, key = int(number_text), (identity, "operation")
+                worker = None
+                if isinstance(data.operation, (PreviewOperation, ReviewOperation)):
+                    service = read_document(
+                        self.layout, data.operation.service_request, ServiceRequest
+                    )
+                    directory = self.layout.artifact_path(service.task_request).parent
+                    worker = read_document(
+                        self.layout,
+                        annotation_reference(self.layout, directory / "launch.json"),
+                        Launch,
+                    )
+                    if (
+                        worker.plan != self.runtime.plan
+                        or Path(worker.directory) != directory
+                    ):
+                        raise ValueError(
+                            "service stage differs from its worker plan/attempt"
+                        )
+                if not launch_path.exists():
+                    record(
+                        key,
+                        number,
+                        {
+                            "state": "pending",
+                            "reason": "operation has no launch receipt",
+                            "operation": operation_ref.model_dump(),
+                        },
+                        worker,
+                    )
+                    continue
+                ref = annotation_reference(self.layout, launch_path)
+                launch = read_document(self.layout, ref, StageLaunch)
                 if (
                     launch.input != operation_ref
                     or launch.resource.request_id != path.parent.name
                     or launch.resource.plan != self.runtime.plan
                 ):
                     raise ValueError("stage launch differs from its operation/attempt")
-                state: dict[str, Any] = self.stages.status(launch_ref)
+                self._stage_inputs[launch_path] = (ref, launch, key, number, worker)
             else:
-                state = {
-                    "state": "pending",
-                    "reason": "operation has no launch receipt",
-                }
-            state = {
-                **state,
-                "operation": operation_ref.model_dump(),
-                "attempt": int(number),
-            }
-            key = (identity, "operation")
-            jobs.append(state)
-            keys.append(key)
-            if key not in latest or int(number) > latest[key][0]:
-                latest[key] = (int(number), state)
-        for path in sorted(
-            self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
-                "*/launch.json"
-            )
-        ):
+                ref, launch, key, number, worker = cached
+            if launch.input is None:
+                raise ValueError("operation launch has no immutable operation")
+            state = stage_status(ref)
+            state["operation"] = launch.input.model_dump()
+            record(key, number, state, worker)
+
+        for path in sorted(root.glob("*/launch.json")):
             if (path.parent / "operation.json").exists():
                 continue
-            launch_ref = annotation_reference(self.layout, path)
-            launch = read_document(self.layout, launch_ref, StageLaunch)
-            if launch.input is None or launch.resource.plan != self.runtime.plan:
-                raise ValueError("campaign job has no matching input/plan")
-            if not launch.resource.request_id.startswith("learning-"):
-                raise ValueError("operation launch has no immutable operation")
-            request = read_document(self.layout, launch.input, StageInput)
-            if launch.resource.request_id != "learning-" + request.sha256:
-                raise ValueError("learning attempt identity differs from its input")
-            key = (request.intent.digest, request.stage)
-            state = {**self.stages.status(launch_ref), "attempt": request.attempt}
-            jobs.append(state)
-            keys.append(key)
-            if key not in latest or request.attempt > latest[key][0]:
-                latest[key] = (request.attempt, state)
+            cached = None if details else self._stage_inputs.get(path)
+            if cached is None:
+                ref = annotation_reference(self.layout, path)
+                launch = read_document(self.layout, ref, StageLaunch)
+                if launch.input is None or launch.resource.plan != self.runtime.plan:
+                    raise ValueError("campaign job has no matching input/plan")
+                if not launch.resource.request_id.startswith("learning-"):
+                    raise ValueError("operation launch has no immutable operation")
+                request = read_document(self.layout, launch.input, StageInput)
+                if launch.resource.request_id != "learning-" + request.sha256:
+                    raise ValueError("learning attempt identity differs from its input")
+                key, number = (request.intent.digest, request.stage), request.attempt
+                self._stage_inputs[path] = (ref, launch, key, number, None)
+            else:
+                ref, launch, key, number, _worker = cached
+            record(key, number, stage_status(ref))
         for key, state in zip(keys, jobs, strict=True):
-            state["superseded"] = state["attempt"] < latest[key][0]
-        return jobs, [state for _, state in latest.values()]
+            state["superseded"] |= state["attempt"] < latest[key][0]
+        return jobs, [state for _, state in latest.values() if not state["superseded"]]
 
     def publication_failures(self) -> list[dict[str, Any]]:
         """Match registered inputs to their latest successful producing attempts."""
@@ -467,17 +587,24 @@ class Controller:
                 )
         return failures
 
-    def status(self) -> dict[str, Any]:
+    def status(self, *, details: bool = True) -> dict[str, Any]:
         reconciled = self._reconcile_workers()
-        jobs, latest = self._stage_states()
+        jobs, latest = self._stage_states(details=details)
         completed: set[ArtifactRef] = set()
         for stage_state in latest:
             if stage_state["state"] != "succeeded" or "operation" not in stage_state:
                 continue
+            launch_ref = ArtifactRef.model_validate(stage_state["launch"])
             try:
-                receipt = self.receipt(stage_state)
-                completed.update(receipt.results)
+                results = (
+                    None if details else self._stage_results.get(launch_ref.digest)
+                )
+                if results is None:
+                    results = self.receipt(stage_state).results
+                    self._stage_results[launch_ref.digest] = results
+                completed.update(results)
             except (ValueError, OSError) as error:
+                self._stage_results.pop(launch_ref.digest, None)
                 stage_state.update(
                     state="invalid_receipt", reason=f"{type(error).__name__}: {error}"
                 )

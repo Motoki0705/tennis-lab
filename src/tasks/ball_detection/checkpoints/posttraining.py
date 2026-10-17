@@ -10,6 +10,7 @@ from src.tasks.ball_detection.checkpoints.configuration import (
     checkpoint_training_recipe,
 )
 from src.tasks.ball_detection.checkpoints.coordinates import query_checkpoint_config
+from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.utils.checksum import dual_sha256
 
@@ -40,7 +41,7 @@ def resume_posttraining(path: Path, output: Path, model: DeepMDDQueryDetector,
         raise ValueError("Resume best epoch lies outside the completed history")
     best_path = output / f"epoch-{best_epoch:03d}.pt"
     selected = torch.load(best_path, map_location="cpu", weights_only=True)
-    if selected["validation"]["scopes"]["common"]["macro_mean_error_px"] != saved["best_score"]:
+    if selection_score(selected["validation"], recipe["selection_scope"]) != saved["best_score"]:
         raise ValueError("Resume best checkpoint disagrees with its selection score")
     model.load_state_dict(saved["state_dict"], strict=True)
     optimizer.load_state_dict(saved["optimizer"])

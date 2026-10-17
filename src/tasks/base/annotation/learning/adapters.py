@@ -2,10 +2,11 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
+from ..plan import LearningPlan
 from .contracts import (
     DatasetPartition,
     EvaluationReceipt,
@@ -13,6 +14,14 @@ from .contracts import (
     SelectionVerdict,
     TrainingReceipt,
 )
+
+
+@runtime_checkable
+class EvaluationResolver(Protocol):
+    def resolve_evaluation(self, layout: AnnotationLayout, plan: LearningPlan,
+                           publication: ArtifactRef) -> ArtifactRef:
+        """Freeze post-publication holdouts from a recipe already pinned in the plan."""
+        ...
 
 
 @dataclass(frozen=True)

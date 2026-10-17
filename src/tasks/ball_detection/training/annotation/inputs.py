@@ -43,12 +43,14 @@ from src.tasks.base.annotation.learning.contracts import (
 )
 from src.tasks.base.annotation.learning.validation import (
     check_completion,
+    check_evaluation_binding,
     check_partitions,
     verify_inputs,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
 
-from .contracts import BallLearningRecipe, BallSelectionPolicy
+from .contracts import BalancedSelectionPolicy, BallLearningRecipe
+from .selection import read_policy
 
 
 def output_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
@@ -107,12 +109,13 @@ class Inputs:
     prepared: TrainingWindows
     holdout: HoldoutWindows
     fixed: FixedEvaluation
+    test_holdout: HoldoutWindows | None = None
 
     def arguments(
         self, layout: AnnotationLayout, output: Path, resume: Path | None
     ) -> argparse.Namespace:
         values = self.recipe.model_dump(
-            exclude={"schema_version", "windows", "augmentation", "runtime"}
+            exclude={"schema_version", "windows", "augmentation", "runtime", "replay"}
         )
         values.update(self.recipe.runtime.model_dump())
         return argparse.Namespace(
@@ -123,6 +126,10 @@ class Inputs:
             augmentation_config=verify_reference(layout, self.recipe.augmentation),
             output=output,
             resume=resume,
+            replay_manifest=(verify_reference(layout, self.recipe.replay.previously_trained_manifest)
+                             if self.recipe.replay else None),
+            untrained_fraction=self.recipe.replay.untrained_fraction if self.recipe.replay else None,
+            selection_scope="balanced_existing_new" if self.fixed.recipe is not None else "common",
         )
 
     def expected_recipe(
@@ -161,15 +168,14 @@ def resolve_inputs(
     if task.learning is None or (
         task.model,
         task.learning.recipe,
-        task.learning.validation,
         task.learning.selection_policy,
     ) != (
         intent.parent.model,
         intent.recipe,
-        intent.fixed_evaluation,
         intent.selection_policy,
     ):
         raise ValueError("ball learning intent differs from the frozen production plan")
+    check_evaluation_binding(layout, task.learning, intent)
     outcomes = next(t.products for t in completion.tasks if t.task == "ball")
     if (
         next(p.publication for p in outcomes if p.product == "frames")
@@ -180,6 +186,11 @@ def resolve_inputs(
     if intent.train != training_partition(layout, publication.snapshot):
         raise ValueError("ball train partition differs from published membership")
     recipe = read_document(layout, intent.recipe, BallLearningRecipe)
+    if recipe.replay is not None:
+        verify_reference(layout, recipe.replay.previously_trained_manifest)
+        parent_spec = read_document(layout, intent.parent.model.configuration, MDDCheckpointSpec)
+        if parent_spec.training_manifest_digest != recipe.replay.previously_trained_manifest.digest:
+            raise ValueError("Replay manifest differs from the adopted model's training data")
     fixed = read_document(layout, intent.fixed_evaluation, FixedEvaluation)
     if fixed.task != "ball":
         raise ValueError("fixed evaluation task mismatch")
@@ -187,11 +198,19 @@ def resolve_inputs(
         intent.train, fixed.validation, *((fixed.test,) if fixed.test else ())
     )
     holdout = validate_holdout(layout, fixed.validation)
-    if fixed.test is not None:
-        validate_holdout(layout, fixed.test)
+    test_holdout = validate_holdout(layout, fixed.test) if fixed.test is not None else None
+    if fixed.recipe is not None:
+        from src.tasks.ball_detection.data.windows.learning.evaluation import (
+            resolve_evaluation,
+        )
+
+        if resolve_evaluation(layout, task.learning, intent.publication) != intent.fixed_evaluation:
+            raise ValueError("Resolved holdouts differ from the publication and pinned recipe")
     AugmentationConfig.load(verify_reference(layout, recipe.augmentation))
     if intent.selection_policy is not None:
-        read_document(layout, intent.selection_policy, BallSelectionPolicy)
+        selection = read_policy(layout, intent.selection_policy)
+        if isinstance(selection, BalancedSelectionPolicy) != (fixed.recipe is not None):
+            raise ValueError("Selection policy must agree with the fixed evaluation cohorts")
     directory = layout.path(
         "campaigns", plan.campaign_id, "learning", "ball", "inputs", intent.sha256
     )
@@ -212,7 +231,7 @@ def resolve_inputs(
         prepared = read_document(layout, prepared_ref, TrainingWindows)
     if require_teachers:
         require_additional_teachers(prepared)
-    return Inputs(recipe, prepared_ref, prepared, holdout, fixed)
+    return Inputs(recipe, prepared_ref, prepared, holdout, fixed, test_holdout)
 
 
 def check_model_spec(layout: AnnotationLayout, model: ModelRef) -> MDDCheckpointSpec:

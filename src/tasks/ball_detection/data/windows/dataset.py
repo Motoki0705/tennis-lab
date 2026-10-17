@@ -8,6 +8,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
+import cv2
 import numpy as np
 import torch
 from numpy.typing import NDArray
@@ -17,7 +18,7 @@ from src.tasks.ball_detection.data.annotation_states import (
     AnnotationStates,
     annotation_states,
 )
-from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord, shard_name
+from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
 from src.tasks.ball_detection.data.supervision import (
     OBSERVED_ONLY,
     resolve_frame_supervision,
@@ -86,9 +87,13 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
         if any(window.frame_step not in self.frame_steps for _, window in self.windows):
             raise ValueError("Window uses an undeclared frame step")
         self._shared_rgb_verification = SharedFileVerification({
-            self.store.directory / "shards" / shard_name(record["clip"]["index"]): record["rgb_shard_sha256"]
+            self.store.image_path(self.store.clip_by_id(record["clip"]["clip_id"])): record["rgb_shard_sha256"]
             for record in self.records
         })
+        for record in self.records:
+            video = self.store.video_frames.get(record["clip"]["clip_id"])
+            if video and video.media_sha256 != record["rgb_shard_sha256"]:
+                raise ValueError("Frozen video hash differs from its publication contract")
         self._rgb_versions: dict[str, FileVersion] = {}
         self._states: dict[str, AnnotationStates] = {}
         self._pose_clip = ""
@@ -101,7 +106,7 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
         self._shared_rgb_verification.verify_all(max(1, workers), progress=progress)
 
     def _verify_clip(self, record: dict[str, Any], clip: ClipRecord) -> AnnotationStates:
-        path = self.store.directory / "shards" / shard_name(clip.index)
+        path = self.store.image_path(clip)
         version = file_version(path)
         if clip.clip_id not in self._rgb_versions:
             version = self._shared_rgb_verification.verify(path)
@@ -143,17 +148,23 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
 
     def _read_images(self, clip: ClipRecord, indices: NDArray[np.int64]) -> dict[str, Any]:
         images: dict[str, Any] = {}
+        payloads = self.store.read_video_window(clip, indices.tolist(), version=self._rgb_versions[clip.clip_id]) \
+            if clip.clip_id in self.store.video_frames else None
         if self.jpeg_decoder == "opencv":
             rgb: NDArray[np.uint8] = np.empty((32, 3, clip.height, clip.width), np.uint8)
             for position, frame in enumerate(indices):
-                image = self.store.read_bgr(self.store.row_of(clip, int(frame)))
+                image = self.store.read_bgr(self.store.row_of(clip, int(frame))) if payloads is None else cv2.imdecode(
+                    np.frombuffer(payloads[position], dtype=np.uint8), cv2.IMREAD_COLOR)
+                if image is None or image.shape != (clip.height, clip.width, 3):
+                    raise ValueError("JPEG failed to decode to its native dimensions")
                 rgb[position] = image[..., ::-1].transpose(2, 0, 1)
             images["rgb"] = torch.from_numpy(rgb)
         else:
             rows = self.store.clip_start[clip.index] + indices
             ranges = [(int(self.store.frames["offset"][row]), int(self.store.frames["length"][row])) for row in rows]
-            path = self.store.directory / "shards" / shard_name(clip.index)
-            packed = self._jpeg_reader.read(path, ranges, self._rgb_versions[clip.clip_id])
+            path = self.store.image_path(clip)
+            packed = self._jpeg_reader.read(path, ranges, self._rgb_versions[clip.clip_id]) if payloads is None else \
+                np.frombuffer(b"".join(payloads), dtype=np.uint8).copy()
             images.update(jpeg=torch.from_numpy(packed),
                           jpeg_lengths=tuple(length for _, length in ranges),
                           image_shape=(32, 3, clip.height, clip.width))

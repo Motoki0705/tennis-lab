@@ -62,7 +62,7 @@ class ResourceBudget(Document):
     additional_storage_bytes: PositiveInt
     minimum_free_bytes: PositiveInt
     total_pss_bytes: PositiveInt
-    gpu_seconds: PositiveInt
+    gpu_seconds: PositiveInt | None
     stages: tuple[StageCapacity, ...] = Field(min_length=1)
 
     @_after
@@ -87,6 +87,7 @@ class LearningPlan(Document):
     recipe: ArtifactRef
     validation: ArtifactRef
     selection_policy: ArtifactRef | None
+    evaluation_recipe: ArtifactRef | None = None
 
 
 class ProductPlan(Document):
@@ -197,7 +198,7 @@ def save_plan(layout: AnnotationLayout, plan: CampaignPlan) -> Path:
     validate_inputs(layout, plan)
     directory = layout.path("campaigns", plan.campaign_id)
     directory.mkdir(parents=True, exist_ok=True)
-    path = layout.path("campaigns", plan.campaign_id, "plan.json")
+    path: Path = layout.path("campaigns", plan.campaign_id, "plan.json")
     lock = layout.path("campaigns", plan.campaign_id, "plan.lock")
     descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, "a") as guard:

@@ -3,11 +3,15 @@
 import sys
 from pathlib import Path
 
+from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
+from src.tasks.ball_detection.data.windows.learning.evaluation import resolve_evaluation
 from src.tasks.ball_detection.data.windows.learning.holdout import validate_holdout
 from src.tasks.ball_detection.data.windows.learning.preparation import (
+    require_additional_teachers,
     training_partition,
 )
-from src.tasks.base.annotation.artifacts import read_document, verify_reference
+from src.tasks.ball_detection.training.replay import ReplayFPSMixSampler
+from src.tasks.base.annotation.artifacts import verify_reference
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.learning.adapters import NoAdditionalTeachers
 from src.tasks.base.annotation.learning.contracts import (
@@ -19,16 +23,21 @@ from src.tasks.base.annotation.learning.contracts import (
 )
 from src.tasks.base.annotation.learning.validation import check_evaluation
 from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.plan import LearningPlan
 
 from . import evidence, storage
-from .contracts import BallSelectionPolicy
 from .inputs import resolve_inputs
-from .selection import rejection_reasons
+from .selection import read_policy, rejection_reasons
 
 
 class BallLearningAdapter:
     task = "ball"
     product = "frames"
+
+    def resolve_evaluation(
+        self, layout: AnnotationLayout, plan: LearningPlan, publication: ArtifactRef
+    ) -> ArtifactRef:
+        return resolve_evaluation(layout, plan, publication)
 
     def retained_references(
         self,
@@ -61,6 +70,21 @@ class BallLearningAdapter:
             return NoAdditionalTeachers(
                 "new clips contain no eligible MDD coordinate window; publication retained, old-only training is forbidden"
             )
+        if inputs.recipe.replay is not None:
+            data = FrozenBallWindowDataset(
+                verify_reference(layout, require_additional_teachers(inputs.prepared)),
+                split="train",
+                requires_pose=False,
+            )
+            ReplayFPSMixSampler(
+                data,
+                windows_per_epoch=inputs.recipe.windows_per_epoch,
+                seed=inputs.recipe.seed,
+                previously_trained_manifest=verify_reference(
+                    layout, inputs.recipe.replay.previously_trained_manifest
+                ),
+                untrained_fraction=inputs.recipe.replay.untrained_fraction,
+            )
         inputs.expected_recipe(layout, intent)
         return None
 
@@ -73,7 +97,9 @@ class BallLearningAdapter:
     def result_references(
         self, layout: AnnotationLayout, result: TrainingReceipt | EvaluationReceipt
     ) -> tuple[ArtifactRef, ...]:
-        dependencies: tuple[ArtifactRef, ...] = storage.result_references(layout, result)
+        dependencies: tuple[ArtifactRef, ...] = storage.result_references(
+            layout, result
+        )
         return dependencies
 
     def command(
@@ -119,7 +145,7 @@ class BallLearningAdapter:
         if intent.selection_policy is None:
             raise ValueError("ball selection requires an explicitly agreed policy")
         comparison = evidence.validate_evaluation(layout, intent, receipt)
-        policy = read_document(layout, intent.selection_policy, BallSelectionPolicy)
+        policy = read_policy(layout, intent.selection_policy)
         reasons = rejection_reasons(comparison, policy)
         return SelectionVerdict(
             evaluation=evaluation,
@@ -127,5 +153,5 @@ class BallLearningAdapter:
             status="rejected" if reasons else "passed",
             reason="; ".join(reasons)
             if reasons
-            else "All agreed fixed-validation conditions passed",
+            else "All agreed model-selection conditions passed",
         )
