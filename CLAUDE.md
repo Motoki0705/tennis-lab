@@ -7,4 +7,4 @@ AGENTS.md を読み込む。ここには Claude Code 固有の差分だけを書
 
 ## Claude Code 固有
 
-- auto-memory（`~/.claude/projects/<project>/memory/`）には、ユーザー個人の嗜好と個人の環境だけを保存する。プロジェクトの知見は、Codexからも読めるように共有memory [.agents/memory/](.agents/memory/README.md) に書く。
+- auto-memory（`~/.claude/projects/<project>/memory/`）には、ユーザー個人の環境（パス、アカウント、マシン固有の設定）と、Claude Code の使い方に閉じた好みだけを保存する。プロジェクトの知見とユーザーの判断は、Codexからも読めるように共有memory（[memory skill](.agents/skills/memory/SKILL.md)）に書く。
